@@ -17,6 +17,9 @@ dependencies = [
 dev = [
   "pytest>=8.3.0",
 ]
+gui = [
+  "PySide6>=6.7.0",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
@@ -25,3 +28,4 @@ testpaths = ["tests"]
 
 [project.scripts]
 fast-file-finder = "fast_file_finder.cli:main"
+fast-file-finder-gui = "fast_file_finder.gui:main"
