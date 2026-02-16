@@ -60,3 +60,44 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-gui.ps1 --root .
 ```bash
 pytest
 ```
+
+## Rust 実装
+
+Rust 版は `rust/` 配下です。
+
+```bash
+cd rust
+cargo run
+```
+
+詳細は `rust/README.md` を参照してください。
+
+### Windows 向けビルド
+
+初回のみ:
+
+```bash
+source ~/.cargo/env
+cargo install cargo-xwin
+```
+
+WSL / Linux シェルから:
+
+```bash
+./scripts/build-rust-win.sh
+```
+
+Windows PowerShell から:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1
+```
+
+PowerShell スクリプトは、Windows 側に `rustup` / `cargo` が導入済みである前提です。
+
+成果物:
+
+`rust/target/x86_64-pc-windows-msvc/release/fast-file-finder-rs.exe`
+
+注記:
+生成済み EXE を実行中のままだと上書きビルドに失敗します。ビルド前にアプリを終了してください。
