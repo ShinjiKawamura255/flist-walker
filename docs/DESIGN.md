@@ -13,11 +13,16 @@
 - 役割: ファイル実行/オープン、フォルダオープンを OS 非依存 API で提供。
 - DES-005 CLI Adapter
 - 役割: Python 試作の UX を Rust へ移植しやすい I/O 契約で固定。
+- DES-009 GUI Adapter (PySide6)
+- 役割: 検索入力、結果表示、プレビュー、実行/オープン操作を一画面で提供。
+- DES-010 GUI Test Artifacts
+- 役割: GUI の回帰手順と結果記録を `docs/GUI-TESTPLAN.md` / `docs/GUI-TESTREPORT.md` で管理。
 
 ## Main flows
 - Flow-001: 起動 -> FileList 検出 -> ある場合は読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
 - Flow-003: アクション失敗 -> エラー整形 -> stderr 出力 -> 非ゼロ終了。
+- Flow-004: GUI 起動 -> インデックス構築 -> 入力デバウンス検索 -> プレビュー -> 実行/オープン。
 
 ## Data model
 - Candidate
@@ -29,11 +34,14 @@
 
 ## API contract
 - `build_index(root: Path) -> list[Path]`
+- `build_index_with_metadata(root: Path) -> IndexBuildResult`
 - `find_filelist(root: Path) -> Path | None`
 - `parse_filelist(filelist_path: Path, root: Path) -> list[Path]`
 - `search_entries(query: str, entries: list[Path], limit: int = 20) -> list[tuple[Path, float]]`
 - `execute_or_open(path: Path) -> None`
 - `python -m fast_file_finder [query] [--limit N] [--root PATH]`
+- `python -m fast_file_finder --gui [--root PATH] [--limit N] [query]`
+- `fast-file-finder-gui [--root PATH] [--limit N] [--query TEXT]`
 
 ## Non-functional considerations
 - DES-006 Performance
@@ -43,6 +51,7 @@
 - OS コマンド起動失敗を例外として分類し終了コードへ反映。
 - DES-008 Testability
 - インデックス/検索/アクションを分離し、OS 依存層を薄く保つ。
+- GUI ロジックは `ui_model.py` へ分離し、Qt 非依存で unit test 可能にする。
 
 ## Error handling / timeouts / logging / metrics
 - エラー戦略: `FileNotFoundError` / `PermissionError` / `OSError` をユーザ向けに変換。
@@ -59,7 +68,7 @@
 1. Rust 版が不安定時は Python 試作を fallback コマンドとして維持する。
 
 ## Trade-offs
-- Python 試作では開発速度を優先し、UI は最小限の CLI 対話とする。
+- Python 試作では開発速度と UI 検証を優先し、PySide6 で単画面 GUI を採用する。
 - Rust 本実装では性能と配布性を優先し、同一 SPEC を満たす範囲で内部実装のみ刷新する。
 
 ## Traceability (excerpt)
@@ -71,3 +80,5 @@
 - DES-006 -> TC-007 (SP-007)
 - DES-007 -> TC-008 (SP-008)
 - DES-008 -> TC-009 (SP-009)
+- DES-009 -> TC-010 (SP-010)
+- DES-010 -> TC-011 (SP-011)

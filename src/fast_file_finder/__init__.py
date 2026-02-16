@@ -3,6 +3,8 @@
 __all__ = [
     "actions",
     "cli",
+    "gui",
     "indexer",
     "search",
+    "ui_model",
 ]

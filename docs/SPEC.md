@@ -298,6 +298,73 @@
 ### Invariants
 - 仕様 ID と TC の対応が維持される。
 
+## SP-010 GUI 操作仕様
+### Overview
+- Python 試作 GUI の操作要素と動作を定義する。
+
+### Requirements
+- MUST: 検索入力、結果リスト、プレビューペイン、実行/オープン操作を提供する。
+- MUST: `FileList` 利用時はその旨を UI 上に表示する。
+- SHOULD: クエリ入力時は軽いデバウンスで再検索し、連続打鍵でも操作性を保つ。
+
+### Preconditions
+- GUI モードで起動され、インデックス構築済みであること。
+
+### Postconditions
+- 利用者が選択対象をプレビュー確認後に実行/オープンできる。
+
+### Normal cases
+- クエリ入力 -> 結果更新 -> 選択 -> 実行/オープン。
+
+### Error cases
+- アクション失敗時はダイアログで失敗理由を表示する。
+
+### Boundary cases
+- 検索語空文字時は上位候補を表示する。
+
+### Inputs/Outputs
+- Input: query text, selected row
+- Output: refreshed result list, action execution
+
+### Compatibility
+- Rust GUI 実装へ同じ画面要素と操作を移植可能。
+
+### Invariants
+- 実行対象は常に現在選択中の候補に一致する。
+
+## SP-011 GUI 回帰テスト計画
+### Overview
+- GUI の主要フローを継続検証するための計画を定義する。
+
+### Requirements
+- MUST: GUI テスト計画書を用意し、重要フローを ID 付きで定義する。
+- SHOULD: GUI テスト実施結果をレポートとして残す。
+
+### Preconditions
+- GUI 機能がリリース対象である。
+
+### Postconditions
+- GUI 変更時に最低限の回帰セットを実行できる。
+
+### Normal cases
+- `docs/GUI-TESTPLAN.md` を参照して手動検証を実施する。
+
+### Error cases
+- 実施不可項目は理由と代替確認を記録する。
+
+### Boundary cases
+- OS 差異による軽微な見た目差は記録して評価する。
+
+### Inputs/Outputs
+- Input: GUI build, test environment matrix
+- Output: test report entries
+
+### Compatibility
+- Rust 移行後も同一フロー ID を流用可能。
+
+### Invariants
+- 主要操作（検索/選択/アクション/再読込）は常に回帰対象。
+
 ## Traceability (excerpt)
 - SP-001 -> DES-001 -> TC-001 (FR-001)
 - SP-002 -> DES-002 -> TC-002 (FR-002)
@@ -308,3 +375,5 @@
 - SP-007 -> DES-006 -> TC-007 (NFR-001)
 - SP-008 -> DES-007 -> TC-008 (NFR-002)
 - SP-009 -> DES-008 -> TC-009 (NFR-003)
+- SP-010 -> DES-009 -> TC-010 (FR-007)
+- SP-011 -> DES-010 -> TC-011 (NFR-004)
