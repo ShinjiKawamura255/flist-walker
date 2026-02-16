@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fast-file-finder"
+version = "0.1.0"
+description = "Fast fuzzy finder prototype with walker/FileList support"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "rapidfuzz>=3.9.0",
+  "prompt_toolkit>=3.0.43",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"
+testpaths = ["tests"]
+
+[project.scripts]
+fast-file-finder = "fast_file_finder.cli:main"
