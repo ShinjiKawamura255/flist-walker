@@ -1,6 +1,6 @@
 # FlistWalker Rust
 
-Python プロトタイプの仕様を Rust に移植した実装です。
+FlistWalker の Rust 本実装です。
 
 ## Build
 

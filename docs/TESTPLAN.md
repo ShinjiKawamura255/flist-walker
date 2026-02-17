@@ -12,13 +12,13 @@
 - FileList 検出/解析
 - walker 走査
 - fuzzy 検索順位
-- action 分岐（モック）
+- action 分岐
+- GUI ロジック（ui_model）
 - Integration:
-- 一時ディレクトリで end-to-end に近いインデックス→検索→選択。
-- E2E:
-- Python CLI 実行（非対話引数モード）で結果表示を確認。
+- 一時ディレクトリで index -> search -> action 連携を確認。
+- CLI 実行で出力契約を確認。
 - GUI Manual:
-- 起動、検索、選択、プレビュー、実行/オープン、再読込を `docs/GUI-TESTPLAN.md` に従って検証。
+- 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
@@ -31,38 +31,39 @@
 | TC-003 | unit | ファジー検索が関連度順・件数制限を満たす | SP-003 |
 | TC-004 | unit | 実行可能ファイルで execute 分岐 | SP-004 |
 | TC-005 | unit | フォルダで open 分岐 | SP-005 |
-| TC-006 | integration | Python CLI 契約が Rust 移植前提を満たす | SP-006 |
+| TC-006 | integration | CLI 契約（`--cli`/`--root`/`--limit`）を満たす | SP-006 |
 | TC-007 | perf | 10万件検索の遅延計測 | SP-007 |
 | TC-008 | unit | 例外時に非ゼロ終了コードを返す | SP-008 |
-| TC-009 | unit | 機能分離によりモジュール単体テスト可能 | SP-009 |
+| TC-009 | unit | モジュール分離により単体テスト可能 | SP-009 |
 | TC-010 | manual+unit | GUI で検索/選択/実行/再読込が行える | SP-010 |
-| TC-011 | manual | GUI テスト計画に基づく回帰を実施できる | SP-011 |
+| TC-011 | manual | GUI 回帰手順に基づく再検証が可能 | SP-011 |
 
 ## Runner and commands
-- Runner: `pytest`
+- Runner: `cargo test`
 - Commands:
-- `python -m venv .venv && source .venv/bin/activate`
-- `pip install -e .[dev,gui]`
-- `pytest -q`
-- GUI 手動試験: `flistwalker --gui --root .`
+- `cd rust`
+- `source ~/.cargo/env`
+- `cargo test`
+- GUI 手動試験: `cargo run -- --root .. --limit 1000`
+- CLI 動作確認: `cargo run -- --cli "main" --root .. --limit 20`
 
 ## Environment and data
-- Python 3.11+
-- OS: Windows 11 (WSL 開発), Linux/macOS は互換確認対象
+- Rust stable toolchain（`rustup` 管理）
+- OS: Windows 11 / Linux / macOS
 - Data:
 - 一時ディレクトリに擬似ファイル/フォルダを生成
 - `FileList.txt`/`filelist.txt` をケース別に生成
 
 ## Entry / Exit criteria
 - Entry:
-- docs 4文書が揃い、FR/NFR/SP/DES/TC が対応付け済み
+- docs 4文書が揃い、FR/NFR/SP/DES/TC が対応付け済み。
 - Exit:
-- P0/P1 テストが全成功
-- 未達項目は TODO と根拠を記録
+- P0/P1 テストが全成功。
+- 未達項目は TODO と根拠を記録。
 
 ## Report
-- `pytest` 結果を作業ログに記録。
-- 性能計測は別途 `docs/perf-notes.md`（将来追加）へ記録。
+- `cargo test` 結果を作業ログに記録。
+- 性能計測は `docs/perf-notes.md`（必要時追加）へ記録。
 
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001

@@ -1,379 +1,137 @@
 # SPEC
 
 ## SP-001 FileList 優先読み込み
-### Overview
-- `FileList.txt` または `filelist.txt` がある場合の候補集合構築を定義する。
-
 ### Requirements
-- MUST: プロジェクトルート直下で `FileList.txt` と `filelist.txt` を検出する。
+- MUST: 検索ルート直下で `FileList.txt` と `filelist.txt` を検出する。
 - MUST: 両方ある場合は `FileList.txt` を優先する。
 - MUST: 空行と `#` コメント行を無視する。
 - SHOULD: 相対パスはルート起点で絶対化する。
+- SHOULD: 重複を除去する。
 
-### Preconditions
-- 実行ディレクトリが検索ルートとして決定していること。
+### Preconditions / Postconditions
+- Preconditions: 検索ルートが確定している。
+- Postconditions: 有効な既存パスだけで候補集合が構築される。
 
-### Postconditions
-- 有効な既存パスのみで候補集合が生成される。
-
-### Normal cases
-- `FileList.txt` を読み、候補として登録する。
-
-### Error cases
-- 読み込み失敗時はエラーメッセージを表示し、非ゼロ終了。
-
-### Boundary cases
-- 空ファイル時は候補ゼロ件。
-
-### Inputs/Outputs
-- Input: `FileList.txt` の行群
-- Output: `Path[]`
-
-### Compatibility
-- Windows/macOS/Linux のパス区切りを許容。
-
-### Invariants
-- 候補は重複除去された正規化済みパスである。
+### Edge / Error
+- 空ファイルは候補ゼロ件で正常終了する。
+- 読み込み失敗時はエラーを返し、終了コードを非ゼロにする。
 
 ## SP-002 Walker 走査
-### Overview
-- リスト未提供時のファイル/フォルダ再帰走査を定義する。
-
 ### Requirements
-- MUST: ルート以下を再帰走査し、ファイル/フォルダを候補化する。
-- SHOULD: シンボリックリンク循環を回避する。
+- MUST: FileList 未使用時にルート以下を再帰走査し候補化する。
+- MUST: ファイル/フォルダの包含条件（include_files/include_dirs）を適用する。
+- SHOULD: 循環リンクを避ける。
+- SHOULD: 走査結果は段階的に UI へ反映できる形で扱う。
 
-### Preconditions
-- `FileList.txt` と `filelist.txt` が存在しない。
+### Preconditions / Postconditions
+- Preconditions: `FileList.txt` / `filelist.txt` が使用されない。
+- Postconditions: 既存パスのみの候補集合を返す。
 
-### Postconditions
-- 既存パスの候補集合を返す。
-
-### Normal cases
-- `os.scandir` ベースでスタック走査。
-
-### Error cases
-- 権限不足ディレクトリはスキップし警告をログする。
-
-### Boundary cases
-- 候補0件でも正常終了する。
-
-### Inputs/Outputs
-- Input: ルートディレクトリ
-- Output: `Path[]`
-
-### Compatibility
-- Python 3.11+。
-
-### Invariants
-- 各候補はルート配下または絶対パス。
+### Edge / Error
+- 権限不足ディレクトリはスキップし、全体処理は継続する。
+- 候補ゼロ件でも正常終了する。
 
 ## SP-003 ファジー検索
-### Overview
-- 候補集合に対する高速検索を定義する。
-
 ### Requirements
-- MUST: クエリ文字列に対して関連度順で結果を返す。
-- MUST: 上位 `limit` 件を返す。
+- MUST: 通常語はファジー検索（AND 条件）で評価する。
+- MUST: `'` は完全一致条件として評価する。
+- MUST: `!` は除外条件として評価する。
+- MUST: `^` / `$` は先頭・末尾条件として評価する。
+- MUST: 上位 `limit` 件を関連度順で返す。
 - SHOULD: 大文字小文字差を緩和する。
 
-### Preconditions
-- 候補集合が構築済み。
+### Preconditions / Postconditions
+- Preconditions: 候補集合が構築済み。
+- Postconditions: スコア降順結果を返す。
 
-### Postconditions
-- スコア降順の検索結果を返す。
-
-### Normal cases
-- `rapidfuzz` を使って抽出。
-
-### Error cases
-- クエリ未指定時は空配列。
-
-### Boundary cases
-- 候補が `limit` 未満なら全件返す。
-
-### Inputs/Outputs
-- Input: query, candidates, limit
-- Output: `(Path, score)[]`
-
-### Compatibility
-- Rust 実装では同等アルゴリズムへ置換可能。
-
-### Invariants
-- 結果は候補集合の部分集合。
+### Edge / Error
+- クエリ空文字または `limit=0` は空結果を返す。
+- 正規表現モードで無効パターンは非マッチ扱いにする。
 
 ## SP-004 ファイル実行/オープン
-### Overview
-- ファイル選択時の動作を定義する。
-
 ### Requirements
 - MUST: 実行可能ファイルはプロセス起動する。
 - MUST: 非実行ファイルは既定アプリでオープンする。
+- MUST: 外部コマンドはシェル展開なしで実行する。
 
-### Preconditions
-- 選択パスがファイルである。
+### Preconditions / Postconditions
+- Preconditions: 選択対象がファイル。
+- Postconditions: 実行またはオープン要求が OS に渡される。
 
-### Postconditions
-- 起動コマンドが実行される。
-
-### Normal cases
-- 実行権限あり: `subprocess.Popen([path])`。
-
-### Error cases
-- 起動失敗時は例外をユーザ向けに整形して返す。
-
-### Boundary cases
-- 拡張子関連付け未定義の場合は失敗を通知。
-
-### Inputs/Outputs
-- Input: file path
-- Output: action result
-
-### Compatibility
-- OS 別の open コマンド差分を吸収。
-
-### Invariants
-- 実行時に候補集合は変更しない。
+### Edge / Error
+- 起動失敗時はユーザ向けメッセージを返す。
+- 拡張子関連付け未定義は失敗として通知する。
 
 ## SP-005 フォルダオープン
-### Overview
-- フォルダ選択時の動作を定義する。
-
 ### Requirements
-- MUST: フォルダを OS 既定のファイルマネージャで開く。
+- MUST: 選択フォルダを OS 既定のファイルマネージャで開く。
+- MUST: 存在しないパスには操作しない。
 
-### Preconditions
-- 選択パスがディレクトリ。
+### Preconditions / Postconditions
+- Preconditions: 選択対象がディレクトリ。
+- Postconditions: フォルダオープン要求が OS に渡される。
 
-### Postconditions
-- ファイルマネージャ起動。
+### Edge / Error
+- コマンド不在時は明示的なエラーを返す。
 
-### Normal cases
-- Windows: `explorer` / macOS: `open` / Linux: `xdg-open`。
-
-### Error cases
-- コマンド不在時は明示的なエラー。
-
-### Boundary cases
-- 既に開いている場合でも追加起動を許容。
-
-### Inputs/Outputs
-- Input: dir path
-- Output: action result
-
-### Compatibility
-- 主要 OS で同一 UX を提供。
-
-### Invariants
-- 不正パスには操作しない。
-
-## SP-006 Python→Rust 仕様固定
-### Overview
-- 試作で定義した I/O 契約を Rust 実装へ移行する。
-
+## SP-006 CLI 契約
 ### Requirements
-- MUST: CLI 引数と挙動を文書化する。
-- SHOULD: アクション分岐を同じ責務境界で設計する。
+- MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。
+- MUST: `--root` と `--limit` を受理する。
+- MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。
+- SHOULD: 出力形式は機械処理しやすい行単位とする。
 
-### Preconditions
-- Python 試作が動作する。
-
-### Postconditions
-- Rust 実装時に参照する契約が存在する。
-
-### Normal cases
-- docs の DESIGN/API 節で契約を固定。
-
-### Error cases
-- 契約未確定項目は TBD として記録。
-
-### Boundary cases
-- 将来の GUI 追加でも CLI 契約は後方互換。
-
-### Inputs/Outputs
-- Input: Python implementation behavior
-- Output: documented contract
-
-### Compatibility
-- Rust CLI への 1:1 移植を前提とする。
-
-### Invariants
-- AC を満たす操作は言語差に依存しない。
+### Preconditions / Postconditions
+- Preconditions: CLI モードで起動される。
+- Postconditions: 結果またはエラーが標準出力/標準エラーへ出力される。
 
 ## SP-007 性能
-### Overview
-- 目標応答時間の基準。
-
 ### Requirements
-- SHOULD: 10万件規模で検索 100ms 未満。
+- SHOULD: 10万件規模で検索応答 100ms 未満を目標とする。
+- SHOULD: インデックス構築中も UI 操作が停止しない。
 
-### Preconditions
-- インデックス済み。
-
-### Postconditions
-- ベンチ結果を記録可能。
-
-### Normal cases
-- 文字列前処理と検索計算を分離。
-
-### Error cases
-- 閾値超過時は最適化タスク化。
-
-### Boundary cases
-- 低速環境では参考値として扱う。
-
-### Inputs/Outputs
-- Input: query + candidate set
-- Output: latency metrics
-
-### Compatibility
-- Rust で改善可能な設計を維持。
-
-### Invariants
-- 正確性を犠牲にしない。
+### Preconditions / Postconditions
+- Preconditions: 候補集合が利用可能。
+- Postconditions: 計測可能な遅延特性を示せる。
 
 ## SP-008 エラー処理
-### Overview
-- 失敗時の通知契約。
-
 ### Requirements
-- MUST: ユーザが原因を理解できるエラーメッセージを返す。
-- MUST: 非ゼロ終了コードを返す。
+- MUST: ユーザが原因を理解できるメッセージを返す。
+- MUST: 失敗時は非ゼロ終了コードを返す。
+- SHOULD: GUI では失敗内容を明示表示する。
 
-### Preconditions
-- 例外発生。
-
-### Postconditions
-- 終了コードとメッセージが一貫する。
-
-### Normal cases
-- 既知例外を分類して表示。
-
-### Error cases
-- 未知例外は汎用メッセージ + 詳細ログ。
-
-### Boundary cases
-- UI 未初期化でも stderr 出力する。
-
-### Inputs/Outputs
-- Input: exception
-- Output: message + exit code
-
-### Compatibility
-- Rust 実装で同等の終了コード体系を採用。
-
-### Invariants
-- 失敗時もプロセスはハングしない。
+### Preconditions / Postconditions
+- Preconditions: 例外または失敗が発生。
+- Postconditions: エラー通知と終了状態が一貫する。
 
 ## SP-009 テスト容易性
-### Overview
-- TDD を成立させる分割。
-
 ### Requirements
-- MUST: インデックス、検索、アクションを関数分離する。
-- MUST: FileList 判定をユニットテスト可能にする。
+- MUST: indexer/search/actions/ui_model を分離し単体テスト可能にする。
+- MUST: OS 依存処理はモック可能な境界を維持する。
+- SHOULD: 仕様IDとテストIDの対応を継続管理する。
 
-### Preconditions
-- モジュール境界が定義済み。
-
-### Postconditions
-- unit test で主要仕様を検証できる。
-
-### Normal cases
-- 副作用を関数境界外へ隔離。
-
-### Error cases
-- 依存注入不足時はリファクタ対象。
-
-### Boundary cases
-- OS 依存処理はモックで検証。
-
-### Inputs/Outputs
-- Input: module boundaries
-- Output: testable interfaces
-
-### Compatibility
-- Rust 移植時も同じ責務で crate 分割可能。
-
-### Invariants
-- 仕様 ID と TC の対応が維持される。
+### Preconditions / Postconditions
+- Preconditions: モジュール境界が定義済み。
+- Postconditions: 主要仕様を unit/integration で検証可能。
 
 ## SP-010 GUI 操作仕様
-### Overview
-- Python 試作 GUI の操作要素と動作を定義する。
-
 ### Requirements
-- MUST: 検索入力、結果リスト、プレビューペイン、実行/オープン操作を提供する。
-- MUST: `FileList` 利用時はその旨を UI 上に表示する。
-- SHOULD: クエリ入力時は軽いデバウンスで再検索し、連続打鍵でも操作性を保つ。
+- MUST: 検索入力、結果リスト、プレビューペイン、実行/オープンを提供する。
+- MUST: Source（FileList/Walker）と Root を画面表示する。
+- MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
+- MUST: 複数選択と一括アクションを提供する。
+- SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 
-### Preconditions
-- GUI モードで起動され、インデックス構築済みであること。
-
-### Postconditions
-- 利用者が選択対象をプレビュー確認後に実行/オープンできる。
-
-### Normal cases
-- クエリ入力 -> 結果更新 -> 選択 -> 実行/オープン。
-
-### Error cases
-- アクション失敗時はダイアログで失敗理由を表示する。
-
-### Boundary cases
-- 検索語空文字時は上位候補を表示する。
-
-### Inputs/Outputs
-- Input: query text, selected row
-- Output: refreshed result list, action execution
-
-### Compatibility
-- Rust GUI 実装へ同じ画面要素と操作を移植可能。
-
-### Invariants
-- 実行対象は常に現在選択中の候補に一致する。
+### Preconditions / Postconditions
+- Preconditions: GUI モードで起動しインデックス構築可能。
+- Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
 
 ## SP-011 GUI 回帰テスト計画
-### Overview
-- GUI の主要フローを継続検証するための計画を定義する。
-
 ### Requirements
-- MUST: GUI テスト計画書を用意し、重要フローを ID 付きで定義する。
-- SHOULD: GUI テスト実施結果をレポートとして残す。
+- MUST: GUI の主要フロー（起動、検索、選択、実行/オープン、再読込）を手順化する。
+- MUST: 仕様IDに対応するテストIDで結果を記録する。
+- SHOULD: 主要OS差分（Windows/macOS/Linux）で確認観点を持つ。
 
-### Preconditions
-- GUI 機能がリリース対象である。
-
-### Postconditions
-- GUI 変更時に最低限の回帰セットを実行できる。
-
-### Normal cases
-- `docs/GUI-TESTPLAN.md` を参照して手動検証を実施する。
-
-### Error cases
-- 実施不可項目は理由と代替確認を記録する。
-
-### Boundary cases
-- OS 差異による軽微な見た目差は記録して評価する。
-
-### Inputs/Outputs
-- Input: GUI build, test environment matrix
-- Output: test report entries
-
-### Compatibility
-- Rust 移行後も同一フロー ID を流用可能。
-
-### Invariants
-- 主要操作（検索/選択/アクション/再読込）は常に回帰対象。
-
-## Traceability (excerpt)
-- SP-001 -> DES-001 -> TC-001 (FR-001)
-- SP-002 -> DES-002 -> TC-002 (FR-002)
-- SP-003 -> DES-003 -> TC-003 (FR-003)
-- SP-004 -> DES-004 -> TC-004 (FR-004)
-- SP-005 -> DES-004 -> TC-005 (FR-005)
-- SP-006 -> DES-005 -> TC-006 (FR-006)
-- SP-007 -> DES-006 -> TC-007 (NFR-001)
-- SP-008 -> DES-007 -> TC-008 (NFR-002)
-- SP-009 -> DES-008 -> TC-009 (NFR-003)
-- SP-010 -> DES-009 -> TC-010 (FR-007)
-- SP-011 -> DES-010 -> TC-011 (NFR-004)
+### Preconditions / Postconditions
+- Preconditions: 対象ビルドが実行可能。
+- Postconditions: 回帰実施可否を判定できる記録が残る。
