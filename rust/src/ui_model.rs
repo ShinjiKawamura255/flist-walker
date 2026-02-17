@@ -1,11 +1,55 @@
 use crate::actions::choose_action;
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+fn normalize_windows_display(text: &str) -> String {
+    #[cfg(windows)]
+    {
+        if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{}", rest);
+        }
+        if let Some(rest) = text.strip_prefix(r"\\?\") {
+            return rest.to_string();
+        }
+    }
+    text.to_string()
+}
 
 pub fn display_path(path: &Path, root: &Path) -> String {
-    path.strip_prefix(root)
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| path.to_string_lossy().to_string())
+    display_path_with_mode(path, root, true)
+}
+
+fn normalize_windows_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let raw = path.to_string_lossy();
+        if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
+            return PathBuf::from(format!(r"\\{}", rest));
+        }
+        if let Some(rest) = raw.strip_prefix(r"\\?\") {
+            return PathBuf::from(rest);
+        }
+    }
+    path.to_path_buf()
+}
+
+pub fn normalize_path_for_display(path: &Path) -> String {
+    let normalized = normalize_windows_path(path);
+    normalize_windows_display(&normalized.to_string_lossy())
+}
+
+pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -> String {
+    let normalized_path = normalize_windows_path(path);
+    let normalized_root = normalize_windows_path(root);
+    let raw = if prefer_relative {
+        normalized_path
+            .strip_prefix(&normalized_root)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| normalized_path.to_string_lossy().to_string())
+    } else {
+        normalized_path.to_string_lossy().to_string()
+    };
+    normalize_windows_display(&raw)
 }
 
 fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
@@ -14,21 +58,38 @@ fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
         return out;
     }
 
-    let text_lower = text.to_ascii_lowercase();
-    let q = query.to_ascii_lowercase();
-
-    if let Some(start) = text_lower.find(&q) {
-        for i in start..start + q.len() {
-            out.insert(i);
-        }
+    let text_chars: Vec<char> = text.chars().collect();
+    let q_chars: Vec<char> = query.chars().collect();
+    if q_chars.is_empty() {
         return out;
     }
 
-    let text_chars: Vec<char> = text_lower.chars().collect();
-    let q_chars: Vec<char> = q.chars().collect();
+    let chars_equal = |a: char, b: char| {
+        if a.is_ascii() && b.is_ascii() {
+            a.eq_ignore_ascii_case(&b)
+        } else {
+            a == b
+        }
+    };
+
+    if q_chars.len() <= text_chars.len() {
+        for start in 0..=text_chars.len() - q_chars.len() {
+            if q_chars
+                .iter()
+                .enumerate()
+                .all(|(offset, q)| chars_equal(text_chars[start + offset], *q))
+            {
+                for i in start..start + q_chars.len() {
+                    out.insert(i);
+                }
+                return out;
+            }
+        }
+    }
+
     let mut qi = 0usize;
     for (i, ch) in text_chars.iter().enumerate() {
-        if qi < q_chars.len() && *ch == q_chars[qi] {
+        if qi < q_chars.len() && chars_equal(*ch, q_chars[qi]) {
             out.insert(i);
             qi += 1;
         }
@@ -62,11 +123,22 @@ fn highlight_terms(query: &str) -> Vec<String> {
     terms
 }
 
-pub fn match_positions_for_path(path: &Path, root: &Path, query: &str) -> HashSet<usize> {
+pub fn match_positions_for_path(
+    path: &Path,
+    root: &Path,
+    query: &str,
+    prefer_relative: bool,
+) -> HashSet<usize> {
     let mut positions = HashSet::new();
-    let display = display_path(path, root);
-    let filename = path.file_name().and_then(|s| s.to_str()).unwrap_or_default();
-    let start = display.len().saturating_sub(filename.len());
+    let display = display_path_with_mode(path, root, prefer_relative);
+    let filename = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+    let start = display
+        .chars()
+        .count()
+        .saturating_sub(filename.chars().count());
 
     for term in highlight_terms(query) {
         let hits = find_match_positions(filename, &term);
@@ -81,24 +153,21 @@ pub fn match_positions_for_path(path: &Path, root: &Path, query: &str) -> HashSe
     positions
 }
 
-pub fn has_visible_match(path: &Path, root: &Path, query: &str) -> bool {
+pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative: bool) -> bool {
     if query.trim().is_empty() {
         return true;
     }
-    !match_positions_for_path(path, root, query).is_empty()
+    !match_positions_for_path(path, root, query, prefer_relative).is_empty()
 }
 
 pub fn build_preview_text(path: &Path) -> String {
+    let normalized_path = normalize_path_for_display(path);
     if path.is_dir() {
-        let children = std::fs::read_dir(path).map(|it| it.count()).ok();
-        return match children {
-            Some(n) => format!("Directory: {}\nChildren: {}", path.display(), n),
-            None => format!("Directory: {}\nChildren: <unavailable>", path.display()),
-        };
+        return build_directory_preview_text(path, &normalized_path);
     }
 
     let action = format!("{:?}", choose_action(path));
-    let head = format!("File: {}\nAction: {}\n", path.display(), action);
+    let head = format!("File: {}\nAction: {}\n", normalized_path, action);
 
     match std::fs::read_to_string(path) {
         Ok(text) => {
@@ -110,5 +179,195 @@ pub fn build_preview_text(path: &Path) -> String {
             }
         }
         Err(_) => format!("{}\n<binary or unreadable file>", head),
+    }
+}
+
+fn build_directory_preview_text(path: &Path, normalized_path: &str) -> String {
+    const MAX_LINES: usize = 24;
+    const MAX_NAME_CHARS: usize = 80;
+
+    let read = std::fs::read_dir(path);
+    let Ok(iter) = read else {
+        return format!("Directory: {}\nChildren: <unavailable>", normalized_path);
+    };
+
+    let mut entries: Vec<_> = iter.flatten().collect();
+    entries.sort_by_key(|e| {
+        e.file_name()
+            .to_string_lossy()
+            .to_string()
+            .to_ascii_lowercase()
+    });
+
+    let total = entries.len();
+    if total == 0 {
+        return format!("Directory: {}\nChildren: 0\n<empty>", normalized_path);
+    }
+
+    let mut lines = Vec::new();
+    for entry in entries.iter().take(MAX_LINES) {
+        let name = entry.file_name().to_string_lossy().to_string();
+        let short = truncate_chars(&name, MAX_NAME_CHARS);
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        let marker = if is_dir { "[D]" } else { "[F]" };
+        lines.push(format!("{} {}", marker, short));
+    }
+    if total > MAX_LINES {
+        lines.push(format!("... ({} more)", total - MAX_LINES));
+    }
+
+    format!(
+        "Directory: {}\nChildren: {}\nScope: direct children only\n\n{}",
+        normalized_path,
+        total,
+        lines.join("\n")
+    )
+}
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    if text.chars().count() <= max_chars {
+        return text.to_string();
+    }
+    let keep = max_chars.saturating_sub(3);
+    let mut out: String = text.chars().take(keep).collect();
+    out.push_str("...");
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_root(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("fff-rs-ui-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn display_path_uses_relative_path() {
+        let root = test_root("display-relative");
+        let sample = root.join("src/main.py");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        let label = display_path(&sample, &root);
+        assert!(label.contains("src/main.py"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn match_positions_ascii_query_work_with_multibyte_path() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/日本語/docs/readme.txt");
+        let positions = match_positions_for_path(&path, &root, "read", true);
+        assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn match_positions_multibyte_query_only_highlights_matched_chars() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/日本語/テスト資料.txt");
+        let positions = match_positions_for_path(&path, &root, "テスト", true);
+        let display = display_path_with_mode(&path, &root, true);
+        let chars: Vec<char> = display.chars().collect();
+        let highlighted: String = chars
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, ch)| positions.contains(&idx).then_some(*ch))
+            .collect();
+        assert_eq!(highlighted, "テスト");
+    }
+
+    #[test]
+    fn match_positions_ignore_exclusion_token_for_highlight() {
+        let root = test_root("highlight-exclusion");
+        let sample = root.join("src/main.py");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        let positions = match_positions_for_path(&sample, &root, "main !readme", true);
+        assert!(positions.len() >= 4);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn match_positions_support_exact_token_prefix() {
+        let root = test_root("highlight-exact");
+        let sample = root.join("src/main.py");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        let positions = match_positions_for_path(&sample, &root, "'main", true);
+        assert!(positions.len() >= 4);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn has_visible_match_false_when_term_not_in_visible_text() {
+        let root = test_root("visible-match");
+        let sample = root.join("src/main.py");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        assert!(!has_visible_match(&sample, &root, "zzzz", true));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_for_directory() {
+        let root = test_root("preview-dir");
+        fs::create_dir_all(&root).expect("create dir");
+        let child_dir = root.join("child");
+        fs::create_dir_all(&child_dir).expect("create child dir");
+        fs::write(root.join("a.txt"), "x").expect("write file");
+        fs::write(child_dir.join("b.txt"), "y").expect("write nested file");
+
+        let preview = build_preview_text(&root);
+        assert!(preview.contains("Directory:"));
+        assert!(preview.contains("Children:"));
+        assert!(preview.contains("Scope: direct children only"));
+        assert!(preview.contains("[D] child"));
+        assert!(preview.contains("[F] a.txt"));
+        assert!(!preview.contains("b.txt"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_for_file_contains_action_and_content() {
+        let root = test_root("preview-file");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("notes.txt");
+        fs::write(&file, "line1\nline2\n").expect("write file");
+
+        let preview = build_preview_text(&file);
+        assert!(preview.contains("File:"));
+        assert!(preview.contains("Action:"));
+        assert!(preview.contains("line1"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn normalize_path_for_display_strips_extended_prefix_for_drive_path() {
+        let raw = PathBuf::from(r"\\?\C:\Users\tester\file.txt");
+        assert_eq!(
+            normalize_path_for_display(&raw),
+            r"C:\Users\tester\file.txt"
+        );
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn normalize_path_for_display_converts_unc_extended_prefix() {
+        let raw = PathBuf::from(r"\\?\UNC\server\share\folder\file.txt");
+        assert_eq!(
+            normalize_path_for_display(&raw),
+            r"\\server\share\folder\file.txt"
+        );
     }
 }

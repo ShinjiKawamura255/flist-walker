@@ -87,17 +87,29 @@ WSL / Linux シェルから:
 ./scripts/build-rust-win.sh
 ```
 
+クリーンビルドしたい場合:
+
+```bash
+./scripts/build-rust-win-clean.sh
+```
+
 Windows PowerShell から:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1
 ```
 
+クリーンビルドしたい場合:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win-clean.ps1
+```
+
 PowerShell スクリプトは、Windows 側に `rustup` / `cargo` が導入済みである前提です。
 
 成果物:
 
-`rust/target/x86_64-pc-windows-msvc/release/fast-file-finder-rs.exe`
+`rust/target/x86_64-pc-windows-msvc/release/FastFileFinder.exe`
 
 注記:
 生成済み EXE を実行中のままだと上書きビルドに失敗します。ビルド前にアプリを終了してください。

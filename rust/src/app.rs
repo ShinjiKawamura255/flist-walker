@@ -1,11 +1,333 @@
 use crate::actions::execute_or_open;
-use crate::indexer::{build_index_with_metadata, write_filelist, IndexBuildResult, IndexSource};
+use crate::indexer::{
+    build_index_with_metadata, find_filelist, write_filelist, IndexBuildResult, IndexSource,
+};
 use crate::search::search_entries;
-use crate::ui_model::{build_preview_text, display_path, has_visible_match, match_positions_for_path};
-use anyhow::Result;
+use crate::ui_model::{
+    build_preview_text, display_path_with_mode, has_visible_match, match_positions_for_path,
+    normalize_path_for_display,
+};
 use eframe::egui;
 use std::collections::HashSet;
+use std::fs;
 use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
+use std::thread;
+use std::time::{Duration, Instant};
+use walkdir::WalkDir;
+
+pub fn configure_egui_fonts(ctx: &egui::Context) {
+    let mut fonts = egui::FontDefinitions::default();
+
+    if let Some(font_bytes) = load_cjk_font_bytes() {
+        let font_name = "cjk_ui".to_string();
+        fonts
+            .font_data
+            .insert(font_name.clone(), egui::FontData::from_owned(font_bytes));
+        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+            family.insert(0, font_name.clone());
+        }
+        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+            family.push(font_name);
+        }
+    }
+
+    ctx.set_fonts(fonts);
+}
+
+fn load_cjk_font_bytes() -> Option<Vec<u8>> {
+    let mut candidates: Vec<&str> = Vec::new();
+
+    #[cfg(windows)]
+    {
+        candidates.extend([
+            r"C:\Windows\Fonts\YuGothR.ttc",
+            r"C:\Windows\Fonts\YuGothM.ttc",
+            r"C:\Windows\Fonts\meiryo.ttc",
+            r"C:\Windows\Fonts\msgothic.ttc",
+            r"C:\Windows\Fonts\MSYH.TTC",
+        ]);
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        candidates.extend([
+            "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+            "/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc",
+            "/System/Library/Fonts/Hiragino Sans GB.ttc",
+        ]);
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        candidates.extend([
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansJP-Regular.otf",
+            "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.otf",
+        ]);
+    }
+
+    candidates.into_iter().find_map(|path| fs::read(path).ok())
+}
+
+struct SearchRequest {
+    request_id: u64,
+    query: String,
+    entries: Arc<Vec<PathBuf>>,
+    limit: usize,
+    use_regex: bool,
+    root: PathBuf,
+    prefer_relative: bool,
+}
+
+struct SearchResponse {
+    request_id: u64,
+    results: Vec<(PathBuf, f64)>,
+}
+
+struct IndexRequest {
+    request_id: u64,
+    root: PathBuf,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+}
+
+enum IndexResponse {
+    Started {
+        request_id: u64,
+        source: IndexSource,
+    },
+    Batch {
+        request_id: u64,
+        entries: Vec<PathBuf>,
+    },
+    Finished {
+        request_id: u64,
+        source: IndexSource,
+    },
+    Failed {
+        request_id: u64,
+        error: String,
+    },
+}
+
+fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
+    let (tx_req, rx_req) = mpsc::channel::<SearchRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<SearchResponse>();
+
+    thread::spawn(move || {
+        while let Ok(mut req) = rx_req.recv() {
+            while let Ok(newer) = rx_req.try_recv() {
+                req = newer;
+            }
+            let results = search_entries(&req.query, &req.entries, req.limit, req.use_regex)
+                .into_iter()
+                .filter(|(p, _)| has_visible_match(p, &req.root, &req.query, req.prefer_relative))
+                .collect();
+
+            if tx_res
+                .send(SearchResponse {
+                    request_id: req.request_id,
+                    results,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res)
+}
+
+fn flush_batch(tx_res: &Sender<IndexResponse>, request_id: u64, buffer: &mut Vec<PathBuf>) -> bool {
+    if buffer.is_empty() {
+        return true;
+    }
+    let entries = std::mem::take(buffer);
+    tx_res
+        .send(IndexResponse::Batch {
+            request_id,
+            entries,
+        })
+        .is_ok()
+}
+
+fn stream_filelist_index(
+    tx_res: &Sender<IndexResponse>,
+    req: &IndexRequest,
+    root: &std::path::Path,
+    filelist: PathBuf,
+) -> std::result::Result<IndexSource, String> {
+    let text = fs::read_to_string(&filelist)
+        .map_err(|e| format!("failed to read {}: {}", filelist.display(), e))?;
+
+    let source = IndexSource::FileList(filelist);
+    if tx_res
+        .send(IndexResponse::Started {
+            request_id: req.request_id,
+            source: source.clone(),
+        })
+        .is_err()
+    {
+        return Err("index receiver closed".to_string());
+    }
+
+    let mut seen = HashSet::new();
+    let mut buffer = Vec::new();
+    let mut last_flush = Instant::now();
+    for raw in text.lines() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let p = PathBuf::from(line);
+        let abs = if p.is_absolute() { p } else { root.join(p) };
+        let abs = abs.canonicalize().unwrap_or(abs);
+        if !abs.exists() {
+            continue;
+        }
+        if abs.is_file() && !req.include_files {
+            continue;
+        }
+        if abs.is_dir() && !req.include_dirs {
+            continue;
+        }
+        if seen.insert(abs.clone()) {
+            buffer.push(abs);
+        }
+        if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
+            if !flush_batch(tx_res, req.request_id, &mut buffer) {
+                return Err("index receiver closed".to_string());
+            }
+            last_flush = Instant::now();
+        }
+    }
+
+    if !flush_batch(tx_res, req.request_id, &mut buffer) {
+        return Err("index receiver closed".to_string());
+    }
+    Ok(source)
+}
+
+fn stream_walker_index(
+    tx_res: &Sender<IndexResponse>,
+    req: &IndexRequest,
+    root: &std::path::Path,
+) -> std::result::Result<IndexSource, String> {
+    let source = IndexSource::Walker;
+    if tx_res
+        .send(IndexResponse::Started {
+            request_id: req.request_id,
+            source: source.clone(),
+        })
+        .is_err()
+    {
+        return Err("index receiver closed".to_string());
+    }
+
+    let mut buffer = Vec::new();
+    let mut last_flush = Instant::now();
+    for entry in WalkDir::new(root)
+        .follow_links(false)
+        .min_depth(1)
+        .into_iter()
+        .flatten()
+    {
+        let is_dir = entry.file_type().is_dir();
+        if (is_dir && !req.include_dirs) || (!is_dir && !req.include_files) {
+            continue;
+        }
+        buffer.push(entry.path().to_path_buf());
+        if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
+            if !flush_batch(tx_res, req.request_id, &mut buffer) {
+                return Err("index receiver closed".to_string());
+            }
+            last_flush = Instant::now();
+        }
+    }
+
+    if !flush_batch(tx_res, req.request_id, &mut buffer) {
+        return Err("index receiver closed".to_string());
+    }
+    Ok(source)
+}
+
+fn spawn_index_worker() -> (Sender<IndexRequest>, Receiver<IndexResponse>) {
+    let (tx_req, rx_req) = mpsc::channel::<IndexRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<IndexResponse>();
+
+    thread::spawn(move || {
+        while let Ok(mut req) = rx_req.recv() {
+            while let Ok(newer) = rx_req.try_recv() {
+                req = newer;
+            }
+
+            if !req.include_files && !req.include_dirs {
+                if tx_res
+                    .send(IndexResponse::Started {
+                        request_id: req.request_id,
+                        source: IndexSource::None,
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+                if tx_res
+                    .send(IndexResponse::Finished {
+                        request_id: req.request_id,
+                        source: IndexSource::None,
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+                continue;
+            }
+
+            let root = req.root.canonicalize().unwrap_or_else(|_| req.root.clone());
+            let result = if req.use_filelist {
+                if let Some(filelist) = find_filelist(&root) {
+                    stream_filelist_index(&tx_res, &req, &root, filelist)
+                } else {
+                    stream_walker_index(&tx_res, &req, &root)
+                }
+            } else {
+                stream_walker_index(&tx_res, &req, &root)
+            };
+
+            match result {
+                Ok(source) => {
+                    if tx_res
+                        .send(IndexResponse::Finished {
+                            request_id: req.request_id,
+                            source,
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                Err(error) => {
+                    if tx_res
+                        .send(IndexResponse::Failed {
+                            request_id: req.request_id,
+                            error,
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    });
+
+    (tx_req, rx_res)
+}
 
 pub struct FastFileFinderApp {
     root: PathBuf,
@@ -16,18 +338,34 @@ pub struct FastFileFinderApp {
     include_files: bool,
     include_dirs: bool,
     index: IndexBuildResult,
-    entries: Vec<PathBuf>,
+    entries: Arc<Vec<PathBuf>>,
     results: Vec<(PathBuf, f64)>,
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
     preview: String,
-    status: String,
+    notice: String,
+    status_line: String,
+    kill_buffer: String,
+    search_tx: Sender<SearchRequest>,
+    search_rx: Receiver<SearchResponse>,
+    index_tx: Sender<IndexRequest>,
+    index_rx: Receiver<IndexResponse>,
+    next_request_id: u64,
+    pending_request_id: Option<u64>,
+    next_index_request_id: u64,
+    pending_index_request_id: Option<u64>,
+    search_in_progress: bool,
+    index_in_progress: bool,
+    scroll_to_current: bool,
+    focus_query_requested: bool,
 }
 
 impl FastFileFinderApp {
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
+        let (search_tx, search_rx) = spawn_search_worker();
+        let (index_tx, index_rx) = spawn_index_worker();
         let mut app = Self {
-            root,
+            root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
             query,
             use_filelist: true,
@@ -38,55 +376,56 @@ impl FastFileFinderApp {
                 entries: Vec::new(),
                 source: IndexSource::None,
             },
-            entries: Vec::new(),
+            entries: Arc::new(Vec::new()),
             results: Vec::new(),
             pinned_paths: HashSet::new(),
             current_row: None,
             preview: String::new(),
-            status: "Initializing...".to_string(),
+            notice: String::new(),
+            status_line: "Initializing...".to_string(),
+            kill_buffer: String::new(),
+            search_tx,
+            search_rx,
+            index_tx,
+            index_rx,
+            next_request_id: 1,
+            pending_request_id: None,
+            next_index_request_id: 1,
+            pending_index_request_id: None,
+            search_in_progress: false,
+            index_in_progress: false,
+            scroll_to_current: true,
+            focus_query_requested: false,
         };
-        let _ = app.refresh_index();
+        app.request_index_refresh();
         app
     }
 
-    fn refresh_index(&mut self) -> Result<()> {
-        self.index = build_index_with_metadata(
-            &self.root,
-            self.use_filelist,
-            self.include_files,
-            self.include_dirs,
-        )?;
-        self.entries = self.index.entries.clone();
-        self.update_results();
-        Ok(())
+    fn normalize_windows_path(path: PathBuf) -> PathBuf {
+        #[cfg(windows)]
+        {
+            let raw = path.to_string_lossy();
+            if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
+                return PathBuf::from(format!(r"\\{}", rest));
+            }
+            if let Some(rest) = raw.strip_prefix(r"\\?\") {
+                return PathBuf::from(rest);
+            }
+        }
+        path
     }
 
-    fn update_results(&mut self) {
-        if self.query.trim().is_empty() {
-            self.results = self
-                .entries
-                .iter()
-                .take(self.limit)
-                .cloned()
-                .map(|p| (p, 0.0))
-                .collect();
-        } else {
-            self.results = search_entries(&self.query, &self.entries, self.limit, self.use_regex)
-                .into_iter()
-                .filter(|(p, _)| has_visible_match(p, &self.root, &self.query))
-                .collect();
-        }
+    fn root_display_text(&self) -> String {
+        Self::normalize_windows_path(self.root.clone())
+            .to_string_lossy()
+            .to_string()
+    }
 
-        if self.results.is_empty() {
-            self.current_row = None;
-            self.preview.clear();
-        } else {
-            if self.current_row.is_none() {
-                self.current_row = Some(0);
-            }
-            self.set_preview_from_current();
-        }
+    fn prefer_relative_display(&self) -> bool {
+        matches!(self.index.source, IndexSource::Walker)
+    }
 
+    fn refresh_status_line(&mut self) {
         let clipped = self.results.len() >= self.limit;
         let clip_text = if clipped {
             format!(" (limit {} reached)", self.limit)
@@ -98,14 +437,183 @@ impl FastFileFinderApp {
         } else {
             format!(" | Pinned: {}", self.pinned_paths.len())
         };
+        let searching = if self.search_in_progress {
+            " | Searching..."
+        } else {
+            ""
+        };
+        let indexing = if self.index_in_progress {
+            " | Indexing..."
+        } else {
+            ""
+        };
+        let notice = if self.notice.is_empty() {
+            String::new()
+        } else {
+            format!(" | {}", self.notice)
+        };
 
-        self.status = format!(
-            "Entries: {} | Results: {}{}{}",
+        self.status_line = format!(
+            "Entries: {} | Results: {}{}{}{}{}{}",
             self.entries.len(),
             self.results.len(),
             clip_text,
-            pinned
+            pinned,
+            searching,
+            indexing,
+            notice
         );
+    }
+
+    fn set_notice(&mut self, notice: impl Into<String>) {
+        self.notice = notice.into();
+        self.refresh_status_line();
+    }
+
+    fn clear_notice(&mut self) {
+        self.notice.clear();
+        self.refresh_status_line();
+    }
+
+    fn request_index_refresh(&mut self) {
+        let request_id = self.next_index_request_id;
+        self.next_index_request_id = self.next_index_request_id.saturating_add(1);
+        self.pending_index_request_id = Some(request_id);
+        self.index_in_progress = true;
+
+        self.index = IndexBuildResult {
+            entries: Vec::new(),
+            source: IndexSource::None,
+        };
+        self.entries = Arc::new(Vec::new());
+        self.results.clear();
+        self.current_row = None;
+        self.preview.clear();
+        self.refresh_status_line();
+
+        let req = IndexRequest {
+            request_id,
+            root: self.root.clone(),
+            use_filelist: self.use_filelist,
+            include_files: self.include_files,
+            include_dirs: self.include_dirs,
+        };
+        if self.index_tx.send(req).is_err() {
+            self.index_in_progress = false;
+            self.pending_index_request_id = None;
+            self.set_notice("Index worker is unavailable");
+        }
+    }
+
+    fn poll_index_response(&mut self) {
+        while let Ok(msg) = self.index_rx.try_recv() {
+            match msg {
+                IndexResponse::Started { request_id, source } => {
+                    if Some(request_id) != self.pending_index_request_id {
+                        continue;
+                    }
+                    self.index.source = source;
+                    self.refresh_status_line();
+                }
+                IndexResponse::Batch {
+                    request_id,
+                    mut entries,
+                } => {
+                    if Some(request_id) != self.pending_index_request_id {
+                        continue;
+                    }
+                    self.index.entries.append(&mut entries);
+                    self.entries = Arc::new(self.index.entries.clone());
+                    // Refresh results with incremental snapshots so UI keeps updating while indexing.
+                    self.update_results();
+                }
+                IndexResponse::Finished { request_id, source } => {
+                    if Some(request_id) != self.pending_index_request_id {
+                        continue;
+                    }
+                    self.index.source = source;
+                    self.entries = Arc::new(self.index.entries.clone());
+                    self.pending_index_request_id = None;
+                    self.index_in_progress = false;
+                    self.update_results();
+                    self.clear_notice();
+                }
+                IndexResponse::Failed { request_id, error } => {
+                    if Some(request_id) != self.pending_index_request_id {
+                        continue;
+                    }
+                    self.index_in_progress = false;
+                    self.pending_index_request_id = None;
+                    self.set_notice(format!("Indexing failed: {}", error));
+                }
+            }
+        }
+    }
+
+    fn apply_results(&mut self, results: Vec<(PathBuf, f64)>) {
+        self.results = results;
+        if self.results.is_empty() {
+            self.current_row = None;
+            self.preview.clear();
+        } else {
+            let max_index = self.results.len().saturating_sub(1);
+            self.current_row = Some(self.current_row.unwrap_or(0).min(max_index));
+            self.set_preview_from_current();
+            self.scroll_to_current = true;
+        }
+        self.refresh_status_line();
+    }
+
+    fn enqueue_search_request(&mut self) {
+        let request_id = self.next_request_id;
+        self.next_request_id = self.next_request_id.saturating_add(1);
+        self.pending_request_id = Some(request_id);
+        self.search_in_progress = true;
+        self.refresh_status_line();
+
+        let req = SearchRequest {
+            request_id,
+            query: self.query.clone(),
+            entries: Arc::clone(&self.entries),
+            limit: self.limit,
+            use_regex: self.use_regex,
+            root: self.root.clone(),
+            prefer_relative: self.prefer_relative_display(),
+        };
+
+        if self.search_tx.send(req).is_err() {
+            self.pending_request_id = None;
+            self.search_in_progress = false;
+            self.set_notice("Search worker is unavailable");
+        }
+    }
+
+    fn poll_search_response(&mut self) {
+        while let Ok(response) = self.search_rx.try_recv() {
+            if Some(response.request_id) == self.pending_request_id {
+                self.pending_request_id = None;
+                self.search_in_progress = false;
+                self.clear_notice();
+                self.apply_results(response.results);
+            }
+        }
+    }
+
+    fn update_results(&mut self) {
+        if self.query.trim().is_empty() {
+            self.pending_request_id = None;
+            self.search_in_progress = false;
+            let results = self
+                .entries
+                .iter()
+                .take(self.limit)
+                .cloned()
+                .map(|p| (p, 0.0))
+                .collect();
+            self.apply_results(results);
+            return;
+        }
+        self.enqueue_search_request();
     }
 
     fn set_preview_from_current(&mut self) {
@@ -125,7 +633,9 @@ impl FastFileFinderApp {
         let row = self.current_row.unwrap_or(0) as isize;
         let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
         self.current_row = Some(next);
+        self.scroll_to_current = true;
         self.set_preview_from_current();
+        self.refresh_status_line();
     }
 
     fn toggle_pin_and_move(&mut self, delta: isize) {
@@ -139,7 +649,7 @@ impl FastFileFinderApp {
             }
         }
         self.move_row(delta);
-        self.update_results();
+        self.refresh_status_line();
     }
 
     fn selected_paths(&self) -> Vec<PathBuf> {
@@ -161,15 +671,15 @@ impl FastFileFinderApp {
 
         for path in &paths {
             if let Err(err) = execute_or_open(path) {
-                self.status = format!("Action failed: {}", err);
+                self.set_notice(format!("Action failed: {}", err));
                 return;
             }
         }
 
         if paths.len() == 1 {
-            self.status = format!("Action: {}", paths[0].display());
+            self.set_notice(format!("Action: {}", paths[0].display()));
         } else {
-            self.status = format!("Action: launched {} items", paths.len());
+            self.set_notice(format!("Action: launched {} items", paths.len()));
         }
     }
 
@@ -178,55 +688,275 @@ impl FastFileFinderApp {
         if paths.is_empty() {
             return;
         }
-        let text = paths
-            .iter()
-            .map(|p| p.to_string_lossy().to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
+        let text = Self::clipboard_paths_text(&paths);
         ctx.output_mut(|o| o.copied_text = text);
         if paths.len() == 1 {
-            self.status = format!("Copied path: {}", paths[0].display());
+            self.set_notice(format!("Copied path: {}", paths[0].display()));
         } else {
-            self.status = format!("Copied {} paths to clipboard", paths.len());
+            self.set_notice(format!("Copied {} paths to clipboard", paths.len()));
         }
+    }
+
+    fn clipboard_paths_text(paths: &[PathBuf]) -> String {
+        paths
+            .iter()
+            .map(|p| normalize_path_for_display(p))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     fn clear_pinned(&mut self) {
         self.pinned_paths.clear();
+        self.set_notice("Cleared pinned selections");
+    }
+
+    fn clear_query_and_selection(&mut self) {
+        self.query.clear();
+        self.pinned_paths.clear();
+        self.current_row = None;
+        self.preview.clear();
         self.update_results();
-        self.status = "Cleared pinned selections".to_string();
+        self.focus_query_requested = true;
+        self.set_notice("Cleared selection and query");
     }
 
     fn create_filelist(&mut self) {
-        match build_index_with_metadata(
-            &self.root,
-            false,
-            self.include_files,
-            self.include_dirs,
-        )
-        .and_then(|snapshot| {
-            let count = snapshot.entries.len();
-            write_filelist(&self.root, &snapshot.entries, "FileList.txt")
-                .map(|p| (p, count))
-        }) {
+        match build_index_with_metadata(&self.root, false, self.include_files, self.include_dirs)
+            .and_then(|snapshot| {
+                let count = snapshot.entries.len();
+                write_filelist(&self.root, &snapshot.entries, "FileList.txt").map(|p| (p, count))
+            }) {
             Ok((path, count)) => {
-                self.status = format!("Created {}: {} entries", path.display(), count);
+                self.set_notice(format!("Created {}: {} entries", path.display(), count));
                 if self.use_filelist {
-                    let _ = self.refresh_index();
+                    self.request_index_refresh();
                 }
             }
             Err(err) => {
-                self.status = format!("Create File List failed: {}", err);
+                self.set_notice(format!("Create File List failed: {}", err));
             }
         }
     }
 
     fn source_text(&self) -> String {
         match &self.index.source {
-            IndexSource::FileList(path) => format!("Source: FileList ({})", path.file_name().and_then(|s| s.to_str()).unwrap_or("FileList.txt")),
+            IndexSource::FileList(path) => format!(
+                "Source: FileList ({})",
+                path.file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("FileList.txt")
+            ),
             IndexSource::Walker => "Source: Walker".to_string(),
             IndexSource::None => "Source: None".to_string(),
         }
+    }
+
+    fn char_count(text: &str) -> usize {
+        text.chars().count()
+    }
+
+    fn byte_index_at_char(text: &str, char_index: usize) -> usize {
+        if char_index == 0 {
+            return 0;
+        }
+        text.char_indices()
+            .nth(char_index)
+            .map(|(idx, _)| idx)
+            .unwrap_or(text.len())
+    }
+
+    fn remove_char_range(text: &mut String, start: usize, end: usize) -> String {
+        if start >= end {
+            return String::new();
+        }
+        let start_byte = Self::byte_index_at_char(text, start);
+        let end_byte = Self::byte_index_at_char(text, end);
+        let removed = text[start_byte..end_byte].to_string();
+        text.replace_range(start_byte..end_byte, "");
+        removed
+    }
+
+    fn insert_at_char(text: &mut String, pos: usize, value: &str) {
+        let byte_pos = Self::byte_index_at_char(text, pos);
+        text.insert_str(byte_pos, value);
+    }
+
+    fn is_word_char(ch: char) -> bool {
+        ch.is_alphanumeric() || ch == '_' || ch == '-'
+    }
+
+    fn selection_range(cursor: usize, anchor: usize) -> Option<(usize, usize)> {
+        if cursor == anchor {
+            None
+        } else {
+            Some((cursor.min(anchor), cursor.max(anchor)))
+        }
+    }
+
+    fn apply_ctrl_h_delete(
+        &mut self,
+        cursor: &mut usize,
+        anchor: &mut usize,
+        text_already_changed: bool,
+    ) -> (bool, bool) {
+        // Some backends map Ctrl+H to Backspace at the widget level.
+        // Avoid applying our delete logic twice in the same frame.
+        if text_already_changed {
+            return (false, false);
+        }
+
+        if let Some((start, end)) = Self::selection_range(*cursor, *anchor) {
+            Self::remove_char_range(&mut self.query, start, end);
+            *cursor = start;
+            *anchor = start;
+            return (true, true);
+        }
+
+        if *cursor > 0 {
+            let start = *cursor - 1;
+            Self::remove_char_range(&mut self.query, start, *cursor);
+            *cursor = start;
+            *anchor = start;
+            return (true, true);
+        }
+
+        (false, false)
+    }
+
+    fn apply_emacs_query_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+        output: &mut egui::text_edit::TextEditOutput,
+    ) -> bool {
+        if !output.response.has_focus() {
+            return false;
+        }
+
+        let emacs_mods = egui::Modifiers {
+            command: true,
+            ..Default::default()
+        };
+        let pressed = |key: egui::Key| ctx.input_mut(|i| i.consume_key(emacs_mods, key));
+
+        let mut text_changed = false;
+        let mut cursor_changed = false;
+        let char_len = Self::char_count(&self.query);
+        let ccursor = output.state.ccursor_range().unwrap_or_else(|| {
+            egui::text_edit::CCursorRange::one(egui::text::CCursor::new(char_len))
+        });
+        let mut cursor = ccursor.primary.index.min(char_len);
+        let mut anchor = ccursor.secondary.index.min(char_len);
+
+        if pressed(egui::Key::A) {
+            cursor = 0;
+            anchor = 0;
+            cursor_changed = true;
+        } else if pressed(egui::Key::E) {
+            let end = Self::char_count(&self.query);
+            cursor = end;
+            anchor = end;
+            cursor_changed = true;
+        } else if pressed(egui::Key::B) {
+            let next = cursor.saturating_sub(1);
+            if next != cursor {
+                cursor = next;
+                anchor = next;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::F) {
+            let end = Self::char_count(&self.query);
+            let next = (cursor + 1).min(end);
+            if next != cursor {
+                cursor = next;
+                anchor = next;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::H) {
+            let (changed, moved) =
+                self.apply_ctrl_h_delete(&mut cursor, &mut anchor, output.response.changed());
+            text_changed |= changed;
+            cursor_changed |= moved;
+        } else if pressed(egui::Key::D) {
+            if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                Self::remove_char_range(&mut self.query, start, end);
+                cursor = start;
+                anchor = start;
+                text_changed = true;
+                cursor_changed = true;
+            } else {
+                let end = Self::char_count(&self.query);
+                if cursor < end {
+                    Self::remove_char_range(&mut self.query, cursor, cursor + 1);
+                    text_changed = true;
+                    cursor_changed = true;
+                }
+            }
+        } else if pressed(egui::Key::W) {
+            if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                self.kill_buffer = Self::remove_char_range(&mut self.query, start, end);
+                cursor = start;
+                anchor = start;
+                text_changed = true;
+                cursor_changed = true;
+            } else if cursor > 0 {
+                let chars: Vec<char> = self.query.chars().collect();
+                let mut start = cursor;
+                while start > 0 && chars[start - 1].is_whitespace() {
+                    start -= 1;
+                }
+                while start > 0 && Self::is_word_char(chars[start - 1]) {
+                    start -= 1;
+                }
+                if start < cursor {
+                    self.kill_buffer = Self::remove_char_range(&mut self.query, start, cursor);
+                    cursor = start;
+                    anchor = start;
+                    text_changed = true;
+                    cursor_changed = true;
+                }
+            }
+        } else if pressed(egui::Key::K) {
+            let end = Self::char_count(&self.query);
+            if cursor < end {
+                self.kill_buffer = Self::remove_char_range(&mut self.query, cursor, end);
+                anchor = cursor;
+                text_changed = true;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::Y) {
+            if !self.kill_buffer.is_empty() {
+                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                    Self::remove_char_range(&mut self.query, start, end);
+                    cursor = start;
+                }
+                Self::insert_at_char(&mut self.query, cursor, &self.kill_buffer);
+                cursor += Self::char_count(&self.kill_buffer);
+                anchor = cursor;
+                text_changed = true;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::U) {
+            if cursor > 0 {
+                Self::remove_char_range(&mut self.query, 0, cursor);
+                cursor = 0;
+                anchor = 0;
+                text_changed = true;
+                cursor_changed = true;
+            }
+        }
+
+        if cursor_changed {
+            output
+                .state
+                .set_ccursor_range(Some(egui::text_edit::CCursorRange::two(
+                    egui::text::CCursor::new(anchor),
+                    egui::text::CCursor::new(cursor),
+                )));
+            output.state.clone().store(ctx, output.response.id);
+            ctx.request_repaint();
+        }
+
+        text_changed
     }
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
@@ -240,43 +970,81 @@ impl FastFileFinderApp {
         {
             self.move_row(-1);
         }
-        if ctx.input(|i| i.key_pressed(egui::Key::Tab) && !i.modifiers.shift) {
+
+        let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
+        if tab_forward {
             self.toggle_pin_and_move(1);
+            // Keep keyboard focus on query input to avoid default widget focus traversal.
+            self.focus_query_requested = true;
         }
-        if ctx.input(|i| i.key_pressed(egui::Key::Tab) && i.modifiers.shift) {
+
+        let tab_backward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
+        if tab_backward {
             self.toggle_pin_and_move(-1);
+            self.focus_query_requested = true;
         }
+
         if ctx.input(|i| i.key_pressed(egui::Key::Enter))
-            || ctx.input(|i| i.modifiers.ctrl && (i.key_pressed(egui::Key::J) || i.key_pressed(egui::Key::M)))
+            || ctx.input(|i| {
+                i.modifiers.ctrl && (i.key_pressed(egui::Key::J) || i.key_pressed(egui::Key::M))
+            })
         {
             self.execute_selected();
         }
         if ctx.input(|i| i.modifiers.ctrl && i.modifiers.shift && i.key_pressed(egui::Key::C)) {
             self.copy_selected_paths(ctx);
         }
+
+        let ctrl_mod = egui::Modifiers {
+            ctrl: true,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::L)) {
+            self.focus_query_requested = true;
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
+            self.clear_query_and_selection();
+        }
     }
 }
 
 impl eframe::App for FastFileFinderApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.poll_index_response();
+        self.poll_search_response();
         self.handle_shortcuts(ctx);
+        if self.search_in_progress || self.index_in_progress {
+            ctx.request_repaint_after(std::time::Duration::from_millis(16));
+        }
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label("Root:");
-                let mut root_text = self.root.to_string_lossy().to_string();
-                ui.add_enabled(
-                    false,
-                    egui::TextEdit::singleline(&mut root_text).desired_width(f32::INFINITY),
+                ui.add_sized([44.0, 0.0], egui::Label::new("Root:"));
+                let mut root_text = self.root_display_text();
+                let button_width = 96.0;
+                let field_width =
+                    (ui.available_width() - button_width - ui.spacing().item_spacing.x).max(120.0);
+                ui.add_sized(
+                    [field_width, 0.0],
+                    egui::TextEdit::singleline(&mut root_text).interactive(false),
                 );
-                if ui.button("Browse...").clicked() {
-                    if let Ok(Some(dir)) = native_dialog::FileDialog::new()
-                        .set_location(&self.root)
+                if ui
+                    .add_sized([button_width, 0.0], egui::Button::new("Browse..."))
+                    .clicked()
+                {
+                    let dialog_root = Self::normalize_windows_path(self.root.clone());
+                    match native_dialog::FileDialog::new()
+                        .set_location(&dialog_root)
                         .show_open_single_dir()
                     {
-                        self.root = dir;
-                        if let Err(err) = self.refresh_index() {
-                            self.status = format!("Indexing failed: {}", err);
+                        Ok(Some(dir)) => {
+                            self.root = Self::normalize_windows_path(dir);
+                            self.request_index_refresh();
+                            self.set_notice(format!("Root changed: {}", self.root_display_text()));
+                        }
+                        Ok(None) => {}
+                        Err(err) => {
+                            self.set_notice(format!("Browse failed: {}", err));
                         }
                     }
                 }
@@ -284,8 +1052,12 @@ impl eframe::App for FastFileFinderApp {
 
             ui.horizontal(|ui| {
                 let mut changed = false;
-                changed |= ui.checkbox(&mut self.use_filelist, "Use FileList").changed();
-                ui.checkbox(&mut self.use_regex, "Regex");
+                changed |= ui
+                    .checkbox(&mut self.use_filelist, "Use FileList")
+                    .changed();
+                if ui.checkbox(&mut self.use_regex, "Regex").changed() {
+                    self.update_results();
+                }
                 changed |= ui.checkbox(&mut self.include_files, "Files").changed();
                 changed |= ui.checkbox(&mut self.include_dirs, "Folders").changed();
                 if !self.include_files && !self.include_dirs {
@@ -294,18 +1066,24 @@ impl eframe::App for FastFileFinderApp {
                 ui.separator();
                 ui.label(self.source_text());
                 if changed {
-                    if let Err(err) = self.refresh_index() {
-                        self.status = format!("Indexing failed: {}", err);
-                    }
+                    self.request_index_refresh();
                 }
             });
 
-            let response = ui.add(
-                egui::TextEdit::singleline(&mut self.query)
-                    .desired_width(f32::INFINITY)
-                    .hint_text("Type to fuzzy-search files/folders..."),
-            );
-            if response.changed() {
+            let query_id = ui.make_persistent_id("query-input");
+            let mut output = egui::TextEdit::singleline(&mut self.query)
+                .id(query_id)
+                .desired_width(f32::INFINITY)
+                .hint_text("Type to fuzzy-search files/folders...")
+                .show(ui);
+            if self.focus_query_requested {
+                output.response.request_focus();
+                self.focus_query_requested = false;
+            }
+            if self.apply_emacs_query_shortcuts(ctx, &mut output) {
+                self.update_results();
+            }
+            if output.response.changed() {
                 self.update_results();
             }
 
@@ -323,92 +1101,237 @@ impl eframe::App for FastFileFinderApp {
                     self.create_filelist();
                 }
                 if ui.button("Refresh Index").clicked() {
-                    if let Err(err) = self.refresh_index() {
-                        self.status = format!("Indexing failed: {}", err);
-                    }
+                    self.request_index_refresh();
                 }
             });
         });
 
-        egui::TopBottomPanel::bottom("status").show(ctx, |ui| {
-            ui.label(&self.status);
-        });
+        egui::TopBottomPanel::bottom("status")
+            .resizable(false)
+            .exact_height(24.0)
+            .show(ctx, |ui| {
+                ui.add(egui::Label::new(&self.status_line).truncate(true));
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.columns(2, |cols| {
                 cols[0].heading("Results");
-                egui::ScrollArea::vertical().show(&mut cols[0], |ui| {
-                    let mut clicked_row: Option<usize> = None;
-                    let mut execute_row: Option<usize> = None;
-                    for (i, (path, _score)) in self.results.iter().enumerate() {
-                        let is_current = self.current_row == Some(i);
-                        let is_pinned = self.pinned_paths.contains(path);
-                        let marker_current = if is_current { "▶" } else { "·" };
-                        let marker_pin = if is_pinned { "◆" } else { "·" };
-                        let display = display_path(path, &self.root);
-                        let positions = match_positions_for_path(path, &self.root, &self.query);
+                let mut did_scroll_to_current = false;
+                egui::ScrollArea::both()
+                    .auto_shrink([false, false])
+                    .show(&mut cols[0], |ui| {
+                        let mut clicked_row: Option<usize> = None;
+                        let mut execute_row: Option<usize> = None;
+                        let prefer_relative = self.prefer_relative_display();
 
-                        let mut job = egui::text::LayoutJob::default();
-                        job.append(
-                            &format!("{} {} ", marker_current, marker_pin),
-                            0.0,
-                            egui::TextFormat {
-                                color: if is_current { egui::Color32::LIGHT_BLUE } else { egui::Color32::GRAY },
-                                ..Default::default()
-                            },
-                        );
-                        let kind = if path.is_dir() { "DIR " } else { "FILE" };
-                        job.append(
-                            kind,
-                            0.0,
-                            egui::TextFormat {
-                                color: if path.is_dir() { egui::Color32::from_rgb(52, 211, 153) } else { egui::Color32::from_rgb(96, 165, 250) },
-                                ..Default::default()
-                            },
-                        );
-                        job.append(" ", 0.0, egui::TextFormat::default());
-
-                        for (idx, ch) in display.chars().enumerate() {
-                            let color = if positions.contains(&idx) {
-                                egui::Color32::from_rgb(245, 158, 11)
-                            } else {
-                                egui::Color32::from_rgb(229, 231, 235)
+                        for i in 0..self.results.len() {
+                            let Some((path, _score)) = self.results.get(i) else {
+                                continue;
                             };
+                            let is_current = self.current_row == Some(i);
+                            let is_pinned = self.pinned_paths.contains(path);
+                            let marker_current = if is_current { "▶" } else { "·" };
+                            let marker_pin = if is_pinned { "◆" } else { "·" };
+                            let display = display_path_with_mode(path, &self.root, prefer_relative);
+                            let positions = match_positions_for_path(
+                                path,
+                                &self.root,
+                                &self.query,
+                                prefer_relative,
+                            );
+
+                            let mut job = egui::text::LayoutJob::default();
                             job.append(
-                                &ch.to_string(),
+                                &format!("{} {} ", marker_current, marker_pin),
                                 0.0,
                                 egui::TextFormat {
-                                    color,
+                                    color: if is_current {
+                                        egui::Color32::LIGHT_BLUE
+                                    } else {
+                                        egui::Color32::GRAY
+                                    },
                                     ..Default::default()
                                 },
                             );
-                        }
+                            let kind = if path.is_dir() { "DIR " } else { "FILE" };
+                            job.append(
+                                kind,
+                                0.0,
+                                egui::TextFormat {
+                                    color: if path.is_dir() {
+                                        egui::Color32::from_rgb(52, 211, 153)
+                                    } else {
+                                        egui::Color32::from_rgb(96, 165, 250)
+                                    },
+                                    ..Default::default()
+                                },
+                            );
+                            job.append(" ", 0.0, egui::TextFormat::default());
 
-                        let response = ui.add(egui::Label::new(job).sense(egui::Sense::click()));
-                        if response.clicked() {
-                            clicked_row = Some(i);
+                            for (idx, ch) in display.chars().enumerate() {
+                                let color = if positions.contains(&idx) {
+                                    egui::Color32::from_rgb(245, 158, 11)
+                                } else {
+                                    egui::Color32::from_rgb(229, 231, 235)
+                                };
+                                job.append(
+                                    &ch.to_string(),
+                                    0.0,
+                                    egui::TextFormat {
+                                        color,
+                                        ..Default::default()
+                                    },
+                                );
+                            }
+
+                            let response = ui.add(
+                                egui::Label::new(job)
+                                    .wrap(false)
+                                    .sense(egui::Sense::click()),
+                            );
+                            if self.scroll_to_current && is_current && !did_scroll_to_current {
+                                response.scroll_to_me(Some(egui::Align::Center));
+                                did_scroll_to_current = true;
+                            }
+                            if response.clicked() {
+                                clicked_row = Some(i);
+                            }
+                            if response.double_clicked() {
+                                execute_row = Some(i);
+                            }
                         }
-                        if response.double_clicked() {
-                            execute_row = Some(i);
+                        if let Some(i) = clicked_row {
+                            self.current_row = Some(i);
+                            self.set_preview_from_current();
+                            self.refresh_status_line();
                         }
-                    }
-                    if let Some(i) = clicked_row {
-                        self.current_row = Some(i);
-                        self.set_preview_from_current();
-                    }
-                    if let Some(i) = execute_row {
-                        self.current_row = Some(i);
-                        self.execute_selected();
-                    }
-                });
+                        if let Some(i) = execute_row {
+                            self.current_row = Some(i);
+                            self.execute_selected();
+                        }
+                    });
+                if did_scroll_to_current {
+                    self.scroll_to_current = false;
+                }
 
                 cols[1].heading("Preview");
-                cols[1].add(
-                    egui::TextEdit::multiline(&mut self.preview)
-                        .desired_rows(30)
-                        .interactive(false),
+                let preview_size = cols[1].available_size();
+                cols[1].add_sized(
+                    preview_size,
+                    egui::TextEdit::multiline(&mut self.preview).interactive(false),
                 );
             });
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_root(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("fff-rs-app-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn clear_query_and_selection_clears_state() {
+        let root = test_root("clear");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("a.txt");
+        fs::write(&file, "x").expect("write file");
+
+        let mut app = FastFileFinderApp::new(root.clone(), 50, "abc".to_string());
+        app.pinned_paths.insert(file.clone());
+        app.current_row = Some(0);
+        app.preview = "preview".to_string();
+
+        app.clear_query_and_selection();
+
+        assert!(app.query.is_empty());
+        assert!(app.pinned_paths.is_empty());
+        assert!(app.focus_query_requested);
+        assert!(app.notice.contains("Cleared selection and query"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn move_row_sets_scroll_tracking() {
+        let root = test_root("scroll");
+        fs::create_dir_all(&root).expect("create dir");
+        let file1 = root.join("a.txt");
+        let file2 = root.join("b.txt");
+        fs::write(&file1, "x").expect("write file1");
+        fs::write(&file2, "x").expect("write file2");
+
+        let mut app = FastFileFinderApp::new(root.clone(), 50, "".to_string());
+        app.results = vec![(file1, 0.0), (file2, 0.0)];
+        app.current_row = Some(0);
+        app.scroll_to_current = false;
+
+        app.move_row(1);
+
+        assert_eq!(app.current_row, Some(1));
+        assert!(app.scroll_to_current);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
+        let root = test_root("ctrl-h-single");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FastFileFinderApp::new(root.clone(), 50, String::new());
+        app.query = "abcd".to_string();
+        let mut cursor = 4usize;
+        let mut anchor = 4usize;
+
+        let (text_changed, cursor_changed) =
+            app.apply_ctrl_h_delete(&mut cursor, &mut anchor, false);
+
+        assert!(text_changed);
+        assert!(cursor_changed);
+        assert_eq!(app.query, "abc");
+        assert_eq!(cursor, 3);
+        assert_eq!(anchor, 3);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
+        let root = test_root("ctrl-h-guard");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FastFileFinderApp::new(root.clone(), 50, String::new());
+        // Simulate that TextEdit already handled one Backspace and this frame query is already updated.
+        app.query = "abc".to_string();
+        let mut cursor = 3usize;
+        let mut anchor = 3usize;
+
+        let (text_changed, cursor_changed) =
+            app.apply_ctrl_h_delete(&mut cursor, &mut anchor, true);
+
+        assert!(!text_changed);
+        assert!(!cursor_changed);
+        assert_eq!(app.query, "abc");
+        assert_eq!(cursor, 3);
+        assert_eq!(anchor, 3);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn clipboard_text_normalizes_extended_and_unc_paths() {
+        let paths = vec![
+            PathBuf::from(r"\\?\C:\Users\tester\file.txt"),
+            PathBuf::from(r"\\?\UNC\server\share\folder\file.txt"),
+        ];
+        let text = FastFileFinderApp::clipboard_paths_text(&paths);
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines[0], r"C:\Users\tester\file.txt");
+        assert_eq!(lines[1], r"\\server\share\folder\file.txt");
     }
 }
