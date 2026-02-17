@@ -1124,17 +1124,42 @@ impl eframe::App for FlistWalkerApp {
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.add_sized([44.0, 0.0], egui::Label::new("Root:"));
-                let mut root_text = self.root_display_text();
+                let row_height = ui.spacing().interact_size.y;
+                ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
                 let button_width = 96.0;
-                let field_width =
-                    (ui.available_width() - button_width - ui.spacing().item_spacing.x).max(120.0);
-                ui.add_sized(
-                    [field_width, 0.0],
-                    egui::TextEdit::singleline(&mut root_text).interactive(false),
+                let add_width = 100.0;
+                let remove_width = 130.0;
+                let field_width = (ui.available_width()
+                    - button_width
+                    - add_width
+                    - remove_width
+                    - (ui.spacing().item_spacing.x * 3.0))
+                    .max(120.0);
+                let selected_text = self.root_display_text();
+                let mut next_root: Option<PathBuf> = None;
+                ui.allocate_ui_with_layout(
+                    egui::vec2(field_width, row_height),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        egui::ComboBox::from_id_source("root-selector")
+                            .width(field_width)
+                            .selected_text(selected_text)
+                            .show_ui(ui, |ui| {
+                                for p in &self.saved_roots {
+                                    let text = Self::normalize_windows_path(p.clone())
+                                        .to_string_lossy()
+                                        .to_string();
+                                    let is_selected =
+                                        Self::path_key(p) == Self::path_key(&self.root);
+                                    if ui.selectable_label(is_selected, text).clicked() {
+                                        next_root = Some(p.clone());
+                                    }
+                                }
+                            });
+                    },
                 );
                 if ui
-                    .add_sized([button_width, 0.0], egui::Button::new("Browse..."))
+                    .add_sized([button_width, row_height], egui::Button::new("Browse..."))
                     .clicked()
                 {
                     let dialog_root = Self::normalize_windows_path(self.root.clone());
@@ -1153,43 +1178,17 @@ impl eframe::App for FlistWalkerApp {
                         }
                     }
                 }
-            });
-
-            ui.horizontal(|ui| {
-                ui.add_sized([44.0, 0.0], egui::Label::new("Saved:"));
-                let selected_text = self
-                    .saved_roots
-                    .iter()
-                    .find(|p| Self::path_key(p) == Self::path_key(&self.root))
-                    .map(|p| {
-                        Self::normalize_windows_path(p.clone())
-                            .to_string_lossy()
-                            .to_string()
-                    })
-                    .unwrap_or_else(|| "Select saved root...".to_string());
-                let mut next_root: Option<PathBuf> = None;
-                egui::ComboBox::from_id_source("saved-root-selector")
-                    .width((ui.available_width() - 220.0).max(220.0))
-                    .selected_text(selected_text)
-                    .show_ui(ui, |ui| {
-                        for p in &self.saved_roots {
-                            let text = Self::normalize_windows_path(p.clone())
-                                .to_string_lossy()
-                                .to_string();
-                            let is_selected = Self::path_key(p) == Self::path_key(&self.root);
-                            if ui.selectable_label(is_selected, text).clicked() {
-                                next_root = Some(p.clone());
-                            }
-                        }
-                    });
                 if ui
-                    .add_sized([88.0, 0.0], egui::Button::new("Add"))
+                    .add_sized([add_width, row_height], egui::Button::new("Add to list"))
                     .clicked()
                 {
                     self.add_current_root_to_saved();
                 }
                 if ui
-                    .add_sized([120.0, 0.0], egui::Button::new("Remove"))
+                    .add_sized(
+                        [remove_width, row_height],
+                        egui::Button::new("Remove from list"),
+                    )
                     .clicked()
                 {
                     self.remove_current_root_from_saved();
