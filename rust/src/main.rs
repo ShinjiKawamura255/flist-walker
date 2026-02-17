@@ -51,7 +51,9 @@ fn run_gui(args: &Args) -> Result<()> {
         .root
         .canonicalize()
         .unwrap_or_else(|_| args.root.clone());
-    let native_options = eframe::NativeOptions::default();
+    let mut native_options = eframe::NativeOptions::default();
+    native_options.viewport =
+        eframe::egui::ViewportBuilder::default().with_inner_size(eframe::egui::vec2(1400.0, 900.0));
     let query = args.query.clone();
     let limit = args.limit;
 
