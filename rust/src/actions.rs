@@ -47,7 +47,8 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
                     if err.raw_os_error() == Some(193) {
                         return open_with_default(path);
                     }
-                    return Err(err).with_context(|| format!("failed to execute {}", path.display()));
+                    return Err(err)
+                        .with_context(|| format!("failed to execute {}", path.display()));
                 }
                 Ok(())
             }
@@ -108,6 +109,35 @@ mod tests {
             let file = root.join("note.txt");
             fs::write(&file, "x").expect("write file");
             assert_eq!(choose_action(&file), Action::Open);
+        }
+    }
+
+    #[test]
+    fn executable_file_is_execute_on_unix() {
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let root = std::env::temp_dir().join("fff-rs-actions-exec");
+            let _ = fs::create_dir_all(&root);
+            let file = root.join("run.sh");
+            fs::write(&file, "#!/bin/sh\necho hi\n").expect("write file");
+            let mut perms = fs::metadata(&file).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&file, perms).expect("set permissions");
+            assert_eq!(choose_action(&file), Action::Execute);
+        }
+    }
+
+    #[test]
+    fn windows_executable_extension_is_execute() {
+        #[cfg(target_os = "windows")]
+        {
+            let root = std::env::temp_dir().join("fff-rs-actions-winext");
+            let _ = fs::create_dir_all(&root);
+            let exe = root.join("tool.exe");
+            fs::write(&exe, "bin").expect("write exe");
+            assert_eq!(choose_action(&exe), Action::Execute);
         }
     }
 }

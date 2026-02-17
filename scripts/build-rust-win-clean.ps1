@@ -24,7 +24,7 @@ try {
     & cargo --version *> $null
 }
 catch {
-    Write-Error "rustup/cargo not found. Install Rust with rustup on Windows, or run scripts/build-rust-win.sh from WSL."
+    Write-Error "rustup/cargo not found. Install Rust with rustup on Windows, or run scripts/build-rust-win-clean.sh from WSL."
     exit 1
 }
 
@@ -39,19 +39,14 @@ catch {
 Write-Host "==> Ensure target: $Target"
 & rustup target add $Target *> $null
 
-if (Test-Path -LiteralPath $ExePath) {
-    try {
-        Remove-Item -LiteralPath $ExePath -Force
-    }
-    catch {
-        Write-Error "Could not delete existing EXE (possibly running): $ExePath"
-        Write-Error "Close the app and run this script again."
-        exit 1
-    }
+Write-Host "==> Clean: rust target directory"
+Set-Location -LiteralPath $RustDir
+& cargo clean
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
 }
 
 Write-Host "==> Build (release): $Target"
-Set-Location -LiteralPath $RustDir
 & cargo xwin build --release --target $Target
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE

@@ -1,8 +1,13 @@
+#![cfg_attr(
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
+)]
+
 use anyhow::Result;
 use clap::Parser;
 use std::path::PathBuf;
 
-use fast_file_finder_rs::app::FastFileFinderApp;
+use fast_file_finder_rs::app::{configure_egui_fonts, FastFileFinderApp};
 use fast_file_finder_rs::indexer::build_index;
 use fast_file_finder_rs::search::search_entries;
 
@@ -21,7 +26,10 @@ struct Args {
 }
 
 fn run_cli(args: &Args) -> Result<()> {
-    let root = args.root.canonicalize().unwrap_or_else(|_| args.root.clone());
+    let root = args
+        .root
+        .canonicalize()
+        .unwrap_or_else(|_| args.root.clone());
     let entries = build_index(&root, true, true, true)?;
     let query = args.query.trim();
     if query.is_empty() {
@@ -39,15 +47,21 @@ fn run_cli(args: &Args) -> Result<()> {
 }
 
 fn run_gui(args: &Args) -> Result<()> {
-    let root = args.root.canonicalize().unwrap_or_else(|_| args.root.clone());
+    let root = args
+        .root
+        .canonicalize()
+        .unwrap_or_else(|_| args.root.clone());
     let native_options = eframe::NativeOptions::default();
     let query = args.query.clone();
     let limit = args.limit;
 
     eframe::run_native(
-        "FastFileFinder (Rust)",
+        "FastFileFinder",
         native_options,
-        Box::new(move |_cc| Box::new(FastFileFinderApp::new(root, limit, query))),
+        Box::new(move |cc| {
+            configure_egui_fonts(&cc.egui_ctx);
+            Box::new(FastFileFinderApp::new(root, limit, query))
+        }),
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(())

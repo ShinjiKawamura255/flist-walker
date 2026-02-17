@@ -30,17 +30,11 @@ fi
 echo "==> Ensure target: ${TARGET}"
 rustup target add "${TARGET}" >/dev/null
 
-if [[ -f "${ARTIFACT}" ]]; then
-  if ! rm -f "${ARTIFACT}" 2>/dev/null; then
-    echo "既存の EXE を削除できませんでした。Windows 側で実行中の可能性があります。" >&2
-    echo "対象: ${ARTIFACT}" >&2
-    echo "アプリを終了してから再実行してください。" >&2
-    exit 1
-  fi
-fi
+echo "==> Clean: rust target directory"
+cd "${RUST_DIR}"
+cargo clean
 
 echo "==> Build (release): ${TARGET}"
-cd "${RUST_DIR}"
 cargo xwin build --release --target "${TARGET}"
 
 if [[ -f "${ARTIFACT}" ]]; then

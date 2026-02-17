@@ -10,6 +10,20 @@ pub struct QuerySpec {
     pub exclude_terms: Vec<String>,
 }
 
+fn split_anchor(term: &str) -> (bool, bool, &str) {
+    let anchored_start = term.starts_with('^');
+    let anchored_end = term.ends_with('$');
+
+    let mut core = term;
+    if anchored_start {
+        core = core.strip_prefix('^').unwrap_or(core);
+    }
+    if anchored_end {
+        core = core.strip_suffix('$').unwrap_or(core);
+    }
+    (anchored_start, anchored_end, core)
+}
+
 pub fn parse_query(query: &str) -> QuerySpec {
     let mut include_terms = Vec::new();
     let mut exact_terms = Vec::new();
@@ -50,16 +64,7 @@ fn is_fuzzy_match(query: &str, text: &str) -> bool {
 }
 
 fn matches_anchored_literal(term: &str, text: &str) -> bool {
-    let anchored_start = term.starts_with('^');
-    let anchored_end = term.ends_with('$');
-
-    let mut core = term;
-    if anchored_start {
-        core = &core[1..];
-    }
-    if anchored_end && !core.is_empty() {
-        core = &core[..core.len().saturating_sub(1)];
-    }
+    let (anchored_start, anchored_end, core) = split_anchor(term);
     if core.is_empty() {
         return false;
     }
@@ -95,15 +100,7 @@ fn matches_include_term(term: &str, name: &str, full: &str, use_regex: bool) -> 
     }
 
     let t = term.to_ascii_lowercase();
-    let anchored_start = t.starts_with('^');
-    let anchored_end = t.ends_with('$');
-    let mut core = t.clone();
-    if anchored_start {
-        core = core[1..].to_string();
-    }
-    if anchored_end && !core.is_empty() {
-        core = core[..core.len().saturating_sub(1)].to_string();
-    }
+    let (anchored_start, anchored_end, core) = split_anchor(&t);
     if core.is_empty() {
         return false;
     }
@@ -121,7 +118,7 @@ fn matches_include_term(term: &str, name: &str, full: &str, use_regex: bool) -> 
         }
     }
 
-    is_fuzzy_match(&core, name) || is_fuzzy_match(&core, full)
+    is_fuzzy_match(core, name) || is_fuzzy_match(core, full)
 }
 
 fn matches_spec(spec: &QuerySpec, path: &Path, use_regex: bool) -> bool {
@@ -191,7 +188,20 @@ pub fn search_entries(
         return Vec::new();
     }
 
-    let mut q = spec.include_terms.join(" ").to_ascii_lowercase();
+    let mut q = spec
+        .include_terms
+        .iter()
+        .filter_map(|term| {
+            let (_, _, core) = split_anchor(term);
+            if core.is_empty() {
+                None
+            } else {
+                Some(core.to_string())
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
     if q.is_empty() {
         if let Some(first_exact) = spec.exact_terms.first() {
             q = first_exact.to_ascii_lowercase();
@@ -244,6 +254,58 @@ mod tests {
     use super::*;
 
     #[test]
+    fn orders_by_score_and_limit() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/README.md"),
+            PathBuf::from("/tmp/docs/design.md"),
+        ];
+
+        let out = search_entries("main", &entries, 2, false);
+        assert!(!out.is_empty());
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
+        assert!(out.len() <= 2);
+        if out.len() > 1 {
+            assert!(out[0].1 >= out[1].1);
+        }
+    }
+
+    #[test]
+    fn empty_query_returns_empty() {
+        let entries = vec![PathBuf::from("/tmp/a.txt")];
+        let out = search_entries("", &entries, 10, false);
+        assert!(out.is_empty());
+    }
+
+    #[test]
+    fn prioritizes_exact_filename_match() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/main.py.bak"),
+            PathBuf::from("/tmp/src/domain_main.py"),
+        ];
+        let out = search_entries("main.py", &entries, 10, false);
+        assert!(!out.is_empty());
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
+    }
+
+    #[test]
+    fn hides_non_matching_results() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/docs/readme.md"),
+        ];
+        let out = search_entries("zzz", &entries, 10, false);
+        assert!(out.is_empty());
+    }
+
+    #[test]
     fn exact_and_exclusion_tokens_work() {
         let entries = vec![
             PathBuf::from("/tmp/src/main.py"),
@@ -258,6 +320,30 @@ mod tests {
     }
 
     #[test]
+    fn exact_token_matches_literal_substring() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/domain-main.rs"),
+        ];
+        let out = search_entries("'main", &entries, 10, false);
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn regex_query_works_when_enabled() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/module.rs"),
+        ];
+        let out = search_entries("ma.*py", &entries, 10, true);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
+    }
+
+    #[test]
     fn anchors_in_non_regex_are_fuzzy_with_adjacent_constraints() {
         let entries = vec![
             PathBuf::from("/tmp/src/main.py"),
@@ -266,5 +352,16 @@ mod tests {
         let out = search_entries("^main", &entries, 10, false);
         assert_eq!(out.len(), 1);
         assert!(out[0].0.to_string_lossy().contains("main.py"));
+    }
+
+    #[test]
+    fn end_anchor_uses_adjacent_character_constraint() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/domain"),
+            PathBuf::from("/tmp/src/main.py"),
+        ];
+        let out = search_entries("main$", &entries, 10, false);
+        assert_eq!(out.len(), 1);
+        assert!(out[0].0.to_string_lossy().contains("domain"));
     }
 }
