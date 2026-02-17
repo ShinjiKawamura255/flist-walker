@@ -3,73 +3,81 @@
 ## Architecture overview
 - DES-001 Index Source Resolver
 - 役割: `FileList.txt`/`filelist.txt` の検出と優先読み込み。
-- 出力: `Path[]` 候補。
+- 実装: `rust/src/indexer.rs`
+
 - DES-002 Walker Indexer
-- 役割: リスト未存在時の再帰走査。
-- 出力: `Path[]` 候補。
+- 役割: FileList 未使用時の再帰走査。
+- 実装: `rust/src/indexer.rs`
+
 - DES-003 Fuzzy Search Engine
-- 役割: クエリと候補から `(path, score)` を返す。
+- 役割: クエリ解釈（`'` `!` `^` `$`）とスコアリング。
+- 実装: `rust/src/search.rs`
+
 - DES-004 Action Executor
-- 役割: ファイル実行/オープン、フォルダオープンを OS 非依存 API で提供。
+- 役割: ファイル実行/オープン、フォルダオープンを OS 差分吸収して実行。
+- 実装: `rust/src/actions.rs`
+
 - DES-005 CLI Adapter
-- 役割: Python 試作の UX を Rust へ移植しやすい I/O 契約で固定。
-- DES-009 GUI Adapter (PySide6)
-- 役割: 検索入力、結果表示、プレビュー、実行/オープン操作を一画面で提供。
+- 役割: `clap` 引数を受け取り CLI 出力へ変換。
+- 実装: `rust/src/main.rs`
+
+- DES-009 GUI Adapter (egui/eframe)
+- 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。
+- 実装: `rust/src/app.rs`, `rust/src/ui_model.rs`
+
 - DES-010 GUI Test Artifacts
-- 役割: GUI の回帰手順と結果記録を `docs/GUI-TESTPLAN.md` / `docs/GUI-TESTREPORT.md` で管理。
+- 役割: GUI 回帰手順と結果を管理する。
+- 実装: `docs/TESTPLAN.md` の GUI 手順節
 
 ## Main flows
-- Flow-001: 起動 -> FileList 検出 -> ある場合は読み込み -> 検索 -> 選択 -> アクション。
+- Flow-001: 起動 -> FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
-- Flow-003: アクション失敗 -> エラー整形 -> stderr 出力 -> 非ゼロ終了。
-- Flow-004: GUI 起動 -> インデックス構築 -> 入力デバウンス検索 -> プレビュー -> 実行/オープン。
+- Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
+- Flow-004: GUI 起動 -> 非同期インデックス -> 入力デバウンス検索 -> プレビュー -> 実行/オープン。
 
 ## Data model
 - Candidate
-- `path: Path` 正規化済み絶対パス
-- `display: str` 画面表示用相対パス
+- `path: PathBuf` 正規化済み絶対パス
+- `display: String` 画面表示用パス
 - SearchResult
 - `candidate: Candidate`
-- `score: float`
+- `score: f64`
 
-## API contract
-- `build_index(root: Path) -> list[Path]`
-- `build_index_with_metadata(root: Path) -> IndexBuildResult`
-- `find_filelist(root: Path) -> Path | None`
-- `parse_filelist(filelist_path: Path, root: Path) -> list[Path]`
-- `search_entries(query: str, entries: list[Path], limit: int = 20) -> list[tuple[Path, float]]`
-- `execute_or_open(path: Path) -> None`
-- `python -m fast_file_finder [query] [--limit N] [--root PATH]`
-- `python -m fast_file_finder --gui [--root PATH] [--limit N] [query]`
-- `flistwalker-gui [--root PATH] [--limit N] [--query TEXT]`
+## API contract (Rust)
+- `build_index(root, use_filelist, include_files, include_dirs)`
+- `build_index_with_metadata(...)`
+- `find_filelist(root)`
+- `parse_filelist(filelist_path, root)`
+- `search_entries(query, entries, limit, use_regex)`
+- `execute_or_open(path)`
+- CLI: `flistwalker [query] [--root PATH] [--limit N] [--cli]`
 
-## Non-functional considerations
+## Non-functional design
 - DES-006 Performance
-- `os.scandir` ベースの反復走査でメモリ効率を担保。
-- 検索は `rapidfuzz` に委譲して CPU コストを削減。
-- DES-007 Reliability / Error
-- OS コマンド起動失敗を例外として分類し終了コードへ反映。
-- DES-008 Testability
-- インデックス/検索/アクションを分離し、OS 依存層を薄く保つ。
-- GUI ロジックは `ui_model.py` へ分離し、Qt 非依存で unit test 可能にする。
+- Indexer と search を分離し、GUI ではワーカースレッドで非同期処理する。
+- 検索は絞り込み後にスコア計算し、上位 `limit` を返す。
 
-## Error handling / timeouts / logging / metrics
-- エラー戦略: `FileNotFoundError` / `PermissionError` / `OSError` をユーザ向けに変換。
-- タイムアウト: 外部プロセス起動は非同期起動し、CLI をブロックしない。
-- ログ: 試作段階では stderr 出力、Rust 本実装で構造化ログへ拡張。
-- メトリクス: 検索遅延(ms)と候補件数を計測対象とする（後続タスク）。
+- DES-007 Reliability / Error
+- 失敗は `anyhow::Result` に集約し、CLI/GUI で表示責務を分離する。
+- 外部コマンドは引数配列で起動し、シェル解釈を避ける。
+
+- DES-008 Testability
+- indexer/search/actions/ui_model を独立モジュール化。
+- OS 依存処理は抽象境界を薄くして単体テスト可能性を維持。
+
+## Error handling / timeout / logging / metrics
+- エラー戦略: ファイルアクセス失敗、実行失敗、正規表現不正を分類して表示。
+- タイムアウト: 外部プロセス起動はブロッキング待機しない。
+- ログ: 現状は標準出力/標準エラー中心。必要に応じて構造化ログへ拡張。
+- メトリクス: 検索遅延(ms)と候補件数を測定対象とする。
 
 ## Migration / rollback
-- 移行手順
-1. Python の関数境界を Rust crate/module に対応付ける。
-2. CLI 引数契約を Rust `clap` 等で再現する。
-3. テストケース ID を Rust テストに移植する。
-- ロールバック戦略
-1. Rust 版が不安定時は Python 試作を fallback コマンドとして維持する。
+- 移行: Rust 本実装を正として機能追加する。
+- ロールバック: 不安定な変更は小さな単位で revert し、仕様ID単位で影響範囲を判断する。
 
 ## Trade-offs
-- Python 試作では開発速度と UI 検証を優先し、PySide6 で単画面 GUI を採用する。
-- Rust 本実装では性能と配布性を優先し、同一 SPEC を満たす範囲で内部実装のみ刷新する。
+- GUI フレームワークは `egui/eframe` を採用し、クロスプラットフォーム性と開発速度を優先。
+- 検索アルゴリズムは完全互換より操作体験優先で調整可能とするが、SP-003 の演算子契約は維持する。
 
 ## Traceability (excerpt)
 - DES-001 -> TC-001 (SP-001)
