@@ -24,7 +24,7 @@
 ## Test cases
 | ID | Flow | Steps | Expected |
 | --- | --- | --- | --- |
-| GUI-001 | 起動 | `fast-file-finder --gui --root <dir>` を実行 | ウィンドウが開き、Root と Source が表示される |
+| GUI-001 | 起動 | `flistwalker --gui --root <dir>` を実行 | ウィンドウが開き、Root と Source が表示される |
 | GUI-002 | 検索 | クエリ入力欄に文字を入力 | 120ms 程度で結果が再描画される |
 | GUI-003 | プレビュー | 結果リストを上下で選択 | 右ペインにファイル内容/フォルダ情報が更新される |
 | GUI-004 | アクション | `Open / Execute` またはダブルクリック | ファイルは実行またはオープン、フォルダはオープンされる |

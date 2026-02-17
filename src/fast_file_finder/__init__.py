@@ -1,4 +1,4 @@
-"""FastFileFinder Python prototype."""
+"""FlistWalker Python prototype."""
 
 __all__ = [
     "actions",

@@ -3,7 +3,7 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fast-file-finder"
+name = "flist-walker"
 version = "0.1.0"
 description = "Fast fuzzy finder prototype with walker/FileList support"
 readme = "README.md"
@@ -27,5 +27,5 @@ addopts = "-q"
 testpaths = ["tests"]
 
 [project.scripts]
-fast-file-finder = "fast_file_finder.cli:main"
-fast-file-finder-gui = "fast_file_finder.gui:main"
+flistwalker = "fast_file_finder.cli:main"
+flistwalker-gui = "fast_file_finder.gui:main"

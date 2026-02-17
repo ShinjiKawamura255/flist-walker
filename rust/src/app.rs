@@ -329,7 +329,7 @@ fn spawn_index_worker() -> (Sender<IndexRequest>, Receiver<IndexResponse>) {
     (tx_req, rx_res)
 }
 
-pub struct FastFileFinderApp {
+pub struct FlistWalkerApp {
     root: PathBuf,
     limit: usize,
     query: String,
@@ -360,7 +360,7 @@ pub struct FastFileFinderApp {
     focus_query_requested: bool,
 }
 
-impl FastFileFinderApp {
+impl FlistWalkerApp {
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
         let (index_tx, index_rx) = spawn_index_worker();
@@ -1008,7 +1008,7 @@ impl FastFileFinderApp {
     }
 }
 
-impl eframe::App for FastFileFinderApp {
+impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_index_response();
         self.poll_search_response();
@@ -1246,7 +1246,7 @@ mod tests {
         let file = root.join("a.txt");
         fs::write(&file, "x").expect("write file");
 
-        let mut app = FastFileFinderApp::new(root.clone(), 50, "abc".to_string());
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
         app.pinned_paths.insert(file.clone());
         app.current_row = Some(0);
         app.preview = "preview".to_string();
@@ -1269,7 +1269,7 @@ mod tests {
         fs::write(&file1, "x").expect("write file1");
         fs::write(&file2, "x").expect("write file2");
 
-        let mut app = FastFileFinderApp::new(root.clone(), 50, "".to_string());
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "".to_string());
         app.results = vec![(file1, 0.0), (file2, 0.0)];
         app.current_row = Some(0);
         app.scroll_to_current = false;
@@ -1285,7 +1285,7 @@ mod tests {
     fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
         let root = test_root("ctrl-h-single");
         fs::create_dir_all(&root).expect("create dir");
-        let mut app = FastFileFinderApp::new(root.clone(), 50, String::new());
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
         app.query = "abcd".to_string();
         let mut cursor = 4usize;
         let mut anchor = 4usize;
@@ -1305,7 +1305,7 @@ mod tests {
     fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
         let root = test_root("ctrl-h-guard");
         fs::create_dir_all(&root).expect("create dir");
-        let mut app = FastFileFinderApp::new(root.clone(), 50, String::new());
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
         // Simulate that TextEdit already handled one Backspace and this frame query is already updated.
         app.query = "abc".to_string();
         let mut cursor = 3usize;
@@ -1329,7 +1329,7 @@ mod tests {
             PathBuf::from(r"\\?\C:\Users\tester\file.txt"),
             PathBuf::from(r"\\?\UNC\server\share\folder\file.txt"),
         ];
-        let text = FastFileFinderApp::clipboard_paths_text(&paths);
+        let text = FlistWalkerApp::clipboard_paths_text(&paths);
         let lines: Vec<&str> = text.lines().collect();
         assert_eq!(lines[0], r"C:\Users\tester\file.txt");
         assert_eq!(lines[1], r"\\server\share\folder\file.txt");

@@ -41,7 +41,7 @@
 - `execute_or_open(path: Path) -> None`
 - `python -m fast_file_finder [query] [--limit N] [--root PATH]`
 - `python -m fast_file_finder --gui [--root PATH] [--limit N] [query]`
-- `fast-file-finder-gui [--root PATH] [--limit N] [--query TEXT]`
+- `flistwalker-gui [--root PATH] [--limit N] [--query TEXT]`
 
 ## Non-functional considerations
 - DES-006 Performance

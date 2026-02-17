@@ -44,7 +44,7 @@
 - `python -m venv .venv && source .venv/bin/activate`
 - `pip install -e .[dev,gui]`
 - `pytest -q`
-- GUI 手動試験: `fast-file-finder --gui --root .`
+- GUI 手動試験: `flistwalker --gui --root .`
 
 ## Environment and data
 - Python 3.11+

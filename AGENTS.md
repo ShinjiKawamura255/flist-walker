@@ -1,4 +1,4 @@
-# AGENTS.md for FastFileFinder
+# AGENTS.md for FlistWalker
 
 このファイルはプロジェクト固有のエージェント指示です。ワークスペース共通の方針と矛盾する場合は本ファイルを優先します。
 

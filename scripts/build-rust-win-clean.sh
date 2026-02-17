@@ -5,7 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_DIR}/rust"
 TARGET="x86_64-pc-windows-msvc"
-ARTIFACT="${RUST_DIR}/target/${TARGET}/release/FastFileFinder.exe"
+BUILD_ARTIFACT="${RUST_DIR}/target/${TARGET}/release/flistwalker.exe"
+ARTIFACT="${RUST_DIR}/target/${TARGET}/release/FlistWalker.exe"
 
 if [[ ! -d "${RUST_DIR}" ]]; then
   echo "rust/ ディレクトリが見つかりません: ${RUST_DIR}" >&2
@@ -36,6 +37,10 @@ cargo clean
 
 echo "==> Build (release): ${TARGET}"
 cargo xwin build --release --target "${TARGET}"
+
+if [[ -f "${BUILD_ARTIFACT}" ]]; then
+  cp -f "${BUILD_ARTIFACT}" "${ARTIFACT}"
+fi
 
 if [[ -f "${ARTIFACT}" ]]; then
   echo "==> Built: ${ARTIFACT}"
