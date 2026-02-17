@@ -7,13 +7,13 @@ use anyhow::Result;
 use clap::Parser;
 use std::path::PathBuf;
 
-use fast_file_finder_rs::app::{configure_egui_fonts, FastFileFinderApp};
-use fast_file_finder_rs::indexer::build_index;
-use fast_file_finder_rs::search::search_entries;
+use flist_walker::app::{configure_egui_fonts, FlistWalkerApp};
+use flist_walker::indexer::build_index;
+use flist_walker::search::search_entries;
 
 #[derive(Parser, Debug)]
-#[command(name = "fast-file-finder-rs")]
-#[command(about = "FastFileFinder Rust implementation")]
+#[command(name = "flistwalker")]
+#[command(about = "FlistWalker Rust implementation")]
 struct Args {
     #[arg(default_value = "")]
     query: String,
@@ -56,11 +56,11 @@ fn run_gui(args: &Args) -> Result<()> {
     let limit = args.limit;
 
     eframe::run_native(
-        "FastFileFinder",
+        "FlistWalker",
         native_options,
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
-            Box::new(FastFileFinderApp::new(root, limit, query))
+            Box::new(FlistWalkerApp::new(root, limit, query))
         }),
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;

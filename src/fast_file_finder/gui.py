@@ -69,7 +69,7 @@ def _load_qt():
 
 
 def parse_gui_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="FastFileFinder GUI prototype")
+    parser = argparse.ArgumentParser(description="FlistWalker GUI prototype")
     parser.add_argument("--root", default=".", help="search root")
     parser.add_argument("--limit", type=int, default=1000, help="max result count (up to 1000)")
     parser.add_argument("--query", default="", help="initial query")
@@ -176,7 +176,7 @@ def run_gui(argv: list[str]) -> int:
     class MainWindow(QMainWindow):
         def __init__(self) -> None:
             super().__init__()
-            self.setWindowTitle("FastFileFinder (Python GUI Prototype)")
+            self.setWindowTitle("FlistWalker (Python GUI Prototype)")
             self.resize(1100, 700)
 
             self.root = root

@@ -1,10 +1,14 @@
 [package]
-name = "fast-file-finder-rs"
+name = "flist-walker"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "flist_walker"
+path = "src/lib.rs"
+
 [[bin]]
-name = "FastFileFinder"
+name = "flistwalker"
 path = "src/main.rs"
 
 [dependencies]

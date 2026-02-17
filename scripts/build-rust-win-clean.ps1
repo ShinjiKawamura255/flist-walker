@@ -7,7 +7,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoDir = Split-Path -Parent $ScriptDir
 $RustDir = Join-Path $RepoDir 'rust'
 $Target = 'x86_64-pc-windows-msvc'
-$ExePath = Join-Path $RustDir "target\$Target\release\FastFileFinder.exe"
+$BuiltExePath = Join-Path $RustDir "target\$Target\release\flistwalker.exe"
+$ExePath = Join-Path $RustDir "target\$Target\release\FlistWalker.exe"
 $CargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
 
 if (Test-Path -LiteralPath $CargoBin) {
@@ -50,6 +51,10 @@ Write-Host "==> Build (release): $Target"
 & cargo xwin build --release --target $Target
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+
+if (Test-Path -LiteralPath $BuiltExePath) {
+    Copy-Item -LiteralPath $BuiltExePath -Destination $ExePath -Force
 }
 
 if (-not (Test-Path -LiteralPath $ExePath)) {

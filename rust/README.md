@@ -1,4 +1,4 @@
-# FastFileFinder Rust
+# FlistWalker Rust
 
 Python プロトタイプの仕様を Rust に移植した実装です。
 

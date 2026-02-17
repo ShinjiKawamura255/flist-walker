@@ -1,6 +1,10 @@
-# FastFileFinder
+# FlistWalker
 
 `fzf --walker` 風の高速ファジー検索ツールの Python 試作です。
+
+- 表示名: `FlistWalker`
+- GitHub リポジトリ名: `flist-walker`
+- 実行コマンド: `flistwalker`（Windows 成果物は `FlistWalker.exe`）
 
 ## セットアップ
 
@@ -13,10 +17,10 @@ pip install -e .[dev,gui]
 ## 使い方
 
 ```bash
-fast-file-finder --root . --limit 20
-fast-file-finder "main" --root .
-fast-file-finder --gui --root .
-fast-file-finder-gui --root .
+flistwalker --root . --limit 20
+flistwalker "main" --root .
+flistwalker --gui --root .
+flistwalker-gui --root .
 ./scripts/run-gui.sh --root .
 powershell -ExecutionPolicy Bypass -File .\scripts\run-gui.ps1 --root .
 ```
@@ -109,7 +113,7 @@ PowerShell スクリプトは、Windows 側に `rustup` / `cargo` が導入済�
 
 成果物:
 
-`rust/target/x86_64-pc-windows-msvc/release/FastFileFinder.exe`
+`rust/target/x86_64-pc-windows-msvc/release/FlistWalker.exe`
 
 注記:
 生成済み EXE を実行中のままだと上書きビルドに失敗します。ビルド前にアプリを終了してください。

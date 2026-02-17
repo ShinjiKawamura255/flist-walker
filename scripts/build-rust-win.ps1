@@ -7,7 +7,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoDir = Split-Path -Parent $ScriptDir
 $RustDir = Join-Path $RepoDir 'rust'
 $Target = 'x86_64-pc-windows-msvc'
-$ExePath = Join-Path $RustDir "target\$Target\release\FastFileFinder.exe"
+$BuiltExePath = Join-Path $RustDir "target\$Target\release\flistwalker.exe"
+$ExePath = Join-Path $RustDir "target\$Target\release\FlistWalker.exe"
 $CargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
 
 if (Test-Path -LiteralPath $CargoBin) {
@@ -49,12 +50,26 @@ if (Test-Path -LiteralPath $ExePath) {
         exit 1
     }
 }
+if (Test-Path -LiteralPath $BuiltExePath) {
+    try {
+        Remove-Item -LiteralPath $BuiltExePath -Force
+    }
+    catch {
+        Write-Error "Could not delete existing EXE (possibly running): $BuiltExePath"
+        Write-Error "Close the app and run this script again."
+        exit 1
+    }
+}
 
 Write-Host "==> Build (release): $Target"
 Set-Location -LiteralPath $RustDir
 & cargo xwin build --release --target $Target
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+
+if (Test-Path -LiteralPath $BuiltExePath) {
+    Copy-Item -LiteralPath $BuiltExePath -Destination $ExePath -Force
 }
 
 if (-not (Test-Path -LiteralPath $ExePath)) {
