@@ -39,7 +39,9 @@ echo "==> Build (release): ${TARGET}"
 cargo xwin build --release --target "${TARGET}"
 
 if [[ -f "${BUILD_ARTIFACT}" ]]; then
-  cp -f "${BUILD_ARTIFACT}" "${ARTIFACT}"
+  if [[ "${BUILD_ARTIFACT,,}" != "${ARTIFACT,,}" ]]; then
+    cp -f "${BUILD_ARTIFACT}" "${ARTIFACT}"
+  fi
 fi
 
 if [[ -f "${ARTIFACT}" ]]; then

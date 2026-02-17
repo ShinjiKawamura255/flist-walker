@@ -19,3 +19,9 @@ fuzzy-matcher = "0.3"
 native-dialog = "0.7"
 regex = "1.11"
 walkdir = "2.5"
+resvg = "0.43"
+
+[build-dependencies]
+ico = "0.3"
+resvg = "0.43"
+winres = "0.1"

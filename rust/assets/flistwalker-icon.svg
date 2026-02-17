@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- FlistWalker icon draft (list + speed lines), scalable SVG -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Subtle dark gradient background (works fine even if rendered flat) -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#141A24"/>
+    </linearGradient>
+
+  </defs>
+
+  <!-- Rounded-square background -->
+  <rect x="64" y="64" width="896" height="896" rx="192" fill="url(#bg)"/>
+
+  <!-- Foreground symbol: list + speed lines -->
+  <!-- Geometry tuned for small-size legibility -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- List lines (left) -->
+    <!-- Top -->
+    <path d="M 260 380 H 620"
+          stroke="#FFFFFF" stroke-width="72"/>
+    <!-- Middle (selected / emphasized) -->
+    <path d="M 260 512 H 680"
+          stroke="#FFFFFF" stroke-width="88"/>
+    <!-- Bottom -->
+    <path d="M 260 644 H 620"
+          stroke="#FFFFFF" stroke-width="72"/>
+
+    <!-- Speed lines (right) -->
+    <!-- Upper -->
+    <path d="M 700 420 H 860"
+          stroke="#2DE2E6" stroke-width="56"/>
+    <!-- Middle (longest) -->
+    <path d="M 720 512 H 900"
+          stroke="#2DE2E6" stroke-width="64"/>
+    <!-- Lower -->
+    <path d="M 700 604 H 860"
+          stroke="#2DE2E6" stroke-width="56"/>
+  </g>
+</svg>

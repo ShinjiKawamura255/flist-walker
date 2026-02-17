@@ -68,7 +68,7 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-if (Test-Path -LiteralPath $BuiltExePath) {
+if ((Test-Path -LiteralPath $BuiltExePath) -and ($BuiltExePath.ToLowerInvariant() -ne $ExePath.ToLowerInvariant())) {
     Copy-Item -LiteralPath $BuiltExePath -Destination $ExePath -Force
 }
 
