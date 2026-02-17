@@ -66,6 +66,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win-clean.ps1
 
 `rust/target/x86_64-pc-windows-msvc/release/FlistWalker.exe`
 
+## リリースアセット生成
+
+`exe単体 + zip` のアセットは次で生成できます。
+
+```bash
+./scripts/prepare-release.sh v0.1.0
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.1.0
+```
+
+詳細は `docs/RELEASE.md` を参照してください。
+
 ## プロトタイプ資産
 
 旧プロトタイプは `prototype/python/` に移設済みです。
