@@ -10,7 +10,7 @@ use crate::ui_model::{
 use eframe::egui;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
@@ -358,6 +358,7 @@ pub struct FlistWalkerApp {
     index_in_progress: bool,
     scroll_to_current: bool,
     focus_query_requested: bool,
+    saved_roots: Vec<PathBuf>,
 }
 
 impl FlistWalkerApp {
@@ -396,6 +397,7 @@ impl FlistWalkerApp {
             index_in_progress: false,
             scroll_to_current: true,
             focus_query_requested: false,
+            saved_roots: Self::load_saved_roots(),
         };
         app.request_index_refresh();
         app
@@ -419,6 +421,109 @@ impl FlistWalkerApp {
         Self::normalize_windows_path(self.root.clone())
             .to_string_lossy()
             .to_string()
+    }
+
+    fn saved_roots_file_path() -> Option<PathBuf> {
+        #[cfg(windows)]
+        {
+            if let Some(base) = std::env::var_os("USERPROFILE") {
+                return Some(PathBuf::from(base).join(".flistwalker_roots.txt"));
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            if let Some(base) = std::env::var_os("HOME") {
+                return Some(PathBuf::from(base).join(".flistwalker_roots.txt"));
+            }
+        }
+        None
+    }
+
+    fn path_key(path: &Path) -> String {
+        #[cfg(windows)]
+        {
+            return path.to_string_lossy().to_string().to_ascii_lowercase();
+        }
+        #[cfg(not(windows))]
+        {
+            path.to_string_lossy().to_string()
+        }
+    }
+
+    fn load_saved_roots() -> Vec<PathBuf> {
+        let Some(file) = Self::saved_roots_file_path() else {
+            return Vec::new();
+        };
+        let Ok(text) = fs::read_to_string(file) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        let mut seen = HashSet::new();
+        for raw in text.lines() {
+            let line = raw.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let path = Self::normalize_windows_path(PathBuf::from(line));
+            let key = Self::path_key(&path);
+            if seen.insert(key) {
+                out.push(path);
+            }
+        }
+        out
+    }
+
+    fn save_saved_roots(&self) {
+        let Some(file) = Self::saved_roots_file_path() else {
+            return;
+        };
+        if let Some(parent) = file.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let text = self
+            .saved_roots
+            .iter()
+            .map(|p| p.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let _ = fs::write(
+            file,
+            if text.is_empty() {
+                text
+            } else {
+                format!("{text}\n")
+            },
+        );
+    }
+
+    fn add_current_root_to_saved(&mut self) {
+        let root = self
+            .root
+            .canonicalize()
+            .unwrap_or_else(|_| self.root.clone());
+        let root = Self::normalize_windows_path(root);
+        let key = Self::path_key(&root);
+        if self.saved_roots.iter().any(|p| Self::path_key(p) == key) {
+            self.set_notice("Current root is already registered");
+            return;
+        }
+        self.saved_roots.push(root.clone());
+        self.saved_roots
+            .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
+        self.save_saved_roots();
+        self.set_notice(format!("Registered root: {}", root.display()));
+    }
+
+    fn remove_current_root_from_saved(&mut self) {
+        let key = Self::path_key(&self.root);
+        let before = self.saved_roots.len();
+        self.saved_roots.retain(|p| Self::path_key(p) != key);
+        if self.saved_roots.len() == before {
+            self.set_notice("Current root is not in saved list");
+            return;
+        }
+        self.save_saved_roots();
+        self.set_notice("Removed current root from saved list");
     }
 
     fn prefer_relative_display(&self) -> bool {
@@ -1046,6 +1151,54 @@ impl eframe::App for FlistWalkerApp {
                         Err(err) => {
                             self.set_notice(format!("Browse failed: {}", err));
                         }
+                    }
+                }
+            });
+
+            ui.horizontal(|ui| {
+                ui.add_sized([44.0, 0.0], egui::Label::new("Saved:"));
+                let selected_text = self
+                    .saved_roots
+                    .iter()
+                    .find(|p| Self::path_key(p) == Self::path_key(&self.root))
+                    .map(|p| {
+                        Self::normalize_windows_path(p.clone())
+                            .to_string_lossy()
+                            .to_string()
+                    })
+                    .unwrap_or_else(|| "Select saved root...".to_string());
+                let mut next_root: Option<PathBuf> = None;
+                egui::ComboBox::from_id_source("saved-root-selector")
+                    .width((ui.available_width() - 220.0).max(220.0))
+                    .selected_text(selected_text)
+                    .show_ui(ui, |ui| {
+                        for p in &self.saved_roots {
+                            let text = Self::normalize_windows_path(p.clone())
+                                .to_string_lossy()
+                                .to_string();
+                            let is_selected = Self::path_key(p) == Self::path_key(&self.root);
+                            if ui.selectable_label(is_selected, text).clicked() {
+                                next_root = Some(p.clone());
+                            }
+                        }
+                    });
+                if ui
+                    .add_sized([88.0, 0.0], egui::Button::new("Add"))
+                    .clicked()
+                {
+                    self.add_current_root_to_saved();
+                }
+                if ui
+                    .add_sized([120.0, 0.0], egui::Button::new("Remove"))
+                    .clicked()
+                {
+                    self.remove_current_root_from_saved();
+                }
+                if let Some(root) = next_root {
+                    if Self::path_key(&root) != Self::path_key(&self.root) {
+                        self.root = Self::normalize_windows_path(root);
+                        self.request_index_refresh();
+                        self.set_notice(format!("Root changed: {}", self.root_display_text()));
                     }
                 }
             });
