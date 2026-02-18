@@ -157,6 +157,10 @@ pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative:
     if query.trim().is_empty() {
         return true;
     }
+    if highlight_terms(query).is_empty() {
+        // Exclusion-only queries are already filtered by search logic.
+        return true;
+    }
     !match_positions_for_path(path, root, query, prefer_relative).is_empty()
 }
 
@@ -343,6 +347,17 @@ mod tests {
         fs::write(&sample, "print('x')\n").expect("write sample");
 
         assert!(!has_visible_match(&sample, &root, "zzzz", true));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn has_visible_match_true_for_exclusion_only_query() {
+        let root = test_root("visible-exclusion-only");
+        let sample = root.join("src/main.py");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        assert!(has_visible_match(&sample, &root, "!readme", true));
         let _ = fs::remove_dir_all(&root);
     }
 
