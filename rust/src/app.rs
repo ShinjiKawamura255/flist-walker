@@ -1305,14 +1305,12 @@ impl FlistWalkerApp {
                 text_changed = true;
                 cursor_changed = true;
             }
-        } else if pressed(egui::Key::U) {
-            if cursor > 0 {
-                Self::remove_char_range(&mut self.query, 0, cursor);
-                cursor = 0;
-                anchor = 0;
-                text_changed = true;
-                cursor_changed = true;
-            }
+        } else if pressed(egui::Key::U) && cursor > 0 {
+            Self::remove_char_range(&mut self.query, 0, cursor);
+            cursor = 0;
+            anchor = 0;
+            text_changed = true;
+            cursor_changed = true;
         }
 
         if cursor_changed {
