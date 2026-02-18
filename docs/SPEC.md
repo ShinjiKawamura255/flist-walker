@@ -20,8 +20,9 @@
 ### Requirements
 - MUST: FileList 未使用時にルート以下を再帰走査し候補化する。
 - MUST: ファイル/フォルダの包含条件（include_files/include_dirs）を適用する。
+- MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
 - SHOULD: 循環リンクを避ける。
-- SHOULD: 走査結果は段階的に UI へ反映できる形で扱う。
+- SHOULD: 空クエリ時は新規バッチを即時に一覧へ反映し、非空クエリ時は UI 負荷を抑えるため間引き更新する。
 
 ### Preconditions / Postconditions
 - Preconditions: `FileList.txt` / `filelist.txt` が使用されない。
@@ -89,6 +90,8 @@
 ### Requirements
 - SHOULD: 10万件規模で検索応答 100ms 未満を目標とする。
 - SHOULD: インデックス構築中も UI 操作が停止しない。
+- SHOULD: 正規表現クエリはクエリ単位でコンパイルし、候補ごとの再コンパイルを避ける。
+- SHOULD: プレビューキャッシュは上限管理し、長時間利用でメモリが無制限に増加しない。
 
 ### Preconditions / Postconditions
 - Preconditions: 候補集合が利用可能。

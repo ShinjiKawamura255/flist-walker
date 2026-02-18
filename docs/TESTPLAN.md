@@ -1,7 +1,7 @@
 # TESTPLAN
 
 ## Scope and priority
-- Target: FileList 優先ロジック、walker、検索、実行/オープン分岐、CLI 契約、GUI 主要フロー。
+- Target: FileList 優先ロジック、walker、検索、実行/オープン分岐、CLI 契約、GUI 主要フロー、逐次表示/キャッシュ境界。
 - Priority:
 - P0: FR-001/002/003/004/005
 - P1: FR-006/007, NFR-002/003/004
@@ -37,6 +37,8 @@
 | TC-009 | unit | モジュール分離により単体テスト可能 | SP-009 |
 | TC-010 | manual+unit | GUI で検索/選択/実行/再読込が行える | SP-010 |
 | TC-011 | manual | GUI 回帰手順に基づく再検証が可能 | SP-011 |
+| TC-012 | unit | プレビューキャッシュが上限件数を超えない | SP-007 |
+| TC-013 | manual | インデックス中に空クエリ一覧が逐次更新され、操作が継続できる | SP-002, SP-007 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -77,3 +79,5 @@
 - TC-009 -> SP-009 -> DES-008 -> NFR-003
 - TC-010 -> SP-010 -> DES-009 -> FR-007
 - TC-011 -> SP-011 -> DES-010 -> NFR-004
+- TC-012 -> SP-007 -> DES-006 -> NFR-001
+- TC-013 -> SP-002, SP-007 -> DES-006 -> NFR-001

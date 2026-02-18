@@ -1,6 +1,6 @@
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
-use regex::RegexBuilder;
+use regex::{Regex, RegexBuilder};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone)]
@@ -93,13 +93,9 @@ fn matches_exclusion_term(term: &str, name: &str, full: &str) -> bool {
     matches_anchored_literal(&t, name) || matches_anchored_literal(&t, full)
 }
 
-fn matches_include_term(term: &str, name: &str, full: &str, use_regex: bool) -> bool {
-    if use_regex {
-        let regex = RegexBuilder::new(term).case_insensitive(true).build();
-        if let Ok(re) = regex {
-            return re.is_match(name) || re.is_match(full);
-        }
-        return false;
+fn matches_include_term(term: &str, name: &str, full: &str, regex: Option<&Regex>) -> bool {
+    if let Some(re) = regex {
+        return re.is_match(name) || re.is_match(full);
     }
 
     let t = term.to_ascii_lowercase();
@@ -138,7 +134,7 @@ fn searchable_full(path: &Path, root: Option<&Path>, prefer_relative: bool) -> S
 fn matches_spec(
     spec: &QuerySpec,
     path: &Path,
-    use_regex: bool,
+    include_regexes: Option<&[Regex]>,
     root: Option<&Path>,
     prefer_relative: bool,
 ) -> bool {
@@ -161,8 +157,9 @@ fn matches_spec(
         }
     }
 
-    for term in &spec.include_terms {
-        if !matches_include_term(term, &name, &full, use_regex) {
+    for (idx, term) in spec.include_terms.iter().enumerate() {
+        let regex = include_regexes.and_then(|items| items.get(idx));
+        if !matches_include_term(term, &name, &full, regex) {
             return false;
         }
     }
@@ -209,9 +206,22 @@ pub fn search_entries_with_scope(
     }
 
     let spec = parse_query(query);
+    let include_regexes = if use_regex {
+        let mut compiled = Vec::with_capacity(spec.include_terms.len());
+        for term in &spec.include_terms {
+            // Compile once per query term and reuse for all candidates.
+            let Ok(re) = RegexBuilder::new(term).case_insensitive(true).build() else {
+                return Vec::new();
+            };
+            compiled.push(re);
+        }
+        Some(compiled)
+    } else {
+        None
+    };
     let filtered: Vec<PathBuf> = entries
         .iter()
-        .filter(|p| matches_spec(&spec, p, use_regex, root, prefer_relative))
+        .filter(|p| matches_spec(&spec, p, include_regexes.as_deref(), root, prefer_relative))
         .cloned()
         .collect();
 

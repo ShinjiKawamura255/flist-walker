@@ -9,7 +9,7 @@ use crate::ui_model::{
     match_positions_for_path, normalize_path_for_display,
 };
 use eframe::egui;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -484,10 +484,16 @@ pub struct FlistWalkerApp {
     focus_query_requested: bool,
     saved_roots: Vec<PathBuf>,
     preview_cache: HashMap<PathBuf, String>,
+    preview_cache_order: VecDeque<PathBuf>,
     last_incremental_results_refresh: Instant,
+    last_search_snapshot_len: usize,
 }
 
 impl FlistWalkerApp {
+    const PREVIEW_CACHE_MAX: usize = 512;
+    const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
+    const INCREMENTAL_SEARCH_MIN_DELTA: usize = 2000;
+
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
         let (preview_tx, preview_rx) = spawn_preview_worker();
@@ -538,7 +544,9 @@ impl FlistWalkerApp {
             focus_query_requested: false,
             saved_roots: Self::load_saved_roots(),
             preview_cache: HashMap::new(),
+            preview_cache_order: VecDeque::new(),
             last_incremental_results_refresh: Instant::now(),
+            last_search_snapshot_len: 0,
         };
         app.request_index_refresh();
         app
@@ -675,6 +683,11 @@ impl FlistWalkerApp {
     }
 
     fn refresh_status_line(&mut self) {
+        let indexed_count = if self.index_in_progress {
+            self.index.entries.len()
+        } else {
+            self.entries.len()
+        };
         let clipped = self.results.len() >= self.limit;
         let clip_text = if clipped {
             format!(" (limit {} reached)", self.limit)
@@ -709,7 +722,7 @@ impl FlistWalkerApp {
 
         self.status_line = format!(
             "Entries: {} | Results: {}{}{}{}{}{}{}",
-            self.entries.len(),
+            indexed_count,
             self.results.len(),
             clip_text,
             pinned,
@@ -743,12 +756,14 @@ impl FlistWalkerApp {
         self.entries = Arc::new(Vec::new());
         self.entry_kinds.clear();
         self.preview_cache.clear();
+        self.preview_cache_order.clear();
         self.pending_preview_request_id = None;
         self.preview_in_progress = false;
         self.results.clear();
         self.current_row = None;
         self.preview.clear();
         self.last_incremental_results_refresh = Instant::now();
+        self.last_search_snapshot_len = 0;
         self.refresh_status_line();
 
         let req = IndexRequest {
@@ -768,7 +783,6 @@ impl FlistWalkerApp {
     fn poll_index_response(&mut self) {
         const MAX_MESSAGES_PER_FRAME: usize = 12;
         const FRAME_BUDGET: Duration = Duration::from_millis(4);
-        const INCREMENTAL_REFRESH_INTERVAL: Duration = Duration::from_millis(50);
 
         let frame_start = Instant::now();
         let mut processed = 0usize;
@@ -800,7 +814,8 @@ impl FlistWalkerApp {
                         continue;
                     }
                     self.index.source = source;
-                    self.entries = Arc::new(self.index.entries.clone());
+                    self.entries = Arc::new(std::mem::take(&mut self.index.entries));
+                    self.last_search_snapshot_len = self.entries.len();
                     self.pending_index_request_id = None;
                     self.index_in_progress = false;
                     self.update_results();
@@ -822,11 +837,28 @@ impl FlistWalkerApp {
             }
         }
 
-        if needs_incremental_refresh
-            && self.last_incremental_results_refresh.elapsed() >= INCREMENTAL_REFRESH_INTERVAL
+        if !needs_incremental_refresh {
+            return;
+        }
+
+        if self.query.trim().is_empty() {
+            // Empty query is the progressive browsing mode: show newest indexed entries
+            // immediately without cloning the whole snapshot for search workers.
+            self.update_results_from_index_progress();
+            return;
+        }
+
+        let current_len = self.index.entries.len();
+        let delta = current_len.saturating_sub(self.last_search_snapshot_len);
+        if delta >= Self::INCREMENTAL_SEARCH_MIN_DELTA
+            && self.last_incremental_results_refresh.elapsed()
+                >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
         {
-            self.last_incremental_results_refresh = Instant::now();
+            // Non-empty query still needs progressive refresh, but cloning huge snapshots
+            // every batch stalls UI. Throttle by both item delta and time window.
             self.entries = Arc::new(self.index.entries.clone());
+            self.last_search_snapshot_len = self.entries.len();
+            self.last_incremental_results_refresh = Instant::now();
             self.update_results();
         }
     }
@@ -889,14 +921,26 @@ impl FlistWalkerApp {
             }
             self.pending_preview_request_id = None;
             self.preview_in_progress = false;
-            self.preview_cache
-                .insert(response.path.clone(), response.preview.clone());
+            self.cache_preview(response.path.clone(), response.preview.clone());
             if let Some(row) = self.current_row {
                 if let Some((current_path, _)) = self.results.get(row) {
                     if *current_path == response.path {
                         self.preview = response.preview;
                     }
                 }
+            }
+        }
+    }
+
+    fn cache_preview(&mut self, path: PathBuf, preview: String) {
+        if !self.preview_cache.contains_key(&path) {
+            self.preview_cache_order.push_back(path.clone());
+        }
+        self.preview_cache.insert(path, preview);
+        // Keep cache bounded so long browse sessions do not grow memory unbounded.
+        while self.preview_cache_order.len() > Self::PREVIEW_CACHE_MAX {
+            if let Some(oldest) = self.preview_cache_order.pop_front() {
+                self.preview_cache.remove(&oldest);
             }
         }
     }
@@ -916,6 +960,20 @@ impl FlistWalkerApp {
             return;
         }
         self.enqueue_search_request();
+    }
+
+    fn update_results_from_index_progress(&mut self) {
+        self.pending_request_id = None;
+        self.search_in_progress = false;
+        let results = self
+            .index
+            .entries
+            .iter()
+            .take(self.limit)
+            .cloned()
+            .map(|p| (p, 0.0))
+            .collect();
+        self.apply_results(results);
     }
 
     fn current_result_kind(&self) -> Option<bool> {
@@ -1776,6 +1834,27 @@ mod tests {
         let out = filter_search_results(results, &root, "ma.*py", true, true);
 
         assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn preview_cache_is_bounded() {
+        let root = test_root("preview-cache-bounded");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+        for i in 0..=FlistWalkerApp::PREVIEW_CACHE_MAX {
+            let path = root.join(format!("file-{i}.txt"));
+            app.cache_preview(path.clone(), format!("preview-{i}"));
+        }
+
+        assert_eq!(app.preview_cache.len(), FlistWalkerApp::PREVIEW_CACHE_MAX);
+        assert_eq!(
+            app.preview_cache_order.len(),
+            FlistWalkerApp::PREVIEW_CACHE_MAX
+        );
+        let evicted = root.join("file-0.txt");
+        assert!(!app.preview_cache.contains_key(&evicted));
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
