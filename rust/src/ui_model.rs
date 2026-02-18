@@ -170,6 +170,14 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
         return build_directory_preview_text(path, &normalized_path);
     }
 
+    if is_on_demand_offline(path) {
+        return format!(
+            "File: {}\nAction: {:?}\n\n<on-demand offline file: preview skipped>",
+            normalized_path,
+            choose_action(path)
+        );
+    }
+
     let action = format!("{:?}", choose_action(path));
     let head = format!("File: {}\nAction: {}\n", normalized_path, action);
 
@@ -183,6 +191,22 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
             }
         }
         Err(_) => format!("{}\n<binary or unreadable file>", head),
+    }
+}
+
+fn is_on_demand_offline(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        const FILE_ATTRIBUTE_OFFLINE: u32 = 0x0000_1000;
+        return std::fs::metadata(path)
+            .map(|m| (m.file_attributes() & FILE_ATTRIBUTE_OFFLINE) != 0)
+            .unwrap_or(false);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        false
     }
 }
 

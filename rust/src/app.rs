@@ -1,6 +1,7 @@
 use crate::actions::execute_or_open;
 use crate::indexer::{
-    build_index_with_metadata, find_filelist, write_filelist, IndexBuildResult, IndexSource,
+    build_index_with_metadata, find_filelist_in_first_level, write_filelist, IndexBuildResult,
+    IndexSource,
 };
 use crate::search::search_entries;
 use crate::ui_model::{
@@ -342,7 +343,7 @@ fn spawn_index_worker() -> (Sender<IndexRequest>, Receiver<IndexResponse>) {
 
             let root = req.root.canonicalize().unwrap_or_else(|_| req.root.clone());
             let result = if req.use_filelist {
-                if let Some(filelist) = find_filelist(&root) {
+                if let Some(filelist) = find_filelist_in_first_level(&root) {
                     stream_filelist_index(&tx_res, &req, &root, filelist)
                 } else {
                     stream_walker_index(&tx_res, &req, &root)
