@@ -64,6 +64,8 @@
 - DES-007 Reliability / Error
 - 失敗は `anyhow::Result` に集約し、CLI/GUI で表示責務を分離する。
 - 外部コマンドは引数配列で起動し、シェル解釈を避ける。
+- GUI 検索はワーカーからエラー文字列を受け取り、notice に反映する。
+- Windows の `.ps1` 実行は `powershell.exe -File` を明示起動する。
 
 - DES-008 Testability
 - indexer/search/actions/ui_model を独立モジュール化。

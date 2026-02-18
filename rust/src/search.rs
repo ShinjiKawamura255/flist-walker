@@ -192,17 +192,17 @@ pub fn search_entries(
     search_entries_with_scope(query, entries, limit, use_regex, None, false)
 }
 
-pub fn search_entries_with_scope(
+pub fn try_search_entries_with_scope(
     query: &str,
     entries: &[PathBuf],
     limit: usize,
     use_regex: bool,
     root: Option<&Path>,
     prefer_relative: bool,
-) -> Vec<(PathBuf, f64)> {
+) -> Result<Vec<(PathBuf, f64)>, String> {
     let query = query.trim();
     if query.is_empty() || limit == 0 {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     let spec = parse_query(query);
@@ -210,9 +210,10 @@ pub fn search_entries_with_scope(
         let mut compiled = Vec::with_capacity(spec.include_terms.len());
         for term in &spec.include_terms {
             // Compile once per query term and reuse for all candidates.
-            let Ok(re) = RegexBuilder::new(term).case_insensitive(true).build() else {
-                return Vec::new();
-            };
+            let re = RegexBuilder::new(term)
+                .case_insensitive(true)
+                .build()
+                .map_err(|err| format!("invalid regex '{term}': {err}"))?;
             compiled.push(re);
         }
         Some(compiled)
@@ -226,7 +227,7 @@ pub fn search_entries_with_scope(
         .collect();
 
     if filtered.is_empty() {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     let mut q = spec
@@ -287,7 +288,19 @@ pub fn search_entries_with_scope(
 
     scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     scored.truncate(limit);
-    scored
+    Ok(scored)
+}
+
+pub fn search_entries_with_scope(
+    query: &str,
+    entries: &[PathBuf],
+    limit: usize,
+    use_regex: bool,
+    root: Option<&Path>,
+    prefer_relative: bool,
+) -> Vec<(PathBuf, f64)> {
+    try_search_entries_with_scope(query, entries, limit, use_regex, root, prefer_relative)
+        .unwrap_or_default()
 }
 
 #[cfg(test)]
@@ -404,6 +417,14 @@ mod tests {
             out[0].0.file_name().and_then(|s| s.to_str()),
             Some("main.py")
         );
+    }
+
+    #[test]
+    fn invalid_regex_returns_error_in_try_api() {
+        let entries = vec![PathBuf::from("/tmp/src/main.py")];
+        let err = try_search_entries_with_scope("[*", &entries, 10, true, None, false)
+            .expect_err("invalid regex should return error");
+        assert!(err.contains("invalid regex"));
     }
 
     #[test]

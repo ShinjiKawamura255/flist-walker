@@ -39,6 +39,8 @@
 | TC-011 | manual | GUI 回帰手順に基づく再検証が可能 | SP-011 |
 | TC-012 | unit | プレビューキャッシュが上限件数を超えない | SP-007 |
 | TC-013 | manual | インデックス中に空クエリ一覧が逐次更新され、操作が継続できる | SP-002, SP-007 |
+| TC-014 | unit | FileList 作成の成功/失敗応答で GUI 状態遷移が正しい | SP-010, SP-008 |
+| TC-015 | integration | CLI 非空クエリ出力形式と root 不正系を検証する | SP-006, SP-008 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -81,3 +83,5 @@
 - TC-011 -> SP-011 -> DES-010 -> NFR-004
 - TC-012 -> SP-007 -> DES-006 -> NFR-001
 - TC-013 -> SP-002, SP-007 -> DES-006 -> NFR-001
+- TC-014 -> SP-010, SP-008 -> DES-009, DES-007 -> FR-007, NFR-002
+- TC-015 -> SP-006, SP-008 -> DES-005, DES-007 -> FR-006, NFR-002

@@ -40,6 +40,24 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
     match choose_action(path) {
         Action::Open => open_with_default(path),
         Action::Execute => {
+            #[cfg(target_os = "windows")]
+            let result = {
+                let is_ps1 = path
+                    .extension()
+                    .and_then(|s| s.to_str())
+                    .map(|ext| ext.eq_ignore_ascii_case("ps1"))
+                    .unwrap_or(false);
+                if is_ps1 {
+                    // .ps1 is not directly executable via CreateProcess; invoke PowerShell explicitly.
+                    Command::new("powershell.exe")
+                        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+                        .arg(path)
+                        .spawn()
+                } else {
+                    Command::new(path).spawn()
+                }
+            };
+            #[cfg(not(target_os = "windows"))]
             let result = Command::new(path).spawn();
             #[cfg(target_os = "windows")]
             {

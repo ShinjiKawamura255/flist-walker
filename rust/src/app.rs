@@ -3,7 +3,7 @@ use crate::indexer::{
     build_index_with_metadata, find_filelist_in_first_level, parse_filelist, write_filelist,
     IndexBuildResult, IndexSource,
 };
-use crate::search::search_entries_with_scope;
+use crate::search::try_search_entries_with_scope;
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, has_visible_match,
     match_positions_for_path, normalize_path_for_display,
@@ -86,6 +86,7 @@ struct SearchRequest {
 struct SearchResponse {
     request_id: u64,
     results: Vec<(PathBuf, f64)>,
+    error: Option<String>,
 }
 
 fn filter_search_results(
@@ -178,25 +179,32 @@ fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
-            let results = filter_search_results(
-                search_entries_with_scope(
-                    &req.query,
-                    &req.entries,
-                    req.limit,
-                    req.use_regex,
-                    Some(&req.root),
-                    req.prefer_relative,
-                ),
-                &req.root,
+            let (results, error) = match try_search_entries_with_scope(
                 &req.query,
-                req.prefer_relative,
+                &req.entries,
+                req.limit,
                 req.use_regex,
-            );
+                Some(&req.root),
+                req.prefer_relative,
+            ) {
+                Ok(raw_results) => (
+                    filter_search_results(
+                        raw_results,
+                        &req.root,
+                        &req.query,
+                        req.prefer_relative,
+                        req.use_regex,
+                    ),
+                    None,
+                ),
+                Err(err) => (Vec::new(), Some(err)),
+            };
 
             if tx_res
                 .send(SearchResponse {
                     request_id: req.request_id,
                     results,
+                    error,
                 })
                 .is_err()
             {
@@ -908,7 +916,11 @@ impl FlistWalkerApp {
             if Some(response.request_id) == self.pending_request_id {
                 self.pending_request_id = None;
                 self.search_in_progress = false;
-                self.clear_notice();
+                if let Some(error) = response.error {
+                    self.set_notice(format!("Search failed: {error}"));
+                } else {
+                    self.clear_notice();
+                }
                 self.apply_results(response.results);
             }
         }
@@ -1722,6 +1734,7 @@ impl eframe::App for FlistWalkerApp {
 mod tests {
     use super::*;
     use std::fs;
+    use std::sync::mpsc;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_root(name: &str) -> PathBuf {
@@ -1854,6 +1867,115 @@ mod tests {
         );
         let evicted = root.join("file-0.txt");
         assert!(!app.preview_cache.contains_key(&evicted));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn search_error_updates_notice() {
+        let root = test_root("search-error-notice");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<SearchResponse>();
+        app.search_rx = rx;
+        app.pending_request_id = Some(7);
+        app.search_in_progress = true;
+
+        tx.send(SearchResponse {
+            request_id: 7,
+            results: Vec::new(),
+            error: Some("invalid regex '[*': syntax error".to_string()),
+        })
+        .expect("send search response");
+
+        app.poll_search_response();
+
+        assert!(!app.search_in_progress);
+        assert!(app.notice.contains("Search failed:"));
+        assert!(app.notice.contains("invalid regex"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_finished_updates_state_and_notice() {
+        let root = test_root("filelist-finished");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<FileListResponse>();
+        app.filelist_rx = rx;
+        app.pending_filelist_request_id = Some(11);
+        app.filelist_in_progress = true;
+        app.use_filelist = false;
+
+        let filelist = root.join("FileList.txt");
+        tx.send(FileListResponse::Finished {
+            request_id: 11,
+            path: filelist.clone(),
+            count: 3,
+        })
+        .expect("send filelist response");
+
+        app.poll_filelist_response();
+
+        assert_eq!(app.pending_filelist_request_id, None);
+        assert!(!app.filelist_in_progress);
+        assert!(app.notice.contains("Created"));
+        assert!(app.notice.contains("3 entries"));
+        assert!(app.notice.contains(filelist.to_string_lossy().as_ref()));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_finished_triggers_reindex_when_enabled() {
+        let root = test_root("filelist-reindex");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+        app.filelist_rx = filelist_rx;
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        app.pending_filelist_request_id = Some(12);
+        app.filelist_in_progress = true;
+        app.use_filelist = true;
+
+        filelist_tx
+            .send(FileListResponse::Finished {
+                request_id: 12,
+                path: root.join("FileList.txt"),
+                count: 5,
+            })
+            .expect("send filelist response");
+
+        app.poll_filelist_response();
+
+        let req = index_rx.try_recv().expect("reindex request should be sent");
+        assert_eq!(req.root, root);
+        assert!(req.use_filelist);
+        assert!(app.index_in_progress);
+        assert!(app.pending_index_request_id.is_some());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_failed_updates_state_and_notice() {
+        let root = test_root("filelist-failed");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<FileListResponse>();
+        app.filelist_rx = rx;
+        app.pending_filelist_request_id = Some(13);
+        app.filelist_in_progress = true;
+
+        tx.send(FileListResponse::Failed {
+            request_id: 13,
+            error: "disk full".to_string(),
+        })
+        .expect("send filelist response");
+
+        app.poll_filelist_response();
+
+        assert_eq!(app.pending_filelist_request_id, None);
+        assert!(!app.filelist_in_progress);
+        assert!(app.notice.contains("Create File List failed: disk full"));
         let _ = fs::remove_dir_all(&root);
     }
 
