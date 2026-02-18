@@ -30,6 +30,9 @@ pub fn parse_query(query: &str) -> QuerySpec {
     let mut exclude_terms = Vec::new();
 
     for token in query.split_whitespace() {
+        if token == "!" || token == "'" {
+            continue;
+        }
         if token.starts_with('\'') && token.len() > 1 {
             exact_terms.push(token[1..].to_string());
         } else if token.starts_with('!') && token.len() > 1 {
@@ -317,6 +320,27 @@ mod tests {
 
         let excluded = search_entries("!readme", &entries, 10, false);
         assert_eq!(excluded.len(), 1);
+    }
+
+    #[test]
+    fn lone_operator_tokens_are_ignored() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/readme.md"),
+        ];
+
+        let out_bang = search_entries("!", &entries, 10, false);
+        assert_eq!(out_bang.len(), 2);
+
+        let out_quote = search_entries("'", &entries, 10, false);
+        assert_eq!(out_quote.len(), 2);
+
+        let out_mixed = search_entries("main !", &entries, 10, false);
+        assert_eq!(out_mixed.len(), 1);
+        assert_eq!(
+            out_mixed[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
     }
 
     #[test]
