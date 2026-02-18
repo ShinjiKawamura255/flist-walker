@@ -1565,6 +1565,7 @@ impl eframe::App for FlistWalkerApp {
                                 &self.root,
                                 &self.query,
                                 prefer_relative,
+                                self.use_regex,
                             );
 
                             let mut job = egui::text::LayoutJob::default();

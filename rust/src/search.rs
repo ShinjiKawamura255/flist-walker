@@ -255,6 +255,7 @@ pub fn search_entries(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn orders_by_score_and_limit() {
@@ -387,5 +388,20 @@ mod tests {
         let out = search_entries("main$", &entries, 10, false);
         assert_eq!(out.len(), 1);
         assert!(out[0].0.to_string_lossy().contains("domain"));
+    }
+
+    #[test]
+    #[ignore = "perf measurement; run explicitly"]
+    fn perf_search_100k_candidates_reports_latency() {
+        let entries: Vec<PathBuf> = (0..100_000)
+            .map(|i| PathBuf::from(format!("/tmp/src/module_{i:06}.rs")))
+            .collect();
+        let start = Instant::now();
+        let out = search_entries("module_123", &entries, 100, false);
+        let elapsed = start.elapsed();
+        eprintln!("search_100k_elapsed_ms={}", elapsed.as_millis());
+        assert!(!out.is_empty());
+        // Keep a generous guard as a smoke check; target remains documented as 100ms SHOULD.
+        assert!(elapsed < Duration::from_secs(2));
     }
 }

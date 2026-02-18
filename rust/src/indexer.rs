@@ -40,52 +40,8 @@ pub fn find_filelist(root: &Path) -> Option<PathBuf> {
         })
 }
 
-fn has_filelist_name(path: &Path) -> bool {
-    path.file_name()
-        .and_then(|s| s.to_str())
-        .map(|s| s.eq_ignore_ascii_case("filelist.txt"))
-        == Some(true)
-}
-
 pub fn find_filelist_in_first_level(root: &Path) -> Option<PathBuf> {
-    if let Some(root_hit) = find_filelist(root) {
-        return Some(root_hit);
-    }
-
-    let dirs: Vec<PathBuf> = fs::read_dir(root)
-        .ok()?
-        .flatten()
-        .filter_map(|entry| {
-            let path = entry.path();
-            if path.is_dir() {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    for dir in dirs {
-        let upper = dir.join("FileList.txt");
-        if upper.is_file() {
-            return Some(upper);
-        }
-        let lower = dir.join("filelist.txt");
-        if lower.is_file() {
-            return Some(lower);
-        }
-
-        if let Ok(iter) = fs::read_dir(&dir) {
-            if let Some(found) = iter
-                .flatten()
-                .map(|e| e.path())
-                .find(|p| p.is_file() && has_filelist_name(p))
-            {
-                return Some(found);
-            }
-        }
-    }
-    None
+    find_filelist(root)
 }
 
 pub fn parse_filelist(
@@ -441,23 +397,20 @@ mod tests {
     }
 
     #[test]
-    fn find_filelist_in_first_level_finds_nested_path() {
+    fn find_filelist_in_first_level_only_checks_root() {
         let root = test_root("find-first-level");
         let child = root.join("child");
         fs::create_dir_all(&child).expect("create child");
         fs::write(child.join("filelist.txt"), "a.txt\n").expect("write filelist");
 
-        let found = find_filelist_in_first_level(&root).expect("find nested filelist");
-        assert_eq!(
-            found.file_name().and_then(|s| s.to_str()),
-            Some("filelist.txt")
-        );
+        let found = find_filelist_in_first_level(&root);
+        assert!(found.is_none());
         let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
-    fn build_index_uses_nested_filelist_relative_to_its_directory() {
-        let root = test_root("nested-filelist-relative");
+    fn build_index_ignores_nested_filelist_and_uses_walker() {
+        let root = test_root("nested-filelist-ignored");
         let child = root.join("child");
         fs::create_dir_all(&child).expect("create child");
         let nested = child.join("nested.txt");
@@ -465,11 +418,8 @@ mod tests {
         fs::write(child.join("filelist.txt"), "nested.txt\n").expect("write filelist");
 
         let out = build_index_with_metadata(&root, true, true, false).expect("build index");
-        assert_eq!(
-            out.source,
-            IndexSource::FileList(child.join("filelist.txt"))
-        );
-        assert_eq!(out.entries, vec![nested]);
+        assert_eq!(out.source, IndexSource::Walker);
+        assert!(out.entries.contains(&nested));
         let _ = fs::remove_dir_all(&root);
     }
 }

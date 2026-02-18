@@ -3,9 +3,9 @@
     windows_subsystem = "windows"
 )]
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use flist_walker::app::{configure_egui_fonts, FlistWalkerApp};
 use flist_walker::indexer::build_index;
@@ -27,10 +27,7 @@ struct Args {
 }
 
 fn run_cli(args: &Args) -> Result<()> {
-    let root = args
-        .root
-        .canonicalize()
-        .unwrap_or_else(|_| args.root.clone());
+    let root = resolve_root(&args.root)?;
     let entries = build_index(&root, true, true, true)?;
     let query = args.query.trim();
     if query.is_empty() {
@@ -48,10 +45,7 @@ fn run_cli(args: &Args) -> Result<()> {
 }
 
 fn run_gui(args: &Args) -> Result<()> {
-    let root = args
-        .root
-        .canonicalize()
-        .unwrap_or_else(|_| args.root.clone());
+    let root = resolve_root(&args.root)?;
     let mut native_options = eframe::NativeOptions::default();
     let mut viewport =
         eframe::egui::ViewportBuilder::default().with_inner_size(eframe::egui::vec2(1400.0, 900.0));
@@ -114,6 +108,16 @@ fn premultiplied_to_unmultiplied_rgba(src: &[u8]) -> Vec<u8> {
         out.push(a as u8);
     }
     out
+}
+
+fn resolve_root(root: &Path) -> Result<PathBuf> {
+    let root = root
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize root: {}", root.display()))?;
+    if !root.is_dir() {
+        anyhow::bail!("root is not a directory: {}", root.display());
+    }
+    Ok(root)
 }
 
 fn main() -> Result<()> {

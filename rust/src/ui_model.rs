@@ -1,4 +1,5 @@
 use crate::actions::choose_action;
+use regex::RegexBuilder;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -103,14 +104,21 @@ fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
     }
 }
 
-fn highlight_terms(query: &str) -> Vec<String> {
+fn highlight_terms(query: &str, use_regex: bool) -> Vec<String> {
     let mut terms = Vec::new();
     for mut token in query.split_whitespace().map(ToString::to_string) {
         if token.starts_with('!') {
             continue;
         }
-        if token.starts_with('\'') {
+        let is_exact = token.starts_with('\'');
+        if is_exact {
             token = token[1..].to_string();
+        }
+        if use_regex && !is_exact {
+            if !token.is_empty() {
+                terms.push(token);
+            }
+            continue;
         }
         if token.starts_with('^') {
             token = token[1..].to_string();
@@ -130,6 +138,7 @@ pub fn match_positions_for_path(
     root: &Path,
     query: &str,
     prefer_relative: bool,
+    use_regex: bool,
 ) -> HashSet<usize> {
     let mut positions = HashSet::new();
     let display = display_path_with_mode(path, root, prefer_relative);
@@ -142,15 +151,23 @@ pub fn match_positions_for_path(
         .count()
         .saturating_sub(filename.chars().count());
 
-    for term in highlight_terms(query) {
-        let hits = find_match_positions(filename, &term);
+    for term in highlight_terms(query, use_regex) {
+        let hits = if use_regex {
+            find_regex_match_positions(filename, &term)
+        } else {
+            find_match_positions(filename, &term)
+        };
         if !hits.is_empty() {
             for pos in hits {
                 positions.insert(start + pos);
             }
             continue;
         }
-        positions.extend(find_match_positions(&display, &term));
+        if use_regex {
+            positions.extend(find_regex_match_positions(&display, &term));
+        } else {
+            positions.extend(find_match_positions(&display, &term));
+        }
     }
     positions
 }
@@ -159,11 +176,29 @@ pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative:
     if query.trim().is_empty() {
         return true;
     }
-    if highlight_terms(query).is_empty() {
+    if highlight_terms(query, false).is_empty() {
         // Exclusion-only queries are already filtered by search logic.
         return true;
     }
-    !match_positions_for_path(path, root, query, prefer_relative).is_empty()
+    !match_positions_for_path(path, root, query, prefer_relative, false).is_empty()
+}
+
+fn find_regex_match_positions(text: &str, pattern: &str) -> HashSet<usize> {
+    let mut out = HashSet::new();
+    let Ok(re) = RegexBuilder::new(pattern).case_insensitive(true).build() else {
+        return out;
+    };
+    for mat in re.find_iter(text) {
+        if mat.start() == mat.end() {
+            continue;
+        }
+        let start = text[..mat.start()].chars().count();
+        let len = text[mat.start()..mat.end()].chars().count();
+        for idx in start..start + len {
+            out.insert(idx);
+        }
+    }
+    out
 }
 
 pub fn build_preview_text(path: &Path) -> String {
@@ -324,7 +359,7 @@ mod tests {
     fn match_positions_ascii_query_work_with_multibyte_path() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/日本語/docs/readme.txt");
-        let positions = match_positions_for_path(&path, &root, "read", true);
+        let positions = match_positions_for_path(&path, &root, "read", true, false);
         assert!(!positions.is_empty());
     }
 
@@ -332,7 +367,7 @@ mod tests {
     fn match_positions_multibyte_query_only_highlights_matched_chars() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/日本語/テスト資料.txt");
-        let positions = match_positions_for_path(&path, &root, "テスト", true);
+        let positions = match_positions_for_path(&path, &root, "テスト", true, false);
         let display = display_path_with_mode(&path, &root, true);
         let chars: Vec<char> = display.chars().collect();
         let highlighted: String = chars
@@ -350,7 +385,7 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        let positions = match_positions_for_path(&sample, &root, "main !readme", true);
+        let positions = match_positions_for_path(&sample, &root, "main !readme", true, false);
         assert!(positions.len() >= 4);
         let _ = fs::remove_dir_all(&root);
     }
@@ -362,7 +397,7 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        let positions = match_positions_for_path(&sample, &root, "'main", true);
+        let positions = match_positions_for_path(&sample, &root, "'main", true, false);
         assert!(positions.len() >= 4);
         let _ = fs::remove_dir_all(&root);
     }
@@ -387,6 +422,14 @@ mod tests {
 
         assert!(has_visible_match(&sample, &root, "!readme", true));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn match_positions_regex_query_highlights_matched_span() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/main.py");
+        let positions = match_positions_for_path(&path, &root, "ma.*py", true, true);
+        assert!(!positions.is_empty());
     }
 
     #[test]
