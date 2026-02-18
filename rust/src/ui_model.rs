@@ -161,8 +161,12 @@ pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative:
 }
 
 pub fn build_preview_text(path: &Path) -> String {
+    build_preview_text_with_kind(path, path.is_dir())
+}
+
+pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
     let normalized_path = normalize_path_for_display(path);
-    if path.is_dir() {
+    if is_dir {
         return build_directory_preview_text(path, &normalized_path);
     }
 

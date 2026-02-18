@@ -4,11 +4,11 @@ use crate::indexer::{
 };
 use crate::search::search_entries;
 use crate::ui_model::{
-    build_preview_text, display_path_with_mode, has_visible_match, match_positions_for_path,
+    build_preview_text_with_kind, display_path_with_mode, has_visible_match, match_positions_for_path,
     normalize_path_for_display,
 };
 use eframe::egui;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -87,6 +87,12 @@ struct SearchResponse {
     results: Vec<(PathBuf, f64)>,
 }
 
+#[derive(Clone)]
+struct IndexEntry {
+    path: PathBuf,
+    is_dir: bool,
+}
+
 struct IndexRequest {
     request_id: u64,
     root: PathBuf,
@@ -102,7 +108,7 @@ enum IndexResponse {
     },
     Batch {
         request_id: u64,
-        entries: Vec<PathBuf>,
+        entries: Vec<IndexEntry>,
     },
     Finished {
         request_id: u64,
@@ -112,6 +118,18 @@ enum IndexResponse {
         request_id: u64,
         error: String,
     },
+}
+
+struct PreviewRequest {
+    request_id: u64,
+    path: PathBuf,
+    is_dir: bool,
+}
+
+struct PreviewResponse {
+    request_id: u64,
+    path: PathBuf,
+    preview: String,
 }
 
 fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
@@ -143,7 +161,37 @@ fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
     (tx_req, rx_res)
 }
 
-fn flush_batch(tx_res: &Sender<IndexResponse>, request_id: u64, buffer: &mut Vec<PathBuf>) -> bool {
+fn spawn_preview_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>) {
+    let (tx_req, rx_req) = mpsc::channel::<PreviewRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<PreviewResponse>();
+
+    thread::spawn(move || {
+        while let Ok(mut req) = rx_req.recv() {
+            while let Ok(newer) = rx_req.try_recv() {
+                req = newer;
+            }
+            let preview = build_preview_text_with_kind(&req.path, req.is_dir);
+            if tx_res
+                .send(PreviewResponse {
+                    request_id: req.request_id,
+                    path: req.path,
+                    preview,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res)
+}
+
+fn flush_batch(
+    tx_res: &Sender<IndexResponse>,
+    request_id: u64,
+    buffer: &mut Vec<IndexEntry>,
+) -> bool {
     if buffer.is_empty() {
         return true;
     }
@@ -177,7 +225,7 @@ fn stream_filelist_index(
     }
 
     let mut seen = HashSet::new();
-    let mut buffer = Vec::new();
+    let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
     for raw in text.lines() {
         let line = raw.trim();
@@ -196,8 +244,9 @@ fn stream_filelist_index(
         if abs.is_dir() && !req.include_dirs {
             continue;
         }
+        let is_dir = abs.is_dir();
         if seen.insert(abs.clone()) {
-            buffer.push(abs);
+            buffer.push(IndexEntry { path: abs, is_dir });
         }
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
             if !flush_batch(tx_res, req.request_id, &mut buffer) {
@@ -229,7 +278,7 @@ fn stream_walker_index(
         return Err("index receiver closed".to_string());
     }
 
-    let mut buffer = Vec::new();
+    let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
     for entry in WalkDir::new(root)
         .follow_links(false)
@@ -241,7 +290,10 @@ fn stream_walker_index(
         if (is_dir && !req.include_dirs) || (!is_dir && !req.include_files) {
             continue;
         }
-        buffer.push(entry.path().to_path_buf());
+        buffer.push(IndexEntry {
+            path: entry.path().to_path_buf(),
+            is_dir,
+        });
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
             if !flush_batch(tx_res, req.request_id, &mut buffer) {
                 return Err("index receiver closed".to_string());
@@ -339,6 +391,7 @@ pub struct FlistWalkerApp {
     include_dirs: bool,
     index: IndexBuildResult,
     entries: Arc<Vec<PathBuf>>,
+    entry_kinds: HashMap<PathBuf, bool>,
     results: Vec<(PathBuf, f64)>,
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
@@ -348,22 +401,30 @@ pub struct FlistWalkerApp {
     kill_buffer: String,
     search_tx: Sender<SearchRequest>,
     search_rx: Receiver<SearchResponse>,
+    preview_tx: Sender<PreviewRequest>,
+    preview_rx: Receiver<PreviewResponse>,
     index_tx: Sender<IndexRequest>,
     index_rx: Receiver<IndexResponse>,
     next_request_id: u64,
     pending_request_id: Option<u64>,
     next_index_request_id: u64,
     pending_index_request_id: Option<u64>,
+    next_preview_request_id: u64,
+    pending_preview_request_id: Option<u64>,
     search_in_progress: bool,
     index_in_progress: bool,
+    preview_in_progress: bool,
     scroll_to_current: bool,
     focus_query_requested: bool,
     saved_roots: Vec<PathBuf>,
+    preview_cache: HashMap<PathBuf, String>,
+    last_incremental_results_refresh: Instant,
 }
 
 impl FlistWalkerApp {
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
+        let (preview_tx, preview_rx) = spawn_preview_worker();
         let (index_tx, index_rx) = spawn_index_worker();
         let mut app = Self {
             root: Self::normalize_windows_path(root),
@@ -378,6 +439,7 @@ impl FlistWalkerApp {
                 source: IndexSource::None,
             },
             entries: Arc::new(Vec::new()),
+            entry_kinds: HashMap::new(),
             results: Vec::new(),
             pinned_paths: HashSet::new(),
             current_row: None,
@@ -387,17 +449,24 @@ impl FlistWalkerApp {
             kill_buffer: String::new(),
             search_tx,
             search_rx,
+            preview_tx,
+            preview_rx,
             index_tx,
             index_rx,
             next_request_id: 1,
             pending_request_id: None,
             next_index_request_id: 1,
             pending_index_request_id: None,
+            next_preview_request_id: 1,
+            pending_preview_request_id: None,
             search_in_progress: false,
             index_in_progress: false,
+            preview_in_progress: false,
             scroll_to_current: true,
             focus_query_requested: false,
             saved_roots: Self::load_saved_roots(),
+            preview_cache: HashMap::new(),
+            last_incremental_results_refresh: Instant::now(),
         };
         app.request_index_refresh();
         app
@@ -591,9 +660,14 @@ impl FlistWalkerApp {
             source: IndexSource::None,
         };
         self.entries = Arc::new(Vec::new());
+        self.entry_kinds.clear();
+        self.preview_cache.clear();
+        self.pending_preview_request_id = None;
+        self.preview_in_progress = false;
         self.results.clear();
         self.current_row = None;
         self.preview.clear();
+        self.last_incremental_results_refresh = Instant::now();
         self.refresh_status_line();
 
         let req = IndexRequest {
@@ -611,6 +685,13 @@ impl FlistWalkerApp {
     }
 
     fn poll_index_response(&mut self) {
+        const MAX_MESSAGES_PER_FRAME: usize = 12;
+        const FRAME_BUDGET: Duration = Duration::from_millis(4);
+        const INCREMENTAL_REFRESH_INTERVAL: Duration = Duration::from_millis(50);
+
+        let frame_start = Instant::now();
+        let mut processed = 0usize;
+        let mut needs_incremental_refresh = false;
         while let Ok(msg) = self.index_rx.try_recv() {
             match msg {
                 IndexResponse::Started { request_id, source } => {
@@ -622,15 +703,17 @@ impl FlistWalkerApp {
                 }
                 IndexResponse::Batch {
                     request_id,
-                    mut entries,
+                    entries,
                 } => {
                     if Some(request_id) != self.pending_index_request_id {
                         continue;
                     }
-                    self.index.entries.append(&mut entries);
+                    for entry in entries {
+                        self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+                        self.index.entries.push(entry.path);
+                    }
                     self.entries = Arc::new(self.index.entries.clone());
-                    // Refresh results with incremental snapshots so UI keeps updating while indexing.
-                    self.update_results();
+                    needs_incremental_refresh = true;
                 }
                 IndexResponse::Finished { request_id, source } => {
                     if Some(request_id) != self.pending_index_request_id {
@@ -652,6 +735,18 @@ impl FlistWalkerApp {
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
             }
+
+            processed = processed.saturating_add(1);
+            if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= FRAME_BUDGET {
+                break;
+            }
+        }
+
+        if needs_incremental_refresh
+            && self.last_incremental_results_refresh.elapsed() >= INCREMENTAL_REFRESH_INTERVAL
+        {
+            self.last_incremental_results_refresh = Instant::now();
+            self.update_results();
         }
     }
 
@@ -660,10 +755,12 @@ impl FlistWalkerApp {
         if self.results.is_empty() {
             self.current_row = None;
             self.preview.clear();
+            self.preview_in_progress = false;
+            self.pending_preview_request_id = None;
         } else {
             let max_index = self.results.len().saturating_sub(1);
             self.current_row = Some(self.current_row.unwrap_or(0).min(max_index));
-            self.set_preview_from_current();
+            self.request_preview_for_current();
             self.scroll_to_current = true;
         }
         self.refresh_status_line();
@@ -704,6 +801,25 @@ impl FlistWalkerApp {
         }
     }
 
+    fn poll_preview_response(&mut self) {
+        while let Ok(response) = self.preview_rx.try_recv() {
+            if Some(response.request_id) != self.pending_preview_request_id {
+                continue;
+            }
+            self.pending_preview_request_id = None;
+            self.preview_in_progress = false;
+            self.preview_cache
+                .insert(response.path.clone(), response.preview.clone());
+            if let Some(row) = self.current_row {
+                if let Some((current_path, _)) = self.results.get(row) {
+                    if *current_path == response.path {
+                        self.preview = response.preview;
+                    }
+                }
+            }
+        }
+    }
+
     fn update_results(&mut self) {
         if self.query.trim().is_empty() {
             self.pending_request_id = None;
@@ -721,14 +837,49 @@ impl FlistWalkerApp {
         self.enqueue_search_request();
     }
 
-    fn set_preview_from_current(&mut self) {
+    fn current_result_kind(&self) -> Option<bool> {
+        let row = self.current_row?;
+        let (path, _) = self.results.get(row)?;
+        self.entry_kinds.get(path).copied()
+    }
+
+    fn request_preview_for_current(&mut self) {
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
-                self.preview = build_preview_text(path);
+                if let Some(cached) = self.preview_cache.get(path) {
+                    self.preview = cached.clone();
+                    self.preview_in_progress = false;
+                    self.pending_preview_request_id = None;
+                    return;
+                }
+
+                let Some(is_dir) = self.current_result_kind() else {
+                    self.preview.clear();
+                    self.preview_in_progress = false;
+                    self.pending_preview_request_id = None;
+                    return;
+                };
+                self.preview = "Loading preview...".to_string();
+                let request_id = self.next_preview_request_id;
+                self.next_preview_request_id = self.next_preview_request_id.saturating_add(1);
+                self.pending_preview_request_id = Some(request_id);
+                self.preview_in_progress = true;
+                let req = PreviewRequest {
+                    request_id,
+                    path: path.clone(),
+                    is_dir,
+                };
+                if self.preview_tx.send(req).is_err() {
+                    self.preview_in_progress = false;
+                    self.pending_preview_request_id = None;
+                    self.preview = "<preview unavailable>".to_string();
+                }
                 return;
             }
         }
         self.preview.clear();
+        self.preview_in_progress = false;
+        self.pending_preview_request_id = None;
     }
 
     fn move_row(&mut self, delta: isize) {
@@ -739,7 +890,7 @@ impl FlistWalkerApp {
         let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
         self.current_row = Some(next);
         self.scroll_to_current = true;
-        self.set_preview_from_current();
+        self.request_preview_for_current();
         self.refresh_status_line();
     }
 
@@ -1117,8 +1268,9 @@ impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_index_response();
         self.poll_search_response();
+        self.poll_preview_response();
         self.handle_shortcuts(ctx);
-        if self.search_in_progress || self.index_in_progress {
+        if self.search_in_progress || self.index_in_progress || self.preview_in_progress {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
 
@@ -1284,6 +1436,7 @@ impl eframe::App for FlistWalkerApp {
                             let is_pinned = self.pinned_paths.contains(path);
                             let marker_current = if is_current { "▶" } else { "·" };
                             let marker_pin = if is_pinned { "◆" } else { "·" };
+                            let is_dir = self.entry_kinds.get(path).copied().unwrap_or(false);
                             let display = display_path_with_mode(path, &self.root, prefer_relative);
                             let positions = match_positions_for_path(
                                 path,
@@ -1305,12 +1458,12 @@ impl eframe::App for FlistWalkerApp {
                                     ..Default::default()
                                 },
                             );
-                            let kind = if path.is_dir() { "DIR " } else { "FILE" };
+                            let kind = if is_dir { "DIR " } else { "FILE" };
                             job.append(
                                 kind,
                                 0.0,
                                 egui::TextFormat {
-                                    color: if path.is_dir() {
+                                    color: if is_dir {
                                         egui::Color32::from_rgb(52, 211, 153)
                                     } else {
                                         egui::Color32::from_rgb(96, 165, 250)
@@ -1354,7 +1507,7 @@ impl eframe::App for FlistWalkerApp {
                         }
                         if let Some(i) = clicked_row {
                             self.current_row = Some(i);
-                            self.set_preview_from_current();
+                            self.request_preview_for_current();
                             self.refresh_status_line();
                         }
                         if let Some(i) = execute_row {
