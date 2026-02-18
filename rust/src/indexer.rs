@@ -99,13 +99,24 @@ pub fn parse_filelist(
     let mut seen = HashSet::new();
     let mut out = Vec::new();
 
+    let filelist_base = filelist_path.parent().unwrap_or(root);
+
     for raw in text.lines() {
         let line = raw.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
         let p = PathBuf::from(line);
-        let abs = if p.is_absolute() { p } else { root.join(p) };
+        let abs = if p.is_absolute() {
+            p
+        } else {
+            let from_filelist = filelist_base.join(&p);
+            if from_filelist.exists() {
+                from_filelist
+            } else {
+                root.join(p)
+            }
+        };
         let abs = abs.canonicalize().unwrap_or(abs);
         if !abs.exists() {
             continue;
@@ -441,6 +452,24 @@ mod tests {
             found.file_name().and_then(|s| s.to_str()),
             Some("filelist.txt")
         );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_index_uses_nested_filelist_relative_to_its_directory() {
+        let root = test_root("nested-filelist-relative");
+        let child = root.join("child");
+        fs::create_dir_all(&child).expect("create child");
+        let nested = child.join("nested.txt");
+        fs::write(&nested, "x").expect("write nested");
+        fs::write(child.join("filelist.txt"), "nested.txt\n").expect("write filelist");
+
+        let out = build_index_with_metadata(&root, true, true, false).expect("build index");
+        assert_eq!(
+            out.source,
+            IndexSource::FileList(child.join("filelist.txt"))
+        );
+        assert_eq!(out.entries, vec![nested]);
         let _ = fs::remove_dir_all(&root);
     }
 }

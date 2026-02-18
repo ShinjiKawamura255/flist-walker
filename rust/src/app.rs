@@ -1,12 +1,12 @@
 use crate::actions::execute_or_open;
 use crate::indexer::{
-    build_index_with_metadata, find_filelist_in_first_level, write_filelist, IndexBuildResult,
-    IndexSource,
+    build_index_with_metadata, find_filelist_in_first_level, parse_filelist, write_filelist,
+    IndexBuildResult, IndexSource,
 };
 use crate::search::search_entries;
 use crate::ui_model::{
-    build_preview_text_with_kind, display_path_with_mode, has_visible_match, match_positions_for_path,
-    normalize_path_for_display,
+    build_preview_text_with_kind, display_path_with_mode, has_visible_match,
+    match_positions_for_path, normalize_path_for_display,
 };
 use eframe::egui;
 use std::collections::{HashMap, HashSet};
@@ -88,6 +88,23 @@ struct SearchResponse {
     results: Vec<(PathBuf, f64)>,
 }
 
+fn filter_search_results(
+    results: Vec<(PathBuf, f64)>,
+    root: &Path,
+    query: &str,
+    prefer_relative: bool,
+    use_regex: bool,
+) -> Vec<(PathBuf, f64)> {
+    if use_regex {
+        return results;
+    }
+
+    results
+        .into_iter()
+        .filter(|(path, _)| has_visible_match(path, root, query, prefer_relative))
+        .collect()
+}
+
 #[derive(Clone)]
 struct IndexEntry {
     path: PathBuf,
@@ -161,10 +178,13 @@ fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
-            let results = search_entries(&req.query, &req.entries, req.limit, req.use_regex)
-                .into_iter()
-                .filter(|(p, _)| has_visible_match(p, &req.root, &req.query, req.prefer_relative))
-                .collect();
+            let results = filter_search_results(
+                search_entries(&req.query, &req.entries, req.limit, req.use_regex),
+                &req.root,
+                &req.query,
+                req.prefer_relative,
+                req.use_regex,
+            );
 
             if tx_res
                 .send(SearchResponse {
@@ -213,12 +233,13 @@ fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListRespons
 
     thread::spawn(move || {
         while let Ok(req) = rx_req.recv() {
-            let result = build_index_with_metadata(&req.root, false, req.include_files, req.include_dirs)
-                .and_then(|snapshot| {
-                    let count = snapshot.entries.len();
-                    write_filelist(&req.root, &snapshot.entries, "FileList.txt")
-                        .map(|path| (path, count))
-                });
+            let result =
+                build_index_with_metadata(&req.root, false, req.include_files, req.include_dirs)
+                    .and_then(|snapshot| {
+                        let count = snapshot.entries.len();
+                        write_filelist(&req.root, &snapshot.entries, "FileList.txt")
+                            .map(|path| (path, count))
+                    });
             let msg = match result {
                 Ok((path, count)) => FileListResponse::Finished {
                     request_id: req.request_id,
@@ -262,8 +283,8 @@ fn stream_filelist_index(
     root: &std::path::Path,
     filelist: PathBuf,
 ) -> std::result::Result<IndexSource, String> {
-    let text = fs::read_to_string(&filelist)
-        .map_err(|e| format!("failed to read {}: {}", filelist.display(), e))?;
+    let parsed = parse_filelist(&filelist, root, req.include_files, req.include_dirs)
+        .map_err(|e| e.to_string())?;
 
     let source = IndexSource::FileList(filelist);
     if tx_res
@@ -276,30 +297,11 @@ fn stream_filelist_index(
         return Err("index receiver closed".to_string());
     }
 
-    let mut seen = HashSet::new();
     let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
-    for raw in text.lines() {
-        let line = raw.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let p = PathBuf::from(line);
-        let abs = if p.is_absolute() { p } else { root.join(p) };
-        let abs = abs.canonicalize().unwrap_or(abs);
-        if !abs.exists() {
-            continue;
-        }
-        if abs.is_file() && !req.include_files {
-            continue;
-        }
-        if abs.is_dir() && !req.include_dirs {
-            continue;
-        }
-        let is_dir = abs.is_dir();
-        if seen.insert(abs.clone()) {
-            buffer.push(IndexEntry { path: abs, is_dir });
-        }
+    for path in parsed {
+        let is_dir = path.is_dir();
+        buffer.push(IndexEntry { path, is_dir });
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
             if !flush_batch(tx_res, req.request_id, &mut buffer) {
                 return Err("index receiver closed".to_string());
@@ -1758,6 +1760,16 @@ mod tests {
 
         assert!(app.prefer_relative_display());
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regex_query_is_not_filtered_out_by_visible_match_guard() {
+        let root = PathBuf::from("/tmp");
+        let results = vec![(PathBuf::from("/tmp/src/main.py"), 42.0)];
+
+        let out = filter_search_results(results, &root, "ma.*py", true, true);
+
+        assert_eq!(out.len(), 1);
     }
 
     #[test]
