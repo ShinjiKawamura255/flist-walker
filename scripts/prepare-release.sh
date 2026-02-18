@@ -55,6 +55,21 @@ Contents:
 Run:
 - Double-click on Windows
 - or execute from PowerShell/CMD
+
+Search hints:
+- Tokens are AND-ed (example: main py)
+- '\''term = exact match token (example: '\''main.py)
+- !term = exclusion token (example: main !test)
+- ^term = prefer prefix match (example: ^src)
+- term$ = prefer suffix match (example: .rs$)
+
+Keyboard shortcuts:
+- Up/Down or Ctrl+P/Ctrl+N: move current row
+- Enter (or Ctrl+J/Ctrl+M): open/execute selected item(s)
+- Tab / Shift+Tab: toggle pin and move next/prev
+- Ctrl+Shift+C: copy selected path(s)
+- Ctrl+G: clear query and pinned selection
+- Ctrl+L: focus query input
 README
 
 (

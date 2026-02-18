@@ -10,9 +10,9 @@
 - `FlistWalker-<version>-windows-x86_64.zip`
 - `SHA256SUMS`
 
-例（v0.1.0）:
-- `FlistWalker-0.1.0-windows-x86_64.exe`
-- `FlistWalker-0.1.0-windows-x86_64.zip`
+例（v0.1.1）:
+- `FlistWalker-0.1.1-windows-x86_64.exe`
+- `FlistWalker-0.1.1-windows-x86_64.zip`
 - `SHA256SUMS`
 
 ## zip に含めるもの
@@ -25,8 +25,8 @@
 - PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1`
 
 2. リリースアセットを生成する。
-- WSL/Linux: `./scripts/prepare-release.sh v0.1.0`
-- PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.1.0`
+- WSL/Linux: `./scripts/prepare-release.sh v0.1.1`
+- PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.1.1`
 
 3. `dist/v0.1.0/` 内の3ファイルを GitHub Releases にアップロードする。
 - `*.exe`

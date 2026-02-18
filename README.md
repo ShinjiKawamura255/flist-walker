@@ -71,11 +71,11 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win-clean.ps1
 `exe単体 + zip` のアセットは次で生成できます。
 
 ```bash
-./scripts/prepare-release.sh v0.1.0
+./scripts/prepare-release.sh v0.1.1
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.1.0
+powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.1.1
 ```
 
 詳細は `docs/RELEASE.md` を参照してください。
