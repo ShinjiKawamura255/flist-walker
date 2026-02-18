@@ -659,7 +659,10 @@ impl FlistWalkerApp {
     }
 
     fn prefer_relative_display(&self) -> bool {
-        matches!(self.index.source, IndexSource::Walker)
+        matches!(
+            self.index.source,
+            IndexSource::Walker | IndexSource::FileList(_)
+        )
     }
 
     fn refresh_status_line(&mut self) {
@@ -1743,6 +1746,17 @@ mod tests {
         assert_eq!(app.query, "abc");
         assert_eq!(cursor, 3);
         assert_eq!(anchor, 3);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn prefer_relative_display_is_enabled_for_filelist_source() {
+        let root = test_root("prefer-relative-filelist");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index.source = IndexSource::FileList(root.join("FileList.txt"));
+
+        assert!(app.prefer_relative_display());
         let _ = fs::remove_dir_all(&root);
     }
 
