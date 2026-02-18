@@ -500,7 +500,6 @@ pub struct FlistWalkerApp {
 impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX: usize = 512;
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
-    const INCREMENTAL_SEARCH_MIN_DELTA: usize = 2000;
 
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
@@ -795,6 +794,7 @@ impl FlistWalkerApp {
         let frame_start = Instant::now();
         let mut processed = 0usize;
         let mut needs_incremental_refresh = false;
+        let mut finished_current_request = false;
         while let Ok(msg) = self.index_rx.try_recv() {
             match msg {
                 IndexResponse::Started { request_id, source } => {
@@ -828,6 +828,9 @@ impl FlistWalkerApp {
                     self.index_in_progress = false;
                     self.update_results();
                     self.clear_notice();
+                    finished_current_request = true;
+                    needs_incremental_refresh = false;
+                    break;
                 }
                 IndexResponse::Failed { request_id, error } => {
                     if Some(request_id) != self.pending_index_request_id {
@@ -848,6 +851,9 @@ impl FlistWalkerApp {
         if !needs_incremental_refresh {
             return;
         }
+        if finished_current_request {
+            return;
+        }
 
         if self.query.trim().is_empty() {
             // Empty query is the progressive browsing mode: show newest indexed entries
@@ -858,12 +864,13 @@ impl FlistWalkerApp {
 
         let current_len = self.index.entries.len();
         let delta = current_len.saturating_sub(self.last_search_snapshot_len);
-        if delta >= Self::INCREMENTAL_SEARCH_MIN_DELTA
+        if delta > 0
             && self.last_incremental_results_refresh.elapsed()
                 >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
         {
             // Non-empty query still needs progressive refresh, but cloning huge snapshots
-            // every batch stalls UI. Throttle by both item delta and time window.
+            // every batch stalls UI. Throttle by time window to keep results visible
+            // even on very slow indexers with small incremental deltas.
             self.entries = Arc::new(self.index.entries.clone());
             self.last_search_snapshot_len = self.entries.len();
             self.last_incremental_results_refresh = Instant::now();
@@ -1976,6 +1983,67 @@ mod tests {
         assert_eq!(app.pending_filelist_request_id, None);
         assert!(!app.filelist_in_progress);
         assert!(app.notice.contains("Create File List failed: disk full"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn non_empty_query_incremental_refresh_updates_entries_with_small_delta() {
+        let root = test_root("incremental-small-delta");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        app.pending_index_request_id = Some(21);
+        app.index_in_progress = true;
+        app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(1);
+
+        let path = root.join("main.rs");
+        tx.send(IndexResponse::Batch {
+            request_id: 21,
+            entries: vec![IndexEntry {
+                path: path.clone(),
+                is_dir: false,
+            }],
+        })
+        .expect("send index batch");
+
+        app.poll_index_response();
+
+        assert_eq!(app.entries.len(), 1);
+        assert_eq!(app.entries[0], path);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
+        let root = test_root("empty-query-finished-priority");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        app.pending_index_request_id = Some(31);
+        app.index_in_progress = true;
+
+        let path = root.join("main.rs");
+        tx.send(IndexResponse::Batch {
+            request_id: 31,
+            entries: vec![IndexEntry {
+                path: path.clone(),
+                is_dir: false,
+            }],
+        })
+        .expect("send index batch");
+        tx.send(IndexResponse::Finished {
+            request_id: 31,
+            source: IndexSource::Walker,
+        })
+        .expect("send index finished");
+
+        app.poll_index_response();
+
+        assert_eq!(app.entries.len(), 1);
+        assert_eq!(app.results.len(), 1);
+        assert_eq!(app.entries[0], path);
         let _ = fs::remove_dir_all(&root);
     }
 
