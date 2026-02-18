@@ -44,6 +44,9 @@ WSL / Linux シェルから:
 ./scripts/build-rust-win.sh
 ```
 
+このスクリプトは WSL から `powershell.exe` を呼び出し、Windows 側の `rustup/cargo` でビルドします。
+Explorer アイコンを正しく埋め込むため、Windows 側に Rust（MSVC ツールチェイン）をセットアップしてください。
+
 クリーンビルド:
 
 ```bash

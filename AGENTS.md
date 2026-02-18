@@ -6,11 +6,11 @@
 - 目的: `fzf --walker` 相当の体験で、ファイル/フォルダを高速にファジー検索し、選択結果を実行またはオープンできる Rust ツールを開発する。
 - スコープ In:
 - Rust での本実装（GUI/CLI）
-- `FileList.txt` / `filelist.txt` 優先読み込み（現行は第一階層探索を含む）
+- `FileList.txt` / `filelist.txt` 優先読み込み（ルート直下のみ探索）
 - File/Folder walker の分離
 - fzf 互換クエリ（`'` 完全一致、`!` 除外、`^`/`$` の先頭末尾条件）
 - 検索ハイライト、非マッチ非表示、複数選択と一括操作
-- Windows 向けクロスコンパイル運用（`cargo-xwin`）
+- Windows 向けビルド運用（WSL から PowerShell 経由で Windows 側 Rust を実行）
 - `docs/` の SDD + TDD 文書保守
 - スコープ Out:
 - 旧プロトタイプの機能追加

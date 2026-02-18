@@ -2,7 +2,7 @@
 
 FlistWalker の Rust 本実装です。
 
-## Build
+## Build (WSL/Linux host)
 
 ```bash
 cd rust
@@ -10,11 +10,19 @@ source ~/.cargo/env
 cargo build
 ```
 
-Windows 向けクロスコンパイル（WSL）:
+## Build (Windows EXE with Explorer icon)
+
+WSL から Windows 側 Rust を使ってビルド:
 
 ```bash
 cd ..
 ./scripts/build-rust-win.sh
+```
+
+PowerShell から直接ビルド:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1
 ```
 
 ## Run (GUI)

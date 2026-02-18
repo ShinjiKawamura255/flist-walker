@@ -43,9 +43,8 @@ fn main() {
     if host.contains("windows") || has_explicit_rc {
         let mut res = winres::WindowsResource::new();
         res.set_icon(ico_path.to_str().expect("ico path utf-8"));
-        if let Err(err) = res.compile() {
-            println!("cargo:warning=failed to embed Windows icon: {err}");
-        }
+        res.compile()
+            .expect("failed to embed Windows icon resource");
     } else {
         println!(
             "cargo:warning=skipping Windows EXE icon embedding on non-Windows host \

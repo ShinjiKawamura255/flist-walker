@@ -2,6 +2,9 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoDir = Split-Path -Parent $ScriptDir
@@ -9,10 +12,39 @@ $RustDir = Join-Path $RepoDir 'rust'
 $Target = 'x86_64-pc-windows-msvc'
 $BuiltExePath = Join-Path $RustDir "target\$Target\release\flistwalker.exe"
 $ExePath = Join-Path $RustDir "target\$Target\release\FlistWalker.exe"
-$CargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+$CargoBinCandidates = @()
+if ($env:CARGO_HOME) {
+    $CargoBinCandidates += (Join-Path $env:CARGO_HOME 'bin')
+}
+if ($env:USERPROFILE) {
+    $CargoBinCandidates += (Join-Path $env:USERPROFILE '.cargo\bin')
+}
+$CargoBinCandidates = $CargoBinCandidates | Select-Object -Unique
+foreach ($bin in $CargoBinCandidates) {
+    if (Test-Path -LiteralPath $bin) {
+        $env:PATH = "$bin;$env:PATH"
+    }
+}
 
-if (Test-Path -LiteralPath $CargoBin) {
-    $env:PATH = "$CargoBin;$env:PATH"
+function Resolve-Tool([string]$Name) {
+    $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    foreach ($bin in $CargoBinCandidates) {
+        $candidate = Join-Path $bin ("$Name.exe")
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
+function Invoke-Native([string]$Exe, [string[]]$Arguments) {
+    $prevErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $Exe @Arguments
+    $code = $LASTEXITCODE
+    $ErrorActionPreference = $prevErrorAction
+    return $code
 }
 
 if (-not (Test-Path -LiteralPath $RustDir)) {
@@ -20,25 +52,18 @@ if (-not (Test-Path -LiteralPath $RustDir)) {
     exit 1
 }
 
-try {
-    & rustup --version *> $null
-    & cargo --version *> $null
-}
-catch {
-    Write-Error "rustup/cargo not found. Install Rust with rustup on Windows, or run scripts/build-rust-win.sh from WSL."
-    exit 1
-}
-
-try {
-    & cargo xwin --version *> $null
-}
-catch {
-    Write-Error "cargo-xwin not found. Run: cargo install cargo-xwin"
+$RustupExe = Resolve-Tool 'rustup'
+$CargoExe = Resolve-Tool 'cargo'
+if (-not $RustupExe -or -not $CargoExe) {
+    Write-Error "rustup/cargo not found on Windows PATH. Install Rust with rustup (msvc toolchain)."
     exit 1
 }
 
 Write-Host "==> Ensure target: $Target"
-& rustup target add $Target *> $null
+$targetAddExit = Invoke-Native $RustupExe @('target', 'add', $Target)
+if ($targetAddExit -ne 0) {
+    exit $targetAddExit
+}
 
 if (Test-Path -LiteralPath $ExePath) {
     try {
@@ -63,9 +88,9 @@ if (Test-Path -LiteralPath $BuiltExePath) {
 
 Write-Host "==> Build (release): $Target"
 Set-Location -LiteralPath $RustDir
-& cargo xwin build --release --target $Target
-if ($LASTEXITCODE -ne 0) {
-    exit $LASTEXITCODE
+$buildExit = Invoke-Native $CargoExe @('build', '--release', '--target', $Target)
+if ($buildExit -ne 0) {
+    exit $buildExit
 }
 
 if ((Test-Path -LiteralPath $BuiltExePath) -and ($BuiltExePath.ToLowerInvariant() -ne $ExePath.ToLowerInvariant())) {
