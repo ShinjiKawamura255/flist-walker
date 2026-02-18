@@ -3,7 +3,7 @@ use crate::indexer::{
     build_index_with_metadata, find_filelist_in_first_level, parse_filelist, write_filelist,
     IndexBuildResult, IndexSource,
 };
-use crate::search::search_entries;
+use crate::search::search_entries_with_scope;
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, has_visible_match,
     match_positions_for_path, normalize_path_for_display,
@@ -179,7 +179,14 @@ fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
                 req = newer;
             }
             let results = filter_search_results(
-                search_entries(&req.query, &req.entries, req.limit, req.use_regex),
+                search_entries_with_scope(
+                    &req.query,
+                    &req.entries,
+                    req.limit,
+                    req.use_regex,
+                    Some(&req.root),
+                    req.prefer_relative,
+                ),
                 &req.root,
                 &req.query,
                 req.prefer_relative,

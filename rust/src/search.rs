@@ -124,13 +124,30 @@ fn matches_include_term(term: &str, name: &str, full: &str, use_regex: bool) -> 
     is_fuzzy_match(core, name) || is_fuzzy_match(core, full)
 }
 
-fn matches_spec(spec: &QuerySpec, path: &Path, use_regex: bool) -> bool {
+fn searchable_full(path: &Path, root: Option<&Path>, prefer_relative: bool) -> String {
+    if prefer_relative {
+        if let Some(root) = root {
+            if let Ok(rel) = path.strip_prefix(root) {
+                return rel.to_string_lossy().to_ascii_lowercase();
+            }
+        }
+    }
+    path.to_string_lossy().to_ascii_lowercase()
+}
+
+fn matches_spec(
+    spec: &QuerySpec,
+    path: &Path,
+    use_regex: bool,
+    root: Option<&Path>,
+    prefer_relative: bool,
+) -> bool {
     let name = path
         .file_name()
         .and_then(|s| s.to_str())
         .unwrap_or_default()
         .to_ascii_lowercase();
-    let full = path.to_string_lossy().to_ascii_lowercase();
+    let full = searchable_full(path, root, prefer_relative);
 
     for term in &spec.exclude_terms {
         if matches_exclusion_term(term, &name, &full) {
@@ -175,6 +192,17 @@ pub fn search_entries(
     limit: usize,
     use_regex: bool,
 ) -> Vec<(PathBuf, f64)> {
+    search_entries_with_scope(query, entries, limit, use_regex, None, false)
+}
+
+pub fn search_entries_with_scope(
+    query: &str,
+    entries: &[PathBuf],
+    limit: usize,
+    use_regex: bool,
+    root: Option<&Path>,
+    prefer_relative: bool,
+) -> Vec<(PathBuf, f64)> {
     let query = query.trim();
     if query.is_empty() || limit == 0 {
         return Vec::new();
@@ -183,7 +211,7 @@ pub fn search_entries(
     let spec = parse_query(query);
     let filtered: Vec<PathBuf> = entries
         .iter()
-        .filter(|p| matches_spec(&spec, p, use_regex))
+        .filter(|p| matches_spec(&spec, p, use_regex, root, prefer_relative))
         .cloned()
         .collect();
 
@@ -215,13 +243,13 @@ pub fn search_entries(
     let mut scored = Vec::with_capacity(filtered.len());
 
     for path in filtered {
-        let full = path.to_string_lossy().to_string();
+        let full = searchable_full(&path, root, prefer_relative);
         let name = path
             .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or_default()
             .to_ascii_lowercase();
-        let full_lower = full.to_ascii_lowercase();
+        let full_lower = full;
 
         let mut score = if !q.is_empty() {
             matcher
@@ -403,5 +431,15 @@ mod tests {
         assert!(!out.is_empty());
         // Keep a generous guard as a smoke check; target remains documented as 100ms SHOULD.
         assert!(elapsed < Duration::from_secs(2));
+    }
+
+    #[test]
+    fn exclusion_uses_visible_relative_path_when_scope_is_relative() {
+        let root = PathBuf::from("/home/alice/work");
+        let entries = vec![PathBuf::from("/home/alice/work/docs/readme.md")];
+
+        let out = search_entries_with_scope("!ali", &entries, 10, false, Some(&root), true);
+
+        assert_eq!(out.len(), 1);
     }
 }

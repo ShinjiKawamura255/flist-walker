@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use flist_walker::app::{configure_egui_fonts, FlistWalkerApp};
 use flist_walker::indexer::build_index;
-use flist_walker::search::search_entries;
+use flist_walker::search::search_entries_with_scope;
 use resvg::{tiny_skia, usvg};
 
 #[derive(Parser, Debug)]
@@ -37,7 +37,14 @@ fn run_cli(args: &Args) -> Result<()> {
         return Ok(());
     }
 
-    let results = search_entries(query, &entries, args.limit.min(1000), false);
+    let results = search_entries_with_scope(
+        query,
+        &entries,
+        args.limit.min(1000),
+        false,
+        Some(&root),
+        true,
+    );
     for (path, score) in results {
         println!("[{score:6.1}] {}", path.display());
     }
