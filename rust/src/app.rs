@@ -786,7 +786,6 @@ impl FlistWalkerApp {
                         self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
                         self.index.entries.push(entry.path);
                     }
-                    self.entries = Arc::new(self.index.entries.clone());
                     needs_incremental_refresh = true;
                 }
                 IndexResponse::Finished { request_id, source } => {
@@ -820,6 +819,7 @@ impl FlistWalkerApp {
             && self.last_incremental_results_refresh.elapsed() >= INCREMENTAL_REFRESH_INTERVAL
         {
             self.last_incremental_results_refresh = Instant::now();
+            self.entries = Arc::new(self.index.entries.clone());
             self.update_results();
         }
     }

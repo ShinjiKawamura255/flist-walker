@@ -1,5 +1,7 @@
 use crate::actions::choose_action;
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 fn normalize_windows_display(text: &str) -> String {
@@ -169,6 +171,9 @@ pub fn build_preview_text(path: &Path) -> String {
 }
 
 pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
+    const PREVIEW_MAX_LINES: usize = 20;
+    const PREVIEW_MAX_BYTES: usize = 64 * 1024;
+
     let normalized_path = normalize_path_for_display(path);
     if is_dir {
         return build_directory_preview_text(path, &normalized_path);
@@ -185,9 +190,8 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
     let action = format!("{:?}", choose_action(path));
     let head = format!("File: {}\nAction: {}\n", normalized_path, action);
 
-    match std::fs::read_to_string(path) {
-        Ok(text) => {
-            let preview: Vec<&str> = text.lines().take(20).collect();
+    match read_preview_lines(path, PREVIEW_MAX_LINES, PREVIEW_MAX_BYTES) {
+        Ok(preview) => {
             if preview.is_empty() {
                 format!("{}\n<empty file>", head)
             } else {
@@ -196,6 +200,30 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
         }
         Err(_) => format!("{}\n<binary or unreadable file>", head),
     }
+}
+
+fn read_preview_lines(
+    path: &Path,
+    max_lines: usize,
+    max_bytes: usize,
+) -> std::io::Result<Vec<String>> {
+    let file = File::open(path)?;
+    let mut reader = BufReader::new(file);
+    let mut out = Vec::new();
+    let mut bytes_read = 0usize;
+
+    while out.len() < max_lines && bytes_read < max_bytes {
+        let mut line = String::new();
+        let n = reader.read_line(&mut line)?;
+        if n == 0 {
+            break;
+        }
+        bytes_read = bytes_read.saturating_add(n);
+        let trimmed = line.trim_end_matches(&['\r', '\n'][..]).to_string();
+        out.push(trimmed);
+    }
+
+    Ok(out)
 }
 
 fn is_on_demand_offline(path: &Path) -> bool {
@@ -391,6 +419,24 @@ mod tests {
         assert!(preview.contains("File:"));
         assert!(preview.contains("Action:"));
         assert!(preview.contains("line1"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_limits_lines() {
+        let root = test_root("preview-limit-lines");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("many-lines.txt");
+        let body = (1..=40)
+            .map(|i| format!("line{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&file, format!("{body}\n")).expect("write file");
+
+        let preview = build_preview_text(&file);
+        assert!(preview.contains("line1"));
+        assert!(preview.contains("line20"));
+        assert!(!preview.contains("line21"));
         let _ = fs::remove_dir_all(&root);
     }
 
