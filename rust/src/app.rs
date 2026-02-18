@@ -1,6 +1,7 @@
 use crate::actions::execute_or_open;
 use crate::indexer::{
-    build_index_with_metadata, find_filelist, write_filelist, IndexBuildResult, IndexSource,
+    build_index_with_metadata, find_filelist_in_first_level, write_filelist, IndexBuildResult,
+    IndexSource,
 };
 use crate::search::search_entries;
 use crate::ui_model::{
@@ -87,6 +88,16 @@ struct SearchResponse {
     results: Vec<(PathBuf, f64)>,
 }
 
+struct PreviewRequest {
+    request_id: u64,
+    path: PathBuf,
+}
+
+struct PreviewResponse {
+    request_id: u64,
+    preview: String,
+}
+
 struct IndexRequest {
     request_id: u64,
     root: PathBuf,
@@ -132,6 +143,31 @@ fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
                 .send(SearchResponse {
                     request_id: req.request_id,
                     results,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res)
+}
+
+fn spawn_preview_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>) {
+    let (tx_req, rx_req) = mpsc::channel::<PreviewRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<PreviewResponse>();
+
+    thread::spawn(move || {
+        while let Ok(mut req) = rx_req.recv() {
+            while let Ok(newer) = rx_req.try_recv() {
+                req = newer;
+            }
+            let preview = build_preview_text(&req.path);
+            if tx_res
+                .send(PreviewResponse {
+                    request_id: req.request_id,
+                    preview,
                 })
                 .is_err()
             {
@@ -290,7 +326,7 @@ fn spawn_index_worker() -> (Sender<IndexRequest>, Receiver<IndexResponse>) {
 
             let root = req.root.canonicalize().unwrap_or_else(|_| req.root.clone());
             let result = if req.use_filelist {
-                if let Some(filelist) = find_filelist(&root) {
+                if let Some(filelist) = find_filelist_in_first_level(&root) {
                     stream_filelist_index(&tx_res, &req, &root, filelist)
                 } else {
                     stream_walker_index(&tx_res, &req, &root)
@@ -350,10 +386,14 @@ pub struct FlistWalkerApp {
     search_rx: Receiver<SearchResponse>,
     index_tx: Sender<IndexRequest>,
     index_rx: Receiver<IndexResponse>,
+    preview_tx: Sender<PreviewRequest>,
+    preview_rx: Receiver<PreviewResponse>,
     next_request_id: u64,
     pending_request_id: Option<u64>,
     next_index_request_id: u64,
     pending_index_request_id: Option<u64>,
+    next_preview_request_id: u64,
+    pending_preview_request_id: Option<u64>,
     search_in_progress: bool,
     index_in_progress: bool,
     scroll_to_current: bool,
@@ -365,6 +405,7 @@ impl FlistWalkerApp {
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
         let (index_tx, index_rx) = spawn_index_worker();
+        let (preview_tx, preview_rx) = spawn_preview_worker();
         let mut app = Self {
             root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
@@ -389,10 +430,14 @@ impl FlistWalkerApp {
             search_rx,
             index_tx,
             index_rx,
+            preview_tx,
+            preview_rx,
             next_request_id: 1,
             pending_request_id: None,
             next_index_request_id: 1,
             pending_index_request_id: None,
+            next_preview_request_id: 1,
+            pending_preview_request_id: None,
             search_in_progress: false,
             index_in_progress: false,
             scroll_to_current: true,
@@ -660,10 +705,11 @@ impl FlistWalkerApp {
         if self.results.is_empty() {
             self.current_row = None;
             self.preview.clear();
+            self.pending_preview_request_id = None;
         } else {
             let max_index = self.results.len().saturating_sub(1);
             self.current_row = Some(self.current_row.unwrap_or(0).min(max_index));
-            self.set_preview_from_current();
+            self.enqueue_preview_request();
             self.scroll_to_current = true;
         }
         self.refresh_status_line();
@@ -721,14 +767,38 @@ impl FlistWalkerApp {
         self.enqueue_search_request();
     }
 
-    fn set_preview_from_current(&mut self) {
+    fn enqueue_preview_request(&mut self) {
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
-                self.preview = build_preview_text(path);
+                let request_id = self.next_preview_request_id;
+                self.next_preview_request_id = self.next_preview_request_id.saturating_add(1);
+                self.pending_preview_request_id = Some(request_id);
+                self.preview = "Loading preview...".to_string();
+                if self
+                    .preview_tx
+                    .send(PreviewRequest {
+                        request_id,
+                        path: path.clone(),
+                    })
+                    .is_err()
+                {
+                    self.pending_preview_request_id = None;
+                    self.preview = "<preview worker unavailable>".to_string();
+                }
                 return;
             }
         }
+        self.pending_preview_request_id = None;
         self.preview.clear();
+    }
+
+    fn poll_preview_response(&mut self) {
+        while let Ok(response) = self.preview_rx.try_recv() {
+            if Some(response.request_id) == self.pending_preview_request_id {
+                self.pending_preview_request_id = None;
+                self.preview = response.preview;
+            }
+        }
     }
 
     fn move_row(&mut self, delta: isize) {
@@ -739,7 +809,7 @@ impl FlistWalkerApp {
         let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
         self.current_row = Some(next);
         self.scroll_to_current = true;
-        self.set_preview_from_current();
+        self.enqueue_preview_request();
         self.refresh_status_line();
     }
 
@@ -1117,6 +1187,7 @@ impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll_index_response();
         self.poll_search_response();
+        self.poll_preview_response();
         self.handle_shortcuts(ctx);
         if self.search_in_progress || self.index_in_progress {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
@@ -1354,7 +1425,7 @@ impl eframe::App for FlistWalkerApp {
                         }
                         if let Some(i) = clicked_row {
                             self.current_row = Some(i);
-                            self.set_preview_from_current();
+                            self.enqueue_preview_request();
                             self.refresh_status_line();
                         }
                         if let Some(i) = execute_row {
