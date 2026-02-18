@@ -133,6 +133,25 @@ struct PreviewResponse {
     preview: String,
 }
 
+struct FileListRequest {
+    request_id: u64,
+    root: PathBuf,
+    include_files: bool,
+    include_dirs: bool,
+}
+
+enum FileListResponse {
+    Finished {
+        request_id: u64,
+        path: PathBuf,
+        count: usize,
+    },
+    Failed {
+        request_id: u64,
+        error: String,
+    },
+}
+
 fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
     let (tx_req, rx_req) = mpsc::channel::<SearchRequest>();
     let (tx_res, rx_res) = mpsc::channel::<SearchResponse>();
@@ -180,6 +199,38 @@ fn spawn_preview_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>)
                 })
                 .is_err()
             {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res)
+}
+
+fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListResponse>) {
+    let (tx_req, rx_req) = mpsc::channel::<FileListRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<FileListResponse>();
+
+    thread::spawn(move || {
+        while let Ok(req) = rx_req.recv() {
+            let result = build_index_with_metadata(&req.root, false, req.include_files, req.include_dirs)
+                .and_then(|snapshot| {
+                    let count = snapshot.entries.len();
+                    write_filelist(&req.root, &snapshot.entries, "FileList.txt")
+                        .map(|path| (path, count))
+                });
+            let msg = match result {
+                Ok((path, count)) => FileListResponse::Finished {
+                    request_id: req.request_id,
+                    path,
+                    count,
+                },
+                Err(err) => FileListResponse::Failed {
+                    request_id: req.request_id,
+                    error: err.to_string(),
+                },
+            };
+            if tx_res.send(msg).is_err() {
                 break;
             }
         }
@@ -404,6 +455,8 @@ pub struct FlistWalkerApp {
     search_rx: Receiver<SearchResponse>,
     preview_tx: Sender<PreviewRequest>,
     preview_rx: Receiver<PreviewResponse>,
+    filelist_tx: Sender<FileListRequest>,
+    filelist_rx: Receiver<FileListResponse>,
     index_tx: Sender<IndexRequest>,
     index_rx: Receiver<IndexResponse>,
     next_request_id: u64,
@@ -412,9 +465,12 @@ pub struct FlistWalkerApp {
     pending_index_request_id: Option<u64>,
     next_preview_request_id: u64,
     pending_preview_request_id: Option<u64>,
+    next_filelist_request_id: u64,
+    pending_filelist_request_id: Option<u64>,
     search_in_progress: bool,
     index_in_progress: bool,
     preview_in_progress: bool,
+    filelist_in_progress: bool,
     scroll_to_current: bool,
     focus_query_requested: bool,
     saved_roots: Vec<PathBuf>,
@@ -426,6 +482,7 @@ impl FlistWalkerApp {
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
         let (preview_tx, preview_rx) = spawn_preview_worker();
+        let (filelist_tx, filelist_rx) = spawn_filelist_worker();
         let (index_tx, index_rx) = spawn_index_worker();
         let mut app = Self {
             root: Self::normalize_windows_path(root),
@@ -452,6 +509,8 @@ impl FlistWalkerApp {
             search_rx,
             preview_tx,
             preview_rx,
+            filelist_tx,
+            filelist_rx,
             index_tx,
             index_rx,
             next_request_id: 1,
@@ -460,9 +519,12 @@ impl FlistWalkerApp {
             pending_index_request_id: None,
             next_preview_request_id: 1,
             pending_preview_request_id: None,
+            next_filelist_request_id: 1,
+            pending_filelist_request_id: None,
             search_in_progress: false,
             index_in_progress: false,
             preview_in_progress: false,
+            filelist_in_progress: false,
             scroll_to_current: true,
             focus_query_requested: false,
             saved_roots: Self::load_saved_roots(),
@@ -622,6 +684,11 @@ impl FlistWalkerApp {
         } else {
             ""
         };
+        let creating_filelist = if self.filelist_in_progress {
+            " | Creating FileList..."
+        } else {
+            ""
+        };
         let notice = if self.notice.is_empty() {
             String::new()
         } else {
@@ -629,13 +696,14 @@ impl FlistWalkerApp {
         };
 
         self.status_line = format!(
-            "Entries: {} | Results: {}{}{}{}{}{}",
+            "Entries: {} | Results: {}{}{}{}{}{}{}",
             self.entries.len(),
             self.results.len(),
             clip_text,
             pinned,
             searching,
             indexing,
+            creating_filelist,
             notice
         );
     }
@@ -978,19 +1046,59 @@ impl FlistWalkerApp {
     }
 
     fn create_filelist(&mut self) {
-        match build_index_with_metadata(&self.root, false, self.include_files, self.include_dirs)
-            .and_then(|snapshot| {
-                let count = snapshot.entries.len();
-                write_filelist(&self.root, &snapshot.entries, "FileList.txt").map(|p| (p, count))
-            }) {
-            Ok((path, count)) => {
-                self.set_notice(format!("Created {}: {} entries", path.display(), count));
-                if self.use_filelist {
-                    self.request_index_refresh();
+        if self.filelist_in_progress {
+            self.set_notice("Create File List is already running");
+            return;
+        }
+
+        let request_id = self.next_filelist_request_id;
+        self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
+        self.pending_filelist_request_id = Some(request_id);
+        self.filelist_in_progress = true;
+        self.refresh_status_line();
+
+        let req = FileListRequest {
+            request_id,
+            root: self.root.clone(),
+            include_files: self.include_files,
+            include_dirs: self.include_dirs,
+        };
+        if self.filelist_tx.send(req).is_err() {
+            self.pending_filelist_request_id = None;
+            self.filelist_in_progress = false;
+            self.set_notice("Create File List worker is unavailable");
+        }
+    }
+
+    fn poll_filelist_response(&mut self) {
+        while let Ok(response) = self.filelist_rx.try_recv() {
+            let Some(pending) = self.pending_filelist_request_id else {
+                continue;
+            };
+            match response {
+                FileListResponse::Finished {
+                    request_id,
+                    path,
+                    count,
+                } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_filelist_request_id = None;
+                    self.filelist_in_progress = false;
+                    self.set_notice(format!("Created {}: {} entries", path.display(), count));
+                    if self.use_filelist {
+                        self.request_index_refresh();
+                    }
                 }
-            }
-            Err(err) => {
-                self.set_notice(format!("Create File List failed: {}", err));
+                FileListResponse::Failed { request_id, error } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_filelist_request_id = None;
+                    self.filelist_in_progress = false;
+                    self.set_notice(format!("Create File List failed: {}", error));
+                }
             }
         }
     }
@@ -1270,8 +1378,13 @@ impl eframe::App for FlistWalkerApp {
         self.poll_index_response();
         self.poll_search_response();
         self.poll_preview_response();
+        self.poll_filelist_response();
         self.handle_shortcuts(ctx);
-        if self.search_in_progress || self.index_in_progress || self.preview_in_progress {
+        if self.search_in_progress
+            || self.index_in_progress
+            || self.preview_in_progress
+            || self.filelist_in_progress
+        {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
 
@@ -1402,7 +1515,12 @@ impl eframe::App for FlistWalkerApp {
                 if ui.button("Clear Selected").clicked() {
                     self.clear_pinned();
                 }
-                if ui.button("Create File List").clicked() {
+                let create_label = if self.filelist_in_progress {
+                    "Create File List (Running...)"
+                } else {
+                    "Create File List"
+                };
+                if ui.button(create_label).clicked() {
                     self.create_filelist();
                 }
                 if ui.button("Refresh Index").clicked() {
