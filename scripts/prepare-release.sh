@@ -33,6 +33,7 @@ OUT_DIR="${REPO_DIR}/dist/${VERSION}"
 ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-windows-x86_64"
 EXE_NAME="${ASSET_BASENAME}.exe"
 ZIP_NAME="${ASSET_BASENAME}.zip"
+ZIP_EXE_NAME="flistwalker.exe"
 
 if [[ ! -f "${SOURCE_EXE}" ]]; then
   echo "EXE が見つかりません: ${SOURCE_EXE}" >&2
@@ -45,36 +46,49 @@ WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_EXE}" "${OUT_DIR}/${EXE_NAME}"
-cp -f "${SOURCE_EXE}" "${WORK_DIR}/${EXE_NAME}"
+cp -f "${SOURCE_EXE}" "${WORK_DIR}/${ZIP_EXE_NAME}"
 cat > "${WORK_DIR}/README.txt" <<README
 FlistWalker ${VERSION}
 
 Contents:
-- ${EXE_NAME}
+- ${ZIP_EXE_NAME}
+- README.txt
 
 Run:
-- Double-click on Windows
-- or execute from PowerShell/CMD
+- PowerShell: .\\${ZIP_EXE_NAME}
+- CMD: ${ZIP_EXE_NAME}
+
+Basic usage:
+- 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
+- Enter で開く/実行、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
+- Root は左上の Browse... から切り替え可能です。
 
 Search hints:
-- Tokens are AND-ed (example: main py)
-- '\''term = exact match token (example: '\''main.py)
-- !term = exclusion token (example: main !test)
-- ^term = prefer prefix match (example: ^src)
-- term$ = prefer suffix match (example: .rs$)
+- トークンは AND 条件（例: main py）
+- '\''term : 完全一致トークン（例: '\''main.py）
+- !term : 除外トークン（例: main !test）
+- ^term : 先頭一致を優先（例: ^src）
+- term$ : 末尾一致を優先（例: .rs$）
+- Regex チェックON時は正規表現検索
 
 Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move current row
+- Ctrl+V / Alt+V: page down / page up
 - Enter (or Ctrl+J/Ctrl+M): open/execute selected item(s)
 - Tab / Shift+Tab: toggle pin and move next/prev
 - Ctrl+Shift+C: copy selected path(s)
 - Ctrl+G: clear query and pinned selection
 - Ctrl+L: focus query input
+
+Index options:
+- Use FileList: ルート直下の FileList.txt / filelist.txt を優先使用
+- Files / Folders: 表示フィルタ（再インデックスなしで即時反映）
+- Refresh Index: 現在Rootで再インデックス
 README
 
 (
   cd "${WORK_DIR}"
-  zip -q -9 "${OUT_DIR}/${ZIP_NAME}" "${EXE_NAME}" README.txt
+  zip -q -9 "${OUT_DIR}/${ZIP_NAME}" "${ZIP_EXE_NAME}" README.txt
 )
 
 if command -v sha256sum >/dev/null 2>&1; then

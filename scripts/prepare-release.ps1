@@ -14,6 +14,7 @@ $SafeVersion = if ($Version.StartsWith('v')) { $Version.Substring(1) } else { $V
 $AssetBaseName = "FlistWalker-$SafeVersion-windows-x86_64"
 $ExeName = "$AssetBaseName.exe"
 $ZipName = "$AssetBaseName.zip"
+$ZipExeName = "flistwalker.exe"
 $OutDir = Join-Path $RepoDir "dist\$Version"
 
 if (-not (Test-Path -LiteralPath $SourceExe)) {
@@ -27,40 +28,53 @@ New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
 
 try {
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $OutDir $ExeName) -Force
-    Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ExeName) -Force
+    Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ZipExeName) -Force
 
     $ReadmePath = Join-Path $WorkDir 'README.txt'
     @"
 FlistWalker $Version
 
 Contents:
-- $ExeName
+- $ZipExeName
+- README.txt
 
 Run:
-- Double-click on Windows
-- or execute from PowerShell/CMD
+- PowerShell: .\$ZipExeName
+- CMD: $ZipExeName
+
+Basic usage:
+- 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
+- Enter で開く/実行、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
+- Root は左上の Browse... から切り替え可能です。
 
 Search hints:
-- Tokens are AND-ed (example: main py)
-- 'term = exact match token (example: 'main.py)
-- !term = exclusion token (example: main !test)
-- ^term = prefer prefix match (example: ^src)
-- term$ = prefer suffix match (example: .rs$)
+- トークンは AND 条件（例: main py）
+- 'term : 完全一致トークン（例: 'main.py）
+- !term : 除外トークン（例: main !test）
+- ^term : 先頭一致を優先（例: ^src）
+- term$ : 末尾一致を優先（例: .rs$）
+- Regex チェックON時は正規表現検索
 
 Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move current row
+- Ctrl+V / Alt+V: page down / page up
 - Enter (or Ctrl+J/Ctrl+M): open/execute selected item(s)
 - Tab / Shift+Tab: toggle pin and move next/prev
 - Ctrl+Shift+C: copy selected path(s)
 - Ctrl+G: clear query and pinned selection
 - Ctrl+L: focus query input
+
+Index options:
+- Use FileList: ルート直下の FileList.txt / filelist.txt を優先使用
+- Files / Folders: 表示フィルタ（再インデックスなしで即時反映）
+- Refresh Index: 現在Rootで再インデックス
 "@ | Set-Content -LiteralPath $ReadmePath -Encoding UTF8
 
     $ZipPath = Join-Path $OutDir $ZipName
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
-    Compress-Archive -Path (Join-Path $WorkDir $ExeName), $ReadmePath -DestinationPath $ZipPath -CompressionLevel Optimal
+    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmePath -DestinationPath $ZipPath -CompressionLevel Optimal
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()

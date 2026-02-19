@@ -16,7 +16,7 @@
 - `SHA256SUMS`
 
 ## zip に含めるもの
-- `FlistWalker-<version>-windows-x86_64.exe`
+- `flistwalker.exe`
 - `README.txt`（最小実行手順）
 
 ## リリース手順（Windows アセット）
