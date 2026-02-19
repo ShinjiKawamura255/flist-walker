@@ -62,18 +62,9 @@ pub fn parse_filelist(
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let p = PathBuf::from(line);
-        let abs = if p.is_absolute() {
-            p
-        } else {
-            let from_filelist = filelist_base.join(&p);
-            if from_filelist.exists() {
-                from_filelist
-            } else {
-                root.join(p)
-            }
+        let Some(abs) = resolve_filelist_entry_path(line, filelist_base, root) else {
+            continue;
         };
-        let abs = abs.canonicalize().unwrap_or(abs);
         if !abs.exists() {
             continue;
         }
@@ -88,6 +79,98 @@ pub fn parse_filelist(
         }
     }
     Ok(out)
+}
+
+fn resolve_filelist_entry_path(line: &str, filelist_base: &Path, root: &Path) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    let mut seen = HashSet::new();
+    let mut raws = vec![strip_wrapping_quotes(line).to_string()];
+    if raws[0].contains('\\') {
+        raws.push(raws[0].replace('\\', "/"));
+    }
+
+    for raw in raws {
+        if raw.is_empty() {
+            continue;
+        }
+        let p = PathBuf::from(&raw);
+        if p.is_absolute() {
+            push_unique_candidate(&mut candidates, &mut seen, p.clone());
+        } else if looks_like_windows_absolute_path(&raw) {
+            #[cfg(windows)]
+            {
+                push_unique_candidate(&mut candidates, &mut seen, PathBuf::from(&raw));
+            }
+            #[cfg(not(windows))]
+            {
+                if let Some(wsl) = windows_path_to_wsl(&raw) {
+                    push_unique_candidate(&mut candidates, &mut seen, wsl);
+                }
+            }
+        }
+
+        if !looks_like_windows_absolute_path(&raw) {
+            push_unique_candidate(&mut candidates, &mut seen, filelist_base.join(&p));
+            if filelist_base != root {
+                push_unique_candidate(&mut candidates, &mut seen, root.join(&p));
+            }
+        }
+    }
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return Some(candidate.canonicalize().unwrap_or(candidate));
+        }
+    }
+    None
+}
+
+fn push_unique_candidate(
+    candidates: &mut Vec<PathBuf>,
+    seen: &mut HashSet<PathBuf>,
+    candidate: PathBuf,
+) {
+    if seen.insert(candidate.clone()) {
+        candidates.push(candidate);
+    }
+}
+
+fn strip_wrapping_quotes(line: &str) -> &str {
+    let bytes = line.as_bytes();
+    if bytes.len() >= 2
+        && ((bytes[0] == b'"' && bytes[bytes.len() - 1] == b'"')
+            || (bytes[0] == b'\'' && bytes[bytes.len() - 1] == b'\''))
+    {
+        &line[1..line.len() - 1]
+    } else {
+        line
+    }
+}
+
+fn looks_like_windows_absolute_path(raw: &str) -> bool {
+    let bytes = raw.as_bytes();
+    if raw.starts_with(r"\\") {
+        return true;
+    }
+    bytes.len() >= 3
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && (bytes[2] == b'\\' || bytes[2] == b'/')
+}
+
+#[cfg(not(windows))]
+fn windows_path_to_wsl(raw: &str) -> Option<PathBuf> {
+    let bytes = raw.as_bytes();
+    if bytes.len() < 3
+        || !bytes[0].is_ascii_alphabetic()
+        || bytes[1] != b':'
+        || (bytes[2] != b'\\' && bytes[2] != b'/')
+    {
+        return None;
+    }
+    let drive = (bytes[0] as char).to_ascii_lowercase();
+    let rest = raw[3..].replace('\\', "/");
+    Some(PathBuf::from(format!("/mnt/{drive}/{rest}")))
 }
 
 fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
@@ -394,6 +477,45 @@ mod tests {
         let parsed = parse_filelist(&out, &root, true, true).expect("parse filelist");
         assert_eq!(parsed.len(), 1);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_filelist_accepts_backslash_relative_path() {
+        let root = test_root("parse-backslash");
+        let nested = root.join("nested");
+        fs::create_dir_all(&nested).expect("create dir");
+        let file = nested.join("item.txt");
+        fs::write(&file, "x").expect("write file");
+        let filelist = root.join("FileList.txt");
+        fs::write(&filelist, "nested\\item.txt\n").expect("write filelist");
+
+        let parsed = parse_filelist(&filelist, &root, true, false).expect("parse filelist");
+        assert_eq!(parsed, vec![file]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_filelist_accepts_quoted_path() {
+        let root = test_root("parse-quoted");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("quoted.txt");
+        fs::write(&file, "x").expect("write file");
+        let filelist = root.join("FileList.txt");
+        fs::write(&filelist, "\"quoted.txt\"\n").expect("write filelist");
+
+        let parsed = parse_filelist(&filelist, &root, true, false).expect("parse filelist");
+        assert_eq!(parsed, vec![file]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn windows_path_to_wsl_converts_drive_path() {
+        let converted = windows_path_to_wsl(r"C:\Users\alice\work\file.txt");
+        assert_eq!(
+            converted,
+            Some(PathBuf::from("/mnt/c/Users/alice/work/file.txt"))
+        );
     }
 
     #[test]

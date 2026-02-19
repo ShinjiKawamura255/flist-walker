@@ -214,9 +214,9 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
         return build_directory_preview_text(path, &normalized_path);
     }
 
-    if is_on_demand_offline(path) {
+    if should_skip_preview(path, is_dir) {
         return format!(
-            "File: {}\nAction: {:?}\n\n<on-demand offline file: preview skipped>",
+            "File: {}\nAction: {:?}\n\n<on-demand file: preview skipped>",
             normalized_path,
             choose_action(path)
         );
@@ -261,13 +261,28 @@ fn read_preview_lines(
     Ok(out)
 }
 
-fn is_on_demand_offline(path: &Path) -> bool {
+pub fn should_skip_preview(path: &Path, is_dir: bool) -> bool {
+    !is_dir && is_on_demand_file(path)
+}
+
+fn is_on_demand_file(path: &Path) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
         const FILE_ATTRIBUTE_OFFLINE: u32 = 0x0000_1000;
+        const FILE_ATTRIBUTE_RECALL_ON_OPEN: u32 = 0x0004_0000;
+        const FILE_ATTRIBUTE_UNPINNED: u32 = 0x0010_0000;
+        const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x0040_0000;
         return std::fs::metadata(path)
-            .map(|m| (m.file_attributes() & FILE_ATTRIBUTE_OFFLINE) != 0)
+            .map(|m| {
+                let attrs = m.file_attributes();
+                (attrs
+                    & (FILE_ATTRIBUTE_OFFLINE
+                        | FILE_ATTRIBUTE_RECALL_ON_OPEN
+                        | FILE_ATTRIBUTE_UNPINNED
+                        | FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS))
+                    != 0
+            })
             .unwrap_or(false);
     }
     #[cfg(not(windows))]
