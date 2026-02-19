@@ -123,3 +123,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version 
 ## プロトタイプ資産
 
 旧プロトタイプは `prototype/python/` に移設済みです。
+
+## License
+
+MIT License（`LICENSE` を参照）
