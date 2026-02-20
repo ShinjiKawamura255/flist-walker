@@ -182,6 +182,12 @@ struct FileListRequest {
     entries: Vec<PathBuf>,
 }
 
+struct PendingFileListConfirmation {
+    root: PathBuf,
+    entries: Vec<PathBuf>,
+    existing_path: PathBuf,
+}
+
 enum FileListResponse {
     Finished {
         request_id: u64,
@@ -532,6 +538,7 @@ pub struct FlistWalkerApp {
     pending_filelist_request_id: Option<u64>,
     pending_filelist_root: Option<PathBuf>,
     pending_filelist_after_index_root: Option<PathBuf>,
+    pending_filelist_confirmation: Option<PendingFileListConfirmation>,
     latest_index_request_id: Arc<AtomicU64>,
     search_in_progress: bool,
     index_in_progress: bool,
@@ -636,6 +643,7 @@ impl FlistWalkerApp {
             pending_filelist_request_id: None,
             pending_filelist_root: None,
             pending_filelist_after_index_root: None,
+            pending_filelist_confirmation: None,
             latest_index_request_id,
             search_in_progress: false,
             index_in_progress: false,
@@ -1118,7 +1126,7 @@ impl FlistWalkerApp {
                         let root = self.root.clone();
                         let entries = self.filelist_entries_snapshot();
                         self.pending_filelist_after_index_root = None;
-                        self.start_filelist_creation(root, entries);
+                        self.request_filelist_creation(root, entries);
                     }
                     finished_current_request = true;
                     needs_incremental_refresh = false;
@@ -1536,6 +1544,35 @@ impl FlistWalkerApp {
         }
     }
 
+    fn request_filelist_creation(&mut self, root: PathBuf, entries: Vec<PathBuf>) {
+        if let Some(existing_path) = find_filelist_in_first_level(&root) {
+            self.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+                root,
+                entries,
+                existing_path: existing_path.clone(),
+            });
+            self.set_notice(format!(
+                "{} already exists. Choose overwrite or cancel.",
+                existing_path.display()
+            ));
+            return;
+        }
+        self.start_filelist_creation(root, entries);
+    }
+
+    fn confirm_pending_filelist_overwrite(&mut self) {
+        let Some(pending) = self.pending_filelist_confirmation.take() else {
+            return;
+        };
+        self.start_filelist_creation(pending.root, pending.entries);
+    }
+
+    fn cancel_pending_filelist_overwrite(&mut self) {
+        if self.pending_filelist_confirmation.take().is_some() {
+            self.set_notice("Create File List canceled");
+        }
+    }
+
     fn create_filelist(&mut self) {
         if self.filelist_in_progress {
             self.set_notice("Create File List is already running");
@@ -1550,7 +1587,7 @@ impl FlistWalkerApp {
         }
 
         let entries = self.filelist_entries_snapshot();
-        self.start_filelist_creation(self.root.clone(), entries);
+        self.request_filelist_creation(self.root.clone(), entries);
     }
 
     fn poll_filelist_response(&mut self) {
@@ -2264,6 +2301,34 @@ impl eframe::App for FlistWalkerApp {
                 ui.add(egui::Label::new(&self.status_line).truncate(true));
             });
 
+        let mut overwrite = false;
+        let mut cancel_overwrite = false;
+        if let Some(pending) = &self.pending_filelist_confirmation {
+            egui::Window::new("Overwrite FileList?")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    ui.label(format!(
+                        "{} already exists. Overwrite it?",
+                        pending.existing_path.display()
+                    ));
+                    ui.horizontal(|ui| {
+                        if ui.button("Overwrite").clicked() {
+                            overwrite = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            cancel_overwrite = true;
+                        }
+                    });
+                });
+        }
+        if overwrite {
+            self.confirm_pending_filelist_overwrite();
+        } else if cancel_overwrite {
+            self.cancel_pending_filelist_overwrite();
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_results_and_preview(ui);
         });
@@ -2633,6 +2698,54 @@ mod tests {
         assert!(app.notice.contains("Created"));
         assert!(app.notice.contains("3 entries"));
         assert!(app.notice.contains(filelist.to_string_lossy().as_ref()));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
+        let root = test_root("filelist-overwrite-confirm");
+        fs::create_dir_all(&root).expect("create dir");
+        fs::write(root.join("FileList.txt"), "old\n").expect("write filelist");
+        let path = root.join("main.rs");
+        fs::write(&path, "fn main() {}").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index_in_progress = false;
+        app.all_entries = Arc::new(vec![path.clone()]);
+        app.entry_kinds.insert(path, false);
+
+        app.create_filelist();
+
+        assert!(app.pending_filelist_confirmation.is_some());
+        assert!(!app.filelist_in_progress);
+        assert!(app.pending_filelist_request_id.is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn confirm_pending_overwrite_starts_filelist_creation() {
+        let root = test_root("filelist-overwrite-confirm-start");
+        fs::create_dir_all(&root).expect("create dir");
+        let file_path = root.join("FileList.txt");
+        let entries = vec![root.join("src/main.rs")];
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+        app.filelist_tx = filelist_tx;
+        app.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+            root: root.clone(),
+            entries: entries.clone(),
+            existing_path: file_path,
+        });
+
+        app.confirm_pending_filelist_overwrite();
+
+        let req = filelist_rx
+            .try_recv()
+            .expect("filelist request should be sent");
+        assert_eq!(req.root, root);
+        assert_eq!(req.entries, entries);
+        assert!(app.filelist_in_progress);
+        assert!(app.pending_filelist_confirmation.is_none());
         let _ = fs::remove_dir_all(&root);
     }
 
