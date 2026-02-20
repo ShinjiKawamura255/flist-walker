@@ -9,15 +9,40 @@ use crate::ui_model::{
     match_positions_for_path, normalize_path_for_display, should_skip_preview,
 };
 use eframe::egui;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use walkdir::WalkDir;
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+struct SavedWindowGeometry {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+struct UiState {
+    default_root: Option<String>,
+    show_preview: Option<bool>,
+    results_panel_width: Option<f32>,
+    window: Option<SavedWindowGeometry>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct LaunchSettings {
+    default_root: Option<PathBuf>,
+    show_preview: bool,
+    results_panel_width: f32,
+    window: Option<SavedWindowGeometry>,
+}
 
 pub fn configure_egui_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
@@ -514,7 +539,16 @@ pub struct FlistWalkerApp {
     filelist_in_progress: bool,
     scroll_to_current: bool,
     focus_query_requested: bool,
+    unfocus_query_requested: bool,
     saved_roots: Vec<PathBuf>,
+    default_root: Option<PathBuf>,
+    show_preview: bool,
+    results_panel_width: f32,
+    pending_window_restore: Option<SavedWindowGeometry>,
+    window_geometry: Option<SavedWindowGeometry>,
+    ui_state_dirty: bool,
+    last_ui_state_save: Instant,
+    query_input_id: egui::Id,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
     last_incremental_results_refresh: Instant,
@@ -525,8 +559,37 @@ impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX: usize = 512;
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     const PAGE_MOVE_ROWS: isize = 10;
+    const DEFAULT_RESULTS_PANEL_WIDTH: f32 = 760.0;
+    const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
+    const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
+    const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
 
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
+        let launch = LaunchSettings {
+            show_preview: true,
+            results_panel_width: Self::DEFAULT_RESULTS_PANEL_WIDTH,
+            ..LaunchSettings::default()
+        };
+        Self::new_with_launch(root, limit, query, launch)
+    }
+
+    pub fn from_launch(root: PathBuf, limit: usize, query: String, root_explicit: bool) -> Self {
+        let launch = Self::load_launch_settings();
+        let saved_default = launch
+            .default_root
+            .as_ref()
+            .and_then(|p| p.canonicalize().ok())
+            .map(Self::normalize_windows_path)
+            .filter(|p| p.is_dir());
+        let chosen_root = if root_explicit {
+            root
+        } else {
+            saved_default.unwrap_or(root)
+        };
+        Self::new_with_launch(chosen_root, limit, query, launch)
+    }
+
+    fn new_with_launch(root: PathBuf, limit: usize, query: String, launch: LaunchSettings) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
         let (preview_tx, preview_rx) = spawn_preview_worker();
         let (filelist_tx, filelist_rx) = spawn_filelist_worker();
@@ -577,7 +640,18 @@ impl FlistWalkerApp {
             filelist_in_progress: false,
             scroll_to_current: true,
             focus_query_requested: false,
+            unfocus_query_requested: false,
             saved_roots: Self::load_saved_roots(),
+            default_root: launch.default_root.clone(),
+            show_preview: launch.show_preview,
+            results_panel_width: launch
+                .results_panel_width
+                .max(Self::MIN_RESULTS_PANEL_WIDTH),
+            pending_window_restore: launch.window.clone(),
+            window_geometry: None,
+            ui_state_dirty: false,
+            last_ui_state_save: Instant::now(),
+            query_input_id: egui::Id::new("query-input"),
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
             last_incremental_results_refresh: Instant::now(),
@@ -605,6 +679,143 @@ impl FlistWalkerApp {
         Self::normalize_windows_path(self.root.clone())
             .to_string_lossy()
             .to_string()
+    }
+
+    fn ui_state_file_path() -> Option<PathBuf> {
+        #[cfg(windows)]
+        {
+            if let Some(base) = std::env::var_os("USERPROFILE") {
+                return Some(PathBuf::from(base).join(".flistwalker_ui_state.json"));
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            if let Some(base) = std::env::var_os("HOME") {
+                return Some(PathBuf::from(base).join(".flistwalker_ui_state.json"));
+            }
+        }
+        None
+    }
+
+    fn load_ui_state() -> UiState {
+        let Some(path) = Self::ui_state_file_path() else {
+            return UiState::default();
+        };
+        let Ok(text) = fs::read_to_string(path) else {
+            return UiState::default();
+        };
+        serde_json::from_str::<UiState>(&text).unwrap_or_default()
+    }
+
+    fn load_launch_settings() -> LaunchSettings {
+        let ui_state = Self::load_ui_state();
+        let default_root = ui_state
+            .default_root
+            .as_deref()
+            .map(PathBuf::from)
+            .map(Self::normalize_windows_path);
+        let show_preview = ui_state.show_preview.unwrap_or(true);
+        let results_panel_width = ui_state
+            .results_panel_width
+            .unwrap_or(Self::DEFAULT_RESULTS_PANEL_WIDTH)
+            .max(Self::MIN_RESULTS_PANEL_WIDTH);
+        LaunchSettings {
+            default_root,
+            show_preview,
+            results_panel_width,
+            window: ui_state.window,
+        }
+    }
+
+    fn save_ui_state(&self) {
+        let Some(path) = Self::ui_state_file_path() else {
+            return;
+        };
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let state = UiState {
+            default_root: self
+                .default_root
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string()),
+            show_preview: Some(self.show_preview),
+            results_panel_width: Some(self.results_panel_width),
+            window: self.window_geometry.clone(),
+        };
+        if let Ok(text) = serde_json::to_string_pretty(&state) {
+            let _ = fs::write(path, text);
+        }
+    }
+
+    fn mark_ui_state_dirty(&mut self) {
+        self.ui_state_dirty = true;
+    }
+
+    fn maybe_save_ui_state(&mut self, force: bool) {
+        if !self.ui_state_dirty {
+            return;
+        }
+        if force || self.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
+            self.save_ui_state();
+            self.ui_state_dirty = false;
+            self.last_ui_state_save = Instant::now();
+        }
+    }
+
+    fn to_stable_window_geometry(geom: SavedWindowGeometry) -> SavedWindowGeometry {
+        let round = |v: f32| (v * 10.0).round() / 10.0;
+        SavedWindowGeometry {
+            x: round(geom.x),
+            y: round(geom.y),
+            width: round(geom.width.max(640.0)),
+            height: round(geom.height.max(400.0)),
+        }
+    }
+
+    fn capture_window_geometry(&mut self, ctx: &egui::Context) {
+        let next = ctx.input(|i| {
+            i.viewport().outer_rect.map(|rect| SavedWindowGeometry {
+                x: rect.min.x,
+                y: rect.min.y,
+                width: rect.width(),
+                height: rect.height(),
+            })
+        });
+        let Some(next) = next.map(Self::to_stable_window_geometry) else {
+            return;
+        };
+        if self.window_geometry.as_ref() != Some(&next) {
+            self.window_geometry = Some(next);
+            self.mark_ui_state_dirty();
+        }
+    }
+
+    fn apply_pending_window_restore(&mut self, ctx: &egui::Context) {
+        let Some(saved) = self.pending_window_restore.clone() else {
+            return;
+        };
+
+        let monitor_size = ctx.input(|i| i.viewport().monitor_size);
+        let mut width = saved.width.max(640.0);
+        let mut height = saved.height.max(400.0);
+        let mut x = saved.x;
+        let mut y = saved.y;
+
+        if let Some(monitor_size) = monitor_size {
+            width = width.min(monitor_size.x.max(640.0));
+            height = height.min(monitor_size.y.max(400.0));
+            let max_x = (monitor_size.x - width).max(0.0);
+            let max_y = (monitor_size.y - height).max(0.0);
+            x = x.clamp(0.0, max_x);
+            y = y.clamp(0.0, max_y);
+        } else if ctx.input(|i| i.viewport().outer_rect).is_none() {
+            return;
+        }
+
+        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(width, height)));
+        ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(x, y)));
+        self.pending_window_restore = None;
     }
 
     fn saved_roots_file_path() -> Option<PathBuf> {
@@ -698,6 +909,20 @@ impl FlistWalkerApp {
         self.set_notice(format!("Registered root: {}", root.display()));
     }
 
+    fn set_current_root_as_default(&mut self) {
+        let root = self
+            .root
+            .canonicalize()
+            .unwrap_or_else(|_| self.root.clone());
+        let root = Self::normalize_windows_path(root);
+        self.default_root = Some(root.clone());
+        self.mark_ui_state_dirty();
+        self.save_ui_state();
+        self.ui_state_dirty = false;
+        self.last_ui_state_save = Instant::now();
+        self.set_notice(format!("Set default root: {}", root.display()));
+    }
+
     fn remove_current_root_from_saved(&mut self) {
         let key = Self::path_key(&self.root);
         let before = self.saved_roots.len();
@@ -705,6 +930,14 @@ impl FlistWalkerApp {
         if self.saved_roots.len() == before {
             self.set_notice("Current root is not in saved list");
             return;
+        }
+        if self
+            .default_root
+            .as_ref()
+            .is_some_and(|p| Self::path_key(p) == key)
+        {
+            self.default_root = None;
+            self.mark_ui_state_dirty();
         }
         self.save_saved_roots();
         self.set_notice("Removed current root from saved list");
@@ -1501,6 +1734,154 @@ impl FlistWalkerApp {
         text_changed
     }
 
+    fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
+        if self.show_preview {
+            let max_results_width = (ui.available_width() - Self::MIN_PREVIEW_PANEL_WIDTH)
+                .max(Self::MIN_RESULTS_PANEL_WIDTH);
+            let panel = egui::SidePanel::left("results-panel")
+                .resizable(true)
+                .default_width(self.results_panel_width.min(max_results_width))
+                .min_width(Self::MIN_RESULTS_PANEL_WIDTH)
+                .max_width(max_results_width);
+            let response = panel.show_inside(ui, |ui| {
+                self.render_results_list(ui);
+            });
+            let new_width = response
+                .response
+                .rect
+                .width()
+                .max(Self::MIN_RESULTS_PANEL_WIDTH);
+            if (new_width - self.results_panel_width).abs() > 1.0 {
+                self.results_panel_width = new_width;
+                self.mark_ui_state_dirty();
+            }
+            ui.heading("Preview");
+            let preview_size = ui.available_size();
+            ui.add_sized(
+                preview_size,
+                egui::TextEdit::multiline(&mut self.preview).interactive(false),
+            );
+        } else {
+            self.render_results_list(ui);
+        }
+        self.scroll_to_current = false;
+    }
+
+    fn render_results_list(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Results");
+        egui::ScrollArea::both()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                let mut clicked_row: Option<usize> = None;
+                let mut execute_row: Option<usize> = None;
+                let prefer_relative = self.prefer_relative_display();
+
+                for i in 0..self.results.len() {
+                    let Some((path, _score)) = self.results.get(i) else {
+                        continue;
+                    };
+                    let is_current = self.current_row == Some(i);
+                    let is_pinned = self.pinned_paths.contains(path);
+                    let marker_current = if is_current { "▶" } else { "·" };
+                    let marker_pin = if is_pinned { "◆" } else { "·" };
+                    let is_dir = self.entry_kinds.get(path).copied().unwrap_or(false);
+                    let display = display_path_with_mode(path, &self.root, prefer_relative);
+                    let positions = match_positions_for_path(
+                        path,
+                        &self.root,
+                        &self.query,
+                        prefer_relative,
+                        self.use_regex,
+                    );
+
+                    let mut job = egui::text::LayoutJob::default();
+                    job.append(
+                        &format!("{} {} ", marker_current, marker_pin),
+                        0.0,
+                        egui::TextFormat {
+                            color: if is_current {
+                                egui::Color32::LIGHT_BLUE
+                            } else {
+                                egui::Color32::GRAY
+                            },
+                            ..Default::default()
+                        },
+                    );
+                    let kind = if is_dir { "DIR " } else { "FILE" };
+                    job.append(
+                        kind,
+                        0.0,
+                        egui::TextFormat {
+                            color: if is_dir {
+                                egui::Color32::from_rgb(52, 211, 153)
+                            } else {
+                                egui::Color32::from_rgb(96, 165, 250)
+                            },
+                            ..Default::default()
+                        },
+                    );
+                    job.append(" ", 0.0, egui::TextFormat::default());
+
+                    for (idx, ch) in display.chars().enumerate() {
+                        let color = if positions.contains(&idx) {
+                            egui::Color32::from_rgb(245, 158, 11)
+                        } else {
+                            egui::Color32::from_rgb(229, 231, 235)
+                        };
+                        job.append(
+                            &ch.to_string(),
+                            0.0,
+                            egui::TextFormat {
+                                color,
+                                ..Default::default()
+                            },
+                        );
+                    }
+
+                    let selected_bg = if ui.visuals().dark_mode {
+                        egui::Color32::from_rgb(48, 53, 62)
+                    } else {
+                        egui::Color32::from_rgb(228, 232, 238)
+                    };
+                    let fill = if is_current {
+                        selected_bg
+                    } else {
+                        egui::Color32::TRANSPARENT
+                    };
+                    let row = egui::Frame::none()
+                        .fill(fill)
+                        .inner_margin(egui::Margin::symmetric(3.0, 2.0))
+                        .rounding(egui::Rounding::same(3.0))
+                        .show(ui, |ui| {
+                            ui.add(
+                                egui::Label::new(job)
+                                    .wrap(false)
+                                    .sense(egui::Sense::click()),
+                            )
+                        });
+                    let response = row.inner;
+                    if is_current && self.scroll_to_current {
+                        response.scroll_to_me(Some(egui::Align::Center));
+                    }
+                    if response.clicked() {
+                        clicked_row = Some(i);
+                    }
+                    if response.double_clicked() {
+                        execute_row = Some(i);
+                    }
+                }
+                if let Some(i) = clicked_row {
+                    self.current_row = Some(i);
+                    self.request_preview_for_current();
+                    self.refresh_status_line();
+                }
+                if let Some(i) = execute_row {
+                    self.current_row = Some(i);
+                    self.execute_selected();
+                }
+            });
+    }
+
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowDown))
             || ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::N))
@@ -1548,7 +1929,14 @@ impl FlistWalkerApp {
             ..Default::default()
         };
         if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::L)) {
-            self.focus_query_requested = true;
+            let has_focus = ctx.memory(|m| m.has_focus(self.query_input_id));
+            if has_focus {
+                self.focus_query_requested = false;
+                self.unfocus_query_requested = true;
+            } else {
+                self.focus_query_requested = true;
+                self.unfocus_query_requested = false;
+            }
         }
         if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
             self.clear_query_and_selection();
@@ -1558,6 +1946,7 @@ impl FlistWalkerApp {
 
 impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.apply_pending_window_restore(ctx);
         self.poll_index_response();
         self.poll_search_response();
         self.poll_preview_response();
@@ -1570,6 +1959,7 @@ impl eframe::App for FlistWalkerApp {
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
+        self.capture_window_geometry(ctx);
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -1577,12 +1967,14 @@ impl eframe::App for FlistWalkerApp {
                 ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
                 let button_width = 96.0;
                 let add_width = 100.0;
+                let set_default_width = 130.0;
                 let remove_width = 130.0;
                 let field_width = (ui.available_width()
                     - button_width
                     - add_width
+                    - set_default_width
                     - remove_width
-                    - (ui.spacing().item_spacing.x * 3.0))
+                    - (ui.spacing().item_spacing.x * 4.0))
                     .max(120.0);
                 let selected_text = self.root_display_text();
                 let mut next_root: Option<PathBuf> = None;
@@ -1635,6 +2027,15 @@ impl eframe::App for FlistWalkerApp {
                 }
                 if ui
                     .add_sized(
+                        [set_default_width, row_height],
+                        egui::Button::new("Set as default"),
+                    )
+                    .clicked()
+                {
+                    self.set_current_root_as_default();
+                }
+                if ui
+                    .add_sized(
                         [remove_width, row_height],
                         egui::Button::new("Remove from list"),
                     )
@@ -1662,6 +2063,9 @@ impl eframe::App for FlistWalkerApp {
                 }
                 filter_changed |= ui.checkbox(&mut self.include_files, "Files").changed();
                 filter_changed |= ui.checkbox(&mut self.include_dirs, "Folders").changed();
+                if ui.checkbox(&mut self.show_preview, "Preview").changed() {
+                    self.mark_ui_state_dirty();
+                }
                 filter_changed |= self.ensure_entry_filters();
                 ui.separator();
                 ui.label(self.source_text());
@@ -1673,9 +2077,8 @@ impl eframe::App for FlistWalkerApp {
                 }
             });
 
-            let query_id = ui.make_persistent_id("query-input");
             let mut output = egui::TextEdit::singleline(&mut self.query)
-                .id(query_id)
+                .id(self.query_input_id)
                 .lock_focus(true)
                 .desired_width(f32::INFINITY)
                 .hint_text("Type to fuzzy-search files/folders...")
@@ -1683,6 +2086,10 @@ impl eframe::App for FlistWalkerApp {
             if self.focus_query_requested {
                 output.response.request_focus();
                 self.focus_query_requested = false;
+            }
+            if self.unfocus_query_requested {
+                output.response.surrender_focus();
+                self.unfocus_query_requested = false;
             }
             if self.apply_emacs_query_shortcuts(ctx, &mut output) {
                 self.update_results();
@@ -1723,109 +2130,15 @@ impl eframe::App for FlistWalkerApp {
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.columns(2, |cols| {
-                cols[0].heading("Results");
-                egui::ScrollArea::both()
-                    .auto_shrink([false, false])
-                    .show(&mut cols[0], |ui| {
-                        let mut clicked_row: Option<usize> = None;
-                        let mut execute_row: Option<usize> = None;
-                        let prefer_relative = self.prefer_relative_display();
-
-                        for i in 0..self.results.len() {
-                            let Some((path, _score)) = self.results.get(i) else {
-                                continue;
-                            };
-                            let is_current = self.current_row == Some(i);
-                            let is_pinned = self.pinned_paths.contains(path);
-                            let marker_current = if is_current { "▶" } else { "·" };
-                            let marker_pin = if is_pinned { "◆" } else { "·" };
-                            let is_dir = self.entry_kinds.get(path).copied().unwrap_or(false);
-                            let display = display_path_with_mode(path, &self.root, prefer_relative);
-                            let positions = match_positions_for_path(
-                                path,
-                                &self.root,
-                                &self.query,
-                                prefer_relative,
-                                self.use_regex,
-                            );
-
-                            let mut job = egui::text::LayoutJob::default();
-                            job.append(
-                                &format!("{} {} ", marker_current, marker_pin),
-                                0.0,
-                                egui::TextFormat {
-                                    color: if is_current {
-                                        egui::Color32::LIGHT_BLUE
-                                    } else {
-                                        egui::Color32::GRAY
-                                    },
-                                    ..Default::default()
-                                },
-                            );
-                            let kind = if is_dir { "DIR " } else { "FILE" };
-                            job.append(
-                                kind,
-                                0.0,
-                                egui::TextFormat {
-                                    color: if is_dir {
-                                        egui::Color32::from_rgb(52, 211, 153)
-                                    } else {
-                                        egui::Color32::from_rgb(96, 165, 250)
-                                    },
-                                    ..Default::default()
-                                },
-                            );
-                            job.append(" ", 0.0, egui::TextFormat::default());
-
-                            for (idx, ch) in display.chars().enumerate() {
-                                let color = if positions.contains(&idx) {
-                                    egui::Color32::from_rgb(245, 158, 11)
-                                } else {
-                                    egui::Color32::from_rgb(229, 231, 235)
-                                };
-                                job.append(
-                                    &ch.to_string(),
-                                    0.0,
-                                    egui::TextFormat {
-                                        color,
-                                        ..Default::default()
-                                    },
-                                );
-                            }
-
-                            let response = ui.add(
-                                egui::Label::new(job)
-                                    .wrap(false)
-                                    .sense(egui::Sense::click()),
-                            );
-                            if response.clicked() {
-                                clicked_row = Some(i);
-                            }
-                            if response.double_clicked() {
-                                execute_row = Some(i);
-                            }
-                        }
-                        if let Some(i) = clicked_row {
-                            self.current_row = Some(i);
-                            self.request_preview_for_current();
-                            self.refresh_status_line();
-                        }
-                        if let Some(i) = execute_row {
-                            self.current_row = Some(i);
-                            self.execute_selected();
-                        }
-                    });
-                self.scroll_to_current = false;
-
-                cols[1].heading("Preview");
-                let preview_size = cols[1].available_size();
-                cols[1].add_sized(
-                    preview_size,
-                    egui::TextEdit::multiline(&mut self.preview).interactive(false),
-                );
-            });
+            self.render_results_and_preview(ui);
         });
+        self.maybe_save_ui_state(false);
+    }
+}
+
+impl Drop for FlistWalkerApp {
+    fn drop(&mut self) {
+        self.maybe_save_ui_state(true);
     }
 }
 

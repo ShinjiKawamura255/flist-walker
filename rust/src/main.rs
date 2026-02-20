@@ -18,8 +18,8 @@ use resvg::{tiny_skia, usvg};
 struct Args {
     #[arg(default_value = "")]
     query: String,
-    #[arg(long, default_value = ".")]
-    root: PathBuf,
+    #[arg(long)]
+    root: Option<PathBuf>,
     #[arg(long, default_value_t = 1000)]
     limit: usize,
     #[arg(long, default_value_t = false)]
@@ -27,7 +27,7 @@ struct Args {
 }
 
 fn run_cli(args: &Args) -> Result<()> {
-    let root = resolve_root(&args.root)?;
+    let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
     let entries = build_index(&root, true, true, true)?;
     let query = args.query.trim();
     if query.is_empty() {
@@ -52,7 +52,8 @@ fn run_cli(args: &Args) -> Result<()> {
 }
 
 fn run_gui(args: &Args) -> Result<()> {
-    let root = resolve_root(&args.root)?;
+    let root_explicit = args.root.is_some();
+    let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
     let mut native_options = eframe::NativeOptions::default();
     let mut viewport =
         eframe::egui::ViewportBuilder::default().with_inner_size(eframe::egui::vec2(1400.0, 900.0));
@@ -68,7 +69,12 @@ fn run_gui(args: &Args) -> Result<()> {
         native_options,
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
-            Box::new(FlistWalkerApp::new(root, limit, query))
+            Box::new(FlistWalkerApp::from_launch(
+                root,
+                limit,
+                query,
+                root_explicit,
+            ))
         }),
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
