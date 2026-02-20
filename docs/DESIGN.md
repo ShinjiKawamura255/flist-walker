@@ -2,7 +2,7 @@
 
 ## Architecture overview
 - DES-001 Index Source Resolver
-- 役割: `FileList.txt`/`filelist.txt` の検出と優先読み込み。
+- 役割: FileList 優先モード有効時に `FileList.txt`/`filelist.txt`（`filelist.txt` の大小違い含む）を検出して優先読み込み。
 - 実装: `rust/src/indexer.rs`
 
 - DES-002 Walker Indexer
@@ -10,7 +10,7 @@
 - 実装: `rust/src/indexer.rs`
 
 - DES-003 Fuzzy Search Engine
-- 役割: クエリ解釈（`'` `!` `^` `$`）とスコアリング。
+- 役割: クエリ解釈（`'` `!` `^` `$`）とスコアリング。非 regex の `^`/`$` は隣接文字制約付きファジーとして評価。
 - 実装: `rust/src/search.rs`
 
 - DES-004 Action Executor
@@ -30,7 +30,7 @@
 - 実装: `docs/TESTPLAN.md` の GUI 手順節
 
 ## Main flows
-- Flow-001: 起動 -> FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
+- Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
 - Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。

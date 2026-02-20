@@ -2,8 +2,9 @@
 
 ## SP-001 FileList 優先読み込み
 ### Requirements
-- MUST: 検索ルート直下で `FileList.txt` と `filelist.txt` を検出する。
+- MUST: FileList 優先モード有効時のみ、検索ルート直下で `FileList.txt` と `filelist.txt` を検出する。
 - MUST: 両方ある場合は `FileList.txt` を優先する。
+- MUST: 上記2名が無い場合、`filelist.txt` と大文字小文字のみ異なるファイル名（例: `FILELIST.TXT`）をルート直下から検出対象に含める。
 - MUST: 空行と `#` コメント行を無視する。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
@@ -37,7 +38,8 @@
 - MUST: 通常語はファジー検索（AND 条件）で評価する。
 - MUST: `'` は完全一致条件として評価する。
 - MUST: `!` は除外条件として評価する。
-- MUST: `^` / `$` は先頭・末尾条件として評価する。
+- MUST: `^` / `$` は非 regex モードでは「先頭/末尾の隣接文字制約 + ファジー評価」として評価する。
+- SHOULD: 厳密な prefix/suffix 一致が必要な場合は regex モードを使える。
 - MUST: 上位 `limit` 件を関連度順で返す。
 - SHOULD: 大文字小文字差を緩和する。
 

@@ -27,7 +27,7 @@
 
 ## Requirements
 ### Functional (FR)
-- FR-001: ツールは `FileList.txt` または `filelist.txt` が存在する場合、当該リストを優先して候補集合を構築しなければならない。
+- FR-001: ツールは FileList 優先モード有効時、検索ルート直下の `FileList.txt` / `filelist.txt`（および `filelist.txt` の大文字小文字違い）を優先して候補集合を構築しなければならない。
 - FR-002: ツールはリスト未存在時、walker 方式で再帰走査して候補を構築しなければならない。
 - FR-003: ツールは fzf 互換クエリ（`'`、`!`、`^`、`$`）に基づく検索を提供し、関連度順で結果を返さなければならない。
 - FR-004: ツールは選択対象がファイルの場合、実行可能なら実行し、非実行ファイルは既定アプリでオープンしなければならない。
@@ -46,8 +46,8 @@
 - CON-002: 外部コマンド実行は配列引数で呼び出し、シェル展開依存を避ける。
 
 ## Acceptance Criteria
-- AC-001: `FileList.txt` 存在時に walker を使わず、列挙対象のみが候補になる。
-- AC-002: `FileList.txt` と `filelist.txt` の双方で同等に動作する。
+- AC-001: FileList 優先モード有効時、`FileList.txt` 系ファイルが存在すれば walker を使わず、列挙対象のみが候補になる。
+- AC-002: `FileList.txt`、`filelist.txt`、および `filelist.txt` の大文字小文字違いで同等に動作する。
 - AC-003: クエリ入力で関連度順の上位 N 件を返せる。
 - AC-004: ファイル選択時に実行/オープン、フォルダ選択時にオープンが行われる。
 - AC-005: Rust テスト（unit/integration）が成功する。
