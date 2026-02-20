@@ -67,6 +67,7 @@
 - 失敗は `anyhow::Result` に集約し、CLI/GUI で表示責務を分離する。
 - 外部コマンドは引数配列で起動し、シェル解釈を避ける。
 - GUI 検索はワーカーからエラー文字列を受け取り、notice に反映する。
+- FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - Windows の `.ps1` 実行は `powershell.exe -File` を明示起動する。
 
 - DES-008 Testability
