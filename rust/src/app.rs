@@ -519,6 +519,7 @@ pub struct FlistWalkerApp {
     preview_cache_order: VecDeque<PathBuf>,
     last_incremental_results_refresh: Instant,
     last_search_snapshot_len: usize,
+    search_resume_pending: bool,
 }
 
 impl FlistWalkerApp {
@@ -582,6 +583,7 @@ impl FlistWalkerApp {
             preview_cache_order: VecDeque::new(),
             last_incremental_results_refresh: Instant::now(),
             last_search_snapshot_len: 0,
+            search_resume_pending: false,
         };
         app.request_index_refresh();
         app
@@ -786,6 +788,12 @@ impl FlistWalkerApp {
             .store(request_id, Ordering::Relaxed);
         self.pending_index_request_id = Some(request_id);
         self.index_in_progress = true;
+        // Cancel in-flight search requests so responses computed from stale snapshots
+        // cannot override results while a new index request is running.
+        self.pending_request_id = None;
+        self.search_in_progress = false;
+        // Non-empty query should resume quickly once fresh index batches arrive.
+        self.search_resume_pending = !self.query.trim().is_empty();
 
         self.index.entries.clear();
         self.index.source = IndexSource::None;
@@ -851,6 +859,7 @@ impl FlistWalkerApp {
                     self.pending_index_request_id = None;
                     self.index_in_progress = false;
                     self.apply_entry_filters(true);
+                    self.search_resume_pending = false;
                     self.clear_notice();
                     finished_current_request = true;
                     needs_incremental_refresh = false;
@@ -862,6 +871,7 @@ impl FlistWalkerApp {
                     }
                     self.index_in_progress = false;
                     self.pending_index_request_id = None;
+                    self.search_resume_pending = false;
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
             }
@@ -883,6 +893,15 @@ impl FlistWalkerApp {
             // Empty query is the progressive browsing mode: show newest indexed entries
             // immediately without cloning the whole snapshot for search workers.
             self.update_results_from_index_progress();
+            return;
+        }
+
+        if self.search_resume_pending {
+            self.entries = Arc::new(self.filtered_entries(&self.index.entries));
+            self.last_search_snapshot_len = self.entries.len();
+            self.last_incremental_results_refresh = Instant::now();
+            self.update_results();
+            self.search_resume_pending = false;
             return;
         }
 
@@ -1991,6 +2010,89 @@ mod tests {
         assert!(!app.search_in_progress);
         assert!(app.notice.contains("Search failed:"));
         assert!(app.notice.contains("invalid regex"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn stale_search_response_is_ignored_after_index_refresh() {
+        let root = test_root("stale-search-after-refresh");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+        let (search_tx, search_rx) = mpsc::channel::<SearchResponse>();
+        let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+        app.search_rx = search_rx;
+        app.index_tx = index_tx;
+        app.pending_request_id = Some(5);
+        app.search_in_progress = true;
+        app.results = vec![(root.join("before.txt"), 0.0)];
+
+        app.request_index_refresh();
+
+        search_tx
+            .send(SearchResponse {
+                request_id: 5,
+                results: vec![(root.join("stale.txt"), 1.0)],
+                error: None,
+            })
+            .expect("send stale search response");
+
+        app.poll_search_response();
+
+        assert!(!app.search_in_progress);
+        assert_eq!(app.pending_request_id, None);
+        assert_eq!(app.results[0].0, root.join("before.txt"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn index_refresh_marks_search_resume_pending_for_non_empty_query() {
+        let root = test_root("resume-pending-on-refresh");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+        let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+
+        app.request_index_refresh();
+
+        assert!(app.search_resume_pending);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
+        let root = test_root("resume-first-batch");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        // Use a manual search channel so the test can inspect enqueued requests.
+        let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
+        app.search_tx = search_tx_real;
+
+        app.request_index_refresh();
+        let req = index_rx.try_recv().expect("index request should be sent");
+
+        let (tx_idx, rx_idx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx_idx;
+        tx_idx
+            .send(IndexResponse::Batch {
+                request_id: req.request_id,
+                entries: vec![IndexEntry {
+                    path: root.join("main.rs"),
+                    is_dir: false,
+                }],
+            })
+            .expect("send batch");
+
+        // Simulate that normal throttle window has not elapsed yet.
+        app.last_incremental_results_refresh = Instant::now();
+        app.poll_index_response();
+
+        let search_req = search_rx_real
+            .try_recv()
+            .expect("search should resume immediately");
+        assert_eq!(search_req.query, "main");
+        assert!(!app.search_resume_pending);
         let _ = fs::remove_dir_all(&root);
     }
 
