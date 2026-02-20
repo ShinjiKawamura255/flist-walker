@@ -956,7 +956,11 @@ impl FlistWalkerApp {
 
     fn refresh_status_line(&mut self) {
         let indexed_count = if self.index_in_progress {
-            self.index.entries.len().max(self.all_entries.len())
+            if self.index.entries.is_empty() {
+                self.all_entries.len()
+            } else {
+                self.index.entries.len()
+            }
         } else {
             self.all_entries.len()
         };
@@ -2262,6 +2266,14 @@ mod tests {
         std::env::temp_dir().join(format!("fff-rs-app-{name}-{nonce}"))
     }
 
+    fn entries_count_from_status(status_line: &str) -> usize {
+        status_line
+            .strip_prefix("Entries: ")
+            .and_then(|rest| rest.split(" | ").next())
+            .and_then(|n| n.parse::<usize>().ok())
+            .unwrap_or(0)
+    }
+
     #[test]
     fn clear_query_and_selection_clears_state() {
         let root = test_root("clear");
@@ -2788,6 +2800,27 @@ mod tests {
         fs::create_dir_all(&root).expect("create dir");
         let app = FlistWalkerApp::new(root.clone(), 50, String::new());
         assert!(!app.use_filelist);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn status_line_prefers_current_index_count_while_indexing() {
+        let root = test_root("status-line-current-index-count");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index_in_progress = true;
+        app.all_entries = Arc::new(
+            (0..10)
+                .map(|i| root.join(format!("old-{i}.txt")))
+                .collect::<Vec<_>>(),
+        );
+        app.index.entries = (0..3)
+            .map(|i| root.join(format!("new-{i}.txt")))
+            .collect::<Vec<_>>();
+
+        app.refresh_status_line();
+
+        assert_eq!(entries_count_from_status(&app.status_line), 3);
         let _ = fs::remove_dir_all(&root);
     }
 
