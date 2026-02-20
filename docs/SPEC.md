@@ -125,6 +125,8 @@
 - MUST: Source（FileList/Walker）と Root を画面表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: 複数選択と一括アクションを提供する。
+- MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
+- MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 
 ### Preconditions / Postconditions

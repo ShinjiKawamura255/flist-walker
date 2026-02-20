@@ -955,6 +955,35 @@ impl FlistWalkerApp {
         self.set_notice("Removed current root from saved list");
     }
 
+    fn cancel_stale_pending_filelist_confirmation(&mut self) {
+        let should_cancel = self
+            .pending_filelist_confirmation
+            .as_ref()
+            .is_some_and(|pending| Self::path_key(&pending.root) != Self::path_key(&self.root));
+        if should_cancel {
+            self.pending_filelist_confirmation = None;
+            self.set_notice("Pending FileList overwrite canceled because root changed");
+        }
+    }
+
+    fn apply_root_change(&mut self, new_root: PathBuf) {
+        let normalized = Self::normalize_windows_path(new_root);
+        if Self::path_key(&normalized) == Self::path_key(&self.root) {
+            return;
+        }
+
+        self.root = normalized;
+        // Avoid launching/copying stale selections from the previous root.
+        self.pinned_paths.clear();
+        self.current_row = None;
+        self.preview.clear();
+        self.preview_in_progress = false;
+        self.pending_preview_request_id = None;
+        self.cancel_stale_pending_filelist_confirmation();
+        self.request_index_refresh();
+        self.set_notice(format!("Root changed: {}", self.root_display_text()));
+    }
+
     fn prefer_relative_display(&self) -> bool {
         matches!(
             self.index.source,
@@ -1029,6 +1058,7 @@ impl FlistWalkerApp {
 
     fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
+        self.cancel_stale_pending_filelist_confirmation();
         if self
             .pending_filelist_after_index_root
             .as_ref()
@@ -2181,9 +2211,7 @@ impl eframe::App for FlistWalkerApp {
                         .show_open_single_dir()
                     {
                         Ok(Some(dir)) => {
-                            self.root = Self::normalize_windows_path(dir);
-                            self.request_index_refresh();
-                            self.set_notice(format!("Root changed: {}", self.root_display_text()));
+                            self.apply_root_change(dir);
                         }
                         Ok(None) => {}
                         Err(err) => {
@@ -2216,11 +2244,7 @@ impl eframe::App for FlistWalkerApp {
                     self.remove_current_root_from_saved();
                 }
                 if let Some(root) = next_root {
-                    if Self::path_key(&root) != Self::path_key(&self.root) {
-                        self.root = Self::normalize_windows_path(root);
-                        self.request_index_refresh();
-                        self.set_notice(format!("Root changed: {}", self.root_display_text()));
-                    }
+                    self.apply_root_change(root);
                 }
             });
 
@@ -2666,6 +2690,57 @@ mod tests {
 
         assert!(app.pending_filelist_after_index_root.is_none());
         assert!(app.notice.contains("Deferred Create File List canceled"));
+        let _ = fs::remove_dir_all(&root_old);
+        let _ = fs::remove_dir_all(&root_new);
+    }
+
+    #[test]
+    fn root_change_clears_stale_selection_state() {
+        let root_old = test_root("root-change-clear-selection-old");
+        let root_new = test_root("root-change-clear-selection-new");
+        fs::create_dir_all(&root_old).expect("create old dir");
+        fs::create_dir_all(&root_new).expect("create new dir");
+        let old_path = root_old.join("old.txt");
+        fs::write(&old_path, "x").expect("write old file");
+
+        let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        app.pinned_paths.insert(old_path);
+        app.current_row = Some(0);
+        app.preview = "stale preview".to_string();
+        app.results = vec![(root_old.join("result.txt"), 0.0)];
+
+        app.apply_root_change(root_new.clone());
+
+        assert!(app.pinned_paths.is_empty());
+        assert_eq!(app.current_row, None);
+        assert!(app.preview.is_empty());
+        let req = rx.try_recv().expect("index request should be sent");
+        assert_eq!(req.root, root_new);
+        let _ = fs::remove_dir_all(&root_old);
+        let _ = fs::remove_dir_all(&root_new);
+    }
+
+    #[test]
+    fn root_change_cancels_pending_filelist_overwrite_confirmation() {
+        let root_old = test_root("root-change-cancel-overwrite-old");
+        let root_new = test_root("root-change-cancel-overwrite-new");
+        fs::create_dir_all(&root_old).expect("create old dir");
+        fs::create_dir_all(&root_new).expect("create new dir");
+
+        let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+        let (tx, _rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        app.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+            root: root_old.clone(),
+            entries: vec![root_old.join("a.txt")],
+            existing_path: root_old.join("FileList.txt"),
+        });
+
+        app.apply_root_change(root_new.clone());
+
+        assert!(app.pending_filelist_confirmation.is_none());
         let _ = fs::remove_dir_all(&root_old);
         let _ = fs::remove_dir_all(&root_new);
     }
