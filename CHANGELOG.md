@@ -24,6 +24,37 @@
 ### Known issues
 - 
 
+## [0.3.0] - 2026-02-20
+### Added
+- Root 行に `Set as default` を追加し、次回起動時の既定 Root を保存・適用。
+- 既存 `FileList.txt` / `filelist.txt` がある場合の上書き確認ダイアログを追加。
+
+### Changed
+- ウィンドウ位置/サイズ、Results/Preview 分割幅、Preview 表示状態を永続化。
+- `Create File List` は再 Walker を行わず、最新インデックス結果を再利用する方式へ変更。
+- インデックス中の `Create File List` は完了後に遅延実行する動作へ変更。
+- 結果行の自動スクロールを「可視範囲外になった時のみ追従」に調整。
+- 複数トークン検索時、各トークンの完全一致候補を優先しやすいスコアリングへ調整。
+
+### Fixed
+- `Entries` 表示が Root 変更/Refresh Index 後に古い件数を保持する問題を修正。
+- `Ctrl+L` の検索窓フォーカス動作をトグル化。
+- 検索窓フォーカス中の `Ctrl+Shift+C` で検索文字列がコピーされる問題を修正（Results パスのみコピー）。
+- 全角入力時に Space/Shift+Space が効かない問題を修正（半角スペース挿入）。
+- FileList 作成中に Root 変更が発生しても UI 状態を巻き戻さないよう安定化。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.2.1] - 2026-02-19
 ### Added
 - 結果一覧で `Ctrl+V` / `Alt+V` によるページ移動を追加。
@@ -103,7 +134,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.0
 [0.2.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.2.0
 [0.1.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.1.0
