@@ -1,7 +1,6 @@
 use crate::actions::execute_or_open;
 use crate::indexer::{
-    build_index_with_metadata, find_filelist_in_first_level, parse_filelist, write_filelist,
-    IndexBuildResult, IndexSource,
+    find_filelist_in_first_level, parse_filelist, write_filelist, IndexBuildResult, IndexSource,
 };
 use crate::search::try_search_entries_with_scope;
 use crate::ui_model::{
@@ -180,8 +179,7 @@ struct PreviewResponse {
 struct FileListRequest {
     request_id: u64,
     root: PathBuf,
-    include_files: bool,
-    include_dirs: bool,
+    entries: Vec<PathBuf>,
 }
 
 enum FileListResponse {
@@ -276,13 +274,9 @@ fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListRespons
 
     thread::spawn(move || {
         while let Ok(req) = rx_req.recv() {
+            let count = req.entries.len();
             let result =
-                build_index_with_metadata(&req.root, false, req.include_files, req.include_dirs)
-                    .and_then(|snapshot| {
-                        let count = snapshot.entries.len();
-                        write_filelist(&req.root, &snapshot.entries, "FileList.txt")
-                            .map(|path| (path, count))
-                    });
+                write_filelist(&req.root, &req.entries, "FileList.txt").map(|path| (path, count));
             let msg = match result {
                 Ok((path, count)) => FileListResponse::Finished {
                     request_id: req.request_id,
@@ -537,6 +531,7 @@ pub struct FlistWalkerApp {
     next_filelist_request_id: u64,
     pending_filelist_request_id: Option<u64>,
     pending_filelist_root: Option<PathBuf>,
+    pending_filelist_after_index_root: Option<PathBuf>,
     latest_index_request_id: Arc<AtomicU64>,
     search_in_progress: bool,
     index_in_progress: bool,
@@ -640,6 +635,7 @@ impl FlistWalkerApp {
             next_filelist_request_id: 1,
             pending_filelist_request_id: None,
             pending_filelist_root: None,
+            pending_filelist_after_index_root: None,
             latest_index_request_id,
             search_in_progress: false,
             index_in_progress: false,
@@ -1021,6 +1017,14 @@ impl FlistWalkerApp {
 
     fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
+        if self
+            .pending_filelist_after_index_root
+            .as_ref()
+            .is_some_and(|pending_root| Self::path_key(pending_root) != Self::path_key(&self.root))
+        {
+            self.pending_filelist_after_index_root = None;
+            self.set_notice("Deferred Create File List canceled because root changed");
+        }
         let request_id = self.next_index_request_id;
         self.next_index_request_id = self.next_index_request_id.saturating_add(1);
         self.latest_index_request_id
@@ -1100,6 +1104,18 @@ impl FlistWalkerApp {
                     self.apply_entry_filters(true);
                     self.search_resume_pending = false;
                     self.clear_notice();
+                    if self
+                        .pending_filelist_after_index_root
+                        .as_ref()
+                        .is_some_and(|pending_root| {
+                            Self::path_key(pending_root) == Self::path_key(&self.root)
+                        })
+                    {
+                        let root = self.root.clone();
+                        let entries = self.filelist_entries_snapshot();
+                        self.pending_filelist_after_index_root = None;
+                        self.start_filelist_creation(root, entries);
+                    }
                     finished_current_request = true;
                     needs_incremental_refresh = false;
                     break;
@@ -1111,6 +1127,7 @@ impl FlistWalkerApp {
                     self.index_in_progress = false;
                     self.pending_index_request_id = None;
                     self.search_resume_pending = false;
+                    self.pending_filelist_after_index_root = None;
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
             }
@@ -1482,24 +1499,30 @@ impl FlistWalkerApp {
         self.set_notice("Cleared selection and query");
     }
 
-    fn create_filelist(&mut self) {
-        if self.filelist_in_progress {
-            self.set_notice("Create File List is already running");
-            return;
-        }
+    fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
+        self.all_entries
+            .iter()
+            .filter(|path| {
+                let is_dir = self.entry_kinds.get(*path).copied().unwrap_or(false);
+                (is_dir && self.include_dirs) || (!is_dir && self.include_files)
+            })
+            .cloned()
+            .collect()
+    }
 
+    fn start_filelist_creation(&mut self, root: PathBuf, entries: Vec<PathBuf>) {
+        self.pending_filelist_after_index_root = None;
         let request_id = self.next_filelist_request_id;
         self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
         self.pending_filelist_request_id = Some(request_id);
-        self.pending_filelist_root = Some(self.root.clone());
+        self.pending_filelist_root = Some(root.clone());
         self.filelist_in_progress = true;
         self.refresh_status_line();
 
         let req = FileListRequest {
             request_id,
-            root: self.root.clone(),
-            include_files: self.include_files,
-            include_dirs: self.include_dirs,
+            root,
+            entries,
         };
         if self.filelist_tx.send(req).is_err() {
             self.pending_filelist_request_id = None;
@@ -1507,6 +1530,23 @@ impl FlistWalkerApp {
             self.filelist_in_progress = false;
             self.set_notice("Create File List worker is unavailable");
         }
+    }
+
+    fn create_filelist(&mut self) {
+        if self.filelist_in_progress {
+            self.set_notice("Create File List is already running");
+            return;
+        }
+        if self.index_in_progress {
+            self.pending_filelist_after_index_root = Some(self.root.clone());
+            self.set_notice(
+                "Indexing in progress. Create File List will run after indexing finishes",
+            );
+            return;
+        }
+
+        let entries = self.filelist_entries_snapshot();
+        self.start_filelist_creation(self.root.clone(), entries);
     }
 
     fn poll_filelist_response(&mut self) {
@@ -2453,6 +2493,78 @@ mod tests {
         assert_eq!(search_req.query, "main");
         assert!(!app.search_resume_pending);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn create_filelist_waits_while_indexing() {
+        let root = test_root("filelist-waits-indexing");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index_in_progress = true;
+
+        app.create_filelist();
+
+        assert_eq!(app.pending_filelist_after_index_root, Some(root.clone()));
+        assert!(app.pending_filelist_request_id.is_none());
+        assert!(!app.filelist_in_progress);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn deferred_filelist_starts_after_index_finished() {
+        let root = test_root("filelist-after-index-finished");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("main.rs");
+        fs::write(&path, "fn main() {}").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+        app.filelist_tx = filelist_tx;
+        let (index_tx, index_rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = index_rx;
+
+        app.index_in_progress = true;
+        app.pending_index_request_id = Some(77);
+        app.entry_kinds.insert(path.clone(), false);
+        app.index.entries = vec![path.clone()];
+        app.create_filelist();
+
+        index_tx
+            .send(IndexResponse::Finished {
+                request_id: 77,
+                source: IndexSource::Walker,
+            })
+            .expect("send finished");
+        app.poll_index_response();
+
+        let req = filelist_rx
+            .try_recv()
+            .expect("filelist request should be sent");
+        assert_eq!(req.root, root);
+        assert_eq!(req.entries, vec![path]);
+        assert!(app.pending_filelist_after_index_root.is_none());
+        assert!(app.filelist_in_progress);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn deferred_filelist_is_canceled_when_root_changes() {
+        let root_old = test_root("filelist-deferred-cancel-old");
+        let root_new = test_root("filelist-deferred-cancel-new");
+        fs::create_dir_all(&root_old).expect("create old dir");
+        fs::create_dir_all(&root_new).expect("create new dir");
+        let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+        let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        app.pending_filelist_after_index_root = Some(root_old.clone());
+        app.root = root_new.clone();
+
+        app.request_index_refresh();
+
+        assert!(app.pending_filelist_after_index_root.is_none());
+        assert!(app.notice.contains("Deferred Create File List canceled"));
+        let _ = fs::remove_dir_all(&root_old);
+        let _ = fs::remove_dir_all(&root_new);
     }
 
     #[test]
