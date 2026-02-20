@@ -1723,6 +1723,17 @@ impl FlistWalkerApp {
             ..Default::default()
         };
         let pressed = |key: egui::Key| ctx.input_mut(|i| i.consume_key(emacs_mods, key));
+        let space_pressed = ctx
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
+            || ctx.input_mut(|i| {
+                i.consume_key(
+                    egui::Modifiers {
+                        shift: true,
+                        ..Default::default()
+                    },
+                    egui::Key::Space,
+                )
+            });
 
         let mut text_changed = false;
         let mut cursor_changed = false;
@@ -1733,7 +1744,17 @@ impl FlistWalkerApp {
         let mut cursor = ccursor.primary.index.min(char_len);
         let mut anchor = ccursor.secondary.index.min(char_len);
 
-        if pressed(egui::Key::A) {
+        if space_pressed && !output.response.changed() {
+            if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                Self::remove_char_range(&mut self.query, start, end);
+                cursor = start;
+            }
+            Self::insert_at_char(&mut self.query, cursor, " ");
+            cursor += 1;
+            anchor = cursor;
+            text_changed = true;
+            cursor_changed = true;
+        } else if pressed(egui::Key::A) {
             cursor = 0;
             anchor = 0;
             cursor_changed = true;
@@ -1970,7 +1991,7 @@ impl FlistWalkerApp {
                         });
                     let response = row.inner;
                     if is_current && self.scroll_to_current {
-                        response.scroll_to_me(Some(egui::Align::Center));
+                        response.scroll_to_me(None);
                     }
                     if response.clicked() {
                         clicked_row = Some(i);
@@ -2029,7 +2050,12 @@ impl FlistWalkerApp {
         {
             self.execute_selected();
         }
-        if ctx.input(|i| i.modifiers.ctrl && i.modifiers.shift && i.key_pressed(egui::Key::C)) {
+        let copy_mod = egui::Modifiers {
+            ctrl: true,
+            shift: true,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(copy_mod, egui::Key::C)) {
             self.copy_selected_paths(ctx);
         }
 
@@ -2075,8 +2101,8 @@ impl eframe::App for FlistWalkerApp {
                 let row_height = ui.spacing().interact_size.y;
                 ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
                 let button_width = 96.0;
-                let add_width = 100.0;
                 let set_default_width = 130.0;
+                let add_width = 100.0;
                 let remove_width = 130.0;
                 let field_width = (ui.available_width()
                     - button_width
@@ -2129,12 +2155,6 @@ impl eframe::App for FlistWalkerApp {
                     }
                 }
                 if ui
-                    .add_sized([add_width, row_height], egui::Button::new("Add to list"))
-                    .clicked()
-                {
-                    self.add_current_root_to_saved();
-                }
-                if ui
                     .add_sized(
                         [set_default_width, row_height],
                         egui::Button::new("Set as default"),
@@ -2142,6 +2162,12 @@ impl eframe::App for FlistWalkerApp {
                     .clicked()
                 {
                     self.set_current_root_as_default();
+                }
+                if ui
+                    .add_sized([add_width, row_height], egui::Button::new("Add to list"))
+                    .clicked()
+                {
+                    self.add_current_root_to_saved();
                 }
                 if ui
                     .add_sized(

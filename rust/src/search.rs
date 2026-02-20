@@ -282,6 +282,18 @@ pub fn try_search_entries_with_scope(
                 score += 800.0;
             }
         }
+        for term in &spec.include_terms {
+            let (_, _, core) = split_anchor(term);
+            if core.is_empty() {
+                continue;
+            }
+            if matches_exact_term(core, &name, &full_lower) {
+                score += 300.0;
+                if name == core {
+                    score += 300.0;
+                }
+            }
+        }
 
         scored.push((path, score));
     }
@@ -403,6 +415,20 @@ mod tests {
         ];
         let out = search_entries("'main", &entries, 10, false);
         assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn multi_term_query_prioritizes_exact_term_hits() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/barbaz.txt"),
+            PathBuf::from("/tmp/src/bxxaxxr-bxaxz.txt"),
+        ];
+        let out = search_entries("bar baz", &entries, 10, false);
+        assert!(!out.is_empty());
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("barbaz.txt")
+        );
     }
 
     #[test]
