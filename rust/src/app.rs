@@ -187,11 +187,13 @@ struct FileListRequest {
 enum FileListResponse {
     Finished {
         request_id: u64,
+        root: PathBuf,
         path: PathBuf,
         count: usize,
     },
     Failed {
         request_id: u64,
+        root: PathBuf,
         error: String,
     },
 }
@@ -284,11 +286,13 @@ fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListRespons
             let msg = match result {
                 Ok((path, count)) => FileListResponse::Finished {
                     request_id: req.request_id,
+                    root: req.root.clone(),
                     path,
                     count,
                 },
                 Err(err) => FileListResponse::Failed {
                     request_id: req.request_id,
+                    root: req.root.clone(),
                     error: err.to_string(),
                 },
             };
@@ -532,6 +536,7 @@ pub struct FlistWalkerApp {
     pending_preview_request_id: Option<u64>,
     next_filelist_request_id: u64,
     pending_filelist_request_id: Option<u64>,
+    pending_filelist_root: Option<PathBuf>,
     latest_index_request_id: Arc<AtomicU64>,
     search_in_progress: bool,
     index_in_progress: bool,
@@ -553,6 +558,7 @@ pub struct FlistWalkerApp {
     preview_cache_order: VecDeque<PathBuf>,
     last_incremental_results_refresh: Instant,
     last_search_snapshot_len: usize,
+    search_resume_pending: bool,
 }
 
 impl FlistWalkerApp {
@@ -633,6 +639,7 @@ impl FlistWalkerApp {
             pending_preview_request_id: None,
             next_filelist_request_id: 1,
             pending_filelist_request_id: None,
+            pending_filelist_root: None,
             latest_index_request_id,
             search_in_progress: false,
             index_in_progress: false,
@@ -656,6 +663,7 @@ impl FlistWalkerApp {
             preview_cache_order: VecDeque::new(),
             last_incremental_results_refresh: Instant::now(),
             last_search_snapshot_len: 0,
+            search_resume_pending: false,
         };
         app.request_index_refresh();
         app
@@ -1019,6 +1027,12 @@ impl FlistWalkerApp {
             .store(request_id, Ordering::Relaxed);
         self.pending_index_request_id = Some(request_id);
         self.index_in_progress = true;
+        // Cancel in-flight search requests so responses computed from stale snapshots
+        // cannot override results while a new index request is running.
+        self.pending_request_id = None;
+        self.search_in_progress = false;
+        // Non-empty query should resume quickly once fresh index batches arrive.
+        self.search_resume_pending = !self.query.trim().is_empty();
 
         self.index.entries.clear();
         self.index.source = IndexSource::None;
@@ -1084,6 +1098,7 @@ impl FlistWalkerApp {
                     self.pending_index_request_id = None;
                     self.index_in_progress = false;
                     self.apply_entry_filters(true);
+                    self.search_resume_pending = false;
                     self.clear_notice();
                     finished_current_request = true;
                     needs_incremental_refresh = false;
@@ -1095,6 +1110,7 @@ impl FlistWalkerApp {
                     }
                     self.index_in_progress = false;
                     self.pending_index_request_id = None;
+                    self.search_resume_pending = false;
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
             }
@@ -1116,6 +1132,15 @@ impl FlistWalkerApp {
             // Empty query is the progressive browsing mode: show newest indexed entries
             // immediately without cloning the whole snapshot for search workers.
             self.update_results_from_index_progress();
+            return;
+        }
+
+        if self.search_resume_pending {
+            self.entries = Arc::new(self.filtered_entries(&self.index.entries));
+            self.last_search_snapshot_len = self.entries.len();
+            self.last_incremental_results_refresh = Instant::now();
+            self.update_results();
+            self.search_resume_pending = false;
             return;
         }
 
@@ -1466,6 +1491,7 @@ impl FlistWalkerApp {
         let request_id = self.next_filelist_request_id;
         self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
         self.pending_filelist_request_id = Some(request_id);
+        self.pending_filelist_root = Some(self.root.clone());
         self.filelist_in_progress = true;
         self.refresh_status_line();
 
@@ -1477,6 +1503,7 @@ impl FlistWalkerApp {
         };
         if self.filelist_tx.send(req).is_err() {
             self.pending_filelist_request_id = None;
+            self.pending_filelist_root = None;
             self.filelist_in_progress = false;
             self.set_notice("Create File List worker is unavailable");
         }
@@ -1487,9 +1514,11 @@ impl FlistWalkerApp {
             let Some(pending) = self.pending_filelist_request_id else {
                 continue;
             };
+            let requested_root = self.pending_filelist_root.clone();
             match response {
                 FileListResponse::Finished {
                     request_id,
+                    root,
                     path,
                     count,
                 } => {
@@ -1497,18 +1526,54 @@ impl FlistWalkerApp {
                         continue;
                     }
                     self.pending_filelist_request_id = None;
+                    self.pending_filelist_root = None;
                     self.filelist_in_progress = false;
+
+                    let same_requested_root = requested_root
+                        .as_ref()
+                        .map(|r| Self::path_key(r) == Self::path_key(&root))
+                        .unwrap_or(true);
+                    let same_current_root = Self::path_key(&self.root) == Self::path_key(&root);
+
+                    if !same_requested_root || !same_current_root {
+                        self.set_notice(format!(
+                            "Created {}: {} entries (previous root)",
+                            path.display(),
+                            count
+                        ));
+                        continue;
+                    }
+
                     self.set_notice(format!("Created {}: {} entries", path.display(), count));
                     if self.use_filelist {
                         self.request_index_refresh();
                     }
                 }
-                FileListResponse::Failed { request_id, error } => {
+                FileListResponse::Failed {
+                    request_id,
+                    root,
+                    error,
+                } => {
                     if request_id != pending {
                         continue;
                     }
                     self.pending_filelist_request_id = None;
+                    self.pending_filelist_root = None;
                     self.filelist_in_progress = false;
+
+                    let same_requested_root = requested_root
+                        .as_ref()
+                        .map(|r| Self::path_key(r) == Self::path_key(&root))
+                        .unwrap_or(true);
+                    let same_current_root = Self::path_key(&self.root) == Self::path_key(&root);
+                    if !same_requested_root || !same_current_root {
+                        self.set_notice(format!(
+                            "Create File List failed for previous root: {}",
+                            error
+                        ));
+                        continue;
+                    }
+
                     self.set_notice(format!("Create File List failed: {}", error));
                 }
             }
@@ -2308,6 +2373,89 @@ mod tests {
     }
 
     #[test]
+    fn stale_search_response_is_ignored_after_index_refresh() {
+        let root = test_root("stale-search-after-refresh");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+        let (search_tx, search_rx) = mpsc::channel::<SearchResponse>();
+        let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+        app.search_rx = search_rx;
+        app.index_tx = index_tx;
+        app.pending_request_id = Some(5);
+        app.search_in_progress = true;
+        app.results = vec![(root.join("before.txt"), 0.0)];
+
+        app.request_index_refresh();
+
+        search_tx
+            .send(SearchResponse {
+                request_id: 5,
+                results: vec![(root.join("stale.txt"), 1.0)],
+                error: None,
+            })
+            .expect("send stale search response");
+
+        app.poll_search_response();
+
+        assert!(!app.search_in_progress);
+        assert_eq!(app.pending_request_id, None);
+        assert_eq!(app.results[0].0, root.join("before.txt"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn index_refresh_marks_search_resume_pending_for_non_empty_query() {
+        let root = test_root("resume-pending-on-refresh");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+        let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+
+        app.request_index_refresh();
+
+        assert!(app.search_resume_pending);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
+        let root = test_root("resume-first-batch");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        // Use a manual search channel so the test can inspect enqueued requests.
+        let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
+        app.search_tx = search_tx_real;
+
+        app.request_index_refresh();
+        let req = index_rx.try_recv().expect("index request should be sent");
+
+        let (tx_idx, rx_idx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx_idx;
+        tx_idx
+            .send(IndexResponse::Batch {
+                request_id: req.request_id,
+                entries: vec![IndexEntry {
+                    path: root.join("main.rs"),
+                    is_dir: false,
+                }],
+            })
+            .expect("send batch");
+
+        // Simulate that normal throttle window has not elapsed yet.
+        app.last_incremental_results_refresh = Instant::now();
+        app.poll_index_response();
+
+        let search_req = search_rx_real
+            .try_recv()
+            .expect("search should resume immediately");
+        assert_eq!(search_req.query, "main");
+        assert!(!app.search_resume_pending);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn filelist_finished_updates_state_and_notice() {
         let root = test_root("filelist-finished");
         fs::create_dir_all(&root).expect("create dir");
@@ -2315,12 +2463,14 @@ mod tests {
         let (tx, rx) = mpsc::channel::<FileListResponse>();
         app.filelist_rx = rx;
         app.pending_filelist_request_id = Some(11);
+        app.pending_filelist_root = Some(root.clone());
         app.filelist_in_progress = true;
         app.use_filelist = false;
 
         let filelist = root.join("FileList.txt");
         tx.send(FileListResponse::Finished {
             request_id: 11,
+            root: root.clone(),
             path: filelist.clone(),
             count: 3,
         })
@@ -2346,12 +2496,14 @@ mod tests {
         let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
         app.index_tx = index_tx;
         app.pending_filelist_request_id = Some(12);
+        app.pending_filelist_root = Some(root.clone());
         app.filelist_in_progress = true;
         app.use_filelist = true;
 
         filelist_tx
             .send(FileListResponse::Finished {
                 request_id: 12,
+                root: root.clone(),
                 path: root.join("FileList.txt"),
                 count: 5,
             })
@@ -2375,10 +2527,12 @@ mod tests {
         let (tx, rx) = mpsc::channel::<FileListResponse>();
         app.filelist_rx = rx;
         app.pending_filelist_request_id = Some(13);
+        app.pending_filelist_root = Some(root.clone());
         app.filelist_in_progress = true;
 
         tx.send(FileListResponse::Failed {
             request_id: 13,
+            root: root.clone(),
             error: "disk full".to_string(),
         })
         .expect("send filelist response");
@@ -2389,6 +2543,70 @@ mod tests {
         assert!(!app.filelist_in_progress);
         assert!(app.notice.contains("Create File List failed: disk full"));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
+        let root_old = test_root("filelist-prev-root-old");
+        let root_new = test_root("filelist-prev-root-new");
+        fs::create_dir_all(&root_old).expect("create old dir");
+        fs::create_dir_all(&root_new).expect("create new dir");
+        let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+        let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+        app.filelist_rx = filelist_rx;
+        let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = _index_tx;
+        app.pending_filelist_request_id = Some(51);
+        app.pending_filelist_root = Some(root_old.clone());
+        app.filelist_in_progress = true;
+        app.use_filelist = true;
+        app.root = root_new.clone();
+
+        filelist_tx
+            .send(FileListResponse::Finished {
+                request_id: 51,
+                root: root_old.clone(),
+                path: root_old.join("FileList.txt"),
+                count: 9,
+            })
+            .expect("send filelist response");
+
+        app.poll_filelist_response();
+
+        assert!(index_rx.try_recv().is_err());
+        assert!(!app.filelist_in_progress);
+        assert!(app.notice.contains("previous root"));
+        let _ = fs::remove_dir_all(&root_old);
+        let _ = fs::remove_dir_all(&root_new);
+    }
+
+    #[test]
+    fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
+        let root_old = test_root("filelist-prev-root-fail-old");
+        let root_new = test_root("filelist-prev-root-fail-new");
+        fs::create_dir_all(&root_old).expect("create old dir");
+        fs::create_dir_all(&root_new).expect("create new dir");
+        let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<FileListResponse>();
+        app.filelist_rx = rx;
+        app.pending_filelist_request_id = Some(52);
+        app.pending_filelist_root = Some(root_old.clone());
+        app.filelist_in_progress = true;
+        app.root = root_new;
+
+        tx.send(FileListResponse::Failed {
+            request_id: 52,
+            root: root_old.clone(),
+            error: "permission denied".to_string(),
+        })
+        .expect("send filelist response");
+
+        app.poll_filelist_response();
+
+        assert_eq!(app.pending_filelist_request_id, None);
+        assert!(!app.filelist_in_progress);
+        assert!(app.notice.contains("previous root"));
+        let _ = fs::remove_dir_all(&root_old);
     }
 
     #[test]
