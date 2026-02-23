@@ -24,6 +24,29 @@
 ### Known issues
 - 
 
+## [0.3.1] - 2026-02-23
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- Preview の内容が長い場合でも Preview 領域外へ描画がはみ出さないように修正し、フッター（`Entries` / `Results`）表示が隠れないよう改善。
+- `Copy Path(s)` 実行時のフッター通知 `Copied path:` から Windows 拡張パス接頭辞（`\\?\`）を除去。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.3.0] - 2026-02-20
 ### Added
 - Root 行に `Set as default` を追加し、次回起動時の既定 Root を保存・適用。
@@ -134,7 +157,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.1
 [0.3.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.0
 [0.2.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.2.1
 [0.2.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.2.0
