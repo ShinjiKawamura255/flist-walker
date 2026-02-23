@@ -1512,7 +1512,10 @@ impl FlistWalkerApp {
         let text = Self::clipboard_paths_text(&paths);
         ctx.output_mut(|o| o.copied_text = text);
         if paths.len() == 1 {
-            self.set_notice(format!("Copied path: {}", paths[0].display()));
+            self.set_notice(format!(
+                "Copied path: {}",
+                normalize_path_for_display(&paths[0])
+            ));
         } else {
             self.set_notice(format!("Copied {} paths to clipboard", paths.len()));
         }
@@ -1953,11 +1956,29 @@ impl FlistWalkerApp {
                 self.mark_ui_state_dirty();
             }
             ui.heading("Preview");
-            let preview_size = ui.available_size();
-            ui.add_sized(
-                preview_size,
-                egui::TextEdit::multiline(&mut self.preview).interactive(false),
-            );
+            let preview_width = ui.available_width();
+            let preview_height = ui.available_height();
+            ui.allocate_ui_with_layout(
+                egui::vec2(preview_width, preview_height),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    let frame_fill = ui.visuals().extreme_bg_color;
+                    egui::Frame::none().fill(frame_fill).show(ui, |ui| {
+                        ui.set_min_size(egui::vec2(preview_width, preview_height));
+                        egui::ScrollArea::both()
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| {
+                                ui.add_sized(
+                                    egui::vec2(preview_width, preview_height),
+                                    egui::TextEdit::multiline(&mut self.preview)
+                                        .interactive(false)
+                                        .font(egui::TextStyle::Monospace)
+                                        .desired_width(f32::INFINITY)
+                                        .desired_rows(1),
+                                );
+                            });
+                    });
+                });
         } else {
             self.render_results_list(ui);
         }
@@ -3159,5 +3180,22 @@ mod tests {
         let lines: Vec<&str> = text.lines().collect();
         assert_eq!(lines[0], r"C:\Users\tester\file.txt");
         assert_eq!(lines[1], r"\\server\share\folder\file.txt");
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn copy_selected_paths_notice_normalizes_extended_prefix() {
+        let root = test_root("copy-path-notice-normalize");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0)];
+        app.current_row = Some(0);
+        let ctx = egui::Context::default();
+
+        app.copy_selected_paths(&ctx);
+
+        assert!(app.notice.contains(r"Copied path: C:\Users\tester\file.txt"));
+        assert!(!app.notice.contains(r"\\?\"));
+        let _ = fs::remove_dir_all(&root);
     }
 }
