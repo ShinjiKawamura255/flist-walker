@@ -1,6 +1,7 @@
 use crate::actions::execute_or_open;
 use crate::indexer::{
-    find_filelist_in_first_level, parse_filelist, write_filelist, IndexBuildResult, IndexSource,
+    find_filelist_in_first_level, parse_filelist_stream, write_filelist, IndexBuildResult,
+    IndexSource,
 };
 use crate::search::try_search_entries_with_scope;
 use crate::ui_model::{
@@ -329,10 +330,7 @@ fn stream_filelist_index(
     filelist: PathBuf,
     latest_request_id: &AtomicU64,
 ) -> std::result::Result<IndexSource, String> {
-    let parsed = parse_filelist(&filelist, root, req.include_files, req.include_dirs)
-        .map_err(|e| e.to_string())?;
-
-    let source = IndexSource::FileList(filelist);
+    let source = IndexSource::FileList(filelist.clone());
     if tx_res
         .send(IndexResponse::Started {
             request_id: req.request_id,
@@ -345,18 +343,32 @@ fn stream_filelist_index(
 
     let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
-    for path in parsed {
-        if latest_request_id.load(Ordering::Relaxed) != req.request_id {
-            return Err("superseded".to_string());
-        }
-        let is_dir = path.is_dir();
-        buffer.push(IndexEntry { path, is_dir });
-        if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
-            if !flush_batch(tx_res, req.request_id, &mut buffer) {
-                return Err("index receiver closed".to_string());
+    let mut stream_err: Option<String> = None;
+    let parse = parse_filelist_stream(
+        &filelist,
+        root,
+        req.include_files,
+        req.include_dirs,
+        || latest_request_id.load(Ordering::Relaxed) != req.request_id,
+        |path, is_dir| {
+            if stream_err.is_some() {
+                return;
             }
-            last_flush = Instant::now();
-        }
+            buffer.push(IndexEntry { path, is_dir });
+            if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
+                if !flush_batch(tx_res, req.request_id, &mut buffer) {
+                    stream_err = Some("index receiver closed".to_string());
+                    return;
+                }
+                last_flush = Instant::now();
+            }
+        },
+    );
+    if let Some(err) = stream_err {
+        return Err(err);
+    }
+    if let Err(err) = parse {
+        return Err(err.to_string());
     }
 
     if !flush_batch(tx_res, req.request_id, &mut buffer) {
@@ -544,6 +556,7 @@ pub struct FlistWalkerApp {
     index_in_progress: bool,
     preview_in_progress: bool,
     filelist_in_progress: bool,
+    pending_copy_shortcut: bool,
     scroll_to_current: bool,
     focus_query_requested: bool,
     unfocus_query_requested: bool,
@@ -649,6 +662,7 @@ impl FlistWalkerApp {
             index_in_progress: false,
             preview_in_progress: false,
             filelist_in_progress: false,
+            pending_copy_shortcut: false,
             scroll_to_current: true,
             focus_query_requested: false,
             unfocus_query_requested: false,
@@ -2020,7 +2034,7 @@ impl FlistWalkerApp {
                             color: if is_current {
                                 egui::Color32::LIGHT_BLUE
                             } else {
-                                egui::Color32::GRAY
+                                ui.visuals().weak_text_color()
                             },
                             ..Default::default()
                         },
@@ -2044,7 +2058,7 @@ impl FlistWalkerApp {
                         let color = if positions.contains(&idx) {
                             egui::Color32::from_rgb(245, 158, 11)
                         } else {
-                            egui::Color32::from_rgb(229, 231, 235)
+                            ui.visuals().text_color()
                         };
                         job.append(
                             &ch.to_string(),
@@ -2144,7 +2158,9 @@ impl FlistWalkerApp {
             ..Default::default()
         };
         if ctx.input_mut(|i| i.consume_key(copy_mod, egui::Key::C)) {
-            self.copy_selected_paths(ctx);
+            // Keep this deferred until after TextEdit processing so query-focus copy
+            // cannot overwrite the intended "copy selected path(s)" shortcut result.
+            self.pending_copy_shortcut = true;
         }
 
         let ctrl_mod = egui::Modifiers {
@@ -2164,6 +2180,15 @@ impl FlistWalkerApp {
         if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
             self.clear_query_and_selection();
         }
+    }
+
+    fn run_deferred_shortcuts(&mut self, ctx: &egui::Context) {
+        if !self.pending_copy_shortcut {
+            return;
+        }
+        self.pending_copy_shortcut = false;
+        self.copy_selected_paths(ctx);
+        self.focus_query_requested = true;
     }
 }
 
@@ -2314,6 +2339,7 @@ impl eframe::App for FlistWalkerApp {
             if output.response.changed() {
                 self.update_results();
             }
+            self.run_deferred_shortcuts(ctx);
 
             ui.horizontal(|ui| {
                 if ui.button("Open / Execute").clicked() {
@@ -3166,6 +3192,29 @@ mod tests {
         assert!(!req.use_filelist);
         assert!(req.include_files);
         assert!(req.include_dirs);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn deferred_copy_shortcut_copies_selected_path_even_with_query_text() {
+        let root = test_root("deferred-copy-shortcut");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query text".to_string());
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+        app.pending_copy_shortcut = true;
+        let ctx = egui::Context::default();
+
+        app.run_deferred_shortcuts(&ctx);
+
+        assert!(!app.pending_copy_shortcut);
+        assert!(app.focus_query_requested);
+        assert!(
+            app.notice
+                .contains(&format!("Copied path: {}", normalize_path_for_display(&selected)))
+        );
         let _ = fs::remove_dir_all(&root);
     }
 

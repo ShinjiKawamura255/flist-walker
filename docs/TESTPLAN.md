@@ -43,6 +43,8 @@
 | TC-015 | integration | CLI 非空クエリ出力形式と root 不正系を検証する | SP-006, SP-008 |
 | TC-016 | unit | Root 変更時に旧 Root 由来の選択状態（current/pinned/preview）がクリアされる | SP-010 |
 | TC-017 | unit | Root 変更時に旧 Root 向け FileList 上書き確認が破棄される | SP-010 |
+| TC-018 | unit | `Ctrl+Shift+C` は検索窓フォーカス時でも結果パスを優先コピーする | SP-010 |
+| TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -89,3 +91,5 @@
 - TC-015 -> SP-006, SP-008 -> DES-005, DES-007 -> FR-006, NFR-002
 - TC-016 -> SP-010 -> DES-007, DES-009 -> FR-007
 - TC-017 -> SP-010 -> DES-007, DES-009 -> FR-007
+- TC-018 -> SP-010 -> DES-009 -> FR-007
+- TC-019 -> SP-001, SP-007 -> DES-001, DES-006 -> FR-001, NFR-001

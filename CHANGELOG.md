@@ -24,6 +24,31 @@
 ### Known issues
 - 
 
+## [0.3.2] - 2026-02-24
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- ライトテーマ時に Results の非ハイライト文字色が薄すぎる問題を修正し、可読性を改善。
+- 大規模 FileList 読み込みで `Source: None` 表示が長時間残り、再読込反映が遅延しやすい問題を修正（ストリーミング解析 + supersede 中断対応）。
+- `Create File List` は一時ファイルをローカル temp に生成してから最終配置へ移動する方式に変更（クロスデバイスは copy フォールバック）。
+- 検索窓フォーカス中の `Ctrl+Shift+C` で検索文字列が優先コピーされる回帰を再修正（後段でパスコピー実行）。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.3.1] - 2026-02-23
 ### Added
 - 

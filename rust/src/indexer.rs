@@ -1,8 +1,14 @@
 use anyhow::{Context, Result};
 use std::collections::HashSet;
+use std::fs::File;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
+
+static TMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndexSource {
@@ -50,14 +56,41 @@ pub fn parse_filelist(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<Vec<PathBuf>> {
-    let text = fs::read_to_string(filelist_path)
-        .with_context(|| format!("failed to read {}", filelist_path.display()))?;
-    let mut seen = HashSet::new();
     let mut out = Vec::new();
+    parse_filelist_stream(
+        filelist_path,
+        root,
+        include_files,
+        include_dirs,
+        || false,
+        |path, _is_dir| out.push(path),
+    )?;
+    Ok(out)
+}
 
+pub fn parse_filelist_stream<F, C>(
+    filelist_path: &Path,
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: C,
+    mut on_entry: F,
+) -> Result<()>
+where
+    F: FnMut(PathBuf, bool),
+    C: Fn() -> bool,
+{
+    let file = File::open(filelist_path)
+        .with_context(|| format!("failed to read {}", filelist_path.display()))?;
+    let reader = BufReader::new(file);
+    let mut seen = HashSet::new();
     let filelist_base = filelist_path.parent().unwrap_or(root);
-
-    for raw in text.lines() {
+    for line_result in reader.lines() {
+        if should_cancel() {
+            anyhow::bail!("superseded");
+        }
+        let raw = line_result
+            .with_context(|| format!("failed to read {}", filelist_path.display()))?;
         let line = raw.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
@@ -65,20 +98,25 @@ pub fn parse_filelist(
         let Some(abs) = resolve_filelist_entry_path(line, filelist_base, root) else {
             continue;
         };
-        if !abs.exists() {
+        let Ok(meta) = abs.metadata() else {
+            continue;
+        };
+        let is_dir = meta.is_dir();
+        let is_file = meta.is_file();
+        if is_file && !include_files {
             continue;
         }
-        if abs.is_file() && !include_files {
+        if is_dir && !include_dirs {
             continue;
         }
-        if abs.is_dir() && !include_dirs {
+        if !is_file && !is_dir {
             continue;
         }
         if seen.insert(abs.clone()) {
-            out.push(abs);
+            on_entry(abs, is_dir);
         }
     }
-    Ok(out)
+    Ok(())
 }
 
 fn resolve_filelist_entry_path(line: &str, filelist_base: &Path, root: &Path) -> Option<PathBuf> {
@@ -273,10 +311,44 @@ pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
     }
 }
 
+fn build_temp_filelist_path(filename: &str) -> PathBuf {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let seq = TMP_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let pid = std::process::id();
+    std::env::temp_dir()
+        .join("flistwalker")
+        .join(format!("{filename}.{pid}.{now}.{seq}.tmp"))
+}
+
 pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Result<PathBuf> {
     let out = root.join(filename);
     let text = build_filelist_text(entries, root);
-    fs::write(&out, text).with_context(|| format!("failed to write {}", out.display()))?;
+
+    let tmp = build_temp_filelist_path(filename);
+    if let Some(parent) = tmp.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create temp dir {}", parent.display()))?;
+    }
+    fs::write(&tmp, &text).with_context(|| format!("failed to write {}", tmp.display()))?;
+
+    if out.exists() {
+        fs::remove_file(&out).with_context(|| format!("failed to replace {}", out.display()))?;
+    }
+    if let Err(rename_err) = fs::rename(&tmp, &out) {
+        fs::copy(&tmp, &out).with_context(|| {
+            format!(
+                "failed to place {} from temp file {} ({})",
+                out.display(),
+                tmp.display(),
+                rename_err
+            )
+        })?;
+        let _ = fs::remove_file(&tmp);
+    }
+
     Ok(out)
 }
 
@@ -476,6 +548,33 @@ mod tests {
             .expect("write filelist");
         let parsed = parse_filelist(&out, &root, true, true).expect("parse filelist");
         assert_eq!(parsed.len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_filelist_stream_can_be_canceled() {
+        let root = test_root("parse-stream-cancel");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("a.txt");
+        fs::write(&file, "x").expect("write file");
+        let filelist = root.join("FileList.txt");
+        fs::write(&filelist, "a.txt\n").expect("write filelist");
+
+        let mut visited = 0usize;
+        let err = parse_filelist_stream(
+            &filelist,
+            &root,
+            true,
+            true,
+            || true,
+            |_path, _is_dir| {
+                visited = visited.saturating_add(1);
+            },
+        )
+        .expect_err("canceled parse should fail");
+
+        assert_eq!(visited, 0);
+        assert!(err.to_string().contains("superseded"));
         let _ = fs::remove_dir_all(&root);
     }
 
