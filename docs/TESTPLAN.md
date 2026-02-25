@@ -45,7 +45,7 @@
 | TC-017 | unit | Root 変更時に旧 Root 向け FileList 上書き確認が破棄される | SP-010 |
 | TC-018 | unit | `Ctrl+Shift+C` は検索窓フォーカス時でも結果パスを優先コピーする | SP-010 |
 | TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
-| TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Shift+Space` で全角スペースが検索窓へ反映される | SP-010, SP-011 |
+| TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 
 ## Runner and commands
 - Runner: `cargo test`
