@@ -12,12 +12,15 @@ use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -26,6 +29,8 @@ struct SavedWindowGeometry {
     y: f32,
     width: f32,
     height: f32,
+    monitor_width: Option<f32>,
+    monitor_height: Option<f32>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -41,7 +46,6 @@ struct LaunchSettings {
     default_root: Option<PathBuf>,
     show_preview: bool,
     results_panel_width: f32,
-    window: Option<SavedWindowGeometry>,
 }
 
 pub fn configure_egui_fonts(ctx: &egui::Context) {
@@ -564,10 +568,13 @@ pub struct FlistWalkerApp {
     default_root: Option<PathBuf>,
     show_preview: bool,
     results_panel_width: f32,
-    pending_window_restore: Option<SavedWindowGeometry>,
     window_geometry: Option<SavedWindowGeometry>,
+    pending_window_geometry: Option<SavedWindowGeometry>,
+    last_window_geometry_change: Instant,
     ui_state_dirty: bool,
     last_ui_state_save: Instant,
+    ime_composition_active: bool,
+    prev_space_down: bool,
     query_input_id: egui::Id,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
@@ -588,6 +595,66 @@ impl FlistWalkerApp {
     const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
     const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
+    const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
+
+    fn window_trace_enabled() -> bool {
+        static ENABLED: OnceLock<bool> = OnceLock::new();
+        *ENABLED.get_or_init(|| {
+            std::env::var("FLISTWALKER_WINDOW_TRACE")
+                .map(|v| {
+                    !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off"))
+                })
+                .unwrap_or(false)
+        })
+    }
+
+    fn window_trace_verbose_enabled() -> bool {
+        static VERBOSE: OnceLock<bool> = OnceLock::new();
+        *VERBOSE.get_or_init(|| {
+            std::env::var("FLISTWALKER_WINDOW_TRACE_VERBOSE")
+                .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("on"))
+                .unwrap_or(false)
+        })
+    }
+
+    fn window_trace_path() -> Option<PathBuf> {
+        #[cfg(windows)]
+        {
+            if let Some(base) = std::env::var_os("USERPROFILE") {
+                return Some(PathBuf::from(base).join(".flistwalker_window_trace.log"));
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            if let Some(base) = std::env::var_os("HOME") {
+                return Some(PathBuf::from(base).join(".flistwalker_window_trace.log"));
+            }
+        }
+        None
+    }
+
+    fn append_window_trace(event: &str, details: &str) {
+        if !Self::window_trace_enabled() {
+            return;
+        }
+        let Some(path) = Self::window_trace_path() else {
+            return;
+        };
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        let ts = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or_default();
+        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+            let _ = writeln!(file, "ts={} event={} {}", ts, event, details);
+        }
+    }
+
+    pub fn trace_window_event(event: &str, details: &str) {
+        Self::append_window_trace(event, details);
+    }
 
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let launch = LaunchSettings {
@@ -676,10 +743,13 @@ impl FlistWalkerApp {
             results_panel_width: launch
                 .results_panel_width
                 .max(Self::MIN_RESULTS_PANEL_WIDTH),
-            pending_window_restore: launch.window.clone(),
             window_geometry: None,
+            pending_window_geometry: None,
+            last_window_geometry_change: Instant::now(),
             ui_state_dirty: false,
             last_ui_state_save: Instant::now(),
+            ime_composition_active: false,
+            prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
@@ -757,7 +827,6 @@ impl FlistWalkerApp {
             default_root,
             show_preview,
             results_panel_width,
-            window: ui_state.window,
         }
     }
 
@@ -779,6 +848,13 @@ impl FlistWalkerApp {
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
             let _ = fs::write(path, text);
+            Self::append_window_trace(
+                "save_ui_state",
+                &format!(
+                    "window={:?} results_panel_width={:.1}",
+                    state.window, self.results_panel_width
+                ),
+            );
         }
     }
 
@@ -799,57 +875,144 @@ impl FlistWalkerApp {
 
     fn to_stable_window_geometry(geom: SavedWindowGeometry) -> SavedWindowGeometry {
         let round = |v: f32| (v * 10.0).round() / 10.0;
+        let mut width = round(geom.width.max(640.0));
+        let mut height = round(geom.height.max(400.0));
+        if let Some(mw) = geom.monitor_width {
+            // Clamp to current monitor bounds so transient cross-monitor values
+            // are not persisted and replayed at the next startup.
+            let cap = round(mw.max(640.0));
+            width = width.min(cap);
+        }
+        if let Some(mh) = geom.monitor_height {
+            let cap = round(mh.max(400.0));
+            height = height.min(cap);
+        }
         SavedWindowGeometry {
             x: round(geom.x),
             y: round(geom.y),
-            width: round(geom.width.max(640.0)),
-            height: round(geom.height.max(400.0)),
+            width,
+            height,
+            monitor_width: geom.monitor_width.map(round),
+            monitor_height: geom.monitor_height.map(round),
         }
+    }
+
+    fn window_geometry_from_rects(
+        outer_rect: egui::Rect,
+        inner_rect: Option<egui::Rect>,
+        monitor_size: Option<egui::Vec2>,
+    ) -> SavedWindowGeometry {
+        let size_rect = inner_rect.unwrap_or(outer_rect);
+        SavedWindowGeometry {
+            x: outer_rect.min.x,
+            y: outer_rect.min.y,
+            width: size_rect.width(),
+            height: size_rect.height(),
+            monitor_width: monitor_size.map(|s| s.x),
+            monitor_height: monitor_size.map(|s| s.y),
+        }
+    }
+
+    fn normalize_restore_geometry(saved: SavedWindowGeometry) -> SavedWindowGeometry {
+        let mut width = saved.width.max(640.0);
+        let mut height = saved.height.max(400.0);
+        if let Some(mw) = saved.monitor_width {
+            // Use the last known monitor dimensions as a hard upper bound.
+            width = width.min(mw.max(640.0));
+        }
+        if let Some(mh) = saved.monitor_height {
+            height = height.min(mh.max(400.0));
+        }
+        SavedWindowGeometry {
+            x: saved.x,
+            y: saved.y,
+            width,
+            height,
+            monitor_width: saved.monitor_width,
+            monitor_height: saved.monitor_height,
+        }
+    }
+
+    fn apply_stable_window_geometry(&mut self, force: bool) {
+        let Some(pending) = self.pending_window_geometry.clone() else {
+            return;
+        };
+        if !force
+            && self.last_window_geometry_change.elapsed() < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
+        {
+            return;
+        }
+        if self.window_geometry.as_ref() != Some(&pending) {
+            self.window_geometry = Some(pending.clone());
+            self.mark_ui_state_dirty();
+            Self::append_window_trace(
+                "window_geometry_committed",
+                &format!("committed={:?} force={}", self.window_geometry, force),
+            );
+        }
+        self.pending_window_geometry = None;
     }
 
     fn capture_window_geometry(&mut self, ctx: &egui::Context) {
         let next = ctx.input(|i| {
-            i.viewport().outer_rect.map(|rect| SavedWindowGeometry {
-                x: rect.min.x,
-                y: rect.min.y,
-                width: rect.width(),
-                height: rect.height(),
-            })
+            let outer = i.viewport().outer_rect?;
+            let inner = i.viewport().inner_rect;
+            let monitor_size = i.viewport().monitor_size;
+            Some(Self::window_geometry_from_rects(outer, inner, monitor_size))
         });
         let Some(next) = next.map(Self::to_stable_window_geometry) else {
             return;
         };
-        if self.window_geometry.as_ref() != Some(&next) {
-            self.window_geometry = Some(next);
-            self.mark_ui_state_dirty();
+        if let (Some(mw), Some(mh)) = (next.monitor_width, next.monitor_height) {
+            let width_limit = (mw * 1.05).max(640.0);
+            let height_limit = (mh * 1.05).max(400.0);
+            if next.width > width_limit || next.height > height_limit {
+                Self::append_window_trace(
+                    "capture_window_geometry_rejected_oversize",
+                    &format!(
+                        "x={:.1} y={:.1} w={:.1} h={:.1} mw={:.1} mh={:.1}",
+                        next.x, next.y, next.width, next.height, mw, mh
+                    ),
+                );
+                return;
+            }
+        }
+        if self.pending_window_geometry.as_ref() != Some(&next)
+            && self.window_geometry.as_ref() != Some(&next)
+        {
+            let prev_committed = self.window_geometry.clone();
+            let prev_pending = self.pending_window_geometry.clone();
+            self.pending_window_geometry = Some(next);
+            self.last_window_geometry_change = Instant::now();
+            if Self::window_trace_verbose_enabled() {
+                Self::append_window_trace(
+                    "capture_window_geometry_changed",
+                    &format!(
+                        "prev_committed={:?} prev_pending={:?} next_pending={:?}",
+                        prev_committed, prev_pending, self.pending_window_geometry
+                    ),
+                );
+            }
         }
     }
 
-    fn apply_pending_window_restore(&mut self, ctx: &egui::Context) {
-        let Some(saved) = self.pending_window_restore.clone() else {
-            return;
-        };
+    pub fn startup_window_geometry() -> Option<(egui::Pos2, egui::Vec2)> {
+        let state = Self::load_ui_state();
+        let saved = state.window?;
+        let normalized = Self::normalize_restore_geometry(saved);
+        Self::append_window_trace(
+            "startup_window_geometry",
+            &format!("normalized={:?}", normalized),
+        );
+        Some((
+            egui::pos2(normalized.x, normalized.y),
+            egui::vec2(normalized.width, normalized.height),
+        ))
+    }
 
-        let monitor_size = ctx.input(|i| i.viewport().monitor_size);
-        let mut width = saved.width.max(640.0);
-        let mut height = saved.height.max(400.0);
-        let mut x = saved.x;
-        let mut y = saved.y;
-
-        if let Some(monitor_size) = monitor_size {
-            width = width.min(monitor_size.x.max(640.0));
-            height = height.min(monitor_size.y.max(400.0));
-            let max_x = (monitor_size.x - width).max(0.0);
-            let max_y = (monitor_size.y - height).max(0.0);
-            x = x.clamp(0.0, max_x);
-            y = y.clamp(0.0, max_y);
-        } else if ctx.input(|i| i.viewport().outer_rect).is_none() {
-            return;
-        }
-
-        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(width, height)));
-        ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(x, y)));
-        self.pending_window_restore = None;
+    pub fn startup_window_size() -> Option<egui::Vec2> {
+        let (_, size) = Self::startup_window_geometry()?;
+        Some(size)
     }
 
     fn saved_roots_file_path() -> Option<PathBuf> {
@@ -1216,12 +1379,18 @@ impl FlistWalkerApp {
         }
 
         if let Some(request_id) = self.pending_index_request_id {
-            let consumed = self.drain_queued_index_entries_with_budget(
-                request_id,
-                frame_start,
-                FRAME_BUDGET,
-                MAX_INDEX_ENTRIES_PER_FRAME,
-            );
+            let remaining_budget = FRAME_BUDGET.saturating_sub(frame_start.elapsed());
+            let consumed = if remaining_budget.is_zero() {
+                // Avoid starvation when message handling consumed this frame budget.
+                self.drain_queued_index_entries(request_id, 32)
+            } else {
+                self.drain_queued_index_entries_with_budget(
+                    request_id,
+                    Instant::now(),
+                    remaining_budget,
+                    MAX_INDEX_ENTRIES_PER_FRAME,
+                )
+            };
             has_index_progress |= consumed;
         }
 
@@ -1915,6 +2084,9 @@ impl FlistWalkerApp {
         ctx: &egui::Context,
         output: &mut egui::text_edit::TextEditOutput,
     ) -> bool {
+        if self.ime_composition_active {
+            return false;
+        }
         if !output.response.has_focus() {
             return false;
         }
@@ -1924,17 +2096,6 @@ impl FlistWalkerApp {
             ..Default::default()
         };
         let pressed = |key: egui::Key| ctx.input_mut(|i| i.consume_key(emacs_mods, key));
-        let space_pressed = ctx
-            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
-            || ctx.input_mut(|i| {
-                i.consume_key(
-                    egui::Modifiers {
-                        shift: true,
-                        ..Default::default()
-                    },
-                    egui::Key::Space,
-                )
-            });
 
         let mut text_changed = false;
         let mut cursor_changed = false;
@@ -1945,17 +2106,7 @@ impl FlistWalkerApp {
         let mut cursor = ccursor.primary.index.min(char_len);
         let mut anchor = ccursor.secondary.index.min(char_len);
 
-        if space_pressed && !output.response.changed() {
-            if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                Self::remove_char_range(&mut self.query, start, end);
-                cursor = start;
-            }
-            Self::insert_at_char(&mut self.query, cursor, " ");
-            cursor += 1;
-            anchor = cursor;
-            text_changed = true;
-            cursor_changed = true;
-        } else if pressed(egui::Key::A) {
+        if pressed(egui::Key::A) {
             cursor = 0;
             anchor = 0;
             cursor_changed = true;
@@ -2233,6 +2384,28 @@ impl FlistWalkerApp {
     }
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        let query_focused = ctx.memory(|m| m.has_focus(self.query_input_id));
+        let ctrl_mod = egui::Modifiers {
+            ctrl: true,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::L)) {
+            if query_focused {
+                self.focus_query_requested = false;
+                self.unfocus_query_requested = true;
+            } else {
+                self.focus_query_requested = true;
+                self.unfocus_query_requested = false;
+            }
+            return;
+        }
+        if self.ime_composition_active {
+            return;
+        }
+        if query_focused {
+            return;
+        }
+
         if ctx.input(|i| i.key_pressed(egui::Key::ArrowDown))
             || ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::N))
         {
@@ -2281,20 +2454,6 @@ impl FlistWalkerApp {
             self.pending_copy_shortcut = true;
         }
 
-        let ctrl_mod = egui::Modifiers {
-            ctrl: true,
-            ..Default::default()
-        };
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::L)) {
-            let has_focus = ctx.memory(|m| m.has_focus(self.query_input_id));
-            if has_focus {
-                self.focus_query_requested = false;
-                self.unfocus_query_requested = true;
-            } else {
-                self.focus_query_requested = true;
-                self.unfocus_query_requested = false;
-            }
-        }
         if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
             self.clear_query_and_selection();
         }
@@ -2308,16 +2467,151 @@ impl FlistWalkerApp {
         self.copy_selected_paths(ctx);
         self.focus_query_requested = true;
     }
+
+    fn process_query_input_events(
+        &mut self,
+        ctx: &egui::Context,
+        events: &[egui::Event],
+        query_focused: bool,
+        text_changed_by_widget: bool,
+    ) -> bool {
+        let mut changed = false;
+        let mut saw_text_space = false;
+        let mut saw_composition_update = false;
+        let mut fallback_space: Option<char> = None;
+        let mut saw_space_key = false;
+        let mut composition_commit_text: Option<String> = None;
+        let mut requested_full_space = false;
+
+        for event in events {
+            match event {
+                egui::Event::CompositionStart => {
+                    self.ime_composition_active = true;
+                    Self::append_window_trace("ime_composition_start", "active=true");
+                }
+                egui::Event::CompositionUpdate(text) => {
+                    self.ime_composition_active = true;
+                    if !text.is_empty() {
+                        saw_composition_update = true;
+                        Self::append_window_trace(
+                            "ime_composition_update",
+                            &format!("chars={}", text.chars().count()),
+                        );
+                    }
+                }
+                egui::Event::CompositionEnd(text) => {
+                    self.ime_composition_active = false;
+                    Self::append_window_trace(
+                        "ime_composition_end",
+                        &format!("chars={}", text.chars().count()),
+                    );
+                    if !text.is_empty() {
+                        composition_commit_text = Some(text.clone());
+                        changed = true;
+                        if text.contains(' ') || text.contains('\u{3000}') {
+                            saw_text_space = true;
+                        }
+                    }
+                }
+                egui::Event::Text(text) => {
+                    if text.contains(' ') || text.contains('\u{3000}') {
+                        saw_text_space = true;
+                    }
+                }
+                egui::Event::Key {
+                    key: egui::Key::Space,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if query_focused
+                    && !modifiers.ctrl
+                    && !modifiers.alt
+                    && !modifiers.command
+                    && !modifiers.mac_cmd =>
+                {
+                    saw_space_key = true;
+                    let is_full = modifiers.shift;
+                    requested_full_space = is_full;
+                    fallback_space = Some(if is_full { '\u{3000}' } else { ' ' });
+                }
+                _ => {}
+            }
+        }
+
+        let space_down_now = ctx.input(|i| i.key_down(egui::Key::Space));
+        let shift_down_now = ctx.input(|i| i.modifiers.shift);
+        if query_focused && space_down_now && !self.prev_space_down && fallback_space.is_none() {
+            requested_full_space = shift_down_now;
+            fallback_space = Some(if requested_full_space {
+                '\u{3000}'
+            } else {
+                ' '
+            });
+            saw_space_key = true;
+            Self::append_window_trace(
+                "ime_space_keydown_edge",
+                &format!("shift={}", shift_down_now),
+            );
+        }
+        self.prev_space_down = space_down_now;
+
+        if let Some(commit_text) = composition_commit_text {
+            if query_focused && !text_changed_by_widget {
+                self.query.push_str(&commit_text);
+                changed = true;
+                Self::append_window_trace(
+                    "ime_composition_commit_fallback",
+                    &format!("chars={}", commit_text.chars().count()),
+                );
+            }
+        }
+
+        // Some IME/backends first commit half-width space even on Shift+Space.
+        // If full-width was requested in this frame, normalize the last inserted space.
+        if query_focused && requested_full_space && saw_text_space {
+            // Some IME/backends commit half-width space first even on Shift+Space.
+            // Normalize the just-inserted trailing half-space to full-width.
+            if self.query.ends_with(' ') {
+                self.query.pop();
+                self.query.push('\u{3000}');
+                changed = true;
+                Self::append_window_trace("ime_fullwidth_space_corrected", "from_half_to_full");
+            }
+        }
+
+        if query_focused && !text_changed_by_widget && !saw_text_space && !saw_composition_update {
+            if let Some(space) = fallback_space {
+                self.query.push(space);
+                changed = true;
+                Self::append_window_trace(
+                    "ime_space_fallback_inserted",
+                    &format!("kind={}", if space == '\u{3000}' { "full" } else { "half" }),
+                );
+            }
+        } else if saw_space_key {
+            Self::append_window_trace(
+                "ime_space_fallback_skipped",
+                &format!(
+                    "focused={} widget_changed={} comp_active={} text_space={} comp_update={}",
+                    query_focused,
+                    text_changed_by_widget,
+                    self.ime_composition_active,
+                    saw_text_space,
+                    saw_composition_update
+                ),
+            );
+        }
+
+        changed
+    }
 }
 
 impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.apply_pending_window_restore(ctx);
         self.poll_index_response();
         self.poll_search_response();
         self.poll_preview_response();
         self.poll_filelist_response();
-        self.handle_shortcuts(ctx);
         if self.search_in_progress
             || self.index_in_progress
             || self.preview_in_progress
@@ -2326,6 +2620,7 @@ impl eframe::App for FlistWalkerApp {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
         self.capture_window_geometry(ctx);
+        self.apply_stable_window_geometry(false);
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -2451,12 +2746,41 @@ impl eframe::App for FlistWalkerApp {
                 output.response.surrender_focus();
                 self.unfocus_query_requested = false;
             }
+            let events = ctx.input(|i| i.events.clone());
+            if self.process_query_input_events(
+                ctx,
+                &events,
+                output.response.has_focus(),
+                output.response.changed(),
+            ) {
+                self.update_results();
+            }
             if self.apply_emacs_query_shortcuts(ctx, &mut output) {
                 self.update_results();
             }
             if output.response.changed() {
+                Self::append_window_trace(
+                    "query_text_changed",
+                    &format!(
+                        "chars={} has_half_space={} has_full_space={}",
+                        self.query.chars().count(),
+                        self.query.contains(' '),
+                        self.query.contains('\u{3000}')
+                    ),
+                );
                 self.update_results();
             }
+            ui.horizontal(|ui| {
+                if ui.button("Insert Space").clicked() {
+                    self.query.push(' ');
+                    self.update_results();
+                }
+                if ui.button("Insert Full Space").clicked() {
+                    self.query.push('\u{3000}');
+                    self.update_results();
+                }
+            });
+            self.handle_shortcuts(ctx);
             self.run_deferred_shortcuts(ctx);
 
             ui.horizontal(|ui| {
@@ -2527,6 +2851,7 @@ impl eframe::App for FlistWalkerApp {
 
 impl Drop for FlistWalkerApp {
     fn drop(&mut self) {
+        self.apply_stable_window_geometry(true);
         self.maybe_save_ui_state(true);
     }
 }
@@ -3450,6 +3775,206 @@ mod tests {
         assert!(!req.use_filelist);
         assert!(req.include_files);
         assert!(req.include_dirs);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn window_geometry_from_rects_prefers_inner_size() {
+        let outer = egui::Rect::from_min_size(egui::pos2(100.0, 200.0), egui::vec2(1200.0, 900.0));
+        let inner = egui::Rect::from_min_size(egui::pos2(110.0, 240.0), egui::vec2(1180.0, 840.0));
+
+        let geom = FlistWalkerApp::window_geometry_from_rects(
+            outer,
+            Some(inner),
+            Some(egui::vec2(2560.0, 1440.0)),
+        );
+
+        assert_eq!(geom.x, 100.0);
+        assert_eq!(geom.y, 200.0);
+        assert_eq!(geom.width, 1180.0);
+        assert_eq!(geom.height, 840.0);
+        assert_eq!(geom.monitor_width, Some(2560.0));
+        assert_eq!(geom.monitor_height, Some(1440.0));
+    }
+
+    #[test]
+    fn normalize_restore_geometry_preserves_virtual_desktop_position() {
+        let saved = SavedWindowGeometry {
+            x: -1600.0,
+            y: 120.0,
+            width: 900.0,
+            height: 700.0,
+            monitor_width: Some(1920.0),
+            monitor_height: Some(1080.0),
+        };
+
+        let restored = FlistWalkerApp::normalize_restore_geometry(saved);
+
+        assert_eq!(restored.x, -1600.0);
+        assert_eq!(restored.y, 120.0);
+        assert_eq!(restored.width, 900.0);
+        assert_eq!(restored.height, 700.0);
+        assert_eq!(restored.monitor_width, Some(1920.0));
+        assert_eq!(restored.monitor_height, Some(1080.0));
+    }
+
+    #[test]
+    fn apply_stable_window_geometry_force_commits_pending() {
+        let root = test_root("window-geometry-commit");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.window_geometry = None;
+        app.ui_state_dirty = false;
+        app.pending_window_geometry = Some(SavedWindowGeometry {
+            x: 100.0,
+            y: 120.0,
+            width: 900.0,
+            height: 700.0,
+            monitor_width: Some(2560.0),
+            monitor_height: Some(1440.0),
+        });
+
+        app.apply_stable_window_geometry(true);
+
+        assert!(app.pending_window_geometry.is_none());
+        assert!(app.ui_state_dirty);
+        let geom = app.window_geometry.clone().expect("committed geometry");
+        assert_eq!(geom.x, 100.0);
+        assert_eq!(geom.y, 120.0);
+        assert_eq!(geom.width, 900.0);
+        assert_eq!(geom.height, 700.0);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_query_input_events_inserts_half_and_full_width_space() {
+        let root = test_root("ime-space-fallback");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "abc".to_string();
+
+        let ctx = egui::Context::default();
+        let inserted_half = app.process_query_input_events(
+            &ctx,
+            &[egui::Event::Key {
+                key: egui::Key::Space,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            true,
+            false,
+        );
+        assert!(inserted_half);
+        assert_eq!(app.query, "abc ");
+
+        let inserted_full = app.process_query_input_events(
+            &ctx,
+            &[egui::Event::Key {
+                key: egui::Key::Space,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+            true,
+            false,
+        );
+        assert!(inserted_full);
+        assert_eq!(app.query, "abc \u{3000}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_query_input_events_inserts_space_even_if_composition_is_active_without_update() {
+        let root = test_root("ime-composition-space-allow");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "abc".to_string();
+
+        let ctx = egui::Context::default();
+        let inserted = app.process_query_input_events(
+            &ctx,
+            &[
+                egui::Event::CompositionStart,
+                egui::Event::Key {
+                    key: egui::Key::Space,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+            true,
+            false,
+        );
+        assert!(inserted);
+        assert_eq!(app.query, "abc ");
+        assert!(app.ime_composition_active);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_query_input_events_skips_space_fallback_when_composition_updates() {
+        let root = test_root("ime-composition-space-skip");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "abc".to_string();
+
+        let ctx = egui::Context::default();
+        let inserted = app.process_query_input_events(
+            &ctx,
+            &[
+                egui::Event::CompositionStart,
+                egui::Event::CompositionUpdate("あ".to_string()),
+                egui::Event::Key {
+                    key: egui::Key::Space,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+            true,
+            false,
+        );
+        assert!(!inserted);
+        assert_eq!(app.query, "abc");
+        assert!(app.ime_composition_active);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn oversized_geometry_is_rejected_when_monitor_size_is_known() {
+        let root = test_root("reject-oversize-geometry");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+        let next = SavedWindowGeometry {
+            x: 200.0,
+            y: 150.0,
+            width: 3600.0,
+            height: 2100.0,
+            monitor_width: Some(2560.0),
+            monitor_height: Some(1440.0),
+        };
+
+        let width_limit = (next.monitor_width.unwrap_or_default() * 1.05).max(640.0);
+        let height_limit = (next.monitor_height.unwrap_or_default() * 1.05).max(400.0);
+        assert!(next.width > width_limit);
+        assert!(next.height > height_limit);
+
+        // Simulate capture rejection condition directly.
+        if let (Some(mw), Some(mh)) = (next.monitor_width, next.monitor_height) {
+            let w_limit = (mw * 1.05).max(640.0);
+            let h_limit = (mh * 1.05).max(400.0);
+            if next.width > w_limit || next.height > h_limit {
+                // keep state untouched
+            } else {
+                app.pending_window_geometry = Some(next);
+            }
+        }
+        assert!(app.pending_window_geometry.is_none());
         let _ = fs::remove_dir_all(&root);
     }
 

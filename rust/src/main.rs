@@ -26,6 +26,21 @@ struct Args {
     cli: bool,
 }
 
+#[cfg(target_os = "windows")]
+fn configure_windows_dpi_mode() {
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetProcessDPIAware() -> i32;
+    }
+    // SAFETY: process-wide DPI mode is switched before native window creation.
+    // Keep this always-on for Windows to reduce monitor-crossing auto-resize jitter.
+    let _ = unsafe { SetProcessDPIAware() };
+    FlistWalkerApp::trace_window_event("windows_dpi_mode", "mode=system(always)");
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_windows_dpi_mode() {}
+
 fn run_cli(args: &Args) -> Result<()> {
     let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
     let entries = build_index(&root, true, true, true)?;
@@ -52,11 +67,29 @@ fn run_cli(args: &Args) -> Result<()> {
 }
 
 fn run_gui(args: &Args) -> Result<()> {
+    configure_windows_dpi_mode();
     let root_explicit = args.root.is_some();
     let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
     let mut native_options = eframe::NativeOptions::default();
     let mut viewport =
         eframe::egui::ViewportBuilder::default().with_inner_size(eframe::egui::vec2(1400.0, 900.0));
+    FlistWalkerApp::trace_window_event(
+        "run_gui_start",
+        &format!("root={} limit={}", root.display(), args.limit),
+    );
+    if let Some((pos, size)) = FlistWalkerApp::startup_window_geometry() {
+        viewport = viewport.with_position(pos);
+        viewport = viewport.with_inner_size(size);
+        FlistWalkerApp::trace_window_event(
+            "run_gui_apply_startup_geometry",
+            &format!(
+                "x={:.1} y={:.1} width={:.1} height={:.1}",
+                pos.x, pos.y, size.x, size.y
+            ),
+        );
+    } else {
+        FlistWalkerApp::trace_window_event("run_gui_no_startup_size", "using_default_size");
+    }
     if let Some(icon) = load_app_icon() {
         viewport = viewport.with_icon(icon);
     }
