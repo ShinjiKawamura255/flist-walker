@@ -618,6 +618,12 @@ impl FlistWalkerApp {
     }
 
     fn window_trace_path() -> Option<PathBuf> {
+        if let Some(path) = std::env::var_os("FLISTWALKER_WINDOW_TRACE_PATH") {
+            let path = PathBuf::from(path);
+            if !path.as_os_str().is_empty() {
+                return Some(path);
+            }
+        }
         #[cfg(windows)]
         {
             if let Some(base) = std::env::var_os("USERPROFILE") {
@@ -761,6 +767,9 @@ impl FlistWalkerApp {
             search_resume_pending: false,
             search_rerun_pending: false,
         };
+        if let Some(path) = Self::window_trace_path() {
+            Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
+        }
         app.request_index_refresh();
         app
     }
@@ -2503,7 +2512,12 @@ impl FlistWalkerApp {
                     self.ime_composition_active = false;
                     Self::append_window_trace(
                         "ime_composition_end",
-                        &format!("chars={}", text.chars().count()),
+                        &format!(
+                            "chars={} has_half={} has_full={}",
+                            text.chars().count(),
+                            text.contains(' '),
+                            text.contains('\u{3000}')
+                        ),
                     );
                     if !text.is_empty() {
                         composition_commit_text = Some(text.clone());
@@ -2516,6 +2530,15 @@ impl FlistWalkerApp {
                 egui::Event::Text(text) => {
                     if text.contains(' ') || text.contains('\u{3000}') {
                         saw_text_space = true;
+                        Self::append_window_trace(
+                            "ime_text_space_seen",
+                            &format!(
+                                "has_half={} has_full={} chars={}",
+                                text.contains(' '),
+                                text.contains('\u{3000}'),
+                                text.chars().count()
+                            ),
+                        );
                     }
                 }
                 egui::Event::Key {
@@ -2530,9 +2553,8 @@ impl FlistWalkerApp {
                     && !modifiers.mac_cmd =>
                 {
                     saw_space_key = true;
-                    let is_full = modifiers.shift;
-                    requested_full_space = is_full;
-                    fallback_space = Some(if is_full { '\u{3000}' } else { ' ' });
+                    requested_full_space = modifiers.shift;
+                    fallback_space = Some(' ');
                 }
                 _ => {}
             }
@@ -2542,11 +2564,7 @@ impl FlistWalkerApp {
         let shift_down_now = ctx.input(|i| i.modifiers.shift);
         if query_focused && space_down_now && !self.prev_space_down && fallback_space.is_none() {
             requested_full_space = shift_down_now;
-            fallback_space = Some(if requested_full_space {
-                '\u{3000}'
-            } else {
-                ' '
-            });
+            fallback_space = Some(' ');
             saw_space_key = true;
             Self::append_window_trace(
                 "ime_space_keydown_edge",
@@ -2561,25 +2579,16 @@ impl FlistWalkerApp {
                 changed = true;
                 Self::append_window_trace(
                     "ime_composition_commit_fallback",
-                    &format!("chars={}", commit_text.chars().count()),
+                    &format!(
+                        "chars={} query_chars_after={}",
+                        commit_text.chars().count(),
+                        self.query.chars().count()
+                    ),
                 );
             }
         }
 
-        // Some IME/backends first commit half-width space even on Shift+Space.
-        // If full-width was requested in this frame, normalize the last inserted space.
-        if query_focused && requested_full_space && saw_text_space {
-            // Some IME/backends commit half-width space first even on Shift+Space.
-            // Normalize the just-inserted trailing half-space to full-width.
-            if self.query.ends_with(' ') {
-                self.query.pop();
-                self.query.push('\u{3000}');
-                changed = true;
-                Self::append_window_trace("ime_fullwidth_space_corrected", "from_half_to_full");
-            }
-        }
-
-        if query_focused && !text_changed_by_widget && !saw_text_space && !saw_composition_update {
+        if query_focused && !saw_text_space {
             if let Some(space) = fallback_space {
                 self.query.push(space);
                 changed = true;
@@ -2592,12 +2601,14 @@ impl FlistWalkerApp {
             Self::append_window_trace(
                 "ime_space_fallback_skipped",
                 &format!(
-                    "focused={} widget_changed={} comp_active={} text_space={} comp_update={}",
+                    "focused={} widget_changed={} comp_active={} text_space={} comp_update={} requested_full={} fallback_present={}",
                     query_focused,
                     text_changed_by_widget,
                     self.ime_composition_active,
                     saw_text_space,
-                    saw_composition_update
+                    saw_composition_update,
+                    requested_full_space,
+                    fallback_space.is_some()
                 ),
             );
         }
@@ -2753,6 +2764,15 @@ impl eframe::App for FlistWalkerApp {
                 output.response.has_focus(),
                 output.response.changed(),
             ) {
+                if output.response.has_focus() {
+                    let end = Self::char_count(&self.query);
+                    output
+                        .state
+                        .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                            egui::text::CCursor::new(end),
+                        )));
+                    output.state.clone().store(ctx, output.response.id);
+                }
                 self.update_results();
             }
             if self.apply_emacs_query_shortcuts(ctx, &mut output) {
@@ -2770,16 +2790,6 @@ impl eframe::App for FlistWalkerApp {
                 );
                 self.update_results();
             }
-            ui.horizontal(|ui| {
-                if ui.button("Insert Space").clicked() {
-                    self.query.push(' ');
-                    self.update_results();
-                }
-                if ui.button("Insert Full Space").clicked() {
-                    self.query.push('\u{3000}');
-                    self.update_results();
-                }
-            });
             self.handle_shortcuts(ctx);
             self.run_deferred_shortcuts(ctx);
 
@@ -3847,7 +3857,7 @@ mod tests {
     }
 
     #[test]
-    fn process_query_input_events_inserts_half_and_full_width_space() {
+    fn process_query_input_events_inserts_half_space_for_space_keys() {
         let root = test_root("ime-space-fallback");
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -3868,7 +3878,7 @@ mod tests {
         assert!(inserted_half);
         assert_eq!(app.query, "abc ");
 
-        let inserted_full = app.process_query_input_events(
+        let inserted_shift = app.process_query_input_events(
             &ctx,
             &[egui::Event::Key {
                 key: egui::Key::Space,
@@ -3882,8 +3892,8 @@ mod tests {
             true,
             false,
         );
-        assert!(inserted_full);
-        assert_eq!(app.query, "abc \u{3000}");
+        assert!(inserted_shift);
+        assert_eq!(app.query, "abc  ");
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -3916,8 +3926,8 @@ mod tests {
     }
 
     #[test]
-    fn process_query_input_events_skips_space_fallback_when_composition_updates() {
-        let root = test_root("ime-composition-space-skip");
+    fn process_query_input_events_inserts_space_fallback_when_composition_updates() {
+        let root = test_root("ime-composition-space-allow-update");
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
         app.query = "abc".to_string();
@@ -3938,8 +3948,40 @@ mod tests {
             true,
             false,
         );
-        assert!(!inserted);
-        assert_eq!(app.query, "abc");
+        assert!(inserted);
+        assert_eq!(app.query, "abc ");
+        assert!(app.ime_composition_active);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_query_input_events_inserts_half_space_even_with_composition_update() {
+        let root = test_root("ime-composition-half-space-allow");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "abc".to_string();
+
+        let ctx = egui::Context::default();
+        let inserted = app.process_query_input_events(
+            &ctx,
+            &[
+                egui::Event::CompositionStart,
+                egui::Event::CompositionUpdate("あ".to_string()),
+                egui::Event::Key {
+                    key: egui::Key::Space,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers {
+                        shift: true,
+                        ..Default::default()
+                    },
+                },
+            ],
+            true,
+            false,
+        );
+        assert!(inserted);
+        assert_eq!(app.query, "abc ");
         assert!(app.ime_composition_active);
         let _ = fs::remove_dir_all(&root);
     }

@@ -84,7 +84,8 @@
 - 起動復元は保存済み座標/サイズを適用するが、monitor 情報がある場合は復元時にも同様の上限を適用して再発を防ぐ。
 - Windows は起動時に System DPI Aware を有効化し、モニタ跨ぎ時の OS 側自動リサイズ揺れを低減する。
 - IME 確定文字が TextEdit 側で落ちるフレーム向けに `CompositionEnd` 文字列のフォールバック反映を行う。
-- `Shift+Space` が半角として確定されるバックエンド向けに、末尾半角スペースを全角に補正する。
+- `Space` / `Shift+Space` は IME/バックエンド差異があっても、TextEdit 側で空白未反映なら最低限の半角スペースをフォールバック挿入する。
+- IME 関連の分岐は `FLISTWALKER_WINDOW_TRACE=1` で追跡し、`FLISTWALKER_WINDOW_TRACE_PATH` で出力先を明示指定できる。
 - デバッグ用トレースは既定無効（`FLISTWALKER_WINDOW_TRACE=1` のときのみ有効）とし、通常運用への影響を避ける。
 
 ## Error handling / timeout / logging / metrics
