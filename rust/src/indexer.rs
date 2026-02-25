@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use std::collections::HashSet;
-use std::fs::File;
 use std::fs;
+use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
@@ -89,8 +89,8 @@ where
         if should_cancel() {
             anyhow::bail!("superseded");
         }
-        let raw = line_result
-            .with_context(|| format!("failed to read {}", filelist_path.display()))?;
+        let raw =
+            line_result.with_context(|| format!("failed to read {}", filelist_path.display()))?;
         let line = raw.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
@@ -291,15 +291,12 @@ pub fn build_index(
 }
 
 pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
-    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let root_lexical = root.to_path_buf();
+    let root_canonical = root.canonicalize().ok();
     let mut seen = HashSet::new();
     let mut lines = Vec::new();
     for entry in entries {
-        let e = entry.canonicalize().unwrap_or_else(|_| entry.clone());
-        let line = e
-            .strip_prefix(&root)
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| e.to_string_lossy().to_string());
+        let line = filelist_line_for_entry(entry, &root_lexical, root_canonical.as_deref());
         if seen.insert(line.clone()) {
             lines.push(line);
         }
@@ -309,6 +306,56 @@ pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
     } else {
         format!("{}\n", lines.join("\n"))
     }
+}
+
+fn filelist_line_for_entry(
+    entry: &Path,
+    root_lexical: &Path,
+    root_canonical: Option<&Path>,
+) -> String {
+    // Fast path: lexical prefix stripping avoids filesystem calls for the common case.
+    if let Ok(relative) = entry.strip_prefix(root_lexical) {
+        return normalize_relative_lexically(relative)
+            .to_string_lossy()
+            .to_string();
+    }
+    if let Some(root) = root_canonical {
+        if let Ok(relative) = entry.strip_prefix(root) {
+            return normalize_relative_lexically(relative)
+                .to_string_lossy()
+                .to_string();
+        }
+    }
+
+    // Compatibility path: canonicalize only when lexical checks failed.
+    if let Some(root) = root_canonical {
+        if let Ok(canonical_entry) = entry.canonicalize() {
+            if let Ok(relative) = canonical_entry.strip_prefix(root) {
+                return relative.to_string_lossy().to_string();
+            }
+            return canonical_entry.to_string_lossy().to_string();
+        }
+    }
+
+    entry.to_string_lossy().to_string()
+}
+
+fn normalize_relative_lexically(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                let popped = out.pop();
+                if !popped {
+                    out.push(component.as_os_str());
+                }
+            }
+            Component::Normal(segment) => out.push(segment),
+            Component::RootDir | Component::Prefix(_) => out.push(component.as_os_str()),
+        }
+    }
+    out
 }
 
 fn build_temp_filelist_path(filename: &str) -> PathBuf {
@@ -534,6 +581,32 @@ mod tests {
         assert!(out.exists());
         let content = fs::read_to_string(&out).expect("read filelist");
         assert!(content.contains("x/run.exe"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_filelist_text_keeps_lexical_relative_for_missing_entry() {
+        let root = test_root("filelist-text-missing");
+        fs::create_dir_all(&root).expect("create dir");
+        let missing = root.join("missing.txt");
+
+        let text = build_filelist_text(&[missing], &root);
+
+        assert_eq!(text, "missing.txt\n");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_filelist_text_deduplicates_lexically_equivalent_relative_paths() {
+        let root = test_root("filelist-text-lexical-dedup");
+        fs::create_dir_all(root.join("a")).expect("create a dir");
+        fs::write(root.join("b.txt"), "x").expect("write b");
+
+        let p1 = root.join("a").join("..").join("b.txt");
+        let p2 = root.join("b.txt");
+        let text = build_filelist_text(&[p1, p2], &root);
+
+        assert_eq!(text, "b.txt\n");
         let _ = fs::remove_dir_all(&root);
     }
 

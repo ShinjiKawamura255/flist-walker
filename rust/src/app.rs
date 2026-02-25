@@ -571,9 +571,13 @@ pub struct FlistWalkerApp {
     query_input_id: egui::Id,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
+    incremental_filtered_entries: Vec<PathBuf>,
+    pending_index_entries: VecDeque<IndexEntry>,
+    pending_index_entries_request_id: Option<u64>,
     last_incremental_results_refresh: Instant,
     last_search_snapshot_len: usize,
     search_resume_pending: bool,
+    search_rerun_pending: bool,
 }
 
 impl FlistWalkerApp {
@@ -679,9 +683,13 @@ impl FlistWalkerApp {
             query_input_id: egui::Id::new("query-input"),
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
+            incremental_filtered_entries: Vec::new(),
+            pending_index_entries: VecDeque::new(),
+            pending_index_entries_request_id: None,
             last_incremental_results_refresh: Instant::now(),
             last_search_snapshot_len: 0,
             search_resume_pending: false,
+            search_rerun_pending: false,
         };
         app.request_index_refresh();
         app
@@ -1093,11 +1101,15 @@ impl FlistWalkerApp {
         self.search_in_progress = false;
         // Non-empty query should resume quickly once fresh index batches arrive.
         self.search_resume_pending = !self.query.trim().is_empty();
+        self.search_rerun_pending = false;
 
         self.index.entries.clear();
         self.index.source = IndexSource::None;
         self.preview_cache.clear();
         self.preview_cache_order.clear();
+        self.incremental_filtered_entries.clear();
+        self.pending_index_entries.clear();
+        self.pending_index_entries_request_id = None;
         self.pending_preview_request_id = None;
         self.preview_in_progress = false;
         self.last_incremental_results_refresh = Instant::now();
@@ -1121,10 +1133,11 @@ impl FlistWalkerApp {
     fn poll_index_response(&mut self) {
         const MAX_MESSAGES_PER_FRAME: usize = 12;
         const FRAME_BUDGET: Duration = Duration::from_millis(4);
+        const MAX_INDEX_ENTRIES_PER_FRAME: usize = 256;
 
         let frame_start = Instant::now();
         let mut processed = 0usize;
-        let mut needs_incremental_refresh = false;
+        let mut has_index_progress = false;
         let mut finished_current_request = false;
         while let Ok(msg) = self.index_rx.try_recv() {
             match msg {
@@ -1142,23 +1155,25 @@ impl FlistWalkerApp {
                     if Some(request_id) != self.pending_index_request_id {
                         continue;
                     }
-                    for entry in entries {
-                        self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
-                        self.index.entries.push(entry.path);
-                    }
-                    needs_incremental_refresh = true;
+                    self.queue_index_batch(request_id, entries);
+                    has_index_progress = true;
                 }
                 IndexResponse::Finished { request_id, source } => {
                     if Some(request_id) != self.pending_index_request_id {
                         continue;
                     }
+                    self.drain_queued_index_entries(request_id, usize::MAX);
                     self.index.source = source;
                     self.all_entries = Arc::new(std::mem::take(&mut self.index.entries));
                     self.last_search_snapshot_len = self.all_entries.len();
+                    self.incremental_filtered_entries.clear();
+                    self.pending_index_entries.clear();
+                    self.pending_index_entries_request_id = None;
                     self.pending_index_request_id = None;
                     self.index_in_progress = false;
                     self.apply_entry_filters(true);
                     self.search_resume_pending = false;
+                    self.search_rerun_pending = false;
                     self.clear_notice();
                     if self
                         .pending_filelist_after_index_root
@@ -1173,7 +1188,6 @@ impl FlistWalkerApp {
                         self.request_filelist_creation(root, entries);
                     }
                     finished_current_request = true;
-                    needs_incremental_refresh = false;
                     break;
                 }
                 IndexResponse::Failed { request_id, error } => {
@@ -1183,7 +1197,10 @@ impl FlistWalkerApp {
                     self.index_in_progress = false;
                     self.pending_index_request_id = None;
                     self.search_resume_pending = false;
+                    self.search_rerun_pending = false;
                     self.pending_filelist_after_index_root = None;
+                    self.pending_index_entries.clear();
+                    self.pending_index_entries_request_id = None;
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
             }
@@ -1194,42 +1211,28 @@ impl FlistWalkerApp {
             }
         }
 
-        if !needs_incremental_refresh {
-            return;
-        }
         if finished_current_request {
             return;
         }
 
+        if let Some(request_id) = self.pending_index_request_id {
+            let consumed = self.drain_queued_index_entries_with_budget(
+                request_id,
+                frame_start,
+                FRAME_BUDGET,
+                MAX_INDEX_ENTRIES_PER_FRAME,
+            );
+            has_index_progress |= consumed;
+        }
+
+        if !has_index_progress {
+            return;
+        }
+
         if self.query.trim().is_empty() {
-            // Empty query is the progressive browsing mode: show newest indexed entries
-            // immediately without cloning the whole snapshot for search workers.
-            self.update_results_from_index_progress();
-            return;
-        }
-
-        if self.search_resume_pending {
-            self.entries = Arc::new(self.filtered_entries(&self.index.entries));
-            self.last_search_snapshot_len = self.entries.len();
-            self.last_incremental_results_refresh = Instant::now();
-            self.update_results();
-            self.search_resume_pending = false;
-            return;
-        }
-
-        let current_len = self.index.entries.len();
-        let delta = current_len.saturating_sub(self.last_search_snapshot_len);
-        if delta > 0
-            && self.last_incremental_results_refresh.elapsed()
-                >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
-        {
-            // Non-empty query still needs progressive refresh, but cloning huge snapshots
-            // every batch stalls UI. Throttle by time window to keep results visible
-            // even on very slow indexers with small incremental deltas.
-            self.entries = Arc::new(self.filtered_entries(&self.index.entries));
-            self.last_search_snapshot_len = self.entries.len();
-            self.last_incremental_results_refresh = Instant::now();
-            self.update_results();
+            self.apply_incremental_empty_query_results();
+        } else {
+            self.maybe_refresh_incremental_search();
         }
     }
 
@@ -1302,6 +1305,17 @@ impl FlistWalkerApp {
                     self.clear_notice();
                 }
                 self.apply_results(response.results);
+                if self.search_rerun_pending
+                    && !self.query.trim().is_empty()
+                    && self.index_in_progress
+                {
+                    self.search_rerun_pending = false;
+                    self.search_resume_pending = false;
+                    self.sync_entries_from_incremental();
+                    self.last_search_snapshot_len = self.entries.len();
+                    self.last_incremental_results_refresh = Instant::now();
+                    self.update_results();
+                }
             }
         }
     }
@@ -1354,11 +1368,72 @@ impl FlistWalkerApp {
         self.enqueue_search_request();
     }
 
-    fn update_results_from_index_progress(&mut self) {
+    fn queue_index_batch(&mut self, request_id: u64, entries: Vec<IndexEntry>) {
+        if self.pending_index_entries_request_id != Some(request_id) {
+            self.pending_index_entries.clear();
+            self.pending_index_entries_request_id = Some(request_id);
+        }
+        self.pending_index_entries.extend(entries);
+    }
+
+    fn ingest_index_entry(&mut self, entry: IndexEntry) {
+        self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+        self.index.entries.push(entry.path.clone());
+        if (entry.is_dir && self.include_dirs) || (!entry.is_dir && self.include_files) {
+            self.incremental_filtered_entries.push(entry.path);
+        }
+    }
+
+    fn drain_queued_index_entries(&mut self, request_id: u64, max_entries: usize) -> bool {
+        if self.pending_index_entries_request_id != Some(request_id) {
+            return false;
+        }
+        let mut processed = 0usize;
+        while processed < max_entries {
+            let Some(entry) = self.pending_index_entries.pop_front() else {
+                break;
+            };
+            self.ingest_index_entry(entry);
+            processed = processed.saturating_add(1);
+        }
+        if self.pending_index_entries.is_empty() {
+            self.pending_index_entries_request_id = None;
+        }
+        processed > 0
+    }
+
+    fn drain_queued_index_entries_with_budget(
+        &mut self,
+        request_id: u64,
+        frame_start: Instant,
+        budget: Duration,
+        max_entries: usize,
+    ) -> bool {
+        if self.pending_index_entries_request_id != Some(request_id) {
+            return false;
+        }
+        let mut processed = 0usize;
+        while processed < max_entries && frame_start.elapsed() < budget {
+            let Some(entry) = self.pending_index_entries.pop_front() else {
+                break;
+            };
+            self.ingest_index_entry(entry);
+            processed = processed.saturating_add(1);
+        }
+        if self.pending_index_entries.is_empty() {
+            self.pending_index_entries_request_id = None;
+        }
+        processed > 0
+    }
+
+    fn sync_entries_from_incremental(&mut self) {
+        self.entries = Arc::new(self.incremental_filtered_entries.clone());
+    }
+
+    fn apply_incremental_empty_query_results(&mut self) {
+        self.sync_entries_from_incremental();
         self.pending_request_id = None;
         self.search_in_progress = false;
-        let filtered = self.filtered_entries(&self.index.entries);
-        self.entries = Arc::new(filtered);
         let results = self
             .entries
             .iter()
@@ -1367,6 +1442,41 @@ impl FlistWalkerApp {
             .map(|p| (p, 0.0))
             .collect();
         self.apply_results_with_scroll_policy(results, true);
+    }
+
+    fn maybe_refresh_incremental_search(&mut self) {
+        if self.query.trim().is_empty() {
+            return;
+        }
+
+        if self.search_resume_pending {
+            if self.search_in_progress {
+                self.search_rerun_pending = true;
+                return;
+            }
+            self.sync_entries_from_incremental();
+            self.last_search_snapshot_len = self.entries.len();
+            self.last_incremental_results_refresh = Instant::now();
+            self.update_results();
+            self.search_resume_pending = false;
+            return;
+        }
+
+        let current_len = self.incremental_filtered_entries.len();
+        let delta = current_len.saturating_sub(self.last_search_snapshot_len);
+        if delta > 0
+            && self.last_incremental_results_refresh.elapsed()
+                >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
+        {
+            if self.search_in_progress {
+                self.search_rerun_pending = true;
+                return;
+            }
+            self.sync_entries_from_incremental();
+            self.last_search_snapshot_len = current_len;
+            self.last_incremental_results_refresh = Instant::now();
+            self.update_results();
+        }
     }
 
     fn filtered_entries(&self, source: &[PathBuf]) -> Vec<PathBuf> {
@@ -1387,6 +1497,13 @@ impl FlistWalkerApp {
             self.all_entries.as_ref()
         };
         self.entries = Arc::new(self.filtered_entries(base));
+        if self.index_in_progress {
+            self.incremental_filtered_entries = self.entries.as_ref().clone();
+        } else {
+            self.incremental_filtered_entries.clear();
+        }
+        self.last_search_snapshot_len = self.entries.len();
+        self.search_rerun_pending = false;
 
         if self.query.trim().is_empty() {
             self.pending_request_id = None;
@@ -1992,7 +2109,8 @@ impl FlistWalkerApp {
                                 );
                             });
                     });
-                });
+                },
+            );
         } else {
             self.render_results_list(ui);
         }
@@ -2665,6 +2783,46 @@ mod tests {
             .try_recv()
             .expect("search should resume immediately");
         assert_eq!(search_req.query, "main");
+        assert_eq!(search_req.entries.len(), 1);
+        assert_eq!(search_req.entries[0], root.join("main.rs"));
+        assert!(!app.search_resume_pending);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filtered_out_batch_still_resumes_non_empty_query_search() {
+        let root = test_root("resume-first-batch-filtered-out");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
+        app.include_files = false;
+        app.include_dirs = true;
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
+        app.search_tx = search_tx_real;
+
+        app.request_index_refresh();
+        let req = index_rx.try_recv().expect("index request should be sent");
+
+        let (tx_idx, rx_idx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx_idx;
+        tx_idx
+            .send(IndexResponse::Batch {
+                request_id: req.request_id,
+                entries: vec![IndexEntry {
+                    path: root.join("main.rs"),
+                    is_dir: false,
+                }],
+            })
+            .expect("send batch");
+        app.last_incremental_results_refresh = Instant::now();
+        app.poll_index_response();
+
+        let search_req = search_rx_real
+            .try_recv()
+            .expect("search should still resume even when batch is filtered out");
+        assert!(search_req.entries.is_empty());
+        assert_eq!(search_req.query, "main");
         assert!(!app.search_resume_pending);
         let _ = fs::remove_dir_all(&root);
     }
@@ -3023,6 +3181,45 @@ mod tests {
     }
 
     #[test]
+    fn non_empty_query_batch_delta_updates_snapshot_even_without_search_refresh() {
+        let root = test_root("incremental-snapshot-delta");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        app.pending_index_request_id = Some(88);
+        app.index_in_progress = true;
+        app.search_resume_pending = false;
+        app.last_incremental_results_refresh = Instant::now();
+        app.last_search_snapshot_len = 0;
+
+        let path_a = root.join("main-a.rs");
+        let path_b = root.join("main-b.rs");
+        tx.send(IndexResponse::Batch {
+            request_id: 88,
+            entries: vec![
+                IndexEntry {
+                    path: path_a.clone(),
+                    is_dir: false,
+                },
+                IndexEntry {
+                    path: path_b.clone(),
+                    is_dir: false,
+                },
+            ],
+        })
+        .expect("send index batch");
+
+        app.poll_index_response();
+
+        assert!(app.entries.is_empty());
+        assert_eq!(app.incremental_filtered_entries.len(), 2);
+        assert_eq!(app.incremental_filtered_entries[0], path_a);
+        assert_eq!(app.incremental_filtered_entries[1], path_b);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
         let root = test_root("empty-query-finished-priority");
         fs::create_dir_all(&root).expect("create dir");
@@ -3138,6 +3335,67 @@ mod tests {
     }
 
     #[test]
+    fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
+        let root = test_root("filters-resync-incremental");
+        fs::create_dir_all(root.join("dir")).expect("create dir");
+        let file = root.join("main.rs");
+        let dir = root.join("dir");
+        fs::write(&file, "fn main() {}").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index_in_progress = true;
+        app.index.entries = vec![file.clone(), dir.clone()];
+        app.entry_kinds.insert(file.clone(), false);
+        app.entry_kinds.insert(dir.clone(), true);
+        app.include_files = false;
+        app.include_dirs = true;
+
+        app.apply_entry_filters(true);
+
+        assert_eq!(app.entries.as_ref(), &vec![dir.clone()]);
+        assert_eq!(app.incremental_filtered_entries, vec![dir]);
+        assert!(app.pending_index_entries.is_empty());
+        assert!(app.pending_index_entries_request_id.is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
+        let root = test_root("filters-all-filtered-then-add");
+        fs::create_dir_all(root.join("dir")).expect("create dir");
+        let file = root.join("main.rs");
+        let dir = root.join("dir");
+        fs::write(&file, "fn main() {}").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index_in_progress = true;
+        app.index.entries = vec![file.clone()];
+        app.entry_kinds.insert(file.clone(), false);
+        app.include_files = false;
+        app.include_dirs = true;
+
+        app.apply_entry_filters(true);
+        assert!(app.entries.is_empty());
+        assert!(app.incremental_filtered_entries.is_empty());
+
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        app.pending_index_request_id = Some(201);
+        tx.send(IndexResponse::Batch {
+            request_id: 201,
+            entries: vec![IndexEntry {
+                path: dir.clone(),
+                is_dir: true,
+            }],
+        })
+        .expect("send index batch");
+
+        app.poll_index_response();
+
+        assert_eq!(app.entries.as_ref(), &vec![dir]);
+        assert_eq!(app.results.len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn move_page_moves_by_fixed_rows_and_clamps() {
         let root = test_root("move-page");
         fs::create_dir_all(&root).expect("create dir");
@@ -3211,10 +3469,10 @@ mod tests {
 
         assert!(!app.pending_copy_shortcut);
         assert!(app.focus_query_requested);
-        assert!(
-            app.notice
-                .contains(&format!("Copied path: {}", normalize_path_for_display(&selected)))
-        );
+        assert!(app.notice.contains(&format!(
+            "Copied path: {}",
+            normalize_path_for_display(&selected)
+        )));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -3243,7 +3501,9 @@ mod tests {
 
         app.copy_selected_paths(&ctx);
 
-        assert!(app.notice.contains(r"Copied path: C:\Users\tester\file.txt"));
+        assert!(app
+            .notice
+            .contains(r"Copied path: C:\Users\tester\file.txt"));
         assert!(!app.notice.contains(r"\\?\"));
         let _ = fs::remove_dir_all(&root);
     }
