@@ -1710,6 +1710,13 @@ impl FlistWalkerApp {
     }
 
     fn request_preview_for_current(&mut self) {
+        if !self.show_preview {
+            self.preview.clear();
+            self.preview_in_progress = false;
+            self.pending_preview_request_id = None;
+            return;
+        }
+
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
                 if let Some(cached) = self.preview_cache.get(path) {
@@ -3011,6 +3018,30 @@ mod tests {
         );
         let evicted = root.join("file-0.txt");
         assert!(!app.preview_cache.contains_key(&evicted));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn request_preview_is_skipped_when_preview_is_hidden() {
+        let root = test_root("preview-hidden");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("a.txt");
+        fs::write(&file, "content").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+        app.show_preview = false;
+        app.results = vec![(file.clone(), 0.0)];
+        app.current_row = Some(0);
+        app.entry_kinds.insert(file, false);
+        app.preview = "stale preview".to_string();
+        app.pending_preview_request_id = Some(99);
+        app.preview_in_progress = true;
+
+        app.request_preview_for_current();
+
+        assert!(app.preview.is_empty());
+        assert!(!app.preview_in_progress);
+        assert!(app.pending_preview_request_id.is_none());
         let _ = fs::remove_dir_all(&root);
     }
 
