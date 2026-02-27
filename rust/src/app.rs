@@ -15,10 +15,8 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use walkdir::WalkDir;
@@ -46,6 +44,54 @@ struct LaunchSettings {
     default_root: Option<PathBuf>,
     show_preview: bool,
     results_panel_width: f32,
+}
+
+#[derive(Clone, Debug)]
+struct AppTabState {
+    id: u64,
+    root: PathBuf,
+    use_filelist: bool,
+    use_regex: bool,
+    include_files: bool,
+    include_dirs: bool,
+    index: IndexBuildResult,
+    all_entries: Arc<Vec<PathBuf>>,
+    entries: Arc<Vec<PathBuf>>,
+    entry_kinds: HashMap<PathBuf, bool>,
+    pending_index_request_id: Option<u64>,
+    index_in_progress: bool,
+    pending_index_entries: VecDeque<IndexEntry>,
+    pending_index_entries_request_id: Option<u64>,
+    pending_kind_paths: VecDeque<PathBuf>,
+    pending_kind_paths_set: HashSet<PathBuf>,
+    in_flight_kind_paths: HashSet<PathBuf>,
+    kind_resolution_epoch: u64,
+    kind_resolution_in_progress: bool,
+    incremental_filtered_entries: Vec<PathBuf>,
+    last_incremental_results_refresh: Instant,
+    last_search_snapshot_len: usize,
+    search_resume_pending: bool,
+    search_rerun_pending: bool,
+    query: String,
+    results: Vec<(PathBuf, f64)>,
+    pinned_paths: HashSet<PathBuf>,
+    current_row: Option<usize>,
+    preview: String,
+    notice: String,
+    pending_request_id: Option<u64>,
+    pending_preview_request_id: Option<u64>,
+    search_in_progress: bool,
+    preview_in_progress: bool,
+    scroll_to_current: bool,
+    focus_query_requested: bool,
+    unfocus_query_requested: bool,
+}
+
+#[derive(Default)]
+struct BackgroundIndexState {
+    source: Option<IndexSource>,
+    entries: Vec<PathBuf>,
+    entry_kinds: HashMap<PathBuf, bool>,
 }
 
 pub fn configure_egui_fonts(ctx: &egui::Context) {
@@ -136,7 +182,7 @@ fn filter_search_results(
         .collect()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct IndexEntry {
     path: PathBuf,
     is_dir: bool,
@@ -145,6 +191,7 @@ struct IndexEntry {
 
 struct IndexRequest {
     request_id: u64,
+    tab_id: u64,
     root: PathBuf,
     use_filelist: bool,
     include_files: bool,
@@ -167,6 +214,9 @@ enum IndexResponse {
     Failed {
         request_id: u64,
         error: String,
+    },
+    Canceled {
+        request_id: u64,
     },
 }
 
@@ -375,7 +425,7 @@ fn stream_filelist_index(
     req: &IndexRequest,
     root: &std::path::Path,
     filelist: PathBuf,
-    latest_request_id: &AtomicU64,
+    latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::FileList(filelist.clone());
     if tx_res
@@ -396,7 +446,13 @@ fn stream_filelist_index(
         root,
         req.include_files,
         req.include_dirs,
-        || latest_request_id.load(Ordering::Relaxed) != req.request_id,
+        || {
+            latest_request_ids
+                .lock()
+                .ok()
+                .and_then(|m| m.get(&req.tab_id).copied())
+                != Some(req.request_id)
+        },
         |path, is_dir| {
             if stream_err.is_some() {
                 return;
@@ -432,7 +488,7 @@ fn stream_walker_index(
     tx_res: &Sender<IndexResponse>,
     req: &IndexRequest,
     root: &std::path::Path,
-    latest_request_id: &AtomicU64,
+    latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::Walker;
     if tx_res
@@ -453,7 +509,12 @@ fn stream_walker_index(
         .into_iter()
         .flatten()
     {
-        if latest_request_id.load(Ordering::Relaxed) != req.request_id {
+        if latest_request_ids
+            .lock()
+            .ok()
+            .and_then(|m| m.get(&req.tab_id).copied())
+            != Some(req.request_id)
+        {
             return Err("superseded".to_string());
         }
         let is_dir = entry.file_type().is_dir();
@@ -480,21 +541,29 @@ fn stream_walker_index(
 }
 
 fn spawn_index_worker(
-    latest_request_id: Arc<AtomicU64>,
+    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
 ) -> (Sender<IndexRequest>, Receiver<IndexResponse>) {
     let (tx_req, rx_req) = mpsc::channel::<IndexRequest>();
     let (tx_res, rx_res) = mpsc::channel::<IndexResponse>();
-    let latest_request_id_worker = Arc::clone(&latest_request_id);
+    let rx_req = Arc::new(Mutex::new(rx_req));
 
-    thread::spawn(move || {
-        while let Ok(mut req) = rx_req.recv() {
-            while let Ok(newer) = rx_req.try_recv() {
-                req = newer;
-            }
-            latest_request_id_worker.store(req.request_id, Ordering::Relaxed);
+    for _ in 0..2 {
+        let tx_res_worker = tx_res.clone();
+        let rx_req_worker = Arc::clone(&rx_req);
+        let latest_request_ids_worker = Arc::clone(&latest_request_ids);
+        thread::spawn(move || loop {
+            let req = {
+                let Ok(rx) = rx_req_worker.lock() else {
+                    break;
+                };
+                match rx.recv() {
+                    Ok(req) => req,
+                    Err(_) => break,
+                }
+            };
 
             if !req.include_files && !req.include_dirs {
-                if tx_res
+                if tx_res_worker
                     .send(IndexResponse::Started {
                         request_id: req.request_id,
                         source: IndexSource::None,
@@ -503,7 +572,7 @@ fn spawn_index_worker(
                 {
                     break;
                 }
-                if tx_res
+                if tx_res_worker
                     .send(IndexResponse::Finished {
                         request_id: req.request_id,
                         source: IndexSource::None,
@@ -519,22 +588,32 @@ fn spawn_index_worker(
             let result = if req.use_filelist {
                 if let Some(filelist) = find_filelist_in_first_level(&root) {
                     stream_filelist_index(
-                        &tx_res,
+                        &tx_res_worker,
                         &req,
                         &root,
                         filelist,
-                        latest_request_id_worker.as_ref(),
+                        latest_request_ids_worker.as_ref(),
                     )
                 } else {
-                    stream_walker_index(&tx_res, &req, &root, latest_request_id_worker.as_ref())
+                    stream_walker_index(
+                        &tx_res_worker,
+                        &req,
+                        &root,
+                        latest_request_ids_worker.as_ref(),
+                    )
                 }
             } else {
-                stream_walker_index(&tx_res, &req, &root, latest_request_id_worker.as_ref())
+                stream_walker_index(
+                    &tx_res_worker,
+                    &req,
+                    &root,
+                    latest_request_ids_worker.as_ref(),
+                )
             };
 
             match result {
                 Ok(source) => {
-                    if tx_res
+                    if tx_res_worker
                         .send(IndexResponse::Finished {
                             request_id: req.request_id,
                             source,
@@ -546,9 +625,12 @@ fn spawn_index_worker(
                 }
                 Err(error) => {
                     if error == "superseded" {
+                        let _ = tx_res_worker.send(IndexResponse::Canceled {
+                            request_id: req.request_id,
+                        });
                         continue;
                     }
-                    if tx_res
+                    if tx_res_worker
                         .send(IndexResponse::Failed {
                             request_id: req.request_id,
                             error,
@@ -559,8 +641,8 @@ fn spawn_index_worker(
                     }
                 }
             }
-        }
-    });
+        });
+    }
 
     (tx_req, rx_res)
 }
@@ -605,7 +687,9 @@ pub struct FlistWalkerApp {
     pending_filelist_root: Option<PathBuf>,
     pending_filelist_after_index_root: Option<PathBuf>,
     pending_filelist_confirmation: Option<PendingFileListConfirmation>,
-    latest_index_request_id: Arc<AtomicU64>,
+    latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    pending_index_queue: VecDeque<IndexRequest>,
+    index_inflight_requests: HashSet<u64>,
     search_in_progress: bool,
     index_in_progress: bool,
     preview_in_progress: bool,
@@ -640,6 +724,13 @@ pub struct FlistWalkerApp {
     last_search_snapshot_len: usize,
     search_resume_pending: bool,
     search_rerun_pending: bool,
+    tabs: Vec<AppTabState>,
+    active_tab: usize,
+    next_tab_id: u64,
+    index_request_tabs: HashMap<u64, u64>,
+    background_index_states: HashMap<u64, BackgroundIndexState>,
+    search_request_tabs: HashMap<u64, u64>,
+    preview_request_tabs: HashMap<u64, u64>,
 }
 
 impl FlistWalkerApp {
@@ -649,6 +740,8 @@ impl FlistWalkerApp {
     const DEFAULT_RESULTS_PANEL_WIDTH: f32 = 760.0;
     const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
     const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
+    const INDEX_MAX_CONCURRENT: usize = 2;
+    const INDEX_MAX_QUEUE: usize = 4;
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
     const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
     const SEARCH_HINTS_TOOLTIP: &'static str = "\
@@ -755,8 +848,8 @@ Search hints:
         let (preview_tx, preview_rx) = spawn_preview_worker();
         let (kind_tx, kind_rx) = spawn_kind_resolver_worker();
         let (filelist_tx, filelist_rx) = spawn_filelist_worker();
-        let latest_index_request_id = Arc::new(AtomicU64::new(0));
-        let (index_tx, index_rx) = spawn_index_worker(Arc::clone(&latest_index_request_id));
+        let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
+        let (index_tx, index_rx) = spawn_index_worker(Arc::clone(&latest_index_request_ids));
         let mut app = Self {
             root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
@@ -800,7 +893,9 @@ Search hints:
             pending_filelist_root: None,
             pending_filelist_after_index_root: None,
             pending_filelist_confirmation: None,
-            latest_index_request_id,
+            latest_index_request_ids,
+            pending_index_queue: VecDeque::new(),
+            index_inflight_requests: HashSet::new(),
             search_in_progress: false,
             index_in_progress: false,
             preview_in_progress: false,
@@ -837,10 +932,18 @@ Search hints:
             last_search_snapshot_len: 0,
             search_resume_pending: false,
             search_rerun_pending: false,
+            tabs: Vec::new(),
+            active_tab: 0,
+            next_tab_id: 1,
+            index_request_tabs: HashMap::new(),
+            background_index_states: HashMap::new(),
+            search_request_tabs: HashMap::new(),
+            preview_request_tabs: HashMap::new(),
         };
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
         }
+        app.initialize_tabs();
         app.request_index_refresh();
         app
     }
@@ -863,6 +966,254 @@ Search hints:
         Self::normalize_windows_path(self.root.clone())
             .to_string_lossy()
             .to_string()
+    }
+
+    fn initialize_tabs(&mut self) {
+        let id = self.next_tab_id;
+        self.next_tab_id = self.next_tab_id.saturating_add(1);
+        self.tabs = vec![self.capture_active_tab_state(id)];
+        self.active_tab = 0;
+    }
+
+    fn current_tab_id(&self) -> Option<u64> {
+        self.tabs.get(self.active_tab).map(|tab| tab.id)
+    }
+
+    fn capture_active_tab_state(&self, id: u64) -> AppTabState {
+        AppTabState {
+            id,
+            root: self.root.clone(),
+            use_filelist: self.use_filelist,
+            use_regex: self.use_regex,
+            include_files: self.include_files,
+            include_dirs: self.include_dirs,
+            index: self.index.clone(),
+            all_entries: Arc::clone(&self.all_entries),
+            entries: Arc::clone(&self.entries),
+            entry_kinds: self.entry_kinds.clone(),
+            pending_index_request_id: self.pending_index_request_id,
+            index_in_progress: self.index_in_progress,
+            pending_index_entries: self.pending_index_entries.clone(),
+            pending_index_entries_request_id: self.pending_index_entries_request_id,
+            pending_kind_paths: self.pending_kind_paths.clone(),
+            pending_kind_paths_set: self.pending_kind_paths_set.clone(),
+            in_flight_kind_paths: self.in_flight_kind_paths.clone(),
+            kind_resolution_epoch: self.kind_resolution_epoch,
+            kind_resolution_in_progress: self.kind_resolution_in_progress,
+            incremental_filtered_entries: self.incremental_filtered_entries.clone(),
+            last_incremental_results_refresh: self.last_incremental_results_refresh,
+            last_search_snapshot_len: self.last_search_snapshot_len,
+            search_resume_pending: self.search_resume_pending,
+            search_rerun_pending: self.search_rerun_pending,
+            query: self.query.clone(),
+            results: self.results.clone(),
+            pinned_paths: self.pinned_paths.clone(),
+            current_row: self.current_row,
+            preview: self.preview.clone(),
+            notice: self.notice.clone(),
+            pending_request_id: self.pending_request_id,
+            pending_preview_request_id: self.pending_preview_request_id,
+            search_in_progress: self.search_in_progress,
+            preview_in_progress: self.preview_in_progress,
+            scroll_to_current: self.scroll_to_current,
+            focus_query_requested: self.focus_query_requested,
+            unfocus_query_requested: self.unfocus_query_requested,
+        }
+    }
+
+    fn apply_tab_state(&mut self, tab: &AppTabState) {
+        self.root = tab.root.clone();
+        self.use_filelist = tab.use_filelist;
+        self.use_regex = tab.use_regex;
+        self.include_files = tab.include_files;
+        self.include_dirs = tab.include_dirs;
+        self.index = tab.index.clone();
+        self.all_entries = Arc::clone(&tab.all_entries);
+        self.entries = Arc::clone(&tab.entries);
+        self.entry_kinds = tab.entry_kinds.clone();
+        self.pending_index_request_id = tab.pending_index_request_id;
+        self.index_in_progress = tab.index_in_progress;
+        self.pending_index_entries = tab.pending_index_entries.clone();
+        self.pending_index_entries_request_id = tab.pending_index_entries_request_id;
+        self.pending_kind_paths = tab.pending_kind_paths.clone();
+        self.pending_kind_paths_set = tab.pending_kind_paths_set.clone();
+        self.in_flight_kind_paths = tab.in_flight_kind_paths.clone();
+        self.kind_resolution_epoch = tab.kind_resolution_epoch;
+        self.kind_resolution_in_progress = tab.kind_resolution_in_progress;
+        self.incremental_filtered_entries = tab.incremental_filtered_entries.clone();
+        self.last_incremental_results_refresh = tab.last_incremental_results_refresh;
+        self.last_search_snapshot_len = tab.last_search_snapshot_len;
+        self.search_resume_pending = tab.search_resume_pending;
+        self.search_rerun_pending = tab.search_rerun_pending;
+        self.query = tab.query.clone();
+        self.results = tab.results.clone();
+        self.pinned_paths = tab.pinned_paths.clone();
+        self.current_row = tab.current_row;
+        self.preview = tab.preview.clone();
+        self.notice = tab.notice.clone();
+        self.pending_request_id = tab.pending_request_id;
+        self.pending_preview_request_id = tab.pending_preview_request_id;
+        self.search_in_progress = tab.search_in_progress;
+        self.preview_in_progress = tab.preview_in_progress;
+        self.scroll_to_current = tab.scroll_to_current;
+        self.focus_query_requested = tab.focus_query_requested;
+        self.unfocus_query_requested = tab.unfocus_query_requested;
+        self.refresh_status_line();
+    }
+
+    fn sync_active_tab_state(&mut self) {
+        let Some(id) = self.tabs.get(self.active_tab).map(|tab| tab.id) else {
+            return;
+        };
+        let snapshot = self.capture_active_tab_state(id);
+        if let Some(slot) = self.tabs.get_mut(self.active_tab) {
+            *slot = snapshot;
+        }
+    }
+
+    fn find_tab_index_by_id(&self, tab_id: u64) -> Option<usize> {
+        self.tabs.iter().position(|tab| tab.id == tab_id)
+    }
+
+    fn switch_to_tab_index(&mut self, next_index: usize) {
+        if next_index >= self.tabs.len() || next_index == self.active_tab {
+            return;
+        }
+        self.sync_active_tab_state();
+        self.active_tab = next_index;
+        if let Some(tab) = self.tabs.get(next_index).cloned() {
+            self.apply_tab_state(&tab);
+        }
+        self.focus_query_requested = true;
+        self.unfocus_query_requested = false;
+    }
+
+    fn create_new_tab(&mut self) {
+        self.sync_active_tab_state();
+        let id = self.next_tab_id;
+        self.next_tab_id = self.next_tab_id.saturating_add(1);
+        let mut tab = self.capture_active_tab_state(id);
+        tab.query.clear();
+        tab.pinned_paths.clear();
+        tab.current_row = None;
+        tab.preview.clear();
+        tab.notice = "Opened new tab".to_string();
+        tab.pending_request_id = None;
+        tab.pending_preview_request_id = None;
+        tab.pending_index_request_id = None;
+        tab.search_in_progress = false;
+        tab.index_in_progress = false;
+        tab.preview_in_progress = false;
+        tab.pending_index_entries.clear();
+        tab.pending_index_entries_request_id = None;
+        tab.pending_kind_paths.clear();
+        tab.pending_kind_paths_set.clear();
+        tab.in_flight_kind_paths.clear();
+        tab.kind_resolution_in_progress = false;
+        tab.kind_resolution_epoch = 1;
+        tab.incremental_filtered_entries.clear();
+        tab.last_search_snapshot_len = tab.entries.len();
+        tab.last_incremental_results_refresh = Instant::now();
+        tab.search_resume_pending = false;
+        tab.search_rerun_pending = false;
+        tab.scroll_to_current = true;
+        tab.focus_query_requested = true;
+        tab.unfocus_query_requested = false;
+        tab.results = self
+            .entries
+            .iter()
+            .take(self.limit)
+            .cloned()
+            .map(|p| (p, 0.0))
+            .collect();
+        self.tabs.push(tab.clone());
+        self.active_tab = self.tabs.len().saturating_sub(1);
+        self.apply_tab_state(&tab);
+    }
+
+    fn close_active_tab(&mut self) {
+        self.close_tab_index(self.active_tab);
+    }
+
+    fn close_tab_index(&mut self, index: usize) {
+        if self.tabs.len() <= 1 || index >= self.tabs.len() {
+            if self.tabs.len() <= 1 {
+                self.set_notice("Cannot close the last tab");
+            }
+            return;
+        }
+        self.sync_active_tab_state();
+        let removed = self.tabs.remove(index);
+        self.index_request_tabs.retain(|_, tab_id| *tab_id != removed.id);
+        self.pending_index_queue
+            .retain(|req| req.tab_id != removed.id);
+        if let Ok(mut latest) = self.latest_index_request_ids.lock() {
+            latest.remove(&removed.id);
+        }
+        self.background_index_states
+            .retain(|request_id, _| self.index_request_tabs.contains_key(request_id));
+        self.search_request_tabs
+            .retain(|_, tab_id| *tab_id != removed.id);
+        self.preview_request_tabs
+            .retain(|_, tab_id| *tab_id != removed.id);
+        if index < self.active_tab {
+            self.active_tab = self.active_tab.saturating_sub(1);
+        }
+        if self.active_tab >= self.tabs.len() {
+            self.active_tab = self.tabs.len().saturating_sub(1);
+        }
+        if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
+            self.apply_tab_state(&tab);
+        }
+    }
+
+    fn activate_next_tab(&mut self) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+        let next = (self.active_tab + 1) % self.tabs.len();
+        self.switch_to_tab_index(next);
+    }
+
+    fn activate_previous_tab(&mut self) {
+        if self.tabs.len() <= 1 {
+            return;
+        }
+        let next = if self.active_tab == 0 {
+            self.tabs.len() - 1
+        } else {
+            self.active_tab - 1
+        };
+        self.switch_to_tab_index(next);
+    }
+
+    fn tab_root_label(root: &Path) -> String {
+        let normalized = Self::normalize_windows_path(root.to_path_buf());
+        let raw = normalized.to_string_lossy().to_string();
+        let trimmed = raw.trim_end_matches(|c| c == '/' || c == '\\');
+        if trimmed.is_empty() {
+            return "/".to_string();
+        }
+        if trimmed.len() == 2 && trimmed.as_bytes().get(1) == Some(&b':') {
+            return trimmed.to_string();
+        }
+
+        if let Some(name) = normalized.file_name().and_then(|s| s.to_str()) {
+            if !name.is_empty() {
+                return name.to_string();
+            }
+        }
+        raw
+    }
+
+    fn tab_title(&self, tab: &AppTabState, _index: usize) -> String {
+        Self::tab_root_label(&tab.root)
+    }
+
+    fn any_tab_async_in_progress(&self) -> bool {
+        self.tabs
+            .iter()
+            .any(|tab| tab.search_in_progress || tab.preview_in_progress || tab.index_in_progress)
     }
 
     fn ui_state_file_path() -> Option<PathBuf> {
@@ -1256,7 +1607,28 @@ Search hints:
         )
     }
 
+    fn prefer_relative_display_for(source: &IndexSource) -> bool {
+        matches!(source, IndexSource::Walker | IndexSource::FileList(_))
+    }
+
+    fn is_entry_visible_for_flags(
+        entry_kinds: &HashMap<PathBuf, bool>,
+        path: &Path,
+        include_files: bool,
+        include_dirs: bool,
+    ) -> bool {
+        match entry_kinds.get(path).copied() {
+            Some(is_dir) => (is_dir && include_dirs) || (!is_dir && include_files),
+            None => include_files && include_dirs,
+        }
+    }
+
     fn refresh_status_line(&mut self) {
+        let tab_label = if self.tabs.is_empty() {
+            "Tab: 1/1".to_string()
+        } else {
+            format!("Tab: {}/{}", self.active_tab + 1, self.tabs.len())
+        };
         let indexed_count = if self.index_in_progress {
             if self.index.entries.is_empty() {
                 self.all_entries.len()
@@ -1299,7 +1671,8 @@ Search hints:
         };
 
         self.status_line = format!(
-            "Entries: {} | Results: {}{}{}{}{}{}{}",
+            "{} | Entries: {} | Results: {}{}{}{}{}{}{}",
+            tab_label,
             indexed_count,
             self.results.len(),
             clip_text,
@@ -1334,9 +1707,13 @@ Search hints:
         }
         let request_id = self.next_index_request_id;
         self.next_index_request_id = self.next_index_request_id.saturating_add(1);
-        self.latest_index_request_id
-            .store(request_id, Ordering::Relaxed);
         self.pending_index_request_id = Some(request_id);
+        if let Some(tab_id) = self.current_tab_id() {
+            self.index_request_tabs.insert(request_id, tab_id);
+            if let Ok(mut latest) = self.latest_index_request_ids.lock() {
+                latest.insert(tab_id, request_id);
+            }
+        }
         self.index_in_progress = true;
         // Cancel in-flight search requests so responses computed from stale snapshots
         // cannot override results while a new index request is running.
@@ -1366,16 +1743,313 @@ Search hints:
 
         let req = IndexRequest {
             request_id,
+            tab_id: self.current_tab_id().unwrap_or_default(),
             root: self.root.clone(),
             use_filelist: self.use_filelist,
             include_files: true,
             include_dirs: true,
         };
-        if self.index_tx.send(req).is_err() {
-            self.index_in_progress = false;
-            self.pending_index_request_id = None;
-            self.set_notice("Index worker is unavailable");
+        self.enqueue_index_request(req);
+        self.dispatch_index_queue();
+    }
+
+    fn enqueue_index_request(&mut self, req: IndexRequest) {
+        let active_tab_id = self.current_tab_id().unwrap_or_default();
+        let stale_inflight: Vec<u64> = self
+            .index_inflight_requests
+            .iter()
+            .copied()
+            .filter(|request_id| {
+                self.index_request_tabs
+                    .get(request_id)
+                    .is_some_and(|tab_id| *tab_id == req.tab_id)
+            })
+            .collect();
+        for request_id in stale_inflight {
+            self.index_inflight_requests.remove(&request_id);
+            self.index_request_tabs.remove(&request_id);
+            self.background_index_states.remove(&request_id);
         }
+        self.pending_index_queue.retain(|queued| queued.tab_id != req.tab_id);
+        self.pending_index_queue.push_back(req);
+
+        while self.pending_index_queue.len() > Self::INDEX_MAX_QUEUE {
+            let drop_idx = self
+                .pending_index_queue
+                .iter()
+                .position(|queued| queued.tab_id != active_tab_id)
+                .unwrap_or(0);
+            let dropped = self.pending_index_queue.remove(drop_idx);
+            if let Some(dropped) = dropped {
+                if let Some(tab_index) = self.find_tab_index_by_id(dropped.tab_id) {
+                    if let Some(tab) = self.tabs.get_mut(tab_index) {
+                        if tab.pending_index_request_id == Some(dropped.request_id) {
+                            tab.pending_index_request_id = None;
+                            tab.index_in_progress = false;
+                            tab.notice = "Index request dropped due to queue limit".to_string();
+                        }
+                    }
+                }
+                self.index_request_tabs.remove(&dropped.request_id);
+                self.background_index_states.remove(&dropped.request_id);
+            }
+        }
+    }
+
+    fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
+        self.pending_index_queue.iter().any(|req| req.tab_id == tab_id)
+    }
+
+    fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
+        self.index_inflight_requests.iter().any(|request_id| {
+            self.index_request_tabs
+                .get(request_id)
+                .is_some_and(|rid_tab_id| *rid_tab_id == tab_id)
+        })
+    }
+
+    fn pop_next_index_request(&mut self) -> Option<IndexRequest> {
+        let active_tab_id = self.current_tab_id()?;
+        if let Some(pos) = self.pending_index_queue.iter().position(|req| {
+            req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id)
+        }) {
+            return self.pending_index_queue.remove(pos);
+        }
+        if let Some(pos) = self
+            .pending_index_queue
+            .iter()
+            .position(|req| !self.has_inflight_for_tab(req.tab_id))
+        {
+            return self.pending_index_queue.remove(pos);
+        }
+        None
+    }
+
+    fn preempt_background_for_active_request(&mut self) -> bool {
+        let Some(active_tab_id) = self.current_tab_id() else {
+            return false;
+        };
+        if !self.queued_request_for_tab_exists(active_tab_id) {
+            return false;
+        }
+        if self.index_inflight_requests.len() < Self::INDEX_MAX_CONCURRENT {
+            return false;
+        }
+
+        let victim_request_id = self
+            .index_inflight_requests
+            .iter()
+            .copied()
+            .find(|request_id| {
+                self.index_request_tabs
+                    .get(request_id)
+                    .is_some_and(|tab_id| *tab_id != active_tab_id)
+            });
+        let Some(victim_request_id) = victim_request_id else {
+            return false;
+        };
+        let Some(victim_tab_id) = self.index_request_tabs.get(&victim_request_id).copied() else {
+            return false;
+        };
+        let replacement_request_id = self
+            .pending_index_queue
+            .iter()
+            .rev()
+            .find(|req| req.tab_id == victim_tab_id)
+            .map(|req| req.request_id)
+            .unwrap_or(0);
+
+        if let Ok(mut latest) = self.latest_index_request_ids.lock() {
+            if latest.get(&victim_tab_id).copied() == Some(replacement_request_id) {
+                return false;
+            }
+            latest.insert(victim_tab_id, replacement_request_id);
+            return true;
+        }
+        false
+    }
+
+    fn dispatch_index_queue(&mut self) {
+        loop {
+            if self.index_inflight_requests.len() >= Self::INDEX_MAX_CONCURRENT {
+                let _ = self.preempt_background_for_active_request();
+                break;
+            }
+            let Some(req) = self.pop_next_index_request() else {
+                break;
+            };
+            let req_id = req.request_id;
+            if self.index_tx.send(req).is_err() {
+                self.index_request_tabs.clear();
+                self.pending_index_queue.clear();
+                self.background_index_states.clear();
+                self.index_inflight_requests.clear();
+                self.index_in_progress = false;
+                self.pending_index_request_id = None;
+                self.set_notice("Index worker is unavailable");
+                break;
+            } else {
+                self.index_inflight_requests.insert(req_id);
+            }
+        }
+    }
+
+    fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return;
+        };
+        let request_id = self.next_request_id;
+        self.next_request_id = self.next_request_id.saturating_add(1);
+        tab.pending_request_id = Some(request_id);
+        tab.search_in_progress = true;
+        self.search_request_tabs.insert(request_id, tab.id);
+
+        let req = SearchRequest {
+            request_id,
+            query: tab.query.clone(),
+            entries: Arc::clone(&tab.entries),
+            limit: self.limit,
+            use_regex: tab.use_regex,
+            root: tab.root.clone(),
+            prefer_relative: Self::prefer_relative_display_for(&tab.index.source),
+        };
+        if self.search_tx.send(req).is_err() {
+            tab.pending_request_id = None;
+            tab.search_in_progress = false;
+            tab.notice = "Search worker is unavailable".to_string();
+        }
+    }
+
+    fn handle_background_index_response(&mut self, tab_index: usize, msg: IndexResponse) {
+        let mut trigger_search = false;
+        let mut cleanup_request_id: Option<u64> = None;
+
+        {
+            let Some(tab) = self.tabs.get_mut(tab_index) else {
+                return;
+            };
+            match msg {
+                IndexResponse::Started { request_id, source } => {
+                    if tab.pending_index_request_id != Some(request_id) {
+                        return;
+                    }
+                    tab.index.source = source.clone();
+                    self.background_index_states
+                        .entry(request_id)
+                        .or_default()
+                        .source = Some(source);
+                }
+                IndexResponse::Batch {
+                    request_id,
+                    entries,
+                } => {
+                    if tab.pending_index_request_id != Some(request_id) {
+                        return;
+                    }
+                    let state = self.background_index_states.entry(request_id).or_default();
+                    for entry in entries {
+                        if entry.kind_known {
+                            state.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+                        }
+                        state.entries.push(entry.path);
+                    }
+                }
+                IndexResponse::Finished { request_id, source } => {
+                    if tab.pending_index_request_id != Some(request_id) {
+                        cleanup_request_id = Some(request_id);
+                    } else {
+                        let state = self.background_index_states.remove(&request_id).unwrap_or_default();
+                        tab.index.source = state.source.unwrap_or(source);
+                        tab.index.entries = state.entries.clone();
+                        tab.all_entries = Arc::new(state.entries.clone());
+                        tab.entry_kinds = state.entry_kinds;
+                        let filtered: Vec<PathBuf> = tab
+                            .all_entries
+                            .iter()
+                            .filter(|path| {
+                                Self::is_entry_visible_for_flags(
+                                    &tab.entry_kinds,
+                                    path,
+                                    tab.include_files,
+                                    tab.include_dirs,
+                                )
+                            })
+                            .cloned()
+                            .collect();
+                        tab.entries = Arc::new(filtered);
+                        tab.pending_index_request_id = None;
+                        tab.index_in_progress = false;
+                        tab.pending_index_entries.clear();
+                        tab.pending_index_entries_request_id = None;
+                        tab.pending_kind_paths.clear();
+                        tab.pending_kind_paths_set.clear();
+                        tab.in_flight_kind_paths.clear();
+                        tab.kind_resolution_in_progress = false;
+                        tab.search_resume_pending = false;
+                        tab.search_rerun_pending = false;
+                        tab.last_search_snapshot_len = tab.entries.len();
+                        tab.last_incremental_results_refresh = Instant::now();
+
+                        if tab.query.trim().is_empty() {
+                            tab.results = tab
+                                .entries
+                                .iter()
+                                .take(self.limit)
+                                .cloned()
+                                .map(|p| (p, 0.0))
+                                .collect();
+                            if tab.results.is_empty() {
+                                tab.current_row = None;
+                                tab.preview.clear();
+                                tab.pending_preview_request_id = None;
+                                tab.preview_in_progress = false;
+                            } else {
+                                let max_index = tab.results.len().saturating_sub(1);
+                                tab.current_row = Some(tab.current_row.unwrap_or(0).min(max_index));
+                            }
+                        } else {
+                            trigger_search = true;
+                        }
+                        cleanup_request_id = Some(request_id);
+                    }
+                }
+                IndexResponse::Failed { request_id, error } => {
+                    if tab.pending_index_request_id != Some(request_id) {
+                        cleanup_request_id = Some(request_id);
+                    } else {
+                        tab.index_in_progress = false;
+                        tab.pending_index_request_id = None;
+                        tab.search_resume_pending = false;
+                        tab.search_rerun_pending = false;
+                        tab.pending_index_entries.clear();
+                        tab.pending_index_entries_request_id = None;
+                        tab.notice = format!("Indexing failed: {}", error);
+                        cleanup_request_id = Some(request_id);
+                    }
+                }
+                IndexResponse::Canceled { request_id } => {
+                    if tab.pending_index_request_id == Some(request_id) {
+                        tab.index_in_progress = false;
+                        tab.pending_index_request_id = None;
+                        tab.search_resume_pending = false;
+                        tab.search_rerun_pending = false;
+                        tab.pending_index_entries.clear();
+                        tab.pending_index_entries_request_id = None;
+                    }
+                    cleanup_request_id = Some(request_id);
+                }
+            }
+        }
+
+        if trigger_search {
+            self.enqueue_search_request_for_tab_index(tab_index);
+        }
+        if let Some(request_id) = cleanup_request_id {
+            self.index_request_tabs.remove(&request_id);
+            self.background_index_states.remove(&request_id);
+            self.index_inflight_requests.remove(&request_id);
+        }
+        self.dispatch_index_queue();
     }
 
     fn poll_index_response(&mut self) {
@@ -1388,6 +2062,39 @@ Search hints:
         let mut has_index_progress = false;
         let mut finished_current_request = false;
         while let Ok(msg) = self.index_rx.try_recv() {
+            let request_id = match &msg {
+                IndexResponse::Started { request_id, .. }
+                | IndexResponse::Batch { request_id, .. }
+                | IndexResponse::Finished { request_id, .. }
+                | IndexResponse::Failed { request_id, .. }
+                | IndexResponse::Canceled { request_id } => *request_id,
+            };
+            let target_tab_id = self.index_request_tabs.get(&request_id).copied();
+            let current_tab_id = self.current_tab_id();
+            if let Some(tab_id) = target_tab_id {
+                if Some(tab_id) != current_tab_id {
+                    if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
+                        self.handle_background_index_response(tab_index, msg);
+                    } else {
+                        self.index_request_tabs.remove(&request_id);
+                        self.background_index_states.remove(&request_id);
+                        self.index_inflight_requests.remove(&request_id);
+                    }
+                    processed = processed.saturating_add(1);
+                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= FRAME_BUDGET {
+                        break;
+                    }
+                    continue;
+                }
+            }
+
+            let terminal_request_id = match &msg {
+                IndexResponse::Finished { request_id, .. }
+                | IndexResponse::Failed { request_id, .. }
+                | IndexResponse::Canceled { request_id } => Some(*request_id),
+                _ => None,
+            };
+
             match msg {
                 IndexResponse::Started { request_id, source } => {
                     if Some(request_id) != self.pending_index_request_id {
@@ -1408,6 +2115,9 @@ Search hints:
                 }
                 IndexResponse::Finished { request_id, source } => {
                     if Some(request_id) != self.pending_index_request_id {
+                        self.index_request_tabs.remove(&request_id);
+                        self.background_index_states.remove(&request_id);
+                        self.index_inflight_requests.remove(&request_id);
                         continue;
                     }
                     self.drain_queued_index_entries(request_id, usize::MAX);
@@ -1418,6 +2128,8 @@ Search hints:
                     self.pending_index_entries.clear();
                     self.pending_index_entries_request_id = None;
                     self.pending_index_request_id = None;
+                    self.index_request_tabs.remove(&request_id);
+                    self.background_index_states.remove(&request_id);
                     self.index_in_progress = false;
                     self.apply_entry_filters(true);
                     self.search_resume_pending = false;
@@ -1435,11 +2147,15 @@ Search hints:
                         self.pending_filelist_after_index_root = None;
                         self.request_filelist_creation(root, entries);
                     }
+                    self.index_inflight_requests.remove(&request_id);
                     finished_current_request = true;
                     break;
                 }
                 IndexResponse::Failed { request_id, error } => {
                     if Some(request_id) != self.pending_index_request_id {
+                        self.index_request_tabs.remove(&request_id);
+                        self.background_index_states.remove(&request_id);
+                        self.index_inflight_requests.remove(&request_id);
                         continue;
                     }
                     self.index_in_progress = false;
@@ -1449,8 +2165,26 @@ Search hints:
                     self.pending_filelist_after_index_root = None;
                     self.pending_index_entries.clear();
                     self.pending_index_entries_request_id = None;
+                    self.index_request_tabs.remove(&request_id);
+                    self.background_index_states.remove(&request_id);
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
+                IndexResponse::Canceled { request_id } => {
+                    if Some(request_id) == self.pending_index_request_id {
+                        self.index_in_progress = false;
+                        self.pending_index_request_id = None;
+                        self.search_resume_pending = false;
+                        self.search_rerun_pending = false;
+                        self.pending_index_entries.clear();
+                        self.pending_index_entries_request_id = None;
+                    }
+                    self.index_request_tabs.remove(&request_id);
+                    self.background_index_states.remove(&request_id);
+                }
+            }
+
+            if let Some(request_id) = terminal_request_id {
+                self.index_inflight_requests.remove(&request_id);
             }
 
             processed = processed.saturating_add(1);
@@ -1460,6 +2194,7 @@ Search hints:
         }
 
         if finished_current_request {
+            self.dispatch_index_queue();
             return;
         }
 
@@ -1480,6 +2215,7 @@ Search hints:
         }
 
         if !has_index_progress {
+            self.dispatch_index_queue();
             return;
         }
 
@@ -1488,6 +2224,7 @@ Search hints:
         } else {
             self.maybe_refresh_incremental_search();
         }
+        self.dispatch_index_queue();
     }
 
     fn ensure_entry_filters(&mut self) -> bool {
@@ -1528,6 +2265,9 @@ Search hints:
         let request_id = self.next_request_id;
         self.next_request_id = self.next_request_id.saturating_add(1);
         self.pending_request_id = Some(request_id);
+        if let Some(tab_id) = self.current_tab_id() {
+            self.search_request_tabs.insert(request_id, tab_id);
+        }
         self.search_in_progress = true;
         self.refresh_status_line();
 
@@ -1550,6 +2290,7 @@ Search hints:
 
     fn poll_search_response(&mut self) {
         while let Ok(response) = self.search_rx.try_recv() {
+            let target_tab_id = self.search_request_tabs.remove(&response.request_id);
             if Some(response.request_id) == self.pending_request_id {
                 self.pending_request_id = None;
                 self.search_in_progress = false;
@@ -1570,22 +2311,70 @@ Search hints:
                     self.last_incremental_results_refresh = Instant::now();
                     self.update_results();
                 }
+                self.sync_active_tab_state();
+                continue;
+            }
+
+            let Some(tab_id) = target_tab_id else {
+                continue;
+            };
+            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+                continue;
+            };
+            let Some(tab) = self.tabs.get_mut(tab_index) else {
+                continue;
+            };
+            tab.pending_request_id = None;
+            tab.search_in_progress = false;
+            tab.notice = response
+                .error
+                .map(|error| format!("Search failed: {error}"))
+                .unwrap_or_default();
+            tab.results = response.results;
+            if tab.results.is_empty() {
+                tab.current_row = None;
+                tab.preview.clear();
+                tab.pending_preview_request_id = None;
+                tab.preview_in_progress = false;
+            } else {
+                let max_index = tab.results.len().saturating_sub(1);
+                tab.current_row = Some(tab.current_row.unwrap_or(0).min(max_index));
             }
         }
     }
 
     fn poll_preview_response(&mut self) {
         while let Ok(response) = self.preview_rx.try_recv() {
-            if Some(response.request_id) != self.pending_preview_request_id {
+            let target_tab_id = self.preview_request_tabs.remove(&response.request_id);
+            if Some(response.request_id) == self.pending_preview_request_id {
+                self.pending_preview_request_id = None;
+                self.preview_in_progress = false;
+                self.cache_preview(response.path.clone(), response.preview.clone());
+                if let Some(row) = self.current_row {
+                    if let Some((current_path, _)) = self.results.get(row) {
+                        if *current_path == response.path {
+                            self.preview = response.preview;
+                        }
+                    }
+                }
+                self.sync_active_tab_state();
                 continue;
             }
-            self.pending_preview_request_id = None;
-            self.preview_in_progress = false;
+            let Some(tab_id) = target_tab_id else {
+                continue;
+            };
+            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+                continue;
+            };
             self.cache_preview(response.path.clone(), response.preview.clone());
-            if let Some(row) = self.current_row {
-                if let Some((current_path, _)) = self.results.get(row) {
-                    if *current_path == response.path {
-                        self.preview = response.preview;
+            if let Some(tab) = self.tabs.get_mut(tab_index) {
+                tab.pending_preview_request_id = None;
+                tab.preview_in_progress = false;
+                if let Some(row) = tab.current_row {
+                    if let Some((current_path, _)) = tab.results.get(row) {
+                        if *current_path == response.path {
+                            tab.preview = response.preview;
+                        }
                     }
                 }
             }
@@ -1795,7 +2584,8 @@ Search hints:
     }
 
     fn queue_kind_resolution(&mut self, path: PathBuf) {
-        if self.pending_kind_paths_set.contains(&path) || self.in_flight_kind_paths.contains(&path) {
+        if self.pending_kind_paths_set.contains(&path) || self.in_flight_kind_paths.contains(&path)
+        {
             return;
         }
         self.pending_kind_paths_set.insert(path.clone());
@@ -1887,6 +2677,9 @@ Search hints:
                 let request_id = self.next_preview_request_id;
                 self.next_preview_request_id = self.next_preview_request_id.saturating_add(1);
                 self.pending_preview_request_id = Some(request_id);
+                if let Some(tab_id) = self.current_tab_id() {
+                    self.preview_request_tabs.insert(request_id, tab_id);
+                }
                 self.preview_in_progress = true;
                 let req = PreviewRequest {
                     request_id,
@@ -2542,6 +3335,73 @@ Search hints:
             });
     }
 
+    fn render_tab_bar(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            let mut switch_to: Option<usize> = None;
+            let mut close_tab: Option<usize> = None;
+            for i in 0..self.tabs.len() {
+                let is_active = self.active_tab == i;
+                let active_fill = if ui.visuals().dark_mode {
+                    egui::Color32::from_rgb(48, 53, 62)
+                } else {
+                    egui::Color32::from_rgb(228, 232, 238)
+                };
+                egui::Frame::none()
+                    .fill(if is_active {
+                        active_fill
+                    } else {
+                        egui::Color32::TRANSPARENT
+                    })
+                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                    .rounding(egui::Rounding::same(4.0))
+                    .inner_margin(egui::Margin::symmetric(6.0, 2.0))
+                    .show(ui, |ui| {
+                    let title = self
+                        .tabs
+                        .get(i)
+                        .map(|tab| self.tab_title(tab, i))
+                        .unwrap_or_else(|| format!("Tab {}", i + 1));
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                egui::RichText::new(title).strong().color(if is_active {
+                                    ui.visuals().strong_text_color()
+                                } else {
+                                    ui.visuals().text_color()
+                                }),
+                            )
+                            .frame(false),
+                        )
+                        .clicked()
+                    {
+                        switch_to = Some(i);
+                    }
+                    if ui
+                        .add_enabled(
+                            self.tabs.len() > 1,
+                            egui::Button::new("×").small().frame(false),
+                        )
+                        .on_hover_text("Close tab")
+                        .clicked()
+                    {
+                        close_tab = Some(i);
+                    }
+                    });
+            }
+            if ui.button("+").on_hover_text("New tab (Ctrl+T)").clicked() {
+                self.create_new_tab();
+                return;
+            }
+            if let Some(index) = close_tab {
+                self.close_tab_index(index);
+                return;
+            }
+            if let Some(idx) = switch_to {
+                self.switch_to_tab_index(idx);
+            }
+        });
+    }
+
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
         let query_focused = ctx.memory(|m| m.has_focus(self.query_input_id));
         self.handle_shortcuts_with_focus(ctx, query_focused);
@@ -2552,6 +3412,27 @@ Search hints:
             ctrl: true,
             ..Default::default()
         };
+        let ctrl_shift_mod = egui::Modifiers {
+            ctrl: true,
+            shift: true,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::T)) {
+            self.create_new_tab();
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::W)) {
+            self.close_active_tab();
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_shift_mod, egui::Key::Tab)) {
+            self.activate_previous_tab();
+            return;
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::Tab)) {
+            self.activate_next_tab();
+            return;
+        }
         if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::L)) {
             if query_focused {
                 self.focus_query_requested = false;
@@ -2810,6 +3691,7 @@ impl eframe::App for FlistWalkerApp {
             || self.preview_in_progress
             || self.kind_resolution_in_progress
             || self.filelist_in_progress
+            || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
@@ -2817,6 +3699,8 @@ impl eframe::App for FlistWalkerApp {
         self.apply_stable_window_geometry(false);
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
+            self.render_tab_bar(ui);
+            ui.separator();
             ui.horizontal(|ui| {
                 let row_height = ui.spacing().interact_size.y;
                 ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
@@ -2944,16 +3828,18 @@ impl eframe::App for FlistWalkerApp {
                 self.unfocus_query_requested = false;
             }
             let events = ctx.input(|i| i.events.clone());
-            let (query_event_changed, query_cursor_after_fallback) = self.process_query_input_events(
-                ctx,
-                &events,
-                output.response.has_focus(),
-                output.response.changed(),
-                output.state.ccursor_range(),
-            );
+            let (query_event_changed, query_cursor_after_fallback) = self
+                .process_query_input_events(
+                    ctx,
+                    &events,
+                    output.response.has_focus(),
+                    output.response.changed(),
+                    output.state.ccursor_range(),
+                );
             if query_event_changed {
                 if output.response.has_focus() {
-                    let end = query_cursor_after_fallback.unwrap_or_else(|| Self::char_count(&self.query));
+                    let end = query_cursor_after_fallback
+                        .unwrap_or_else(|| Self::char_count(&self.query));
                     output
                         .state
                         .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
@@ -3043,6 +3929,7 @@ impl eframe::App for FlistWalkerApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_results_and_preview(ui);
         });
+        self.sync_active_tab_state();
         self.maybe_save_ui_state(false);
     }
 }
@@ -3071,13 +3958,18 @@ mod tests {
 
     fn entries_count_from_status(status_line: &str) -> usize {
         status_line
-            .strip_prefix("Entries: ")
+            .split("Entries: ")
+            .nth(1)
             .and_then(|rest| rest.split(" | ").next())
             .and_then(|n| n.parse::<usize>().ok())
             .unwrap_or(0)
     }
 
-    fn run_shortcuts_frame(app: &mut FlistWalkerApp, query_focused: bool, events: Vec<egui::Event>) {
+    fn run_shortcuts_frame(
+        app: &mut FlistWalkerApp,
+        query_focused: bool,
+        events: Vec<egui::Event>,
+    ) {
         let mut modifiers = egui::Modifiers::NONE;
         for event in &events {
             if let egui::Event::Key {
@@ -3128,6 +4020,17 @@ mod tests {
         fs::create_dir_all(&root).expect("create dir");
         let app = FlistWalkerApp::new(root.clone(), 50, String::new());
         assert!(app.focus_query_requested);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn startup_index_request_is_bound_to_active_tab() {
+        let root = test_root("startup-index-tab-binding");
+        fs::create_dir_all(&root).expect("create dir");
+        let app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let req_id = app.pending_index_request_id.expect("pending index request");
+        let tab_id = app.current_tab_id().expect("active tab id");
+        assert_eq!(app.index_request_tabs.get(&req_id).copied(), Some(tab_id));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -4365,6 +5268,452 @@ mod tests {
     }
 
     #[test]
+    fn ctrl_t_creates_new_tab_and_activates_it() {
+        let root = test_root("shortcut-ctrl-t-new-tab");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+        assert_eq!(app.tabs.len(), 1);
+        assert_eq!(app.active_tab, 0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::T,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+
+        assert_eq!(app.tabs.len(), 2);
+        assert_eq!(app.active_tab, 1);
+        assert!(app.query.is_empty());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
+        let root = test_root("shortcut-ctrl-w-close-tab");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.create_new_tab();
+        assert_eq!(app.tabs.len(), 2);
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::W,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.tabs.len(), 1);
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::W,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.tabs.len(), 1);
+        assert!(app.notice.contains("Cannot close the last tab"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
+        let root = test_root("shortcut-ctrl-tab-switch");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.create_new_tab();
+        app.create_new_tab();
+        assert_eq!(app.tabs.len(), 3);
+        assert_eq!(app.active_tab, 2);
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.active_tab, 0);
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.active_tab, 2);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn switching_tabs_restores_root_per_tab() {
+        let root_a = test_root("tab-root-a");
+        let root_b = test_root("tab-root-b");
+        fs::create_dir_all(&root_a).expect("create root a");
+        fs::create_dir_all(&root_b).expect("create root b");
+        let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+
+        app.create_new_tab();
+        app.root = root_b.clone();
+        app.sync_active_tab_state();
+        assert_eq!(app.active_tab, 1);
+
+        app.switch_to_tab_index(0);
+        assert_eq!(app.root, root_a);
+
+        app.switch_to_tab_index(1);
+        assert_eq!(app.root, root_b);
+
+        let _ = fs::remove_dir_all(&root_a);
+        let _ = fs::remove_dir_all(&root_b);
+    }
+
+    #[test]
+    fn switching_tabs_restores_entries_and_filters_per_tab() {
+        let root = test_root("tab-entries-filters");
+        fs::create_dir_all(&root).expect("create dir");
+        let a = root.join("a.txt");
+        let b = root.join("b.txt");
+        fs::write(&a, "a").expect("write a");
+        fs::write(&b, "b").expect("write b");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.entries = Arc::new(vec![a.clone(), b.clone()]);
+        app.all_entries = Arc::new(vec![a.clone(), b.clone()]);
+        app.include_files = true;
+        app.include_dirs = true;
+        app.sync_active_tab_state();
+
+        app.create_new_tab();
+        app.entries = Arc::new(vec![a.clone()]);
+        app.all_entries = Arc::new(vec![a.clone()]);
+        app.include_files = true;
+        app.include_dirs = false;
+        app.sync_active_tab_state();
+
+        app.switch_to_tab_index(0);
+        assert_eq!(app.entries.len(), 2);
+        assert_eq!(app.all_entries.len(), 2);
+        assert!(app.include_files);
+        assert!(app.include_dirs);
+
+        app.switch_to_tab_index(1);
+        assert_eq!(app.entries.len(), 1);
+        assert_eq!(app.all_entries.len(), 1);
+        assert!(app.include_files);
+        assert!(!app.include_dirs);
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn background_tab_search_and_preview_responses_are_retained() {
+        let root = test_root("background-tab-search-preview");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "hello").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "picked".to_string());
+        app.entries = Arc::new(vec![selected.clone()]);
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+        app.entry_kinds.insert(selected.clone(), false);
+
+        let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
+        let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
+        app.search_tx = search_tx_req;
+        app.search_rx = search_rx_res;
+        app.enqueue_search_request();
+        let search_request_id = app.pending_request_id.expect("search request id");
+        let first_tab_id = app.tabs[0].id;
+
+        let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
+        let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
+        app.preview_tx = preview_tx_req;
+        app.preview_rx = preview_rx_res;
+        app.request_preview_for_current();
+        let preview_request_id = app.pending_preview_request_id.expect("preview request id");
+
+        app.create_new_tab();
+        assert_eq!(app.active_tab, 1);
+
+        search_tx_res
+            .send(SearchResponse {
+                request_id: search_request_id,
+                results: vec![(selected.clone(), 9.0)],
+                error: None,
+            })
+            .expect("send search response");
+        preview_tx_res
+            .send(PreviewResponse {
+                request_id: preview_request_id,
+                path: selected.clone(),
+                preview: "preview-body".to_string(),
+            })
+            .expect("send preview response");
+        app.poll_search_response();
+        app.poll_preview_response();
+
+        let first_tab = app
+            .tabs
+            .iter()
+            .find(|tab| tab.id == first_tab_id)
+            .expect("first tab");
+        assert_eq!(first_tab.results.len(), 1);
+        assert_eq!(first_tab.results[0].0, selected);
+        assert_eq!(first_tab.preview, "preview-body");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn background_tab_switch_does_not_stop_indexing_progress() {
+        let root = test_root("background-tab-indexing-progress");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.index_in_progress = true;
+        app.create_new_tab();
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+
+        assert!(app.index_in_progress);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn background_tab_index_batches_do_not_override_active_tab_entries() {
+        let root = test_root("background-tab-index-isolation");
+        fs::create_dir_all(&root).expect("create dir");
+        let active_file = root.join("active.txt");
+        let indexed_file = root.join("indexed.txt");
+        fs::write(&active_file, "a").expect("write active");
+        fs::write(&indexed_file, "b").expect("write indexed");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_req_tx;
+        let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = index_res_rx;
+
+        app.request_index_refresh();
+        let index_req = index_req_rx.try_recv().expect("index request");
+        app.entries = Arc::new(vec![active_file.clone()]);
+        app.all_entries = Arc::new(vec![active_file.clone()]);
+        app.sync_active_tab_state();
+
+        app.create_new_tab();
+        assert_eq!(app.active_tab, 1);
+        app.entries = Arc::new(vec![active_file.clone()]);
+        app.all_entries = Arc::new(vec![active_file.clone()]);
+        app.sync_active_tab_state();
+
+        index_res_tx
+            .send(IndexResponse::Batch {
+                request_id: index_req.request_id,
+                entries: vec![IndexEntry {
+                    path: indexed_file.clone(),
+                    is_dir: false,
+                    kind_known: true,
+                }],
+            })
+            .expect("send batch");
+        index_res_tx
+            .send(IndexResponse::Finished {
+                request_id: index_req.request_id,
+                source: IndexSource::Walker,
+            })
+            .expect("send finished");
+
+        app.poll_index_response();
+
+        assert_eq!(app.entries.len(), 1);
+        assert_eq!(app.entries[0], active_file);
+
+        app.switch_to_tab_index(0);
+        assert_eq!(app.entries.len(), 1);
+        assert_eq!(app.entries[0], indexed_file);
+        assert!(!app.index_in_progress);
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn preempt_background_when_active_index_is_queued() {
+        let root = test_root("index-preempt-active-priority");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.create_new_tab();
+        app.create_new_tab();
+
+        let active_tab_id = app.tabs[2].id;
+        let bg_tab_a = app.tabs[0].id;
+        let bg_tab_b = app.tabs[1].id;
+        app.active_tab = 2;
+
+        app.index_inflight_requests.insert(100);
+        app.index_inflight_requests.insert(101);
+        app.index_request_tabs.insert(100, bg_tab_a);
+        app.index_request_tabs.insert(101, bg_tab_b);
+        app.pending_index_queue.push_back(IndexRequest {
+            request_id: 102,
+            tab_id: active_tab_id,
+            root: root.clone(),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+        });
+        {
+            let mut latest = app.latest_index_request_ids.lock().expect("lock latest");
+            latest.insert(bg_tab_a, 100);
+            latest.insert(bg_tab_b, 101);
+        }
+
+        assert!(app.preempt_background_for_active_request());
+
+        let latest = app.latest_index_request_ids.lock().expect("lock latest");
+        let preempted = latest.get(&bg_tab_a).copied() == Some(0)
+            || latest.get(&bg_tab_b).copied() == Some(0);
+        assert!(preempted);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn stale_terminal_index_response_clears_inflight_slot() {
+        let root = test_root("stale-terminal-clears-inflight");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        let stale_request_id = 777u64;
+        let current_tab_id = app.current_tab_id().expect("tab id");
+        app.pending_index_request_id = Some(778);
+        app.index_inflight_requests.insert(stale_request_id);
+        app.index_request_tabs.insert(stale_request_id, current_tab_id);
+
+        tx.send(IndexResponse::Finished {
+            request_id: stale_request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send finished");
+
+        app.poll_index_response();
+
+        assert!(!app.index_inflight_requests.contains(&stale_request_id));
+        assert!(!app.index_request_tabs.contains_key(&stale_request_id));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn current_finished_index_response_clears_inflight_slot() {
+        let root = test_root("current-finished-clears-inflight");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        let req_id = app.pending_index_request_id.expect("pending request");
+        let tab_id = app.current_tab_id().expect("tab id");
+        app.index_request_tabs.insert(req_id, tab_id);
+        app.index_inflight_requests.insert(req_id);
+
+        tx.send(IndexResponse::Finished {
+            request_id: req_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send finished");
+
+        app.poll_index_response();
+
+        assert!(!app.index_inflight_requests.contains(&req_id));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn same_tab_request_waits_until_previous_inflight_finishes() {
+        let root = test_root("same-tab-inflight-serialization");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let tab_id = app.current_tab_id().expect("tab id");
+
+        app.index_inflight_requests.insert(1);
+        app.index_request_tabs.insert(1, tab_id);
+        app.pending_index_queue.push_back(IndexRequest {
+            request_id: 2,
+            tab_id,
+            root: root.clone(),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+        });
+
+        assert!(app.pop_next_index_request().is_none());
+
+        app.index_inflight_requests.remove(&1);
+        let popped = app
+            .pop_next_index_request()
+            .expect("queued same-tab request should run");
+        assert_eq!(popped.request_id, 2);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn tab_root_label_uses_leaf_directory_name() {
+        let root = PathBuf::from("/tmp/flistwalker-tab-root-label");
+        assert_eq!(FlistWalkerApp::tab_root_label(&root), "flistwalker-tab-root-label");
+        assert_eq!(FlistWalkerApp::tab_root_label(Path::new("/")), "/");
+    }
+
+    #[test]
+    fn tab_root_label_keeps_drive_like_root() {
+        assert_eq!(FlistWalkerApp::tab_root_label(Path::new("C:\\")), "C:");
+        assert_eq!(FlistWalkerApp::tab_root_label(Path::new("C:")), "C:");
+    }
+
+    #[test]
     fn process_query_input_events_inserts_half_space_for_space_keys() {
         let root = test_root("ime-space-fallback");
         fs::create_dir_all(&root).expect("create dir");
@@ -4382,7 +5731,9 @@ mod tests {
             }],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(3),
+            )),
         );
         assert!(inserted_half);
         assert_eq!(cursor_half, Some(4));
@@ -4401,7 +5752,9 @@ mod tests {
             }],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(4))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(4),
+            )),
         );
         assert!(inserted_shift);
         assert_eq!(cursor_shift, Some(5));
@@ -4430,7 +5783,9 @@ mod tests {
             ],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(3),
+            )),
         );
         assert!(inserted);
         assert_eq!(cursor, Some(4));
@@ -4461,7 +5816,9 @@ mod tests {
             ],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(3),
+            )),
         );
         assert!(inserted);
         assert_eq!(cursor, Some(4));
@@ -4495,7 +5852,9 @@ mod tests {
             ],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(3),
+            )),
         );
         assert!(inserted);
         assert_eq!(cursor, Some(4));
@@ -4522,7 +5881,9 @@ mod tests {
             }],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(2))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(2),
+            )),
         );
 
         assert!(inserted);
@@ -4544,7 +5905,9 @@ mod tests {
             &[egui::Event::CompositionEnd("x".to_string())],
             true,
             false,
-            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(2))),
+            Some(egui::text_edit::CCursorRange::one(
+                egui::text::CCursor::new(2),
+            )),
         );
 
         assert!(inserted);
