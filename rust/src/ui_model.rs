@@ -120,14 +120,27 @@ fn highlight_terms(query: &str, use_regex: bool) -> Vec<String> {
             }
             continue;
         }
-        if token.starts_with('^') {
-            token = token[1..].to_string();
+        let mut candidates = vec![token];
+        if !use_regex && !is_exact {
+            let split: Vec<String> = candidates[0]
+                .split('|')
+                .filter(|s| !s.is_empty())
+                .map(ToString::to_string)
+                .collect();
+            if !split.is_empty() {
+                candidates = split;
+            }
         }
-        if token.ends_with('$') {
-            token = token[..token.len().saturating_sub(1)].to_string();
-        }
-        if !token.is_empty() {
-            terms.push(token);
+        for mut candidate in candidates {
+            if candidate.starts_with('^') {
+                candidate = candidate[1..].to_string();
+            }
+            if candidate.ends_with('$') {
+                candidate = candidate[..candidate.len().saturating_sub(1)].to_string();
+            }
+            if !candidate.is_empty() {
+                terms.push(candidate);
+            }
         }
     }
     terms
@@ -445,6 +458,21 @@ mod tests {
         let path = PathBuf::from("/tmp/src/main.py");
         let positions = match_positions_for_path(&path, &root, "ma.*py", true, true);
         assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn match_positions_or_token_highlights_selected_alternative() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/foo.txt");
+        let positions = match_positions_for_path(&path, &root, "abc|foo|bar", true, false);
+        assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn has_visible_match_or_token_uses_alternative_hits() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/bar.txt");
+        assert!(has_visible_match(&path, &root, "abc|foo|bar", true));
     }
 
     #[test]

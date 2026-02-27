@@ -65,6 +65,7 @@ Basic usage:
 
 Search hints:
 - トークンは AND 条件（例: main py）
+- abc|foo|bar : OR 条件（スペースなしの | で連結）
 - '\''term : 完全一致トークン（例: '\''main.py）
 - !term : 除外トークン（例: main !test）
 - ^term : 先頭一致を優先（例: ^src）
@@ -75,7 +76,7 @@ Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move current row
 - Ctrl+V / Alt+V: page down / page up
 - Enter (or Ctrl+J/Ctrl+M): open/execute selected item(s)
-- Tab / Shift+Tab: toggle pin and move next/prev
+- Tab / Shift+Tab: toggle pin on current row
 - Ctrl+Shift+C: copy selected path(s)
 - Ctrl+G: clear query and pinned selection
 - Ctrl+L: focus query input

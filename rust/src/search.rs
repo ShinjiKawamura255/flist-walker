@@ -10,6 +10,18 @@ pub struct QuerySpec {
     pub exclude_terms: Vec<String>,
 }
 
+fn include_alternatives(term: &str) -> Vec<&str> {
+    if !term.contains('|') {
+        return vec![term];
+    }
+    let alts: Vec<&str> = term.split('|').filter(|s| !s.is_empty()).collect();
+    if alts.is_empty() {
+        vec![term]
+    } else {
+        alts
+    }
+}
+
 fn split_anchor(term: &str) -> (bool, bool, &str) {
     let anchored_start = term.starts_with('^');
     let anchored_end = term.ends_with('$');
@@ -93,11 +105,7 @@ fn matches_exclusion_term(term: &str, name: &str, full: &str) -> bool {
     matches_anchored_literal(&t, name) || matches_anchored_literal(&t, full)
 }
 
-fn matches_include_term(term: &str, name: &str, full: &str, regex: Option<&Regex>) -> bool {
-    if let Some(re) = regex {
-        return re.is_match(name) || re.is_match(full);
-    }
-
+fn matches_include_literal_term(term: &str, name: &str, full: &str) -> bool {
     let t = term.to_ascii_lowercase();
     let (anchored_start, anchored_end, core) = split_anchor(&t);
     if core.is_empty() {
@@ -118,6 +126,16 @@ fn matches_include_term(term: &str, name: &str, full: &str, regex: Option<&Regex
     }
 
     is_fuzzy_match(core, name) || is_fuzzy_match(core, full)
+}
+
+fn matches_include_term(term: &str, name: &str, full: &str, regex: Option<&Regex>) -> bool {
+    if let Some(re) = regex {
+        return re.is_match(name) || re.is_match(full);
+    }
+
+    include_alternatives(term)
+        .into_iter()
+        .any(|candidate| matches_include_literal_term(candidate, name, full))
 }
 
 fn searchable_full(path: &Path, root: Option<&Path>, prefer_relative: bool) -> String {
@@ -233,13 +251,10 @@ pub fn try_search_entries_with_scope(
     let mut q = spec
         .include_terms
         .iter()
+        .flat_map(|term| include_alternatives(term))
         .filter_map(|term| {
             let (_, _, core) = split_anchor(term);
-            if core.is_empty() {
-                None
-            } else {
-                Some(core.to_string())
-            }
+            (!core.is_empty()).then_some(core.to_string())
         })
         .collect::<Vec<_>>()
         .join(" ")
@@ -283,14 +298,16 @@ pub fn try_search_entries_with_scope(
             }
         }
         for term in &spec.include_terms {
-            let (_, _, core) = split_anchor(term);
-            if core.is_empty() {
-                continue;
-            }
-            if matches_exact_term(core, &name, &full_lower) {
-                score += 300.0;
-                if name == core {
+            for candidate in include_alternatives(term) {
+                let (_, _, core) = split_anchor(candidate);
+                if core.is_empty() {
+                    continue;
+                }
+                if matches_exact_term(core, &name, &full_lower) {
                     score += 300.0;
+                    if name == core {
+                        score += 300.0;
+                    }
                 }
             }
         }
@@ -498,5 +515,41 @@ mod tests {
         let out = search_entries_with_scope("!ali", &entries, 10, false, Some(&root), true);
 
         assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn include_token_pipe_acts_as_or() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/foo.txt"),
+            PathBuf::from("/tmp/src/bar.txt"),
+            PathBuf::from("/tmp/src/baz.txt"),
+        ];
+
+        let out = search_entries("abc|foo|bar", &entries, 10, false);
+        let names: Vec<&str> = out
+            .iter()
+            .filter_map(|(p, _)| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+        assert!(names.contains(&"foo.txt"));
+        assert!(names.contains(&"bar.txt"));
+        assert!(!names.contains(&"baz.txt"));
+    }
+
+    #[test]
+    fn include_token_pipe_still_combines_with_and_tokens() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/foo.txt"),
+            PathBuf::from("/tmp/docs/foo.txt"),
+            PathBuf::from("/tmp/src/bar.txt"),
+        ];
+
+        let out = search_entries("src foo|bar", &entries, 10, false);
+        let names: Vec<&str> = out
+            .iter()
+            .filter_map(|(p, _)| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+        assert!(names.contains(&"foo.txt"));
+        assert!(names.contains(&"bar.txt"));
+        assert_eq!(out.len(), 2);
     }
 }

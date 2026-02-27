@@ -596,6 +596,14 @@ impl FlistWalkerApp {
     const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
     const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
+    const SEARCH_HINTS_TOOLTIP: &'static str = "\
+Search hints:
+- トークンは AND 条件（例: main py）
+- abc|foo|bar : OR 条件（スペースなしの | で連結）
+- 'term : 完全一致トークン（例: 'main.py）
+- !term : 除外トークン（例: main !test）
+- ^term : 先頭一致を優先（例: ^src）
+- term$ : 末尾一致を優先（例: .rs$）";
 
     fn window_trace_enabled() -> bool {
         static ENABLED: OnceLock<bool> = OnceLock::new();
@@ -741,7 +749,7 @@ impl FlistWalkerApp {
             filelist_in_progress: false,
             pending_copy_shortcut: false,
             scroll_to_current: true,
-            focus_query_requested: false,
+            focus_query_requested: true,
             unfocus_query_requested: false,
             saved_roots: Self::load_saved_roots(),
             default_root: launch.default_root.clone(),
@@ -2785,6 +2793,9 @@ impl eframe::App for FlistWalkerApp {
                 .desired_width(f32::INFINITY)
                 .hint_text("Type to fuzzy-search files/folders...")
                 .show(ui);
+            let _ = output.response.clone().on_hover_ui_at_pointer(|ui| {
+                ui.label(Self::SEARCH_HINTS_TOOLTIP);
+            });
             if self.focus_query_requested {
                 output.response.request_focus();
                 self.focus_query_requested = false;
@@ -2969,6 +2980,15 @@ mod tests {
         assert!(app.pinned_paths.is_empty());
         assert!(app.focus_query_requested);
         assert!(app.notice.contains("Cleared selection and query"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn startup_requests_query_focus() {
+        let root = test_root("startup-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        assert!(app.focus_query_requested);
         let _ = fs::remove_dir_all(&root);
     }
 
