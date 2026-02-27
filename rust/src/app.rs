@@ -3361,7 +3361,7 @@ Search hints:
                         .get(i)
                         .map(|tab| self.tab_title(tab, i))
                         .unwrap_or_else(|| format!("Tab {}", i + 1));
-                    if ui
+                    let title_response = ui
                         .add(
                             egui::Button::new(
                                 egui::RichText::new(title).strong().color(if is_active {
@@ -3371,9 +3371,10 @@ Search hints:
                                 }),
                             )
                             .frame(false),
-                        )
-                        .clicked()
-                    {
+                        );
+                    if title_response.clicked_by(egui::PointerButton::Middle) {
+                        close_tab = Some(i);
+                    } else if title_response.clicked() {
                         switch_to = Some(i);
                     }
                     if ui
