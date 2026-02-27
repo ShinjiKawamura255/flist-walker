@@ -46,6 +46,10 @@
 | TC-018 | unit | `Ctrl+Shift+C` は検索窓フォーカス時でも結果パスを優先コピーする | SP-010 |
 | TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
 | TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
+| TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
+| TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` で query clear + filter reset が実行される | SP-010 |
+| TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除のみ実行し current row を維持する | SP-010 |
+| TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -95,3 +99,7 @@
 - TC-018 -> SP-010 -> DES-009 -> FR-007
 - TC-019 -> SP-001, SP-007 -> DES-001, DES-006 -> FR-001, NFR-001
 - TC-020 -> SP-010, SP-011 -> DES-011, DES-009 -> FR-007, NFR-004
+- TC-021 -> SP-010 -> DES-009 -> FR-007
+- TC-022 -> SP-010 -> DES-009 -> FR-007
+- TC-023 -> SP-010 -> DES-009 -> FR-007
+- TC-024 -> SP-010 -> DES-009 -> FR-007

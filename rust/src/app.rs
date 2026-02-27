@@ -1775,7 +1775,7 @@ impl FlistWalkerApp {
         self.refresh_status_line();
     }
 
-    fn toggle_pin_and_move(&mut self, delta: isize) {
+    fn toggle_pin_current(&mut self) {
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
                 if self.pinned_paths.contains(path) {
@@ -1783,10 +1783,9 @@ impl FlistWalkerApp {
                 } else {
                     self.pinned_paths.insert(path.clone());
                 }
+                self.refresh_status_line();
             }
         }
-        self.move_row(delta);
-        self.refresh_status_line();
     }
 
     fn selected_paths(&self) -> Vec<PathBuf> {
@@ -2401,6 +2400,10 @@ impl FlistWalkerApp {
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
         let query_focused = ctx.memory(|m| m.has_focus(self.query_input_id));
+        self.handle_shortcuts_with_focus(ctx, query_focused);
+    }
+
+    fn handle_shortcuts_with_focus(&mut self, ctx: &egui::Context, query_focused: bool) {
         let ctrl_mod = egui::Modifiers {
             ctrl: true,
             ..Default::default()
@@ -2415,6 +2418,35 @@ impl FlistWalkerApp {
             }
             return;
         }
+
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::N)) {
+            self.move_row(1);
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::P)) {
+            self.move_row(-1);
+        }
+        let copy_mod = egui::Modifiers {
+            ctrl: true,
+            shift: true,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(copy_mod, egui::Key::C)) {
+            // Keep this deferred until after TextEdit processing so query-focus copy
+            // cannot overwrite the intended "copy selected path(s)" shortcut result.
+            self.pending_copy_shortcut = true;
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
+            self.clear_query_and_selection();
+        }
+        let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
+        if tab_forward {
+            self.toggle_pin_current();
+        }
+        let tab_backward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
+        if tab_backward {
+            self.toggle_pin_current();
+        }
+
         if self.ime_composition_active {
             return;
         }
@@ -2439,39 +2471,12 @@ impl FlistWalkerApp {
             self.move_page(-1);
         }
 
-        let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
-        if tab_forward {
-            self.toggle_pin_and_move(1);
-            // Keep keyboard focus on query input to avoid default widget focus traversal.
-            self.focus_query_requested = true;
-        }
-
-        let tab_backward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
-        if tab_backward {
-            self.toggle_pin_and_move(-1);
-            self.focus_query_requested = true;
-        }
-
         if ctx.input(|i| i.key_pressed(egui::Key::Enter))
             || ctx.input(|i| {
                 i.modifiers.ctrl && (i.key_pressed(egui::Key::J) || i.key_pressed(egui::Key::M))
             })
         {
             self.execute_selected();
-        }
-        let copy_mod = egui::Modifiers {
-            ctrl: true,
-            shift: true,
-            ..Default::default()
-        };
-        if ctx.input_mut(|i| i.consume_key(copy_mod, egui::Key::C)) {
-            // Keep this deferred until after TextEdit processing so query-focus copy
-            // cannot overwrite the intended "copy selected path(s)" shortcut result.
-            self.pending_copy_shortcut = true;
-        }
-
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
-            self.clear_query_and_selection();
         }
     }
 
@@ -2490,7 +2495,8 @@ impl FlistWalkerApp {
         events: &[egui::Event],
         query_focused: bool,
         text_changed_by_widget: bool,
-    ) -> bool {
+        cursor_range: Option<egui::text_edit::CCursorRange>,
+    ) -> (bool, Option<usize>) {
         let mut changed = false;
         let mut saw_text_space = false;
         let mut saw_composition_update = false;
@@ -2498,6 +2504,15 @@ impl FlistWalkerApp {
         let mut saw_space_key = false;
         let mut composition_commit_text: Option<String> = None;
         let mut requested_full_space = false;
+        let mut cursor_changed = false;
+        let initial_cursor = cursor_range
+            .map(|range| range.primary.index)
+            .unwrap_or_else(|| Self::char_count(&self.query));
+        let initial_anchor = cursor_range
+            .map(|range| range.secondary.index)
+            .unwrap_or(initial_cursor);
+        let mut cursor = initial_cursor.min(Self::char_count(&self.query));
+        let mut anchor = initial_anchor.min(Self::char_count(&self.query));
 
         for event in events {
             match event {
@@ -2582,8 +2597,15 @@ impl FlistWalkerApp {
 
         if let Some(commit_text) = composition_commit_text {
             if query_focused && !text_changed_by_widget {
-                self.query.push_str(&commit_text);
+                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                    Self::remove_char_range(&mut self.query, start, end);
+                    cursor = start;
+                }
+                Self::insert_at_char(&mut self.query, cursor, &commit_text);
+                cursor += Self::char_count(&commit_text);
+                anchor = cursor;
                 changed = true;
+                cursor_changed = true;
                 Self::append_window_trace(
                     "ime_composition_commit_fallback",
                     &format!(
@@ -2597,8 +2619,15 @@ impl FlistWalkerApp {
 
         if query_focused && !saw_text_space {
             if let Some(space) = fallback_space {
-                self.query.push(space);
+                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                    Self::remove_char_range(&mut self.query, start, end);
+                    cursor = start;
+                }
+                // Keep IME fallback insertion at the caret instead of forcing tail append.
+                Self::insert_at_char(&mut self.query, cursor, &space.to_string());
+                cursor += 1;
                 changed = true;
+                cursor_changed = true;
                 Self::append_window_trace(
                     "ime_space_fallback_inserted",
                     &format!("kind={}", if space == '\u{3000}' { "full" } else { "half" }),
@@ -2620,7 +2649,7 @@ impl FlistWalkerApp {
             );
         }
 
-        changed
+        (changed, cursor_changed.then_some(cursor))
     }
 }
 
@@ -2765,14 +2794,16 @@ impl eframe::App for FlistWalkerApp {
                 self.unfocus_query_requested = false;
             }
             let events = ctx.input(|i| i.events.clone());
-            if self.process_query_input_events(
+            let (query_event_changed, query_cursor_after_fallback) = self.process_query_input_events(
                 ctx,
                 &events,
                 output.response.has_focus(),
                 output.response.changed(),
-            ) {
+                output.state.ccursor_range(),
+            );
+            if query_event_changed {
                 if output.response.has_focus() {
-                    let end = Self::char_count(&self.query);
+                    let end = query_cursor_after_fallback.unwrap_or_else(|| Self::char_count(&self.query));
                     output
                         .state
                         .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
@@ -2894,6 +2925,30 @@ mod tests {
             .and_then(|rest| rest.split(" | ").next())
             .and_then(|n| n.parse::<usize>().ok())
             .unwrap_or(0)
+    }
+
+    fn run_shortcuts_frame(app: &mut FlistWalkerApp, query_focused: bool, events: Vec<egui::Event>) {
+        let mut modifiers = egui::Modifiers::NONE;
+        for event in &events {
+            if let egui::Event::Key {
+                pressed: true,
+                modifiers: event_modifiers,
+                ..
+            } = event
+            {
+                modifiers = *event_modifiers;
+                break;
+            }
+        }
+        let ctx = egui::Context::default();
+        ctx.begin_frame(egui::RawInput {
+            modifiers,
+            events,
+            ..Default::default()
+        });
+        app.handle_shortcuts_with_focus(&ctx, query_focused);
+        app.run_deferred_shortcuts(&ctx);
+        let _ = ctx.end_frame();
     }
 
     #[test]
@@ -3888,6 +3943,191 @@ mod tests {
     }
 
     #[test]
+    fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
+        let root = test_root("shortcut-ctrl-np-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![
+            (root.join("a.txt"), 0.0),
+            (root.join("b.txt"), 0.0),
+            (root.join("c.txt"), 0.0),
+        ];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::N,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.current_row, Some(1));
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::P,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.current_row, Some(0));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
+        let root = test_root("shortcut-ctrl-g-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+        app.entries = Arc::new(vec![selected.clone()]);
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+        app.pinned_paths.insert(selected);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::G,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+
+        assert!(app.query.is_empty());
+        assert!(app.pinned_paths.is_empty());
+        assert_eq!(app.results.len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused() {
+        let root = test_root("shortcut-copy-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::C,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+
+        assert!(!app.pending_copy_shortcut);
+        assert!(app.notice.contains(&format!(
+            "Copied path: {}",
+            normalize_path_for_display(&selected)
+        )));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
+        let root = test_root("shortcut-tab-pin-no-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(!app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
+        let root = test_root("shortcut-tab-pin-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(!app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn process_query_input_events_inserts_half_space_for_space_keys() {
         let root = test_root("ime-space-fallback");
         fs::create_dir_all(&root).expect("create dir");
@@ -3895,7 +4135,7 @@ mod tests {
         app.query = "abc".to_string();
 
         let ctx = egui::Context::default();
-        let inserted_half = app.process_query_input_events(
+        let (inserted_half, cursor_half) = app.process_query_input_events(
             &ctx,
             &[egui::Event::Key {
                 key: egui::Key::Space,
@@ -3905,11 +4145,13 @@ mod tests {
             }],
             true,
             false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
         );
         assert!(inserted_half);
+        assert_eq!(cursor_half, Some(4));
         assert_eq!(app.query, "abc ");
 
-        let inserted_shift = app.process_query_input_events(
+        let (inserted_shift, cursor_shift) = app.process_query_input_events(
             &ctx,
             &[egui::Event::Key {
                 key: egui::Key::Space,
@@ -3922,8 +4164,10 @@ mod tests {
             }],
             true,
             false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(4))),
         );
         assert!(inserted_shift);
+        assert_eq!(cursor_shift, Some(5));
         assert_eq!(app.query, "abc  ");
         let _ = fs::remove_dir_all(&root);
     }
@@ -3936,7 +4180,7 @@ mod tests {
         app.query = "abc".to_string();
 
         let ctx = egui::Context::default();
-        let inserted = app.process_query_input_events(
+        let (inserted, cursor) = app.process_query_input_events(
             &ctx,
             &[
                 egui::Event::CompositionStart,
@@ -3949,8 +4193,10 @@ mod tests {
             ],
             true,
             false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
         );
         assert!(inserted);
+        assert_eq!(cursor, Some(4));
         assert_eq!(app.query, "abc ");
         assert!(app.ime_composition_active);
         let _ = fs::remove_dir_all(&root);
@@ -3964,7 +4210,7 @@ mod tests {
         app.query = "abc".to_string();
 
         let ctx = egui::Context::default();
-        let inserted = app.process_query_input_events(
+        let (inserted, cursor) = app.process_query_input_events(
             &ctx,
             &[
                 egui::Event::CompositionStart,
@@ -3978,8 +4224,10 @@ mod tests {
             ],
             true,
             false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
         );
         assert!(inserted);
+        assert_eq!(cursor, Some(4));
         assert_eq!(app.query, "abc ");
         assert!(app.ime_composition_active);
         let _ = fs::remove_dir_all(&root);
@@ -3993,7 +4241,7 @@ mod tests {
         app.query = "abc".to_string();
 
         let ctx = egui::Context::default();
-        let inserted = app.process_query_input_events(
+        let (inserted, cursor) = app.process_query_input_events(
             &ctx,
             &[
                 egui::Event::CompositionStart,
@@ -4010,10 +4258,61 @@ mod tests {
             ],
             true,
             false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(3))),
         );
         assert!(inserted);
+        assert_eq!(cursor, Some(4));
         assert_eq!(app.query, "abc ");
         assert!(app.ime_composition_active);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_query_input_events_inserts_space_fallback_at_cursor_position() {
+        let root = test_root("ime-space-fallback-cursor");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "abCD".to_string();
+        let ctx = egui::Context::default();
+
+        let (inserted, cursor) = app.process_query_input_events(
+            &ctx,
+            &[egui::Event::Key {
+                key: egui::Key::Space,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            true,
+            false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(2))),
+        );
+
+        assert!(inserted);
+        assert_eq!(app.query, "ab CD");
+        assert_eq!(cursor, Some(3));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_query_input_events_inserts_composition_commit_fallback_at_cursor_position() {
+        let root = test_root("ime-commit-fallback-cursor");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "abCD".to_string();
+        let ctx = egui::Context::default();
+
+        let (inserted, cursor) = app.process_query_input_events(
+            &ctx,
+            &[egui::Event::CompositionEnd("x".to_string())],
+            true,
+            false,
+            Some(egui::text_edit::CCursorRange::one(egui::text::CCursor::new(2))),
+        );
+
+        assert!(inserted);
+        assert_eq!(app.query, "abxCD");
+        assert_eq!(cursor, Some(3));
         let _ = fs::remove_dir_all(&root);
     }
 

@@ -125,8 +125,11 @@
 - MUST: Source（FileList/Walker）と Root を画面表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: 複数選択と一括アクションを提供する。
+- MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+Shift+C` / `Ctrl+G` は検索窓フォーカス中でも有効である。
+- MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
+- MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 
 ### Preconditions / Postconditions
