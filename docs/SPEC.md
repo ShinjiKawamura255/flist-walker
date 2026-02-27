@@ -8,6 +8,7 @@
 - MUST: 空行と `#` コメント行を無視する。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
+- SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR）は遅延解決して初期読み込みを優先する。
 
 ### Preconditions / Postconditions
 - Preconditions: 検索ルートが確定している。
@@ -125,6 +126,7 @@
 - MUST: Source（FileList/Walker）と Root を画面表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: 複数選択と一括アクションを提供する。
+- SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
 - MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+Shift+C` / `Ctrl+G` は検索窓フォーカス中でも有効である。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。

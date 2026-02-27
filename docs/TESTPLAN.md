@@ -50,6 +50,7 @@
 | TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` で query clear + filter reset が実行される | SP-010 |
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除のみ実行し current row を維持する | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
+| TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、種別解決後に FILE/DIR とフィルタ状態を反映する | SP-001, SP-010, SP-007 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -103,3 +104,4 @@
 - TC-022 -> SP-010 -> DES-009 -> FR-007
 - TC-023 -> SP-010 -> DES-009 -> FR-007
 - TC-024 -> SP-010 -> DES-009 -> FR-007
+- TC-025 -> SP-001, SP-010, SP-007 -> DES-001, DES-006, DES-009 -> FR-001, FR-007, NFR-001

@@ -77,7 +77,7 @@ pub fn parse_filelist_stream<F, C>(
     mut on_entry: F,
 ) -> Result<()>
 where
-    F: FnMut(PathBuf, bool),
+    F: FnMut(PathBuf, Option<bool>),
     C: Fn() -> bool,
 {
     let file = File::open(filelist_path)
@@ -95,31 +95,48 @@ where
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let Some(abs) = resolve_filelist_entry_path(line, filelist_base, root) else {
-            continue;
-        };
-        let Ok(meta) = abs.metadata() else {
-            continue;
-        };
-        let is_dir = meta.is_dir();
-        let is_file = meta.is_file();
-        if is_file && !include_files {
+        let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
+        if include_files && include_dirs {
+            let mut selected = None;
+            for candidate in candidates {
+                if candidate.try_exists().unwrap_or(false) {
+                    selected = Some(candidate);
+                    break;
+                }
+            }
+            if let Some(path) = selected {
+                if seen.insert(path.clone()) {
+                    on_entry(path, None);
+                }
+            }
             continue;
         }
-        if is_dir && !include_dirs {
-            continue;
-        }
-        if !is_file && !is_dir {
-            continue;
-        }
-        if seen.insert(abs.clone()) {
-            on_entry(abs, is_dir);
+
+        for candidate in candidates {
+            let Ok(meta) = candidate.metadata() else {
+                continue;
+            };
+            let is_dir = meta.is_dir();
+            let is_file = meta.is_file();
+            if is_file && !include_files {
+                continue;
+            }
+            if is_dir && !include_dirs {
+                continue;
+            }
+            if !is_file && !is_dir {
+                continue;
+            }
+            if seen.insert(candidate.clone()) {
+                on_entry(candidate, Some(is_dir));
+            }
+            break;
         }
     }
     Ok(())
 }
 
-fn resolve_filelist_entry_path(line: &str, filelist_base: &Path, root: &Path) -> Option<PathBuf> {
+fn resolve_filelist_entry_candidates(line: &str, filelist_base: &Path, root: &Path) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     let mut seen = HashSet::new();
     let mut raws = vec![strip_wrapping_quotes(line).to_string()];
@@ -154,13 +171,7 @@ fn resolve_filelist_entry_path(line: &str, filelist_base: &Path, root: &Path) ->
             }
         }
     }
-
-    for candidate in candidates {
-        if candidate.exists() {
-            return Some(candidate.canonicalize().unwrap_or(candidate));
-        }
-    }
-    None
+    candidates
 }
 
 fn push_unique_candidate(
@@ -677,6 +688,46 @@ mod tests {
 
         let parsed = parse_filelist(&filelist, &root, true, false).expect("parse filelist");
         assert_eq!(parsed, vec![file]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_filelist_stream_returns_unknown_kind_when_both_types_are_enabled() {
+        let root = test_root("parse-stream-kind-unknown");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("a.txt");
+        fs::write(&file, "x").expect("write file");
+        let filelist = root.join("FileList.txt");
+        fs::write(&filelist, "a.txt\n").expect("write filelist");
+
+        let mut kinds = Vec::new();
+        parse_filelist_stream(&filelist, &root, true, true, || false, |_path, is_dir| {
+            kinds.push(is_dir);
+        })
+        .expect("parse filelist");
+
+        assert_eq!(kinds, vec![None]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_filelist_stream_returns_known_kind_when_filter_requires_type() {
+        let root = test_root("parse-stream-kind-known");
+        fs::create_dir_all(root.join("d")).expect("create dir");
+        let file = root.join("a.txt");
+        fs::write(&file, "x").expect("write file");
+        let filelist = root.join("FileList.txt");
+        fs::write(&filelist, "a.txt\nd\n").expect("write filelist");
+
+        let mut entries = Vec::new();
+        parse_filelist_stream(&filelist, &root, false, true, || false, |path, is_dir| {
+            entries.push((path, is_dir));
+        })
+        .expect("parse filelist");
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].0, root.join("d"));
+        assert_eq!(entries[0].1, Some(true));
         let _ = fs::remove_dir_all(&root);
     }
 

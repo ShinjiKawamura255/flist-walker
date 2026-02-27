@@ -140,6 +140,7 @@ fn filter_search_results(
 struct IndexEntry {
     path: PathBuf,
     is_dir: bool,
+    kind_known: bool,
 }
 
 struct IndexRequest {
@@ -179,6 +180,17 @@ struct PreviewResponse {
     request_id: u64,
     path: PathBuf,
     preview: String,
+}
+
+struct KindResolveRequest {
+    epoch: u64,
+    path: PathBuf,
+}
+
+struct KindResolveResponse {
+    epoch: u64,
+    path: PathBuf,
+    is_dir: Option<bool>,
 }
 
 struct FileListRequest {
@@ -279,6 +291,37 @@ fn spawn_preview_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>)
     (tx_req, rx_res)
 }
 
+fn spawn_kind_resolver_worker() -> (Sender<KindResolveRequest>, Receiver<KindResolveResponse>) {
+    let (tx_req, rx_req) = mpsc::channel::<KindResolveRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<KindResolveResponse>();
+
+    thread::spawn(move || {
+        while let Ok(req) = rx_req.recv() {
+            let is_dir = std::fs::metadata(&req.path).ok().and_then(|meta| {
+                if meta.is_dir() {
+                    Some(true)
+                } else if meta.is_file() {
+                    Some(false)
+                } else {
+                    None
+                }
+            });
+            if tx_res
+                .send(KindResolveResponse {
+                    epoch: req.epoch,
+                    path: req.path,
+                    is_dir,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res)
+}
+
 fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListResponse>) {
     let (tx_req, rx_req) = mpsc::channel::<FileListRequest>();
     let (tx_res, rx_res) = mpsc::channel::<FileListResponse>();
@@ -358,7 +401,11 @@ fn stream_filelist_index(
             if stream_err.is_some() {
                 return;
             }
-            buffer.push(IndexEntry { path, is_dir });
+            buffer.push(IndexEntry {
+                path,
+                is_dir: is_dir.unwrap_or(false),
+                kind_known: is_dir.is_some(),
+            });
             if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
                 if !flush_batch(tx_res, req.request_id, &mut buffer) {
                     stream_err = Some("index receiver closed".to_string());
@@ -416,6 +463,7 @@ fn stream_walker_index(
         buffer.push(IndexEntry {
             path: entry.path().to_path_buf(),
             is_dir,
+            kind_known: true,
         });
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
             if !flush_batch(tx_res, req.request_id, &mut buffer) {
@@ -540,6 +588,8 @@ pub struct FlistWalkerApp {
     search_rx: Receiver<SearchResponse>,
     preview_tx: Sender<PreviewRequest>,
     preview_rx: Receiver<PreviewResponse>,
+    kind_tx: Sender<KindResolveRequest>,
+    kind_rx: Receiver<KindResolveResponse>,
     filelist_tx: Sender<FileListRequest>,
     filelist_rx: Receiver<FileListResponse>,
     index_tx: Sender<IndexRequest>,
@@ -559,6 +609,7 @@ pub struct FlistWalkerApp {
     search_in_progress: bool,
     index_in_progress: bool,
     preview_in_progress: bool,
+    kind_resolution_in_progress: bool,
     filelist_in_progress: bool,
     pending_copy_shortcut: bool,
     scroll_to_current: bool,
@@ -581,6 +632,10 @@ pub struct FlistWalkerApp {
     incremental_filtered_entries: Vec<PathBuf>,
     pending_index_entries: VecDeque<IndexEntry>,
     pending_index_entries_request_id: Option<u64>,
+    pending_kind_paths: VecDeque<PathBuf>,
+    pending_kind_paths_set: HashSet<PathBuf>,
+    in_flight_kind_paths: HashSet<PathBuf>,
+    kind_resolution_epoch: u64,
     last_incremental_results_refresh: Instant,
     last_search_snapshot_len: usize,
     search_resume_pending: bool,
@@ -698,6 +753,7 @@ Search hints:
     fn new_with_launch(root: PathBuf, limit: usize, query: String, launch: LaunchSettings) -> Self {
         let (search_tx, search_rx) = spawn_search_worker();
         let (preview_tx, preview_rx) = spawn_preview_worker();
+        let (kind_tx, kind_rx) = spawn_kind_resolver_worker();
         let (filelist_tx, filelist_rx) = spawn_filelist_worker();
         let latest_index_request_id = Arc::new(AtomicU64::new(0));
         let (index_tx, index_rx) = spawn_index_worker(Arc::clone(&latest_index_request_id));
@@ -727,6 +783,8 @@ Search hints:
             search_rx,
             preview_tx,
             preview_rx,
+            kind_tx,
+            kind_rx,
             filelist_tx,
             filelist_rx,
             index_tx,
@@ -746,6 +804,7 @@ Search hints:
             search_in_progress: false,
             index_in_progress: false,
             preview_in_progress: false,
+            kind_resolution_in_progress: false,
             filelist_in_progress: false,
             pending_copy_shortcut: false,
             scroll_to_current: true,
@@ -770,6 +829,10 @@ Search hints:
             incremental_filtered_entries: Vec::new(),
             pending_index_entries: VecDeque::new(),
             pending_index_entries_request_id: None,
+            pending_kind_paths: VecDeque::new(),
+            pending_kind_paths_set: HashSet::new(),
+            in_flight_kind_paths: HashSet::new(),
+            kind_resolution_epoch: 1,
             last_incremental_results_refresh: Instant::now(),
             last_search_snapshot_len: 0,
             search_resume_pending: false,
@@ -1290,6 +1353,11 @@ Search hints:
         self.incremental_filtered_entries.clear();
         self.pending_index_entries.clear();
         self.pending_index_entries_request_id = None;
+        self.pending_kind_paths.clear();
+        self.pending_kind_paths_set.clear();
+        self.in_flight_kind_paths.clear();
+        self.kind_resolution_in_progress = false;
+        self.kind_resolution_epoch = self.kind_resolution_epoch.saturating_add(1);
         self.pending_preview_request_id = None;
         self.preview_in_progress = false;
         self.last_incremental_results_refresh = Instant::now();
@@ -1563,9 +1631,14 @@ Search hints:
     }
 
     fn ingest_index_entry(&mut self, entry: IndexEntry) {
-        self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+        if entry.kind_known {
+            self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+        } else {
+            self.entry_kinds.remove(&entry.path);
+            self.queue_kind_resolution(entry.path.clone());
+        }
         self.index.entries.push(entry.path.clone());
-        if (entry.is_dir && self.include_dirs) || (!entry.is_dir && self.include_files) {
+        if self.is_entry_visible_for_current_filter(&entry.path) {
             self.incremental_filtered_entries.push(entry.path);
         }
     }
@@ -1668,10 +1741,7 @@ Search hints:
     fn filtered_entries(&self, source: &[PathBuf]) -> Vec<PathBuf> {
         source
             .iter()
-            .filter(|path| {
-                let is_dir = self.entry_kinds.get(*path).copied().unwrap_or(false);
-                (is_dir && self.include_dirs) || (!is_dir && self.include_files)
-            })
+            .filter(|path| self.is_entry_visible_for_current_filter(path))
             .cloned()
             .collect()
     }
@@ -1715,6 +1785,71 @@ Search hints:
         let row = self.current_row?;
         let (path, _) = self.results.get(row)?;
         self.entry_kinds.get(path).copied()
+    }
+
+    fn is_entry_visible_for_current_filter(&self, path: &Path) -> bool {
+        match self.entry_kinds.get(path).copied() {
+            Some(is_dir) => (is_dir && self.include_dirs) || (!is_dir && self.include_files),
+            None => self.include_files && self.include_dirs,
+        }
+    }
+
+    fn queue_kind_resolution(&mut self, path: PathBuf) {
+        if self.pending_kind_paths_set.contains(&path) || self.in_flight_kind_paths.contains(&path) {
+            return;
+        }
+        self.pending_kind_paths_set.insert(path.clone());
+        self.pending_kind_paths.push_back(path);
+    }
+
+    fn pump_kind_resolution_requests(&mut self) {
+        const MAX_DISPATCH_PER_FRAME: usize = 128;
+        let mut dispatched = 0usize;
+        while dispatched < MAX_DISPATCH_PER_FRAME {
+            let Some(path) = self.pending_kind_paths.pop_front() else {
+                break;
+            };
+            self.pending_kind_paths_set.remove(&path);
+            let req = KindResolveRequest {
+                epoch: self.kind_resolution_epoch,
+                path: path.clone(),
+            };
+            if self.kind_tx.send(req).is_err() {
+                break;
+            }
+            self.in_flight_kind_paths.insert(path);
+            dispatched = dispatched.saturating_add(1);
+        }
+        self.kind_resolution_in_progress =
+            !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
+    }
+
+    fn poll_kind_response(&mut self) {
+        const MAX_MESSAGES_PER_FRAME: usize = 512;
+        let mut processed = 0usize;
+        let mut resolved_any = false;
+
+        while let Ok(response) = self.kind_rx.try_recv() {
+            if response.epoch != self.kind_resolution_epoch {
+                continue;
+            }
+            self.in_flight_kind_paths.remove(&response.path);
+            if let Some(is_dir) = response.is_dir {
+                self.entry_kinds.insert(response.path, is_dir);
+                resolved_any = true;
+            }
+            processed = processed.saturating_add(1);
+            if processed >= MAX_MESSAGES_PER_FRAME {
+                break;
+            }
+        }
+
+        self.kind_resolution_in_progress =
+            !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
+
+        if resolved_any && (!self.include_files || !self.include_dirs) {
+            self.apply_entry_filters(true);
+        }
     }
 
     fn request_preview_for_current(&mut self) {
@@ -1870,10 +2005,7 @@ Search hints:
     fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
         self.all_entries
             .iter()
-            .filter(|path| {
-                let is_dir = self.entry_kinds.get(*path).copied().unwrap_or(false);
-                (is_dir && self.include_dirs) || (!is_dir && self.include_files)
-            })
+            .filter(|path| self.is_entry_visible_for_current_filter(path))
             .cloned()
             .collect()
     }
@@ -2308,15 +2440,19 @@ Search hints:
                     let is_pinned = self.pinned_paths.contains(path);
                     let marker_current = if is_current { "▶" } else { "·" };
                     let marker_pin = if is_pinned { "◆" } else { "·" };
-                    let is_dir = self.entry_kinds.get(path).copied().unwrap_or(false);
+                    let kind = self.entry_kinds.get(path).copied();
                     let display = display_path_with_mode(path, &self.root, prefer_relative);
-                    let positions = match_positions_for_path(
-                        path,
-                        &self.root,
-                        &self.query,
-                        prefer_relative,
-                        self.use_regex,
-                    );
+                    let positions = if self.query.trim().is_empty() {
+                        HashSet::new()
+                    } else {
+                        match_positions_for_path(
+                            path,
+                            &self.root,
+                            &self.query,
+                            prefer_relative,
+                            self.use_regex,
+                        )
+                    };
 
                     let mut job = egui::text::LayoutJob::default();
                     job.append(
@@ -2331,16 +2467,16 @@ Search hints:
                             ..Default::default()
                         },
                     );
-                    let kind = if is_dir { "DIR " } else { "FILE" };
+                    let (kind_label, kind_color) = match kind {
+                        Some(true) => ("DIR ", egui::Color32::from_rgb(52, 211, 153)),
+                        Some(false) => ("FILE", egui::Color32::from_rgb(96, 165, 250)),
+                        None => ("....", ui.visuals().weak_text_color()),
+                    };
                     job.append(
-                        kind,
+                        kind_label,
                         0.0,
                         egui::TextFormat {
-                            color: if is_dir {
-                                egui::Color32::from_rgb(52, 211, 153)
-                            } else {
-                                egui::Color32::from_rgb(96, 165, 250)
-                            },
+                            color: kind_color,
                             ..Default::default()
                         },
                     );
@@ -2666,10 +2802,13 @@ impl eframe::App for FlistWalkerApp {
         self.poll_index_response();
         self.poll_search_response();
         self.poll_preview_response();
+        self.poll_kind_response();
+        self.pump_kind_resolution_requests();
         self.poll_filelist_response();
         if self.search_in_progress
             || self.index_in_progress
             || self.preview_in_progress
+            || self.kind_resolution_in_progress
             || self.filelist_in_progress
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
@@ -3212,6 +3351,7 @@ mod tests {
                 entries: vec![IndexEntry {
                     path: root.join("main.rs"),
                     is_dir: false,
+                    kind_known: true,
                 }],
             })
             .expect("send batch");
@@ -3253,6 +3393,7 @@ mod tests {
                 entries: vec![IndexEntry {
                     path: root.join("main.rs"),
                     is_dir: false,
+                    kind_known: true,
                 }],
             })
             .expect("send batch");
@@ -3610,6 +3751,7 @@ mod tests {
             entries: vec![IndexEntry {
                 path: path.clone(),
                 is_dir: false,
+                kind_known: true,
             }],
         })
         .expect("send index batch");
@@ -3642,15 +3784,18 @@ mod tests {
                 IndexEntry {
                     path: path_a.clone(),
                     is_dir: false,
+                    kind_known: true,
                 },
                 IndexEntry {
                     path: path_b.clone(),
                     is_dir: false,
+                    kind_known: true,
                 },
             ],
         })
         .expect("send index batch");
 
+        app.poll_index_response();
         app.poll_index_response();
 
         assert!(app.entries.is_empty());
@@ -3676,6 +3821,7 @@ mod tests {
             entries: vec![IndexEntry {
                 path: path.clone(),
                 is_dir: false,
+                kind_known: true,
             }],
         })
         .expect("send index batch");
@@ -3765,6 +3911,7 @@ mod tests {
             entries: vec![IndexEntry {
                 path,
                 is_dir: false,
+                kind_known: true,
             }],
         })
         .expect("send index batch");
@@ -3825,6 +3972,7 @@ mod tests {
             entries: vec![IndexEntry {
                 path: dir.clone(),
                 is_dir: true,
+                kind_known: true,
             }],
         })
         .expect("send index batch");
@@ -3833,6 +3981,75 @@ mod tests {
 
         assert_eq!(app.entries.as_ref(), &vec![dir]);
         assert_eq!(app.results.len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn unknown_kind_entries_remain_visible_when_both_filters_enabled() {
+        let root = test_root("unknown-kind-visible");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("unknown");
+        fs::write(&path, "x").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.all_entries = Arc::new(vec![path.clone()]);
+        app.include_files = true;
+        app.include_dirs = true;
+        app.entry_kinds.clear();
+
+        app.apply_entry_filters(true);
+
+        assert_eq!(app.entries.as_ref(), &vec![path]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn unknown_kind_entries_are_hidden_when_single_filter_enabled() {
+        let root = test_root("unknown-kind-hidden");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("unknown");
+        fs::write(&path, "x").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.all_entries = Arc::new(vec![path]);
+        app.include_files = false;
+        app.include_dirs = true;
+        app.entry_kinds.clear();
+
+        app.apply_entry_filters(true);
+
+        assert!(app.entries.is_empty());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn kind_response_updates_filters_when_single_filter_is_enabled() {
+        let root = test_root("kind-response-refreshes-filters");
+        fs::create_dir_all(root.join("dir")).expect("create dir");
+        let dir = root.join("dir");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.all_entries = Arc::new(vec![dir.clone()]);
+        app.include_files = false;
+        app.include_dirs = true;
+        app.entry_kinds.clear();
+        app.apply_entry_filters(true);
+        assert!(app.entries.is_empty());
+
+        let (tx, rx) = mpsc::channel::<KindResolveResponse>();
+        app.kind_rx = rx;
+        app.in_flight_kind_paths.insert(dir.clone());
+        tx.send(KindResolveResponse {
+            epoch: app.kind_resolution_epoch,
+            path: dir.clone(),
+            is_dir: Some(true),
+        })
+        .expect("send kind response");
+
+        app.poll_kind_response();
+
+        assert_eq!(app.entry_kinds.get(&dir), Some(&true));
+        assert_eq!(app.entries.as_ref(), &vec![dir]);
         let _ = fs::remove_dir_all(&root);
     }
 
