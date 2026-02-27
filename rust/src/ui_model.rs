@@ -105,41 +105,50 @@ fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
 }
 
 fn highlight_terms(query: &str, use_regex: bool) -> Vec<String> {
+    fn normalize_candidate(mut candidate: String) -> Option<String> {
+        if let Some(stripped) = candidate.strip_prefix("^'") {
+            candidate = format!("^{stripped}");
+        } else if let Some(stripped) = candidate.strip_prefix('\'') {
+            candidate = stripped.to_string();
+        }
+        if candidate.starts_with('^') {
+            candidate = candidate[1..].to_string();
+        }
+        if candidate.ends_with('$') {
+            candidate = candidate[..candidate.len().saturating_sub(1)].to_string();
+        }
+        if candidate.is_empty() {
+            None
+        } else {
+            Some(candidate)
+        }
+    }
+
     let mut terms = Vec::new();
-    for mut token in query.split_whitespace().map(ToString::to_string) {
+    for token in query.split_whitespace().map(ToString::to_string) {
+        if token.is_empty() || token == "!" || token == "'" {
+            continue;
+        }
         if token.starts_with('!') {
             continue;
         }
-        let is_exact = token.starts_with('\'');
-        if is_exact {
-            token = token[1..].to_string();
-        }
-        if use_regex && !is_exact {
-            if !token.is_empty() {
-                terms.push(token);
+        if use_regex && !(token.starts_with('\'') || token.starts_with("^'")) {
+            if let Some(normalized) = normalize_candidate(token) {
+                terms.push(normalized);
             }
             continue;
         }
-        let mut candidates = vec![token];
-        if !use_regex && !is_exact {
-            let split: Vec<String> = candidates[0]
-                .split('|')
-                .filter(|s| !s.is_empty())
-                .map(ToString::to_string)
-                .collect();
-            if !split.is_empty() {
-                candidates = split;
-            }
+        let mut candidates: Vec<String> = token
+            .split('|')
+            .filter(|s| !s.is_empty())
+            .map(ToString::to_string)
+            .collect();
+        if candidates.is_empty() {
+            candidates.push(token);
         }
-        for mut candidate in candidates {
-            if candidate.starts_with('^') {
-                candidate = candidate[1..].to_string();
-            }
-            if candidate.ends_with('$') {
-                candidate = candidate[..candidate.len().saturating_sub(1)].to_string();
-            }
-            if !candidate.is_empty() {
-                terms.push(candidate);
+        for candidate in candidates {
+            if let Some(normalized) = normalize_candidate(candidate) {
+                terms.push(normalized);
             }
         }
     }
@@ -465,6 +474,23 @@ mod tests {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/foo.txt");
         let positions = match_positions_for_path(&path, &root, "abc|foo|bar", true, false);
+        assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn match_positions_or_token_with_left_exact_keeps_left_candidate() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/main.txt");
+        let positions = match_positions_for_path(&path, &root, "'main|", true, false);
+        assert!(!positions.is_empty());
+        assert!(has_visible_match(&path, &root, "'main|", true));
+    }
+
+    #[test]
+    fn match_positions_or_token_supports_exact_on_right_side() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/xyz.txt");
+        let positions = match_positions_for_path(&path, &root, "abc|'xyz", true, false);
         assert!(!positions.is_empty());
     }
 

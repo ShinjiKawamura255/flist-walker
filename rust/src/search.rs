@@ -36,19 +36,59 @@ fn split_anchor(term: &str) -> (bool, bool, &str) {
     (anchored_start, anchored_end, core)
 }
 
+fn normalize_quoted_term(term: &str) -> String {
+    if let Some(stripped) = term.strip_prefix("^'") {
+        return format!("^{stripped}");
+    }
+    if let Some(stripped) = term.strip_prefix('\'') {
+        return stripped.to_string();
+    }
+    term.to_string()
+}
+
+fn parse_include_alternative(candidate: &str) -> Option<(bool, String)> {
+    if candidate.is_empty() {
+        return None;
+    }
+    if let Some(stripped) = candidate.strip_prefix("^'") {
+        if stripped.is_empty() {
+            return None;
+        }
+        return Some((true, format!("^{stripped}")));
+    }
+    if let Some(stripped) = candidate.strip_prefix('\'') {
+        if stripped.is_empty() {
+            return None;
+        }
+        return Some((true, stripped.to_string()));
+    }
+    Some((false, candidate.to_string()))
+}
+
 pub fn parse_query(query: &str) -> QuerySpec {
     let mut include_terms = Vec::new();
     let mut exact_terms = Vec::new();
     let mut exclude_terms = Vec::new();
 
     for token in query.split_whitespace() {
-        if token == "!" || token == "'" {
+        if token.is_empty() || token == "!" || token == "'" {
             continue;
         }
-        if token.starts_with('\'') && token.len() > 1 {
-            exact_terms.push(token[1..].to_string());
-        } else if token.starts_with('!') && token.len() > 1 {
-            exclude_terms.push(token[1..].to_string());
+        if let Some(stripped) = token.strip_prefix('!') {
+            if !stripped.is_empty() {
+                exclude_terms.push(normalize_quoted_term(stripped));
+            }
+            continue;
+        }
+        if token.contains('|') {
+            include_terms.push(token.to_string());
+            continue;
+        }
+        if token.starts_with('\'') || token.starts_with("^'") {
+            let normalized = normalize_quoted_term(token);
+            if !normalized.is_empty() {
+                exact_terms.push(normalized);
+            }
         } else {
             include_terms.push(token.to_string());
         }
@@ -97,12 +137,22 @@ fn matches_anchored_literal(term: &str, text: &str) -> bool {
 
 fn matches_exact_term(term: &str, name: &str, full: &str) -> bool {
     let t = term.to_ascii_lowercase();
-    matches_anchored_literal(&t, name) || matches_anchored_literal(&t, full)
+    include_alternatives(&t)
+        .into_iter()
+        .filter_map(|candidate| parse_include_alternative(candidate).map(|(_, c)| c))
+        .any(|candidate| {
+            matches_anchored_literal(&candidate, name) || matches_anchored_literal(&candidate, full)
+        })
 }
 
 fn matches_exclusion_term(term: &str, name: &str, full: &str) -> bool {
     let t = term.to_ascii_lowercase();
-    matches_anchored_literal(&t, name) || matches_anchored_literal(&t, full)
+    include_alternatives(&t)
+        .into_iter()
+        .filter_map(|candidate| parse_include_alternative(candidate).map(|(_, c)| c))
+        .any(|candidate| {
+            matches_anchored_literal(&candidate, name) || matches_anchored_literal(&candidate, full)
+        })
 }
 
 fn matches_include_literal_term(term: &str, name: &str, full: &str) -> bool {
@@ -135,7 +185,14 @@ fn matches_include_term(term: &str, name: &str, full: &str, regex: Option<&Regex
 
     include_alternatives(term)
         .into_iter()
-        .any(|candidate| matches_include_literal_term(candidate, name, full))
+        .filter_map(parse_include_alternative)
+        .any(|(exact, candidate)| {
+            if exact {
+                matches_exact_term(&candidate, name, full)
+            } else {
+                matches_include_literal_term(&candidate, name, full)
+            }
+        })
 }
 
 fn searchable_full(path: &Path, root: Option<&Path>, prefer_relative: bool) -> String {
@@ -253,7 +310,8 @@ pub fn try_search_entries_with_scope(
         .iter()
         .flat_map(|term| include_alternatives(term))
         .filter_map(|term| {
-            let (_, _, core) = split_anchor(term);
+            let (_, candidate) = parse_include_alternative(term)?;
+            let (_, _, core) = split_anchor(&candidate);
             (!core.is_empty()).then_some(core.to_string())
         })
         .collect::<Vec<_>>()
@@ -299,7 +357,10 @@ pub fn try_search_entries_with_scope(
         }
         for term in &spec.include_terms {
             for candidate in include_alternatives(term) {
-                let (_, _, core) = split_anchor(candidate);
+                let Some((_, parsed)) = parse_include_alternative(candidate) else {
+                    continue;
+                };
+                let (_, _, core) = split_anchor(&parsed);
                 if core.is_empty() {
                     continue;
                 }
@@ -432,6 +493,89 @@ mod tests {
         ];
         let out = search_entries("'main", &entries, 10, false);
         assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn exact_token_supports_or_operator() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/foo.rs"),
+            PathBuf::from("/tmp/src/bar.rs"),
+            PathBuf::from("/tmp/src/x-y-z.rs"),
+        ];
+        let out = search_entries("'foo|bar", &entries, 10, false);
+        let names: Vec<&str> = out
+            .iter()
+            .filter_map(|(p, _)| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+        assert!(names.contains(&"foo.rs"));
+        assert!(names.contains(&"bar.rs"));
+        assert!(!names.contains(&"x-y-z.rs"));
+    }
+
+    #[test]
+    fn include_or_supports_mixed_exact_on_right_side() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/abc.rs"),
+            PathBuf::from("/tmp/src/a-b-c.rs"),
+            PathBuf::from("/tmp/src/xyz.rs"),
+            PathBuf::from("/tmp/src/x-y-z.rs"),
+        ];
+        let out = search_entries("abc|'xyz", &entries, 10, false);
+        let names: Vec<&str> = out
+            .iter()
+            .filter_map(|(p, _)| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+        assert!(names.contains(&"abc.rs"));
+        assert!(names.contains(&"a-b-c.rs"));
+        assert!(names.contains(&"xyz.rs"));
+        assert!(!names.contains(&"x-y-z.rs"));
+    }
+
+    #[test]
+    fn include_or_supports_exact_on_both_sides() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/abc.rs"),
+            PathBuf::from("/tmp/src/a-b-c.rs"),
+            PathBuf::from("/tmp/src/xyz.rs"),
+            PathBuf::from("/tmp/src/x-y-z.rs"),
+        ];
+        let out = search_entries("'abc|'xyz", &entries, 10, false);
+        let names: Vec<&str> = out
+            .iter()
+            .filter_map(|(p, _)| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+        assert!(names.contains(&"abc.rs"));
+        assert!(!names.contains(&"a-b-c.rs"));
+        assert!(names.contains(&"xyz.rs"));
+        assert!(!names.contains(&"x-y-z.rs"));
+    }
+
+    #[test]
+    fn exact_token_supports_anchor_with_quote_first_order() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/amain.py"),
+        ];
+        let out = search_entries("'^main", &entries, 10, false);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
+    }
+
+    #[test]
+    fn exact_token_supports_anchor_with_caret_first_order() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/amain.py"),
+        ];
+        let out = search_entries("^'main", &entries, 10, false);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
     }
 
     #[test]
