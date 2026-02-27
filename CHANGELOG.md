@@ -24,6 +24,29 @@
 ### Known issues
 - 
 
+## [0.5.1] - 2026-02-27
+### Added
+- タブタイトル上でのマウス中クリックによるタブクローズ操作を追加。
+
+### Changed
+- 
+
+### Fixed
+- OR 条件（`|`）で左右それぞれに `'` を付けたクエリ（例: `'abc|xyz`, `abc|'xyz`, `'abc|'xyz`）を検索仕様どおりに評価するよう修正。
+- 上記クエリで左辺/右辺に `'` を付けた場合に、可視判定とハイライト表示が崩れる問題を修正。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.3.2] - 2026-02-24
 ### Added
 - 
@@ -182,7 +205,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.5.1
 [0.3.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.1
 [0.3.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.0
 [0.2.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.2.1
