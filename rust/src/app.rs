@@ -768,6 +768,7 @@ impl FlistWalkerApp {
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
     const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
     const MEMORY_SAMPLE_INTERVAL: Duration = Duration::from_millis(1000);
+    const SHRINK_MIN_CAPACITY: usize = 4096;
     const SEARCH_HINTS_TOOLTIP: &'static str = "\
 Search hints:
 - トークンは AND 条件（例: main py）
@@ -1012,6 +1013,36 @@ Search hints:
         self.tabs.get(self.active_tab).map(|tab| tab.id)
     }
 
+    fn shrink_vec_if_sparse<T>(vec: &mut Vec<T>) {
+        let cap = vec.capacity();
+        let len = vec.len();
+        if cap >= Self::SHRINK_MIN_CAPACITY && cap > len.saturating_mul(2) {
+            vec.shrink_to_fit();
+        }
+    }
+
+    fn shrink_deque_if_sparse<T>(deque: &mut VecDeque<T>) {
+        let cap = deque.capacity();
+        let len = deque.len();
+        if cap >= Self::SHRINK_MIN_CAPACITY && cap > len.saturating_mul(2) {
+            deque.shrink_to_fit();
+        }
+    }
+
+    fn shrink_checkpoint_buffers(&mut self) {
+        Self::shrink_vec_if_sparse(&mut self.index.entries);
+        Self::shrink_vec_if_sparse(&mut self.incremental_filtered_entries);
+        Self::shrink_deque_if_sparse(&mut self.pending_index_entries);
+        Self::shrink_deque_if_sparse(&mut self.pending_kind_paths);
+    }
+
+    fn shrink_tab_checkpoint_buffers(tab: &mut AppTabState) {
+        Self::shrink_vec_if_sparse(&mut tab.index.entries);
+        Self::shrink_vec_if_sparse(&mut tab.incremental_filtered_entries);
+        Self::shrink_deque_if_sparse(&mut tab.pending_index_entries);
+        Self::shrink_deque_if_sparse(&mut tab.pending_kind_paths);
+    }
+
     fn capture_active_tab_state(&self, id: u64) -> AppTabState {
         AppTabState {
             id,
@@ -1112,7 +1143,11 @@ Search hints:
         if next_index >= self.tabs.len() || next_index == self.active_tab {
             return;
         }
+        self.shrink_checkpoint_buffers();
         self.sync_active_tab_state();
+        if let Some(next_tab) = self.tabs.get_mut(next_index) {
+            Self::shrink_tab_checkpoint_buffers(next_tab);
+        }
         self.active_tab = next_index;
         if let Some(tab) = self.tabs.get(next_index).cloned() {
             self.apply_tab_state(&tab);
@@ -2066,6 +2101,7 @@ Search hints:
                         } else {
                             trigger_search = true;
                         }
+                        Self::shrink_tab_checkpoint_buffers(tab);
                         cleanup_request_id = Some(request_id);
                     }
                 }
@@ -2079,6 +2115,7 @@ Search hints:
                         tab.search_rerun_pending = false;
                         tab.pending_index_entries.clear();
                         tab.pending_index_entries_request_id = None;
+                        Self::shrink_tab_checkpoint_buffers(tab);
                         tab.notice = format!("Indexing failed: {}", error);
                         cleanup_request_id = Some(request_id);
                     }
@@ -2091,6 +2128,7 @@ Search hints:
                         tab.search_rerun_pending = false;
                         tab.pending_index_entries.clear();
                         tab.pending_index_entries_request_id = None;
+                        Self::shrink_tab_checkpoint_buffers(tab);
                     }
                     cleanup_request_id = Some(request_id);
                 }
@@ -2200,9 +2238,10 @@ Search hints:
                     {
                         let root = self.root.clone();
                         let entries = self.filelist_entries_snapshot();
-                        self.pending_filelist_after_index_root = None;
-                        self.request_filelist_creation(root, entries);
-                    }
+                    self.pending_filelist_after_index_root = None;
+                    self.request_filelist_creation(root, entries);
+                }
+                    self.shrink_checkpoint_buffers();
                     self.index_inflight_requests.remove(&request_id);
                     finished_current_request = true;
                     break;
@@ -2223,6 +2262,7 @@ Search hints:
                     self.pending_index_entries_request_id = None;
                     self.index_request_tabs.remove(&request_id);
                     self.background_index_states.remove(&request_id);
+                    self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
                 }
                 IndexResponse::Canceled { request_id } => {
@@ -2233,6 +2273,7 @@ Search hints:
                         self.search_rerun_pending = false;
                         self.pending_index_entries.clear();
                         self.pending_index_entries_request_id = None;
+                        self.shrink_checkpoint_buffers();
                     }
                     self.index_request_tabs.remove(&request_id);
                     self.background_index_states.remove(&request_id);
