@@ -2009,23 +2009,27 @@ Search hints:
                     } else {
                         let state = self.background_index_states.remove(&request_id).unwrap_or_default();
                         tab.index.source = state.source.unwrap_or(source);
-                        tab.index.entries = state.entries.clone();
-                        tab.all_entries = Arc::new(state.entries.clone());
+                        tab.index.entries.clear();
+                        tab.all_entries = Arc::new(state.entries);
                         tab.entry_kinds = state.entry_kinds;
-                        let filtered: Vec<PathBuf> = tab
-                            .all_entries
-                            .iter()
-                            .filter(|path| {
-                                Self::is_entry_visible_for_flags(
-                                    &tab.entry_kinds,
-                                    path,
-                                    tab.include_files,
-                                    tab.include_dirs,
-                                )
-                            })
-                            .cloned()
-                            .collect();
-                        tab.entries = Arc::new(filtered);
+                        if tab.include_files && tab.include_dirs {
+                            tab.entries = Arc::clone(&tab.all_entries);
+                        } else {
+                            let filtered: Vec<PathBuf> = tab
+                                .all_entries
+                                .iter()
+                                .filter(|path| {
+                                    Self::is_entry_visible_for_flags(
+                                        &tab.entry_kinds,
+                                        path,
+                                        tab.include_files,
+                                        tab.include_dirs,
+                                    )
+                                })
+                                .cloned()
+                                .collect();
+                            tab.entries = Arc::new(filtered);
+                        }
                         tab.pending_index_request_id = None;
                         tab.index_in_progress = false;
                         tab.pending_index_entries.clear();
@@ -2678,12 +2682,17 @@ Search hints:
             self.reset_kind_resolution_state();
         }
 
-        let base = if self.index_in_progress && !self.index.entries.is_empty() {
+        let source_is_all_entries = !self.index_in_progress || self.index.entries.is_empty();
+        let base = if !source_is_all_entries {
             &self.index.entries
         } else {
             self.all_entries.as_ref()
         };
-        self.entries = Arc::new(self.filtered_entries(base));
+        if source_is_all_entries && self.include_files && self.include_dirs {
+            self.entries = Arc::clone(&self.all_entries);
+        } else {
+            self.entries = Arc::new(self.filtered_entries(base));
+        }
         if self.index_in_progress {
             self.incremental_filtered_entries = self.entries.as_ref().clone();
         } else {
