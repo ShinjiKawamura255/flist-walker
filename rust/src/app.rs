@@ -2475,7 +2475,6 @@ Search hints:
                     self.last_incremental_results_refresh = Instant::now();
                     self.update_results();
                 }
-                self.sync_active_tab_state();
                 continue;
             }
 
@@ -2521,7 +2520,6 @@ Search hints:
                         }
                     }
                 }
-                self.sync_active_tab_state();
                 continue;
             }
             let Some(tab_id) = target_tab_id else {
@@ -4246,7 +4244,6 @@ impl eframe::App for FlistWalkerApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_results_and_preview(ui);
         });
-        self.sync_active_tab_state();
         self.maybe_save_ui_state(false);
     }
 }
