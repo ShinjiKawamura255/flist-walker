@@ -9,7 +9,7 @@ use crate::ui_model::{
     match_positions_for_path, normalize_path_for_display, should_skip_preview,
 };
 use eframe::egui;
-use jwalk::WalkDir;
+use jwalk::{Parallelism, WalkDir};
 use memory_stats::memory_stats;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -219,6 +219,36 @@ enum IndexResponse {
     Canceled {
         request_id: u64,
     },
+    Truncated {
+        request_id: u64,
+        limit: usize,
+    },
+}
+
+const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
+const WALKER_THREADS_DEFAULT: usize = 2;
+const WALKER_THREADS_MAX: usize = 8;
+
+fn walker_max_entries() -> usize {
+    std::env::var("FLISTWALKER_WALKER_MAX_ENTRIES")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(WALKER_MAX_ENTRIES_DEFAULT)
+}
+
+fn walker_parallelism() -> Parallelism {
+    let threads = std::env::var("FLISTWALKER_WALKER_THREADS")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .filter(|v| *v > 0)
+        .unwrap_or(WALKER_THREADS_DEFAULT)
+        .min(WALKER_THREADS_MAX);
+    if threads <= 1 {
+        Parallelism::Serial
+    } else {
+        Parallelism::RayonNewPool(threads)
+    }
 }
 
 struct PreviewRequest {
@@ -512,7 +542,12 @@ fn stream_walker_index(
     let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
     let mut cancel_check_budget = 0usize;
+    let mut emitted_entries = 0usize;
+    let max_entries = walker_max_entries();
+    let mut truncated = false;
     for entry in WalkDir::new(root)
+        .parallelism(walker_parallelism())
+        .skip_hidden(false)
         .follow_links(false)
         .min_depth(1)
         .into_iter()
@@ -534,11 +569,16 @@ fn stream_walker_index(
         if (is_dir && !req.include_dirs) || (!is_dir && !req.include_files) {
             continue;
         }
+        if emitted_entries >= max_entries {
+            truncated = true;
+            break;
+        }
         buffer.push(IndexEntry {
             path: entry.path().to_path_buf(),
             is_dir,
             kind_known: true,
         });
+        emitted_entries = emitted_entries.saturating_add(1);
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
             if !flush_batch(tx_res, req.request_id, &mut buffer) {
                 return Err("index receiver closed".to_string());
@@ -548,6 +588,16 @@ fn stream_walker_index(
     }
 
     if !flush_batch(tx_res, req.request_id, &mut buffer) {
+        return Err("index receiver closed".to_string());
+    }
+    if truncated
+        && tx_res
+            .send(IndexResponse::Truncated {
+                request_id: req.request_id,
+                limit: max_entries,
+            })
+            .is_err()
+    {
         return Err("index receiver closed".to_string());
     }
     Ok(source)
@@ -2132,6 +2182,14 @@ Search hints:
                     }
                     cleanup_request_id = Some(request_id);
                 }
+                IndexResponse::Truncated { request_id, limit } => {
+                    if tab.pending_index_request_id == Some(request_id) {
+                        tab.notice = format!(
+                            "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
+                            limit
+                        );
+                    }
+                }
             }
         }
 
@@ -2161,7 +2219,8 @@ Search hints:
                 | IndexResponse::Batch { request_id, .. }
                 | IndexResponse::Finished { request_id, .. }
                 | IndexResponse::Failed { request_id, .. }
-                | IndexResponse::Canceled { request_id } => *request_id,
+                | IndexResponse::Canceled { request_id }
+                | IndexResponse::Truncated { request_id, .. } => *request_id,
             };
             let target_tab_id = self.index_request_tabs.get(&request_id).copied();
             let current_tab_id = self.current_tab_id();
@@ -2277,6 +2336,14 @@ Search hints:
                     }
                     self.index_request_tabs.remove(&request_id);
                     self.background_index_states.remove(&request_id);
+                }
+                IndexResponse::Truncated { request_id, limit } => {
+                    if Some(request_id) == self.pending_index_request_id {
+                        self.set_notice(format!(
+                            "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
+                            limit
+                        ));
+                    }
                 }
             }
 

@@ -69,6 +69,10 @@ Index options:
 - Use FileList: ルート直下の FileList.txt / filelist.txt を優先使用
 - Files / Folders: 表示フィルタ（再インデックスなしで即時反映）
 - Refresh Index: 現在Rootで再インデックス
+
+Walker tuning (Environment variables):
+- FLISTWALKER_WALKER_MAX_ENTRIES: Walkerの最大走査件数（既定: 500000）
+- FLISTWALKER_WALKER_THREADS: Walkerの並列スレッド数（既定: 2、1でシリアル）
 "@ | Set-Content -LiteralPath $ReadmePath -Encoding UTF8
 
     $ZipPath = Join-Path $OutDir $ZipName
