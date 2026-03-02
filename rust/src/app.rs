@@ -728,6 +728,7 @@ pub struct FlistWalkerApp {
     query_input_id: egui::Id,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
+    preview_cache_total_bytes: usize,
     highlight_cache_scope_query: String,
     highlight_cache_scope_root: PathBuf,
     highlight_cache_scope_use_regex: bool,
@@ -755,7 +756,7 @@ pub struct FlistWalkerApp {
 }
 
 impl FlistWalkerApp {
-    const PREVIEW_CACHE_MAX: usize = 512;
+    const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
     const HIGHLIGHT_CACHE_MAX: usize = 256;
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     const PAGE_MOVE_ROWS: isize = 10;
@@ -946,6 +947,7 @@ Search hints:
             query_input_id: egui::Id::new("query-input"),
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
+            preview_cache_total_bytes: 0,
             highlight_cache_scope_query: String::new(),
             highlight_cache_scope_root: PathBuf::new(),
             highlight_cache_scope_use_regex: false,
@@ -1774,6 +1776,7 @@ Search hints:
         self.index.source = IndexSource::None;
         self.preview_cache.clear();
         self.preview_cache_order.clear();
+        self.preview_cache_total_bytes = 0;
         self.highlight_cache.clear();
         self.highlight_cache_order.clear();
         self.incremental_filtered_entries.clear();
@@ -2435,14 +2438,24 @@ Search hints:
     }
 
     fn cache_preview(&mut self, path: PathBuf, preview: String) {
+        let new_bytes = preview.len();
+        if let Some(old) = self.preview_cache.get(&path) {
+            self.preview_cache_total_bytes = self.preview_cache_total_bytes.saturating_sub(old.len());
+        }
         if !self.preview_cache.contains_key(&path) {
             self.preview_cache_order.push_back(path.clone());
         }
         self.preview_cache.insert(path, preview);
+        self.preview_cache_total_bytes = self.preview_cache_total_bytes.saturating_add(new_bytes);
         // Keep cache bounded so long browse sessions do not grow memory unbounded.
-        while self.preview_cache_order.len() > Self::PREVIEW_CACHE_MAX {
+        while self.preview_cache_total_bytes > Self::PREVIEW_CACHE_MAX_BYTES {
             if let Some(oldest) = self.preview_cache_order.pop_front() {
-                self.preview_cache.remove(&oldest);
+                if let Some(evicted) = self.preview_cache.remove(&oldest) {
+                    self.preview_cache_total_bytes =
+                        self.preview_cache_total_bytes.saturating_sub(evicted.len());
+                }
+            } else {
+                break;
             }
         }
     }
@@ -3988,6 +4001,11 @@ impl eframe::App for FlistWalkerApp {
                 filter_changed |= ui.checkbox(&mut self.include_files, "Files").changed();
                 filter_changed |= ui.checkbox(&mut self.include_dirs, "Folders").changed();
                 if ui.checkbox(&mut self.show_preview, "Preview").changed() {
+                    if !self.show_preview {
+                        self.preview_cache.clear();
+                        self.preview_cache_order.clear();
+                        self.preview_cache_total_bytes = 0;
+                    }
                     self.mark_ui_state_dirty();
                 }
                 filter_changed |= self.ensure_entry_filters();
@@ -4314,16 +4332,16 @@ mod tests {
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-        for i in 0..=FlistWalkerApp::PREVIEW_CACHE_MAX {
+        let chunk = "x".repeat(1024 * 1024);
+        let count = 40usize;
+        for i in 0..count {
             let path = root.join(format!("file-{i}.txt"));
-            app.cache_preview(path.clone(), format!("preview-{i}"));
+            app.cache_preview(path, chunk.clone());
         }
 
-        assert_eq!(app.preview_cache.len(), FlistWalkerApp::PREVIEW_CACHE_MAX);
-        assert_eq!(
-            app.preview_cache_order.len(),
-            FlistWalkerApp::PREVIEW_CACHE_MAX
-        );
+        assert!(app.preview_cache_total_bytes <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
+        assert!(!app.preview_cache_order.is_empty());
+        assert_eq!(app.preview_cache.len(), app.preview_cache_order.len());
         let evicted = root.join("file-0.txt");
         assert!(!app.preview_cache.contains_key(&evicted));
         let _ = fs::remove_dir_all(&root);
