@@ -9,6 +9,7 @@ use crate::ui_model::{
     match_positions_for_path, normalize_path_for_display, should_skip_preview,
 };
 use eframe::egui;
+use jwalk::WalkDir;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
@@ -19,7 +20,6 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use walkdir::WalkDir;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 struct SavedWindowGeometry {
@@ -510,19 +510,24 @@ fn stream_walker_index(
 
     let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
+    let mut cancel_check_budget = 0usize;
     for entry in WalkDir::new(root)
         .follow_links(false)
         .min_depth(1)
         .into_iter()
         .flatten()
     {
-        if latest_request_ids
-            .lock()
-            .ok()
-            .and_then(|m| m.get(&req.tab_id).copied())
-            != Some(req.request_id)
-        {
-            return Err("superseded".to_string());
+        cancel_check_budget = cancel_check_budget.saturating_add(1);
+        if cancel_check_budget >= 256 {
+            cancel_check_budget = 0;
+            if latest_request_ids
+                .lock()
+                .ok()
+                .and_then(|m| m.get(&req.tab_id).copied())
+                != Some(req.request_id)
+            {
+                return Err("superseded".to_string());
+            }
         }
         let is_dir = entry.file_type().is_dir();
         if (is_dir && !req.include_dirs) || (!is_dir && !req.include_files) {

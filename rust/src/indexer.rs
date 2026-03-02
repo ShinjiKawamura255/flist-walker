@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use jwalk::WalkDir;
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
@@ -6,7 +7,6 @@ use std::io::{BufRead, BufReader};
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
-use walkdir::WalkDir;
 
 static TMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
