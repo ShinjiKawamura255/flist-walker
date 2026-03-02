@@ -10,6 +10,7 @@ use crate::ui_model::{
 };
 use eframe::egui;
 use jwalk::WalkDir;
+use memory_stats::memory_stats;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
@@ -720,6 +721,8 @@ pub struct FlistWalkerApp {
     last_window_geometry_change: Instant,
     ui_state_dirty: bool,
     last_ui_state_save: Instant,
+    last_memory_sample: Instant,
+    memory_usage_bytes: Option<u64>,
     ime_composition_active: bool,
     prev_space_down: bool,
     query_input_id: egui::Id,
@@ -763,6 +766,7 @@ impl FlistWalkerApp {
     const INDEX_MAX_QUEUE: usize = 4;
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
     const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
+    const MEMORY_SAMPLE_INTERVAL: Duration = Duration::from_millis(1000);
     const SEARCH_HINTS_TOOLTIP: &'static str = "\
 Search hints:
 - トークンは AND 条件（例: main py）
@@ -935,6 +939,8 @@ Search hints:
             last_window_geometry_change: Instant::now(),
             ui_state_dirty: false,
             last_ui_state_save: Instant::now(),
+            last_memory_sample: Instant::now(),
+            memory_usage_bytes: None,
             ime_composition_active: false,
             prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
@@ -1694,9 +1700,13 @@ Search hints:
         } else {
             format!(" | {}", self.notice)
         };
+        let memory = match self.memory_usage_text() {
+            Some(mem) => format!(" | Mem: {mem}"),
+            None => String::new(),
+        };
 
         self.status_line = format!(
-            "{} | Entries: {} | Results: {}{}{}{}{}{}{}",
+            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}",
             tab_label,
             indexed_count,
             self.results.len(),
@@ -1705,8 +1715,20 @@ Search hints:
             searching,
             indexing,
             creating_filelist,
+            memory,
             notice
         );
+    }
+
+    fn memory_usage_text(&mut self) -> Option<String> {
+        if self.memory_usage_bytes.is_none()
+            || self.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
+        {
+            self.last_memory_sample = Instant::now();
+            self.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
+        }
+        self.memory_usage_bytes
+            .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
     }
 
     fn set_notice(&mut self, notice: impl Into<String>) {

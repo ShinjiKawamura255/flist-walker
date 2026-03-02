@@ -24,6 +24,7 @@ jwalk = "0.8"
 resvg = "0.43"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+memory-stats = "1.2"
 
 [build-dependencies]
 ico = "0.3"
