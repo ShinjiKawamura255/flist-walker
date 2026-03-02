@@ -243,6 +243,13 @@ struct KindResolveResponse {
     is_dir: Option<bool>,
 }
 
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+struct HighlightCacheKey {
+    path: PathBuf,
+    prefer_relative: bool,
+    use_regex: bool,
+}
+
 struct FileListRequest {
     request_id: u64,
     root: PathBuf,
@@ -713,6 +720,12 @@ pub struct FlistWalkerApp {
     query_input_id: egui::Id,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
+    highlight_cache_scope_query: String,
+    highlight_cache_scope_root: PathBuf,
+    highlight_cache_scope_use_regex: bool,
+    highlight_cache_scope_prefer_relative: bool,
+    highlight_cache: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
+    highlight_cache_order: VecDeque<HighlightCacheKey>,
     incremental_filtered_entries: Vec<PathBuf>,
     pending_index_entries: VecDeque<IndexEntry>,
     pending_index_entries_request_id: Option<u64>,
@@ -735,6 +748,7 @@ pub struct FlistWalkerApp {
 
 impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX: usize = 512;
+    const HIGHLIGHT_CACHE_MAX: usize = 256;
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     const PAGE_MOVE_ROWS: isize = 10;
     const DEFAULT_RESULTS_PANEL_WIDTH: f32 = 760.0;
@@ -921,6 +935,12 @@ Search hints:
             query_input_id: egui::Id::new("query-input"),
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
+            highlight_cache_scope_query: String::new(),
+            highlight_cache_scope_root: PathBuf::new(),
+            highlight_cache_scope_use_regex: false,
+            highlight_cache_scope_prefer_relative: false,
+            highlight_cache: HashMap::new(),
+            highlight_cache_order: VecDeque::new(),
             incremental_filtered_entries: Vec::new(),
             pending_index_entries: VecDeque::new(),
             pending_index_entries_request_id: None,
@@ -1727,6 +1747,8 @@ Search hints:
         self.index.source = IndexSource::None;
         self.preview_cache.clear();
         self.preview_cache_order.clear();
+        self.highlight_cache.clear();
+        self.highlight_cache_order.clear();
         self.incremental_filtered_entries.clear();
         self.pending_index_entries.clear();
         self.pending_index_entries_request_id = None;
@@ -2394,6 +2416,91 @@ Search hints:
         }
     }
 
+    fn clear_highlight_cache(&mut self) {
+        self.highlight_cache.clear();
+        self.highlight_cache_order.clear();
+    }
+
+    fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
+        if self.highlight_cache_scope_query == self.query
+            && Self::path_key(&self.highlight_cache_scope_root) == Self::path_key(&self.root)
+            && self.highlight_cache_scope_use_regex == self.use_regex
+            && self.highlight_cache_scope_prefer_relative == prefer_relative
+        {
+            return;
+        }
+        self.highlight_cache_scope_query = self.query.clone();
+        self.highlight_cache_scope_root = self.root.clone();
+        self.highlight_cache_scope_use_regex = self.use_regex;
+        self.highlight_cache_scope_prefer_relative = prefer_relative;
+        self.clear_highlight_cache();
+    }
+
+    fn cache_highlight_positions_for_key(&mut self, key: HighlightCacheKey, positions: Vec<u16>) {
+        if !self.highlight_cache.contains_key(&key) {
+            self.highlight_cache_order.push_back(key.clone());
+        }
+        self.highlight_cache.insert(key, Arc::new(positions));
+        while self.highlight_cache_order.len() > Self::HIGHLIGHT_CACHE_MAX {
+            if let Some(oldest) = self.highlight_cache_order.pop_front() {
+                self.highlight_cache.remove(&oldest);
+            }
+        }
+    }
+
+    fn compact_highlight_positions(positions: HashSet<usize>) -> Vec<u16> {
+        let mut compact = positions
+            .into_iter()
+            .filter_map(|idx| u16::try_from(idx).ok())
+            .collect::<Vec<_>>();
+        compact.sort_unstable();
+        compact.dedup();
+        compact
+    }
+
+    fn highlight_positions_for_path_cached(
+        &mut self,
+        path: &Path,
+        prefer_relative: bool,
+    ) -> Arc<Vec<u16>> {
+        static EMPTY: OnceLock<Arc<Vec<u16>>> = OnceLock::new();
+
+        self.ensure_highlight_cache_scope(prefer_relative);
+        if self.query.trim().is_empty() {
+            return Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new())));
+        }
+
+        let key = HighlightCacheKey {
+            path: path.to_path_buf(),
+            prefer_relative,
+            use_regex: self.use_regex,
+        };
+
+        if let Some(positions) = self.highlight_cache.get(&key) {
+            return Arc::clone(positions);
+        }
+
+        let positions = Self::compact_highlight_positions(match_positions_for_path(
+            path,
+            &self.root,
+            &self.query,
+            prefer_relative,
+            self.use_regex,
+        ));
+        self.cache_highlight_positions_for_key(key.clone(), positions);
+        self.highlight_cache
+            .get(&key)
+            .cloned()
+            .unwrap_or_else(|| Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new()))))
+    }
+
+    fn is_highlighted_position(positions: &[u16], idx: usize) -> bool {
+        let Ok(idx16) = u16::try_from(idx) else {
+            return false;
+        };
+        positions.binary_search(&idx16).is_ok()
+    }
+
     fn update_results(&mut self) {
         if self.query.trim().is_empty() {
             self.pending_request_id = None;
@@ -2424,7 +2531,9 @@ Search hints:
             self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
         } else {
             self.entry_kinds.remove(&entry.path);
-            self.queue_kind_resolution(entry.path.clone());
+            if self.kind_resolution_needed_for_filters() {
+                self.queue_kind_resolution(entry.path.clone());
+            }
         }
         self.index.entries.push(entry.path.clone());
         if self.is_entry_visible_for_current_filter(&entry.path) {
@@ -2536,6 +2645,12 @@ Search hints:
     }
 
     fn apply_entry_filters(&mut self, keep_scroll_position: bool) {
+        if self.kind_resolution_needed_for_filters() {
+            self.queue_unknown_kind_paths_for_active_entries();
+        } else if !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty() {
+            self.reset_kind_resolution_state();
+        }
+
         let base = if self.index_in_progress && !self.index.entries.is_empty() {
             &self.index.entries
         } else {
@@ -2583,6 +2698,34 @@ Search hints:
         }
     }
 
+    fn kind_resolution_needed_for_filters(&self) -> bool {
+        !self.include_files || !self.include_dirs
+    }
+
+    fn reset_kind_resolution_state(&mut self) {
+        self.pending_kind_paths.clear();
+        self.pending_kind_paths_set.clear();
+        self.in_flight_kind_paths.clear();
+        self.kind_resolution_in_progress = false;
+        self.kind_resolution_epoch = self.kind_resolution_epoch.saturating_add(1);
+    }
+
+    fn queue_unknown_kind_paths_for_active_entries(&mut self) {
+        if !self.kind_resolution_needed_for_filters() {
+            return;
+        }
+        let source: Vec<PathBuf> = if self.index_in_progress && !self.index.entries.is_empty() {
+            self.index.entries.clone()
+        } else {
+            self.all_entries.as_ref().clone()
+        };
+        for path in source {
+            if !self.entry_kinds.contains_key(&path) {
+                self.queue_kind_resolution(path);
+            }
+        }
+    }
+
     fn queue_kind_resolution(&mut self, path: PathBuf) {
         if self.pending_kind_paths_set.contains(&path) || self.in_flight_kind_paths.contains(&path)
         {
@@ -2618,6 +2761,7 @@ Search hints:
         const MAX_MESSAGES_PER_FRAME: usize = 512;
         let mut processed = 0usize;
         let mut resolved_any = false;
+        let mut resolved_current_row = false;
 
         while let Ok(response) = self.kind_rx.try_recv() {
             if response.epoch != self.kind_resolution_epoch {
@@ -2625,6 +2769,13 @@ Search hints:
             }
             self.in_flight_kind_paths.remove(&response.path);
             if let Some(is_dir) = response.is_dir {
+                if self.current_row.is_some_and(|row| {
+                    self.results
+                        .get(row)
+                        .is_some_and(|(path, _)| *path == response.path)
+                }) {
+                    resolved_current_row = true;
+                }
                 self.entry_kinds.insert(response.path, is_dir);
                 resolved_any = true;
             }
@@ -2640,6 +2791,9 @@ Search hints:
         if resolved_any && (!self.include_files || !self.include_dirs) {
             self.apply_entry_filters(true);
         }
+        if resolved_current_row && self.show_preview {
+            self.request_preview_for_current();
+        }
     }
 
     fn request_preview_for_current(&mut self) {
@@ -2647,6 +2801,11 @@ Search hints:
             self.preview.clear();
             self.preview_in_progress = false;
             self.pending_preview_request_id = None;
+            if !self.kind_resolution_needed_for_filters()
+                && (!self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty())
+            {
+                self.reset_kind_resolution_state();
+            }
             return;
         }
 
@@ -2660,7 +2819,9 @@ Search hints:
                 }
 
                 let Some(is_dir) = self.current_result_kind() else {
-                    self.preview.clear();
+                    self.preview = "Resolving entry type...".to_string();
+                    self.queue_kind_resolution(path.clone());
+                    self.pump_kind_resolution_requests();
                     self.preview_in_progress = false;
                     self.pending_preview_request_id = None;
                     return;
@@ -3224,28 +3385,21 @@ Search hints:
                 let mut clicked_row: Option<usize> = None;
                 let mut execute_row: Option<usize> = None;
                 let prefer_relative = self.prefer_relative_display();
+                self.ensure_highlight_cache_scope(prefer_relative);
 
                 for i in 0..self.results.len() {
                     let Some((path, _score)) = self.results.get(i) else {
                         continue;
                     };
+                    let path = path.clone();
                     let is_current = self.current_row == Some(i);
-                    let is_pinned = self.pinned_paths.contains(path);
+                    let is_pinned = self.pinned_paths.contains(&path);
                     let marker_current = if is_current { "▶" } else { "·" };
                     let marker_pin = if is_pinned { "◆" } else { "·" };
-                    let kind = self.entry_kinds.get(path).copied();
-                    let display = display_path_with_mode(path, &self.root, prefer_relative);
-                    let positions = if self.query.trim().is_empty() {
-                        HashSet::new()
-                    } else {
-                        match_positions_for_path(
-                            path,
-                            &self.root,
-                            &self.query,
-                            prefer_relative,
-                            self.use_regex,
-                        )
-                    };
+                    let kind = self.entry_kinds.get(&path).copied();
+                    let display = display_path_with_mode(&path, &self.root, prefer_relative);
+                    let positions =
+                        self.highlight_positions_for_path_cached(&path, prefer_relative);
 
                     let mut job = egui::text::LayoutJob::default();
                     job.append(
@@ -3276,7 +3430,7 @@ Search hints:
                     job.append(" ", 0.0, egui::TextFormat::default());
 
                     for (idx, ch) in display.chars().enumerate() {
-                        let color = if positions.contains(&idx) {
+                        let color = if Self::is_highlighted_position(positions.as_slice(), idx) {
                             egui::Color32::from_rgb(245, 158, 11)
                         } else {
                             ui.visuals().text_color()
@@ -4908,6 +5062,30 @@ mod tests {
     }
 
     #[test]
+    fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
+        let root = test_root("unknown-kind-no-queue");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("unknown");
+        fs::write(&path, "x").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.all_entries = Arc::new(vec![path.clone()]);
+        app.include_files = true;
+        app.include_dirs = true;
+        app.show_preview = false;
+        app.entry_kinds.clear();
+        app.pending_kind_paths.clear();
+        app.pending_kind_paths_set.clear();
+        app.in_flight_kind_paths.clear();
+
+        app.apply_entry_filters(true);
+
+        assert!(!app.pending_kind_paths.iter().any(|p| *p == path));
+        assert!(!app.in_flight_kind_paths.contains(&path));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn unknown_kind_entries_are_hidden_when_single_filter_enabled() {
         let root = test_root("unknown-kind-hidden");
         fs::create_dir_all(&root).expect("create dir");
@@ -4923,6 +5101,25 @@ mod tests {
         app.apply_entry_filters(true);
 
         assert!(app.entries.is_empty());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
+        let root = test_root("unknown-kind-queue");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("unknown");
+        fs::write(&path, "x").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.all_entries = Arc::new(vec![path.clone()]);
+        app.include_files = false;
+        app.include_dirs = true;
+        app.entry_kinds.clear();
+
+        app.apply_entry_filters(true);
+
+        assert!(app.pending_kind_paths.iter().any(|p| *p == path));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -4954,6 +5151,33 @@ mod tests {
 
         assert_eq!(app.entry_kinds.get(&dir), Some(&true));
         assert_eq!(app.entries.as_ref(), &vec![dir]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
+        let root = test_root("preview-on-demand-kind");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("unknown.txt");
+        fs::write(&path, "hello").expect("write file");
+
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<KindResolveRequest>();
+        app.kind_tx = tx;
+        app.results = vec![(path.clone(), 0.0)];
+        app.current_row = Some(0);
+        app.include_files = true;
+        app.include_dirs = true;
+        app.entry_kinds.clear();
+
+        app.request_preview_for_current();
+
+        let req = rx.try_recv().expect("kind resolve request should be sent");
+        assert_eq!(req.path, path);
+        assert_eq!(req.epoch, app.kind_resolution_epoch);
+        assert_eq!(app.preview, "Resolving entry type...");
+        assert!(app.pending_preview_request_id.is_none());
+        assert!(!app.preview_in_progress);
         let _ = fs::remove_dir_all(&root);
     }
 

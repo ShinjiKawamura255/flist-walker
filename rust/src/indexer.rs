@@ -97,14 +97,7 @@ where
         }
         let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
         if include_files && include_dirs {
-            let mut selected = None;
-            for candidate in candidates {
-                if candidate.try_exists().unwrap_or(false) {
-                    selected = Some(candidate);
-                    break;
-                }
-            }
-            if let Some(path) = selected {
+            if let Some(path) = candidates.into_iter().next() {
                 if seen.insert(path.clone()) {
                     on_entry(path, None);
                 }
@@ -413,7 +406,7 @@ pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
     fn test_root(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
@@ -458,6 +451,7 @@ mod tests {
         fs::create_dir_all(&root).expect("create dir");
         let rel_file = root.join("alpha.txt");
         let abs_file = root.join("beta.txt");
+        let missing = root.join("missing.txt");
         fs::write(&rel_file, "x").expect("write rel");
         fs::write(&abs_file, "y").expect("write abs");
         let filelist = root.join("FileList.txt");
@@ -473,7 +467,91 @@ mod tests {
         let parsed = parse_filelist(&filelist, &root, true, true).expect("parse filelist");
         assert!(parsed.contains(&rel_file));
         assert!(parsed.contains(&abs_file));
-        assert_eq!(parsed.len(), 2);
+        assert!(parsed.contains(&missing));
+        assert_eq!(parsed.len(), 3);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    fn parse_filelist_stream_strict_exists_both_types(
+        filelist_path: &Path,
+        root: &Path,
+    ) -> Result<usize> {
+        let file = File::open(filelist_path)
+            .with_context(|| format!("failed to read {}", filelist_path.display()))?;
+        let reader = BufReader::new(file);
+        let filelist_base = filelist_path.parent().unwrap_or(root);
+        let mut seen = HashSet::new();
+        let mut count = 0usize;
+
+        for line_result in reader.lines() {
+            let raw = line_result
+                .with_context(|| format!("failed to read {}", filelist_path.display()))?;
+            let line = raw.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
+            let mut selected = None;
+            for candidate in candidates {
+                if candidate.try_exists().unwrap_or(false) {
+                    selected = Some(candidate);
+                    break;
+                }
+            }
+            if let Some(path) = selected {
+                if seen.insert(path) {
+                    count = count.saturating_add(1);
+                }
+            }
+        }
+        Ok(count)
+    }
+
+    #[test]
+    #[ignore]
+    fn perf_parse_filelist_ab_strict_vs_fast() {
+        let root = test_root("perf-parse-ab");
+        fs::create_dir_all(&root).expect("create dir");
+        let filelist = root.join("FileList.txt");
+        let data_dir = root.join("dataset");
+        fs::create_dir_all(&data_dir).expect("create dataset dir");
+        let lines = 30_000usize;
+        let mut text = String::with_capacity(lines * 24);
+        for i in 0..lines {
+            let rel = format!("dataset/f-{i}.txt");
+            fs::write(root.join(&rel), "x").expect("write synthetic file");
+            text.push_str(&rel);
+            text.push('\n');
+        }
+        fs::write(&filelist, text).expect("write synthetic filelist");
+
+        let strict_start = Instant::now();
+        let strict_count = parse_filelist_stream_strict_exists_both_types(&filelist, &root)
+            .expect("strict parse");
+        let strict_elapsed = strict_start.elapsed();
+
+        let fast_start = Instant::now();
+        let mut fast_count = 0usize;
+        parse_filelist_stream(&filelist, &root, true, true, || false, |_path, _is_dir| {
+            fast_count = fast_count.saturating_add(1);
+        })
+        .expect("fast parse");
+        let fast_elapsed = fast_start.elapsed();
+
+        let strict_ms = strict_elapsed.as_secs_f64() * 1000.0;
+        let fast_ms = fast_elapsed.as_secs_f64() * 1000.0;
+        let speedup = if fast_ms > 0.0 {
+            strict_ms / fast_ms
+        } else {
+            f64::INFINITY
+        };
+
+        eprintln!(
+            "A/B parse_filelist (lines={lines}) strict_exists_ms={strict_ms:.3} fast_line_only_ms={fast_ms:.3} speedup={speedup:.2}x strict_count={strict_count} fast_count={fast_count}"
+        );
+
+        assert_eq!(strict_count, lines);
+        assert_eq!(fast_count, lines);
         let _ = fs::remove_dir_all(&root);
     }
 
