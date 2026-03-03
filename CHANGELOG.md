@@ -24,6 +24,32 @@
 ### Known issues
 - 
 
+## [0.7.0] - 2026-03-03
+### Added
+- 
+
+### Changed
+- `Files` / `Folders` 切り替え時は、現在のトグル状態（include flags）で再インデックスする動作へ変更。
+- `Use FileList` 有効時の `Create File List` は、FileList 優先フローの整合性を維持する実行順へ調整。
+
+### Fixed
+- Root 変更時にタブタイトルが即時追従しない問題を修正し、メモリ表示の定期更新も安定化。
+- ウィンドウリサイズ時に Preview 幅が意図せず変わる問題を修正。
+- 検索窓フォーカス系ショートカットと Tab 操作の回帰を修正。
+- `Use FileList` 利用中に `Files` / `Folders` フィルタを操作できてしまう不整合を解消（無効化）。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.5.1] - 2026-02-27
 ### Added
 - タブタイトル上でのマウス中クリックによるタブクローズ操作を追加。
@@ -205,7 +231,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.0
 [0.5.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.5.1
 [0.3.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.1
 [0.3.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.0
