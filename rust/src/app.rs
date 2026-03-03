@@ -283,14 +283,26 @@ struct HighlightCacheKey {
 
 struct FileListRequest {
     request_id: u64,
+    tab_id: u64,
     root: PathBuf,
     entries: Vec<PathBuf>,
 }
 
 struct PendingFileListConfirmation {
+    tab_id: u64,
     root: PathBuf,
     entries: Vec<PathBuf>,
     existing_path: PathBuf,
+}
+
+struct PendingFileListAfterIndex {
+    tab_id: u64,
+    root: PathBuf,
+}
+
+struct PendingFileListUseWalkerConfirmation {
+    source_tab_id: u64,
+    root: PathBuf,
 }
 
 enum FileListResponse {
@@ -416,6 +428,7 @@ fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListRespons
 
     thread::spawn(move || {
         while let Ok(req) = rx_req.recv() {
+            let _tab_id = req.tab_id;
             let count = req.entries.len();
             let result =
                 write_filelist(&req.root, &req.entries, "FileList.txt").map(|path| (path, count));
@@ -747,9 +760,11 @@ pub struct FlistWalkerApp {
     pending_preview_request_id: Option<u64>,
     next_filelist_request_id: u64,
     pending_filelist_request_id: Option<u64>,
+    pending_filelist_request_tab_id: Option<u64>,
     pending_filelist_root: Option<PathBuf>,
-    pending_filelist_after_index_root: Option<PathBuf>,
+    pending_filelist_after_index: Option<PendingFileListAfterIndex>,
     pending_filelist_confirmation: Option<PendingFileListConfirmation>,
+    pending_filelist_use_walker_confirmation: Option<PendingFileListUseWalkerConfirmation>,
     latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pending_index_queue: VecDeque<IndexRequest>,
     index_inflight_requests: HashSet<u64>,
@@ -929,7 +944,7 @@ Search hints:
             root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
             query,
-            use_filelist: false,
+            use_filelist: true,
             use_regex: false,
             include_files: true,
             include_dirs: true,
@@ -965,9 +980,11 @@ Search hints:
             pending_preview_request_id: None,
             next_filelist_request_id: 1,
             pending_filelist_request_id: None,
+            pending_filelist_request_tab_id: None,
             pending_filelist_root: None,
-            pending_filelist_after_index_root: None,
+            pending_filelist_after_index: None,
             pending_filelist_confirmation: None,
+            pending_filelist_use_walker_confirmation: None,
             latest_index_request_ids,
             pending_index_queue: VecDeque::new(),
             index_inflight_requests: HashSet::new(),
@@ -1211,6 +1228,7 @@ Search hints:
         let id = self.next_tab_id;
         self.next_tab_id = self.next_tab_id.saturating_add(1);
         let mut tab = self.capture_active_tab_state(id);
+        tab.use_filelist = true;
         tab.query.clear();
         tab.pinned_paths.clear();
         tab.current_row = None;
@@ -1249,6 +1267,16 @@ Search hints:
         self.apply_tab_state(&tab);
     }
 
+    fn create_new_tab_for_root(&mut self, root: PathBuf, use_filelist: bool) -> Option<u64> {
+        self.create_new_tab();
+        self.root = root;
+        self.use_filelist = use_filelist;
+        self.include_files = true;
+        self.include_dirs = true;
+        self.sync_active_tab_state();
+        self.current_tab_id()
+    }
+
     fn close_active_tab(&mut self) {
         self.close_tab_index(self.active_tab);
     }
@@ -1262,6 +1290,27 @@ Search hints:
         }
         self.sync_active_tab_state();
         let removed = self.tabs.remove(index);
+        if self
+            .pending_filelist_after_index
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == removed.id)
+        {
+            self.pending_filelist_after_index = None;
+        }
+        if self
+            .pending_filelist_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == removed.id)
+        {
+            self.pending_filelist_confirmation = None;
+        }
+        if self
+            .pending_filelist_use_walker_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.source_tab_id == removed.id)
+        {
+            self.pending_filelist_use_walker_confirmation = None;
+        }
         self.index_request_tabs.retain(|_, tab_id| *tab_id != removed.id);
         self.pending_index_queue
             .retain(|req| req.tab_id != removed.id);
@@ -1690,13 +1739,32 @@ Search hints:
     }
 
     fn cancel_stale_pending_filelist_confirmation(&mut self) {
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
         let should_cancel = self
             .pending_filelist_confirmation
             .as_ref()
-            .is_some_and(|pending| Self::path_key(&pending.root) != Self::path_key(&self.root));
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
+            });
         if should_cancel {
             self.pending_filelist_confirmation = None;
             self.set_notice("Pending FileList overwrite canceled because root changed");
+        }
+    }
+
+    fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
+        let should_cancel = self
+            .pending_filelist_use_walker_confirmation
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.source_tab_id == current_tab_id
+                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
+            });
+        if should_cancel {
+            self.pending_filelist_use_walker_confirmation = None;
+            self.set_notice("Pending Create File List confirmation canceled because root changed");
         }
     }
 
@@ -1714,6 +1782,7 @@ Search hints:
         self.preview_in_progress = false;
         self.pending_preview_request_id = None;
         self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_use_walker_confirmation();
         self.request_index_refresh();
         self.set_notice(format!("Root changed: {}", self.root_display_text()));
     }
@@ -1831,12 +1900,17 @@ Search hints:
     fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
         self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_use_walker_confirmation();
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .pending_filelist_after_index_root
+            .pending_filelist_after_index
             .as_ref()
-            .is_some_and(|pending_root| Self::path_key(pending_root) != Self::path_key(&self.root))
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
+            })
         {
-            self.pending_filelist_after_index_root = None;
+            self.pending_filelist_after_index = None;
             self.set_notice("Deferred Create File List canceled because root changed");
         }
         let request_id = self.next_index_request_id;
@@ -2074,6 +2148,7 @@ Search hints:
     fn handle_background_index_response(&mut self, tab_index: usize, msg: IndexResponse) {
         let mut trigger_search = false;
         let mut cleanup_request_id: Option<u64> = None;
+        let mut deferred_filelist: Option<(u64, PathBuf, Vec<PathBuf>)> = None;
 
         {
             let Some(tab) = self.tabs.get_mut(tab_index) else {
@@ -2144,6 +2219,14 @@ Search hints:
                         tab.search_rerun_pending = false;
                         tab.last_search_snapshot_len = tab.entries.len();
                         tab.last_incremental_results_refresh = Instant::now();
+                        if self.pending_filelist_after_index.as_ref().is_some_and(|pending| {
+                            pending.tab_id == tab.id
+                                && Self::path_key(&pending.root) == Self::path_key(&tab.root)
+                        }) {
+                            deferred_filelist =
+                                Some((tab.id, tab.root.clone(), tab.all_entries.as_ref().clone()));
+                            self.pending_filelist_after_index = None;
+                        }
 
                         if tab.query.trim().is_empty() {
                             tab.results = tab
@@ -2207,6 +2290,9 @@ Search hints:
             }
         }
 
+        if let Some((tab_id, root, entries)) = deferred_filelist {
+            self.request_filelist_creation(tab_id, root, entries);
+        }
         if trigger_search {
             self.enqueue_search_request_for_tab_index(tab_index);
         }
@@ -2302,18 +2388,16 @@ Search hints:
                     self.search_resume_pending = false;
                     self.search_rerun_pending = false;
                     self.clear_notice();
-                    if self
-                        .pending_filelist_after_index_root
-                        .as_ref()
-                        .is_some_and(|pending_root| {
-                            Self::path_key(pending_root) == Self::path_key(&self.root)
-                        })
-                    {
+                    let current_tab_id = self.current_tab_id().unwrap_or_default();
+                    if self.pending_filelist_after_index.as_ref().is_some_and(|pending| {
+                        pending.tab_id == current_tab_id
+                            && Self::path_key(&pending.root) == Self::path_key(&self.root)
+                    }) {
                         let root = self.root.clone();
                         let entries = self.filelist_entries_snapshot();
-                    self.pending_filelist_after_index_root = None;
-                    self.request_filelist_creation(root, entries);
-                }
+                        self.pending_filelist_after_index = None;
+                        self.request_filelist_creation(current_tab_id, root, entries);
+                    }
                     self.shrink_checkpoint_buffers();
                     self.index_inflight_requests.remove(&request_id);
                     finished_current_request = true;
@@ -2330,7 +2414,7 @@ Search hints:
                     self.pending_index_request_id = None;
                     self.search_resume_pending = false;
                     self.search_rerun_pending = false;
-                    self.pending_filelist_after_index_root = None;
+                    self.pending_filelist_after_index = None;
                     self.pending_index_entries.clear();
                     self.pending_index_entries_request_id = None;
                     self.index_request_tabs.remove(&request_id);
@@ -3133,31 +3217,35 @@ Search hints:
             .collect()
     }
 
-    fn start_filelist_creation(&mut self, root: PathBuf, entries: Vec<PathBuf>) {
-        self.pending_filelist_after_index_root = None;
+    fn start_filelist_creation(&mut self, tab_id: u64, root: PathBuf, entries: Vec<PathBuf>) {
+        self.pending_filelist_after_index = None;
         let request_id = self.next_filelist_request_id;
         self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
         self.pending_filelist_request_id = Some(request_id);
+        self.pending_filelist_request_tab_id = Some(tab_id);
         self.pending_filelist_root = Some(root.clone());
         self.filelist_in_progress = true;
         self.refresh_status_line();
 
         let req = FileListRequest {
             request_id,
+            tab_id,
             root,
             entries,
         };
         if self.filelist_tx.send(req).is_err() {
             self.pending_filelist_request_id = None;
+            self.pending_filelist_request_tab_id = None;
             self.pending_filelist_root = None;
             self.filelist_in_progress = false;
             self.set_notice("Create File List worker is unavailable");
         }
     }
 
-    fn request_filelist_creation(&mut self, root: PathBuf, entries: Vec<PathBuf>) {
+    fn request_filelist_creation(&mut self, tab_id: u64, root: PathBuf, entries: Vec<PathBuf>) {
         if let Some(existing_path) = find_filelist_in_first_level(&root) {
             self.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+                tab_id,
                 root,
                 entries,
                 existing_path: existing_path.clone(),
@@ -3168,18 +3256,40 @@ Search hints:
             ));
             return;
         }
-        self.start_filelist_creation(root, entries);
+        self.start_filelist_creation(tab_id, root, entries);
     }
 
     fn confirm_pending_filelist_overwrite(&mut self) {
         let Some(pending) = self.pending_filelist_confirmation.take() else {
             return;
         };
-        self.start_filelist_creation(pending.root, pending.entries);
+        self.start_filelist_creation(pending.tab_id, pending.root, pending.entries);
+    }
+
+    fn confirm_pending_filelist_use_walker(&mut self) {
+        let Some(pending) = self.pending_filelist_use_walker_confirmation.take() else {
+            return;
+        };
+        let Some(new_tab_id) = self.create_new_tab_for_root(pending.root.clone(), false) else {
+            self.set_notice("Failed to prepare a new tab for FileList creation");
+            return;
+        };
+        self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+            tab_id: new_tab_id,
+            root: pending.root,
+        });
+        self.request_index_refresh();
+        self.set_notice("Preparing Walker index in new tab for Create File List");
     }
 
     fn cancel_pending_filelist_overwrite(&mut self) {
         if self.pending_filelist_confirmation.take().is_some() {
+            self.set_notice("Create File List canceled");
+        }
+    }
+
+    fn cancel_pending_filelist_use_walker(&mut self) {
+        if self.pending_filelist_use_walker_confirmation.take().is_some() {
             self.set_notice("Create File List canceled");
         }
     }
@@ -3189,16 +3299,55 @@ Search hints:
             self.set_notice("Create File List is already running");
             return;
         }
+        if self.pending_filelist_confirmation.is_some() {
+            self.set_notice("Confirm overwrite or cancel first");
+            return;
+        }
+        if self.pending_filelist_use_walker_confirmation.is_some() {
+            self.set_notice("Confirm Create File List action or cancel first");
+            return;
+        }
+        let Some(tab_id) = self.current_tab_id() else {
+            self.set_notice("Create File List is unavailable without an active tab");
+            return;
+        };
+        if self.use_filelist {
+            self.pending_filelist_use_walker_confirmation =
+                Some(PendingFileListUseWalkerConfirmation {
+                    source_tab_id: tab_id,
+                    root: self.root.clone(),
+                });
+            self.set_notice("Confirmation required: Create File List needs Walker indexing");
+            return;
+        }
+
+        let mut needs_reindex = false;
+        if !self.include_files || !self.include_dirs {
+            self.include_files = true;
+            self.include_dirs = true;
+            needs_reindex = true;
+        }
+        if !matches!(self.index.source, IndexSource::Walker) {
+            needs_reindex = true;
+        }
         if self.index_in_progress {
-            self.pending_filelist_after_index_root = Some(self.root.clone());
+            needs_reindex = true;
+        }
+
+        if needs_reindex {
+            self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+                tab_id,
+                root: self.root.clone(),
+            });
+            self.request_index_refresh();
             self.set_notice(
-                "Indexing in progress. Create File List will run after indexing finishes",
+                "Preparing Walker index with files/folders enabled before Create File List",
             );
             return;
         }
 
         let entries = self.filelist_entries_snapshot();
-        self.request_filelist_creation(self.root.clone(), entries);
+        self.request_filelist_creation(tab_id, self.root.clone(), entries);
     }
 
     fn poll_filelist_response(&mut self) {
@@ -3207,6 +3356,7 @@ Search hints:
                 continue;
             };
             let requested_root = self.pending_filelist_root.clone();
+            let requested_tab_id = self.pending_filelist_request_tab_id;
             match response {
                 FileListResponse::Finished {
                     request_id,
@@ -3218,6 +3368,7 @@ Search hints:
                         continue;
                     }
                     self.pending_filelist_request_id = None;
+                    self.pending_filelist_request_tab_id = None;
                     self.pending_filelist_root = None;
                     self.filelist_in_progress = false;
 
@@ -3227,7 +3378,20 @@ Search hints:
                         .unwrap_or(true);
                     let same_current_root = Self::path_key(&self.root) == Self::path_key(&root);
 
-                    if !same_requested_root || !same_current_root {
+                    if !same_requested_root {
+                        continue;
+                    }
+                    if let Some(tab_id) = requested_tab_id {
+                        if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
+                            if let Some(tab) = self.tabs.get_mut(tab_index) {
+                                tab.use_filelist = true;
+                            }
+                            if tab_index == self.active_tab {
+                                self.use_filelist = true;
+                            }
+                        }
+                    }
+                    if !same_current_root {
                         self.set_notice(format!(
                             "Created {}: {} entries (previous root)",
                             path.display(),
@@ -3237,7 +3401,7 @@ Search hints:
                     }
 
                     self.set_notice(format!("Created {}: {} entries", path.display(), count));
-                    if self.use_filelist {
+                    if requested_tab_id == self.current_tab_id() && self.use_filelist {
                         self.request_index_refresh();
                     }
                 }
@@ -3250,6 +3414,7 @@ Search hints:
                         continue;
                     }
                     self.pending_filelist_request_id = None;
+                    self.pending_filelist_request_tab_id = None;
                     self.pending_filelist_root = None;
                     self.filelist_in_progress = false;
 
@@ -4225,30 +4390,63 @@ impl eframe::App for FlistWalkerApp {
 
         let mut overwrite = false;
         let mut cancel_overwrite = false;
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
         if let Some(pending) = &self.pending_filelist_confirmation {
-            egui::Window::new("Overwrite FileList?")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-                .show(ctx, |ui| {
-                    ui.label(format!(
-                        "{} already exists. Overwrite it?",
-                        pending.existing_path.display()
-                    ));
-                    ui.horizontal(|ui| {
-                        if ui.button("Overwrite").clicked() {
-                            overwrite = true;
-                        }
-                        if ui.button("Cancel").clicked() {
-                            cancel_overwrite = true;
-                        }
+            if pending.tab_id == current_tab_id {
+                egui::Window::new("Overwrite FileList?")
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                    .show(ctx, |ui| {
+                        ui.label(format!(
+                            "{} already exists. Overwrite it?",
+                            pending.existing_path.display()
+                        ));
+                        ui.horizontal(|ui| {
+                            if ui.button("Overwrite").clicked() {
+                                overwrite = true;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                cancel_overwrite = true;
+                            }
+                        });
                     });
-                });
+            }
         }
         if overwrite {
             self.confirm_pending_filelist_overwrite();
         } else if cancel_overwrite {
             self.cancel_pending_filelist_overwrite();
+        }
+
+        let mut confirm_walker = false;
+        let mut cancel_walker = false;
+        if let Some(pending) = &self.pending_filelist_use_walker_confirmation {
+            if pending.source_tab_id == current_tab_id {
+                egui::Window::new("Create File List?")
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                    .show(ctx, |ui| {
+                        ui.label(
+                            "Use FileList が有効です。Create File List には Walker実行が必要です。",
+                        );
+                        ui.label("FileListインデックスからは生成しません。新規タブで実行しますか？");
+                        ui.horizontal(|ui| {
+                            if ui.button("Continue").clicked() {
+                                confirm_walker = true;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                cancel_walker = true;
+                            }
+                        });
+                    });
+            }
+        }
+        if confirm_walker {
+            self.confirm_pending_filelist_use_walker();
+        } else if cancel_walker {
+            self.cancel_pending_filelist_use_walker();
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -4641,13 +4839,78 @@ mod tests {
         let root = test_root("filelist-waits-indexing");
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.use_filelist = false;
         app.index_in_progress = true;
 
         app.create_filelist();
 
-        assert_eq!(app.pending_filelist_after_index_root, Some(root.clone()));
+        assert_eq!(
+            app.pending_filelist_after_index
+                .as_ref()
+                .map(|pending| pending.root.clone()),
+            Some(root.clone())
+        );
         assert!(app.pending_filelist_request_id.is_none());
         assert!(!app.filelist_in_progress);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn create_filelist_forces_files_and_dirs_before_reindex() {
+        let root = test_root("filelist-force-files-dirs");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        app.use_filelist = false;
+        app.include_files = false;
+        app.include_dirs = true;
+        app.index.source = IndexSource::Walker;
+
+        app.create_filelist();
+
+        assert!(app.include_files);
+        assert!(app.include_dirs);
+        let req = index_rx.try_recv().expect("reindex request should be sent");
+        assert_eq!(req.root, root);
+        assert!(!req.use_filelist);
+        assert!(req.include_files);
+        assert!(req.include_dirs);
+        assert!(app.pending_filelist_after_index.is_some());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn create_filelist_with_use_filelist_enabled_opens_confirmation_and_prepares_new_tab() {
+        let root = test_root("filelist-use-filelist-confirm");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+
+        assert!(app.use_filelist);
+        app.create_filelist();
+        assert!(app.pending_filelist_use_walker_confirmation.is_some());
+        assert_eq!(app.tabs.len(), 1);
+
+        app.confirm_pending_filelist_use_walker();
+
+        assert_eq!(app.tabs.len(), 2);
+        assert_eq!(app.active_tab, 1);
+        assert!(!app.use_filelist);
+        assert!(app.include_files);
+        assert!(app.include_dirs);
+        let pending = app
+            .pending_filelist_after_index
+            .as_ref()
+            .expect("deferred filelist pending");
+        let active_tab_id = app.current_tab_id().expect("active tab id");
+        assert_eq!(pending.tab_id, active_tab_id);
+        assert_eq!(pending.root, root);
+        let req = index_rx.try_recv().expect("walker index request should be sent");
+        assert_eq!(req.tab_id, active_tab_id);
+        assert_eq!(req.root, root);
+        assert!(!req.use_filelist);
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -4664,15 +4927,26 @@ mod tests {
         let (index_tx, index_rx) = mpsc::channel::<IndexResponse>();
         app.index_rx = index_rx;
 
+        app.use_filelist = false;
         app.index_in_progress = true;
-        app.pending_index_request_id = Some(77);
-        app.entry_kinds.insert(path.clone(), false);
-        app.index.entries = vec![path.clone()];
+        let tab_id = app.current_tab_id().expect("tab id");
         app.create_filelist();
+        let request_id = app.pending_index_request_id.expect("pending index request");
+
+        index_tx
+            .send(IndexResponse::Batch {
+                request_id,
+                entries: vec![IndexEntry {
+                    path: path.clone(),
+                    is_dir: false,
+                    kind_known: true,
+                }],
+            })
+            .expect("send batch");
 
         index_tx
             .send(IndexResponse::Finished {
-                request_id: 77,
+                request_id,
                 source: IndexSource::Walker,
             })
             .expect("send finished");
@@ -4681,9 +4955,10 @@ mod tests {
         let req = filelist_rx
             .try_recv()
             .expect("filelist request should be sent");
+        assert_eq!(req.tab_id, tab_id);
         assert_eq!(req.root, root);
         assert_eq!(req.entries, vec![path]);
-        assert!(app.pending_filelist_after_index_root.is_none());
+        assert!(app.pending_filelist_after_index.is_none());
         assert!(app.filelist_in_progress);
         let _ = fs::remove_dir_all(&root);
     }
@@ -4697,12 +4972,16 @@ mod tests {
         let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
         let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
         app.index_tx = index_tx;
-        app.pending_filelist_after_index_root = Some(root_old.clone());
+        let tab_id = app.current_tab_id().expect("tab id");
+        app.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+            tab_id,
+            root: root_old.clone(),
+        });
         app.root = root_new.clone();
 
         app.request_index_refresh();
 
-        assert!(app.pending_filelist_after_index_root.is_none());
+        assert!(app.pending_filelist_after_index.is_none());
         assert!(app.notice.contains("Deferred Create File List canceled"));
         let _ = fs::remove_dir_all(&root_old);
         let _ = fs::remove_dir_all(&root_new);
@@ -4746,7 +5025,9 @@ mod tests {
         let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
         let (tx, _rx) = mpsc::channel::<IndexRequest>();
         app.index_tx = tx;
+        let tab_id = app.current_tab_id().expect("tab id");
         app.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+            tab_id,
             root: root_old.clone(),
             entries: vec![root_old.join("a.txt")],
             existing_path: root_old.join("FileList.txt"),
@@ -4767,6 +5048,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<FileListResponse>();
         app.filelist_rx = rx;
         app.pending_filelist_request_id = Some(11);
+        app.pending_filelist_request_tab_id = app.current_tab_id();
         app.pending_filelist_root = Some(root.clone());
         app.filelist_in_progress = true;
         app.use_filelist = false;
@@ -4783,10 +5065,48 @@ mod tests {
         app.poll_filelist_response();
 
         assert_eq!(app.pending_filelist_request_id, None);
+        assert_eq!(app.pending_filelist_request_tab_id, None);
         assert!(!app.filelist_in_progress);
+        assert!(app.use_filelist);
         assert!(app.notice.contains("Created"));
         assert!(app.notice.contains("3 entries"));
         assert!(app.notice.contains(filelist.to_string_lossy().as_ref()));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_finished_enables_use_filelist_for_creator_tab() {
+        let root = test_root("filelist-finished-enable-creator-tab");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.create_new_tab();
+        app.use_filelist = false;
+        app.sync_active_tab_state();
+        let creator_tab_id = app.tabs[0].id;
+        let (tx, rx) = mpsc::channel::<FileListResponse>();
+        app.filelist_rx = rx;
+        app.pending_filelist_request_id = Some(101);
+        app.pending_filelist_request_tab_id = Some(creator_tab_id);
+        app.pending_filelist_root = Some(root.clone());
+        app.filelist_in_progress = true;
+
+        tx.send(FileListResponse::Finished {
+            request_id: 101,
+            root: root.clone(),
+            path: root.join("FileList.txt"),
+            count: 2,
+        })
+        .expect("send filelist response");
+
+        app.poll_filelist_response();
+
+        let creator_tab = app
+            .tabs
+            .iter()
+            .find(|tab| tab.id == creator_tab_id)
+            .expect("creator tab");
+        assert!(creator_tab.use_filelist);
+        assert!(!app.use_filelist);
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -4800,8 +5120,10 @@ mod tests {
 
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
         app.index_in_progress = false;
+        app.use_filelist = false;
         app.all_entries = Arc::new(vec![path.clone()]);
         app.entry_kinds.insert(path, false);
+        app.index.source = IndexSource::Walker;
 
         app.create_filelist();
 
@@ -4820,7 +5142,9 @@ mod tests {
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
         let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
         app.filelist_tx = filelist_tx;
+        let tab_id = app.current_tab_id().expect("tab id");
         app.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+            tab_id,
             root: root.clone(),
             entries: entries.clone(),
             existing_path: file_path,
@@ -4831,6 +5155,7 @@ mod tests {
         let req = filelist_rx
             .try_recv()
             .expect("filelist request should be sent");
+        assert_eq!(req.tab_id, tab_id);
         assert_eq!(req.root, root);
         assert_eq!(req.entries, entries);
         assert!(app.filelist_in_progress);
@@ -4848,9 +5173,10 @@ mod tests {
         let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
         app.index_tx = index_tx;
         app.pending_filelist_request_id = Some(12);
+        app.pending_filelist_request_tab_id = app.current_tab_id();
         app.pending_filelist_root = Some(root.clone());
         app.filelist_in_progress = true;
-        app.use_filelist = true;
+        app.use_filelist = false;
 
         filelist_tx
             .send(FileListResponse::Finished {
@@ -4879,6 +5205,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<FileListResponse>();
         app.filelist_rx = rx;
         app.pending_filelist_request_id = Some(13);
+        app.pending_filelist_request_tab_id = app.current_tab_id();
         app.pending_filelist_root = Some(root.clone());
         app.filelist_in_progress = true;
 
@@ -4892,6 +5219,7 @@ mod tests {
         app.poll_filelist_response();
 
         assert_eq!(app.pending_filelist_request_id, None);
+        assert_eq!(app.pending_filelist_request_tab_id, None);
         assert!(!app.filelist_in_progress);
         assert!(app.notice.contains("Create File List failed: disk full"));
         let _ = fs::remove_dir_all(&root);
@@ -4909,6 +5237,7 @@ mod tests {
         let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
         app.index_tx = _index_tx;
         app.pending_filelist_request_id = Some(51);
+        app.pending_filelist_request_tab_id = app.current_tab_id();
         app.pending_filelist_root = Some(root_old.clone());
         app.filelist_in_progress = true;
         app.use_filelist = true;
@@ -4942,6 +5271,7 @@ mod tests {
         let (tx, rx) = mpsc::channel::<FileListResponse>();
         app.filelist_rx = rx;
         app.pending_filelist_request_id = Some(52);
+        app.pending_filelist_request_tab_id = app.current_tab_id();
         app.pending_filelist_root = Some(root_old.clone());
         app.filelist_in_progress = true;
         app.root = root_new;
@@ -5067,11 +5397,11 @@ mod tests {
     }
 
     #[test]
-    fn app_defaults_use_filelist_off() {
-        let root = test_root("default-use-filelist-off");
+    fn app_defaults_use_filelist_on() {
+        let root = test_root("default-use-filelist-on");
         fs::create_dir_all(&root).expect("create dir");
         let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-        assert!(!app.use_filelist);
+        assert!(app.use_filelist);
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -5704,6 +6034,7 @@ mod tests {
         assert_eq!(app.tabs.len(), 2);
         assert_eq!(app.active_tab, 1);
         assert!(app.query.is_empty());
+        assert!(app.use_filelist);
         let _ = fs::remove_dir_all(&root);
     }
 
