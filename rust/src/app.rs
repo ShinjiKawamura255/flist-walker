@@ -36,6 +36,8 @@ struct SavedWindowGeometry {
 struct UiState {
     default_root: Option<String>,
     show_preview: Option<bool>,
+    preview_panel_width: Option<f32>,
+    #[serde(default)]
     results_panel_width: Option<f32>,
     window: Option<SavedWindowGeometry>,
 }
@@ -44,7 +46,7 @@ struct UiState {
 struct LaunchSettings {
     default_root: Option<PathBuf>,
     show_preview: bool,
-    results_panel_width: f32,
+    preview_panel_width: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -780,7 +782,7 @@ pub struct FlistWalkerApp {
     saved_roots: Vec<PathBuf>,
     default_root: Option<PathBuf>,
     show_preview: bool,
-    results_panel_width: f32,
+    preview_panel_width: f32,
     window_geometry: Option<SavedWindowGeometry>,
     pending_window_geometry: Option<SavedWindowGeometry>,
     last_window_geometry_change: Instant,
@@ -825,7 +827,7 @@ impl FlistWalkerApp {
     const HIGHLIGHT_CACHE_MAX: usize = 256;
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     const PAGE_MOVE_ROWS: isize = 10;
-    const DEFAULT_RESULTS_PANEL_WIDTH: f32 = 760.0;
+    const DEFAULT_PREVIEW_PANEL_WIDTH: f32 = 440.0;
     const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
     const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
     const INDEX_MAX_CONCURRENT: usize = 2;
@@ -911,7 +913,7 @@ Search hints:
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let launch = LaunchSettings {
             show_preview: true,
-            results_panel_width: Self::DEFAULT_RESULTS_PANEL_WIDTH,
+            preview_panel_width: Self::DEFAULT_PREVIEW_PANEL_WIDTH,
             ..LaunchSettings::default()
         };
         Self::new_with_launch(root, limit, query, launch)
@@ -1000,9 +1002,9 @@ Search hints:
             saved_roots: Self::load_saved_roots(),
             default_root: launch.default_root.clone(),
             show_preview: launch.show_preview,
-            results_panel_width: launch
-                .results_panel_width
-                .max(Self::MIN_RESULTS_PANEL_WIDTH),
+            preview_panel_width: launch
+                .preview_panel_width
+                .max(Self::MIN_PREVIEW_PANEL_WIDTH),
             window_geometry: None,
             pending_window_geometry: None,
             last_window_geometry_change: Instant::now(),
@@ -1418,14 +1420,15 @@ Search hints:
             .map(PathBuf::from)
             .map(Self::normalize_windows_path);
         let show_preview = ui_state.show_preview.unwrap_or(true);
-        let results_panel_width = ui_state
-            .results_panel_width
-            .unwrap_or(Self::DEFAULT_RESULTS_PANEL_WIDTH)
-            .max(Self::MIN_RESULTS_PANEL_WIDTH);
+        let preview_panel_width = ui_state
+            .preview_panel_width
+            .or(ui_state.results_panel_width)
+            .unwrap_or(Self::DEFAULT_PREVIEW_PANEL_WIDTH)
+            .max(Self::MIN_PREVIEW_PANEL_WIDTH);
         LaunchSettings {
             default_root,
             show_preview,
-            results_panel_width,
+            preview_panel_width,
         }
     }
 
@@ -1442,7 +1445,8 @@ Search hints:
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),
             show_preview: Some(self.show_preview),
-            results_panel_width: Some(self.results_panel_width),
+            preview_panel_width: Some(self.preview_panel_width),
+            results_panel_width: None,
             window: self.window_geometry.clone(),
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
@@ -1450,8 +1454,8 @@ Search hints:
             Self::append_window_trace(
                 "save_ui_state",
                 &format!(
-                    "window={:?} results_panel_width={:.1}",
-                    state.window, self.results_panel_width
+                    "window={:?} preview_panel_width={:.1}",
+                    state.window, self.preview_panel_width
                 ),
             );
         }
@@ -3663,50 +3667,50 @@ Search hints:
 
     fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
         if self.show_preview {
-            let max_results_width = (ui.available_width() - Self::MIN_PREVIEW_PANEL_WIDTH)
-                .max(Self::MIN_RESULTS_PANEL_WIDTH);
-            let panel = egui::SidePanel::left("results-panel")
+            let max_preview_width = (ui.available_width() - Self::MIN_RESULTS_PANEL_WIDTH)
+                .max(Self::MIN_PREVIEW_PANEL_WIDTH);
+            let panel = egui::SidePanel::right("preview-panel")
                 .resizable(true)
-                .default_width(self.results_panel_width.min(max_results_width))
-                .min_width(Self::MIN_RESULTS_PANEL_WIDTH)
-                .max_width(max_results_width);
+                .default_width(self.preview_panel_width.min(max_preview_width))
+                .min_width(Self::MIN_PREVIEW_PANEL_WIDTH)
+                .max_width(max_preview_width);
             let response = panel.show_inside(ui, |ui| {
-                self.render_results_list(ui);
+                ui.heading("Preview");
+                let preview_width = ui.available_width();
+                let preview_height = ui.available_height();
+                ui.allocate_ui_with_layout(
+                    egui::vec2(preview_width, preview_height),
+                    egui::Layout::top_down(egui::Align::Min),
+                    |ui| {
+                        let frame_fill = ui.visuals().extreme_bg_color;
+                        egui::Frame::none().fill(frame_fill).show(ui, |ui| {
+                            ui.set_min_size(egui::vec2(preview_width, preview_height));
+                            egui::ScrollArea::both()
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| {
+                                    ui.add_sized(
+                                        egui::vec2(preview_width, preview_height),
+                                        egui::TextEdit::multiline(&mut self.preview)
+                                            .interactive(false)
+                                            .font(egui::TextStyle::Monospace)
+                                            .desired_width(f32::INFINITY)
+                                            .desired_rows(1),
+                                    );
+                                });
+                        });
+                    },
+                );
             });
             let new_width = response
                 .response
                 .rect
                 .width()
-                .max(Self::MIN_RESULTS_PANEL_WIDTH);
-            if (new_width - self.results_panel_width).abs() > 1.0 {
-                self.results_panel_width = new_width;
+                .max(Self::MIN_PREVIEW_PANEL_WIDTH);
+            if (new_width - self.preview_panel_width).abs() > 1.0 {
+                self.preview_panel_width = new_width;
                 self.mark_ui_state_dirty();
             }
-            ui.heading("Preview");
-            let preview_width = ui.available_width();
-            let preview_height = ui.available_height();
-            ui.allocate_ui_with_layout(
-                egui::vec2(preview_width, preview_height),
-                egui::Layout::top_down(egui::Align::Min),
-                |ui| {
-                    let frame_fill = ui.visuals().extreme_bg_color;
-                    egui::Frame::none().fill(frame_fill).show(ui, |ui| {
-                        ui.set_min_size(egui::vec2(preview_width, preview_height));
-                        egui::ScrollArea::both()
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| {
-                                ui.add_sized(
-                                    egui::vec2(preview_width, preview_height),
-                                    egui::TextEdit::multiline(&mut self.preview)
-                                        .interactive(false)
-                                        .font(egui::TextStyle::Monospace)
-                                        .desired_width(f32::INFINITY)
-                                        .desired_rows(1),
-                                );
-                            });
-                    });
-                },
-            );
+            self.render_results_list(ui);
         } else {
             self.render_results_list(ui);
         }
