@@ -1883,11 +1883,25 @@ Search hints:
             tab_id: self.current_tab_id().unwrap_or_default(),
             root: self.root.clone(),
             use_filelist: self.use_filelist,
-            include_files: true,
-            include_dirs: true,
+            include_files: self.include_files,
+            include_dirs: self.include_dirs,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
+    }
+
+    fn maybe_reindex_from_filter_toggles(
+        &mut self,
+        use_filelist_changed: bool,
+        files_changed: bool,
+        dirs_changed: bool,
+    ) {
+        let mut reindex = use_filelist_changed;
+        reindex |= files_changed || dirs_changed;
+        reindex |= self.ensure_entry_filters();
+        if reindex {
+            self.request_index_refresh();
+        }
     }
 
     fn enqueue_index_request(&mut self, req: IndexRequest) {
@@ -4096,16 +4110,14 @@ impl eframe::App for FlistWalkerApp {
             });
 
             ui.horizontal(|ui| {
-                let mut reindex = false;
-                let mut filter_changed = false;
-                reindex |= ui
+                let use_filelist_changed = ui
                     .checkbox(&mut self.use_filelist, "Use FileList")
                     .changed();
                 if ui.checkbox(&mut self.use_regex, "Regex").changed() {
                     self.update_results();
                 }
-                filter_changed |= ui.checkbox(&mut self.include_files, "Files").changed();
-                filter_changed |= ui.checkbox(&mut self.include_dirs, "Folders").changed();
+                let files_changed = ui.checkbox(&mut self.include_files, "Files").changed();
+                let dirs_changed = ui.checkbox(&mut self.include_dirs, "Folders").changed();
                 if ui.checkbox(&mut self.show_preview, "Preview").changed() {
                     if !self.show_preview {
                         self.preview_cache.clear();
@@ -4114,15 +4126,13 @@ impl eframe::App for FlistWalkerApp {
                     }
                     self.mark_ui_state_dirty();
                 }
-                filter_changed |= self.ensure_entry_filters();
                 ui.separator();
                 ui.label(self.source_text());
-                if filter_changed {
-                    self.apply_entry_filters(false);
-                }
-                if reindex {
-                    self.request_index_refresh();
-                }
+                self.maybe_reindex_from_filter_toggles(
+                    use_filelist_changed,
+                    files_changed,
+                    dirs_changed,
+                );
             });
 
             let mut output = egui::TextEdit::singleline(&mut self.query)
@@ -5372,7 +5382,7 @@ mod tests {
 
         let req = rx.try_recv().expect("index request should be sent");
         assert!(req.include_files);
-        assert!(req.include_dirs);
+        assert!(!req.include_dirs);
         assert!(app.include_files);
         assert!(!app.include_dirs);
         let _ = fs::remove_dir_all(&root);
@@ -5393,7 +5403,25 @@ mod tests {
 
         let req = rx.try_recv().expect("index request should be sent");
         assert!(!req.use_filelist);
-        assert!(req.include_files);
+        assert!(!req.include_files);
+        assert!(req.include_dirs);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn files_toggle_change_requests_reindex() {
+        let root = test_root("files-toggle-reindex");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        app.include_files = false;
+        app.include_dirs = true;
+
+        app.maybe_reindex_from_filter_toggles(false, true, false);
+
+        let req = rx.try_recv().expect("index request should be sent");
+        assert!(!req.include_files);
         assert!(req.include_dirs);
         let _ = fs::remove_dir_all(&root);
     }
