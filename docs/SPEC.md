@@ -128,7 +128,10 @@
 - MUST: 複数選択と一括アクションを提供する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
 - MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+Shift+C` / `Ctrl+G` は検索窓フォーカス中でも有効である。
+- MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。
+- MUST: `Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
+- MUST: `Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。

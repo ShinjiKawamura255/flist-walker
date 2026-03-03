@@ -51,6 +51,9 @@
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除のみ実行し current row を維持する | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 | TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、種別解決後に FILE/DIR とフィルタ状態を反映する | SP-001, SP-010, SP-007 |
+| TC-026 | unit | 回帰: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で current row が移動する | SP-010 |
+| TC-027 | unit | 回帰: `Ctrl+I` は検索窓フォーカス有無を問わず PIN をトグルし current row を維持する | SP-010 |
+| TC-028 | unit | 回帰: 検索窓フォーカス中でも `Ctrl+J` / `Ctrl+M` が `Enter` 同等に実行/オープンを起動する | SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -79,6 +82,12 @@
 - `cargo test` 結果を作業ログに記録。
 - 性能計測は `docs/perf-notes.md`（必要時追加）へ記録。
 
+## Regression Guard
+- 発生条件: 検索窓フォーカス中に `Ctrl+J` / `Ctrl+M`、`ArrowUp` / `ArrowDown`、`Ctrl+I` を押しても `Results` の実行・移動・PIN トグルが効かない。
+- 期待動作: 検索窓フォーカス有無に関わらず、`Ctrl+J` / `Ctrl+M` は実行、`ArrowUp` / `ArrowDown` は current row 移動、`Ctrl+I` は PIN トグルを行う。
+- 非対象範囲: IME 合成中は既存仕様通りフォーカス優先で一部ショートカットを抑制する。
+- 関連テストID: TC-026, TC-027, TC-028.
+
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
 - TC-002 -> SP-002 -> DES-002 -> FR-002
@@ -105,3 +114,6 @@
 - TC-023 -> SP-010 -> DES-009 -> FR-007
 - TC-024 -> SP-010 -> DES-009 -> FR-007
 - TC-025 -> SP-001, SP-010, SP-007 -> DES-001, DES-006, DES-009 -> FR-001, FR-007, NFR-001
+- TC-026 -> SP-010 -> DES-009 -> FR-007
+- TC-027 -> SP-010 -> DES-009 -> FR-007
+- TC-028 -> SP-010 -> DES-009 -> FR-007

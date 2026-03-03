@@ -3961,29 +3961,49 @@ Search hints:
         let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
         if tab_forward {
             self.toggle_pin_current();
+            // Keep Tab dedicated to pin toggle without changing query focus active/inactive state.
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            } else {
+                ctx.memory_mut(|m| m.stop_text_input());
+            }
         }
         let tab_backward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
         if tab_backward {
             self.toggle_pin_current();
+            // Keep Shift+Tab dedicated to pin toggle without changing query focus active/inactive state.
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            } else {
+                ctx.memory_mut(|m| m.stop_text_input());
+            }
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::I)) {
+            self.toggle_pin_current();
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
+            self.move_row(1);
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+            self.move_row(-1);
+        }
+        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::J))
+            || ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::M))
+        {
+            self.execute_selected();
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
+            self.execute_selected();
         }
 
         if self.ime_composition_active {
             return;
         }
+        // Regression guard: query focus must not disable row movement/pin toggle/execute shortcuts.
         if query_focused {
             return;
         }
 
-        if ctx.input(|i| i.key_pressed(egui::Key::ArrowDown))
-            || ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::N))
-        {
-            self.move_row(1);
-        }
-        if ctx.input(|i| i.key_pressed(egui::Key::ArrowUp))
-            || ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::P))
-        {
-            self.move_row(-1);
-        }
         if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::V)) {
             self.move_page(1);
         }
@@ -3991,13 +4011,6 @@ Search hints:
             self.move_page(-1);
         }
 
-        if ctx.input(|i| i.key_pressed(egui::Key::Enter))
-            || ctx.input(|i| {
-                i.modifiers.ctrl && (i.key_pressed(egui::Key::J) || i.key_pressed(egui::Key::M))
-            })
-        {
-            self.execute_selected();
-        }
     }
 
     fn run_deferred_shortcuts(&mut self, ctx: &egui::Context) {
@@ -4198,6 +4211,8 @@ impl eframe::App for FlistWalkerApp {
         }
         self.capture_window_geometry(ctx);
         self.apply_stable_window_geometry(false);
+        // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
+        self.handle_shortcuts(ctx);
 
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             self.render_tab_bar(ui);
@@ -4366,7 +4381,6 @@ impl eframe::App for FlistWalkerApp {
                 );
                 self.update_results();
             }
-            self.handle_shortcuts(ctx);
             self.run_deferred_shortcuts(ctx);
 
             ui.horizontal(|ui| {
@@ -4525,6 +4539,10 @@ mod tests {
         app.handle_shortcuts_with_focus(&ctx, query_focused);
         app.run_deferred_shortcuts(&ctx);
         let _ = ctx.end_frame();
+    }
+
+    fn is_action_notice(text: &str) -> bool {
+        text.starts_with("Action: ") || text.starts_with("Action failed:")
     }
 
     #[test]
@@ -6042,6 +6060,252 @@ mod tests {
         );
         assert!(!app.pinned_paths.contains(&selected));
         assert_eq!(app.current_row, Some(0));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_tab_shortcut_clears_focus_traversal_target() {
+        let root = test_root("regression-tab-focus-traversal");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+        let ctx = egui::Context::default();
+        let dummy_focus = egui::Id::new("dummy-focus");
+        ctx.memory_mut(|m| m.request_focus(dummy_focus));
+
+        ctx.begin_frame(egui::RawInput {
+            modifiers: egui::Modifiers::NONE,
+            events: vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            ..Default::default()
+        });
+        app.handle_shortcuts_with_focus(&ctx, false);
+        let focused_after = ctx.memory(|m| m.focus());
+        let _ = ctx.end_frame();
+
+        assert!(app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+        assert!(focused_after.is_none());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_tab_keeps_query_focus_when_query_is_active() {
+        let root = test_root("regression-tab-keep-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+        let ctx = egui::Context::default();
+        ctx.memory_mut(|m| m.request_focus(app.query_input_id));
+
+        ctx.begin_frame(egui::RawInput {
+            modifiers: egui::Modifiers::NONE,
+            events: vec![egui::Event::Key {
+                key: egui::Key::Tab,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            ..Default::default()
+        });
+        app.handle_shortcuts_with_focus(&ctx, true);
+        let query_still_focused = ctx.memory(|m| m.has_focus(app.query_input_id));
+        let _ = ctx.end_frame();
+
+        assert!(app.pinned_paths.contains(&selected));
+        assert!(query_still_focused);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_arrow_keys_move_selection_even_when_query_focused() {
+        let root = test_root("regression-arrow-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![
+            (root.join("a.txt"), 0.0),
+            (root.join("b.txt"), 0.0),
+            (root.join("c.txt"), 0.0),
+        ];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::ArrowDown,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert_eq!(app.current_row, Some(1));
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::ArrowUp,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert_eq!(app.current_row, Some(0));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
+        let root = test_root("regression-ctrl-i-pin-toggle");
+        fs::create_dir_all(&root).expect("create dir");
+        let selected = root.join("picked.txt");
+        fs::write(&selected, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::I,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert!(app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::I,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert!(!app.pinned_paths.contains(&selected));
+        assert_eq!(app.current_row, Some(0));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
+        let root = test_root("regression-ctrl-jm-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        #[cfg(target_os = "windows")]
+        let selected = root.join("picked.exe");
+        #[cfg(not(target_os = "windows"))]
+        let selected = root.join("picked.sh");
+        fs::write(&selected, "echo test").expect("write file");
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&selected).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&selected, perms).expect("set permissions");
+        }
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+        app.results = vec![(selected.clone(), 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::J,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert!(is_action_notice(&app.notice));
+
+        app.notice.clear();
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::M,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert!(is_action_notice(&app.notice));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_enter_executes_regardless_of_query_focus() {
+        let root = test_root("regression-enter-query-focus");
+        fs::create_dir_all(&root).expect("create dir");
+        #[cfg(target_os = "windows")]
+        let selected = root.join("picked.exe");
+        #[cfg(not(target_os = "windows"))]
+        let selected = root.join("picked.sh");
+        fs::write(&selected, "echo test").expect("write file");
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&selected).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&selected, perms).expect("set permissions");
+        }
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+        app.results = vec![(selected, 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::Enter,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(is_action_notice(&app.notice));
+
+        app.notice.clear();
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Enter,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(is_action_notice(&app.notice));
         let _ = fs::remove_dir_all(&root);
     }
 
