@@ -54,6 +54,7 @@
 | TC-026 | unit | 回帰: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で current row が移動する | SP-010 |
 | TC-027 | unit | 回帰: `Ctrl+I` は検索窓フォーカス有無を問わず PIN をトグルし current row を維持する | SP-010 |
 | TC-028 | unit | 回帰: 検索窓フォーカス中でも `Ctrl+J` / `Ctrl+M` が `Enter` 同等に実行/オープンを起動する | SP-010 |
+| TC-029 | unit | プロセス shutdown フラグが set/clear 可能で、シグナル経由の終了要求を保持できる | SP-010, SP-008 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -117,3 +118,4 @@
 - TC-026 -> SP-010 -> DES-009 -> FR-007
 - TC-027 -> SP-010 -> DES-009 -> FR-007
 - TC-028 -> SP-010 -> DES-009 -> FR-007
+- TC-029 -> SP-010, SP-008 -> DES-009, DES-007 -> FR-007, NFR-002

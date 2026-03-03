@@ -24,6 +24,30 @@
 ### Known issues
 - 
 
+## [0.7.1] - 2026-03-04
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- GUI ワーカーに shutdown フラグ共有と `Drop` 時の `join` を追加し、中断時の終了処理を明示化。
+- `Ctrl+C` などのシグナル受信で shutdown 要求を立て、GUI 側で window close へ収束させる終了経路を追加。
+- walker インデックスのキャンセル確認間隔を短縮し、多数エントリ走査中の中断反映を改善。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.7.0] - 2026-03-03
 ### Added
 - 
@@ -231,7 +255,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.1
 [0.7.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.0
 [0.5.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.5.1
 [0.3.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.1

@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use std::path::{Path, PathBuf};
 
-use flist_walker::app::{configure_egui_fonts, FlistWalkerApp};
+use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
 use flist_walker::indexer::build_index;
 use flist_walker::search::search_entries_with_scope;
 use resvg::{tiny_skia, usvg};
@@ -167,6 +167,11 @@ fn resolve_root(root: &Path) -> Result<PathBuf> {
 }
 
 fn main() -> Result<()> {
+    ctrlc::set_handler(|| {
+        request_process_shutdown();
+    })
+    .context("failed to install signal handler")?;
+
     let args = Args::parse();
     if args.cli {
         run_cli(&args)

@@ -17,6 +17,7 @@ use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
@@ -95,6 +96,49 @@ struct BackgroundIndexState {
     source: Option<IndexSource>,
     entries: Vec<PathBuf>,
     entry_kinds: HashMap<PathBuf, bool>,
+}
+
+static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+struct WorkerRuntime {
+    shutdown: Arc<AtomicBool>,
+    handles: Vec<thread::JoinHandle<()>>,
+}
+
+impl WorkerRuntime {
+    fn new(shutdown: Arc<AtomicBool>) -> Self {
+        Self {
+            shutdown,
+            handles: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, handle: thread::JoinHandle<()>) {
+        self.handles.push(handle);
+    }
+
+    fn request_shutdown(&self) {
+        self.shutdown.store(true, Ordering::Relaxed);
+    }
+
+    fn join_all(mut self) {
+        for handle in self.handles.drain(..) {
+            let _ = handle.join();
+        }
+    }
+}
+
+pub fn request_process_shutdown() {
+    PROCESS_SHUTDOWN_REQUESTED.store(true, Ordering::SeqCst);
+}
+
+fn process_shutdown_requested() -> bool {
+    PROCESS_SHUTDOWN_REQUESTED.load(Ordering::SeqCst)
+}
+
+#[cfg(test)]
+fn clear_process_shutdown_request() {
+    PROCESS_SHUTDOWN_REQUESTED.store(false, Ordering::SeqCst);
 }
 
 pub fn configure_egui_fonts(ctx: &egui::Context) {
@@ -321,12 +365,21 @@ enum FileListResponse {
     },
 }
 
-fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
+fn spawn_search_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<SearchRequest>,
+    Receiver<SearchResponse>,
+    thread::JoinHandle<()>,
+) {
     let (tx_req, rx_req) = mpsc::channel::<SearchRequest>();
     let (tx_res, rx_res) = mpsc::channel::<SearchResponse>();
 
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         while let Ok(mut req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
@@ -364,15 +417,24 @@ fn spawn_search_worker() -> (Sender<SearchRequest>, Receiver<SearchResponse>) {
         }
     });
 
-    (tx_req, rx_res)
+    (tx_req, rx_res, handle)
 }
 
-fn spawn_preview_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>) {
+fn spawn_preview_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<PreviewRequest>,
+    Receiver<PreviewResponse>,
+    thread::JoinHandle<()>,
+) {
     let (tx_req, rx_req) = mpsc::channel::<PreviewRequest>();
     let (tx_res, rx_res) = mpsc::channel::<PreviewResponse>();
 
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         while let Ok(mut req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
@@ -390,15 +452,24 @@ fn spawn_preview_worker() -> (Sender<PreviewRequest>, Receiver<PreviewResponse>)
         }
     });
 
-    (tx_req, rx_res)
+    (tx_req, rx_res, handle)
 }
 
-fn spawn_kind_resolver_worker() -> (Sender<KindResolveRequest>, Receiver<KindResolveResponse>) {
+fn spawn_kind_resolver_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<KindResolveRequest>,
+    Receiver<KindResolveResponse>,
+    thread::JoinHandle<()>,
+) {
     let (tx_req, rx_req) = mpsc::channel::<KindResolveRequest>();
     let (tx_res, rx_res) = mpsc::channel::<KindResolveResponse>();
 
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         while let Ok(req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
             let is_dir = std::fs::metadata(&req.path).ok().and_then(|meta| {
                 if meta.is_dir() {
                     Some(true)
@@ -421,15 +492,24 @@ fn spawn_kind_resolver_worker() -> (Sender<KindResolveRequest>, Receiver<KindRes
         }
     });
 
-    (tx_req, rx_res)
+    (tx_req, rx_res, handle)
 }
 
-fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListResponse>) {
+fn spawn_filelist_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<FileListRequest>,
+    Receiver<FileListResponse>,
+    thread::JoinHandle<()>,
+) {
     let (tx_req, rx_req) = mpsc::channel::<FileListRequest>();
     let (tx_res, rx_res) = mpsc::channel::<FileListResponse>();
 
-    thread::spawn(move || {
+    let handle = thread::spawn(move || {
         while let Ok(req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
             let _tab_id = req.tab_id;
             let count = req.entries.len();
             let result =
@@ -453,7 +533,7 @@ fn spawn_filelist_worker() -> (Sender<FileListRequest>, Receiver<FileListRespons
         }
     });
 
-    (tx_req, rx_res)
+    (tx_req, rx_res, handle)
 }
 
 fn flush_batch(
@@ -478,6 +558,7 @@ fn stream_filelist_index(
     req: &IndexRequest,
     root: &std::path::Path,
     filelist: PathBuf,
+    shutdown: &AtomicBool,
     latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::FileList(filelist.clone());
@@ -500,6 +581,9 @@ fn stream_filelist_index(
         req.include_files,
         req.include_dirs,
         || {
+            if shutdown.load(Ordering::Relaxed) {
+                return true;
+            }
             latest_request_ids
                 .lock()
                 .ok()
@@ -541,6 +625,7 @@ fn stream_walker_index(
     tx_res: &Sender<IndexResponse>,
     req: &IndexRequest,
     root: &std::path::Path,
+    shutdown: &AtomicBool,
     latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::Walker;
@@ -569,8 +654,11 @@ fn stream_walker_index(
         .flatten()
     {
         cancel_check_budget = cancel_check_budget.saturating_add(1);
-        if cancel_check_budget >= 256 {
+        if cancel_check_budget >= 64 {
             cancel_check_budget = 0;
+            if shutdown.load(Ordering::Relaxed) {
+                return Err("superseded".to_string());
+            }
             if latest_request_ids
                 .lock()
                 .ok()
@@ -619,17 +707,24 @@ fn stream_walker_index(
 }
 
 fn spawn_index_worker(
+    shutdown: Arc<AtomicBool>,
     latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
-) -> (Sender<IndexRequest>, Receiver<IndexResponse>) {
+) -> (
+    Sender<IndexRequest>,
+    Receiver<IndexResponse>,
+    Vec<thread::JoinHandle<()>>,
+) {
     let (tx_req, rx_req) = mpsc::channel::<IndexRequest>();
     let (tx_res, rx_res) = mpsc::channel::<IndexResponse>();
     let rx_req = Arc::new(Mutex::new(rx_req));
+    let mut handles = Vec::new();
 
     for _ in 0..2 {
         let tx_res_worker = tx_res.clone();
         let rx_req_worker = Arc::clone(&rx_req);
         let latest_request_ids_worker = Arc::clone(&latest_request_ids);
-        thread::spawn(move || loop {
+        let shutdown_worker = Arc::clone(&shutdown);
+        let handle = thread::spawn(move || loop {
             let req = {
                 let Ok(rx) = rx_req_worker.lock() else {
                     break;
@@ -639,6 +734,9 @@ fn spawn_index_worker(
                     Err(_) => break,
                 }
             };
+            if shutdown_worker.load(Ordering::Relaxed) {
+                break;
+            }
 
             if !req.include_files && !req.include_dirs {
                 if tx_res_worker
@@ -670,6 +768,7 @@ fn spawn_index_worker(
                         &req,
                         &root,
                         filelist,
+                        shutdown_worker.as_ref(),
                         latest_request_ids_worker.as_ref(),
                     )
                 } else {
@@ -677,6 +776,7 @@ fn spawn_index_worker(
                         &tx_res_worker,
                         &req,
                         &root,
+                        shutdown_worker.as_ref(),
                         latest_request_ids_worker.as_ref(),
                     )
                 }
@@ -685,6 +785,7 @@ fn spawn_index_worker(
                     &tx_res_worker,
                     &req,
                     &root,
+                    shutdown_worker.as_ref(),
                     latest_request_ids_worker.as_ref(),
                 )
             };
@@ -720,9 +821,10 @@ fn spawn_index_worker(
                 }
             }
         });
+        handles.push(handle);
     }
 
-    (tx_req, rx_res)
+    (tx_req, rx_res, handles)
 }
 
 pub struct FlistWalkerApp {
@@ -820,6 +922,7 @@ pub struct FlistWalkerApp {
     background_index_states: HashMap<u64, BackgroundIndexState>,
     search_request_tabs: HashMap<u64, u64>,
     preview_request_tabs: HashMap<u64, u64>,
+    worker_runtime: Option<WorkerRuntime>,
 }
 
 impl FlistWalkerApp {
@@ -936,12 +1039,28 @@ Search hints:
     }
 
     fn new_with_launch(root: PathBuf, limit: usize, query: String, launch: LaunchSettings) -> Self {
-        let (search_tx, search_rx) = spawn_search_worker();
-        let (preview_tx, preview_rx) = spawn_preview_worker();
-        let (kind_tx, kind_rx) = spawn_kind_resolver_worker();
-        let (filelist_tx, filelist_rx) = spawn_filelist_worker();
+        let worker_shutdown = Arc::new(AtomicBool::new(false));
+        let mut worker_runtime = WorkerRuntime::new(Arc::clone(&worker_shutdown));
+        let (search_tx, search_rx, search_handle) =
+            spawn_search_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push(search_handle);
+        let (preview_tx, preview_rx, preview_handle) =
+            spawn_preview_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push(preview_handle);
+        let (kind_tx, kind_rx, kind_handle) =
+            spawn_kind_resolver_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push(kind_handle);
+        let (filelist_tx, filelist_rx, filelist_handle) =
+            spawn_filelist_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push(filelist_handle);
         let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
-        let (index_tx, index_rx) = spawn_index_worker(Arc::clone(&latest_index_request_ids));
+        let (index_tx, index_rx, index_handles) = spawn_index_worker(
+            Arc::clone(&worker_shutdown),
+            Arc::clone(&latest_index_request_ids),
+        );
+        for handle in index_handles {
+            worker_runtime.push(handle);
+        }
         let mut app = Self {
             root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
@@ -1042,6 +1161,7 @@ Search hints:
             background_index_states: HashMap::new(),
             search_request_tabs: HashMap::new(),
             preview_request_tabs: HashMap::new(),
+            worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
@@ -1313,7 +1433,8 @@ Search hints:
         {
             self.pending_filelist_use_walker_confirmation = None;
         }
-        self.index_request_tabs.retain(|_, tab_id| *tab_id != removed.id);
+        self.index_request_tabs
+            .retain(|_, tab_id| *tab_id != removed.id);
         self.pending_index_queue
             .retain(|req| req.tab_id != removed.id);
         if let Ok(mut latest) = self.latest_index_request_ids.lock() {
@@ -2006,7 +2127,8 @@ Search hints:
             self.index_request_tabs.remove(&request_id);
             self.background_index_states.remove(&request_id);
         }
-        self.pending_index_queue.retain(|queued| queued.tab_id != req.tab_id);
+        self.pending_index_queue
+            .retain(|queued| queued.tab_id != req.tab_id);
         self.pending_index_queue.push_back(req);
 
         while self.pending_index_queue.len() > Self::INDEX_MAX_QUEUE {
@@ -2033,7 +2155,9 @@ Search hints:
     }
 
     fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
-        self.pending_index_queue.iter().any(|req| req.tab_id == tab_id)
+        self.pending_index_queue
+            .iter()
+            .any(|req| req.tab_id == tab_id)
     }
 
     fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
@@ -2046,9 +2170,11 @@ Search hints:
 
     fn pop_next_index_request(&mut self) -> Option<IndexRequest> {
         let active_tab_id = self.current_tab_id()?;
-        if let Some(pos) = self.pending_index_queue.iter().position(|req| {
-            req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id)
-        }) {
+        if let Some(pos) = self
+            .pending_index_queue
+            .iter()
+            .position(|req| req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id))
+        {
             return self.pending_index_queue.remove(pos);
         }
         if let Some(pos) = self
@@ -2195,7 +2321,10 @@ Search hints:
                     if tab.pending_index_request_id != Some(request_id) {
                         cleanup_request_id = Some(request_id);
                     } else {
-                        let state = self.background_index_states.remove(&request_id).unwrap_or_default();
+                        let state = self
+                            .background_index_states
+                            .remove(&request_id)
+                            .unwrap_or_default();
                         tab.index.source = state.source.unwrap_or(source);
                         tab.index.entries.clear();
                         tab.all_entries = Arc::new(state.entries);
@@ -2230,10 +2359,14 @@ Search hints:
                         tab.search_rerun_pending = false;
                         tab.last_search_snapshot_len = tab.entries.len();
                         tab.last_incremental_results_refresh = Instant::now();
-                        if self.pending_filelist_after_index.as_ref().is_some_and(|pending| {
-                            pending.tab_id == tab.id
-                                && Self::path_key(&pending.root) == Self::path_key(&tab.root)
-                        }) {
+                        if self
+                            .pending_filelist_after_index
+                            .as_ref()
+                            .is_some_and(|pending| {
+                                pending.tab_id == tab.id
+                                    && Self::path_key(&pending.root) == Self::path_key(&tab.root)
+                            })
+                        {
                             deferred_filelist =
                                 Some((tab.id, tab.root.clone(), tab.all_entries.as_ref().clone()));
                             self.pending_filelist_after_index = None;
@@ -2345,7 +2478,8 @@ Search hints:
                         self.index_inflight_requests.remove(&request_id);
                     }
                     processed = processed.saturating_add(1);
-                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= FRAME_BUDGET {
+                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= FRAME_BUDGET
+                    {
                         break;
                     }
                     continue;
@@ -2400,10 +2534,14 @@ Search hints:
                     self.search_rerun_pending = false;
                     self.clear_notice();
                     let current_tab_id = self.current_tab_id().unwrap_or_default();
-                    if self.pending_filelist_after_index.as_ref().is_some_and(|pending| {
-                        pending.tab_id == current_tab_id
-                            && Self::path_key(&pending.root) == Self::path_key(&self.root)
-                    }) {
+                    if self
+                        .pending_filelist_after_index
+                        .as_ref()
+                        .is_some_and(|pending| {
+                            pending.tab_id == current_tab_id
+                                && Self::path_key(&pending.root) == Self::path_key(&self.root)
+                        })
+                    {
                         let root = self.root.clone();
                         let entries = self.filelist_entries_snapshot();
                         self.pending_filelist_after_index = None;
@@ -2655,7 +2793,8 @@ Search hints:
     fn cache_preview(&mut self, path: PathBuf, preview: String) {
         let new_bytes = preview.len();
         if let Some(old) = self.preview_cache.get(&path) {
-            self.preview_cache_total_bytes = self.preview_cache_total_bytes.saturating_sub(old.len());
+            self.preview_cache_total_bytes =
+                self.preview_cache_total_bytes.saturating_sub(old.len());
         }
         if !self.preview_cache.contains_key(&path) {
             self.preview_cache_order.push_back(path.clone());
@@ -3300,7 +3439,11 @@ Search hints:
     }
 
     fn cancel_pending_filelist_use_walker(&mut self) {
-        if self.pending_filelist_use_walker_confirmation.take().is_some() {
+        if self
+            .pending_filelist_use_walker_confirmation
+            .take()
+            .is_some()
+        {
             self.set_notice("Create File List canceled");
         }
     }
@@ -3855,37 +3998,36 @@ Search hints:
                     .rounding(egui::Rounding::same(4.0))
                     .inner_margin(egui::Margin::symmetric(6.0, 2.0))
                     .show(ui, |ui| {
-                    let title = self
-                        .tabs
-                        .get(i)
-                        .map(|tab| self.tab_title(tab, i))
-                        .unwrap_or_else(|| format!("Tab {}", i + 1));
-                    let title_response = ui
-                        .add(
-                            egui::Button::new(
-                                egui::RichText::new(title).strong().color(if is_active {
+                        let title = self
+                            .tabs
+                            .get(i)
+                            .map(|tab| self.tab_title(tab, i))
+                            .unwrap_or_else(|| format!("Tab {}", i + 1));
+                        let title_response = ui.add(
+                            egui::Button::new(egui::RichText::new(title).strong().color(
+                                if is_active {
                                     ui.visuals().strong_text_color()
                                 } else {
                                     ui.visuals().text_color()
-                                }),
-                            )
+                                },
+                            ))
                             .frame(false),
                         );
-                    if title_response.clicked_by(egui::PointerButton::Middle) {
-                        close_tab = Some(i);
-                    } else if title_response.clicked() {
-                        switch_to = Some(i);
-                    }
-                    if ui
-                        .add_enabled(
-                            self.tabs.len() > 1,
-                            egui::Button::new("×").small().frame(false),
-                        )
-                        .on_hover_text("Close tab")
-                        .clicked()
-                    {
-                        close_tab = Some(i);
-                    }
+                        if title_response.clicked_by(egui::PointerButton::Middle) {
+                            close_tab = Some(i);
+                        } else if title_response.clicked() {
+                            switch_to = Some(i);
+                        }
+                        if ui
+                            .add_enabled(
+                                self.tabs.len() > 1,
+                                egui::Button::new("×").small().frame(false),
+                            )
+                            .on_hover_text("Close tab")
+                            .clicked()
+                        {
+                            close_tab = Some(i);
+                        }
                     });
             }
             if ui.button("+").on_hover_text("New tab (Ctrl+T)").clicked() {
@@ -4015,7 +4157,6 @@ Search hints:
         if ctx.input(|i| i.modifiers.alt && i.key_pressed(egui::Key::V)) {
             self.move_page(-1);
         }
-
     }
 
     fn run_deferred_shortcuts(&mut self, ctx: &egui::Context) {
@@ -4193,6 +4334,11 @@ Search hints:
 
 impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if process_shutdown_requested() {
+            self.set_notice("Shutdown requested by signal");
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return;
+        }
         self.poll_index_response();
         self.poll_search_response();
         self.poll_preview_response();
@@ -4321,7 +4467,10 @@ impl eframe::App for FlistWalkerApp {
                         forced_changed = true;
                     }
                     ui.add_enabled(false, egui::Checkbox::new(&mut self.include_files, "Files"));
-                    ui.add_enabled(false, egui::Checkbox::new(&mut self.include_dirs, "Folders"));
+                    ui.add_enabled(
+                        false,
+                        egui::Checkbox::new(&mut self.include_dirs, "Folders"),
+                    );
                     (forced_changed, forced_changed)
                 } else {
                     (
@@ -4476,7 +4625,9 @@ impl eframe::App for FlistWalkerApp {
                         ui.label(
                             "Use FileList が有効です。Create File List には Walker実行が必要です。",
                         );
-                        ui.label("FileListインデックスからは生成しません。新規タブで実行しますか？");
+                        ui.label(
+                            "FileListインデックスからは生成しません。新規タブで実行しますか？",
+                        );
                         ui.horizontal(|ui| {
                             if ui.button("Continue").clicked() {
                                 confirm_walker = true;
@@ -4503,8 +4654,30 @@ impl eframe::App for FlistWalkerApp {
 
 impl Drop for FlistWalkerApp {
     fn drop(&mut self) {
+        if let Some(runtime) = &self.worker_runtime {
+            runtime.request_shutdown();
+        }
+        let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
+        let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
+        let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
+        let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
+        let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
+        let old_search_tx = std::mem::replace(&mut self.search_tx, dummy_search_tx);
+        let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
+        let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
+        let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
+        let old_index_tx = std::mem::replace(&mut self.index_tx, dummy_index_tx);
+        drop(old_search_tx);
+        drop(old_preview_tx);
+        drop(old_kind_tx);
+        drop(old_filelist_tx);
+        drop(old_index_tx);
+
         self.apply_stable_window_geometry(true);
         self.maybe_save_ui_state(true);
+        if let Some(runtime) = self.worker_runtime.take() {
+            runtime.join_all();
+        }
     }
 }
 
@@ -4956,7 +5129,9 @@ mod tests {
         let active_tab_id = app.current_tab_id().expect("active tab id");
         assert_eq!(pending.tab_id, active_tab_id);
         assert_eq!(pending.root, root);
-        let req = index_rx.try_recv().expect("walker index request should be sent");
+        let req = index_rx
+            .try_recv()
+            .expect("walker index request should be sent");
         assert_eq!(req.tab_id, active_tab_id);
         assert_eq!(req.root, root);
         assert!(!req.use_filelist);
@@ -6701,8 +6876,8 @@ mod tests {
         assert!(app.preempt_background_for_active_request());
 
         let latest = app.latest_index_request_ids.lock().expect("lock latest");
-        let preempted = latest.get(&bg_tab_a).copied() == Some(0)
-            || latest.get(&bg_tab_b).copied() == Some(0);
+        let preempted =
+            latest.get(&bg_tab_a).copied() == Some(0) || latest.get(&bg_tab_b).copied() == Some(0);
         assert!(preempted);
         let _ = fs::remove_dir_all(&root);
     }
@@ -6718,7 +6893,8 @@ mod tests {
         let current_tab_id = app.current_tab_id().expect("tab id");
         app.pending_index_request_id = Some(778);
         app.index_inflight_requests.insert(stale_request_id);
-        app.index_request_tabs.insert(stale_request_id, current_tab_id);
+        app.index_request_tabs
+            .insert(stale_request_id, current_tab_id);
 
         tx.send(IndexResponse::Finished {
             request_id: stale_request_id,
@@ -6788,7 +6964,10 @@ mod tests {
     #[test]
     fn tab_root_label_uses_leaf_directory_name() {
         let root = PathBuf::from("/tmp/flistwalker-tab-root-label");
-        assert_eq!(FlistWalkerApp::tab_root_label(&root), "flistwalker-tab-root-label");
+        assert_eq!(
+            FlistWalkerApp::tab_root_label(&root),
+            "flistwalker-tab-root-label"
+        );
         assert_eq!(FlistWalkerApp::tab_root_label(Path::new("/")), "/");
     }
 
@@ -7088,5 +7267,15 @@ mod tests {
             .contains(r"Copied path: C:\Users\tester\file.txt"));
         assert!(!app.notice.contains(r"\\?\"));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn process_shutdown_flag_can_be_set_and_cleared() {
+        clear_process_shutdown_request();
+        assert!(!process_shutdown_requested());
+        request_process_shutdown();
+        assert!(process_shutdown_requested());
+        clear_process_shutdown_request();
+        assert!(!process_shutdown_requested());
     }
 }

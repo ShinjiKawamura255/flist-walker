@@ -69,6 +69,8 @@
 - 失敗は `anyhow::Result` に集約し、CLI/GUI で表示責務を分離する。
 - 外部コマンドは引数配列で起動し、シェル解釈を避ける。
 - GUI 検索はワーカーからエラー文字列を受け取り、notice に反映する。
+- GUI ワーカーは shutdown フラグを共有し、`Drop` 時に停止要求 + channel 切断 + `join` で終了待機する。
+- OS シグナル（例: `Ctrl+C`）受信時は shutdown 要求を立て、GUI 側で window close を発行して終了処理へ収束させる。
 - FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - FileList 作成は OS 一時領域に出力してから最終配置へ移動する。クロスデバイスで `rename` 不可の場合は `copy` フォールバックし、最終配置のみを更新する。
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。

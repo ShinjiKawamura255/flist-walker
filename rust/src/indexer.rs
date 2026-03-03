@@ -129,7 +129,11 @@ where
     Ok(())
 }
 
-fn resolve_filelist_entry_candidates(line: &str, filelist_base: &Path, root: &Path) -> Vec<PathBuf> {
+fn resolve_filelist_entry_candidates(
+    line: &str,
+    filelist_base: &Path,
+    root: &Path,
+) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     let mut seen = HashSet::new();
     let mut raws = vec![strip_wrapping_quotes(line).to_string()];
@@ -526,15 +530,22 @@ mod tests {
         fs::write(&filelist, text).expect("write synthetic filelist");
 
         let strict_start = Instant::now();
-        let strict_count = parse_filelist_stream_strict_exists_both_types(&filelist, &root)
-            .expect("strict parse");
+        let strict_count =
+            parse_filelist_stream_strict_exists_both_types(&filelist, &root).expect("strict parse");
         let strict_elapsed = strict_start.elapsed();
 
         let fast_start = Instant::now();
         let mut fast_count = 0usize;
-        parse_filelist_stream(&filelist, &root, true, true, || false, |_path, _is_dir| {
-            fast_count = fast_count.saturating_add(1);
-        })
+        parse_filelist_stream(
+            &filelist,
+            &root,
+            true,
+            true,
+            || false,
+            |_path, _is_dir| {
+                fast_count = fast_count.saturating_add(1);
+            },
+        )
         .expect("fast parse");
         let fast_elapsed = fast_start.elapsed();
 
@@ -779,9 +790,16 @@ mod tests {
         fs::write(&filelist, "a.txt\n").expect("write filelist");
 
         let mut kinds = Vec::new();
-        parse_filelist_stream(&filelist, &root, true, true, || false, |_path, is_dir| {
-            kinds.push(is_dir);
-        })
+        parse_filelist_stream(
+            &filelist,
+            &root,
+            true,
+            true,
+            || false,
+            |_path, is_dir| {
+                kinds.push(is_dir);
+            },
+        )
         .expect("parse filelist");
 
         assert_eq!(kinds, vec![None]);
@@ -798,9 +816,16 @@ mod tests {
         fs::write(&filelist, "a.txt\nd\n").expect("write filelist");
 
         let mut entries = Vec::new();
-        parse_filelist_stream(&filelist, &root, false, true, || false, |path, is_dir| {
-            entries.push((path, is_dir));
-        })
+        parse_filelist_stream(
+            &filelist,
+            &root,
+            false,
+            true,
+            || false,
+            |path, is_dir| {
+                entries.push((path, is_dir));
+            },
+        )
         .expect("parse filelist");
 
         assert_eq!(entries.len(), 1);
