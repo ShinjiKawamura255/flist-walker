@@ -1329,6 +1329,7 @@ Search hints:
         if self.active_tab >= self.tabs.len() {
             self.active_tab = self.tabs.len().saturating_sub(1);
         }
+        self.memory_usage_bytes = None;
         if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
             self.apply_tab_state(&tab);
         }
@@ -1781,6 +1782,7 @@ Search hints:
         self.preview.clear();
         self.preview_in_progress = false;
         self.pending_preview_request_id = None;
+        self.sync_active_tab_state();
         self.cancel_stale_pending_filelist_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         self.request_index_refresh();
@@ -4175,6 +4177,12 @@ impl eframe::App for FlistWalkerApp {
         self.poll_kind_response();
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
+        let memory_elapsed = self.last_memory_sample.elapsed();
+        if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
+            self.refresh_status_line();
+        } else {
+            ctx.request_repaint_after(Self::MEMORY_SAMPLE_INTERVAL - memory_elapsed);
+        }
         if self.search_in_progress
             || self.index_in_progress
             || self.preview_in_progress
@@ -4468,7 +4476,7 @@ mod tests {
     use super::*;
     use std::fs;
     use std::sync::mpsc;
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     fn test_root(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
@@ -5009,10 +5017,34 @@ mod tests {
         assert!(app.pinned_paths.is_empty());
         assert_eq!(app.current_row, None);
         assert!(app.preview.is_empty());
+        assert_eq!(app.tabs[app.active_tab].root, root_new);
         let req = rx.try_recv().expect("index request should be sent");
-        assert_eq!(req.root, root_new);
+        assert_eq!(req.root, app.root);
         let _ = fs::remove_dir_all(&root_old);
         let _ = fs::remove_dir_all(&root_new);
+    }
+
+    #[test]
+    fn close_tab_invalidates_memory_cache_for_immediate_resample() {
+        let root = test_root("close-tab-memory-resample");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.create_new_tab();
+        assert_eq!(app.tabs.len(), 2);
+
+        let sentinel = u64::MAX;
+        app.memory_usage_bytes = Some(sentinel);
+        let stale = Instant::now()
+            .checked_sub(Duration::from_secs(5))
+            .unwrap_or_else(Instant::now);
+        app.last_memory_sample = stale;
+
+        app.close_tab_index(1);
+
+        assert_eq!(app.tabs.len(), 1);
+        assert_ne!(app.memory_usage_bytes, Some(sentinel));
+        assert!(app.last_memory_sample > stale);
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
