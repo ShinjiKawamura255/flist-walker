@@ -1978,6 +1978,11 @@ Search hints:
     ) {
         let mut reindex = use_filelist_changed;
         reindex |= files_changed || dirs_changed;
+        if self.use_filelist && (!self.include_files || !self.include_dirs) {
+            self.include_files = true;
+            self.include_dirs = true;
+            reindex = true;
+        }
         reindex |= self.ensure_entry_filters();
         if reindex {
             self.request_index_refresh();
@@ -4308,8 +4313,22 @@ impl eframe::App for FlistWalkerApp {
                 if ui.checkbox(&mut self.use_regex, "Regex").changed() {
                     self.update_results();
                 }
-                let files_changed = ui.checkbox(&mut self.include_files, "Files").changed();
-                let dirs_changed = ui.checkbox(&mut self.include_dirs, "Folders").changed();
+                let (files_changed, dirs_changed) = if self.use_filelist {
+                    let mut forced_changed = false;
+                    if !self.include_files || !self.include_dirs {
+                        self.include_files = true;
+                        self.include_dirs = true;
+                        forced_changed = true;
+                    }
+                    ui.add_enabled(false, egui::Checkbox::new(&mut self.include_files, "Files"));
+                    ui.add_enabled(false, egui::Checkbox::new(&mut self.include_dirs, "Folders"));
+                    (forced_changed, forced_changed)
+                } else {
+                    (
+                        ui.checkbox(&mut self.include_files, "Files").changed(),
+                        ui.checkbox(&mut self.include_dirs, "Folders").changed(),
+                    )
+                };
                 if ui.checkbox(&mut self.show_preview, "Preview").changed() {
                     if !self.show_preview {
                         self.preview_cache.clear();
@@ -5799,6 +5818,7 @@ mod tests {
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
         let (tx, rx) = mpsc::channel::<IndexRequest>();
         app.index_tx = tx;
+        app.use_filelist = false;
         app.include_files = false;
         app.include_dirs = true;
 
@@ -5806,6 +5826,28 @@ mod tests {
 
         let req = rx.try_recv().expect("index request should be sent");
         assert!(!req.include_files);
+        assert!(req.include_dirs);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn use_filelist_forces_type_filters_to_both_enabled() {
+        let root = test_root("use-filelist-forces-type-filters");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        app.use_filelist = true;
+        app.include_files = false;
+        app.include_dirs = true;
+
+        app.maybe_reindex_from_filter_toggles(true, false, false);
+
+        let req = rx.try_recv().expect("index request should be sent");
+        assert!(app.include_files);
+        assert!(app.include_dirs);
+        assert!(req.use_filelist);
+        assert!(req.include_files);
         assert!(req.include_dirs);
         let _ = fs::remove_dir_all(&root);
     }
