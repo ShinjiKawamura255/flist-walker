@@ -943,6 +943,7 @@ pub struct FlistWalkerApp {
     filelist_in_progress: bool,
     pending_copy_shortcut: bool,
     scroll_to_current: bool,
+    preview_resize_in_progress: bool,
     focus_query_requested: bool,
     unfocus_query_requested: bool,
     saved_roots: Vec<PathBuf>,
@@ -1189,6 +1190,7 @@ Search hints:
             filelist_in_progress: false,
             pending_copy_shortcut: false,
             scroll_to_current: true,
+            preview_resize_in_progress: false,
             focus_query_requested: true,
             unfocus_query_requested: false,
             saved_roots: Self::load_saved_roots(),
@@ -3991,16 +3993,32 @@ Search hints:
                 self.preview_panel_width = new_width;
                 self.mark_ui_state_dirty();
             }
+            let splitter_x = response.response.rect.left();
+            let splitter_pressed = ui.input(|i| {
+                let Some(pos) = i.pointer.interact_pos() else {
+                    return false;
+                };
+                i.pointer.primary_down() && (pos.x - splitter_x).abs() <= 8.0
+            });
+            self.preview_resize_in_progress = response.response.dragged() || splitter_pressed;
             self.render_results_list(ui);
         } else {
+            self.preview_resize_in_progress = false;
             self.render_results_list(ui);
         }
         self.scroll_to_current = false;
     }
 
+    fn results_scroll_enabled(preview_resize_in_progress: bool) -> bool {
+        !preview_resize_in_progress
+    }
+
     fn render_results_list(&mut self, ui: &mut egui::Ui) {
         ui.heading("Results");
+        let scroll_enabled = Self::results_scroll_enabled(self.preview_resize_in_progress);
         egui::ScrollArea::both()
+            .enable_scrolling(scroll_enabled)
+            .drag_to_scroll(false)
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 let mut clicked_row: Option<usize> = None;
@@ -5052,6 +5070,16 @@ mod tests {
 
         assert!(app.prefer_relative_display());
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn results_scroll_is_disabled_during_preview_resize() {
+        assert!(!FlistWalkerApp::results_scroll_enabled(true));
+    }
+
+    #[test]
+    fn results_scroll_is_enabled_when_preview_resize_not_active() {
+        assert!(FlistWalkerApp::results_scroll_enabled(false));
     }
 
     #[test]
