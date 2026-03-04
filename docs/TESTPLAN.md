@@ -55,6 +55,7 @@
 | TC-027 | unit | 回帰: `Ctrl+I` は検索窓フォーカス有無を問わず PIN をトグルし current row を維持する | SP-010 |
 | TC-028 | unit | 回帰: 検索窓フォーカス中でも `Ctrl+J` / `Ctrl+M` が `Enter` 同等に実行/オープンを起動する | SP-010 |
 | TC-029 | unit | プロセス shutdown フラグが set/clear 可能で、シグナル経由の終了要求を保持できる | SP-010, SP-008 |
+| TC-030 | unit | 階層 FileList 展開は候補集合中の `FileList.txt` / `filelist.txt` 完全一致エントリのみを対象にし、子 FileList 解析中も supersede で中断できる | SP-001, SP-007 |
 
 ## Runner and commands
 - Runner: `cargo test`

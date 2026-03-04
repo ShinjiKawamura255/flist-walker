@@ -6,6 +6,8 @@
 - MUST: 両方ある場合は `FileList.txt` を優先する。
 - MUST: 上記2名が無い場合、`filelist.txt` と大文字小文字のみ異なるファイル名（例: `FILELIST.TXT`）をルート直下から検出対象に含める。
 - MUST: 空行と `#` コメント行を無視する。
+- MUST: 階層 FileList 展開は、読み込み済み候補内でファイル名が `FileList.txt` / `filelist.txt` に完全一致するエントリのみを対象とする。
+- MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
 - SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR）は遅延解決して初期読み込みを優先する。

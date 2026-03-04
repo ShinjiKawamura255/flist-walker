@@ -61,6 +61,8 @@
 - 検索は絞り込み後にスコア計算し、上位 `limit` を返す。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
+- 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
+- 階層 FileList 展開で子 FileList を解析する経路も `should_cancel` を伝播し、supersede 時に中断できるようにする。
 - include_files/include_dirs が両方有効な FileList 解析では、初期ロード時の `metadata` 依存を避けて候補パスの投入を優先し、FILE/DIR 種別は別ワーカーで遅延解決する。
 - regex モードは include term をクエリ単位で事前コンパイルし、候補ごとの再コンパイルを禁止する。
 - プレビューキャッシュは固定上限（FIFO）で運用し、長時間セッションでのメモリ増加を抑制する。
