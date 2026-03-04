@@ -1925,6 +1925,10 @@ Search hints:
         matches!(source, IndexSource::Walker | IndexSource::FileList(_))
     }
 
+    fn use_filelist_requires_locked_filters(&self) -> bool {
+        self.use_filelist && !matches!(self.index.source, IndexSource::Walker)
+    }
+
     fn is_entry_visible_for_flags(
         entry_kinds: &HashMap<PathBuf, bool>,
         path: &Path,
@@ -2099,7 +2103,8 @@ Search hints:
     ) {
         let mut reindex = use_filelist_changed;
         reindex |= files_changed || dirs_changed;
-        if self.use_filelist && (!self.include_files || !self.include_dirs) {
+        if self.use_filelist_requires_locked_filters() && (!self.include_files || !self.include_dirs)
+        {
             self.include_files = true;
             self.include_dirs = true;
             reindex = true;
@@ -3465,7 +3470,7 @@ Search hints:
             self.set_notice("Create File List is unavailable without an active tab");
             return;
         };
-        if self.use_filelist {
+        if self.use_filelist_requires_locked_filters() {
             self.pending_filelist_use_walker_confirmation =
                 Some(PendingFileListUseWalkerConfirmation {
                     source_tab_id: tab_id,
@@ -4459,7 +4464,7 @@ impl eframe::App for FlistWalkerApp {
                 if ui.checkbox(&mut self.use_regex, "Regex").changed() {
                     self.update_results();
                 }
-                let (files_changed, dirs_changed) = if self.use_filelist {
+                let (files_changed, dirs_changed) = if self.use_filelist_requires_locked_filters() {
                     let mut forced_changed = false;
                     if !self.include_files || !self.include_dirs {
                         self.include_files = true;
@@ -6024,6 +6029,50 @@ mod tests {
         assert!(req.use_filelist);
         assert!(req.include_files);
         assert!(req.include_dirs);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn use_filelist_with_walker_source_keeps_type_filters_editable() {
+        let root = test_root("use-filelist-walker-keeps-type-filters");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        app.use_filelist = true;
+        app.index.source = IndexSource::Walker;
+        app.include_files = false;
+        app.include_dirs = true;
+
+        app.maybe_reindex_from_filter_toggles(true, false, false);
+
+        let req = rx.try_recv().expect("index request should be sent");
+        assert!(req.use_filelist);
+        assert!(!req.include_files);
+        assert!(req.include_dirs);
+        assert!(!app.include_files);
+        assert!(app.include_dirs);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmation() {
+        let root = test_root("filelist-use-filelist-walker-source-no-confirm");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+        app.filelist_tx = filelist_tx;
+        app.use_filelist = true;
+        app.index.source = IndexSource::Walker;
+        app.index_in_progress = false;
+
+        app.create_filelist();
+
+        assert!(app.pending_filelist_use_walker_confirmation.is_none());
+        let req = filelist_rx
+            .try_recv()
+            .expect("filelist request should be sent without confirmation");
+        assert_eq!(req.root, root);
         let _ = fs::remove_dir_all(&root);
     }
 
