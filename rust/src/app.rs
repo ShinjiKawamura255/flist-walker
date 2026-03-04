@@ -2041,6 +2041,21 @@ Search hints:
         }
     }
 
+    fn clear_root_scoped_entry_state(&mut self) {
+        self.index.entries.clear();
+        self.index.entries.shrink_to_fit();
+        self.index.source = IndexSource::None;
+        self.all_entries = Arc::new(Vec::new());
+        self.entries = Arc::new(Vec::new());
+        self.entry_kinds.clear();
+        self.entry_kinds.shrink_to_fit();
+        self.results.clear();
+        self.results.shrink_to_fit();
+        self.incremental_filtered_entries.clear();
+        self.incremental_filtered_entries.shrink_to_fit();
+        self.last_search_snapshot_len = 0;
+    }
+
     fn apply_root_change(&mut self, new_root: PathBuf) {
         let normalized = Self::normalize_windows_path(new_root);
         if Self::path_key(&normalized) == Self::path_key(&self.root) {
@@ -2054,6 +2069,7 @@ Search hints:
         self.preview.clear();
         self.preview_in_progress = false;
         self.pending_preview_request_id = None;
+        self.clear_root_scoped_entry_state();
         self.sync_active_tab_state();
         self.cancel_stale_pending_filelist_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
@@ -5645,7 +5661,12 @@ mod tests {
         assert!(app.pinned_paths.is_empty());
         assert_eq!(app.current_row, None);
         assert!(app.preview.is_empty());
+        assert!(app.all_entries.is_empty());
+        assert!(app.entries.is_empty());
+        assert!(app.results.is_empty());
         assert_eq!(app.tabs[app.active_tab].root, root_new);
+        assert!(app.tabs[app.active_tab].all_entries.is_empty());
+        assert!(app.tabs[app.active_tab].entries.is_empty());
         let req = rx.try_recv().expect("index request should be sent");
         assert_eq!(req.root, app.root);
         let _ = fs::remove_dir_all(&root_old);
