@@ -318,6 +318,7 @@ struct PreviewResponse {
 struct ActionRequest {
     request_id: u64,
     paths: Vec<PathBuf>,
+    open_parent_for_files: bool,
 }
 
 struct ActionResponse {
@@ -570,7 +571,12 @@ fn spawn_action_worker(
 
             let mut failure: Option<String> = None;
             for path in &req.paths {
-                if let Err(err) = execute_or_open(path) {
+                let target = if req.open_parent_for_files {
+                    action_target_path_for_open_in_folder(path)
+                } else {
+                    path.clone()
+                };
+                if let Err(err) = execute_or_open(&target) {
                     failure = Some(format!("Action failed: {}", err));
                     break;
                 }
@@ -614,6 +620,16 @@ fn flush_batch(
             entries,
         })
         .is_ok()
+}
+
+fn action_target_path_for_open_in_folder(path: &Path) -> PathBuf {
+    if path.is_dir() {
+        return path.to_path_buf();
+    }
+    path.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| path.to_path_buf())
 }
 
 fn stream_filelist_index(
@@ -3504,6 +3520,14 @@ Search hints:
     }
 
     fn execute_selected(&mut self) {
+        self.execute_selected_with_options(false);
+    }
+
+    fn execute_selected_open_folder(&mut self) {
+        self.execute_selected_with_options(true);
+    }
+
+    fn execute_selected_with_options(&mut self, open_parent_for_files: bool) {
         let paths = self.selected_paths();
         if paths.is_empty() {
             return;
@@ -3518,12 +3542,30 @@ Search hints:
         }
 
         if paths.len() == 1 {
-            self.set_notice(format!("Action: {}", paths[0].display()));
+            if open_parent_for_files {
+                self.set_notice(format!(
+                    "Action: open containing folder for {}",
+                    paths[0].display()
+                ));
+            } else {
+                self.set_notice(format!("Action: {}", paths[0].display()));
+            }
         } else {
-            self.set_notice(format!("Action: launched {} items", paths.len()));
+            if open_parent_for_files {
+                self.set_notice(format!(
+                    "Action: launched {} containing folder items",
+                    paths.len()
+                ));
+            } else {
+                self.set_notice(format!("Action: launched {} items", paths.len()));
+            }
         }
 
-        let req = ActionRequest { request_id, paths };
+        let req = ActionRequest {
+            request_id,
+            paths,
+            open_parent_for_files,
+        };
         if self.action_tx.send(req).is_err() {
             self.pending_action_request_id = None;
             self.action_in_progress = false;
@@ -4379,6 +4421,9 @@ Search hints:
         {
             self.execute_selected();
         }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter)) {
+            self.execute_selected_open_folder();
+        }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
             self.execute_selected();
         }
@@ -5063,9 +5108,26 @@ mod tests {
             .try_recv()
             .expect("action request should be enqueued");
         assert_eq!(req.paths, vec![missing]);
+        assert!(!req.open_parent_for_files);
         assert!(app.pending_action_request_id.is_some());
         assert!(app.action_in_progress);
         assert!(!app.notice.starts_with("Action failed:"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn action_target_path_for_open_in_folder_maps_file_and_directory() {
+        let root = test_root("open-folder-target");
+        let dir = root.join("dir");
+        fs::create_dir_all(&dir).expect("create dir");
+        let file = dir.join("main.rs");
+        fs::write(&file, "fn main() {}").expect("write file");
+
+        let from_file = action_target_path_for_open_in_folder(&file);
+        let from_dir = action_target_path_for_open_in_folder(&dir);
+
+        assert_eq!(from_file, dir);
+        assert_eq!(from_dir, root.join("dir"));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -6917,6 +6979,61 @@ mod tests {
             }],
         );
         assert!(is_action_notice(&app.notice));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
+        let root = test_root("regression-shift-enter-query-focus");
+        let folder = root.join("src");
+        fs::create_dir_all(&folder).expect("create dir");
+        let selected_file = folder.join("picked.txt");
+        fs::write(&selected_file, "x").expect("write file");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+        let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+        let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+        app.action_tx = action_tx_req;
+        app.action_rx = action_rx_res;
+        app.results = vec![(selected_file.clone(), 0.0)];
+        app.current_row = Some(0);
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::Enter,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        let req1 = action_rx_req
+            .try_recv()
+            .expect("action request should be enqueued");
+        assert_eq!(req1.paths, vec![selected_file.clone()]);
+        assert!(req1.open_parent_for_files);
+
+        run_shortcuts_frame(
+            &mut app,
+            false,
+            vec![egui::Event::Key {
+                key: egui::Key::Enter,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        let req2 = action_rx_req
+            .try_recv()
+            .expect("action request should be enqueued");
+        assert_eq!(req2.paths, vec![selected_file]);
+        assert!(req2.open_parent_for_files);
         let _ = fs::remove_dir_all(&root);
     }
 
