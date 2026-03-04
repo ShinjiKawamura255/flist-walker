@@ -1,7 +1,7 @@
 use crate::actions::execute_or_open;
 use crate::indexer::{
-    find_filelist_in_first_level, parse_filelist_stream, write_filelist, IndexBuildResult,
-    IndexSource,
+    apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
+    write_filelist, IndexBuildResult, IndexSource,
 };
 use crate::search::try_search_entries_with_scope;
 use crate::ui_model::{
@@ -253,6 +253,10 @@ enum IndexResponse {
         source: IndexSource,
     },
     Batch {
+        request_id: u64,
+        entries: Vec<IndexEntry>,
+    },
+    ReplaceAll {
         request_id: u64,
         entries: Vec<IndexEntry>,
     },
@@ -634,7 +638,8 @@ fn stream_filelist_index(
     let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
     let mut stream_err: Option<String> = None;
-    let parse = parse_filelist_stream(
+    let mut root_entries = Vec::new();
+    parse_filelist_stream(
         &filelist,
         root,
         req.include_files,
@@ -653,6 +658,7 @@ fn stream_filelist_index(
             if stream_err.is_some() {
                 return;
             }
+            root_entries.push(path.clone());
             buffer.push(IndexEntry {
                 path,
                 is_dir: is_dir.unwrap_or(false),
@@ -666,16 +672,54 @@ fn stream_filelist_index(
                 last_flush = Instant::now();
             }
         },
-    );
+    )
+    .map_err(|err| err.to_string())?;
     if let Some(err) = stream_err {
         return Err(err);
-    }
-    if let Err(err) = parse {
-        return Err(err.to_string());
     }
 
     if !flush_batch(tx_res, req.request_id, &mut buffer) {
         return Err("index receiver closed".to_string());
+    }
+
+    let mut final_entries = root_entries;
+    let replaced = apply_filelist_hierarchy_overrides(
+        &filelist,
+        root,
+        &mut final_entries,
+        req.include_files,
+        req.include_dirs,
+        || {
+            if shutdown.load(Ordering::Relaxed) {
+                return true;
+            }
+            latest_request_ids
+                .lock()
+                .ok()
+                .and_then(|m| m.get(&req.tab_id).copied())
+                != Some(req.request_id)
+        },
+    )
+    .map_err(|err| err.to_string())?;
+
+    if replaced {
+        let entries = final_entries
+            .into_iter()
+            .map(|path| IndexEntry {
+                path,
+                is_dir: false,
+                kind_known: false,
+            })
+            .collect::<Vec<_>>();
+        if tx_res
+            .send(IndexResponse::ReplaceAll {
+                request_id: req.request_id,
+                entries,
+            })
+            .is_err()
+        {
+            return Err("index receiver closed".to_string());
+        }
     }
     Ok(source)
 }
@@ -2416,6 +2460,23 @@ Search hints:
                         state.entries.push(entry.path);
                     }
                 }
+                IndexResponse::ReplaceAll {
+                    request_id,
+                    entries,
+                } => {
+                    if tab.pending_index_request_id != Some(request_id) {
+                        return;
+                    }
+                    let state = self.background_index_states.entry(request_id).or_default();
+                    state.entries.clear();
+                    state.entry_kinds.clear();
+                    for entry in entries {
+                        if entry.kind_known {
+                            state.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+                        }
+                        state.entries.push(entry.path);
+                    }
+                }
                 IndexResponse::Finished { request_id, source } => {
                     if tab.pending_index_request_id != Some(request_id) {
                         cleanup_request_id = Some(request_id);
@@ -2560,6 +2621,7 @@ Search hints:
             let request_id = match &msg {
                 IndexResponse::Started { request_id, .. }
                 | IndexResponse::Batch { request_id, .. }
+                | IndexResponse::ReplaceAll { request_id, .. }
                 | IndexResponse::Finished { request_id, .. }
                 | IndexResponse::Failed { request_id, .. }
                 | IndexResponse::Canceled { request_id }
@@ -2607,6 +2669,21 @@ Search hints:
                     if Some(request_id) != self.pending_index_request_id {
                         continue;
                     }
+                    self.queue_index_batch(request_id, entries);
+                    has_index_progress = true;
+                }
+                IndexResponse::ReplaceAll {
+                    request_id,
+                    entries,
+                } => {
+                    if Some(request_id) != self.pending_index_request_id {
+                        continue;
+                    }
+                    self.pending_index_entries.clear();
+                    self.pending_index_entries_request_id = None;
+                    self.index.entries.clear();
+                    self.incremental_filtered_entries.clear();
+                    self.entry_kinds.clear();
                     self.queue_index_batch(request_id, entries);
                     has_index_progress = true;
                 }

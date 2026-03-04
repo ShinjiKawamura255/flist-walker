@@ -68,6 +68,61 @@ pub fn parse_filelist(
     Ok(out)
 }
 
+pub fn build_entries_from_filelist_hierarchy<C>(
+    filelist_path: &Path,
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: C,
+) -> Result<Vec<PathBuf>>
+where
+    C: Fn() -> bool,
+{
+    let root_modified = filelist_modified_time(filelist_path);
+    let mut entries = Vec::new();
+    parse_filelist_stream(
+        filelist_path,
+        root,
+        include_files,
+        include_dirs,
+        &should_cancel,
+        |path, _is_dir| entries.push(path),
+    )?;
+    apply_nested_filelist_overrides(
+        root,
+        root_modified,
+        root,
+        &mut entries,
+        include_files,
+        include_dirs,
+        &should_cancel,
+    )?;
+    Ok(entries)
+}
+
+pub fn apply_filelist_hierarchy_overrides<C>(
+    filelist_path: &Path,
+    root: &Path,
+    entries: &mut Vec<PathBuf>,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: C,
+) -> Result<bool>
+where
+    C: Fn() -> bool,
+{
+    let root_modified = filelist_modified_time(filelist_path);
+    apply_nested_filelist_overrides(
+        root,
+        root_modified,
+        root,
+        entries,
+        include_files,
+        include_dirs,
+        &should_cancel,
+    )
+}
+
 pub fn parse_filelist_stream<F, C>(
     filelist_path: &Path,
     root: &Path,
@@ -275,7 +330,13 @@ pub fn build_index_with_metadata(
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     if use_filelist {
         if let Some(filelist) = find_filelist_in_first_level(&root) {
-            let entries = parse_filelist(&filelist, &root, include_files, include_dirs)?;
+            let entries = build_entries_from_filelist_hierarchy(
+                &filelist,
+                &root,
+                include_files,
+                include_dirs,
+                || false,
+            )?;
             return Ok(IndexBuildResult {
                 entries,
                 source: IndexSource::FileList(filelist),
@@ -366,6 +427,103 @@ fn normalize_relative_lexically(path: &Path) -> PathBuf {
     out
 }
 
+fn apply_nested_filelist_overrides<C>(
+    current_dir: &Path,
+    active_modified: Option<SystemTime>,
+    root: &Path,
+    entries: &mut Vec<PathBuf>,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: &C,
+) -> Result<bool>
+where
+    C: Fn() -> bool,
+{
+    let mut changed = false;
+    if should_cancel() {
+        anyhow::bail!("superseded");
+    }
+    let read_dir = match fs::read_dir(current_dir) {
+        Ok(read_dir) => read_dir,
+        Err(_) => return Ok(false),
+    };
+
+    for entry_result in read_dir {
+        if should_cancel() {
+            anyhow::bail!("superseded");
+        }
+        let Ok(entry) = entry_result else {
+            continue;
+        };
+        let child = entry.path();
+        if !child.is_dir() {
+            continue;
+        }
+
+        let mut next_active_modified = active_modified;
+        if let Some(child_filelist) = find_filelist(&child) {
+            let child_modified = filelist_modified_time(&child_filelist);
+            if is_filelist_newer(child_modified, active_modified) {
+                let child_entries =
+                    parse_filelist(&child_filelist, root, include_files, include_dirs)?;
+                if replace_entries_in_subtree(entries, &child, child_entries) {
+                    changed = true;
+                }
+                next_active_modified = child_modified;
+            }
+        }
+
+        if apply_nested_filelist_overrides(
+            &child,
+            next_active_modified,
+            root,
+            entries,
+            include_files,
+            include_dirs,
+            should_cancel,
+        )? {
+            changed = true;
+        }
+    }
+    Ok(changed)
+}
+
+fn replace_entries_in_subtree(
+    entries: &mut Vec<PathBuf>,
+    subtree_root: &Path,
+    replacements: Vec<PathBuf>,
+) -> bool {
+    let before_len = entries.len();
+    entries.retain(|path| !is_path_in_subtree(path, subtree_root));
+    let mut existing: HashSet<PathBuf> = entries.iter().cloned().collect();
+    let mut inserted = 0usize;
+    for replacement in replacements {
+        if existing.insert(replacement.clone()) {
+            entries.push(replacement);
+            inserted = inserted.saturating_add(1);
+        }
+    }
+    before_len != entries.len() || inserted > 0
+}
+
+fn is_path_in_subtree(path: &Path, subtree_root: &Path) -> bool {
+    path == subtree_root || path.starts_with(subtree_root)
+}
+
+fn filelist_modified_time(path: &Path) -> Option<SystemTime> {
+    fs::metadata(path)
+        .ok()
+        .and_then(|meta| meta.modified().ok())
+}
+
+fn is_filelist_newer(candidate: Option<SystemTime>, baseline: Option<SystemTime>) -> bool {
+    match (candidate, baseline) {
+        (Some(lhs), Some(rhs)) => lhs > rhs,
+        (Some(_), None) => true,
+        _ => false,
+    }
+}
+
 fn build_temp_filelist_path(filename: &str) -> PathBuf {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -410,7 +568,7 @@ pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{Instant, SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     fn test_root(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
@@ -418,6 +576,10 @@ mod tests {
             .expect("clock")
             .as_nanos();
         std::env::temp_dir().join(format!("fff-rs-{name}-{nonce}"))
+    }
+
+    fn sleep_for_timestamp_tick() {
+        std::thread::sleep(Duration::from_millis(1100));
     }
 
     #[test]
@@ -857,17 +1019,89 @@ mod tests {
     }
 
     #[test]
-    fn build_index_ignores_nested_filelist_and_uses_walker() {
-        let root = test_root("nested-filelist-ignored");
+    fn build_index_overrides_subtree_with_newer_nested_filelist() {
+        let root = test_root("nested-filelist-newer");
         let child = root.join("child");
         fs::create_dir_all(&child).expect("create child");
-        let nested = child.join("nested.txt");
-        fs::write(&nested, "x").expect("write nested");
-        fs::write(child.join("filelist.txt"), "nested.txt\n").expect("write filelist");
+        let keep = root.join("keep.txt");
+        let child_old = child.join("old.txt");
+        let child_new = child.join("new.txt");
+        fs::write(&keep, "x").expect("write keep");
+        fs::write(&child_old, "x").expect("write old");
+        fs::write(&child_new, "x").expect("write new");
+        fs::write(
+            root.join("FileList.txt"),
+            "keep.txt\nchild\nchild/old.txt\n",
+        )
+        .expect("write root filelist");
+        sleep_for_timestamp_tick();
+        fs::write(child.join("filelist.txt"), "new.txt\n").expect("write child filelist");
+
+        let out = build_index_with_metadata(&root, true, true, true).expect("build index");
+        assert_eq!(out.source, IndexSource::FileList(root.join("FileList.txt")));
+        assert!(out.entries.contains(&keep));
+        assert!(out.entries.contains(&child_new));
+        assert!(!out.entries.contains(&child_old));
+        assert!(!out.entries.contains(&child));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_index_ignores_older_nested_filelist() {
+        let root = test_root("nested-filelist-older");
+        let child = root.join("child");
+        fs::create_dir_all(&child).expect("create child");
+        let child_old = child.join("old.txt");
+        let child_new = child.join("new.txt");
+        fs::write(&child_old, "x").expect("write old");
+        fs::write(&child_new, "x").expect("write new");
+        fs::write(child.join("filelist.txt"), "new.txt\n").expect("write child filelist");
+        sleep_for_timestamp_tick();
+        fs::write(root.join("FileList.txt"), "child/old.txt\n").expect("write root filelist");
 
         let out = build_index_with_metadata(&root, true, true, false).expect("build index");
-        assert_eq!(out.source, IndexSource::Walker);
-        assert!(out.entries.contains(&nested));
+        assert_eq!(out.source, IndexSource::FileList(root.join("FileList.txt")));
+        assert!(out.entries.contains(&child_old));
+        assert!(!out.entries.contains(&child_new));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_index_applies_newest_filelist_per_depth() {
+        let root = test_root("nested-filelist-depth");
+        let child = root.join("child");
+        let grand = child.join("grand");
+        fs::create_dir_all(&grand).expect("create dirs");
+        let top = root.join("top.txt");
+        let root_only = child.join("child_from_root.txt");
+        let child_only = child.join("child_from_child.txt");
+        let grand_child = grand.join("grand_from_child.txt");
+        let grand_only = grand.join("grand_from_grand.txt");
+        for file in [&top, &root_only, &child_only, &grand_child, &grand_only] {
+            fs::write(file, "x").expect("write file");
+        }
+
+        fs::write(
+            root.join("FileList.txt"),
+            "top.txt\nchild/child_from_root.txt\nchild/grand/grand_from_root.txt\n",
+        )
+        .expect("write root filelist");
+        sleep_for_timestamp_tick();
+        fs::write(
+            child.join("filelist.txt"),
+            "child_from_child.txt\ngrand/grand_from_child.txt\n",
+        )
+        .expect("write child filelist");
+        sleep_for_timestamp_tick();
+        fs::write(grand.join("filelist.txt"), "grand_from_grand.txt\n")
+            .expect("write grand filelist");
+
+        let out = build_index_with_metadata(&root, true, true, false).expect("build index");
+        assert!(out.entries.contains(&top));
+        assert!(out.entries.contains(&child_only));
+        assert!(out.entries.contains(&grand_only));
+        assert!(!out.entries.contains(&root_only));
+        assert!(!out.entries.contains(&grand_child));
         let _ = fs::remove_dir_all(&root);
     }
 }
