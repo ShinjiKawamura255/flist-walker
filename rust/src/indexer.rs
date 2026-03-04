@@ -536,6 +536,17 @@ fn build_temp_filelist_path(filename: &str) -> PathBuf {
         .join(format!("{filename}.{pid}.{now}.{seq}.tmp"))
 }
 
+fn annotate_write_target_error(out: &Path, err: std::io::Error) -> anyhow::Error {
+    if err.kind() == std::io::ErrorKind::PermissionDenied {
+        return anyhow::anyhow!(
+            "permission denied while writing {}. destination directory may be protected (for example C:\\ root/UAC), existing FileList.txt may be read-only, or another process may be locking the file. original error: {}",
+            out.display(),
+            err
+        );
+    }
+    anyhow::Error::new(err)
+}
+
 pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Result<PathBuf> {
     let out = root.join(filename);
     let text = build_filelist_text(entries, root);
@@ -548,17 +559,21 @@ pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Resul
     fs::write(&tmp, &text).with_context(|| format!("failed to write {}", tmp.display()))?;
 
     if out.exists() {
-        fs::remove_file(&out).with_context(|| format!("failed to replace {}", out.display()))?;
+        fs::remove_file(&out)
+            .map_err(|err| annotate_write_target_error(&out, err))
+            .with_context(|| format!("failed to replace {}", out.display()))?;
     }
     if let Err(rename_err) = fs::rename(&tmp, &out) {
-        fs::copy(&tmp, &out).with_context(|| {
-            format!(
-                "failed to place {} from temp file {} ({})",
-                out.display(),
-                tmp.display(),
-                rename_err
-            )
-        })?;
+        fs::copy(&tmp, &out)
+            .map_err(|err| annotate_write_target_error(&out, err))
+            .with_context(|| {
+                format!(
+                    "failed to place {} from temp file {} ({})",
+                    out.display(),
+                    tmp.display(),
+                    rename_err
+                )
+            })?;
         let _ = fs::remove_file(&tmp);
     }
 
@@ -844,6 +859,16 @@ mod tests {
         let content = fs::read_to_string(&out).expect("read filelist");
         assert!(content.contains("x/run.exe"));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn annotate_write_target_error_adds_permission_hint() {
+        let path = PathBuf::from(r"C:\FileList.txt");
+        let err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "os error 5");
+        let msg = annotate_write_target_error(&path, err).to_string();
+        assert!(msg.contains("permission denied while writing"));
+        assert!(msg.contains(r"C:\FileList.txt"));
+        assert!(msg.contains("UAC"));
     }
 
     #[test]
