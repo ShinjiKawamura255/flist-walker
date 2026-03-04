@@ -24,6 +24,30 @@
 ### Known issues
 - 
 
+## [0.8.0] - 2026-03-04
+### Added
+- 
+
+### Changed
+- 階層 FileList 展開の判定を「全ディレクトリ探索」から「読み込み済み候補内の `FileList.txt` / `filelist.txt` 完全一致検出」へ変更。
+- 階層 FileList 展開の処理キューを浅い階層優先の優先度キューへ変更し、多数のネスト FileList での探索効率を改善。
+
+### Fixed
+- 階層 FileList 展開中の子 FileList 解析でも supersede による中断が効くように修正。
+- FileList ストリーミング時の不要な全件保持を減らし、メモリ圧迫に起因する体感遅延を抑制。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.7.1] - 2026-03-04
 ### Added
 - 
@@ -255,7 +279,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.8.0
 [0.7.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.1
 [0.7.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.0
 [0.5.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.5.1
