@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use jwalk::WalkDir;
+use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
@@ -452,21 +453,26 @@ fn apply_nested_filelist_overrides<C>(
 where
     C: Fn() -> bool,
 {
+    type PendingFileList = (Reverse<usize>, u64, PathBuf);
+
     let mut changed = false;
     let mut active_filelist_modified: HashMap<PathBuf, Option<SystemTime>> = HashMap::new();
     active_filelist_modified.insert(root.to_path_buf(), root_modified);
 
     let mut discovered = HashSet::new();
-    let mut pending = Vec::new();
+    let mut pending: std::collections::BinaryHeap<PendingFileList> =
+        std::collections::BinaryHeap::new();
+    let mut pending_seq = 0u64;
     enqueue_nested_filelists_from_entries(
         entries,
         root_filelist,
         root,
         &mut discovered,
         &mut pending,
+        &mut pending_seq,
     );
 
-    while let Some(child_filelist) = pop_shallowest_filelist(&mut pending, root) {
+    while let Some((_depth, _seq, child_filelist)) = pending.pop() {
         if should_cancel() {
             anyhow::bail!("superseded");
         }
@@ -492,6 +498,7 @@ where
             root,
             &mut discovered,
             &mut pending,
+            &mut pending_seq,
         );
         if replace_entries_in_subtree(entries, &child_root, child_entries) {
             changed = true;
@@ -506,7 +513,8 @@ fn enqueue_nested_filelists_from_entries(
     root_filelist: &Path,
     root: &Path,
     discovered: &mut HashSet<PathBuf>,
-    pending: &mut Vec<PathBuf>,
+    pending: &mut std::collections::BinaryHeap<(Reverse<usize>, u64, PathBuf)>,
+    pending_seq: &mut u64,
 ) {
     for path in entries {
         if path == root_filelist {
@@ -525,26 +533,17 @@ fn enqueue_nested_filelists_from_entries(
             continue;
         }
         if discovered.insert(path.clone()) {
-            pending.push(path.clone());
+            let depth = path_depth_from_root(path, root).unwrap_or(usize::MAX);
+            pending.push((Reverse(depth), *pending_seq, path.clone()));
+            *pending_seq = pending_seq.saturating_add(1);
         }
     }
 }
 
-fn pop_shallowest_filelist(pending: &mut Vec<PathBuf>, root: &Path) -> Option<PathBuf> {
-    let mut best_idx: Option<usize> = None;
-    let mut best_depth = usize::MAX;
-    for (idx, path) in pending.iter().enumerate() {
-        let depth = path
-            .parent()
-            .and_then(|parent| parent.strip_prefix(root).ok())
-            .map(|rel| rel.components().count())
-            .unwrap_or(usize::MAX);
-        if depth < best_depth {
-            best_depth = depth;
-            best_idx = Some(idx);
-        }
-    }
-    best_idx.map(|idx| pending.swap_remove(idx))
+fn path_depth_from_root(path: &Path, root: &Path) -> Option<usize> {
+    path.parent()
+        .and_then(|parent| parent.strip_prefix(root).ok())
+        .map(|rel| rel.components().count())
 }
 
 fn nearest_active_modified(

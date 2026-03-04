@@ -632,6 +632,35 @@ fn action_target_path_for_open_in_folder(path: &Path) -> PathBuf {
         .unwrap_or_else(|| path.to_path_buf())
 }
 
+fn is_nested_filelist_candidate(path: &Path, root_filelist: &Path, root: &Path) -> bool {
+    if path == root_filelist || !path.starts_with(root) {
+        return false;
+    }
+    path.file_name()
+        .and_then(|s| s.to_str())
+        .is_some_and(|name| name.eq_ignore_ascii_case("filelist.txt"))
+}
+
+fn collect_filelist_entries_with_cancel(
+    filelist: &Path,
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: impl Fn() -> bool,
+) -> Result<Vec<PathBuf>, String> {
+    let mut entries = Vec::new();
+    parse_filelist_stream(
+        filelist,
+        root,
+        include_files,
+        include_dirs,
+        should_cancel,
+        |path, _is_dir| entries.push(path),
+    )
+    .map_err(|err| err.to_string())?;
+    Ok(entries)
+}
+
 fn stream_filelist_index(
     tx_res: &Sender<IndexResponse>,
     req: &IndexRequest,
@@ -654,7 +683,7 @@ fn stream_filelist_index(
     let mut buffer: Vec<IndexEntry> = Vec::new();
     let mut last_flush = Instant::now();
     let mut stream_err: Option<String> = None;
-    let mut root_entries = Vec::new();
+    let mut has_nested_filelist_candidate = false;
     parse_filelist_stream(
         &filelist,
         root,
@@ -674,7 +703,11 @@ fn stream_filelist_index(
             if stream_err.is_some() {
                 return;
             }
-            root_entries.push(path.clone());
+            if !has_nested_filelist_candidate
+                && is_nested_filelist_candidate(&path, &filelist, root)
+            {
+                has_nested_filelist_candidate = true;
+            }
             buffer.push(IndexEntry {
                 path,
                 is_dir: is_dir.unwrap_or(false),
@@ -698,7 +731,26 @@ fn stream_filelist_index(
         return Err("index receiver closed".to_string());
     }
 
-    let mut final_entries = root_entries;
+    if !has_nested_filelist_candidate {
+        return Ok(source);
+    }
+
+    let mut final_entries = collect_filelist_entries_with_cancel(
+        &filelist,
+        root,
+        req.include_files,
+        req.include_dirs,
+        || {
+            if shutdown.load(Ordering::Relaxed) {
+                return true;
+            }
+            latest_request_ids
+                .lock()
+                .ok()
+                .and_then(|m| m.get(&req.tab_id).copied())
+                != Some(req.request_id)
+        },
+    )?;
     let replaced = apply_filelist_hierarchy_overrides(
         &filelist,
         root,
