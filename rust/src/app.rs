@@ -84,8 +84,10 @@ struct AppTabState {
     notice: String,
     pending_request_id: Option<u64>,
     pending_preview_request_id: Option<u64>,
+    pending_action_request_id: Option<u64>,
     search_in_progress: bool,
     preview_in_progress: bool,
+    action_in_progress: bool,
     scroll_to_current: bool,
     focus_query_requested: bool,
     unfocus_query_requested: bool,
@@ -309,6 +311,16 @@ struct PreviewResponse {
     preview: String,
 }
 
+struct ActionRequest {
+    request_id: u64,
+    paths: Vec<PathBuf>,
+}
+
+struct ActionResponse {
+    request_id: u64,
+    notice: String,
+}
+
 struct KindResolveRequest {
     epoch: u64,
     path: PathBuf,
@@ -528,6 +540,53 @@ fn spawn_filelist_worker(
                 },
             };
             if tx_res.send(msg).is_err() {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res, handle)
+}
+
+fn spawn_action_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<ActionRequest>,
+    Receiver<ActionResponse>,
+    thread::JoinHandle<()>,
+) {
+    let (tx_req, rx_req) = mpsc::channel::<ActionRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<ActionResponse>();
+
+    let handle = thread::spawn(move || {
+        while let Ok(req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
+
+            let mut failure: Option<String> = None;
+            for path in &req.paths {
+                if let Err(err) = execute_or_open(path) {
+                    failure = Some(format!("Action failed: {}", err));
+                    break;
+                }
+            }
+
+            let notice = if let Some(failed) = failure {
+                failed
+            } else if req.paths.len() == 1 {
+                format!("Action: {}", req.paths[0].display())
+            } else {
+                format!("Action: launched {} items", req.paths.len())
+            };
+
+            if tx_res
+                .send(ActionResponse {
+                    request_id: req.request_id,
+                    notice,
+                })
+                .is_err()
+            {
                 break;
             }
         }
@@ -850,6 +909,8 @@ pub struct FlistWalkerApp {
     search_rx: Receiver<SearchResponse>,
     preview_tx: Sender<PreviewRequest>,
     preview_rx: Receiver<PreviewResponse>,
+    action_tx: Sender<ActionRequest>,
+    action_rx: Receiver<ActionResponse>,
     kind_tx: Sender<KindResolveRequest>,
     kind_rx: Receiver<KindResolveResponse>,
     filelist_tx: Sender<FileListRequest>,
@@ -862,6 +923,8 @@ pub struct FlistWalkerApp {
     pending_index_request_id: Option<u64>,
     next_preview_request_id: u64,
     pending_preview_request_id: Option<u64>,
+    next_action_request_id: u64,
+    pending_action_request_id: Option<u64>,
     next_filelist_request_id: u64,
     pending_filelist_request_id: Option<u64>,
     pending_filelist_request_tab_id: Option<u64>,
@@ -875,6 +938,7 @@ pub struct FlistWalkerApp {
     search_in_progress: bool,
     index_in_progress: bool,
     preview_in_progress: bool,
+    action_in_progress: bool,
     kind_resolution_in_progress: bool,
     filelist_in_progress: bool,
     pending_copy_shortcut: bool,
@@ -922,6 +986,7 @@ pub struct FlistWalkerApp {
     background_index_states: HashMap<u64, BackgroundIndexState>,
     search_request_tabs: HashMap<u64, u64>,
     preview_request_tabs: HashMap<u64, u64>,
+    action_request_tabs: HashMap<u64, u64>,
     worker_runtime: Option<WorkerRuntime>,
 }
 
@@ -1047,6 +1112,9 @@ Search hints:
         let (preview_tx, preview_rx, preview_handle) =
             spawn_preview_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push(preview_handle);
+        let (action_tx, action_rx, action_handle) =
+            spawn_action_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push(action_handle);
         let (kind_tx, kind_rx, kind_handle) =
             spawn_kind_resolver_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push(kind_handle);
@@ -1087,6 +1155,8 @@ Search hints:
             search_rx,
             preview_tx,
             preview_rx,
+            action_tx,
+            action_rx,
             kind_tx,
             kind_rx,
             filelist_tx,
@@ -1099,6 +1169,8 @@ Search hints:
             pending_index_request_id: None,
             next_preview_request_id: 1,
             pending_preview_request_id: None,
+            next_action_request_id: 1,
+            pending_action_request_id: None,
             next_filelist_request_id: 1,
             pending_filelist_request_id: None,
             pending_filelist_request_tab_id: None,
@@ -1112,6 +1184,7 @@ Search hints:
             search_in_progress: false,
             index_in_progress: false,
             preview_in_progress: false,
+            action_in_progress: false,
             kind_resolution_in_progress: false,
             filelist_in_progress: false,
             pending_copy_shortcut: false,
@@ -1161,6 +1234,7 @@ Search hints:
             background_index_states: HashMap::new(),
             search_request_tabs: HashMap::new(),
             preview_request_tabs: HashMap::new(),
+            action_request_tabs: HashMap::new(),
             worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
@@ -1266,8 +1340,10 @@ Search hints:
             notice: self.notice.clone(),
             pending_request_id: self.pending_request_id,
             pending_preview_request_id: self.pending_preview_request_id,
+            pending_action_request_id: self.pending_action_request_id,
             search_in_progress: self.search_in_progress,
             preview_in_progress: self.preview_in_progress,
+            action_in_progress: self.action_in_progress,
             scroll_to_current: self.scroll_to_current,
             focus_query_requested: self.focus_query_requested,
             unfocus_query_requested: self.unfocus_query_requested,
@@ -1306,8 +1382,10 @@ Search hints:
         self.notice = tab.notice.clone();
         self.pending_request_id = tab.pending_request_id;
         self.pending_preview_request_id = tab.pending_preview_request_id;
+        self.pending_action_request_id = tab.pending_action_request_id;
         self.search_in_progress = tab.search_in_progress;
         self.preview_in_progress = tab.preview_in_progress;
+        self.action_in_progress = tab.action_in_progress;
         self.scroll_to_current = tab.scroll_to_current;
         self.focus_query_requested = tab.focus_query_requested;
         self.unfocus_query_requested = tab.unfocus_query_requested;
@@ -1358,10 +1436,12 @@ Search hints:
         tab.notice = "Opened new tab".to_string();
         tab.pending_request_id = None;
         tab.pending_preview_request_id = None;
+        tab.pending_action_request_id = None;
         tab.pending_index_request_id = None;
         tab.search_in_progress = false;
         tab.index_in_progress = false;
         tab.preview_in_progress = false;
+        tab.action_in_progress = false;
         tab.pending_index_entries.clear();
         tab.pending_index_entries_request_id = None;
         tab.pending_kind_paths.clear();
@@ -1446,6 +1526,8 @@ Search hints:
             .retain(|_, tab_id| *tab_id != removed.id);
         self.preview_request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);
+        self.action_request_tabs
+            .retain(|_, tab_id| *tab_id != removed.id);
         if index < self.active_tab {
             self.active_tab = self.active_tab.saturating_sub(1);
         }
@@ -1502,9 +1584,12 @@ Search hints:
     }
 
     fn any_tab_async_in_progress(&self) -> bool {
-        self.tabs
-            .iter()
-            .any(|tab| tab.search_in_progress || tab.preview_in_progress || tab.index_in_progress)
+        self.tabs.iter().any(|tab| {
+            tab.search_in_progress
+                || tab.preview_in_progress
+                || tab.action_in_progress
+                || tab.index_in_progress
+        })
     }
 
     fn ui_state_file_path() -> Option<PathBuf> {
@@ -1977,6 +2062,11 @@ Search hints:
         } else {
             ""
         };
+        let executing = if self.action_in_progress {
+            " | Executing..."
+        } else {
+            ""
+        };
         let creating_filelist = if self.filelist_in_progress {
             " | Creating FileList..."
         } else {
@@ -1993,7 +2083,7 @@ Search hints:
         };
 
         self.status_line = format!(
-            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}",
+            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}",
             tab_label,
             indexed_count,
             self.results.len(),
@@ -2001,6 +2091,7 @@ Search hints:
             pinned,
             searching,
             indexing,
+            executing,
             creating_filelist,
             memory,
             notice
@@ -2103,7 +2194,8 @@ Search hints:
     ) {
         let mut reindex = use_filelist_changed;
         reindex |= files_changed || dirs_changed;
-        if self.use_filelist_requires_locked_filters() && (!self.include_files || !self.include_dirs)
+        if self.use_filelist_requires_locked_filters()
+            && (!self.include_files || !self.include_dirs)
         {
             self.include_files = true;
             self.include_dirs = true;
@@ -2758,6 +2850,34 @@ Search hints:
         }
     }
 
+    fn poll_action_response(&mut self) {
+        while let Ok(response) = self.action_rx.try_recv() {
+            let target_tab_id = self.action_request_tabs.remove(&response.request_id);
+            if Some(response.request_id) == self.pending_action_request_id {
+                self.pending_action_request_id = None;
+                self.action_in_progress = false;
+                self.set_notice(response.notice);
+                continue;
+            }
+
+            let Some(tab_id) = target_tab_id else {
+                continue;
+            };
+            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+                continue;
+            };
+            let Some(tab) = self.tabs.get_mut(tab_index) else {
+                continue;
+            };
+            if Some(response.request_id) != tab.pending_action_request_id {
+                continue;
+            }
+            tab.pending_action_request_id = None;
+            tab.action_in_progress = false;
+            tab.notice = response.notice;
+        }
+    }
+
     fn poll_preview_response(&mut self) {
         while let Ok(response) = self.preview_rx.try_recv() {
             let target_tab_id = self.preview_request_tabs.remove(&response.request_id);
@@ -3310,17 +3430,25 @@ Search hints:
             return;
         }
 
-        for path in &paths {
-            if let Err(err) = execute_or_open(path) {
-                self.set_notice(format!("Action failed: {}", err));
-                return;
-            }
+        let request_id = self.next_action_request_id;
+        self.next_action_request_id = self.next_action_request_id.saturating_add(1);
+        self.pending_action_request_id = Some(request_id);
+        self.action_in_progress = true;
+        if let Some(tab_id) = self.current_tab_id() {
+            self.action_request_tabs.insert(request_id, tab_id);
         }
 
         if paths.len() == 1 {
             self.set_notice(format!("Action: {}", paths[0].display()));
         } else {
             self.set_notice(format!("Action: launched {} items", paths.len()));
+        }
+
+        let req = ActionRequest { request_id, paths };
+        if self.action_tx.send(req).is_err() {
+            self.pending_action_request_id = None;
+            self.action_in_progress = false;
+            self.set_notice("Action worker is unavailable");
         }
     }
 
@@ -4346,6 +4474,7 @@ impl eframe::App for FlistWalkerApp {
         }
         self.poll_index_response();
         self.poll_search_response();
+        self.poll_action_response();
         self.poll_preview_response();
         self.poll_kind_response();
         self.pump_kind_resolution_requests();
@@ -4359,6 +4488,7 @@ impl eframe::App for FlistWalkerApp {
         if self.search_in_progress
             || self.index_in_progress
             || self.preview_in_progress
+            || self.action_in_progress
             || self.kind_resolution_in_progress
             || self.filelist_in_progress
             || self.any_tab_async_in_progress()
@@ -4664,16 +4794,19 @@ impl Drop for FlistWalkerApp {
         }
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
         let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
+        let (dummy_action_tx, _) = mpsc::channel::<ActionRequest>();
         let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
         let old_search_tx = std::mem::replace(&mut self.search_tx, dummy_search_tx);
         let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
+        let old_action_tx = std::mem::replace(&mut self.action_tx, dummy_action_tx);
         let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
         let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
         let old_index_tx = std::mem::replace(&mut self.index_tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
+        drop(old_action_tx);
         drop(old_kind_tx);
         drop(old_filelist_tx);
         drop(old_index_tx);
@@ -4801,6 +4934,71 @@ mod tests {
 
         assert_eq!(app.current_row, Some(1));
         assert!(app.scroll_to_current);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn execute_selected_enqueues_action_request_without_sync_io() {
+        let root = test_root("async-action-enqueue");
+        fs::create_dir_all(&root).expect("create dir");
+        let missing = root.join("missing-not-executed");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+        let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+        app.action_tx = action_tx_req;
+        app.action_rx = action_rx_res;
+        app.results = vec![(missing.clone(), 0.0)];
+        app.current_row = Some(0);
+
+        app.execute_selected();
+
+        let req = action_rx_req
+            .try_recv()
+            .expect("action request should be enqueued");
+        assert_eq!(req.paths, vec![missing]);
+        assert!(app.pending_action_request_id.is_some());
+        assert!(app.action_in_progress);
+        assert!(!app.notice.starts_with("Action failed:"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn stale_action_completion_is_ignored_by_request_id() {
+        let root = test_root("stale-action-request-id");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<ActionResponse>();
+        app.action_rx = rx;
+        app.notice = "latest notice".to_string();
+        app.pending_action_request_id = Some(2);
+        app.action_in_progress = true;
+        let tab_id = app.current_tab_id().expect("tab id");
+        app.action_request_tabs.insert(1, tab_id);
+        app.action_request_tabs.insert(2, tab_id);
+        app.tabs[app.active_tab].pending_action_request_id = Some(2);
+        app.tabs[app.active_tab].action_in_progress = true;
+
+        tx.send(ActionResponse {
+            request_id: 1,
+            notice: "Action failed: stale".to_string(),
+        })
+        .expect("send stale action response");
+        app.poll_action_response();
+
+        assert_eq!(app.notice, "latest notice");
+        assert_eq!(app.pending_action_request_id, Some(2));
+        assert!(app.action_in_progress);
+
+        tx.send(ActionResponse {
+            request_id: 2,
+            notice: "Action: latest".to_string(),
+        })
+        .expect("send latest action response");
+        app.poll_action_response();
+
+        assert_eq!(app.notice, "Action: latest");
+        assert_eq!(app.pending_action_request_id, None);
+        assert!(!app.action_in_progress);
         let _ = fs::remove_dir_all(&root);
     }
 
