@@ -3697,7 +3697,19 @@ Search hints:
             needs_reindex = true;
         }
         if self.index_in_progress {
-            needs_reindex = true;
+            self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+                tab_id,
+                root: self.root.clone(),
+            });
+            if needs_reindex {
+                self.request_index_refresh();
+                self.set_notice(
+                    "Preparing Walker index with files/folders enabled before Create File List",
+                );
+            } else {
+                self.set_notice("Waiting for current indexing to finish before Create File List");
+            }
+            return;
         }
 
         if needs_reindex {
@@ -5369,7 +5381,12 @@ mod tests {
         let root = test_root("filelist-waits-indexing");
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
         app.use_filelist = false;
+        app.index.source = IndexSource::Walker;
+        app.include_files = true;
+        app.include_dirs = true;
         app.index_in_progress = true;
 
         app.create_filelist();
@@ -5382,6 +5399,31 @@ mod tests {
         );
         assert!(app.pending_filelist_request_id.is_none());
         assert!(!app.filelist_in_progress);
+        assert!(index_rx.try_recv().is_err());
+        assert!(app.notice.contains("Waiting for current indexing"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
+        let root = test_root("filelist-waits-indexing-needs-reindex");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = index_tx;
+        app.use_filelist = false;
+        app.index.source = IndexSource::Walker;
+        app.include_files = false;
+        app.include_dirs = true;
+        app.index_in_progress = true;
+
+        app.create_filelist();
+
+        let req = index_rx.try_recv().expect("reindex request should be sent");
+        assert_eq!(req.root, root);
+        assert!(req.include_files);
+        assert!(req.include_dirs);
+        assert!(app.pending_filelist_after_index.is_some());
         let _ = fs::remove_dir_all(&root);
     }
 
