@@ -69,7 +69,7 @@ Search hints:
 - 'term : 完全一致トークン（例: 'main.py）
 - !term : 除外トークン（例: main !test）
 - ^term : 先頭一致を優先（例: ^src）
-- term$ : 末尾一致を優先（例: .rs$）
+- term\$ : 末尾一致を優先（例: .rs\$）
 - Regex チェックON時は正規表現検索
 
 Keyboard shortcuts:

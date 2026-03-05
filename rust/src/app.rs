@@ -4392,7 +4392,11 @@ Search hints:
                         }
                     });
             }
-            if ui.button("+").on_hover_text("New tab (Ctrl+T)").clicked() {
+            if ui
+                .button("+")
+                .on_hover_text(format!("New tab ({}+T)", Self::primary_shortcut_label()))
+                .clicked()
+            {
                 self.create_new_tab();
                 return;
             }
@@ -4411,33 +4415,88 @@ Search hints:
         self.handle_shortcuts_with_focus(ctx, query_focused);
     }
 
+    fn primary_shortcut_label() -> &'static str {
+        #[cfg(target_os = "macos")]
+        {
+            "Cmd"
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            "Ctrl"
+        }
+    }
+
+    fn consume_gui_shortcut(ctx: &egui::Context, key: egui::Key, shift: bool) -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            let primary = egui::Modifiers {
+                mac_cmd: true,
+                shift,
+                ..Default::default()
+            };
+            if ctx.input_mut(|i| i.consume_key(primary, key)) {
+                return true;
+            }
+            let fallback = egui::Modifiers {
+                command: true,
+                shift,
+                ..Default::default()
+            };
+            return ctx.input_mut(|i| i.consume_key(fallback, key));
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let mods = egui::Modifiers {
+                ctrl: true,
+                shift,
+                ..Default::default()
+            };
+            ctx.input_mut(|i| i.consume_key(mods, key))
+        }
+    }
+
+    fn consume_emacs_shortcut(ctx: &egui::Context, key: egui::Key, shift: bool) -> bool {
+        let mods = egui::Modifiers {
+            ctrl: true,
+            shift,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(mods, key)) {
+            return true;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            // Some backends may surface ctrl chords via command bit on macOS.
+            let fallback = egui::Modifiers {
+                command: true,
+                ctrl: true,
+                shift,
+                ..Default::default()
+            };
+            return ctx.input_mut(|i| i.consume_key(fallback, key));
+        }
+        #[cfg(not(target_os = "macos"))]
+        false
+    }
+
     fn handle_shortcuts_with_focus(&mut self, ctx: &egui::Context, query_focused: bool) {
-        let ctrl_mod = egui::Modifiers {
-            ctrl: true,
-            ..Default::default()
-        };
-        let ctrl_shift_mod = egui::Modifiers {
-            ctrl: true,
-            shift: true,
-            ..Default::default()
-        };
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::T)) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::T, false) {
             self.create_new_tab();
             return;
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::W)) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::W, false) {
             self.close_active_tab();
             return;
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_shift_mod, egui::Key::Tab)) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::Tab, true) {
             self.activate_previous_tab();
             return;
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::Tab)) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::Tab, false) {
             self.activate_next_tab();
             return;
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::L)) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::L, false) {
             if query_focused {
                 self.focus_query_requested = false;
                 self.unfocus_query_requested = true;
@@ -4448,23 +4507,18 @@ Search hints:
             return;
         }
 
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::N)) {
+        if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
             self.move_row(1);
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::P)) {
+        if Self::consume_emacs_shortcut(ctx, egui::Key::P, false) {
             self.move_row(-1);
         }
-        let copy_mod = egui::Modifiers {
-            ctrl: true,
-            shift: true,
-            ..Default::default()
-        };
-        if ctx.input_mut(|i| i.consume_key(copy_mod, egui::Key::C)) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::C, true) {
             // Keep this deferred until after TextEdit processing so query-focus copy
             // cannot overwrite the intended "copy selected path(s)" shortcut result.
             self.pending_copy_shortcut = true;
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::G)) {
+        if Self::consume_emacs_shortcut(ctx, egui::Key::G, false) {
             self.clear_query_and_selection();
         }
         let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
@@ -4487,7 +4541,7 @@ Search hints:
                 ctx.memory_mut(|m| m.stop_text_input());
             }
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::I)) {
+        if Self::consume_emacs_shortcut(ctx, egui::Key::I, false) {
             self.toggle_pin_current();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
@@ -4496,8 +4550,8 @@ Search hints:
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
             self.move_row(-1);
         }
-        if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::J))
-            || ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::M))
+        if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
+            || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
         {
             self.execute_selected();
         }
@@ -5101,6 +5155,33 @@ mod tests {
         app.handle_shortcuts_with_focus(&ctx, query_focused);
         app.run_deferred_shortcuts(&ctx);
         let _ = ctx.end_frame();
+    }
+
+    fn gui_shortcut_modifiers(shift: bool) -> egui::Modifiers {
+        #[cfg(target_os = "macos")]
+        {
+            egui::Modifiers {
+                mac_cmd: true,
+                shift,
+                ..Default::default()
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            egui::Modifiers {
+                ctrl: true,
+                shift,
+                ..Default::default()
+            }
+        }
+    }
+
+    fn emacs_shortcut_modifiers(shift: bool) -> egui::Modifiers {
+        egui::Modifiers {
+            ctrl: true,
+            shift,
+            ..Default::default()
+        }
     }
 
     fn is_action_notice(text: &str) -> bool {
@@ -6678,10 +6759,7 @@ mod tests {
                 key: egui::Key::N,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
         assert_eq!(app.current_row, Some(1));
@@ -6693,10 +6771,7 @@ mod tests {
                 key: egui::Key::P,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
         assert_eq!(app.current_row, Some(0));
@@ -6722,10 +6797,7 @@ mod tests {
                 key: egui::Key::G,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
 
@@ -6752,11 +6824,7 @@ mod tests {
                 key: egui::Key::C,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    shift: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(true),
             }],
         );
 
@@ -6963,10 +7031,7 @@ mod tests {
                 key: egui::Key::I,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
         assert!(app.pinned_paths.contains(&selected));
@@ -6979,10 +7044,7 @@ mod tests {
                 key: egui::Key::I,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
         assert!(!app.pinned_paths.contains(&selected));
@@ -7017,10 +7079,7 @@ mod tests {
                 key: egui::Key::J,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
         assert!(is_action_notice(&app.notice));
@@ -7033,10 +7092,7 @@ mod tests {
                 key: egui::Key::M,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: emacs_shortcut_modifiers(false),
             }],
         );
         assert!(is_action_notice(&app.notice));
@@ -7160,10 +7216,7 @@ mod tests {
                 key: egui::Key::T,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(false),
             }],
         );
 
@@ -7189,10 +7242,7 @@ mod tests {
                 key: egui::Key::W,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(false),
             }],
         );
         assert_eq!(app.tabs.len(), 1);
@@ -7204,10 +7254,7 @@ mod tests {
                 key: egui::Key::W,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(false),
             }],
         );
         assert_eq!(app.tabs.len(), 1);
@@ -7232,10 +7279,7 @@ mod tests {
                 key: egui::Key::Tab,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(false),
             }],
         );
         assert_eq!(app.active_tab, 0);
@@ -7247,11 +7291,7 @@ mod tests {
                 key: egui::Key::Tab,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    shift: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(true),
             }],
         );
         assert_eq!(app.active_tab, 2);
@@ -7392,11 +7432,7 @@ mod tests {
                 key: egui::Key::Tab,
                 pressed: true,
                 repeat: false,
-                modifiers: egui::Modifiers {
-                    ctrl: true,
-                    shift: true,
-                    ..Default::default()
-                },
+                modifiers: gui_shortcut_modifiers(true),
             }],
         );
 

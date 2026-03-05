@@ -1,22 +1,41 @@
 # RELEASE
 
 ## 初期リリース方針
-- 配布形態は `exe単体 + zip` を採用する。
+- Windows 配布形態は `exe単体 + zip` を採用する。
+- macOS 配布形態は `バイナリ単体 + .app + zip/tar.gz` を採用する。
 - `msi` は需要確認後の第2段階で追加する。
 
 ## アセット命名規則
 - Windows x86_64:
 - `FlistWalker-<version>-windows-x86_64.exe`
 - `FlistWalker-<version>-windows-x86_64.zip`
+- macOS arm64:
+- `FlistWalker-<version>-macos-arm64`
+- `FlistWalker-<version>-macos-arm64.app`
+- `FlistWalker-<version>-macos-arm64-app.zip`
+- `FlistWalker-<version>-macos-arm64.tar.gz`
+- macOS x86_64:
+- `FlistWalker-<version>-macos-x86_64`
+- `FlistWalker-<version>-macos-x86_64.app`
+- `FlistWalker-<version>-macos-x86_64-app.zip`
+- `FlistWalker-<version>-macos-x86_64.tar.gz`
 - `SHA256SUMS`
 
 例（v0.2.0）:
 - `FlistWalker-0.2.0-windows-x86_64.exe`
 - `FlistWalker-0.2.0-windows-x86_64.zip`
+- `FlistWalker-0.2.0-macos-arm64`
+- `FlistWalker-0.2.0-macos-arm64.app`
+- `FlistWalker-0.2.0-macos-arm64-app.zip`
+- `FlistWalker-0.2.0-macos-arm64.tar.gz`
 - `SHA256SUMS`
 
 ## zip に含めるもの
 - `flistwalker.exe`
+- `README.txt`（最小実行手順）
+
+## tar.gz に含めるもの
+- `flistwalker`
 - `README.txt`（最小実行手順）
 
 ## リリース手順（Windows アセット）
@@ -31,6 +50,26 @@
 3. `dist/v0.2.0/`（例）内の3ファイルを GitHub Releases にアップロードする。
 - `*.exe`
 - `*.zip`
+- `SHA256SUMS`
+
+## リリース手順（macOS アセット）
+1. macOS 向けバイナリをビルドする。
+- bash: `./scripts/build-rust-macos.sh`
+- クリーンビルド: `./scripts/build-rust-macos-clean.sh`
+
+2. リリースアセットを生成する。
+- bash: `./scripts/prepare-release-macos.sh v0.2.0`
+
+3. （推奨）Developer ID 署名 + notarization + staple を実施する。
+- 初回のみ: `xcrun notarytool store-credentials flistwalker-notary --apple-id "<APPLE_ID>" --team-id "<TEAM_ID>" --password "<APP_SPECIFIC_PASSWORD>"`
+- 署名ID設定: `export FLISTWALKER_MACOS_SIGN_IDENTITY="Developer ID Application: Example Corp (TEAMID1234)"`
+- 実行: `./scripts/sign-notarize-macos.sh v0.2.0 arm64 flistwalker-notary`
+
+4. `dist/v0.2.0/`（例）内のファイルを GitHub Releases にアップロードする。
+- `FlistWalker-*-macos-*`（実行バイナリ）
+- `FlistWalker-*-macos-*.app`（Finder からダブルクリック実行向け）
+- `FlistWalker-*-macos-*-app.zip`（`.app` 配布用）
+- `FlistWalker-*-macos-*.tar.gz`
 - `SHA256SUMS`
 
 ## SHA256SUMS 検証例

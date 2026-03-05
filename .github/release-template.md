@@ -5,6 +5,10 @@
 ## Downloads
 - `FlistWalker-X.Y.Z-windows-x86_64.exe`
 - `FlistWalker-X.Y.Z-windows-x86_64.zip`
+- `FlistWalker-X.Y.Z-macos-arm64`
+- `FlistWalker-X.Y.Z-macos-arm64.app`
+- `FlistWalker-X.Y.Z-macos-arm64-app.zip`
+- `FlistWalker-X.Y.Z-macos-arm64.tar.gz`
 - `SHA256SUMS`
 
 ## Added

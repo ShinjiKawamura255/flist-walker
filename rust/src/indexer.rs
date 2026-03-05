@@ -673,6 +673,35 @@ mod tests {
         std::thread::sleep(Duration::from_millis(1100));
     }
 
+    fn canonical_or_original(path: &Path) -> PathBuf {
+        path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+    }
+
+    fn same_path(left: &Path, right: &Path) -> bool {
+        if left == right {
+            return true;
+        }
+        canonical_or_original(left) == canonical_or_original(right)
+    }
+
+    fn contains_path(entries: &[PathBuf], expected: &Path) -> bool {
+        entries.iter().any(|entry| same_path(entry, expected))
+    }
+
+    fn assert_filelist_source_matches(source: &IndexSource, expected: &Path) {
+        match source {
+            IndexSource::FileList(actual) => {
+                assert!(
+                    same_path(actual, expected),
+                    "unexpected FileList source: actual={} expected={}",
+                    actual.display(),
+                    expected.display()
+                );
+            }
+            other => panic!("expected FileList source, got {other:?}"),
+        }
+    }
+
     #[test]
     fn find_filelist_prefers_uppercase_name() {
         let root = test_root("find-upper");
@@ -695,10 +724,7 @@ mod tests {
         fs::write(root.join("filelist.txt"), "a.txt\n").expect("write lower");
 
         let found = find_filelist(&root).expect("find filelist");
-        assert_eq!(
-            found.file_name().and_then(|s| s.to_str()),
-            Some("filelist.txt")
-        );
+        assert!(same_path(&found, &root.join("filelist.txt")));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -830,8 +856,8 @@ mod tests {
         fs::write(root.join("FileList.txt"), "listed.txt\n").expect("write filelist");
 
         let out = build_index(&root, true, true, true).expect("build index");
-        assert!(out.contains(&listed));
-        assert!(!out.contains(&hidden));
+        assert!(contains_path(&out, &listed));
+        assert!(!contains_path(&out, &hidden));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -844,8 +870,8 @@ mod tests {
         fs::write(&file, "print('hi')").expect("write file");
 
         let out = build_index(&root, true, true, true).expect("build index");
-        assert!(out.contains(&file));
-        assert!(out.contains(&nested));
+        assert!(contains_path(&out, &file));
+        assert!(contains_path(&out, &nested));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -858,8 +884,8 @@ mod tests {
         fs::write(root.join("filelist.txt"), "listed.txt\n").expect("write filelist");
 
         let out = build_index_with_metadata(&root, true, true, true).expect("build index");
-        assert!(matches!(out.source, IndexSource::FileList(_)));
-        assert!(out.entries.contains(&listed));
+        assert_filelist_source_matches(&out.source, &root.join("filelist.txt"));
+        assert!(contains_path(&out.entries, &listed));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -902,8 +928,8 @@ mod tests {
 
         let out = build_index_with_metadata(&root, false, true, true).expect("build index");
         assert!(matches!(out.source, IndexSource::Walker));
-        assert!(out.entries.contains(&listed));
-        assert!(out.entries.contains(&extra));
+        assert!(contains_path(&out.entries, &listed));
+        assert!(contains_path(&out.entries, &extra));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1139,11 +1165,11 @@ mod tests {
         fs::write(child.join("filelist.txt"), "new.txt\n").expect("write child filelist");
 
         let out = build_index_with_metadata(&root, true, true, true).expect("build index");
-        assert_eq!(out.source, IndexSource::FileList(root.join("FileList.txt")));
-        assert!(out.entries.contains(&keep));
-        assert!(out.entries.contains(&child_new));
-        assert!(!out.entries.contains(&child_old));
-        assert!(!out.entries.contains(&child));
+        assert_filelist_source_matches(&out.source, &root.join("FileList.txt"));
+        assert!(contains_path(&out.entries, &keep));
+        assert!(contains_path(&out.entries, &child_new));
+        assert!(!contains_path(&out.entries, &child_old));
+        assert!(!contains_path(&out.entries, &child));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1161,9 +1187,9 @@ mod tests {
         fs::write(root.join("FileList.txt"), "child/old.txt\n").expect("write root filelist");
 
         let out = build_index_with_metadata(&root, true, true, false).expect("build index");
-        assert_eq!(out.source, IndexSource::FileList(root.join("FileList.txt")));
-        assert!(out.entries.contains(&child_old));
-        assert!(!out.entries.contains(&child_new));
+        assert_filelist_source_matches(&out.source, &root.join("FileList.txt"));
+        assert!(contains_path(&out.entries, &child_old));
+        assert!(!contains_path(&out.entries, &child_new));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1198,11 +1224,11 @@ mod tests {
             .expect("write grand filelist");
 
         let out = build_index_with_metadata(&root, true, true, false).expect("build index");
-        assert!(out.entries.contains(&top));
-        assert!(out.entries.contains(&child_only));
-        assert!(out.entries.contains(&grand_only));
-        assert!(!out.entries.contains(&root_only));
-        assert!(!out.entries.contains(&grand_child));
+        assert!(contains_path(&out.entries, &top));
+        assert!(contains_path(&out.entries, &child_only));
+        assert!(contains_path(&out.entries, &grand_only));
+        assert!(!contains_path(&out.entries, &root_only));
+        assert!(!contains_path(&out.entries, &grand_child));
         let _ = fs::remove_dir_all(&root);
     }
 

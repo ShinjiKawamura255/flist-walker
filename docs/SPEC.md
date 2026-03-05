@@ -129,7 +129,8 @@
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: 複数選択と一括アクションを提供する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
-- MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+Shift+C` / `Ctrl+G` は検索窓フォーカス中でも有効である。
+- MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+G` は検索窓フォーカス中でも有効である。
+- MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。
 - MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。
 - MUST: `Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
