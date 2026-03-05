@@ -60,7 +60,7 @@ Run:
 
 Basic usage:
 - 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
-- Enter で開く/実行、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
+- Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
 - Root は左上の Browse... から切り替え可能です。
 
 Search hints:
@@ -76,6 +76,7 @@ Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move current row
 - Ctrl+V / Alt+V: page down / page up
 - Enter (or Ctrl+J/Ctrl+M): open/execute selected item(s)
+- Shift+Enter: open containing folder(s) for selected item(s), deduplicated by directory
 - Tab / Shift+Tab: toggle pin on current row
 - Ctrl+Shift+C: copy selected path(s)
 - Ctrl+G: clear query and pinned selection

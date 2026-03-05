@@ -569,13 +569,9 @@ fn spawn_action_worker(
                 break;
             }
 
+            let targets = action_targets_for_request(&req.paths, req.open_parent_for_files);
             let mut failure: Option<String> = None;
-            for path in &req.paths {
-                let target = if req.open_parent_for_files {
-                    action_target_path_for_open_in_folder(path)
-                } else {
-                    path.clone()
-                };
+            for target in &targets {
                 if let Err(err) = execute_or_open(&target) {
                     failure = Some(format!("Action failed: {}", err));
                     break;
@@ -584,10 +580,10 @@ fn spawn_action_worker(
 
             let notice = if let Some(failed) = failure {
                 failed
-            } else if req.paths.len() == 1 {
-                format!("Action: {}", req.paths[0].display())
+            } else if targets.len() == 1 {
+                format!("Action: {}", targets[0].display())
             } else {
-                format!("Action: launched {} items", req.paths.len())
+                format!("Action: launched {} items", targets.len())
             };
 
             if tx_res
@@ -603,6 +599,22 @@ fn spawn_action_worker(
     });
 
     (tx_req, rx_res, handle)
+}
+
+fn action_targets_for_request(paths: &[PathBuf], open_parent_for_files: bool) -> Vec<PathBuf> {
+    if !open_parent_for_files {
+        return paths.to_vec();
+    }
+
+    let mut unique = HashSet::with_capacity(paths.len());
+    let mut targets = Vec::with_capacity(paths.len());
+    for path in paths {
+        let target = action_target_path_for_open_in_folder(path);
+        if unique.insert(target.clone()) {
+            targets.push(target);
+        }
+    }
+    targets
 }
 
 fn flush_batch(
@@ -5196,6 +5208,29 @@ mod tests {
 
         assert_eq!(from_file, dir);
         assert_eq!(from_dir, root.join("dir"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn action_targets_for_request_deduplicates_same_parent_directory() {
+        let root = test_root("open-folder-target-dedup");
+        let dir_a = root.join("dir-a");
+        let dir_b = root.join("dir-b");
+        fs::create_dir_all(&dir_a).expect("create dir a");
+        fs::create_dir_all(&dir_b).expect("create dir b");
+        let file_a1 = dir_a.join("main.rs");
+        let file_a2 = dir_a.join("lib.rs");
+        let file_b = dir_b.join("mod.rs");
+        fs::write(&file_a1, "fn main() {}").expect("write file a1");
+        fs::write(&file_a2, "pub fn f() {}").expect("write file a2");
+        fs::write(&file_b, "pub fn g() {}").expect("write file b");
+
+        let targets = action_targets_for_request(
+            &[file_a1, file_a2, file_b, dir_a.clone()],
+            true,
+        );
+
+        assert_eq!(targets, vec![dir_a, dir_b]);
         let _ = fs::remove_dir_all(&root);
     }
 

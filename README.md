@@ -25,8 +25,9 @@ cargo run -- --root ..
 
 1. 検索窓に入力して候補を絞り込み
 2. `Enter` で開く/実行
-3. `Tab` / `Shift+Tab` でピン留め複数選択
-4. `Ctrl+Shift+C` で選択パスをコピー
+3. `Shift+Enter` で選択項目の格納フォルダを開く（同じフォルダは1回だけ開く）
+4. `Tab` / `Shift+Tab` でピン留め複数選択
+5. `Ctrl+Shift+C` で選択パスをコピー
 
 ## Rust 実装
 
