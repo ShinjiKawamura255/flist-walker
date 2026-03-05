@@ -3,6 +3,12 @@ use fuzzy_matcher::FuzzyMatcher;
 use regex::{Regex, RegexBuilder};
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct IndexedScore {
+    pub index: usize,
+    pub score: f64,
+}
+
 #[derive(Debug, Clone)]
 pub struct QuerySpec {
     pub include_terms: Vec<String>,
@@ -275,8 +281,27 @@ pub fn try_search_entries_with_scope(
     root: Option<&Path>,
     prefer_relative: bool,
 ) -> Result<Vec<(PathBuf, f64)>, String> {
+    let scored = try_search_entries_indexed_with_scope(
+        query,
+        entries,
+        use_regex,
+        root,
+        prefer_relative,
+        None,
+    )?;
+    Ok(materialize_scored_entries(entries, scored, limit))
+}
+
+pub fn try_search_entries_indexed_with_scope(
+    query: &str,
+    entries: &[PathBuf],
+    use_regex: bool,
+    root: Option<&Path>,
+    prefer_relative: bool,
+    candidate_indices: Option<&[usize]>,
+) -> Result<Vec<IndexedScore>, String> {
     let query = query.trim();
-    if query.is_empty() || limit == 0 {
+    if query.is_empty() {
         return Ok(Vec::new());
     }
 
@@ -295,15 +320,6 @@ pub fn try_search_entries_with_scope(
     } else {
         None
     };
-    let filtered: Vec<PathBuf> = entries
-        .iter()
-        .filter(|p| matches_spec(&spec, p, include_regexes.as_deref(), root, prefer_relative))
-        .cloned()
-        .collect();
-
-    if filtered.is_empty() {
-        return Ok(Vec::new());
-    }
 
     let mut q = spec
         .include_terms
@@ -324,9 +340,19 @@ pub fn try_search_entries_with_scope(
     }
 
     let matcher = SkimMatcherV2::default();
-    let mut scored = Vec::with_capacity(filtered.len());
+    let mut scored = Vec::new();
+    let indices: Vec<usize> = candidate_indices
+        .map(|items| items.to_vec())
+        .unwrap_or_else(|| (0..entries.len()).collect());
+    scored.reserve(indices.len());
 
-    for path in filtered {
+    for index in indices {
+        let Some(path) = entries.get(index) else {
+            continue;
+        };
+        if !matches_spec(&spec, path, include_regexes.as_deref(), root, prefer_relative) {
+            continue;
+        }
         let full = searchable_full(&path, root, prefer_relative);
         let name = path
             .file_name()
@@ -373,12 +399,35 @@ pub fn try_search_entries_with_scope(
             }
         }
 
-        scored.push((path, score));
+        scored.push(IndexedScore { index, score });
     }
 
-    scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    scored.truncate(limit);
+    scored.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     Ok(scored)
+}
+
+fn materialize_scored_entries(
+    entries: &[PathBuf],
+    scored: Vec<IndexedScore>,
+    limit: usize,
+) -> Vec<(PathBuf, f64)> {
+    if limit == 0 || scored.is_empty() {
+        return Vec::new();
+    }
+    scored
+        .into_iter()
+        .take(limit)
+        .filter_map(|item| {
+            entries
+                .get(item.index)
+                .cloned()
+                .map(|path| (path, item.score))
+        })
+        .collect()
 }
 
 pub fn search_entries_with_scope(
@@ -416,6 +465,34 @@ mod tests {
         if out.len() > 1 {
             assert!(out[0].1 >= out[1].1);
         }
+    }
+
+    #[test]
+    fn indexed_search_with_candidates_matches_full_scan() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.rs"),
+            PathBuf::from("/tmp/src/mod.rs"),
+            PathBuf::from("/tmp/src/domain.rs"),
+            PathBuf::from("/tmp/src/memory.rs"),
+        ];
+
+        let base = try_search_entries_indexed_with_scope("ma", &entries, false, None, false, None)
+            .expect("base query");
+        let base_indices = base.iter().map(|x| x.index).collect::<Vec<_>>();
+        let narrowed_full =
+            try_search_entries_indexed_with_scope("mai", &entries, false, None, false, None)
+                .expect("full scan query");
+        let narrowed_from_candidates = try_search_entries_indexed_with_scope(
+            "mai",
+            &entries,
+            false,
+            None,
+            false,
+            Some(&base_indices),
+        )
+        .expect("candidate query");
+
+        assert_eq!(narrowed_from_candidates, narrowed_full);
     }
 
     #[test]

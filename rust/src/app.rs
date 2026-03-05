@@ -3,7 +3,7 @@ use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
     write_filelist, IndexBuildResult, IndexSource,
 };
-use crate::search::try_search_entries_with_scope;
+use crate::search::{try_search_entries_indexed_with_scope, IndexedScore};
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, has_visible_match,
     match_positions_for_path, normalize_path_for_display, should_skip_preview,
@@ -382,6 +382,161 @@ enum FileListResponse {
     },
 }
 
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+struct SearchEntriesSnapshotKey {
+    ptr: usize,
+    len: usize,
+}
+
+impl SearchEntriesSnapshotKey {
+    fn from_entries(entries: &Arc<Vec<PathBuf>>) -> Self {
+        Self {
+            ptr: Arc::as_ptr(entries) as usize,
+            len: entries.len(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SearchPrefixCacheEntry {
+    snapshot: SearchEntriesSnapshotKey,
+    query: String,
+    matched_indices: Arc<Vec<usize>>,
+    approx_bytes: usize,
+}
+
+#[derive(Default)]
+struct SearchPrefixCache {
+    entries: VecDeque<SearchPrefixCacheEntry>,
+    total_bytes: usize,
+}
+
+impl SearchPrefixCache {
+    const MAX_ENTRIES: usize = 64;
+    const MAX_BYTES: usize = 8 * 1024 * 1024;
+    const MAX_MATCHED_INDICES: usize = 20_000;
+    const MIN_QUERY_LEN: usize = 3;
+
+    fn is_cacheable_query(query: &str) -> bool {
+        let q = query.trim();
+        if q.len() < Self::MIN_QUERY_LEN {
+            return false;
+        }
+        if q.contains(char::is_whitespace) {
+            return false;
+        }
+        !q.contains(['|', '!', '\'', '^', '$'])
+    }
+
+    fn is_safe_prefix_extension(prefix: &str, query: &str) -> bool {
+        if !Self::is_cacheable_query(prefix) || !Self::is_cacheable_query(query) {
+            return false;
+        }
+        query.starts_with(prefix) && query.len() > prefix.len()
+    }
+
+    fn lookup_candidates(
+        &mut self,
+        snapshot: SearchEntriesSnapshotKey,
+        query: &str,
+    ) -> Option<Arc<Vec<usize>>> {
+        if !Self::is_cacheable_query(query) {
+            return None;
+        }
+
+        let mut best_idx = None;
+        let mut best_len = 0usize;
+        for (idx, entry) in self.entries.iter().enumerate() {
+            if entry.snapshot != snapshot {
+                continue;
+            }
+            if !Self::is_safe_prefix_extension(&entry.query, query) {
+                continue;
+            }
+            if entry.query.len() > best_len {
+                best_len = entry.query.len();
+                best_idx = Some(idx);
+            }
+        }
+
+        let idx = best_idx?;
+        let entry = self.entries.remove(idx)?;
+        let matched = Arc::clone(&entry.matched_indices);
+        self.entries.push_back(entry);
+        Some(matched)
+    }
+
+    fn maybe_store(
+        &mut self,
+        snapshot: SearchEntriesSnapshotKey,
+        query: &str,
+        matched_indices: Vec<usize>,
+    ) {
+        if !Self::is_cacheable_query(query) {
+            return;
+        }
+        if matched_indices.is_empty() || matched_indices.len() > Self::MAX_MATCHED_INDICES {
+            return;
+        }
+
+        let query = query.trim().to_string();
+        let approx_bytes = query
+            .len()
+            .saturating_add(matched_indices.len().saturating_mul(std::mem::size_of::<usize>()));
+        if approx_bytes > Self::MAX_BYTES {
+            return;
+        }
+
+        if let Some(existing_pos) = self
+            .entries
+            .iter()
+            .position(|entry| entry.snapshot == snapshot && entry.query == query)
+        {
+            if let Some(old) = self.entries.remove(existing_pos) {
+                self.total_bytes = self.total_bytes.saturating_sub(old.approx_bytes);
+            }
+        }
+
+        self.total_bytes = self.total_bytes.saturating_add(approx_bytes);
+        self.entries.push_back(SearchPrefixCacheEntry {
+            snapshot,
+            query,
+            matched_indices: Arc::new(matched_indices),
+            approx_bytes,
+        });
+        self.evict_over_limit();
+    }
+
+    fn evict_over_limit(&mut self) {
+        while self.entries.len() > Self::MAX_ENTRIES || self.total_bytes > Self::MAX_BYTES {
+            let Some(oldest) = self.entries.pop_front() else {
+                break;
+            };
+            self.total_bytes = self.total_bytes.saturating_sub(oldest.approx_bytes);
+        }
+    }
+}
+
+fn scored_indices_to_paths(
+    entries: &[PathBuf],
+    scored: &[IndexedScore],
+    limit: usize,
+) -> Vec<(PathBuf, f64)> {
+    if limit == 0 || scored.is_empty() {
+        return Vec::new();
+    }
+    scored
+        .iter()
+        .take(limit)
+        .filter_map(|item| {
+            entries
+                .get(item.index)
+                .cloned()
+                .map(|path| (path, item.score))
+        })
+        .collect()
+}
+
 fn spawn_search_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
@@ -393,6 +548,7 @@ fn spawn_search_worker(
     let (tx_res, rx_res) = mpsc::channel::<SearchResponse>();
 
     let handle = thread::spawn(move || {
+        let mut prefix_cache = SearchPrefixCache::default();
         while let Ok(mut req) = rx_req.recv() {
             if shutdown.load(Ordering::Relaxed) {
                 break;
@@ -400,15 +556,26 @@ fn spawn_search_worker(
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
-            let (results, error) = match try_search_entries_with_scope(
+            let query_trimmed = req.query.trim().to_string();
+            let snapshot = SearchEntriesSnapshotKey::from_entries(&req.entries);
+            let cached_candidates = if req.use_regex {
+                None
+            } else {
+                prefix_cache.lookup_candidates(snapshot, &query_trimmed)
+            };
+            let (results, error) = match try_search_entries_indexed_with_scope(
                 &req.query,
                 &req.entries,
-                req.limit,
                 req.use_regex,
                 Some(&req.root),
                 req.prefer_relative,
+                cached_candidates.as_ref().map(|items| items.as_slice()),
             ) {
-                Ok(raw_results) => (
+                Ok(scored) => {
+                    let raw_results = scored_indices_to_paths(&req.entries, &scored, req.limit);
+                    let matched_indices = scored.iter().map(|item| item.index).collect();
+                    prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
+                    (
                     filter_search_results(
                         raw_results,
                         &req.root,
@@ -417,7 +584,8 @@ fn spawn_search_worker(
                         req.use_regex,
                     ),
                     None,
-                ),
+                )
+                }
                 Err(err) => (Vec::new(), Some(err)),
             };
 
@@ -5365,6 +5533,51 @@ mod tests {
         let evicted = root.join("file-0.txt");
         assert!(!app.preview_cache.contains_key(&evicted));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn search_prefix_cache_accepts_only_plain_single_token_queries() {
+        assert!(!SearchPrefixCache::is_cacheable_query("ab"));
+        assert!(SearchPrefixCache::is_cacheable_query("abc"));
+        assert!(!SearchPrefixCache::is_cacheable_query("abc def"));
+        assert!(!SearchPrefixCache::is_cacheable_query("abc|def"));
+        assert!(!SearchPrefixCache::is_cacheable_query("'abc"));
+        assert!(!SearchPrefixCache::is_cacheable_query("!abc"));
+        assert!(!SearchPrefixCache::is_cacheable_query("^abc"));
+        assert!(!SearchPrefixCache::is_cacheable_query("abc$"));
+        assert!(SearchPrefixCache::is_safe_prefix_extension("abc", "abcd"));
+        assert!(!SearchPrefixCache::is_safe_prefix_extension("abc", "ab"));
+    }
+
+    #[test]
+    fn search_prefix_cache_prefers_longest_prefix_and_evicts_old_entries() {
+        let snapshot = SearchEntriesSnapshotKey { ptr: 1, len: 100 };
+        let mut cache = SearchPrefixCache::default();
+        cache.maybe_store(snapshot, "abc", vec![0, 1, 2, 3]);
+        cache.maybe_store(snapshot, "abcd", vec![1, 3]);
+
+        let candidates = cache
+            .lookup_candidates(snapshot, "abcde")
+            .expect("cached candidates");
+        assert_eq!(candidates.as_ref(), &vec![1, 3]);
+
+        for idx in 0..(SearchPrefixCache::MAX_ENTRIES + 4) {
+            cache.maybe_store(snapshot, &format!("q{:03}", idx), vec![idx]);
+        }
+        assert!(cache.entries.len() <= SearchPrefixCache::MAX_ENTRIES);
+        assert!(cache.total_bytes <= SearchPrefixCache::MAX_BYTES);
+    }
+
+    #[test]
+    fn search_prefix_cache_skips_oversized_match_sets() {
+        let snapshot = SearchEntriesSnapshotKey { ptr: 2, len: 1_000_000 };
+        let mut cache = SearchPrefixCache::default();
+        let oversized = (0..=SearchPrefixCache::MAX_MATCHED_INDICES).collect::<Vec<_>>();
+
+        cache.maybe_store(snapshot, "oversized", oversized);
+
+        assert!(cache.lookup_candidates(snapshot, "oversizedx").is_none());
+        assert_eq!(cache.total_bytes, 0);
     }
 
     #[test]
