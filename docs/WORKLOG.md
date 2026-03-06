@@ -1,0 +1,108 @@
+# WORKLOG
+
+## Session log
+
+### 2026-03-06 23:20
+- Goal:
+- `rust/src/app.rs` の分割要否を踏まえ、継続実行できる分割計画と一時運用ルールを整備する。
+- Progress:
+- `app.rs` を最優先対象とする段階的分割方針を確定。
+- `docs/APP_SPLIT_PLAN.md` を作成。
+- `docs/TASKS.md` に Phase ベースのタスクを登録。
+- `AGENTS.md` に一時的な分割実行ポリシーを追加。
+- Decisions:
+- 全面再分割は行わず、`app.rs` とその test から着手する。
+- test は integration test 化せず、app モジュール配下の unit test として維持する。
+- 分割順は `tests -> workers -> session/tabs -> input -> render` とする。
+- Files changed:
+- `docs/APP_SPLIT_PLAN.md`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- `AGENTS.md`
+- Commands:
+- `sed -n '1,260p' AGENTS.md`
+- `sed -n '1,220p' docs/DESIGN.md`
+- `sed -n '1,220p' docs/SPEC.md`
+- `sed -n '1,220p' docs/TESTPLAN.md`
+- Tests:
+- 未実行（docs/AGENTS 整備のみ）
+- Open questions:
+- Phase 3 の分離先を `session.rs` と `tabs.rs` のどちらに分けるかは、Phase 2 終了時点の依存を見て確定する。
+- Next start:
+- Phase 1 として `rust/src/app.rs` の inline test を `rust/src/app/tests/` 配下へ外出しする。
+
+### 2026-03-06 23:55
+- Goal:
+- Phase 1 として `rust/src/app.rs` の inline test を `rust/src/app/tests/` 配下へ外出しし、以後の責務分離に備えて test 境界を先に整理する。
+- Progress:
+- `app.rs` 末尾の巨大 inline test を `#[path = "app/tests/mod.rs"] mod tests;` に置き換えた。
+- `rust/src/app/tests/` を追加し、`app_core` / `index_pipeline` / `query_history` / `session_tabs` / `shortcuts` / `window_ime` 単位へ test を再配置した。
+- 共通 helper を `rust/src/app/tests/support.rs` に集約し、分離後の import/re-export warning を解消した。
+- Decisions:
+- test は integration test 化せず、`app` 配下の unit test として維持する方針を継続する。
+- production code 側の変更は `app.rs` の test module 参照差し替えに留め、Phase 1 では本体責務を動かさない。
+- Files changed:
+- `rust/src/app.rs`
+- `rust/src/app/tests/mod.rs`
+- `rust/src/app/tests/support.rs`
+- `rust/src/app/tests/app_core.rs`
+- `rust/src/app/tests/index_pipeline.rs`
+- `rust/src/app/tests/query_history.rs`
+- `rust/src/app/tests/session_tabs.rs`
+- `rust/src/app/tests/shortcuts.rs`
+- `rust/src/app/tests/window_ime.rs`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- Commands:
+- `cargo fmt --manifest-path rust/Cargo.toml`
+- `cargo test --manifest-path rust/Cargo.toml --locked`
+- Tests:
+- `cargo test --manifest-path rust/Cargo.toml --locked`: pass (`179 passed, 0 failed, 2 ignored`; `cli_contract` 5 passed)
+- Next start:
+- Phase 2 として request/response 型、`spawn_*_worker` 群、`WorkerRuntime` 周辺の依存を棚卸しし、`rust/src/app/workers.rs` への切り出し境界を確定する。
+
+### 2026-03-07 00:40
+- Goal:
+- Phase 2 として worker runtime、request/response 型、`spawn_*_worker` 群、および worker 専用 helper を `rust/src/app/workers.rs` へ切り出し、`app.rs` の orchestration 役割を明確化する。
+- Progress:
+- `rust/src/app/workers.rs` を追加し、worker runtime、search/index/preview/action/filelist の request/response、`spawn_*_worker` 群、search prefix cache、index stream helper を移設した。
+- `rust/src/app.rs` 側は `#[path = "app/workers.rs"] mod workers; use workers::*;` で worker 境界を参照する形へ整理した。
+- test から直接参照される worker 型・cache・helper は `pub(super)` に調整し、既存 unit test の private API 前提を維持した。
+- Decisions:
+- worker 専用の型と helper は Phase 2 でまとめて切り出し、`IndexEntry` / `IndexRequest` / `IndexResponse` も同じ境界へ寄せる。
+- worker 実装の都合でしか使わない処理は `app.rs` に残さず `workers.rs` に集約する。
+- Files changed:
+- `rust/src/app.rs`
+- `rust/src/app/workers.rs`
+- `rust/src/app/tests/mod.rs`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- Commands:
+- `cargo fmt --manifest-path rust/Cargo.toml`
+- `cargo test --manifest-path rust/Cargo.toml --locked`
+- Tests:
+- `cargo test --manifest-path rust/Cargo.toml --locked`: pass (`179 passed, 0 failed, 2 ignored`; `cli_contract` 5 passed)
+- Next start:
+- Phase 3 として `UiState` / `LaunchSettings` / `SavedTabState` / `SavedWindowGeometry`、tab restore/load/save/sanitize の依存を棚卸しし、`session.rs` または `tabs.rs` への分離境界を確定する。
+
+### 2026-03-07 01:05
+- Goal:
+- Phase 3 として session 永続化データ型と pure helper を `rust/src/app/session.rs` へ切り出し、`app.rs` から起動時 restore 判定の責務だけを後退させる。
+- Progress:
+- `rust/src/app/session.rs` を追加し、`SavedWindowGeometry` / `UiState` / `LaunchSettings` / `SavedTabState` と `ui_state_file_path` / `load_ui_state` / `load_launch_settings` / `restore_tabs_enabled` / `sanitize_saved_tabs` を移設した。
+- `rust/src/app.rs` 側は `#[path = "app/session.rs"] mod session; use session::*;` で参照する形へ整理し、`restored_tab_state` や `save_ui_state` など runtime 依存の強い処理は残した。
+- Decisions:
+- Phase 3 は最小境界を優先し、tab runtime 初期化や `save_ui_state` の組み立てまでは動かさない。
+- `SavedWindowGeometry` は型だけ session 側へ寄せ、window geometry の変換ロジックは `app.rs` に残す。
+- Files changed:
+- `rust/src/app.rs`
+- `rust/src/app/session.rs`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- Commands:
+- `cargo fmt --manifest-path rust/Cargo.toml`
+- `cargo test --manifest-path rust/Cargo.toml --locked`
+- Tests:
+- `cargo test --manifest-path rust/Cargo.toml --locked`: pass (`179 passed, 0 failed, 2 ignored`; `cli_contract` 5 passed)
+- Next start:
+- Phase 4 として shortcut/query history/IME と deferred shortcut 実行の依存を棚卸しし、`input.rs` への分離境界を確定する。
