@@ -107,6 +107,12 @@ struct WorkerRuntime {
     handles: Vec<thread::JoinHandle<()>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct WorkerJoinSummary {
+    joined: usize,
+    total: usize,
+}
+
 impl WorkerRuntime {
     fn new(shutdown: Arc<AtomicBool>) -> Self {
         Self {
@@ -123,10 +129,37 @@ impl WorkerRuntime {
         self.shutdown.store(true, Ordering::Relaxed);
     }
 
-    fn join_all(mut self) {
-        for handle in self.handles.drain(..) {
-            let _ = handle.join();
+    fn join_all_with_timeout(mut self, timeout: Duration) -> WorkerJoinSummary {
+        let total = self.handles.len();
+        if total == 0 {
+            return WorkerJoinSummary { joined: 0, total: 0 };
         }
+
+        let (tx, rx) = mpsc::channel::<()>();
+        for handle in self.handles.drain(..) {
+            let tx_done = tx.clone();
+            thread::spawn(move || {
+                let _ = handle.join();
+                let _ = tx_done.send(());
+            });
+        }
+        drop(tx);
+
+        let deadline = Instant::now() + timeout;
+        let mut joined = 0usize;
+        while joined < total {
+            let now = Instant::now();
+            if now >= deadline {
+                break;
+            }
+            let remain = deadline.saturating_duration_since(now);
+            match rx.recv_timeout(remain) {
+                Ok(()) => joined = joined.saturating_add(1),
+                Err(_) => break,
+            }
+        }
+
+        WorkerJoinSummary { joined, total }
     }
 }
 
@@ -1287,6 +1320,8 @@ impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
     const HIGHLIGHT_CACHE_MAX: usize = 256;
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
+    const INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX: Duration = Duration::from_millis(1500);
+    const INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX: usize = 2048;
     const PAGE_MOVE_ROWS: isize = 10;
     const DEFAULT_PREVIEW_PANEL_WIDTH: f32 = 440.0;
     const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
@@ -1296,6 +1331,7 @@ impl FlistWalkerApp {
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
     const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
     const MEMORY_SAMPLE_INTERVAL: Duration = Duration::from_millis(1000);
+    const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(2000);
     const SHRINK_MIN_CAPACITY: usize = 4096;
     const SEARCH_HINTS_TOOLTIP: &'static str = "\
 Search hints:
@@ -3155,12 +3191,14 @@ Search hints:
                     && !self.query.trim().is_empty()
                     && self.index_in_progress
                 {
-                    self.search_rerun_pending = false;
-                    self.search_resume_pending = false;
-                    self.sync_entries_from_incremental();
-                    self.last_search_snapshot_len = self.entries.len();
-                    self.last_incremental_results_refresh = Instant::now();
-                    self.update_results();
+                    if self.should_refresh_incremental_search() {
+                        self.search_rerun_pending = false;
+                        self.search_resume_pending = false;
+                        self.sync_entries_from_incremental();
+                        self.last_search_snapshot_len = self.entries.len();
+                        self.last_incremental_results_refresh = Instant::now();
+                        self.update_results();
+                    }
                 }
                 continue;
             }
@@ -3486,11 +3524,7 @@ Search hints:
         }
 
         let current_len = self.incremental_filtered_entries.len();
-        let delta = current_len.saturating_sub(self.last_search_snapshot_len);
-        if delta > 0
-            && self.last_incremental_results_refresh.elapsed()
-                >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
-        {
+        if self.should_refresh_incremental_search() {
             if self.search_in_progress {
                 self.search_rerun_pending = true;
                 return;
@@ -3500,6 +3534,22 @@ Search hints:
             self.last_incremental_results_refresh = Instant::now();
             self.update_results();
         }
+    }
+
+    fn should_refresh_incremental_search(&self) -> bool {
+        let current_len = self.incremental_filtered_entries.len();
+        let delta = current_len.saturating_sub(self.last_search_snapshot_len);
+        if delta == 0 {
+            return false;
+        }
+        if self.index_in_progress {
+            if delta < Self::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
+                return false;
+            }
+            return self.last_incremental_results_refresh.elapsed()
+                >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
+        }
+        self.last_incremental_results_refresh.elapsed() >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
     }
 
     fn filtered_entries(&self, source: &[PathBuf]) -> Vec<PathBuf> {
@@ -5214,7 +5264,15 @@ impl Drop for FlistWalkerApp {
         self.apply_stable_window_geometry(true);
         self.maybe_save_ui_state(true);
         if let Some(runtime) = self.worker_runtime.take() {
-            runtime.join_all();
+            let summary = runtime.join_all_with_timeout(Self::WORKER_JOIN_TIMEOUT);
+            if summary.joined < summary.total {
+                eprintln!(
+                    "Worker shutdown timeout: joined {}/{} threads within {:?}",
+                    summary.joined,
+                    summary.total,
+                    Self::WORKER_JOIN_TIMEOUT
+                );
+            }
         }
     }
 }
@@ -6273,15 +6331,23 @@ mod tests {
     }
 
     #[test]
-    fn non_empty_query_incremental_refresh_updates_entries_with_small_delta() {
-        let root = test_root("incremental-small-delta");
+    fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
+        let root = test_root("incremental-small-delta-skip");
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
         let (tx, rx) = mpsc::channel::<IndexResponse>();
         app.index_rx = rx;
+        app.entries = Arc::new(Vec::new());
+        app.all_entries = Arc::new(Vec::new());
+        app.index.entries.clear();
+        app.incremental_filtered_entries.clear();
+        app.search_resume_pending = false;
+        app.last_search_snapshot_len = 0;
+        app.search_in_progress = false;
+        app.pending_request_id = None;
         app.pending_index_request_id = Some(21);
         app.index_in_progress = true;
-        app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(1);
+        app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
 
         let path = root.join("main.rs");
         tx.send(IndexResponse::Batch {
@@ -6296,8 +6362,54 @@ mod tests {
 
         app.poll_index_response();
 
-        assert_eq!(app.entries.len(), 1);
-        assert_eq!(app.entries[0], path);
+        assert!(app.entries.is_empty());
+        assert_eq!(app.incremental_filtered_entries, vec![path]);
+        assert!(!app.search_rerun_pending);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
+        let root = test_root("incremental-large-delta");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
+        let (tx, rx) = mpsc::channel::<IndexResponse>();
+        app.index_rx = rx;
+        app.entries = Arc::new(Vec::new());
+        app.all_entries = Arc::new(Vec::new());
+        app.index.entries.clear();
+        app.incremental_filtered_entries.clear();
+        app.search_resume_pending = false;
+        app.last_search_snapshot_len = 0;
+        app.search_in_progress = false;
+        app.pending_request_id = None;
+        app.pending_index_request_id = Some(218);
+        app.index_in_progress = true;
+        app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+
+        let entries = (0..FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX)
+            .map(|i| IndexEntry {
+                path: root.join(format!("main-{i}.rs")),
+                is_dir: false,
+                kind_known: true,
+            })
+            .collect::<Vec<_>>();
+        tx.send(IndexResponse::Batch {
+            request_id: 218,
+            entries,
+        })
+        .expect("send index batch");
+
+        for _ in 0..8 {
+            app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+            app.poll_index_response();
+        }
+
+        assert_eq!(
+            app.entries.len(),
+            FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
+        );
+        assert_eq!(app.incremental_filtered_entries.len(), app.entries.len());
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -8109,5 +8221,32 @@ mod tests {
         assert!(process_shutdown_requested());
         clear_process_shutdown_request();
         assert!(!process_shutdown_requested());
+    }
+
+    #[test]
+    fn worker_runtime_join_all_with_timeout_returns_joined_when_workers_finish() {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let mut runtime = WorkerRuntime::new(Arc::clone(&shutdown));
+        runtime.push(thread::spawn(|| {}));
+        runtime.push(thread::spawn(|| {}));
+
+        let summary = runtime.join_all_with_timeout(Duration::from_millis(500));
+
+        assert_eq!(summary.total, 2);
+        assert_eq!(summary.joined, 2);
+    }
+
+    #[test]
+    fn worker_runtime_join_all_with_timeout_returns_early_on_timeout() {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let mut runtime = WorkerRuntime::new(Arc::clone(&shutdown));
+        runtime.push(thread::spawn(|| {
+            thread::sleep(Duration::from_millis(200));
+        }));
+
+        let summary = runtime.join_all_with_timeout(Duration::from_millis(10));
+
+        assert_eq!(summary.total, 1);
+        assert_eq!(summary.joined, 0);
     }
 }

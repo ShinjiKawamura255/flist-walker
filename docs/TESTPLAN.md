@@ -56,6 +56,8 @@
 | TC-028 | unit | 回帰: 検索窓フォーカス中でも `Ctrl+J` / `Ctrl+M` が `Enter` 同等に実行/オープンを起動する | SP-010 |
 | TC-029 | unit | プロセス shutdown フラグが set/clear 可能で、シグナル経由の終了要求を保持できる | SP-010, SP-008 |
 | TC-030 | unit | 階層 FileList 展開は候補集合中の `FileList.txt` / `filelist.txt` 完全一致エントリのみを対象にし、子 FileList 解析中も supersede で中断できる | SP-001, SP-007 |
+| TC-031 | unit | indexing 中の非空クエリ自動再検索は小差分では抑制し、十分な差分蓄積時のみ再検索する | SP-007, SP-010 |
+| TC-032 | unit | GUI 終了時の worker join はタイムアウト付きで、完了系/タイムアウト系の両方を検証する | SP-008, SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -120,3 +122,5 @@
 - TC-027 -> SP-010 -> DES-009 -> FR-007
 - TC-028 -> SP-010 -> DES-009 -> FR-007
 - TC-029 -> SP-010, SP-008 -> DES-009, DES-007 -> FR-007, NFR-002
+- TC-031 -> SP-007, SP-010 -> DES-006, DES-009 -> NFR-001, FR-007
+- TC-032 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007
