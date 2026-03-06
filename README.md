@@ -30,7 +30,7 @@ cargo run -- --root ..
 2. `Enter` で開く/実行
 3. `Shift+Enter` で選択項目の格納フォルダを開く（同じフォルダは1回だけ開く）
 4. `Tab` / `Shift+Tab` でピン留め複数選択
-5. `Ctrl+Shift+C` で選択パスをコピー
+5. `Ctrl+Shift+C` で選択パスをコピー（macOS は `Cmd+Shift+C`）
 6. `Ctrl+R` / `Ctrl+Shift+R` で検索履歴を戻る/進む
 
 ### 主なショートカット
@@ -46,6 +46,14 @@ cargo run -- --root ..
 - `Ctrl+T`: 新規タブ
 - `Ctrl+W`: 現在タブを閉じる
 - `Ctrl+Tab` / `Ctrl+Shift+Tab`: タブ切り替え
+
+## ショートカット差分（Windows/Linux と macOS）
+
+macOS では次の「主要ショートカット」を `Ctrl` から `Cmd` に切り替えています。
+
+- `Ctrl+T` / `Ctrl+W` / `Ctrl+Tab` / `Ctrl+Shift+Tab`
+- `Ctrl+L`
+- `Ctrl+Shift+C`
 
 ### 入力履歴
 
@@ -172,12 +180,34 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win-clean.ps1
 
 `rust/target/x86_64-pc-windows-msvc/release/FlistWalker.exe`
 
+## macOS 向けビルド
+
+通常ビルド:
+
+```bash
+./scripts/build-rust-macos.sh
+```
+
+クリーンビルド:
+
+```bash
+./scripts/build-rust-macos-clean.sh
+```
+
+成果物（ホストターゲット）:
+
+`rust/target/release/flistwalker`
+
 ## リリースアセット生成
 
 `exe単体 + zip` のアセットは次で生成できます。
 
 ```bash
 ./scripts/prepare-release.sh v0.1.1
+```
+
+```bash
+./scripts/prepare-release-macos.sh v0.1.1
 ```
 
 ```powershell
@@ -189,10 +219,35 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version 
 生成物（例: `v0.2.1`）:
 - `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.exe`
 - `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.zip`
+- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64`
+- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.app`
+- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64-app.zip`
+- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.tar.gz`
 - `dist/v0.2.1/SHA256SUMS`
 
 注:
 - ZIP内の実行ファイル名は `flistwalker.exe` です（単体配布exe名とは別）。
+
+## macOS 署名と notarization
+
+1. まず通常アセットを生成:
+
+```bash
+./scripts/prepare-release-macos.sh v0.8.0
+```
+
+2. notarytool プロフィールを作成（初回のみ）:
+
+```bash
+xcrun notarytool store-credentials flistwalker-notary --apple-id "<APPLE_ID>" --team-id "<TEAM_ID>" --password "<APP_SPECIFIC_PASSWORD>"
+```
+
+3. Developer ID 署名 + notarization + staple:
+
+```bash
+export FLISTWALKER_MACOS_SIGN_IDENTITY="Developer ID Application: Example Corp (TEAMID1234)"
+./scripts/sign-notarize-macos.sh v0.8.0 arm64 flistwalker-notary
+```
 
 ## プロトタイプ資産
 

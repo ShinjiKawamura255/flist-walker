@@ -43,7 +43,7 @@
 | TC-015 | integration | CLI 非空クエリ出力形式と root 不正系を検証する | SP-006, SP-008 |
 | TC-016 | unit | Root 変更時に旧 Root 由来の選択状態（current/pinned/preview）がクリアされる | SP-010 |
 | TC-017 | unit | Root 変更時に旧 Root 向け FileList 上書き確認が破棄される | SP-010 |
-| TC-018 | unit | `Ctrl+Shift+C` は検索窓フォーカス時でも結果パスを優先コピーする | SP-010 |
+| TC-018 | unit | `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は検索窓フォーカス時でも結果パスを優先コピーする | SP-010 |
 | TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
 | TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |

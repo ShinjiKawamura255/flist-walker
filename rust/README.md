@@ -10,6 +10,15 @@ source ~/.cargo/env
 cargo build
 ```
 
+## Build (macOS host)
+
+```bash
+cd ..
+./scripts/build-rust-macos.sh
+# clean build
+./scripts/build-rust-macos-clean.sh
+```
+
 ## Build (Windows EXE with Explorer icon)
 
 WSL から Windows 側 Rust を使ってビルド:
