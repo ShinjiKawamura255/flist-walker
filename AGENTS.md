@@ -51,6 +51,7 @@
 - SPEC は MUST/SHOULD で規範化し、TDD を徹底する。
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 変更時は最低限 `cargo test` を実行してから完了報告する。
+- リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
