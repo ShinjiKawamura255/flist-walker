@@ -80,6 +80,11 @@
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。
 - Root 変更時は旧 root 向けの FileList 上書き確認ダイアログを破棄し、誤上書きを防ぐ。
 - `Ctrl+Shift+C` は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
+- query 履歴は `AppTabState` に保持し、タブ切替時の状態退避/復元に追従させる。
+- query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
+- IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
+- `Ctrl+R` / `Ctrl+Shift+R` は `ArrowUp` / `ArrowDown` の結果移動契約と分離し、履歴参照位置と一時 draft query をタブ単位で管理する。
+- Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - Windows の `.ps1` 実行は `powershell.exe -File` を明示起動する。
 

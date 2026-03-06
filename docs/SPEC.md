@@ -130,12 +130,17 @@
 - MUST: 複数選択と一括アクションを提供する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
 - MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+Shift+C` / `Ctrl+G` は検索窓フォーカス中でも有効である。
+- MUST: query 履歴はタブ単位で保持し、空文字と連続重複 query は履歴保存しない。
+- MUST: `Ctrl+R` / `Ctrl+Shift+R` で query 履歴を巡回できる。
+- SHOULD: query 履歴は打鍵ごとではなく、一定時間の無入力または結果移動開始を契機に確定する。
+- SHOULD: IME 合成中の未確定文字列は query 履歴へ保存せず、変換確定後の query のみ履歴対象とする。
 - MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。
 - MUST: `Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
 - MUST: `Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
+- MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 

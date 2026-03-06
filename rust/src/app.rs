@@ -77,6 +77,10 @@ struct AppTabState {
     search_resume_pending: bool,
     search_rerun_pending: bool,
     query: String,
+    query_history: VecDeque<String>,
+    query_history_cursor: Option<usize>,
+    query_history_draft: Option<String>,
+    query_history_dirty_since: Option<Instant>,
     results: Vec<(PathBuf, f64)>,
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
@@ -132,7 +136,10 @@ impl WorkerRuntime {
     fn join_all_with_timeout(mut self, timeout: Duration) -> WorkerJoinSummary {
         let total = self.handles.len();
         if total == 0 {
-            return WorkerJoinSummary { joined: 0, total: 0 };
+            return WorkerJoinSummary {
+                joined: 0,
+                total: 0,
+            };
         }
 
         let (tx, rx) = mpsc::channel::<()>();
@@ -513,9 +520,11 @@ impl SearchPrefixCache {
         }
 
         let query = query.trim().to_string();
-        let approx_bytes = query
-            .len()
-            .saturating_add(matched_indices.len().saturating_mul(std::mem::size_of::<usize>()));
+        let approx_bytes = query.len().saturating_add(
+            matched_indices
+                .len()
+                .saturating_mul(std::mem::size_of::<usize>()),
+        );
         if approx_bytes > Self::MAX_BYTES {
             return;
         }
@@ -609,15 +618,15 @@ fn spawn_search_worker(
                     let matched_indices = scored.iter().map(|item| item.index).collect();
                     prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
                     (
-                    filter_search_results(
-                        raw_results,
-                        &req.root,
-                        &req.query,
-                        req.prefer_relative,
-                        req.use_regex,
-                    ),
-                    None,
-                )
+                        filter_search_results(
+                            raw_results,
+                            &req.root,
+                            &req.query,
+                            req.prefer_relative,
+                            req.use_regex,
+                        ),
+                        None,
+                    )
                 }
                 Err(err) => (Vec::new(), Some(err)),
             };
@@ -1215,6 +1224,10 @@ pub struct FlistWalkerApp {
     root: PathBuf,
     limit: usize,
     query: String,
+    query_history: VecDeque<String>,
+    query_history_cursor: Option<usize>,
+    query_history_draft: Option<String>,
+    query_history_dirty_since: Option<Instant>,
     use_filelist: bool,
     use_regex: bool,
     include_files: bool,
@@ -1319,6 +1332,8 @@ pub struct FlistWalkerApp {
 impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
     const HIGHLIGHT_CACHE_MAX: usize = 256;
+    const QUERY_HISTORY_MAX: usize = 100;
+    const QUERY_HISTORY_IDLE_DELAY: Duration = Duration::from_millis(400);
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX: Duration = Duration::from_millis(1500);
     const INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX: usize = 2048;
@@ -1462,6 +1477,10 @@ Search hints:
             root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
             query,
+            query_history: VecDeque::new(),
+            query_history_cursor: None,
+            query_history_draft: None,
+            query_history_dirty_since: None,
             use_filelist: true,
             use_regex: false,
             include_files: true,
@@ -1663,6 +1682,10 @@ Search hints:
             search_resume_pending: self.search_resume_pending,
             search_rerun_pending: self.search_rerun_pending,
             query: self.query.clone(),
+            query_history: self.query_history.clone(),
+            query_history_cursor: self.query_history_cursor,
+            query_history_draft: self.query_history_draft.clone(),
+            query_history_dirty_since: self.query_history_dirty_since,
             results: self.results.clone(),
             pinned_paths: self.pinned_paths.clone(),
             current_row: self.current_row,
@@ -1705,6 +1728,10 @@ Search hints:
         self.search_resume_pending = tab.search_resume_pending;
         self.search_rerun_pending = tab.search_rerun_pending;
         self.query = tab.query.clone();
+        self.query_history = tab.query_history.clone();
+        self.query_history_cursor = tab.query_history_cursor;
+        self.query_history_draft = tab.query_history_draft.clone();
+        self.query_history_dirty_since = tab.query_history_dirty_since;
         self.results = tab.results.clone();
         self.pinned_paths = tab.pinned_paths.clone();
         self.current_row = tab.current_row;
@@ -1726,6 +1753,7 @@ Search hints:
         let Some(id) = self.tabs.get(self.active_tab).map(|tab| tab.id) else {
             return;
         };
+        self.commit_query_history_if_needed(true);
         let snapshot = self.capture_active_tab_state(id);
         if let Some(slot) = self.tabs.get_mut(self.active_tab) {
             *slot = snapshot;
@@ -1760,6 +1788,10 @@ Search hints:
         let mut tab = self.capture_active_tab_state(id);
         tab.use_filelist = true;
         tab.query.clear();
+        tab.query_history.clear();
+        tab.query_history_cursor = None;
+        tab.query_history_draft = None;
+        tab.query_history_dirty_since = None;
         tab.pinned_paths.clear();
         tab.current_row = None;
         tab.preview.clear();
@@ -2331,6 +2363,8 @@ Search hints:
         }
 
         self.root = normalized;
+        self.reset_query_history_navigation();
+        self.query_history_dirty_since = None;
         // Avoid launching/copying stale selections from the previous root.
         self.pinned_paths.clear();
         self.current_row = None;
@@ -2703,6 +2737,7 @@ Search hints:
         let Some(tab) = self.tabs.get_mut(tab_index) else {
             return;
         };
+        Self::commit_query_history_for_tab_if_needed(tab, false);
         let request_id = self.next_request_id;
         self.next_request_id = self.next_request_id.saturating_add(1);
         tab.pending_request_id = Some(request_id);
@@ -3149,6 +3184,7 @@ Search hints:
     }
 
     fn enqueue_search_request(&mut self) {
+        self.commit_query_history_if_needed(false);
         let request_id = self.next_request_id;
         self.next_request_id = self.next_request_id.saturating_add(1);
         self.pending_request_id = Some(request_id);
@@ -3782,6 +3818,7 @@ Search hints:
     }
 
     fn move_row(&mut self, delta: isize) {
+        self.commit_query_history_if_needed(true);
         if self.results.is_empty() {
             return;
         }
@@ -3903,6 +3940,8 @@ Search hints:
 
     fn clear_query_and_selection(&mut self) {
         self.query.clear();
+        self.reset_query_history_navigation();
+        self.query_history_dirty_since = None;
         self.pinned_paths.clear();
         self.current_row = None;
         self.preview.clear();
@@ -4672,6 +4711,30 @@ Search hints:
         if ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::P)) {
             self.move_row(-1);
         }
+        let history_direction = ctx.input(|i| {
+            i.events.iter().find_map(|event| match event {
+                egui::Event::Key {
+                    key: egui::Key::R,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if modifiers.ctrl && modifiers.shift => Some(1),
+                egui::Event::Key {
+                    key: egui::Key::R,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if modifiers.ctrl => Some(-1),
+                _ => None,
+            })
+        });
+        if let Some(direction) = history_direction {
+            let _ = ctx.input_mut(|i| i.consume_key(ctrl_mod, egui::Key::R));
+            self.navigate_query_history(direction);
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            }
+        }
         let copy_mod = egui::Modifiers {
             ctrl: true,
             shift: true,
@@ -4749,6 +4812,91 @@ Search hints:
         self.pending_copy_shortcut = false;
         self.copy_selected_paths(ctx);
         self.focus_query_requested = true;
+    }
+
+    fn reset_query_history_navigation(&mut self) {
+        self.query_history_cursor = None;
+        self.query_history_draft = None;
+    }
+
+    fn mark_query_edited(&mut self) {
+        self.reset_query_history_navigation();
+        self.query_history_dirty_since = Some(Instant::now());
+    }
+
+    fn push_query_history(history: &mut VecDeque<String>, query: &str) {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+        if history.back().is_some_and(|entry| entry == trimmed) {
+            return;
+        }
+        history.push_back(trimmed.to_string());
+        while history.len() > Self::QUERY_HISTORY_MAX {
+            history.pop_front();
+        }
+    }
+
+    fn commit_query_history_if_needed(&mut self, force: bool) {
+        if self.ime_composition_active {
+            return;
+        }
+        let should_commit = self
+            .query_history_dirty_since
+            .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
+        if !should_commit || self.query_history_cursor.is_some() {
+            return;
+        }
+        Self::push_query_history(&mut self.query_history, &self.query);
+        self.query_history_dirty_since = None;
+    }
+
+    fn commit_query_history_for_tab_if_needed(tab: &mut AppTabState, force: bool) {
+        let should_commit = tab
+            .query_history_dirty_since
+            .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
+        if !should_commit || tab.query_history_cursor.is_some() {
+            return;
+        }
+        Self::push_query_history(&mut tab.query_history, &tab.query);
+        tab.query_history_dirty_since = None;
+    }
+
+    fn navigate_query_history(&mut self, direction: isize) {
+        if self.query_history.is_empty() {
+            return;
+        }
+
+        let len = self.query_history.len();
+        let next_cursor = match self.query_history_cursor {
+            Some(cursor) if direction < 0 => cursor.saturating_sub(1),
+            Some(cursor) if direction > 0 => {
+                let next = cursor.saturating_add(1);
+                if next >= len {
+                    if let Some(draft) = self.query_history_draft.take() {
+                        self.query = draft;
+                        self.query_history_cursor = None;
+                        self.update_results();
+                    }
+                    return;
+                }
+                next
+            }
+            Some(cursor) => cursor,
+            None if direction < 0 => {
+                self.query_history_draft = Some(self.query.clone());
+                len.saturating_sub(1)
+            }
+            None if direction > 0 => return,
+            None => return,
+        };
+
+        if let Some(next_query) = self.query_history.get(next_cursor).cloned() {
+            self.query_history_cursor = Some(next_cursor);
+            self.query = next_query;
+            self.update_results();
+        }
     }
 
     fn process_query_input_events(
@@ -4929,6 +5077,7 @@ impl eframe::App for FlistWalkerApp {
         self.poll_kind_response();
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
+        self.commit_query_history_if_needed(false);
         let memory_elapsed = self.last_memory_sample.elapsed();
         if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
             self.refresh_status_line();
@@ -5107,6 +5256,7 @@ impl eframe::App for FlistWalkerApp {
                     output.state.ccursor_range(),
                 );
             if query_event_changed {
+                self.mark_query_edited();
                 if output.response.has_focus() {
                     let end = query_cursor_after_fallback
                         .unwrap_or_else(|| Self::char_count(&self.query));
@@ -5120,9 +5270,11 @@ impl eframe::App for FlistWalkerApp {
                 self.update_results();
             }
             if self.apply_emacs_query_shortcuts(ctx, &mut output) {
+                self.mark_query_edited();
                 self.update_results();
             }
             if output.response.changed() {
+                self.mark_query_edited();
                 Self::append_window_trace(
                     "query_text_changed",
                     &format!(
@@ -5333,6 +5485,260 @@ mod tests {
         text.starts_with("Action: ") || text.starts_with("Action failed:")
     }
 
+    fn commit_query_history_for_test(app: &mut FlistWalkerApp) {
+        app.commit_query_history_if_needed(true);
+    }
+
+    #[test]
+    fn query_history_shortcuts_navigate_previous_and_next() {
+        let root = test_root("query-history-shortcuts");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.entries = Arc::new(vec![root.join("alpha.txt")]);
+        app.query = "first".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "second".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "draft".to_string();
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::R,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.query, "second");
+        assert_eq!(app.query_history_cursor, Some(1));
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::R,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.query, "first");
+        assert_eq!(app.query_history_cursor, Some(0));
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::R,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.query, "second");
+        assert_eq!(app.query_history_cursor, Some(1));
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::R,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    shift: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert_eq!(app.query, "draft");
+        assert_eq!(app.query_history_cursor, None);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn query_history_skips_empty_and_consecutive_duplicates() {
+        let root = test_root("query-history-dedup");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+        app.query = String::new();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "same".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "same".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "same ".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "other".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+
+        assert_eq!(
+            app.query_history.iter().cloned().collect::<Vec<_>>(),
+            vec!["same".to_string(), "other".to_string()]
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn query_history_is_tab_scoped() {
+        let root = test_root("query-history-tab-scoped");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.query = "tab-a".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+
+        app.create_new_tab();
+        assert!(app.query_history.is_empty());
+        app.query = "tab-b".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+
+        app.switch_to_tab_index(0);
+        assert_eq!(
+            app.query_history.iter().cloned().collect::<Vec<_>>(),
+            vec!["tab-a".to_string()]
+        );
+        assert_eq!(app.query, "tab-a");
+
+        app.switch_to_tab_index(1);
+        assert_eq!(
+            app.query_history.iter().cloned().collect::<Vec<_>>(),
+            vec!["tab-b".to_string()]
+        );
+        assert_eq!(app.query, "tab-b");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn root_change_resets_query_history_navigation_state() {
+        let root_a = test_root("query-history-root-a");
+        let root_b = test_root("query-history-root-b");
+        fs::create_dir_all(&root_a).expect("create root a");
+        fs::create_dir_all(&root_b).expect("create root b");
+        let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+        app.query = "first".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "second".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+        app.query = "draft".to_string();
+
+        app.mark_query_edited();
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key: egui::Key::R,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    ctrl: true,
+                    ..Default::default()
+                },
+            }],
+        );
+        assert!(app.query_history_cursor.is_some());
+
+        app.apply_root_change(root_b.clone());
+
+        assert_eq!(app.root, root_b);
+        assert!(app.query_history_cursor.is_none());
+        assert!(app.query_history_draft.is_none());
+        assert_eq!(
+            app.query_history.iter().cloned().collect::<Vec<_>>(),
+            vec!["first".to_string(), "second".to_string()]
+        );
+        let _ = fs::remove_dir_all(&root_a);
+        let _ = fs::remove_dir_all(&root_b);
+    }
+
+    #[test]
+    fn query_history_commits_only_final_query_after_typing_burst() {
+        let root = test_root("query-history-burst");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+        for query in ["t", "te", "tes", "test"] {
+            app.query = query.to_string();
+            app.mark_query_edited();
+            app.update_results();
+        }
+        commit_query_history_for_test(&mut app);
+
+        assert_eq!(
+            app.query_history.iter().cloned().collect::<Vec<_>>(),
+            vec!["test".to_string()]
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn query_history_skips_ime_intermediate_text_until_composition_ends() {
+        let root = test_root("query-history-ime");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+        app.query = "t".to_string();
+        app.ime_composition_active = true;
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+
+        app.query = "て".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+
+        assert!(app.query_history.is_empty());
+
+        app.ime_composition_active = false;
+        app.query = "テスト".to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+
+        assert_eq!(
+            app.query_history.iter().cloned().collect::<Vec<_>>(),
+            vec!["テスト".to_string()]
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
     #[test]
     fn clear_query_and_selection_clears_state() {
         let root = test_root("clear");
@@ -5451,10 +5857,7 @@ mod tests {
         fs::write(&file_a2, "pub fn f() {}").expect("write file a2");
         fs::write(&file_b, "pub fn g() {}").expect("write file b");
 
-        let targets = action_targets_for_request(
-            &[file_a1, file_a2, file_b, dir_a.clone()],
-            true,
-        );
+        let targets = action_targets_for_request(&[file_a1, file_a2, file_b, dir_a.clone()], true);
 
         assert_eq!(targets, vec![dir_a, dir_b]);
         let _ = fs::remove_dir_all(&root);
@@ -5628,7 +6031,10 @@ mod tests {
 
     #[test]
     fn search_prefix_cache_skips_oversized_match_sets() {
-        let snapshot = SearchEntriesSnapshotKey { ptr: 2, len: 1_000_000 };
+        let snapshot = SearchEntriesSnapshotKey {
+            ptr: 2,
+            len: 1_000_000,
+        };
         let mut cache = SearchPrefixCache::default();
         let oversized = (0..=SearchPrefixCache::MAX_MATCHED_INDICES).collect::<Vec<_>>();
 
