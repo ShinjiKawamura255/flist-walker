@@ -107,6 +107,48 @@
 - Next start:
 - Phase 4 として shortcut/query history/IME と deferred shortcut 実行の依存を棚卸しし、`input.rs` への分離境界を確定する。
 
+### 2026-03-07 02:10
+- Goal:
+- Phase 5 として `update()` 内の panel/dialog 描画と既存 render helper を `rust/src/app/render.rs` へ切り出し、`app.rs` をフレーム orchestration 中心へ整理する。
+- Progress:
+- `rust/src/app/render.rs` を追加し、`render_results_and_preview` / `render_results_list` / `render_tab_bar` を移設した。
+- `update()` から top panel、status panel、FileList dialog、central panel の描画ブロックを `render_*` helper 呼び出しへ置き換えた。
+- `app.rs` には polling、repaint、window geometry、save orchestration を残した。
+- Decisions:
+- Phase 5 では描画ブロックだけを切り出し、state 更新・request 発行・pending cleanup の契約はそのまま `self` メソッド呼び出しで維持する。
+- render 分離に合わせて不要な可視性拡大は行わず、`render.rs` 側は `impl FlistWalkerApp` の private state を直接扱う構成を維持する。
+- Files changed:
+- `rust/src/app.rs`
+- `rust/src/app/render.rs`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- Commands:
+- `cargo fmt --manifest-path rust/Cargo.toml`
+- `cargo test --manifest-path rust/Cargo.toml --locked`
+- Tests:
+- `cargo test --manifest-path rust/Cargo.toml --locked`: pass (`179 passed, 0 failed, 2 ignored`; `cli_contract` 5 passed)
+- Next start:
+- Cleanup として `AGENTS.md` の一時運用項目を削除し、分割計画完了を文書へ反映する。
+
+### 2026-03-07 02:25
+- Goal:
+- Cleanup として `AGENTS.md` の一時運用項目を削除し、`app.rs` 分割計画の完了を文書へ反映する。
+- Progress:
+- `AGENTS.md` から `6.1 一時運用: app.rs 分割計画` を削除した。
+- `docs/TASKS.md` で `T-008` を `DONE` に更新し、分割計画完了を反映した。
+- Decisions:
+- 一時運用ルールは役目を終えたため削除し、以後は通常のプロジェクト方針のみを適用する。
+- Files changed:
+- `AGENTS.md`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- Commands:
+- なし
+- Tests:
+- 追加実行なし。直前 Phase 5 の `cargo test --manifest-path rust/Cargo.toml --locked` pass を最終検証として採用。
+- Next start:
+- `rust/src/app.rs` 分割計画は完了。
+
 ### 2026-03-07 01:45
 - Goal:
 - Phase 4 として shortcut/query history/IME/deferred shortcut と文字列編集 helper を `rust/src/app/input.rs` へ切り出し、`app.rs` の入力 orchestration 境界を明確化する。

@@ -52,13 +52,5 @@
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 変更時は最低限 `cargo test` を実行してから完了報告する。
 
-## 6.1 一時運用: app.rs 分割計画
-- 本節は `rust/src/app.rs` 分割対応が完了するまでの一時運用とし、完了後は削除する。
-- 分割作業は `docs/APP_SPLIT_PLAN.md` の Phase 順に従い、複数 Phase を同一変更へ混在させない。
-- 進捗管理は `docs/TASKS.md`、判断・検証ログは `docs/WORKLOG.md` を更新する。
-- 最優先対象は `rust/src/app.rs` とその inline test であり、`indexer.rs` / `search.rs` / `ui_model.rs` / `actions.rs` の再分割は後回しとする。
-- test は integration test 化で逃がさず、原則 `rust/src/app/` 配下の unit test として維持する。
-- 各 Phase 完了条件は「対象境界の切り出し」「`cargo fmt --manifest-path rust/Cargo.toml`」「`cargo test --manifest-path rust/Cargo.toml --locked`」とする。
-
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
