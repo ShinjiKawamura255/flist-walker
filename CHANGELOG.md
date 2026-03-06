@@ -24,6 +24,36 @@
 ### Known issues
 - 
 
+## [0.9.0] - 2026-03-07
+### Added
+- macOS 向けショートカット差分を整理し、`Cmd+T` / `Cmd+W` / `Cmd+Tab` 系と `Cmd+Shift+C` を主要操作として揃えた。
+- タブ単位の検索履歴を追加し、`Ctrl+R` / `Ctrl+Shift+R` で前後移動できるようにした。
+- `FLISTWALKER_RESTORE_TABS=1` による opt-in のタブセッション復元を追加した。
+- macOS 向け `.app` / zip / tar.gz のリリースアセット生成スクリプトを追加した。
+
+### Changed
+- `rust/src/app.rs` を `tests` / `workers` / `session` / `input` / `render` に段階分割し、責務境界を明確化した。
+- `Shift+Enter` の格納フォルダオープンは同一フォルダを重複起動しない挙動に統一した。
+- README とリリース導線を Windows/macOS 両対応前提へ更新した。
+
+### Fixed
+- index/search/preview/action の並行処理を hardening し、古い応答で UI 状態が巻き戻る経路を抑制した。
+- worker shutdown と join timeout を見直し、終了時のハングや stale request の取り残しを抑えた。
+- incremental query narrowing 用の prefix candidate cache を追加し、絞り込み中の検索応答を改善した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+- この環境では macOS アセットの実ビルドを完了できないため、公開時は別の macOS 環境での最終生成が必要。
+
 ## [0.8.0] - 2026-03-04
 ### Added
 - 
@@ -279,7 +309,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.8.0
 [0.7.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.1
 [0.7.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.0
