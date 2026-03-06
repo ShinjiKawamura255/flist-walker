@@ -8,11 +8,14 @@
 
 ## 主要機能
 
+- マルチタブ
 - `FileList.txt` / `filelist.txt` 優先読み込み（ルート直下のみ）
 - File / Folder の高速インデックスと検索
 - 検索演算子: `'`（完全一致）, `!`（除外）, `^`（先頭）, `$`（末尾）
 - 結果ハイライト、非一致非表示、ピン留め複数選択
 - プレビュー（オンデマンドファイルは自動スキップ）
+- Root の保存、既定 root 設定
+- 検索履歴（タブ単位）
 - `Create File List` で現在Rootから `FileList.txt` を生成
 
 ## クイックスタート（GUI）
@@ -29,6 +32,20 @@ cargo run -- --root ..
 4. `Tab` / `Shift+Tab` でピン留め複数選択
 5. `Ctrl+Shift+C` で選択パスをコピー
 6. `Ctrl+R` / `Ctrl+Shift+R` で検索履歴を戻る/進む
+
+### 主なショートカット
+
+- `Up` / `Down` または `Ctrl+P` / `Ctrl+N`: 現在行を移動
+- `Ctrl+V` / `Alt+V`: ページ移動
+- `Enter` / `Ctrl+J` / `Ctrl+M`: 開く / 実行
+- `Shift+Enter`: 格納フォルダを開く
+- `Tab` / `Shift+Tab` / `Ctrl+I`: 現在行のピン留め切り替え
+- `Ctrl+Shift+C`: 選択パスをコピー
+- `Ctrl+G`: query とピン留めをクリア
+- `Ctrl+L`: 検索欄の focus 切り替え
+- `Ctrl+T`: 新規タブ
+- `Ctrl+W`: 現在タブを閉じる
+- `Ctrl+Tab` / `Ctrl+Shift+Tab`: タブ切り替え
 
 ### 入力履歴
 
@@ -74,7 +91,7 @@ Remove-Item Env:FLISTWALKER_RESTORE_TABS
 ```bash
 cd rust
 source ~/.cargo/env
-cargo run
+cargo run -- --root ..
 ```
 
 CLI モード:
@@ -85,18 +102,34 @@ source ~/.cargo/env
 cargo run -- --cli "main" --root .. --limit 1000
 ```
 
+CLI では:
+
+- query 未指定時は候補一覧を `limit` 件まで表示します。
+- query 指定時はスコア付きで結果を表示します。
+- 現状の CLI は GUI と違って `Regex` 切り替えを持たず、通常検索のみです。
+
 ## 挙動
 
 - `FileList.txt` または `filelist.txt` がルート直下にある場合はそれを優先して読み込みます。
+- ルート直下の `FileList.txt` / `filelist.txt` に含まれる配下の `FileList.txt` / `filelist.txt` も必要に応じて展開します。
 - リストがない場合は walker で再帰走査します。
 - ファイル選択時は実行または既定アプリでオープン、フォルダ選択時はファイルマネージャでオープンします。
+- `Create File List` は必要に応じて Walker ベースの新規タブへ切り替えて生成します。
 
 ### オプションチェックボックス
 
 - `Use FileList`: ONで `FileList.txt` / `filelist.txt` を優先利用
-- `Files`: ファイル表示のON/OFF（表示フィルタ）
-- `Folders`: フォルダ表示のON/OFF（表示フィルタ）
+- `Files`: ファイル表示のON/OFF
+- `Folders`: フォルダ表示のON/OFF
 - `Regex`: 正規表現検索を有効化
+- `Preview`: プレビューペインの表示切り替え
+
+### Root 操作
+
+- `Browse...`: Root を変更
+- `Set as default`: 次回起動時の既定 root を保存
+- `Add to list`: 現在 root を保存済みリストへ追加
+- `Remove from list`: 現在 root を保存済みリストから削除
 
 ## テスト
 
