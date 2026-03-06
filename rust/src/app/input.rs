@@ -1,0 +1,650 @@
+use super::*;
+
+impl FlistWalkerApp {
+    pub(super) fn char_count(text: &str) -> usize {
+        text.chars().count()
+    }
+
+    pub(super) fn byte_index_at_char(text: &str, char_index: usize) -> usize {
+        if char_index == 0 {
+            return 0;
+        }
+        text.char_indices()
+            .nth(char_index)
+            .map(|(idx, _)| idx)
+            .unwrap_or(text.len())
+    }
+
+    pub(super) fn remove_char_range(text: &mut String, start: usize, end: usize) -> String {
+        if start >= end {
+            return String::new();
+        }
+        let start_byte = Self::byte_index_at_char(text, start);
+        let end_byte = Self::byte_index_at_char(text, end);
+        let removed = text[start_byte..end_byte].to_string();
+        text.replace_range(start_byte..end_byte, "");
+        removed
+    }
+
+    pub(super) fn insert_at_char(text: &mut String, pos: usize, value: &str) {
+        let byte_pos = Self::byte_index_at_char(text, pos);
+        text.insert_str(byte_pos, value);
+    }
+
+    pub(super) fn is_word_char(ch: char) -> bool {
+        ch.is_alphanumeric() || ch == '_' || ch == '-'
+    }
+
+    pub(super) fn selection_range(cursor: usize, anchor: usize) -> Option<(usize, usize)> {
+        if cursor == anchor {
+            None
+        } else {
+            Some((cursor.min(anchor), cursor.max(anchor)))
+        }
+    }
+
+    pub(super) fn apply_ctrl_h_delete(
+        &mut self,
+        cursor: &mut usize,
+        anchor: &mut usize,
+        text_already_changed: bool,
+    ) -> (bool, bool) {
+        // Some backends map Ctrl+H to Backspace at the widget level.
+        // Avoid applying our delete logic twice in the same frame.
+        if text_already_changed {
+            return (false, false);
+        }
+
+        if let Some((start, end)) = Self::selection_range(*cursor, *anchor) {
+            Self::remove_char_range(&mut self.query, start, end);
+            *cursor = start;
+            *anchor = start;
+            return (true, true);
+        }
+
+        if *cursor > 0 {
+            let start = *cursor - 1;
+            Self::remove_char_range(&mut self.query, start, *cursor);
+            *cursor = start;
+            *anchor = start;
+            return (true, true);
+        }
+
+        (false, false)
+    }
+
+    pub(super) fn apply_emacs_query_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+        output: &mut egui::text_edit::TextEditOutput,
+    ) -> bool {
+        if self.ime_composition_active {
+            return false;
+        }
+        if !output.response.has_focus() {
+            return false;
+        }
+
+        let emacs_mods = egui::Modifiers {
+            command: true,
+            ..Default::default()
+        };
+        let pressed = |key: egui::Key| ctx.input_mut(|i| i.consume_key(emacs_mods, key));
+
+        let mut text_changed = false;
+        let mut cursor_changed = false;
+        let char_len = Self::char_count(&self.query);
+        let ccursor = output.state.ccursor_range().unwrap_or_else(|| {
+            egui::text_edit::CCursorRange::one(egui::text::CCursor::new(char_len))
+        });
+        let mut cursor = ccursor.primary.index.min(char_len);
+        let mut anchor = ccursor.secondary.index.min(char_len);
+
+        if pressed(egui::Key::A) {
+            cursor = 0;
+            anchor = 0;
+            cursor_changed = true;
+        } else if pressed(egui::Key::E) {
+            let end = Self::char_count(&self.query);
+            cursor = end;
+            anchor = end;
+            cursor_changed = true;
+        } else if pressed(egui::Key::B) {
+            let next = cursor.saturating_sub(1);
+            if next != cursor {
+                cursor = next;
+                anchor = next;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::F) {
+            let end = Self::char_count(&self.query);
+            let next = (cursor + 1).min(end);
+            if next != cursor {
+                cursor = next;
+                anchor = next;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::H) {
+            let (changed, moved) =
+                self.apply_ctrl_h_delete(&mut cursor, &mut anchor, output.response.changed());
+            text_changed |= changed;
+            cursor_changed |= moved;
+        } else if pressed(egui::Key::D) {
+            if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                Self::remove_char_range(&mut self.query, start, end);
+                cursor = start;
+                anchor = start;
+                text_changed = true;
+                cursor_changed = true;
+            } else {
+                let end = Self::char_count(&self.query);
+                if cursor < end {
+                    Self::remove_char_range(&mut self.query, cursor, cursor + 1);
+                    text_changed = true;
+                    cursor_changed = true;
+                }
+            }
+        } else if pressed(egui::Key::W) {
+            if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                self.kill_buffer = Self::remove_char_range(&mut self.query, start, end);
+                cursor = start;
+                anchor = start;
+                text_changed = true;
+                cursor_changed = true;
+            } else if cursor > 0 {
+                let chars: Vec<char> = self.query.chars().collect();
+                let mut start = cursor;
+                while start > 0 && chars[start - 1].is_whitespace() {
+                    start -= 1;
+                }
+                while start > 0 && Self::is_word_char(chars[start - 1]) {
+                    start -= 1;
+                }
+                if start < cursor {
+                    self.kill_buffer = Self::remove_char_range(&mut self.query, start, cursor);
+                    cursor = start;
+                    anchor = start;
+                    text_changed = true;
+                    cursor_changed = true;
+                }
+            }
+        } else if pressed(egui::Key::K) {
+            let end = Self::char_count(&self.query);
+            if cursor < end {
+                self.kill_buffer = Self::remove_char_range(&mut self.query, cursor, end);
+                anchor = cursor;
+                text_changed = true;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::Y) {
+            if !self.kill_buffer.is_empty() {
+                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                    Self::remove_char_range(&mut self.query, start, end);
+                    cursor = start;
+                }
+                Self::insert_at_char(&mut self.query, cursor, &self.kill_buffer);
+                cursor += Self::char_count(&self.kill_buffer);
+                anchor = cursor;
+                text_changed = true;
+                cursor_changed = true;
+            }
+        } else if pressed(egui::Key::U) && cursor > 0 {
+            Self::remove_char_range(&mut self.query, 0, cursor);
+            cursor = 0;
+            anchor = 0;
+            text_changed = true;
+            cursor_changed = true;
+        }
+
+        if cursor_changed {
+            output
+                .state
+                .set_ccursor_range(Some(egui::text_edit::CCursorRange::two(
+                    egui::text::CCursor::new(anchor),
+                    egui::text::CCursor::new(cursor),
+                )));
+            output.state.clone().store(ctx, output.response.id);
+            ctx.request_repaint();
+        }
+
+        text_changed
+    }
+
+    pub(super) fn primary_shortcut_label() -> &'static str {
+        #[cfg(target_os = "macos")]
+        {
+            "Cmd"
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            "Ctrl"
+        }
+    }
+
+    pub(super) fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        let query_focused = ctx.memory(|m| m.has_focus(self.query_input_id));
+        self.handle_shortcuts_with_focus(ctx, query_focused);
+    }
+
+    pub(super) fn consume_gui_shortcut(ctx: &egui::Context, key: egui::Key, shift: bool) -> bool {
+        #[cfg(target_os = "macos")]
+        {
+            let primary = egui::Modifiers {
+                mac_cmd: true,
+                shift,
+                ..Default::default()
+            };
+            if ctx.input_mut(|i| i.consume_key(primary, key)) {
+                return true;
+            }
+            let fallback = egui::Modifiers {
+                command: true,
+                shift,
+                ..Default::default()
+            };
+            return ctx.input_mut(|i| i.consume_key(fallback, key));
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let mods = egui::Modifiers {
+                ctrl: true,
+                shift,
+                ..Default::default()
+            };
+            ctx.input_mut(|i| i.consume_key(mods, key))
+        }
+    }
+
+    pub(super) fn consume_emacs_shortcut(ctx: &egui::Context, key: egui::Key, shift: bool) -> bool {
+        let mods = egui::Modifiers {
+            ctrl: true,
+            shift,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(mods, key)) {
+            return true;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            // Some backends may surface ctrl chords via command bit on macOS.
+            let fallback = egui::Modifiers {
+                command: true,
+                ctrl: true,
+                shift,
+                ..Default::default()
+            };
+            return ctx.input_mut(|i| i.consume_key(fallback, key));
+        }
+        #[cfg(not(target_os = "macos"))]
+        false
+    }
+
+    pub(super) fn handle_shortcuts_with_focus(&mut self, ctx: &egui::Context, query_focused: bool) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::T, false) {
+            self.create_new_tab();
+            return;
+        }
+        if Self::consume_gui_shortcut(ctx, egui::Key::W, false) {
+            self.close_active_tab();
+            return;
+        }
+        if Self::consume_gui_shortcut(ctx, egui::Key::Tab, true) {
+            self.activate_previous_tab();
+            return;
+        }
+        if Self::consume_gui_shortcut(ctx, egui::Key::Tab, false) {
+            self.activate_next_tab();
+            return;
+        }
+        if Self::consume_gui_shortcut(ctx, egui::Key::L, false) {
+            if query_focused {
+                self.focus_query_requested = false;
+                self.unfocus_query_requested = true;
+            } else {
+                self.focus_query_requested = true;
+                self.unfocus_query_requested = false;
+            }
+            return;
+        }
+
+        if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
+            self.move_row(1);
+        }
+        if Self::consume_emacs_shortcut(ctx, egui::Key::P, false) {
+            self.move_row(-1);
+        }
+        let history_direction = if Self::consume_emacs_shortcut(ctx, egui::Key::R, true) {
+            Some(1)
+        } else if Self::consume_emacs_shortcut(ctx, egui::Key::R, false) {
+            Some(-1)
+        } else {
+            None
+        };
+        if let Some(direction) = history_direction {
+            self.navigate_query_history(direction);
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            }
+        }
+        if Self::consume_gui_shortcut(ctx, egui::Key::C, true) {
+            // Keep this deferred until after TextEdit processing so query-focus copy
+            // cannot overwrite the intended "copy selected path(s)" shortcut result.
+            self.pending_copy_shortcut = true;
+        }
+        if Self::consume_emacs_shortcut(ctx, egui::Key::G, false) {
+            self.clear_query_and_selection();
+        }
+        let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
+        if tab_forward {
+            self.toggle_pin_current();
+            // Keep Tab dedicated to pin toggle without changing query focus active/inactive state.
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            } else {
+                ctx.memory_mut(|m| m.stop_text_input());
+            }
+        }
+        let tab_backward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
+        if tab_backward {
+            self.toggle_pin_current();
+            // Keep Shift+Tab dedicated to pin toggle without changing query focus active/inactive state.
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            } else {
+                ctx.memory_mut(|m| m.stop_text_input());
+            }
+        }
+        if Self::consume_emacs_shortcut(ctx, egui::Key::I, false) {
+            self.toggle_pin_current();
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
+            self.move_row(1);
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+            self.move_row(-1);
+        }
+        if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
+            || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
+        {
+            self.execute_selected();
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter)) {
+            self.execute_selected_open_folder();
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
+            self.execute_selected();
+        }
+
+        if self.ime_composition_active {
+            return;
+        }
+        // Regression guard: query focus must not disable row movement/pin toggle/execute shortcuts.
+        if query_focused {
+            return;
+        }
+
+        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::V)) {
+            self.move_page(1);
+        }
+        if ctx.input(|i| i.modifiers.alt && i.key_pressed(egui::Key::V)) {
+            self.move_page(-1);
+        }
+    }
+
+    pub(super) fn run_deferred_shortcuts(&mut self, ctx: &egui::Context) {
+        if !self.pending_copy_shortcut {
+            return;
+        }
+        self.pending_copy_shortcut = false;
+        self.copy_selected_paths(ctx);
+        self.focus_query_requested = true;
+    }
+
+    pub(super) fn reset_query_history_navigation(&mut self) {
+        self.query_history_cursor = None;
+        self.query_history_draft = None;
+    }
+
+    pub(super) fn mark_query_edited(&mut self) {
+        self.reset_query_history_navigation();
+        self.query_history_dirty_since = Some(Instant::now());
+    }
+
+    pub(super) fn push_query_history(history: &mut VecDeque<String>, query: &str) {
+        let trimmed = query.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+        if history.back().is_some_and(|entry| entry == trimmed) {
+            return;
+        }
+        history.push_back(trimmed.to_string());
+        while history.len() > Self::QUERY_HISTORY_MAX {
+            history.pop_front();
+        }
+    }
+
+    pub(super) fn commit_query_history_if_needed(&mut self, force: bool) {
+        if self.ime_composition_active {
+            return;
+        }
+        let should_commit = self
+            .query_history_dirty_since
+            .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
+        if !should_commit || self.query_history_cursor.is_some() {
+            return;
+        }
+        Self::push_query_history(&mut self.query_history, &self.query);
+        self.query_history_dirty_since = None;
+    }
+
+    pub(super) fn commit_query_history_for_tab_if_needed(tab: &mut AppTabState, force: bool) {
+        let should_commit = tab
+            .query_history_dirty_since
+            .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
+        if !should_commit || tab.query_history_cursor.is_some() {
+            return;
+        }
+        Self::push_query_history(&mut tab.query_history, &tab.query);
+        tab.query_history_dirty_since = None;
+    }
+
+    pub(super) fn navigate_query_history(&mut self, direction: isize) {
+        if self.query_history.is_empty() {
+            return;
+        }
+
+        let len = self.query_history.len();
+        let next_cursor = match self.query_history_cursor {
+            Some(cursor) if direction < 0 => cursor.saturating_sub(1),
+            Some(cursor) if direction > 0 => {
+                let next = cursor.saturating_add(1);
+                if next >= len {
+                    if let Some(draft) = self.query_history_draft.take() {
+                        self.query = draft;
+                        self.query_history_cursor = None;
+                        self.update_results();
+                    }
+                    return;
+                }
+                next
+            }
+            Some(cursor) => cursor,
+            None if direction < 0 => {
+                self.query_history_draft = Some(self.query.clone());
+                len.saturating_sub(1)
+            }
+            None if direction > 0 => return,
+            None => return,
+        };
+
+        if let Some(next_query) = self.query_history.get(next_cursor).cloned() {
+            self.query_history_cursor = Some(next_cursor);
+            self.query = next_query;
+            self.update_results();
+        }
+    }
+
+    pub(super) fn process_query_input_events(
+        &mut self,
+        ctx: &egui::Context,
+        events: &[egui::Event],
+        query_focused: bool,
+        text_changed_by_widget: bool,
+        cursor_range: Option<egui::text_edit::CCursorRange>,
+    ) -> (bool, Option<usize>) {
+        let mut changed = false;
+        let mut saw_text_space = false;
+        let mut saw_composition_update = false;
+        let mut fallback_space: Option<char> = None;
+        let mut saw_space_key = false;
+        let mut composition_commit_text: Option<String> = None;
+        let mut requested_full_space = false;
+        let mut cursor_changed = false;
+        let initial_cursor = cursor_range
+            .map(|range| range.primary.index)
+            .unwrap_or_else(|| Self::char_count(&self.query));
+        let initial_anchor = cursor_range
+            .map(|range| range.secondary.index)
+            .unwrap_or(initial_cursor);
+        let mut cursor = initial_cursor.min(Self::char_count(&self.query));
+        let mut anchor = initial_anchor.min(Self::char_count(&self.query));
+
+        for event in events {
+            match event {
+                egui::Event::CompositionStart => {
+                    self.ime_composition_active = true;
+                    Self::append_window_trace("ime_composition_start", "active=true");
+                }
+                egui::Event::CompositionUpdate(text) => {
+                    self.ime_composition_active = true;
+                    if !text.is_empty() {
+                        saw_composition_update = true;
+                        Self::append_window_trace(
+                            "ime_composition_update",
+                            &format!("chars={}", text.chars().count()),
+                        );
+                    }
+                }
+                egui::Event::CompositionEnd(text) => {
+                    self.ime_composition_active = false;
+                    Self::append_window_trace(
+                        "ime_composition_end",
+                        &format!(
+                            "chars={} has_half={} has_full={}",
+                            text.chars().count(),
+                            text.contains(' '),
+                            text.contains('\u{3000}')
+                        ),
+                    );
+                    if !text.is_empty() {
+                        composition_commit_text = Some(text.clone());
+                        changed = true;
+                        if text.contains(' ') || text.contains('\u{3000}') {
+                            saw_text_space = true;
+                        }
+                    }
+                }
+                egui::Event::Text(text) => {
+                    if text.contains(' ') || text.contains('\u{3000}') {
+                        saw_text_space = true;
+                        Self::append_window_trace(
+                            "ime_text_space_seen",
+                            &format!(
+                                "has_half={} has_full={} chars={}",
+                                text.contains(' '),
+                                text.contains('\u{3000}'),
+                                text.chars().count()
+                            ),
+                        );
+                    }
+                }
+                egui::Event::Key {
+                    key: egui::Key::Space,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } if query_focused
+                    && !modifiers.ctrl
+                    && !modifiers.alt
+                    && !modifiers.command
+                    && !modifiers.mac_cmd =>
+                {
+                    saw_space_key = true;
+                    requested_full_space = modifiers.shift;
+                    fallback_space = Some(' ');
+                }
+                _ => {}
+            }
+        }
+
+        let space_down_now = ctx.input(|i| i.key_down(egui::Key::Space));
+        let shift_down_now = ctx.input(|i| i.modifiers.shift);
+        if query_focused && space_down_now && !self.prev_space_down && fallback_space.is_none() {
+            requested_full_space = shift_down_now;
+            fallback_space = Some(' ');
+            saw_space_key = true;
+            Self::append_window_trace(
+                "ime_space_keydown_edge",
+                &format!("shift={}", shift_down_now),
+            );
+        }
+        self.prev_space_down = space_down_now;
+
+        if let Some(commit_text) = composition_commit_text {
+            if query_focused && !text_changed_by_widget {
+                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                    Self::remove_char_range(&mut self.query, start, end);
+                    cursor = start;
+                }
+                Self::insert_at_char(&mut self.query, cursor, &commit_text);
+                cursor += Self::char_count(&commit_text);
+                anchor = cursor;
+                changed = true;
+                cursor_changed = true;
+                Self::append_window_trace(
+                    "ime_composition_commit_fallback",
+                    &format!(
+                        "chars={} query_chars_after={}",
+                        commit_text.chars().count(),
+                        self.query.chars().count()
+                    ),
+                );
+            }
+        }
+
+        if query_focused && !saw_text_space {
+            if let Some(space) = fallback_space {
+                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
+                    Self::remove_char_range(&mut self.query, start, end);
+                    cursor = start;
+                }
+                // Keep IME fallback insertion at the caret instead of forcing tail append.
+                Self::insert_at_char(&mut self.query, cursor, &space.to_string());
+                cursor += 1;
+                changed = true;
+                cursor_changed = true;
+                Self::append_window_trace(
+                    "ime_space_fallback_inserted",
+                    &format!("kind={}", if space == '\u{3000}' { "full" } else { "half" }),
+                );
+            }
+        } else if saw_space_key {
+            Self::append_window_trace(
+                "ime_space_fallback_skipped",
+                &format!(
+                    "focused={} widget_changed={} comp_active={} text_space={} comp_update={} requested_full={} fallback_present={}",
+                    query_focused,
+                    text_changed_by_widget,
+                    self.ime_composition_active,
+                    saw_text_space,
+                    saw_composition_update,
+                    requested_full_space,
+                    fallback_space.is_some()
+                ),
+            );
+        }
+
+        (changed, cursor_changed.then_some(cursor))
+    }
+}

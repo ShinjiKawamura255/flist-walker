@@ -106,3 +106,26 @@
 - `cargo test --manifest-path rust/Cargo.toml --locked`: pass (`179 passed, 0 failed, 2 ignored`; `cli_contract` 5 passed)
 - Next start:
 - Phase 4 として shortcut/query history/IME と deferred shortcut 実行の依存を棚卸しし、`input.rs` への分離境界を確定する。
+
+### 2026-03-07 01:45
+- Goal:
+- Phase 4 として shortcut/query history/IME/deferred shortcut と文字列編集 helper を `rust/src/app/input.rs` へ切り出し、`app.rs` の入力 orchestration 境界を明確化する。
+- Progress:
+- `rust/src/app/input.rs` を追加し、shortcut 消費、query history、IME fallback、deferred shortcut 実行、および query 文字列編集 helper を移設した。
+- `rust/src/app.rs` 側は `#[path = "app/input.rs"] mod input;` を追加し、widget 配置、render、実行系 orchestration は残した。
+- test から直接呼ばれる input method は `pub(super)` に揃え、既存 unit test の private API 前提を維持した。
+- Decisions:
+- Phase 4 は input event 処理と helper 群の切り出しに限定し、`update()` の widget 配置や render 責務までは動かさない。
+- `use input::*;` は method 定義の再配置に対するモジュール接続を明示するため維持し、warning は局所的に抑制した。
+- Files changed:
+- `rust/src/app.rs`
+- `rust/src/app/input.rs`
+- `docs/TASKS.md`
+- `docs/WORKLOG.md`
+- Commands:
+- `cargo fmt --manifest-path rust/Cargo.toml`
+- `cargo test --manifest-path rust/Cargo.toml --locked`
+- Tests:
+- `cargo test --manifest-path rust/Cargo.toml --locked`: pass (`179 passed, 0 failed, 2 ignored`; `cli_contract` 5 passed)
+- Next start:
+- Phase 5 として `update()` 内の panel/dialog 描画と render helper の依存を棚卸しし、`render.rs` への分離境界を確定する。
