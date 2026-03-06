@@ -64,6 +64,9 @@
 | TC-036 | unit | Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する | SP-010 |
 | TC-037 | unit | 連続打鍵中は query 履歴を保留し、入力区切り後に最終 query だけを保存する | SP-010 |
 | TC-038 | unit | IME 合成中の未確定文字列は query 履歴へ保存せず、確定後の query のみを保存する | SP-010 |
+| TC-039 | unit | 保存済みタブ状態の復元候補は無効 root を除外し、active tab index をクランプする | SP-010 |
+| TC-040 | unit | タブ復元時は active tab の root/query/filter を復元し、起動直後の index は active tab だけ開始する | SP-010 |
+| TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -136,3 +139,6 @@
 - TC-036 -> SP-010 -> DES-007, DES-009 -> FR-007
 - TC-037 -> SP-010 -> DES-009 -> FR-007
 - TC-038 -> SP-010 -> DES-009, DES-011 -> FR-007
+- TC-039 -> SP-010 -> DES-009 -> FR-007
+- TC-040 -> SP-010 -> DES-009, DES-006 -> FR-007
+- TC-041 -> SP-010 -> DES-009, DES-006 -> FR-007

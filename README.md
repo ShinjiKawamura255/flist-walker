@@ -37,6 +37,38 @@ cargo run -- --root ..
 - 履歴は打鍵ごとには保存されず、入力が少し止まった時点、または結果移動を始めた時点で確定します。
 - IME の未確定文字列は履歴に保存されず、確定後の検索語だけが残ります。
 
+### セッション復元（opt-in）
+
+- `FLISTWALKER_RESTORE_TABS=1` を設定すると、終了時のタブ状態を次回起動時に復元できます。
+- 復元対象は `root`、`query`、`Use FileList`、`Regex`、`Files`、`Folders`、active tab です。
+- 起動時負荷を抑えるため、起動直後に再インデックスするのは active tab のみで、他のタブは最初に開いた時点で遅延 reindex します。
+- `--root` や起動時 query を明示した場合は復元よりそちらを優先します。
+- この機能は環境変数が無効な限り動作せず、通常の `Set as default` の挙動は変わりません。
+
+PowerShell でユーザー環境変数として永続設定:
+
+```powershell
+[Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", "1", "User")
+```
+
+PowerShell でユーザー環境変数を削除:
+
+```powershell
+[Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", $null, "User")
+```
+
+現在の PowerShell セッションだけ有効化:
+
+```powershell
+$env:FLISTWALKER_RESTORE_TABS = "1"
+```
+
+現在の PowerShell セッションだけ削除:
+
+```powershell
+Remove-Item Env:FLISTWALKER_RESTORE_TABS
+```
+
 ## Rust 実装
 
 ```bash

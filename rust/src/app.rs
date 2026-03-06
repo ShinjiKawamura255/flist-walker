@@ -40,6 +40,9 @@ struct UiState {
     preview_panel_width: Option<f32>,
     #[serde(default)]
     results_panel_width: Option<f32>,
+    #[serde(default)]
+    tabs: Vec<SavedTabState>,
+    active_tab: Option<usize>,
     window: Option<SavedWindowGeometry>,
 }
 
@@ -48,6 +51,18 @@ struct LaunchSettings {
     default_root: Option<PathBuf>,
     show_preview: bool,
     preview_panel_width: f32,
+    restore_tabs: Vec<SavedTabState>,
+    restore_active_tab: Option<usize>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+struct SavedTabState {
+    root: String,
+    use_filelist: bool,
+    use_regex: bool,
+    include_files: bool,
+    include_dirs: bool,
+    query: String,
 }
 
 #[derive(Clone, Debug)]
@@ -81,6 +96,7 @@ struct AppTabState {
     query_history_cursor: Option<usize>,
     query_history_draft: Option<String>,
     query_history_dirty_since: Option<Instant>,
+    pending_restore_refresh: bool,
     results: Vec<(PathBuf, f64)>,
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
@@ -1228,6 +1244,7 @@ pub struct FlistWalkerApp {
     query_history_cursor: Option<usize>,
     query_history_draft: Option<String>,
     query_history_dirty_since: Option<Instant>,
+    pending_restore_refresh: bool,
     use_filelist: bool,
     use_regex: bool,
     include_files: bool,
@@ -1428,26 +1445,42 @@ Search hints:
             preview_panel_width: Self::DEFAULT_PREVIEW_PANEL_WIDTH,
             ..LaunchSettings::default()
         };
-        Self::new_with_launch(root, limit, query, launch)
+        Self::new_with_launch(root, limit, query, launch, None)
     }
 
     pub fn from_launch(root: PathBuf, limit: usize, query: String, root_explicit: bool) -> Self {
         let launch = Self::load_launch_settings();
+        let restore_tabs_enabled = Self::restore_tabs_enabled();
         let saved_default = launch
             .default_root
             .as_ref()
             .and_then(|p| p.canonicalize().ok())
             .map(Self::normalize_windows_path)
             .filter(|p| p.is_dir());
+        let restore_session = if restore_tabs_enabled && !root_explicit && query.trim().is_empty() {
+            Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
+        } else {
+            None
+        };
         let chosen_root = if root_explicit {
             root
+        } else if let Some((tabs, active_tab)) = restore_session.as_ref() {
+            tabs.get(*active_tab)
+                .map(|tab| PathBuf::from(&tab.root))
+                .unwrap_or_else(|| saved_default.clone().unwrap_or(root))
         } else {
             saved_default.unwrap_or(root)
         };
-        Self::new_with_launch(chosen_root, limit, query, launch)
+        Self::new_with_launch(chosen_root, limit, query, launch, restore_session)
     }
 
-    fn new_with_launch(root: PathBuf, limit: usize, query: String, launch: LaunchSettings) -> Self {
+    fn new_with_launch(
+        root: PathBuf,
+        limit: usize,
+        query: String,
+        launch: LaunchSettings,
+        restore_session: Option<(Vec<SavedTabState>, usize)>,
+    ) -> Self {
         let worker_shutdown = Arc::new(AtomicBool::new(false));
         let mut worker_runtime = WorkerRuntime::new(Arc::clone(&worker_shutdown));
         let (search_tx, search_rx, search_handle) =
@@ -1481,6 +1514,7 @@ Search hints:
             query_history_cursor: None,
             query_history_draft: None,
             query_history_dirty_since: None,
+            pending_restore_refresh: false,
             use_filelist: true,
             use_regex: false,
             include_files: true,
@@ -1589,8 +1623,12 @@ Search hints:
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
         }
-        app.initialize_tabs();
-        app.request_index_refresh();
+        if let Some((tabs, active_tab)) = restore_session {
+            app.initialize_tabs_from_saved(tabs, active_tab);
+        } else {
+            app.initialize_tabs();
+            app.request_index_refresh();
+        }
         app
     }
 
@@ -1619,6 +1657,78 @@ Search hints:
         self.next_tab_id = self.next_tab_id.saturating_add(1);
         self.tabs = vec![self.capture_active_tab_state(id)];
         self.active_tab = 0;
+    }
+
+    fn restored_tab_state(&self, id: u64, saved: &SavedTabState) -> AppTabState {
+        AppTabState {
+            id,
+            root: Self::normalize_windows_path(PathBuf::from(&saved.root)),
+            use_filelist: saved.use_filelist,
+            use_regex: saved.use_regex,
+            include_files: saved.include_files,
+            include_dirs: saved.include_dirs,
+            index: IndexBuildResult {
+                entries: Vec::new(),
+                source: IndexSource::None,
+            },
+            all_entries: Arc::new(Vec::new()),
+            entries: Arc::new(Vec::new()),
+            entry_kinds: HashMap::new(),
+            pending_index_request_id: None,
+            index_in_progress: false,
+            pending_index_entries: VecDeque::new(),
+            pending_index_entries_request_id: None,
+            pending_kind_paths: VecDeque::new(),
+            pending_kind_paths_set: HashSet::new(),
+            in_flight_kind_paths: HashSet::new(),
+            kind_resolution_epoch: 1,
+            kind_resolution_in_progress: false,
+            incremental_filtered_entries: Vec::new(),
+            last_incremental_results_refresh: Instant::now(),
+            last_search_snapshot_len: 0,
+            search_resume_pending: false,
+            search_rerun_pending: false,
+            query: saved.query.clone(),
+            query_history: VecDeque::new(),
+            query_history_cursor: None,
+            query_history_draft: None,
+            query_history_dirty_since: None,
+            pending_restore_refresh: true,
+            results: Vec::new(),
+            pinned_paths: HashSet::new(),
+            current_row: None,
+            preview: String::new(),
+            notice: "Restored tab".to_string(),
+            pending_request_id: None,
+            pending_preview_request_id: None,
+            pending_action_request_id: None,
+            search_in_progress: false,
+            preview_in_progress: false,
+            action_in_progress: false,
+            scroll_to_current: true,
+            focus_query_requested: false,
+            unfocus_query_requested: false,
+        }
+    }
+
+    fn initialize_tabs_from_saved(&mut self, saved_tabs: Vec<SavedTabState>, active_tab: usize) {
+        self.tabs = saved_tabs
+            .iter()
+            .map(|saved| {
+                let id = self.next_tab_id;
+                self.next_tab_id = self.next_tab_id.saturating_add(1);
+                self.restored_tab_state(id, saved)
+            })
+            .collect();
+        self.active_tab = active_tab.min(self.tabs.len().saturating_sub(1));
+        if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
+            self.apply_tab_state(&tab);
+            self.focus_query_requested = true;
+            self.unfocus_query_requested = false;
+            self.trigger_restore_refresh_for_active_tab();
+            self.notice = "Restored tab session".to_string();
+            self.refresh_status_line();
+        }
     }
 
     fn current_tab_id(&self) -> Option<u64> {
@@ -1686,6 +1796,7 @@ Search hints:
             query_history_cursor: self.query_history_cursor,
             query_history_draft: self.query_history_draft.clone(),
             query_history_dirty_since: self.query_history_dirty_since,
+            pending_restore_refresh: self.pending_restore_refresh,
             results: self.results.clone(),
             pinned_paths: self.pinned_paths.clone(),
             current_row: self.current_row,
@@ -1732,6 +1843,7 @@ Search hints:
         self.query_history_cursor = tab.query_history_cursor;
         self.query_history_draft = tab.query_history_draft.clone();
         self.query_history_dirty_since = tab.query_history_dirty_since;
+        self.pending_restore_refresh = tab.pending_restore_refresh;
         self.results = tab.results.clone();
         self.pinned_paths = tab.pinned_paths.clone();
         self.current_row = tab.current_row;
@@ -1764,6 +1876,17 @@ Search hints:
         self.tabs.iter().position(|tab| tab.id == tab_id)
     }
 
+    fn trigger_restore_refresh_for_active_tab(&mut self) {
+        if !self.pending_restore_refresh {
+            return;
+        }
+        self.pending_restore_refresh = false;
+        if let Some(tab) = self.tabs.get_mut(self.active_tab) {
+            tab.pending_restore_refresh = false;
+        }
+        self.request_index_refresh();
+    }
+
     fn switch_to_tab_index(&mut self, next_index: usize) {
         if next_index >= self.tabs.len() || next_index == self.active_tab {
             return;
@@ -1779,6 +1902,7 @@ Search hints:
         }
         self.focus_query_requested = true;
         self.unfocus_query_requested = false;
+        self.trigger_restore_refresh_for_active_tab();
     }
 
     fn create_new_tab(&mut self) {
@@ -1792,6 +1916,7 @@ Search hints:
         tab.query_history_cursor = None;
         tab.query_history_draft = None;
         tab.query_history_dirty_since = None;
+        tab.pending_restore_refresh = false;
         tab.pinned_paths.clear();
         tab.current_row = None;
         tab.preview.clear();
@@ -1997,7 +2122,87 @@ Search hints:
             default_root,
             show_preview,
             preview_panel_width,
+            restore_tabs: ui_state.tabs,
+            restore_active_tab: ui_state.active_tab,
         }
+    }
+
+    fn restore_tabs_enabled() -> bool {
+        std::env::var("FLISTWALKER_RESTORE_TABS")
+            .ok()
+            .map(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "yes" | "on"
+                )
+            })
+            .unwrap_or(false)
+    }
+
+    fn sanitize_saved_tabs(
+        tabs: &[SavedTabState],
+        active_tab: Option<usize>,
+    ) -> Option<(Vec<SavedTabState>, usize)> {
+        let sanitized: Vec<SavedTabState> = tabs
+            .iter()
+            .filter_map(|tab| {
+                let root = Self::normalize_windows_path(PathBuf::from(&tab.root));
+                if !root.is_dir() {
+                    return None;
+                }
+                Some(SavedTabState {
+                    root: root.to_string_lossy().to_string(),
+                    use_filelist: tab.use_filelist,
+                    use_regex: tab.use_regex,
+                    include_files: tab.include_files,
+                    include_dirs: tab.include_dirs,
+                    query: tab.query.clone(),
+                })
+            })
+            .collect();
+        if sanitized.is_empty() {
+            return None;
+        }
+        let active = active_tab
+            .unwrap_or(0)
+            .min(sanitized.len().saturating_sub(1));
+        Some((sanitized, active))
+    }
+
+    fn saved_tab_state_from_app(&self) -> SavedTabState {
+        SavedTabState {
+            root: self.root.to_string_lossy().to_string(),
+            use_filelist: self.use_filelist,
+            use_regex: self.use_regex,
+            include_files: self.include_files,
+            include_dirs: self.include_dirs,
+            query: self.query.clone(),
+        }
+    }
+
+    fn saved_tab_state_from_tab(tab: &AppTabState) -> SavedTabState {
+        SavedTabState {
+            root: tab.root.to_string_lossy().to_string(),
+            use_filelist: tab.use_filelist,
+            use_regex: tab.use_regex,
+            include_files: tab.include_files,
+            include_dirs: tab.include_dirs,
+            query: tab.query.clone(),
+        }
+    }
+
+    fn saved_tabs_for_ui_state(&self) -> Vec<SavedTabState> {
+        self.tabs
+            .iter()
+            .enumerate()
+            .map(|(index, tab)| {
+                if index == self.active_tab {
+                    self.saved_tab_state_from_app()
+                } else {
+                    Self::saved_tab_state_from_tab(tab)
+                }
+            })
+            .collect()
     }
 
     fn save_ui_state(&self) {
@@ -2015,6 +2220,8 @@ Search hints:
             show_preview: Some(self.show_preview),
             preview_panel_width: Some(self.preview_panel_width),
             results_panel_width: None,
+            tabs: self.saved_tabs_for_ui_state(),
+            active_tab: Some(self.active_tab),
             window: self.window_geometry.clone(),
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
@@ -2501,6 +2708,10 @@ Search hints:
 
     fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
+        self.pending_restore_refresh = false;
+        if let Some(tab) = self.tabs.get_mut(self.active_tab) {
+            tab.pending_restore_refresh = false;
+        }
         self.cancel_stale_pending_filelist_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         let current_tab_id = self.current_tab_id().unwrap_or_default();
@@ -5414,6 +5625,7 @@ impl Drop for FlistWalkerApp {
         drop(old_index_tx);
 
         self.apply_stable_window_geometry(true);
+        self.ui_state_dirty = true;
         self.maybe_save_ui_state(true);
         if let Some(runtime) = self.worker_runtime.take() {
             let summary = runtime.join_all_with_timeout(Self::WORKER_JOIN_TIMEOUT);
@@ -5487,6 +5699,17 @@ mod tests {
 
     fn commit_query_history_for_test(app: &mut FlistWalkerApp) {
         app.commit_query_history_if_needed(true);
+    }
+
+    fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
+        app.pending_index_request_id = None;
+        app.index_in_progress = false;
+        app.index_request_tabs.clear();
+        app.pending_index_queue.clear();
+        app.index_inflight_requests.clear();
+        if let Ok(mut latest) = app.latest_index_request_ids.lock() {
+            latest.clear();
+        }
     }
 
     #[test]
@@ -5737,6 +5960,131 @@ mod tests {
             vec!["テスト".to_string()]
         );
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
+        let root = test_root("saved-tabs-sanitize");
+        fs::create_dir_all(&root).expect("create root");
+        let tabs = vec![
+            SavedTabState {
+                root: root.to_string_lossy().to_string(),
+                use_filelist: true,
+                use_regex: false,
+                include_files: true,
+                include_dirs: true,
+                query: "ok".to_string(),
+            },
+            SavedTabState {
+                root: root.join("missing").to_string_lossy().to_string(),
+                use_filelist: false,
+                use_regex: true,
+                include_files: true,
+                include_dirs: false,
+                query: "skip".to_string(),
+            },
+        ];
+
+        let (sanitized, active) =
+            FlistWalkerApp::sanitize_saved_tabs(&tabs, Some(99)).expect("sanitized tabs");
+        assert_eq!(sanitized.len(), 1);
+        assert_eq!(active, 0);
+        assert_eq!(sanitized[0].query, "ok");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh() {
+        let root_a = test_root("restore-tabs-a");
+        let root_b = test_root("restore-tabs-b");
+        fs::create_dir_all(&root_a).expect("create root a");
+        fs::create_dir_all(&root_b).expect("create root b");
+        let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        reset_index_request_state_for_test(&mut app);
+
+        app.initialize_tabs_from_saved(
+            vec![
+                SavedTabState {
+                    root: root_a.to_string_lossy().to_string(),
+                    use_filelist: true,
+                    use_regex: false,
+                    include_files: true,
+                    include_dirs: true,
+                    query: "alpha".to_string(),
+                },
+                SavedTabState {
+                    root: root_b.to_string_lossy().to_string(),
+                    use_filelist: false,
+                    use_regex: true,
+                    include_files: true,
+                    include_dirs: false,
+                    query: "beta".to_string(),
+                },
+            ],
+            1,
+        );
+
+        assert_eq!(app.tabs.len(), 2);
+        assert_eq!(app.active_tab, 1);
+        assert_eq!(app.root, root_b);
+        assert_eq!(app.query, "beta");
+        assert!(!app.pending_restore_refresh);
+        assert!(app.tabs[0].pending_restore_refresh);
+        assert!(!app.tabs[1].pending_restore_refresh);
+
+        let req = rx.try_recv().expect("active tab refresh");
+        assert_eq!(req.root, root_b);
+        assert!(rx.try_recv().is_err());
+
+        let _ = fs::remove_dir_all(&root_a);
+        let _ = fs::remove_dir_all(&root_b);
+    }
+
+    #[test]
+    fn switching_to_restored_background_tab_triggers_lazy_refresh() {
+        let root_a = test_root("restore-tabs-switch-a");
+        let root_b = test_root("restore-tabs-switch-b");
+        fs::create_dir_all(&root_a).expect("create root a");
+        fs::create_dir_all(&root_b).expect("create root b");
+        let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+        let (tx, rx) = mpsc::channel::<IndexRequest>();
+        app.index_tx = tx;
+        reset_index_request_state_for_test(&mut app);
+
+        app.initialize_tabs_from_saved(
+            vec![
+                SavedTabState {
+                    root: root_a.to_string_lossy().to_string(),
+                    use_filelist: true,
+                    use_regex: false,
+                    include_files: true,
+                    include_dirs: true,
+                    query: "alpha".to_string(),
+                },
+                SavedTabState {
+                    root: root_b.to_string_lossy().to_string(),
+                    use_filelist: true,
+                    use_regex: false,
+                    include_files: true,
+                    include_dirs: true,
+                    query: "beta".to_string(),
+                },
+            ],
+            1,
+        );
+        let _ = rx.try_recv().expect("initial active refresh");
+
+        app.switch_to_tab_index(0);
+
+        let req = rx.try_recv().expect("background tab lazy refresh");
+        assert_eq!(req.root, root_a);
+        assert!(!app.pending_restore_refresh);
+        assert!(!app.tabs[0].pending_restore_refresh);
+
+        let _ = fs::remove_dir_all(&root_a);
+        let _ = fs::remove_dir_all(&root_b);
     }
 
     #[test]
