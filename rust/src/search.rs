@@ -350,7 +350,13 @@ pub fn try_search_entries_indexed_with_scope(
         let Some(path) = entries.get(index) else {
             continue;
         };
-        if !matches_spec(&spec, path, include_regexes.as_deref(), root, prefer_relative) {
+        if !matches_spec(
+            &spec,
+            path,
+            include_regexes.as_deref(),
+            root,
+            prefer_relative,
+        ) {
             continue;
         }
         let full = searchable_full(&path, root, prefer_relative);
