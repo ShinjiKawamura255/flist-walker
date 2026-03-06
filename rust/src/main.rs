@@ -69,7 +69,11 @@ fn run_cli(args: &Args) -> Result<()> {
 fn run_gui(args: &Args) -> Result<()> {
     configure_windows_dpi_mode();
     let root_explicit = args.root.is_some();
-    let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
+    let requested_root = args
+        .root
+        .clone()
+        .unwrap_or_else(default_gui_root_when_unspecified);
+    let root = resolve_root(&requested_root)?;
     let mut native_options = eframe::NativeOptions::default();
     let mut viewport =
         eframe::egui::ViewportBuilder::default().with_inner_size(eframe::egui::vec2(1400.0, 900.0));
@@ -112,6 +116,16 @@ fn run_gui(args: &Args) -> Result<()> {
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(())
+}
+
+fn default_gui_root_when_unspecified() -> PathBuf {
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(home) = std::env::var_os("HOME") {
+            return PathBuf::from(home);
+        }
+    }
+    PathBuf::from(".")
 }
 
 fn load_app_icon() -> Option<eframe::egui::IconData> {
@@ -177,5 +191,31 @@ fn main() -> Result<()> {
         run_cli(&args)
     } else {
         run_gui(&args)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_gui_root_when_unspecified_returns_existing_path() {
+        let path = default_gui_root_when_unspecified();
+        assert!(path.exists());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn default_gui_root_when_unspecified_prefers_home_on_macos() {
+        let expected = PathBuf::from(
+            std::env::var_os("HOME").expect("HOME must be set on macOS test environment"),
+        );
+        assert_eq!(default_gui_root_when_unspecified(), expected);
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn default_gui_root_when_unspecified_uses_dot_on_non_macos() {
+        assert_eq!(default_gui_root_when_unspecified(), PathBuf::from("."));
     }
 }

@@ -137,6 +137,7 @@
 - MUST: `Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
+- MUST: GUI 起動時に `--root` 未指定かつデフォルト Root 未設定の場合、macOS はホームディレクトリを初期 Root とする。Windows の既存挙動は変更しない。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 

@@ -77,6 +77,7 @@
 - FileList 作成は OS 一時領域に出力してから最終配置へ移動する。クロスデバイスで `rename` 不可の場合は `copy` フォールバックし、最終配置のみを更新する。
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。
 - Root 変更時は旧 root 向けの FileList 上書き確認ダイアログを破棄し、誤上書きを防ぐ。
+- GUI 起動で `--root` 未指定かつ保存済み default root がない場合、macOS は `HOME` を初期 root として採用し、初回起動で `/` 走査を避ける。Windows は従来どおり起動ディレクトリ基準を維持する。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - Windows の `.ps1` 実行は `powershell.exe -File` を明示起動する。
