@@ -39,6 +39,7 @@
 - 運用:
 - Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win.ps1` を利用する。
 - GitHub Actions の tag push（`v*`）で各 OS 向け release build を実行し、draft release と asset upload を行う workflow を維持する。
+- tag push 後は GitHub 上に作成された draft release を確認し、公開時は Codex から GitHub Release 本文を整えたうえで draft を本リリースへ切り替える運用とする。
 - release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。
 
 ## 5. 実装ガードレール

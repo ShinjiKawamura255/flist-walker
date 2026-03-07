@@ -93,6 +93,7 @@
 2. GitHub Actions の `Release Tagged Build` workflow が Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 3. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
 4. draft release には各 OS 向け実行バイナリ、配布 archive、統合 `SHA256SUMS` が添付される。
+5. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化し、draft を本リリースへ publish する。
 
 ## SHA256SUMS 検証例
 PowerShell:
