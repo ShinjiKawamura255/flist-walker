@@ -395,6 +395,12 @@ Search hints:
     pub fn from_launch(root: PathBuf, limit: usize, query: String, root_explicit: bool) -> Self {
         let launch = Self::load_launch_settings();
         let restore_tabs_enabled = Self::restore_tabs_enabled();
+        let saved_last_root = launch
+            .last_root
+            .as_ref()
+            .and_then(|p| p.canonicalize().ok())
+            .map(Self::normalize_windows_path)
+            .filter(|p| p.is_dir());
         let saved_default = launch
             .default_root
             .as_ref()
@@ -406,15 +412,13 @@ Search hints:
         } else {
             None
         };
-        let chosen_root = if root_explicit {
-            root
-        } else if let Some((tabs, active_tab)) = restore_session.as_ref() {
-            tabs.get(*active_tab)
-                .map(|tab| PathBuf::from(&tab.root))
-                .unwrap_or_else(|| saved_default.clone().unwrap_or(root))
-        } else {
-            saved_default.unwrap_or(root)
-        };
+        let chosen_root = Self::choose_startup_root(
+            root,
+            root_explicit,
+            restore_session.as_ref(),
+            saved_last_root,
+            saved_default,
+        );
         Self::new_with_launch(chosen_root, limit, query, launch, restore_session)
     }
 
@@ -594,6 +598,24 @@ Search hints:
         Self::normalize_windows_path(self.root.clone())
             .to_string_lossy()
             .to_string()
+    }
+
+    fn choose_startup_root(
+        root: PathBuf,
+        root_explicit: bool,
+        restore_session: Option<&(Vec<SavedTabState>, usize)>,
+        last_root: Option<PathBuf>,
+        default_root: Option<PathBuf>,
+    ) -> PathBuf {
+        if root_explicit {
+            return root;
+        }
+        if let Some((tabs, active_tab)) = restore_session {
+            if let Some(tab_root) = tabs.get(*active_tab).map(|tab| PathBuf::from(&tab.root)) {
+                return tab_root;
+            }
+        }
+        last_root.or(default_root).unwrap_or(root)
     }
 
     fn initialize_tabs(&mut self) {
@@ -1067,6 +1089,13 @@ Search hints:
             let _ = fs::create_dir_all(parent);
         }
         let state = UiState {
+            last_root: Some(
+                self.root
+                    .canonicalize()
+                    .unwrap_or_else(|_| self.root.clone())
+                    .to_string_lossy()
+                    .to_string(),
+            ),
             default_root: self
                 .default_root
                 .as_ref()
@@ -1434,6 +1463,7 @@ Search hints:
         self.pending_preview_request_id = None;
         self.clear_root_scoped_entry_state();
         self.sync_active_tab_state();
+        self.mark_ui_state_dirty();
         self.cancel_stale_pending_filelist_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         self.request_index_refresh();

@@ -13,6 +13,7 @@ pub(super) struct SavedWindowGeometry {
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub(super) struct UiState {
+    pub(super) last_root: Option<String>,
     pub(super) default_root: Option<String>,
     pub(super) show_preview: Option<bool>,
     pub(super) preview_panel_width: Option<f32>,
@@ -26,6 +27,7 @@ pub(super) struct UiState {
 
 #[derive(Clone, Debug, Default)]
 pub(super) struct LaunchSettings {
+    pub(super) last_root: Option<PathBuf>,
     pub(super) default_root: Option<PathBuf>,
     pub(super) show_preview: bool,
     pub(super) preview_panel_width: f32,
@@ -72,6 +74,11 @@ impl FlistWalkerApp {
 
     pub(super) fn load_launch_settings() -> LaunchSettings {
         let ui_state = Self::load_ui_state();
+        let last_root = ui_state
+            .last_root
+            .as_deref()
+            .map(PathBuf::from)
+            .map(Self::normalize_windows_path);
         let default_root = ui_state
             .default_root
             .as_deref()
@@ -84,6 +91,7 @@ impl FlistWalkerApp {
             .unwrap_or(Self::DEFAULT_PREVIEW_PANEL_WIDTH)
             .max(Self::MIN_PREVIEW_PANEL_WIDTH);
         LaunchSettings {
+            last_root,
             default_root,
             show_preview,
             preview_panel_width,

@@ -32,6 +32,47 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
 }
 
 #[test]
+fn choose_startup_root_prefers_last_root_over_default_root() {
+    let fallback_root = PathBuf::from("/fallback");
+    let last_root = PathBuf::from("/last");
+    let default_root = PathBuf::from("/default");
+
+    let chosen = FlistWalkerApp::choose_startup_root(
+        fallback_root.clone(),
+        false,
+        None,
+        Some(last_root.clone()),
+        Some(default_root),
+    );
+
+    assert_eq!(chosen, last_root);
+}
+
+#[test]
+fn choose_startup_root_prefers_restored_tab_over_last_root() {
+    let restored_root = PathBuf::from("/restored");
+    let last_root = PathBuf::from("/last");
+    let tabs = vec![SavedTabState {
+        root: restored_root.to_string_lossy().to_string(),
+        use_filelist: true,
+        use_regex: false,
+        include_files: true,
+        include_dirs: true,
+        query: String::new(),
+    }];
+
+    let chosen = FlistWalkerApp::choose_startup_root(
+        PathBuf::from("/fallback"),
+        false,
+        Some(&(tabs, 0)),
+        Some(last_root),
+        None,
+    );
+
+    assert_eq!(chosen, restored_root);
+}
+
+#[test]
 fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh() {
     let root_a = test_root("restore-tabs-a");
     let root_b = test_root("restore-tabs-b");
