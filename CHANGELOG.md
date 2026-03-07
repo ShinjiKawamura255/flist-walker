@@ -7,6 +7,28 @@
 - 
 
 ### Changed
+- 
+
+### Fixed
+- 
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
+## [0.10.0] - 2026-03-07
+### Added
+- 
+
+### Changed
 - `Esc` を `Ctrl+G` と同じ clear/cancel 操作へ統一し、`Ctrl+Shift+R` を廃止した。
 - `Ctrl+R` を query history のファジー検索へ変更し、同じ検索欄で履歴検索中とわかる表示および `Enter` / `Ctrl+J` / `Ctrl+M` による展開を追加した。
 - query history を全タブ共通で最大100件まで永続化するようにした。
@@ -24,7 +46,8 @@
 - 
 
 ### Known issues
-- 
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+- この環境では macOS アセットの実ビルドを完了できないため、公開時は別の macOS 環境での最終生成が必要。
 
 ## [0.9.0] - 2026-03-07
 ### Added
