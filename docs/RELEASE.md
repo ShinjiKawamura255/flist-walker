@@ -6,6 +6,9 @@
 - `msi` は需要確認後の第2段階で追加する。
 
 ## アセット命名規則
+- Linux x86_64:
+- `FlistWalker-<version>-linux-x86_64`
+- `FlistWalker-<version>-linux-x86_64.tar.gz`
 - Windows x86_64:
 - `FlistWalker-<version>-windows-x86_64.exe`
 - `FlistWalker-<version>-windows-x86_64.zip`
@@ -22,6 +25,8 @@
 - `SHA256SUMS`
 
 例（v0.2.0）:
+- `FlistWalker-0.2.0-linux-x86_64`
+- `FlistWalker-0.2.0-linux-x86_64.tar.gz`
 - `FlistWalker-0.2.0-windows-x86_64.exe`
 - `FlistWalker-0.2.0-windows-x86_64.zip`
 - `FlistWalker-0.2.0-macos-arm64`
@@ -37,6 +42,18 @@
 ## tar.gz に含めるもの
 - `flistwalker`
 - `README.txt`（最小実行手順）
+
+## リリース手順（Linux アセット）
+1. Linux 向けバイナリをビルドする。
+- bash: `cd rust && cargo build --release --locked`
+
+2. リリースアセットを生成する。
+- bash: `./scripts/prepare-release-linux.sh v0.2.0`
+
+3. `dist/v0.2.0/`（例）内のファイルを GitHub Releases にアップロードする。
+- `FlistWalker-*-linux-*`
+- `FlistWalker-*-linux-*.tar.gz`
+- `SHA256SUMS`
 
 ## リリース手順（Windows アセット）
 1. Windows 向け EXE をビルドする。
@@ -67,10 +84,15 @@
 
 4. `dist/v0.2.0/`（例）内のファイルを GitHub Releases にアップロードする。
 - `FlistWalker-*-macos-*`（実行バイナリ）
-- `FlistWalker-*-macos-*.app`（Finder からダブルクリック実行向け）
 - `FlistWalker-*-macos-*-app.zip`（`.app` 配布用）
 - `FlistWalker-*-macos-*.tar.gz`
 - `SHA256SUMS`
+
+## GitHub Actions 自動リリース
+1. `vX.Y.Z` 形式の新規 tag を push する。
+2. GitHub Actions の `Release Tagged Build` workflow が Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
+3. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
+4. draft release には各 OS 向け実行バイナリ、配布 archive、統合 `SHA256SUMS` が添付される。
 
 ## SHA256SUMS 検証例
 PowerShell:

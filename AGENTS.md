@@ -38,6 +38,8 @@
 - セキュリティ: 外部コマンド実行は配列引数で呼び出し、シェル展開依存を避ける。
 - 運用:
 - Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win.ps1` を利用する。
+- GitHub Actions の tag push（`v*`）で各 OS 向け release build を実行し、draft release と asset upload を行う workflow を維持する。
+- release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。
 
 ## 5. 実装ガードレール
 - FileList 検出仕様（大文字/小文字、優先順、探索範囲）を変更する場合は `indexer` テストを先に更新する。
@@ -51,6 +53,7 @@
 - SPEC は MUST/SHOULD で規範化し、TDD を徹底する。
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 変更時は最低限 `cargo test` を実行してから完了報告する。
+- release asset 名、対象 OS、GitHub Release 導線を変更した場合は `docs/RELEASE.md`、`.github/release-template.md`、`AGENTS.md` を同一変更で更新する。
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 
 ## 7. トレース（抜粋）
