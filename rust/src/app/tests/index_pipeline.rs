@@ -715,9 +715,12 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     })
     .expect("send index batch");
 
-    for _ in 0..8 {
+    for _ in 0..64 {
         app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
         app.poll_index_response();
+        if app.entries.len() >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
+            break;
+        }
     }
 
     assert_eq!(

@@ -942,7 +942,7 @@ mod tests {
         fs::write(&file, "x").expect("write file");
 
         let text = build_filelist_text(&[file.clone(), folder.clone()], &root);
-        assert!(text.contains("a/b.txt"));
+        assert!(text.contains(&format!("a{}b.txt", std::path::MAIN_SEPARATOR)));
         assert!(text.contains("a\n"));
         let _ = fs::remove_dir_all(&root);
     }
@@ -959,7 +959,7 @@ mod tests {
             write_filelist(&root, &[file.clone(), folder.clone()], "FileList.txt").expect("write");
         assert!(out.exists());
         let content = fs::read_to_string(&out).expect("read filelist");
-        assert!(content.contains("x/run.exe"));
+        assert!(content.contains(&format!("x{}run.exe", std::path::MAIN_SEPARATOR)));
         let _ = fs::remove_dir_all(&root);
     }
 

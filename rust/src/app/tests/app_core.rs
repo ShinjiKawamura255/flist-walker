@@ -339,7 +339,7 @@ fn copy_selected_paths_notice_normalizes_extended_prefix() {
     let root = test_root("copy-path-notice-normalize");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0)];
+    app.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
     app.current_row = Some(0);
     let ctx = egui::Context::default();
 
