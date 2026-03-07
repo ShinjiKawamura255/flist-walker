@@ -472,7 +472,14 @@ impl FlistWalkerApp {
             .resizable(false)
             .exact_height(24.0)
             .show(ctx, |ui| {
-                ui.add(egui::Label::new(&self.status_line).truncate(true));
+                ui.horizontal(|ui| {
+                    if let Some(label) = self.action_progress_label() {
+                        ui.add(egui::Spinner::new().size(14.0));
+                        ui.label(label);
+                        ui.separator();
+                    }
+                    ui.add(egui::Label::new(&self.status_line).truncate(true));
+                });
             });
     }
 

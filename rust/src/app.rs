@@ -1560,6 +1560,14 @@ Search hints:
         self.refresh_status_line();
     }
 
+    fn action_progress_label(&self) -> Option<&'static str> {
+        if self.action_in_progress {
+            Some("Opening...")
+        } else {
+            None
+        }
+    }
+
     fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
         self.pending_restore_refresh = false;

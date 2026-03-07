@@ -165,6 +165,20 @@ fn stale_action_completion_is_ignored_by_request_id() {
 }
 
 #[test]
+fn action_progress_label_is_shown_only_while_action_runs() {
+    let root = test_root("action-progress-label");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    assert_eq!(app.action_progress_label(), None);
+
+    app.action_in_progress = true;
+    assert_eq!(app.action_progress_label(), Some("Opening..."));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn prefer_relative_display_is_enabled_for_filelist_source() {
     let root = test_root("prefer-relative-filelist");
     fs::create_dir_all(&root).expect("create dir");
