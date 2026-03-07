@@ -2,6 +2,12 @@ use super::*;
 
 impl FlistWalkerApp {
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
+        if self.history_search_active {
+            self.preview_resize_in_progress = false;
+            self.render_history_search_results(ui);
+            self.scroll_to_current = false;
+            return;
+        }
         if self.show_preview {
             let max_preview_width = (ui.available_width() - Self::MIN_RESULTS_PANEL_WIDTH)
                 .max(Self::MIN_PREVIEW_PANEL_WIDTH);
@@ -177,6 +183,64 @@ impl FlistWalkerApp {
                 if let Some(i) = execute_row {
                     self.current_row = Some(i);
                     self.execute_selected();
+                }
+            });
+    }
+
+    pub(super) fn render_history_search_results(&mut self, ui: &mut egui::Ui) {
+        ui.heading("History Results");
+        ui.label(format!(
+            "{} items in history, {} matches",
+            self.query_history.len(),
+            self.history_search_results.len()
+        ));
+        egui::ScrollArea::vertical()
+            .drag_to_scroll(false)
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                let mut clicked_row: Option<usize> = None;
+                let mut accept_row: Option<usize> = None;
+
+                for (index, entry) in self.history_search_results.iter().enumerate() {
+                    let is_current = self.history_search_current == Some(index);
+                    let prefix = if is_current { "▶" } else { "·" };
+                    let text = format!("{prefix} {entry}");
+                    let selected_bg = if ui.visuals().dark_mode {
+                        egui::Color32::from_rgb(48, 53, 62)
+                    } else {
+                        egui::Color32::from_rgb(228, 232, 238)
+                    };
+                    let fill = if is_current {
+                        selected_bg
+                    } else {
+                        egui::Color32::TRANSPARENT
+                    };
+                    let row = egui::Frame::none()
+                        .fill(fill)
+                        .inner_margin(egui::Margin::symmetric(3.0, 2.0))
+                        .rounding(egui::Rounding::same(3.0))
+                        .show(ui, |ui| {
+                            ui.add(
+                                egui::Label::new(egui::RichText::new(text).monospace())
+                                    .wrap(false)
+                                    .sense(egui::Sense::click()),
+                            )
+                        });
+                    let response = row.inner;
+                    if response.clicked() {
+                        clicked_row = Some(index);
+                    }
+                    if response.double_clicked() {
+                        accept_row = Some(index);
+                    }
+                }
+
+                if let Some(index) = clicked_row {
+                    self.history_search_current = Some(index);
+                }
+                if let Some(index) = accept_row {
+                    self.history_search_current = Some(index);
+                    self.accept_history_search();
                 }
             });
     }
@@ -383,14 +447,34 @@ impl FlistWalkerApp {
                 );
             });
 
-            let mut output = egui::TextEdit::singleline(&mut self.query)
+            if self.history_search_active {
+                ui.label(
+                    egui::RichText::new("History Search")
+                        .strong()
+                        .color(ui.visuals().strong_text_color()),
+                );
+            }
+            let editing_history_search = self.history_search_active;
+            let mut output = egui::TextEdit::singleline(if editing_history_search {
+                &mut self.history_search_query
+            } else {
+                &mut self.query
+            })
                 .id(self.query_input_id)
                 .lock_focus(true)
                 .desired_width(f32::INFINITY)
-                .hint_text("Type to fuzzy-search files/folders...")
+                .hint_text(if editing_history_search {
+                    "Type to fuzzy-search query history..."
+                } else {
+                    "Type to fuzzy-search files/folders..."
+                })
                 .show(ui);
             let _ = output.response.clone().on_hover_ui_at_pointer(|ui| {
-                ui.label(Self::SEARCH_HINTS_TOOLTIP);
+                if editing_history_search {
+                    ui.label("Ctrl+R で履歴検索を開始。Enter / Ctrl+J / Ctrl+M で確定、Esc / Ctrl+G でキャンセル。");
+                } else {
+                    ui.label(Self::SEARCH_HINTS_TOOLTIP);
+                }
             });
             if self.focus_query_requested {
                 output.response.request_focus();
@@ -401,53 +485,66 @@ impl FlistWalkerApp {
                 self.unfocus_query_requested = false;
             }
             let events = ctx.input(|i| i.events.clone());
-            let (query_event_changed, query_cursor_after_fallback) = self
-                .process_query_input_events(
-                    ctx,
-                    &events,
-                    output.response.has_focus(),
-                    output.response.changed(),
-                    output.state.ccursor_range(),
-                );
-            if query_event_changed {
-                self.mark_query_edited();
-                if output.response.has_focus() {
-                    let end = query_cursor_after_fallback
-                        .unwrap_or_else(|| Self::char_count(&self.query));
-                    output
-                        .state
-                        .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
-                            egui::text::CCursor::new(end),
-                        )));
-                    output.state.clone().store(ctx, output.response.id);
+            if !editing_history_search {
+                let (query_event_changed, query_cursor_after_fallback) = self
+                    .process_query_input_events(
+                        ctx,
+                        &events,
+                        output.response.has_focus(),
+                        output.response.changed(),
+                        output.state.ccursor_range(),
+                    );
+                if query_event_changed {
+                    self.mark_query_edited();
+                    if output.response.has_focus() {
+                        let end = query_cursor_after_fallback
+                            .unwrap_or_else(|| Self::char_count(&self.query));
+                        output
+                            .state
+                            .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                                egui::text::CCursor::new(end),
+                            )));
+                        output.state.clone().store(ctx, output.response.id);
+                    }
+                    self.update_results();
                 }
-                self.update_results();
-            }
-            if self.apply_emacs_query_shortcuts(ctx, &mut output) {
-                self.mark_query_edited();
-                self.update_results();
-            }
-            if output.response.changed() {
-                self.mark_query_edited();
-                Self::append_window_trace(
-                    "query_text_changed",
-                    &format!(
-                        "chars={} has_half_space={} has_full_space={}",
-                        self.query.chars().count(),
-                        self.query.contains(' '),
-                        self.query.contains('\u{3000}')
-                    ),
-                );
-                self.update_results();
+                if self.apply_emacs_query_shortcuts(ctx, &mut output) {
+                    self.mark_query_edited();
+                    self.update_results();
+                }
+                if output.response.changed() {
+                    self.mark_query_edited();
+                    Self::append_window_trace(
+                        "query_text_changed",
+                        &format!(
+                            "chars={} has_half_space={} has_full_space={}",
+                            self.query.chars().count(),
+                            self.query.contains(' '),
+                            self.query.contains('\u{3000}')
+                        ),
+                    );
+                    self.update_results();
+                }
+            } else if output.response.changed() {
+                self.refresh_history_search_results();
             }
             self.run_deferred_shortcuts(ctx);
 
             ui.horizontal(|ui| {
-                if ui.button("Open / Execute").clicked() {
-                    self.execute_selected();
-                }
-                if ui.button("Copy Path(s)").clicked() {
-                    self.copy_selected_paths(ctx);
+                if self.history_search_active {
+                    if ui.button("Apply History").clicked() {
+                        self.accept_history_search();
+                    }
+                    if ui.button("Cancel History Search").clicked() {
+                        self.cancel_history_search();
+                    }
+                } else {
+                    if ui.button("Open / Execute").clicked() {
+                        self.execute_selected();
+                    }
+                    if ui.button("Copy Path(s)").clicked() {
+                        self.copy_selected_paths(ctx);
+                    }
                 }
                 if ui.button("Clear Selected").clicked() {
                     self.clear_pinned();

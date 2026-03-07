@@ -1,11 +1,10 @@
 use super::*;
 
 #[test]
-fn query_history_shortcuts_navigate_previous_and_next() {
-    let root = test_root("query-history-shortcuts");
+fn ctrl_r_starts_history_search_with_recent_entries_first() {
+    let root = test_root("query-history-search-start");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.entries = Arc::new(vec![root.join("alpha.txt")]);
     app.query = "first".to_string();
     app.mark_query_edited();
     app.update_results();
@@ -29,58 +28,14 @@ fn query_history_shortcuts_navigate_previous_and_next() {
             },
         }],
     );
-    assert_eq!(app.query, "second");
-    assert_eq!(app.query_history_cursor, Some(1));
 
-    run_shortcuts_frame(
-        &mut app,
-        true,
-        vec![egui::Event::Key {
-            key: egui::Key::R,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers {
-                ctrl: true,
-                ..Default::default()
-            },
-        }],
+    assert!(app.history_search_active);
+    assert_eq!(app.history_search_original_query, "draft");
+    assert_eq!(
+        app.history_search_results,
+        vec!["second".to_string(), "first".to_string()]
     );
-    assert_eq!(app.query, "first");
-    assert_eq!(app.query_history_cursor, Some(0));
-
-    run_shortcuts_frame(
-        &mut app,
-        true,
-        vec![egui::Event::Key {
-            key: egui::Key::R,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers {
-                ctrl: true,
-                shift: true,
-                ..Default::default()
-            },
-        }],
-    );
-    assert_eq!(app.query, "second");
-    assert_eq!(app.query_history_cursor, Some(1));
-
-    run_shortcuts_frame(
-        &mut app,
-        true,
-        vec![egui::Event::Key {
-            key: egui::Key::R,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers {
-                ctrl: true,
-                shift: true,
-                ..Default::default()
-            },
-        }],
-    );
-    assert_eq!(app.query, "draft");
-    assert_eq!(app.query_history_cursor, None);
+    assert_eq!(app.history_search_current, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -119,7 +74,7 @@ fn query_history_skips_empty_and_consecutive_duplicates() {
 }
 
 #[test]
-fn query_history_is_tab_scoped() {
+fn query_history_is_shared_across_tabs() {
     let root = test_root("query-history-tab-scoped");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -129,7 +84,10 @@ fn query_history_is_tab_scoped() {
     commit_query_history_for_test(&mut app);
 
     app.create_new_tab();
-    assert!(app.query_history.is_empty());
+    assert_eq!(
+        app.query_history.iter().cloned().collect::<Vec<_>>(),
+        vec!["tab-a".to_string()]
+    );
     app.query = "tab-b".to_string();
     app.mark_query_edited();
     app.update_results();
@@ -138,14 +96,14 @@ fn query_history_is_tab_scoped() {
     app.switch_to_tab_index(0);
     assert_eq!(
         app.query_history.iter().cloned().collect::<Vec<_>>(),
-        vec!["tab-a".to_string()]
+        vec!["tab-a".to_string(), "tab-b".to_string()]
     );
     assert_eq!(app.query, "tab-a");
 
     app.switch_to_tab_index(1);
     assert_eq!(
         app.query_history.iter().cloned().collect::<Vec<_>>(),
-        vec!["tab-b".to_string()]
+        vec!["tab-a".to_string(), "tab-b".to_string()]
     );
     assert_eq!(app.query, "tab-b");
     let _ = fs::remove_dir_all(&root);
@@ -168,28 +126,15 @@ fn root_change_resets_query_history_navigation_state() {
     commit_query_history_for_test(&mut app);
     app.query = "draft".to_string();
 
-    app.mark_query_edited();
-
-    run_shortcuts_frame(
-        &mut app,
-        true,
-        vec![egui::Event::Key {
-            key: egui::Key::R,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers {
-                ctrl: true,
-                ..Default::default()
-            },
-        }],
-    );
-    assert!(app.query_history_cursor.is_some());
+    app.start_history_search();
+    assert!(app.history_search_active);
 
     app.apply_root_change(root_b.clone());
 
     assert_eq!(app.root, root_b);
     assert!(app.query_history_cursor.is_none());
     assert!(app.query_history_draft.is_none());
+    assert!(!app.history_search_active);
     assert_eq!(
         app.query_history.iter().cloned().collect::<Vec<_>>(),
         vec!["first".to_string(), "second".to_string()]
@@ -248,4 +193,82 @@ fn query_history_skips_ime_intermediate_text_until_composition_ends() {
         vec!["テスト".to_string()]
     );
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn query_history_keeps_only_the_latest_hundred_entries() {
+    let root = test_root("query-history-max");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    for i in 0..105 {
+        app.query = format!("query-{i:03}");
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+    }
+
+    assert_eq!(app.query_history.len(), FlistWalkerApp::QUERY_HISTORY_MAX);
+    assert_eq!(app.query_history.front().map(String::as_str), Some("query-005"));
+    assert_eq!(app.query_history.back().map(String::as_str), Some("query-104"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn query_history_is_persisted_in_saved_tab_state() {
+    let root = test_root("query-history-persist");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    for query in ["alpha", "beta", "gamma"] {
+        app.query = query.to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+    }
+
+    let saved = app.saved_tab_state_from_app();
+    assert_eq!(
+        saved.query_history,
+        vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()]
+    );
+
+    let restored = app.restored_tab_state(42, &saved);
+    assert_eq!(
+        restored.query_history.iter().cloned().collect::<Vec<_>>(),
+        saved.query_history
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn query_history_is_saved_and_loaded_via_ui_state() {
+    let root = test_root("query-history-ui-state");
+    let home = test_root("query-history-home");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&home).expect("create home");
+    let previous_home = std::env::var_os("HOME");
+    std::env::set_var("HOME", &home);
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    for query in ["alpha", "beta", "gamma"] {
+        app.query = query.to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+    }
+    app.save_ui_state();
+
+    let launch = FlistWalkerApp::load_launch_settings();
+    assert_eq!(
+        launch.query_history,
+        vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()]
+    );
+
+    if let Some(value) = previous_home {
+        std::env::set_var("HOME", value);
+    } else {
+        std::env::remove_var("HOME");
+    }
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&home);
 }

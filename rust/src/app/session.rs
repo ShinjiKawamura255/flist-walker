@@ -18,6 +18,8 @@ pub(super) struct UiState {
     pub(super) show_preview: Option<bool>,
     pub(super) preview_panel_width: Option<f32>,
     #[serde(default)]
+    pub(super) query_history: Vec<String>,
+    #[serde(default)]
     pub(super) results_panel_width: Option<f32>,
     #[serde(default)]
     pub(super) tabs: Vec<SavedTabState>,
@@ -31,6 +33,7 @@ pub(super) struct LaunchSettings {
     pub(super) default_root: Option<PathBuf>,
     pub(super) show_preview: bool,
     pub(super) preview_panel_width: f32,
+    pub(super) query_history: Vec<String>,
     pub(super) restore_tabs: Vec<SavedTabState>,
     pub(super) restore_active_tab: Option<usize>,
 }
@@ -43,6 +46,8 @@ pub(super) struct SavedTabState {
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) query: String,
+    #[serde(default)]
+    pub(super) query_history: Vec<String>,
 }
 
 impl FlistWalkerApp {
@@ -95,6 +100,15 @@ impl FlistWalkerApp {
             default_root,
             show_preview,
             preview_panel_width,
+            query_history: ui_state
+                .query_history
+                .into_iter()
+                .rev()
+                .take(Self::QUERY_HISTORY_MAX)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect(),
             restore_tabs: ui_state.tabs,
             restore_active_tab: ui_state.active_tab,
         }
@@ -130,6 +144,16 @@ impl FlistWalkerApp {
                     include_files: tab.include_files,
                     include_dirs: tab.include_dirs,
                     query: tab.query.clone(),
+                    query_history: tab
+                        .query_history
+                        .iter()
+                        .rev()
+                        .take(Self::QUERY_HISTORY_MAX)
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .rev()
+                        .collect(),
                 })
             })
             .collect();

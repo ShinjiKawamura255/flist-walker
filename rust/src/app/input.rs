@@ -307,21 +307,44 @@ impl FlistWalkerApp {
             return;
         }
 
+        if self.history_search_active {
+            if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
+                self.move_history_search_selection(1);
+            }
+            if Self::consume_emacs_shortcut(ctx, egui::Key::P, false) {
+                self.move_history_search_selection(-1);
+            }
+            if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
+                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            {
+                self.cancel_history_search();
+            }
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
+                self.move_history_search_selection(1);
+            }
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+                self.move_history_search_selection(-1);
+            }
+            if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
+                || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
+                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
+            {
+                self.accept_history_search();
+            }
+            if query_focused {
+                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+            }
+            return;
+        }
+
         if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
             self.move_row(1);
         }
         if Self::consume_emacs_shortcut(ctx, egui::Key::P, false) {
             self.move_row(-1);
         }
-        let history_direction = if Self::consume_emacs_shortcut(ctx, egui::Key::R, true) {
-            Some(1)
-        } else if Self::consume_emacs_shortcut(ctx, egui::Key::R, false) {
-            Some(-1)
-        } else {
-            None
-        };
-        if let Some(direction) = history_direction {
-            self.navigate_query_history(direction);
+        if Self::consume_emacs_shortcut(ctx, egui::Key::R, false) {
+            self.start_history_search();
             if query_focused {
                 ctx.memory_mut(|m| m.request_focus(self.query_input_id));
             }
@@ -331,7 +354,9 @@ impl FlistWalkerApp {
             // cannot overwrite the intended "copy selected path(s)" shortcut result.
             self.pending_copy_shortcut = true;
         }
-        if Self::consume_emacs_shortcut(ctx, egui::Key::G, false) {
+        if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+        {
             self.clear_query_and_selection();
         }
         let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
@@ -405,6 +430,105 @@ impl FlistWalkerApp {
         self.query_history_draft = None;
     }
 
+    pub(super) fn reset_history_search_state(&mut self) {
+        self.history_search_active = false;
+        self.history_search_query.clear();
+        self.history_search_original_query.clear();
+        self.history_search_results.clear();
+        self.history_search_current = None;
+    }
+
+    fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Option<i64> {
+        if query.trim().is_empty() {
+            return Some(recency_rank as i64);
+        }
+
+        let matcher = SkimMatcherV2::default();
+        matcher.fuzzy_match(candidate, query).or_else(|| {
+            let query_lower = query.to_ascii_lowercase();
+            let candidate_lower = candidate.to_ascii_lowercase();
+            if candidate_lower.contains(&query_lower) {
+                Some((query_lower.len() as i64) * 100 + recency_rank as i64)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub(super) fn refresh_history_search_results(&mut self) {
+        if !self.history_search_active {
+            self.history_search_results.clear();
+            self.history_search_current = None;
+            self.refresh_status_line();
+            return;
+        }
+
+        let query = self.history_search_query.trim();
+        let mut scored = self
+            .query_history
+            .iter()
+            .rev()
+            .enumerate()
+            .filter_map(|(idx, entry)| {
+                Self::history_search_score(query, entry, Self::QUERY_HISTORY_MAX - idx)
+                    .map(|score| (entry.clone(), score, idx))
+            })
+            .collect::<Vec<_>>();
+        scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.2.cmp(&b.2)));
+        self.history_search_results = scored.into_iter().map(|(entry, _, _)| entry).collect();
+        self.history_search_current = (!self.history_search_results.is_empty()).then_some(0);
+        self.refresh_status_line();
+    }
+
+    pub(super) fn start_history_search(&mut self) {
+        self.commit_query_history_if_needed(true);
+        self.history_search_active = true;
+        self.history_search_query.clear();
+        self.history_search_original_query = self.query.clone();
+        self.refresh_history_search_results();
+        self.focus_query_requested = true;
+        self.unfocus_query_requested = false;
+    }
+
+    pub(super) fn cancel_history_search(&mut self) {
+        if !self.history_search_active {
+            return;
+        }
+        self.query = self.history_search_original_query.clone();
+        self.reset_history_search_state();
+        self.update_results();
+        self.focus_query_requested = true;
+        self.set_notice("Canceled history search");
+    }
+
+    pub(super) fn accept_history_search(&mut self) {
+        if !self.history_search_active {
+            return;
+        }
+        let Some(index) = self.history_search_current else {
+            return;
+        };
+        let Some(selected) = self.history_search_results.get(index).cloned() else {
+            return;
+        };
+        self.query = selected;
+        self.reset_query_history_navigation();
+        self.query_history_dirty_since = None;
+        self.reset_history_search_state();
+        self.update_results();
+        self.focus_query_requested = true;
+        self.set_notice("Loaded query from history");
+    }
+
+    pub(super) fn move_history_search_selection(&mut self, delta: isize) {
+        if !self.history_search_active || self.history_search_results.is_empty() {
+            return;
+        }
+        let current = self.history_search_current.unwrap_or(0) as isize;
+        let next = (current + delta).clamp(0, self.history_search_results.len() as isize - 1);
+        self.history_search_current = Some(next as usize);
+    }
+
     pub(super) fn mark_query_edited(&mut self) {
         self.reset_query_history_navigation();
         self.query_history_dirty_since = Some(Instant::now());
@@ -424,6 +548,12 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn sync_shared_query_history_to_tabs(&mut self) {
+        for tab in &mut self.tabs {
+            tab.query_history = self.query_history.clone();
+        }
+    }
+
     pub(super) fn commit_query_history_if_needed(&mut self, force: bool) {
         if self.ime_composition_active {
             return;
@@ -434,54 +564,14 @@ impl FlistWalkerApp {
         if !should_commit || self.query_history_cursor.is_some() {
             return;
         }
+        let before_len = self.query_history.len();
         Self::push_query_history(&mut self.query_history, &self.query);
         self.query_history_dirty_since = None;
-    }
-
-    pub(super) fn commit_query_history_for_tab_if_needed(tab: &mut AppTabState, force: bool) {
-        let should_commit = tab
-            .query_history_dirty_since
-            .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
-        if !should_commit || tab.query_history_cursor.is_some() {
-            return;
-        }
-        Self::push_query_history(&mut tab.query_history, &tab.query);
-        tab.query_history_dirty_since = None;
-    }
-
-    pub(super) fn navigate_query_history(&mut self, direction: isize) {
-        if self.query_history.is_empty() {
-            return;
-        }
-
-        let len = self.query_history.len();
-        let next_cursor = match self.query_history_cursor {
-            Some(cursor) if direction < 0 => cursor.saturating_sub(1),
-            Some(cursor) if direction > 0 => {
-                let next = cursor.saturating_add(1);
-                if next >= len {
-                    if let Some(draft) = self.query_history_draft.take() {
-                        self.query = draft;
-                        self.query_history_cursor = None;
-                        self.update_results();
-                    }
-                    return;
-                }
-                next
-            }
-            Some(cursor) => cursor,
-            None if direction < 0 => {
-                self.query_history_draft = Some(self.query.clone());
-                len.saturating_sub(1)
-            }
-            None if direction > 0 => return,
-            None => return,
-        };
-
-        if let Some(next_query) = self.query_history.get(next_cursor).cloned() {
-            self.query_history_cursor = Some(next_cursor);
-            self.query = next_query;
-            self.update_results();
+        if self.query_history.len() != before_len
+            || self.query_history.back().is_some_and(|entry| entry == self.query.trim())
+        {
+            self.sync_shared_query_history_to_tabs();
+            self.mark_ui_state_dirty();
         }
     }
 

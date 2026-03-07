@@ -47,7 +47,7 @@
 | TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
 | TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
-| TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` で query clear + filter reset が実行される | SP-010 |
+| TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` / `Esc` で query clear + filter reset が実行される | SP-010 |
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除のみ実行し current row を維持する | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 | TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、種別解決後に FILE/DIR とフィルタ状態を反映する | SP-001, SP-010, SP-007 |
@@ -58,12 +58,16 @@
 | TC-030 | unit | 階層 FileList 展開は候補集合中の `FileList.txt` / `filelist.txt` 完全一致エントリのみを対象にし、子 FileList 解析中も supersede で中断できる | SP-001, SP-007 |
 | TC-031 | unit | indexing 中の非空クエリ自動再検索は小差分では抑制し、十分な差分蓄積時のみ再検索する | SP-007, SP-010 |
 | TC-032 | unit | GUI 終了時の worker join はタイムアウト付きで、完了系/タイムアウト系の両方を検証する | SP-008, SP-010 |
-| TC-033 | unit | `Ctrl+R` / `Ctrl+Shift+R` で query 履歴を巡回し、末尾で draft query に戻れる | SP-010 |
+| TC-033 | unit | `Ctrl+R` で履歴検索モードを開始し、履歴候補を最新順で表示する | SP-010 |
 | TC-034 | unit | query 履歴は空文字と連続重複を保存しない | SP-010 |
-| TC-035 | unit | query 履歴はタブごとに分離される | SP-010 |
+| TC-035 | unit | query 履歴はタブ切り替え後も全タブで共通に参照できる | SP-010 |
 | TC-036 | unit | Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する | SP-010 |
 | TC-037 | unit | 連続打鍵中は query 履歴を保留し、入力区切り後に最終 query だけを保存する | SP-010 |
 | TC-038 | unit | IME 合成中の未確定文字列は query 履歴へ保存せず、確定後の query のみを保存する | SP-010 |
+| TC-042 | unit | 履歴検索中の `Enter` / `Ctrl+J` / `Ctrl+M` は選択中履歴を query に展開する | SP-010 |
+| TC-043 | unit | 履歴検索中の `Esc` / `Ctrl+G` は開始前 query を復元してキャンセルする | SP-010 |
+| TC-044 | unit | `Ctrl+Shift+R` は履歴検索を開始しない | SP-010 |
+| TC-045 | unit | query 履歴は 100 件上限を維持し、保存状態へ永続化される | SP-010 |
 | TC-039 | unit | 保存済みタブ状態の復元候補は無効 root を除外し、active tab index をクランプする | SP-010 |
 | TC-040 | unit | タブ復元時は active tab の root/query/filter を復元し、起動直後の index は active tab だけ開始する | SP-010 |
 | TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |

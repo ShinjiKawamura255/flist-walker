@@ -129,10 +129,13 @@
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: 複数選択と一括アクションを提供する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
-- MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+G` は検索窓フォーカス中でも有効である。
+- MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。
-- MUST: query 履歴はタブ単位で保持し、空文字と連続重複 query は履歴保存しない。
-- MUST: `Ctrl+R` / `Ctrl+Shift+R` で query 履歴を巡回できる。
+- MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。
+- MUST: query 履歴はセッション復元ファイルへ永続化し、後方互換を保ったまま復元できる。
+- MUST: `Ctrl+R` で履歴検索モードを開始し、同じ検索欄で query history をファジー検索できる。
+- MUST: 履歴検索モード中は履歴検索中であることがわかる表記を行い、結果一覧は履歴候補一覧へ切り替える。
+- MUST: 履歴検索モード中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして開始前 query へ戻す。
 - SHOULD: query 履歴は打鍵ごとではなく、一定時間の無入力または結果移動開始を契機に確定する。
 - SHOULD: IME 合成中の未確定文字列は query 履歴へ保存せず、変換確定後の query のみ履歴対象とする。
 - MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。

@@ -125,6 +125,171 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
 }
 
 #[test]
+fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
+    let root = test_root("shortcut-escape-query-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("picked.txt");
+    fs::write(&selected, "x").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+    app.entries = Arc::new(vec![selected.clone()]);
+    app.results = vec![(selected.clone(), 0.0)];
+    app.current_row = Some(0);
+    app.pinned_paths.insert(selected);
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::Escape,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+
+    assert!(app.query.is_empty());
+    assert!(app.pinned_paths.is_empty());
+    assert_eq!(app.results.len(), 1);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ctrl_shift_r_does_not_start_history_search() {
+    let root = test_root("shortcut-ctrl-shift-r-noop");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
+    app.query_history = VecDeque::from([
+        "alpha".to_string(),
+        "beta".to_string(),
+        "gamma".to_string(),
+    ]);
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::R,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(true),
+        }],
+    );
+
+    assert!(!app.history_search_active);
+    assert_eq!(app.query, "draft");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn history_search_enter_accepts_selected_query() {
+    let root = test_root("history-search-enter");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
+    app.query_history = VecDeque::from([
+        "alpha".to_string(),
+        "beta".to_string(),
+        "gamma".to_string(),
+    ]);
+    app.start_history_search();
+    app.history_search_query = "be".to_string();
+    app.refresh_history_search_results();
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::Enter,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+
+    assert!(!app.history_search_active);
+    assert_eq!(app.query, "beta");
+    assert_eq!(app.notice, "Loaded query from history");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
+    for (name, key) in [
+        ("history-search-ctrl-j", egui::Key::J),
+        ("history-search-ctrl-m", egui::Key::M),
+    ] {
+        let root = test_root(name);
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
+        app.query_history = VecDeque::from([
+            "alpha".to_string(),
+            "beta".to_string(),
+            "gamma".to_string(),
+        ]);
+        app.start_history_search();
+        app.history_search_query = "ga".to_string();
+        app.refresh_history_search_results();
+
+        run_shortcuts_frame(
+            &mut app,
+            true,
+            vec![egui::Event::Key {
+                key,
+                pressed: true,
+                repeat: false,
+                modifiers: emacs_shortcut_modifiers(false),
+            }],
+        );
+
+        assert!(!app.history_search_active);
+        assert_eq!(app.query, "gamma");
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
+    for (name, event) in [
+        (
+            "history-search-escape-cancel",
+            egui::Event::Key {
+                key: egui::Key::Escape,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ),
+        (
+            "history-search-ctrl-g-cancel",
+            egui::Event::Key {
+                key: egui::Key::G,
+                pressed: true,
+                repeat: false,
+                modifiers: emacs_shortcut_modifiers(false),
+            },
+        ),
+    ] {
+        let root = test_root(name);
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
+        app.query_history = VecDeque::from([
+            "alpha".to_string(),
+            "beta".to_string(),
+            "gamma".to_string(),
+        ]);
+        app.start_history_search();
+        app.history_search_query = "ga".to_string();
+        app.refresh_history_search_results();
+
+        run_shortcuts_frame(&mut app, true, vec![event]);
+
+        assert!(!app.history_search_active);
+        assert_eq!(app.query, "draft");
+        assert_eq!(app.notice, "Canceled history search");
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
 fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused() {
     let root = test_root("shortcut-copy-query-focus");
     fs::create_dir_all(&root).expect("create dir");

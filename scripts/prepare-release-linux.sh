@@ -103,8 +103,8 @@ Keyboard shortcuts:
 - Shift+Enter: open containing folder(s) for selected item(s), deduplicated by directory
 - Tab / Shift+Tab: toggle pin on current row
 - Ctrl+Shift+C: copy selected path(s)
-- Ctrl+R / Ctrl+Shift+R: previous / next query history
-- Ctrl+G: clear query and pinned selection
+- Ctrl+R: fuzzy-search query history and load the selected entry
+- Esc / Ctrl+G: clear query and pinned selection, or cancel history search
 - Ctrl+L: focus query input
 
 Index options:

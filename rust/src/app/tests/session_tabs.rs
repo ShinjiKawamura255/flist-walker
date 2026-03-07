@@ -12,6 +12,7 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
             include_files: true,
             include_dirs: true,
             query: "ok".to_string(),
+            query_history: Vec::new(),
         },
         SavedTabState {
             root: root.join("missing").to_string_lossy().to_string(),
@@ -20,6 +21,7 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
             include_files: true,
             include_dirs: false,
             query: "skip".to_string(),
+            query_history: Vec::new(),
         },
     ];
 
@@ -59,6 +61,7 @@ fn choose_startup_root_prefers_restored_tab_over_last_root() {
         include_files: true,
         include_dirs: true,
         query: String::new(),
+        query_history: Vec::new(),
     }];
 
     let chosen = FlistWalkerApp::choose_startup_root(
@@ -92,6 +95,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
                 include_files: true,
                 include_dirs: true,
                 query: "alpha".to_string(),
+                query_history: Vec::new(),
             },
             SavedTabState {
                 root: root_b.to_string_lossy().to_string(),
@@ -100,6 +104,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
                 include_files: true,
                 include_dirs: false,
                 query: "beta".to_string(),
+                query_history: Vec::new(),
             },
         ],
         1,
@@ -141,6 +146,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
                 include_files: true,
                 include_dirs: true,
                 query: "alpha".to_string(),
+                query_history: Vec::new(),
             },
             SavedTabState {
                 root: root_b.to_string_lossy().to_string(),
@@ -149,6 +155,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
                 include_files: true,
                 include_dirs: true,
                 query: "beta".to_string(),
+                query_history: Vec::new(),
             },
         ],
         1,

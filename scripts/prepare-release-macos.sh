@@ -184,7 +184,7 @@ Keyboard shortcuts:
 - Shift+Enter: open containing folder(s) for selected item(s), deduplicated by directory
 - Tab / Shift+Tab: toggle pin on current row
 - Cmd+Shift+C: copy selected path(s)
-- Ctrl+G: clear query and pinned selection
+- Esc / Ctrl+G: clear query and pinned selection, or cancel history search
 - Cmd+L: focus query input
 
 Index options:

@@ -4,6 +4,8 @@ use crate::ui_model::{
     normalize_path_for_display, should_skip_preview,
 };
 use eframe::egui;
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use memory_stats::memory_stats;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fs;
@@ -62,6 +64,11 @@ struct AppTabState {
     query_history_cursor: Option<usize>,
     query_history_draft: Option<String>,
     query_history_dirty_since: Option<Instant>,
+    history_search_active: bool,
+    history_search_query: String,
+    history_search_original_query: String,
+    history_search_results: Vec<String>,
+    history_search_current: Option<usize>,
     pending_restore_refresh: bool,
     results: Vec<(PathBuf, f64)>,
     pinned_paths: HashSet<PathBuf>,
@@ -188,6 +195,11 @@ pub struct FlistWalkerApp {
     query_history_cursor: Option<usize>,
     query_history_draft: Option<String>,
     query_history_dirty_since: Option<Instant>,
+    history_search_active: bool,
+    history_search_query: String,
+    history_search_original_query: String,
+    history_search_results: Vec<String>,
+    history_search_current: Option<usize>,
     pending_restore_refresh: bool,
     use_filelist: bool,
     use_regex: bool,
@@ -458,10 +470,15 @@ Search hints:
             root: Self::normalize_windows_path(root),
             limit: limit.clamp(1, 1000),
             query,
-            query_history: VecDeque::new(),
+            query_history: launch.query_history.iter().cloned().collect(),
             query_history_cursor: None,
             query_history_draft: None,
             query_history_dirty_since: None,
+            history_search_active: false,
+            history_search_query: String::new(),
+            history_search_original_query: String::new(),
+            history_search_results: Vec::new(),
+            history_search_current: None,
             pending_restore_refresh: false,
             use_filelist: true,
             use_regex: false,
@@ -655,10 +672,15 @@ Search hints:
             search_resume_pending: false,
             search_rerun_pending: false,
             query: saved.query.clone(),
-            query_history: VecDeque::new(),
+            query_history: self.query_history.clone(),
             query_history_cursor: None,
             query_history_draft: None,
             query_history_dirty_since: None,
+            history_search_active: false,
+            history_search_query: String::new(),
+            history_search_original_query: String::new(),
+            history_search_results: Vec::new(),
+            history_search_current: None,
             pending_restore_refresh: true,
             results: Vec::new(),
             pinned_paths: HashSet::new(),
@@ -762,6 +784,11 @@ Search hints:
             query_history_cursor: self.query_history_cursor,
             query_history_draft: self.query_history_draft.clone(),
             query_history_dirty_since: self.query_history_dirty_since,
+            history_search_active: self.history_search_active,
+            history_search_query: self.history_search_query.clone(),
+            history_search_original_query: self.history_search_original_query.clone(),
+            history_search_results: self.history_search_results.clone(),
+            history_search_current: self.history_search_current,
             pending_restore_refresh: self.pending_restore_refresh,
             results: self.results.clone(),
             pinned_paths: self.pinned_paths.clone(),
@@ -805,10 +832,9 @@ Search hints:
         self.search_resume_pending = tab.search_resume_pending;
         self.search_rerun_pending = tab.search_rerun_pending;
         self.query = tab.query.clone();
-        self.query_history = tab.query_history.clone();
-        self.query_history_cursor = tab.query_history_cursor;
-        self.query_history_draft = tab.query_history_draft.clone();
-        self.query_history_dirty_since = tab.query_history_dirty_since;
+        self.reset_query_history_navigation();
+        self.query_history_dirty_since = None;
+        self.reset_history_search_state();
         self.pending_restore_refresh = tab.pending_restore_refresh;
         self.results = tab.results.clone();
         self.pinned_paths = tab.pinned_paths.clone();
@@ -878,10 +904,15 @@ Search hints:
         let mut tab = self.capture_active_tab_state(id);
         tab.use_filelist = true;
         tab.query.clear();
-        tab.query_history.clear();
+        tab.query_history = self.query_history.clone();
         tab.query_history_cursor = None;
         tab.query_history_draft = None;
         tab.query_history_dirty_since = None;
+        tab.history_search_active = false;
+        tab.history_search_query.clear();
+        tab.history_search_original_query.clear();
+        tab.history_search_results.clear();
+        tab.history_search_current = None;
         tab.pending_restore_refresh = false;
         tab.pinned_paths.clear();
         tab.current_row = None;
@@ -1053,6 +1084,7 @@ Search hints:
             include_files: self.include_files,
             include_dirs: self.include_dirs,
             query: self.query.clone(),
+            query_history: self.query_history.iter().cloned().collect(),
         }
     }
 
@@ -1064,6 +1096,7 @@ Search hints:
             include_files: tab.include_files,
             include_dirs: tab.include_dirs,
             query: tab.query.clone(),
+            query_history: tab.query_history.iter().cloned().collect(),
         }
     }
 
@@ -1102,6 +1135,7 @@ Search hints:
                 .map(|p| p.to_string_lossy().to_string()),
             show_preview: Some(self.show_preview),
             preview_panel_width: Some(self.preview_panel_width),
+            query_history: self.query_history.iter().cloned().collect(),
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
             active_tab: Some(self.active_tab),
@@ -1455,6 +1489,7 @@ Search hints:
         self.root = normalized;
         self.reset_query_history_navigation();
         self.query_history_dirty_since = None;
+        self.reset_history_search_state();
         // Avoid launching/copying stale selections from the previous root.
         self.pinned_paths.clear();
         self.current_row = None;
@@ -1543,6 +1578,15 @@ Search hints:
         } else {
             ""
         };
+        let history_search = if self.history_search_active {
+            format!(
+                " | History search: {}/{}",
+                self.history_search_results.len(),
+                self.query_history.len()
+            )
+        } else {
+            String::new()
+        };
         let notice = if self.notice.is_empty() {
             String::new()
         } else {
@@ -1554,7 +1598,7 @@ Search hints:
         };
 
         self.status_line = format!(
-            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}",
+            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}",
             tab_label,
             indexed_count,
             self.results.len(),
@@ -1564,6 +1608,7 @@ Search hints:
             indexing,
             executing,
             creating_filelist,
+            history_search,
             memory,
             notice
         );
@@ -1840,7 +1885,6 @@ Search hints:
         let Some(tab) = self.tabs.get_mut(tab_index) else {
             return;
         };
-        Self::commit_query_history_for_tab_if_needed(tab, false);
         let request_id = self.next_request_id;
         self.next_request_id = self.next_request_id.saturating_add(1);
         tab.pending_request_id = Some(request_id);
@@ -3044,6 +3088,7 @@ Search hints:
     fn clear_query_and_selection(&mut self) {
         self.query.clear();
         self.reset_query_history_navigation();
+        self.reset_history_search_state();
         self.query_history_dirty_since = None;
         self.pinned_paths.clear();
         self.current_row = None;
