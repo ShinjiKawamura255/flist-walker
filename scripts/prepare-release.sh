@@ -84,7 +84,7 @@ Keyboard shortcuts:
 - Ctrl+L: focus query input
 
 Query history:
-- Search history is stored per tab and persisted up to 100 entries.
+- Search history is shared across tabs and persisted up to 100 entries.
 - History is committed after a short idle period or when result navigation starts.
 - IME intermediate composition text is not stored; only committed query text is saved.
 
