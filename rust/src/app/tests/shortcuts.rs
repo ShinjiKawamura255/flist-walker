@@ -158,11 +158,8 @@ fn ctrl_shift_r_does_not_start_history_search() {
     let root = test_root("shortcut-ctrl-shift-r-noop");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.query_history = VecDeque::from([
-        "alpha".to_string(),
-        "beta".to_string(),
-        "gamma".to_string(),
-    ]);
+    app.query_history =
+        VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
 
     run_shortcuts_frame(
         &mut app,
@@ -185,11 +182,8 @@ fn history_search_enter_accepts_selected_query() {
     let root = test_root("history-search-enter");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.query_history = VecDeque::from([
-        "alpha".to_string(),
-        "beta".to_string(),
-        "gamma".to_string(),
-    ]);
+    app.query_history =
+        VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
     app.start_history_search();
     app.history_search_query = "be".to_string();
     app.refresh_history_search_results();
@@ -220,11 +214,8 @@ fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
         let root = test_root(name);
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-        app.query_history = VecDeque::from([
-            "alpha".to_string(),
-            "beta".to_string(),
-            "gamma".to_string(),
-        ]);
+        app.query_history =
+            VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
         app.start_history_search();
         app.history_search_query = "ga".to_string();
         app.refresh_history_search_results();
@@ -271,11 +262,8 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
         let root = test_root(name);
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-        app.query_history = VecDeque::from([
-            "alpha".to_string(),
-            "beta".to_string(),
-            "gamma".to_string(),
-        ]);
+        app.query_history =
+            VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
         app.start_history_search();
         app.history_search_query = "ga".to_string();
         app.refresh_history_search_results();

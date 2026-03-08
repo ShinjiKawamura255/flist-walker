@@ -209,8 +209,14 @@ fn query_history_keeps_only_the_latest_hundred_entries() {
     }
 
     assert_eq!(app.query_history.len(), FlistWalkerApp::QUERY_HISTORY_MAX);
-    assert_eq!(app.query_history.front().map(String::as_str), Some("query-005"));
-    assert_eq!(app.query_history.back().map(String::as_str), Some("query-104"));
+    assert_eq!(
+        app.query_history.front().map(String::as_str),
+        Some("query-005")
+    );
+    assert_eq!(
+        app.query_history.back().map(String::as_str),
+        Some("query-104")
+    );
     let _ = fs::remove_dir_all(&root);
 }
 

@@ -568,7 +568,10 @@ impl FlistWalkerApp {
         Self::push_query_history(&mut self.query_history, &self.query);
         self.query_history_dirty_since = None;
         if self.query_history.len() != before_len
-            || self.query_history.back().is_some_and(|entry| entry == self.query.trim())
+            || self
+                .query_history
+                .back()
+                .is_some_and(|entry| entry == self.query.trim())
         {
             self.sync_shared_query_history_to_tabs();
             self.mark_ui_state_dirty();
