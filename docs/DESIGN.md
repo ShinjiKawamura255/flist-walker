@@ -80,6 +80,7 @@
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。
 - Root 変更時は旧 root 向けの FileList 上書き確認ダイアログを破棄し、誤上書きを防ぐ。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
+- Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。
 - query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。

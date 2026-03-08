@@ -128,6 +128,7 @@
 - MUST: Source（FileList/Walker）と Root を画面表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: 複数選択と一括アクションを提供する。
+- MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
 - MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。
