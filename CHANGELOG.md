@@ -4,15 +4,36 @@
 
 ## [Unreleased]
 ### Added
-- リリース前に `rust/Cargo.toml` / `rust/Cargo.lock` の version 更新漏れを防ぐ project-local skill を追加した。
+- 
 
 ### Changed
-- リリース同梱 `README.txt` に `FLISTWALKER_RESTORE_TABS` の説明と Windows/macOS/Linux ごとの設定方法を追加した。
-- `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` をグレーアウトし、ロジック側でも排他するようにした。
-- FileList 作成時に、祖先ディレクトリの既存 FileList へ子 FileList 参照を静かに追記し、親 FileList の mtime を維持するようにした。
+- 
 
 ### Fixed
 - 
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
+## [0.10.3] - 2026-03-09
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- Windows の 8.3 短縮パスと macOS の `/private` パス差分により cross-platform test が不安定になる問題を修正した。
+- query history の UI state 永続化テストが共有保存先へ依存し、並列実行時に干渉して失敗する問題を修正した。
 
 ### Breaking
 - 
@@ -334,7 +355,11 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.3
+[0.10.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.2
+[0.10.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.1
+[0.10.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.0
 [0.9.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.8.0
 [0.7.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.1
