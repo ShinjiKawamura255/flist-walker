@@ -37,7 +37,6 @@
 
 ## Known issues
 - notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
-- この環境では macOS アセットの実ビルドを完了できないため、公開時は別の macOS 環境での最終生成が必要。
 
 ## Verify checksum
 PowerShell:
