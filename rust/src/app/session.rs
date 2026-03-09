@@ -71,14 +71,31 @@ impl FlistWalkerApp {
         let Some(path) = Self::ui_state_file_path() else {
             return UiState::default();
         };
+        Self::read_ui_state_from_path(&path)
+    }
+
+    fn read_ui_state_from_path(path: &Path) -> UiState {
         let Ok(text) = fs::read_to_string(path) else {
             return UiState::default();
         };
         serde_json::from_str::<UiState>(&text).unwrap_or_default()
     }
 
+    #[cfg(test)]
+    pub(super) fn load_ui_state_from_path(path: &Path) -> UiState {
+        Self::read_ui_state_from_path(path)
+    }
+
     pub(super) fn load_launch_settings() -> LaunchSettings {
-        let ui_state = Self::load_ui_state();
+        Self::launch_settings_from_ui_state(Self::load_ui_state())
+    }
+
+    #[cfg(test)]
+    pub(super) fn load_launch_settings_from_path(path: &Path) -> LaunchSettings {
+        Self::launch_settings_from_ui_state(Self::read_ui_state_from_path(path))
+    }
+
+    fn launch_settings_from_ui_state(ui_state: UiState) -> LaunchSettings {
         let last_root = ui_state
             .last_root
             .as_deref()

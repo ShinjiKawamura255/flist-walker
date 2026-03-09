@@ -1118,6 +1118,10 @@ Search hints:
         let Some(path) = Self::ui_state_file_path() else {
             return;
         };
+        self.save_ui_state_to_path(&path);
+    }
+
+    fn save_ui_state_to_path(&self, path: &Path) {
         if let Some(parent) = path.parent() {
             let _ = fs::create_dir_all(parent);
         }

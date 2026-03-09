@@ -249,11 +249,11 @@ fn query_history_is_persisted_in_saved_tab_state() {
 #[test]
 fn query_history_is_saved_and_loaded_via_ui_state() {
     let root = test_root("query-history-ui-state");
-    let home = test_root("query-history-home");
+    let ui_state_dir = test_root("query-history-ui-state-dir");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
     fs::create_dir_all(&root).expect("create root");
-    fs::create_dir_all(&home).expect("create home");
-    let previous_home = std::env::var_os("HOME");
-    std::env::set_var("HOME", &home);
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+    let _ = fs::remove_file(&ui_state_path);
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     for query in ["alpha", "beta", "gamma"] {
@@ -262,19 +262,27 @@ fn query_history_is_saved_and_loaded_via_ui_state() {
         app.update_results();
         commit_query_history_for_test(&mut app);
     }
-    app.save_ui_state();
+    assert_eq!(
+        app.query_history.iter().cloned().collect::<Vec<_>>(),
+        vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()]
+    );
 
-    let launch = FlistWalkerApp::load_launch_settings();
+    app.save_ui_state_to_path(&ui_state_path);
+    assert!(ui_state_path.exists(), "ui state file should exist");
+
+    let saved = FlistWalkerApp::load_ui_state_from_path(&ui_state_path);
+    assert_eq!(
+        saved.query_history,
+        vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()]
+    );
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
     assert_eq!(
         launch.query_history,
         vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()]
     );
 
-    if let Some(value) = previous_home {
-        std::env::set_var("HOME", value);
-    } else {
-        std::env::remove_var("HOME");
-    }
+    let _ = fs::remove_file(&ui_state_path);
     let _ = fs::remove_dir_all(&root);
-    let _ = fs::remove_dir_all(&home);
+    let _ = fs::remove_dir_all(&ui_state_dir);
 }
