@@ -1,5 +1,9 @@
 use super::*;
 
+fn canonical_or_self(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
 #[test]
 fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
     let root = test_root("saved-tabs-sanitize");
@@ -75,10 +79,7 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
     app.set_current_root_as_default_with(false);
 
     let saved = app.default_root.as_ref().expect("default root");
-    assert_eq!(
-        FlistWalkerApp::path_key(saved),
-        FlistWalkerApp::path_key(&root)
-    );
+    assert_eq!(canonical_or_self(saved), canonical_or_self(&root));
     let _ = fs::remove_dir_all(&root);
 }
 
