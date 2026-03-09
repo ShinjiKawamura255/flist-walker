@@ -375,13 +375,21 @@ impl FlistWalkerApp {
                         }
                     }
                 }
-                if ui
-                    .add_sized(
+                let set_default_enabled = self.can_set_current_root_as_default();
+                let set_default_response = ui.add_enabled_ui(set_default_enabled, |ui| {
+                    ui.add_sized(
                         [set_default_width, row_height],
                         egui::Button::new("Set as default"),
                     )
-                    .clicked()
-                {
+                });
+                let set_default_response = set_default_response.inner;
+                let set_default_clicked = set_default_response.clicked();
+                if !set_default_enabled {
+                    set_default_response.on_disabled_hover_text(
+                        "Disabled while FLISTWALKER_RESTORE_TABS is enabled",
+                    );
+                }
+                if set_default_enabled && set_default_clicked {
                     self.set_current_root_as_default();
                 }
                 if ui

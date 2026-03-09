@@ -107,6 +107,26 @@ Keyboard shortcuts:
 - Esc / Ctrl+G: clear query and pinned selection, or cancel history search
 - Ctrl+L: focus query input
 
+Query history:
+- Search history is shared across tabs and persisted up to 100 entries.
+- History is committed after a short idle period or when result navigation starts.
+- IME intermediate composition text is not stored; only committed query text is saved.
+
+Tab restore (opt-in):
+- FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
+- 復元対象は root / query / Use FileList / Regex / Files / Folders / active tab です。
+- --root や起動時 query を明示した場合は復元よりそちらを優先します。
+- この機能が有効な間は、起動 root がタブ復元で決まるため `Set as default` は無効化されます。
+
+How to enable FLISTWALKER_RESTORE_TABS:
+- Linux (bash, current session): export FLISTWALKER_RESTORE_TABS=1
+- Linux (bash persist): echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
+- Linux (fish, persist): set -Ux FLISTWALKER_RESTORE_TABS 1
+- macOS (zsh/bash, current session): export FLISTWALKER_RESTORE_TABS=1
+- macOS (zsh persist): echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.zshrc
+- Windows (PowerShell, persist per-user): [Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", "1", "User")
+- Windows (PowerShell, current session): $env:FLISTWALKER_RESTORE_TABS = "1"
+
 Index options:
 - Use FileList: ルート直下の FileList.txt / filelist.txt を優先使用
 - Files / Folders: 表示フィルタ（再インデックスなしで即時反映）

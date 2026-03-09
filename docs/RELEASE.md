@@ -95,6 +95,12 @@
 4. draft release には各 OS 向け実行バイナリ、配布 archive、統合 `SHA256SUMS` が添付される。
 5. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化し、draft を本リリースへ publish する。
 
+## Release 前チェック
+- `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
+- `rust/Cargo.lock` の `flist-walker` package version が同じ `X.Y.Z` へ更新済みであること。
+- `CHANGELOG.md` の対象 version 節、git tag `vX.Y.Z`、release note の対象 version が一致していること。
+- Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
+
 ## SHA256SUMS 検証例
 PowerShell:
 ```powershell

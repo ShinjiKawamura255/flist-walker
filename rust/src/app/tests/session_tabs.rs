@@ -51,6 +51,34 @@ fn choose_startup_root_prefers_last_root_over_default_root() {
 }
 
 #[test]
+fn set_as_default_is_disabled_while_restore_tabs_env_is_enabled() {
+    let root = test_root("set-default-disabled-by-restore-tabs");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    assert!(!FlistWalkerApp::can_set_current_root_as_default_with(true));
+
+    app.set_current_root_as_default_with(true);
+
+    assert!(app.default_root.is_none());
+    assert!(app.notice.contains("Set as default is disabled"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
+    let root = test_root("set-default-enabled-without-restore-tabs");
+    fs::create_dir_all(&root).expect("create root");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
+    app.set_current_root_as_default_with(false);
+
+    assert_eq!(app.default_root.as_ref(), Some(&root));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn choose_startup_root_prefers_restored_tab_over_last_root() {
     let restored_root = PathBuf::from("/restored");
     let last_root = PathBuf::from("/last");

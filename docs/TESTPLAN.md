@@ -71,6 +71,7 @@
 | TC-039 | unit | 保存済みタブ状態の復元候補は無効 root を除外し、active tab index をクランプする | SP-010 |
 | TC-040 | unit | タブ復元時は active tab の root/query/filter を復元し、起動直後の index は active tab だけ開始する | SP-010 |
 | TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |
+| TC-046 | unit | `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -146,3 +147,4 @@
 - TC-039 -> SP-010 -> DES-009 -> FR-007
 - TC-040 -> SP-010 -> DES-009, DES-006 -> FR-007
 - TC-041 -> SP-010 -> DES-009, DES-006 -> FR-007
+- TC-046 -> SP-010 -> DES-009 -> FR-007

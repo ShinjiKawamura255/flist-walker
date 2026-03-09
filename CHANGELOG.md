@@ -4,10 +4,11 @@
 
 ## [Unreleased]
 ### Added
-- 
+- リリース前に `rust/Cargo.toml` / `rust/Cargo.lock` の version 更新漏れを防ぐ project-local skill を追加した。
 
 ### Changed
-- 
+- リリース同梱 `README.txt` に `FLISTWALKER_RESTORE_TABS` の説明と Windows/macOS/Linux ごとの設定方法を追加した。
+- `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` をグレーアウトし、ロジック側でも排他するようにした。
 
 ### Fixed
 - 

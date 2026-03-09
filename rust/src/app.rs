@@ -1402,6 +1402,14 @@ Search hints:
     }
 
     fn set_current_root_as_default(&mut self) {
+        self.set_current_root_as_default_with(Self::restore_tabs_enabled());
+    }
+
+    fn set_current_root_as_default_with(&mut self, restore_tabs_enabled: bool) {
+        if !Self::can_set_current_root_as_default_with(restore_tabs_enabled) {
+            self.set_notice("Set as default is disabled while FLISTWALKER_RESTORE_TABS is enabled");
+            return;
+        }
         let root = self
             .root
             .canonicalize()
@@ -1413,6 +1421,14 @@ Search hints:
         self.ui_state_dirty = false;
         self.last_ui_state_save = Instant::now();
         self.set_notice(format!("Set default root: {}", root.display()));
+    }
+
+    fn can_set_current_root_as_default(&self) -> bool {
+        Self::can_set_current_root_as_default_with(Self::restore_tabs_enabled())
+    }
+
+    fn can_set_current_root_as_default_with(restore_tabs_enabled: bool) -> bool {
+        !restore_tabs_enabled
     }
 
     fn remove_current_root_from_saved(&mut self) {

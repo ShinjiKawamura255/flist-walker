@@ -149,6 +149,7 @@
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: `FLISTWALKER_RESTORE_TABS=1` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
 - MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
+- MUST: `FLISTWALKER_RESTORE_TABS=1` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 
