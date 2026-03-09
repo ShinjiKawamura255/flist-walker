@@ -612,6 +612,40 @@ fn build_temp_filelist_path(filename: &str) -> PathBuf {
         .join(format!("{filename}.{pid}.{now}.{seq}.tmp"))
 }
 
+fn write_text_to_path(out: &Path, text: &str) -> Result<()> {
+    let filename = out
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("FileList.txt");
+    let tmp = build_temp_filelist_path(filename);
+    if let Some(parent) = tmp.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create temp dir {}", parent.display()))?;
+    }
+    fs::write(&tmp, text).with_context(|| format!("failed to write {}", tmp.display()))?;
+
+    if out.exists() {
+        fs::remove_file(out)
+            .map_err(|err| annotate_write_target_error(out, err))
+            .with_context(|| format!("failed to replace {}", out.display()))?;
+    }
+    if let Err(rename_err) = fs::rename(&tmp, out) {
+        fs::copy(&tmp, out)
+            .map_err(|err| annotate_write_target_error(out, err))
+            .with_context(|| {
+                format!(
+                    "failed to place {} from temp file {} ({})",
+                    out.display(),
+                    tmp.display(),
+                    rename_err
+                )
+            })?;
+        let _ = fs::remove_file(&tmp);
+    }
+
+    Ok(())
+}
+
 fn annotate_write_target_error(out: &Path, err: std::io::Error) -> anyhow::Error {
     if err.kind() == std::io::ErrorKind::PermissionDenied {
         return anyhow::anyhow!(
@@ -623,35 +657,161 @@ fn annotate_write_target_error(out: &Path, err: std::io::Error) -> anyhow::Error
     anyhow::Error::new(err)
 }
 
+fn visit_ancestor_directories(path: &Path, mut visit: impl FnMut(&Path) -> bool) {
+    let mut current = path.parent();
+    while let Some(ancestor) = current {
+        if !visit(ancestor) {
+            break;
+        }
+        current = ancestor.parent();
+    }
+}
+
+fn find_all_filelists_in_directory(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut matches = Vec::new();
+    let mut seen = HashSet::new();
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if !name.eq_ignore_ascii_case("filelist.txt") {
+            continue;
+        }
+        if !entry.file_type()?.is_file() {
+            continue;
+        }
+        if seen.insert(path.clone()) {
+            matches.push(path);
+        }
+    }
+    matches.sort_by_key(|path| path.to_string_lossy().to_ascii_lowercase());
+    Ok(matches)
+}
+
+fn normalize_filelist_entry_for_text_compare(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    if trimmed.is_empty() || trimmed.starts_with('#') {
+        return None;
+    }
+
+    let raw = strip_wrapping_quotes(trimmed);
+    if raw.is_empty() {
+        return None;
+    }
+
+    let normalized = if looks_like_windows_absolute_path(raw) || raw.starts_with("//") {
+        raw.replace('\\', "/").to_ascii_lowercase()
+    } else {
+        let lexical = normalize_relative_lexically(Path::new(&raw.replace('\\', "/")));
+        lexical.to_string_lossy().replace('\\', "/")
+    };
+    let normalized = normalized.trim_start_matches("./").to_string();
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
+}
+
+fn child_filelist_reference_keys(parent_dir: &Path, child_filelist: &Path) -> HashSet<String> {
+    let mut keys = HashSet::new();
+    let parent_canonical = parent_dir.canonicalize().ok();
+    let relative = filelist_line_for_entry(child_filelist, parent_dir, parent_canonical.as_deref());
+    if let Some(key) = normalize_filelist_entry_for_text_compare(&relative) {
+        keys.insert(key);
+    }
+    if let Some(key) =
+        normalize_filelist_entry_for_text_compare(child_filelist.to_string_lossy().as_ref())
+    {
+        keys.insert(key);
+    }
+    if let Ok(canonical) = child_filelist.canonicalize() {
+        if let Some(key) =
+            normalize_filelist_entry_for_text_compare(canonical.to_string_lossy().as_ref())
+        {
+            keys.insert(key);
+        }
+    }
+    keys
+}
+
+fn restore_file_mtime(
+    path: &Path,
+    modified: SystemTime,
+    accessed: Option<SystemTime>,
+) -> std::io::Result<()> {
+    let file = File::options().write(true).open(path)?;
+    let times = match accessed {
+        Some(accessed) => fs::FileTimes::new()
+            .set_accessed(accessed)
+            .set_modified(modified),
+        None => fs::FileTimes::new().set_modified(modified),
+    };
+    file.set_times(times)
+}
+
+fn append_child_filelist_to_parent_filelist_if_missing(
+    parent_filelist: &Path,
+    child_filelist: &Path,
+) -> std::io::Result<()> {
+    let Some(parent_dir) = parent_filelist.parent() else {
+        return Ok(());
+    };
+    let metadata = fs::metadata(parent_filelist)?;
+    let modified = metadata.modified()?;
+    let accessed = metadata.accessed().ok();
+    let mut content = fs::read_to_string(parent_filelist)?;
+    let child_keys = child_filelist_reference_keys(parent_dir, child_filelist);
+    if content
+        .lines()
+        .filter_map(normalize_filelist_entry_for_text_compare)
+        .any(|line| child_keys.contains(&line))
+    {
+        return Ok(());
+    }
+    if !content.is_empty() && !content.ends_with('\n') {
+        content.push('\n');
+    }
+    content.push_str(&filelist_line_for_entry(
+        child_filelist,
+        parent_dir,
+        parent_dir.canonicalize().ok().as_deref(),
+    ));
+    content.push('\n');
+
+    write_text_to_path(parent_filelist, &content)
+        .map_err(|err| std::io::Error::other(err.to_string()))?;
+    restore_file_mtime(parent_filelist, modified, accessed)?;
+    Ok(())
+}
+
+fn propagate_child_filelist_to_ancestor_filelists(child_filelist: &Path) {
+    let Some(root_dir) = child_filelist.parent() else {
+        return;
+    };
+    visit_ancestor_directories(root_dir, |ancestor_dir| {
+        let parent_filelists = match find_all_filelists_in_directory(ancestor_dir) {
+            Ok(parent_filelists) => parent_filelists,
+            Err(_) => return false,
+        };
+        for parent_filelist in parent_filelists {
+            if append_child_filelist_to_parent_filelist_if_missing(&parent_filelist, child_filelist)
+                .is_err()
+            {
+                return false;
+            }
+        }
+        true
+    });
+}
+
 pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Result<PathBuf> {
     let out = root.join(filename);
     let text = build_filelist_text(entries, root);
-
-    let tmp = build_temp_filelist_path(filename);
-    if let Some(parent) = tmp.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create temp dir {}", parent.display()))?;
-    }
-    fs::write(&tmp, &text).with_context(|| format!("failed to write {}", tmp.display()))?;
-
-    if out.exists() {
-        fs::remove_file(&out)
-            .map_err(|err| annotate_write_target_error(&out, err))
-            .with_context(|| format!("failed to replace {}", out.display()))?;
-    }
-    if let Err(rename_err) = fs::rename(&tmp, &out) {
-        fs::copy(&tmp, &out)
-            .map_err(|err| annotate_write_target_error(&out, err))
-            .with_context(|| {
-                format!(
-                    "failed to place {} from temp file {} ({})",
-                    out.display(),
-                    tmp.display(),
-                    rename_err
-                )
-            })?;
-        let _ = fs::remove_file(&tmp);
-    }
+    write_text_to_path(&out, &text)?;
+    propagate_child_filelist_to_ancestor_filelists(&out);
 
     Ok(out)
 }
@@ -961,6 +1121,106 @@ mod tests {
         let content = fs::read_to_string(&out).expect("read filelist");
         assert!(content.contains(&format!("x{}run.exe", std::path::MAIN_SEPARATOR)));
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn write_filelist_appends_child_filelist_to_ancestor_filelists_without_touching_mtime() {
+        let top = test_root("write-filelist-propagate");
+        let parent = top.join("parent");
+        let root = parent.join("child");
+        let sibling = parent.join("keep.txt");
+        fs::create_dir_all(&root).expect("create child root");
+        fs::write(&sibling, "keep").expect("write sibling");
+        let parent_filelist = parent.join("FileList.txt");
+        fs::write(&parent_filelist, "keep.txt\n").expect("write parent filelist");
+        sleep_for_timestamp_tick();
+        let before_modified = filelist_modified_time(&parent_filelist).expect("mtime before");
+
+        let child_entry = root.join("src/main.rs");
+        fs::create_dir_all(child_entry.parent().expect("child parent")).expect("create src");
+        fs::write(&child_entry, "fn main() {}").expect("write child entry");
+
+        let out = write_filelist(&root, &[child_entry], "FileList.txt").expect("write child");
+
+        let parent_content = fs::read_to_string(&parent_filelist).expect("read parent filelist");
+        assert!(parent_content.contains("keep.txt"));
+        assert!(parent_content.contains(&format!("child{}FileList.txt", std::path::MAIN_SEPARATOR)));
+        let after_modified = filelist_modified_time(&parent_filelist).expect("mtime after");
+        assert_eq!(after_modified, before_modified);
+
+        let parsed_parent =
+            parse_filelist(&parent_filelist, &parent, true, true).expect("parse parent filelist");
+        assert!(contains_path(&parsed_parent, &out));
+        let _ = fs::remove_dir_all(&top);
+    }
+
+    #[test]
+    fn write_filelist_does_not_duplicate_existing_ancestor_child_reference() {
+        let top = test_root("write-filelist-propagate-dedup");
+        let parent = top.join("parent");
+        let root = parent.join("child");
+        fs::create_dir_all(&root).expect("create child root");
+        let child_entry = root.join("src/main.rs");
+        fs::create_dir_all(child_entry.parent().expect("child parent")).expect("create src");
+        fs::write(&child_entry, "fn main() {}").expect("write child entry");
+        let child_filelist = root.join("FileList.txt");
+        let parent_filelist = parent.join("FileList.txt");
+        fs::create_dir_all(&parent).expect("create parent");
+        fs::write(
+            &parent_filelist,
+            format!("./child{}FileList.txt\n", std::path::MAIN_SEPARATOR),
+        )
+        .expect("write parent filelist");
+
+        write_filelist(&root, &[child_entry], "FileList.txt").expect("write child");
+
+        let parent_content = fs::read_to_string(&parent_filelist).expect("read parent filelist");
+        assert_eq!(
+            parent_content
+                .lines()
+                .filter(|line| line.contains("child") && line.contains("FileList.txt"))
+                .count(),
+            1
+        );
+        let parsed_parent =
+            parse_filelist(&parent_filelist, &parent, true, true).expect("parse parent filelist");
+        assert!(contains_path(&parsed_parent, &child_filelist));
+        let _ = fs::remove_dir_all(&top);
+    }
+
+    #[test]
+    fn normalize_filelist_entry_for_text_compare_collapses_relative_variants() {
+        assert_eq!(
+            normalize_filelist_entry_for_text_compare("./child\\FileList.txt"),
+            Some("child/FileList.txt".to_string())
+        );
+        assert_eq!(
+            normalize_filelist_entry_for_text_compare("\"child/FileList.txt\""),
+            Some("child/FileList.txt".to_string())
+        );
+        assert_eq!(
+            normalize_filelist_entry_for_text_compare("child/./nested/../FileList.txt"),
+            Some("child/FileList.txt".to_string())
+        );
+    }
+
+    #[test]
+    fn visit_ancestor_directories_stops_when_callback_requests_break() {
+        let path = PathBuf::from("/tmp/flistwalker/a/b/c");
+        let mut visited = Vec::new();
+
+        visit_ancestor_directories(path.as_path(), |ancestor| {
+            visited.push(ancestor.to_path_buf());
+            ancestor != Path::new("/tmp/flistwalker/a")
+        });
+
+        assert_eq!(
+            visited,
+            vec![
+                PathBuf::from("/tmp/flistwalker/a/b"),
+                PathBuf::from("/tmp/flistwalker/a")
+            ]
+        );
     }
 
     #[test]

@@ -77,6 +77,9 @@
 - OS シグナル（例: `Ctrl+C`）受信時は shutdown 要求を立て、GUI 側で window close を発行して終了処理へ収束させる。
 - FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - FileList 作成は OS 一時領域に出力してから最終配置へ移動する。クロスデバイスで `rename` 不可の場合は `copy` フォールバックし、最終配置のみを更新する。
+- FileList 作成後は root の親から filesystem root まで順に辿り、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ子 FileList 参照を相対表現で追記する。既に同一参照がある場合は追記しない。
+- 祖先 FileList を追記した場合でも、その FileList の mtime は更新前の値へ復元し、階層 FileList の新旧判定を崩さない。
+- 祖先探索や親 FileList 読込/書込/mtime 復元で失敗した場合は、その時点で祖先追記だけを静かに打ち切り、root 自身の FileList 作成結果は成功扱いのまま維持する。
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。
 - Root 変更時は旧 root 向けの FileList 上書き確認ダイアログを破棄し、誤上書きを防ぐ。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。

@@ -9,6 +9,7 @@
 ### Changed
 - リリース同梱 `README.txt` に `FLISTWALKER_RESTORE_TABS` の説明と Windows/macOS/Linux ごとの設定方法を追加した。
 - `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` をグレーアウトし、ロジック側でも排他するようにした。
+- FileList 作成時に、祖先ディレクトリの既存 FileList へ子 FileList 参照を静かに追記し、親 FileList の mtime を維持するようにした。
 
 ### Fixed
 - 

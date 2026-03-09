@@ -8,6 +8,9 @@
 - MUST: 空行と `#` コメント行を無視する。
 - MUST: 階層 FileList 展開は、読み込み済み候補内でファイル名が `FileList.txt` / `filelist.txt` に完全一致するエントリのみを対象とする。
 - MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。
+- MUST: FileList 作成時は、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ作成済み子 FileList の参照を重複なく追記できる。
+- MUST: 上記の祖先 FileList 追記後は、親 FileList の mtime を更新前の値へ戻す。
+- MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
 - SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR）は遅延解決して初期読み込みを優先する。
