@@ -10,7 +10,7 @@
 - 
 
 ### Fixed
-- 
+- GitHub Actions の release asset 集約が macOS `.app` bundle 内部の `FlistWalker` / `Info.plist` / `FlistWalker.icns` まで拾ってしまう問題を修正した。
 
 ### Breaking
 - 

@@ -19,17 +19,35 @@ jobs:
           - os: windows-latest
             label: windows-x86_64
             artifact_name: release-windows-x86_64
+            upload_paths: |
+              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.exe
+              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.zip
+              dist/${{ github.ref_name }}/SHA256SUMS
           - os: ubuntu-latest
             label: linux-x86_64
             artifact_name: release-linux-x86_64
+            upload_paths: |
+              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64
+              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.tar.gz
+              dist/${{ github.ref_name }}/SHA256SUMS
           - os: macos-15-intel
             label: macos-x86_64
             artifact_name: release-macos-x86_64
             target: x86_64-apple-darwin
+            upload_paths: |
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64-app.zip
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.tar.gz
+              dist/${{ github.ref_name }}/SHA256SUMS
           - os: macos-14
             label: macos-arm64
             artifact_name: release-macos-arm64
             target: aarch64-apple-darwin
+            upload_paths: |
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64-app.zip
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.tar.gz
+              dist/${{ github.ref_name }}/SHA256SUMS
 
     steps:
       - name: Checkout
@@ -87,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/${{ github.ref_name }}/*
+          path: ${{ matrix.upload_paths }}
           if-no-files-found: error
 
   create-draft-release:
@@ -113,7 +131,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-bundle
-          find release-assets -type f ! -name 'SHA256SUMS' -print0 | while IFS= read -r -d '' file; do
+          find release-assets -type f -name 'FlistWalker-*' -print0 | while IFS= read -r -d '' file; do
             cp "$file" "release-bundle/$(basename "$file")"
           done
           (

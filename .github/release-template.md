@@ -3,6 +3,7 @@
 - Date: `YYYY-MM-DD`
 
 ## Downloads
+- macOS の `.app` bundle 自体は notarization 用の中間成果物であり、GitHub Release の添付対象には含めない。
 - `FlistWalker-X.Y.Z-linux-x86_64`
 - `FlistWalker-X.Y.Z-linux-x86_64.tar.gz`
 - `FlistWalker-X.Y.Z-windows-x86_64.exe`
