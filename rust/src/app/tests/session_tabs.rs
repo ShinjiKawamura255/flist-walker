@@ -74,7 +74,11 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
     assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
     app.set_current_root_as_default_with(false);
 
-    assert_eq!(app.default_root.as_ref(), Some(&root));
+    let saved = app.default_root.as_ref().expect("default root");
+    assert_eq!(
+        FlistWalkerApp::path_key(saved),
+        FlistWalkerApp::path_key(&root)
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
