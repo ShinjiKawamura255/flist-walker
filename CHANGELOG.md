@@ -24,6 +24,37 @@
 ### Known issues
 - 
 
+## [0.11.0] - 2026-03-14
+### Added
+- 結果ペインに `Score` / `Name` / `Modified` / `Created` のソートを追加した。
+- `Modified` / `Created` ソート用に、検索結果だけを対象にした非同期属性取得と上限付きキャッシュを追加した。
+- `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` により、query history 永続化を明示的に無効化できるようにした。
+
+### Changed
+- ソート適用後もカーソルは同じアイテムへ追従せず、同じ行番号に留まるようにした。
+- `Create File List` で祖先 FileList への追記がありうる場合は、事前確認を必須にした。
+
+### Fixed
+- Windows/macOS CI で共通に落ちていたアクション要求キュー投入テストの不安定要因を修正した。
+- `cargo audit` で検出された `idna 0.4.0` 依存を解消し、CI が通らない問題を修正した。
+- GitHub Actions の release asset 集約が macOS `.app` bundle 内部の `FlistWalker` / `Info.plist` / `FlistWalker.icns` まで拾ってしまう問題を修正した。
+- query history の履歴検索アクションと default root 起動順の不整合を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- `FileList.txt` に root 外パスが含まれていても、実行/オープン直前に現在 root 配下かを検証し、root 外アクションを拒否するようにした。
+- 通常 CI に Linux と `cargo audit` を追加し、release 対象 OS と依存脆弱性を継続検証するようにした。
+- query history は既定で平文永続化されるため、必要に応じて `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` を利用する運用を明示した。
+
+### Known issues
+- Linux など `created()` を取得できない環境では、`Created` ソート時に該当項目は末尾へ並ぶ。
+- macOS 配布物は publish 前に notarization 確認が必要。
+
 ## [0.10.3] - 2026-03-09
 ### Added
 - 
