@@ -33,6 +33,10 @@
 - 役割: release 対象 OS の CI 継続検証、依存脆弱性検査、notarization 運用の文書化。
 - 実装: `.github/workflows/ci-cross-platform.yml`, `docs/RELEASE.md`, `.github/release-template.md`
 
+- DES-013 Result Sort Controller
+- 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
+- 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`
+
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
@@ -71,6 +75,11 @@
 - include_files/include_dirs が両方有効な FileList 解析では、初期ロード時の `metadata` 依存を避けて候補パスの投入を優先し、FILE/DIR 種別は別ワーカーで遅延解決する。
 - regex モードは include term をクエリ単位で事前コンパイルし、候補ごとの再コンパイルを禁止する。
 - プレビューキャッシュは固定上限（FIFO）で運用し、長時間セッションでのメモリ増加を抑制する。
+- 結果ソートは `base_results` に検索エンジンの元順位を保持し、表示用 `results` だけを並び替えることで `Score` 復帰を O(n) で実現する。
+- `Name` ソートは UI スレッド上で `base_results` の clone を即時ソートし、追加 I/O を行わない。
+- `Modified` / `Created` は結果スナップショット中の未キャッシュ path だけを sort worker へ送り、属性解決後に表示リストを更新する。
+- sort worker は index/search worker とは分離し、query 編集中や indexing 中でも UI フレームを塞がない。
+- sort metadata cache は上限件数を持つ FIFO/LRU 風管理とし、root 変更や index refresh 開始時に破棄できるようにする。
 
 - DES-007 Reliability / Error
 - 失敗は `anyhow::Result` に集約し、CLI/GUI で表示責務を分離する。
@@ -99,6 +108,9 @@
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
 - `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
+- 結果ソート状態はタブ単位で保持するが、query 変更や結果スナップショット更新時には `Score` へ戻し、保留中の sort request_id を無効化する。
+- 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` を選択可能にする。
+- `Created` 属性は取得失敗を正常系として扱い、notice ではなく並び順の末尾送りだけで吸収する。
 - タブ復元は `FLISTWALKER_RESTORE_TABS=1` のときだけ有効化し、永続化対象は `root/query/use_filelist/use_regex/include_files/include_dirs/active_tab` に限定する。
 - 起動時の優先順位は `--root` 明示 > 復元タブ（env 有効時） > 最後に使っていた root > `Set as default` > 通常 root とし、バージョン更新やバイナリ差し替えでも最後の root を維持する。
 - `FLISTWALKER_RESTORE_TABS=1` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。
@@ -152,3 +164,4 @@
 - DES-010 -> TC-011 (SP-011)
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)
+- DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)

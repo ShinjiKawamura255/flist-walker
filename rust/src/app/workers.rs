@@ -1,3 +1,4 @@
+use super::{ResultSortMode, SortMetadata};
 use crate::actions::execute_or_open;
 use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
@@ -204,6 +205,18 @@ pub(super) struct ActionRequest {
 pub(super) struct ActionResponse {
     pub(super) request_id: u64,
     pub(super) notice: String,
+}
+
+pub(super) struct SortMetadataRequest {
+    pub(super) request_id: u64,
+    pub(super) paths: Vec<PathBuf>,
+    pub(super) mode: ResultSortMode,
+}
+
+pub(super) struct SortMetadataResponse {
+    pub(super) request_id: u64,
+    pub(super) entries: Vec<(PathBuf, SortMetadata)>,
+    pub(super) mode: ResultSortMode,
 }
 
 pub(super) struct KindResolveRequest {
@@ -622,6 +635,56 @@ pub(super) fn spawn_action_worker(
                 .send(ActionResponse {
                     request_id: req.request_id,
                     notice,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res, handle)
+}
+
+pub(super) fn spawn_sort_metadata_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<SortMetadataRequest>,
+    Receiver<SortMetadataResponse>,
+    thread::JoinHandle<()>,
+) {
+    let (tx_req, rx_req) = mpsc::channel::<SortMetadataRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<SortMetadataResponse>();
+
+    let handle = thread::spawn(move || {
+        while let Ok(mut req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
+            while let Ok(newer) = rx_req.try_recv() {
+                req = newer;
+            }
+
+            let entries = req
+                .paths
+                .into_iter()
+                .map(|path| {
+                    let metadata = std::fs::metadata(&path)
+                        .ok()
+                        .map(|meta| SortMetadata {
+                            modified: meta.modified().ok(),
+                            created: meta.created().ok(),
+                        })
+                        .unwrap_or_default();
+                    (path, metadata)
+                })
+                .collect::<Vec<_>>();
+
+            if tx_res
+                .send(SortMetadataResponse {
+                    request_id: req.request_id,
+                    entries,
+                    mode: req.mode,
                 })
                 .is_err()
             {

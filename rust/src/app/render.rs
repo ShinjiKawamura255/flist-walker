@@ -92,7 +92,30 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_results_list(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Results");
+        ui.horizontal(|ui| {
+            ui.heading("Results");
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let mut selected = self.result_sort_mode;
+                egui::ComboBox::from_id_source("results-sort-selector")
+                    .selected_text(selected.label())
+                    .show_ui(ui, |ui| {
+                        for mode in [
+                            ResultSortMode::Score,
+                            ResultSortMode::NameAsc,
+                            ResultSortMode::NameDesc,
+                            ResultSortMode::ModifiedDesc,
+                            ResultSortMode::ModifiedAsc,
+                            ResultSortMode::CreatedDesc,
+                            ResultSortMode::CreatedAsc,
+                        ] {
+                            ui.selectable_value(&mut selected, mode, mode.label());
+                        }
+                    });
+                if selected != self.result_sort_mode {
+                    self.set_result_sort_mode(selected);
+                }
+            });
+        });
         let scroll_enabled = Self::results_scroll_enabled(self.preview_resize_in_progress);
         egui::ScrollArea::both()
             .enable_scrolling(scroll_enabled)
@@ -436,6 +459,7 @@ impl FlistWalkerApp {
                     .checkbox(&mut self.use_filelist, "Use FileList")
                     .changed();
                 if ui.checkbox(&mut self.use_regex, "Regex").changed() {
+                    self.invalidate_result_sort(true);
                     self.update_results();
                 }
                 let (files_changed, dirs_changed) = if self.use_filelist_requires_locked_filters() {

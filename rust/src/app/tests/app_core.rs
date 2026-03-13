@@ -282,6 +282,116 @@ fn preview_cache_is_bounded() {
 }
 
 #[test]
+fn result_sort_name_can_be_applied_and_score_can_be_restored() {
+    let root = test_root("result-sort-name-score");
+    fs::create_dir_all(&root).expect("create dir");
+    let alpha = root.join("alpha.txt");
+    let beta = root.join("beta.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "a".to_string());
+    let base = vec![(beta.clone(), 10.0), (alpha.clone(), 9.0)];
+
+    app.replace_results_snapshot(base.clone(), false);
+    app.current_row = Some(0);
+    app.set_result_sort_mode(ResultSortMode::NameAsc);
+
+    assert_eq!(app.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(app.current_row, Some(0));
+    assert_eq!(
+        app.results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![alpha.clone(), beta.clone()]
+    );
+
+    app.set_result_sort_mode(ResultSortMode::Score);
+
+    assert_eq!(app.result_sort_mode, ResultSortMode::Score);
+    assert_eq!(app.current_row, Some(0));
+    assert_eq!(app.results, base);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn query_edit_invalidates_result_sort_and_cancels_pending_request() {
+    let root = test_root("result-sort-reset-on-query-edit");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+
+    app.result_sort_mode = ResultSortMode::ModifiedDesc;
+    app.sort_in_progress = true;
+    app.pending_sort_request_id = Some(42);
+
+    app.mark_query_edited();
+
+    assert_eq!(app.result_sort_mode, ResultSortMode::Score);
+    assert!(!app.sort_in_progress);
+    assert!(app.pending_sort_request_id.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn created_sort_places_missing_timestamps_last() {
+    let root = test_root("result-sort-created-none-last");
+    fs::create_dir_all(&root).expect("create dir");
+    let has_created = root.join("has-created.txt");
+    let missing_created = root.join("missing-created.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "a".to_string());
+    let base = vec![(missing_created.clone(), 10.0), (has_created.clone(), 9.0)];
+
+    app.replace_results_snapshot(base, false);
+    app.cache_sort_metadata(
+        missing_created.clone(),
+        SortMetadata {
+            modified: None,
+            created: None,
+        },
+    );
+    app.cache_sort_metadata(
+        has_created.clone(),
+        SortMetadata {
+            modified: None,
+            created: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(5)),
+        },
+    );
+
+    app.set_result_sort_mode(ResultSortMode::CreatedDesc);
+
+    assert_eq!(
+        app.results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![has_created, missing_created]
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn sort_metadata_cache_is_bounded() {
+    let root = test_root("result-sort-cache-bounded");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    for i in 0..(FlistWalkerApp::SORT_METADATA_CACHE_MAX + 8) {
+        app.cache_sort_metadata(
+            root.join(format!("entry-{i}.txt")),
+            SortMetadata {
+                modified: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(i as u64)),
+                created: None,
+            },
+        );
+    }
+
+    assert!(app.sort_metadata_cache.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.sort_metadata_cache_order.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(!app
+        .sort_metadata_cache
+        .contains_key(&root.join("entry-0.txt")));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn search_prefix_cache_accepts_only_plain_single_token_queries() {
     assert!(!SearchPrefixCache::is_cacheable_query("ab"));
     assert!(SearchPrefixCache::is_cacheable_query("abc"));

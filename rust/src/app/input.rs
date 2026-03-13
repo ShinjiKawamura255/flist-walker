@@ -532,6 +532,7 @@ impl FlistWalkerApp {
     pub(super) fn mark_query_edited(&mut self) {
         self.reset_query_history_navigation();
         self.query_history_dirty_since = Some(Instant::now());
+        self.invalidate_result_sort(true);
     }
 
     pub(super) fn push_query_history(history: &mut VecDeque<String>, query: &str) {

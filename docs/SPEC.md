@@ -163,10 +163,33 @@
 - MUST: `FLISTWALKER_RESTORE_TABS=1` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
+- MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` を選択できる。
 
 ### Preconditions / Postconditions
 - Preconditions: GUI モードで起動しインデックス構築可能。
 - Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
+
+## SP-013 検索結果ソート
+### Requirements
+- MUST: ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。
+- MUST: `Score` は検索エンジンが返した元の順位へ戻せる。
+- MUST: `Name` ソートはファイル/ディレクトリ名を主キー、正規化済みフルパスを副キーとして即時に並び替える。
+- MUST: `Modified` / `Created` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
+- MUST: `Modified` / `Created` の取得中も UI 入力と一覧操作を維持する。
+- MUST: query が 1 文字でも変化した場合、適用済みソートと保留中ソート要求を破棄し、表示順を `Score` に戻す。
+- MUST: root 変更、index refresh、filter 変更、tab 切替で結果スナップショットが変化した場合も、保留中ソート要求は破棄できる。
+- MUST: 属性キャッシュは上限付きで保持し、上限超過時は古い項目から破棄する。
+- MUST: `created()` が取得できない OS/ファイルは `None` として扱い、`Created` ソート時は末尾へ送る。
+- SHOULD: 既にキャッシュ済みの属性だけで並び替え可能な場合、日付ソートも同期的に完了できる。
+
+### Preconditions / Postconditions
+- Preconditions: 検索結果が 1 件以上ある。
+- Postconditions: `Score` は元の検索順位、他ソートは選択したキー順で結果が表示される。
+
+### Edge / Error
+- 検索結果が空のときはソート要求を無視する。
+- path が削除済み・権限不足などで属性取得に失敗した場合はその項目だけ `None` 扱いで継続する。
+- 保留中ソート応答が古い query / root / tab に属する場合は破棄する。
 
 ## SP-012 CI / Release Security Hygiene
 ### Requirements

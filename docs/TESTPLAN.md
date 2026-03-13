@@ -83,6 +83,13 @@
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存と notarization 手順が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
+| TC-057 | unit | `Score` / `Name` / `Modified` / `Created` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
+| TC-058 | unit | query 変更や結果更新時にソートを破棄し、インデクシング経路へ属性取得を追加しない | SP-013 |
+| TC-059 | unit | 日付ソートの未キャッシュ path は別 worker へ要求し、古い応答は request_id で破棄する | SP-013 |
+| TC-060 | unit | sort metadata cache は上限を超えて増加せず、古い項目を破棄する | SP-013 |
+| TC-061 | unit | `created()` 取得不可の項目は `Created` ソート時に末尾へ送る | SP-013 |
+| TC-062 | manual | 結果ペインの `Sort` UI から各ソートを選択でき、`Modified` / `Created` 中も入力が継続できる | SP-010, SP-013 |
+| TC-063 | perf | ソート機能追加後もインデクシング時の属性取得数を増やさず、既存の逐次表示挙動を維持する | SP-007, SP-013 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -172,3 +179,10 @@
 - TC-054 -> SP-010 -> DES-007, DES-009 -> FR-011
 - TC-055 -> SP-010, SP-012 -> DES-007, DES-012 -> FR-011, NFR-005
 - TC-056 -> SP-012 -> DES-012 -> NFR-005
+- TC-057 -> SP-013 -> DES-013 -> FR-012
+- TC-058 -> SP-013 -> DES-006, DES-013 -> FR-013, FR-014, NFR-006
+- TC-059 -> SP-013 -> DES-013 -> FR-012, FR-014
+- TC-060 -> SP-013 -> DES-013 -> FR-015
+- TC-061 -> SP-013 -> DES-013 -> FR-012
+- TC-062 -> SP-010, SP-013 -> DES-009, DES-013 -> FR-007, FR-012
+- TC-063 -> SP-007, SP-013 -> DES-006, DES-013 -> FR-013, NFR-006

@@ -72,7 +72,11 @@ struct AppTabState {
     history_search_results: Vec<String>,
     history_search_current: Option<usize>,
     pending_restore_refresh: bool,
+    base_results: Vec<(PathBuf, f64)>,
     results: Vec<(PathBuf, f64)>,
+    result_sort_mode: ResultSortMode,
+    pending_sort_request_id: Option<u64>,
+    sort_in_progress: bool,
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
     preview: String,
@@ -93,6 +97,45 @@ struct BackgroundIndexState {
     source: Option<IndexSource>,
     entries: Vec<PathBuf>,
     entry_kinds: HashMap<PathBuf, bool>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) struct SortMetadata {
+    pub(super) modified: Option<SystemTime>,
+    pub(super) created: Option<SystemTime>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum ResultSortMode {
+    #[default]
+    Score,
+    NameAsc,
+    NameDesc,
+    ModifiedDesc,
+    ModifiedAsc,
+    CreatedDesc,
+    CreatedAsc,
+}
+
+impl ResultSortMode {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Score => "Score",
+            Self::NameAsc => "Name (A-Z)",
+            Self::NameDesc => "Name (Z-A)",
+            Self::ModifiedDesc => "Modified (New)",
+            Self::ModifiedAsc => "Modified (Old)",
+            Self::CreatedDesc => "Created (New)",
+            Self::CreatedAsc => "Created (Old)",
+        }
+    }
+
+    fn uses_metadata(self) -> bool {
+        matches!(
+            self,
+            Self::ModifiedDesc | Self::ModifiedAsc | Self::CreatedDesc | Self::CreatedAsc
+        )
+    }
 }
 
 static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -217,7 +260,9 @@ pub struct FlistWalkerApp {
     all_entries: Arc<Vec<PathBuf>>,
     entries: Arc<Vec<PathBuf>>,
     entry_kinds: HashMap<PathBuf, bool>,
+    base_results: Vec<(PathBuf, f64)>,
     results: Vec<(PathBuf, f64)>,
+    result_sort_mode: ResultSortMode,
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
     preview: String,
@@ -230,6 +275,8 @@ pub struct FlistWalkerApp {
     preview_rx: Receiver<PreviewResponse>,
     action_tx: Sender<ActionRequest>,
     action_rx: Receiver<ActionResponse>,
+    sort_tx: Sender<SortMetadataRequest>,
+    sort_rx: Receiver<SortMetadataResponse>,
     kind_tx: Sender<KindResolveRequest>,
     kind_rx: Receiver<KindResolveResponse>,
     filelist_tx: Sender<FileListRequest>,
@@ -244,6 +291,8 @@ pub struct FlistWalkerApp {
     pending_preview_request_id: Option<u64>,
     next_action_request_id: u64,
     pending_action_request_id: Option<u64>,
+    next_sort_request_id: u64,
+    pending_sort_request_id: Option<u64>,
     next_filelist_request_id: u64,
     pending_filelist_request_id: Option<u64>,
     pending_filelist_request_tab_id: Option<u64>,
@@ -259,6 +308,7 @@ pub struct FlistWalkerApp {
     index_in_progress: bool,
     preview_in_progress: bool,
     action_in_progress: bool,
+    sort_in_progress: bool,
     kind_resolution_in_progress: bool,
     filelist_in_progress: bool,
     pending_copy_shortcut: bool,
@@ -289,6 +339,8 @@ pub struct FlistWalkerApp {
     highlight_cache_scope_prefer_relative: bool,
     highlight_cache: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
     highlight_cache_order: VecDeque<HighlightCacheKey>,
+    sort_metadata_cache: HashMap<PathBuf, SortMetadata>,
+    sort_metadata_cache_order: VecDeque<PathBuf>,
     incremental_filtered_entries: Vec<PathBuf>,
     pending_index_entries: VecDeque<IndexEntry>,
     pending_index_entries_request_id: Option<u64>,
@@ -308,12 +360,14 @@ pub struct FlistWalkerApp {
     search_request_tabs: HashMap<u64, u64>,
     preview_request_tabs: HashMap<u64, u64>,
     action_request_tabs: HashMap<u64, u64>,
+    sort_request_tabs: HashMap<u64, u64>,
     worker_runtime: Option<WorkerRuntime>,
 }
 
 impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
     const HIGHLIGHT_CACHE_MAX: usize = 256;
+    const SORT_METADATA_CACHE_MAX: usize = 4096;
     const QUERY_HISTORY_MAX: usize = 100;
     const QUERY_HISTORY_IDLE_DELAY: Duration = Duration::from_millis(400);
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
@@ -462,6 +516,9 @@ Search hints:
         let (action_tx, action_rx, action_handle) =
             spawn_action_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push(action_handle);
+        let (sort_tx, sort_rx, sort_handle) =
+            spawn_sort_metadata_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push(sort_handle);
         let (kind_tx, kind_rx, kind_handle) =
             spawn_kind_resolver_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push(kind_handle);
@@ -501,7 +558,9 @@ Search hints:
             all_entries: Arc::new(Vec::new()),
             entries: Arc::new(Vec::new()),
             entry_kinds: HashMap::new(),
+            base_results: Vec::new(),
             results: Vec::new(),
+            result_sort_mode: ResultSortMode::Score,
             pinned_paths: HashSet::new(),
             current_row: None,
             preview: String::new(),
@@ -514,6 +573,8 @@ Search hints:
             preview_rx,
             action_tx,
             action_rx,
+            sort_tx,
+            sort_rx,
             kind_tx,
             kind_rx,
             filelist_tx,
@@ -528,6 +589,8 @@ Search hints:
             pending_preview_request_id: None,
             next_action_request_id: 1,
             pending_action_request_id: None,
+            next_sort_request_id: 1,
+            pending_sort_request_id: None,
             next_filelist_request_id: 1,
             pending_filelist_request_id: None,
             pending_filelist_request_tab_id: None,
@@ -543,6 +606,7 @@ Search hints:
             index_in_progress: false,
             preview_in_progress: false,
             action_in_progress: false,
+            sort_in_progress: false,
             kind_resolution_in_progress: false,
             filelist_in_progress: false,
             pending_copy_shortcut: false,
@@ -575,6 +639,8 @@ Search hints:
             highlight_cache_scope_prefer_relative: false,
             highlight_cache: HashMap::new(),
             highlight_cache_order: VecDeque::new(),
+            sort_metadata_cache: HashMap::new(),
+            sort_metadata_cache_order: VecDeque::new(),
             incremental_filtered_entries: Vec::new(),
             pending_index_entries: VecDeque::new(),
             pending_index_entries_request_id: None,
@@ -594,6 +660,7 @@ Search hints:
             search_request_tabs: HashMap::new(),
             preview_request_tabs: HashMap::new(),
             action_request_tabs: HashMap::new(),
+            sort_request_tabs: HashMap::new(),
             worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
@@ -632,6 +699,208 @@ Search hints:
                 )
             })
             .unwrap_or(false)
+    }
+
+    fn clear_sort_metadata_cache(&mut self) {
+        self.sort_metadata_cache.clear();
+        self.sort_metadata_cache_order.clear();
+    }
+
+    fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
+        if !self.sort_metadata_cache.contains_key(&path) {
+            self.sort_metadata_cache_order.push_back(path.clone());
+        }
+        self.sort_metadata_cache.insert(path.clone(), metadata);
+        while self.sort_metadata_cache_order.len() > Self::SORT_METADATA_CACHE_MAX {
+            if let Some(oldest) = self.sort_metadata_cache_order.pop_front() {
+                self.sort_metadata_cache.remove(&oldest);
+            }
+        }
+        if !self.sort_metadata_cache.contains_key(&path) {
+            self.sort_metadata_cache_order
+                .retain(|entry| entry != &path);
+        }
+    }
+
+    fn sort_metadata_value(metadata: SortMetadata, mode: ResultSortMode) -> Option<SystemTime> {
+        match mode {
+            ResultSortMode::ModifiedDesc | ResultSortMode::ModifiedAsc => metadata.modified,
+            ResultSortMode::CreatedDesc | ResultSortMode::CreatedAsc => metadata.created,
+            _ => None,
+        }
+    }
+
+    fn sort_timestamp_for_path(
+        cache: &HashMap<PathBuf, SortMetadata>,
+        path: &Path,
+        mode: ResultSortMode,
+    ) -> Option<SystemTime> {
+        cache
+            .get(path)
+            .copied()
+            .and_then(|metadata| Self::sort_metadata_value(metadata, mode))
+    }
+
+    fn path_name_key(path: &Path) -> String {
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .to_ascii_lowercase()
+    }
+
+    fn build_sorted_results_from(
+        base_results: &[(PathBuf, f64)],
+        mode: ResultSortMode,
+        cache: &HashMap<PathBuf, SortMetadata>,
+    ) -> Vec<(PathBuf, f64)> {
+        let mut items = base_results.iter().cloned().enumerate().collect::<Vec<_>>();
+        match mode {
+            ResultSortMode::Score => return base_results.to_vec(),
+            ResultSortMode::NameAsc | ResultSortMode::NameDesc => {
+                let desc = matches!(mode, ResultSortMode::NameDesc);
+                items.sort_by(|(idx_a, (path_a, _)), (idx_b, (path_b, _))| {
+                    let cmp = Self::path_name_key(path_a)
+                        .cmp(&Self::path_name_key(path_b))
+                        .then_with(|| {
+                            Self::normalized_compare_key(path_a)
+                                .cmp(&Self::normalized_compare_key(path_b))
+                        })
+                        .then_with(|| idx_a.cmp(idx_b));
+                    if desc {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
+                });
+            }
+            ResultSortMode::ModifiedDesc
+            | ResultSortMode::ModifiedAsc
+            | ResultSortMode::CreatedDesc
+            | ResultSortMode::CreatedAsc => {
+                let desc = matches!(
+                    mode,
+                    ResultSortMode::ModifiedDesc | ResultSortMode::CreatedDesc
+                );
+                items.sort_by(|(idx_a, (path_a, _)), (idx_b, (path_b, _))| {
+                    let time_a = Self::sort_timestamp_for_path(cache, path_a, mode);
+                    let time_b = Self::sort_timestamp_for_path(cache, path_b, mode);
+                    let cmp = match (time_a, time_b) {
+                        (Some(a), Some(b)) => {
+                            if desc {
+                                b.cmp(&a)
+                            } else {
+                                a.cmp(&b)
+                            }
+                        }
+                        (Some(_), None) => std::cmp::Ordering::Less,
+                        (None, Some(_)) => std::cmp::Ordering::Greater,
+                        (None, None) => std::cmp::Ordering::Equal,
+                    }
+                    .then_with(|| Self::path_name_key(path_a).cmp(&Self::path_name_key(path_b)))
+                    .then_with(|| {
+                        Self::normalized_compare_key(path_a)
+                            .cmp(&Self::normalized_compare_key(path_b))
+                    })
+                    .then_with(|| idx_a.cmp(idx_b));
+                    cmp
+                });
+            }
+        }
+        items.into_iter().map(|(_, entry)| entry).collect()
+    }
+
+    fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
+        Self::build_sorted_results_from(&self.base_results, mode, &self.sort_metadata_cache)
+    }
+
+    fn replace_results_snapshot(
+        &mut self,
+        results: Vec<(PathBuf, f64)>,
+        keep_scroll_position: bool,
+    ) {
+        self.pending_sort_request_id = None;
+        self.sort_in_progress = false;
+        self.result_sort_mode = ResultSortMode::Score;
+        self.base_results = results.clone();
+        self.apply_results_with_selection_policy(results, keep_scroll_position, true);
+    }
+
+    fn invalidate_result_sort(&mut self, keep_scroll_position: bool) {
+        let had_non_score_sort = self.result_sort_mode != ResultSortMode::Score;
+        self.pending_sort_request_id = None;
+        self.sort_in_progress = false;
+        self.result_sort_mode = ResultSortMode::Score;
+        if had_non_score_sort && !self.base_results.is_empty() && self.results != self.base_results
+        {
+            self.apply_results_with_selection_policy(
+                self.base_results.clone(),
+                keep_scroll_position,
+                true,
+            );
+        } else {
+            self.refresh_status_line();
+        }
+    }
+
+    fn request_sort_metadata(&mut self, mode: ResultSortMode, missing_paths: Vec<PathBuf>) {
+        let request_id = self.next_sort_request_id;
+        self.next_sort_request_id = self.next_sort_request_id.saturating_add(1);
+        self.pending_sort_request_id = Some(request_id);
+        self.sort_in_progress = true;
+        if let Some(tab_id) = self.current_tab_id() {
+            self.sort_request_tabs.insert(request_id, tab_id);
+        }
+        self.refresh_status_line();
+        if self
+            .sort_tx
+            .send(SortMetadataRequest {
+                request_id,
+                paths: missing_paths,
+                mode,
+            })
+            .is_err()
+        {
+            self.pending_sort_request_id = None;
+            self.sort_in_progress = false;
+            self.set_notice("Sort worker is unavailable");
+        }
+    }
+
+    fn apply_result_sort(&mut self, keep_scroll_position: bool) {
+        if self.base_results.is_empty() {
+            self.pending_sort_request_id = None;
+            self.sort_in_progress = false;
+            self.refresh_status_line();
+            return;
+        }
+        if !self.result_sort_mode.uses_metadata() {
+            let sorted = self.build_sorted_results(self.result_sort_mode);
+            self.pending_sort_request_id = None;
+            self.sort_in_progress = false;
+            self.apply_results_with_selection_policy(sorted, keep_scroll_position, false);
+            return;
+        }
+
+        let missing_paths = self
+            .base_results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .filter(|path| !self.sort_metadata_cache.contains_key(path))
+            .collect::<Vec<_>>();
+        if missing_paths.is_empty() {
+            let sorted = self.build_sorted_results(self.result_sort_mode);
+            self.pending_sort_request_id = None;
+            self.sort_in_progress = false;
+            self.apply_results_with_selection_policy(sorted, keep_scroll_position, false);
+            return;
+        }
+
+        self.request_sort_metadata(self.result_sort_mode, missing_paths);
+    }
+
+    fn set_result_sort_mode(&mut self, mode: ResultSortMode) {
+        self.result_sort_mode = mode;
+        self.apply_result_sort(false);
     }
 
     fn normalized_compare_key(path: &Path) -> String {
@@ -757,7 +1026,11 @@ Search hints:
             history_search_results: Vec::new(),
             history_search_current: None,
             pending_restore_refresh: true,
+            base_results: Vec::new(),
             results: Vec::new(),
+            result_sort_mode: ResultSortMode::Score,
+            pending_sort_request_id: None,
+            sort_in_progress: false,
             pinned_paths: HashSet::new(),
             current_row: None,
             preview: String::new(),
@@ -865,7 +1138,11 @@ Search hints:
             history_search_results: self.history_search_results.clone(),
             history_search_current: self.history_search_current,
             pending_restore_refresh: self.pending_restore_refresh,
+            base_results: self.base_results.clone(),
             results: self.results.clone(),
+            result_sort_mode: self.result_sort_mode,
+            pending_sort_request_id: self.pending_sort_request_id,
+            sort_in_progress: self.sort_in_progress,
             pinned_paths: self.pinned_paths.clone(),
             current_row: self.current_row,
             preview: self.preview.clone(),
@@ -911,7 +1188,11 @@ Search hints:
         self.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.pending_restore_refresh = tab.pending_restore_refresh;
+        self.base_results = tab.base_results.clone();
         self.results = tab.results.clone();
+        self.result_sort_mode = tab.result_sort_mode;
+        self.pending_sort_request_id = tab.pending_sort_request_id;
+        self.sort_in_progress = tab.sort_in_progress;
         self.pinned_paths = tab.pinned_paths.clone();
         self.current_row = tab.current_row;
         self.preview = tab.preview.clone();
@@ -989,6 +1270,16 @@ Search hints:
         tab.history_search_results.clear();
         tab.history_search_current = None;
         tab.pending_restore_refresh = false;
+        tab.base_results = self
+            .entries
+            .iter()
+            .take(self.limit)
+            .cloned()
+            .map(|p| (p, 0.0))
+            .collect();
+        tab.result_sort_mode = ResultSortMode::Score;
+        tab.pending_sort_request_id = None;
+        tab.sort_in_progress = false;
         tab.pinned_paths.clear();
         tab.current_row = None;
         tab.preview.clear();
@@ -1016,13 +1307,7 @@ Search hints:
         tab.scroll_to_current = true;
         tab.focus_query_requested = true;
         tab.unfocus_query_requested = false;
-        tab.results = self
-            .entries
-            .iter()
-            .take(self.limit)
-            .cloned()
-            .map(|p| (p, 0.0))
-            .collect();
+        tab.results = tab.base_results.clone();
         self.tabs.push(tab.clone());
         self.active_tab = self.tabs.len().saturating_sub(1);
         self.apply_tab_state(&tab);
@@ -1094,6 +1379,8 @@ Search hints:
             .retain(|_, tab_id| *tab_id != removed.id);
         self.action_request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);
+        self.sort_request_tabs
+            .retain(|_, tab_id| *tab_id != removed.id);
         if index < self.active_tab {
             self.active_tab = self.active_tab.saturating_sub(1);
         }
@@ -1155,6 +1442,7 @@ Search hints:
                 || tab.preview_in_progress
                 || tab.action_in_progress
                 || tab.index_in_progress
+                || tab.sort_in_progress
         })
     }
 
@@ -1621,10 +1909,16 @@ Search hints:
         self.entries = Arc::new(Vec::new());
         self.entry_kinds.clear();
         self.entry_kinds.shrink_to_fit();
+        self.base_results.clear();
+        self.base_results.shrink_to_fit();
         self.results.clear();
         self.results.shrink_to_fit();
         self.incremental_filtered_entries.clear();
         self.incremental_filtered_entries.shrink_to_fit();
+        self.pending_sort_request_id = None;
+        self.sort_in_progress = false;
+        self.result_sort_mode = ResultSortMode::Score;
+        self.clear_sort_metadata_cache();
         self.last_search_snapshot_len = 0;
     }
 
@@ -1727,6 +2021,11 @@ Search hints:
         } else {
             ""
         };
+        let sorting = if self.sort_in_progress {
+            " | Sorting..."
+        } else {
+            ""
+        };
         let history_search = if self.history_search_active {
             format!(
                 " | History search: {}/{}",
@@ -1747,7 +2046,7 @@ Search hints:
         };
 
         self.status_line = format!(
-            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}",
+            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}{}",
             tab_label,
             indexed_count,
             self.results.len(),
@@ -1757,6 +2056,7 @@ Search hints:
             indexing,
             executing,
             creating_filelist,
+            sorting,
             history_search,
             memory,
             notice
@@ -1794,6 +2094,8 @@ Search hints:
 
     fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
+        self.invalidate_result_sort(true);
+        self.clear_sort_metadata_cache();
         self.pending_restore_refresh = false;
         if let Some(tab) = self.tabs.get_mut(self.active_tab) {
             tab.pending_restore_refresh = false;
@@ -2454,15 +2756,19 @@ Search hints:
         false
     }
 
-    fn apply_results(&mut self, results: Vec<(PathBuf, f64)>) {
-        self.apply_results_with_scroll_policy(results, false);
-    }
-
-    fn apply_results_with_scroll_policy(
+    fn apply_results_with_selection_policy(
         &mut self,
         results: Vec<(PathBuf, f64)>,
         keep_scroll_position: bool,
+        preserve_selected_path: bool,
     ) {
+        let selected_path = preserve_selected_path
+            .then(|| {
+                self.current_row
+                    .and_then(|row| self.results.get(row).map(|(path, _)| path.clone()))
+            })
+            .flatten();
+        let previous_row = self.current_row;
         self.results = results;
         if self.results.is_empty() {
             self.current_row = None;
@@ -2471,7 +2777,9 @@ Search hints:
             self.pending_preview_request_id = None;
         } else {
             let max_index = self.results.len().saturating_sub(1);
-            self.current_row = Some(self.current_row.unwrap_or(0).min(max_index));
+            self.current_row = selected_path
+                .and_then(|selected| self.results.iter().position(|(path, _)| *path == selected))
+                .or_else(|| Some(previous_row.unwrap_or(0).min(max_index)));
             self.request_preview_for_current();
             if !keep_scroll_position {
                 self.scroll_to_current = true;
@@ -2519,7 +2827,7 @@ Search hints:
                 } else {
                     self.clear_notice();
                 }
-                self.apply_results(response.results);
+                self.replace_results_snapshot(response.results, false);
                 if self.search_rerun_pending
                     && !self.query.trim().is_empty()
                     && self.index_in_progress
@@ -2551,7 +2859,11 @@ Search hints:
                 .error
                 .map(|error| format!("Search failed: {error}"))
                 .unwrap_or_default();
+            tab.base_results = response.results.clone();
             tab.results = response.results;
+            tab.result_sort_mode = ResultSortMode::Score;
+            tab.pending_sort_request_id = None;
+            tab.sort_in_progress = false;
             if tab.results.is_empty() {
                 tab.current_row = None;
                 tab.preview.clear();
@@ -2589,6 +2901,57 @@ Search hints:
             tab.pending_action_request_id = None;
             tab.action_in_progress = false;
             tab.notice = response.notice;
+        }
+    }
+
+    fn poll_sort_response(&mut self) {
+        while let Ok(response) = self.sort_rx.try_recv() {
+            let target_tab_id = self.sort_request_tabs.remove(&response.request_id);
+            for (path, metadata) in response.entries {
+                self.cache_sort_metadata(path, metadata);
+            }
+
+            if Some(response.request_id) == self.pending_sort_request_id {
+                self.pending_sort_request_id = None;
+                self.sort_in_progress = false;
+                if response.mode == self.result_sort_mode {
+                    self.apply_result_sort(false);
+                } else {
+                    self.refresh_status_line();
+                }
+                continue;
+            }
+
+            let Some(tab_id) = target_tab_id else {
+                continue;
+            };
+            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+                continue;
+            };
+            let Some(tab) = self.tabs.get_mut(tab_index) else {
+                continue;
+            };
+            if Some(response.request_id) != tab.pending_sort_request_id {
+                continue;
+            }
+            tab.pending_sort_request_id = None;
+            tab.sort_in_progress = false;
+            if response.mode == tab.result_sort_mode {
+                tab.results = Self::build_sorted_results_from(
+                    &tab.base_results,
+                    tab.result_sort_mode,
+                    &self.sort_metadata_cache,
+                );
+                if tab.results.is_empty() {
+                    tab.current_row = None;
+                    tab.preview.clear();
+                    tab.pending_preview_request_id = None;
+                    tab.preview_in_progress = false;
+                } else {
+                    let max_index = tab.results.len().saturating_sub(1);
+                    tab.current_row = Some(tab.current_row.unwrap_or(0).min(max_index));
+                }
+            }
         }
     }
 
@@ -2749,7 +3112,7 @@ Search hints:
                 .cloned()
                 .map(|p| (p, 0.0))
                 .collect();
-            self.apply_results(results);
+            self.replace_results_snapshot(results, false);
             return;
         }
         self.enqueue_search_request();
@@ -2835,7 +3198,7 @@ Search hints:
             .cloned()
             .map(|p| (p, 0.0))
             .collect();
-        self.apply_results_with_scroll_policy(results, true);
+        self.replace_results_snapshot(results, true);
     }
 
     fn maybe_refresh_incremental_search(&mut self) {
@@ -2929,7 +3292,7 @@ Search hints:
                 .cloned()
                 .map(|p| (p, 0.0))
                 .collect();
-            self.apply_results_with_scroll_policy(results, keep_scroll_position);
+            self.replace_results_snapshot(results, keep_scroll_position);
         } else {
             self.update_results();
         }
@@ -3581,6 +3944,7 @@ impl eframe::App for FlistWalkerApp {
         self.poll_index_response();
         self.poll_search_response();
         self.poll_action_response();
+        self.poll_sort_response();
         self.poll_preview_response();
         self.poll_kind_response();
         self.pump_kind_resolution_requests();
@@ -3596,6 +3960,7 @@ impl eframe::App for FlistWalkerApp {
             || self.index_in_progress
             || self.preview_in_progress
             || self.action_in_progress
+            || self.sort_in_progress
             || self.kind_resolution_in_progress
             || self.filelist_in_progress
             || self.any_tab_async_in_progress()
