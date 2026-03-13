@@ -46,12 +46,31 @@ fn choose_startup_root_prefers_last_root_over_default_root() {
     let chosen = FlistWalkerApp::choose_startup_root(
         fallback_root.clone(),
         false,
+        true,
         None,
         Some(last_root.clone()),
         Some(default_root),
     );
 
     assert_eq!(chosen, last_root);
+}
+
+#[test]
+fn choose_startup_root_prefers_default_root_when_restore_tabs_is_disabled() {
+    let fallback_root = PathBuf::from("/fallback");
+    let last_root = PathBuf::from("/last");
+    let default_root = PathBuf::from("/default");
+
+    let chosen = FlistWalkerApp::choose_startup_root(
+        fallback_root,
+        false,
+        false,
+        None,
+        Some(last_root),
+        Some(default_root.clone()),
+    );
+
+    assert_eq!(chosen, default_root);
 }
 
 #[test]
@@ -84,6 +103,38 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
 }
 
 #[test]
+fn save_ui_state_uses_default_root_as_last_root_when_restore_tabs_is_disabled() {
+    let default_root = test_root("save-ui-state-default-root");
+    let current_root = test_root("save-ui-state-current-root");
+    let ui_state_dir = test_root("save-ui-state-dir");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&default_root).expect("create default root");
+    fs::create_dir_all(&current_root).expect("create current root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+
+    let mut app = FlistWalkerApp::new(current_root.clone(), 50, String::new());
+    app.default_root = Some(default_root.clone());
+    app.save_ui_state_to_path(&ui_state_path);
+
+    let saved = FlistWalkerApp::load_ui_state_from_path(&ui_state_path);
+    let saved_last_root = saved.last_root.expect("last root");
+    let saved_default_root = saved.default_root.expect("default root");
+    assert_eq!(
+        canonical_or_self(Path::new(&saved_last_root)),
+        canonical_or_self(&default_root)
+    );
+    assert_eq!(
+        canonical_or_self(Path::new(&saved_default_root)),
+        canonical_or_self(&default_root)
+    );
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&default_root);
+    let _ = fs::remove_dir_all(&current_root);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+}
+
+#[test]
 fn choose_startup_root_prefers_restored_tab_over_last_root() {
     let restored_root = PathBuf::from("/restored");
     let last_root = PathBuf::from("/last");
@@ -100,12 +151,40 @@ fn choose_startup_root_prefers_restored_tab_over_last_root() {
     let chosen = FlistWalkerApp::choose_startup_root(
         PathBuf::from("/fallback"),
         false,
+        true,
         Some(&(tabs, 0)),
         Some(last_root),
         None,
     );
 
     assert_eq!(chosen, restored_root);
+}
+
+#[test]
+fn history_search_hides_non_history_actions() {
+    let root = test_root("history-search-action-visibility");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    assert_eq!(
+        app.top_action_labels(),
+        vec![
+            "Open / Execute",
+            "Copy Path(s)",
+            "Clear Selected",
+            "Create File List",
+            "Refresh Index",
+        ]
+    );
+
+    app.start_history_search();
+
+    assert_eq!(
+        app.top_action_labels(),
+        vec!["Apply History", "Cancel History Search"]
+    );
+
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]

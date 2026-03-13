@@ -1,6 +1,25 @@
 use super::*;
 
 impl FlistWalkerApp {
+    pub(super) fn top_action_labels(&self) -> Vec<&'static str> {
+        if self.history_search_active {
+            return vec!["Apply History", "Cancel History Search"];
+        }
+
+        let create_label = if self.filelist_in_progress {
+            "Create File List (Running...)"
+        } else {
+            "Create File List"
+        };
+        vec![
+            "Open / Execute",
+            "Copy Path(s)",
+            "Clear Selected",
+            create_label,
+            "Refresh Index",
+        ]
+    }
+
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
         if self.history_search_active {
             self.preview_resize_in_progress = false;
@@ -539,34 +558,22 @@ impl FlistWalkerApp {
             self.run_deferred_shortcuts(ctx);
 
             ui.horizontal(|ui| {
-                if self.history_search_active {
-                    if ui.button("Apply History").clicked() {
-                        self.accept_history_search();
+                for label in self.top_action_labels() {
+                    if !ui.button(label).clicked() {
+                        continue;
                     }
-                    if ui.button("Cancel History Search").clicked() {
-                        self.cancel_history_search();
+                    match label {
+                        "Apply History" => self.accept_history_search(),
+                        "Cancel History Search" => self.cancel_history_search(),
+                        "Open / Execute" => self.execute_selected(),
+                        "Copy Path(s)" => self.copy_selected_paths(ctx),
+                        "Clear Selected" => self.clear_pinned(),
+                        "Create File List" | "Create File List (Running...)" => {
+                            self.create_filelist()
+                        }
+                        "Refresh Index" => self.request_index_refresh(),
+                        _ => {}
                     }
-                } else {
-                    if ui.button("Open / Execute").clicked() {
-                        self.execute_selected();
-                    }
-                    if ui.button("Copy Path(s)").clicked() {
-                        self.copy_selected_paths(ctx);
-                    }
-                }
-                if ui.button("Clear Selected").clicked() {
-                    self.clear_pinned();
-                }
-                let create_label = if self.filelist_in_progress {
-                    "Create File List (Running...)"
-                } else {
-                    "Create File List"
-                };
-                if ui.button(create_label).clicked() {
-                    self.create_filelist();
-                }
-                if ui.button("Refresh Index").clicked() {
-                    self.request_index_refresh();
                 }
             });
         });

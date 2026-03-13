@@ -427,6 +427,7 @@ Search hints:
         let chosen_root = Self::choose_startup_root(
             root,
             root_explicit,
+            restore_tabs_enabled,
             restore_session.as_ref(),
             saved_last_root,
             saved_default,
@@ -620,6 +621,7 @@ Search hints:
     fn choose_startup_root(
         root: PathBuf,
         root_explicit: bool,
+        restore_tabs_enabled: bool,
         restore_session: Option<&(Vec<SavedTabState>, usize)>,
         last_root: Option<PathBuf>,
         default_root: Option<PathBuf>,
@@ -632,7 +634,11 @@ Search hints:
                 return tab_root;
             }
         }
-        last_root.or(default_root).unwrap_or(root)
+        if restore_tabs_enabled {
+            last_root.or(default_root).unwrap_or(root)
+        } else {
+            default_root.or(last_root).unwrap_or(root)
+        }
     }
 
     fn initialize_tabs(&mut self) {
@@ -1125,11 +1131,19 @@ Search hints:
         if let Some(parent) = path.parent() {
             let _ = fs::create_dir_all(parent);
         }
+        let last_root_for_startup = if !Self::restore_tabs_enabled() {
+            self.default_root
+                .clone()
+                .or_else(|| Some(self.root.clone()))
+                .unwrap_or_else(|| self.root.clone())
+        } else {
+            self.root.clone()
+        };
         let state = UiState {
             last_root: Some(
-                self.root
+                last_root_for_startup
                     .canonicalize()
-                    .unwrap_or_else(|_| self.root.clone())
+                    .unwrap_or(last_root_for_startup)
                     .to_string_lossy()
                     .to_string(),
             ),
