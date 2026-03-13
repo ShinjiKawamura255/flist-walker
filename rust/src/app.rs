@@ -649,14 +649,29 @@ Search hints:
     }
 
     fn path_is_within_root(root: &Path, path: &Path) -> bool {
-        let canonical_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-        let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-        let root_key = Self::normalized_compare_key(&canonical_root);
-        let path_key = Self::normalized_compare_key(&canonical_path);
-        path_key == root_key
+        let root_key = Self::normalized_compare_key(root);
+        let path_key = Self::normalized_compare_key(path);
+        if path_key == root_key
             || path_key
                 .strip_prefix(&root_key)
                 .is_some_and(|suffix| suffix.starts_with('/'))
+        {
+            return true;
+        }
+
+        let canonical_root = root.canonicalize().ok();
+        let canonical_path = path.canonicalize().ok();
+        match (canonical_root, canonical_path) {
+            (Some(canonical_root), Some(canonical_path)) => {
+                let root_key = Self::normalized_compare_key(&canonical_root);
+                let path_key = Self::normalized_compare_key(&canonical_path);
+                path_key == root_key
+                    || path_key
+                        .strip_prefix(&root_key)
+                        .is_some_and(|suffix| suffix.starts_with('/'))
+            }
+            _ => false,
+        }
     }
 
     fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
