@@ -286,3 +286,35 @@ fn query_history_is_saved_and_loaded_via_ui_state() {
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&ui_state_dir);
 }
+
+#[test]
+fn query_history_persist_can_be_disabled_via_env() {
+    let root = test_root("query-history-disabled");
+    let ui_state_dir = test_root("query-history-disabled-dir");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+    let _ = fs::remove_file(&ui_state_path);
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    for query in ["alpha", "beta"] {
+        app.query = query.to_string();
+        app.mark_query_edited();
+        app.update_results();
+        commit_query_history_for_test(&mut app);
+    }
+    app.save_ui_state_to_path_with_history_persist_disabled(&ui_state_path, true);
+
+    let saved = FlistWalkerApp::load_ui_state_from_path(&ui_state_path);
+    assert!(saved.query_history.is_empty());
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path_with_history_persist_disabled(
+        &ui_state_path,
+        true,
+    );
+    assert!(launch.query_history.is_empty());
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+}

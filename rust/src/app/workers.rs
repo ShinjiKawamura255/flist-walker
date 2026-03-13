@@ -222,6 +222,7 @@ pub(super) struct FileListRequest {
     pub(super) tab_id: u64,
     pub(super) root: PathBuf,
     pub(super) entries: Vec<PathBuf>,
+    pub(super) propagate_to_ancestors: bool,
 }
 
 pub(super) enum FileListResponse {
@@ -555,8 +556,13 @@ pub(super) fn spawn_filelist_worker(
             }
             let _tab_id = req.tab_id;
             let count = req.entries.len();
-            let result =
-                write_filelist(&req.root, &req.entries, "FileList.txt").map(|path| (path, count));
+            let result = write_filelist(
+                &req.root,
+                &req.entries,
+                "FileList.txt",
+                req.propagate_to_ancestors,
+            )
+            .map(|path| (path, count));
             let msg = match result {
                 Ok((path, count)) => FileListResponse::Finished {
                     request_id: req.request_id,

@@ -29,6 +29,10 @@
 - 役割: GUI 回帰手順と結果を管理する。
 - 実装: `docs/TESTPLAN.md` の GUI 手順節
 
+- DES-012 CI / Release Hygiene
+- 役割: release 対象 OS の CI 継続検証、依存脆弱性検査、notarization 運用の文書化。
+- 実装: `.github/workflows/ci-cross-platform.yml`, `docs/RELEASE.md`, `.github/release-template.md`
+
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
@@ -82,6 +86,11 @@
 - 祖先探索や親 FileList 読込/書込/mtime 復元で失敗した場合は、その時点で祖先追記だけを静かに打ち切り、root 自身の FileList 作成結果は成功扱いのまま維持する。
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。
 - Root 変更時は旧 root 向けの FileList 上書き確認ダイアログを破棄し、誤上書きを防ぐ。
+- root 配下判定はアクション実行直前にのみ行い、FileList 読み込みや walker indexing のスループットへ影響させない。
+- root 配下判定は `root == path` または `path.starts_with(root)` を基本とし、UNC root でも同一 share / 同一 root 配下なら許可する。
+- root 外パスは候補表示を維持しつつ、Action worker が OS 起動要求を出す前に拒否して notice を返す。
+- Create File List は root 直下の FileList 作成と祖先追記を分離し、祖先追記がありうる場合のみ GUI 側の確認ダイアログを通す。
+- 利用者が祖先追記を拒否した場合、root 直下の FileList 作成は成功扱いのまま維持し、祖先追記経路だけをスキップする。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
 - Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。
@@ -89,6 +98,7 @@
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
+- `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
 - タブ復元は `FLISTWALKER_RESTORE_TABS=1` のときだけ有効化し、永続化対象は `root/query/use_filelist/use_regex/include_files/include_dirs/active_tab` に限定する。
 - 起動時の優先順位は `--root` 明示 > 復元タブ（env 有効時） > 最後に使っていた root > `Set as default` > 通常 root とし、バージョン更新やバイナリ差し替えでも最後の root を維持する。
 - `FLISTWALKER_RESTORE_TABS=1` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。
@@ -109,6 +119,11 @@
 - `Space` / `Shift+Space` は IME/バックエンド差異があっても、TextEdit 側で空白未反映なら最低限の半角スペースをフォールバック挿入する。
 - IME 関連の分岐は `FLISTWALKER_WINDOW_TRACE=1` で追跡し、`FLISTWALKER_WINDOW_TRACE_PATH` で出力先を明示指定できる。
 - デバッグ用トレースは既定無効（`FLISTWALKER_WINDOW_TRACE=1` のときのみ有効）とし、通常運用への影響を避ける。
+
+- DES-012 CI / Release Hygiene
+- 通常 CI matrix に Linux を追加し、release 対象 OS と同じ観点で `cargo test --locked` を継続実行する。
+- 依存脆弱性は `cargo audit` を CI で必須実行し、既知 CVE の流入を早期検知する。
+- macOS notarization は現段階では手動ゲートとして維持し、draft release 作成後に docs / template で確認手順を明示する。
 
 ## Error handling / timeout / logging / metrics
 - エラー戦略: ファイルアクセス失敗、実行失敗、正規表現不正を分類して表示。
@@ -136,3 +151,4 @@
 - DES-009 -> TC-010 (SP-010)
 - DES-010 -> TC-011 (SP-011)
 - DES-011 -> TC-020 (SP-010, SP-011)
+- DES-012 -> TC-056 (SP-012)

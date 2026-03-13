@@ -300,6 +300,10 @@ fn deferred_filelist_starts_after_index_finished() {
         .expect("send finished");
     app.poll_index_response();
 
+    if app.pending_filelist_ancestor_confirmation.is_some() {
+        app.skip_pending_filelist_ancestor_propagation();
+    }
+
     let req = filelist_rx
         .try_recv()
         .expect("filelist request should be sent");
@@ -515,6 +519,67 @@ fn confirm_pending_overwrite_starts_filelist_creation() {
     assert!(app.filelist_in_progress);
     assert!(app.pending_filelist_confirmation.is_none());
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn create_filelist_requests_confirmation_before_ancestor_propagation() {
+    let top = test_root("filelist-ancestor-confirm");
+    let root = top.join("child");
+    fs::create_dir_all(&root).expect("create child");
+    fs::write(top.join("FileList.txt"), "child/old.txt\n").expect("write parent filelist");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.use_filelist = false;
+    app.index.source = IndexSource::Walker;
+    app.include_files = true;
+    app.include_dirs = true;
+    app.all_entries = Arc::new(vec![root.join("main.rs")]);
+    app.entries = Arc::clone(&app.all_entries);
+
+    app.create_filelist();
+
+    assert!(
+        app.notice.contains("ancestor") || app.notice.contains("parent"),
+        "notice should mention ancestor confirmation, got: {}",
+        app.notice
+    );
+    assert!(app.pending_filelist_ancestor_confirmation.is_some());
+    assert!(app.pending_filelist_request_id.is_none());
+    assert!(!app.filelist_in_progress);
+    let _ = fs::remove_dir_all(&top);
+}
+
+#[test]
+fn denying_ancestor_propagation_still_creates_root_filelist() {
+    let top = test_root("filelist-ancestor-deny");
+    let root = top.join("child");
+    fs::create_dir_all(&root).expect("create child");
+    let parent_filelist = top.join("FileList.txt");
+    fs::write(&parent_filelist, "child/old.txt\n").expect("write parent filelist");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.use_filelist = false;
+    app.index.source = IndexSource::Walker;
+    app.include_files = true;
+    app.include_dirs = true;
+    app.all_entries = Arc::new(vec![root.join("main.rs")]);
+    app.entries = Arc::clone(&app.all_entries);
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.filelist_tx = filelist_tx;
+
+    app.create_filelist();
+    app.skip_pending_filelist_ancestor_propagation();
+
+    let req = filelist_rx
+        .try_recv()
+        .expect("root filelist creation should proceed without ancestor propagation");
+    assert_eq!(req.root, root);
+    assert!(!req.propagate_to_ancestors);
+    let parent_content = fs::read_to_string(&parent_filelist).expect("read parent filelist");
+    assert_eq!(parent_content, "child/old.txt\n");
+    let _ = fs::remove_dir_all(&top);
 }
 
 #[test]

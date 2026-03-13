@@ -15,6 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
+          - ubuntu-latest
           - windows-latest
           - macos-latest
 
@@ -40,3 +41,24 @@ jobs:
 
       - name: Build release
         run: cargo build --release --locked
+
+  cargo-audit:
+    name: Cargo Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit

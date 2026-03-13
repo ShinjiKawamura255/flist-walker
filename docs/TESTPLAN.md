@@ -22,6 +22,7 @@
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
+- Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
 
 ## Test cases
 | TC ID | Level | Purpose | Related SP |
@@ -74,13 +75,23 @@
 | TC-046 | unit | `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
 | TC-047 | unit | FileList 作成時は祖先の既存 FileList へ子 FileList 参照を重複なく追記し、親 mtime を維持する | SP-001 |
 | TC-048 | unit | 祖先探索は callback/失敗時に即停止し、それ以降の上位階層を処理しない | SP-001 |
+| TC-049 | unit | FileList に root 外パスが含まれても候補表示時の追加フィルタを行わず、インデクシング経路の挙動を維持する | SP-007 |
+| TC-050 | unit | root 外パスは結果一覧に存在しても execute/open 直前で拒否される | SP-004 |
+| TC-051 | unit | UNC root 配下のパスは execute/open 直前の root 判定で許可される | SP-004 |
+| TC-052 | unit | Create File List で祖先 FileList 追記がありうる場合は確認ダイアログを要求する | SP-001, SP-010 |
+| TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
+| TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
+| TC-055 | manual | README / release docs / release template に平文 history 保存と notarization 手順が明記されている | SP-010, SP-012 |
+| TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
 
 ## Runner and commands
 - Runner: `cargo test`
+- Runner: `cargo test`, `cargo audit`
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`
 - `cargo test`
+- `cargo audit`
 - GUI 手動試験: `cargo run -- --root .. --limit 1000`
 - CLI 動作確認: `cargo run -- --cli "main" --root .. --limit 20`
 
@@ -90,6 +101,7 @@
 - Data:
 - 一時ディレクトリに擬似ファイル/フォルダを生成
 - `FileList.txt`/`filelist.txt` をケース別に生成
+- UNC root 相当のパス比較は Windows 実機またはパス正規化の unit test で確認
 
 ## Entry / Exit criteria
 - Entry:
@@ -152,3 +164,11 @@
 - TC-046 -> SP-010 -> DES-009 -> FR-007
 - TC-047 -> SP-001 -> DES-001, DES-007 -> FR-001
 - TC-048 -> SP-001 -> DES-001, DES-007 -> FR-001
+- TC-049 -> SP-007 -> DES-006 -> FR-008
+- TC-050 -> SP-004 -> DES-004, DES-007 -> FR-009
+- TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
+- TC-052 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
+- TC-053 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
+- TC-054 -> SP-010 -> DES-007, DES-009 -> FR-011
+- TC-055 -> SP-010, SP-012 -> DES-007, DES-012 -> FR-011, NFR-005
+- TC-056 -> SP-012 -> DES-012 -> NFR-005

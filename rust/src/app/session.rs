@@ -95,7 +95,22 @@ impl FlistWalkerApp {
         Self::launch_settings_from_ui_state(Self::read_ui_state_from_path(path))
     }
 
+    #[cfg(test)]
+    pub(super) fn load_launch_settings_from_path_with_history_persist_disabled(
+        path: &Path,
+        disabled: bool,
+    ) -> LaunchSettings {
+        Self::launch_settings_from_ui_state_inner(Self::read_ui_state_from_path(path), disabled)
+    }
+
     fn launch_settings_from_ui_state(ui_state: UiState) -> LaunchSettings {
+        Self::launch_settings_from_ui_state_inner(ui_state, Self::history_persist_disabled())
+    }
+
+    fn launch_settings_from_ui_state_inner(
+        ui_state: UiState,
+        history_persist_disabled: bool,
+    ) -> LaunchSettings {
         let last_root = ui_state
             .last_root
             .as_deref()
@@ -117,15 +132,19 @@ impl FlistWalkerApp {
             default_root,
             show_preview,
             preview_panel_width,
-            query_history: ui_state
-                .query_history
-                .into_iter()
-                .rev()
-                .take(Self::QUERY_HISTORY_MAX)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect(),
+            query_history: if history_persist_disabled {
+                Vec::new()
+            } else {
+                ui_state
+                    .query_history
+                    .into_iter()
+                    .rev()
+                    .take(Self::QUERY_HISTORY_MAX)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
+                    .collect()
+            },
             restore_tabs: ui_state.tabs,
             restore_active_tab: ui_state.active_tab,
         }
@@ -147,6 +166,7 @@ impl FlistWalkerApp {
         tabs: &[SavedTabState],
         active_tab: Option<usize>,
     ) -> Option<(Vec<SavedTabState>, usize)> {
+        let history_persist_disabled = Self::history_persist_disabled();
         let sanitized: Vec<SavedTabState> = tabs
             .iter()
             .filter_map(|tab| {
@@ -161,16 +181,19 @@ impl FlistWalkerApp {
                     include_files: tab.include_files,
                     include_dirs: tab.include_dirs,
                     query: tab.query.clone(),
-                    query_history: tab
-                        .query_history
-                        .iter()
-                        .rev()
-                        .take(Self::QUERY_HISTORY_MAX)
-                        .cloned()
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .rev()
-                        .collect(),
+                    query_history: if history_persist_disabled {
+                        Vec::new()
+                    } else {
+                        tab.query_history
+                            .iter()
+                            .rev()
+                            .take(Self::QUERY_HISTORY_MAX)
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                            .rev()
+                            .collect()
+                    },
                 })
             })
             .collect();

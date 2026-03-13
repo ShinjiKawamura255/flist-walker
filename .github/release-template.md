@@ -32,7 +32,8 @@
 - 
 
 ## Security
-- 
+- query history は既定で平文永続化される。必要なら `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` を案内する。
+- draft release から publish する前に、macOS 配布物の notarization 確認を行う。
 
 ## Known issues
 - 

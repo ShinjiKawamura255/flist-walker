@@ -9,6 +9,7 @@
 - MUST: 階層 FileList 展開は、読み込み済み候補内でファイル名が `FileList.txt` / `filelist.txt` に完全一致するエントリのみを対象とする。
 - MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。
 - MUST: FileList 作成時は、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ作成済み子 FileList の参照を重複なく追記できる。
+- MUST: 祖先ディレクトリ直下の既存 FileList へ追記が発生しうる場合、Create File List 実行前に利用者確認を要求する。
 - MUST: 上記の祖先 FileList 追記後は、親 FileList の mtime を更新前の値へ戻す。
 - MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
 - SHOULD: 相対パスはルート起点で絶対化する。
@@ -22,6 +23,7 @@
 ### Edge / Error
 - 空ファイルは候補ゼロ件で正常終了する。
 - 読み込み失敗時はエラーを返し、終了コードを非ゼロにする。
+- 利用者が祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続し、祖先追記は行わない。
 
 ## SP-002 Walker 走査
 ### Requirements
@@ -62,14 +64,19 @@
 - MUST: 実行可能ファイルはプロセス起動する。
 - MUST: 非実行ファイルは既定アプリでオープンする。
 - MUST: 外部コマンドはシェル展開なしで実行する。
+- MUST: 実行/オープン直前に、選択パスが現在 root 配下であることを検証する。
+- MUST: 上記の root 配下判定はインデクシング処理に追加せず、アクション実行直前だけで行う。
+- MUST: root 外パスは一覧表示されていても実行/オープンを拒否し、利用者へ通知する。
+- MUST: UNC root を検索 root とする場合も、同一 UNC root 配下のパスは許可する。
 
 ### Preconditions / Postconditions
 - Preconditions: 選択対象がファイル。
-- Postconditions: 実行またはオープン要求が OS に渡される。
+- Postconditions: root 配下なら実行またはオープン要求が OS に渡され、root 外なら拒否通知だけが返る。
 
 ### Edge / Error
 - 起動失敗時はユーザ向けメッセージを返す。
 - 拡張子関連付け未定義は失敗として通知する。
+- 別ドライブ、別 UNC share、または `..` 解決後に root 外となるパスは拒否する。
 
 ## SP-005 フォルダオープン
 ### Requirements
@@ -137,6 +144,7 @@
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。
 - MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。
 - MUST: query 履歴はセッション復元ファイルへ永続化し、後方互換を保ったまま復元できる。
+- MUST: `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき、query 履歴は読み込み・保存の両方を行わない。
 - MUST: `Ctrl+R` で履歴検索モードを開始し、同じ検索欄で query history をファジー検索できる。
 - MUST: 履歴検索モード中は履歴検索中であることがわかる表記を行い、結果一覧は履歴候補一覧へ切り替える。
 - MUST: 履歴検索モード中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして開始前 query へ戻す。
@@ -159,6 +167,17 @@
 ### Preconditions / Postconditions
 - Preconditions: GUI モードで起動しインデックス構築可能。
 - Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
+
+## SP-012 CI / Release Security Hygiene
+### Requirements
+- MUST: 通常 CI は Windows/macOS/Linux の release 対象 OS を継続検証する。
+- MUST: 通常 CI で `cargo audit` による依存脆弱性検査を実行する。
+- MUST: draft release 作成後、macOS notarization は別工程で確認されるまで publish 前提にしてはならない。
+- SHOULD: release note / release template / release docs に checksum 検証手順と notarization の扱いを明記する。
+
+### Preconditions / Postconditions
+- Preconditions: CI または release workflow を更新する。
+- Postconditions: 依存脆弱性検知と release 対象 OS の継続検証が行える。
 
 ## SP-011 GUI 回帰テスト計画
 ### Requirements

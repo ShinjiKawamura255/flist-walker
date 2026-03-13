@@ -92,13 +92,16 @@
 2. GitHub Actions の `Release Tagged Build` workflow が Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 3. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
 4. draft release には各 OS 向け実行バイナリ、配布 archive、統合 `SHA256SUMS` が添付される。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
-5. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化し、draft を本リリースへ publish する。
+5. draft release の作成を確認したら、macOS 向け配布物の notarization 状態を別工程で確認する。現段階では workflow で notarization を強制していないため、確認前に publish してはならない。
+6. notarization 確認後、Codex で GitHub Release 本文を最終化し、draft を本リリースへ publish する。
 
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
 - `rust/Cargo.lock` の `flist-walker` package version が同じ `X.Y.Z` へ更新済みであること。
 - `CHANGELOG.md` の対象 version 節、git tag `vX.Y.Z`、release note の対象 version が一致していること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
+- CI の Linux / macOS / Windows test と `cargo audit` が green であること。
+- macOS を publish 対象に含める場合、`scripts/sign-notarize-macos.sh` などで notarization 完了を確認済みであること。
 
 ## SHA256SUMS 検証例
 PowerShell:

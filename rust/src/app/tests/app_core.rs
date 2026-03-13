@@ -89,6 +89,57 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
 }
 
 #[test]
+fn execute_selected_blocks_path_outside_current_root() {
+    let root = test_root("action-block-outside-root");
+    let outside_root = test_root("action-block-outside-root-other");
+    let outside = outside_root.join("tool.exe");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(outside.parent().expect("outside parent")).expect("create outside parent");
+    fs::write(&outside, "x").expect("write outside file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+    app.action_tx = action_tx_req;
+    app.action_rx = action_rx_res;
+    app.results = vec![(outside.clone(), 0.0)];
+    app.current_row = Some(0);
+
+    app.execute_selected();
+
+    assert!(
+        action_rx_req.try_recv().is_err(),
+        "action request must not be enqueued"
+    );
+    assert!(app.notice.contains("outside current root"));
+    assert!(app.pending_action_request_id.is_none());
+    assert!(!app.action_in_progress);
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&outside_root);
+}
+
+#[test]
+fn execute_selected_allows_unc_like_path_when_under_current_root() {
+    let root = PathBuf::from(r"\\server\share\workspace");
+    let child = PathBuf::from(r"\\server\share\workspace\bin\tool.exe");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+    app.action_tx = action_tx_req;
+    app.action_rx = action_rx_res;
+    app.results = vec![(child.clone(), 0.0)];
+    app.current_row = Some(0);
+
+    app.execute_selected();
+
+    let req = action_rx_req
+        .try_recv()
+        .expect("UNC-like child should be enqueued");
+    assert_eq!(req.paths, vec![child]);
+    assert!(app.pending_action_request_id.is_some());
+    assert!(app.action_in_progress);
+}
+
+#[test]
 fn action_target_path_for_open_in_folder_maps_file_and_directory() {
     let root = test_root("open-folder-target");
     let dir = root.join("dir");

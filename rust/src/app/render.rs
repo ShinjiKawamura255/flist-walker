@@ -627,6 +627,42 @@ impl FlistWalkerApp {
             self.cancel_pending_filelist_overwrite();
         }
 
+        let mut confirm_ancestor = false;
+        let mut current_root_only = false;
+        let mut cancel_ancestor = false;
+        if let Some(pending) = &self.pending_filelist_ancestor_confirmation {
+            if pending.tab_id == current_tab_id {
+                egui::Window::new("Update Ancestor FileLists?")
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                    .show(ctx, |ui| {
+                        ui.label("親ディレクトリ直下の既存 FileList にも参照を追記します。");
+                        ui.label(
+                            "Continue は祖先も更新し、Current Root Only は現在 root の FileList だけを作成します。",
+                        );
+                        ui.horizontal(|ui| {
+                            if ui.button("Continue").clicked() {
+                                confirm_ancestor = true;
+                            }
+                            if ui.button("Current Root Only").clicked() {
+                                current_root_only = true;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                cancel_ancestor = true;
+                            }
+                        });
+                    });
+            }
+        }
+        if confirm_ancestor {
+            self.confirm_pending_filelist_ancestor_propagation();
+        } else if current_root_only {
+            self.skip_pending_filelist_ancestor_propagation();
+        } else if cancel_ancestor {
+            self.cancel_pending_filelist_ancestor_confirmation();
+        }
+
         let mut confirm_walker = false;
         let mut cancel_walker = false;
         if let Some(pending) = &self.pending_filelist_use_walker_confirmation {

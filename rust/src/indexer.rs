@@ -807,11 +807,36 @@ fn propagate_child_filelist_to_ancestor_filelists(child_filelist: &Path) {
     });
 }
 
-pub fn write_filelist(root: &Path, entries: &[PathBuf], filename: &str) -> Result<PathBuf> {
+pub fn has_ancestor_filelists(root: &Path) -> bool {
+    let mut found = false;
+    visit_ancestor_directories(root, |ancestor_dir| {
+        match find_all_filelists_in_directory(ancestor_dir) {
+            Ok(parent_filelists) => {
+                if parent_filelists.is_empty() {
+                    true
+                } else {
+                    found = true;
+                    false
+                }
+            }
+            Err(_) => false,
+        }
+    });
+    found
+}
+
+pub fn write_filelist(
+    root: &Path,
+    entries: &[PathBuf],
+    filename: &str,
+    propagate_to_ancestors: bool,
+) -> Result<PathBuf> {
     let out = root.join(filename);
     let text = build_filelist_text(entries, root);
     write_text_to_path(&out, &text)?;
-    propagate_child_filelist_to_ancestor_filelists(&out);
+    if propagate_to_ancestors {
+        propagate_child_filelist_to_ancestor_filelists(&out);
+    }
 
     Ok(out)
 }
@@ -1115,8 +1140,8 @@ mod tests {
         let file = folder.join("run.exe");
         fs::write(&file, "bin").expect("write file");
 
-        let out =
-            write_filelist(&root, &[file.clone(), folder.clone()], "FileList.txt").expect("write");
+        let out = write_filelist(&root, &[file.clone(), folder.clone()], "FileList.txt", true)
+            .expect("write");
         assert!(out.exists());
         let content = fs::read_to_string(&out).expect("read filelist");
         assert!(content.contains(&format!("x{}run.exe", std::path::MAIN_SEPARATOR)));
@@ -1140,7 +1165,7 @@ mod tests {
         fs::create_dir_all(child_entry.parent().expect("child parent")).expect("create src");
         fs::write(&child_entry, "fn main() {}").expect("write child entry");
 
-        let out = write_filelist(&root, &[child_entry], "FileList.txt").expect("write child");
+        let out = write_filelist(&root, &[child_entry], "FileList.txt", true).expect("write child");
 
         let parent_content = fs::read_to_string(&parent_filelist).expect("read parent filelist");
         assert!(parent_content.contains("keep.txt"));
@@ -1172,7 +1197,7 @@ mod tests {
         )
         .expect("write parent filelist");
 
-        write_filelist(&root, &[child_entry], "FileList.txt").expect("write child");
+        write_filelist(&root, &[child_entry], "FileList.txt", true).expect("write child");
 
         let parent_content = fs::read_to_string(&parent_filelist).expect("read parent filelist");
         assert_eq!(
@@ -1266,7 +1291,7 @@ mod tests {
         fs::create_dir_all(root.join("src")).expect("create dir");
         fs::write(root.join("src/main.rs"), "fn main(){}").expect("write");
 
-        let out = write_filelist(&root, &[root.join("src/main.rs")], "FileList.txt")
+        let out = write_filelist(&root, &[root.join("src/main.rs")], "FileList.txt", true)
             .expect("write filelist");
         let parsed = parse_filelist(&out, &root, true, true).expect("parse filelist");
         assert_eq!(parsed.len(), 1);

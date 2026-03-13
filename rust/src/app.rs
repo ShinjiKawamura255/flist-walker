@@ -1,4 +1,6 @@
-use crate::indexer::{find_filelist_in_first_level, IndexBuildResult, IndexSource};
+use crate::indexer::{
+    find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
+};
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
     normalize_path_for_display, should_skip_preview,
@@ -177,6 +179,12 @@ struct PendingFileListConfirmation {
     existing_path: PathBuf,
 }
 
+struct PendingFileListAncestorConfirmation {
+    tab_id: u64,
+    root: PathBuf,
+    entries: Vec<PathBuf>,
+}
+
 struct PendingFileListAfterIndex {
     tab_id: u64,
     root: PathBuf,
@@ -242,6 +250,7 @@ pub struct FlistWalkerApp {
     pending_filelist_root: Option<PathBuf>,
     pending_filelist_after_index: Option<PendingFileListAfterIndex>,
     pending_filelist_confirmation: Option<PendingFileListConfirmation>,
+    pending_filelist_ancestor_confirmation: Option<PendingFileListAncestorConfirmation>,
     pending_filelist_use_walker_confirmation: Option<PendingFileListUseWalkerConfirmation>,
     latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pending_index_queue: VecDeque<IndexRequest>,
@@ -525,6 +534,7 @@ Search hints:
             pending_filelist_root: None,
             pending_filelist_after_index: None,
             pending_filelist_confirmation: None,
+            pending_filelist_ancestor_confirmation: None,
             pending_filelist_use_walker_confirmation: None,
             latest_index_request_ids,
             pending_index_queue: VecDeque::new(),
@@ -610,6 +620,50 @@ Search hints:
             }
         }
         path
+    }
+
+    fn history_persist_disabled() -> bool {
+        std::env::var("FLISTWALKER_DISABLE_HISTORY_PERSIST")
+            .ok()
+            .map(|value| {
+                matches!(
+                    value.trim().to_ascii_lowercase().as_str(),
+                    "1" | "true" | "yes" | "on"
+                )
+            })
+            .unwrap_or(false)
+    }
+
+    fn normalized_compare_key(path: &Path) -> String {
+        let mut key = Self::normalize_windows_path(path.to_path_buf())
+            .to_string_lossy()
+            .replace('\\', "/");
+        while key.len() > 1 && key.ends_with('/') {
+            key.pop();
+        }
+        #[cfg(windows)]
+        {
+            key.make_ascii_lowercase();
+        }
+        key
+    }
+
+    fn path_is_within_root(root: &Path, path: &Path) -> bool {
+        let canonical_root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+        let canonical_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        let root_key = Self::normalized_compare_key(&canonical_root);
+        let path_key = Self::normalized_compare_key(&canonical_path);
+        path_key == root_key
+            || path_key
+                .strip_prefix(&root_key)
+                .is_some_and(|suffix| suffix.starts_with('/'))
+    }
+
+    fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
+        paths
+            .iter()
+            .find(|path| !Self::path_is_within_root(&self.root, path))
+            .cloned()
     }
 
     fn root_display_text(&self) -> String {
@@ -997,6 +1051,13 @@ Search hints:
             self.pending_filelist_confirmation = None;
         }
         if self
+            .pending_filelist_ancestor_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == removed.id)
+        {
+            self.pending_filelist_ancestor_confirmation = None;
+        }
+        if self
             .pending_filelist_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == removed.id)
@@ -1090,7 +1151,11 @@ Search hints:
             include_files: self.include_files,
             include_dirs: self.include_dirs,
             query: self.query.clone(),
-            query_history: self.query_history.iter().cloned().collect(),
+            query_history: if Self::history_persist_disabled() {
+                Vec::new()
+            } else {
+                self.query_history.iter().cloned().collect()
+            },
         }
     }
 
@@ -1102,7 +1167,11 @@ Search hints:
             include_files: tab.include_files,
             include_dirs: tab.include_dirs,
             query: tab.query.clone(),
-            query_history: tab.query_history.iter().cloned().collect(),
+            query_history: if Self::history_persist_disabled() {
+                Vec::new()
+            } else {
+                tab.query_history.iter().cloned().collect()
+            },
         }
     }
 
@@ -1128,6 +1197,15 @@ Search hints:
     }
 
     fn save_ui_state_to_path(&self, path: &Path) {
+        self.save_ui_state_to_path_inner(path, Self::history_persist_disabled());
+    }
+
+    #[cfg(test)]
+    fn save_ui_state_to_path_with_history_persist_disabled(&self, path: &Path, disabled: bool) {
+        self.save_ui_state_to_path_inner(path, disabled);
+    }
+
+    fn save_ui_state_to_path_inner(&self, path: &Path, history_persist_disabled: bool) {
         if let Some(parent) = path.parent() {
             let _ = fs::create_dir_all(parent);
         }
@@ -1153,7 +1231,11 @@ Search hints:
                 .map(|p| p.to_string_lossy().to_string()),
             show_preview: Some(self.show_preview),
             preview_panel_width: Some(self.preview_panel_width),
-            query_history: self.query_history.iter().cloned().collect(),
+            query_history: if history_persist_disabled {
+                Vec::new()
+            } else {
+                self.query_history.iter().cloned().collect()
+            },
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
             active_tab: Some(self.active_tab),
@@ -1484,6 +1566,23 @@ Search hints:
         }
     }
 
+    fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
+        let should_cancel = self
+            .pending_filelist_ancestor_confirmation
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
+            });
+        if should_cancel {
+            self.pending_filelist_ancestor_confirmation = None;
+            self.set_notice(
+                "Pending Create File List ancestor update canceled because root changed",
+            );
+        }
+    }
+
     fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let should_cancel = self
@@ -1534,6 +1633,7 @@ Search hints:
         self.sync_active_tab_state();
         self.mark_ui_state_dirty();
         self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_ancestor_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         self.request_index_refresh();
         self.set_notice(format!("Root changed: {}", self.root_display_text()));
@@ -1684,6 +1784,7 @@ Search hints:
             tab.pending_restore_refresh = false;
         }
         self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_ancestor_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
@@ -3048,6 +3149,15 @@ Search hints:
         if paths.is_empty() {
             return;
         }
+        if let Some(blocked) = self.first_action_path_outside_root(&paths) {
+            self.pending_action_request_id = None;
+            self.action_in_progress = false;
+            self.set_notice(format!(
+                "Action blocked: path is outside current root: {}",
+                normalize_path_for_display(&blocked)
+            ));
+            return;
+        }
 
         let request_id = self.next_action_request_id;
         self.next_action_request_id = self.next_action_request_id.saturating_add(1);
@@ -3140,7 +3250,13 @@ Search hints:
             .collect()
     }
 
-    fn start_filelist_creation(&mut self, tab_id: u64, root: PathBuf, entries: Vec<PathBuf>) {
+    fn start_filelist_creation(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
+        entries: Vec<PathBuf>,
+        propagate_to_ancestors: bool,
+    ) {
         self.pending_filelist_after_index = None;
         let request_id = self.next_filelist_request_id;
         self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
@@ -3155,6 +3271,7 @@ Search hints:
             tab_id,
             root,
             entries,
+            propagate_to_ancestors,
         };
         if self.filelist_tx.send(req).is_err() {
             self.pending_filelist_request_id = None;
@@ -3179,14 +3296,53 @@ Search hints:
             ));
             return;
         }
-        self.start_filelist_creation(tab_id, root, entries);
+        self.request_filelist_creation_after_overwrite_check(tab_id, root, entries);
+    }
+
+    fn request_filelist_creation_after_overwrite_check(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
+        entries: Vec<PathBuf>,
+    ) {
+        if has_ancestor_filelists(&root) {
+            self.pending_filelist_ancestor_confirmation =
+                Some(PendingFileListAncestorConfirmation {
+                    tab_id,
+                    root,
+                    entries,
+                });
+            self.set_notice(
+                "Create File List will also update parent FileList entries. Continue or choose current root only.",
+            );
+            return;
+        }
+        self.start_filelist_creation(tab_id, root, entries, false);
     }
 
     fn confirm_pending_filelist_overwrite(&mut self) {
         let Some(pending) = self.pending_filelist_confirmation.take() else {
             return;
         };
-        self.start_filelist_creation(pending.tab_id, pending.root, pending.entries);
+        self.request_filelist_creation_after_overwrite_check(
+            pending.tab_id,
+            pending.root,
+            pending.entries,
+        );
+    }
+
+    fn confirm_pending_filelist_ancestor_propagation(&mut self) {
+        let Some(pending) = self.pending_filelist_ancestor_confirmation.take() else {
+            return;
+        };
+        self.start_filelist_creation(pending.tab_id, pending.root, pending.entries, true);
+    }
+
+    fn skip_pending_filelist_ancestor_propagation(&mut self) {
+        let Some(pending) = self.pending_filelist_ancestor_confirmation.take() else {
+            return;
+        };
+        self.start_filelist_creation(pending.tab_id, pending.root, pending.entries, false);
     }
 
     fn confirm_pending_filelist_use_walker(&mut self) {
@@ -3211,6 +3367,12 @@ Search hints:
         }
     }
 
+    fn cancel_pending_filelist_ancestor_confirmation(&mut self) {
+        if self.pending_filelist_ancestor_confirmation.take().is_some() {
+            self.set_notice("Create File List canceled");
+        }
+    }
+
     fn cancel_pending_filelist_use_walker(&mut self) {
         if self
             .pending_filelist_use_walker_confirmation
@@ -3228,6 +3390,10 @@ Search hints:
         }
         if self.pending_filelist_confirmation.is_some() {
             self.set_notice("Confirm overwrite or cancel first");
+            return;
+        }
+        if self.pending_filelist_ancestor_confirmation.is_some() {
+            self.set_notice("Confirm ancestor FileList update choice or cancel first");
             return;
         }
         if self.pending_filelist_use_walker_confirmation.is_some() {
