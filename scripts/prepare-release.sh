@@ -14,6 +14,8 @@ Notes:
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-windows-x86_64.exe
     - FlistWalker-<version>-windows-x86_64.zip
+    - FlistWalker-<version>-windows-x86_64.LICENSE.txt
+    - FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt
     - SHA256SUMS
 USAGE
 }
@@ -34,10 +36,18 @@ ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-windows-x86_64"
 EXE_NAME="${ASSET_BASENAME}.exe"
 ZIP_NAME="${ASSET_BASENAME}.zip"
 ZIP_EXE_NAME="flistwalker.exe"
+LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
+NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
+ROOT_LICENSE="${REPO_DIR}/LICENSE"
+ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
 
 if [[ ! -f "${SOURCE_EXE}" ]]; then
   echo "EXE が見つかりません: ${SOURCE_EXE}" >&2
   echo "先に scripts/build-rust-win.sh を実行してください。" >&2
+  exit 1
+fi
+if [[ ! -f "${ROOT_LICENSE}" || ! -f "${ROOT_NOTICES}" ]]; then
+  echo "LICENSE / THIRD_PARTY_NOTICES.txt が見つかりません。" >&2
   exit 1
 fi
 
@@ -47,12 +57,18 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_EXE}" "${OUT_DIR}/${EXE_NAME}"
 cp -f "${SOURCE_EXE}" "${WORK_DIR}/${ZIP_EXE_NAME}"
+cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
+cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
+cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
+cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 cat > "${WORK_DIR}/README.txt" <<README
 FlistWalker ${VERSION}
 
 Contents:
 - ${ZIP_EXE_NAME}
 - README.txt
+- LICENSE.txt
+- THIRD_PARTY_NOTICES.txt
 
 Run:
 - PowerShell: .\\${ZIP_EXE_NAME}
@@ -115,18 +131,18 @@ README
 
 (
   cd "${WORK_DIR}"
-  zip -q -9 "${OUT_DIR}/${ZIP_NAME}" "${ZIP_EXE_NAME}" README.txt
+  zip -q -9 "${OUT_DIR}/${ZIP_NAME}" "${ZIP_EXE_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt
 )
 
 if command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${EXE_NAME}" "${ZIP_NAME}" > SHA256SUMS
+    sha256sum "${EXE_NAME}" "${ZIP_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" > SHA256SUMS
+    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "sha256sum/shasum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -136,4 +152,6 @@ fi
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${EXE_NAME}"
 echo "- ${ZIP_NAME}"
+echo "- ${LICENSE_SIDE_NAME}"
+echo "- ${NOTICES_SIDE_NAME}"
 echo "- SHA256SUMS"

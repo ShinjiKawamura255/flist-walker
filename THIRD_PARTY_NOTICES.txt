@@ -1,0 +1,76 @@
+FlistWalker Third-Party Notices
+================================
+
+This project is distributed under the MIT License. See LICENSE.
+
+Windows builds are produced with the GNU toolchain (`x86_64-pc-windows-gnu` +
+mingw-w64). Distributed builds no longer rely on the Microsoft MSVC toolchain.
+
+Third-party components in the current Rust build are primarily under MIT,
+Apache-2.0, BSD-3-Clause, or similarly permissive licenses. The components
+below require explicit notice handling in the distributed artifacts.
+
+MPL-2.0 components
+------------------
+
+The following crates are used in the current build and are licensed under
+Mozilla Public License 2.0:
+
+- resvg 0.43.0
+  Source: https://github.com/RazrFalcon/resvg
+- usvg 0.43.0
+  Source: https://github.com/RazrFalcon/resvg
+- option-ext 0.2.0
+  Source: https://github.com/soc/option-ext
+- uluru 3.1.0
+  Source: https://github.com/servo/uluru
+
+For these components, corresponding source code is available from the listed
+upstream repositories and from the crates.io source archives matching the above
+crate names and versions.
+
+Additional notice-bearing components
+------------------------------------
+
+- tiny-skia 0.11.4 / tiny-skia-path 0.11.4
+  License: BSD-3-Clause
+  Source: https://github.com/RazrFalcon/tiny-skia
+
+- eframe 0.24.1 / egui stack
+  Primary license: MIT OR Apache-2.0
+
+- epaint 0.24.1
+  License expression: (MIT OR Apache-2.0) AND OFL-1.1 AND LicenseRef-UFL-1.0
+  Source: https://github.com/emilk/egui/tree/master/crates/epaint
+  Notes: epaint bundles fonts and icon assets that carry OFL-1.1, UFL-1.0,
+  and MIT notices.
+
+- unicode-ident 1.0.22
+  License expression: (MIT OR Apache-2.0) AND Unicode-3.0
+  Source: https://github.com/dtolnay/unicode-ident
+  Notes: unicode-ident includes Unicode data files covered by Unicode-3.0.
+
+Direct dependency summary
+-------------------------
+
+The main direct dependencies currently used by FlistWalker are under the
+following license families:
+
+- MIT OR Apache-2.0: anyhow, clap, ctrlc, eframe, memory-stats, regex, serde,
+  serde_json
+- MIT: fuzzy-matcher, ico, jwalk, native-dialog, winres
+- MIT OR Unlicense: walkdir
+- MPL-2.0: resvg
+
+Distribution policy in this repository
+--------------------------------------
+
+To keep distributed builds compliant with the above notices:
+
+- release archives include LICENSE.txt and THIRD_PARTY_NOTICES.txt
+- macOS app bundles also include these notice files in Contents/Resources
+- release directories include sidecar notice files for standalone binary assets
+
+This notice file is a compliance aid for current packaged builds. If
+dependencies change, this file and the release packaging rules must be updated
+in the same change.

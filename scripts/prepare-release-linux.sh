@@ -15,6 +15,8 @@ Notes:
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-linux-<arch>
     - FlistWalker-<version>-linux-<arch>.tar.gz
+    - FlistWalker-<version>-linux-<arch>.LICENSE.txt
+    - FlistWalker-<version>-linux-<arch>.THIRD_PARTY_NOTICES.txt
     - SHA256SUMS
 USAGE
 }
@@ -55,10 +57,18 @@ ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-linux-${ARCH_LABEL}"
 BIN_NAME="${ASSET_BASENAME}"
 TAR_NAME="${ASSET_BASENAME}.tar.gz"
 TAR_BIN_NAME="flistwalker"
+LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
+NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
+ROOT_LICENSE="${REPO_DIR}/LICENSE"
+ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
 
 if [[ ! -f "${SOURCE_BIN}" ]]; then
   echo "バイナリが見つかりません: ${SOURCE_BIN}" >&2
   echo "先に Linux 向け release build を実行してください。" >&2
+  exit 1
+fi
+if [[ ! -f "${ROOT_LICENSE}" || ! -f "${ROOT_NOTICES}" ]]; then
+  echo "LICENSE / THIRD_PARTY_NOTICES.txt が見つかりません。" >&2
   exit 1
 fi
 
@@ -68,15 +78,21 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_BIN}" "${OUT_DIR}/${BIN_NAME}"
 chmod +x "${OUT_DIR}/${BIN_NAME}"
+cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
+cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
 
 cp -f "${SOURCE_BIN}" "${WORK_DIR}/${TAR_BIN_NAME}"
 chmod +x "${WORK_DIR}/${TAR_BIN_NAME}"
+cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
+cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 cat > "${WORK_DIR}/README.txt" <<README
 FlistWalker ${VERSION}
 
 Contents:
 - ${TAR_BIN_NAME}
 - README.txt
+- LICENSE.txt
+- THIRD_PARTY_NOTICES.txt
 
 Run:
 - chmod +x ./${TAR_BIN_NAME}
@@ -139,18 +155,18 @@ README
 
 (
   cd "${WORK_DIR}"
-  tar -czf "${OUT_DIR}/${TAR_NAME}" "${TAR_BIN_NAME}" README.txt
+  tar -czf "${OUT_DIR}/${TAR_NAME}" "${TAR_BIN_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt
 )
 
 if command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${BIN_NAME}" "${TAR_NAME}" > SHA256SUMS
+    sha256sum "${BIN_NAME}" "${TAR_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${BIN_NAME}" "${TAR_NAME}" > SHA256SUMS
+    shasum -a 256 "${BIN_NAME}" "${TAR_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "sha256sum/shasum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -160,4 +176,6 @@ fi
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${BIN_NAME}"
 echo "- ${TAR_NAME}"
+echo "- ${LICENSE_SIDE_NAME}"
+echo "- ${NOTICES_SIDE_NAME}"
 echo "- SHA256SUMS"

@@ -10,36 +10,54 @@
 - Linux x86_64:
 - `FlistWalker-<version>-linux-x86_64`
 - `FlistWalker-<version>-linux-x86_64.tar.gz`
+- `FlistWalker-<version>-linux-x86_64.LICENSE.txt`
+- `FlistWalker-<version>-linux-x86_64.THIRD_PARTY_NOTICES.txt`
 - Windows x86_64:
 - `FlistWalker-<version>-windows-x86_64.exe`
 - `FlistWalker-<version>-windows-x86_64.zip`
+- `FlistWalker-<version>-windows-x86_64.LICENSE.txt`
+- `FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt`
 - macOS arm64:
 - `FlistWalker-<version>-macos-arm64`
 - `FlistWalker-<version>-macos-arm64-app.zip`
 - `FlistWalker-<version>-macos-arm64.tar.gz`
+- `FlistWalker-<version>-macos-arm64.LICENSE.txt`
+- `FlistWalker-<version>-macos-arm64.THIRD_PARTY_NOTICES.txt`
 - macOS x86_64:
 - `FlistWalker-<version>-macos-x86_64`
 - `FlistWalker-<version>-macos-x86_64-app.zip`
 - `FlistWalker-<version>-macos-x86_64.tar.gz`
+- `FlistWalker-<version>-macos-x86_64.LICENSE.txt`
+- `FlistWalker-<version>-macos-x86_64.THIRD_PARTY_NOTICES.txt`
 - `SHA256SUMS`
 
 例（v0.2.0）:
 - `FlistWalker-0.2.0-linux-x86_64`
 - `FlistWalker-0.2.0-linux-x86_64.tar.gz`
+- `FlistWalker-0.2.0-linux-x86_64.LICENSE.txt`
+- `FlistWalker-0.2.0-linux-x86_64.THIRD_PARTY_NOTICES.txt`
 - `FlistWalker-0.2.0-windows-x86_64.exe`
 - `FlistWalker-0.2.0-windows-x86_64.zip`
+- `FlistWalker-0.2.0-windows-x86_64.LICENSE.txt`
+- `FlistWalker-0.2.0-windows-x86_64.THIRD_PARTY_NOTICES.txt`
 - `FlistWalker-0.2.0-macos-arm64`
 - `FlistWalker-0.2.0-macos-arm64-app.zip`
 - `FlistWalker-0.2.0-macos-arm64.tar.gz`
+- `FlistWalker-0.2.0-macos-arm64.LICENSE.txt`
+- `FlistWalker-0.2.0-macos-arm64.THIRD_PARTY_NOTICES.txt`
 - `SHA256SUMS`
 
 ## zip に含めるもの
 - `flistwalker.exe`
 - `README.txt`（最小実行手順）
+- `LICENSE.txt`
+- `THIRD_PARTY_NOTICES.txt`
 
 ## tar.gz に含めるもの
 - `flistwalker`
 - `README.txt`（最小実行手順）
+- `LICENSE.txt`
+- `THIRD_PARTY_NOTICES.txt`
 
 ## リリース手順（Linux アセット）
 1. Linux 向けバイナリをビルドする。
@@ -51,6 +69,8 @@
 3. `dist/v0.2.0/`（例）内のファイルを GitHub Releases にアップロードする。
 - `FlistWalker-*-linux-*`
 - `FlistWalker-*-linux-*.tar.gz`
+- `FlistWalker-*-linux-*.LICENSE.txt`
+- `FlistWalker-*-linux-*.THIRD_PARTY_NOTICES.txt`
 - `SHA256SUMS`
 
 ## リリース手順（Windows アセット）
@@ -69,9 +89,11 @@
 - WSL/Linux: `./scripts/prepare-release.sh v0.2.0`
 - PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.2.0`
 
-3. `dist/v0.2.0/`（例）内の3ファイルを GitHub Releases にアップロードする。
+3. `dist/v0.2.0/`（例）内のファイルを GitHub Releases にアップロードする。
 - `*.exe`
 - `*.zip`
+- `*.LICENSE.txt`
+- `*.THIRD_PARTY_NOTICES.txt`
 - `SHA256SUMS`
 
 ## リリース手順（macOS アセット）
@@ -91,6 +113,8 @@
 - `FlistWalker-*-macos-*`（実行バイナリ）
 - `FlistWalker-*-macos-*-app.zip`（`.app` 配布用）
 - `FlistWalker-*-macos-*.tar.gz`
+- `FlistWalker-*-macos-*.LICENSE.txt`
+- `FlistWalker-*-macos-*.THIRD_PARTY_NOTICES.txt`
 - `SHA256SUMS`
 - `.app` bundle 自体は notarization / staple 用に `dist/` へ保持するが、GitHub Releases には添付しない。
 
@@ -98,7 +122,7 @@
 1. `vX.Y.Z` 形式の新規 tag を push する。
 2. GitHub Actions の `Release Tagged Build` workflow が Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 3. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
-4. draft release には各 OS 向け実行バイナリ、配布 archive、統合 `SHA256SUMS` が添付される。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
+4. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar notice (`*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` が添付される。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
 5. draft release の作成を確認したら、macOS 向け配布物の notarization 状態を別工程で確認する。現段階では workflow で notarization を強制していないため、確認前に publish してはならない。
 6. notarization 確認後、Codex で GitHub Release 本文を最終化し、draft を本リリースへ publish する。
 

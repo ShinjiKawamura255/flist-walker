@@ -241,6 +241,17 @@ Ubuntu / Debian 系では `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w6
 
 `rust/target/release/flistwalker`
 
+## ライセンスと配布 notices
+
+本体ライセンスは MIT です。詳細は `LICENSE` を参照してください。
+
+依存 crate には `MPL-2.0`、`BSD-3-Clause`、`OFL-1.1`、`LicenseRef-UFL-1.0`、
+`Unicode-3.0` を含むものがあります。現行の配布物では notice 欠落を避けるため、
+release archive に `LICENSE.txt` と `THIRD_PARTY_NOTICES.txt` を同梱し、
+standalone バイナリ向けにも sidecar notice ファイルを生成します。
+
+依存ライセンス上の注意点と source location は [THIRD_PARTY_NOTICES.txt](/mnt/d/work/flistwalker/THIRD_PARTY_NOTICES.txt) にまとめています。
+
 ## リリースアセット生成
 
 `exe単体 + zip` のアセットは次で生成できます。
@@ -262,10 +273,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version 
 生成物（例: `v0.2.1`）:
 - `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.exe`
 - `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.zip`
+- `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.LICENSE.txt`
+- `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.THIRD_PARTY_NOTICES.txt`
 - `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64`
 - `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.app`
 - `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64-app.zip`
 - `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.tar.gz`
+- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.LICENSE.txt`
+- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.THIRD_PARTY_NOTICES.txt`
 - `dist/v0.2.1/SHA256SUMS`
 
 注:

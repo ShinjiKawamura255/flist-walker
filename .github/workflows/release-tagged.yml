@@ -23,6 +23,8 @@ jobs:
             upload_paths: |
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.exe
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.zip
+              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.LICENSE.txt
+              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
           - os: ubuntu-latest
             label: linux-x86_64
@@ -30,6 +32,8 @@ jobs:
             upload_paths: |
               dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64
               dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.tar.gz
+              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.LICENSE.txt
+              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
           - os: macos-15-intel
             label: macos-x86_64
@@ -39,6 +43,8 @@ jobs:
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64-app.zip
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.tar.gz
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.LICENSE.txt
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
           - os: macos-14
             label: macos-arm64
@@ -48,6 +54,8 @@ jobs:
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64-app.zip
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.tar.gz
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.LICENSE.txt
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
 
     steps:

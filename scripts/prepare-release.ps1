@@ -15,10 +15,18 @@ $AssetBaseName = "FlistWalker-$SafeVersion-windows-x86_64"
 $ExeName = "$AssetBaseName.exe"
 $ZipName = "$AssetBaseName.zip"
 $ZipExeName = "flistwalker.exe"
+$LicenseSideName = "$AssetBaseName.LICENSE.txt"
+$NoticesSideName = "$AssetBaseName.THIRD_PARTY_NOTICES.txt"
 $OutDir = Join-Path $RepoDir "dist\$Version"
+$RootLicense = Join-Path $RepoDir 'LICENSE'
+$RootNotices = Join-Path $RepoDir 'THIRD_PARTY_NOTICES.txt'
 
 if (-not (Test-Path -LiteralPath $SourceExe)) {
     Write-Error "EXE not found: $SourceExe`nRun scripts/build-rust-win.sh first."
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $RootLicense) -or -not (Test-Path -LiteralPath $RootNotices)) {
+    Write-Error "LICENSE / THIRD_PARTY_NOTICES.txt not found."
     exit 1
 }
 
@@ -29,6 +37,10 @@ New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
 try {
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $OutDir $ExeName) -Force
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ZipExeName) -Force
+    Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $OutDir $LicenseSideName) -Force
+    Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $OutDir $NoticesSideName) -Force
+    Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $WorkDir 'LICENSE.txt') -Force
+    Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -Force
 
     $ReadmePath = Join-Path $WorkDir 'README.txt'
     @"
@@ -37,6 +49,8 @@ FlistWalker $Version
 Contents:
 - $ZipExeName
 - README.txt
+- LICENSE.txt
+- THIRD_PARTY_NOTICES.txt
 
 Run:
 - PowerShell: .\$ZipExeName
@@ -101,15 +115,19 @@ Walker tuning (Environment variables):
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
-    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmePath -DestinationPath $ZipPath -CompressionLevel Optimal
+    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmePath, (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
+    $LicenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $LicenseSideName)).Hash.ToLowerInvariant()
+    $NoticesHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $NoticesSideName)).Hash.ToLowerInvariant()
     $SumsPath = Join-Path $OutDir 'SHA256SUMS'
 
     @(
         "$ExeHash  $ExeName"
         "$ZipHash  $ZipName"
+        "$LicenseHash  $LicenseSideName"
+        "$NoticesHash  $NoticesSideName"
     ) | Set-Content -LiteralPath $SumsPath -Encoding ASCII
 }
 finally {
@@ -121,4 +139,6 @@ finally {
 Write-Host "Release assets created: $OutDir"
 Write-Host "- $ExeName"
 Write-Host "- $ZipName"
+Write-Host "- $LicenseSideName"
+Write-Host "- $NoticesSideName"
 Write-Host "- SHA256SUMS"

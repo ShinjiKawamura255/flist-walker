@@ -17,6 +17,8 @@ Notes:
     - FlistWalker-<version>-macos-<arch>.app
     - FlistWalker-<version>-macos-<arch>-app.zip
     - FlistWalker-<version>-macos-<arch>.tar.gz
+    - FlistWalker-<version>-macos-<arch>.LICENSE.txt
+    - FlistWalker-<version>-macos-<arch>.THIRD_PARTY_NOTICES.txt
     - SHA256SUMS
 USAGE
 }
@@ -59,10 +61,14 @@ APP_NAME="${ASSET_BASENAME}.app"
 APP_ZIP_NAME="${ASSET_BASENAME}-app.zip"
 TAR_NAME="${ASSET_BASENAME}.tar.gz"
 TAR_BIN_NAME="flistwalker"
+LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
+NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
 APP_EXECUTABLE_NAME="FlistWalker"
 APP_ICON_NAME="FlistWalker.icns"
 APP_BUNDLE_ID="com.flistwalker.app"
 ICON_SVG="${REPO_DIR}/rust/assets/flistwalker-icon.svg"
+ROOT_LICENSE="${REPO_DIR}/LICENSE"
+ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
 
 if [[ ! -f "${SOURCE_BIN}" ]]; then
   echo "バイナリが見つかりません: ${SOURCE_BIN}" >&2
@@ -71,6 +77,10 @@ if [[ ! -f "${SOURCE_BIN}" ]]; then
 fi
 if [[ ! -f "${ICON_SVG}" ]]; then
   echo "アイコンSVGが見つかりません: ${ICON_SVG}" >&2
+  exit 1
+fi
+if [[ ! -f "${ROOT_LICENSE}" || ! -f "${ROOT_NOTICES}" ]]; then
+  echo "LICENSE / THIRD_PARTY_NOTICES.txt が見つかりません。" >&2
   exit 1
 fi
 if ! command -v iconutil >/dev/null 2>&1; then
@@ -88,6 +98,8 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_BIN}" "${OUT_DIR}/${BIN_NAME}"
 chmod +x "${OUT_DIR}/${BIN_NAME}"
+cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
+cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
 
 APP_DIR="${WORK_DIR}/${APP_NAME}"
 APP_CONTENTS="${APP_DIR}/Contents"
@@ -96,6 +108,8 @@ APP_RESOURCES_DIR="${APP_CONTENTS}/Resources"
 mkdir -p "${APP_MACOS_DIR}" "${APP_RESOURCES_DIR}"
 cp -f "${SOURCE_BIN}" "${APP_MACOS_DIR}/${APP_EXECUTABLE_NAME}"
 chmod +x "${APP_MACOS_DIR}/${APP_EXECUTABLE_NAME}"
+cp -f "${ROOT_LICENSE}" "${APP_RESOURCES_DIR}/LICENSE.txt"
+cp -f "${ROOT_NOTICES}" "${APP_RESOURCES_DIR}/THIRD_PARTY_NOTICES.txt"
 
 ICONSET_DIR="${WORK_DIR}/flistwalker.iconset"
 mkdir -p "${ICONSET_DIR}"
@@ -152,12 +166,16 @@ cp -R "${APP_DIR}" "${OUT_DIR}/${APP_NAME}"
 
 cp -f "${SOURCE_BIN}" "${WORK_DIR}/${TAR_BIN_NAME}"
 chmod +x "${WORK_DIR}/${TAR_BIN_NAME}"
+cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
+cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 cat > "${WORK_DIR}/README.txt" <<README
 FlistWalker ${VERSION}
 
 Contents:
 - ${TAR_BIN_NAME}
 - README.txt
+- LICENSE.txt
+- THIRD_PARTY_NOTICES.txt
 
 Run:
 - chmod +x ./${TAR_BIN_NAME}
@@ -219,18 +237,18 @@ README
 
 (
   cd "${WORK_DIR}"
-  tar -czf "${OUT_DIR}/${TAR_NAME}" "${TAR_BIN_NAME}" README.txt
+  tar -czf "${OUT_DIR}/${TAR_NAME}" "${TAR_BIN_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt
 )
 
 if command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" > SHA256SUMS
+    shasum -a 256 "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" > SHA256SUMS
+    sha256sum "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "shasum/sha256sum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -242,4 +260,6 @@ echo "- ${BIN_NAME}"
 echo "- ${APP_NAME}"
 echo "- ${APP_ZIP_NAME}"
 echo "- ${TAR_NAME}"
+echo "- ${LICENSE_SIDE_NAME}"
+echo "- ${NOTICES_SIDE_NAME}"
 echo "- SHA256SUMS"
