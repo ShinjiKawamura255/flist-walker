@@ -94,27 +94,34 @@ impl FlistWalkerApp {
     pub(super) fn render_results_list(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.heading("Results");
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let mut selected = self.result_sort_mode;
-                egui::ComboBox::from_id_source("results-sort-selector")
-                    .selected_text(selected.label())
-                    .show_ui(ui, |ui| {
-                        for mode in [
-                            ResultSortMode::Score,
-                            ResultSortMode::NameAsc,
-                            ResultSortMode::NameDesc,
-                            ResultSortMode::ModifiedDesc,
-                            ResultSortMode::ModifiedAsc,
-                            ResultSortMode::CreatedDesc,
-                            ResultSortMode::CreatedAsc,
-                        ] {
-                            ui.selectable_value(&mut selected, mode, mode.label());
-                        }
-                    });
-                if selected != self.result_sort_mode {
-                    self.set_result_sort_mode(selected);
-                }
-            });
+            let row_height = ui.spacing().interact_size.y;
+            let row_width = ui.available_width();
+            ui.allocate_ui_with_layout(
+                egui::vec2(row_width, row_height),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    let mut selected = self.result_sort_mode;
+                    egui::ComboBox::from_id_source("results-sort-selector")
+                        .selected_text(selected.label())
+                        .show_ui(ui, |ui| {
+                            for mode in [
+                                ResultSortMode::Score,
+                                ResultSortMode::NameAsc,
+                                ResultSortMode::NameDesc,
+                                ResultSortMode::ModifiedDesc,
+                                ResultSortMode::ModifiedAsc,
+                                ResultSortMode::CreatedDesc,
+                                ResultSortMode::CreatedAsc,
+                            ] {
+                                ui.selectable_value(&mut selected, mode, mode.label());
+                            }
+                        });
+                    ui.label("Sorted by");
+                    if selected != self.result_sort_mode {
+                        self.set_result_sort_mode(selected);
+                    }
+                },
+            );
         });
         let scroll_enabled = Self::results_scroll_enabled(self.preview_resize_in_progress);
         egui::ScrollArea::both()
