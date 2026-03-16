@@ -298,20 +298,37 @@ impl FlistWalkerApp {
         ui.horizontal(|ui| {
             let mut switch_to: Option<usize> = None;
             let mut close_tab: Option<usize> = None;
+            let mut reorder_tab: Option<(usize, usize)> = None;
+            let mut drag_state = self.tab_drag_state;
+            let mut tab_rects: Vec<egui::Rect> = Vec::with_capacity(self.tabs.len());
             for i in 0..self.tabs.len() {
+                let is_drag_source = drag_state.is_some_and(|state| state.source_index == i);
+                let is_drop_target = drag_state.is_some_and(|state| state.hover_index == i);
                 let is_active = self.active_tab == i;
                 let active_fill = if ui.visuals().dark_mode {
                     egui::Color32::from_rgb(48, 53, 62)
                 } else {
                     egui::Color32::from_rgb(228, 232, 238)
                 };
-                egui::Frame::none()
-                    .fill(if is_active {
-                        active_fill
-                    } else {
-                        egui::Color32::TRANSPARENT
-                    })
-                    .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+                let drag_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.35);
+                let drop_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.18);
+                let frame_fill = if is_drag_source {
+                    drag_fill
+                } else if is_drop_target {
+                    drop_fill
+                } else if is_active {
+                    active_fill
+                } else {
+                    egui::Color32::TRANSPARENT
+                };
+                let frame_stroke = if is_drag_source || is_drop_target {
+                    ui.visuals().selection.stroke
+                } else {
+                    ui.visuals().widgets.noninteractive.bg_stroke
+                };
+                let tab_response = egui::Frame::none()
+                    .fill(frame_fill)
+                    .stroke(frame_stroke)
                     .rounding(egui::Rounding::same(4.0))
                     .inner_margin(egui::Margin::symmetric(6.0, 2.0))
                     .show(ui, |ui| {
@@ -328,24 +345,66 @@ impl FlistWalkerApp {
                                     ui.visuals().text_color()
                                 },
                             ))
-                            .frame(false),
+                            .frame(false)
+                            .sense(egui::Sense::click_and_drag()),
                         );
-                        if title_response.clicked_by(egui::PointerButton::Middle) {
-                            close_tab = Some(i);
-                        } else if title_response.clicked() {
-                            switch_to = Some(i);
-                        }
-                        if ui
+                        let close_response = ui
                             .add_enabled(
                                 self.tabs.len() > 1,
                                 egui::Button::new("×").small().frame(false),
                             )
-                            .on_hover_text("Close tab")
-                            .clicked()
-                        {
+                            .on_hover_text("Close tab");
+
+                        if title_response.drag_started() {
+                            drag_state = Some(TabDragState {
+                                source_index: i,
+                                hover_index: i,
+                            });
+                        }
+                        if title_response.clicked_by(egui::PointerButton::Middle) {
+                            close_tab = Some(i);
+                        } else if title_response.clicked() && drag_state.is_none() {
+                            switch_to = Some(i);
+                        }
+                        if close_response.clicked() {
                             close_tab = Some(i);
                         }
                     });
+                tab_rects.push(tab_response.response.rect);
+            }
+            if let Some(mut state) = drag_state {
+                if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
+                    if let Some(target) = Self::tab_drop_index(&tab_rects, pointer_pos) {
+                        state.hover_index = target;
+                    }
+                }
+                if let Some(target_rect) = tab_rects.get(state.hover_index) {
+                    let indicator_x = target_rect.left();
+                    let indicator_top = target_rect.top() - 3.0;
+                    let indicator_bottom = target_rect.bottom() + 3.0;
+                    let stroke = egui::Stroke::new(3.0, ui.visuals().selection.stroke.color);
+                    ui.painter().line_segment(
+                        [
+                            egui::pos2(indicator_x, indicator_top),
+                            egui::pos2(indicator_x, indicator_bottom),
+                        ],
+                        stroke,
+                    );
+                    ui.painter().circle_filled(
+                        egui::pos2(indicator_x, indicator_top),
+                        4.0,
+                        ui.visuals().selection.stroke.color,
+                    );
+                    ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::Grabbing);
+                }
+                if ui.ctx().input(|i| i.pointer.primary_down()) {
+                    self.tab_drag_state = Some(state);
+                } else {
+                    self.tab_drag_state = None;
+                    reorder_tab = Some((state.source_index, state.hover_index));
+                }
+            } else {
+                self.tab_drag_state = None;
             }
             if ui
                 .button("+")
@@ -359,10 +418,26 @@ impl FlistWalkerApp {
                 self.close_tab_index(index);
                 return;
             }
+            if let Some((from_index, to_index)) = reorder_tab {
+                self.move_tab(from_index, to_index);
+                return;
+            }
             if let Some(idx) = switch_to {
                 self.switch_to_tab_index(idx);
             }
         });
+    }
+
+    fn tab_drop_index(tab_rects: &[egui::Rect], pointer_pos: egui::Pos2) -> Option<usize> {
+        if tab_rects.is_empty() {
+            return None;
+        }
+        for (index, rect) in tab_rects.iter().enumerate() {
+            if pointer_pos.x < rect.center().x {
+                return Some(index);
+            }
+        }
+        Some(tab_rects.len().saturating_sub(1))
     }
 
     pub(super) fn render_top_panel(&mut self, ctx: &egui::Context) {

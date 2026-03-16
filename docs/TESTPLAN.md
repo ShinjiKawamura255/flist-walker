@@ -73,6 +73,7 @@
 | TC-040 | unit | タブ復元時は active tab の root/query/filter を復元し、起動直後の index は active tab だけ開始する | SP-010 |
 | TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |
 | TC-046 | unit | `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
+| TC-064 | unit | タブのドラッグ移動は並び順のみを更新し、active tab の実体と保存順を維持する | SP-010 |
 | TC-047 | unit | FileList 作成時は祖先の既存 FileList へ子 FileList 参照を重複なく追記し、親 mtime を維持する | SP-001 |
 | TC-048 | unit | 祖先探索は callback/失敗時に即停止し、それ以降の上位階層を処理しない | SP-001 |
 | TC-049 | unit | FileList に root 外パスが含まれても候補表示時の追加フィルタを行わず、インデクシング経路の挙動を維持する | SP-007 |
@@ -169,6 +170,7 @@
 - TC-040 -> SP-010 -> DES-009, DES-006 -> FR-007
 - TC-041 -> SP-010 -> DES-009, DES-006 -> FR-007
 - TC-046 -> SP-010 -> DES-009 -> FR-007
+- TC-064 -> SP-010 -> DES-009 -> FR-016
 - TC-047 -> SP-001 -> DES-001, DES-007 -> FR-001
 - TC-048 -> SP-001 -> DES-001, DES-007 -> FR-001
 - TC-049 -> SP-007 -> DES-006 -> FR-008

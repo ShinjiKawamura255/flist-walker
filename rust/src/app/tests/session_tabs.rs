@@ -444,6 +444,92 @@ fn switching_tabs_restores_entries_and_filters_per_tab() {
 }
 
 #[test]
+fn move_tab_reorders_tabs_and_preserves_active_tab_identity() {
+    let root_a = test_root("move-tab-root-a");
+    let root_b = test_root("move-tab-root-b");
+    let root_c = test_root("move-tab-root-c");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+    fs::create_dir_all(&root_c).expect("create root c");
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+
+    app.create_new_tab();
+    app.root = root_b.clone();
+    app.sync_active_tab_state();
+    app.create_new_tab();
+    app.root = root_c.clone();
+    app.sync_active_tab_state();
+    assert_eq!(app.active_tab, 2);
+
+    app.move_tab(2, 0);
+
+    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.root, root_c);
+    assert_eq!(app.tabs[0].root, root_c);
+    assert_eq!(app.tabs[1].root, root_a);
+    assert_eq!(app.tabs[2].root, root_b);
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+    let _ = fs::remove_dir_all(&root_c);
+}
+
+#[test]
+fn move_tab_updates_active_index_when_other_tab_crosses_it() {
+    let root_a = test_root("move-tab-cross-root-a");
+    let root_b = test_root("move-tab-cross-root-b");
+    let root_c = test_root("move-tab-cross-root-c");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+    fs::create_dir_all(&root_c).expect("create root c");
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+
+    app.create_new_tab();
+    app.root = root_b.clone();
+    app.sync_active_tab_state();
+    app.create_new_tab();
+    app.root = root_c.clone();
+    app.sync_active_tab_state();
+    app.switch_to_tab_index(1);
+    assert_eq!(app.root, root_b);
+    assert_eq!(app.active_tab, 1);
+
+    app.move_tab(0, 2);
+
+    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.root, root_b);
+    assert_eq!(app.tabs[0].root, root_b);
+    assert_eq!(app.tabs[1].root, root_c);
+    assert_eq!(app.tabs[2].root, root_a);
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+    let _ = fs::remove_dir_all(&root_c);
+}
+
+#[test]
+fn move_tab_ignores_invalid_or_noop_indices() {
+    let root = test_root("move-tab-ignore-invalid");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let original_ids: Vec<u64> = app.tabs.iter().map(|tab| tab.id).collect();
+    let original_active = app.active_tab;
+
+    app.move_tab(1, 1);
+    app.move_tab(99, 0);
+    app.move_tab(0, 99);
+
+    assert_eq!(
+        app.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>(),
+        original_ids
+    );
+    assert_eq!(app.active_tab, original_active);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn background_tab_search_and_preview_responses_are_retained() {
     let root = test_root("background-tab-search-preview");
     fs::create_dir_all(&root).expect("create dir");

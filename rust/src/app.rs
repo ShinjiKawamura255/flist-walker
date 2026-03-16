@@ -238,6 +238,12 @@ struct PendingFileListUseWalkerConfirmation {
     root: PathBuf,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct TabDragState {
+    source_index: usize,
+    hover_index: usize,
+}
+
 pub struct FlistWalkerApp {
     root: PathBuf,
     limit: usize,
@@ -330,6 +336,7 @@ pub struct FlistWalkerApp {
     ime_composition_active: bool,
     prev_space_down: bool,
     query_input_id: egui::Id,
+    tab_drag_state: Option<TabDragState>,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
     preview_cache_total_bytes: usize,
@@ -630,6 +637,7 @@ Search hints:
             ime_composition_active: false,
             prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
+            tab_drag_state: None,
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
             preview_cache_total_bytes: 0,
@@ -1239,6 +1247,7 @@ Search hints:
         if next_index >= self.tabs.len() || next_index == self.active_tab {
             return;
         }
+        self.tab_drag_state = None;
         self.shrink_checkpoint_buffers();
         self.sync_active_tab_state();
         if let Some(next_tab) = self.tabs.get_mut(next_index) {
@@ -1254,6 +1263,7 @@ Search hints:
     }
 
     fn create_new_tab(&mut self) {
+        self.tab_drag_state = None;
         self.sync_active_tab_state();
         let id = self.next_tab_id;
         self.next_tab_id = self.next_tab_id.saturating_add(1);
@@ -1334,6 +1344,7 @@ Search hints:
             }
             return;
         }
+        self.tab_drag_state = None;
         self.sync_active_tab_state();
         let removed = self.tabs.remove(index);
         if self
@@ -1388,6 +1399,25 @@ Search hints:
             self.active_tab = self.tabs.len().saturating_sub(1);
         }
         self.memory_usage_bytes = None;
+        if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
+            self.apply_tab_state(&tab);
+        }
+    }
+
+    fn move_tab(&mut self, from_index: usize, to_index: usize) {
+        if from_index >= self.tabs.len() || to_index >= self.tabs.len() || from_index == to_index {
+            return;
+        }
+        self.tab_drag_state = None;
+        self.sync_active_tab_state();
+        let Some(active_tab_id) = self.tabs.get(self.active_tab).map(|tab| tab.id) else {
+            return;
+        };
+        let moved = self.tabs.remove(from_index);
+        self.tabs.insert(to_index, moved);
+        if let Some(new_active) = self.find_tab_index_by_id(active_tab_id) {
+            self.active_tab = new_active;
+        }
         if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
             self.apply_tab_state(&tab);
         }

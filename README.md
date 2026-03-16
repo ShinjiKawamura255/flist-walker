@@ -46,6 +46,7 @@ cargo run -- --root ..
 - `Ctrl+T`: 新規タブ
 - `Ctrl+W`: 現在タブを閉じる
 - `Ctrl+Tab` / `Ctrl+Shift+Tab`: タブ切り替え
+- タブのドラッグ&ドロップ: タブの並び替え
 
 ## ショートカット差分（Windows/Linux と macOS）
 
