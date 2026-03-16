@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
-use std::{ffi::c_void, os::windows::ffi::OsStrExt, ptr};
+use std::{ffi::c_void, os::windows::ffi::OsStrExt, ptr, sync::OnceLock};
 
 fn normalize_windows_display(text: &str) -> String {
     #[cfg(windows)]
@@ -419,7 +419,30 @@ fn invalid_handle_value() -> *mut c_void {
     (-1isize) as *mut c_void
 }
 
-#[cfg(windows)]
+#[cfg(all(windows, target_env = "gnu"))]
+#[link(name = "kernel32")]
+extern "system" {
+    fn CreateFileW(
+        lpFileName: *const u16,
+        dwDesiredAccess: u32,
+        dwShareMode: u32,
+        lpSecurityAttributes: *mut c_void,
+        dwCreationDisposition: u32,
+        dwFlagsAndAttributes: u32,
+        hTemplateFile: *mut c_void,
+    ) -> *mut c_void;
+    fn GetFileInformationByHandleEx(
+        hFile: *mut c_void,
+        FileInformationClass: i32,
+        lpFileInformation: *mut c_void,
+        dwBufferSize: u32,
+    ) -> i32;
+    fn CloseHandle(hObject: *mut c_void) -> i32;
+    fn LoadLibraryW(lpLibFileName: *const u16) -> *mut c_void;
+    fn GetProcAddress(hModule: *mut c_void, lpProcName: *const u8) -> *mut c_void;
+}
+
+#[cfg(all(windows, not(target_env = "gnu")))]
 #[link(name = "Kernel32")]
 extern "system" {
     fn CreateFileW(
@@ -438,12 +461,8 @@ extern "system" {
         dwBufferSize: u32,
     ) -> i32;
     fn CloseHandle(hObject: *mut c_void) -> i32;
-}
-
-#[cfg(windows)]
-#[link(name = "CldApi")]
-extern "system" {
-    fn CfGetPlaceholderStateFromAttributeTag(FileAttributes: u32, ReparseTag: u32) -> u32;
+    fn LoadLibraryW(lpLibFileName: *const u16) -> *mut c_void;
+    fn GetProcAddress(hModule: *mut c_void, lpProcName: *const u8) -> *mut c_void;
 }
 
 #[cfg(windows)]
@@ -484,7 +503,37 @@ unsafe fn close_handle(handle: *mut c_void) -> i32 {
 
 #[cfg(windows)]
 fn cf_get_placeholder_state_from_attribute_tag(file_attributes: u32, reparse_tag: u32) -> u32 {
-    unsafe { CfGetPlaceholderStateFromAttributeTag(file_attributes, reparse_tag) }
+    type CfGetPlaceholderStateFromAttributeTagFn = unsafe extern "system" fn(u32, u32) -> u32;
+
+    fn resolve() -> Option<CfGetPlaceholderStateFromAttributeTagFn> {
+        static FN: OnceLock<Option<CfGetPlaceholderStateFromAttributeTagFn>> = OnceLock::new();
+
+        *FN.get_or_init(|| {
+            let mut dll_name: Vec<u16> = "cldapi.dll".encode_utf16().collect();
+            dll_name.push(0);
+            let module = unsafe { LoadLibraryW(dll_name.as_ptr()) };
+            if module.is_null() {
+                return None;
+            }
+
+            let proc = unsafe {
+                GetProcAddress(module, b"CfGetPlaceholderStateFromAttributeTag\0".as_ptr())
+            };
+            if proc.is_null() {
+                None
+            } else {
+                Some(unsafe {
+                    std::mem::transmute::<*mut c_void, CfGetPlaceholderStateFromAttributeTagFn>(
+                        proc,
+                    )
+                })
+            }
+        })
+    }
+
+    resolve()
+        .map(|func| unsafe { func(file_attributes, reparse_tag) })
+        .unwrap_or(0)
 }
 
 fn build_directory_preview_text(path: &Path, normalized_path: &str) -> String {

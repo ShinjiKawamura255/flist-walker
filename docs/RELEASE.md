@@ -55,8 +55,15 @@
 
 ## リリース手順（Windows アセット）
 1. Windows 向け EXE をビルドする。
-- WSL/Linux: `./scripts/build-rust-win.sh`（内部で PowerShell を呼び出し、Windows 側 Rust でビルド）
-- PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1`
+- WSL/Linux: `./scripts/build-rust-win.sh`
+- `x86_64-pc-windows-gnu` + mingw-w64 を利用し、PowerShell や Windows 側 Rust は使用しない
+- 必要ツール:
+  - `x86_64-w64-mingw32-gcc`
+  - `x86_64-w64-mingw32-g++`
+  - `x86_64-w64-mingw32-ar`
+  - `x86_64-w64-mingw32-ranlib`
+  - `x86_64-w64-mingw32-windres`
+- Ubuntu / Debian 系: `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64`
 
 2. リリースアセットを生成する。
 - WSL/Linux: `./scripts/prepare-release.sh v0.2.0`

@@ -17,6 +17,26 @@ fn render_svg_icon_rgba(size: u32) -> Option<Vec<u8>> {
     Some(pixmap.data().to_vec())
 }
 
+fn find_program_in_path(candidates: &[&str]) -> Option<PathBuf> {
+    let path_var = env::var_os("PATH")?;
+    for dir in env::split_paths(&path_var) {
+        for candidate in candidates {
+            let full = dir.join(candidate);
+            if full.is_file() {
+                return Some(full);
+            }
+            #[cfg(windows)]
+            {
+                let exe = dir.join(format!("{candidate}.exe"));
+                if exe.is_file() {
+                    return Some(exe);
+                }
+            }
+        }
+    }
+    None
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=assets/flistwalker-icon.svg");
 
@@ -39,8 +59,38 @@ fn main() {
     icon_dir.write(&mut file).expect("write .ico");
 
     let host = env::var("HOST").unwrap_or_default();
-    let has_explicit_rc = env::var("RC").is_ok();
-    if host.contains("windows") || has_explicit_rc {
+    let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+    if target_env == "gnu" && !host.contains("windows") {
+        let windres = env::var_os("FLISTWALKER_WINDOWS_WINDRES")
+            .map(PathBuf::from)
+            .or_else(|| find_program_in_path(&["x86_64-w64-mingw32-windres", "windres"]));
+        let ar = env::var_os("FLISTWALKER_WINDOWS_AR")
+            .map(PathBuf::from)
+            .or_else(|| find_program_in_path(&["x86_64-w64-mingw32-ar", "ar"]));
+        if let (Some(windres), Some(ar)) = (windres, ar) {
+            let mut res = winres::WindowsResource::new();
+            res.set_icon(ico_path.to_str().expect("ico path utf-8"));
+            res.set_windres_path(windres.to_str().expect("windres path utf-8"));
+            res.set_ar_path(ar.to_str().expect("ar path utf-8"));
+            res.compile()
+                .expect("failed to embed Windows icon resource with windres");
+        } else {
+            println!(
+                "cargo:warning=skipping Windows EXE icon embedding on non-Windows GNU host \
+                 (install x86_64-w64-mingw32-windres and x86_64-w64-mingw32-ar or set FLISTWALKER_WINDOWS_WINDRES / \
+                 FLISTWALKER_WINDOWS_AR)"
+            );
+        }
+        return;
+    }
+
+    let rc_path = env::var_os("RC")
+        .map(PathBuf::from)
+        .or_else(|| find_program_in_path(&["llvm-rc"]));
+    if let Some(rc) = rc_path.as_ref() {
+        env::set_var("RC", rc);
+    }
+    if host.contains("windows") || rc_path.is_some() {
         let mut res = winres::WindowsResource::new();
         res.set_icon(ico_path.to_str().expect("ico path utf-8"));
         res.compile()
@@ -48,7 +98,7 @@ fn main() {
     } else {
         println!(
             "cargo:warning=skipping Windows EXE icon embedding on non-Windows host \
-             (set RC env var to enable)"
+             (install llvm-rc or set RC env var to enable)"
         );
     }
 }

@@ -10,7 +10,7 @@
 - File/Folder walker の分離
 - fzf 互換クエリ（`'` 完全一致、`!` 除外、`^`/`$` の先頭末尾条件）
 - 検索ハイライト、非マッチ非表示、複数選択と一括操作
-- Windows 向けビルド運用（WSL から PowerShell 経由で Windows 側 Rust を実行）
+- Windows 向けビルド運用（WSL/Linux から `x86_64-pc-windows-gnu` + mingw-w64 で完結）
 - `docs/` の SDD + TDD 文書保守
 - スコープ Out:
 - 旧プロトタイプの機能追加
@@ -20,7 +20,7 @@
 ## 2. 現在の開発方針
 - Rust 本実装を主軸に機能拡張と品質改善を行う。
 - GUI/CLI の検索仕様・操作仕様の一貫性を維持する。
-- Windows 実行を重視し、PowerShell から実行できるビルド/テスト導線を維持する。
+- Windows 実行を重視し、WSL/Linux から完結する GNU ビルド導線を維持する。
 - 旧プロトタイプ資産は `prototype/python/` に保管し、原則として Rust 側へ集約する。
 
 ## 3. UI 応答性ポリシー（最優先）
@@ -37,7 +37,7 @@
 - 品質: TDD を基本とし、主要機能は unit test で保証する。
 - セキュリティ: 外部コマンド実行は配列引数で呼び出し、シェル展開依存を避ける。
 - 運用:
-- Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win.ps1` を利用する。
+- Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win-clean.sh` を利用し、`x86_64-pc-windows-gnu` + mingw-w64 で WSL/Linux から完結させる。
 - GitHub Actions の tag push（`v*`）で各 OS 向け release build を実行し、draft release と asset upload を行う workflow を維持する。
 - tag push 後は GitHub 上に作成された draft release を確認し、公開時は Codex から GitHub Release 本文を整えたうえで draft を本リリースへ切り替える運用とする。
 - release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。

@@ -1,6 +1,7 @@
 ## Summary
 - Release: `vX.Y.Z`
 - Date: `YYYY-MM-DD`
+- Windows asset は `x86_64-pc-windows-gnu` + mingw-w64 により Linux/WSL 系導線から生成する。
 
 ## Downloads
 - macOS の `.app` bundle 自体は notarization 用の中間成果物であり、GitHub Release の添付対象には含めない。

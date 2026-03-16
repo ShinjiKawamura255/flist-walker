@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoDir = Split-Path -Parent $ScriptDir
-$Target = 'x86_64-pc-windows-msvc'
+$Target = 'x86_64-pc-windows-gnu'
 $SourceExe = Join-Path $RepoDir "rust\target\$Target\release\FlistWalker.exe"
 $SafeVersion = if ($Version.StartsWith('v')) { $Version.Substring(1) } else { $Version }
 $AssetBaseName = "FlistWalker-$SafeVersion-windows-x86_64"
@@ -18,7 +18,7 @@ $ZipExeName = "flistwalker.exe"
 $OutDir = Join-Path $RepoDir "dist\$Version"
 
 if (-not (Test-Path -LiteralPath $SourceExe)) {
-    Write-Error "EXE not found: $SourceExe`nRun scripts/build-rust-win.ps1 first."
+    Write-Error "EXE not found: $SourceExe`nRun scripts/build-rust-win.sh first."
     exit 1
 }
 

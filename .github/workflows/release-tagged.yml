@@ -16,9 +16,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: ubuntu-latest
             label: windows-x86_64
             artifact_name: release-windows-x86_64
+            target: x86_64-pc-windows-gnu
             upload_paths: |
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.exe
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.zip
@@ -68,36 +69,41 @@ jobs:
         with:
           workspaces: rust
 
-      - name: Build Windows release
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Install mingw-w64
+        if: ${{ matrix.label == 'windows-x86_64' }}
+        shell: bash
         run: |
-          ./scripts/build-rust-win.ps1
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+
+      - name: Build Windows release
+        if: ${{ matrix.label == 'windows-x86_64' }}
+        shell: bash
+        run: ./scripts/build-rust-win.sh --locked
 
       - name: Package Windows release assets
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          ./scripts/prepare-release.ps1 -Version "${{ github.ref_name }}"
+        if: ${{ matrix.label == 'windows-x86_64' }}
+        shell: bash
+        run: ./scripts/prepare-release.sh "${{ github.ref_name }}"
 
       - name: Build Linux release
-        if: runner.os == 'Linux'
+        if: ${{ matrix.label == 'linux-x86_64' }}
         shell: bash
         working-directory: rust
         run: cargo build --release --locked
 
       - name: Package Linux release assets
-        if: runner.os == 'Linux'
+        if: ${{ matrix.label == 'linux-x86_64' }}
         shell: bash
         run: ./scripts/prepare-release-linux.sh "${{ github.ref_name }}"
 
       - name: Build macOS release
-        if: runner.os == 'macOS'
+        if: ${{ matrix.label == 'macos-x86_64' || matrix.label == 'macos-arm64' }}
         shell: bash
         run: ./scripts/build-rust-macos.sh "${{ matrix.target }}"
 
       - name: Package macOS release assets
-        if: runner.os == 'macOS'
+        if: ${{ matrix.label == 'macos-x86_64' || matrix.label == 'macos-arm64' }}
         shell: bash
         run: ./scripts/prepare-release-macos.sh "${{ github.ref_name }}" "${{ matrix.target }}"
 

@@ -199,8 +199,17 @@ WSL / Linux シェルから:
 ./scripts/build-rust-win.sh
 ```
 
-このスクリプトは WSL から `powershell.exe` を呼び出し、Windows 側の `rustup/cargo` でビルドします。
-Explorer アイコンを正しく埋め込むため、Windows 側に Rust（MSVC ツールチェイン）をセットアップしてください。
+このスクリプトは WSL / Linux 側だけで `x86_64-pc-windows-gnu` をビルドします。
+Explorer アイコン埋め込みも WSL 側で行うため、PowerShell や Windows 側 Rust は不要です。
+必要なツール:
+
+- `x86_64-w64-mingw32-gcc`
+- `x86_64-w64-mingw32-g++`
+- `x86_64-w64-mingw32-ar`
+- `x86_64-w64-mingw32-ranlib`
+- `x86_64-w64-mingw32-windres`
+
+Ubuntu / Debian 系では `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64` で揃います。
 
 クリーンビルド:
 
@@ -208,21 +217,11 @@ Explorer アイコンを正しく埋め込むため、Windows 側に Rust（MSVC
 ./scripts/build-rust-win-clean.sh
 ```
 
-Windows PowerShell から:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1
-```
-
-クリーンビルド:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win-clean.ps1
-```
+旧 `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` は退役済みで、WSL/Linux 側ビルドへ誘導するエラーを返します。
 
 成果物:
 
-`rust/target/x86_64-pc-windows-msvc/release/FlistWalker.exe`
+`rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe`
 
 ## macOS 向けビルド
 

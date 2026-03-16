@@ -21,18 +21,22 @@ cd ..
 
 ## Build (Windows EXE with Explorer icon)
 
-WSL から Windows 側 Rust を使ってビルド:
+WSL/Linux 側だけで `x86_64-pc-windows-gnu` をビルド:
 
 ```bash
 cd ..
 ./scripts/build-rust-win.sh
 ```
 
-PowerShell から直接ビルド:
+必要なツール:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1
-```
+- `x86_64-w64-mingw32-gcc`
+- `x86_64-w64-mingw32-g++`
+- `x86_64-w64-mingw32-ar`
+- `x86_64-w64-mingw32-ranlib`
+- `x86_64-w64-mingw32-windres`
+
+Ubuntu / Debian 系では `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64` で揃います。
 
 ## Run (GUI)
 

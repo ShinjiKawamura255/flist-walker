@@ -10,7 +10,7 @@ Example:
   scripts/prepare-release.sh v0.1.0
 
 Notes:
-  - Requires rust/target/x86_64-pc-windows-msvc/release/FlistWalker.exe
+  - Requires rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-windows-x86_64.exe
     - FlistWalker-<version>-windows-x86_64.zip
@@ -27,7 +27,7 @@ VERSION="$1"
 SAFE_VERSION="${VERSION#v}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-TARGET="x86_64-pc-windows-msvc"
+TARGET="x86_64-pc-windows-gnu"
 SOURCE_EXE="${REPO_DIR}/rust/target/${TARGET}/release/FlistWalker.exe"
 OUT_DIR="${REPO_DIR}/dist/${VERSION}"
 ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-windows-x86_64"
