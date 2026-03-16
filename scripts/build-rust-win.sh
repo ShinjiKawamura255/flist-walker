@@ -30,7 +30,7 @@ rustup target add "${TARGET}"
 if [[ -f "${EXE_PATH}" ]]; then
   rm -f "${EXE_PATH}"
 fi
-if [[ -f "${BUILT_EXE_PATH}" && "${BUILT_EXE_PATH,,}" != "${EXE_PATH,,}" ]]; then
+if [[ -f "${BUILT_EXE_PATH}" && "${BUILT_EXE_PATH}" != "${EXE_PATH}" ]]; then
   rm -f "${BUILT_EXE_PATH}"
 fi
 
@@ -40,7 +40,7 @@ echo "==> Build (release): ${TARGET}"
   cargo build --release --target "${TARGET}" "$@"
 )
 
-if [[ -f "${BUILT_EXE_PATH}" && "${BUILT_EXE_PATH,,}" != "${EXE_PATH,,}" ]]; then
+if [[ -f "${BUILT_EXE_PATH}" && ! -f "${EXE_PATH}" ]]; then
   cp -f "${BUILT_EXE_PATH}" "${EXE_PATH}"
 fi
 
