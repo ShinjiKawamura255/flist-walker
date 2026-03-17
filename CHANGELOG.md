@@ -24,6 +24,30 @@
 ### Known issues
 - 
 
+## [0.11.3] - 2026-03-17
+### Added
+- 
+
+### Changed
+- Windows GNU release profile と post-build strip を追加し、配布 EXE サイズを縮小した。
+
+### Fixed
+- Windows GNU ビルドで生成した EXE に複数サイズのアイコンを埋め込み、Explorer / タスクバー / 通知領域で `flist-walker` のアイコンが汎用アイコンへ化ける問題を修正した。
+- `Create File List` 系の確認ダイアログ表示中に、十字キーや `Enter` / `Space` がメインウィンドウへ漏れてしまう問題を修正した。
+- GUI 終了時に worker shutdown timeout まで待たされ、close 操作が重くなる問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
 ## [0.11.2] - 2026-03-17
 ### Added
 - 
