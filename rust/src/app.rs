@@ -398,7 +398,9 @@ impl FlistWalkerApp {
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
     const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
     const MEMORY_SAMPLE_INTERVAL: Duration = Duration::from_millis(1000);
-    const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(2000);
+    // Regression guard: app close should not stall on background workers once
+    // shutdown has been requested and all request senders have been dropped.
+    const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
     const SHRINK_MIN_CAPACITY: usize = 4096;
     const SEARCH_HINTS_TOOLTIP: &'static str = "\
 Search hints:
@@ -3972,6 +3974,11 @@ Search hints:
             IndexSource::Walker => "Source: Walker".to_string(),
             IndexSource::None => "Source: None".to_string(),
         }
+    }
+
+    #[cfg(test)]
+    fn worker_join_timeout() -> Duration {
+        Self::WORKER_JOIN_TIMEOUT
     }
 }
 

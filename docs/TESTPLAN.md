@@ -92,6 +92,7 @@
 | TC-062 | manual | 結果ペインの `Sort` UI から各ソートを選択でき、`Modified` / `Created` 中も入力が継続できる | SP-010, SP-013 |
 | TC-063 | perf | ソート機能追加後もインデクシング時の属性取得数を増やさず、既存の逐次表示挙動を維持する | SP-007, SP-013 |
 | TC-065 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
+| TC-066 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -134,6 +135,12 @@
 - 期待動作: GNU Windows ビルドでは `resource.o` を最終 `flistwalker` バイナリへ直接リンクし、Explorer 上で埋め込みアイコンが表示される。
 - 非対象範囲: 実行中ウィンドウアイコン、`.lnk` ショートカット個別設定、ファイル関連付けアイコン。
 - 関連テストID: TC-065.
+
+## Regression Guard
+- 発生条件: ある変更以降、GUI を閉じるたびに worker shutdown timeout まで待たされ、終了操作が体感で重くなる。
+- 期待動作: shutdown 要求と request channel 切断後は短時間の join budget だけ待ち、残存 worker があっても close は 250ms 程度の待ちで返る。
+- 非対象範囲: OS がプロセス自体を強制終了できないケース、個別 worker の I/O 完了保証。
+- 関連テストID: TC-066.
 
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
@@ -196,3 +203,4 @@
 - TC-062 -> SP-010, SP-013 -> DES-009, DES-013 -> FR-007, FR-012
 - TC-063 -> SP-007, SP-013 -> DES-006, DES-013 -> FR-013, NFR-006
 - TC-065 -> SP-012 -> DES-012 -> NFR-005
+- TC-066 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007

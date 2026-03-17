@@ -563,3 +563,8 @@ fn worker_runtime_join_all_with_timeout_returns_early_on_timeout() {
     assert_eq!(summary.total, 1);
     assert_eq!(summary.joined, 0);
 }
+
+#[test]
+fn regression_gui_close_uses_short_worker_join_timeout_budget() {
+    assert!(FlistWalkerApp::worker_join_timeout() <= Duration::from_millis(250));
+}
