@@ -43,6 +43,7 @@
 - release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。
 - 配布アーカイブと standalone バイナリ向け sidecar asset には `LICENSE` / `THIRD_PARTY_NOTICES` を同梱し、依存ライセンス notice の欠落を防ぐ。
 - macOS の `.app` bundle は notarization 用に `dist/` へ生成してよいが、GitHub Release へ添付する asset には含めない。
+- release/tag 作業に入る前に、`skills/flistwalker-release-preflight/` を使って `rust/Cargo.toml` / `rust/Cargo.lock` / `CHANGELOG.md` / tag 名の version 整合を確認し、必要な更新を先に完了させる。
 
 ## 5. 実装ガードレール
 - FileList 検出仕様（大文字/小文字、優先順、探索範囲）を変更する場合は `indexer` テストを先に更新する。
@@ -57,6 +58,7 @@
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 変更時は最低限 `cargo test` を実行してから完了報告する。
 - release asset 名、対象 OS、GitHub Release 導線を変更した場合は `docs/RELEASE.md`、`.github/release-template.md`、`AGENTS.md` を同一変更で更新する。
+- `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れがあれば tag 作成前に修正する。
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 
 ## 7. トレース（抜粋）
