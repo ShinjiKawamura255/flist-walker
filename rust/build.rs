@@ -45,16 +45,17 @@ fn main() {
         return;
     }
 
-    let Some(rgba) = render_svg_icon_rgba(256) else {
-        panic!("failed to render SVG icon for Windows resource");
-    };
-
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set"));
     let ico_path = out_dir.join("flistwalker.ico");
-    let image = IconImage::from_rgba_data(256, 256, rgba);
-    let entry = IconDirEntry::encode(&image).expect("encode ico entry");
     let mut icon_dir = IconDir::new(ResourceType::Icon);
-    icon_dir.add_entry(entry);
+    for size in [16, 24, 32, 48, 64, 128, 256] {
+        let Some(rgba) = render_svg_icon_rgba(size) else {
+            panic!("failed to render SVG icon for Windows resource at {size}px");
+        };
+        let image = IconImage::from_rgba_data(size, size, rgba);
+        let entry = IconDirEntry::encode(&image).expect("encode ico entry");
+        icon_dir.add_entry(entry);
+    }
     let mut file = File::create(&ico_path).expect("create .ico");
     icon_dir.write(&mut file).expect("write .ico");
 
