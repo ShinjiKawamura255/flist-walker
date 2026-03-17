@@ -208,8 +208,11 @@ Explorer アイコン埋め込みも WSL 側で行うため、PowerShell や Win
 - `x86_64-w64-mingw32-ar`
 - `x86_64-w64-mingw32-ranlib`
 - `x86_64-w64-mingw32-windres`
+- `x86_64-w64-mingw32-strip`
 
 Ubuntu / Debian 系では `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64` で揃います。
+
+release profile では `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, `strip = "symbols"` を適用し、さらにビルド後に `x86_64-w64-mingw32-strip` を実行して Windows GNU バイナリサイズを抑えます。
 
 クリーンビルド:
 

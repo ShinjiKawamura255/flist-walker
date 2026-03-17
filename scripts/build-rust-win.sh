@@ -9,6 +9,13 @@ TARGET="$(flistwalker_windows_target)"
 BUILT_EXE_PATH="${RUST_DIR}/target/${TARGET}/release/flistwalker.exe"
 EXE_PATH="${RUST_DIR}/target/${TARGET}/release/FlistWalker.exe"
 
+same_file_identity() {
+  local left="$1"
+  local right="$2"
+  [[ -e "${left}" && -e "${right}" ]] || return 1
+  [[ "$(stat -c '%d:%i' "${left}")" == "$(stat -c '%d:%i' "${right}")" ]]
+}
+
 if [[ ! -d "${RUST_DIR}" ]]; then
   echo "rust directory not found: ${RUST_DIR}" >&2
   exit 1
@@ -47,6 +54,13 @@ fi
 if [[ ! -f "${EXE_PATH}" ]]; then
   echo "Build finished but artifact not found: ${EXE_PATH}" >&2
   exit 1
+fi
+
+echo "==> Strip Windows GNU executable"
+"${FLISTWALKER_WINDOWS_STRIP}" "${EXE_PATH}"
+if [[ -f "${BUILT_EXE_PATH}" && "${BUILT_EXE_PATH}" != "${EXE_PATH}" ]] \
+  && ! same_file_identity "${BUILT_EXE_PATH}" "${EXE_PATH}"; then
+  cp -f "${EXE_PATH}" "${BUILT_EXE_PATH}"
 fi
 
 echo "==> Built: ${EXE_PATH}"

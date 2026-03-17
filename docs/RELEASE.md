@@ -84,7 +84,9 @@
   - `x86_64-w64-mingw32-ar`
   - `x86_64-w64-mingw32-ranlib`
   - `x86_64-w64-mingw32-windres`
+  - `x86_64-w64-mingw32-strip`
 - Ubuntu / Debian 系: `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64`
+- release profile は `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, `strip = "symbols"` を使い、ビルド後に `x86_64-w64-mingw32-strip` で最終 EXE を追加圧縮する
 
 2. リリースアセットを生成する。
 - WSL/Linux: `./scripts/prepare-release.sh v0.2.0`
