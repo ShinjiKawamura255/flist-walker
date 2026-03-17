@@ -1,3 +1,6 @@
+#[path = "../windows_resource_build.rs"]
+mod windows_resource_build;
+
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -143,4 +146,30 @@ fn cli_returns_non_zero_when_root_is_file() {
     assert!(stderr.contains("root is not a directory"));
 
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_gnu_build_links_windows_icon_into_final_exe() {
+    let directives = windows_resource_build::cargo_directives_for_windows_resource_bin(
+        "gnu",
+        windows_resource_build::WINDOWS_GUI_BIN_NAME,
+        std::path::Path::new("/tmp/flistwalker-build"),
+    );
+
+    assert_eq!(directives.len(), 1);
+    assert_eq!(
+        directives[0],
+        "cargo:rustc-link-arg-bin=flistwalker=/tmp/flistwalker-build/resource.o"
+    );
+}
+
+#[test]
+fn non_gnu_build_does_not_emit_bin_specific_resource_linking() {
+    let directives = windows_resource_build::cargo_directives_for_windows_resource_bin(
+        "msvc",
+        windows_resource_build::WINDOWS_GUI_BIN_NAME,
+        std::path::Path::new("/tmp/flistwalker-build"),
+    );
+
+    assert!(directives.is_empty());
 }

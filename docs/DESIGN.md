@@ -31,7 +31,7 @@
 
 - DES-012 CI / Release Hygiene
 - 役割: release 対象 OS の CI 継続検証、依存脆弱性検査、notarization 運用の文書化。
-- 実装: `.github/workflows/ci-cross-platform.yml`, `docs/RELEASE.md`, `.github/release-template.md`
+- 実装: `.github/workflows/ci-cross-platform.yml`, `docs/RELEASE.md`, `.github/release-template.md`, `rust/build.rs`
 
 - DES-013 Result Sort Controller
 - 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
@@ -137,6 +137,7 @@
 - DES-012 CI / Release Hygiene
 - 通常 CI matrix に Linux を追加し、release 対象 OS と同じ観点で `cargo test --locked` を継続実行する。
 - 依存脆弱性は `cargo audit` を CI で必須実行し、既知 CVE の流入を早期検知する。
+- `x86_64-pc-windows-gnu` では `windres` が生成する `resource.o` を `flistwalker` バイナリへ直接リンクし、ライブラリターゲットだけに閉じた resource link で Explorer アイコンが欠落しないようにする。
 - macOS notarization は現段階では手動ゲートとして維持し、draft release 作成後に docs / template で確認手順を明示する。
 
 ## Error handling / timeout / logging / metrics

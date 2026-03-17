@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use ico::{IconDir, IconDirEntry, IconImage, ResourceType};
 use resvg::{tiny_skia, usvg};
 
+mod windows_resource_build;
+
 fn render_svg_icon_rgba(size: u32) -> Option<Vec<u8>> {
     let svg = include_bytes!("assets/flistwalker-icon.svg");
     let tree = usvg::Tree::from_data(svg, &usvg::Options::default()).ok()?;
@@ -75,6 +77,15 @@ fn main() {
             res.set_ar_path(ar.to_str().expect("ar path utf-8"));
             res.compile()
                 .expect("failed to embed Windows icon resource with windres");
+            // cargo:rustc-link-lib reaches only this package's library target, so GNU builds
+            // must also link the generated resource object into the final GUI EXE explicitly.
+            for directive in windows_resource_build::cargo_directives_for_windows_resource_bin(
+                &target_env,
+                windows_resource_build::WINDOWS_GUI_BIN_NAME,
+                &out_dir,
+            ) {
+                println!("{directive}");
+            }
         } else {
             println!(
                 "cargo:warning=skipping Windows EXE icon embedding on non-Windows GNU host \

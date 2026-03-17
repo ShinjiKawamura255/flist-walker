@@ -91,6 +91,7 @@
 | TC-061 | unit | `created()` 取得不可の項目は `Created` ソート時に末尾へ送る | SP-013 |
 | TC-062 | manual | 結果ペインの `Sort` UI から各ソートを選択でき、`Modified` / `Created` 中も入力が継続できる | SP-010, SP-013 |
 | TC-063 | perf | ソート機能追加後もインデクシング時の属性取得数を増やさず、既存の逐次表示挙動を維持する | SP-007, SP-013 |
+| TC-065 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -127,6 +128,12 @@
 - 期待動作: 検索窓フォーカス有無に関わらず、`Ctrl+J` / `Ctrl+M` は実行、`ArrowUp` / `ArrowDown` は current row 移動、`Ctrl+I` は PIN トグルを行う。
 - 非対象範囲: IME 合成中は既存仕様通りフォーカス優先で一部ショートカットを抑制する。
 - 関連テストID: TC-026, TC-027, TC-028.
+
+## Regression Guard
+- 発生条件: `msvc` から `x86_64-pc-windows-gnu` へ切り替えた後、`windres` 生成物が最終 `flistwalker.exe` に入らず Windows Explorer で既定アイコン表示になる。
+- 期待動作: GNU Windows ビルドでは `resource.o` を最終 `flistwalker` バイナリへ直接リンクし、Explorer 上で埋め込みアイコンが表示される。
+- 非対象範囲: 実行中ウィンドウアイコン、`.lnk` ショートカット個別設定、ファイル関連付けアイコン。
+- 関連テストID: TC-065.
 
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
@@ -188,3 +195,4 @@
 - TC-061 -> SP-013 -> DES-013 -> FR-012
 - TC-062 -> SP-010, SP-013 -> DES-009, DES-013 -> FR-007, FR-012
 - TC-063 -> SP-007, SP-013 -> DES-006, DES-013 -> FR-013, NFR-006
+- TC-065 -> SP-012 -> DES-012 -> NFR-005
