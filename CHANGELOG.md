@@ -10,7 +10,29 @@
 - 
 
 ### Fixed
-- GitHub Actions の release asset 集約が macOS `.app` bundle 内部の `FlistWalker` / `Info.plist` / `FlistWalker.icns` まで拾ってしまう問題を修正した。
+- 
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
+## [0.11.2] - 2026-03-17
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- Windows GNU ビルドで生成した EXE に複数サイズのアイコンを埋め込み、Explorer / タスクバー / 通知領域で `flist-walker` のアイコンが汎用アイコンへ化ける問題を修正した。
 
 ### Breaking
 - 
