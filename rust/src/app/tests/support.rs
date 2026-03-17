@@ -41,7 +41,10 @@ pub(super) fn run_shortcuts_frame(
         events,
         ..Default::default()
     });
-    app.handle_shortcuts_with_focus(&ctx, query_focused);
+    if query_focused {
+        ctx.memory_mut(|m| m.request_focus(app.query_input_id));
+    }
+    app.handle_shortcuts(&ctx);
     app.run_deferred_shortcuts(&ctx);
     let _ = ctx.end_frame();
 }

@@ -1,6 +1,18 @@
 use super::*;
 
 impl FlistWalkerApp {
+    fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
+        let mut button = egui::Button::new(label);
+        if selected {
+            button = button.fill(if ui.visuals().dark_mode {
+                egui::Color32::from_rgb(48, 53, 62)
+            } else {
+                egui::Color32::from_rgb(228, 232, 238)
+            });
+        }
+        ui.add(button)
+    }
+
     pub(super) fn top_action_labels(&self) -> Vec<&'static str> {
         if self.history_search_active {
             return vec!["Apply History", "Cancel History Search"];
@@ -705,27 +717,42 @@ impl FlistWalkerApp {
         let mut overwrite = false;
         let mut cancel_overwrite = false;
         let current_tab_id = self.current_tab_id().unwrap_or_default();
-        if let Some(pending) = &self.pending_filelist_confirmation {
-            if pending.tab_id == current_tab_id {
+        if let Some(existing_path) = self
+            .pending_filelist_confirmation
+            .as_ref()
+            .filter(|pending| pending.tab_id == current_tab_id)
+            .map(|pending| pending.existing_path.clone())
+        {
+                self.sync_filelist_dialog_selection(FileListDialogKind::Overwrite);
                 egui::Window::new("Overwrite FileList?")
                     .collapsible(false)
                     .resizable(false)
                     .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
                     .show(ctx, |ui| {
-                        ui.label(format!(
-                            "{} already exists. Overwrite it?",
-                            pending.existing_path.display()
-                        ));
+                        ui.label(format!("{} already exists. Overwrite it?", existing_path.display()));
                         ui.horizontal(|ui| {
-                            if ui.button("Overwrite").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Overwrite",
+                                    self.active_filelist_dialog_button == 0,
+                                )
+                                .clicked()
+                            {
                                 overwrite = true;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Cancel",
+                                    self.active_filelist_dialog_button == 1,
+                                )
+                                .clicked()
+                            {
                                 cancel_overwrite = true;
                             }
                         });
                     });
-            }
         }
         if overwrite {
             self.confirm_pending_filelist_overwrite();
@@ -736,8 +763,12 @@ impl FlistWalkerApp {
         let mut confirm_ancestor = false;
         let mut current_root_only = false;
         let mut cancel_ancestor = false;
-        if let Some(pending) = &self.pending_filelist_ancestor_confirmation {
-            if pending.tab_id == current_tab_id {
+        if self
+            .pending_filelist_ancestor_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == current_tab_id)
+        {
+                self.sync_filelist_dialog_selection(FileListDialogKind::Ancestor);
                 egui::Window::new("Update Ancestor FileLists?")
                     .collapsible(false)
                     .resizable(false)
@@ -748,18 +779,38 @@ impl FlistWalkerApp {
                             "Continue は祖先も更新し、Current Root Only は現在 root の FileList だけを作成します。",
                         );
                         ui.horizontal(|ui| {
-                            if ui.button("Continue").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Continue",
+                                    self.active_filelist_dialog_button == 0,
+                                )
+                                .clicked()
+                            {
                                 confirm_ancestor = true;
                             }
-                            if ui.button("Current Root Only").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Current Root Only",
+                                    self.active_filelist_dialog_button == 1,
+                                )
+                                .clicked()
+                            {
                                 current_root_only = true;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Cancel",
+                                    self.active_filelist_dialog_button == 2,
+                                )
+                                .clicked()
+                            {
                                 cancel_ancestor = true;
                             }
                         });
                     });
-            }
         }
         if confirm_ancestor {
             self.confirm_pending_filelist_ancestor_propagation();
@@ -771,8 +822,12 @@ impl FlistWalkerApp {
 
         let mut confirm_walker = false;
         let mut cancel_walker = false;
-        if let Some(pending) = &self.pending_filelist_use_walker_confirmation {
-            if pending.source_tab_id == current_tab_id {
+        if self
+            .pending_filelist_use_walker_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.source_tab_id == current_tab_id)
+        {
+                self.sync_filelist_dialog_selection(FileListDialogKind::UseWalker);
                 egui::Window::new("Create File List?")
                     .collapsible(false)
                     .resizable(false)
@@ -785,20 +840,36 @@ impl FlistWalkerApp {
                             "FileListインデックスからは生成しません。新規タブで実行しますか？",
                         );
                         ui.horizontal(|ui| {
-                            if ui.button("Continue").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Continue",
+                                    self.active_filelist_dialog_button == 0,
+                                )
+                                .clicked()
+                            {
                                 confirm_walker = true;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if self
+                                .dialog_button(
+                                    ui,
+                                    "Cancel",
+                                    self.active_filelist_dialog_button == 1,
+                                )
+                                .clicked()
+                            {
                                 cancel_walker = true;
                             }
                         });
                     });
-            }
         }
         if confirm_walker {
             self.confirm_pending_filelist_use_walker();
         } else if cancel_walker {
             self.cancel_pending_filelist_use_walker();
+        }
+        if self.current_filelist_dialog_kind().is_none() {
+            self.clear_filelist_dialog_selection();
         }
     }
 

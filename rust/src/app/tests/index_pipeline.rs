@@ -1273,6 +1273,105 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
 }
 
 #[test]
+fn dialog_arrow_keys_move_dialog_selection_not_results() {
+    let root = test_root("dialog-arrow-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
+    app.current_row = Some(1);
+    app.pending_filelist_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+        entries: vec![root.join("a.txt")],
+    });
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::ArrowRight,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+
+    assert_eq!(app.current_row, Some(1));
+    assert_eq!(app.active_filelist_dialog, Some(FileListDialogKind::Ancestor));
+    assert_eq!(app.active_filelist_dialog_button, 1);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dialog_space_confirms_selected_dialog_action() {
+    let root = test_root("dialog-space-confirm");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.filelist_tx = filelist_tx;
+    app.pending_filelist_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+        entries: vec![root.join("a.txt")],
+    });
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::ArrowRight,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::Space,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+
+    let req = filelist_rx.try_recv().expect("filelist request should be sent");
+    assert!(!req.propagate_to_ancestors);
+    assert!(app.pending_filelist_ancestor_confirmation.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dialog_enter_confirms_without_triggering_main_window_action() {
+    let root = test_root("dialog-enter-confirm");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.results = vec![(root.join("a.txt"), 0.0)];
+    app.current_row = Some(0);
+    app.pending_filelist_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
+        source_tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+    });
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::Enter,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+
+    assert_eq!(app.tabs.len(), 2);
+    assert!(app.pending_filelist_use_walker_confirmation.is_none());
+    assert!(app.notice.contains("Preparing Walker index"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn preempt_background_when_active_index_is_queued() {
     let root = test_root("index-preempt-active-priority");
     fs::create_dir_all(&root).expect("create dir");

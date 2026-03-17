@@ -222,6 +222,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        if self.handle_filelist_dialog_shortcuts(ctx) {
+            return;
+        }
         let query_focused = ctx.memory(|m| m.has_focus(self.query_input_id));
         self.handle_shortcuts_with_focus(ctx, query_focused);
     }
@@ -277,6 +280,131 @@ impl FlistWalkerApp {
         }
         #[cfg(not(target_os = "macos"))]
         false
+    }
+
+    pub(super) fn current_filelist_dialog_kind(&self) -> Option<FileListDialogKind> {
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
+        if self
+            .pending_filelist_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == current_tab_id)
+        {
+            return Some(FileListDialogKind::Overwrite);
+        }
+        if self
+            .pending_filelist_ancestor_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == current_tab_id)
+        {
+            return Some(FileListDialogKind::Ancestor);
+        }
+        if self
+            .pending_filelist_use_walker_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.source_tab_id == current_tab_id)
+        {
+            return Some(FileListDialogKind::UseWalker);
+        }
+        None
+    }
+
+    fn filelist_dialog_button_count(kind: FileListDialogKind) -> usize {
+        match kind {
+            FileListDialogKind::Overwrite => 2,
+            FileListDialogKind::Ancestor => 3,
+            FileListDialogKind::UseWalker => 2,
+        }
+    }
+
+    pub(super) fn sync_filelist_dialog_selection(&mut self, kind: FileListDialogKind) {
+        let button_count = Self::filelist_dialog_button_count(kind);
+        if self.active_filelist_dialog != Some(kind) {
+            self.active_filelist_dialog = Some(kind);
+            self.active_filelist_dialog_button = 0;
+            return;
+        }
+        self.active_filelist_dialog_button %= button_count;
+    }
+
+    pub(super) fn clear_filelist_dialog_selection(&mut self) {
+        self.active_filelist_dialog = None;
+        self.active_filelist_dialog_button = 0;
+    }
+
+    fn activate_selected_filelist_dialog_button(&mut self) {
+        match (
+            self.active_filelist_dialog,
+            self.active_filelist_dialog_button,
+        ) {
+            (Some(FileListDialogKind::Overwrite), 0) => self.confirm_pending_filelist_overwrite(),
+            (Some(FileListDialogKind::Overwrite), _) => self.cancel_pending_filelist_overwrite(),
+            (Some(FileListDialogKind::Ancestor), 0) => {
+                self.confirm_pending_filelist_ancestor_propagation()
+            }
+            (Some(FileListDialogKind::Ancestor), 1) => {
+                self.skip_pending_filelist_ancestor_propagation()
+            }
+            (Some(FileListDialogKind::Ancestor), _) => {
+                self.cancel_pending_filelist_ancestor_confirmation()
+            }
+            (Some(FileListDialogKind::UseWalker), 0) => {
+                self.confirm_pending_filelist_use_walker()
+            }
+            (Some(FileListDialogKind::UseWalker), _) => self.cancel_pending_filelist_use_walker(),
+            (None, _) => {}
+        }
+    }
+
+    fn cancel_active_filelist_dialog(&mut self) {
+        match self.active_filelist_dialog {
+            Some(FileListDialogKind::Overwrite) => self.cancel_pending_filelist_overwrite(),
+            Some(FileListDialogKind::Ancestor) => self.cancel_pending_filelist_ancestor_confirmation(),
+            Some(FileListDialogKind::UseWalker) => self.cancel_pending_filelist_use_walker(),
+            None => {}
+        }
+    }
+
+    fn move_filelist_dialog_selection(&mut self, delta: isize) {
+        let Some(kind) = self.active_filelist_dialog else {
+            return;
+        };
+        let count = Self::filelist_dialog_button_count(kind) as isize;
+        let current = self.active_filelist_dialog_button as isize;
+        self.active_filelist_dialog_button = (current + delta).rem_euclid(count) as usize;
+    }
+
+    fn handle_filelist_dialog_shortcuts(&mut self, ctx: &egui::Context) -> bool {
+        let Some(kind) = self.current_filelist_dialog_kind() else {
+            self.clear_filelist_dialog_selection();
+            return false;
+        };
+        self.sync_filelist_dialog_selection(kind);
+
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            self.cancel_active_filelist_dialog();
+            return true;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab))
+        {
+            self.move_filelist_dialog_selection(-1);
+            return true;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab))
+        {
+            self.move_filelist_dialog_selection(1);
+            return true;
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
+        {
+            self.activate_selected_filelist_dialog_button();
+            return true;
+        }
+        true
     }
 
     pub(super) fn handle_shortcuts_with_focus(&mut self, ctx: &egui::Context, query_focused: bool) {

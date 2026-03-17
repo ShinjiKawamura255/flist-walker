@@ -239,6 +239,13 @@ struct PendingFileListUseWalkerConfirmation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FileListDialogKind {
+    Overwrite,
+    Ancestor,
+    UseWalker,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct TabDragState {
     source_index: usize,
     hover_index: usize,
@@ -336,6 +343,8 @@ pub struct FlistWalkerApp {
     ime_composition_active: bool,
     prev_space_down: bool,
     query_input_id: egui::Id,
+    active_filelist_dialog: Option<FileListDialogKind>,
+    active_filelist_dialog_button: usize,
     tab_drag_state: Option<TabDragState>,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
@@ -637,6 +646,8 @@ Search hints:
             ime_composition_active: false,
             prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
+            active_filelist_dialog: None,
+            active_filelist_dialog_button: 0,
             tab_drag_state: None,
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
