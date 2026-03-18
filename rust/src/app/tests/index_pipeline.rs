@@ -1297,7 +1297,10 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
     );
 
     assert_eq!(app.current_row, Some(1));
-    assert_eq!(app.active_filelist_dialog, Some(FileListDialogKind::Ancestor));
+    assert_eq!(
+        app.active_filelist_dialog,
+        Some(FileListDialogKind::Ancestor)
+    );
     assert_eq!(app.active_filelist_dialog_button, 1);
     let _ = fs::remove_dir_all(&root);
 }
@@ -1336,7 +1339,9 @@ fn dialog_space_confirms_selected_dialog_action() {
         }],
     );
 
-    let req = filelist_rx.try_recv().expect("filelist request should be sent");
+    let req = filelist_rx
+        .try_recv()
+        .expect("filelist request should be sent");
     assert!(!req.propagate_to_ancestors);
     assert!(app.pending_filelist_ancestor_confirmation.is_none());
     let _ = fs::remove_dir_all(&root);

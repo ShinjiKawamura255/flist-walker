@@ -347,9 +347,7 @@ impl FlistWalkerApp {
             (Some(FileListDialogKind::Ancestor), _) => {
                 self.cancel_pending_filelist_ancestor_confirmation()
             }
-            (Some(FileListDialogKind::UseWalker), 0) => {
-                self.confirm_pending_filelist_use_walker()
-            }
+            (Some(FileListDialogKind::UseWalker), 0) => self.confirm_pending_filelist_use_walker(),
             (Some(FileListDialogKind::UseWalker), _) => self.cancel_pending_filelist_use_walker(),
             (None, _) => {}
         }
@@ -358,7 +356,9 @@ impl FlistWalkerApp {
     fn cancel_active_filelist_dialog(&mut self) {
         match self.active_filelist_dialog {
             Some(FileListDialogKind::Overwrite) => self.cancel_pending_filelist_overwrite(),
-            Some(FileListDialogKind::Ancestor) => self.cancel_pending_filelist_ancestor_confirmation(),
+            Some(FileListDialogKind::Ancestor) => {
+                self.cancel_pending_filelist_ancestor_confirmation()
+            }
             Some(FileListDialogKind::UseWalker) => self.cancel_pending_filelist_use_walker(),
             None => {}
         }

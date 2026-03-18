@@ -622,6 +622,7 @@ impl FlistWalkerApp {
                         self.preview_cache_total_bytes = 0;
                     }
                     self.mark_ui_state_dirty();
+                    self.persist_ui_state_now();
                 }
                 ui.separator();
                 ui.label(self.source_text());

@@ -42,6 +42,28 @@ fn startup_index_request_is_bound_to_active_tab() {
 }
 
 #[test]
+fn persist_ui_state_now_saves_preview_visibility_immediately() {
+    let root = test_root("persist-preview-visibility");
+    let ui_state_dir = test_root("persist-preview-visibility-ui");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.show_preview = false;
+    app.mark_ui_state_dirty();
+    app.persist_ui_state_to_path_now(&ui_state_path);
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
+    assert!(!launch.show_preview);
+    assert!(!app.ui_state_dirty);
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn move_row_sets_scroll_tracking() {
     let root = test_root("scroll");
     fs::create_dir_all(&root).expect("create dir");

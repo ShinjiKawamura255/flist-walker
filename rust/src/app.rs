@@ -1617,6 +1617,19 @@ Search hints:
         }
     }
 
+    fn persist_ui_state_now(&mut self) {
+        self.save_ui_state();
+        self.ui_state_dirty = false;
+        self.last_ui_state_save = Instant::now();
+    }
+
+    #[cfg(test)]
+    fn persist_ui_state_to_path_now(&mut self, path: &Path) {
+        self.save_ui_state_to_path(path);
+        self.ui_state_dirty = false;
+        self.last_ui_state_save = Instant::now();
+    }
+
     fn to_stable_window_geometry(geom: SavedWindowGeometry) -> SavedWindowGeometry {
         let round = |v: f32| (v * 10.0).round() / 10.0;
         let mut width = round(geom.width.max(640.0));
@@ -1866,9 +1879,7 @@ Search hints:
         let root = Self::normalize_windows_path(root);
         self.default_root = Some(root.clone());
         self.mark_ui_state_dirty();
-        self.save_ui_state();
-        self.ui_state_dirty = false;
-        self.last_ui_state_save = Instant::now();
+        self.persist_ui_state_now();
         self.set_notice(format!("Set default root: {}", root.display()));
     }
 
