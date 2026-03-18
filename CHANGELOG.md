@@ -24,6 +24,31 @@
 ### Known issues
 - 
 
+## [0.11.4] - 2026-03-18
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- タブドラッグ移動の追加後に、通常のマウスクリックでタブ切り替えできなくなっていた問題を修正した。
+- 結果ソートのプルダウンで `Modified` / `Created` 項目が折り返されて 2 行表示になる問題を修正した。
+- worker shutdown 時に `sort-metadata` request channel の切り離しが漏れ、終了時に timeout しやすい問題を修正した。
+- macOS で `Preview` 表示設定がアプリ再起動後に引き継がれない問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
 ## [0.11.3] - 2026-03-17
 ### Added
 - 
