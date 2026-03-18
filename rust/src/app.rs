@@ -1459,6 +1459,16 @@ Search hints:
         self.switch_to_tab_index(next);
     }
 
+    fn activate_tab_shortcut(&mut self, shortcut_number: usize) {
+        let Some(target_index) = shortcut_number.checked_sub(1) else {
+            return;
+        };
+        if target_index >= self.tabs.len() || target_index >= 9 {
+            return;
+        }
+        self.switch_to_tab_index(target_index);
+    }
+
     fn tab_root_label(root: &Path) -> String {
         let normalized = Self::normalize_windows_path(root.to_path_buf());
         let raw = normalized.to_string_lossy().to_string();

@@ -68,6 +68,14 @@ pub(super) fn gui_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     }
 }
 
+pub(super) fn tab_switch_shortcut_modifiers(shift: bool) -> egui::Modifiers {
+    egui::Modifiers {
+        ctrl: true,
+        shift,
+        ..Default::default()
+    }
+}
+
 pub(super) fn emacs_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     egui::Modifiers {
         ctrl: true,

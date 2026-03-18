@@ -258,6 +258,19 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn consume_tab_switch_shortcut(
+        ctx: &egui::Context,
+        key: egui::Key,
+        shift: bool,
+    ) -> bool {
+        let mods = egui::Modifiers {
+            ctrl: true,
+            shift,
+            ..Default::default()
+        };
+        ctx.input_mut(|i| i.consume_key(mods, key))
+    }
+
     pub(super) fn consume_emacs_shortcut(ctx: &egui::Context, key: egui::Key, shift: bool) -> bool {
         let mods = egui::Modifiers {
             ctrl: true,
@@ -416,13 +429,29 @@ impl FlistWalkerApp {
             self.close_active_tab();
             return;
         }
-        if Self::consume_gui_shortcut(ctx, egui::Key::Tab, true) {
+        if Self::consume_tab_switch_shortcut(ctx, egui::Key::Tab, true) {
             self.activate_previous_tab();
             return;
         }
-        if Self::consume_gui_shortcut(ctx, egui::Key::Tab, false) {
+        if Self::consume_tab_switch_shortcut(ctx, egui::Key::Tab, false) {
             self.activate_next_tab();
             return;
+        }
+        for (shortcut_number, key) in [
+            (1, egui::Key::Num1),
+            (2, egui::Key::Num2),
+            (3, egui::Key::Num3),
+            (4, egui::Key::Num4),
+            (5, egui::Key::Num5),
+            (6, egui::Key::Num6),
+            (7, egui::Key::Num7),
+            (8, egui::Key::Num8),
+            (9, egui::Key::Num9),
+        ] {
+            if Self::consume_gui_shortcut(ctx, key, false) {
+                self.activate_tab_shortcut(shortcut_number);
+                return;
+            }
         }
         if Self::consume_gui_shortcut(ctx, egui::Key::L, false) {
             if query_focused {

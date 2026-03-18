@@ -363,7 +363,7 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
             key: egui::Key::Tab,
             pressed: true,
             repeat: false,
-            modifiers: gui_shortcut_modifiers(false),
+            modifiers: tab_switch_shortcut_modifiers(false),
         }],
     );
     assert_eq!(app.active_tab, 0);
@@ -375,10 +375,60 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
             key: egui::Key::Tab,
             pressed: true,
             repeat: false,
-            modifiers: gui_shortcut_modifiers(true),
+            modifiers: tab_switch_shortcut_modifiers(true),
         }],
     );
     assert_eq!(app.active_tab, 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ctrl_number_switches_to_matching_tab_from_left() {
+    let root = test_root("shortcut-ctrl-number-tab-switch");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    app.create_new_tab();
+    assert_eq!(app.tabs.len(), 4);
+    assert_eq!(app.active_tab, 3);
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::Num2,
+            pressed: true,
+            repeat: false,
+            modifiers: gui_shortcut_modifiers(false),
+        }],
+    );
+
+    assert_eq!(app.active_tab, 1);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ctrl_number_without_matching_tab_does_not_switch() {
+    let root = test_root("shortcut-ctrl-number-no-tab");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    assert_eq!(app.tabs.len(), 2);
+    assert_eq!(app.active_tab, 1);
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::Num3,
+            pressed: true,
+            repeat: false,
+            modifiers: gui_shortcut_modifiers(false),
+        }],
+    );
+
+    assert_eq!(app.active_tab, 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -663,7 +713,7 @@ fn background_tab_switch_does_not_stop_indexing_progress() {
             key: egui::Key::Tab,
             pressed: true,
             repeat: false,
-            modifiers: gui_shortcut_modifiers(true),
+            modifiers: tab_switch_shortcut_modifiers(true),
         }],
     );
 
