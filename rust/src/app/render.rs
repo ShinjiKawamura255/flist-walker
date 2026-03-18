@@ -1,6 +1,8 @@
 use super::*;
 
 impl FlistWalkerApp {
+    const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
+
     fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
         let mut button = egui::Button::new(label);
         if selected {
@@ -114,8 +116,10 @@ impl FlistWalkerApp {
                 |ui| {
                     let mut selected = self.result_sort_mode;
                     egui::ComboBox::from_id_source("results-sort-selector")
+                        .width(Self::RESULT_SORT_SELECTOR_WIDTH)
                         .selected_text(selected.label())
                         .show_ui(ui, |ui| {
+                            ui.set_min_width(Self::RESULT_SORT_SELECTOR_WIDTH);
                             for mode in [
                                 ResultSortMode::Score,
                                 ResultSortMode::NameAsc,
