@@ -530,29 +530,29 @@ Search hints:
         let mut worker_runtime = WorkerRuntime::new(Arc::clone(&worker_shutdown));
         let (search_tx, search_rx, search_handle) =
             spawn_search_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push(search_handle);
+        worker_runtime.push("search", search_handle);
         let (preview_tx, preview_rx, preview_handle) =
             spawn_preview_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push(preview_handle);
+        worker_runtime.push("preview", preview_handle);
         let (action_tx, action_rx, action_handle) =
             spawn_action_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push(action_handle);
+        worker_runtime.push("action", action_handle);
         let (sort_tx, sort_rx, sort_handle) =
             spawn_sort_metadata_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push(sort_handle);
+        worker_runtime.push("sort-metadata", sort_handle);
         let (kind_tx, kind_rx, kind_handle) =
             spawn_kind_resolver_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push(kind_handle);
+        worker_runtime.push("kind-resolver", kind_handle);
         let (filelist_tx, filelist_rx, filelist_handle) =
             spawn_filelist_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push(filelist_handle);
+        worker_runtime.push("filelist", filelist_handle);
         let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
         let (index_tx, index_rx, index_handles) = spawn_index_worker(
             Arc::clone(&worker_shutdown),
             Arc::clone(&latest_index_request_ids),
         );
-        for handle in index_handles {
-            worker_runtime.push(handle);
+        for (idx, handle) in index_handles.into_iter().enumerate() {
+            worker_runtime.push(format!("index-{idx}"), handle);
         }
         let mut app = Self {
             root: Self::normalize_windows_path(root),
@@ -3983,6 +3983,54 @@ Search hints:
     fn worker_join_timeout() -> Duration {
         Self::WORKER_JOIN_TIMEOUT
     }
+
+    fn disconnect_worker_channels(&mut self) {
+        let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
+        let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
+        let (dummy_action_tx, _) = mpsc::channel::<ActionRequest>();
+        let (dummy_sort_tx, _) = mpsc::channel::<SortMetadataRequest>();
+        let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
+        let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
+        let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
+        let old_search_tx = std::mem::replace(&mut self.search_tx, dummy_search_tx);
+        let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
+        let old_action_tx = std::mem::replace(&mut self.action_tx, dummy_action_tx);
+        let old_sort_tx = std::mem::replace(&mut self.sort_tx, dummy_sort_tx);
+        let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
+        let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
+        let old_index_tx = std::mem::replace(&mut self.index_tx, dummy_index_tx);
+        drop(old_search_tx);
+        drop(old_preview_tx);
+        drop(old_action_tx);
+        drop(old_sort_tx);
+        drop(old_kind_tx);
+        drop(old_filelist_tx);
+        drop(old_index_tx);
+    }
+
+    fn shutdown_workers_with_timeout(
+        &mut self,
+        timeout: Duration,
+        phase: &str,
+    ) -> Option<WorkerJoinSummary> {
+        let runtime = self.worker_runtime.as_ref()?;
+        runtime.request_shutdown();
+        self.disconnect_worker_channels();
+        let runtime = self.worker_runtime.take()?;
+        let summary = runtime.join_all_with_timeout(timeout);
+        if summary.joined < summary.total {
+            let pending = if summary.pending.is_empty() {
+                "unknown".to_string()
+            } else {
+                summary.pending.join(", ")
+            };
+            eprintln!(
+                "Worker shutdown timeout during {phase}: joined {}/{} threads within {:?}; pending: {pending}",
+                summary.joined, summary.total, timeout
+            );
+        }
+        Some(summary)
+    }
 }
 
 impl eframe::App for FlistWalkerApp {
@@ -4029,46 +4077,21 @@ impl eframe::App for FlistWalkerApp {
         self.render_central_panel(ctx);
         self.maybe_save_ui_state(false);
     }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.apply_stable_window_geometry(true);
+        self.ui_state_dirty = true;
+        self.maybe_save_ui_state(true);
+        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, "app exit");
+    }
 }
 
 impl Drop for FlistWalkerApp {
     fn drop(&mut self) {
-        if let Some(runtime) = &self.worker_runtime {
-            runtime.request_shutdown();
-        }
-        let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
-        let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
-        let (dummy_action_tx, _) = mpsc::channel::<ActionRequest>();
-        let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
-        let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
-        let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
-        let old_search_tx = std::mem::replace(&mut self.search_tx, dummy_search_tx);
-        let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
-        let old_action_tx = std::mem::replace(&mut self.action_tx, dummy_action_tx);
-        let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
-        let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
-        let old_index_tx = std::mem::replace(&mut self.index_tx, dummy_index_tx);
-        drop(old_search_tx);
-        drop(old_preview_tx);
-        drop(old_action_tx);
-        drop(old_kind_tx);
-        drop(old_filelist_tx);
-        drop(old_index_tx);
-
         self.apply_stable_window_geometry(true);
         self.ui_state_dirty = true;
         self.maybe_save_ui_state(true);
-        if let Some(runtime) = self.worker_runtime.take() {
-            let summary = runtime.join_all_with_timeout(Self::WORKER_JOIN_TIMEOUT);
-            if summary.joined < summary.total {
-                eprintln!(
-                    "Worker shutdown timeout: joined {}/{} threads within {:?}",
-                    summary.joined,
-                    summary.total,
-                    Self::WORKER_JOIN_TIMEOUT
-                );
-            }
-        }
+        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, "drop fallback");
     }
 }
 

@@ -17,13 +17,19 @@ use std::time::{Duration, Instant};
 
 pub(super) struct WorkerRuntime {
     shutdown: Arc<AtomicBool>,
-    handles: Vec<thread::JoinHandle<()>>,
+    handles: Vec<NamedWorkerHandle>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct NamedWorkerHandle {
+    name: String,
+    handle: thread::JoinHandle<()>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct WorkerJoinSummary {
     pub(super) joined: usize,
     pub(super) total: usize,
+    pub(super) pending: Vec<String>,
 }
 
 impl WorkerRuntime {
@@ -34,8 +40,11 @@ impl WorkerRuntime {
         }
     }
 
-    pub(super) fn push(&mut self, handle: thread::JoinHandle<()>) {
-        self.handles.push(handle);
+    pub(super) fn push(&mut self, name: impl Into<String>, handle: thread::JoinHandle<()>) {
+        self.handles.push(NamedWorkerHandle {
+            name: name.into(),
+            handle,
+        });
     }
 
     pub(super) fn request_shutdown(&self) {
@@ -48,15 +57,23 @@ impl WorkerRuntime {
             return WorkerJoinSummary {
                 joined: 0,
                 total: 0,
+                pending: Vec::new(),
             };
         }
 
-        let (tx, rx) = mpsc::channel::<()>();
-        for handle in self.handles.drain(..) {
+        let (tx, rx) = mpsc::channel::<String>();
+        let mut pending = self
+            .handles
+            .iter()
+            .map(|handle| handle.name.clone())
+            .collect::<Vec<_>>();
+        for named_handle in self.handles.drain(..) {
             let tx_done = tx.clone();
+            let name = named_handle.name;
+            let handle = named_handle.handle;
             thread::spawn(move || {
                 let _ = handle.join();
-                let _ = tx_done.send(());
+                let _ = tx_done.send(name);
             });
         }
         drop(tx);
@@ -70,12 +87,19 @@ impl WorkerRuntime {
             }
             let remain = deadline.saturating_duration_since(now);
             match rx.recv_timeout(remain) {
-                Ok(()) => joined = joined.saturating_add(1),
+                Ok(name) => {
+                    joined = joined.saturating_add(1);
+                    pending.retain(|pending_name| pending_name != &name);
+                }
                 Err(_) => break,
             }
         }
 
-        WorkerJoinSummary { joined, total }
+        WorkerJoinSummary {
+            joined,
+            total,
+            pending,
+        }
     }
 }
 
@@ -665,20 +689,20 @@ pub(super) fn spawn_sort_metadata_worker(
                 req = newer;
             }
 
-            let entries = req
-                .paths
-                .into_iter()
-                .map(|path| {
-                    let metadata = std::fs::metadata(&path)
-                        .ok()
-                        .map(|meta| SortMetadata {
-                            modified: meta.modified().ok(),
-                            created: meta.created().ok(),
-                        })
-                        .unwrap_or_default();
-                    (path, metadata)
-                })
-                .collect::<Vec<_>>();
+            let mut entries = Vec::with_capacity(req.paths.len());
+            for path in req.paths {
+                if shutdown.load(Ordering::Relaxed) {
+                    return;
+                }
+                let metadata = std::fs::metadata(&path)
+                    .ok()
+                    .map(|meta| SortMetadata {
+                        modified: meta.modified().ok(),
+                        created: meta.created().ok(),
+                    })
+                    .unwrap_or_default();
+                entries.push((path, metadata));
+            }
 
             if tx_res
                 .send(SortMetadataResponse {
