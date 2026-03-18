@@ -245,10 +245,12 @@ enum FileListDialogKind {
     UseWalker,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct TabDragState {
     source_index: usize,
     hover_index: usize,
+    press_pos: egui::Pos2,
+    dragging: bool,
 }
 
 pub struct FlistWalkerApp {
@@ -384,6 +386,7 @@ impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
     const HIGHLIGHT_CACHE_MAX: usize = 256;
     const SORT_METADATA_CACHE_MAX: usize = 4096;
+    const TAB_DRAG_START_DISTANCE: f32 = 6.0;
     const QUERY_HISTORY_MAX: usize = 100;
     const QUERY_HISTORY_IDLE_DELAY: Duration = Duration::from_millis(400);
     const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);

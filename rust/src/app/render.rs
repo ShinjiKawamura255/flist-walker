@@ -371,11 +371,16 @@ impl FlistWalkerApp {
                             drag_state = Some(TabDragState {
                                 source_index: i,
                                 hover_index: i,
+                                press_pos: ui
+                                    .ctx()
+                                    .pointer_interact_pos()
+                                    .unwrap_or(title_response.rect.center()),
+                                dragging: false,
                             });
                         }
                         if title_response.clicked_by(egui::PointerButton::Middle) {
                             close_tab = Some(i);
-                        } else if title_response.clicked() && drag_state.is_none() {
+                        } else if title_response.clicked() {
                             switch_to = Some(i);
                         }
                         if close_response.clicked() {
@@ -385,38 +390,39 @@ impl FlistWalkerApp {
                 tab_rects.push(tab_response.response.rect);
             }
             if let Some(mut state) = drag_state {
-                if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
-                    if let Some(target) = Self::tab_drop_index(&tab_rects, pointer_pos) {
-                        state.hover_index = target;
+                let pointer_pos = ui
+                    .ctx()
+                    .pointer_interact_pos()
+                    .or_else(|| ui.input(|i| i.pointer.latest_pos()));
+                let primary_down = ui.ctx().input(|i| i.pointer.primary_down());
+
+                if let Some((from_index, to_index)) =
+                    self.update_tab_drag_state(&mut state, &tab_rects, pointer_pos, primary_down)
+                {
+                    reorder_tab = Some((from_index, to_index));
+                }
+
+                if state.dragging {
+                    if let Some(target_rect) = tab_rects.get(state.hover_index) {
+                        let indicator_x = target_rect.left();
+                        let indicator_top = target_rect.top() - 3.0;
+                        let indicator_bottom = target_rect.bottom() + 3.0;
+                        let stroke = egui::Stroke::new(3.0, ui.visuals().selection.stroke.color);
+                        ui.painter().line_segment(
+                            [
+                                egui::pos2(indicator_x, indicator_top),
+                                egui::pos2(indicator_x, indicator_bottom),
+                            ],
+                            stroke,
+                        );
+                        ui.painter().circle_filled(
+                            egui::pos2(indicator_x, indicator_top),
+                            4.0,
+                            ui.visuals().selection.stroke.color,
+                        );
+                        ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::Grabbing);
                     }
                 }
-                if let Some(target_rect) = tab_rects.get(state.hover_index) {
-                    let indicator_x = target_rect.left();
-                    let indicator_top = target_rect.top() - 3.0;
-                    let indicator_bottom = target_rect.bottom() + 3.0;
-                    let stroke = egui::Stroke::new(3.0, ui.visuals().selection.stroke.color);
-                    ui.painter().line_segment(
-                        [
-                            egui::pos2(indicator_x, indicator_top),
-                            egui::pos2(indicator_x, indicator_bottom),
-                        ],
-                        stroke,
-                    );
-                    ui.painter().circle_filled(
-                        egui::pos2(indicator_x, indicator_top),
-                        4.0,
-                        ui.visuals().selection.stroke.color,
-                    );
-                    ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::Grabbing);
-                }
-                if ui.ctx().input(|i| i.pointer.primary_down()) {
-                    self.tab_drag_state = Some(state);
-                } else {
-                    self.tab_drag_state = None;
-                    reorder_tab = Some((state.source_index, state.hover_index));
-                }
-            } else {
-                self.tab_drag_state = None;
             }
             if ui
                 .button("+")
@@ -450,6 +456,36 @@ impl FlistWalkerApp {
             }
         }
         Some(tab_rects.len().saturating_sub(1))
+    }
+
+    pub(super) fn update_tab_drag_state(
+        &mut self,
+        state: &mut TabDragState,
+        tab_rects: &[egui::Rect],
+        pointer_pos: Option<egui::Pos2>,
+        primary_down: bool,
+    ) -> Option<(usize, usize)> {
+        if primary_down {
+            if let Some(pointer_pos) = pointer_pos {
+                if !state.dragging
+                    && pointer_pos.distance(state.press_pos) >= Self::TAB_DRAG_START_DISTANCE
+                {
+                    state.dragging = true;
+                }
+                if state.dragging {
+                    if let Some(target) = Self::tab_drop_index(tab_rects, pointer_pos) {
+                        state.hover_index = target;
+                    }
+                }
+            }
+            self.tab_drag_state = Some(*state);
+            return None;
+        }
+
+        self.tab_drag_state = None;
+        state
+            .dragging
+            .then_some((state.source_index, state.hover_index))
     }
 
     pub(super) fn render_top_panel(&mut self, ctx: &egui::Context) {
@@ -723,36 +759,31 @@ impl FlistWalkerApp {
             .filter(|pending| pending.tab_id == current_tab_id)
             .map(|pending| pending.existing_path.clone())
         {
-                self.sync_filelist_dialog_selection(FileListDialogKind::Overwrite);
-                egui::Window::new("Overwrite FileList?")
-                    .collapsible(false)
-                    .resizable(false)
-                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-                    .show(ctx, |ui| {
-                        ui.label(format!("{} already exists. Overwrite it?", existing_path.display()));
-                        ui.horizontal(|ui| {
-                            if self
-                                .dialog_button(
-                                    ui,
-                                    "Overwrite",
-                                    self.active_filelist_dialog_button == 0,
-                                )
-                                .clicked()
-                            {
-                                overwrite = true;
-                            }
-                            if self
-                                .dialog_button(
-                                    ui,
-                                    "Cancel",
-                                    self.active_filelist_dialog_button == 1,
-                                )
-                                .clicked()
-                            {
-                                cancel_overwrite = true;
-                            }
-                        });
+            self.sync_filelist_dialog_selection(FileListDialogKind::Overwrite);
+            egui::Window::new("Overwrite FileList?")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    ui.label(format!(
+                        "{} already exists. Overwrite it?",
+                        existing_path.display()
+                    ));
+                    ui.horizontal(|ui| {
+                        if self
+                            .dialog_button(ui, "Overwrite", self.active_filelist_dialog_button == 0)
+                            .clicked()
+                        {
+                            overwrite = true;
+                        }
+                        if self
+                            .dialog_button(ui, "Cancel", self.active_filelist_dialog_button == 1)
+                            .clicked()
+                        {
+                            cancel_overwrite = true;
+                        }
                     });
+                });
         }
         if overwrite {
             self.confirm_pending_filelist_overwrite();
@@ -768,8 +799,8 @@ impl FlistWalkerApp {
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
         {
-                self.sync_filelist_dialog_selection(FileListDialogKind::Ancestor);
-                egui::Window::new("Update Ancestor FileLists?")
+            self.sync_filelist_dialog_selection(FileListDialogKind::Ancestor);
+            egui::Window::new("Update Ancestor FileLists?")
                     .collapsible(false)
                     .resizable(false)
                     .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
@@ -827,41 +858,31 @@ impl FlistWalkerApp {
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
         {
-                self.sync_filelist_dialog_selection(FileListDialogKind::UseWalker);
-                egui::Window::new("Create File List?")
-                    .collapsible(false)
-                    .resizable(false)
-                    .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-                    .show(ctx, |ui| {
-                        ui.label(
-                            "Use FileList が有効です。Create File List には Walker実行が必要です。",
-                        );
-                        ui.label(
-                            "FileListインデックスからは生成しません。新規タブで実行しますか？",
-                        );
-                        ui.horizontal(|ui| {
-                            if self
-                                .dialog_button(
-                                    ui,
-                                    "Continue",
-                                    self.active_filelist_dialog_button == 0,
-                                )
-                                .clicked()
-                            {
-                                confirm_walker = true;
-                            }
-                            if self
-                                .dialog_button(
-                                    ui,
-                                    "Cancel",
-                                    self.active_filelist_dialog_button == 1,
-                                )
-                                .clicked()
-                            {
-                                cancel_walker = true;
-                            }
-                        });
+            self.sync_filelist_dialog_selection(FileListDialogKind::UseWalker);
+            egui::Window::new("Create File List?")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    ui.label(
+                        "Use FileList が有効です。Create File List には Walker実行が必要です。",
+                    );
+                    ui.label("FileListインデックスからは生成しません。新規タブで実行しますか？");
+                    ui.horizontal(|ui| {
+                        if self
+                            .dialog_button(ui, "Continue", self.active_filelist_dialog_button == 0)
+                            .clicked()
+                        {
+                            confirm_walker = true;
+                        }
+                        if self
+                            .dialog_button(ui, "Cancel", self.active_filelist_dialog_button == 1)
+                            .clicked()
+                        {
+                            cancel_walker = true;
+                        }
                     });
+                });
         }
         if confirm_walker {
             self.confirm_pending_filelist_use_walker();

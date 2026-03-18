@@ -530,6 +530,67 @@ fn move_tab_ignores_invalid_or_noop_indices() {
 }
 
 #[test]
+fn tab_drag_below_threshold_does_not_reorder_on_release() {
+    let root = test_root("tab-drag-below-threshold");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_rects = vec![
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(100.0, 24.0)),
+        egui::Rect::from_min_size(egui::pos2(100.0, 0.0), egui::vec2(100.0, 24.0)),
+    ];
+    let mut state = TabDragState {
+        source_index: 0,
+        hover_index: 0,
+        press_pos: egui::pos2(10.0, 12.0),
+        dragging: false,
+    };
+
+    let dragging =
+        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(13.0, 12.0)), true);
+    assert_eq!(dragging, None);
+    assert!(!state.dragging);
+    assert_eq!(app.tab_drag_state, Some(state));
+
+    let released =
+        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(13.0, 12.0)), false);
+    assert_eq!(released, None);
+    assert_eq!(app.tab_drag_state, None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tab_drag_above_threshold_reorders_on_release() {
+    let root = test_root("tab-drag-above-threshold");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_rects = vec![
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(100.0, 24.0)),
+        egui::Rect::from_min_size(egui::pos2(100.0, 0.0), egui::vec2(100.0, 24.0)),
+    ];
+    let mut state = TabDragState {
+        source_index: 0,
+        hover_index: 0,
+        press_pos: egui::pos2(10.0, 12.0),
+        dragging: false,
+    };
+
+    let dragging =
+        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(140.0, 12.0)), true);
+    assert_eq!(dragging, None);
+    assert!(state.dragging);
+    assert_eq!(state.hover_index, 1);
+    assert_eq!(app.tab_drag_state, Some(state));
+
+    let released =
+        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(140.0, 12.0)), false);
+    assert_eq!(released, Some((0, 1)));
+    assert_eq!(app.tab_drag_state, None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn background_tab_search_and_preview_responses_are_retained() {
     let root = test_root("background-tab-search-preview");
     fs::create_dir_all(&root).expect("create dir");
