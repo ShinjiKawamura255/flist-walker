@@ -52,9 +52,11 @@ cargo run -- --root ..
 
 macOS では次の「主要ショートカット」を `Ctrl` から `Cmd` に切り替えています。
 
-- `Ctrl+T` / `Ctrl+W` / `Ctrl+Tab` / `Ctrl+Shift+Tab`
+- `Ctrl+T` / `Ctrl+W`
 - `Ctrl+L`
 - `Ctrl+Shift+C`
+
+タブ切り替えだけはブラウザなどと同様に、macOS でも `Ctrl+Tab` / `Ctrl+Shift+Tab` を使います。
 
 ### 入力履歴
 
