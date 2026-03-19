@@ -1,6 +1,16 @@
 use super::*;
 
 #[test]
+fn normalize_singleline_input_removes_formatting_chars_and_leading_tabs() {
+    let mut text = "\u{feff}\talpha\u{200b}\n\tbeta\tgamma\u{2060}".to_string();
+
+    let changed = FlistWalkerApp::normalize_singleline_input(&mut text);
+
+    assert!(changed);
+    assert_eq!(text, "alpha beta gamma");
+}
+
+#[test]
 fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
     let root = test_root("ctrl-h-single");
     fs::create_dir_all(&root).expect("create dir");

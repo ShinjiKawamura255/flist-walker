@@ -699,6 +699,16 @@ impl FlistWalkerApp {
                     self.update_results();
                 }
                 if output.response.changed() {
+                    let normalized = Self::normalize_singleline_input(&mut self.query);
+                    if normalized && output.response.has_focus() {
+                        let end = Self::char_count(&self.query);
+                        output
+                            .state
+                            .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                                egui::text::CCursor::new(end),
+                            )));
+                        output.state.clone().store(ctx, output.response.id);
+                    }
                     self.mark_query_edited();
                     Self::append_window_trace(
                         "query_text_changed",
@@ -712,6 +722,17 @@ impl FlistWalkerApp {
                     self.update_results();
                 }
             } else if output.response.changed() {
+                if Self::normalize_singleline_input(&mut self.history_search_query)
+                    && output.response.has_focus()
+                {
+                    let end = Self::char_count(&self.history_search_query);
+                    output
+                        .state
+                        .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                            egui::text::CCursor::new(end),
+                        )));
+                    output.state.clone().store(ctx, output.response.id);
+                }
                 self.refresh_history_search_results();
             }
             self.run_deferred_shortcuts(ctx);

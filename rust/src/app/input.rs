@@ -1,6 +1,62 @@
 use super::*;
 
 impl FlistWalkerApp {
+    pub(super) fn normalize_singleline_input(text: &mut String) -> bool {
+        let original = text.as_str();
+        let mut normalized = String::with_capacity(original.len());
+        let mut at_line_start = true;
+
+        for ch in original.chars() {
+            if matches!(
+                ch,
+                '\u{00ad}'
+                    | '\u{200b}'
+                    | '\u{200c}'
+                    | '\u{200d}'
+                    | '\u{200e}'
+                    | '\u{200f}'
+                    | '\u{202a}'
+                    | '\u{202b}'
+                    | '\u{202c}'
+                    | '\u{202d}'
+                    | '\u{202e}'
+                    | '\u{2060}'
+                    | '\u{2066}'
+                    | '\u{2067}'
+                    | '\u{2068}'
+                    | '\u{2069}'
+                    | '\u{feff}'
+            ) {
+                continue;
+            }
+
+            match ch {
+                '\r' | '\n' => {
+                    if !normalized.ends_with(' ') && !normalized.is_empty() {
+                        normalized.push(' ');
+                    }
+                    at_line_start = true;
+                }
+                '\t' if at_line_start => {}
+                '\t' => {
+                    normalized.push(' ');
+                    at_line_start = false;
+                }
+                _ => {
+                    normalized.push(ch);
+                    at_line_start = false;
+                }
+            }
+        }
+
+        if normalized != original {
+            *text = normalized;
+            return true;
+        }
+
+        false
+    }
+
     pub(super) fn char_count(text: &str) -> usize {
         text.chars().count()
     }
