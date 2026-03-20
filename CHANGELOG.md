@@ -24,6 +24,32 @@
 ### Known issues
 - 
 
+## [0.11.6] - 2026-03-21
+### Added
+- GUI の検索オプションに `Ignore Case` チェックボックスを追加し、既定で有効にした。
+
+### Changed
+- 検索結果とハイライトで共有クエリ解釈を使うようにし、`'` / `!` / `^` / `$` / `|` の挙動を一致させた。
+- 検索結果更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸めるようにした。
+- GUI 起動直後および `Esc` / `Ctrl+G` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択にした。
+
+### Fixed
+- 検索窓がインアクティブなときに `Home` / `End` / `PageUp` / `PageDown` で結果一覧を操作できるようにした。
+- 検索結果の再適用でカーソルが勝手に先頭へ飛ばず、保持できる場合は同じ行番号を維持するようにした。
+- 検索欄フォーカス中でも `Esc` / `Ctrl+G` のキャンセル後に結果一覧へ戻り、カーソルが消えないようにした。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
 ## [0.11.5] - 2026-03-19
 ### Added
 - `Ctrl+1` から `Ctrl+9` で左から対応するタブへ直接切り替えられるようにした。
@@ -480,7 +506,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.11.6...HEAD
+[0.11.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.6
 [0.10.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.3
 [0.10.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.2
 [0.10.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.1
