@@ -95,6 +95,7 @@
 | TC-066 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
 | TC-067 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
 | TC-068 | unit | 回帰: 検索結果更新で current row は行番号を維持し、結果数縮小時のみ末尾へ丸める | SP-010 |
+| TC-069 | unit | 回帰: `Ignore Case` は既定で有効で、無効化時は検索結果とハイライトが case-sensitive になる | SP-010 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
@@ -214,3 +215,4 @@
 - TC-066 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007
 - TC-067 -> SP-003, SP-010 -> DES-003, DES-009 -> FR-003, FR-007
 - TC-068 -> SP-010 -> DES-009 -> FR-007
+- TC-069 -> SP-010 -> DES-009 -> FR-017, FR-007

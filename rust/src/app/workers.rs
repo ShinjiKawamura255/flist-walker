@@ -109,6 +109,7 @@ pub(super) struct SearchRequest {
     pub(super) entries: Arc<Vec<PathBuf>>,
     pub(super) limit: usize,
     pub(super) use_regex: bool,
+    pub(super) ignore_case: bool,
     pub(super) root: PathBuf,
     pub(super) prefer_relative: bool,
 }
@@ -125,6 +126,7 @@ pub(super) fn filter_search_results(
     query: &str,
     prefer_relative: bool,
     use_regex: bool,
+    ignore_case: bool,
 ) -> Vec<(PathBuf, f64)> {
     if use_regex {
         return results;
@@ -132,7 +134,7 @@ pub(super) fn filter_search_results(
 
     results
         .into_iter()
-        .filter(|(path, _)| has_visible_match(path, root, query, prefer_relative))
+        .filter(|(path, _)| has_visible_match(path, root, query, prefer_relative, ignore_case))
         .collect()
 }
 
@@ -463,6 +465,7 @@ pub(super) fn spawn_search_worker(
                 &req.query,
                 &req.entries,
                 req.use_regex,
+                req.ignore_case,
                 Some(&req.root),
                 req.prefer_relative,
                 cached_candidates.as_ref().map(|items| items.as_slice()),
@@ -478,6 +481,7 @@ pub(super) fn spawn_search_worker(
                             &req.query,
                             req.prefer_relative,
                             req.use_regex,
+                            req.ignore_case,
                         ),
                         None,
                     )

@@ -11,6 +11,7 @@
 
 - DES-003 Fuzzy Search Engine
 - 役割: クエリ解釈（`'` `!` `^` `$` `|`）とスコアリングを担う。query 分解と正規化は shared module へ集約し、非 regex の `^`/`$` は隣接文字制約付きファジーとして評価する。
+- 役割補足: GUI/CLI の `Ignore Case` フラグを受け取り、search と highlight で同じ比較モードを使う。
 - 実装: `rust/src/query.rs`, `rust/src/search.rs`
 
 - DES-004 Action Executor
@@ -23,6 +24,7 @@
 
 - DES-009 GUI Adapter (egui/eframe)
 - 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。
+- 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 実装: `rust/src/app.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 
 - DES-010 GUI Test Artifacts
@@ -167,6 +169,7 @@
 - DES-008 -> TC-009 (SP-009)
 - DES-009 -> TC-010 (SP-010)
 - DES-009 -> TC-068 (SP-010)
+- DES-009 -> TC-069 (SP-010)
 - DES-010 -> TC-011 (SP-011)
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)

@@ -596,6 +596,10 @@ impl FlistWalkerApp {
                     self.invalidate_result_sort(true);
                     self.update_results();
                 }
+                if ui.checkbox(&mut self.ignore_case, "Ignore Case").changed() {
+                    self.invalidate_result_sort(true);
+                    self.update_results();
+                }
                 let (files_changed, dirs_changed) = if self.use_filelist_requires_locked_filters() {
                     let mut forced_changed = false;
                     if !self.include_files || !self.include_dirs {

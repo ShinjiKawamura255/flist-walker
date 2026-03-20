@@ -58,15 +58,15 @@ pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -
     normalize_windows_display(&raw)
 }
 
-fn chars_equal(a: char, b: char) -> bool {
-    if a.is_ascii() && b.is_ascii() {
+fn chars_equal(a: char, b: char, ignore_case: bool) -> bool {
+    if ignore_case && a.is_ascii() && b.is_ascii() {
         a.eq_ignore_ascii_case(&b)
     } else {
         a == b
     }
 }
 
-fn find_fuzzy_match_positions(text: &str, query: &str) -> HashSet<usize> {
+fn find_fuzzy_match_positions(text: &str, query: &str, ignore_case: bool) -> HashSet<usize> {
     let mut out = HashSet::new();
     if query.is_empty() {
         return out;
@@ -83,7 +83,7 @@ fn find_fuzzy_match_positions(text: &str, query: &str) -> HashSet<usize> {
             if q_chars
                 .iter()
                 .enumerate()
-                .all(|(offset, q)| chars_equal(text_chars[start + offset], *q))
+                .all(|(offset, q)| chars_equal(text_chars[start + offset], *q, ignore_case))
             {
                 for i in start..start + q_chars.len() {
                     out.insert(i);
@@ -95,7 +95,7 @@ fn find_fuzzy_match_positions(text: &str, query: &str) -> HashSet<usize> {
 
     let mut qi = 0usize;
     for (i, ch) in text_chars.iter().enumerate() {
-        if qi < q_chars.len() && chars_equal(*ch, q_chars[qi]) {
+        if qi < q_chars.len() && chars_equal(*ch, q_chars[qi], ignore_case) {
             out.insert(i);
             qi += 1;
         }
@@ -107,7 +107,7 @@ fn find_fuzzy_match_positions(text: &str, query: &str) -> HashSet<usize> {
     }
 }
 
-fn exact_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
+fn exact_candidate_positions(text: &str, candidate: &str, ignore_case: bool) -> HashSet<usize> {
     let mut out = HashSet::new();
     let (anchored_start, anchored_end, core) = split_anchor(candidate);
     if core.is_empty() {
@@ -124,7 +124,7 @@ fn exact_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
         if !core_chars
             .iter()
             .enumerate()
-            .all(|(offset, query)| chars_equal(text_chars[start + offset], *query))
+            .all(|(offset, query)| chars_equal(text_chars[start + offset], *query, ignore_case))
         {
             continue;
         }
@@ -144,9 +144,9 @@ fn exact_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
     out
 }
 
-fn exact_term_positions(text: &str, term: &str) -> HashSet<usize> {
+fn exact_term_positions(text: &str, term: &str, ignore_case: bool) -> HashSet<usize> {
     for candidate in include_alternatives(term) {
-        let positions = exact_candidate_positions(text, candidate);
+        let positions = exact_candidate_positions(text, candidate, ignore_case);
         if !positions.is_empty() {
             return positions;
         }
@@ -154,12 +154,12 @@ fn exact_term_positions(text: &str, term: &str) -> HashSet<usize> {
     HashSet::new()
 }
 
-fn include_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
+fn include_candidate_positions(text: &str, candidate: &str, ignore_case: bool) -> HashSet<usize> {
     let Some((exact, candidate)) = parse_include_alternative(candidate) else {
         return HashSet::new();
     };
     if exact {
-        return exact_candidate_positions(text, &candidate);
+        return exact_candidate_positions(text, &candidate, ignore_case);
     }
 
     let (anchored_start, anchored_end, core) = split_anchor(&candidate);
@@ -170,7 +170,11 @@ fn include_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
         let Some(first_char) = core.chars().next() else {
             return HashSet::new();
         };
-        if !text.chars().next().is_some_and(|value| chars_equal(value, first_char)) {
+        if !text
+            .chars()
+            .next()
+            .is_some_and(|value| chars_equal(value, first_char, ignore_case))
+        {
             return HashSet::new();
         }
     }
@@ -178,12 +182,16 @@ fn include_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
         let Some(last_char) = core.chars().last() else {
             return HashSet::new();
         };
-        if !text.chars().last().is_some_and(|value| chars_equal(value, last_char)) {
+        if !text
+            .chars()
+            .last()
+            .is_some_and(|value| chars_equal(value, last_char, ignore_case))
+        {
             return HashSet::new();
         }
     }
 
-    find_fuzzy_match_positions(text, core)
+    find_fuzzy_match_positions(text, core, ignore_case)
 }
 
 pub fn match_positions_for_path(
@@ -192,6 +200,7 @@ pub fn match_positions_for_path(
     query: &str,
     prefer_relative: bool,
     use_regex: bool,
+    ignore_case: bool,
 ) -> HashSet<usize> {
     let mut positions = HashSet::new();
     let display = display_path_with_mode(path, root, prefer_relative);
@@ -207,14 +216,14 @@ pub fn match_positions_for_path(
     let spec = parse_query(query);
 
     for term in &spec.exact_terms {
-        let hits = exact_term_positions(filename, term);
+        let hits = exact_term_positions(filename, term, ignore_case);
         if !hits.is_empty() {
             for pos in hits {
                 positions.insert(start + pos);
             }
             continue;
         }
-        let hits = exact_term_positions(&display, term);
+        let hits = exact_term_positions(&display, term, ignore_case);
         if !hits.is_empty() {
             positions.extend(hits);
         }
@@ -222,20 +231,20 @@ pub fn match_positions_for_path(
 
     for term in &spec.include_terms {
         if use_regex {
-            let hits = find_regex_match_positions(filename, term);
+            let hits = find_regex_match_positions(filename, term, ignore_case);
             if !hits.is_empty() {
                 for pos in hits {
                     positions.insert(start + pos);
                 }
                 continue;
             }
-            positions.extend(find_regex_match_positions(&display, term));
+            positions.extend(find_regex_match_positions(&display, term, ignore_case));
             continue;
         }
 
         let mut matched_any = false;
         for candidate in include_alternatives(term) {
-            let hits = include_candidate_positions(filename, candidate);
+            let hits = include_candidate_positions(filename, candidate, ignore_case);
             if !hits.is_empty() {
                 for pos in hits {
                     positions.insert(start + pos);
@@ -243,7 +252,7 @@ pub fn match_positions_for_path(
                 matched_any = true;
                 break;
             }
-            let hits = include_candidate_positions(&display, candidate);
+            let hits = include_candidate_positions(&display, candidate, ignore_case);
             if !hits.is_empty() {
                 positions.extend(hits);
                 matched_any = true;
@@ -257,7 +266,13 @@ pub fn match_positions_for_path(
     positions
 }
 
-pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative: bool) -> bool {
+pub fn has_visible_match(
+    path: &Path,
+    root: &Path,
+    query: &str,
+    prefer_relative: bool,
+    ignore_case: bool,
+) -> bool {
     if query.trim().is_empty() {
         return true;
     }
@@ -266,12 +281,15 @@ pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative:
         // Exclusion-only queries are already filtered by search logic.
         return true;
     }
-    !match_positions_for_path(path, root, query, prefer_relative, false).is_empty()
+    !match_positions_for_path(path, root, query, prefer_relative, false, ignore_case).is_empty()
 }
 
-fn find_regex_match_positions(text: &str, pattern: &str) -> HashSet<usize> {
+fn find_regex_match_positions(text: &str, pattern: &str, ignore_case: bool) -> HashSet<usize> {
     let mut out = HashSet::new();
-    let Ok(re) = RegexBuilder::new(pattern).case_insensitive(true).build() else {
+    let Ok(re) = RegexBuilder::new(pattern)
+        .case_insensitive(ignore_case)
+        .build()
+    else {
         return out;
     };
     for mat in re.find_iter(text) {
@@ -680,7 +698,7 @@ mod tests {
     fn match_positions_ascii_query_work_with_multibyte_path() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/日本語/docs/readme.txt");
-        let positions = match_positions_for_path(&path, &root, "read", true, false);
+        let positions = match_positions_for_path(&path, &root, "read", true, false, true);
         assert!(!positions.is_empty());
     }
 
@@ -688,7 +706,7 @@ mod tests {
     fn match_positions_multibyte_query_only_highlights_matched_chars() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/日本語/テスト資料.txt");
-        let positions = match_positions_for_path(&path, &root, "テスト", true, false);
+        let positions = match_positions_for_path(&path, &root, "テスト", true, false, true);
         let display = display_path_with_mode(&path, &root, true);
         let chars: Vec<char> = display.chars().collect();
         let highlighted: String = chars
@@ -706,7 +724,7 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        let positions = match_positions_for_path(&sample, &root, "main !readme", true, false);
+        let positions = match_positions_for_path(&sample, &root, "main !readme", true, false, true);
         assert!(positions.len() >= 4);
         let _ = fs::remove_dir_all(&root);
     }
@@ -718,7 +736,7 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        let positions = match_positions_for_path(&sample, &root, "'main", true, false);
+        let positions = match_positions_for_path(&sample, &root, "'main", true, false, true);
         assert!(positions.len() >= 4);
         let _ = fs::remove_dir_all(&root);
     }
@@ -730,9 +748,9 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        let positions = match_positions_for_path(&sample, &root, "'main", true, false);
+        let positions = match_positions_for_path(&sample, &root, "'main", true, false, true);
         assert!(positions.is_empty());
-        assert!(!has_visible_match(&sample, &root, "'main", true));
+        assert!(!has_visible_match(&sample, &root, "'main", true, true));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -743,7 +761,26 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        assert!(!has_visible_match(&sample, &root, "zzzz", true));
+        assert!(!has_visible_match(&sample, &root, "zzzz", true, true));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn case_sensitive_highlight_and_visibility_respect_ignore_case_flag() {
+        let root = test_root("visible-case-sensitive");
+        let sample = root.join("src/Main.py");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        let sensitive_positions =
+            match_positions_for_path(&sample, &root, "main", true, false, false);
+        assert!(sensitive_positions.is_empty());
+        assert!(!has_visible_match(&sample, &root, "main", true, false));
+
+        let insensitive_positions =
+            match_positions_for_path(&sample, &root, "main", true, false, true);
+        assert!(!insensitive_positions.is_empty());
+        assert!(has_visible_match(&sample, &root, "main", true, true));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -754,7 +791,7 @@ mod tests {
         fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
         fs::write(&sample, "print('x')\n").expect("write sample");
 
-        assert!(has_visible_match(&sample, &root, "!readme", true));
+        assert!(has_visible_match(&sample, &root, "!readme", true, true));
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -762,7 +799,7 @@ mod tests {
     fn match_positions_regex_query_highlights_matched_span() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/main.py");
-        let positions = match_positions_for_path(&path, &root, "ma.*py", true, true);
+        let positions = match_positions_for_path(&path, &root, "ma.*py", true, true, true);
         assert!(!positions.is_empty());
     }
 
@@ -770,7 +807,7 @@ mod tests {
     fn match_positions_or_token_highlights_selected_alternative() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/foo.txt");
-        let positions = match_positions_for_path(&path, &root, "abc|foo|bar", true, false);
+        let positions = match_positions_for_path(&path, &root, "abc|foo|bar", true, false, true);
         assert!(!positions.is_empty());
     }
 
@@ -778,16 +815,16 @@ mod tests {
     fn match_positions_or_token_with_left_exact_keeps_left_candidate() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/main.txt");
-        let positions = match_positions_for_path(&path, &root, "'main|", true, false);
+        let positions = match_positions_for_path(&path, &root, "'main|", true, false, true);
         assert!(!positions.is_empty());
-        assert!(has_visible_match(&path, &root, "'main|", true));
+        assert!(has_visible_match(&path, &root, "'main|", true, true));
     }
 
     #[test]
     fn match_positions_or_token_supports_exact_on_right_side() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/xyz.txt");
-        let positions = match_positions_for_path(&path, &root, "abc|'xyz", true, false);
+        let positions = match_positions_for_path(&path, &root, "abc|'xyz", true, false, true);
         assert!(!positions.is_empty());
     }
 
@@ -795,16 +832,16 @@ mod tests {
     fn exact_alternative_in_or_query_does_not_fall_back_to_subsequence_matching() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/m-a-i-n.txt");
-        let positions = match_positions_for_path(&path, &root, "abc|'main", true, false);
+        let positions = match_positions_for_path(&path, &root, "abc|'main", true, false, true);
         assert!(positions.is_empty());
-        assert!(!has_visible_match(&path, &root, "abc|'main", true));
+        assert!(!has_visible_match(&path, &root, "abc|'main", true, true));
     }
 
     #[test]
     fn has_visible_match_or_token_uses_alternative_hits() {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/bar.txt");
-        assert!(has_visible_match(&path, &root, "abc|foo|bar", true));
+        assert!(has_visible_match(&path, &root, "abc|foo|bar", true, true));
     }
 
     #[test]

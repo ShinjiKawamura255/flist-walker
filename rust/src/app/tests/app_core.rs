@@ -277,7 +277,7 @@ fn regex_query_is_not_filtered_out_by_visible_match_guard() {
     let root = PathBuf::from("/tmp");
     let results = vec![(PathBuf::from("/tmp/src/main.py"), 42.0)];
 
-    let out = filter_search_results(results, &root, "ma.*py", true, true);
+    let out = filter_search_results(results, &root, "ma.*py", true, true, true);
 
     assert_eq!(out.len(), 1);
 }

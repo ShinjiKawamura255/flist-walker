@@ -43,11 +43,17 @@ pub(super) struct SavedTabState {
     pub(super) root: String,
     pub(super) use_filelist: bool,
     pub(super) use_regex: bool,
+    #[serde(default = "default_ignore_case")]
+    pub(super) ignore_case: bool,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) query: String,
     #[serde(default)]
     pub(super) query_history: Vec<String>,
+}
+
+fn default_ignore_case() -> bool {
+    true
 }
 
 impl FlistWalkerApp {
@@ -178,6 +184,7 @@ impl FlistWalkerApp {
                     root: root.to_string_lossy().to_string(),
                     use_filelist: tab.use_filelist,
                     use_regex: tab.use_regex,
+                    ignore_case: tab.ignore_case,
                     include_files: tab.include_files,
                     include_dirs: tab.include_dirs,
                     query: tab.query.clone(),

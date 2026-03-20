@@ -41,6 +41,7 @@ struct AppTabState {
     root: PathBuf,
     use_filelist: bool,
     use_regex: bool,
+    ignore_case: bool,
     include_files: bool,
     include_dirs: bool,
     index: IndexBuildResult,
@@ -213,6 +214,7 @@ struct HighlightCacheKey {
     path: PathBuf,
     prefer_relative: bool,
     use_regex: bool,
+    ignore_case: bool,
 }
 
 struct PendingFileListConfirmation {
@@ -269,6 +271,7 @@ pub struct FlistWalkerApp {
     pending_restore_refresh: bool,
     use_filelist: bool,
     use_regex: bool,
+    ignore_case: bool,
     include_files: bool,
     include_dirs: bool,
     index: IndexBuildResult,
@@ -354,6 +357,7 @@ pub struct FlistWalkerApp {
     highlight_cache_scope_query: String,
     highlight_cache_scope_root: PathBuf,
     highlight_cache_scope_use_regex: bool,
+    highlight_cache_scope_ignore_case: bool,
     highlight_cache_scope_prefer_relative: bool,
     highlight_cache: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
     highlight_cache_order: VecDeque<HighlightCacheKey>,
@@ -570,6 +574,7 @@ Search hints:
             pending_restore_refresh: false,
             use_filelist: true,
             use_regex: false,
+            ignore_case: true,
             include_files: true,
             include_dirs: true,
             index: IndexBuildResult {
@@ -660,6 +665,7 @@ Search hints:
             highlight_cache_scope_query: String::new(),
             highlight_cache_scope_root: PathBuf::new(),
             highlight_cache_scope_use_regex: false,
+            highlight_cache_scope_ignore_case: true,
             highlight_cache_scope_prefer_relative: false,
             highlight_cache: HashMap::new(),
             highlight_cache_order: VecDeque::new(),
@@ -1018,6 +1024,7 @@ Search hints:
             root: Self::normalize_windows_path(PathBuf::from(&saved.root)),
             use_filelist: saved.use_filelist,
             use_regex: saved.use_regex,
+            ignore_case: saved.ignore_case,
             include_files: saved.include_files,
             include_dirs: saved.include_dirs,
             index: IndexBuildResult {
@@ -1133,6 +1140,7 @@ Search hints:
             root: self.root.clone(),
             use_filelist: self.use_filelist,
             use_regex: self.use_regex,
+            ignore_case: self.ignore_case,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
             index: self.index.clone(),
@@ -1189,6 +1197,7 @@ Search hints:
         self.root = tab.root.clone();
         self.use_filelist = tab.use_filelist;
         self.use_regex = tab.use_regex;
+        self.ignore_case = tab.ignore_case;
         self.include_files = tab.include_files;
         self.include_dirs = tab.include_dirs;
         self.index = tab.index.clone();
@@ -1509,6 +1518,7 @@ Search hints:
             root: self.root.to_string_lossy().to_string(),
             use_filelist: self.use_filelist,
             use_regex: self.use_regex,
+            ignore_case: self.ignore_case,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
             query: self.query.clone(),
@@ -1525,6 +1535,7 @@ Search hints:
             root: tab.root.to_string_lossy().to_string(),
             use_filelist: tab.use_filelist,
             use_regex: tab.use_regex,
+            ignore_case: tab.ignore_case,
             include_files: tab.include_files,
             include_dirs: tab.include_dirs,
             query: tab.query.clone(),
@@ -2418,6 +2429,7 @@ Search hints:
             entries: Arc::clone(&tab.entries),
             limit: self.limit,
             use_regex: tab.use_regex,
+            ignore_case: tab.ignore_case,
             root: tab.root.clone(),
             prefer_relative: Self::prefer_relative_display_for(&tab.index.source),
         };
@@ -2878,6 +2890,7 @@ Search hints:
             entries: Arc::clone(&self.entries),
             limit: self.limit,
             use_regex: self.use_regex,
+            ignore_case: self.ignore_case,
             root: self.root.clone(),
             prefer_relative: self.prefer_relative_display(),
         };
@@ -3098,6 +3111,7 @@ Search hints:
         if self.highlight_cache_scope_query == self.query
             && Self::path_key(&self.highlight_cache_scope_root) == Self::path_key(&self.root)
             && self.highlight_cache_scope_use_regex == self.use_regex
+            && self.highlight_cache_scope_ignore_case == self.ignore_case
             && self.highlight_cache_scope_prefer_relative == prefer_relative
         {
             return;
@@ -3105,6 +3119,7 @@ Search hints:
         self.highlight_cache_scope_query = self.query.clone();
         self.highlight_cache_scope_root = self.root.clone();
         self.highlight_cache_scope_use_regex = self.use_regex;
+        self.highlight_cache_scope_ignore_case = self.ignore_case;
         self.highlight_cache_scope_prefer_relative = prefer_relative;
         self.clear_highlight_cache();
     }
@@ -3147,6 +3162,7 @@ Search hints:
             path: path.to_path_buf(),
             prefer_relative,
             use_regex: self.use_regex,
+            ignore_case: self.ignore_case,
         };
 
         if let Some(positions) = self.highlight_cache.get(&key) {
@@ -3159,6 +3175,7 @@ Search hints:
             &self.query,
             prefer_relative,
             self.use_regex,
+            self.ignore_case,
         ));
         self.cache_highlight_positions_for_key(key.clone(), positions);
         self.highlight_cache

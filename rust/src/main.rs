@@ -57,6 +57,7 @@ fn run_cli(args: &Args) -> Result<()> {
         &entries,
         args.limit.min(1000),
         false,
+        true,
         Some(&root),
         true,
     );
