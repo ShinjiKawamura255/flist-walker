@@ -317,6 +317,78 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
 }
 
 #[test]
+fn home_and_end_move_selection_when_query_not_focused() {
+    let root = test_root("shortcut-home-end-no-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.results = (0..5)
+        .map(|i| (root.join(format!("f{i}.txt")), 0.0))
+        .collect();
+    app.current_row = Some(2);
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::Home,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    assert_eq!(app.current_row, Some(0));
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::End,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    assert_eq!(app.current_row, Some(4));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn page_up_down_move_selection_when_query_not_focused() {
+    let root = test_root("shortcut-page-no-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.results = (0..30)
+        .map(|i| (root.join(format!("f{i}.txt")), 0.0))
+        .collect();
+    app.current_row = Some(15);
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::PageUp,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    assert_eq!(app.current_row, Some(5));
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::PageDown,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+    assert_eq!(app.current_row, Some(15));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
     let root = test_root("shortcut-tab-pin-no-focus");
     fs::create_dir_all(&root).expect("create dir");

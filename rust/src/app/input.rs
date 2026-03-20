@@ -621,6 +621,22 @@ impl FlistWalkerApp {
             return;
         }
 
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Home)) {
+            self.move_to_first_row();
+        }
+        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::End)) {
+            self.move_to_last_row();
+        }
+        if ctx
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::PageUp))
+        {
+            self.move_page(-1);
+        }
+        if ctx
+            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::PageDown))
+        {
+            self.move_page(1);
+        }
         if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::V)) {
             self.move_page(1);
         }

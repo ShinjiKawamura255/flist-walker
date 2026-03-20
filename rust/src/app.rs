@@ -3375,6 +3375,28 @@ Search hints:
         self.move_row(direction.saturating_mul(Self::PAGE_MOVE_ROWS));
     }
 
+    fn move_to_first_row(&mut self) {
+        self.commit_query_history_if_needed(true);
+        if self.results.is_empty() {
+            return;
+        }
+        self.current_row = Some(0);
+        self.scroll_to_current = true;
+        self.request_preview_for_current();
+        self.refresh_status_line();
+    }
+
+    fn move_to_last_row(&mut self) {
+        self.commit_query_history_if_needed(true);
+        if self.results.is_empty() {
+            return;
+        }
+        self.current_row = Some(self.results.len().saturating_sub(1));
+        self.scroll_to_current = true;
+        self.request_preview_for_current();
+        self.refresh_status_line();
+    }
+
     fn current_result_kind(&self) -> Option<bool> {
         let row = self.current_row?;
         let (path, _) = self.results.get(row)?;
