@@ -1,4 +1,5 @@
 use crate::actions::choose_action;
+use crate::search::parse_query;
 use regex::RegexBuilder;
 use std::collections::HashSet;
 use std::fs::File;
@@ -57,7 +58,30 @@ pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -
     normalize_windows_display(&raw)
 }
 
-fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
+fn chars_equal(a: char, b: char) -> bool {
+    if a.is_ascii() && b.is_ascii() {
+        a.eq_ignore_ascii_case(&b)
+    } else {
+        a == b
+    }
+}
+
+fn split_anchor(term: &str) -> (bool, bool, &str) {
+    let anchored_start = term.starts_with('^');
+    let anchored_end = term.ends_with('$');
+
+    let mut core = term;
+    if anchored_start {
+        core = core.strip_prefix('^').unwrap_or(core);
+    }
+    if anchored_end {
+        core = core.strip_suffix('$').unwrap_or(core);
+    }
+
+    (anchored_start, anchored_end, core)
+}
+
+fn find_fuzzy_match_positions(text: &str, query: &str) -> HashSet<usize> {
     let mut out = HashSet::new();
     if query.is_empty() {
         return out;
@@ -68,14 +92,6 @@ fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
     if q_chars.is_empty() {
         return out;
     }
-
-    let chars_equal = |a: char, b: char| {
-        if a.is_ascii() && b.is_ascii() {
-            a.eq_ignore_ascii_case(&b)
-        } else {
-            a == b
-        }
-    };
 
     if q_chars.len() <= text_chars.len() {
         for start in 0..=text_chars.len() - q_chars.len() {
@@ -106,55 +122,70 @@ fn find_match_positions(text: &str, query: &str) -> HashSet<usize> {
     }
 }
 
-fn highlight_terms(query: &str, use_regex: bool) -> Vec<String> {
-    fn normalize_candidate(mut candidate: String) -> Option<String> {
-        if let Some(stripped) = candidate.strip_prefix("^'") {
-            candidate = format!("^{stripped}");
-        } else if let Some(stripped) = candidate.strip_prefix('\'') {
-            candidate = stripped.to_string();
-        }
-        if candidate.starts_with('^') {
-            candidate = candidate[1..].to_string();
-        }
-        if candidate.ends_with('$') {
-            candidate = candidate[..candidate.len().saturating_sub(1)].to_string();
-        }
-        if candidate.is_empty() {
-            None
-        } else {
-            Some(candidate)
-        }
+fn exact_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
+    let mut out = HashSet::new();
+    let (anchored_start, anchored_end, core) = split_anchor(candidate);
+    if core.is_empty() {
+        return out;
     }
 
-    let mut terms = Vec::new();
-    for token in query.split_whitespace().map(ToString::to_string) {
-        if token.is_empty() || token == "!" || token == "'" {
+    let text_chars: Vec<char> = text.chars().collect();
+    let core_chars: Vec<char> = core.chars().collect();
+    if core_chars.len() > text_chars.len() {
+        return out;
+    }
+
+    for start in 0..=text_chars.len() - core_chars.len() {
+        if !core_chars
+            .iter()
+            .enumerate()
+            .all(|(offset, query)| chars_equal(text_chars[start + offset], *query))
+        {
             continue;
         }
-        if token.starts_with('!') {
+        if anchored_start && start != 0 {
             continue;
         }
-        if use_regex && !(token.starts_with('\'') || token.starts_with("^'")) {
-            if let Some(normalized) = normalize_candidate(token) {
-                terms.push(normalized);
-            }
+        if anchored_end && start + core_chars.len() != text_chars.len() {
             continue;
         }
-        let mut candidates: Vec<String> = token
-            .split('|')
-            .filter(|s| !s.is_empty())
-            .map(ToString::to_string)
-            .collect();
-        if candidates.is_empty() {
-            candidates.push(token);
+
+        for idx in start..start + core_chars.len() {
+            out.insert(idx);
         }
-        for candidate in candidates {
-            if let Some(normalized) = normalize_candidate(candidate) {
-                terms.push(normalized);
-            }
+        return out;
+    }
+
+    out
+}
+
+fn exact_term_positions(text: &str, term: &str) -> HashSet<usize> {
+    for candidate in term.split('|').filter(|s| !s.is_empty()) {
+        let positions = exact_candidate_positions(text, candidate);
+        if !positions.is_empty() {
+            return positions;
         }
     }
-    terms
+    HashSet::new()
+}
+
+fn normalize_include_candidate(mut candidate: String) -> Option<String> {
+    if let Some(stripped) = candidate.strip_prefix("^'") {
+        candidate = format!("^{stripped}");
+    } else if let Some(stripped) = candidate.strip_prefix('\'') {
+        candidate = stripped.to_string();
+    }
+    if candidate.starts_with('^') {
+        candidate = candidate[1..].to_string();
+    }
+    if candidate.ends_with('$') {
+        candidate = candidate[..candidate.len().saturating_sub(1)].to_string();
+    }
+    if candidate.is_empty() {
+        None
+    } else {
+        Some(candidate)
+    }
 }
 
 pub fn match_positions_for_path(
@@ -175,22 +206,57 @@ pub fn match_positions_for_path(
         .count()
         .saturating_sub(filename.chars().count());
 
-    for term in highlight_terms(query, use_regex) {
-        let hits = if use_regex {
-            find_regex_match_positions(filename, &term)
-        } else {
-            find_match_positions(filename, &term)
-        };
+    let spec = parse_query(query);
+
+    for term in &spec.exact_terms {
+        let hits = exact_term_positions(filename, term);
         if !hits.is_empty() {
             for pos in hits {
                 positions.insert(start + pos);
             }
             continue;
         }
+        let hits = exact_term_positions(&display, term);
+        if !hits.is_empty() {
+            positions.extend(hits);
+        }
+    }
+
+    for term in &spec.include_terms {
         if use_regex {
-            positions.extend(find_regex_match_positions(&display, &term));
-        } else {
-            positions.extend(find_match_positions(&display, &term));
+            let hits = find_regex_match_positions(filename, term);
+            if !hits.is_empty() {
+                for pos in hits {
+                    positions.insert(start + pos);
+                }
+                continue;
+            }
+            positions.extend(find_regex_match_positions(&display, term));
+            continue;
+        }
+
+        let mut matched_any = false;
+        for candidate in term
+            .split('|')
+            .filter_map(|candidate| normalize_include_candidate(candidate.to_string()))
+        {
+            let hits = find_fuzzy_match_positions(filename, &candidate);
+            if !hits.is_empty() {
+                for pos in hits {
+                    positions.insert(start + pos);
+                }
+                matched_any = true;
+                break;
+            }
+            let hits = find_fuzzy_match_positions(&display, &candidate);
+            if !hits.is_empty() {
+                positions.extend(hits);
+                matched_any = true;
+                break;
+            }
+        }
+        if matched_any {
+            continue;
         }
     }
     positions
@@ -200,7 +266,8 @@ pub fn has_visible_match(path: &Path, root: &Path, query: &str, prefer_relative:
     if query.trim().is_empty() {
         return true;
     }
-    if highlight_terms(query, false).is_empty() {
+    let spec = parse_query(query);
+    if spec.include_terms.is_empty() && spec.exact_terms.is_empty() {
         // Exclusion-only queries are already filtered by search logic.
         return true;
     }
@@ -658,6 +725,19 @@ mod tests {
 
         let positions = match_positions_for_path(&sample, &root, "'main", true, false);
         assert!(positions.len() >= 4);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn exact_token_does_not_fall_back_to_subsequence_matching() {
+        let root = test_root("highlight-exact-no-fuzzy");
+        let sample = root.join("src/m-a-i-n.txt");
+        fs::create_dir_all(sample.parent().expect("parent")).expect("create parent");
+        fs::write(&sample, "print('x')\n").expect("write sample");
+
+        let positions = match_positions_for_path(&sample, &root, "'main", true, false);
+        assert!(positions.is_empty());
+        assert!(!has_visible_match(&sample, &root, "'main", true));
         let _ = fs::remove_dir_all(&root);
     }
 
