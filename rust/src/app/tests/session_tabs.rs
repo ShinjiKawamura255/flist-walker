@@ -244,6 +244,33 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
 }
 
 #[test]
+fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
+    let root = test_root("restore-tabs-default-row");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    app.index_tx = tx;
+    reset_index_request_state_for_test(&mut app);
+
+    app.initialize_tabs_from_saved(
+        vec![SavedTabState {
+            root: root.to_string_lossy().to_string(),
+            use_filelist: true,
+            use_regex: false,
+            ignore_case: true,
+            include_files: true,
+            include_dirs: true,
+            query: String::new(),
+            query_history: Vec::new(),
+        }],
+        0,
+    );
+
+    assert_eq!(app.current_row, Some(0));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn switching_to_restored_background_tab_triggers_lazy_refresh() {
     let root_a = test_root("restore-tabs-switch-a");
     let root_b = test_root("restore-tabs-switch-b");

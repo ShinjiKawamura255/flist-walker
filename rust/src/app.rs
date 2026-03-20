@@ -588,7 +588,7 @@ Search hints:
             results: Vec::new(),
             result_sort_mode: ResultSortMode::Score,
             pinned_paths: HashSet::new(),
-            current_row: None,
+            current_row: Some(0),
             preview: String::new(),
             notice: String::new(),
             status_line: "Initializing...".to_string(),
@@ -1065,7 +1065,8 @@ Search hints:
             pending_sort_request_id: None,
             sort_in_progress: false,
             pinned_paths: HashSet::new(),
-            current_row: None,
+            // Tabs do not persist selection, so restored tabs start with the first row selected.
+            current_row: Some(0),
             preview: String::new(),
             notice: "Restored tab".to_string(),
             pending_request_id: None,
@@ -3725,7 +3726,8 @@ Search hints:
         self.reset_history_search_state();
         self.query_history_dirty_since = None;
         self.pinned_paths.clear();
-        self.current_row = None;
+        // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
+        self.current_row = Some(0);
         self.preview.clear();
         self.update_results();
         self.focus_query_requested = true;

@@ -96,6 +96,7 @@
 | TC-067 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
 | TC-068 | unit | 回帰: 検索結果更新で current row は行番号を維持し、結果数縮小時のみ末尾へ丸める | SP-010 |
 | TC-069 | unit | 回帰: `Ignore Case` は既定で有効で、無効化時は検索結果とハイライトが case-sensitive になる | SP-010 |
+| TC-070 | unit | 回帰: 起動直後と検索キャンセル後は候補がある場合に 1 行目が既定選択になる | SP-010 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
@@ -138,6 +139,12 @@
 - 期待動作: 検索窓フォーカス有無に関わらず、`Ctrl+J` / `Ctrl+M` は実行、`ArrowUp` / `ArrowDown` は current row 移動、`Ctrl+I` は PIN トグルを行う。
 - 非対象範囲: IME 合成中は既存仕様通りフォーカス優先で一部ショートカットを抑制する。
 - 関連テストID: TC-026, TC-027, TC-028.
+
+## Regression Guard
+- 発生条件: 起動直後または `Esc` / `Ctrl+G` で検索をキャンセルした直後に、候補が存在するのに current row が `None` のままになる。
+- 期待動作: 候補がある場合は 1 行目を既定選択として表示し、検索結果の再適用で意図せず未選択へ戻さない。
+- 非対象範囲: 検索結果更新時の行番号維持、手動で未選択へ戻した状態の保持、Root 変更による selection 破棄。
+- 関連テストID: TC-070.
 
 ## Regression Guard
 - 発生条件: `msvc` から `x86_64-pc-windows-gnu` へ切り替えた後、`windres` 生成物が最終 `flistwalker.exe` に入らず Windows Explorer で既定アイコン表示になる。
@@ -216,3 +223,4 @@
 - TC-067 -> SP-003, SP-010 -> DES-003, DES-009 -> FR-003, FR-007
 - TC-068 -> SP-010 -> DES-009 -> FR-007
 - TC-069 -> SP-010 -> DES-009 -> FR-017, FR-007
+- TC-070 -> SP-010 -> DES-009 -> FR-018, FR-007

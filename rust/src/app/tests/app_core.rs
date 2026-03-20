@@ -31,6 +31,16 @@ fn startup_requests_query_focus() {
 }
 
 #[test]
+fn startup_defaults_current_row_to_first_row_regression() {
+    let root = test_root("startup-default-row");
+    fs::create_dir_all(&root).expect("create dir");
+    let app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    assert_eq!(app.current_row, Some(0));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn startup_index_request_is_bound_to_active_tab() {
     let root = test_root("startup-index-tab-binding");
     fs::create_dir_all(&root).expect("create dir");
@@ -373,6 +383,34 @@ fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regr
     app.replace_results_snapshot(results, false);
 
     assert_eq!(app.current_row, None);
+    assert!(app.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn clear_query_and_selection_restores_first_row_regression() {
+    let root = test_root("clear-query-row-reset");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    app.show_preview = false;
+    app.query = "abc".to_string();
+    app.current_row = Some(2);
+    app.preview = "stale".to_string();
+    app.entries = Arc::new(vec![
+        root.join("first.txt"),
+        root.join("second.txt"),
+        root.join("third.txt"),
+    ]);
+    app.results = vec![
+        (root.join("first.txt"), 1.0),
+        (root.join("second.txt"), 1.0),
+        (root.join("third.txt"), 1.0),
+    ];
+
+    app.clear_query_and_selection();
+
+    assert!(app.query.is_empty());
+    assert_eq!(app.current_row, Some(0));
     assert!(app.preview.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
