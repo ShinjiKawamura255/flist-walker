@@ -93,6 +93,7 @@
 | TC-063 | perf | ソート機能追加後もインデクシング時の属性取得数を増やさず、既存の逐次表示挙動を維持する | SP-007, SP-013 |
 | TC-065 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
 | TC-066 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
+| TC-067 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -204,3 +205,4 @@
 - TC-063 -> SP-007, SP-013 -> DES-006, DES-013 -> FR-013, NFR-006
 - TC-065 -> SP-012 -> DES-012 -> NFR-005
 - TC-066 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007
+- TC-067 -> SP-003, SP-010 -> DES-003, DES-009 -> FR-003, FR-007

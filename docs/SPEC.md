@@ -47,6 +47,7 @@
 - MUST: `'` は完全一致条件として評価する。
 - MUST: `!` は除外条件として評価する。
 - MUST: `^` / `$` は非 regex モードでは「先頭/末尾の隣接文字制約 + ファジー評価」として評価する。
+- MUST: 検索結果のハイライトは search と同じ query interpretation を用い、exact / include / exclude / anchor / OR の解釈差を生じさせてはならない。
 - SHOULD: 厳密な prefix/suffix 一致が必要な場合は regex モードを使える。
 - MUST: 上位 `limit` 件を関連度順で返す。
 - SHOULD: 大文字小文字差を緩和する。
@@ -137,6 +138,7 @@
 - MUST: 検索入力、結果リスト、プレビューペイン、実行/オープンを提供する。
 - MUST: Source（FileList/Walker）と Root を画面表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
+- MUST: ハイライトは search と同じ query interpretation を用い、検索結果と表示が一致するようにする。
 - MUST: 複数選択と一括アクションを提供する。
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。

@@ -10,8 +10,8 @@
 - 実装: `rust/src/indexer.rs`
 
 - DES-003 Fuzzy Search Engine
-- 役割: クエリ解釈（`'` `!` `^` `$`）とスコアリング。非 regex の `^`/`$` は隣接文字制約付きファジーとして評価。
-- 実装: `rust/src/search.rs`
+- 役割: クエリ解釈（`'` `!` `^` `$` `|`）とスコアリングを担う。query 分解と正規化は shared module へ集約し、非 regex の `^`/`$` は隣接文字制約付きファジーとして評価する。
+- 実装: `rust/src/query.rs`, `rust/src/search.rs`
 
 - DES-004 Action Executor
 - 役割: ファイル実行/オープン、フォルダオープンを OS 差分吸収して実行。
@@ -22,8 +22,8 @@
 - 実装: `rust/src/main.rs`
 
 - DES-009 GUI Adapter (egui/eframe)
-- 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。
-- 実装: `rust/src/app.rs`, `rust/src/ui_model.rs`
+- 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。
+- 実装: `rust/src/app.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。
@@ -123,6 +123,7 @@
 
 - DES-008 Testability
 - indexer/search/actions/ui_model を独立モジュール化。
+- query 解釈は `rust/src/query.rs` へ集約し、search と UI highlight で同じ token 分解・正規化を再利用する。
 - OS 依存処理は抽象境界を薄くして単体テスト可能性を維持。
 
 - DES-011 Window/IME Stability (Windows)
@@ -158,6 +159,7 @@
 - DES-001 -> TC-001 (SP-001)
 - DES-002 -> TC-002 (SP-002)
 - DES-003 -> TC-003 (SP-003)
+- DES-003 -> TC-067 (SP-003, SP-010)
 - DES-004 -> TC-004, TC-005 (SP-004, SP-005)
 - DES-005 -> TC-006 (SP-006)
 - DES-006 -> TC-007 (SP-007)

@@ -1,3 +1,6 @@
+use crate::query::{
+    include_alternatives, parse_include_alternative, parse_query, split_anchor, QuerySpec,
+};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use regex::{Regex, RegexBuilder};
@@ -7,104 +10,6 @@ use std::path::{Path, PathBuf};
 pub struct IndexedScore {
     pub index: usize,
     pub score: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct QuerySpec {
-    pub include_terms: Vec<String>,
-    pub exact_terms: Vec<String>,
-    pub exclude_terms: Vec<String>,
-}
-
-fn include_alternatives(term: &str) -> Vec<&str> {
-    if !term.contains('|') {
-        return vec![term];
-    }
-    let alts: Vec<&str> = term.split('|').filter(|s| !s.is_empty()).collect();
-    if alts.is_empty() {
-        vec![term]
-    } else {
-        alts
-    }
-}
-
-fn split_anchor(term: &str) -> (bool, bool, &str) {
-    let anchored_start = term.starts_with('^');
-    let anchored_end = term.ends_with('$');
-
-    let mut core = term;
-    if anchored_start {
-        core = core.strip_prefix('^').unwrap_or(core);
-    }
-    if anchored_end {
-        core = core.strip_suffix('$').unwrap_or(core);
-    }
-    (anchored_start, anchored_end, core)
-}
-
-fn normalize_quoted_term(term: &str) -> String {
-    if let Some(stripped) = term.strip_prefix("^'") {
-        return format!("^{stripped}");
-    }
-    if let Some(stripped) = term.strip_prefix('\'') {
-        return stripped.to_string();
-    }
-    term.to_string()
-}
-
-fn parse_include_alternative(candidate: &str) -> Option<(bool, String)> {
-    if candidate.is_empty() {
-        return None;
-    }
-    if let Some(stripped) = candidate.strip_prefix("^'") {
-        if stripped.is_empty() {
-            return None;
-        }
-        return Some((true, format!("^{stripped}")));
-    }
-    if let Some(stripped) = candidate.strip_prefix('\'') {
-        if stripped.is_empty() {
-            return None;
-        }
-        return Some((true, stripped.to_string()));
-    }
-    Some((false, candidate.to_string()))
-}
-
-pub fn parse_query(query: &str) -> QuerySpec {
-    let mut include_terms = Vec::new();
-    let mut exact_terms = Vec::new();
-    let mut exclude_terms = Vec::new();
-
-    for token in query.split_whitespace() {
-        if token.is_empty() || token == "!" || token == "'" {
-            continue;
-        }
-        if let Some(stripped) = token.strip_prefix('!') {
-            if !stripped.is_empty() {
-                exclude_terms.push(normalize_quoted_term(stripped));
-            }
-            continue;
-        }
-        if token.contains('|') {
-            include_terms.push(token.to_string());
-            continue;
-        }
-        if token.starts_with('\'') || token.starts_with("^'") {
-            let normalized = normalize_quoted_term(token);
-            if !normalized.is_empty() {
-                exact_terms.push(normalized);
-            }
-        } else {
-            include_terms.push(token.to_string());
-        }
-    }
-
-    QuerySpec {
-        include_terms,
-        exact_terms,
-        exclude_terms,
-    }
 }
 
 fn is_subsequence(query: &str, text: &str) -> bool {

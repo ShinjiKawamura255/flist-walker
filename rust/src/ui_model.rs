@@ -1,5 +1,5 @@
 use crate::actions::choose_action;
-use crate::search::parse_query;
+use crate::query::{include_alternatives, parse_include_alternative, parse_query, split_anchor};
 use regex::RegexBuilder;
 use std::collections::HashSet;
 use std::fs::File;
@@ -64,21 +64,6 @@ fn chars_equal(a: char, b: char) -> bool {
     } else {
         a == b
     }
-}
-
-fn split_anchor(term: &str) -> (bool, bool, &str) {
-    let anchored_start = term.starts_with('^');
-    let anchored_end = term.ends_with('$');
-
-    let mut core = term;
-    if anchored_start {
-        core = core.strip_prefix('^').unwrap_or(core);
-    }
-    if anchored_end {
-        core = core.strip_suffix('$').unwrap_or(core);
-    }
-
-    (anchored_start, anchored_end, core)
 }
 
 fn find_fuzzy_match_positions(text: &str, query: &str) -> HashSet<usize> {
@@ -160,7 +145,7 @@ fn exact_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
 }
 
 fn exact_term_positions(text: &str, term: &str) -> HashSet<usize> {
-    for candidate in term.split('|').filter(|s| !s.is_empty()) {
+    for candidate in include_alternatives(term) {
         let positions = exact_candidate_positions(text, candidate);
         if !positions.is_empty() {
             return positions;
@@ -169,23 +154,36 @@ fn exact_term_positions(text: &str, term: &str) -> HashSet<usize> {
     HashSet::new()
 }
 
-fn normalize_include_candidate(mut candidate: String) -> Option<String> {
-    if let Some(stripped) = candidate.strip_prefix("^'") {
-        candidate = format!("^{stripped}");
-    } else if let Some(stripped) = candidate.strip_prefix('\'') {
-        candidate = stripped.to_string();
+fn include_candidate_positions(text: &str, candidate: &str) -> HashSet<usize> {
+    let Some((exact, candidate)) = parse_include_alternative(candidate) else {
+        return HashSet::new();
+    };
+    if exact {
+        return exact_candidate_positions(text, &candidate);
     }
-    if candidate.starts_with('^') {
-        candidate = candidate[1..].to_string();
+
+    let (anchored_start, anchored_end, core) = split_anchor(&candidate);
+    if core.is_empty() {
+        return HashSet::new();
     }
-    if candidate.ends_with('$') {
-        candidate = candidate[..candidate.len().saturating_sub(1)].to_string();
+    if anchored_start {
+        let Some(first_char) = core.chars().next() else {
+            return HashSet::new();
+        };
+        if !text.chars().next().is_some_and(|value| chars_equal(value, first_char)) {
+            return HashSet::new();
+        }
     }
-    if candidate.is_empty() {
-        None
-    } else {
-        Some(candidate)
+    if anchored_end {
+        let Some(last_char) = core.chars().last() else {
+            return HashSet::new();
+        };
+        if !text.chars().last().is_some_and(|value| chars_equal(value, last_char)) {
+            return HashSet::new();
+        }
     }
+
+    find_fuzzy_match_positions(text, core)
 }
 
 pub fn match_positions_for_path(
@@ -236,11 +234,8 @@ pub fn match_positions_for_path(
         }
 
         let mut matched_any = false;
-        for candidate in term
-            .split('|')
-            .filter_map(|candidate| normalize_include_candidate(candidate.to_string()))
-        {
-            let hits = find_fuzzy_match_positions(filename, &candidate);
+        for candidate in include_alternatives(term) {
+            let hits = include_candidate_positions(filename, candidate);
             if !hits.is_empty() {
                 for pos in hits {
                     positions.insert(start + pos);
@@ -248,7 +243,7 @@ pub fn match_positions_for_path(
                 matched_any = true;
                 break;
             }
-            let hits = find_fuzzy_match_positions(&display, &candidate);
+            let hits = include_candidate_positions(&display, candidate);
             if !hits.is_empty() {
                 positions.extend(hits);
                 matched_any = true;
@@ -794,6 +789,15 @@ mod tests {
         let path = PathBuf::from("/tmp/src/xyz.txt");
         let positions = match_positions_for_path(&path, &root, "abc|'xyz", true, false);
         assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn exact_alternative_in_or_query_does_not_fall_back_to_subsequence_matching() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/m-a-i-n.txt");
+        let positions = match_positions_for_path(&path, &root, "abc|'main", true, false);
+        assert!(positions.is_empty());
+        assert!(!has_visible_match(&path, &root, "abc|'main", true));
     }
 
     #[test]
