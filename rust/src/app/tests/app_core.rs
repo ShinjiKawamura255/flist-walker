@@ -335,6 +335,49 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
 }
 
 #[test]
+fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression() {
+    let root = test_root("search-refresh-clamp-row");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    app.show_preview = false;
+    app.current_row = Some(100);
+    app.preview = "stale".to_string();
+
+    let results = vec![
+        (root.join("first.txt"), 1.0),
+        (root.join("second.txt"), 1.0),
+        (root.join("third.txt"), 1.0),
+    ];
+
+    app.replace_results_snapshot(results, false);
+
+    assert_eq!(app.current_row, Some(2));
+    assert!(app.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regression() {
+    let root = test_root("search-refresh-keep-none");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    app.show_preview = false;
+    app.current_row = None;
+    app.preview = "stale".to_string();
+
+    let results = vec![
+        (root.join("first.txt"), 1.0),
+        (root.join("second.txt"), 1.0),
+    ];
+
+    app.replace_results_snapshot(results, false);
+
+    assert_eq!(app.current_row, None);
+    assert!(app.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn query_edit_invalidates_result_sort_and_cancels_pending_request() {
     let root = test_root("result-sort-reset-on-query-edit");
     fs::create_dir_all(&root).expect("create dir");

@@ -94,6 +94,13 @@
 | TC-065 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
 | TC-066 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
 | TC-067 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
+| TC-068 | unit | 回帰: 検索結果更新で current row は行番号を維持し、結果数縮小時のみ末尾へ丸める | SP-010 |
+
+## Regression Guard
+- 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
+- 期待動作: current row はユーザ操作なしで別の行へ移動せず、保持できる場合は同じ行番号を維持し、縮小した場合のみ末尾へ丸める。未選択状態は自動選択に変換しない。
+- 非対象範囲: 手動の Arrow キー移動、Sort 切替、Root 変更による既存 selection 破棄。
+- 関連テストID: TC-068.
 
 ## Runner and commands
 - Runner: `cargo test`
@@ -206,3 +213,4 @@
 - TC-065 -> SP-012 -> DES-012 -> NFR-005
 - TC-066 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007
 - TC-067 -> SP-003, SP-010 -> DES-003, DES-009 -> FR-003, FR-007
+- TC-068 -> SP-010 -> DES-009 -> FR-007

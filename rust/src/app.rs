@@ -846,7 +846,9 @@ Search hints:
         self.sort_in_progress = false;
         self.result_sort_mode = ResultSortMode::Score;
         self.base_results = results.clone();
-        self.apply_results_with_selection_policy(results, keep_scroll_position, true);
+        // Regression guard: search refreshes must keep the cursor on the same row number.
+        // Following the previous path here makes the highlight jump when the query changes.
+        self.apply_results_with_selection_policy(results, keep_scroll_position, false);
     }
 
     fn invalidate_result_sort(&mut self, keep_scroll_position: bool) {
@@ -2829,6 +2831,10 @@ Search hints:
         keep_scroll_position: bool,
         preserve_selected_path: bool,
     ) {
+        fn clamp_row(current_row: Option<usize>, results_len: usize) -> Option<usize> {
+            current_row.map(|row| row.min(results_len.saturating_sub(1)))
+        }
+
         let selected_path = preserve_selected_path
             .then(|| {
                 self.current_row
@@ -2843,10 +2849,10 @@ Search hints:
             self.preview_in_progress = false;
             self.pending_preview_request_id = None;
         } else {
-            let max_index = self.results.len().saturating_sub(1);
+            let previous_row = clamp_row(previous_row, self.results.len());
             self.current_row = selected_path
                 .and_then(|selected| self.results.iter().position(|(path, _)| *path == selected))
-                .or_else(|| Some(previous_row.unwrap_or(0).min(max_index)));
+                .or(previous_row);
             self.request_preview_for_current();
             if !keep_scroll_position {
                 self.scroll_to_current = true;
@@ -2938,7 +2944,7 @@ Search hints:
                 tab.preview_in_progress = false;
             } else {
                 let max_index = tab.results.len().saturating_sub(1);
-                tab.current_row = Some(tab.current_row.unwrap_or(0).min(max_index));
+                tab.current_row = tab.current_row.map(|row| row.min(max_index));
             }
         }
     }
@@ -3016,7 +3022,7 @@ Search hints:
                     tab.preview_in_progress = false;
                 } else {
                     let max_index = tab.results.len().saturating_sub(1);
-                    tab.current_row = Some(tab.current_row.unwrap_or(0).min(max_index));
+                    tab.current_row = tab.current_row.map(|row| row.min(max_index));
                 }
             }
         }

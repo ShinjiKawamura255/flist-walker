@@ -22,7 +22,7 @@
 - 実装: `rust/src/main.rs`
 
 - DES-009 GUI Adapter (egui/eframe)
-- 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。
+- 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。
 - 実装: `rust/src/app.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 
 - DES-010 GUI Test Artifacts
@@ -166,6 +166,7 @@
 - DES-007 -> TC-008 (SP-008)
 - DES-008 -> TC-009 (SP-009)
 - DES-009 -> TC-010 (SP-010)
+- DES-009 -> TC-068 (SP-010)
 - DES-010 -> TC-011 (SP-011)
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)
