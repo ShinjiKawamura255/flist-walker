@@ -4,7 +4,9 @@ use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
     write_filelist, IndexSource,
 };
-use crate::search::{try_search_entries_indexed_with_scope, IndexedScore};
+use crate::search::{
+    sort_scored_matches, top_ranked_scores, try_collect_search_matches, IndexedScore,
+};
 use crate::ui_model::{build_preview_text_with_kind, has_visible_match};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -461,7 +463,7 @@ pub(super) fn spawn_search_worker(
             } else {
                 prefix_cache.lookup_candidates(snapshot, &query_trimmed)
             };
-            let (results, error) = match try_search_entries_indexed_with_scope(
+            let (results, error) = match try_collect_search_matches(
                 &req.query,
                 &req.entries,
                 req.use_regex,
@@ -470,10 +472,17 @@ pub(super) fn spawn_search_worker(
                 req.prefer_relative,
                 cached_candidates.as_ref().map(|items| items.as_slice()),
             ) {
-                Ok(scored) => {
-                    let raw_results = scored_indices_to_paths(&req.entries, &scored, req.limit);
-                    let matched_indices = scored.iter().map(|item| item.index).collect();
-                    prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
+                Ok(scored_matches) => {
+                    if SearchPrefixCache::is_cacheable_query(&query_trimmed)
+                        && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
+                    {
+                        let mut ranked = scored_matches.scored.clone();
+                        sort_scored_matches(&mut ranked);
+                        let matched_indices = ranked.iter().map(|item| item.index).collect();
+                        prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
+                    }
+                    let ranked = top_ranked_scores(scored_matches.scored, req.limit);
+                    let raw_results = scored_indices_to_paths(&req.entries, &ranked, req.limit);
                     (
                         filter_search_results(
                             raw_results,

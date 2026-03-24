@@ -12,6 +12,7 @@
 - DES-003 Fuzzy Search Engine
 - 役割: クエリ解釈（`'` `!` `^` `$` `|`）とスコアリングを担う。query 分解と正規化は shared module へ集約し、非 regex の `^`/`$` は隣接文字制約付きファジーとして評価する。
 - 役割補足: GUI/CLI の `Ignore Case` フラグを受け取り、search と highlight で同じ比較モードを使う。
+- 役割補足: 検索クエリは要求単位で前処理し、候補ごとの path 文字列化・正規化を 1 回に抑える。大規模候補集合では search worker 内で並列評価しつつ、表示用には上位 `limit` 件だけを抽出する。
 - 実装: `rust/src/query.rs`, `rust/src/search.rs`
 
 - DES-004 Action Executor
@@ -71,6 +72,9 @@
 - 非空クエリ時は再読込後の最初のインデックスバッチで検索を即時再開し、中断後の復帰遅延を最小化する。
 - 非空クエリで indexing 中の自動再検索は、差分件数と時間の両閾値（既定: 2048件・1500ms）を満たす場合のみ実行し、indexing スループット低下を抑える。
 - 検索は絞り込み後にスコア計算し、上位 `limit` を返す。
+- prefix cache 用の候補集合は query 延長時だけ再利用し、cache 対象件数を超える大規模マッチでは全件ランキングを保存しない。
+- 検索ランキングは score 降順 + 元の候補順序で決定し、`limit` が小さい場合は partial selection で top-N のみを整列する。
+- 並列検索は候補数が閾値以上の場合だけ有効化し、`FLISTWALKER_SEARCH_THREADS` で worker 内の検索スレッド数を調整できる。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。

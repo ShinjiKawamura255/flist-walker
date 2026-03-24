@@ -829,6 +829,7 @@ dependencies = [
  "jwalk",
  "memory-stats",
  "native-dialog",
+ "rayon",
  "regex",
  "resvg",
  "serde",
