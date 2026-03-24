@@ -681,6 +681,8 @@ fn background_tab_search_and_preview_responses_are_retained() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "hello").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "picked".to_string());
+    app.index_in_progress = false;
+    app.pending_index_request_id = None;
     app.entries = Arc::new(vec![selected.clone()]);
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
@@ -726,8 +728,10 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .iter()
         .find(|tab| tab.id == first_tab_id)
         .expect("first tab");
-    assert_eq!(first_tab.results.len(), 1);
-    assert_eq!(first_tab.results[0].0, selected);
+    assert!(first_tab.results.is_empty());
+    assert!(first_tab.results_compacted);
+    assert_eq!(first_tab.base_results.len(), 1);
+    assert_eq!(first_tab.base_results[0].0, selected);
     assert_eq!(first_tab.preview, "preview-body");
     let _ = fs::remove_dir_all(&root);
 }

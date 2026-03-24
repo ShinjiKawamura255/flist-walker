@@ -81,6 +81,7 @@ struct AppTabState {
     pinned_paths: HashSet<PathBuf>,
     current_row: Option<usize>,
     preview: String,
+    results_compacted: bool,
     notice: String,
     pending_request_id: Option<u64>,
     pending_preview_request_id: Option<u64>,
@@ -1068,6 +1069,7 @@ Search hints:
             // Tabs do not persist selection, so restored tabs start with the first row selected.
             current_row: Some(0),
             preview: String::new(),
+            results_compacted: false,
             notice: "Restored tab".to_string(),
             pending_request_id: None,
             pending_preview_request_id: None,
@@ -1135,6 +1137,59 @@ Search hints:
         Self::shrink_deque_if_sparse(&mut tab.pending_kind_paths);
     }
 
+    fn compact_inactive_tab_state(tab: &mut AppTabState) {
+        let can_compact_results = !tab.index_in_progress
+            && !tab.search_in_progress
+            && !tab.sort_in_progress
+            && tab.pending_request_id.is_none()
+            && tab.pending_sort_request_id.is_none();
+        if can_compact_results && !tab.results.is_empty() {
+            tab.results.clear();
+            tab.results.shrink_to_fit();
+            tab.results_compacted = true;
+        }
+        if !tab.preview_in_progress {
+            tab.preview.clear();
+        }
+        Self::shrink_tab_checkpoint_buffers(tab);
+    }
+
+    fn restore_results_from_compacted_tab(&mut self) {
+        let was_compacted = self
+            .tabs
+            .get(self.active_tab)
+            .map(|tab| tab.results_compacted)
+            .unwrap_or(false);
+        if !was_compacted {
+            return;
+        }
+        if let Some(tab) = self.tabs.get_mut(self.active_tab) {
+            tab.results_compacted = false;
+        }
+
+        if self.base_results.is_empty() {
+            if self.query.trim().is_empty() {
+                let results = self
+                    .entries
+                    .iter()
+                    .take(self.limit)
+                    .cloned()
+                    .map(|p| (p, 0.0))
+                    .collect();
+                self.replace_results_snapshot(results, true);
+            } else {
+                self.refresh_status_line();
+            }
+            return;
+        }
+
+        if self.result_sort_mode == ResultSortMode::Score {
+            self.apply_results_with_selection_policy(self.base_results.clone(), true, false);
+        } else {
+            self.apply_result_sort(true);
+        }
+    }
+
     fn capture_active_tab_state(&self, id: u64) -> AppTabState {
         AppTabState {
             id,
@@ -1181,6 +1236,7 @@ Search hints:
             pinned_paths: self.pinned_paths.clone(),
             current_row: self.current_row,
             preview: self.preview.clone(),
+            results_compacted: false,
             notice: self.notice.clone(),
             pending_request_id: self.pending_request_id,
             pending_preview_request_id: self.pending_preview_request_id,
@@ -1277,7 +1333,11 @@ Search hints:
         }
         self.tab_drag_state = None;
         self.shrink_checkpoint_buffers();
+        let previous_active = self.active_tab;
         self.sync_active_tab_state();
+        if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
+            Self::compact_inactive_tab_state(previous_tab);
+        }
         if let Some(next_tab) = self.tabs.get_mut(next_index) {
             Self::shrink_tab_checkpoint_buffers(next_tab);
         }
@@ -1285,6 +1345,7 @@ Search hints:
         if let Some(tab) = self.tabs.get(next_index).cloned() {
             self.apply_tab_state(&tab);
         }
+        self.restore_results_from_compacted_tab();
         self.focus_query_requested = true;
         self.unfocus_query_requested = false;
         self.trigger_restore_refresh_for_active_tab();
@@ -1292,7 +1353,11 @@ Search hints:
 
     fn create_new_tab(&mut self) {
         self.tab_drag_state = None;
+        let previous_active = self.active_tab;
         self.sync_active_tab_state();
+        if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
+            Self::compact_inactive_tab_state(previous_tab);
+        }
         let id = self.next_tab_id;
         self.next_tab_id = self.next_tab_id.saturating_add(1);
         let mut tab = self.capture_active_tab_state(id);
@@ -1321,6 +1386,7 @@ Search hints:
         tab.pinned_paths.clear();
         tab.current_row = None;
         tab.preview.clear();
+        tab.results_compacted = false;
         tab.notice = "Opened new tab".to_string();
         tab.pending_request_id = None;
         tab.pending_preview_request_id = None;
@@ -2948,6 +3014,7 @@ Search hints:
                 .unwrap_or_default();
             tab.base_results = response.results.clone();
             tab.results = response.results;
+            tab.results_compacted = false;
             tab.result_sort_mode = ResultSortMode::Score;
             tab.pending_sort_request_id = None;
             tab.sort_in_progress = false;
@@ -2960,6 +3027,7 @@ Search hints:
                 let max_index = tab.results.len().saturating_sub(1);
                 tab.current_row = tab.current_row.map(|row| row.min(max_index));
             }
+            Self::compact_inactive_tab_state(tab);
         }
     }
 
@@ -3029,6 +3097,7 @@ Search hints:
                     tab.result_sort_mode,
                     &self.sort_metadata_cache,
                 );
+                tab.results_compacted = false;
                 if tab.results.is_empty() {
                     tab.current_row = None;
                     tab.preview.clear();
@@ -3038,6 +3107,7 @@ Search hints:
                     let max_index = tab.results.len().saturating_sub(1);
                     tab.current_row = tab.current_row.map(|row| row.min(max_index));
                 }
+                Self::compact_inactive_tab_state(tab);
             }
         }
     }
@@ -3068,12 +3138,15 @@ Search hints:
             if let Some(tab) = self.tabs.get_mut(tab_index) {
                 tab.pending_preview_request_id = None;
                 tab.preview_in_progress = false;
-                if let Some(row) = tab.current_row {
-                    if let Some((current_path, _)) = tab.results.get(row) {
-                        if *current_path == response.path {
-                            tab.preview = response.preview;
-                        }
-                    }
+                let current_path = if tab.results_compacted {
+                    tab.current_row
+                        .and_then(|row| tab.base_results.get(row).map(|(path, _)| path))
+                } else {
+                    tab.current_row
+                        .and_then(|row| tab.results.get(row).map(|(path, _)| path))
+                };
+                if current_path.is_some_and(|current_path| *current_path == response.path) {
+                    tab.preview = response.preview;
                 }
             }
         }

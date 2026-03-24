@@ -75,6 +75,7 @@
 - prefix cache 用の候補集合は query 延長時だけ再利用し、cache 対象件数を超える大規模マッチでは全件ランキングを保存しない。
 - 検索ランキングは score 降順 + 元の候補順序で決定し、`limit` が小さい場合は partial selection で top-N のみを整列する。
 - 並列検索は候補数が閾値以上の場合だけ有効化し、`FLISTWALKER_SEARCH_THREADS` で worker 内の検索スレッド数を調整できる。
+- 非アクティブタブは `results` と preview のような表示キャッシュを compact し、再表示時は `base_results` と現在の sort mode から復元する。`all_entries` / `entries` / index 本体は保持してタブ復帰で再インデックスを避ける。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
