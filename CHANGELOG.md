@@ -169,6 +169,32 @@
 ### Known issues
 - 
 
+## [0.11.1] - 2026-03-16
+### Added
+- タブをドラッグアンドドロップで並べ替えられるようにした。
+- release asset と standalone バイナリに `THIRD_PARTY_NOTICES` を同梱するようにした。
+
+### Changed
+- Windows 向けクロスビルドを `x86_64-pc-windows-gnu` + mingw-w64 ベースへ移行した。
+
+### Fixed
+- 結果ソートのラベル位置を調整し、selector と縦位置がずれる問題を修正した。
+- Linux/WSL 上で Windows 向け EXE 名の大文字小文字差異によりビルド後処理が失敗する問題を修正した。
+- CI matrix job で bash shell 解決が不安定になる問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- Linux など `created()` を取得できない環境では、`Created` ソート時に該当項目は末尾へ並ぶ。
+- macOS 配布物は publish 前に notarization 確認が必要。
+
 ## [0.11.0] - 2026-03-14
 ### Added
 - 結果ペインに `Score` / `Name` / `Modified` / `Created` のソートを追加した。
@@ -223,6 +249,50 @@
 ### Known issues
 - 
 
+## [0.10.2] - 2026-03-09
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- release 用 `README` 生成時に shell literal が展開され、PowerShell 環境変数例や `Set as default` 表記が崩れる問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+
+## [0.10.1] - 2026-03-09
+### Added
+- `Create File List` 実行時に、子 `FileList` 参照を祖先 `FileList` へ伝搬して追記できるようにした。
+
+### Changed
+- draft release 公開前の preflight 手順と、タブ復元を含む release 運用ドキュメントを更新した。
+
+### Fixed
+- OneDrive など Cloud Files API の placeholder を provider 横断で検出し、プレビュー読み込み対象から除外するようにした。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+
 ## [0.10.0] - 2026-03-07
 ### Added
 - 
@@ -234,6 +304,51 @@
 
 ### Fixed
 - 
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+
+## [0.9.2] - 2026-03-07
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- GitHub Actions の macOS release build に、サポート対象の Intel runner を使うように修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+
+## [0.9.1] - 2026-03-07
+### Added
+- tag push を契機に Linux / Windows / macOS 向け asset をビルドし、draft release まで自動作成する workflow を追加した。
+- open/execute 実行中は、フッターに spinner と進捗ラベルを表示するようにした。
+
+### Changed
+- リリース asset 方針と draft release 運用を、GitHub Actions ベースのフローへ更新した。
+
+### Fixed
+- 前回起動時に使っていた root を UI state へ保持し、更新後の再起動でも startup root が意図せず初期化されないようにした。
 
 ### Breaking
 - 
@@ -300,6 +415,30 @@
 ### Known issues
 - macOS アセットは未提供。
 
+## [0.7.2] - 2026-03-04
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- `Use FileList` 有効時でも、実際のソースが Walker fallback の場合は `FileList` OFF 時と同じ操作系で扱うようにした。
+- ファイル/フォルダの open/execute を UI スレッド外の worker へ移し、遅い I/O で画面が固まる問題を修正した。
+- Preview 境界ドラッグ中に Results 一覧が巻き込まれてスクロールしてしまう問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- notarization 前の macOS アプリは Gatekeeper 警告の対象になる場合がある。
+
 ## [0.7.1] - 2026-03-04
 ### Added
 - 
@@ -350,6 +489,30 @@
 ### Known issues
 - macOS アセットは未提供。
 
+## [0.6.0] - 2026-03-02
+### Added
+- ステータスバーにプロセスのメモリ使用量表示を追加した。
+
+### Changed
+- walker を並列走査するようにし、大規模ツリーの探索スループットを改善した。
+- `FileList` I/O 削減、path kind 判定の遅延、preview cache の総バイト上限化、タブ間の重複データ削減でメモリ使用量を抑制した。
+- walker cap と調整用環境変数を引き上げ、チューニング方針を見直した。
+
+### Fixed
+- アクティブタブ状態の毎フレーム clone や一時バッファ肥大化に起因する無駄な負荷を減らした。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
 ## [0.5.1] - 2026-02-27
 ### Added
 - タブタイトル上でのマウス中クリックによるタブクローズ操作を追加。
@@ -360,6 +523,76 @@
 ### Fixed
 - OR 条件（`|`）で左右それぞれに `'` を付けたクエリ（例: `'abc|xyz`, `abc|'xyz`, `'abc|'xyz`）を検索仕様どおりに評価するよう修正。
 - 上記クエリで左辺/右辺に `'` を付けた場合に、可視判定とハイライト表示が崩れる問題を修正。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
+## [0.5.0] - 2026-02-28
+### Added
+- 検索クエリ入力欄に OR 条件（`|`）のヒントをマウスポインタ位置へ表示するツールチップを追加した。
+- Results 一覧で OR 条件ごとのハイライト表示に対応した。
+
+### Changed
+- `Use FileList` 有効時は、FileList のストリーミング読み込みを優先しつつ、パス種別判定を遅延する方式へ変更した。
+
+### Fixed
+- Preview 非表示時に不要なプレビュー I/O を行わないようにした。
+- 検索欄フォーカス中でも `Ctrl+N` / `Ctrl+P` / `Ctrl+Shift+C` / `Ctrl+G` を使えるように再調整した。
+- `Tab` / `Shift+Tab` のピン操作と、タブ単位の index/search スケジューリングを安定化した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
+## [0.4.0] - 2026-02-25
+### Added
+- 
+
+### Changed
+- 
+
+### Fixed
+- 日本語 IME の通常入力モードと日本語入力モードの両方で、Space 入力が安定して通るように修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS アセットは未提供。
+
+## [0.3.3] - 2026-02-25
+### Added
+- 
+
+### Changed
+- デバッグトレースは既定で無効化し、必要時のみ有効化する運用へ変更した。
+
+### Fixed
+- インデクシング中のストリーミング更新を安定化し、大規模候補での待ち時間を短縮した。
+- IME 入力とウィンドウ操作が競合したときに、入力やフォーカス挙動が不安定になる問題を修正した。
 
 ### Breaking
 - 
@@ -531,17 +764,32 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.11.6...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.0
 [0.11.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.6
+[0.11.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.5
+[0.11.4]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.4
+[0.11.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.3
+[0.11.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.2
+[0.11.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.1
+[0.11.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.0
 [0.10.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.3
 [0.10.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.2
 [0.10.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.1
 [0.10.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.10.0
+[0.9.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.9.2
+[0.9.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.9.1
 [0.9.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.8.0
+[0.7.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.2
 [0.7.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.1
 [0.7.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.7.0
+[0.6.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.6.0
 [0.5.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.5.1
+[0.5.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.5.0
+[0.4.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.4.0
+[0.3.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.3
+[0.3.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.2
 [0.3.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.1
 [0.3.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.3.0
 [0.2.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.2.1
