@@ -24,6 +24,28 @@
 ### Known issues
 - 
 
+## [0.12.1] - 2026-03-26
+### Added
+- Results の属性表示に `LINK` を追加し、シンボリックリンクと Windows ショートカット（`.lnk`）を判別できるようにした。
+
+### Changed
+- CHANGELOG の欠落していた過去リリース記録を補完し、版履歴を参照しやすくした。
+
+### Fixed
+- 
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
 ## [0.12.0] - 2026-03-24
 ### Added
 - 
