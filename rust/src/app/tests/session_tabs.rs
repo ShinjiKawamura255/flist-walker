@@ -686,7 +686,7 @@ fn background_tab_search_and_preview_responses_are_retained() {
     app.entries = Arc::new(vec![selected.clone()]);
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
-    app.entry_kinds.insert(selected.clone(), false);
+    app.entry_kinds.insert(selected.clone(), EntryKind::file());
 
     let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
     let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
@@ -791,7 +791,7 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
             request_id: index_req.request_id,
             entries: vec![IndexEntry {
                 path: indexed_file.clone(),
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: true,
             }],
         })

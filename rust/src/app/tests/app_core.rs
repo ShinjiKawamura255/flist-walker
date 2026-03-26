@@ -553,7 +553,7 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
     app.show_preview = false;
     app.results = vec![(file.clone(), 0.0)];
     app.current_row = Some(0);
-    app.entry_kinds.insert(file, false);
+    app.entry_kinds.insert(file, EntryKind::file());
     app.preview = "stale preview".to_string();
     app.pending_preview_request_id = Some(99);
     app.preview_in_progress = true;

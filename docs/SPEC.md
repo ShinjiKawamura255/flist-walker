@@ -14,7 +14,7 @@
 - MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
-- SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR）は遅延解決して初期読み込みを優先する。
+- SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR/LINK）は遅延解決して初期読み込みを優先する。
 
 ### Preconditions / Postconditions
 - Preconditions: 検索ルートが確定している。
@@ -143,7 +143,7 @@
 - MUST: GUI 起動直後および `Ctrl+G` / `Esc` による検索キャンセル後は、候補が存在する場合 current row を 1 行目へ既定化して表示する。
 - MUST: 複数選択と一括アクションを提供する。
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
-- SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR 表示を後追い更新できる。
+- SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR/LINK 表示を後追い更新できる。
 - MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。
 - MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。

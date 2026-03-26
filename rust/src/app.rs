@@ -47,7 +47,7 @@ struct AppTabState {
     index: IndexBuildResult,
     all_entries: Arc<Vec<PathBuf>>,
     entries: Arc<Vec<PathBuf>>,
-    entry_kinds: HashMap<PathBuf, bool>,
+    entry_kinds: HashMap<PathBuf, EntryKind>,
     pending_index_request_id: Option<u64>,
     index_in_progress: bool,
     pending_index_entries: VecDeque<IndexEntry>,
@@ -98,7 +98,7 @@ struct AppTabState {
 struct BackgroundIndexState {
     source: Option<IndexSource>,
     entries: Vec<PathBuf>,
-    entry_kinds: HashMap<PathBuf, bool>,
+    entry_kinds: HashMap<PathBuf, EntryKind>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -117,6 +117,42 @@ pub(super) enum ResultSortMode {
     ModifiedAsc,
     CreatedDesc,
     CreatedAsc,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum EntryDisplayKind {
+    File,
+    Dir,
+    Link,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct EntryKind {
+    pub(super) display: EntryDisplayKind,
+    pub(super) is_dir: bool,
+}
+
+impl EntryKind {
+    pub(super) const fn file() -> Self {
+        Self {
+            display: EntryDisplayKind::File,
+            is_dir: false,
+        }
+    }
+
+    pub(super) const fn dir() -> Self {
+        Self {
+            display: EntryDisplayKind::Dir,
+            is_dir: true,
+        }
+    }
+
+    pub(super) const fn link(is_dir: bool) -> Self {
+        Self {
+            display: EntryDisplayKind::Link,
+            is_dir,
+        }
+    }
 }
 
 impl ResultSortMode {
@@ -278,7 +314,7 @@ pub struct FlistWalkerApp {
     index: IndexBuildResult,
     all_entries: Arc<Vec<PathBuf>>,
     entries: Arc<Vec<PathBuf>>,
-    entry_kinds: HashMap<PathBuf, bool>,
+    entry_kinds: HashMap<PathBuf, EntryKind>,
     base_results: Vec<(PathBuf, f64)>,
     results: Vec<(PathBuf, f64)>,
     result_sort_mode: ResultSortMode,
@@ -2111,13 +2147,13 @@ Search hints:
     }
 
     fn is_entry_visible_for_flags(
-        entry_kinds: &HashMap<PathBuf, bool>,
+        entry_kinds: &HashMap<PathBuf, EntryKind>,
         path: &Path,
         include_files: bool,
         include_dirs: bool,
     ) -> bool {
         match entry_kinds.get(path).copied() {
-            Some(is_dir) => (is_dir && include_dirs) || (!is_dir && include_files),
+            Some(kind) => (kind.is_dir && include_dirs) || (!kind.is_dir && include_files),
             None => include_files && include_dirs,
         }
     }
@@ -2537,7 +2573,7 @@ Search hints:
                     let state = self.background_index_states.entry(request_id).or_default();
                     for entry in entries {
                         if entry.kind_known {
-                            state.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+                            state.entry_kinds.insert(entry.path.clone(), entry.kind);
                         }
                         state.entries.push(entry.path);
                     }
@@ -2554,7 +2590,7 @@ Search hints:
                     state.entry_kinds.clear();
                     for entry in entries {
                         if entry.kind_known {
-                            state.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+                            state.entry_kinds.insert(entry.path.clone(), entry.kind);
                         }
                         state.entries.push(entry.path);
                     }
@@ -3292,7 +3328,7 @@ Search hints:
 
     fn ingest_index_entry(&mut self, entry: IndexEntry) {
         if entry.kind_known {
-            self.entry_kinds.insert(entry.path.clone(), entry.is_dir);
+            self.entry_kinds.insert(entry.path.clone(), entry.kind);
         } else {
             self.entry_kinds.remove(&entry.path);
             if self.kind_resolution_needed_for_filters() {
@@ -3488,7 +3524,7 @@ Search hints:
         self.refresh_status_line();
     }
 
-    fn current_result_kind(&self) -> Option<bool> {
+    fn current_result_kind(&self) -> Option<EntryKind> {
         let row = self.current_row?;
         let (path, _) = self.results.get(row)?;
         self.entry_kinds.get(path).copied()
@@ -3496,7 +3532,9 @@ Search hints:
 
     fn is_entry_visible_for_current_filter(&self, path: &Path) -> bool {
         match self.entry_kinds.get(path).copied() {
-            Some(is_dir) => (is_dir && self.include_dirs) || (!is_dir && self.include_files),
+            Some(kind) => {
+                (kind.is_dir && self.include_dirs) || (!kind.is_dir && self.include_files)
+            }
             None => self.include_files && self.include_dirs,
         }
     }
@@ -3571,7 +3609,7 @@ Search hints:
                 continue;
             }
             self.in_flight_kind_paths.remove(&response.path);
-            if let Some(is_dir) = response.is_dir {
+            if let Some(kind) = response.kind {
                 if self.current_row.is_some_and(|row| {
                     self.results
                         .get(row)
@@ -3579,7 +3617,7 @@ Search hints:
                 }) {
                     resolved_current_row = true;
                 }
-                self.entry_kinds.insert(response.path, is_dir);
+                self.entry_kinds.insert(response.path, kind);
                 resolved_any = true;
             }
             processed = processed.saturating_add(1);
@@ -3621,7 +3659,7 @@ Search hints:
                     return;
                 }
 
-                let Some(is_dir) = self.current_result_kind() else {
+                let Some(kind) = self.current_result_kind() else {
                     self.preview = "Resolving entry type...".to_string();
                     self.queue_kind_resolution(path.clone());
                     self.pump_kind_resolution_requests();
@@ -3629,6 +3667,7 @@ Search hints:
                     self.pending_preview_request_id = None;
                     return;
                 };
+                let is_dir = kind.is_dir;
                 if should_skip_preview(path, is_dir) {
                     let preview = build_preview_text_with_kind(path, is_dir);
                     self.cache_preview(path.clone(), preview.clone());

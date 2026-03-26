@@ -177,9 +177,16 @@ impl FlistWalkerApp {
                             ..Default::default()
                         },
                     );
-                    let (kind_label, kind_color) = match kind {
-                        Some(true) => ("DIR ", egui::Color32::from_rgb(52, 211, 153)),
-                        Some(false) => ("FILE", egui::Color32::from_rgb(96, 165, 250)),
+                    let (kind_label, kind_color) = match kind.map(|k| k.display) {
+                        Some(EntryDisplayKind::Dir) => {
+                            ("DIR ", egui::Color32::from_rgb(52, 211, 153))
+                        }
+                        Some(EntryDisplayKind::File) => {
+                            ("FILE", egui::Color32::from_rgb(96, 165, 250))
+                        }
+                        Some(EntryDisplayKind::Link) => {
+                            ("LINK", egui::Color32::from_rgb(250, 204, 21))
+                        }
                         None => ("....", ui.visuals().weak_text_color()),
                     };
                     job.append(

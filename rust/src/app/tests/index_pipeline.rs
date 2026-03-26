@@ -91,7 +91,7 @@ fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
             request_id: req.request_id,
             entries: vec![IndexEntry {
                 path: root.join("main.rs"),
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: true,
             }],
         })
@@ -133,7 +133,7 @@ fn filtered_out_batch_still_resumes_non_empty_query_search() {
             request_id: req.request_id,
             entries: vec![IndexEntry {
                 path: root.join("main.rs"),
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: true,
             }],
         })
@@ -286,7 +286,7 @@ fn deferred_filelist_starts_after_index_finished() {
             request_id,
             entries: vec![IndexEntry {
                 path: path.clone(),
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: true,
             }],
         })
@@ -480,7 +480,7 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
     app.index_in_progress = false;
     app.use_filelist = false;
     app.all_entries = Arc::new(vec![path.clone()]);
-    app.entry_kinds.insert(path, false);
+    app.entry_kinds.insert(path, EntryKind::file());
     app.index.source = IndexSource::Walker;
 
     app.create_filelist();
@@ -734,7 +734,7 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
         request_id: 21,
         entries: vec![IndexEntry {
             path: path.clone(),
-            is_dir: false,
+            kind: EntryKind::file(),
             kind_known: true,
         }],
     })
@@ -770,7 +770,7 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     let entries = (0..FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX)
         .map(|i| IndexEntry {
             path: root.join(format!("main-{i}.rs")),
-            is_dir: false,
+            kind: EntryKind::file(),
             kind_known: true,
         })
         .collect::<Vec<_>>();
@@ -816,12 +816,12 @@ fn non_empty_query_batch_delta_updates_snapshot_even_without_search_refresh() {
         entries: vec![
             IndexEntry {
                 path: path_a.clone(),
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: true,
             },
             IndexEntry {
                 path: path_b.clone(),
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: true,
             },
         ],
@@ -853,7 +853,7 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
         request_id: 31,
         entries: vec![IndexEntry {
             path: path.clone(),
-            is_dir: false,
+            kind: EntryKind::file(),
             kind_known: true,
         }],
     })
@@ -934,7 +934,7 @@ fn incremental_empty_query_update_preserves_scroll_position_flag() {
         request_id: 41,
         entries: vec![IndexEntry {
             path,
-            is_dir: false,
+            kind: EntryKind::file(),
             kind_known: true,
         }],
     })
@@ -956,8 +956,8 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.index_in_progress = true;
     app.index.entries = vec![file.clone(), dir.clone()];
-    app.entry_kinds.insert(file.clone(), false);
-    app.entry_kinds.insert(dir.clone(), true);
+    app.entry_kinds.insert(file.clone(), EntryKind::file());
+    app.entry_kinds.insert(dir.clone(), EntryKind::dir());
     app.include_files = false;
     app.include_dirs = true;
 
@@ -980,7 +980,7 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.index_in_progress = true;
     app.index.entries = vec![file.clone()];
-    app.entry_kinds.insert(file.clone(), false);
+    app.entry_kinds.insert(file.clone(), EntryKind::file());
     app.include_files = false;
     app.include_dirs = true;
 
@@ -995,7 +995,7 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
         request_id: 201,
         entries: vec![IndexEntry {
             path: dir.clone(),
-            is_dir: true,
+            kind: EntryKind::dir(),
             kind_known: true,
         }],
     })
@@ -1109,14 +1109,45 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     tx.send(KindResolveResponse {
         epoch: app.kind_resolution_epoch,
         path: dir.clone(),
-        is_dir: Some(true),
+        kind: Some(EntryKind::dir()),
     })
     .expect("send kind response");
 
     app.poll_kind_response();
 
-    assert_eq!(app.entry_kinds.get(&dir), Some(&true));
+    assert_eq!(app.entry_kinds.get(&dir), Some(&EntryKind::dir()));
     assert_eq!(app.entries.as_ref(), &vec![dir]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn kind_resolver_marks_symlink_as_link() {
+    use std::os::unix::fs::symlink;
+
+    let root = test_root("kind-resolver-symlink-link");
+    fs::create_dir_all(&root).expect("create dir");
+    let target = root.join("target.txt");
+    let link = root.join("target-link.txt");
+    fs::write(&target, "hello").expect("write target");
+    symlink(&target, &link).expect("create symlink");
+
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let (tx, rx, handle) = spawn_kind_resolver_worker(Arc::clone(&shutdown));
+    tx.send(KindResolveRequest {
+        epoch: 7,
+        path: link.clone(),
+    })
+    .expect("send kind resolve request");
+    drop(tx);
+
+    let response = rx.recv_timeout(Duration::from_secs(1)).expect("kind response");
+    shutdown.store(true, Ordering::Relaxed);
+    handle.join().expect("join kind resolver");
+
+    assert_eq!(response.epoch, 7);
+    assert_eq!(response.path, link);
+    assert_eq!(response.kind, Some(EntryKind::link(false)));
     let _ = fs::remove_dir_all(&root);
 }
 

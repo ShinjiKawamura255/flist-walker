@@ -1,4 +1,4 @@
-use super::{ResultSortMode, SortMetadata};
+use super::{EntryKind, ResultSortMode, SortMetadata};
 use crate::actions::execute_or_open;
 use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
@@ -143,7 +143,7 @@ pub(super) fn filter_search_results(
 #[derive(Clone, Debug)]
 pub(super) struct IndexEntry {
     pub(super) path: PathBuf,
-    pub(super) is_dir: bool,
+    pub(super) kind: EntryKind,
     pub(super) kind_known: bool,
 }
 
@@ -255,7 +255,60 @@ pub(super) struct KindResolveRequest {
 pub(super) struct KindResolveResponse {
     pub(super) epoch: u64,
     pub(super) path: PathBuf,
-    pub(super) is_dir: Option<bool>,
+    pub(super) kind: Option<EntryKind>,
+}
+
+fn is_windows_shortcut(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        return path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("lnk"));
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        false
+    }
+}
+
+fn resolve_entry_kind(path: &Path) -> Option<EntryKind> {
+    let symlink_meta = std::fs::symlink_metadata(path).ok()?;
+    let is_link = symlink_meta.file_type().is_symlink() || is_windows_shortcut(path);
+
+    if symlink_meta.is_dir() {
+        return Some(if is_link {
+            EntryKind::link(true)
+        } else {
+            EntryKind::dir()
+        });
+    }
+    if symlink_meta.is_file() {
+        return Some(if is_link {
+            EntryKind::link(false)
+        } else {
+            EntryKind::file()
+        });
+    }
+
+    let meta = std::fs::metadata(path).ok()?;
+    if meta.is_dir() {
+        Some(if is_link {
+            EntryKind::link(true)
+        } else {
+            EntryKind::dir()
+        })
+    } else if meta.is_file() {
+        Some(if is_link {
+            EntryKind::link(false)
+        } else {
+            EntryKind::file()
+        })
+    } else {
+        None
+    }
 }
 
 pub(super) struct FileListRequest {
@@ -564,20 +617,12 @@ pub(super) fn spawn_kind_resolver_worker(
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
-            let is_dir = std::fs::metadata(&req.path).ok().and_then(|meta| {
-                if meta.is_dir() {
-                    Some(true)
-                } else if meta.is_file() {
-                    Some(false)
-                } else {
-                    None
-                }
-            });
+            let kind = resolve_entry_kind(&req.path);
             if tx_res
                 .send(KindResolveResponse {
                     epoch: req.epoch,
                     path: req.path,
-                    is_dir,
+                    kind,
                 })
                 .is_err()
             {
@@ -857,7 +902,13 @@ fn stream_filelist_index(
             }
             buffer.push(IndexEntry {
                 path,
-                is_dir: is_dir.unwrap_or(false),
+                kind: is_dir.map_or_else(EntryKind::file, |is_dir| {
+                    if is_dir {
+                        EntryKind::dir()
+                    } else {
+                        EntryKind::file()
+                    }
+                }),
                 kind_known: is_dir.is_some(),
             });
             if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
@@ -922,7 +973,7 @@ fn stream_filelist_index(
             .into_iter()
             .map(|path| IndexEntry {
                 path,
-                is_dir: false,
+                kind: EntryKind::file(),
                 kind_known: false,
             })
             .collect::<Vec<_>>();
@@ -986,8 +1037,10 @@ fn stream_walker_index(
                 return Err("superseded".to_string());
             }
         }
-        let is_dir = entry.file_type().is_dir();
-        if (is_dir && !req.include_dirs) || (!is_dir && !req.include_files) {
+        let Some(kind) = resolve_entry_kind(&entry.path()) else {
+            continue;
+        };
+        if (kind.is_dir && !req.include_dirs) || (!kind.is_dir && !req.include_files) {
             continue;
         }
         if emitted_entries >= max_entries {
@@ -996,7 +1049,7 @@ fn stream_walker_index(
         }
         buffer.push(IndexEntry {
             path: entry.path().to_path_buf(),
-            is_dir,
+            kind,
             kind_known: true,
         });
         emitted_entries = emitted_entries.saturating_add(1);
