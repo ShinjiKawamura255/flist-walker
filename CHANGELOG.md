@@ -24,6 +24,29 @@
 ### Known issues
 - 
 
+## [0.12.3] - 2026-03-28
+### Added
+- 
+
+### Changed
+- Windows のファイル/フォルダ Action 通知と失敗通知で、表示上は `\\?\` / `\\?\UNC\` を除去し、ユーザ向けパス表示を読みやすくした。
+
+### Fixed
+- Windows で Action フッタや `Action failed:` 通知に `\\?\` が表示される問題を修正した。
+- Windows で `&` などの特殊記号を含むパスを開く・親フォルダを開く際に、`cmd /C start` 経由のシェル解釈で失敗しうる問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
 ## [0.12.2] - 2026-03-27
 ### Added
 - 
