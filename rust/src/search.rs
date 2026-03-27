@@ -798,6 +798,7 @@ pub fn search_entries_with_scope(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui_model::has_visible_match;
     use std::time::{Duration, Instant};
 
     #[test]
@@ -1161,6 +1162,35 @@ mod tests {
         let err = try_search_entries_with_scope("[*", &entries, 10, true, true, None, false)
             .expect_err("invalid regex should return error");
         assert!(err.contains("invalid regex"));
+    }
+
+    #[test]
+    fn relative_search_results_are_visible_in_relative_display_on_posix_paths() {
+        let root = PathBuf::from("/tmp/workspace");
+        let entries = vec![
+            root.join("abc/def.txt"),
+            root.join("misc/xyz.txt"),
+            PathBuf::from("/var/tmp/abc-def-outside.txt"),
+        ];
+
+        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
+        assert_eq!(out.len(), 2);
+        assert!(out
+            .iter()
+            .all(|(path, _)| has_visible_match(path, &root, "abc def", true, true)));
+    }
+
+    #[test]
+    fn absolute_search_results_are_visible_in_absolute_display_on_posix_paths() {
+        let root = PathBuf::from("/tmp/workspace");
+        let entries = vec![
+            PathBuf::from("/opt/cache/abc/def.txt"),
+            PathBuf::from("/opt/cache/misc/xyz.txt"),
+        ];
+
+        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), false);
+        assert_eq!(out.len(), 1);
+        assert!(has_visible_match(&out[0].0, &root, "abc def", false, true));
     }
 
     #[test]
