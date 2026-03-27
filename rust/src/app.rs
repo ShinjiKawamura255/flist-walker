@@ -3774,10 +3774,13 @@ Search hints:
             if open_parent_for_files {
                 self.set_notice(format!(
                     "Action: open containing folder for {}",
-                    paths[0].display()
+                    normalize_path_for_display(&paths[0])
                 ));
             } else {
-                self.set_notice(format!("Action: {}", paths[0].display()));
+                self.set_notice(format!(
+                    "Action: {}",
+                    normalize_path_for_display(&paths[0])
+                ));
             }
         } else {
             if open_parent_for_files {

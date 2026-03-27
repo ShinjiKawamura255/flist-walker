@@ -8,6 +8,20 @@ pub enum Action {
     Execute,
 }
 
+fn normalize_action_path_for_display(path: &Path) -> String {
+    #[cfg(target_os = "windows")]
+    {
+        let raw = path.to_string_lossy();
+        if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{}", rest);
+        }
+        if let Some(rest) = raw.strip_prefix(r"\\?\") {
+            return rest.to_string();
+        }
+    }
+    path.display().to_string()
+}
+
 pub fn choose_action(path: &Path) -> Action {
     if path.is_dir() {
         return Action::Open;
@@ -65,16 +79,23 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
                     if err.raw_os_error() == Some(193) {
                         return open_with_default(path);
                     }
-                    return Err(err)
-                        .with_context(|| format!("failed to execute {}", path.display()));
+                    return Err(err).with_context(|| {
+                        format!(
+                            "failed to execute {}",
+                            normalize_action_path_for_display(path)
+                        )
+                    });
                 }
                 Ok(())
             }
             #[cfg(not(target_os = "windows"))]
             {
-                result
-                    .map(|_| ())
-                    .with_context(|| format!("failed to execute {}", path.display()))
+                result.map(|_| ()).with_context(|| {
+                    format!(
+                        "failed to execute {}",
+                        normalize_action_path_for_display(path)
+                    )
+                })
             }
         }
     }
@@ -86,7 +107,7 @@ pub fn open_with_default(path: &Path) -> Result<()> {
         Command::new("cmd")
             .args(["/C", "start", "", &path.to_string_lossy()])
             .spawn()
-            .with_context(|| format!("failed to open {}", path.display()))?;
+            .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
         return Ok(());
     }
     #[cfg(target_os = "macos")]
@@ -94,7 +115,7 @@ pub fn open_with_default(path: &Path) -> Result<()> {
         Command::new("open")
             .arg(path)
             .spawn()
-            .with_context(|| format!("failed to open {}", path.display()))?;
+            .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
         return Ok(());
     }
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -102,7 +123,7 @@ pub fn open_with_default(path: &Path) -> Result<()> {
         Command::new("xdg-open")
             .arg(path)
             .spawn()
-            .with_context(|| format!("failed to open {}", path.display()))?;
+            .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
         Ok(())
     }
 }
@@ -157,5 +178,18 @@ mod tests {
             fs::write(&exe, "bin").expect("write exe");
             assert_eq!(choose_action(&exe), Action::Execute);
         }
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn normalize_action_path_for_display_strips_extended_prefix() {
+        assert_eq!(
+            normalize_action_path_for_display(Path::new(r"\\?\C:\Users\tester\file.txt")),
+            r"C:\Users\tester\file.txt"
+        );
+        assert_eq!(
+            normalize_action_path_for_display(Path::new(r"\\?\UNC\server\share\file.txt")),
+            r"\\server\share\file.txt"
+        );
     }
 }

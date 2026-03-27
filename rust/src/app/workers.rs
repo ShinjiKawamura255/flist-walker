@@ -7,7 +7,7 @@ use crate::indexer::{
 use crate::search::{
     sort_scored_matches, top_ranked_scores, try_collect_search_matches, IndexedScore,
 };
-use crate::ui_model::{build_preview_text_with_kind, has_visible_match};
+use crate::ui_model::{build_preview_text_with_kind, has_visible_match, normalize_path_for_display};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
@@ -233,6 +233,14 @@ pub(super) struct ActionRequest {
 pub(super) struct ActionResponse {
     pub(super) request_id: u64,
     pub(super) notice: String,
+}
+
+pub(super) fn action_notice_for_targets(targets: &[PathBuf]) -> String {
+    if targets.len() == 1 {
+        format!("Action: {}", normalize_path_for_display(&targets[0]))
+    } else {
+        format!("Action: launched {} items", targets.len())
+    }
 }
 
 pub(super) struct SortMetadataRequest {
@@ -707,10 +715,8 @@ pub(super) fn spawn_action_worker(
 
             let notice = if let Some(failed) = failure {
                 failed
-            } else if targets.len() == 1 {
-                format!("Action: {}", targets[0].display())
             } else {
-                format!("Action: launched {} items", targets.len())
+                action_notice_for_targets(&targets)
             };
 
             if tx_res

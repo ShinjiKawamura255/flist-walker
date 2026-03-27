@@ -121,6 +121,26 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
 }
 
 #[test]
+#[cfg(target_os = "windows")]
+fn execute_selected_notice_normalizes_extended_prefix() {
+    let root = test_root("action-notice-normalize");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (action_tx_req, _action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+    app.action_tx = action_tx_req;
+    app.action_rx = action_rx_res;
+    app.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
+    app.current_row = Some(0);
+
+    app.execute_selected();
+
+    assert_eq!(app.notice, r"Action: C:\Users\tester\file.txt");
+    assert!(!app.notice.contains(r"\\?\"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn execute_selected_blocks_path_outside_current_root() {
     let root = test_root("action-block-outside-root");
     let outside_root = test_root("action-block-outside-root-other");
@@ -245,6 +265,14 @@ fn stale_action_completion_is_ignored_by_request_id() {
     assert_eq!(app.pending_action_request_id, None);
     assert!(!app.action_in_progress);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+#[cfg(target_os = "windows")]
+fn action_notice_for_targets_normalizes_extended_prefix() {
+    let notice = action_notice_for_targets(&[PathBuf::from(r"\\?\C:\Users\tester\file.txt")]);
+    assert_eq!(notice, r"Action: C:\Users\tester\file.txt");
+    assert!(!notice.contains(r"\\?\"));
 }
 
 #[test]
