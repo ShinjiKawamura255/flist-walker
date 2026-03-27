@@ -254,7 +254,8 @@ impl FlistWalkerApp {
                 }
                 if let Some(i) = execute_row {
                     self.current_row = Some(i);
-                    self.execute_selected();
+                    let open_parent_for_files = ui.input(|i| i.modifiers.shift);
+                    self.execute_selected_for_activation(open_parent_for_files);
                 }
             });
     }

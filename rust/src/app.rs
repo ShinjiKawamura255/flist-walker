@@ -3743,8 +3743,12 @@ Search hints:
         self.execute_selected_with_options(false);
     }
 
+    fn execute_selected_for_activation(&mut self, open_parent_for_files: bool) {
+        self.execute_selected_with_options(open_parent_for_files);
+    }
+
     fn execute_selected_open_folder(&mut self) {
-        self.execute_selected_with_options(true);
+        self.execute_selected_for_activation(true);
     }
 
     fn execute_selected_with_options(&mut self, open_parent_for_files: bool) {

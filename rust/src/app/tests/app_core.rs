@@ -121,6 +121,31 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
 }
 
 #[test]
+fn execute_selected_for_activation_uses_open_folder_mode_when_requested() {
+    let root = test_root("activation-open-folder");
+    let folder = root.join("src");
+    fs::create_dir_all(&folder).expect("create dir");
+    let selected = folder.join("picked.txt");
+    fs::write(&selected, "x").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+    app.action_tx = action_tx_req;
+    app.action_rx = action_rx_res;
+    app.results = vec![(selected.clone(), 0.0)];
+    app.current_row = Some(0);
+
+    app.execute_selected_for_activation(true);
+
+    let req = action_rx_req
+        .try_recv()
+        .expect("action request should be enqueued");
+    assert_eq!(req.paths, vec![selected]);
+    assert!(req.open_parent_for_files);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 #[cfg(target_os = "windows")]
 fn execute_selected_notice_normalizes_extended_prefix() {
     let root = test_root("action-notice-normalize");
