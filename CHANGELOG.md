@@ -24,6 +24,29 @@
 ### Known issues
 - 
 
+## [0.12.2] - 2026-03-27
+### Added
+- 
+
+### Changed
+- 空白区切りの通常検索 token は、subsequence だけで一致する候補よりもリテラル一致する候補を高く順位付けするようにした。
+
+### Fixed
+- 空白区切り query で、各 token のリテラル一致が十分に順位へ反映されず、意図した候補が上位に出にくい問題を改善した。
+- Windows で `\\?\` / `\\?\UNC\` 付きパスを扱う場合、Result 表示の相対パスと検索対象の相対化規約がずれて、見えていない絶対パス側の文字でヒットしうる問題を改善した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- 
+
 ## [0.12.1] - 2026-03-26
 ### Added
 - Results の属性表示に `LINK` を追加し、シンボリックリンクと Windows ショートカット（`.lnk`）を判別できるようにした。
@@ -786,7 +809,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.12.2...HEAD
+[0.12.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.2
+[0.12.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.1
 [0.12.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.0
 [0.11.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.6
 [0.11.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.11.5
