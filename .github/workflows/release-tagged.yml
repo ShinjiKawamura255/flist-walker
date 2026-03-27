@@ -116,7 +116,7 @@ jobs:
         run: ./scripts/prepare-release-macos.sh "${{ github.ref_name }}" "${{ matrix.target }}"
 
       - name: Upload packaged assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.upload_paths }}
@@ -131,7 +131,7 @@ jobs:
 
     steps:
       - name: Download packaged assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           pattern: release-*
           path: release-assets
