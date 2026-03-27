@@ -1,6 +1,13 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 use std::process::Command;
+#[cfg(target_os = "windows")]
+use std::{
+    ffi::OsStr,
+    os::windows::ffi::OsStrExt,
+    path::PathBuf,
+    ptr,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -20,6 +27,65 @@ fn normalize_action_path_for_display(path: &Path) -> String {
         }
     }
     path.display().to_string()
+}
+
+#[cfg(target_os = "windows")]
+fn normalize_windows_shell_path(path: &Path) -> PathBuf {
+    let raw = path.to_string_lossy();
+    if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{}", rest));
+    }
+    if let Some(rest) = raw.strip_prefix(r"\\?\") {
+        return PathBuf::from(rest);
+    }
+    path.to_path_buf()
+}
+
+#[cfg(target_os = "windows")]
+fn encode_wide_null(text: &OsStr) -> Vec<u16> {
+    text.encode_wide().chain(std::iter::once(0)).collect()
+}
+
+#[cfg(target_os = "windows")]
+fn shell_execute_error(code: isize) -> std::io::Error {
+    if (2..=32).contains(&code) {
+        return std::io::Error::from_raw_os_error(code as i32);
+    }
+    std::io::Error::other(format!("ShellExecuteW failed with code {code}"))
+}
+
+#[cfg(target_os = "windows")]
+fn shell_open(path: &Path) -> std::io::Result<()> {
+    #[link(name = "shell32")]
+    unsafe extern "system" {
+        fn ShellExecuteW(
+            hwnd: *mut std::ffi::c_void,
+            lp_operation: *const u16,
+            lp_file: *const u16,
+            lp_parameters: *const u16,
+            lp_directory: *const u16,
+            n_show_cmd: i32,
+        ) -> isize;
+    }
+
+    const SW_SHOWNORMAL: i32 = 1;
+    let operation = encode_wide_null(OsStr::new("open"));
+    let target = normalize_windows_shell_path(path);
+    let target_wide = encode_wide_null(target.as_os_str());
+    let result = unsafe {
+        ShellExecuteW(
+            ptr::null_mut(),
+            operation.as_ptr(),
+            target_wide.as_ptr(),
+            ptr::null(),
+            ptr::null(),
+            SW_SHOWNORMAL,
+        )
+    };
+    if result <= 32 {
+        return Err(shell_execute_error(result));
+    }
+    Ok(())
 }
 
 pub fn choose_action(path: &Path) -> Action {
@@ -104,9 +170,7 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
 pub fn open_with_default(path: &Path) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
-        Command::new("cmd")
-            .args(["/C", "start", "", &path.to_string_lossy()])
-            .spawn()
+        shell_open(path)
             .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
         return Ok(());
     }
@@ -191,5 +255,22 @@ mod tests {
             normalize_action_path_for_display(Path::new(r"\\?\UNC\server\share\file.txt")),
             r"\\server\share\file.txt"
         );
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn normalize_windows_shell_path_strips_extended_prefix_and_keeps_special_chars() {
+        let normalized = normalize_windows_shell_path(Path::new(
+            r"\\?\C:\Users\tester\a&b [c];'!,()^$.txt",
+        ));
+        assert_eq!(
+            normalized,
+            PathBuf::from(r"C:\Users\tester\a&b [c];'!,()^$.txt")
+        );
+
+        let unc = normalize_windows_shell_path(Path::new(
+            r"\\?\UNC\server\share\dir&a\file[1].txt",
+        ));
+        assert_eq!(unc, PathBuf::from(r"\\server\share\dir&a\file[1].txt"));
     }
 }
