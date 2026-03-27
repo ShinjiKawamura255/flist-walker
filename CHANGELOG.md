@@ -24,6 +24,31 @@
 ### Known issues
 - 
 
+## [0.13.0] - 2026-03-28
+### Added
+- 起動時に GitHub Releases を確認し、新しい version があれば自己更新ダイアログを表示するようにした。
+- Windows 向けに、same-version / downgrade / custom feed を安全に試せる PowerShell の手動検証スクリプトを追加した。
+
+### Changed
+- 更新ダイアログに `Don't show again until the next version` を追加し、抑止した target version は次の version が出るまで再表示しないようにした。
+- 起動時の更新確認は UI を block せず、Windows/Linux は staged update 後に再起動、macOS は手動更新案内のみとする運用にした。
+
+### Fixed
+- Shift+Double Click で Shift+Enter と同じく親フォルダを開けるようにした。
+- 起動時にネットワークがオフラインでも、更新確認失敗をエラー表示せず通常どおり起動・操作できるようにした。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- ダウンロードした更新 asset は `SHA256SUMS` と照合した場合のみ適用し、配布 notice へ追加依存のライセンス情報を反映した。
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+
 ## [0.12.3] - 2026-03-28
 ### Added
 - 
