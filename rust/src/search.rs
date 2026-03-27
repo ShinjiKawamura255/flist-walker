@@ -111,6 +111,20 @@ fn normalize_text(text: &str, ignore_case: bool) -> String {
     }
 }
 
+fn normalize_windows_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let raw = path.to_string_lossy();
+        if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
+            return PathBuf::from(format!(r"\\{}", rest));
+        }
+        if let Some(rest) = raw.strip_prefix(r"\\?\") {
+            return PathBuf::from(rest);
+        }
+    }
+    path.to_path_buf()
+}
+
 fn compile_literal_pattern(term: &str, ignore_case: bool) -> Option<LiteralPattern> {
     let normalized = normalize_text(term, ignore_case);
     let (anchored_start, anchored_end, core) = split_anchor(&normalized);
@@ -328,14 +342,16 @@ fn matches_include_matcher(matcher: &IncludeMatcher, name: &str, full: &str) -> 
 }
 
 fn searchable_full(path: &Path, root: Option<&Path>, prefer_relative: bool, ignore_case: bool) -> String {
+    let normalized_path = normalize_windows_path(path);
     if prefer_relative {
         if let Some(root) = root {
-            if let Ok(rel) = path.strip_prefix(root) {
+            let normalized_root = normalize_windows_path(root);
+            if let Ok(rel) = normalized_path.strip_prefix(&normalized_root) {
                 return normalize_text(&rel.to_string_lossy(), ignore_case);
             }
         }
     }
-    normalize_text(&path.to_string_lossy(), ignore_case)
+    normalize_text(&normalized_path.to_string_lossy(), ignore_case)
 }
 
 fn build_searchable_entry(path: &Path, ctx: SearchContext<'_>) -> SearchableEntry {
@@ -1119,6 +1135,24 @@ mod tests {
             out[0].0.file_name().and_then(|s| s.to_str()),
             Some("main.py")
         );
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn relative_search_normalizes_extended_drive_prefixes() {
+        let root = PathBuf::from(r"C:\Users\tester");
+        let entries = vec![PathBuf::from(r"\\?\C:\Users\tester\abc\def.txt")];
+        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
+        assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn relative_search_normalizes_extended_unc_prefixes() {
+        let root = PathBuf::from(r"\\server\share");
+        let entries = vec![PathBuf::from(r"\\?\UNC\server\share\abc\def.txt")];
+        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
+        assert_eq!(out.len(), 1);
     }
 
     #[test]
