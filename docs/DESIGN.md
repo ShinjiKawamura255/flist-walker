@@ -42,11 +42,16 @@
 - 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
 - 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`
 
+- DES-014 Self Update Coordinator
+- 役割: GitHub Releases の最新 version 確認、対象 asset 選択、`SHA256SUMS` 検証、Windows/Linux 向け staged update と再起動を制御する。
+- 実装: `rust/src/updater.rs`, `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`
+
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
 - Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
+- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と `SHA256SUMS` を取得/検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体を再起動。
 
 ## Data model
 - Candidate
@@ -129,6 +134,10 @@
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - Windows の `.ps1` 実行は `powershell.exe -File` を明示起動する。
+- 自己更新は staged binary を checksum 検証後にのみ採用し、検証失敗時は既存バイナリと UI セッションを維持する。
+- Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して起動し、`Copy-Item -LiteralPath` ベースで置換する。
+- Linux の自己更新は一時 shell script を起動して本体終了を待ち、`cp` + `chmod` 後に新 binary を再起動する。
+- macOS は最新 version 検知のみ実施し、自動適用は非対応として release URL への案内に留める。
 
 - DES-008 Testability
 - indexer/search/actions/ui_model を独立モジュール化。
@@ -149,6 +158,15 @@
 - 依存脆弱性は `cargo audit` を CI で必須実行し、既知 CVE の流入を早期検知する。
 - `x86_64-pc-windows-gnu` では `windres` が生成する `resource.o` を `flistwalker` バイナリへ直接リンクし、ライブラリターゲットだけに閉じた resource link で Explorer アイコンが欠落しないようにする。
 - macOS notarization は現段階では手動ゲートとして維持し、draft release 作成後に docs / template で確認手順を明示する。
+
+- DES-014 Self Update Coordinator
+- GitHub Releases API の latest endpoint から `tag_name` / asset 名 / `browser_download_url` を取得し、現在 version と比較する。
+- asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary と `SHA256SUMS` を選択する。
+- update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
+- restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。
+- update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
+- 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。
+- 手動試験用 override として `FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1` を読み取り、通常運用の GitHub latest 比較を一時的に差し替えられるようにする。
 
 ## Error handling / timeout / logging / metrics
 - エラー戦略: ファイルアクセス失敗、実行失敗、正規表現不正を分類して表示。
@@ -181,3 +199,4 @@
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)
 - DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)
+- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081 (SP-014)

@@ -74,6 +74,30 @@ fn persist_ui_state_now_saves_preview_visibility_immediately() {
 }
 
 #[test]
+fn persist_ui_state_now_saves_skipped_update_version() {
+    let root = test_root("persist-skipped-update-version");
+    let ui_state_dir = test_root("persist-skipped-update-version-ui");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.skipped_update_target_version = Some("0.12.4".to_string());
+    app.mark_ui_state_dirty();
+    app.persist_ui_state_to_path_now(&ui_state_path);
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
+    assert_eq!(
+        launch.skipped_update_target_version.as_deref(),
+        Some("0.12.4")
+    );
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn move_row_sets_scroll_tracking() {
     let root = test_root("scroll");
     fs::create_dir_all(&root).expect("create dir");
@@ -298,6 +322,163 @@ fn action_notice_for_targets_normalizes_extended_prefix() {
     let notice = action_notice_for_targets(&[PathBuf::from(r"\\?\C:\Users\tester\file.txt")]);
     assert_eq!(notice, r"Action: C:\Users\tester\file.txt");
     assert!(!notice.contains(r"\\?\"));
+}
+
+#[test]
+fn available_update_response_opens_prompt() {
+    let root = test_root("available-update-prompt");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+
+    tx.send(UpdateResponse::Available {
+        request_id: 1,
+        candidate: UpdateCandidate {
+            current_version: "0.12.3".to_string(),
+            target_version: "0.12.4".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
+            asset_url: "https://example.invalid/asset".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            support: UpdateSupport::Auto,
+        },
+    })
+    .expect("send update response");
+
+    app.poll_update_response();
+
+    assert!(app.update_prompt.is_some());
+    assert!(
+        !app.update_prompt
+            .as_ref()
+            .expect("update prompt")
+            .skip_until_next_version
+    );
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn skipped_update_response_is_not_prompted_again_until_newer_version() {
+    let root = test_root("skip-update-prompt");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+    app.skipped_update_target_version = Some("0.12.4".to_string());
+
+    tx.send(UpdateResponse::Available {
+        request_id: 1,
+        candidate: UpdateCandidate {
+            current_version: "0.12.3".to_string(),
+            target_version: "0.12.4".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
+            asset_url: "https://example.invalid/asset".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            support: UpdateSupport::Auto,
+        },
+    })
+    .expect("send update response");
+
+    app.poll_update_response();
+
+    assert!(app.update_prompt.is_none());
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn newer_update_response_ignores_previous_skip_version() {
+    let root = test_root("newer-update-after-skip");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+    app.skipped_update_target_version = Some("0.12.4".to_string());
+
+    tx.send(UpdateResponse::Available {
+        request_id: 1,
+        candidate: UpdateCandidate {
+            current_version: "0.12.3".to_string(),
+            target_version: "0.12.5".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "FlistWalker-0.12.5-linux-x86_64".to_string(),
+            asset_url: "https://example.invalid/asset".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            support: UpdateSupport::Auto,
+        },
+    })
+    .expect("send update response");
+
+    app.poll_update_response();
+
+    assert_eq!(
+        app.update_prompt
+            .as_ref()
+            .expect("newer version should be prompted")
+            .candidate
+            .target_version,
+        "0.12.5"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn failed_update_response_sets_notice_without_closing_app() {
+    let root = test_root("failed-update-notice");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+
+    tx.send(UpdateResponse::Failed {
+        request_id: 1,
+        error: "Update check failed: offline".to_string(),
+    })
+    .expect("send update failure");
+
+    app.poll_update_response();
+
+    assert_eq!(app.notice, "Update check failed: offline");
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+    assert!(!app.close_requested_for_update);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn silent_update_check_failure_leaves_notice_unchanged() {
+    let root = test_root("silent-update-check-failure");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+    app.notice = "Existing notice".to_string();
+
+    tx.send(UpdateResponse::CheckFailedSilent { request_id: 1 })
+        .expect("send silent update failure");
+
+    app.poll_update_response();
+
+    assert_eq!(app.notice, "Existing notice");
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+    assert!(!app.close_requested_for_update);
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]

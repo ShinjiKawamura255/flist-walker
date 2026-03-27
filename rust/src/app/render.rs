@@ -932,6 +932,62 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn render_update_dialog(&mut self, ctx: &egui::Context) {
+        let Some(prompt) = self.update_prompt.as_ref().cloned() else {
+            return;
+        };
+
+        let mut confirm = false;
+        let mut later = false;
+        let mut skip_until_next_version = prompt.skip_until_next_version;
+        egui::Window::new("Update Available")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+            .show(ctx, |ui| {
+                ui.label(format!(
+                    "FlistWalker {} is available. Current version is {}.",
+                    prompt.candidate.target_version, prompt.candidate.current_version
+                ));
+                match &prompt.candidate.support {
+                    UpdateSupport::Auto => {
+                        ui.label("Download the new release, replace the current binary, and restart?");
+                        ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
+                        ui.horizontal(|ui| {
+                            if ui.button("Download and Restart").clicked() {
+                                confirm = true;
+                            }
+                            if ui.button("Later").clicked() {
+                                later = true;
+                            }
+                        });
+                    }
+                    UpdateSupport::ManualOnly { message } => {
+                        ui.label(message);
+                        ui.label(format!("Release: {}", prompt.candidate.release_url));
+                        ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
+                        if ui.button("Later").clicked() {
+                            later = true;
+                        }
+                    }
+                }
+            });
+
+        if let Some(state) = self.update_prompt.as_mut() {
+            state.skip_until_next_version = skip_until_next_version;
+        }
+
+        if confirm {
+            self.start_update_install();
+        } else if later {
+            if skip_until_next_version {
+                self.skip_update_prompt_until_next_version();
+            } else {
+                self.dismiss_update_prompt();
+            }
+        }
+    }
+
     pub(super) fn render_central_panel(&mut self, ctx: &egui::Context) {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_results_and_preview(ui);

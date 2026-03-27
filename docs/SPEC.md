@@ -201,6 +201,30 @@
 - path が削除済み・権限不足などで属性取得に失敗した場合はその項目だけ `None` 扱いで継続する。
 - 保留中ソート応答が古い query / root / tab に属する場合は破棄する。
 
+## SP-014 起動時自己更新
+### Requirements
+- MUST: GUI 起動時に GitHub Releases の最新 version 確認を非同期 worker で実行し、UI スレッドをブロックしてはならない。
+- MUST: 現在 version より新しい release が存在する場合、利用者へ更新承認ダイアログを表示する。
+- MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` に限定する。
+- MUST: ダウンロード後は `SHA256SUMS` に記載された対象 asset の SHA-256 と一致することを確認し、一致しない場合は更新を中止する。
+- MUST: Windows では実行中 EXE を直接上書きせず、一時ディレクトリへ生成した補助 updater を別プロセスとして起動し、旧 EXE 終了後に置換と再起動を行う。
+- MUST: Linux では staged binary を一時ディレクトリへ配置し、別プロセスの更新スクリプト経由で置換と再起動を行う。
+- MUST: 更新失敗時は既存バイナリを維持し、利用者へ原因を通知する。
+- MUST: macOS では新しい release を検知しても自動置換を試みず、手動更新が必要であることを通知する。
+- MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
+- MUST: 抑止済み target version 以下の更新候補は次回起動以降も再表示してはならず、より新しい version を検知した場合のみ再び更新ダイアログを表示しなければならない。
+- MUST: 手動試験用 override 環境変数（更新 feed URL 差し替え、同一 version 許可、downgrade 許可）は内部検証専用とし、README、release note、配布物、ユーザ向けヘルプへ露出してはならない。
+- SHOULD: 更新チェック失敗やダウンロード失敗は通常の検索/操作を妨げない。
+- SHOULD: 手動試験のために、更新 feed URL 差し替え、同一 version 許可、downgrade 許可を環境変数で上書きできる。
+
+### Preconditions / Postconditions
+- Preconditions: GUI モードで起動し、ネットワーク経由で GitHub Releases へ到達可能。
+- Postconditions: 新版が無ければ何も変更せず、新版があれば承認後に検証済みバイナリだけが置換・再起動される。
+
+### Edge / Error
+- GitHub API 失敗、タイムアウト、asset 欠落、checksum 不一致は更新失敗として通知し、現行バイナリで継続する。
+- 対応外 OS/arch は新版検知のみ行い、自動更新非対応の案内だけを返す。
+
 ## SP-012 CI / Release Security Hygiene
 ### Requirements
 - MUST: 通常 CI は Windows/macOS/Linux の release 対象 OS を継続検証する。
