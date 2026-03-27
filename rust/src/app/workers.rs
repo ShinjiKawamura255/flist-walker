@@ -253,6 +253,9 @@ pub(super) enum UpdateResponse {
     UpToDate {
         request_id: u64,
     },
+    CheckFailedSilent {
+        request_id: u64,
+    },
     Available {
         request_id: u64,
         candidate: UpdateCandidate,
@@ -841,9 +844,8 @@ pub(super) fn spawn_update_worker(
                     Ok(None) => UpdateResponse::UpToDate {
                         request_id: req.request_id,
                     },
-                    Err(err) => UpdateResponse::Failed {
+                    Err(_) => UpdateResponse::CheckFailedSilent {
                         request_id: req.request_id,
-                        error: format!("Update check failed: {err}"),
                     },
                 },
                 UpdateRequestKind::DownloadAndApply {

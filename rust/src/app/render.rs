@@ -939,6 +939,7 @@ impl FlistWalkerApp {
 
         let mut confirm = false;
         let mut later = false;
+        let mut skip_until_next_version = prompt.skip_until_next_version;
         egui::Window::new("Update Available")
             .collapsible(false)
             .resizable(false)
@@ -951,6 +952,7 @@ impl FlistWalkerApp {
                 match &prompt.candidate.support {
                     UpdateSupport::Auto => {
                         ui.label("Download the new release, replace the current binary, and restart?");
+                        ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
                         ui.horizontal(|ui| {
                             if ui.button("Download and Restart").clicked() {
                                 confirm = true;
@@ -963,6 +965,7 @@ impl FlistWalkerApp {
                     UpdateSupport::ManualOnly { message } => {
                         ui.label(message);
                         ui.label(format!("Release: {}", prompt.candidate.release_url));
+                        ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
                         if ui.button("Later").clicked() {
                             later = true;
                         }
@@ -970,10 +973,18 @@ impl FlistWalkerApp {
                 }
             });
 
+        if let Some(state) = self.update_prompt.as_mut() {
+            state.skip_until_next_version = skip_until_next_version;
+        }
+
         if confirm {
             self.start_update_install();
         } else if later {
-            self.dismiss_update_prompt();
+            if skip_until_next_version {
+                self.skip_update_prompt_until_next_version();
+            } else {
+                self.dismiss_update_prompt();
+            }
         }
     }
 

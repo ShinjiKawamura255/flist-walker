@@ -25,6 +25,8 @@ pub(super) struct UiState {
     pub(super) tabs: Vec<SavedTabState>,
     pub(super) active_tab: Option<usize>,
     pub(super) window: Option<SavedWindowGeometry>,
+    #[serde(default)]
+    pub(super) skipped_update_target_version: Option<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -36,6 +38,7 @@ pub(super) struct LaunchSettings {
     pub(super) query_history: Vec<String>,
     pub(super) restore_tabs: Vec<SavedTabState>,
     pub(super) restore_active_tab: Option<usize>,
+    pub(super) skipped_update_target_version: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -153,6 +156,7 @@ impl FlistWalkerApp {
             },
             restore_tabs: ui_state.tabs,
             restore_active_tab: ui_state.active_tab,
+            skipped_update_target_version: ui_state.skipped_update_target_version,
         }
     }
 

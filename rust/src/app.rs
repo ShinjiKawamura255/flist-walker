@@ -1,7 +1,7 @@
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
 };
-use crate::updater::{UpdateCandidate, UpdateSupport};
+use crate::updater::{should_skip_update_prompt, UpdateCandidate, UpdateSupport};
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
     normalize_path_for_display, should_skip_preview,
@@ -281,6 +281,7 @@ struct PendingFileListUseWalkerConfirmation {
 #[derive(Clone, Debug)]
 struct UpdatePromptState {
     candidate: UpdateCandidate,
+    skip_until_next_version: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -399,6 +400,7 @@ pub struct FlistWalkerApp {
     active_filelist_dialog: Option<FileListDialogKind>,
     active_filelist_dialog_button: usize,
     update_prompt: Option<UpdatePromptState>,
+    skipped_update_target_version: Option<String>,
     close_requested_for_update: bool,
     tab_drag_state: Option<TabDragState>,
     preview_cache: HashMap<PathBuf, String>,
@@ -718,6 +720,7 @@ Search hints:
             active_filelist_dialog: None,
             active_filelist_dialog_button: 0,
             update_prompt: None,
+            skipped_update_target_version: launch.skipped_update_target_version,
             close_requested_for_update: false,
             tab_drag_state: None,
             preview_cache: HashMap::new(),
@@ -849,6 +852,31 @@ Search hints:
 
     fn dismiss_update_prompt(&mut self) {
         self.update_prompt = None;
+    }
+
+    fn skip_update_prompt_until_next_version(&mut self) {
+        let Some(target_version) = self
+            .update_prompt
+            .as_ref()
+            .map(|prompt| prompt.candidate.target_version.clone())
+        else {
+            return;
+        };
+        self.skipped_update_target_version = Some(target_version.clone());
+        self.mark_ui_state_dirty();
+        self.persist_ui_state_now();
+        self.update_prompt = None;
+        self.set_notice(format!(
+            "Update {} hidden until a newer version is available",
+            target_version
+        ));
+    }
+
+    fn update_prompt_is_suppressed(&self, candidate: &UpdateCandidate) -> bool {
+        should_skip_update_prompt(
+            &candidate.target_version,
+            self.skipped_update_target_version.as_deref(),
+        )
     }
 
     fn clear_sort_metadata_cache(&mut self) {
@@ -1798,6 +1826,7 @@ Search hints:
             tabs: self.saved_tabs_for_ui_state(),
             active_tab: Some(self.active_tab),
             window: self.window_geometry.clone(),
+            skipped_update_target_version: self.skipped_update_target_version.clone(),
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
             let _ = fs::write(path, text);
@@ -4255,6 +4284,13 @@ Search hints:
                     self.pending_update_request_id = None;
                     self.update_in_progress = false;
                 }
+                UpdateResponse::CheckFailedSilent { request_id } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_update_request_id = None;
+                    self.update_in_progress = false;
+                }
                 UpdateResponse::Available {
                     request_id,
                     candidate,
@@ -4264,7 +4300,12 @@ Search hints:
                     }
                     self.pending_update_request_id = None;
                     self.update_in_progress = false;
-                    self.update_prompt = Some(UpdatePromptState { candidate });
+                    if !self.update_prompt_is_suppressed(&candidate) {
+                        self.update_prompt = Some(UpdatePromptState {
+                            candidate,
+                            skip_until_next_version: false,
+                        });
+                    }
                 }
                 UpdateResponse::ApplyStarted {
                     request_id,

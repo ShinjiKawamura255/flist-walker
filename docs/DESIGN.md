@@ -164,6 +164,8 @@
 - asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary と `SHA256SUMS` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
 - restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。
+- update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
+- 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。
 - 手動試験用 override として `FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1` を読み取り、通常運用の GitHub latest 比較を一時的に差し替えられるようにする。
 
 ## Error handling / timeout / logging / metrics
@@ -197,4 +199,4 @@
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)
 - DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)
-- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078 (SP-014)
+- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081 (SP-014)

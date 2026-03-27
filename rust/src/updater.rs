@@ -132,6 +132,19 @@ fn parse_version(text: &str) -> Result<Version> {
         .with_context(|| format!("invalid semver version: {text}"))
 }
 
+pub fn should_skip_update_prompt(target_version: &str, skipped_version: Option<&str>) -> bool {
+    let Some(skipped_version) = skipped_version.filter(|value| !value.trim().is_empty()) else {
+        return false;
+    };
+    let Ok(target) = parse_version(target_version) else {
+        return false;
+    };
+    let Ok(skipped) = parse_version(skipped_version) else {
+        return false;
+    };
+    target <= skipped
+}
+
 fn release_feed_url() -> String {
     std::env::var("FLISTWALKER_UPDATE_FEED_URL")
         .ok()
@@ -408,6 +421,14 @@ mod tests {
         unsafe {
             std::env::remove_var("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE");
         }
+    }
+
+    #[test]
+    fn should_skip_update_prompt_blocks_same_or_older_target_versions() {
+        assert!(should_skip_update_prompt("0.12.3", Some("0.12.3")));
+        assert!(should_skip_update_prompt("0.12.2", Some("0.12.3")));
+        assert!(!should_skip_update_prompt("0.12.4", Some("0.12.3")));
+        assert!(!should_skip_update_prompt("0.12.4", None));
     }
 
     #[test]
