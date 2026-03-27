@@ -30,6 +30,7 @@
 | TC-001 | unit | `FileList.txt` / `filelist.txt` の優先検出 | SP-001 |
 | TC-002 | unit | リスト未存在時に walker 走査で候補生成 | SP-002 |
 | TC-003 | unit | ファジー検索が関連度順・件数制限を満たす | SP-003 |
+| TC-003A | unit | 通常語の各 token は subsequence-only よりリテラル一致を高順位にする | SP-003 |
 | TC-004 | unit | 実行可能ファイルで execute 分岐 | SP-004 |
 | TC-005 | unit | フォルダで open 分岐 | SP-005 |
 | TC-006 | integration | CLI 契約（`--cli`/`--root`/`--limit`）を満たす | SP-006 |

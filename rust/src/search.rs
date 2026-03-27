@@ -66,6 +66,7 @@ struct CompiledQuery {
     exact_terms: Vec<AlternativeSet>,
     exclude_terms: Vec<AlternativeSet>,
     include_terms: Vec<IncludeMatcher>,
+    include_literal_bonus_terms: Vec<AlternativeSet>,
     include_exact_bonus_terms: Vec<LiteralPattern>,
     score_query: String,
 }
@@ -141,6 +142,21 @@ fn compile_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet {
     AlternativeSet { alternatives }
 }
 
+fn compile_non_exact_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet {
+    let normalized = normalize_text(term, ignore_case);
+    let alternatives = include_alternatives(&normalized)
+        .into_iter()
+        .filter_map(parse_include_alternative)
+        .filter_map(|(exact, candidate)| {
+            if exact {
+                return None;
+            }
+            compile_literal_pattern(&candidate, ignore_case)
+        })
+        .collect();
+    AlternativeSet { alternatives }
+}
+
 fn compile_include_matcher(
     term: &str,
     use_regex: bool,
@@ -200,9 +216,16 @@ fn compile_query(query: &str, use_regex: bool, ignore_case: bool) -> Result<Comp
         .map(|term| compile_alternative_set(term, ignore_case))
         .collect::<Vec<_>>();
     let mut include_terms = Vec::with_capacity(spec.include_terms.len());
+    let mut include_literal_bonus_terms = Vec::new();
     let mut include_exact_bonus_terms = Vec::new();
     for term in &spec.include_terms {
         include_terms.push(compile_include_matcher(term, use_regex, ignore_case)?);
+        if !use_regex {
+            let literal_bonus_set = compile_non_exact_alternative_set(term, ignore_case);
+            if !literal_bonus_set.alternatives.is_empty() {
+                include_literal_bonus_terms.push(literal_bonus_set);
+            }
+        }
         if !use_regex {
             for candidate in include_alternatives(term) {
                 let Some((exact, parsed)) = parse_include_alternative(candidate) else {
@@ -223,9 +246,29 @@ fn compile_query(query: &str, use_regex: bool, ignore_case: bool) -> Result<Comp
         exact_terms,
         exclude_terms,
         include_terms,
+        include_literal_bonus_terms,
         include_exact_bonus_terms,
         score_query: build_score_query(&spec.include_terms, &spec.exact_terms, ignore_case),
     })
+}
+
+fn bonus_for_alternative_set(set: &AlternativeSet, entry: &SearchableEntry) -> f64 {
+    let mut bonus = 0.0;
+    if set
+        .alternatives
+        .iter()
+        .any(|pattern| matches_anchored_literal(pattern, &entry.name) || matches_anchored_literal(pattern, &entry.full))
+    {
+        bonus += 150.0;
+    }
+    if set
+        .alternatives
+        .iter()
+        .any(|pattern| entry.name == pattern.core || entry.full == pattern.core)
+    {
+        bonus += 150.0;
+    }
+    bonus
 }
 
 fn matches_anchored_literal(pattern: &LiteralPattern, text: &str) -> bool {
@@ -366,6 +409,10 @@ fn score_entry(
         if matches_alternative_set(term, &entry.name, &entry.full) {
             score += 800.0;
         }
+    }
+
+    for term in &compiled.include_literal_bonus_terms {
+        score += bonus_for_alternative_set(term, entry);
     }
 
     for pattern in &compiled.include_exact_bonus_terms {
@@ -1043,6 +1090,20 @@ mod tests {
         assert_eq!(
             out[0].0.file_name().and_then(|s| s.to_str()),
             Some("barbaz.txt")
+        );
+    }
+
+    #[test]
+    fn multi_term_query_prefers_literal_hits_per_token_over_subsequence_only_hits() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/abc-def.txt"),
+            PathBuf::from("/tmp/src/a-b-c-d-e-f.txt"),
+        ];
+        let out = search_entries("abc def", &entries, 10, false, true);
+        assert!(!out.is_empty());
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("abc-def.txt")
         );
     }
 
