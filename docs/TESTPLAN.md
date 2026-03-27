@@ -23,6 +23,7 @@
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
+- Sec: 自己更新は checksum 検証済み asset のみを staged binary として採用する。
 
 ## Test cases
 | TC ID | Level | Purpose | Related SP |
@@ -101,6 +102,13 @@
 | TC-071 | unit | 大規模候補でも partial top-N の結果が full ranking の先頭と一致する | SP-003, SP-007 |
 | TC-072 | unit | 並列検索の収集結果は逐次検索と同じ ranking を返す | SP-003, SP-007 |
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |
+| TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と `SHA256SUMS` を選択できる | SP-014 |
+| TC-075 | unit | staged binary は `SHA256SUMS` と一致する場合のみ自己更新へ進む | SP-014 |
+| TC-076 | unit | Windows の自己更新は補助 updater 経由で target EXE 置換コマンドを生成し、実行中 EXE の直接上書きを避ける | SP-014 |
+| TC-077 | unit | macOS は新版検知時も自動置換へ進まず、手動更新案内に留める | SP-014 |
+| TC-078 | unit | 更新確認/ダウンロード失敗は notice に反映されても GUI 操作を継続できる | SP-014 |
+| TC-079 | manual+unit | 手動試験 override により同一 version でも更新ダイアログを表示できる | SP-014 |
+| TC-080 | manual+unit | 手動試験 override により downgrade 候補でも更新ダイアログを表示できる | SP-014 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
@@ -117,6 +125,16 @@
 - `cargo test`
 - `cargo audit`
 - GUI 手動試験: `cargo run -- --root .. --limit 1000`
+- GUI 手動試験: `cargo run -- --root .. --limit 1000` で新版検知ダイアログと更新承認導線を確認
+- GUI 手動試験:
+  `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1 cargo run -- --root .. --limit 1000`
+  同一 version の feed でも更新ダイアログ表示を確認する。
+- GUI 手動試験:
+  `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1 FLISTWALKER_UPDATE_FEED_URL=<older-release-json-url> cargo run -- --root .. --limit 1000`
+  旧 version feed を使って downgrade ダイアログ表示を確認する。
+- GUI 手動試験:
+  `FLISTWALKER_UPDATE_FEED_URL=http://127.0.0.1:8000/latest.json cargo run -- --root .. --limit 1000`
+  ローカル配信した release JSON / asset / SHA256SUMS で update 手順を再現する。
 - CLI 動作確認: `cargo run -- --cli "main" --root .. --limit 20`
 
 ## Environment and data
@@ -126,6 +144,17 @@
 - 一時ディレクトリに擬似ファイル/フォルダを生成
 - `FileList.txt`/`filelist.txt` をケース別に生成
 - UNC root 相当のパス比較は Windows 実機またはパス正規化の unit test で確認
+- 自己更新手動試験では、必要に応じてローカル HTTP サーバーで release JSON / asset / `SHA256SUMS` を配信する
+
+## Self Update Manual Test
+1. 同一 version の表示確認:
+`FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1` を付けて起動し、current version と同じ `tag_name` を返す feed でも更新ダイアログが出ることを確認する。
+2. downgrade 表示確認:
+`FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1` と `FLISTWALKER_UPDATE_FEED_URL` を付けて旧 version の release JSON を参照し、downgrade 候補でもダイアログが出ることを確認する。
+3. ローカル feed 確認:
+release JSON、対象 asset、`SHA256SUMS` を同じディレクトリへ置き、`python -m http.server 8000` 等で配信して `FLISTWALKER_UPDATE_FEED_URL` から参照する。
+4. update 適用確認:
+Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終了後に新 binary が起動し直すことを確認する。
 
 ## Entry / Exit criteria
 - Entry:
@@ -161,6 +190,12 @@
 - 期待動作: shutdown 要求と request channel 切断後は短時間の join budget だけ待ち、残存 worker があっても close は 250ms 程度の待ちで返る。
 - 非対象範囲: OS がプロセス自体を強制終了できないケース、個別 worker の I/O 完了保証。
 - 関連テストID: TC-066.
+
+## Regression Guard
+- 発生条件: 起動時の更新確認が UI スレッドを塞ぎ、検索欄入力や一覧操作が数秒単位で固まる。
+- 期待動作: 更新確認とダウンロードは worker で非同期実行され、失敗しても GUI の通常操作を継続できる。
+- 非対象範囲: GitHub 側の API / asset 配信停止そのもの。
+- 関連テストID: TC-078.
 
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
@@ -228,3 +263,8 @@
 - TC-068 -> SP-010 -> DES-009 -> FR-007
 - TC-069 -> SP-010 -> DES-009 -> FR-017, FR-007
 - TC-070 -> SP-010 -> DES-009 -> FR-018, FR-007
+- TC-074 -> SP-014 -> DES-014 -> FR-019
+- TC-075 -> SP-014 -> DES-014 -> FR-020
+- TC-076 -> SP-014 -> DES-014 -> FR-021
+- TC-077 -> SP-014 -> DES-014, DES-007 -> FR-022
+- TC-078 -> SP-014 -> DES-006, DES-014 -> NFR-007

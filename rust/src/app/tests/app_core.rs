@@ -301,6 +301,63 @@ fn action_notice_for_targets_normalizes_extended_prefix() {
 }
 
 #[test]
+fn available_update_response_opens_prompt() {
+    let root = test_root("available-update-prompt");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+
+    tx.send(UpdateResponse::Available {
+        request_id: 1,
+        candidate: UpdateCandidate {
+            current_version: "0.12.3".to_string(),
+            target_version: "0.12.4".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
+            asset_url: "https://example.invalid/asset".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            support: UpdateSupport::Auto,
+        },
+    })
+    .expect("send update response");
+
+    app.poll_update_response();
+
+    assert!(app.update_prompt.is_some());
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn failed_update_response_sets_notice_without_closing_app() {
+    let root = test_root("failed-update-notice");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+
+    tx.send(UpdateResponse::Failed {
+        request_id: 1,
+        error: "Update check failed: offline".to_string(),
+    })
+    .expect("send update failure");
+
+    app.poll_update_response();
+
+    assert_eq!(app.notice, "Update check failed: offline");
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+    assert!(!app.close_requested_for_update);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn action_progress_label_is_shown_only_while_action_runs() {
     let root = test_root("action-progress-label");
     fs::create_dir_all(&root).expect("create dir");

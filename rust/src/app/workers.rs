@@ -8,6 +8,7 @@ use crate::search::{
     sort_scored_matches, top_ranked_scores, try_collect_search_matches, IndexedScore,
 };
 use crate::ui_model::{build_preview_text_with_kind, has_visible_match, normalize_path_for_display};
+use crate::updater::{check_for_update, prepare_and_start_update, UpdateCandidate};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
@@ -233,6 +234,37 @@ pub(super) struct ActionRequest {
 pub(super) struct ActionResponse {
     pub(super) request_id: u64,
     pub(super) notice: String,
+}
+
+pub(super) enum UpdateRequestKind {
+    Check,
+    DownloadAndApply {
+        candidate: UpdateCandidate,
+        current_exe: PathBuf,
+    },
+}
+
+pub(super) struct UpdateRequest {
+    pub(super) request_id: u64,
+    pub(super) kind: UpdateRequestKind,
+}
+
+pub(super) enum UpdateResponse {
+    UpToDate {
+        request_id: u64,
+    },
+    Available {
+        request_id: u64,
+        candidate: UpdateCandidate,
+    },
+    ApplyStarted {
+        request_id: u64,
+        target_version: String,
+    },
+    Failed {
+        request_id: u64,
+        error: String,
+    },
 }
 
 pub(super) fn action_notice_for_targets(targets: &[PathBuf]) -> String {
@@ -776,6 +808,60 @@ pub(super) fn spawn_sort_metadata_worker(
                 })
                 .is_err()
             {
+                break;
+            }
+        }
+    });
+
+    (tx_req, rx_res, handle)
+}
+
+pub(super) fn spawn_update_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<UpdateRequest>,
+    Receiver<UpdateResponse>,
+    thread::JoinHandle<()>,
+) {
+    let (tx_req, rx_req) = mpsc::channel::<UpdateRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<UpdateResponse>();
+
+    let handle = thread::spawn(move || {
+        while let Ok(req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
+
+            let response = match req.kind {
+                UpdateRequestKind::Check => match check_for_update() {
+                    Ok(Some(candidate)) => UpdateResponse::Available {
+                        request_id: req.request_id,
+                        candidate,
+                    },
+                    Ok(None) => UpdateResponse::UpToDate {
+                        request_id: req.request_id,
+                    },
+                    Err(err) => UpdateResponse::Failed {
+                        request_id: req.request_id,
+                        error: format!("Update check failed: {err}"),
+                    },
+                },
+                UpdateRequestKind::DownloadAndApply {
+                    candidate,
+                    current_exe,
+                } => match prepare_and_start_update(&candidate, &current_exe) {
+                    Ok(()) => UpdateResponse::ApplyStarted {
+                        request_id: req.request_id,
+                        target_version: candidate.target_version,
+                    },
+                    Err(err) => UpdateResponse::Failed {
+                        request_id: req.request_id,
+                        error: format!("Update failed: {err}"),
+                    },
+                },
+            };
+
+            if tx_res.send(response).is_err() {
                 break;
             }
         }

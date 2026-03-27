@@ -1,6 +1,7 @@
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
 };
+use crate::updater::{UpdateCandidate, UpdateSupport};
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
     normalize_path_for_display, should_skip_preview,
@@ -277,6 +278,11 @@ struct PendingFileListUseWalkerConfirmation {
     root: PathBuf,
 }
 
+#[derive(Clone, Debug)]
+struct UpdatePromptState {
+    candidate: UpdateCandidate,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum FileListDialogKind {
     Overwrite,
@@ -336,6 +342,8 @@ pub struct FlistWalkerApp {
     kind_rx: Receiver<KindResolveResponse>,
     filelist_tx: Sender<FileListRequest>,
     filelist_rx: Receiver<FileListResponse>,
+    update_tx: Sender<UpdateRequest>,
+    update_rx: Receiver<UpdateResponse>,
     index_tx: Sender<IndexRequest>,
     index_rx: Receiver<IndexResponse>,
     next_request_id: u64,
@@ -350,6 +358,8 @@ pub struct FlistWalkerApp {
     pending_sort_request_id: Option<u64>,
     next_filelist_request_id: u64,
     pending_filelist_request_id: Option<u64>,
+    next_update_request_id: u64,
+    pending_update_request_id: Option<u64>,
     pending_filelist_request_tab_id: Option<u64>,
     pending_filelist_root: Option<PathBuf>,
     pending_filelist_after_index: Option<PendingFileListAfterIndex>,
@@ -366,6 +376,7 @@ pub struct FlistWalkerApp {
     sort_in_progress: bool,
     kind_resolution_in_progress: bool,
     filelist_in_progress: bool,
+    update_in_progress: bool,
     pending_copy_shortcut: bool,
     scroll_to_current: bool,
     preview_resize_in_progress: bool,
@@ -387,6 +398,8 @@ pub struct FlistWalkerApp {
     query_input_id: egui::Id,
     active_filelist_dialog: Option<FileListDialogKind>,
     active_filelist_dialog_button: usize,
+    update_prompt: Option<UpdatePromptState>,
+    close_requested_for_update: bool,
     tab_drag_state: Option<TabDragState>,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
@@ -557,7 +570,9 @@ Search hints:
             saved_last_root,
             saved_default,
         );
-        Self::new_with_launch(chosen_root, limit, query, launch, restore_session)
+        let mut app = Self::new_with_launch(chosen_root, limit, query, launch, restore_session);
+        app.request_startup_update_check();
+        app
     }
 
     fn new_with_launch(
@@ -587,6 +602,8 @@ Search hints:
         let (filelist_tx, filelist_rx, filelist_handle) =
             spawn_filelist_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("filelist", filelist_handle);
+        let (update_tx, update_rx, update_handle) = spawn_update_worker(Arc::clone(&worker_shutdown));
+        worker_runtime.push("update", update_handle);
         let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
         let (index_tx, index_rx, index_handles) = spawn_index_worker(
             Arc::clone(&worker_shutdown),
@@ -642,6 +659,8 @@ Search hints:
             kind_rx,
             filelist_tx,
             filelist_rx,
+            update_tx,
+            update_rx,
             index_tx,
             index_rx,
             next_request_id: 1,
@@ -656,6 +675,8 @@ Search hints:
             pending_sort_request_id: None,
             next_filelist_request_id: 1,
             pending_filelist_request_id: None,
+            next_update_request_id: 1,
+            pending_update_request_id: None,
             pending_filelist_request_tab_id: None,
             pending_filelist_root: None,
             pending_filelist_after_index: None,
@@ -672,6 +693,7 @@ Search hints:
             sort_in_progress: false,
             kind_resolution_in_progress: false,
             filelist_in_progress: false,
+            update_in_progress: false,
             pending_copy_shortcut: false,
             scroll_to_current: true,
             preview_resize_in_progress: false,
@@ -695,6 +717,8 @@ Search hints:
             query_input_id: egui::Id::new("query-input"),
             active_filelist_dialog: None,
             active_filelist_dialog_button: 0,
+            update_prompt: None,
+            close_requested_for_update: false,
             tab_drag_state: None,
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
@@ -766,6 +790,65 @@ Search hints:
                 )
             })
             .unwrap_or(false)
+    }
+
+    fn request_startup_update_check(&mut self) {
+        let request_id = self.next_update_request_id;
+        self.next_update_request_id = self.next_update_request_id.saturating_add(1);
+        self.pending_update_request_id = Some(request_id);
+        self.update_in_progress = true;
+        if self
+            .update_tx
+            .send(UpdateRequest {
+                request_id,
+                kind: UpdateRequestKind::Check,
+            })
+            .is_err()
+        {
+            self.pending_update_request_id = None;
+            self.update_in_progress = false;
+        }
+    }
+
+    fn start_update_install(&mut self) {
+        let Some(prompt) = self.update_prompt.as_ref() else {
+            return;
+        };
+        let current_exe = match std::env::current_exe() {
+            Ok(path) => path,
+            Err(err) => {
+                self.set_notice(format!("Update failed: failed to resolve current executable: {err}"));
+                return;
+            }
+        };
+        let request_id = self.next_update_request_id;
+        self.next_update_request_id = self.next_update_request_id.saturating_add(1);
+        self.pending_update_request_id = Some(request_id);
+        self.update_in_progress = true;
+        if self
+            .update_tx
+            .send(UpdateRequest {
+                request_id,
+                kind: UpdateRequestKind::DownloadAndApply {
+                    candidate: prompt.candidate.clone(),
+                    current_exe,
+                },
+            })
+            .is_err()
+        {
+            self.pending_update_request_id = None;
+            self.update_in_progress = false;
+            self.set_notice("Update worker is unavailable");
+            return;
+        }
+        self.set_notice(format!(
+            "Downloading update {}...",
+            prompt.candidate.target_version
+        ));
+    }
+
+    fn dismiss_update_prompt(&mut self) {
+        self.update_prompt = None;
     }
 
     fn clear_sort_metadata_cache(&mut self) {
@@ -2204,6 +2287,11 @@ Search hints:
         } else {
             ""
         };
+        let updating = if self.update_in_progress {
+            " | Updating..."
+        } else {
+            ""
+        };
         let sorting = if self.sort_in_progress {
             " | Sorting..."
         } else {
@@ -2229,7 +2317,7 @@ Search hints:
         };
 
         self.status_line = format!(
-            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}{}",
+            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}{}{}",
             tab_label,
             indexed_count,
             self.results.len(),
@@ -2239,6 +2327,7 @@ Search hints:
             indexing,
             executing,
             creating_filelist,
+            updating,
             sorting,
             history_search,
             memory,
@@ -4153,6 +4242,58 @@ Search hints:
         }
     }
 
+    fn poll_update_response(&mut self) {
+        while let Ok(response) = self.update_rx.try_recv() {
+            let Some(pending) = self.pending_update_request_id else {
+                continue;
+            };
+            match response {
+                UpdateResponse::UpToDate { request_id } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_update_request_id = None;
+                    self.update_in_progress = false;
+                }
+                UpdateResponse::Available {
+                    request_id,
+                    candidate,
+                } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_update_request_id = None;
+                    self.update_in_progress = false;
+                    self.update_prompt = Some(UpdatePromptState { candidate });
+                }
+                UpdateResponse::ApplyStarted {
+                    request_id,
+                    target_version,
+                } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_update_request_id = None;
+                    self.update_in_progress = false;
+                    self.update_prompt = None;
+                    self.set_notice(format!(
+                        "Restarting to apply update {}...",
+                        target_version
+                    ));
+                    self.close_requested_for_update = true;
+                }
+                UpdateResponse::Failed { request_id, error } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_update_request_id = None;
+                    self.update_in_progress = false;
+                    self.set_notice(error);
+                }
+            }
+        }
+    }
+
     fn source_text(&self) -> String {
         match &self.index.source {
             IndexSource::FileList(path) => format!(
@@ -4178,6 +4319,7 @@ Search hints:
         let (dummy_sort_tx, _) = mpsc::channel::<SortMetadataRequest>();
         let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
+        let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
         let old_search_tx = std::mem::replace(&mut self.search_tx, dummy_search_tx);
         let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
@@ -4185,6 +4327,7 @@ Search hints:
         let old_sort_tx = std::mem::replace(&mut self.sort_tx, dummy_sort_tx);
         let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
         let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
+        let old_update_tx = std::mem::replace(&mut self.update_tx, dummy_update_tx);
         let old_index_tx = std::mem::replace(&mut self.index_tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
@@ -4192,6 +4335,7 @@ Search hints:
         drop(old_sort_tx);
         drop(old_kind_tx);
         drop(old_filelist_tx);
+        drop(old_update_tx);
         drop(old_index_tx);
     }
 
@@ -4235,6 +4379,11 @@ impl eframe::App for FlistWalkerApp {
         self.poll_kind_response();
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
+        self.poll_update_response();
+        if self.close_requested_for_update {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return;
+        }
         self.commit_query_history_if_needed(false);
         let memory_elapsed = self.last_memory_sample.elapsed();
         if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
@@ -4249,6 +4398,7 @@ impl eframe::App for FlistWalkerApp {
             || self.sort_in_progress
             || self.kind_resolution_in_progress
             || self.filelist_in_progress
+            || self.update_in_progress
             || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
@@ -4261,6 +4411,7 @@ impl eframe::App for FlistWalkerApp {
         self.render_top_panel(ctx);
         self.render_status_panel(ctx);
         self.render_filelist_dialogs(ctx);
+        self.render_update_dialog(ctx);
         self.render_central_panel(ctx);
         self.maybe_save_ui_state(false);
     }
