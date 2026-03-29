@@ -174,7 +174,9 @@ fn cli_interprets_filelist_paths_for_current_platform() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert_eq!(stdout.trim(), file.display().to_string());
+    let actual = fs::canonicalize(stdout.trim()).expect("canonicalize cli output");
+    let expected = fs::canonicalize(&file).expect("canonicalize expected file");
+    assert_eq!(actual, expected);
 
     let _ = fs::remove_dir_all(&root);
 }
