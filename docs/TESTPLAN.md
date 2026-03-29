@@ -83,6 +83,9 @@
 | TC-051 | unit | UNC root 配下のパスは execute/open 直前の root 判定で許可される | SP-004 |
 | TC-052 | unit | Create File List で祖先 FileList 追記がありうる場合は確認ダイアログを要求する | SP-001, SP-010 |
 | TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
+| TC-065 | unit | Create File List の保留状態は status panel または確認ダイアログ経由でキャンセルできる | SP-001, SP-010 |
+| TC-066 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
+| TC-067 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存と notarization 手順が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |

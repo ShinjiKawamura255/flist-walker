@@ -10,6 +10,9 @@
 - MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。
 - MUST: FileList 作成時は、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ作成済み子 FileList の参照を重複なく追記できる。
 - MUST: 祖先ディレクトリ直下の既存 FileList へ追記が発生しうる場合、Create File List 実行前に利用者確認を要求する。
+- MUST: Create File List の保留状態（overwrite 確認、祖先追記確認、Walker 利用確認、index 完了待ち）では、GUI から明示的にキャンセルできる。
+- MUST: Create File List 実行中は status panel にキャンセル導線を表示し、利用者が再実行ボタンや root 変更へ頼らず中断要求できる。
+- MUST: Create File List のキャンセル要求後、root 直下の最終置換と祖先 FileList 追記は開始前なら実行してはならない。
 - MUST: 上記の祖先 FileList 追記後は、親 FileList の mtime を更新前の値へ戻す。
 - MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
 - SHOULD: 相対パスはルート起点で絶対化する。
@@ -24,6 +27,7 @@
 - 空ファイルは候補ゼロ件で正常終了する。
 - 読み込み失敗時はエラーを返し、終了コードを非ゼロにする。
 - 利用者が祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続し、祖先追記は行わない。
+- 利用者が Create File List をキャンセルした場合、進行中 request は `Canceled` として扱い、成功/失敗通知や再インデックスを発生させない。
 
 ## SP-002 Walker 走査
 ### Requirements
@@ -140,6 +144,7 @@
 ### Requirements
 - MUST: 検索入力、結果リスト、プレビューペイン、実行/オープンを提供する。
 - MUST: Source（FileList/Walker）と Root を画面表示する。
+- MUST: フッター右端に現在 version を常時表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: ハイライトは search と同じ query interpretation を用い、検索結果と表示が一致するようにする。
 - MUST: 検索結果の再適用時は current row の行番号を維持し、結果数が減った場合のみ末尾へ丸める。未選択状態は自動選択に変換しない。

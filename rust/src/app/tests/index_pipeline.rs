@@ -1,4 +1,6 @@
 use super::*;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
 #[test]
 fn search_error_updates_notice() {
@@ -522,6 +524,44 @@ fn confirm_pending_overwrite_starts_filelist_creation() {
 }
 
 #[test]
+fn cancel_create_filelist_clears_pending_after_index() {
+    let root = test_root("filelist-cancel-pending-after-index");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+        tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+    });
+
+    app.cancel_create_filelist();
+
+    assert!(app.pending_filelist_after_index.is_none());
+    assert!(app.notice.contains("Create File List canceled"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn cancel_create_filelist_marks_inflight_request() {
+    let root = test_root("filelist-cancel-inflight");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let cancel = Arc::new(AtomicBool::new(false));
+    app.pending_filelist_request_id = Some(77);
+    app.pending_filelist_request_tab_id = app.current_tab_id();
+    app.pending_filelist_root = Some(root.clone());
+    app.pending_filelist_cancel = Some(Arc::clone(&cancel));
+    app.filelist_in_progress = true;
+    app.filelist_cancel_requested = false;
+
+    app.cancel_create_filelist();
+
+    assert!(cancel.load(Ordering::Relaxed));
+    assert!(app.filelist_cancel_requested);
+    assert!(app.notice.contains("Canceling Create File List"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn create_filelist_requests_confirmation_before_ancestor_propagation() {
     let top = test_root("filelist-ancestor-confirm");
     let root = top.join("child");
@@ -641,6 +681,36 @@ fn filelist_failed_updates_state_and_notice() {
     assert_eq!(app.pending_filelist_request_tab_id, None);
     assert!(!app.filelist_in_progress);
     assert!(app.notice.contains("Create File List failed: disk full"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_canceled_updates_state_and_notice() {
+    let root = test_root("filelist-canceled");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<FileListResponse>();
+    app.filelist_rx = rx;
+    app.pending_filelist_request_id = Some(14);
+    app.pending_filelist_request_tab_id = app.current_tab_id();
+    app.pending_filelist_root = Some(root.clone());
+    app.pending_filelist_cancel = Some(Arc::new(AtomicBool::new(true)));
+    app.filelist_in_progress = true;
+    app.filelist_cancel_requested = true;
+
+    tx.send(FileListResponse::Canceled {
+        request_id: 14,
+        root: root.clone(),
+    })
+    .expect("send filelist response");
+
+    app.poll_filelist_response();
+
+    assert_eq!(app.pending_filelist_request_id, None);
+    assert!(app.pending_filelist_cancel.is_none());
+    assert!(!app.filelist_in_progress);
+    assert!(!app.filelist_cancel_requested);
+    assert!(app.notice.contains("Create File List canceled"));
     let _ = fs::remove_dir_all(&root);
 }
 

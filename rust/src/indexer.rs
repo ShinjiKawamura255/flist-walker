@@ -372,21 +372,36 @@ pub fn build_index(
 }
 
 pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
+    build_filelist_text_cancellable(entries, root, &|| false)
+        .expect("build_filelist_text without cancellation should not fail")
+}
+
+pub fn build_filelist_text_cancellable<C>(
+    entries: &[PathBuf],
+    root: &Path,
+    should_cancel: &C,
+) -> Result<String>
+where
+    C: Fn() -> bool,
+{
     let root_lexical = root.to_path_buf();
     let root_canonical = root.canonicalize().ok();
     let mut seen = HashSet::new();
     let mut lines = Vec::new();
     for entry in entries {
+        if should_cancel() {
+            anyhow::bail!("filelist creation canceled");
+        }
         let line = filelist_line_for_entry(entry, &root_lexical, root_canonical.as_deref());
         if seen.insert(line.clone()) {
             lines.push(line);
         }
     }
-    if lines.is_empty() {
+    Ok(if lines.is_empty() {
         String::new()
     } else {
         format!("{}\n", lines.join("\n"))
-    }
+    })
 }
 
 fn filelist_line_for_entry(
@@ -713,7 +728,11 @@ fn restore_file_mtime(
 fn append_child_filelist_to_parent_filelist_if_missing(
     parent_filelist: &Path,
     child_filelist: &Path,
+    should_cancel: &impl Fn() -> bool,
 ) -> std::io::Result<()> {
+    if should_cancel() {
+        return Err(std::io::Error::other("filelist creation canceled"));
+    }
     let Some(parent_dir) = parent_filelist.parent() else {
         return Ok(());
     };
@@ -732,6 +751,9 @@ fn append_child_filelist_to_parent_filelist_if_missing(
     if !content.is_empty() && !content.ends_with('\n') {
         content.push('\n');
     }
+    if should_cancel() {
+        return Err(std::io::Error::other("filelist creation canceled"));
+    }
     content.push_str(&filelist_line_for_entry(
         child_filelist,
         parent_dir,
@@ -739,23 +761,39 @@ fn append_child_filelist_to_parent_filelist_if_missing(
     ));
     content.push('\n');
 
+    if should_cancel() {
+        return Err(std::io::Error::other("filelist creation canceled"));
+    }
     write_text_to_path(parent_filelist, &content)
         .map_err(|err| std::io::Error::other(err.to_string()))?;
     restore_file_mtime(parent_filelist, modified, accessed)?;
     Ok(())
 }
 
-fn propagate_child_filelist_to_ancestor_filelists(child_filelist: &Path) {
+fn propagate_child_filelist_to_ancestor_filelists(
+    child_filelist: &Path,
+    should_cancel: &impl Fn() -> bool,
+) -> Result<()> {
     let Some(root_dir) = child_filelist.parent() else {
-        return;
+        return Ok(());
     };
+    if should_cancel() {
+        anyhow::bail!("filelist creation canceled");
+    }
     visit_ancestor_directories(root_dir, |ancestor_dir| {
+        if should_cancel() {
+            return false;
+        }
         let parent_filelists = match find_all_filelists_in_directory(ancestor_dir) {
             Ok(parent_filelists) => parent_filelists,
             Err(_) => return false,
         };
         for parent_filelist in parent_filelists {
-            if append_child_filelist_to_parent_filelist_if_missing(&parent_filelist, child_filelist)
+            if append_child_filelist_to_parent_filelist_if_missing(
+                &parent_filelist,
+                child_filelist,
+                should_cancel,
+            )
                 .is_err()
             {
                 return false;
@@ -763,6 +801,10 @@ fn propagate_child_filelist_to_ancestor_filelists(child_filelist: &Path) {
         }
         true
     });
+    if should_cancel() {
+        anyhow::bail!("filelist creation canceled");
+    }
+    Ok(())
 }
 
 pub fn has_ancestor_filelists(root: &Path) -> bool {
@@ -789,11 +831,33 @@ pub fn write_filelist(
     filename: &str,
     propagate_to_ancestors: bool,
 ) -> Result<PathBuf> {
+    write_filelist_cancellable(
+        root,
+        entries,
+        filename,
+        propagate_to_ancestors,
+        &|| false,
+    )
+}
+
+pub fn write_filelist_cancellable<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    filename: &str,
+    propagate_to_ancestors: bool,
+    should_cancel: &C,
+) -> Result<PathBuf>
+where
+    C: Fn() -> bool,
+{
     let out = root.join(filename);
-    let text = build_filelist_text(entries, root);
+    let text = build_filelist_text_cancellable(entries, root, should_cancel)?;
+    if should_cancel() {
+        anyhow::bail!("filelist creation canceled");
+    }
     write_text_to_path(&out, &text)?;
     if propagate_to_ancestors {
-        propagate_child_filelist_to_ancestor_filelists(&out);
+        propagate_child_filelist_to_ancestor_filelists(&out, should_cancel)?;
     }
 
     Ok(out)
@@ -1253,6 +1317,29 @@ mod tests {
             .expect("write filelist");
         let parsed = parse_filelist(&out, &root, true, true).expect("parse filelist");
         assert_eq!(parsed.len(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn write_filelist_cancellable_stops_before_replacing_output() {
+        let root = test_root("write-filelist-cancel");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("create dir");
+        let existing = root.join("FileList.txt");
+        fs::write(&existing, "old.txt\n").expect("write existing filelist");
+
+        let err = write_filelist_cancellable(
+            &root,
+            &[root.join("src/main.rs")],
+            "FileList.txt",
+            false,
+            &|| true,
+        )
+        .expect_err("canceled write should fail");
+
+        assert!(err.to_string().contains("canceled"));
+        let content = fs::read_to_string(&existing).expect("read existing filelist");
+        assert_eq!(content, "old.txt\n");
         let _ = fs::remove_dir_all(&root);
     }
 

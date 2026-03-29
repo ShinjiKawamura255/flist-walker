@@ -777,12 +777,55 @@ impl FlistWalkerApp {
             .exact_height(24.0)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
+                    let version_text = format!("v{}", env!("CARGO_PKG_VERSION"));
+                    let version_font = egui::TextStyle::Body.resolve(ui.style());
+                    let version_width = ui.fonts(|fonts| {
+                        fonts
+                            .layout_no_wrap(
+                                version_text.clone(),
+                                version_font.clone(),
+                                ui.visuals().text_color(),
+                            )
+                            .size()
+                            .x
+                    });
                     if let Some(label) = self.action_progress_label() {
                         ui.add(egui::Spinner::new().size(14.0));
                         ui.label(label);
                         ui.separator();
                     }
-                    ui.add(egui::Label::new(&self.status_line).truncate(true));
+                    if self.can_cancel_create_filelist() {
+                        let cancel_label = if self.filelist_cancel_requested {
+                            "Canceling FileList..."
+                        } else {
+                            "Cancel Create File List"
+                        };
+                        if ui
+                            .add_enabled(
+                                !self.filelist_cancel_requested,
+                                egui::Button::new(cancel_label),
+                            )
+                            .clicked()
+                        {
+                            self.cancel_create_filelist();
+                        }
+                        ui.separator();
+                    }
+                    let reserved_width =
+                        version_width + ui.spacing().item_spacing.x + ui.spacing().icon_width;
+                    let status_width = (ui.available_width() - reserved_width).max(0.0);
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(status_width, ui.available_height()),
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            ui.set_width(status_width);
+                            ui.add(egui::Label::new(&self.status_line).truncate(true));
+                        },
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(version_text);
+                        ui.separator();
+                    });
                 });
             });
     }

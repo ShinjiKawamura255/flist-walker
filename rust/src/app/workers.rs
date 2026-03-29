@@ -2,7 +2,7 @@ use super::{EntryKind, ResultSortMode, SortMetadata};
 use crate::actions::execute_or_open;
 use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
-    write_filelist, IndexSource,
+    write_filelist_cancellable, IndexSource,
 };
 use crate::search::{
     sort_scored_matches, top_ranked_scores, try_collect_search_matches, IndexedScore,
@@ -360,6 +360,7 @@ pub(super) struct FileListRequest {
     pub(super) root: PathBuf,
     pub(super) entries: Vec<PathBuf>,
     pub(super) propagate_to_ancestors: bool,
+    pub(super) cancel: Arc<AtomicBool>,
 }
 
 pub(super) enum FileListResponse {
@@ -373,6 +374,10 @@ pub(super) enum FileListResponse {
         request_id: u64,
         root: PathBuf,
         error: String,
+    },
+    Canceled {
+        request_id: u64,
+        root: PathBuf,
     },
 }
 
@@ -692,13 +697,26 @@ pub(super) fn spawn_filelist_worker(
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
+            if req.cancel.load(Ordering::Relaxed) {
+                if tx_res
+                    .send(FileListResponse::Canceled {
+                        request_id: req.request_id,
+                        root: req.root.clone(),
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+                continue;
+            }
             let _tab_id = req.tab_id;
             let count = req.entries.len();
-            let result = write_filelist(
+            let result = write_filelist_cancellable(
                 &req.root,
                 &req.entries,
                 "FileList.txt",
                 req.propagate_to_ancestors,
+                &|| shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Relaxed),
             )
             .map(|path| (path, count));
             let msg = match result {
@@ -708,11 +726,20 @@ pub(super) fn spawn_filelist_worker(
                     path,
                     count,
                 },
-                Err(err) => FileListResponse::Failed {
-                    request_id: req.request_id,
-                    root: req.root.clone(),
-                    error: err.to_string(),
-                },
+                Err(err) => {
+                    if req.cancel.load(Ordering::Relaxed) || shutdown.load(Ordering::Relaxed) {
+                        FileListResponse::Canceled {
+                            request_id: req.request_id,
+                            root: req.root.clone(),
+                        }
+                    } else {
+                        FileListResponse::Failed {
+                            request_id: req.request_id,
+                            root: req.root.clone(),
+                            error: err.to_string(),
+                        }
+                    }
+                }
             };
             if tx_res.send(msg).is_err() {
                 break;

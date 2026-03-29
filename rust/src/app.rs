@@ -367,6 +367,7 @@ pub struct FlistWalkerApp {
     pending_update_request_id: Option<u64>,
     pending_filelist_request_tab_id: Option<u64>,
     pending_filelist_root: Option<PathBuf>,
+    pending_filelist_cancel: Option<Arc<AtomicBool>>,
     pending_filelist_after_index: Option<PendingFileListAfterIndex>,
     pending_filelist_confirmation: Option<PendingFileListConfirmation>,
     pending_filelist_ancestor_confirmation: Option<PendingFileListAncestorConfirmation>,
@@ -381,6 +382,7 @@ pub struct FlistWalkerApp {
     sort_in_progress: bool,
     kind_resolution_in_progress: bool,
     filelist_in_progress: bool,
+    filelist_cancel_requested: bool,
     update_in_progress: bool,
     pending_copy_shortcut: bool,
     scroll_to_current: bool,
@@ -685,6 +687,7 @@ Search hints:
             pending_update_request_id: None,
             pending_filelist_request_tab_id: None,
             pending_filelist_root: None,
+            pending_filelist_cancel: None,
             pending_filelist_after_index: None,
             pending_filelist_confirmation: None,
             pending_filelist_ancestor_confirmation: None,
@@ -699,6 +702,7 @@ Search hints:
             sort_in_progress: false,
             kind_resolution_in_progress: false,
             filelist_in_progress: false,
+            filelist_cancel_requested: false,
             update_in_progress: false,
             pending_copy_shortcut: false,
             scroll_to_current: true,
@@ -2329,7 +2333,11 @@ Search hints:
             ""
         };
         let creating_filelist = if self.filelist_in_progress {
-            " | Creating FileList..."
+            if self.filelist_cancel_requested {
+                " | Canceling FileList..."
+            } else {
+                " | Creating FileList..."
+            }
         } else {
             ""
         };
@@ -4004,12 +4012,15 @@ Search hints:
         propagate_to_ancestors: bool,
     ) {
         self.pending_filelist_after_index = None;
+        let cancel = Arc::new(AtomicBool::new(false));
         let request_id = self.next_filelist_request_id;
         self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
         self.pending_filelist_request_id = Some(request_id);
         self.pending_filelist_request_tab_id = Some(tab_id);
         self.pending_filelist_root = Some(root.clone());
+        self.pending_filelist_cancel = Some(Arc::clone(&cancel));
         self.filelist_in_progress = true;
+        self.filelist_cancel_requested = false;
         self.refresh_status_line();
 
         let req = FileListRequest {
@@ -4018,12 +4029,16 @@ Search hints:
             root,
             entries,
             propagate_to_ancestors,
+            cancel,
         };
         if self.filelist_tx.send(req).is_err() {
             self.pending_filelist_request_id = None;
             self.pending_filelist_request_tab_id = None;
             self.pending_filelist_root = None;
+            self.pending_filelist_cancel = None;
             self.filelist_in_progress = false;
+            self.filelist_cancel_requested = false;
+            self.refresh_status_line();
             self.set_notice("Create File List worker is unavailable");
         }
     }
@@ -4129,6 +4144,41 @@ Search hints:
         }
     }
 
+    fn can_cancel_create_filelist(&self) -> bool {
+        self.pending_filelist_after_index.is_some()
+            || self.pending_filelist_confirmation.is_some()
+            || self.pending_filelist_ancestor_confirmation.is_some()
+            || self.pending_filelist_use_walker_confirmation.is_some()
+            || self.filelist_in_progress
+    }
+
+    fn cancel_create_filelist(&mut self) {
+        if self.pending_filelist_confirmation.is_some() {
+            self.cancel_pending_filelist_overwrite();
+            return;
+        }
+        if self.pending_filelist_ancestor_confirmation.is_some() {
+            self.cancel_pending_filelist_ancestor_confirmation();
+            return;
+        }
+        if self.pending_filelist_use_walker_confirmation.is_some() {
+            self.cancel_pending_filelist_use_walker();
+            return;
+        }
+        if self.pending_filelist_after_index.take().is_some() {
+            self.set_notice("Create File List canceled");
+            return;
+        }
+        if self.filelist_in_progress && !self.filelist_cancel_requested {
+            if let Some(cancel) = self.pending_filelist_cancel.as_ref() {
+                cancel.store(true, Ordering::Relaxed);
+            }
+            self.filelist_cancel_requested = true;
+            self.refresh_status_line();
+            self.set_notice("Canceling Create File List...");
+        }
+    }
+
     fn create_filelist(&mut self) {
         if self.filelist_in_progress {
             self.set_notice("Create File List is already running");
@@ -4221,7 +4271,10 @@ Search hints:
                     self.pending_filelist_request_id = None;
                     self.pending_filelist_request_tab_id = None;
                     self.pending_filelist_root = None;
+                    self.pending_filelist_cancel = None;
                     self.filelist_in_progress = false;
+                    self.filelist_cancel_requested = false;
+                    self.refresh_status_line();
 
                     let same_requested_root = requested_root
                         .as_ref()
@@ -4267,7 +4320,10 @@ Search hints:
                     self.pending_filelist_request_id = None;
                     self.pending_filelist_request_tab_id = None;
                     self.pending_filelist_root = None;
+                    self.pending_filelist_cancel = None;
                     self.filelist_in_progress = false;
+                    self.filelist_cancel_requested = false;
+                    self.refresh_status_line();
 
                     let same_requested_root = requested_root
                         .as_ref()
@@ -4283,6 +4339,28 @@ Search hints:
                     }
 
                     self.set_notice(format!("Create File List failed: {}", error));
+                }
+                FileListResponse::Canceled { request_id, root } => {
+                    if request_id != pending {
+                        continue;
+                    }
+                    self.pending_filelist_request_id = None;
+                    self.pending_filelist_request_tab_id = None;
+                    self.pending_filelist_root = None;
+                    self.pending_filelist_cancel = None;
+                    self.filelist_in_progress = false;
+                    self.filelist_cancel_requested = false;
+                    self.refresh_status_line();
+
+                    let same_requested_root = requested_root
+                        .as_ref()
+                        .map(|r| Self::path_key(r) == Self::path_key(&root))
+                        .unwrap_or(true);
+                    if !same_requested_root {
+                        continue;
+                    }
+
+                    self.set_notice("Create File List canceled");
                 }
             }
         }
