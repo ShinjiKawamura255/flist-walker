@@ -110,6 +110,7 @@
 | TC-079 | manual+unit | 手動試験 override により同一 version でも更新ダイアログを表示できる | SP-014 |
 | TC-080 | manual+unit | 手動試験 override により downgrade 候補でも更新ダイアログを表示できる | SP-014 |
 | TC-081 | unit | 更新ダイアログで抑止した target version は起動間で保持され、より新しい version が出るまで再表示されない | SP-014 |
+| TC-082 | unit | `FLISTWALKER_DISABLE_SELF_UPDATE=1` では起動時更新確認を送らず、更新チェックも `None` を返して自己更新を無効化する | SP-014 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。

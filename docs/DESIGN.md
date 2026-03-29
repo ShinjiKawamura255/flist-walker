@@ -52,6 +52,7 @@
 - Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
 - Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と `SHA256SUMS` を取得/検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体を再起動。
+  `FLISTWALKER_DISABLE_SELF_UPDATE=1` の場合は update flow を起動せず、通常起動のみ行う。
 
 ## Data model
 - Candidate
@@ -166,6 +167,7 @@
 - restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。
 - update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
 - 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。
+- `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy な場合は GUI 側で起動時 update request 自体を送らず、update install 側でも同じ環境変数で最終ガードする。
 - 手動試験用 override として `FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1` を読み取り、通常運用の GitHub latest 比較を一時的に差し替えられるようにする。
 
 ## Error handling / timeout / logging / metrics

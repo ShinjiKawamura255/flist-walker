@@ -54,7 +54,14 @@ pub fn current_version_string() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
+pub fn self_update_disabled() -> bool {
+    env_flag("FLISTWALKER_DISABLE_SELF_UPDATE")
+}
+
 pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
+    if self_update_disabled() {
+        return Ok(None);
+    }
     let current_version = parse_version(env!("CARGO_PKG_VERSION"))?;
     let release = fetch_latest_release()?;
     let target_version = parse_version(&release.tag_name)?;
@@ -90,6 +97,9 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
 }
 
 pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path) -> Result<()> {
+    if self_update_disabled() {
+        bail!("self-update is disabled by FLISTWALKER_DISABLE_SELF_UPDATE");
+    }
     match &candidate.support {
         UpdateSupport::Auto => {}
         UpdateSupport::ManualOnly { message } => bail!("{message}"),
@@ -420,6 +430,30 @@ mod tests {
         assert!(should_offer_update(&Version::new(0, 12, 3), &Version::new(0, 12, 2)));
         unsafe {
             std::env::remove_var("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE");
+        }
+    }
+
+    #[test]
+    fn self_update_disabled_flag_is_honored() {
+        assert!(!self_update_disabled());
+        unsafe {
+            std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
+        }
+        assert!(self_update_disabled());
+        unsafe {
+            std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
+        }
+    }
+
+    #[test]
+    fn check_for_update_short_circuits_when_self_update_is_disabled() {
+        unsafe {
+            std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
+        }
+        let result = check_for_update().expect("disabled updates should skip network access");
+        assert!(result.is_none());
+        unsafe {
+            std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
         }
     }
 

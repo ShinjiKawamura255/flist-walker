@@ -482,6 +482,29 @@ fn silent_update_check_failure_leaves_notice_unchanged() {
 }
 
 #[test]
+fn startup_update_check_is_skipped_when_self_update_is_disabled() {
+    let root = test_root("startup-update-check-disabled");
+    fs::create_dir_all(&root).expect("create dir");
+    unsafe {
+        std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
+    }
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.pending_update_request_id = Some(99);
+    app.update_in_progress = true;
+
+    app.request_startup_update_check();
+
+    assert_eq!(app.pending_update_request_id, None);
+    assert!(!app.update_in_progress);
+
+    unsafe {
+        std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
+    }
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn action_progress_label_is_shown_only_while_action_runs() {
     let root = test_root("action-progress-label");
     fs::create_dir_all(&root).expect("create dir");

@@ -1,7 +1,9 @@
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
 };
-use crate::updater::{should_skip_update_prompt, UpdateCandidate, UpdateSupport};
+use crate::updater::{
+    self_update_disabled, should_skip_update_prompt, UpdateCandidate, UpdateSupport,
+};
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
     normalize_path_for_display, should_skip_preview,
@@ -796,6 +798,11 @@ Search hints:
     }
 
     fn request_startup_update_check(&mut self) {
+        if self_update_disabled() {
+            self.pending_update_request_id = None;
+            self.update_in_progress = false;
+            return;
+        }
         let request_id = self.next_update_request_id;
         self.next_update_request_id = self.next_update_request_id.saturating_add(1);
         self.pending_update_request_id = Some(request_id);
