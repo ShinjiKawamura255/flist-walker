@@ -24,6 +24,30 @@
 ### Known issues
 - 
 
+## [0.13.2] - 2026-03-29
+### Added
+- Create File List の保留中および実行中に、GUI から明示的にキャンセルできるようにした。
+- フッター右端に現在の version を常時表示するようにした。
+
+### Changed
+- Create File List 実行中の status panel は、長い path や notice が表示されても右端の version 表示と干渉しないレイアウトにした。
+
+### Fixed
+- 自己更新ダイアログで `Download and Restart` を複数回押しても、重複した更新 request を送らないようにした。
+- `FileList.txt` と UI state / saved roots の保存を atomic write にし、途中中断で既存ファイルを失いにくくした。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+
 ## [0.13.1] - 2026-03-29
 ### Added
 - CLI で `--version` / `-V` により現在の version を表示できるようにした。
