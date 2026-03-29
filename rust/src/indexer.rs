@@ -1,3 +1,4 @@
+use crate::fs_atomic::write_text_atomic;
 use anyhow::{Context, Result};
 use jwalk::WalkDir;
 use std::cmp::Reverse;
@@ -6,10 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Component, Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
-
-static TMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
+use std::time::SystemTime;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndexSource {
@@ -600,50 +598,10 @@ fn is_filelist_newer(candidate: Option<SystemTime>, baseline: Option<SystemTime>
     }
 }
 
-fn build_temp_filelist_path(filename: &str) -> PathBuf {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let seq = TMP_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let pid = std::process::id();
-    std::env::temp_dir()
-        .join("flistwalker")
-        .join(format!("{filename}.{pid}.{now}.{seq}.tmp"))
-}
-
 fn write_text_to_path(out: &Path, text: &str) -> Result<()> {
-    let filename = out
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("FileList.txt");
-    let tmp = build_temp_filelist_path(filename);
-    if let Some(parent) = tmp.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create temp dir {}", parent.display()))?;
-    }
-    fs::write(&tmp, text).with_context(|| format!("failed to write {}", tmp.display()))?;
-
-    if out.exists() {
-        fs::remove_file(out)
-            .map_err(|err| annotate_write_target_error(out, err))
-            .with_context(|| format!("failed to replace {}", out.display()))?;
-    }
-    if let Err(rename_err) = fs::rename(&tmp, out) {
-        fs::copy(&tmp, out)
-            .map_err(|err| annotate_write_target_error(out, err))
-            .with_context(|| {
-                format!(
-                    "failed to place {} from temp file {} ({})",
-                    out.display(),
-                    tmp.display(),
-                    rename_err
-                )
-            })?;
-        let _ = fs::remove_file(&tmp);
-    }
-
-    Ok(())
+    write_text_atomic(out, text)
+        .map_err(|err| annotate_write_target_error(out, err))
+        .with_context(|| format!("failed to write {}", out.display()))
 }
 
 fn annotate_write_target_error(out: &Path, err: std::io::Error) -> anyhow::Error {

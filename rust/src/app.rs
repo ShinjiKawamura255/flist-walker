@@ -1,6 +1,7 @@
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
 };
+use crate::fs_atomic::write_text_atomic;
 use crate::updater::{
     self_update_disabled, should_skip_update_prompt, UpdateCandidate, UpdateSupport,
 };
@@ -1847,7 +1848,7 @@ Search hints:
             skipped_update_target_version: self.skipped_update_target_version.clone(),
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
-            let _ = fs::write(path, text);
+            let _ = write_text_atomic(path, &text);
             Self::append_window_trace(
                 "save_ui_state",
                 &format!(
@@ -2091,14 +2092,12 @@ Search hints:
             .map(|p| p.to_string_lossy().to_string())
             .collect::<Vec<_>>()
             .join("\n");
-        let _ = fs::write(
-            file,
-            if text.is_empty() {
-                text
-            } else {
-                format!("{text}\n")
-            },
-        );
+        let text_to_write = if text.is_empty() {
+            String::new()
+        } else {
+            format!("{text}\n")
+        };
+        let _ = write_text_atomic(&file, &text_to_write);
     }
 
     fn add_current_root_to_saved(&mut self) {

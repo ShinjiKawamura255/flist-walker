@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod app;
+pub mod fs_atomic;
 pub mod indexer;
 pub mod query;
 pub mod search;
