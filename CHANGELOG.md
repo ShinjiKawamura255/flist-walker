@@ -24,6 +24,31 @@
 ### Known issues
 - 
 
+## [0.13.3] - 2026-03-29
+### Added
+- 更新署名用の鍵ペアを生成する `generate_update_keypair` helper を追加した。
+
+### Changed
+- Windows の一般 `.ps1` は既定で直接実行せず、既定アプリでオープンするようにした。
+- 自己更新の release packaging と GitHub Actions workflow で `SHA256SUMS.sig` を生成・添付するようにした。
+- 自動更新対象ビルドは埋め込み公開鍵の有無で auto/manual-only を切り替えるようにした。
+
+### Fixed
+- `FileList` の Windows 形式相対パスを、実行環境に存在する候補を優先して解釈するようにし、Linux/macOS での誤解釈を防いだ。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 自己更新は `SHA256SUMS.sig` の署名検証と `SHA256SUMS` の checksum 検証を通過した asset のみ適用するようにした。
+- 一般ファイル操作で選択した `.ps1` に `ExecutionPolicy Bypass` を使わないようにした。
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+
 ## [0.13.2] - 2026-03-29
 ### Added
 - Create File List の保留中および実行中に、GUI から明示的にキャンセルできるようにした。
