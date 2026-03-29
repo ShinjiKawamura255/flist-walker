@@ -988,7 +988,7 @@ Search hints:
                 items.sort_by(|(idx_a, (path_a, _)), (idx_b, (path_b, _))| {
                     let time_a = Self::sort_timestamp_for_path(cache, path_a, mode);
                     let time_b = Self::sort_timestamp_for_path(cache, path_b, mode);
-                    let cmp = match (time_a, time_b) {
+                    match (time_a, time_b) {
                         (Some(a), Some(b)) => {
                             if desc {
                                 b.cmp(&a)
@@ -1005,8 +1005,7 @@ Search hints:
                         Self::normalized_compare_key(path_a)
                             .cmp(&Self::normalized_compare_key(path_b))
                     })
-                    .then_with(|| idx_a.cmp(idx_b));
-                    cmp
+                    .then_with(|| idx_a.cmp(idx_b))
                 });
             }
         }
@@ -1723,7 +1722,7 @@ Search hints:
     fn tab_root_label(root: &Path) -> String {
         let normalized = Self::normalize_windows_path(root.to_path_buf());
         let raw = normalized.to_string_lossy().to_string();
-        let trimmed = raw.trim_end_matches(|c| c == '/' || c == '\\');
+        let trimmed = raw.trim_end_matches(['/', '\\']);
         if trimmed.is_empty() {
             return "/".to_string();
         }
@@ -3166,15 +3165,14 @@ Search hints:
                 if self.search_rerun_pending
                     && !self.query.trim().is_empty()
                     && self.index_in_progress
+                    && self.should_refresh_incremental_search()
                 {
-                    if self.should_refresh_incremental_search() {
-                        self.search_rerun_pending = false;
-                        self.search_resume_pending = false;
-                        self.sync_entries_from_incremental();
-                        self.last_search_snapshot_len = self.entries.len();
-                        self.last_incremental_results_refresh = Instant::now();
-                        self.update_results();
-                    }
+                    self.search_rerun_pending = false;
+                    self.search_resume_pending = false;
+                    self.sync_entries_from_incremental();
+                    self.last_search_snapshot_len = self.entries.len();
+                    self.last_incremental_results_refresh = Instant::now();
+                    self.update_results();
                 }
                 continue;
             }
@@ -3929,15 +3927,13 @@ Search hints:
             } else {
                 self.set_notice(format!("Action: {}", normalize_path_for_display(&paths[0])));
             }
+        } else if open_parent_for_files {
+            self.set_notice(format!(
+                "Action: launched {} containing folder items",
+                paths.len()
+            ));
         } else {
-            if open_parent_for_files {
-                self.set_notice(format!(
-                    "Action: launched {} containing folder items",
-                    paths.len()
-                ));
-            } else {
-                self.set_notice(format!("Action: launched {} items", paths.len()));
-            }
+            self.set_notice(format!("Action: launched {} items", paths.len()));
         }
 
         let req = ActionRequest {

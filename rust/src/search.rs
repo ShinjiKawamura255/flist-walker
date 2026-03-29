@@ -682,44 +682,53 @@ pub(crate) fn try_collect_search_matches(
     try_collect_search_matches_with_mode(
         query,
         entries,
-        use_regex,
-        ignore_case,
-        root,
-        prefer_relative,
-        candidate_indices,
-        SearchExecutionMode::Auto,
+        SearchCollectOptions {
+            use_regex,
+            ignore_case,
+            root,
+            prefer_relative,
+            candidate_indices,
+            mode: SearchExecutionMode::Auto,
+        },
     )
+}
+
+#[derive(Clone, Copy)]
+struct SearchCollectOptions<'a> {
+    use_regex: bool,
+    ignore_case: bool,
+    root: Option<&'a Path>,
+    prefer_relative: bool,
+    candidate_indices: Option<&'a [usize]>,
+    mode: SearchExecutionMode,
 }
 
 fn try_collect_search_matches_with_mode(
     query: &str,
     entries: &[PathBuf],
-    use_regex: bool,
-    ignore_case: bool,
-    root: Option<&Path>,
-    prefer_relative: bool,
-    candidate_indices: Option<&[usize]>,
-    mode: SearchExecutionMode,
+    options: SearchCollectOptions<'_>,
 ) -> Result<SearchScoredMatches, String> {
     let query = query.trim();
     if query.is_empty() {
         return Ok(SearchScoredMatches::default());
     }
 
-    let compiled = compile_query(query, use_regex, ignore_case)?;
+    let compiled = compile_query(query, options.use_regex, options.ignore_case)?;
     let ctx = SearchContext {
-        root,
-        prefer_relative,
-        ignore_case,
+        root: options.root,
+        prefer_relative: options.prefer_relative,
+        ignore_case: options.ignore_case,
     };
-    let candidate_count = candidate_indices.map_or(entries.len(), |items| items.len());
-    let execution = resolve_execution_mode(mode, candidate_count);
+    let candidate_count = options
+        .candidate_indices
+        .map_or(entries.len(), |items| items.len());
+    let execution = resolve_execution_mode(options.mode, candidate_count);
     Ok(match execution {
         SearchExecutionMode::Sequential => {
-            collect_sequential(entries, &compiled, ctx, candidate_indices)
+            collect_sequential(entries, &compiled, ctx, options.candidate_indices)
         }
         SearchExecutionMode::Parallel => {
-            collect_parallel(entries, &compiled, ctx, candidate_indices)
+            collect_parallel(entries, &compiled, ctx, options.candidate_indices)
         }
         SearchExecutionMode::Auto => unreachable!(),
     })
@@ -878,24 +887,28 @@ mod tests {
         let sequential = try_collect_search_matches_with_mode(
             "module_123",
             &entries,
-            false,
-            true,
-            None,
-            false,
-            None,
-            SearchExecutionMode::Sequential,
+            SearchCollectOptions {
+                use_regex: false,
+                ignore_case: true,
+                root: None,
+                prefer_relative: false,
+                candidate_indices: None,
+                mode: SearchExecutionMode::Sequential,
+            },
         )
         .expect("sequential matches")
         .scored;
         let parallel = try_collect_search_matches_with_mode(
             "module_123",
             &entries,
-            false,
-            true,
-            None,
-            false,
-            None,
-            SearchExecutionMode::Parallel,
+            SearchCollectOptions {
+                use_regex: false,
+                ignore_case: true,
+                root: None,
+                prefer_relative: false,
+                candidate_indices: None,
+                mode: SearchExecutionMode::Parallel,
+            },
         )
         .expect("parallel matches")
         .scored;

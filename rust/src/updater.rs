@@ -323,7 +323,7 @@ fn spawn_update_helper(current_exe: &Path, staged_path: &Path, temp_dir: &Path) 
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        return spawn_linux_update_helper(current_exe, staged_path, temp_dir);
+        spawn_linux_update_helper(current_exe, staged_path, temp_dir)
     }
     #[cfg(target_os = "macos")]
     {

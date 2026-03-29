@@ -164,7 +164,7 @@ where
         }
         let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
         if include_files && include_dirs {
-            if let Some(path) = candidates.into_iter().next() {
+            if let Some(path) = select_existing_candidate_or_first(candidates) {
                 if seen.insert(path.clone()) {
                     on_entry(path, None);
                 }
@@ -236,6 +236,19 @@ fn resolve_filelist_entry_candidates(
         }
     }
     candidates
+}
+
+fn select_existing_candidate_or_first(candidates: Vec<PathBuf>) -> Option<PathBuf> {
+    let mut first = None;
+    for candidate in candidates {
+        if first.is_none() {
+            first = Some(candidate.clone());
+        }
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+    first
 }
 
 fn push_unique_candidate(
@@ -1416,6 +1429,33 @@ mod tests {
         .expect("parse filelist");
 
         assert_eq!(kinds, vec![None]);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn parse_filelist_stream_prefers_existing_candidate_for_current_platform() {
+        let root = test_root("parse-stream-existing-platform-candidate");
+        let nested = root.join("nested");
+        fs::create_dir_all(&nested).expect("create dir");
+        let file = nested.join("item.txt");
+        fs::write(&file, "x").expect("write file");
+        let filelist = root.join("FileList.txt");
+        fs::write(&filelist, "nested\\item.txt\n").expect("write filelist");
+
+        let mut entries = Vec::new();
+        parse_filelist_stream(
+            &filelist,
+            &root,
+            true,
+            true,
+            || false,
+            |path, is_dir| {
+                entries.push((path, is_dir));
+            },
+        )
+        .expect("parse filelist");
+
+        assert_eq!(entries, vec![(file, None)]);
         let _ = fs::remove_dir_all(&root);
     }
 

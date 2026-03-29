@@ -154,6 +154,32 @@ fn cli_returns_empty_stdout_when_no_matches() {
 }
 
 #[test]
+fn cli_interprets_filelist_paths_for_current_platform() {
+    let root = test_root("filelist-platform-interpretation");
+    fs::create_dir_all(root.join("nested")).expect("create nested root");
+    let file = root.join("nested").join("item.txt");
+    fs::write(&file, "x").expect("write file");
+    fs::write(root.join("FileList.txt"), "nested\\item.txt\n").expect("write filelist");
+
+    let output = Command::new(bin_path())
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--limit",
+            "10",
+        ])
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(stdout.trim(), file.display().to_string());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn cli_returns_non_zero_when_root_is_file() {
     let root = test_root("root-is-file");
     fs::create_dir_all(&root).expect("create root dir");
