@@ -17,6 +17,7 @@ Notes:
     - FlistWalker-<version>-windows-x86_64.LICENSE.txt
     - FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt
     - SHA256SUMS
+    - SHA256SUMS.sig (when FLISTWALKER_UPDATE_SIGNING_KEY_HEX is set)
 USAGE
 }
 
@@ -149,9 +150,17 @@ else
   exit 1
 fi
 
+if [[ -n "${FLISTWALKER_UPDATE_SIGNING_KEY_HEX:-}" ]]; then
+  cargo run --manifest-path "${REPO_DIR}/rust/Cargo.toml" --quiet --bin sign_update_manifest -- \
+    "${OUT_DIR}/SHA256SUMS" "${OUT_DIR}/SHA256SUMS.sig"
+fi
+
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${EXE_NAME}"
 echo "- ${ZIP_NAME}"
 echo "- ${LICENSE_SIDE_NAME}"
 echo "- ${NOTICES_SIDE_NAME}"
 echo "- SHA256SUMS"
+if [[ -n "${FLISTWALKER_UPDATE_SIGNING_KEY_HEX:-}" ]]; then
+  echo "- SHA256SUMS.sig"
+fi

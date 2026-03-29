@@ -129,6 +129,15 @@ Walker tuning (Environment variables):
         "$LicenseHash  $LicenseSideName"
         "$NoticesHash  $NoticesSideName"
     ) | Set-Content -LiteralPath $SumsPath -Encoding ASCII
+
+    if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
+        $manifestPath = Join-Path $OutDir 'SHA256SUMS'
+        $sigPath = Join-Path $OutDir 'SHA256SUMS.sig'
+        cargo run --manifest-path (Join-Path $RepoDir 'rust\Cargo.toml') --quiet --bin sign_update_manifest -- $manifestPath $sigPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "failed to sign update manifest"
+        }
+    }
 }
 finally {
     if (Test-Path -LiteralPath $WorkDir) {
@@ -142,3 +151,6 @@ Write-Host "- $ZipName"
 Write-Host "- $LicenseSideName"
 Write-Host "- $NoticesSideName"
 Write-Host "- SHA256SUMS"
+if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
+    Write-Host "- SHA256SUMS.sig"
+}

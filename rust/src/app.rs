@@ -856,7 +856,7 @@ Search hints:
             .send(UpdateRequest {
                 request_id,
                 kind: UpdateRequestKind::DownloadAndApply {
-                    candidate: candidate.clone(),
+                    candidate: Box::new(candidate.clone()),
                     current_exe,
                 },
             })

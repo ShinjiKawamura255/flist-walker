@@ -241,7 +241,7 @@ pub(super) struct ActionResponse {
 pub(super) enum UpdateRequestKind {
     Check,
     DownloadAndApply {
-        candidate: UpdateCandidate,
+        candidate: Box<UpdateCandidate>,
         current_exe: PathBuf,
     },
 }
@@ -880,10 +880,10 @@ pub(super) fn spawn_update_worker(
                 UpdateRequestKind::DownloadAndApply {
                     candidate,
                     current_exe,
-                } => match prepare_and_start_update(&candidate, &current_exe) {
+                } => match prepare_and_start_update(candidate.as_ref(), &current_exe) {
                     Ok(()) => UpdateResponse::ApplyStarted {
                         request_id: req.request_id,
-                        target_version: candidate.target_version,
+                        target_version: candidate.target_version.clone(),
                     },
                     Err(err) => UpdateResponse::Failed {
                         request_id: req.request_id,

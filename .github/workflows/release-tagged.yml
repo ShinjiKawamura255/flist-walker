@@ -12,6 +12,8 @@ jobs:
   build-release-assets:
     name: Build Release Assets (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
+    env:
+      FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: ${{ secrets.FLISTWALKER_UPDATE_PUBLIC_KEY_HEX }}
     strategy:
       fail-fast: false
       matrix:
@@ -126,10 +128,24 @@ jobs:
     name: Create Draft Release
     runs-on: ubuntu-latest
     needs: build-release-assets
+    env:
+      FLISTWALKER_UPDATE_SIGNING_KEY_HEX: ${{ secrets.FLISTWALKER_UPDATE_SIGNING_KEY_HEX }}
     permissions:
       contents: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${FLISTWALKER_UPDATE_SIGNING_KEY_HEX}"
+
       - name: Download packaged assets
         uses: actions/download-artifact@v6
         with:
@@ -153,6 +169,13 @@ jobs:
             sha256sum * > SHA256SUMS
           )
           ls -la release-bundle
+
+      - name: Sign release checksum manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --manifest-path rust/Cargo.toml --quiet --bin sign_update_manifest -- \
+            release-bundle/SHA256SUMS release-bundle/SHA256SUMS.sig
 
       - name: Create draft GitHub release
         uses: softprops/action-gh-release@v2

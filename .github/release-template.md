@@ -25,6 +25,7 @@
 - `FlistWalker-X.Y.Z-macos-arm64.LICENSE.txt`
 - `FlistWalker-X.Y.Z-macos-arm64.THIRD_PARTY_NOTICES.txt`
 - `SHA256SUMS`
+- `SHA256SUMS.sig`
 
 ## Added
 - 
@@ -43,6 +44,7 @@
 
 ## Security
 - query history は既定で平文永続化される。必要なら `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` を案内する。
+- 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
 - 当面の暫定運用として、macOS 配布物は未 notarized のまま publish する場合がある。
 
 ## Known issues

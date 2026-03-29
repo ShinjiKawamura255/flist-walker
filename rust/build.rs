@@ -41,6 +41,7 @@ fn find_program_in_path(candidates: &[&str]) -> Option<PathBuf> {
 
 fn main() {
     println!("cargo:rerun-if-changed=assets/flistwalker-icon.svg");
+    println!("cargo:rerun-if-env-changed=FLISTWALKER_UPDATE_PUBLIC_KEY_HEX");
 
     let target = env::var("TARGET").unwrap_or_default();
     if !target.contains("windows") {

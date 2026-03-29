@@ -1,3 +1,4 @@
+use crate::update_security::{self, CHECKSUM_SIGNATURE_NAME};
 use anyhow::{anyhow, bail, Context, Result};
 use semver::Version;
 use serde::Deserialize;
@@ -32,6 +33,7 @@ pub struct UpdateCandidate {
     pub asset_name: String,
     pub asset_url: String,
     pub checksum_url: String,
+    pub checksum_signature_url: String,
     pub support: UpdateSupport,
 }
 
@@ -88,6 +90,23 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
         .find(|asset| asset.name == "SHA256SUMS")
         .cloned()
         .context("release asset missing: SHA256SUMS")?;
+    let checksum_signature = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == CHECKSUM_SIGNATURE_NAME)
+        .cloned()
+        .context("release asset missing: SHA256SUMS.sig")?;
+    let support = if platform_target.support == UpdateSupport::Auto
+        && !update_security::has_embedded_public_key()
+    {
+        UpdateSupport::ManualOnly {
+            message:
+                "このビルドには更新署名公開鍵が埋め込まれていないため、自動更新は利用できません。GitHub Releases から手動更新してください。"
+                    .to_string(),
+        }
+    } else {
+        platform_target.support
+    };
 
     Ok(Some(UpdateCandidate {
         current_version: current_version.to_string(),
@@ -96,7 +115,8 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
         asset_name: asset.name,
         asset_url: asset.browser_download_url,
         checksum_url: checksum.browser_download_url,
-        support: platform_target.support,
+        checksum_signature_url: checksum_signature.browser_download_url,
+        support,
     }))
 }
 
@@ -112,8 +132,11 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
     let temp_dir = unique_update_temp_dir()?;
     let staged_path = temp_dir.join(&candidate.asset_name);
     let checksum_path = temp_dir.join("SHA256SUMS");
+    let signature_path = temp_dir.join(CHECKSUM_SIGNATURE_NAME);
     download_to_path(&candidate.asset_url, &staged_path)?;
     download_to_path(&candidate.checksum_url, &checksum_path)?;
+    download_to_path(&candidate.checksum_signature_url, &signature_path)?;
+    verify_checksum_manifest_signature(&checksum_path, &signature_path)?;
     verify_download(&staged_path, &checksum_path, &candidate.asset_name)?;
 
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -261,6 +284,15 @@ fn download_to_path(url: &str, out: &Path) -> Result<()> {
     std::io::copy(&mut reader, &mut file)
         .with_context(|| format!("failed to write {}", out.display()))?;
     Ok(())
+}
+
+fn verify_checksum_manifest_signature(checksum_file: &Path, signature_file: &Path) -> Result<()> {
+    let message = fs::read(checksum_file)
+        .with_context(|| format!("failed to read {}", checksum_file.display()))?;
+    let signature = fs::read(signature_file)
+        .with_context(|| format!("failed to read {}", signature_file.display()))?;
+    update_security::verify_embedded_signature(&message, &signature)
+        .context("failed to verify update checksum signature")
 }
 
 fn verify_download(downloaded_file: &Path, checksum_file: &Path, asset_name: &str) -> Result<()> {
@@ -422,6 +454,12 @@ exit 1
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::update_security;
+
+    const TEST_SIGNING_KEY_HEX: &str =
+        "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+    const TEST_PUBLIC_KEY_HEX: &str =
+        "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664";
 
     #[test]
     fn parse_checksum_line_supports_sha256sum_format() {
@@ -518,6 +556,47 @@ mod tests {
         .expect("write sums");
 
         verify_download(&file_path, &sums_path, "sample.bin").expect("checksum match");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn checksum_manifest_signature_verification_detects_match() {
+        let dir = unique_update_temp_dir().expect("temp dir");
+        let sums_path = dir.join("SHA256SUMS");
+        let signature_path = dir.join(CHECKSUM_SIGNATURE_NAME);
+        let message =
+            b"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  sample.bin\n";
+        let signature = update_security::sign_message(message, TEST_SIGNING_KEY_HEX).expect("sign");
+        fs::write(&sums_path, message).expect("write sums");
+        fs::write(&signature_path, signature).expect("write signature");
+
+        let message = fs::read(&sums_path).expect("read sums");
+        let signature = fs::read(&signature_path).expect("read signature");
+        update_security::verify_signature(&message, &signature, TEST_PUBLIC_KEY_HEX)
+            .expect("signature should verify");
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn checksum_manifest_signature_verification_rejects_tampering() {
+        let dir = unique_update_temp_dir().expect("temp dir");
+        let sums_path = dir.join("SHA256SUMS");
+        let signature_path = dir.join(CHECKSUM_SIGNATURE_NAME);
+        let signed_message =
+            b"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  sample.bin\n";
+        let tampered_message =
+            b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sample.bin\n";
+        let signature =
+            update_security::sign_message(signed_message, TEST_SIGNING_KEY_HEX).expect("sign");
+        fs::write(&sums_path, tampered_message).expect("write sums");
+        fs::write(&signature_path, signature).expect("write signature");
+
+        let message = fs::read(&sums_path).expect("read sums");
+        let signature = fs::read(&signature_path).expect("read signature");
+        let result = update_security::verify_signature(&message, &signature, TEST_PUBLIC_KEY_HEX);
+        assert!(result.is_err(), "tampered manifest must fail verification");
+
         let _ = fs::remove_dir_all(&dir);
     }
 

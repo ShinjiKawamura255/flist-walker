@@ -92,7 +92,7 @@ pub fn choose_action(path: &Path) -> Action {
     {
         if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
             let ext = ext.to_ascii_lowercase();
-            if ["exe", "com", "bat", "cmd", "ps1"].contains(&ext.as_str()) {
+            if ["exe", "com", "bat", "cmd"].contains(&ext.as_str()) {
                 return Action::Execute;
             }
         }
@@ -116,22 +116,7 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
         Action::Open => open_with_default(path),
         Action::Execute => {
             #[cfg(target_os = "windows")]
-            let result = {
-                let is_ps1 = path
-                    .extension()
-                    .and_then(|s| s.to_str())
-                    .map(|ext| ext.eq_ignore_ascii_case("ps1"))
-                    .unwrap_or(false);
-                if is_ps1 {
-                    // .ps1 is not directly executable via CreateProcess; invoke PowerShell explicitly.
-                    Command::new("powershell.exe")
-                        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
-                        .arg(path)
-                        .spawn()
-                } else {
-                    Command::new(path).spawn()
-                }
-            };
+            let result = Command::new(path).spawn();
             #[cfg(not(target_os = "windows"))]
             let result = Command::new(path).spawn();
             #[cfg(target_os = "windows")]
@@ -238,6 +223,18 @@ mod tests {
             let exe = root.join("tool.exe");
             fs::write(&exe, "bin").expect("write exe");
             assert_eq!(choose_action(&exe), Action::Execute);
+        }
+    }
+
+    #[test]
+    fn windows_powershell_script_is_open_action() {
+        #[cfg(target_os = "windows")]
+        {
+            let root = std::env::temp_dir().join("fff-rs-actions-winps1");
+            let _ = fs::create_dir_all(&root);
+            let script = root.join("tool.ps1");
+            fs::write(&script, "Write-Host test").expect("write script");
+            assert_eq!(choose_action(&script), Action::Open);
         }
     }
 

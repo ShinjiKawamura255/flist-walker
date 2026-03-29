@@ -343,6 +343,7 @@ fn available_update_response_opens_prompt() {
             asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
             asset_url: "https://example.invalid/asset".to_string(),
             checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
             support: UpdateSupport::Auto,
         },
     })
@@ -388,6 +389,7 @@ fn skipped_update_response_is_not_prompted_again_until_newer_version() {
             asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
             asset_url: "https://example.invalid/asset".to_string(),
             checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
             support: UpdateSupport::Auto,
         },
     })
@@ -421,6 +423,7 @@ fn newer_update_response_ignores_previous_skip_version() {
             asset_name: "FlistWalker-0.12.5-linux-x86_64".to_string(),
             asset_url: "https://example.invalid/asset".to_string(),
             checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
             support: UpdateSupport::Auto,
         },
     })
@@ -525,6 +528,7 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
             asset_name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
             asset_url: "https://example.invalid/asset".to_string(),
             checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
             support: UpdateSupport::Auto,
         },
         skip_until_next_version: false,
@@ -568,6 +572,7 @@ fn failed_update_response_reenables_update_prompt_actions() {
             asset_name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
             asset_url: "https://example.invalid/asset".to_string(),
             checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
             support: UpdateSupport::Auto,
         },
         skip_until_next_version: false,

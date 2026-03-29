@@ -196,6 +196,7 @@ $SandboxExe = Join-Path $AppSandboxDir 'flistwalker.exe'
 $AssetName = "FlistWalker-$FeedVersion-windows-x86_64.exe"
 $AssetPath = Join-Path $FeedDir $AssetName
 $ChecksumPath = Join-Path $FeedDir 'SHA256SUMS'
+$ChecksumSigPath = Join-Path $FeedDir 'SHA256SUMS.sig'
 $LatestJsonPath = Join-Path $FeedDir 'latest.json'
 $FeedUrl = "http://127.0.0.1:$Port/latest.json"
 $ReleaseUrl = "http://127.0.0.1:$Port/"
@@ -209,6 +210,14 @@ Copy-Item -LiteralPath $UpdateBinaryPath -Destination $AssetPath -Force
 $AssetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $AssetPath).Hash.ToLowerInvariant()
 "$AssetHash  $AssetName" | Set-Content -LiteralPath $ChecksumPath -Encoding ASCII
 
+if (-not $env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
+    throw "FLISTWALKER_UPDATE_SIGNING_KEY_HEX is required for manual self-update tests."
+}
+cargo run --manifest-path (Join-Path (Split-Path -Parent $PSScriptRoot) 'rust\Cargo.toml') --quiet --bin sign_update_manifest -- $ChecksumPath $ChecksumSigPath
+if ($LASTEXITCODE -ne 0) {
+    throw "failed to sign SHA256SUMS for manual self-update test"
+}
+
 $release = [ordered]@{
     tag_name = "v$FeedVersion"
     html_url = $ReleaseUrl
@@ -220,6 +229,10 @@ $release = [ordered]@{
         @{
             name = 'SHA256SUMS'
             browser_download_url = "${ReleaseUrl}SHA256SUMS"
+        },
+        @{
+            name = 'SHA256SUMS.sig'
+            browser_download_url = "${ReleaseUrl}SHA256SUMS.sig"
         }
     )
 }
