@@ -24,6 +24,29 @@
 ### Known issues
 - 
 
+## [0.13.1] - 2026-03-29
+### Added
+- CLI で `--version` / `-V` により現在の version を表示できるようにした。
+- `FLISTWALKER_DISABLE_SELF_UPDATE=1` を追加し、起動時の更新確認と更新適用を明示的に無効化できるようにした。
+
+### Changed
+- 自己更新の無効化フラグが有効な場合は、GUI 起動時の update request を送らず、updater 側でも更新処理を開始しないようにした。
+
+### Fixed
+- 
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+
 ## [0.13.0] - 2026-03-28
 ### Added
 - 起動時に GitHub Releases を確認し、新しい version があれば自己更新ダイアログを表示するようにした。
