@@ -284,6 +284,7 @@ struct PendingFileListUseWalkerConfirmation {
 struct UpdatePromptState {
     candidate: UpdateCandidate,
     skip_until_next_version: bool,
+    install_started: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -824,6 +825,10 @@ Search hints:
         let Some(prompt) = self.update_prompt.as_ref() else {
             return;
         };
+        if prompt.install_started {
+            return;
+        }
+        let candidate = prompt.candidate.clone();
         let current_exe = match std::env::current_exe() {
             Ok(path) => path,
             Err(err) => {
@@ -831,6 +836,9 @@ Search hints:
                 return;
             }
         };
+        if let Some(prompt) = self.update_prompt.as_mut() {
+            prompt.install_started = true;
+        }
         let request_id = self.next_update_request_id;
         self.next_update_request_id = self.next_update_request_id.saturating_add(1);
         self.pending_update_request_id = Some(request_id);
@@ -840,7 +848,7 @@ Search hints:
             .send(UpdateRequest {
                 request_id,
                 kind: UpdateRequestKind::DownloadAndApply {
-                    candidate: prompt.candidate.clone(),
+                    candidate: candidate.clone(),
                     current_exe,
                 },
             })
@@ -848,12 +856,15 @@ Search hints:
         {
             self.pending_update_request_id = None;
             self.update_in_progress = false;
+            if let Some(prompt) = self.update_prompt.as_mut() {
+                prompt.install_started = false;
+            }
             self.set_notice("Update worker is unavailable");
             return;
         }
         self.set_notice(format!(
             "Downloading update {}...",
-            prompt.candidate.target_version
+            candidate.target_version
         ));
     }
 
@@ -4311,6 +4322,7 @@ Search hints:
                         self.update_prompt = Some(UpdatePromptState {
                             candidate,
                             skip_until_next_version: false,
+                            install_started: false,
                         });
                     }
                 }
@@ -4336,6 +4348,9 @@ Search hints:
                     }
                     self.pending_update_request_id = None;
                     self.update_in_progress = false;
+                    if let Some(prompt) = self.update_prompt.as_mut() {
+                        prompt.install_started = false;
+                    }
                     self.set_notice(error);
                 }
             }

@@ -357,6 +357,12 @@ fn available_update_response_opens_prompt() {
             .expect("update prompt")
             .skip_until_next_version
     );
+    assert!(
+        !app.update_prompt
+            .as_ref()
+            .expect("update prompt")
+            .install_started
+    );
     assert_eq!(app.pending_update_request_id, None);
     assert!(!app.update_in_progress);
     let _ = fs::remove_dir_all(&root);
@@ -501,6 +507,88 @@ fn startup_update_check_is_skipped_when_self_update_is_disabled() {
     unsafe {
         std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
     }
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn start_update_install_ignores_repeat_requests_after_first_click() {
+    let root = test_root("start-update-install-idempotent");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateRequest>();
+    app.update_tx = tx;
+    app.update_prompt = Some(UpdatePromptState {
+        candidate: UpdateCandidate {
+            current_version: "0.13.0".to_string(),
+            target_version: "0.13.1".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
+            asset_url: "https://example.invalid/asset".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            support: UpdateSupport::Auto,
+        },
+        skip_until_next_version: false,
+        install_started: false,
+    });
+
+    app.start_update_install();
+    app.start_update_install();
+
+    let first = rx.recv().expect("first update request");
+    assert!(matches!(
+        first.kind,
+        UpdateRequestKind::DownloadAndApply { .. }
+    ));
+    assert!(rx.try_recv().is_err());
+    assert!(
+        app.update_prompt
+            .as_ref()
+            .expect("update prompt")
+            .install_started
+    );
+    assert!(app.update_in_progress);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn failed_update_response_reenables_update_prompt_actions() {
+    let root = test_root("failed-update-response-reenables-actions");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.pending_update_request_id = Some(1);
+    app.update_in_progress = true;
+    app.update_prompt = Some(UpdatePromptState {
+        candidate: UpdateCandidate {
+            current_version: "0.13.0".to_string(),
+            target_version: "0.13.1".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
+            asset_url: "https://example.invalid/asset".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            support: UpdateSupport::Auto,
+        },
+        skip_until_next_version: false,
+        install_started: true,
+    });
+
+    tx.send(UpdateResponse::Failed {
+        request_id: 1,
+        error: "Update failed: offline".to_string(),
+    })
+    .expect("send update failure");
+
+    app.poll_update_response();
+
+    assert!(
+        !app.update_prompt
+            .as_ref()
+            .expect("update prompt")
+            .install_started
+    );
+    assert_eq!(app.notice, "Update failed: offline");
     let _ = fs::remove_dir_all(&root);
 }
 

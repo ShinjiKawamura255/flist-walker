@@ -952,12 +952,24 @@ impl FlistWalkerApp {
                 match &prompt.candidate.support {
                     UpdateSupport::Auto => {
                         ui.label("Download the new release, replace the current binary, and restart?");
+                        if prompt.install_started {
+                            ui.label("Downloading update... please wait.");
+                        }
                         ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
                         ui.horizontal(|ui| {
-                            if ui.button("Download and Restart").clicked() {
+                            if ui
+                                .add_enabled(
+                                    !prompt.install_started,
+                                    egui::Button::new("Download and Restart"),
+                                )
+                                .clicked()
+                            {
                                 confirm = true;
                             }
-                            if ui.button("Later").clicked() {
+                            if ui
+                                .add_enabled(!prompt.install_started, egui::Button::new("Later"))
+                                .clicked()
+                            {
                                 later = true;
                             }
                         });
