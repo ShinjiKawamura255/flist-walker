@@ -19,6 +19,36 @@ fn bin_path() -> PathBuf {
 }
 
 #[test]
+fn cli_prints_version_with_long_flag() {
+    let output = Command::new(bin_path())
+        .arg("--version")
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(
+        stdout.trim(),
+        format!("flistwalker {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
+fn cli_prints_version_with_short_flag() {
+    let output = Command::new(bin_path())
+        .arg("-V")
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert_eq!(
+        stdout.trim(),
+        format!("flistwalker {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
 fn cli_outputs_at_most_limit_lines_for_empty_query() {
     let root = test_root("limit");
     fs::create_dir_all(&root).expect("create root");

@@ -15,6 +15,7 @@ use resvg::{tiny_skia, usvg};
 #[derive(Parser, Debug)]
 #[command(name = "flistwalker")]
 #[command(about = "FlistWalker Rust implementation")]
+#[command(version)]
 struct Args {
     #[arg(default_value = "")]
     query: String,

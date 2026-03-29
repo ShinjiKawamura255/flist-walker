@@ -61,6 +61,8 @@ cargo run -- --root .. --limit 1000
 cd rust
 source ~/.cargo/env
 cargo run -- --cli "main"
+# バージョン確認
+cargo run -- --version
 ```
 
 ## Environment variables
