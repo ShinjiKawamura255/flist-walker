@@ -152,6 +152,11 @@
 - CI の Linux / macOS / Windows test と `cargo audit` が green であること。
 - notarization 環境が未整備な当面の間は、macOS を publish 対象に含める場合でも notarization 完了を必須条件にしない。その代わり release note に未 notarized である旨を記載すること。
 
+## Signing Key Provisioning
+- 初回導入または鍵ローテーション時は `cd rust && cargo run --quiet --bin generate_update_keypair` で `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` と `FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` を生成する。
+- `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` は GitHub Actions secret とローカルの安全な保管先にのみ置き、リポジトリへ保存しない。
+- `FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` は GitHub Actions secret と release build 環境へ設定し、配布ビルドへ埋め込む。
+
 ## SHA256SUMS 検証例
 `SHA256SUMS.sig` はアプリ内部の更新検証に使う detached signature であり、一般ファイル操作で選んだ `.ps1` の既定動作とは無関係である。Windows の一般 `.ps1` は既定で直接実行せず、自己更新の内部 helper script のみ updater モジュールから起動する。
 
