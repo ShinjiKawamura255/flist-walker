@@ -43,10 +43,10 @@
 
 ## Security
 - query history は既定で平文永続化される。必要なら `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` を案内する。
-- draft release から publish する前に、macOS 配布物の notarization 確認を行う。
+- 当面の暫定運用として、macOS 配布物は未 notarized のまま publish する場合がある。
 
 ## Known issues
-- 
+- notarization 環境が整うまで、macOS 配布物は未 notarized の場合がある。
 
 ## Verify checksum
 PowerShell:
