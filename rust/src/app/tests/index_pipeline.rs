@@ -1211,7 +1211,9 @@ fn kind_resolver_marks_symlink_as_link() {
     .expect("send kind resolve request");
     drop(tx);
 
-    let response = rx.recv_timeout(Duration::from_secs(1)).expect("kind response");
+    let response = rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("kind response");
     shutdown.store(true, Ordering::Relaxed);
     handle.join().expect("join kind resolver");
 

@@ -138,7 +138,7 @@
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - Windows の `.ps1` 実行は `powershell.exe -File` を明示起動する。
 - 自己更新は staged binary を checksum 検証後にのみ採用し、検証失敗時は既存バイナリと UI セッションを維持する。
-- Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して起動し、`Copy-Item -LiteralPath` ベースで置換する。
+- Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden` で非表示起動し、`Copy-Item -LiteralPath` ベースで置換する。
 - Linux の自己更新は一時 shell script を起動して本体終了を待ち、`cp` + `chmod` 後に新 binary を再起動する。
 - macOS は最新 version 検知のみ実施し、自動適用は非対応として release URL への案内に留める。
 

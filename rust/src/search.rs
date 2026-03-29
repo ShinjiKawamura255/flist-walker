@@ -195,7 +195,11 @@ fn compile_include_matcher(
     Ok(IncludeMatcher::Alternatives(alternatives))
 }
 
-fn build_score_query(include_terms: &[String], exact_terms: &[String], ignore_case: bool) -> String {
+fn build_score_query(
+    include_terms: &[String],
+    exact_terms: &[String],
+    ignore_case: bool,
+) -> String {
     let mut score_query = include_terms
         .iter()
         .flat_map(|term| include_alternatives(term))
@@ -268,11 +272,10 @@ fn compile_query(query: &str, use_regex: bool, ignore_case: bool) -> Result<Comp
 
 fn bonus_for_alternative_set(set: &AlternativeSet, entry: &SearchableEntry) -> f64 {
     let mut bonus = 0.0;
-    if set
-        .alternatives
-        .iter()
-        .any(|pattern| matches_anchored_literal(pattern, &entry.name) || matches_anchored_literal(pattern, &entry.full))
-    {
+    if set.alternatives.iter().any(|pattern| {
+        matches_anchored_literal(pattern, &entry.name)
+            || matches_anchored_literal(pattern, &entry.full)
+    }) {
         bonus += 150.0;
     }
     if set
@@ -298,9 +301,9 @@ fn matches_anchored_literal(pattern: &LiteralPattern, text: &str) -> bool {
 }
 
 fn matches_alternative_set(set: &AlternativeSet, name: &str, full: &str) -> bool {
-    set.alternatives
-        .iter()
-        .any(|pattern| matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full))
+    set.alternatives.iter().any(|pattern| {
+        matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full)
+    })
 }
 
 fn matches_include_literal(pattern: &LiteralPattern, name: &str, full: &str) -> bool {
@@ -341,7 +344,12 @@ fn matches_include_matcher(matcher: &IncludeMatcher, name: &str, full: &str) -> 
     }
 }
 
-fn searchable_full(path: &Path, root: Option<&Path>, prefer_relative: bool, ignore_case: bool) -> String {
+fn searchable_full(
+    path: &Path,
+    root: Option<&Path>,
+    prefer_relative: bool,
+    ignore_case: bool,
+) -> String {
     let normalized_path = normalize_windows_path(path);
     if prefer_relative {
         if let Some(root) = root {
@@ -401,11 +409,7 @@ fn fallback_score(query: &str, text: &str) -> f64 {
     score + (query.len().min(text.len()) as f64)
 }
 
-fn score_entry(
-    matcher: &SkimMatcherV2,
-    compiled: &CompiledQuery,
-    entry: &SearchableEntry,
-) -> f64 {
+fn score_entry(matcher: &SkimMatcherV2, compiled: &CompiledQuery, entry: &SearchableEntry) -> f64 {
     let mut score = if compiled.score_query.is_empty() {
         0.0
     } else {
@@ -432,7 +436,9 @@ fn score_entry(
     }
 
     for pattern in &compiled.include_exact_bonus_terms {
-        if matches_anchored_literal(pattern, &entry.name) || matches_anchored_literal(pattern, &entry.full) {
+        if matches_anchored_literal(pattern, &entry.name)
+            || matches_anchored_literal(pattern, &entry.full)
+        {
             score += 300.0;
             if entry.name == pattern.core {
                 score += 300.0;
@@ -463,7 +469,10 @@ fn evaluate_candidate(
     })
 }
 
-fn merge_chunk_results(mut left: SearchChunkResult, mut right: SearchChunkResult) -> SearchChunkResult {
+fn merge_chunk_results(
+    mut left: SearchChunkResult,
+    mut right: SearchChunkResult,
+) -> SearchChunkResult {
     left.scored.append(&mut right.scored);
     left
 }
@@ -481,15 +490,17 @@ fn collect_sequential(
             .copied()
             .enumerate()
             .filter_map(|(ordinal, index)| {
-                entries
-                    .get(index)
-                    .and_then(|path| evaluate_candidate(path, index, ordinal, compiled, ctx, &matcher))
+                entries.get(index).and_then(|path| {
+                    evaluate_candidate(path, index, ordinal, compiled, ctx, &matcher)
+                })
             })
             .collect(),
         None => entries
             .iter()
             .enumerate()
-            .filter_map(|(index, path)| evaluate_candidate(path, index, index, compiled, ctx, &matcher))
+            .filter_map(|(index, path)| {
+                evaluate_candidate(path, index, index, compiled, ctx, &matcher)
+            })
             .collect(),
     };
     SearchScoredMatches { scored }
@@ -508,7 +519,11 @@ fn search_threads() -> usize {
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
         .filter(|value| *value > 0)
-        .unwrap_or_else(|| thread::available_parallelism().map(|value| value.get()).unwrap_or(1))
+        .unwrap_or_else(|| {
+            thread::available_parallelism()
+                .map(|value| value.get())
+                .unwrap_or(1)
+        })
         .min(SEARCH_THREADS_MAX)
 }
 
@@ -547,61 +562,68 @@ fn collect_parallel(
     let chunk_size = search_parallel_chunk_size(candidate_count);
 
     let scored = with_search_thread_pool(|| match candidate_indices {
-        Some(indices) => indices
-            .par_chunks(chunk_size)
-            .enumerate()
-            .map(|(chunk_idx, chunk)| {
-                let matcher = SkimMatcherV2::default();
-                let base_ordinal = chunk_idx.saturating_mul(chunk_size);
-                let scored = chunk
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .filter_map(|(offset, index)| {
-                        entries.get(index).and_then(|path| {
-                            evaluate_candidate(
-                                path,
-                                index,
-                                base_ordinal + offset,
-                                compiled,
-                                ctx,
-                                &matcher,
-                            )
+        Some(indices) => {
+            indices
+                .par_chunks(chunk_size)
+                .enumerate()
+                .map(|(chunk_idx, chunk)| {
+                    let matcher = SkimMatcherV2::default();
+                    let base_ordinal = chunk_idx.saturating_mul(chunk_size);
+                    let scored = chunk
+                        .iter()
+                        .copied()
+                        .enumerate()
+                        .filter_map(|(offset, index)| {
+                            entries.get(index).and_then(|path| {
+                                evaluate_candidate(
+                                    path,
+                                    index,
+                                    base_ordinal + offset,
+                                    compiled,
+                                    ctx,
+                                    &matcher,
+                                )
+                            })
                         })
-                    })
-                    .collect();
-                SearchChunkResult { scored }
-            })
-            .reduce(SearchChunkResult::default, merge_chunk_results)
-            .scored,
-        None => (0..entries.len())
-            .into_par_iter()
-            .with_min_len(chunk_size)
-            .fold(
-                || {
-                    (
-                        SkimMatcherV2::default(),
-                        Vec::<SearchCandidateScore>::new(),
-                    )
-                },
-                |(matcher, mut scored), index| {
-                    if let Some(item) =
-                        evaluate_candidate(&entries[index], index, index, compiled, ctx, &matcher)
-                    {
-                        scored.push(item);
-                    }
-                    (matcher, scored)
-                },
-            )
-            .map(|(_, scored)| SearchChunkResult { scored })
-            .reduce(SearchChunkResult::default, merge_chunk_results)
-            .scored,
+                        .collect();
+                    SearchChunkResult { scored }
+                })
+                .reduce(SearchChunkResult::default, merge_chunk_results)
+                .scored
+        }
+        None => {
+            (0..entries.len())
+                .into_par_iter()
+                .with_min_len(chunk_size)
+                .fold(
+                    || (SkimMatcherV2::default(), Vec::<SearchCandidateScore>::new()),
+                    |(matcher, mut scored), index| {
+                        if let Some(item) = evaluate_candidate(
+                            &entries[index],
+                            index,
+                            index,
+                            compiled,
+                            ctx,
+                            &matcher,
+                        ) {
+                            scored.push(item);
+                        }
+                        (matcher, scored)
+                    },
+                )
+                .map(|(_, scored)| SearchChunkResult { scored })
+                .reduce(SearchChunkResult::default, merge_chunk_results)
+                .scored
+        }
     });
 
     SearchScoredMatches { scored }
 }
 
-fn resolve_execution_mode(mode: SearchExecutionMode, candidate_count: usize) -> SearchExecutionMode {
+fn resolve_execution_mode(
+    mode: SearchExecutionMode,
+    candidate_count: usize,
+) -> SearchExecutionMode {
     match mode {
         SearchExecutionMode::Auto => {
             if candidate_count >= search_parallel_threshold() && search_threads() > 1 {
@@ -693,8 +715,12 @@ fn try_collect_search_matches_with_mode(
     let candidate_count = candidate_indices.map_or(entries.len(), |items| items.len());
     let execution = resolve_execution_mode(mode, candidate_count);
     Ok(match execution {
-        SearchExecutionMode::Sequential => collect_sequential(entries, &compiled, ctx, candidate_indices),
-        SearchExecutionMode::Parallel => collect_parallel(entries, &compiled, ctx, candidate_indices),
+        SearchExecutionMode::Sequential => {
+            collect_sequential(entries, &compiled, ctx, candidate_indices)
+        }
+        SearchExecutionMode::Parallel => {
+            collect_parallel(entries, &compiled, ctx, candidate_indices)
+        }
         SearchExecutionMode::Auto => unreachable!(),
     })
 }
@@ -762,7 +788,10 @@ pub fn try_search_entries_indexed_with_scope(
         .collect())
 }
 
-fn materialize_scored_entries(entries: &[PathBuf], scored: Vec<IndexedScore>) -> Vec<(PathBuf, f64)> {
+fn materialize_scored_entries(
+    entries: &[PathBuf],
+    scored: Vec<IndexedScore>,
+) -> Vec<(PathBuf, f64)> {
     scored
         .into_iter()
         .filter_map(|item| {
@@ -827,19 +856,15 @@ mod tests {
             .map(|i| PathBuf::from(format!("/tmp/src/module_{i:03}.rs")))
             .collect();
 
-        let limited = try_search_entries_with_scope("module_1", &entries, 7, false, true, None, false)
-            .expect("limited search");
+        let limited =
+            try_search_entries_with_scope("module_1", &entries, 7, false, true, None, false)
+                .expect("limited search");
         let full = try_search_entries_indexed_with_scope(
-            "module_1",
-            &entries,
-            false,
-            true,
-            None,
-            false,
-            None,
+            "module_1", &entries, false, true, None, false, None,
         )
         .expect("full ranked search");
-        let expected = materialize_scored_entries(entries.as_slice(), full.into_iter().take(7).collect());
+        let expected =
+            materialize_scored_entries(entries.as_slice(), full.into_iter().take(7).collect());
 
         assert_eq!(limited, expected);
     }
@@ -1143,7 +1168,8 @@ mod tests {
     fn relative_search_normalizes_extended_drive_prefixes() {
         let root = PathBuf::from(r"C:\Users\tester");
         let entries = vec![PathBuf::from(r"\\?\C:\Users\tester\abc\def.txt")];
-        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
+        let out =
+            search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
         assert_eq!(out.len(), 1);
     }
 
@@ -1152,7 +1178,8 @@ mod tests {
     fn relative_search_normalizes_extended_unc_prefixes() {
         let root = PathBuf::from(r"\\server\share");
         let entries = vec![PathBuf::from(r"\\?\UNC\server\share\abc\def.txt")];
-        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
+        let out =
+            search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
         assert_eq!(out.len(), 1);
     }
 
@@ -1173,7 +1200,8 @@ mod tests {
             PathBuf::from("/var/tmp/abc-def-outside.txt"),
         ];
 
-        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
+        let out =
+            search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), true);
         assert_eq!(out.len(), 2);
         assert!(out
             .iter()
@@ -1188,7 +1216,8 @@ mod tests {
             PathBuf::from("/opt/cache/misc/xyz.txt"),
         ];
 
-        let out = search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), false);
+        let out =
+            search_entries_with_scope("abc def", &entries, 10, false, true, Some(&root), false);
         assert_eq!(out.len(), 1);
         assert!(has_visible_match(&out[0].0, &root, "abc def", false, true));
     }

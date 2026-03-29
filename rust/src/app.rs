@@ -1,13 +1,13 @@
+use crate::fs_atomic::write_text_atomic;
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
-};
-use crate::fs_atomic::write_text_atomic;
-use crate::updater::{
-    self_update_disabled, should_skip_update_prompt, UpdateCandidate, UpdateSupport,
 };
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
     normalize_path_for_display, should_skip_preview,
+};
+use crate::updater::{
+    self_update_disabled, should_skip_update_prompt, UpdateCandidate, UpdateSupport,
 };
 use eframe::egui;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -610,7 +610,8 @@ Search hints:
         let (filelist_tx, filelist_rx, filelist_handle) =
             spawn_filelist_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("filelist", filelist_handle);
-        let (update_tx, update_rx, update_handle) = spawn_update_worker(Arc::clone(&worker_shutdown));
+        let (update_tx, update_rx, update_handle) =
+            spawn_update_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("update", update_handle);
         let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
         let (index_tx, index_rx, index_handles) = spawn_index_worker(
@@ -837,7 +838,9 @@ Search hints:
         let current_exe = match std::env::current_exe() {
             Ok(path) => path,
             Err(err) => {
-                self.set_notice(format!("Update failed: failed to resolve current executable: {err}"));
+                self.set_notice(format!(
+                    "Update failed: failed to resolve current executable: {err}"
+                ));
                 return;
             }
         };
@@ -3924,10 +3927,7 @@ Search hints:
                     normalize_path_for_display(&paths[0])
                 ));
             } else {
-                self.set_notice(format!(
-                    "Action: {}",
-                    normalize_path_for_display(&paths[0])
-                ));
+                self.set_notice(format!("Action: {}", normalize_path_for_display(&paths[0])));
             }
         } else {
             if open_parent_for_files {
@@ -4413,10 +4413,7 @@ Search hints:
                     self.pending_update_request_id = None;
                     self.update_in_progress = false;
                     self.update_prompt = None;
-                    self.set_notice(format!(
-                        "Restarting to apply update {}...",
-                        target_version
-                    ));
+                    self.set_notice(format!("Restarting to apply update {}...", target_version));
                     self.close_requested_for_update = true;
                 }
                 UpdateResponse::Failed { request_id, error } => {

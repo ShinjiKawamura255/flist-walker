@@ -994,11 +994,16 @@ impl FlistWalkerApp {
                 ));
                 match &prompt.candidate.support {
                     UpdateSupport::Auto => {
-                        ui.label("Download the new release, replace the current binary, and restart?");
+                        ui.label(
+                            "Download the new release, replace the current binary, and restart?",
+                        );
                         if prompt.install_started {
                             ui.label("Downloading update... please wait.");
                         }
-                        ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
+                        ui.checkbox(
+                            &mut skip_until_next_version,
+                            "Don't show again until the next version",
+                        );
                         ui.horizontal(|ui| {
                             if ui
                                 .add_enabled(
@@ -1020,7 +1025,10 @@ impl FlistWalkerApp {
                     UpdateSupport::ManualOnly { message } => {
                         ui.label(message);
                         ui.label(format!("Release: {}", prompt.candidate.release_url));
-                        ui.checkbox(&mut skip_until_next_version, "Don't show again until the next version");
+                        ui.checkbox(
+                            &mut skip_until_next_version,
+                            "Don't show again until the next version",
+                        );
                         if ui.button("Later").clicked() {
                             later = true;
                         }

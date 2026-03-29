@@ -794,7 +794,7 @@ fn propagate_child_filelist_to_ancestor_filelists(
                 child_filelist,
                 should_cancel,
             )
-                .is_err()
+            .is_err()
             {
                 return false;
             }
@@ -831,13 +831,7 @@ pub fn write_filelist(
     filename: &str,
     propagate_to_ancestors: bool,
 ) -> Result<PathBuf> {
-    write_filelist_cancellable(
-        root,
-        entries,
-        filename,
-        propagate_to_ancestors,
-        &|| false,
-    )
+    write_filelist_cancellable(root, entries, filename, propagate_to_ancestors, &|| false)
 }
 
 pub fn write_filelist_cancellable<C>(

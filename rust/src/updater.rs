@@ -7,12 +7,16 @@ use std::fs;
 use std::io::{BufRead, BufReader, Read};
 #[cfg(all(unix, not(target_os = "macos")))]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const RELEASES_LATEST_URL: &str =
     "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest";
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpdateSupport {
@@ -127,7 +131,10 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
 
 fn fetch_latest_release() -> Result<GitHubRelease> {
     let response = ureq::get(&release_feed_url())
-        .set("User-Agent", &format!("flistwalker/{}", current_version_string()))
+        .set(
+            "User-Agent",
+            &format!("flistwalker/{}", current_version_string()),
+        )
         .set("Accept", "application/vnd.github+json")
         .call()
         .map_err(|err| anyhow!("failed to query latest release: {err}"))?;
@@ -242,7 +249,10 @@ fn unique_update_temp_dir() -> Result<PathBuf> {
 
 fn download_to_path(url: &str, out: &Path) -> Result<()> {
     let response = ureq::get(url)
-        .set("User-Agent", &format!("flistwalker/{}", current_version_string()))
+        .set(
+            "User-Agent",
+            &format!("flistwalker/{}", current_version_string()),
+        )
         .call()
         .map_err(|err| anyhow!("failed to download {url}: {err}"))?;
     let mut reader = response.into_reader();
@@ -260,15 +270,14 @@ fn verify_download(downloaded_file: &Path, checksum_file: &Path, asset_name: &st
         .with_context(|| format!("missing checksum for {asset_name}"))?;
     let actual = sha256_file(downloaded_file)?;
     if &actual != expected {
-        bail!(
-            "checksum mismatch for {asset_name}: expected {expected}, got {actual}"
-        );
+        bail!("checksum mismatch for {asset_name}: expected {expected}, got {actual}");
     }
     Ok(())
 }
 
 fn parse_sha256sums_file(path: &Path) -> Result<HashMap<String, String>> {
-    let file = fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
+    let file =
+        fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
     let mut out = HashMap::new();
     for line in BufReader::new(file).lines() {
         let line = line.with_context(|| format!("failed to read {}", path.display()))?;
@@ -291,7 +300,8 @@ fn parse_checksum_line(line: &str) -> Option<(&str, &str)> {
 }
 
 fn sha256_file(path: &Path) -> Result<String> {
-    let mut file = fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
+    let mut file =
+        fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
     loop {
@@ -323,7 +333,11 @@ fn spawn_update_helper(current_exe: &Path, staged_path: &Path, temp_dir: &Path) 
 }
 
 #[cfg(target_os = "windows")]
-fn spawn_windows_update_helper(current_exe: &Path, staged_path: &Path, temp_dir: &Path) -> Result<()> {
+fn spawn_windows_update_helper(
+    current_exe: &Path,
+    staged_path: &Path,
+    temp_dir: &Path,
+) -> Result<()> {
     let script_path = temp_dir.join("apply-update.ps1");
     let script = r#"
 param(
@@ -345,18 +359,32 @@ exit 1
 "#;
     fs::write(&script_path, script)
         .with_context(|| format!("failed to write {}", script_path.display()))?;
-    Command::new("powershell.exe")
-        .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+    let mut command = Command::new("powershell.exe");
+    command
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-WindowStyle",
+            "Hidden",
+            "-File",
+        ])
         .arg(&script_path)
         .arg(current_exe)
-        .arg(staged_path)
+        .arg(staged_path);
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
         .spawn()
         .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
     Ok(())
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
-fn spawn_linux_update_helper(current_exe: &Path, staged_path: &Path, temp_dir: &Path) -> Result<()> {
+fn spawn_linux_update_helper(
+    current_exe: &Path,
+    staged_path: &Path,
+    temp_dir: &Path,
+) -> Result<()> {
     let script_path = temp_dir.join("apply-update.sh");
     let script = r#"#!/bin/sh
 set -eu
@@ -411,11 +439,17 @@ mod tests {
 
     #[test]
     fn should_offer_update_supports_same_version_override() {
-        assert!(!should_offer_update(&Version::new(0, 12, 3), &Version::new(0, 12, 3)));
+        assert!(!should_offer_update(
+            &Version::new(0, 12, 3),
+            &Version::new(0, 12, 3)
+        ));
         unsafe {
             std::env::set_var("FLISTWALKER_UPDATE_ALLOW_SAME_VERSION", "1");
         }
-        assert!(should_offer_update(&Version::new(0, 12, 3), &Version::new(0, 12, 3)));
+        assert!(should_offer_update(
+            &Version::new(0, 12, 3),
+            &Version::new(0, 12, 3)
+        ));
         unsafe {
             std::env::remove_var("FLISTWALKER_UPDATE_ALLOW_SAME_VERSION");
         }
@@ -423,11 +457,17 @@ mod tests {
 
     #[test]
     fn should_offer_update_supports_downgrade_override() {
-        assert!(!should_offer_update(&Version::new(0, 12, 3), &Version::new(0, 12, 2)));
+        assert!(!should_offer_update(
+            &Version::new(0, 12, 3),
+            &Version::new(0, 12, 2)
+        ));
         unsafe {
             std::env::set_var("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE", "1");
         }
-        assert!(should_offer_update(&Version::new(0, 12, 3), &Version::new(0, 12, 2)));
+        assert!(should_offer_update(
+            &Version::new(0, 12, 3),
+            &Version::new(0, 12, 2)
+        ));
         unsafe {
             std::env::remove_var("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE");
         }

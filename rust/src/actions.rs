@@ -2,12 +2,7 @@ use anyhow::{Context, Result};
 use std::path::Path;
 use std::process::Command;
 #[cfg(target_os = "windows")]
-use std::{
-    ffi::OsStr,
-    os::windows::ffi::OsStrExt,
-    path::PathBuf,
-    ptr,
-};
+use std::{ffi::OsStr, os::windows::ffi::OsStrExt, path::PathBuf, ptr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -170,16 +165,16 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
 pub fn open_with_default(path: &Path) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
-        shell_open(path)
-            .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
+        shell_open(path).with_context(|| {
+            format!("failed to open {}", normalize_action_path_for_display(path))
+        })?;
         return Ok(());
     }
     #[cfg(target_os = "macos")]
     {
-        Command::new("open")
-            .arg(path)
-            .spawn()
-            .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
+        Command::new("open").arg(path).spawn().with_context(|| {
+            format!("failed to open {}", normalize_action_path_for_display(path))
+        })?;
         return Ok(());
     }
     #[cfg(all(unix, not(target_os = "macos")))]
@@ -187,7 +182,9 @@ pub fn open_with_default(path: &Path) -> Result<()> {
         Command::new("xdg-open")
             .arg(path)
             .spawn()
-            .with_context(|| format!("failed to open {}", normalize_action_path_for_display(path)))?;
+            .with_context(|| {
+                format!("failed to open {}", normalize_action_path_for_display(path))
+            })?;
         Ok(())
     }
 }
@@ -260,17 +257,15 @@ mod tests {
     #[test]
     #[cfg(target_os = "windows")]
     fn normalize_windows_shell_path_strips_extended_prefix_and_keeps_special_chars() {
-        let normalized = normalize_windows_shell_path(Path::new(
-            r"\\?\C:\Users\tester\a&b [c];'!,()^$.txt",
-        ));
+        let normalized =
+            normalize_windows_shell_path(Path::new(r"\\?\C:\Users\tester\a&b [c];'!,()^$.txt"));
         assert_eq!(
             normalized,
             PathBuf::from(r"C:\Users\tester\a&b [c];'!,()^$.txt")
         );
 
-        let unc = normalize_windows_shell_path(Path::new(
-            r"\\?\UNC\server\share\dir&a\file[1].txt",
-        ));
+        let unc =
+            normalize_windows_shell_path(Path::new(r"\\?\UNC\server\share\dir&a\file[1].txt"));
         assert_eq!(unc, PathBuf::from(r"\\server\share\dir&a\file[1].txt"));
     }
 }

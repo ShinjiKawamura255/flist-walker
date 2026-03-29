@@ -7,7 +7,9 @@ use crate::indexer::{
 use crate::search::{
     sort_scored_matches, top_ranked_scores, try_collect_search_matches, IndexedScore,
 };
-use crate::ui_model::{build_preview_text_with_kind, has_visible_match, normalize_path_for_display};
+use crate::ui_model::{
+    build_preview_text_with_kind, has_visible_match, normalize_path_for_display,
+};
 use crate::updater::{check_for_update, prepare_and_start_update, UpdateCandidate};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::{HashMap, HashSet, VecDeque};
