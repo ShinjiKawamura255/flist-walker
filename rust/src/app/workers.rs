@@ -1252,7 +1252,9 @@ mod tests {
         std::fs::create_dir_all(&root).expect("create dir");
         let path = root.join("main.rs");
         std::fs::write(&path, "fn main() {}").expect("write file");
-        let file_type = std::fs::symlink_metadata(&path).expect("metadata").file_type();
+        let file_type = std::fs::symlink_metadata(&path)
+            .expect("metadata")
+            .file_type();
 
         let classified =
             classify_walker_entry(&path, file_type, true, true).expect("classify walker entry");
@@ -1268,7 +1270,9 @@ mod tests {
         std::fs::create_dir_all(&root).expect("create dir");
         let path = root.join("app.lnk");
         std::fs::write(&path, "shortcut").expect("write file");
-        let file_type = std::fs::symlink_metadata(&path).expect("metadata").file_type();
+        let file_type = std::fs::symlink_metadata(&path)
+            .expect("metadata")
+            .file_type();
 
         let classified =
             classify_walker_entry(&path, file_type, true, true).expect("classify walker entry");

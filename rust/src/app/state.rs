@@ -3,8 +3,8 @@ use super::{
     PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, UpdatePromptState,
 };
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 pub(super) struct FileListWorkflowState {
     pub(super) next_request_id: u64,

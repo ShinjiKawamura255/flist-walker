@@ -363,13 +363,15 @@ fn available_update_response_opens_prompt() {
 
     assert!(app.update_state.prompt.is_some());
     assert!(
-        !app.update_state.prompt
+        !app.update_state
+            .prompt
             .as_ref()
             .expect("update prompt")
             .skip_until_next_version
     );
     assert!(
-        !app.update_state.prompt
+        !app.update_state
+            .prompt
             .as_ref()
             .expect("update prompt")
             .install_started
@@ -424,7 +426,8 @@ fn newer_update_response_ignores_previous_skip_version() {
     app.poll_update_response();
 
     assert_eq!(
-        app.update_state.prompt
+        app.update_state
+            .prompt
             .as_ref()
             .expect("newer version should be prompted")
             .candidate
@@ -531,7 +534,8 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
     ));
     assert!(rx.try_recv().is_err());
     assert!(
-        app.update_state.prompt
+        app.update_state
+            .prompt
             .as_ref()
             .expect("update prompt")
             .install_started
@@ -565,7 +569,8 @@ fn failed_update_response_reenables_update_prompt_actions() {
     app.poll_update_response();
 
     assert!(
-        !app.update_state.prompt
+        !app.update_state
+            .prompt
             .as_ref()
             .expect("update prompt")
             .install_started

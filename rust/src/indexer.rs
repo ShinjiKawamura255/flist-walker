@@ -1047,8 +1047,8 @@ mod tests {
 
         for _ in 0..iterations {
             let reference_start = Instant::now();
-            reference_count =
-                parse_filelist_stream_v0123_reference_count(&filelist, &root).expect("reference parse");
+            reference_count = parse_filelist_stream_v0123_reference_count(&filelist, &root)
+                .expect("reference parse");
             reference_best = reference_best.min(reference_start.elapsed());
 
             let current_start = Instant::now();
@@ -1481,7 +1481,10 @@ mod tests {
         )
         .expect("parse filelist");
 
-        assert_eq!(entries, vec![(expected_backslash_relative_path(&root), None)]);
+        assert_eq!(
+            entries,
+            vec![(expected_backslash_relative_path(&root), None)]
+        );
         let _ = fs::remove_dir_all(&root);
     }
 

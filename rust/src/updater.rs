@@ -108,13 +108,23 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
         .iter()
         .find(|asset| asset.name == platform_target.license_asset_name)
         .cloned()
-        .with_context(|| format!("release asset missing: {}", platform_target.license_asset_name))?;
+        .with_context(|| {
+            format!(
+                "release asset missing: {}",
+                platform_target.license_asset_name
+            )
+        })?;
     let notices_asset = release
         .assets
         .iter()
         .find(|asset| asset.name == platform_target.notices_asset_name)
         .cloned()
-        .with_context(|| format!("release asset missing: {}", platform_target.notices_asset_name))?;
+        .with_context(|| {
+            format!(
+                "release asset missing: {}",
+                platform_target.notices_asset_name
+            )
+        })?;
     let checksum = release
         .assets
         .iter()
@@ -794,7 +804,9 @@ mod tests {
         assert!(target.asset_name.starts_with("FlistWalker-0.12.3-"));
         assert_ne!(target.asset_name, "SHA256SUMS");
         assert!(target.license_asset_name.ends_with(".LICENSE.txt"));
-        assert!(target.notices_asset_name.ends_with(".THIRD_PARTY_NOTICES.txt"));
+        assert!(target
+            .notices_asset_name
+            .ends_with(".THIRD_PARTY_NOTICES.txt"));
     }
 
     #[test]

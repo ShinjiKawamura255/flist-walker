@@ -84,7 +84,7 @@
 - [x] `docs/TESTPLAN.md` の `TC-065/066/067/082/083/084` 重複を解消し、関連する Regression Guard と Traceability を更新する
 - [x] [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) が参照する欠落ドキュメントの扱いを決め、参照の削除・置換・再作成のいずれかへ整理する
 - [x] `FlistWalkerApp` のフィールドを feature 単位に束ねる再編案を設計する
-- [ ] filelist 作成系、update prompt 系、tab/session 系の state transition を別モジュールへ切り出す順序を確定する
+- [x] filelist 作成系、update prompt 系、tab/session 系の state transition を別モジュールへ切り出す順序を確定する
 - [ ] 変更種別ごとの検証マトリクスを `TESTPLAN.md` へ反映する
 - [ ] フェーズごとに `cargo test` と必要な ignored perf test を実行し、結果を記録する
 
@@ -145,6 +145,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) のトップレベル field から filelist / update の request tracking・dialog state・progress flag を外し、feature 境界を明示した。
 - [rust/src/app/tests/app_core.rs](/mnt/d/work/flistwalker/rust/src/app/tests/app_core.rs) と [rust/src/app/tests/index_pipeline.rs](/mnt/d/work/flistwalker/rust/src/app/tests/index_pipeline.rs) は新しい state 束に追随させ、既存回帰観点を維持した。
 - 検証として `cd rust && cargo test`、`cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`、`cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` を実行し、通常 test / perf test ともに green を確認した。
+- 2026-03-31 Phase 4 orchestration boundary cleanup:
+- 新規 [rust/src/app/filelist.rs](/mnt/d/work/flistwalker/rust/src/app/filelist.rs) と [rust/src/app/update.rs](/mnt/d/work/flistwalker/rust/src/app/update.rs) を追加し、Create File List / update prompt の state transition と worker response 処理を `app.rs` から分離した。
+- [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) は index/search など横断 orchestration を残しつつ、filelist / update の詳細遷移を子モジュールへ委譲する形へ寄せた。
+- 既存の [rust/src/app/input.rs](/mnt/d/work/flistwalker/rust/src/app/input.rs) と [rust/src/app/render.rs](/mnt/d/work/flistwalker/rust/src/app/render.rs) からは、同じメソッド名のまま分離後の実装を呼び続けられることを確認した。
+- 検証として `cargo fmt`、`cd rust && cargo test`、`cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`、`cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` を実行し、通常 test / perf test ともに green を確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

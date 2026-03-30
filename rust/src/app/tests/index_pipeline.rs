@@ -168,7 +168,8 @@ fn create_filelist_waits_while_indexing() {
     app.create_filelist();
 
     assert_eq!(
-        app.filelist_state.pending_after_index
+        app.filelist_state
+            .pending_after_index
             .as_ref()
             .map(|pending| pending.root.clone()),
         Some(root.clone())
@@ -474,7 +475,9 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert!(!background_tab.index_in_progress);
     assert_eq!(background_tab.pending_index_request_id, None);
     assert!(background_tab.pending_index_entries.is_empty());
-    assert!(background_tab.notice.contains("Index worker is unavailable"));
+    assert!(background_tab
+        .notice
+        .contains("Index worker is unavailable"));
     assert!(app.notice.contains("Index worker is unavailable"));
 
     let _ = fs::remove_dir_all(&root_a);
@@ -1334,7 +1337,9 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
     app.poll_index_response();
     app.pump_kind_resolution_requests();
 
-    let req = kind_rx.try_recv().expect("kind resolve request should be queued");
+    let req = kind_rx
+        .try_recv()
+        .expect("kind resolve request should be queued");
     assert_eq!(req.path, path.clone());
     assert!(app.kind_resolution_in_progress);
     assert!(app.in_flight_kind_paths.contains(&path));
@@ -1708,10 +1713,11 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.results = vec![(root.join("a.txt"), 0.0)];
     app.current_row = Some(0);
-    app.filelist_state.pending_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
-        source_tab_id: app.current_tab_id().expect("tab id"),
-        root: root.clone(),
-    });
+    app.filelist_state.pending_use_walker_confirmation =
+        Some(PendingFileListUseWalkerConfirmation {
+            source_tab_id: app.current_tab_id().expect("tab id"),
+            root: root.clone(),
+        });
 
     run_shortcuts_frame(
         &mut app,
