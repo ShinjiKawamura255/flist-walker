@@ -86,9 +86,9 @@
 | TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
 | TC-084 | unit | Source が FileList のタブで Create File List を確認すると、新規タブを開かずに同一タブの裏で Walker indexing を実行する | SP-001, SP-010 |
 | TC-085 | unit | FileList source の Create File List 完了時、元タブが background 化していてもその元タブを再インデックスし、完了前に元タブ root が変わっていた場合は再インデックスしない | SP-001, SP-010 |
-| TC-065 | unit | Create File List の保留状態は status panel または確認ダイアログ経由でキャンセルできる | SP-001, SP-010 |
-| TC-066 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
-| TC-067 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
+| TC-087 | unit | Create File List の保留状態は status panel または確認ダイアログ経由でキャンセルできる | SP-001, SP-010 |
+| TC-088 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
+| TC-089 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、v0.12.3 の解析速度基準から 15% 以内に維持する | SP-001, SP-007 |
 | TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決より高速に `Finished` へ到達し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
@@ -101,9 +101,9 @@
 | TC-061 | unit | `created()` 取得不可の項目は `Created` ソート時に末尾へ送る | SP-013 |
 | TC-062 | manual | 結果ペインの `Sort` UI から各ソートを選択でき、`Modified` / `Created` 中も入力が継続できる | SP-010, SP-013 |
 | TC-063 | perf | ソート機能追加後もインデクシング時の属性取得数を増やさず、既存の逐次表示挙動を維持する | SP-007, SP-013 |
-| TC-065 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
-| TC-066 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
-| TC-067 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
+| TC-090 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
+| TC-091 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
+| TC-092 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
 | TC-068 | unit | 回帰: 検索結果更新で current row は行番号を維持し、結果数縮小時のみ末尾へ丸める | SP-010 |
 | TC-069 | unit | 回帰: `Ignore Case` は既定で有効で、無効化時は検索結果とハイライトが case-sensitive になる | SP-010 |
 | TC-070 | unit | 回帰: 起動直後と検索キャンセル後は候補がある場合に 1 行目が既定選択になる | SP-010 |
@@ -118,10 +118,10 @@
 | TC-079 | manual+unit | 手動試験 override により同一 version でも更新ダイアログを表示できる | SP-014 |
 | TC-080 | manual+unit | 手動試験 override により downgrade 候補でも更新ダイアログを表示できる | SP-014 |
 | TC-081 | unit | 更新ダイアログで抑止した target version は起動間で保持され、より新しい version が出るまで再表示されない | SP-014 |
-| TC-082 | unit | `FLISTWALKER_DISABLE_SELF_UPDATE=1` では起動時更新確認を送らず、更新チェックも `None` を返して自己更新を無効化する | SP-014 |
+| TC-093 | unit | `FLISTWALKER_DISABLE_SELF_UPDATE=1` では起動時更新確認を送らず、更新チェックも `None` を返して自己更新を無効化する | SP-014 |
 | TC-086 | unit | 実行バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合も、自己更新を無効化する | SP-014 |
-| TC-083 | unit | Windows の一般 `.ps1` は Execute ではなく Open 分岐を選ぶ | SP-004 |
-| TC-084 | unit | `SHA256SUMS.sig` は改ざんされた manifest を検証失敗にする | SP-014 |
+| TC-094 | unit | Windows の一般 `.ps1` は Execute ではなく Open 分岐を選ぶ | SP-004 |
+| TC-095 | unit | `SHA256SUMS.sig` は改ざんされた manifest を検証失敗にする | SP-014 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
@@ -204,13 +204,13 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - 発生条件: `msvc` から `x86_64-pc-windows-gnu` へ切り替えた後、`windres` 生成物が最終 `flistwalker.exe` に入らず Windows Explorer で既定アイコン表示になる。
 - 期待動作: GNU Windows ビルドでは `resource.o` を最終 `flistwalker` バイナリへ直接リンクし、Explorer 上で埋め込みアイコンが表示される。
 - 非対象範囲: 実行中ウィンドウアイコン、`.lnk` ショートカット個別設定、ファイル関連付けアイコン。
-- 関連テストID: TC-065.
+- 関連テストID: TC-090.
 
 ## Regression Guard
 - 発生条件: ある変更以降、GUI を閉じるたびに worker shutdown timeout まで待たされ、終了操作が体感で重くなる。
 - 期待動作: shutdown 要求と request channel 切断後は短時間の join budget だけ待ち、残存 worker があっても close は 250ms 程度の待ちで返る。
 - 非対象範囲: OS がプロセス自体を強制終了できないケース、個別 worker の I/O 完了保証。
-- 関連テストID: TC-066.
+- 関連テストID: TC-091.
 
 ## Regression Guard
 - 発生条件: 起動時の更新確認が UI スレッドを塞ぎ、検索欄入力や一覧操作が数秒単位で固まる。
@@ -282,16 +282,22 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - TC-061 -> SP-013 -> DES-013 -> FR-012
 - TC-062 -> SP-010, SP-013 -> DES-009, DES-013 -> FR-007, FR-012
 - TC-063 -> SP-007, SP-013 -> DES-006, DES-013 -> FR-013, NFR-006
-- TC-065 -> SP-012 -> DES-012 -> NFR-005
-- TC-066 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007
-- TC-067 -> SP-003, SP-010 -> DES-003, DES-009 -> FR-003, FR-007
+- TC-087 -> SP-001, SP-010 -> DES-001, DES-009 -> FR-001, FR-010
+- TC-088 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010, FR-007
+- TC-089 -> SP-001 -> DES-001, DES-007 -> FR-010
+- TC-090 -> SP-012 -> DES-012 -> NFR-005
+- TC-091 -> SP-008, SP-010 -> DES-007, DES-009 -> NFR-002, FR-007
+- TC-092 -> SP-003, SP-010 -> DES-003, DES-009 -> FR-003, FR-007
 - TC-068 -> SP-010 -> DES-009 -> FR-007
 - TC-069 -> SP-010 -> DES-009 -> FR-017, FR-007
 - TC-070 -> SP-010 -> DES-009 -> FR-018, FR-007
 - TC-074 -> SP-014 -> DES-014 -> FR-019
 - TC-075 -> SP-014 -> DES-014 -> FR-020
 - TC-076 -> SP-014 -> DES-014 -> FR-021
-- TC-077 -> SP-014 -> DES-014, DES-007 -> FR-022
+- TC-077 -> SP-014 -> DES-014, DES-007 -> FR-023
 - TC-078 -> SP-014 -> DES-006, DES-014 -> NFR-007
-- TC-081 -> SP-014 -> DES-014 -> FR-023
-- TC-086 -> SP-014 -> DES-014 -> FR-019, FR-023
+- TC-081 -> SP-014 -> DES-014 -> FR-024
+- TC-086 -> SP-014 -> DES-014 -> FR-019, FR-020
+- TC-093 -> SP-014 -> DES-014 -> FR-019, FR-020
+- TC-094 -> SP-004 -> DES-004 -> FR-022
+- TC-095 -> SP-014 -> DES-014 -> FR-020, FR-023

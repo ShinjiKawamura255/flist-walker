@@ -79,10 +79,10 @@
    - Verification: 変更内容から必要コマンドを一意に選べる
 
 ## 7. Detailed Task Breakdown
-- [ ] `app.rs` の責務を state / orchestration / lifecycle / feature-specific flow に分類し、残存肥大化箇所を一覧化する
-- [ ] `docs/REQUIREMENTS.md` の `FR-022` 重複を解消し、後続の trace を再採番する
-- [ ] `docs/TESTPLAN.md` の `TC-065/066/067/082/083/084` 重複を解消し、関連する Regression Guard と Traceability を更新する
-- [ ] [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) が参照する欠落ドキュメントの扱いを決め、参照の削除・置換・再作成のいずれかへ整理する
+- [x] `app.rs` の責務を state / orchestration / lifecycle / feature-specific flow に分類し、残存肥大化箇所を一覧化する
+- [x] `docs/REQUIREMENTS.md` の `FR-022` 重複を解消し、後続の trace を再採番する
+- [x] `docs/TESTPLAN.md` の `TC-065/066/067/082/083/084` 重複を解消し、関連する Regression Guard と Traceability を更新する
+- [x] [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) が参照する欠落ドキュメントの扱いを決め、参照の削除・置換・再作成のいずれかへ整理する
 - [ ] `FlistWalkerApp` のフィールドを feature 単位に束ねる再編案を設計する
 - [ ] filelist 作成系、update prompt 系、tab/session 系の state transition を別モジュールへ切り出す順序を確定する
 - [ ] 変更種別ごとの検証マトリクスを `TESTPLAN.md` へ反映する
@@ -135,6 +135,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - `render.rs` / `input.rs` / `session.rs` / `workers.rs` への分離は進んでいるが、`update()` から呼ばれる orchestration 本体は依然として [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) に集中している。
 - 欠落参照は `docs/TASKS.md` 内の `docs/APP_SPLIT_PLAN.md` に限定して確認でき、次フェーズでは再作成ではなく参照元整理を優先する。
 - フェーズ順は計画どおり維持する。次は docs integrity repair を先行し、その後に state segmentation へ進む。
+- 2026-03-31 Phase 2 documentation integrity repair:
+- `FR-022` 重複は `FR-022/023/024` へ再採番し、`.ps1` 実行抑止 / macOS manual-only / 更新ダイアログ抑止の責務を分離した。
+- `TC-065/066/067/082/083/084` の重複は `TC-087` 以降へ再採番し、Regression Guard / DESIGN / RELEASE / `rust/README.md` の参照も追随させた。
+- [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) の欠落参照は、存在しない `docs/APP_SPLIT_PLAN.md` の再作成ではなく、一般化した計画 docs 参照表現へ置換して整理した。
+- 検証として `cd rust && cargo test` を実行し、`289 passed, 3 ignored` と CLI integration `10 passed` を確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

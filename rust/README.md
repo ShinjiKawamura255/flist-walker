@@ -43,7 +43,7 @@ Ubuntu / Debian 系では `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w6
 - 発生条件: `x86_64-pc-windows-gnu` へ切り替えた後、`windres` で生成した `resource.o` が最終 `flistwalker.exe` にリンクされず、Windows Explorer でアプリアイコンが既定アイコンになる。
 - 期待動作: GNU ビルドでも `flistwalker.exe` の `.rsrc` にアイコンリソースが含まれ、Explorer 上で埋め込みアイコンが表示される。
 - 非対象範囲: 実行中ウィンドウのタイトルバーアイコン差し替えや、関連付けされた別ファイル形式のアイコン表示。
-- 関連テストID: TC-065.
+- 関連テストID: TC-090.
 
 ## Run (GUI)
 
