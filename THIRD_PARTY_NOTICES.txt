@@ -36,6 +36,10 @@ Additional notice-bearing components
   License: BSD-3-Clause
   Source: https://github.com/RazrFalcon/tiny-skia
 
+- ed25519-dalek 2.2.0
+  License: BSD-3-Clause
+  Source: https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek
+
 - eframe 0.24.1 / egui stack
   Primary license: MIT OR Apache-2.0
 
@@ -56,9 +60,10 @@ Direct dependency summary
 The main direct dependencies currently used by FlistWalker are under the
 following license families:
 
-- MIT OR Apache-2.0: anyhow, clap, ctrlc, eframe, memory-stats, rayon, regex,
-  semver, serde, serde_json, sha2, ureq
+- MIT OR Apache-2.0: anyhow, clap, ctrlc, eframe, memory-stats, rand_core,
+  rayon, regex, semver, serde, serde_json, sha2, ureq
 - MIT: fuzzy-matcher, ico, jwalk, native-dialog, winres
+- BSD-3-Clause: ed25519-dalek
 - MIT OR Unlicense: walkdir
 - MPL-2.0: resvg
 

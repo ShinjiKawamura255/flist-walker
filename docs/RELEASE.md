@@ -146,6 +146,7 @@
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
 - `rust/Cargo.lock` の `flist-walker` package version が同じ `X.Y.Z` へ更新済みであること。
 - `CHANGELOG.md` の対象 version 節、git tag `vX.Y.Z`、release note の対象 version が一致していること。
+- `THIRD_PARTY_NOTICES.txt` が現在の `Cargo.toml` / `Cargo.lock` の direct dependency と license families を反映していること。自己更新系依存（例: `ed25519-dalek`, `rand_core`, `sha2`, `ureq`, `semver`）の追加・更新時は同一変更で見直すこと。
 - 自動更新を有効にする配布ビルドでは、`FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` が build 時に設定されていること。
 - `SHA256SUMS.sig` を生成する release 作業では、`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` が package / draft release 作成時に設定されていること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
