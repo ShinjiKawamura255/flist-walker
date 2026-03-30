@@ -86,6 +86,7 @@
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
 - FileList の `\` / `/` 混在は候補生成順でプラットフォーム優先の字句選択へ寄せ、初期ストリームで `exists()` / `try_exists()` を各行へ追加しない。v0.12.3 相当のスループットを基準として維持する。
+- Walker 解析は `jwalk` が返す `file_type` を通常ファイル/ディレクトリの即時分類に使い、リンクや Windows shortcut のような追加確認が必要な項目だけを後続の kind resolver へ遅延させる。初期 `Finished` は後処理完了を待たないが、`Finished`/`Truncated` 後は unknown kind を自動で kind resolver キューへ積み、バックグラウンドで収束させる。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
 - 階層 FileList 展開で子 FileList を解析する経路も `should_cancel` を伝播し、supersede 時に中断できるようにする。
 - include_files/include_dirs が両方有効な FileList 解析では、初期ロード時の `metadata` 依存を避けて候補パスの投入を優先し、FILE/DIR/LINK 表示種別は別ワーカーで遅延解決する。

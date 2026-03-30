@@ -917,6 +917,29 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
 }
 
 #[test]
+fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
+    let root = test_root("preview-hidden-keeps-kind-queue");
+    fs::create_dir_all(&root).expect("create dir");
+    let file = root.join("a.lnk");
+    fs::write(&file, "shortcut").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.show_preview = false;
+    app.results = vec![(file.clone(), 0.0)];
+    app.current_row = Some(0);
+    app.pending_kind_paths.push_back(file.clone());
+    app.pending_kind_paths_set.insert(file.clone());
+    app.kind_resolution_in_progress = true;
+
+    app.request_preview_for_current();
+
+    assert!(app.pending_kind_paths.iter().any(|p| *p == file));
+    assert!(app.pending_kind_paths_set.contains(&file));
+    assert!(app.kind_resolution_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn close_tab_invalidates_memory_cache_for_immediate_resample() {
     let root = test_root("close-tab-memory-resample");
     fs::create_dir_all(&root).expect("create dir");

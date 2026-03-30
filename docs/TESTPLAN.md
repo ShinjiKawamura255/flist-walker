@@ -88,6 +88,7 @@
 | TC-066 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
 | TC-067 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、v0.12.3 の解析速度基準から 15% 以内に維持する | SP-001, SP-007 |
+| TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決より高速に `Finished` へ到達し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存と notarization 手順が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
@@ -265,6 +266,7 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - TC-052 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
 - TC-053 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
 - TC-082 -> SP-001, SP-007 -> DES-001, DES-006 -> FR-001, NFR-001
+- TC-083 -> SP-002, SP-007 -> DES-002, DES-006 -> FR-002, NFR-001
 - TC-054 -> SP-010 -> DES-007, DES-009 -> FR-011
 - TC-055 -> SP-010, SP-012 -> DES-007, DES-012 -> FR-011, NFR-005
 - TC-056 -> SP-012 -> DES-012 -> NFR-005

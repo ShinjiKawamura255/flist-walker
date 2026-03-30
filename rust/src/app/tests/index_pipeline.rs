@@ -1122,6 +1122,86 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
 }
 
 #[test]
+fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
+    let root = test_root("walker-unknown-kind-finish-visible");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("app.lnk");
+    fs::write(&path, "shortcut").expect("write file");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.index_rx = rx;
+    let req_id = app.pending_index_request_id.expect("pending request");
+    app.include_files = true;
+    app.include_dirs = true;
+
+    tx.send(IndexResponse::Batch {
+        request_id: req_id,
+        entries: vec![IndexEntry {
+            path: path.clone(),
+            kind: EntryKind::file(),
+            kind_known: false,
+        }],
+    })
+    .expect("send index batch");
+    tx.send(IndexResponse::Finished {
+        request_id: req_id,
+        source: IndexSource::Walker,
+    })
+    .expect("send index finished");
+
+    app.poll_index_response();
+
+    assert!(!app.index_in_progress);
+    assert_eq!(app.entries.as_ref(), &vec![path.clone()]);
+    assert_eq!(app.all_entries.as_ref(), &vec![path.clone()]);
+    assert!(!app.entry_kinds.contains_key(&path));
+    assert!(app.pending_kind_paths.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
+    let root = test_root("walker-finished-queues-unknown-kind");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("app.lnk");
+    fs::write(&path, "shortcut").expect("write file");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
+    app.index_rx = rx;
+    app.kind_tx = kind_tx;
+    let req_id = app.pending_index_request_id.expect("pending request");
+    app.include_files = true;
+    app.include_dirs = true;
+
+    tx.send(IndexResponse::Batch {
+        request_id: req_id,
+        entries: vec![IndexEntry {
+            path: path.clone(),
+            kind: EntryKind::file(),
+            kind_known: false,
+        }],
+    })
+    .expect("send index batch");
+    tx.send(IndexResponse::Finished {
+        request_id: req_id,
+        source: IndexSource::Walker,
+    })
+    .expect("send index finished");
+
+    app.poll_index_response();
+    app.pump_kind_resolution_requests();
+
+    let req = kind_rx.try_recv().expect("kind resolve request should be queued");
+    assert_eq!(req.path, path.clone());
+    assert!(app.kind_resolution_in_progress);
+    assert!(app.in_flight_kind_paths.contains(&path));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn unknown_kind_entries_are_hidden_when_single_filter_enabled() {
     let root = test_root("unknown-kind-hidden");
     fs::create_dir_all(&root).expect("create dir");
@@ -1155,6 +1235,37 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
 
     app.apply_entry_filters(true);
 
+    assert!(app.pending_kind_paths.iter().any(|p| *p == path));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
+    let root = test_root("walker-unknown-kind-queue");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("app.lnk");
+    fs::write(&path, "shortcut").expect("write file");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.index_rx = rx;
+    let req_id = app.pending_index_request_id.expect("pending request");
+    app.include_files = false;
+    app.include_dirs = true;
+
+    tx.send(IndexResponse::Batch {
+        request_id: req_id,
+        entries: vec![IndexEntry {
+            path: path.clone(),
+            kind: EntryKind::file(),
+            kind_known: false,
+        }],
+    })
+    .expect("send index batch");
+
+    app.poll_index_response();
+
+    assert!(app.entries.is_empty());
     assert!(app.pending_kind_paths.iter().any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }

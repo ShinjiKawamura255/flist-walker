@@ -13,6 +13,7 @@ use crate::ui_model::{
 use crate::updater::{check_for_update, prepare_and_start_update, UpdateCandidate};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::fs::FileType;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -351,6 +352,34 @@ fn resolve_entry_kind(path: &Path) -> Option<EntryKind> {
         } else {
             EntryKind::file()
         })
+    } else {
+        None
+    }
+}
+
+fn classify_walker_entry(
+    path: &Path,
+    file_type: FileType,
+    include_files: bool,
+    include_dirs: bool,
+) -> Option<(EntryKind, bool)> {
+    if file_type.is_dir() {
+        return include_dirs.then_some((EntryKind::dir(), true));
+    }
+
+    if file_type.is_file() && !is_windows_shortcut(path) {
+        return include_files.then_some((EntryKind::file(), true));
+    }
+
+    if include_files && include_dirs {
+        // Defer expensive metadata/link resolution until after initial indexing so Walker can
+        // finish streaming candidates as quickly as possible.
+        return Some((EntryKind::file(), false));
+    }
+
+    let kind = resolve_entry_kind(path)?;
+    if (kind.is_dir && include_dirs) || (!kind.is_dir && include_files) {
+        Some((kind, true))
     } else {
         None
     }
@@ -1160,20 +1189,23 @@ fn stream_walker_index(
                 return Err("superseded".to_string());
             }
         }
-        let Some(kind) = resolve_entry_kind(&entry.path()) else {
+        let path = entry.path().to_path_buf();
+        let Some((kind, kind_known)) = classify_walker_entry(
+            &path,
+            entry.file_type(),
+            req.include_files,
+            req.include_dirs,
+        ) else {
             continue;
         };
-        if (kind.is_dir && !req.include_dirs) || (!kind.is_dir && !req.include_files) {
-            continue;
-        }
         if emitted_entries >= max_entries {
             truncated = true;
             break;
         }
         buffer.push(IndexEntry {
-            path: entry.path().to_path_buf(),
+            path,
             kind,
-            kind_known: true,
+            kind_known,
         });
         emitted_entries = emitted_entries.saturating_add(1);
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
@@ -1198,6 +1230,128 @@ fn stream_walker_index(
         return Err("index receiver closed".to_string());
     }
     Ok(source)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+    fn test_root(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("flistwalker-workers-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn classify_walker_entry_keeps_regular_file_fast_path_known() {
+        let root = test_root("file");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("main.rs");
+        std::fs::write(&path, "fn main() {}").expect("write file");
+        let file_type = std::fs::symlink_metadata(&path).expect("metadata").file_type();
+
+        let classified =
+            classify_walker_entry(&path, file_type, true, true).expect("classify walker entry");
+
+        assert_eq!(classified, (EntryKind::file(), true));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn classify_walker_entry_defers_windows_shortcut_when_both_filters_enabled() {
+        let root = test_root("shortcut");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("app.lnk");
+        std::fs::write(&path, "shortcut").expect("write file");
+        let file_type = std::fs::symlink_metadata(&path).expect("metadata").file_type();
+
+        let classified =
+            classify_walker_entry(&path, file_type, true, true).expect("classify walker entry");
+
+        #[cfg(windows)]
+        assert_eq!(classified, (EntryKind::file(), false));
+        #[cfg(not(windows))]
+        assert_eq!(classified, (EntryKind::file(), true));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    #[ignore = "perf measurement; run explicitly"]
+    fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
+        let root = test_root("perf");
+        let _ = std::fs::remove_dir_all(&root);
+        let dataset = root.join("dataset");
+        std::fs::create_dir_all(&dataset).expect("create dataset");
+        for i in 0..20_000usize {
+            let dir = dataset.join(format!("dir-{i}"));
+            std::fs::create_dir_all(&dir).expect("create dir");
+            std::fs::write(dir.join("main.rs"), "fn main() {}").expect("write file");
+        }
+
+        let mut eager_best = Duration::MAX;
+        let mut fast_best = Duration::MAX;
+        let iterations = 3usize;
+        let mut eager_count = 0usize;
+        let mut fast_count = 0usize;
+
+        for _ in 0..iterations {
+            let eager_start = Instant::now();
+            eager_count = 0;
+            for entry in WalkDir::new(&root)
+                .parallelism(Parallelism::Serial)
+                .skip_hidden(false)
+                .follow_links(false)
+                .min_depth(1)
+                .into_iter()
+                .flatten()
+            {
+                if resolve_entry_kind(&entry.path()).is_some() {
+                    eager_count = eager_count.saturating_add(1);
+                }
+            }
+            eager_best = eager_best.min(eager_start.elapsed());
+
+            let fast_start = Instant::now();
+            fast_count = 0;
+            for entry in WalkDir::new(&root)
+                .parallelism(Parallelism::Serial)
+                .skip_hidden(false)
+                .follow_links(false)
+                .min_depth(1)
+                .into_iter()
+                .flatten()
+            {
+                if classify_walker_entry(&entry.path(), entry.file_type(), true, true).is_some() {
+                    fast_count = fast_count.saturating_add(1);
+                }
+            }
+            fast_best = fast_best.min(fast_start.elapsed());
+        }
+
+        let eager_ms = eager_best.as_secs_f64() * 1000.0;
+        let fast_ms = fast_best.as_secs_f64() * 1000.0;
+        let speedup = if fast_ms > 0.0 {
+            eager_ms / fast_ms
+        } else {
+            f64::INFINITY
+        };
+
+        eprintln!(
+            "Walker perf eager_metadata_ms={eager_ms:.3} fast_classify_ms={fast_ms:.3} speedup={speedup:.2}x eager_count={eager_count} fast_count={fast_count}"
+        );
+
+        assert_eq!(eager_count, fast_count);
+        assert!(
+            speedup >= 1.20,
+            "walker fast classification did not beat eager metadata enough: {speedup:.2}x"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }
 
 pub(super) fn spawn_index_worker(

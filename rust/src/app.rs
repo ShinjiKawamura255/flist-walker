@@ -2774,14 +2774,28 @@ Search hints:
                         tab.index_in_progress = false;
                         tab.pending_index_entries.clear();
                         tab.pending_index_entries_request_id = None;
-                        tab.pending_kind_paths.clear();
-                        tab.pending_kind_paths_set.clear();
-                        tab.in_flight_kind_paths.clear();
-                        tab.kind_resolution_in_progress = false;
                         tab.search_resume_pending = false;
                         tab.search_rerun_pending = false;
                         tab.last_search_snapshot_len = tab.entries.len();
                         tab.last_incremental_results_refresh = Instant::now();
+                        if matches!(tab.index.source, IndexSource::Walker) {
+                            for path in tab.all_entries.iter() {
+                                if !tab.entry_kinds.contains_key(path)
+                                    && !tab.pending_kind_paths_set.contains(path)
+                                    && !tab.in_flight_kind_paths.contains(path)
+                                {
+                                    tab.pending_kind_paths_set.insert(path.clone());
+                                    tab.pending_kind_paths.push_back(path.clone());
+                                }
+                            }
+                            tab.kind_resolution_in_progress =
+                                !tab.pending_kind_paths.is_empty() || !tab.in_flight_kind_paths.is_empty();
+                        } else {
+                            tab.pending_kind_paths.clear();
+                            tab.pending_kind_paths_set.clear();
+                            tab.in_flight_kind_paths.clear();
+                            tab.kind_resolution_in_progress = false;
+                        }
                         if self
                             .pending_filelist_after_index
                             .as_ref()
@@ -2969,6 +2983,11 @@ Search hints:
                     self.background_index_states.remove(&request_id);
                     self.index_in_progress = false;
                     self.apply_entry_filters(true);
+                    if matches!(self.index.source, IndexSource::Walker) {
+                        self.queue_unknown_kind_paths_for_completed_walker_entries();
+                    } else {
+                        self.reset_kind_resolution_state();
+                    }
                     self.search_resume_pending = false;
                     self.search_rerun_pending = false;
                     self.clear_notice();
@@ -3704,9 +3723,18 @@ Search hints:
         } else {
             self.all_entries.as_ref().clone()
         };
+        self.queue_unknown_kind_paths(&source);
+    }
+
+    fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
+        let source = self.all_entries.as_ref().clone();
+        self.queue_unknown_kind_paths(&source);
+    }
+
+    fn queue_unknown_kind_paths(&mut self, source: &[PathBuf]) {
         for path in source {
-            if !self.entry_kinds.contains_key(&path) {
-                self.queue_kind_resolution(path);
+            if !self.entry_kinds.contains_key(path) {
+                self.queue_kind_resolution(path.clone());
             }
         }
     }
@@ -3786,11 +3814,6 @@ Search hints:
             self.preview.clear();
             self.preview_in_progress = false;
             self.pending_preview_request_id = None;
-            if !self.kind_resolution_needed_for_filters()
-                && (!self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty())
-            {
-                self.reset_kind_resolution_state();
-            }
             return;
         }
 
