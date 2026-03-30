@@ -58,6 +58,10 @@
 - SPEC は MUST/SHOULD で規範化し、TDD を徹底する。
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 変更時は最低限 `cargo test` を実行してから完了報告する。
+- `rust/src/indexer.rs`、`rust/src/app/workers.rs`、`rust/src/app.rs` のインデクシング経路を変更した場合は、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
+- `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`
+- `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`
+- 上記 perf テストは、FileList / Walker の初期インデクシング速度が基準実装より悪化していないことを確認する目的で使う。
 - `FLISTWALKER_UPDATE_FEED_URL` / `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION` / `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE` は開発・手動試験専用とし、`README.md`、`docs/RELEASE.md`、`.github/release-template.md`、GitHub Release 本文、CLI/GUI のユーザ向けヘルプなど配布物や公開向け文書へ記載してはならない。
 - release asset 名、対象 OS、GitHub Release 導線を変更した場合は `docs/RELEASE.md`、`.github/release-template.md`、`AGENTS.md` を同一変更で更新する。
 - `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れがあれば tag 作成前に修正する。
