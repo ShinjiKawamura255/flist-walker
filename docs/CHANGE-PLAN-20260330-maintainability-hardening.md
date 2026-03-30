@@ -129,6 +129,12 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - `FR-022` is duplicated in [docs/REQUIREMENTS.md](/mnt/d/work/flistwalker/docs/REQUIREMENTS.md).
 - `TC-065/066/067/082/083/084` are duplicated in [docs/TESTPLAN.md](/mnt/d/work/flistwalker/docs/TESTPLAN.md).
 - [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) references `docs/APP_SPLIT_PLAN.md`, but that file is currently missing.
+- 2026-03-31 Phase 1 baseline freeze:
+- `app.rs` の責務は大きく 5 群に残存している: tab state capture/apply、index/search/action/sort/preview/kind/filelist/update の poll 系、preview cache と request routing、Create File List の state transition、worker shutdown と UI state persistence。
+- `AppTabState` が query/history/index/result/preview/notice/request tracking を横断して抱えており、feature 単位 state へ再編する余地が大きい。
+- `render.rs` / `input.rs` / `session.rs` / `workers.rs` への分離は進んでいるが、`update()` から呼ばれる orchestration 本体は依然として [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) に集中している。
+- 欠落参照は `docs/TASKS.md` 内の `docs/APP_SPLIT_PLAN.md` に限定して確認でき、次フェーズでは再作成ではなく参照元整理を優先する。
+- フェーズ順は計画どおり維持する。次は docs integrity repair を先行し、その後に state segmentation へ進む。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
