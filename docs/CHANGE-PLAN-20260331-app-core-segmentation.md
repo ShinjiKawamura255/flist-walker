@@ -126,10 +126,18 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - `AppTabState` が query history、履歴検索、result、preview、kind 解決、sort 状態を横断して保持している。
 - `new_with_launch` が worker 起動、launch 復元、初期 state seed、初回 index request を一括で扱っている。
 - preview/highlight/sort metadata cache の helper 群が [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) に残っている。
+- 2026-03-31 08:35 Phase 1 deep review and boundary definition:
+- `app.rs` の残存責務は 4 群へ整理できる。
+- 第1群 `tab state`: `AppTabState`、`capture_active_tab_state`、`apply_tab_state`、`initialize_tabs_from_saved`、`create_new_tab`、`move_tab` が query/history/result/preview/kind/index 状態をまとめて持っている。
+- 第2群 `bootstrap`: `from_launch`、`new_with_launch`、saved roots / UI state / window geometry helper が launch 復元、worker wiring、永続 state seed を横断している。
+- 第3群 `cache and kind/search helper`: preview/highlight/sort metadata cache、kind resolution queue、incremental search refresh helper が表示最適化と検索 orchestration の境界にまたがっている。
+- 第4群 `polling/orchestration core`: `poll_index_response`、background index 応答、request queue 制御、`eframe::App::update` は最終 coordinator として当面 `app.rs` に残す。
+- 実施順は、まず tab state を分けて `capture/apply/restore` の責務を局所化し、その後 bootstrap、cache helper、最後に docs 更新の順で固定する。
+- Phase 2 の具体対象は、`AppTabState` を `TabQueryState`、`TabResultState`、`TabIndexState` のような束へ再編し、履歴検索・selection・sort の field copy を減らすこととする。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
+- [x] Temporary `AGENTS.md` rule added
 - [ ] Work executed according to the plan or the plan updated first
 - [ ] Verification completed
 - [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
