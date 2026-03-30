@@ -18,6 +18,7 @@ const RELEASES_LATEST_URL: &str =
     "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest";
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpdateSupport {
@@ -61,7 +62,19 @@ pub fn current_version_string() -> String {
 }
 
 pub fn self_update_disabled() -> bool {
-    env_flag("FLISTWALKER_DISABLE_SELF_UPDATE")
+    self_update_disabled_for_exe_path(std::env::current_exe().ok().as_deref())
+}
+
+fn self_update_disabled_for_exe_path(current_exe: Option<&Path>) -> bool {
+    env_flag(SELF_UPDATE_DISABLE_FLAG_NAME) || self_update_disabled_by_sentinel_file(current_exe)
+}
+
+fn self_update_disabled_by_sentinel_file(current_exe: Option<&Path>) -> bool {
+    current_exe
+        .and_then(Path::parent)
+        .map(|dir| dir.join(SELF_UPDATE_DISABLE_FLAG_NAME))
+        .and_then(|path| path.try_exists().ok())
+        .unwrap_or(false)
 }
 
 pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
@@ -122,7 +135,10 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
 
 pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path) -> Result<()> {
     if self_update_disabled() {
-        bail!("self-update is disabled by FLISTWALKER_DISABLE_SELF_UPDATE");
+        bail!(
+            "self-update is disabled by {} environment variable or sentinel file",
+            SELF_UPDATE_DISABLE_FLAG_NAME
+        );
     }
     match &candidate.support {
         UpdateSupport::Auto => {}
@@ -522,13 +538,13 @@ mod tests {
         let _env_lock = crate::env_var_test_lock()
             .lock()
             .expect("env var test lock");
-        assert!(!self_update_disabled());
+        assert!(!self_update_disabled_for_exe_path(None));
         unsafe {
-            std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
+            std::env::set_var(SELF_UPDATE_DISABLE_FLAG_NAME, "1");
         }
-        assert!(self_update_disabled());
+        assert!(self_update_disabled_for_exe_path(None));
         unsafe {
-            std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
+            std::env::remove_var(SELF_UPDATE_DISABLE_FLAG_NAME);
         }
     }
 
@@ -538,13 +554,50 @@ mod tests {
             .lock()
             .expect("env var test lock");
         unsafe {
-            std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
+            std::env::set_var(SELF_UPDATE_DISABLE_FLAG_NAME, "1");
         }
         let result = check_for_update().expect("disabled updates should skip network access");
         assert!(result.is_none());
         unsafe {
-            std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
+            std::env::remove_var(SELF_UPDATE_DISABLE_FLAG_NAME);
         }
+    }
+
+    #[test]
+    fn self_update_disabled_sentinel_file_is_honored() {
+        let root = std::env::temp_dir().join(format!(
+            "flistwalker-update-disable-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).expect("create root");
+        let exe = root.join("flistwalker");
+        fs::write(&exe, "bin").expect("write exe");
+        fs::write(root.join(SELF_UPDATE_DISABLE_FLAG_NAME), "").expect("write sentinel");
+
+        assert!(self_update_disabled_for_exe_path(Some(&exe)));
+
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn self_update_disabled_sentinel_file_is_false_when_missing() {
+        let root = std::env::temp_dir().join(format!(
+            "flistwalker-update-disable-missing-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).expect("create root");
+        let exe = root.join("flistwalker");
+        fs::write(&exe, "bin").expect("write exe");
+
+        assert!(!self_update_disabled_for_exe_path(Some(&exe)));
+
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

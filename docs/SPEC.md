@@ -227,7 +227,7 @@
 - MUST: macOS では新しい release を検知しても自動置換を試みず、手動更新が必要であることを通知する。
 - MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
 - MUST: 抑止済み target version 以下の更新候補は次回起動以降も再表示してはならず、より新しい version を検知した場合のみ再び更新ダイアログを表示しなければならない。
-- MUST: `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy な場合、起動時の更新確認、更新ダイアログ表示、更新適用開始を行ってはならない。
+- MUST: `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy な場合、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` というファイルが存在する場合、起動時の更新確認、更新ダイアログ表示、更新適用開始を行ってはならない。
 - MUST: 手動試験用 override 環境変数（更新 feed URL 差し替え、同一 version 許可、downgrade 許可）は内部検証専用とし、README、release note、配布物、ユーザ向けヘルプへ露出してはならない。
 - SHOULD: 更新チェック失敗やダウンロード失敗は通常の検索/操作を妨げない。
 - SHOULD: 手動試験のために、更新 feed URL 差し替え、同一 version 許可、downgrade 許可を環境変数で上書きできる。

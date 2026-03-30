@@ -119,6 +119,7 @@
 | TC-080 | manual+unit | 手動試験 override により downgrade 候補でも更新ダイアログを表示できる | SP-014 |
 | TC-081 | unit | 更新ダイアログで抑止した target version は起動間で保持され、より新しい version が出るまで再表示されない | SP-014 |
 | TC-082 | unit | `FLISTWALKER_DISABLE_SELF_UPDATE=1` では起動時更新確認を送らず、更新チェックも `None` を返して自己更新を無効化する | SP-014 |
+| TC-086 | unit | 実行バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合も、自己更新を無効化する | SP-014 |
 | TC-083 | unit | Windows の一般 `.ps1` は Execute ではなく Open 分岐を選ぶ | SP-004 |
 | TC-084 | unit | `SHA256SUMS.sig` は改ざんされた manifest を検証失敗にする | SP-014 |
 
@@ -293,3 +294,4 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - TC-077 -> SP-014 -> DES-014, DES-007 -> FR-022
 - TC-078 -> SP-014 -> DES-006, DES-014 -> NFR-007
 - TC-081 -> SP-014 -> DES-014 -> FR-023
+- TC-086 -> SP-014 -> DES-014 -> FR-019, FR-023
