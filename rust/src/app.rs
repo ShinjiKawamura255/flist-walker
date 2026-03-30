@@ -29,6 +29,8 @@ mod input;
 mod render;
 #[path = "app/session.rs"]
 mod session;
+#[path = "app/state.rs"]
+mod state;
 #[path = "app/workers.rs"]
 mod workers;
 
@@ -37,6 +39,7 @@ use input::*;
 #[allow(unused_imports)]
 use render::*;
 use session::*;
+use state::*;
 use workers::*;
 
 #[derive(Clone, Debug)]
@@ -361,17 +364,6 @@ pub struct FlistWalkerApp {
     pending_action_request_id: Option<u64>,
     next_sort_request_id: u64,
     pending_sort_request_id: Option<u64>,
-    next_filelist_request_id: u64,
-    pending_filelist_request_id: Option<u64>,
-    next_update_request_id: u64,
-    pending_update_request_id: Option<u64>,
-    pending_filelist_request_tab_id: Option<u64>,
-    pending_filelist_root: Option<PathBuf>,
-    pending_filelist_cancel: Option<Arc<AtomicBool>>,
-    pending_filelist_after_index: Option<PendingFileListAfterIndex>,
-    pending_filelist_confirmation: Option<PendingFileListConfirmation>,
-    pending_filelist_ancestor_confirmation: Option<PendingFileListAncestorConfirmation>,
-    pending_filelist_use_walker_confirmation: Option<PendingFileListUseWalkerConfirmation>,
     latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pending_index_queue: VecDeque<IndexRequest>,
     index_inflight_requests: HashSet<u64>,
@@ -381,9 +373,6 @@ pub struct FlistWalkerApp {
     action_in_progress: bool,
     sort_in_progress: bool,
     kind_resolution_in_progress: bool,
-    filelist_in_progress: bool,
-    filelist_cancel_requested: bool,
-    update_in_progress: bool,
     pending_copy_shortcut: bool,
     scroll_to_current: bool,
     preview_resize_in_progress: bool,
@@ -403,11 +392,6 @@ pub struct FlistWalkerApp {
     ime_composition_active: bool,
     prev_space_down: bool,
     query_input_id: egui::Id,
-    active_filelist_dialog: Option<FileListDialogKind>,
-    active_filelist_dialog_button: usize,
-    update_prompt: Option<UpdatePromptState>,
-    skipped_update_target_version: Option<String>,
-    close_requested_for_update: bool,
     tab_drag_state: Option<TabDragState>,
     preview_cache: HashMap<PathBuf, String>,
     preview_cache_order: VecDeque<PathBuf>,
@@ -441,6 +425,8 @@ pub struct FlistWalkerApp {
     preview_request_tabs: HashMap<u64, u64>,
     action_request_tabs: HashMap<u64, u64>,
     sort_request_tabs: HashMap<u64, u64>,
+    filelist_state: FileListWorkflowState,
+    update_state: UpdateState,
     worker_runtime: Option<WorkerRuntime>,
 }
 
@@ -682,17 +668,6 @@ Search hints:
             pending_action_request_id: None,
             next_sort_request_id: 1,
             pending_sort_request_id: None,
-            next_filelist_request_id: 1,
-            pending_filelist_request_id: None,
-            next_update_request_id: 1,
-            pending_update_request_id: None,
-            pending_filelist_request_tab_id: None,
-            pending_filelist_root: None,
-            pending_filelist_cancel: None,
-            pending_filelist_after_index: None,
-            pending_filelist_confirmation: None,
-            pending_filelist_ancestor_confirmation: None,
-            pending_filelist_use_walker_confirmation: None,
             latest_index_request_ids,
             pending_index_queue: VecDeque::new(),
             index_inflight_requests: HashSet::new(),
@@ -702,9 +677,6 @@ Search hints:
             action_in_progress: false,
             sort_in_progress: false,
             kind_resolution_in_progress: false,
-            filelist_in_progress: false,
-            filelist_cancel_requested: false,
-            update_in_progress: false,
             pending_copy_shortcut: false,
             scroll_to_current: true,
             preview_resize_in_progress: false,
@@ -726,11 +698,6 @@ Search hints:
             ime_composition_active: false,
             prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
-            active_filelist_dialog: None,
-            active_filelist_dialog_button: 0,
-            update_prompt: None,
-            skipped_update_target_version: launch.skipped_update_target_version,
-            close_requested_for_update: false,
             tab_drag_state: None,
             preview_cache: HashMap::new(),
             preview_cache_order: VecDeque::new(),
@@ -764,6 +731,11 @@ Search hints:
             preview_request_tabs: HashMap::new(),
             action_request_tabs: HashMap::new(),
             sort_request_tabs: HashMap::new(),
+            filelist_state: FileListWorkflowState::default(),
+            update_state: UpdateState {
+                skipped_target_version: launch.skipped_update_target_version,
+                ..UpdateState::default()
+            },
             worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
@@ -806,14 +778,15 @@ Search hints:
 
     fn request_startup_update_check(&mut self) {
         if self_update_disabled() {
-            self.pending_update_request_id = None;
-            self.update_in_progress = false;
+            self.update_state.pending_request_id = None;
+            self.update_state.in_progress = false;
             return;
         }
-        let request_id = self.next_update_request_id;
-        self.next_update_request_id = self.next_update_request_id.saturating_add(1);
-        self.pending_update_request_id = Some(request_id);
-        self.update_in_progress = true;
+        let request_id = self.update_state.next_request_id;
+        self.update_state.next_request_id =
+            self.update_state.next_request_id.saturating_add(1);
+        self.update_state.pending_request_id = Some(request_id);
+        self.update_state.in_progress = true;
         if self
             .update_tx
             .send(UpdateRequest {
@@ -822,13 +795,13 @@ Search hints:
             })
             .is_err()
         {
-            self.pending_update_request_id = None;
-            self.update_in_progress = false;
+            self.update_state.pending_request_id = None;
+            self.update_state.in_progress = false;
         }
     }
 
     fn start_update_install(&mut self) {
-        let Some(prompt) = self.update_prompt.as_ref() else {
+        let Some(prompt) = self.update_state.prompt.as_ref() else {
             return;
         };
         if prompt.install_started {
@@ -844,13 +817,14 @@ Search hints:
                 return;
             }
         };
-        if let Some(prompt) = self.update_prompt.as_mut() {
+        if let Some(prompt) = self.update_state.prompt.as_mut() {
             prompt.install_started = true;
         }
-        let request_id = self.next_update_request_id;
-        self.next_update_request_id = self.next_update_request_id.saturating_add(1);
-        self.pending_update_request_id = Some(request_id);
-        self.update_in_progress = true;
+        let request_id = self.update_state.next_request_id;
+        self.update_state.next_request_id =
+            self.update_state.next_request_id.saturating_add(1);
+        self.update_state.pending_request_id = Some(request_id);
+        self.update_state.in_progress = true;
         if self
             .update_tx
             .send(UpdateRequest {
@@ -862,9 +836,9 @@ Search hints:
             })
             .is_err()
         {
-            self.pending_update_request_id = None;
-            self.update_in_progress = false;
-            if let Some(prompt) = self.update_prompt.as_mut() {
+            self.update_state.pending_request_id = None;
+            self.update_state.in_progress = false;
+            if let Some(prompt) = self.update_state.prompt.as_mut() {
                 prompt.install_started = false;
             }
             self.set_notice("Update worker is unavailable");
@@ -877,21 +851,22 @@ Search hints:
     }
 
     fn dismiss_update_prompt(&mut self) {
-        self.update_prompt = None;
+        self.update_state.prompt = None;
     }
 
     fn skip_update_prompt_until_next_version(&mut self) {
         let Some(target_version) = self
-            .update_prompt
+            .update_state
+            .prompt
             .as_ref()
             .map(|prompt| prompt.candidate.target_version.clone())
         else {
             return;
         };
-        self.skipped_update_target_version = Some(target_version.clone());
+        self.update_state.skipped_target_version = Some(target_version.clone());
         self.mark_ui_state_dirty();
         self.persist_ui_state_now();
-        self.update_prompt = None;
+        self.update_state.prompt = None;
         self.set_notice(format!(
             "Update {} hidden until a newer version is available",
             target_version
@@ -901,7 +876,7 @@ Search hints:
     fn update_prompt_is_suppressed(&self, candidate: &UpdateCandidate) -> bool {
         should_skip_update_prompt(
             &candidate.target_version,
-            self.skipped_update_target_version.as_deref(),
+            self.update_state.skipped_target_version.as_deref(),
         )
     }
 
@@ -1604,32 +1579,36 @@ Search hints:
         self.sync_active_tab_state();
         let removed = self.tabs.remove(index);
         if self
-            .pending_filelist_after_index
+            .filelist_state
+            .pending_after_index
             .as_ref()
             .is_some_and(|pending| pending.tab_id == removed.id)
         {
-            self.pending_filelist_after_index = None;
+            self.filelist_state.pending_after_index = None;
         }
         if self
-            .pending_filelist_confirmation
+            .filelist_state
+            .pending_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == removed.id)
         {
-            self.pending_filelist_confirmation = None;
+            self.filelist_state.pending_confirmation = None;
         }
         if self
-            .pending_filelist_ancestor_confirmation
+            .filelist_state
+            .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == removed.id)
         {
-            self.pending_filelist_ancestor_confirmation = None;
+            self.filelist_state.pending_ancestor_confirmation = None;
         }
         if self
-            .pending_filelist_use_walker_confirmation
+            .filelist_state
+            .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == removed.id)
         {
-            self.pending_filelist_use_walker_confirmation = None;
+            self.filelist_state.pending_use_walker_confirmation = None;
         }
         self.index_request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);
@@ -1841,7 +1820,7 @@ Search hints:
             tabs: self.saved_tabs_for_ui_state(),
             active_tab: Some(self.active_tab),
             window: self.window_geometry.clone(),
-            skipped_update_target_version: self.skipped_update_target_version.clone(),
+            skipped_update_target_version: self.update_state.skipped_target_version.clone(),
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
             let _ = write_text_atomic(path, &text);
@@ -2165,14 +2144,15 @@ Search hints:
     fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let should_cancel = self
-            .pending_filelist_confirmation
+            .filelist_state
+            .pending_confirmation
             .as_ref()
             .is_some_and(|pending| {
                 pending.tab_id == current_tab_id
                     && Self::path_key(&pending.root) != Self::path_key(&self.root)
             });
         if should_cancel {
-            self.pending_filelist_confirmation = None;
+            self.filelist_state.pending_confirmation = None;
             self.set_notice("Pending FileList overwrite canceled because root changed");
         }
     }
@@ -2180,14 +2160,15 @@ Search hints:
     fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let should_cancel = self
-            .pending_filelist_ancestor_confirmation
+            .filelist_state
+            .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| {
                 pending.tab_id == current_tab_id
                     && Self::path_key(&pending.root) != Self::path_key(&self.root)
             });
         if should_cancel {
-            self.pending_filelist_ancestor_confirmation = None;
+            self.filelist_state.pending_ancestor_confirmation = None;
             self.set_notice(
                 "Pending Create File List ancestor update canceled because root changed",
             );
@@ -2197,14 +2178,15 @@ Search hints:
     fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let should_cancel = self
-            .pending_filelist_use_walker_confirmation
+            .filelist_state
+            .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| {
                 pending.source_tab_id == current_tab_id
                     && Self::path_key(&pending.root) != Self::path_key(&self.root)
             });
         if should_cancel {
-            self.pending_filelist_use_walker_confirmation = None;
+            self.filelist_state.pending_use_walker_confirmation = None;
             self.set_notice("Pending Create File List confirmation canceled because root changed");
         }
     }
@@ -2324,8 +2306,8 @@ Search hints:
         } else {
             ""
         };
-        let creating_filelist = if self.filelist_in_progress {
-            if self.filelist_cancel_requested {
+        let creating_filelist = if self.filelist_state.in_progress {
+            if self.filelist_state.cancel_requested {
                 " | Canceling FileList..."
             } else {
                 " | Creating FileList..."
@@ -2333,7 +2315,7 @@ Search hints:
         } else {
             ""
         };
-        let updating = if self.update_in_progress {
+        let updating = if self.update_state.in_progress {
             " | Updating..."
         } else {
             ""
@@ -2423,14 +2405,15 @@ Search hints:
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .pending_filelist_after_index
+            .filelist_state
+            .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
                 pending.tab_id == current_tab_id
                     && Self::path_key(&pending.root) != Self::path_key(&self.root)
             })
         {
-            self.pending_filelist_after_index = None;
+            self.filelist_state.pending_after_index = None;
             self.set_notice("Deferred Create File List canceled because root changed");
         }
         let request_id = self.next_index_request_id;
@@ -2490,14 +2473,15 @@ Search hints:
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .pending_filelist_after_index
+            .filelist_state
+            .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
                 pending.tab_id == current_tab_id
                     && Self::path_key(&pending.root) != Self::path_key(&self.root)
             })
         {
-            self.pending_filelist_after_index = None;
+            self.filelist_state.pending_after_index = None;
             self.set_notice("Deferred Create File List canceled because root changed");
         }
         let request_id = self.next_index_request_id;
@@ -2619,7 +2603,7 @@ Search hints:
         let affected_tab_ids: HashSet<u64> = self.index_request_tabs.values().copied().collect();
         let notice = "Index worker is unavailable".to_string();
 
-        self.pending_filelist_after_index = None;
+        self.filelist_state.pending_after_index = None;
         self.pending_index_queue.clear();
         self.background_index_states.clear();
         self.index_inflight_requests.clear();
@@ -2933,7 +2917,8 @@ Search hints:
                             tab.kind_resolution_in_progress = false;
                         }
                         if self
-                            .pending_filelist_after_index
+                            .filelist_state
+                            .pending_after_index
                             .as_ref()
                             .is_some_and(|pending| {
                                 pending.tab_id == tab.id
@@ -2942,7 +2927,7 @@ Search hints:
                         {
                             deferred_filelist =
                                 Some((tab.id, tab.root.clone(), tab.all_entries.as_ref().clone()));
-                            self.pending_filelist_after_index = None;
+                            self.filelist_state.pending_after_index = None;
                         }
 
                         if tab.query.trim().is_empty() {
@@ -3129,7 +3114,8 @@ Search hints:
                     self.clear_notice();
                     let current_tab_id = self.current_tab_id().unwrap_or_default();
                     if self
-                        .pending_filelist_after_index
+                        .filelist_state
+                        .pending_after_index
                         .as_ref()
                         .is_some_and(|pending| {
                             pending.tab_id == current_tab_id
@@ -3138,7 +3124,7 @@ Search hints:
                     {
                         let root = self.root.clone();
                         let entries = self.filelist_entries_snapshot();
-                        self.pending_filelist_after_index = None;
+                        self.filelist_state.pending_after_index = None;
                         self.request_filelist_creation(current_tab_id, root, entries);
                     }
                     self.shrink_checkpoint_buffers();
@@ -3157,7 +3143,7 @@ Search hints:
                     self.pending_index_request_id = None;
                     self.search_resume_pending = false;
                     self.search_rerun_pending = false;
-                    self.pending_filelist_after_index = None;
+                    self.filelist_state.pending_after_index = None;
                     self.pending_index_entries.clear();
                     self.pending_index_entries_request_id = None;
                     self.index_request_tabs.remove(&request_id);
@@ -4166,16 +4152,17 @@ Search hints:
         entries: Vec<PathBuf>,
         propagate_to_ancestors: bool,
     ) {
-        self.pending_filelist_after_index = None;
+        self.filelist_state.pending_after_index = None;
         let cancel = Arc::new(AtomicBool::new(false));
-        let request_id = self.next_filelist_request_id;
-        self.next_filelist_request_id = self.next_filelist_request_id.saturating_add(1);
-        self.pending_filelist_request_id = Some(request_id);
-        self.pending_filelist_request_tab_id = Some(tab_id);
-        self.pending_filelist_root = Some(root.clone());
-        self.pending_filelist_cancel = Some(Arc::clone(&cancel));
-        self.filelist_in_progress = true;
-        self.filelist_cancel_requested = false;
+        let request_id = self.filelist_state.next_request_id;
+        self.filelist_state.next_request_id =
+            self.filelist_state.next_request_id.saturating_add(1);
+        self.filelist_state.pending_request_id = Some(request_id);
+        self.filelist_state.pending_request_tab_id = Some(tab_id);
+        self.filelist_state.pending_root = Some(root.clone());
+        self.filelist_state.pending_cancel = Some(Arc::clone(&cancel));
+        self.filelist_state.in_progress = true;
+        self.filelist_state.cancel_requested = false;
         self.refresh_status_line();
 
         let req = FileListRequest {
@@ -4187,12 +4174,12 @@ Search hints:
             cancel,
         };
         if self.filelist_tx.send(req).is_err() {
-            self.pending_filelist_request_id = None;
-            self.pending_filelist_request_tab_id = None;
-            self.pending_filelist_root = None;
-            self.pending_filelist_cancel = None;
-            self.filelist_in_progress = false;
-            self.filelist_cancel_requested = false;
+            self.filelist_state.pending_request_id = None;
+            self.filelist_state.pending_request_tab_id = None;
+            self.filelist_state.pending_root = None;
+            self.filelist_state.pending_cancel = None;
+            self.filelist_state.in_progress = false;
+            self.filelist_state.cancel_requested = false;
             self.refresh_status_line();
             self.set_notice("Create File List worker is unavailable");
         }
@@ -4200,7 +4187,7 @@ Search hints:
 
     fn request_filelist_creation(&mut self, tab_id: u64, root: PathBuf, entries: Vec<PathBuf>) {
         if let Some(existing_path) = find_filelist_in_first_level(&root) {
-            self.pending_filelist_confirmation = Some(PendingFileListConfirmation {
+            self.filelist_state.pending_confirmation = Some(PendingFileListConfirmation {
                 tab_id,
                 root,
                 entries,
@@ -4222,7 +4209,7 @@ Search hints:
         entries: Vec<PathBuf>,
     ) {
         if has_ancestor_filelists(&root) {
-            self.pending_filelist_ancestor_confirmation =
+            self.filelist_state.pending_ancestor_confirmation =
                 Some(PendingFileListAncestorConfirmation {
                     tab_id,
                     root,
@@ -4237,7 +4224,7 @@ Search hints:
     }
 
     fn confirm_pending_filelist_overwrite(&mut self) {
-        let Some(pending) = self.pending_filelist_confirmation.take() else {
+        let Some(pending) = self.filelist_state.pending_confirmation.take() else {
             return;
         };
         self.request_filelist_creation_after_overwrite_check(
@@ -4248,24 +4235,24 @@ Search hints:
     }
 
     fn confirm_pending_filelist_ancestor_propagation(&mut self) {
-        let Some(pending) = self.pending_filelist_ancestor_confirmation.take() else {
+        let Some(pending) = self.filelist_state.pending_ancestor_confirmation.take() else {
             return;
         };
         self.start_filelist_creation(pending.tab_id, pending.root, pending.entries, true);
     }
 
     fn skip_pending_filelist_ancestor_propagation(&mut self) {
-        let Some(pending) = self.pending_filelist_ancestor_confirmation.take() else {
+        let Some(pending) = self.filelist_state.pending_ancestor_confirmation.take() else {
             return;
         };
         self.start_filelist_creation(pending.tab_id, pending.root, pending.entries, false);
     }
 
     fn confirm_pending_filelist_use_walker(&mut self) {
-        let Some(pending) = self.pending_filelist_use_walker_confirmation.take() else {
+        let Some(pending) = self.filelist_state.pending_use_walker_confirmation.take() else {
             return;
         };
-        self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+        self.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
             tab_id: pending.source_tab_id,
             root: pending.root,
         });
@@ -4278,20 +4265,21 @@ Search hints:
     }
 
     fn cancel_pending_filelist_overwrite(&mut self) {
-        if self.pending_filelist_confirmation.take().is_some() {
+        if self.filelist_state.pending_confirmation.take().is_some() {
             self.set_notice("Create File List canceled");
         }
     }
 
     fn cancel_pending_filelist_ancestor_confirmation(&mut self) {
-        if self.pending_filelist_ancestor_confirmation.take().is_some() {
+        if self.filelist_state.pending_ancestor_confirmation.take().is_some() {
             self.set_notice("Create File List canceled");
         }
     }
 
     fn cancel_pending_filelist_use_walker(&mut self) {
         if self
-            .pending_filelist_use_walker_confirmation
+            .filelist_state
+            .pending_use_walker_confirmation
             .take()
             .is_some()
         {
@@ -4300,54 +4288,54 @@ Search hints:
     }
 
     fn can_cancel_create_filelist(&self) -> bool {
-        self.pending_filelist_after_index.is_some()
-            || self.pending_filelist_confirmation.is_some()
-            || self.pending_filelist_ancestor_confirmation.is_some()
-            || self.pending_filelist_use_walker_confirmation.is_some()
-            || self.filelist_in_progress
+        self.filelist_state.pending_after_index.is_some()
+            || self.filelist_state.pending_confirmation.is_some()
+            || self.filelist_state.pending_ancestor_confirmation.is_some()
+            || self.filelist_state.pending_use_walker_confirmation.is_some()
+            || self.filelist_state.in_progress
     }
 
     fn cancel_create_filelist(&mut self) {
-        if self.pending_filelist_confirmation.is_some() {
+        if self.filelist_state.pending_confirmation.is_some() {
             self.cancel_pending_filelist_overwrite();
             return;
         }
-        if self.pending_filelist_ancestor_confirmation.is_some() {
+        if self.filelist_state.pending_ancestor_confirmation.is_some() {
             self.cancel_pending_filelist_ancestor_confirmation();
             return;
         }
-        if self.pending_filelist_use_walker_confirmation.is_some() {
+        if self.filelist_state.pending_use_walker_confirmation.is_some() {
             self.cancel_pending_filelist_use_walker();
             return;
         }
-        if self.pending_filelist_after_index.take().is_some() {
+        if self.filelist_state.pending_after_index.take().is_some() {
             self.set_notice("Create File List canceled");
             return;
         }
-        if self.filelist_in_progress && !self.filelist_cancel_requested {
-            if let Some(cancel) = self.pending_filelist_cancel.as_ref() {
+        if self.filelist_state.in_progress && !self.filelist_state.cancel_requested {
+            if let Some(cancel) = self.filelist_state.pending_cancel.as_ref() {
                 cancel.store(true, Ordering::Relaxed);
             }
-            self.filelist_cancel_requested = true;
+            self.filelist_state.cancel_requested = true;
             self.refresh_status_line();
             self.set_notice("Canceling Create File List...");
         }
     }
 
     fn create_filelist(&mut self) {
-        if self.filelist_in_progress {
+        if self.filelist_state.in_progress {
             self.set_notice("Create File List is already running");
             return;
         }
-        if self.pending_filelist_confirmation.is_some() {
+        if self.filelist_state.pending_confirmation.is_some() {
             self.set_notice("Confirm overwrite or cancel first");
             return;
         }
-        if self.pending_filelist_ancestor_confirmation.is_some() {
+        if self.filelist_state.pending_ancestor_confirmation.is_some() {
             self.set_notice("Confirm ancestor FileList update choice or cancel first");
             return;
         }
-        if self.pending_filelist_use_walker_confirmation.is_some() {
+        if self.filelist_state.pending_use_walker_confirmation.is_some() {
             self.set_notice("Confirm Create File List action or cancel first");
             return;
         }
@@ -4356,7 +4344,7 @@ Search hints:
             return;
         };
         if self.use_filelist_requires_locked_filters() {
-            self.pending_filelist_use_walker_confirmation =
+            self.filelist_state.pending_use_walker_confirmation =
                 Some(PendingFileListUseWalkerConfirmation {
                     source_tab_id: tab_id,
                     root: self.root.clone(),
@@ -4375,7 +4363,7 @@ Search hints:
             needs_reindex = true;
         }
         if self.index_in_progress {
-            self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+            self.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
                 tab_id,
                 root: self.root.clone(),
             });
@@ -4398,7 +4386,7 @@ Search hints:
         }
 
         if needs_reindex {
-            self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
+            self.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
                 tab_id,
                 root: self.root.clone(),
             });
@@ -4422,11 +4410,11 @@ Search hints:
 
     fn poll_filelist_response(&mut self) {
         while let Ok(response) = self.filelist_rx.try_recv() {
-            let Some(pending) = self.pending_filelist_request_id else {
+            let Some(pending) = self.filelist_state.pending_request_id else {
                 continue;
             };
-            let requested_root = self.pending_filelist_root.clone();
-            let requested_tab_id = self.pending_filelist_request_tab_id;
+            let requested_root = self.filelist_state.pending_root.clone();
+            let requested_tab_id = self.filelist_state.pending_request_tab_id;
             match response {
                 FileListResponse::Finished {
                     request_id,
@@ -4437,12 +4425,12 @@ Search hints:
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_filelist_request_id = None;
-                    self.pending_filelist_request_tab_id = None;
-                    self.pending_filelist_root = None;
-                    self.pending_filelist_cancel = None;
-                    self.filelist_in_progress = false;
-                    self.filelist_cancel_requested = false;
+                    self.filelist_state.pending_request_id = None;
+                    self.filelist_state.pending_request_tab_id = None;
+                    self.filelist_state.pending_root = None;
+                    self.filelist_state.pending_cancel = None;
+                    self.filelist_state.in_progress = false;
+                    self.filelist_state.cancel_requested = false;
                     self.refresh_status_line();
 
                     let same_requested_root = requested_root
@@ -4503,12 +4491,12 @@ Search hints:
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_filelist_request_id = None;
-                    self.pending_filelist_request_tab_id = None;
-                    self.pending_filelist_root = None;
-                    self.pending_filelist_cancel = None;
-                    self.filelist_in_progress = false;
-                    self.filelist_cancel_requested = false;
+                    self.filelist_state.pending_request_id = None;
+                    self.filelist_state.pending_request_tab_id = None;
+                    self.filelist_state.pending_root = None;
+                    self.filelist_state.pending_cancel = None;
+                    self.filelist_state.in_progress = false;
+                    self.filelist_state.cancel_requested = false;
                     self.refresh_status_line();
 
                     let same_requested_root = requested_root
@@ -4530,12 +4518,12 @@ Search hints:
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_filelist_request_id = None;
-                    self.pending_filelist_request_tab_id = None;
-                    self.pending_filelist_root = None;
-                    self.pending_filelist_cancel = None;
-                    self.filelist_in_progress = false;
-                    self.filelist_cancel_requested = false;
+                    self.filelist_state.pending_request_id = None;
+                    self.filelist_state.pending_request_tab_id = None;
+                    self.filelist_state.pending_root = None;
+                    self.filelist_state.pending_cancel = None;
+                    self.filelist_state.in_progress = false;
+                    self.filelist_state.cancel_requested = false;
                     self.refresh_status_line();
 
                     let same_requested_root = requested_root
@@ -4554,7 +4542,7 @@ Search hints:
 
     fn poll_update_response(&mut self) {
         while let Ok(response) = self.update_rx.try_recv() {
-            let Some(pending) = self.pending_update_request_id else {
+            let Some(pending) = self.update_state.pending_request_id else {
                 continue;
             };
             match response {
@@ -4562,15 +4550,15 @@ Search hints:
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_update_request_id = None;
-                    self.update_in_progress = false;
+                    self.update_state.pending_request_id = None;
+                    self.update_state.in_progress = false;
                 }
                 UpdateResponse::CheckFailedSilent { request_id } => {
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_update_request_id = None;
-                    self.update_in_progress = false;
+                    self.update_state.pending_request_id = None;
+                    self.update_state.in_progress = false;
                 }
                 UpdateResponse::Available {
                     request_id,
@@ -4579,10 +4567,10 @@ Search hints:
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_update_request_id = None;
-                    self.update_in_progress = false;
+                    self.update_state.pending_request_id = None;
+                    self.update_state.in_progress = false;
                     if !self.update_prompt_is_suppressed(&candidate) {
-                        self.update_prompt = Some(UpdatePromptState {
+                        self.update_state.prompt = Some(UpdatePromptState {
                             candidate,
                             skip_until_next_version: false,
                             install_started: false,
@@ -4596,19 +4584,19 @@ Search hints:
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_update_request_id = None;
-                    self.update_in_progress = false;
-                    self.update_prompt = None;
+                    self.update_state.pending_request_id = None;
+                    self.update_state.in_progress = false;
+                    self.update_state.prompt = None;
                     self.set_notice(format!("Restarting to apply update {}...", target_version));
-                    self.close_requested_for_update = true;
+                    self.update_state.close_requested_for_install = true;
                 }
                 UpdateResponse::Failed { request_id, error } => {
                     if request_id != pending {
                         continue;
                     }
-                    self.pending_update_request_id = None;
-                    self.update_in_progress = false;
-                    if let Some(prompt) = self.update_prompt.as_mut() {
+                    self.update_state.pending_request_id = None;
+                    self.update_state.in_progress = false;
+                    if let Some(prompt) = self.update_state.prompt.as_mut() {
                         prompt.install_started = false;
                     }
                     self.set_notice(error);
@@ -4703,7 +4691,7 @@ impl eframe::App for FlistWalkerApp {
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
         self.poll_update_response();
-        if self.close_requested_for_update {
+        if self.update_state.close_requested_for_install {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
@@ -4720,8 +4708,8 @@ impl eframe::App for FlistWalkerApp {
             || self.action_in_progress
             || self.sort_in_progress
             || self.kind_resolution_in_progress
-            || self.filelist_in_progress
-            || self.update_in_progress
+            || self.filelist_state.in_progress
+            || self.update_state.in_progress
             || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));

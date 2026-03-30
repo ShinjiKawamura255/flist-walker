@@ -83,7 +83,7 @@
 - [x] `docs/REQUIREMENTS.md` の `FR-022` 重複を解消し、後続の trace を再採番する
 - [x] `docs/TESTPLAN.md` の `TC-065/066/067/082/083/084` 重複を解消し、関連する Regression Guard と Traceability を更新する
 - [x] [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) が参照する欠落ドキュメントの扱いを決め、参照の削除・置換・再作成のいずれかへ整理する
-- [ ] `FlistWalkerApp` のフィールドを feature 単位に束ねる再編案を設計する
+- [x] `FlistWalkerApp` のフィールドを feature 単位に束ねる再編案を設計する
 - [ ] filelist 作成系、update prompt 系、tab/session 系の state transition を別モジュールへ切り出す順序を確定する
 - [ ] 変更種別ごとの検証マトリクスを `TESTPLAN.md` へ反映する
 - [ ] フェーズごとに `cargo test` と必要な ignored perf test を実行し、結果を記録する
@@ -140,6 +140,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - `TC-065/066/067/082/083/084` の重複は `TC-087` 以降へ再採番し、Regression Guard / DESIGN / RELEASE / `rust/README.md` の参照も追随させた。
 - [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) の欠落参照は、存在しない `docs/APP_SPLIT_PLAN.md` の再作成ではなく、一般化した計画 docs 参照表現へ置換して整理した。
 - 検証として `cd rust && cargo test` を実行し、`289 passed, 3 ignored` と CLI integration `10 passed` を確認した。
+- 2026-03-31 Phase 3 app state segmentation:
+- 新規 [rust/src/app/state.rs](/mnt/d/work/flistwalker/rust/src/app/state.rs) を追加し、Create File List 系 state を `FileListWorkflowState`、自己更新系 state を `UpdateState` へ束ねた。
+- [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) のトップレベル field から filelist / update の request tracking・dialog state・progress flag を外し、feature 境界を明示した。
+- [rust/src/app/tests/app_core.rs](/mnt/d/work/flistwalker/rust/src/app/tests/app_core.rs) と [rust/src/app/tests/index_pipeline.rs](/mnt/d/work/flistwalker/rust/src/app/tests/index_pipeline.rs) は新しい state 束に追随させ、既存回帰観点を維持した。
+- 検証として `cd rust && cargo test`、`cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`、`cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` を実行し、通常 test / perf test ともに green を確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

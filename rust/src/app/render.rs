@@ -27,7 +27,7 @@ impl FlistWalkerApp {
             return vec!["Apply History", "Cancel History Search"];
         }
 
-        let create_label = if self.filelist_in_progress {
+        let create_label = if self.filelist_state.in_progress {
             "Create File List (Running...)"
         } else {
             "Create File List"
@@ -802,14 +802,14 @@ impl FlistWalkerApp {
                         ui.separator();
                     }
                     if self.can_cancel_create_filelist() {
-                        let cancel_label = if self.filelist_cancel_requested {
+                        let cancel_label = if self.filelist_state.cancel_requested {
                             "Canceling FileList..."
                         } else {
                             "Cancel Create File List"
                         };
                         if ui
                             .add_enabled(
-                                !self.filelist_cancel_requested,
+                                !self.filelist_state.cancel_requested,
                                 egui::Button::new(cancel_label),
                             )
                             .clicked()
@@ -842,7 +842,8 @@ impl FlistWalkerApp {
         let mut cancel_overwrite = false;
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if let Some(existing_path) = self
-            .pending_filelist_confirmation
+            .filelist_state
+            .pending_confirmation
             .as_ref()
             .filter(|pending| pending.tab_id == current_tab_id)
             .map(|pending| pending.existing_path.clone())
@@ -859,13 +860,21 @@ impl FlistWalkerApp {
                     ));
                     ui.horizontal(|ui| {
                         if self
-                            .dialog_button(ui, "Overwrite", self.active_filelist_dialog_button == 0)
+                            .dialog_button(
+                                ui,
+                                "Overwrite",
+                                self.filelist_state.active_dialog_button == 0,
+                            )
                             .clicked()
                         {
                             overwrite = true;
                         }
                         if self
-                            .dialog_button(ui, "Cancel", self.active_filelist_dialog_button == 1)
+                            .dialog_button(
+                                ui,
+                                "Cancel",
+                                self.filelist_state.active_dialog_button == 1,
+                            )
                             .clicked()
                         {
                             cancel_overwrite = true;
@@ -883,7 +892,8 @@ impl FlistWalkerApp {
         let mut current_root_only = false;
         let mut cancel_ancestor = false;
         if self
-            .pending_filelist_ancestor_confirmation
+            .filelist_state
+            .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
         {
@@ -902,7 +912,7 @@ impl FlistWalkerApp {
                                 .dialog_button(
                                     ui,
                                     "Continue",
-                                    self.active_filelist_dialog_button == 0,
+                                    self.filelist_state.active_dialog_button == 0,
                                 )
                                 .clicked()
                             {
@@ -912,7 +922,7 @@ impl FlistWalkerApp {
                                 .dialog_button(
                                     ui,
                                     "Current Root Only",
-                                    self.active_filelist_dialog_button == 1,
+                                    self.filelist_state.active_dialog_button == 1,
                                 )
                                 .clicked()
                             {
@@ -922,7 +932,7 @@ impl FlistWalkerApp {
                                 .dialog_button(
                                     ui,
                                     "Cancel",
-                                    self.active_filelist_dialog_button == 2,
+                                    self.filelist_state.active_dialog_button == 2,
                                 )
                                 .clicked()
                             {
@@ -942,7 +952,8 @@ impl FlistWalkerApp {
         let mut confirm_walker = false;
         let mut cancel_walker = false;
         if self
-            .pending_filelist_use_walker_confirmation
+            .filelist_state
+            .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
         {
@@ -957,13 +968,21 @@ impl FlistWalkerApp {
                     ui.label(line2);
                     ui.horizontal(|ui| {
                         if self
-                            .dialog_button(ui, "Continue", self.active_filelist_dialog_button == 0)
+                            .dialog_button(
+                                ui,
+                                "Continue",
+                                self.filelist_state.active_dialog_button == 0,
+                            )
                             .clicked()
                         {
                             confirm_walker = true;
                         }
                         if self
-                            .dialog_button(ui, "Cancel", self.active_filelist_dialog_button == 1)
+                            .dialog_button(
+                                ui,
+                                "Cancel",
+                                self.filelist_state.active_dialog_button == 1,
+                            )
                             .clicked()
                         {
                             cancel_walker = true;
@@ -982,7 +1001,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_update_dialog(&mut self, ctx: &egui::Context) {
-        let Some(prompt) = self.update_prompt.as_ref().cloned() else {
+        let Some(prompt) = self.update_state.prompt.as_ref().cloned() else {
             return;
         };
 
@@ -1042,7 +1061,7 @@ impl FlistWalkerApp {
                 }
             });
 
-        if let Some(state) = self.update_prompt.as_mut() {
+        if let Some(state) = self.update_state.prompt.as_mut() {
             state.skip_until_next_version = skip_until_next_version;
         }
 

@@ -354,21 +354,24 @@ impl FlistWalkerApp {
     pub(super) fn current_filelist_dialog_kind(&self) -> Option<FileListDialogKind> {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .pending_filelist_confirmation
+            .filelist_state
+            .pending_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
         {
             return Some(FileListDialogKind::Overwrite);
         }
         if self
-            .pending_filelist_ancestor_confirmation
+            .filelist_state
+            .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
         {
             return Some(FileListDialogKind::Ancestor);
         }
         if self
-            .pending_filelist_use_walker_confirmation
+            .filelist_state
+            .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
         {
@@ -387,23 +390,23 @@ impl FlistWalkerApp {
 
     pub(super) fn sync_filelist_dialog_selection(&mut self, kind: FileListDialogKind) {
         let button_count = Self::filelist_dialog_button_count(kind);
-        if self.active_filelist_dialog != Some(kind) {
-            self.active_filelist_dialog = Some(kind);
-            self.active_filelist_dialog_button = 0;
+        if self.filelist_state.active_dialog != Some(kind) {
+            self.filelist_state.active_dialog = Some(kind);
+            self.filelist_state.active_dialog_button = 0;
             return;
         }
-        self.active_filelist_dialog_button %= button_count;
+        self.filelist_state.active_dialog_button %= button_count;
     }
 
     pub(super) fn clear_filelist_dialog_selection(&mut self) {
-        self.active_filelist_dialog = None;
-        self.active_filelist_dialog_button = 0;
+        self.filelist_state.active_dialog = None;
+        self.filelist_state.active_dialog_button = 0;
     }
 
     fn activate_selected_filelist_dialog_button(&mut self) {
         match (
-            self.active_filelist_dialog,
-            self.active_filelist_dialog_button,
+            self.filelist_state.active_dialog,
+            self.filelist_state.active_dialog_button,
         ) {
             (Some(FileListDialogKind::Overwrite), 0) => self.confirm_pending_filelist_overwrite(),
             (Some(FileListDialogKind::Overwrite), _) => self.cancel_pending_filelist_overwrite(),
@@ -423,7 +426,7 @@ impl FlistWalkerApp {
     }
 
     fn cancel_active_filelist_dialog(&mut self) {
-        match self.active_filelist_dialog {
+        match self.filelist_state.active_dialog {
             Some(FileListDialogKind::Overwrite) => self.cancel_pending_filelist_overwrite(),
             Some(FileListDialogKind::Ancestor) => {
                 self.cancel_pending_filelist_ancestor_confirmation()
@@ -434,12 +437,12 @@ impl FlistWalkerApp {
     }
 
     fn move_filelist_dialog_selection(&mut self, delta: isize) {
-        let Some(kind) = self.active_filelist_dialog else {
+        let Some(kind) = self.filelist_state.active_dialog else {
             return;
         };
         let count = Self::filelist_dialog_button_count(kind) as isize;
-        let current = self.active_filelist_dialog_button as isize;
-        self.active_filelist_dialog_button = (current + delta).rem_euclid(count) as usize;
+        let current = self.filelist_state.active_dialog_button as isize;
+        self.filelist_state.active_dialog_button = (current + delta).rem_euclid(count) as usize;
     }
 
     fn handle_filelist_dialog_shortcuts(&mut self, ctx: &egui::Context) -> bool {
