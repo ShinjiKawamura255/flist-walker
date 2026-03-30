@@ -23,6 +23,8 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+#[path = "app/bootstrap.rs"]
+mod bootstrap;
 #[path = "app/filelist.rs"]
 mod filelist;
 #[path = "app/input.rs"]
@@ -524,42 +526,13 @@ Search hints:
         launch: LaunchSettings,
         restore_session: Option<(Vec<SavedTabState>, usize)>,
     ) -> Self {
-        let worker_shutdown = Arc::new(AtomicBool::new(false));
-        let mut worker_runtime = WorkerRuntime::new(Arc::clone(&worker_shutdown));
-        let (search_tx, search_rx, search_handle) =
-            spawn_search_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("search", search_handle);
-        let (preview_tx, preview_rx, preview_handle) =
-            spawn_preview_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("preview", preview_handle);
-        let (action_tx, action_rx, action_handle) =
-            spawn_action_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("action", action_handle);
-        let (sort_tx, sort_rx, sort_handle) =
-            spawn_sort_metadata_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("sort-metadata", sort_handle);
-        let (kind_tx, kind_rx, kind_handle) =
-            spawn_kind_resolver_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("kind-resolver", kind_handle);
-        let (filelist_tx, filelist_rx, filelist_handle) =
-            spawn_filelist_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("filelist", filelist_handle);
-        let (update_tx, update_rx, update_handle) =
-            spawn_update_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("update", update_handle);
-        let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
-        let (index_tx, index_rx, index_handles) = spawn_index_worker(
-            Arc::clone(&worker_shutdown),
-            Arc::clone(&latest_index_request_ids),
-        );
-        for (idx, handle) in index_handles.into_iter().enumerate() {
-            worker_runtime.push(format!("index-{idx}"), handle);
-        }
+        let bootstrap = Self::bootstrap_workers();
+        let seed = Self::launch_seed(root, limit, query, &launch);
         let mut app = Self {
-            root: Self::normalize_windows_path(root),
-            limit: limit.clamp(1, 1000),
-            query,
-            query_history: launch.query_history.iter().cloned().collect(),
+            root: seed.root,
+            limit: seed.limit,
+            query: seed.query,
+            query_history: seed.query_history,
             query_history_cursor: None,
             query_history_draft: None,
             query_history_dirty_since: None,
@@ -590,22 +563,22 @@ Search hints:
             notice: String::new(),
             status_line: "Initializing...".to_string(),
             kill_buffer: String::new(),
-            search_tx,
-            search_rx,
-            preview_tx,
-            preview_rx,
-            action_tx,
-            action_rx,
-            sort_tx,
-            sort_rx,
-            kind_tx,
-            kind_rx,
-            filelist_tx,
-            filelist_rx,
-            update_tx,
-            update_rx,
-            index_tx,
-            index_rx,
+            search_tx: bootstrap.search_tx,
+            search_rx: bootstrap.search_rx,
+            preview_tx: bootstrap.preview_tx,
+            preview_rx: bootstrap.preview_rx,
+            action_tx: bootstrap.action_tx,
+            action_rx: bootstrap.action_rx,
+            sort_tx: bootstrap.sort_tx,
+            sort_rx: bootstrap.sort_rx,
+            kind_tx: bootstrap.kind_tx,
+            kind_rx: bootstrap.kind_rx,
+            filelist_tx: bootstrap.filelist_tx,
+            filelist_rx: bootstrap.filelist_rx,
+            update_tx: bootstrap.update_tx,
+            update_rx: bootstrap.update_rx,
+            index_tx: bootstrap.index_tx,
+            index_rx: bootstrap.index_rx,
             next_request_id: 1,
             pending_request_id: None,
             next_index_request_id: 1,
@@ -616,7 +589,7 @@ Search hints:
             pending_action_request_id: None,
             next_sort_request_id: 1,
             pending_sort_request_id: None,
-            latest_index_request_ids,
+            latest_index_request_ids: bootstrap.latest_index_request_ids,
             pending_index_queue: VecDeque::new(),
             index_inflight_requests: HashSet::new(),
             search_in_progress: false,
@@ -630,12 +603,10 @@ Search hints:
             preview_resize_in_progress: false,
             focus_query_requested: true,
             unfocus_query_requested: false,
-            saved_roots: Self::load_saved_roots(),
-            default_root: launch.default_root.clone(),
-            show_preview: launch.show_preview,
-            preview_panel_width: launch
-                .preview_panel_width
-                .max(Self::MIN_PREVIEW_PANEL_WIDTH),
+            saved_roots: seed.saved_roots,
+            default_root: seed.default_root,
+            show_preview: seed.show_preview,
+            preview_panel_width: seed.preview_panel_width,
             window_geometry: None,
             pending_window_geometry: None,
             last_window_geometry_change: Instant::now(),
@@ -680,11 +651,8 @@ Search hints:
             action_request_tabs: HashMap::new(),
             sort_request_tabs: HashMap::new(),
             filelist_state: FileListWorkflowState::default(),
-            update_state: UpdateState {
-                skipped_target_version: launch.skipped_update_target_version,
-                ..UpdateState::default()
-            },
-            worker_runtime: Some(worker_runtime),
+            update_state: seed.update_state,
+            worker_runtime: Some(bootstrap.worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));

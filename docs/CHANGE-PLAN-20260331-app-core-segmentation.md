@@ -139,6 +139,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) の `capture_active_tab_state` / `apply_tab_state` / `restored_tab_state` / background index response 処理は、新しい tab state 束を介して copy/restore する形へ更新した。
 - [rust/src/app/input.rs](/mnt/d/work/flistwalker/rust/src/app/input.rs) の shared history 同期と、関連 unit test は新しい `query_state` / `index_state` / `result_state` 構造へ追随させた。
 - 検証として `cd rust && cargo check`、`cargo fmt`、`cd rust && cargo test` を実行し、通常 test が green であることを確認した。
+- 2026-03-31 09:30 Phase 3 bootstrap and worker wiring cleanup:
+- 新規 [rust/src/app/bootstrap.rs](/mnt/d/work/flistwalker/rust/src/app/bootstrap.rs) を追加し、worker 起動と channel/runtime 構築を `AppWorkerBootstrap` へ抽出した。
+- 同 module に `AppLaunchSeed` を追加し、root/limit/query history/default root/preview/update skip 状態の seed 構築を `new_with_launch` から分離した。
+- [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) の `new_with_launch` は worker wiring と launch 由来の初期値を bootstrap module から受け取る形に更新し、起動時の責務を一段減らした。
+- 検証として `cd rust && cargo check`、`cargo fmt`、`cd rust && cargo test` を実行し、通常 test が green であることを確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
