@@ -149,13 +149,17 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) の cache field は上記 state struct へ置き換え、preview/highlight/sort metadata helper は struct 経由で参照する形へ更新した。
 - [rust/src/app/render.rs](/mnt/d/work/flistwalker/rust/src/app/render.rs) と関連 unit test は `clear_preview_cache()` と新しい cache state 構造へ追随させた。
 - 検証として `cd rust && cargo check`、`cargo fmt`、`cd rust && cargo test` を実行し、通常 test が green であることを確認した。
+- 2026-03-31 10:05 Phase 5 documentation and validation refresh:
+- [docs/DESIGN.md](/mnt/d/work/flistwalker/docs/DESIGN.md) に `app/tab_state.rs`、`app/bootstrap.rs`、`app/cache.rs` の責務境界を追記し、`app.rs` を coordinator として扱う構造を恒久ドキュメントへ反映した。
+- [docs/TESTPLAN.md](/mnt/d/work/flistwalker/docs/TESTPLAN.md) の Validation Matrix VM-002 を更新し、`tab_state`、`bootstrap`、`cache` を App/UI orchestration 変更の典型対象として明示した。
+- 検証として affected doc diff review と `rg -n "tab_state|bootstrap|cache|VM-002"` による参照整合確認を実施した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

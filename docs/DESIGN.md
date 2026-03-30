@@ -29,7 +29,10 @@
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: `app.rs` は横断 orchestration を保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs` へ分離する。
-- 実装: `rust/src/app.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
+- 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
+- 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
+- 役割補足: preview/highlight/sort metadata cache は `app/cache.rs` の state struct として束ね、描画側 helper は専用 clear/cache API を介して参照する。
+- 実装: `rust/src/app.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。
@@ -41,7 +44,7 @@
 
 - DES-013 Result Sort Controller
 - 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
-- 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`
+- 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/workers.rs`
 
 - DES-014 Self Update Coordinator
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar notice の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
@@ -84,6 +87,7 @@
 - 検索ランキングは score 降順 + 元の候補順序で決定し、`limit` が小さい場合は partial selection で top-N のみを整列する。
 - 並列検索は候補数が閾値以上の場合だけ有効化し、`FLISTWALKER_SEARCH_THREADS` で worker 内の検索スレッド数を調整できる。
 - 非アクティブタブは `results` と preview のような表示キャッシュを compact し、再表示時は `base_results` と現在の sort mode から復元する。`all_entries` / `entries` / index 本体は保持してタブ復帰で再インデックスを避ける。
+- tab 保存状態は query/history、index 状態、result/selection を別 struct で保持し、tab 切替や復元時に必要な束だけ同期する。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
 - FileList の `\` / `/` 混在は候補生成順でプラットフォーム優先の字句選択へ寄せ、初期ストリームで `exists()` / `try_exists()` を各行へ追加しない。v0.12.3 相当のスループットを基準として維持する。
@@ -94,6 +98,7 @@
 - include_files/include_dirs が両方有効な FileList 解析では、初期ロード時の `metadata` 依存を避けて候補パスの投入を優先し、FILE/DIR/LINK 表示種別は別ワーカーで遅延解決する。
 - regex モードは include term をクエリ単位で事前コンパイルし、候補ごとの再コンパイルを禁止する。
 - プレビューキャッシュは固定上限（FIFO）で運用し、長時間セッションでのメモリ増加を抑制する。
+- preview/highlight/sort metadata cache は app coordinator 直下の flat field ではなく専用 state struct へ束ね、root 変更や index refresh 開始時にまとめて破棄できるようにする。
 - 結果ソートは `base_results` に検索エンジンの元順位を保持し、表示用 `results` だけを並び替えることで `Score` 復帰を O(n) で実現する。
 - `Name` ソートは UI スレッド上で `base_results` の clone を即時ソートし、追加 I/O を行わない。
 - `Modified` / `Created` は結果スナップショット中の未キャッシュ path だけを sort worker へ送り、属性解決後に表示リストを更新する。
