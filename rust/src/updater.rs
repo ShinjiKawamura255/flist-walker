@@ -33,6 +33,10 @@ pub struct UpdateCandidate {
     pub release_url: String,
     pub asset_name: String,
     pub asset_url: String,
+    pub license_asset_name: String,
+    pub license_asset_url: String,
+    pub notices_asset_name: String,
+    pub notices_asset_url: String,
     pub checksum_url: String,
     pub checksum_signature_url: String,
     pub support: UpdateSupport,
@@ -41,6 +45,8 @@ pub struct UpdateCandidate {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct PlatformReleaseTarget {
     asset_name: String,
+    license_asset_name: String,
+    notices_asset_name: String,
     support: UpdateSupport,
 }
 
@@ -97,6 +103,18 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
         .find(|asset| asset.name == platform_target.asset_name)
         .cloned()
         .with_context(|| format!("release asset missing: {}", platform_target.asset_name))?;
+    let license_asset = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == platform_target.license_asset_name)
+        .cloned()
+        .with_context(|| format!("release asset missing: {}", platform_target.license_asset_name))?;
+    let notices_asset = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == platform_target.notices_asset_name)
+        .cloned()
+        .with_context(|| format!("release asset missing: {}", platform_target.notices_asset_name))?;
     let checksum = release
         .assets
         .iter()
@@ -127,6 +145,10 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
         release_url: release.html_url,
         asset_name: asset.name,
         asset_url: asset.browser_download_url,
+        license_asset_name: license_asset.name,
+        license_asset_url: license_asset.browser_download_url,
+        notices_asset_name: notices_asset.name,
+        notices_asset_url: notices_asset.browser_download_url,
         checksum_url: checksum.browser_download_url,
         checksum_signature_url: checksum_signature.browser_download_url,
         support,
@@ -147,13 +169,27 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
 
     let temp_dir = unique_update_temp_dir()?;
     let staged_path = temp_dir.join(&candidate.asset_name);
+    let staged_license_path = temp_dir.join(&candidate.license_asset_name);
+    let staged_notices_path = temp_dir.join(&candidate.notices_asset_name);
     let checksum_path = temp_dir.join("SHA256SUMS");
     let signature_path = temp_dir.join(CHECKSUM_SIGNATURE_NAME);
     download_to_path(&candidate.asset_url, &staged_path)?;
+    download_to_path(&candidate.license_asset_url, &staged_license_path)?;
+    download_to_path(&candidate.notices_asset_url, &staged_notices_path)?;
     download_to_path(&candidate.checksum_url, &checksum_path)?;
     download_to_path(&candidate.checksum_signature_url, &signature_path)?;
     verify_checksum_manifest_signature(&checksum_path, &signature_path)?;
     verify_download(&staged_path, &checksum_path, &candidate.asset_name)?;
+    verify_download(
+        &staged_license_path,
+        &checksum_path,
+        &candidate.license_asset_name,
+    )?;
+    verify_download(
+        &staged_notices_path,
+        &checksum_path,
+        &candidate.notices_asset_name,
+    )?;
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
@@ -165,7 +201,13 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
             .with_context(|| format!("failed to chmod {}", staged_path.display()))?;
     }
 
-    spawn_update_helper(current_exe, &staged_path, &temp_dir)
+    spawn_update_helper(
+        current_exe,
+        &staged_path,
+        &staged_license_path,
+        &staged_notices_path,
+        &temp_dir,
+    )
 }
 
 fn fetch_latest_release() -> Result<GitHubRelease> {
@@ -247,6 +289,10 @@ fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTa
     {
         return Ok(Some(PlatformReleaseTarget {
             asset_name: format!("FlistWalker-{version}-windows-x86_64.exe"),
+            license_asset_name: format!("FlistWalker-{version}-windows-x86_64.LICENSE.txt"),
+            notices_asset_name: format!(
+                "FlistWalker-{version}-windows-x86_64.THIRD_PARTY_NOTICES.txt"
+            ),
             support: UpdateSupport::Auto,
         }));
     }
@@ -254,6 +300,10 @@ fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTa
     {
         return Ok(Some(PlatformReleaseTarget {
             asset_name: format!("FlistWalker-{version}-linux-x86_64"),
+            license_asset_name: format!("FlistWalker-{version}-linux-x86_64.LICENSE.txt"),
+            notices_asset_name: format!(
+                "FlistWalker-{version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
+            ),
             support: UpdateSupport::Auto,
         }));
     }
@@ -266,6 +316,8 @@ fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTa
         };
         return Ok(Some(PlatformReleaseTarget {
             asset_name: format!("FlistWalker-{version}-{suffix}"),
+            license_asset_name: format!("FlistWalker-{version}-{suffix}.LICENSE.txt"),
+            notices_asset_name: format!("FlistWalker-{version}-{suffix}.THIRD_PARTY_NOTICES.txt"),
             support: UpdateSupport::ManualOnly {
                 message: "macOS の自動更新は未対応です。GitHub Releases から手動更新してください。"
                     .to_string(),
@@ -364,18 +416,42 @@ fn sha256_file(path: &Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-fn spawn_update_helper(current_exe: &Path, staged_path: &Path, temp_dir: &Path) -> Result<()> {
+fn spawn_update_helper(
+    current_exe: &Path,
+    staged_path: &Path,
+    staged_license_path: &Path,
+    staged_notices_path: &Path,
+    temp_dir: &Path,
+) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
-        return spawn_windows_update_helper(current_exe, staged_path, temp_dir);
+        return spawn_windows_update_helper(
+            current_exe,
+            staged_path,
+            staged_license_path,
+            staged_notices_path,
+            temp_dir,
+        );
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        spawn_linux_update_helper(current_exe, staged_path, temp_dir)
+        spawn_linux_update_helper(
+            current_exe,
+            staged_path,
+            staged_license_path,
+            staged_notices_path,
+            temp_dir,
+        )
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = (current_exe, staged_path, temp_dir);
+        let _ = (
+            current_exe,
+            staged_path,
+            staged_license_path,
+            staged_notices_path,
+            temp_dir,
+        );
         bail!("macOS auto-update is unsupported");
     }
 }
@@ -384,18 +460,32 @@ fn spawn_update_helper(current_exe: &Path, staged_path: &Path, temp_dir: &Path) 
 fn spawn_windows_update_helper(
     current_exe: &Path,
     staged_path: &Path,
+    staged_license_path: &Path,
+    staged_notices_path: &Path,
     temp_dir: &Path,
 ) -> Result<()> {
     let script_path = temp_dir.join("apply-update.ps1");
     let script = r#"
 param(
     [string]$TargetPath,
-    [string]$StagedPath
+    [string]$StagedPath,
+    [string]$LicensePath,
+    [string]$NoticesPath
 )
 $targetDir = Split-Path -Parent $TargetPath
+$licenseTarget = Join-Path $targetDir 'LICENSE.txt'
+$noticesTarget = Join-Path $targetDir 'THIRD_PARTY_NOTICES.txt'
 for ($i = 0; $i -lt 100; $i++) {
     try {
         Copy-Item -LiteralPath $StagedPath -Destination $TargetPath -Force
+        if (Test-Path -LiteralPath $LicensePath) {
+            Copy-Item -LiteralPath $LicensePath -Destination $licenseTarget -Force
+            Remove-Item -LiteralPath $LicensePath -Force -ErrorAction SilentlyContinue
+        }
+        if (Test-Path -LiteralPath $NoticesPath) {
+            Copy-Item -LiteralPath $NoticesPath -Destination $noticesTarget -Force
+            Remove-Item -LiteralPath $NoticesPath -Force -ErrorAction SilentlyContinue
+        }
         Remove-Item -LiteralPath $StagedPath -Force -ErrorAction SilentlyContinue
         Start-Process -FilePath $TargetPath -WorkingDirectory $targetDir
         exit 0
@@ -419,7 +509,9 @@ exit 1
         ])
         .arg(&script_path)
         .arg(current_exe)
-        .arg(staged_path);
+        .arg(staged_path)
+        .arg(staged_license_path)
+        .arg(staged_notices_path);
     command.creation_flags(CREATE_NO_WINDOW);
     command
         .spawn()
@@ -431,6 +523,8 @@ exit 1
 fn spawn_linux_update_helper(
     current_exe: &Path,
     staged_path: &Path,
+    staged_license_path: &Path,
+    staged_notices_path: &Path,
     temp_dir: &Path,
 ) -> Result<()> {
     let script_path = temp_dir.join("apply-update.sh");
@@ -438,9 +532,21 @@ fn spawn_linux_update_helper(
 set -eu
 target="$1"
 staged="$2"
+license_src="$3"
+notices_src="$4"
 target_dir=$(dirname "$target")
+license_target="$target_dir/LICENSE.txt"
+notices_target="$target_dir/THIRD_PARTY_NOTICES.txt"
 for _ in $(seq 1 100); do
   if cp "$staged" "$target" 2>/dev/null; then
+    if [ -f "$license_src" ]; then
+      cp "$license_src" "$license_target" 2>/dev/null || true
+      rm -f "$license_src"
+    fi
+    if [ -f "$notices_src" ]; then
+      cp "$notices_src" "$notices_target" 2>/dev/null || true
+      rm -f "$notices_src"
+    fi
     chmod 755 "$target" || true
     rm -f "$staged"
     cd "$target_dir"
@@ -462,6 +568,8 @@ exit 1
         .arg(&script_path)
         .arg(current_exe)
         .arg(staged_path)
+        .arg(staged_license_path)
+        .arg(staged_notices_path)
         .spawn()
         .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
     Ok(())
@@ -625,6 +733,19 @@ mod tests {
     }
 
     #[test]
+    fn checksum_verification_detects_sidecar_match() {
+        let dir = unique_update_temp_dir().expect("temp dir");
+        let file_path = dir.join("sample.LICENSE.txt");
+        let sums_path = dir.join("SHA256SUMS");
+        fs::write(&file_path, b"license text").expect("write sample");
+        let hash = sha256_file(&file_path).expect("hash");
+        fs::write(&sums_path, format!("{hash}  sample.LICENSE.txt\n")).expect("write sums");
+
+        verify_download(&file_path, &sums_path, "sample.LICENSE.txt").expect("checksum match");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn checksum_manifest_signature_verification_detects_match() {
         let dir = unique_update_temp_dir().expect("temp dir");
         let sums_path = dir.join("SHA256SUMS");
@@ -672,6 +793,8 @@ mod tests {
             .expect("target");
         assert!(target.asset_name.starts_with("FlistWalker-0.12.3-"));
         assert_ne!(target.asset_name, "SHA256SUMS");
+        assert!(target.license_asset_name.ends_with(".LICENSE.txt"));
+        assert!(target.notices_asset_name.ends_with(".THIRD_PARTY_NOTICES.txt"));
     }
 
     #[test]

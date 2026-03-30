@@ -43,7 +43,7 @@
 - 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`
 
 - DES-014 Self Update Coordinator
-- 役割: GitHub Releases の最新 version 確認、対象 asset 選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
+- 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar notice の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
 - 実装: `rust/src/updater.rs`, `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`
 
 ## Main flows
@@ -51,7 +51,7 @@
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
 - Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
-- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と `SHA256SUMS.sig` / `SHA256SUMS` を取得 -> 署名検証 -> checksum 検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体を再起動。
+- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と sidecar notice (`*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) と `SHA256SUMS.sig` / `SHA256SUMS` を取得 -> 署名検証 -> checksum 検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体と sidecar notice を同一ディレクトリへ配置して再起動。
   `FLISTWALKER_DISABLE_SELF_UPDATE=1`、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合は update flow を起動せず、通常起動のみ行う。
 
 ## Data model
@@ -143,8 +143,8 @@
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は `SHA256SUMS.sig` を埋め込み公開鍵で検証してから `SHA256SUMS` を信頼し、staged binary の checksum 検証へ進む。検証失敗時は既存バイナリと UI セッションを維持する。
-- Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden` で非表示起動し、`Copy-Item -LiteralPath` ベースで置換する。
-- Linux の自己更新は一時 shell script を起動して本体終了を待ち、`cp` + `chmod` 後に新 binary を再起動する。
+- Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden` で非表示起動し、`Copy-Item -LiteralPath` ベースで本体と `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を配置する。
+- Linux の自己更新は一時 shell script を起動して本体終了を待ち、`cp` + `chmod` 後に新 binary を再起動する。sidecar notice も同一ディレクトリへ同期する。
 - macOS は最新 version 検知のみ実施し、自動適用は非対応として release URL への案内に留める。
 
 - DES-008 Testability
@@ -169,7 +169,7 @@
 
 - DES-014 Self Update Coordinator
 - GitHub Releases API の latest endpoint から `tag_name` / asset 名 / `browser_download_url` を取得し、現在 version と比較する。
-- asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary と `SHA256SUMS` / `SHA256SUMS.sig` を選択する。
+- asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary、対応する `*.LICENSE.txt` / `*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS` / `SHA256SUMS.sig` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
 - restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。

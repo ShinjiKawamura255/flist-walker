@@ -1,5 +1,24 @@
 use super::*;
 
+fn test_update_candidate(target_version: &str) -> UpdateCandidate {
+    UpdateCandidate {
+        current_version: "0.13.0".to_string(),
+        target_version: target_version.to_string(),
+        release_url: "https://example.invalid/release".to_string(),
+        asset_name: format!("FlistWalker-{target_version}-linux-x86_64"),
+        asset_url: "https://example.invalid/asset".to_string(),
+        license_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.LICENSE.txt"),
+        license_asset_url: "https://example.invalid/license".to_string(),
+        notices_asset_name: format!(
+            "FlistWalker-{target_version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
+        ),
+        notices_asset_url: "https://example.invalid/notices".to_string(),
+        checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+        checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
+        support: UpdateSupport::Auto,
+    }
+}
+
 #[test]
 fn clear_query_and_selection_clears_state() {
     let root = test_root("clear");
@@ -336,16 +355,7 @@ fn available_update_response_opens_prompt() {
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
-        candidate: UpdateCandidate {
-            current_version: "0.12.3".to_string(),
-            target_version: "0.12.4".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
-            asset_url: "https://example.invalid/asset".to_string(),
-            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
-            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_update_candidate("0.12.4"),
     })
     .expect("send update response");
 
@@ -382,16 +392,7 @@ fn skipped_update_response_is_not_prompted_again_until_newer_version() {
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
-        candidate: UpdateCandidate {
-            current_version: "0.12.3".to_string(),
-            target_version: "0.12.4".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "FlistWalker-0.12.4-linux-x86_64".to_string(),
-            asset_url: "https://example.invalid/asset".to_string(),
-            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
-            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_update_candidate("0.12.4"),
     })
     .expect("send update response");
 
@@ -416,16 +417,7 @@ fn newer_update_response_ignores_previous_skip_version() {
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
-        candidate: UpdateCandidate {
-            current_version: "0.12.3".to_string(),
-            target_version: "0.12.5".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "FlistWalker-0.12.5-linux-x86_64".to_string(),
-            asset_url: "https://example.invalid/asset".to_string(),
-            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
-            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_update_candidate("0.12.5"),
     })
     .expect("send update response");
 
@@ -524,16 +516,7 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
     let (tx, rx) = mpsc::channel::<UpdateRequest>();
     app.update_tx = tx;
     app.update_prompt = Some(UpdatePromptState {
-        candidate: UpdateCandidate {
-            current_version: "0.13.0".to_string(),
-            target_version: "0.13.1".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
-            asset_url: "https://example.invalid/asset".to_string(),
-            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
-            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_update_candidate("0.13.1"),
         skip_until_next_version: false,
         install_started: false,
     });
@@ -568,16 +551,7 @@ fn failed_update_response_reenables_update_prompt_actions() {
     app.pending_update_request_id = Some(1);
     app.update_in_progress = true;
     app.update_prompt = Some(UpdatePromptState {
-        candidate: UpdateCandidate {
-            current_version: "0.13.0".to_string(),
-            target_version: "0.13.1".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
-            asset_url: "https://example.invalid/asset".to_string(),
-            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
-            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_update_candidate("0.13.1"),
         skip_until_next_version: false,
         install_started: true,
     });

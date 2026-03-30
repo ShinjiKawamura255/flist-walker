@@ -110,8 +110,8 @@
 | TC-071 | unit | 大規模候補でも partial top-N の結果が full ranking の先頭と一致する | SP-003, SP-007 |
 | TC-072 | unit | 並列検索の収集結果は逐次検索と同じ ranking を返す | SP-003, SP-007 |
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |
-| TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と `SHA256SUMS` を選択できる | SP-014 |
-| TC-075 | unit | staged binary は `SHA256SUMS.sig` の署名検証と `SHA256SUMS` の checksum 検証を通過した場合のみ自己更新へ進む | SP-014 |
+| TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と sidecar notice と `SHA256SUMS` を選択できる | SP-014 |
+| TC-075 | unit | staged binary と sidecar notice は `SHA256SUMS.sig` の署名検証と `SHA256SUMS` の checksum 検証を通過した場合のみ自己更新へ進む | SP-014 |
 | TC-076 | unit | Windows の自己更新は補助 updater 経由で target EXE 置換コマンドを生成し、実行中 EXE の直接上書きを避ける | SP-014 |
 | TC-077 | unit | macOS は新版検知時も自動置換へ進まず、手動更新案内に留める | SP-014 |
 | TC-078 | unit | 更新確認/ダウンロード失敗は notice に反映されても GUI 操作を継続できる | SP-014 |
