@@ -229,7 +229,7 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
 }
 
 #[test]
-fn create_filelist_with_use_filelist_enabled_opens_confirmation_and_prepares_new_tab() {
+fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_walker() {
     let root = test_root("filelist-use-filelist-confirm");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -243,24 +243,25 @@ fn create_filelist_with_use_filelist_enabled_opens_confirmation_and_prepares_new
 
     app.confirm_pending_filelist_use_walker();
 
-    assert_eq!(app.tabs.len(), 2);
-    assert_eq!(app.active_tab, 1);
-    assert!(!app.use_filelist);
+    assert_eq!(app.tabs.len(), 1);
+    assert_eq!(app.active_tab, 0);
+    assert!(app.use_filelist);
     assert!(app.include_files);
     assert!(app.include_dirs);
     let pending = app
         .pending_filelist_after_index
         .as_ref()
         .expect("deferred filelist pending");
-    let active_tab_id = app.current_tab_id().expect("active tab id");
-    assert_eq!(pending.tab_id, active_tab_id);
+    let current_tab_id = app.current_tab_id().expect("current tab id");
+    assert_eq!(pending.tab_id, current_tab_id);
     assert_eq!(pending.root, root);
     let req = index_rx
         .try_recv()
         .expect("walker index request should be sent");
-    assert_eq!(req.tab_id, active_tab_id);
+    assert_eq!(req.tab_id, current_tab_id);
     assert_eq!(req.root, root);
     assert!(!req.use_filelist);
+    assert!(app.notice.contains("Preparing background Walker index"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -337,6 +338,110 @@ fn deferred_filelist_is_canceled_when_root_changes() {
 
     assert!(app.pending_filelist_after_index.is_none());
     assert!(app.notice.contains("Deferred Create File List canceled"));
+    let _ = fs::remove_dir_all(&root_old);
+    let _ = fs::remove_dir_all(&root_new);
+}
+
+#[test]
+fn filelist_finish_reindexes_original_tab_after_tab_switch() {
+    let root_a = test_root("filelist-finish-background-tab-a");
+    let root_b = test_root("filelist-finish-background-tab-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    let source_tab_id = app.current_tab_id().expect("source tab id");
+    app.use_filelist = false;
+    if let Some(tab) = app.tabs.get_mut(app.active_tab) {
+        tab.use_filelist = false;
+    }
+    app.create_new_tab();
+    app.apply_root_change(root_b.clone());
+    app.switch_to_tab_index(1);
+
+    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+    app.index_tx = index_tx;
+    app.filelist_rx = filelist_rx;
+    app.pending_filelist_request_id = Some(1);
+    app.pending_filelist_request_tab_id = Some(source_tab_id);
+    app.pending_filelist_root = Some(root_a.clone());
+    app.pending_filelist_cancel = Some(Arc::new(AtomicBool::new(false)));
+    app.filelist_in_progress = true;
+
+    filelist_tx
+        .send(FileListResponse::Finished {
+            request_id: 1,
+            root: root_a.clone(),
+            path: root_a.join("FileList.txt"),
+            count: 1,
+        })
+        .expect("send filelist finished");
+    app.poll_filelist_response();
+
+    let req = index_rx
+        .try_recv()
+        .expect("background reindex request should be sent");
+    assert_eq!(req.tab_id, source_tab_id);
+    assert_eq!(req.root, root_a);
+    assert!(req.use_filelist);
+    let source_tab = app
+        .tabs
+        .iter()
+        .find(|tab| tab.id == source_tab_id)
+        .expect("source tab should remain");
+    assert!(source_tab.use_filelist);
+    assert!(source_tab.index_in_progress);
+    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.root, root_b);
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
+fn filelist_finish_ignores_original_tab_when_its_root_changed() {
+    let root_old = test_root("filelist-finish-root-changed-old");
+    let root_new = test_root("filelist-finish-root-changed-new");
+    fs::create_dir_all(&root_old).expect("create old root");
+    fs::create_dir_all(&root_new).expect("create new root");
+
+    let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+    let source_tab_id = app.current_tab_id().expect("source tab id");
+    app.use_filelist = false;
+    if let Some(tab) = app.tabs.get_mut(app.active_tab) {
+        tab.use_filelist = false;
+        tab.root = root_new.clone();
+    }
+    app.root = root_new.clone();
+
+    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+    app.index_tx = index_tx;
+    app.filelist_rx = filelist_rx;
+    app.pending_filelist_request_id = Some(2);
+    app.pending_filelist_request_tab_id = Some(source_tab_id);
+    app.pending_filelist_root = Some(root_old.clone());
+    app.pending_filelist_cancel = Some(Arc::new(AtomicBool::new(false)));
+    app.filelist_in_progress = true;
+
+    filelist_tx
+        .send(FileListResponse::Finished {
+            request_id: 2,
+            root: root_old.clone(),
+            path: root_old.join("FileList.txt"),
+            count: 1,
+        })
+        .expect("send filelist finished");
+    app.poll_filelist_response();
+
+    assert!(index_rx.try_recv().is_err());
+    let source_tab = app
+        .tabs
+        .iter()
+        .find(|tab| tab.id == source_tab_id)
+        .expect("source tab should remain");
+    assert!(!source_tab.use_filelist);
+    assert!(!source_tab.index_in_progress);
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
 }
@@ -1584,10 +1689,19 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
         }],
     );
 
-    assert_eq!(app.tabs.len(), 2);
+    assert_eq!(app.tabs.len(), 1);
     assert!(app.pending_filelist_use_walker_confirmation.is_none());
-    assert!(app.notice.contains("Preparing Walker index"));
+    assert!(app.notice.contains("Preparing background Walker index"));
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_use_walker_dialog_text_describes_background_execution() {
+    let [line1, line2] = FlistWalkerApp::filelist_use_walker_dialog_lines();
+
+    assert!(line1.contains("Walker indexing"));
+    assert!(line2.contains("現在のタブの裏"));
+    assert!(!line2.contains("新規タブ"));
 }
 
 #[test]

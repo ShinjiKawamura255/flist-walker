@@ -3,6 +3,13 @@ use super::*;
 impl FlistWalkerApp {
     const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
 
+    pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
+        [
+            "Use FileList が有効です。Create File List には Walker indexing が必要です。",
+            "FileList インデックスからは生成せず、現在のタブの裏で一時的に Walker を実行します。続行しますか？",
+        ]
+    }
+
     fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
         let mut button = egui::Button::new(label);
         if selected {
@@ -939,16 +946,15 @@ impl FlistWalkerApp {
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
         {
+            let [line1, line2] = Self::filelist_use_walker_dialog_lines();
             self.sync_filelist_dialog_selection(FileListDialogKind::UseWalker);
             egui::Window::new("Create File List?")
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
                 .show(ctx, |ui| {
-                    ui.label(
-                        "Use FileList が有効です。Create File List には Walker実行が必要です。",
-                    );
-                    ui.label("FileListインデックスからは生成しません。新規タブで実行しますか？");
+                    ui.label(line1);
+                    ui.label(line2);
                     ui.horizontal(|ui| {
                         if self
                             .dialog_button(ui, "Continue", self.active_filelist_dialog_button == 0)

@@ -1589,16 +1589,6 @@ Search hints:
         self.apply_tab_state(&tab);
     }
 
-    fn create_new_tab_for_root(&mut self, root: PathBuf, use_filelist: bool) -> Option<u64> {
-        self.create_new_tab();
-        self.root = root;
-        self.use_filelist = use_filelist;
-        self.include_files = true;
-        self.include_dirs = true;
-        self.sync_active_tab_state();
-        self.current_tab_id()
-    }
-
     fn close_active_tab(&mut self) {
         self.close_tab_index(self.active_tab);
     }
@@ -2489,6 +2479,117 @@ Search hints:
             use_filelist: self.use_filelist,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
+        };
+        self.enqueue_index_request(req);
+        self.dispatch_index_queue();
+    }
+
+    fn request_create_filelist_walker_refresh(&mut self) {
+        self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_ancestor_confirmation();
+        self.cancel_stale_pending_filelist_use_walker_confirmation();
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
+        if self
+            .pending_filelist_after_index
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
+            })
+        {
+            self.pending_filelist_after_index = None;
+            self.set_notice("Deferred Create File List canceled because root changed");
+        }
+        let request_id = self.next_index_request_id;
+        self.next_index_request_id = self.next_index_request_id.saturating_add(1);
+        self.pending_index_request_id = Some(request_id);
+        if let Some(tab_id) = self.current_tab_id() {
+            self.index_request_tabs.insert(request_id, tab_id);
+            if let Ok(mut latest) = self.latest_index_request_ids.lock() {
+                latest.insert(tab_id, request_id);
+            }
+        }
+        self.index_inflight_requests.insert(request_id);
+        self.index_in_progress = true;
+        self.pending_request_id = None;
+        self.search_in_progress = false;
+        self.search_resume_pending = !self.query.trim().is_empty();
+        self.search_rerun_pending = false;
+
+        self.index.entries.clear();
+        self.index.source = IndexSource::None;
+        self.preview_cache.clear();
+        self.preview_cache_order.clear();
+        self.preview_cache_total_bytes = 0;
+        self.highlight_cache.clear();
+        self.highlight_cache_order.clear();
+        self.entry_kinds.clear();
+        self.pending_index_entries.clear();
+        self.pending_index_entries_request_id = None;
+        self.reset_kind_resolution_state();
+        self.incremental_filtered_entries.clear();
+        self.pending_preview_request_id = None;
+        self.preview_in_progress = false;
+        self.last_incremental_results_refresh = Instant::now();
+        self.last_search_snapshot_len = 0;
+        self.refresh_status_line();
+
+        let req = IndexRequest {
+            request_id,
+            tab_id: self.current_tab_id().unwrap_or_default(),
+            root: self.root.clone(),
+            use_filelist: false,
+            include_files: self.include_files,
+            include_dirs: self.include_dirs,
+        };
+        self.enqueue_index_request(req);
+        self.dispatch_index_queue();
+    }
+
+    fn request_background_index_refresh_for_tab(&mut self, tab_index: usize) {
+        let Some(tab_id) = self.tabs.get(tab_index).map(|tab| tab.id) else {
+            return;
+        };
+        let request_id = self.next_index_request_id;
+        self.next_index_request_id = self.next_index_request_id.saturating_add(1);
+        self.index_request_tabs.insert(request_id, tab_id);
+        if let Ok(mut latest) = self.latest_index_request_ids.lock() {
+            latest.insert(tab_id, request_id);
+        }
+
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            self.index_request_tabs.remove(&request_id);
+            return;
+        };
+        tab.pending_restore_refresh = false;
+        tab.pending_index_request_id = Some(request_id);
+        tab.index_in_progress = true;
+        tab.pending_request_id = None;
+        tab.search_in_progress = false;
+        tab.search_resume_pending = !tab.query.trim().is_empty();
+        tab.search_rerun_pending = false;
+        tab.index.entries.clear();
+        tab.index.source = IndexSource::None;
+        tab.pending_index_entries.clear();
+        tab.pending_index_entries_request_id = None;
+        tab.pending_kind_paths.clear();
+        tab.pending_kind_paths_set.clear();
+        tab.in_flight_kind_paths.clear();
+        tab.kind_resolution_in_progress = false;
+        tab.kind_resolution_epoch = tab.kind_resolution_epoch.saturating_add(1);
+        tab.pending_preview_request_id = None;
+        tab.preview_in_progress = false;
+        tab.last_incremental_results_refresh = Instant::now();
+        tab.last_search_snapshot_len = 0;
+        tab.notice = "Refreshing from created FileList".to_string();
+
+        let req = IndexRequest {
+            request_id,
+            tab_id,
+            root: tab.root.clone(),
+            use_filelist: tab.use_filelist,
+            include_files: tab.include_files,
+            include_dirs: tab.include_dirs,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -4129,16 +4230,16 @@ Search hints:
         let Some(pending) = self.pending_filelist_use_walker_confirmation.take() else {
             return;
         };
-        let Some(new_tab_id) = self.create_new_tab_for_root(pending.root.clone(), false) else {
-            self.set_notice("Failed to prepare a new tab for FileList creation");
-            return;
-        };
         self.pending_filelist_after_index = Some(PendingFileListAfterIndex {
-            tab_id: new_tab_id,
+            tab_id: pending.source_tab_id,
             root: pending.root,
         });
-        self.request_index_refresh();
-        self.set_notice("Preparing Walker index in new tab for Create File List");
+        if !self.include_files || !self.include_dirs {
+            self.include_files = true;
+            self.include_dirs = true;
+        }
+        self.request_create_filelist_walker_refresh();
+        self.set_notice("Preparing background Walker index for Create File List");
     }
 
     fn cancel_pending_filelist_overwrite(&mut self) {
@@ -4244,10 +4345,17 @@ Search hints:
                 root: self.root.clone(),
             });
             if needs_reindex {
-                self.request_index_refresh();
-                self.set_notice(
-                    "Preparing Walker index with files/folders enabled before Create File List",
-                );
+                if self.use_filelist {
+                    self.request_create_filelist_walker_refresh();
+                    self.set_notice(
+                        "Preparing background Walker index with files/folders enabled before Create File List",
+                    );
+                } else {
+                    self.request_index_refresh();
+                    self.set_notice(
+                        "Preparing Walker index with files/folders enabled before Create File List",
+                    );
+                }
             } else {
                 self.set_notice("Waiting for current indexing to finish before Create File List");
             }
@@ -4259,10 +4367,17 @@ Search hints:
                 tab_id,
                 root: self.root.clone(),
             });
-            self.request_index_refresh();
-            self.set_notice(
-                "Preparing Walker index with files/folders enabled before Create File List",
-            );
+            if self.use_filelist {
+                self.request_create_filelist_walker_refresh();
+                self.set_notice(
+                    "Preparing background Walker index with files/folders enabled before Create File List",
+                );
+            } else {
+                self.request_index_refresh();
+                self.set_notice(
+                    "Preparing Walker index with files/folders enabled before Create File List",
+                );
+            }
             return;
         }
 
@@ -4304,13 +4419,21 @@ Search hints:
                     if !same_requested_root {
                         continue;
                     }
+                    let mut target_tab_index = None;
                     if let Some(tab_id) = requested_tab_id {
                         if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
-                            if let Some(tab) = self.tabs.get_mut(tab_index) {
-                                tab.use_filelist = true;
-                            }
-                            if tab_index == self.active_tab {
-                                self.use_filelist = true;
+                            let tab_matches_root = self
+                                .tabs
+                                .get(tab_index)
+                                .is_some_and(|tab| Self::path_key(&tab.root) == Self::path_key(&root));
+                            if tab_matches_root {
+                                if let Some(tab) = self.tabs.get_mut(tab_index) {
+                                    tab.use_filelist = true;
+                                }
+                                if tab_index == self.active_tab {
+                                    self.use_filelist = true;
+                                }
+                                target_tab_index = Some(tab_index);
                             }
                         }
                     }
@@ -4320,12 +4443,21 @@ Search hints:
                             path.display(),
                             count
                         ));
+                        if let Some(tab_index) = target_tab_index {
+                            if tab_index != self.active_tab {
+                                self.request_background_index_refresh_for_tab(tab_index);
+                            }
+                        }
                         continue;
                     }
 
                     self.set_notice(format!("Created {}: {} entries", path.display(), count));
-                    if requested_tab_id == self.current_tab_id() && self.use_filelist {
-                        self.request_index_refresh();
+                    if let Some(tab_index) = target_tab_index {
+                        if tab_index == self.active_tab && self.use_filelist {
+                            self.request_index_refresh();
+                        } else if tab_index != self.active_tab {
+                            self.request_background_index_refresh_for_tab(tab_index);
+                        }
                     }
                 }
                 FileListResponse::Failed {

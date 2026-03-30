@@ -84,6 +84,8 @@
 | TC-051 | unit | UNC root 配下のパスは execute/open 直前の root 判定で許可される | SP-004 |
 | TC-052 | unit | Create File List で祖先 FileList 追記がありうる場合は確認ダイアログを要求する | SP-001, SP-010 |
 | TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
+| TC-084 | unit | Source が FileList のタブで Create File List を確認すると、新規タブを開かずに同一タブの裏で Walker indexing を実行する | SP-001, SP-010 |
+| TC-085 | unit | FileList source の Create File List 完了時、元タブが background 化していてもその元タブを再インデックスし、完了前に元タブ root が変わっていた場合は再インデックスしない | SP-001, SP-010 |
 | TC-065 | unit | Create File List の保留状態は status panel または確認ダイアログ経由でキャンセルできる | SP-001, SP-010 |
 | TC-066 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
 | TC-067 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
@@ -265,6 +267,8 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
 - TC-052 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
 - TC-053 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
+- TC-084 -> SP-001, SP-010 -> DES-001, DES-009 -> FR-001, FR-010
+- TC-085 -> SP-001, SP-010 -> DES-001, DES-009 -> FR-001, FR-010
 - TC-082 -> SP-001, SP-007 -> DES-001, DES-006 -> FR-001, NFR-001
 - TC-083 -> SP-002, SP-007 -> DES-002, DES-006 -> FR-002, NFR-001
 - TC-054 -> SP-010 -> DES-007, DES-009 -> FR-011

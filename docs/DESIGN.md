@@ -119,6 +119,8 @@
 - root 外パスは候補表示を維持しつつ、Action worker が OS 起動要求を出す前に拒否して notice を返す。
 - Create File List は root 直下の FileList 作成と祖先追記を分離し、祖先追記がありうる場合のみ GUI 側の確認ダイアログを通す。
 - 利用者が祖先追記を拒否した場合、root 直下の FileList 作成は成功扱いのまま維持し、祖先追記経路だけをスキップする。
+- Source が FileList のアクティブタブで Create File List を要求した場合は、新規タブを作らずに同一タブへ `use_filelist = false` の一時 index request を発行する。完了後はその Walker snapshot で FileList を作成し、FileList 作成完了応答で同一タブを通常の FileList 再インデックスへ戻す。
+- FileList 作成完了時の再インデックス対象は request に紐づく tab_id/root で判定し、元タブが background 化していてもその tab へ再インデックス request を投げる。完了時点で元タブの root が変わっていた場合は旧 root 応答として notice のみ更新し、tab 状態は戻さない。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
 - Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。
