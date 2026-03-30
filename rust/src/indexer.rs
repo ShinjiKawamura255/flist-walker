@@ -253,6 +253,9 @@ fn preferred_filelist_raw_candidates(raw: &str) -> Vec<String> {
     }
     #[cfg(not(windows))]
     {
+        // For WSL/Linux consuming Windows-authored FileList entries, prefer the slash-normalized
+        // lexical path in the dual-filter fast path. We intentionally do not probe the filesystem
+        // here, so literal '\' filenames are not disambiguated in this streaming mode.
         if normalized == raw {
             vec![raw.to_string()]
         } else {

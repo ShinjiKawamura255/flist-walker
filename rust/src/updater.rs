@@ -477,6 +477,9 @@ mod tests {
 
     #[test]
     fn should_offer_update_supports_same_version_override() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
         assert!(!should_offer_update(
             &Version::new(0, 12, 3),
             &Version::new(0, 12, 3)
@@ -495,6 +498,9 @@ mod tests {
 
     #[test]
     fn should_offer_update_supports_downgrade_override() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
         assert!(!should_offer_update(
             &Version::new(0, 12, 3),
             &Version::new(0, 12, 2)
@@ -513,6 +519,9 @@ mod tests {
 
     #[test]
     fn self_update_disabled_flag_is_honored() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
         assert!(!self_update_disabled());
         unsafe {
             std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
@@ -525,6 +534,9 @@ mod tests {
 
     #[test]
     fn check_for_update_short_circuits_when_self_update_is_disabled() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
         unsafe {
             std::env::set_var("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
         }

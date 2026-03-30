@@ -492,6 +492,9 @@ fn silent_update_check_failure_leaves_notice_unchanged() {
 
 #[test]
 fn startup_update_check_is_skipped_when_self_update_is_disabled() {
+    let _env_lock = crate::env_var_test_lock()
+        .lock()
+        .expect("env var test lock");
     let root = test_root("startup-update-check-disabled");
     fs::create_dir_all(&root).expect("create dir");
     unsafe {

@@ -2595,6 +2595,47 @@ Search hints:
         self.dispatch_index_queue();
     }
 
+    fn clear_active_index_request_state(&mut self) {
+        self.pending_index_request_id = None;
+        self.index_in_progress = false;
+        self.pending_index_entries.clear();
+        self.pending_index_entries_request_id = None;
+        self.search_resume_pending = false;
+        self.search_rerun_pending = false;
+        self.pending_restore_refresh = false;
+    }
+
+    fn clear_tab_index_request_state(tab: &mut AppTabState) {
+        tab.pending_index_request_id = None;
+        tab.index_in_progress = false;
+        tab.pending_index_entries.clear();
+        tab.pending_index_entries_request_id = None;
+        tab.search_resume_pending = false;
+        tab.search_rerun_pending = false;
+        tab.pending_restore_refresh = false;
+    }
+
+    fn handle_index_worker_unavailable(&mut self) {
+        let affected_tab_ids: HashSet<u64> = self.index_request_tabs.values().copied().collect();
+        let notice = "Index worker is unavailable".to_string();
+
+        self.pending_filelist_after_index = None;
+        self.pending_index_queue.clear();
+        self.background_index_states.clear();
+        self.index_inflight_requests.clear();
+        self.index_request_tabs.clear();
+
+        self.clear_active_index_request_state();
+        self.set_notice(notice.clone());
+
+        for tab in &mut self.tabs {
+            if affected_tab_ids.contains(&tab.id) || tab.pending_index_request_id.is_some() {
+                Self::clear_tab_index_request_state(tab);
+                tab.notice = notice.clone();
+            }
+        }
+    }
+
     fn maybe_reindex_from_filter_toggles(
         &mut self,
         use_filelist_changed: bool,
@@ -2748,13 +2789,7 @@ Search hints:
             };
             let req_id = req.request_id;
             if self.index_tx.send(req).is_err() {
-                self.index_request_tabs.clear();
-                self.pending_index_queue.clear();
-                self.background_index_states.clear();
-                self.index_inflight_requests.clear();
-                self.index_in_progress = false;
-                self.pending_index_request_id = None;
-                self.set_notice("Index worker is unavailable");
+                self.handle_index_worker_unavailable();
                 break;
             } else {
                 self.index_inflight_requests.insert(req_id);

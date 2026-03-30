@@ -21,6 +21,7 @@
 - SHOULD: 重複を除去する。
 - SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR/LINK）は遅延解決して初期読み込みを優先する。
 - MUST: include_files/include_dirs が両方有効な FileList ストリーム解析では、パス区切りのプラットフォーム差異は字句変換だけで吸収し、候補選択のための per-line filesystem existence probe を追加してはならない。
+- SHOULD: 非 Windows で `\` を含む FileList 行を include_files/include_dirs 両有効の高速経路で読む場合、Windows/WSL 互換を優先して `/` 正規化候補を先に扱ってよい。表示は実装依存とし、初期ストリームで literal `\` filename との曖昧性解消は必須としない。
 
 ### Preconditions / Postconditions
 - Preconditions: 検索ルートが確定している。

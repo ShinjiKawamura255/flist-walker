@@ -447,6 +447,40 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
 }
 
 #[test]
+fn background_index_send_failure_clears_pending_state_for_target_tab() {
+    let root_a = test_root("background-index-send-failure-a");
+    let root_b = test_root("background-index-send-failure-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    app.create_new_tab();
+    app.root = root_b.clone();
+    if let Some(tab) = app.tabs.get_mut(app.active_tab) {
+        tab.root = root_b.clone();
+    }
+    app.sync_active_tab_state();
+    app.switch_to_tab_index(0);
+
+    let (_, rx) = mpsc::channel::<IndexRequest>();
+    let (closed_tx, _) = mpsc::channel::<IndexRequest>();
+    drop(rx);
+    app.index_tx = closed_tx;
+
+    app.request_background_index_refresh_for_tab(1);
+
+    let background_tab = app.tabs.get(1).expect("background tab");
+    assert!(!background_tab.index_in_progress);
+    assert_eq!(background_tab.pending_index_request_id, None);
+    assert!(background_tab.pending_index_entries.is_empty());
+    assert!(background_tab.notice.contains("Index worker is unavailable"));
+    assert!(app.notice.contains("Index worker is unavailable"));
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
 fn root_change_clears_stale_selection_state() {
     let root_old = test_root("root-change-clear-selection-old");
     let root_new = test_root("root-change-clear-selection-new");
