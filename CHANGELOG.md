@@ -24,6 +24,31 @@
 ### Known issues
 - 
 
+## [0.13.4] - 2026-03-30
+### Added
+- 実行バイナリと同じディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合も、自己更新を無効化できるようにした。
+
+### Changed
+- `FileList` / Walker の初期インデクシング経路を見直し、Windows と WSL をまたぐ運用でも高速経路を優先するようにした。
+- `Create File List` 完了後の再読み込みは、そのまま現在タブを使って進めるようにした。
+- 自己更新は standalone バイナリだけでなく、対応する `LICENSE.txt` と `THIRD_PARTY_NOTICES.txt` も同じディレクトリへ配置するようにした。
+
+### Fixed
+- `Create File List` 完了後のバックグラウンド再インデックスで worker 送信に失敗した場合、タブが進行中表示のまま残る問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- standalone バイナリ配布に対応する `LICENSE` / `THIRD_PARTY_NOTICES` sidecar asset を自己更新でも追従配置するようにした。
+- `THIRD_PARTY_NOTICES.txt` に自己更新関連依存の notice 反映漏れを補完した。
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+
 ## [0.13.3] - 2026-03-29
 ### Added
 - 更新署名用の鍵ペアを生成する `generate_update_keypair` helper を追加した。
