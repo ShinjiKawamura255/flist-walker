@@ -87,6 +87,7 @@
 | TC-065 | unit | Create File List の保留状態は status panel または確認ダイアログ経由でキャンセルできる | SP-001, SP-010 |
 | TC-066 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
 | TC-067 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
+| TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、v0.12.3 の解析速度基準から 15% 以内に維持する | SP-001, SP-007 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存と notarization 手順が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
@@ -178,6 +179,12 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - 性能計測は `docs/perf-notes.md`（必要時追加）へ記録。
 
 ## Regression Guard
+- 発生条件: `b8e3321` 以降、include_files/include_dirs 両有効の FileList ストリーム解析で各行に `exists()` 相当の確認が入り、Windows 由来 `\` 区切り FileList のインデクシングが目に見えて遅くなる。
+- 期待動作: `\` / `/` の差異は候補順序だけで吸収し、初期ストリームは v0.12.3 相当の line-only 解析速度を維持する。
+- 非対象範囲: include_files / include_dirs のいずれか片方のみ有効な場合の種別判定、root 外候補の実行拒否、階層 FileList の新旧判定。
+- 関連テストID: TC-082.
+
+## Regression Guard
 - 発生条件: 検索窓フォーカス中に `Ctrl+J` / `Ctrl+M`、`ArrowUp` / `ArrowDown`、`Ctrl+I` を押しても `Results` の実行・移動・PIN トグルが効かない。
 - 期待動作: 検索窓フォーカス有無に関わらず、`Ctrl+J` / `Ctrl+M` は実行、`ArrowUp` / `ArrowDown` は current row 移動、`Ctrl+I` は PIN トグルを行う。
 - 非対象範囲: IME 合成中は既存仕様通りフォーカス優先で一部ショートカットを抑制する。
@@ -257,6 +264,7 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
 - TC-052 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
 - TC-053 -> SP-001, SP-010 -> DES-007, DES-009 -> FR-010
+- TC-082 -> SP-001, SP-007 -> DES-001, DES-006 -> FR-001, NFR-001
 - TC-054 -> SP-010 -> DES-007, DES-009 -> FR-011
 - TC-055 -> SP-010, SP-012 -> DES-007, DES-012 -> FR-011, NFR-005
 - TC-056 -> SP-012 -> DES-012 -> NFR-005

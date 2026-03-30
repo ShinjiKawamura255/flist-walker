@@ -164,7 +164,9 @@ where
         }
         let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
         if include_files && include_dirs {
-            if let Some(path) = select_existing_candidate_or_first(candidates) {
+            // Keep FileList indexing on the v0.12.3 fast path: choose the platform-preferred
+            // lexical candidate and avoid per-line existence probes in the initial stream.
+            if let Some(path) = candidates.into_iter().next() {
                 if seen.insert(path.clone()) {
                     on_entry(path, None);
                 }
@@ -203,10 +205,7 @@ fn resolve_filelist_entry_candidates(
 ) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     let mut seen = HashSet::new();
-    let mut raws = vec![strip_wrapping_quotes(line).to_string()];
-    if raws[0].contains('\\') {
-        raws.push(raws[0].replace('\\', "/"));
-    }
+    let raws = preferred_filelist_raw_candidates(strip_wrapping_quotes(line));
 
     for raw in raws {
         if raw.is_empty() {
@@ -238,17 +237,28 @@ fn resolve_filelist_entry_candidates(
     candidates
 }
 
-fn select_existing_candidate_or_first(candidates: Vec<PathBuf>) -> Option<PathBuf> {
-    let mut first = None;
-    for candidate in candidates {
-        if first.is_none() {
-            first = Some(candidate.clone());
-        }
-        if candidate.exists() {
-            return Some(candidate);
+fn preferred_filelist_raw_candidates(raw: &str) -> Vec<String> {
+    if !raw.contains('\\') {
+        return vec![raw.to_string()];
+    }
+
+    let normalized = raw.replace('\\', "/");
+    #[cfg(windows)]
+    {
+        if normalized == raw {
+            vec![raw.to_string()]
+        } else {
+            vec![raw.to_string(), normalized]
         }
     }
-    first
+    #[cfg(not(windows))]
+    {
+        if normalized == raw {
+            vec![raw.to_string()]
+        } else {
+            vec![normalized, raw.to_string()]
+        }
+    }
 }
 
 fn push_unique_candidate(
@@ -902,6 +912,17 @@ mod tests {
         entries.iter().any(|entry| same_path(entry, expected))
     }
 
+    fn expected_backslash_relative_path(root: &Path) -> PathBuf {
+        #[cfg(windows)]
+        {
+            root.join(r"nested\item.txt")
+        }
+        #[cfg(not(windows))]
+        {
+            root.join("nested/item.txt")
+        }
+    }
+
     fn assert_filelist_source_matches(source: &IndexSource, expected: &Path) {
         match source {
             IndexSource::FileList(actual) => {
@@ -969,7 +990,7 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 
-    fn parse_filelist_stream_strict_exists_both_types(
+    fn parse_filelist_stream_v0123_reference_count(
         filelist_path: &Path,
         root: &Path,
     ) -> Result<usize> {
@@ -988,14 +1009,7 @@ mod tests {
                 continue;
             }
             let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
-            let mut selected = None;
-            for candidate in candidates {
-                if candidate.try_exists().unwrap_or(false) {
-                    selected = Some(candidate);
-                    break;
-                }
-            }
-            if let Some(path) = selected {
+            if let Some(path) = candidates.into_iter().next() {
                 if seen.insert(path) {
                     count = count.saturating_add(1);
                 }
@@ -1005,57 +1019,69 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn perf_parse_filelist_ab_strict_vs_fast() {
-        let root = test_root("perf-parse-ab");
+    #[ignore = "perf measurement; run explicitly"]
+    fn perf_regression_filelist_stream_matches_v0123_reference_budget() {
+        let root = test_root("perf-filelist-v0123-reference");
         fs::create_dir_all(&root).expect("create dir");
         let filelist = root.join("FileList.txt");
         let data_dir = root.join("dataset");
         fs::create_dir_all(&data_dir).expect("create dataset dir");
-        let lines = 30_000usize;
+        let lines = 40_000usize;
         let mut text = String::with_capacity(lines * 24);
         for i in 0..lines {
-            let rel = format!("dataset/f-{i}.txt");
+            let rel = format!("dataset\\f-{i}.txt");
             fs::write(root.join(&rel), "x").expect("write synthetic file");
             text.push_str(&rel);
             text.push('\n');
         }
         fs::write(&filelist, text).expect("write synthetic filelist");
 
-        let strict_start = Instant::now();
-        let strict_count =
-            parse_filelist_stream_strict_exists_both_types(&filelist, &root).expect("strict parse");
-        let strict_elapsed = strict_start.elapsed();
+        let iterations = 5usize;
+        let mut reference_best = Duration::MAX;
+        let mut current_best = Duration::MAX;
+        let mut reference_count = 0usize;
+        let mut current_count = 0usize;
 
-        let fast_start = Instant::now();
-        let mut fast_count = 0usize;
-        parse_filelist_stream(
-            &filelist,
-            &root,
-            true,
-            true,
-            || false,
-            |_path, _is_dir| {
-                fast_count = fast_count.saturating_add(1);
-            },
-        )
-        .expect("fast parse");
-        let fast_elapsed = fast_start.elapsed();
+        for _ in 0..iterations {
+            let reference_start = Instant::now();
+            reference_count =
+                parse_filelist_stream_v0123_reference_count(&filelist, &root).expect("reference parse");
+            reference_best = reference_best.min(reference_start.elapsed());
 
-        let strict_ms = strict_elapsed.as_secs_f64() * 1000.0;
-        let fast_ms = fast_elapsed.as_secs_f64() * 1000.0;
-        let speedup = if fast_ms > 0.0 {
-            strict_ms / fast_ms
+            let current_start = Instant::now();
+            current_count = 0usize;
+            parse_filelist_stream(
+                &filelist,
+                &root,
+                true,
+                true,
+                || false,
+                |_path, _is_dir| {
+                    current_count = current_count.saturating_add(1);
+                },
+            )
+            .expect("current parse");
+            current_best = current_best.min(current_start.elapsed());
+        }
+
+        let reference_ms = reference_best.as_secs_f64() * 1000.0;
+        let current_ms = current_best.as_secs_f64() * 1000.0;
+        let slowdown = if reference_ms > 0.0 {
+            current_ms / reference_ms
         } else {
-            f64::INFINITY
+            1.0
         };
 
         eprintln!(
-            "A/B parse_filelist (lines={lines}) strict_exists_ms={strict_ms:.3} fast_line_only_ms={fast_ms:.3} speedup={speedup:.2}x strict_count={strict_count} fast_count={fast_count}"
+            "FileList perf reference(v0.12.3) lines={lines} reference_ms={reference_ms:.3} current_ms={current_ms:.3} slowdown={slowdown:.2}x reference_count={reference_count} current_count={current_count}"
         );
 
-        assert_eq!(strict_count, lines);
-        assert_eq!(fast_count, lines);
+        assert_eq!(reference_count, lines);
+        assert_eq!(current_count, lines);
+        assert!(
+            slowdown <= 1.15,
+            "current FileList parse regressed against v0.12.3 reference: {slowdown:.2}x"
+        );
         let _ = fs::remove_dir_all(&root);
     }
 
@@ -1433,12 +1459,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_filelist_stream_prefers_existing_candidate_for_current_platform() {
-        let root = test_root("parse-stream-existing-platform-candidate");
-        let nested = root.join("nested");
-        fs::create_dir_all(&nested).expect("create dir");
-        let file = nested.join("item.txt");
-        fs::write(&file, "x").expect("write file");
+    fn regression_parse_filelist_stream_prefers_platform_candidate_without_exists_probe() {
+        let root = test_root("parse-stream-platform-candidate");
+        fs::create_dir_all(root.join("nested")).expect("create dir");
         let filelist = root.join("FileList.txt");
         fs::write(&filelist, "nested\\item.txt\n").expect("write filelist");
 
@@ -1455,7 +1478,7 @@ mod tests {
         )
         .expect("parse filelist");
 
-        assert_eq!(entries, vec![(file, None)]);
+        assert_eq!(entries, vec![(expected_backslash_relative_path(&root), None)]);
         let _ = fs::remove_dir_all(&root);
     }
 
