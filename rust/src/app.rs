@@ -25,6 +25,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[path = "app/bootstrap.rs"]
 mod bootstrap;
+#[path = "app/cache.rs"]
+mod cache;
 #[path = "app/filelist.rs"]
 mod filelist;
 #[path = "app/input.rs"]
@@ -42,6 +44,7 @@ mod update;
 #[path = "app/workers.rs"]
 mod workers;
 
+use cache::*;
 #[allow(unused_imports)]
 use input::*;
 #[allow(unused_imports)]
@@ -343,18 +346,9 @@ pub struct FlistWalkerApp {
     prev_space_down: bool,
     query_input_id: egui::Id,
     tab_drag_state: Option<TabDragState>,
-    preview_cache: HashMap<PathBuf, String>,
-    preview_cache_order: VecDeque<PathBuf>,
-    preview_cache_total_bytes: usize,
-    highlight_cache_scope_query: String,
-    highlight_cache_scope_root: PathBuf,
-    highlight_cache_scope_use_regex: bool,
-    highlight_cache_scope_ignore_case: bool,
-    highlight_cache_scope_prefer_relative: bool,
-    highlight_cache: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
-    highlight_cache_order: VecDeque<HighlightCacheKey>,
-    sort_metadata_cache: HashMap<PathBuf, SortMetadata>,
-    sort_metadata_cache_order: VecDeque<PathBuf>,
+    preview_cache: PreviewCacheState,
+    highlight_cache: HighlightCacheState,
+    sort_metadata_cache: SortMetadataCacheState,
     incremental_filtered_entries: Vec<PathBuf>,
     pending_index_entries: VecDeque<IndexEntry>,
     pending_index_entries_request_id: Option<u64>,
@@ -618,18 +612,12 @@ Search hints:
             prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
             tab_drag_state: None,
-            preview_cache: HashMap::new(),
-            preview_cache_order: VecDeque::new(),
-            preview_cache_total_bytes: 0,
-            highlight_cache_scope_query: String::new(),
-            highlight_cache_scope_root: PathBuf::new(),
-            highlight_cache_scope_use_regex: false,
-            highlight_cache_scope_ignore_case: true,
-            highlight_cache_scope_prefer_relative: false,
-            highlight_cache: HashMap::new(),
-            highlight_cache_order: VecDeque::new(),
-            sort_metadata_cache: HashMap::new(),
-            sort_metadata_cache_order: VecDeque::new(),
+            preview_cache: PreviewCacheState::default(),
+            highlight_cache: HighlightCacheState {
+                scope_ignore_case: true,
+                ..HighlightCacheState::default()
+            },
+            sort_metadata_cache: SortMetadataCacheState::default(),
             incremental_filtered_entries: Vec::new(),
             pending_index_entries: VecDeque::new(),
             pending_index_entries_request_id: None,
@@ -693,22 +681,25 @@ Search hints:
     }
 
     fn clear_sort_metadata_cache(&mut self) {
-        self.sort_metadata_cache.clear();
-        self.sort_metadata_cache_order.clear();
+        self.sort_metadata_cache.entries.clear();
+        self.sort_metadata_cache.order.clear();
     }
 
     fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
-        if !self.sort_metadata_cache.contains_key(&path) {
-            self.sort_metadata_cache_order.push_back(path.clone());
+        if !self.sort_metadata_cache.entries.contains_key(&path) {
+            self.sort_metadata_cache.order.push_back(path.clone());
         }
-        self.sort_metadata_cache.insert(path.clone(), metadata);
-        while self.sort_metadata_cache_order.len() > Self::SORT_METADATA_CACHE_MAX {
-            if let Some(oldest) = self.sort_metadata_cache_order.pop_front() {
-                self.sort_metadata_cache.remove(&oldest);
+        self.sort_metadata_cache
+            .entries
+            .insert(path.clone(), metadata);
+        while self.sort_metadata_cache.order.len() > Self::SORT_METADATA_CACHE_MAX {
+            if let Some(oldest) = self.sort_metadata_cache.order.pop_front() {
+                self.sort_metadata_cache.entries.remove(&oldest);
             }
         }
-        if !self.sort_metadata_cache.contains_key(&path) {
-            self.sort_metadata_cache_order
+        if !self.sort_metadata_cache.entries.contains_key(&path) {
+            self.sort_metadata_cache
+                .order
                 .retain(|entry| entry != &path);
         }
     }
@@ -800,7 +791,7 @@ Search hints:
     }
 
     fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
-        Self::build_sorted_results_from(&self.base_results, mode, &self.sort_metadata_cache)
+        Self::build_sorted_results_from(&self.base_results, mode, &self.sort_metadata_cache.entries)
     }
 
     fn replace_results_snapshot(
@@ -877,7 +868,7 @@ Search hints:
             .base_results
             .iter()
             .map(|(path, _)| path.clone())
-            .filter(|path| !self.sort_metadata_cache.contains_key(path))
+            .filter(|path| !self.sort_metadata_cache.entries.contains_key(path))
             .collect::<Vec<_>>();
         if missing_paths.is_empty() {
             let sorted = self.build_sorted_results(self.result_sort_mode);
@@ -2209,11 +2200,8 @@ Search hints:
 
         self.index.entries.clear();
         self.index.source = IndexSource::None;
-        self.preview_cache.clear();
-        self.preview_cache_order.clear();
-        self.preview_cache_total_bytes = 0;
-        self.highlight_cache.clear();
-        self.highlight_cache_order.clear();
+        self.clear_preview_cache();
+        self.clear_highlight_cache();
         self.incremental_filtered_entries.clear();
         self.pending_index_entries.clear();
         self.pending_index_entries_request_id = None;
@@ -2275,11 +2263,8 @@ Search hints:
 
         self.index.entries.clear();
         self.index.source = IndexSource::None;
-        self.preview_cache.clear();
-        self.preview_cache_order.clear();
-        self.preview_cache_total_bytes = 0;
-        self.highlight_cache.clear();
-        self.highlight_cache_order.clear();
+        self.clear_preview_cache();
+        self.clear_highlight_cache();
         self.entry_kinds.clear();
         self.pending_index_entries.clear();
         self.pending_index_entries_request_id = None;
@@ -3200,7 +3185,7 @@ Search hints:
                 tab.result_state.results = Self::build_sorted_results_from(
                     &tab.result_state.base_results,
                     tab.result_state.result_sort_mode,
-                    &self.sort_metadata_cache,
+                    &self.sort_metadata_cache.entries,
                 );
                 tab.result_state.results_compacted = false;
                 if tab.result_state.results.is_empty() {
@@ -3260,23 +3245,29 @@ Search hints:
         }
     }
 
+    fn clear_preview_cache(&mut self) {
+        self.preview_cache.entries.clear();
+        self.preview_cache.order.clear();
+        self.preview_cache.total_bytes = 0;
+    }
+
     fn cache_preview(&mut self, path: PathBuf, preview: String) {
         let new_bytes = preview.len();
-        if let Some(old) = self.preview_cache.get(&path) {
-            self.preview_cache_total_bytes =
-                self.preview_cache_total_bytes.saturating_sub(old.len());
+        if let Some(old) = self.preview_cache.entries.get(&path) {
+            self.preview_cache.total_bytes =
+                self.preview_cache.total_bytes.saturating_sub(old.len());
         }
-        if !self.preview_cache.contains_key(&path) {
-            self.preview_cache_order.push_back(path.clone());
+        if !self.preview_cache.entries.contains_key(&path) {
+            self.preview_cache.order.push_back(path.clone());
         }
-        self.preview_cache.insert(path, preview);
-        self.preview_cache_total_bytes = self.preview_cache_total_bytes.saturating_add(new_bytes);
+        self.preview_cache.entries.insert(path, preview);
+        self.preview_cache.total_bytes = self.preview_cache.total_bytes.saturating_add(new_bytes);
         // Keep cache bounded so long browse sessions do not grow memory unbounded.
-        while self.preview_cache_total_bytes > Self::PREVIEW_CACHE_MAX_BYTES {
-            if let Some(oldest) = self.preview_cache_order.pop_front() {
-                if let Some(evicted) = self.preview_cache.remove(&oldest) {
-                    self.preview_cache_total_bytes =
-                        self.preview_cache_total_bytes.saturating_sub(evicted.len());
+        while self.preview_cache.total_bytes > Self::PREVIEW_CACHE_MAX_BYTES {
+            if let Some(oldest) = self.preview_cache.order.pop_front() {
+                if let Some(evicted) = self.preview_cache.entries.remove(&oldest) {
+                    self.preview_cache.total_bytes =
+                        self.preview_cache.total_bytes.saturating_sub(evicted.len());
                 }
             } else {
                 break;
@@ -3285,35 +3276,37 @@ Search hints:
     }
 
     fn clear_highlight_cache(&mut self) {
-        self.highlight_cache.clear();
-        self.highlight_cache_order.clear();
+        self.highlight_cache.entries.clear();
+        self.highlight_cache.order.clear();
     }
 
     fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
-        if self.highlight_cache_scope_query == self.query
-            && Self::path_key(&self.highlight_cache_scope_root) == Self::path_key(&self.root)
-            && self.highlight_cache_scope_use_regex == self.use_regex
-            && self.highlight_cache_scope_ignore_case == self.ignore_case
-            && self.highlight_cache_scope_prefer_relative == prefer_relative
+        if self.highlight_cache.scope_query == self.query
+            && Self::path_key(&self.highlight_cache.scope_root) == Self::path_key(&self.root)
+            && self.highlight_cache.scope_use_regex == self.use_regex
+            && self.highlight_cache.scope_ignore_case == self.ignore_case
+            && self.highlight_cache.scope_prefer_relative == prefer_relative
         {
             return;
         }
-        self.highlight_cache_scope_query = self.query.clone();
-        self.highlight_cache_scope_root = self.root.clone();
-        self.highlight_cache_scope_use_regex = self.use_regex;
-        self.highlight_cache_scope_ignore_case = self.ignore_case;
-        self.highlight_cache_scope_prefer_relative = prefer_relative;
+        self.highlight_cache.scope_query = self.query.clone();
+        self.highlight_cache.scope_root = self.root.clone();
+        self.highlight_cache.scope_use_regex = self.use_regex;
+        self.highlight_cache.scope_ignore_case = self.ignore_case;
+        self.highlight_cache.scope_prefer_relative = prefer_relative;
         self.clear_highlight_cache();
     }
 
     fn cache_highlight_positions_for_key(&mut self, key: HighlightCacheKey, positions: Vec<u16>) {
-        if !self.highlight_cache.contains_key(&key) {
-            self.highlight_cache_order.push_back(key.clone());
+        if !self.highlight_cache.entries.contains_key(&key) {
+            self.highlight_cache.order.push_back(key.clone());
         }
-        self.highlight_cache.insert(key, Arc::new(positions));
-        while self.highlight_cache_order.len() > Self::HIGHLIGHT_CACHE_MAX {
-            if let Some(oldest) = self.highlight_cache_order.pop_front() {
-                self.highlight_cache.remove(&oldest);
+        self.highlight_cache
+            .entries
+            .insert(key, Arc::new(positions));
+        while self.highlight_cache.order.len() > Self::HIGHLIGHT_CACHE_MAX {
+            if let Some(oldest) = self.highlight_cache.order.pop_front() {
+                self.highlight_cache.entries.remove(&oldest);
             }
         }
     }
@@ -3347,7 +3340,7 @@ Search hints:
             ignore_case: self.ignore_case,
         };
 
-        if let Some(positions) = self.highlight_cache.get(&key) {
+        if let Some(positions) = self.highlight_cache.entries.get(&key) {
             return Arc::clone(positions);
         }
 
@@ -3361,6 +3354,7 @@ Search hints:
         ));
         self.cache_highlight_positions_for_key(key.clone(), positions);
         self.highlight_cache
+            .entries
             .get(&key)
             .cloned()
             .unwrap_or_else(|| Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new()))))
@@ -3728,7 +3722,7 @@ Search hints:
 
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
-                if let Some(cached) = self.preview_cache.get(path) {
+                if let Some(cached) = self.preview_cache.entries.get(path) {
                     self.preview = cached.clone();
                     self.preview_in_progress = false;
                     self.pending_preview_request_id = None;

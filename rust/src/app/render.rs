@@ -636,9 +636,7 @@ impl FlistWalkerApp {
                 };
                 if ui.checkbox(&mut self.show_preview, "Preview").changed() {
                     if !self.show_preview {
-                        self.preview_cache.clear();
-                        self.preview_cache_order.clear();
-                        self.preview_cache_total_bytes = 0;
+                        self.clear_preview_cache();
                     }
                     self.mark_ui_state_dirty();
                     self.persist_ui_state_now();
