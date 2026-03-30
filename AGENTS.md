@@ -69,5 +69,11 @@
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
+## Temporary Change Plan Rule
+- `app-core-segmentation` に着手する前に [docs/CHANGE-PLAN-20260331-app-core-segmentation.md](/mnt/d/work/flistwalker/docs/CHANGE-PLAN-20260331-app-core-segmentation.md) を読むこと。
+- 実装順序、検証順序、リスク対応は上記計画書に従うこと。
+- 対象範囲、実施順、リスク判断を変更する場合は、実装より先に計画書を更新すること。
+- この一時セクションは、計画対象の作業完了後に削除すること。
+
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
