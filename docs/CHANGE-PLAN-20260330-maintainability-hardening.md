@@ -85,8 +85,8 @@
 - [x] [docs/TASKS.md](/mnt/d/work/flistwalker/docs/TASKS.md) が参照する欠落ドキュメントの扱いを決め、参照の削除・置換・再作成のいずれかへ整理する
 - [x] `FlistWalkerApp` のフィールドを feature 単位に束ねる再編案を設計する
 - [x] filelist 作成系、update prompt 系、tab/session 系の state transition を別モジュールへ切り出す順序を確定する
-- [ ] 変更種別ごとの検証マトリクスを `TESTPLAN.md` へ反映する
-- [ ] フェーズごとに `cargo test` と必要な ignored perf test を実行し、結果を記録する
+- [x] 変更種別ごとの検証マトリクスを `TESTPLAN.md` へ反映する
+- [x] フェーズごとに `cargo test` と必要な ignored perf test を実行し、結果を記録する
 
 ## 8. Validation Plan
 - Automated tests:
@@ -150,13 +150,17 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) は index/search など横断 orchestration を残しつつ、filelist / update の詳細遷移を子モジュールへ委譲する形へ寄せた。
 - 既存の [rust/src/app/input.rs](/mnt/d/work/flistwalker/rust/src/app/input.rs) と [rust/src/app/render.rs](/mnt/d/work/flistwalker/rust/src/app/render.rs) からは、同じメソッド名のまま分離後の実装を呼び続けられることを確認した。
 - 検証として `cargo fmt`、`cd rust && cargo test`、`cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`、`cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` を実行し、通常 test / perf test ともに green を確認した。
+- 2026-03-31 Phase 5 validation matrix hardening:
+- [docs/TESTPLAN.md](/mnt/d/work/flistwalker/docs/TESTPLAN.md) に Validation Matrix を追加し、docs-only / app orchestration / indexing path / search contract / CLI-build-release-updater の 5 区分で required validation を明文化した。
+- [AGENTS.md](/mnt/d/work/flistwalker/AGENTS.md) の検証ルールは Validation Matrix 参照に更新し、Rust 実装変更では最低限 `cargo test`、docs-only 変更では文書整合確認で代替可能であることを明示した。
+- 検証として `rg` による matrix 項目と AGENTS 参照の確認を実施し、docs-only フェーズとして必要な追記が両文書へ反映されていることを確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 
