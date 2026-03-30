@@ -240,7 +240,12 @@ fn query_history_is_persisted_in_saved_tab_state() {
 
     let restored = app.restored_tab_state(42, &saved);
     assert_eq!(
-        restored.query_history.iter().cloned().collect::<Vec<_>>(),
+        restored
+            .query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         saved.query_history
     );
     let _ = fs::remove_dir_all(&root);

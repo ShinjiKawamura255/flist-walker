@@ -966,10 +966,10 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     app.create_new_tab();
 
     assert_eq!(app.tabs.len(), 2);
-    assert!(app.tabs[0].results_compacted);
-    assert!(app.tabs[0].results.is_empty());
-    assert_eq!(app.tabs[0].base_results.len(), 2);
-    assert!(app.tabs[0].preview.is_empty());
+    assert!(app.tabs[0].result_state.results_compacted);
+    assert!(app.tabs[0].result_state.results.is_empty());
+    assert_eq!(app.tabs[0].result_state.base_results.len(), 2);
+    assert!(app.tabs[0].result_state.preview.is_empty());
 
     app.switch_to_tab_index(0);
 
@@ -977,7 +977,7 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     assert_eq!(app.results[0].0, first);
     assert_eq!(app.results[1].0, second);
     assert_eq!(app.current_row, Some(1));
-    assert!(!app.tabs[0].results_compacted);
+    assert!(!app.tabs[0].result_state.results_compacted);
     let _ = fs::remove_dir_all(&root);
 }
 

@@ -728,11 +728,11 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .iter()
         .find(|tab| tab.id == first_tab_id)
         .expect("first tab");
-    assert!(first_tab.results.is_empty());
-    assert!(first_tab.results_compacted);
-    assert_eq!(first_tab.base_results.len(), 1);
-    assert_eq!(first_tab.base_results[0].0, selected);
-    assert_eq!(first_tab.preview, "preview-body");
+    assert!(first_tab.result_state.results.is_empty());
+    assert!(first_tab.result_state.results_compacted);
+    assert_eq!(first_tab.result_state.base_results.len(), 1);
+    assert_eq!(first_tab.result_state.base_results[0].0, selected);
+    assert_eq!(first_tab.result_state.preview, "preview-body");
     let _ = fs::remove_dir_all(&root);
 }
 

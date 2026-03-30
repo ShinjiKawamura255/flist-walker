@@ -393,7 +393,7 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
         .find(|tab| tab.id == source_tab_id)
         .expect("source tab should remain");
     assert!(source_tab.use_filelist);
-    assert!(source_tab.index_in_progress);
+    assert!(source_tab.index_state.index_in_progress);
     assert_eq!(app.active_tab, 1);
     assert_eq!(app.root, root_b);
     let _ = fs::remove_dir_all(&root_a);
@@ -443,7 +443,7 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
         .find(|tab| tab.id == source_tab_id)
         .expect("source tab should remain");
     assert!(!source_tab.use_filelist);
-    assert!(!source_tab.index_in_progress);
+    assert!(!source_tab.index_state.index_in_progress);
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
 }
@@ -472,9 +472,9 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     app.request_background_index_refresh_for_tab(1);
 
     let background_tab = app.tabs.get(1).expect("background tab");
-    assert!(!background_tab.index_in_progress);
-    assert_eq!(background_tab.pending_index_request_id, None);
-    assert!(background_tab.pending_index_entries.is_empty());
+    assert!(!background_tab.index_state.index_in_progress);
+    assert_eq!(background_tab.index_state.pending_index_request_id, None);
+    assert!(background_tab.index_state.pending_index_entries.is_empty());
     assert!(background_tab
         .notice
         .contains("Index worker is unavailable"));
@@ -510,8 +510,8 @@ fn root_change_clears_stale_selection_state() {
     assert!(app.entries.is_empty());
     assert!(app.results.is_empty());
     assert_eq!(app.tabs[app.active_tab].root, root_new);
-    assert!(app.tabs[app.active_tab].all_entries.is_empty());
-    assert!(app.tabs[app.active_tab].entries.is_empty());
+    assert!(app.tabs[app.active_tab].index_state.all_entries.is_empty());
+    assert!(app.tabs[app.active_tab].index_state.entries.is_empty());
     let req = rx.try_recv().expect("index request should be sent");
     assert_eq!(req.root, app.root);
     let _ = fs::remove_dir_all(&root_old);

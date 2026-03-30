@@ -779,7 +779,7 @@ impl FlistWalkerApp {
 
     pub(super) fn sync_shared_query_history_to_tabs(&mut self) {
         for tab in &mut self.tabs {
-            tab.query_history = self.query_history.clone();
+            tab.query_state.query_history = self.query_history.clone();
         }
     }
 

@@ -134,6 +134,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 第4群 `polling/orchestration core`: `poll_index_response`、background index 応答、request queue 制御、`eframe::App::update` は最終 coordinator として当面 `app.rs` に残す。
 - 実施順は、まず tab state を分けて `capture/apply/restore` の責務を局所化し、その後 bootstrap、cache helper、最後に docs 更新の順で固定する。
 - Phase 2 の具体対象は、`AppTabState` を `TabQueryState`、`TabResultState`、`TabIndexState` のような束へ再編し、履歴検索・selection・sort の field copy を減らすこととする。
+- 2026-03-31 09:10 Phase 2 tab state segmentation:
+- 新規 [rust/src/app/tab_state.rs](/mnt/d/work/flistwalker/rust/src/app/tab_state.rs) を追加し、background tab snapshot を `TabQueryState`、`TabIndexState`、`TabResultState` へ分割した。
+- [rust/src/app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) の `capture_active_tab_state` / `apply_tab_state` / `restored_tab_state` / background index response 処理は、新しい tab state 束を介して copy/restore する形へ更新した。
+- [rust/src/app/input.rs](/mnt/d/work/flistwalker/rust/src/app/input.rs) の shared history 同期と、関連 unit test は新しい `query_state` / `index_state` / `result_state` 構造へ追随させた。
+- 検証として `cd rust && cargo check`、`cargo fmt`、`cd rust && cargo test` を実行し、通常 test が green であることを確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

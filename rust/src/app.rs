@@ -33,6 +33,8 @@ mod render;
 mod session;
 #[path = "app/state.rs"]
 mod state;
+#[path = "app/tab_state.rs"]
+mod tab_state;
 #[path = "app/update.rs"]
 mod update;
 #[path = "app/workers.rs"]
@@ -44,66 +46,8 @@ use input::*;
 use render::*;
 use session::*;
 use state::*;
+use tab_state::*;
 use workers::*;
-
-#[derive(Clone, Debug)]
-struct AppTabState {
-    id: u64,
-    root: PathBuf,
-    use_filelist: bool,
-    use_regex: bool,
-    ignore_case: bool,
-    include_files: bool,
-    include_dirs: bool,
-    index: IndexBuildResult,
-    all_entries: Arc<Vec<PathBuf>>,
-    entries: Arc<Vec<PathBuf>>,
-    entry_kinds: HashMap<PathBuf, EntryKind>,
-    pending_index_request_id: Option<u64>,
-    index_in_progress: bool,
-    pending_index_entries: VecDeque<IndexEntry>,
-    pending_index_entries_request_id: Option<u64>,
-    pending_kind_paths: VecDeque<PathBuf>,
-    pending_kind_paths_set: HashSet<PathBuf>,
-    in_flight_kind_paths: HashSet<PathBuf>,
-    kind_resolution_epoch: u64,
-    kind_resolution_in_progress: bool,
-    incremental_filtered_entries: Vec<PathBuf>,
-    last_incremental_results_refresh: Instant,
-    last_search_snapshot_len: usize,
-    search_resume_pending: bool,
-    search_rerun_pending: bool,
-    query: String,
-    query_history: VecDeque<String>,
-    query_history_cursor: Option<usize>,
-    query_history_draft: Option<String>,
-    query_history_dirty_since: Option<Instant>,
-    history_search_active: bool,
-    history_search_query: String,
-    history_search_original_query: String,
-    history_search_results: Vec<String>,
-    history_search_current: Option<usize>,
-    pending_restore_refresh: bool,
-    base_results: Vec<(PathBuf, f64)>,
-    results: Vec<(PathBuf, f64)>,
-    result_sort_mode: ResultSortMode,
-    pending_sort_request_id: Option<u64>,
-    sort_in_progress: bool,
-    pinned_paths: HashSet<PathBuf>,
-    current_row: Option<usize>,
-    preview: String,
-    results_compacted: bool,
-    notice: String,
-    pending_request_id: Option<u64>,
-    pending_preview_request_id: Option<u64>,
-    pending_action_request_id: Option<u64>,
-    search_in_progress: bool,
-    preview_in_progress: bool,
-    action_in_progress: bool,
-    scroll_to_current: bool,
-    focus_query_requested: bool,
-    unfocus_query_requested: bool,
-}
 
 #[derive(Default)]
 struct BackgroundIndexState {
@@ -1075,48 +1019,53 @@ Search hints:
             ignore_case: saved.ignore_case,
             include_files: saved.include_files,
             include_dirs: saved.include_dirs,
-            index: IndexBuildResult {
-                entries: Vec::new(),
-                source: IndexSource::None,
+            index_state: TabIndexState {
+                index: IndexBuildResult {
+                    entries: Vec::new(),
+                    source: IndexSource::None,
+                },
+                all_entries: Arc::new(Vec::new()),
+                entries: Arc::new(Vec::new()),
+                entry_kinds: HashMap::new(),
+                pending_index_request_id: None,
+                index_in_progress: false,
+                pending_index_entries: VecDeque::new(),
+                pending_index_entries_request_id: None,
+                pending_kind_paths: VecDeque::new(),
+                pending_kind_paths_set: HashSet::new(),
+                in_flight_kind_paths: HashSet::new(),
+                kind_resolution_epoch: 1,
+                kind_resolution_in_progress: false,
+                incremental_filtered_entries: Vec::new(),
+                last_incremental_results_refresh: Instant::now(),
+                last_search_snapshot_len: 0,
+                search_resume_pending: false,
+                search_rerun_pending: false,
             },
-            all_entries: Arc::new(Vec::new()),
-            entries: Arc::new(Vec::new()),
-            entry_kinds: HashMap::new(),
-            pending_index_request_id: None,
-            index_in_progress: false,
-            pending_index_entries: VecDeque::new(),
-            pending_index_entries_request_id: None,
-            pending_kind_paths: VecDeque::new(),
-            pending_kind_paths_set: HashSet::new(),
-            in_flight_kind_paths: HashSet::new(),
-            kind_resolution_epoch: 1,
-            kind_resolution_in_progress: false,
-            incremental_filtered_entries: Vec::new(),
-            last_incremental_results_refresh: Instant::now(),
-            last_search_snapshot_len: 0,
-            search_resume_pending: false,
-            search_rerun_pending: false,
-            query: saved.query.clone(),
-            query_history: self.query_history.clone(),
-            query_history_cursor: None,
-            query_history_draft: None,
-            query_history_dirty_since: None,
-            history_search_active: false,
-            history_search_query: String::new(),
-            history_search_original_query: String::new(),
-            history_search_results: Vec::new(),
-            history_search_current: None,
+            query_state: TabQueryState {
+                query: saved.query.clone(),
+                query_history: self.query_history.clone(),
+                query_history_cursor: None,
+                query_history_draft: None,
+                query_history_dirty_since: None,
+                history_search_active: false,
+                history_search_query: String::new(),
+                history_search_original_query: String::new(),
+                history_search_results: Vec::new(),
+                history_search_current: None,
+            },
             pending_restore_refresh: true,
-            base_results: Vec::new(),
-            results: Vec::new(),
-            result_sort_mode: ResultSortMode::Score,
-            pending_sort_request_id: None,
-            sort_in_progress: false,
-            pinned_paths: HashSet::new(),
-            // Tabs do not persist selection, so restored tabs start with the first row selected.
-            current_row: Some(0),
-            preview: String::new(),
-            results_compacted: false,
+            result_state: TabResultState {
+                base_results: Vec::new(),
+                results: Vec::new(),
+                result_sort_mode: ResultSortMode::Score,
+                pending_sort_request_id: None,
+                sort_in_progress: false,
+                pinned_paths: HashSet::new(),
+                current_row: Some(0),
+                preview: String::new(),
+                results_compacted: false,
+            },
             notice: "Restored tab".to_string(),
             pending_request_id: None,
             pending_preview_request_id: None,
@@ -1178,25 +1127,25 @@ Search hints:
     }
 
     fn shrink_tab_checkpoint_buffers(tab: &mut AppTabState) {
-        Self::shrink_vec_if_sparse(&mut tab.index.entries);
-        Self::shrink_vec_if_sparse(&mut tab.incremental_filtered_entries);
-        Self::shrink_deque_if_sparse(&mut tab.pending_index_entries);
-        Self::shrink_deque_if_sparse(&mut tab.pending_kind_paths);
+        Self::shrink_vec_if_sparse(&mut tab.index_state.index.entries);
+        Self::shrink_vec_if_sparse(&mut tab.index_state.incremental_filtered_entries);
+        Self::shrink_deque_if_sparse(&mut tab.index_state.pending_index_entries);
+        Self::shrink_deque_if_sparse(&mut tab.index_state.pending_kind_paths);
     }
 
     fn compact_inactive_tab_state(tab: &mut AppTabState) {
-        let can_compact_results = !tab.index_in_progress
+        let can_compact_results = !tab.index_state.index_in_progress
             && !tab.search_in_progress
-            && !tab.sort_in_progress
+            && !tab.result_state.sort_in_progress
             && tab.pending_request_id.is_none()
-            && tab.pending_sort_request_id.is_none();
-        if can_compact_results && !tab.results.is_empty() {
-            tab.results.clear();
-            tab.results.shrink_to_fit();
-            tab.results_compacted = true;
+            && tab.result_state.pending_sort_request_id.is_none();
+        if can_compact_results && !tab.result_state.results.is_empty() {
+            tab.result_state.results.clear();
+            tab.result_state.results.shrink_to_fit();
+            tab.result_state.results_compacted = true;
         }
         if !tab.preview_in_progress {
-            tab.preview.clear();
+            tab.result_state.preview.clear();
         }
         Self::shrink_tab_checkpoint_buffers(tab);
     }
@@ -1205,13 +1154,13 @@ Search hints:
         let was_compacted = self
             .tabs
             .get(self.active_tab)
-            .map(|tab| tab.results_compacted)
+            .map(|tab| tab.result_state.results_compacted)
             .unwrap_or(false);
         if !was_compacted {
             return;
         }
         if let Some(tab) = self.tabs.get_mut(self.active_tab) {
-            tab.results_compacted = false;
+            tab.result_state.results_compacted = false;
         }
 
         if self.base_results.is_empty() {
@@ -1246,44 +1195,50 @@ Search hints:
             ignore_case: self.ignore_case,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
-            index: self.index.clone(),
-            all_entries: Arc::clone(&self.all_entries),
-            entries: Arc::clone(&self.entries),
-            entry_kinds: self.entry_kinds.clone(),
-            pending_index_request_id: self.pending_index_request_id,
-            index_in_progress: self.index_in_progress,
-            pending_index_entries: self.pending_index_entries.clone(),
-            pending_index_entries_request_id: self.pending_index_entries_request_id,
-            pending_kind_paths: self.pending_kind_paths.clone(),
-            pending_kind_paths_set: self.pending_kind_paths_set.clone(),
-            in_flight_kind_paths: self.in_flight_kind_paths.clone(),
-            kind_resolution_epoch: self.kind_resolution_epoch,
-            kind_resolution_in_progress: self.kind_resolution_in_progress,
-            incremental_filtered_entries: self.incremental_filtered_entries.clone(),
-            last_incremental_results_refresh: self.last_incremental_results_refresh,
-            last_search_snapshot_len: self.last_search_snapshot_len,
-            search_resume_pending: self.search_resume_pending,
-            search_rerun_pending: self.search_rerun_pending,
-            query: self.query.clone(),
-            query_history: self.query_history.clone(),
-            query_history_cursor: self.query_history_cursor,
-            query_history_draft: self.query_history_draft.clone(),
-            query_history_dirty_since: self.query_history_dirty_since,
-            history_search_active: self.history_search_active,
-            history_search_query: self.history_search_query.clone(),
-            history_search_original_query: self.history_search_original_query.clone(),
-            history_search_results: self.history_search_results.clone(),
-            history_search_current: self.history_search_current,
+            index_state: TabIndexState {
+                index: self.index.clone(),
+                all_entries: Arc::clone(&self.all_entries),
+                entries: Arc::clone(&self.entries),
+                entry_kinds: self.entry_kinds.clone(),
+                pending_index_request_id: self.pending_index_request_id,
+                index_in_progress: self.index_in_progress,
+                pending_index_entries: self.pending_index_entries.clone(),
+                pending_index_entries_request_id: self.pending_index_entries_request_id,
+                pending_kind_paths: self.pending_kind_paths.clone(),
+                pending_kind_paths_set: self.pending_kind_paths_set.clone(),
+                in_flight_kind_paths: self.in_flight_kind_paths.clone(),
+                kind_resolution_epoch: self.kind_resolution_epoch,
+                kind_resolution_in_progress: self.kind_resolution_in_progress,
+                incremental_filtered_entries: self.incremental_filtered_entries.clone(),
+                last_incremental_results_refresh: self.last_incremental_results_refresh,
+                last_search_snapshot_len: self.last_search_snapshot_len,
+                search_resume_pending: self.search_resume_pending,
+                search_rerun_pending: self.search_rerun_pending,
+            },
+            query_state: TabQueryState {
+                query: self.query.clone(),
+                query_history: self.query_history.clone(),
+                query_history_cursor: self.query_history_cursor,
+                query_history_draft: self.query_history_draft.clone(),
+                query_history_dirty_since: self.query_history_dirty_since,
+                history_search_active: self.history_search_active,
+                history_search_query: self.history_search_query.clone(),
+                history_search_original_query: self.history_search_original_query.clone(),
+                history_search_results: self.history_search_results.clone(),
+                history_search_current: self.history_search_current,
+            },
             pending_restore_refresh: self.pending_restore_refresh,
-            base_results: self.base_results.clone(),
-            results: self.results.clone(),
-            result_sort_mode: self.result_sort_mode,
-            pending_sort_request_id: self.pending_sort_request_id,
-            sort_in_progress: self.sort_in_progress,
-            pinned_paths: self.pinned_paths.clone(),
-            current_row: self.current_row,
-            preview: self.preview.clone(),
-            results_compacted: false,
+            result_state: TabResultState {
+                base_results: self.base_results.clone(),
+                results: self.results.clone(),
+                result_sort_mode: self.result_sort_mode,
+                pending_sort_request_id: self.pending_sort_request_id,
+                sort_in_progress: self.sort_in_progress,
+                pinned_paths: self.pinned_paths.clone(),
+                current_row: self.current_row,
+                preview: self.preview.clone(),
+                results_compacted: false,
+            },
             notice: self.notice.clone(),
             pending_request_id: self.pending_request_id,
             pending_preview_request_id: self.pending_preview_request_id,
@@ -1304,37 +1259,37 @@ Search hints:
         self.ignore_case = tab.ignore_case;
         self.include_files = tab.include_files;
         self.include_dirs = tab.include_dirs;
-        self.index = tab.index.clone();
-        self.all_entries = Arc::clone(&tab.all_entries);
-        self.entries = Arc::clone(&tab.entries);
-        self.entry_kinds = tab.entry_kinds.clone();
-        self.pending_index_request_id = tab.pending_index_request_id;
-        self.index_in_progress = tab.index_in_progress;
-        self.pending_index_entries = tab.pending_index_entries.clone();
-        self.pending_index_entries_request_id = tab.pending_index_entries_request_id;
-        self.pending_kind_paths = tab.pending_kind_paths.clone();
-        self.pending_kind_paths_set = tab.pending_kind_paths_set.clone();
-        self.in_flight_kind_paths = tab.in_flight_kind_paths.clone();
-        self.kind_resolution_epoch = tab.kind_resolution_epoch;
-        self.kind_resolution_in_progress = tab.kind_resolution_in_progress;
-        self.incremental_filtered_entries = tab.incremental_filtered_entries.clone();
-        self.last_incremental_results_refresh = tab.last_incremental_results_refresh;
-        self.last_search_snapshot_len = tab.last_search_snapshot_len;
-        self.search_resume_pending = tab.search_resume_pending;
-        self.search_rerun_pending = tab.search_rerun_pending;
-        self.query = tab.query.clone();
+        self.index = tab.index_state.index.clone();
+        self.all_entries = Arc::clone(&tab.index_state.all_entries);
+        self.entries = Arc::clone(&tab.index_state.entries);
+        self.entry_kinds = tab.index_state.entry_kinds.clone();
+        self.pending_index_request_id = tab.index_state.pending_index_request_id;
+        self.index_in_progress = tab.index_state.index_in_progress;
+        self.pending_index_entries = tab.index_state.pending_index_entries.clone();
+        self.pending_index_entries_request_id = tab.index_state.pending_index_entries_request_id;
+        self.pending_kind_paths = tab.index_state.pending_kind_paths.clone();
+        self.pending_kind_paths_set = tab.index_state.pending_kind_paths_set.clone();
+        self.in_flight_kind_paths = tab.index_state.in_flight_kind_paths.clone();
+        self.kind_resolution_epoch = tab.index_state.kind_resolution_epoch;
+        self.kind_resolution_in_progress = tab.index_state.kind_resolution_in_progress;
+        self.incremental_filtered_entries = tab.index_state.incremental_filtered_entries.clone();
+        self.last_incremental_results_refresh = tab.index_state.last_incremental_results_refresh;
+        self.last_search_snapshot_len = tab.index_state.last_search_snapshot_len;
+        self.search_resume_pending = tab.index_state.search_resume_pending;
+        self.search_rerun_pending = tab.index_state.search_rerun_pending;
+        self.query = tab.query_state.query.clone();
         self.reset_query_history_navigation();
         self.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.pending_restore_refresh = tab.pending_restore_refresh;
-        self.base_results = tab.base_results.clone();
-        self.results = tab.results.clone();
-        self.result_sort_mode = tab.result_sort_mode;
-        self.pending_sort_request_id = tab.pending_sort_request_id;
-        self.sort_in_progress = tab.sort_in_progress;
-        self.pinned_paths = tab.pinned_paths.clone();
-        self.current_row = tab.current_row;
-        self.preview = tab.preview.clone();
+        self.base_results = tab.result_state.base_results.clone();
+        self.results = tab.result_state.results.clone();
+        self.result_sort_mode = tab.result_state.result_sort_mode;
+        self.pending_sort_request_id = tab.result_state.pending_sort_request_id;
+        self.sort_in_progress = tab.result_state.sort_in_progress;
+        self.pinned_paths = tab.result_state.pinned_paths.clone();
+        self.current_row = tab.result_state.current_row;
+        self.preview = tab.result_state.preview.clone();
         self.notice = tab.notice.clone();
         self.pending_request_id = tab.pending_request_id;
         self.pending_preview_request_id = tab.pending_preview_request_id;
@@ -1409,56 +1364,56 @@ Search hints:
         self.next_tab_id = self.next_tab_id.saturating_add(1);
         let mut tab = self.capture_active_tab_state(id);
         tab.use_filelist = true;
-        tab.query.clear();
-        tab.query_history = self.query_history.clone();
-        tab.query_history_cursor = None;
-        tab.query_history_draft = None;
-        tab.query_history_dirty_since = None;
-        tab.history_search_active = false;
-        tab.history_search_query.clear();
-        tab.history_search_original_query.clear();
-        tab.history_search_results.clear();
-        tab.history_search_current = None;
+        tab.query_state.query.clear();
+        tab.query_state.query_history = self.query_history.clone();
+        tab.query_state.query_history_cursor = None;
+        tab.query_state.query_history_draft = None;
+        tab.query_state.query_history_dirty_since = None;
+        tab.query_state.history_search_active = false;
+        tab.query_state.history_search_query.clear();
+        tab.query_state.history_search_original_query.clear();
+        tab.query_state.history_search_results.clear();
+        tab.query_state.history_search_current = None;
         tab.pending_restore_refresh = false;
-        tab.base_results = self
+        tab.result_state.base_results = self
             .entries
             .iter()
             .take(self.limit)
             .cloned()
             .map(|p| (p, 0.0))
             .collect();
-        tab.result_sort_mode = ResultSortMode::Score;
-        tab.pending_sort_request_id = None;
-        tab.sort_in_progress = false;
-        tab.pinned_paths.clear();
-        tab.current_row = None;
-        tab.preview.clear();
-        tab.results_compacted = false;
+        tab.result_state.result_sort_mode = ResultSortMode::Score;
+        tab.result_state.pending_sort_request_id = None;
+        tab.result_state.sort_in_progress = false;
+        tab.result_state.pinned_paths.clear();
+        tab.result_state.current_row = None;
+        tab.result_state.preview.clear();
+        tab.result_state.results_compacted = false;
         tab.notice = "Opened new tab".to_string();
         tab.pending_request_id = None;
         tab.pending_preview_request_id = None;
         tab.pending_action_request_id = None;
-        tab.pending_index_request_id = None;
+        tab.index_state.pending_index_request_id = None;
         tab.search_in_progress = false;
-        tab.index_in_progress = false;
+        tab.index_state.index_in_progress = false;
         tab.preview_in_progress = false;
         tab.action_in_progress = false;
-        tab.pending_index_entries.clear();
-        tab.pending_index_entries_request_id = None;
-        tab.pending_kind_paths.clear();
-        tab.pending_kind_paths_set.clear();
-        tab.in_flight_kind_paths.clear();
-        tab.kind_resolution_in_progress = false;
-        tab.kind_resolution_epoch = 1;
-        tab.incremental_filtered_entries.clear();
-        tab.last_search_snapshot_len = tab.entries.len();
-        tab.last_incremental_results_refresh = Instant::now();
-        tab.search_resume_pending = false;
-        tab.search_rerun_pending = false;
+        tab.index_state.pending_index_entries.clear();
+        tab.index_state.pending_index_entries_request_id = None;
+        tab.index_state.pending_kind_paths.clear();
+        tab.index_state.pending_kind_paths_set.clear();
+        tab.index_state.in_flight_kind_paths.clear();
+        tab.index_state.kind_resolution_in_progress = false;
+        tab.index_state.kind_resolution_epoch = 1;
+        tab.index_state.incremental_filtered_entries.clear();
+        tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
+        tab.index_state.last_incremental_results_refresh = Instant::now();
+        tab.index_state.search_resume_pending = false;
+        tab.index_state.search_rerun_pending = false;
         tab.scroll_to_current = true;
         tab.focus_query_requested = true;
         tab.unfocus_query_requested = false;
-        tab.results = tab.base_results.clone();
+        tab.result_state.results = tab.result_state.base_results.clone();
         self.tabs.push(tab.clone());
         self.active_tab = self.tabs.len().saturating_sub(1);
         self.apply_tab_state(&tab);
@@ -1616,8 +1571,8 @@ Search hints:
             tab.search_in_progress
                 || tab.preview_in_progress
                 || tab.action_in_progress
-                || tab.index_in_progress
-                || tab.sort_in_progress
+                || tab.index_state.index_in_progress
+                || tab.result_state.sort_in_progress
         })
     }
 
@@ -1646,11 +1601,11 @@ Search hints:
             ignore_case: tab.ignore_case,
             include_files: tab.include_files,
             include_dirs: tab.include_dirs,
-            query: tab.query.clone(),
+            query: tab.query_state.query.clone(),
             query_history: if Self::history_persist_disabled() {
                 Vec::new()
             } else {
-                tab.query_history.iter().cloned().collect()
+                tab.query_state.query_history.iter().cloned().collect()
             },
         }
     }
@@ -2396,25 +2351,26 @@ Search hints:
             return;
         };
         tab.pending_restore_refresh = false;
-        tab.pending_index_request_id = Some(request_id);
-        tab.index_in_progress = true;
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
         tab.pending_request_id = None;
         tab.search_in_progress = false;
-        tab.search_resume_pending = !tab.query.trim().is_empty();
-        tab.search_rerun_pending = false;
-        tab.index.entries.clear();
-        tab.index.source = IndexSource::None;
-        tab.pending_index_entries.clear();
-        tab.pending_index_entries_request_id = None;
-        tab.pending_kind_paths.clear();
-        tab.pending_kind_paths_set.clear();
-        tab.in_flight_kind_paths.clear();
-        tab.kind_resolution_in_progress = false;
-        tab.kind_resolution_epoch = tab.kind_resolution_epoch.saturating_add(1);
+        tab.index_state.search_resume_pending = !tab.query_state.query.trim().is_empty();
+        tab.index_state.search_rerun_pending = false;
+        tab.index_state.index.entries.clear();
+        tab.index_state.index.source = IndexSource::None;
+        tab.index_state.pending_index_entries.clear();
+        tab.index_state.pending_index_entries_request_id = None;
+        tab.index_state.pending_kind_paths.clear();
+        tab.index_state.pending_kind_paths_set.clear();
+        tab.index_state.in_flight_kind_paths.clear();
+        tab.index_state.kind_resolution_in_progress = false;
+        tab.index_state.kind_resolution_epoch =
+            tab.index_state.kind_resolution_epoch.saturating_add(1);
         tab.pending_preview_request_id = None;
         tab.preview_in_progress = false;
-        tab.last_incremental_results_refresh = Instant::now();
-        tab.last_search_snapshot_len = 0;
+        tab.index_state.last_incremental_results_refresh = Instant::now();
+        tab.index_state.last_search_snapshot_len = 0;
         tab.notice = "Refreshing from created FileList".to_string();
 
         let req = IndexRequest {
@@ -2440,12 +2396,12 @@ Search hints:
     }
 
     fn clear_tab_index_request_state(tab: &mut AppTabState) {
-        tab.pending_index_request_id = None;
-        tab.index_in_progress = false;
-        tab.pending_index_entries.clear();
-        tab.pending_index_entries_request_id = None;
-        tab.search_resume_pending = false;
-        tab.search_rerun_pending = false;
+        tab.index_state.pending_index_request_id = None;
+        tab.index_state.index_in_progress = false;
+        tab.index_state.pending_index_entries.clear();
+        tab.index_state.pending_index_entries_request_id = None;
+        tab.index_state.search_resume_pending = false;
+        tab.index_state.search_rerun_pending = false;
         tab.pending_restore_refresh = false;
     }
 
@@ -2463,7 +2419,9 @@ Search hints:
         self.set_notice(notice.clone());
 
         for tab in &mut self.tabs {
-            if affected_tab_ids.contains(&tab.id) || tab.pending_index_request_id.is_some() {
+            if affected_tab_ids.contains(&tab.id)
+                || tab.index_state.pending_index_request_id.is_some()
+            {
                 Self::clear_tab_index_request_state(tab);
                 tab.notice = notice.clone();
             }
@@ -2522,9 +2480,9 @@ Search hints:
             if let Some(dropped) = dropped {
                 if let Some(tab_index) = self.find_tab_index_by_id(dropped.tab_id) {
                     if let Some(tab) = self.tabs.get_mut(tab_index) {
-                        if tab.pending_index_request_id == Some(dropped.request_id) {
-                            tab.pending_index_request_id = None;
-                            tab.index_in_progress = false;
+                        if tab.index_state.pending_index_request_id == Some(dropped.request_id) {
+                            tab.index_state.pending_index_request_id = None;
+                            tab.index_state.index_in_progress = false;
                             tab.notice = "Index request dropped due to queue limit".to_string();
                         }
                     }
@@ -2643,13 +2601,13 @@ Search hints:
 
         let req = SearchRequest {
             request_id,
-            query: tab.query.clone(),
-            entries: Arc::clone(&tab.entries),
+            query: tab.query_state.query.clone(),
+            entries: Arc::clone(&tab.index_state.entries),
             limit: self.limit,
             use_regex: tab.use_regex,
             ignore_case: tab.ignore_case,
             root: tab.root.clone(),
-            prefer_relative: Self::prefer_relative_display_for(&tab.index.source),
+            prefer_relative: Self::prefer_relative_display_for(&tab.index_state.index.source),
         };
         if self.search_tx.send(req).is_err() {
             tab.pending_request_id = None;
@@ -2669,10 +2627,10 @@ Search hints:
             };
             match msg {
                 IndexResponse::Started { request_id, source } => {
-                    if tab.pending_index_request_id != Some(request_id) {
+                    if tab.index_state.pending_index_request_id != Some(request_id) {
                         return;
                     }
-                    tab.index.source = source.clone();
+                    tab.index_state.index.source = source.clone();
                     self.background_index_states
                         .entry(request_id)
                         .or_default()
@@ -2682,7 +2640,7 @@ Search hints:
                     request_id,
                     entries,
                 } => {
-                    if tab.pending_index_request_id != Some(request_id) {
+                    if tab.index_state.pending_index_request_id != Some(request_id) {
                         return;
                     }
                     let state = self.background_index_states.entry(request_id).or_default();
@@ -2697,7 +2655,7 @@ Search hints:
                     request_id,
                     entries,
                 } => {
-                    if tab.pending_index_request_id != Some(request_id) {
+                    if tab.index_state.pending_index_request_id != Some(request_id) {
                         return;
                     }
                     let state = self.background_index_states.entry(request_id).or_default();
@@ -2711,26 +2669,27 @@ Search hints:
                     }
                 }
                 IndexResponse::Finished { request_id, source } => {
-                    if tab.pending_index_request_id != Some(request_id) {
+                    if tab.index_state.pending_index_request_id != Some(request_id) {
                         cleanup_request_id = Some(request_id);
                     } else {
                         let state = self
                             .background_index_states
                             .remove(&request_id)
                             .unwrap_or_default();
-                        tab.index.source = state.source.unwrap_or(source);
-                        tab.index.entries.clear();
-                        tab.all_entries = Arc::new(state.entries);
-                        tab.entry_kinds = state.entry_kinds;
+                        tab.index_state.index.source = state.source.unwrap_or(source);
+                        tab.index_state.index.entries.clear();
+                        tab.index_state.all_entries = Arc::new(state.entries);
+                        tab.index_state.entry_kinds = state.entry_kinds;
                         if tab.include_files && tab.include_dirs {
-                            tab.entries = Arc::clone(&tab.all_entries);
+                            tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
                         } else {
                             let filtered: Vec<PathBuf> = tab
+                                .index_state
                                 .all_entries
                                 .iter()
                                 .filter(|path| {
                                     Self::is_entry_visible_for_flags(
-                                        &tab.entry_kinds,
+                                        &tab.index_state.entry_kinds,
                                         path,
                                         tab.include_files,
                                         tab.include_dirs,
@@ -2738,33 +2697,34 @@ Search hints:
                                 })
                                 .cloned()
                                 .collect();
-                            tab.entries = Arc::new(filtered);
+                            tab.index_state.entries = Arc::new(filtered);
                         }
-                        tab.pending_index_request_id = None;
-                        tab.index_in_progress = false;
-                        tab.pending_index_entries.clear();
-                        tab.pending_index_entries_request_id = None;
-                        tab.search_resume_pending = false;
-                        tab.search_rerun_pending = false;
-                        tab.last_search_snapshot_len = tab.entries.len();
-                        tab.last_incremental_results_refresh = Instant::now();
-                        if matches!(tab.index.source, IndexSource::Walker) {
-                            for path in tab.all_entries.iter() {
-                                if !tab.entry_kinds.contains_key(path)
-                                    && !tab.pending_kind_paths_set.contains(path)
-                                    && !tab.in_flight_kind_paths.contains(path)
+                        tab.index_state.pending_index_request_id = None;
+                        tab.index_state.index_in_progress = false;
+                        tab.index_state.pending_index_entries.clear();
+                        tab.index_state.pending_index_entries_request_id = None;
+                        tab.index_state.search_resume_pending = false;
+                        tab.index_state.search_rerun_pending = false;
+                        tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
+                        tab.index_state.last_incremental_results_refresh = Instant::now();
+                        if matches!(tab.index_state.index.source, IndexSource::Walker) {
+                            for path in tab.index_state.all_entries.iter() {
+                                if !tab.index_state.entry_kinds.contains_key(path)
+                                    && !tab.index_state.pending_kind_paths_set.contains(path)
+                                    && !tab.index_state.in_flight_kind_paths.contains(path)
                                 {
-                                    tab.pending_kind_paths_set.insert(path.clone());
-                                    tab.pending_kind_paths.push_back(path.clone());
+                                    tab.index_state.pending_kind_paths_set.insert(path.clone());
+                                    tab.index_state.pending_kind_paths.push_back(path.clone());
                                 }
                             }
-                            tab.kind_resolution_in_progress = !tab.pending_kind_paths.is_empty()
-                                || !tab.in_flight_kind_paths.is_empty();
+                            tab.index_state.kind_resolution_in_progress =
+                                !tab.index_state.pending_kind_paths.is_empty()
+                                    || !tab.index_state.in_flight_kind_paths.is_empty();
                         } else {
-                            tab.pending_kind_paths.clear();
-                            tab.pending_kind_paths_set.clear();
-                            tab.in_flight_kind_paths.clear();
-                            tab.kind_resolution_in_progress = false;
+                            tab.index_state.pending_kind_paths.clear();
+                            tab.index_state.pending_kind_paths_set.clear();
+                            tab.index_state.in_flight_kind_paths.clear();
+                            tab.index_state.kind_resolution_in_progress = false;
                         }
                         if self
                             .filelist_state
@@ -2775,27 +2735,32 @@ Search hints:
                                     && Self::path_key(&pending.root) == Self::path_key(&tab.root)
                             })
                         {
-                            deferred_filelist =
-                                Some((tab.id, tab.root.clone(), tab.all_entries.as_ref().clone()));
+                            deferred_filelist = Some((
+                                tab.id,
+                                tab.root.clone(),
+                                tab.index_state.all_entries.as_ref().clone(),
+                            ));
                             self.filelist_state.pending_after_index = None;
                         }
 
-                        if tab.query.trim().is_empty() {
-                            tab.results = tab
+                        if tab.query_state.query.trim().is_empty() {
+                            tab.result_state.results = tab
+                                .index_state
                                 .entries
                                 .iter()
                                 .take(self.limit)
                                 .cloned()
                                 .map(|p| (p, 0.0))
                                 .collect();
-                            if tab.results.is_empty() {
-                                tab.current_row = None;
-                                tab.preview.clear();
+                            if tab.result_state.results.is_empty() {
+                                tab.result_state.current_row = None;
+                                tab.result_state.preview.clear();
                                 tab.pending_preview_request_id = None;
                                 tab.preview_in_progress = false;
                             } else {
-                                let max_index = tab.results.len().saturating_sub(1);
-                                tab.current_row = Some(tab.current_row.unwrap_or(0).min(max_index));
+                                let max_index = tab.result_state.results.len().saturating_sub(1);
+                                tab.result_state.current_row =
+                                    Some(tab.result_state.current_row.unwrap_or(0).min(max_index));
                             }
                         } else {
                             trigger_search = true;
@@ -2805,34 +2770,34 @@ Search hints:
                     }
                 }
                 IndexResponse::Failed { request_id, error } => {
-                    if tab.pending_index_request_id != Some(request_id) {
+                    if tab.index_state.pending_index_request_id != Some(request_id) {
                         cleanup_request_id = Some(request_id);
                     } else {
-                        tab.index_in_progress = false;
-                        tab.pending_index_request_id = None;
-                        tab.search_resume_pending = false;
-                        tab.search_rerun_pending = false;
-                        tab.pending_index_entries.clear();
-                        tab.pending_index_entries_request_id = None;
+                        tab.index_state.index_in_progress = false;
+                        tab.index_state.pending_index_request_id = None;
+                        tab.index_state.search_resume_pending = false;
+                        tab.index_state.search_rerun_pending = false;
+                        tab.index_state.pending_index_entries.clear();
+                        tab.index_state.pending_index_entries_request_id = None;
                         Self::shrink_tab_checkpoint_buffers(tab);
                         tab.notice = format!("Indexing failed: {}", error);
                         cleanup_request_id = Some(request_id);
                     }
                 }
                 IndexResponse::Canceled { request_id } => {
-                    if tab.pending_index_request_id == Some(request_id) {
-                        tab.index_in_progress = false;
-                        tab.pending_index_request_id = None;
-                        tab.search_resume_pending = false;
-                        tab.search_rerun_pending = false;
-                        tab.pending_index_entries.clear();
-                        tab.pending_index_entries_request_id = None;
+                    if tab.index_state.pending_index_request_id == Some(request_id) {
+                        tab.index_state.index_in_progress = false;
+                        tab.index_state.pending_index_request_id = None;
+                        tab.index_state.search_resume_pending = false;
+                        tab.index_state.search_rerun_pending = false;
+                        tab.index_state.pending_index_entries.clear();
+                        tab.index_state.pending_index_entries_request_id = None;
                         Self::shrink_tab_checkpoint_buffers(tab);
                     }
                     cleanup_request_id = Some(request_id);
                 }
                 IndexResponse::Truncated { request_id, limit } => {
-                    if tab.pending_index_request_id == Some(request_id) {
+                    if tab.index_state.pending_index_request_id == Some(request_id) {
                         tab.notice = format!(
                             "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
                             limit
@@ -3183,20 +3148,21 @@ Search hints:
                 .error
                 .map(|error| format!("Search failed: {error}"))
                 .unwrap_or_default();
-            tab.base_results = response.results.clone();
-            tab.results = response.results;
-            tab.results_compacted = false;
-            tab.result_sort_mode = ResultSortMode::Score;
-            tab.pending_sort_request_id = None;
-            tab.sort_in_progress = false;
-            if tab.results.is_empty() {
-                tab.current_row = None;
-                tab.preview.clear();
+            tab.result_state.base_results = response.results.clone();
+            tab.result_state.results = response.results;
+            tab.result_state.results_compacted = false;
+            tab.result_state.result_sort_mode = ResultSortMode::Score;
+            tab.result_state.pending_sort_request_id = None;
+            tab.result_state.sort_in_progress = false;
+            if tab.result_state.results.is_empty() {
+                tab.result_state.current_row = None;
+                tab.result_state.preview.clear();
                 tab.pending_preview_request_id = None;
                 tab.preview_in_progress = false;
             } else {
-                let max_index = tab.results.len().saturating_sub(1);
-                tab.current_row = tab.current_row.map(|row| row.min(max_index));
+                let max_index = tab.result_state.results.len().saturating_sub(1);
+                tab.result_state.current_row =
+                    tab.result_state.current_row.map(|row| row.min(max_index));
             }
             Self::compact_inactive_tab_state(tab);
         }
@@ -3257,26 +3223,27 @@ Search hints:
             let Some(tab) = self.tabs.get_mut(tab_index) else {
                 continue;
             };
-            if Some(response.request_id) != tab.pending_sort_request_id {
+            if Some(response.request_id) != tab.result_state.pending_sort_request_id {
                 continue;
             }
-            tab.pending_sort_request_id = None;
-            tab.sort_in_progress = false;
-            if response.mode == tab.result_sort_mode {
-                tab.results = Self::build_sorted_results_from(
-                    &tab.base_results,
-                    tab.result_sort_mode,
+            tab.result_state.pending_sort_request_id = None;
+            tab.result_state.sort_in_progress = false;
+            if response.mode == tab.result_state.result_sort_mode {
+                tab.result_state.results = Self::build_sorted_results_from(
+                    &tab.result_state.base_results,
+                    tab.result_state.result_sort_mode,
                     &self.sort_metadata_cache,
                 );
-                tab.results_compacted = false;
-                if tab.results.is_empty() {
-                    tab.current_row = None;
-                    tab.preview.clear();
+                tab.result_state.results_compacted = false;
+                if tab.result_state.results.is_empty() {
+                    tab.result_state.current_row = None;
+                    tab.result_state.preview.clear();
                     tab.pending_preview_request_id = None;
                     tab.preview_in_progress = false;
                 } else {
-                    let max_index = tab.results.len().saturating_sub(1);
-                    tab.current_row = tab.current_row.map(|row| row.min(max_index));
+                    let max_index = tab.result_state.results.len().saturating_sub(1);
+                    tab.result_state.current_row =
+                        tab.result_state.current_row.map(|row| row.min(max_index));
                 }
                 Self::compact_inactive_tab_state(tab);
             }
@@ -3309,15 +3276,17 @@ Search hints:
             if let Some(tab) = self.tabs.get_mut(tab_index) {
                 tab.pending_preview_request_id = None;
                 tab.preview_in_progress = false;
-                let current_path = if tab.results_compacted {
-                    tab.current_row
-                        .and_then(|row| tab.base_results.get(row).map(|(path, _)| path))
+                let current_path = if tab.result_state.results_compacted {
+                    tab.result_state.current_row.and_then(|row| {
+                        tab.result_state.base_results.get(row).map(|(path, _)| path)
+                    })
                 } else {
-                    tab.current_row
-                        .and_then(|row| tab.results.get(row).map(|(path, _)| path))
+                    tab.result_state
+                        .current_row
+                        .and_then(|row| tab.result_state.results.get(row).map(|(path, _)| path))
                 };
                 if current_path.is_some_and(|current_path| *current_path == response.path) {
-                    tab.preview = response.preview;
+                    tab.result_state.preview = response.preview;
                 }
             }
         }
