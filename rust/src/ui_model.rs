@@ -1,5 +1,8 @@
 use crate::actions::choose_action;
-use crate::query::{include_alternatives, parse_include_alternative, parse_query, split_anchor};
+use crate::query::{
+    include_alternatives, parse_include_alternative, parse_query, split_anchor,
+    token_uses_regex_syntax,
+};
 use regex::RegexBuilder;
 use std::collections::HashSet;
 use std::fs::File;
@@ -230,7 +233,7 @@ pub fn match_positions_for_path(
     }
 
     for term in &spec.include_terms {
-        if use_regex {
+        if use_regex && token_uses_regex_syntax(term) {
             let hits = find_regex_match_positions(filename, term, ignore_case);
             if !hits.is_empty() {
                 for pos in hits {
@@ -800,6 +803,22 @@ mod tests {
         let root = PathBuf::from("/tmp");
         let path = PathBuf::from("/tmp/src/main.py");
         let positions = match_positions_for_path(&path, &root, "ma.*py", true, true, true);
+        assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn match_positions_regex_mode_plain_token_uses_fuzzy_highlight() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/a-b-c.txt");
+        let positions = match_positions_for_path(&path, &root, "abc", true, true, true);
+        assert!(!positions.is_empty());
+    }
+
+    #[test]
+    fn match_positions_regex_mode_plain_or_token_uses_fuzzy_highlight() {
+        let root = PathBuf::from("/tmp");
+        let path = PathBuf::from("/tmp/src/f-o-o.txt");
+        let positions = match_positions_for_path(&path, &root, "abc|foo", true, true, true);
         assert!(!positions.is_empty());
     }
 

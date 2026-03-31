@@ -1,4 +1,7 @@
-use crate::query::{include_alternatives, parse_include_alternative, parse_query, split_anchor};
+use crate::query::{
+    include_alternatives, parse_include_alternative, parse_query, split_anchor,
+    token_uses_regex_syntax,
+};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use rayon::prelude::*;
@@ -176,7 +179,7 @@ fn compile_include_matcher(
     use_regex: bool,
     ignore_case: bool,
 ) -> Result<IncludeMatcher, String> {
-    if use_regex {
+    if use_regex && token_uses_regex_syntax(term) {
         let re = RegexBuilder::new(term)
             .case_insensitive(ignore_case)
             .build()
@@ -1167,6 +1170,53 @@ mod tests {
         let entries = vec![
             PathBuf::from("/tmp/src/main.py"),
             PathBuf::from("/tmp/src/module.rs"),
+        ];
+        let out = search_entries("ma.*py", &entries, 10, true, true);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("main.py")
+        );
+    }
+
+    #[test]
+    fn regex_mode_keeps_plain_token_fuzzy_matching() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/a-b-c.txt"),
+            PathBuf::from("/tmp/src/xyz.txt"),
+        ];
+        let out = search_entries("abc", &entries, 10, true, true);
+        assert_eq!(out.len(), 1);
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("a-b-c.txt")
+        );
+    }
+
+    #[test]
+    fn regex_mode_keeps_plain_or_token_fuzzy_matching() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/a-b-c.txt"),
+            PathBuf::from("/tmp/src/f-o-o.txt"),
+            PathBuf::from("/tmp/src/xyz.txt"),
+        ];
+        let out = search_entries("abc|foo", &entries, 10, true, true);
+        assert_eq!(out.len(), 2);
+        assert_eq!(
+            out[0].0.file_name().and_then(|s| s.to_str()),
+            Some("a-b-c.txt")
+        );
+        assert_eq!(
+            out[1].0.file_name().and_then(|s| s.to_str()),
+            Some("f-o-o.txt")
+        );
+    }
+
+    #[test]
+    fn regex_mode_preserves_regex_only_token_behavior() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/m-a-i-n-p-y.txt"),
         ];
         let out = search_entries("ma.*py", &entries, 10, true, true);
         assert_eq!(out.len(), 1);

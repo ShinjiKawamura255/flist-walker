@@ -10,7 +10,7 @@
 - 実装: `rust/src/indexer.rs`
 
 - DES-003 Fuzzy Search Engine
-- 役割: クエリ解釈（`'` `!` `^` `$` `|`）とスコアリングを担う。query 分解と正規化は shared module へ集約し、非 regex の `^`/`$` は隣接文字制約付きファジーとして評価する。
+- 役割: クエリ解釈（`'` `!` `^` `$` `|`）とスコアリングを担う。query 分解と正規化は shared module へ集約し、非 regex の `^`/`$` は隣接文字制約付きファジーとして評価する。regex モードでも plain include token は regex へ昇格させず、regex 構文を含む token だけを regex matcher として扱う。
 - 役割補足: 空白で分割した通常語 token は AND 条件で絞り込みつつ、score では token ごとのリテラル一致を subsequence 一致より優先して順位付けする。
 - 役割補足: GUI/CLI の `Ignore Case` フラグを受け取り、search と highlight で同じ比較モードを使う。
 - 役割補足: 検索クエリは要求単位で前処理し、候補ごとの path 文字列化・正規化を 1 回に抑える。大規模候補集合では search worker 内で並列評価しつつ、表示用には上位 `limit` 件だけを抽出する。
@@ -98,6 +98,7 @@
 - 階層 FileList 展開で子 FileList を解析する経路も `should_cancel` を伝播し、supersede 時に中断できるようにする。
 - include_files/include_dirs が両方有効な FileList 解析では、初期ロード時の `metadata` 依存を避けて候補パスの投入を優先し、FILE/DIR/LINK 表示種別は別ワーカーで遅延解決する。
 - regex モードは include term をクエリ単位で事前コンパイルし、候補ごとの再コンパイルを禁止する。
+- regex モードでも plain token は既存の literal/fuzzy matcher を流用し、regex 構文を含む token だけを事前コンパイル済み regex matcher へ振り分ける。
 - プレビューキャッシュは固定上限（FIFO）で運用し、長時間セッションでのメモリ増加を抑制する。
 - preview/highlight/sort metadata cache は app coordinator 直下の flat field ではなく専用 state struct へ束ね、root 変更や index refresh 開始時にまとめて破棄できるようにする。
 - 結果ソートは `base_results` に検索エンジンの元順位を保持し、表示用 `results` だけを並び替えることで `Score` 復帰を O(n) で実現する。

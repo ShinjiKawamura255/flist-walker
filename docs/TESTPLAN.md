@@ -104,6 +104,7 @@
 | TC-090 | unit | 回帰: GNU Windows ビルドは `resource.o` を最終 `flistwalker` バイナリへ明示リンクし、Explorer アイコン欠落を防ぐ | SP-012 |
 | TC-091 | unit | 回帰: GUI 終了時の worker join timeout は短時間に保たれ、close が不要に 2 秒近く遅延しない | SP-008, SP-010 |
 | TC-092 | unit | 回帰: shared query module により search と highlight が exact / OR / anchor の query 解釈を一致させる | SP-003, SP-010 |
+| TC-093 | unit | regex モードでも plain token / plain OR token は fuzzy 条件で一致し、regex 構文 token だけ regex として評価される | SP-003 |
 | TC-068 | unit | 回帰: 検索結果更新で current row は行番号を維持し、結果数縮小時のみ末尾へ丸める | SP-010 |
 | TC-069 | unit | 回帰: `Ignore Case` は既定で有効で、無効化時は検索結果とハイライトが case-sensitive になる | SP-010 |
 | TC-070 | unit | 回帰: 起動直後と検索キャンセル後は候補がある場合に 1 行目が既定選択になる | SP-010 |

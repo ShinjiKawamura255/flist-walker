@@ -58,6 +58,8 @@
 - MUST: `'` は完全一致条件として評価する。
 - MUST: `!` は除外条件として評価する。
 - MUST: `^` / `$` は非 regex モードでは「先頭/末尾の隣接文字制約 + ファジー評価」として評価する。
+- MUST: regex モードでも include token が regex 構文（例: `[](){}.*+?\\`）を含まない plain token の場合は、非 regex モードと同じファジー条件として評価する。
+- MUST: regex モードで include token が regex 構文を含む場合のみ、その token を regex として評価する。
 - MUST: 検索結果のハイライトは search と同じ query interpretation を用い、exact / include / exclude / anchor / OR の解釈差を生じさせてはならない。
 - SHOULD: 厳密な prefix/suffix 一致が必要な場合は regex モードを使える。
 - MUST: 上位 `limit` 件を関連度順で返す。

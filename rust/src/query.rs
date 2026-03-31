@@ -96,9 +96,20 @@ pub fn parse_query(query: &str) -> QuerySpec {
     }
 }
 
+pub fn token_uses_regex_syntax(token: &str) -> bool {
+    token.chars().any(|ch| {
+        matches!(
+            ch,
+            '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '\\'
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{parse_include_alternative, parse_query, split_anchor, QuerySpec};
+    use super::{
+        parse_include_alternative, parse_query, split_anchor, token_uses_regex_syntax, QuerySpec,
+    };
 
     #[test]
     fn parse_query_preserves_existing_token_buckets() {
@@ -139,5 +150,15 @@ mod tests {
         assert_eq!(split_anchor("^main$"), (true, true, "main"));
         assert_eq!(split_anchor("^main"), (true, false, "main"));
         assert_eq!(split_anchor("main$"), (false, true, "main"));
+    }
+
+    #[test]
+    fn token_uses_regex_syntax_is_conservative_for_regex_metacharacters() {
+        assert!(!token_uses_regex_syntax("abc"));
+        assert!(!token_uses_regex_syntax("^main$"));
+        assert!(!token_uses_regex_syntax("foo|bar"));
+        assert!(token_uses_regex_syntax("ma.*py"));
+        assert!(token_uses_regex_syntax("foo[0-9]+"));
+        assert!(token_uses_regex_syntax(r"foo\.bar"));
     }
 }
