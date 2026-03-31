@@ -24,6 +24,35 @@
 ### Known issues
 - 
 
+## [0.14.0] - 2026-03-31
+### Added
+- タブごとに accent color を設定できるようにし、active / inactive で見分けやすい表示を追加した。
+- regex モードでも plain token と plain OR token は引き続き fuzzy 条件で一致するようにした。
+- 起動時更新確認失敗を、ネットワークや feed の問題を調べやすい専用ダイアログで確認できるようにした。
+- 起動時更新確認失敗ダイアログを強制表示する内部検証用フラグ `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE` を追加した。
+
+### Changed
+- 非空 query の結果一覧描画を可視行中心に絞り、検索入力中やカーソル移動時の UI 応答性を改善した。
+- 起動時更新確認失敗ダイアログの文言を一般ユーザ向けに見直し、`Details` セクションで内部エラーを分けて表示するようにした。
+
+### Fixed
+- 検索窓で query が入っている状態でも、左右カーソル移動や Backspace が重くなりやすい問題を改善した。
+- 起動時の自己更新チェックが失敗したとき、何も表示されず原因が分からないままになる問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- 自己更新の起動時確認失敗も可視化し、ネットワーク・feed・asset 不整合の切り分けをしやすくした。
+- macOS 配布物は当面未 notarized のまま publish する場合がある。
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+- macOS 配布物は未 notarized の場合がある。
+
 ## [0.13.4] - 2026-03-30
 ### Added
 - 実行バイナリと同じディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合も、自己更新を無効化できるようにした。
