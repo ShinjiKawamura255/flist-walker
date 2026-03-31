@@ -7,6 +7,8 @@ fn test_update_candidate(target_version: &str) -> UpdateCandidate {
         release_url: "https://example.invalid/release".to_string(),
         asset_name: format!("FlistWalker-{target_version}-linux-x86_64"),
         asset_url: "https://example.invalid/asset".to_string(),
+        readme_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.README.txt"),
+        readme_asset_url: "https://example.invalid/readme".to_string(),
         license_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.LICENSE.txt"),
         license_asset_url: "https://example.invalid/license".to_string(),
         notices_asset_name: format!(

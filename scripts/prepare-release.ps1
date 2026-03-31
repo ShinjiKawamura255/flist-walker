@@ -15,6 +15,7 @@ $AssetBaseName = "FlistWalker-$SafeVersion-windows-x86_64"
 $ExeName = "$AssetBaseName.exe"
 $ZipName = "$AssetBaseName.zip"
 $ZipExeName = "flistwalker.exe"
+$ReadmeSideName = "$AssetBaseName.README.txt"
 $LicenseSideName = "$AssetBaseName.LICENSE.txt"
 $NoticesSideName = "$AssetBaseName.THIRD_PARTY_NOTICES.txt"
 $OutDir = Join-Path $RepoDir "dist\$Version"
@@ -37,12 +38,7 @@ New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
 try {
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $OutDir $ExeName) -Force
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ZipExeName) -Force
-    Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $OutDir $LicenseSideName) -Force
-    Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $OutDir $NoticesSideName) -Force
-    Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $WorkDir 'LICENSE.txt') -Force
-    Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -Force
-
-    $ReadmePath = Join-Path $WorkDir 'README.txt'
+    $ReadmeSidePath = Join-Path $OutDir $ReadmeSideName
     @"
 FlistWalker $Version
 
@@ -109,7 +105,12 @@ Index options:
 Walker tuning (Environment variables):
 - FLISTWALKER_WALKER_MAX_ENTRIES: Walkerの最大走査件数（既定: 500000）
 - FLISTWALKER_WALKER_THREADS: Walkerの並列スレッド数（既定: 2、1でシリアル）
-"@ | Set-Content -LiteralPath $ReadmePath -Encoding UTF8
+"@ | Set-Content -LiteralPath $ReadmeSidePath -Encoding UTF8
+    Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $OutDir $LicenseSideName) -Force
+    Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $OutDir $NoticesSideName) -Force
+    Copy-Item -LiteralPath $ReadmeSidePath -Destination (Join-Path $WorkDir 'README.txt') -Force
+    Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $WorkDir 'LICENSE.txt') -Force
+    Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -Force
 
     $ZipPath = Join-Path $OutDir $ZipName
     if (Test-Path -LiteralPath $ZipPath) {
@@ -119,6 +120,7 @@ Walker tuning (Environment variables):
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
+    $ReadmeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ReadmeSidePath).Hash.ToLowerInvariant()
     $LicenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $LicenseSideName)).Hash.ToLowerInvariant()
     $NoticesHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $NoticesSideName)).Hash.ToLowerInvariant()
     $SumsPath = Join-Path $OutDir 'SHA256SUMS'
@@ -126,6 +128,7 @@ Walker tuning (Environment variables):
     @(
         "$ExeHash  $ExeName"
         "$ZipHash  $ZipName"
+        "$ReadmeHash  $ReadmeSideName"
         "$LicenseHash  $LicenseSideName"
         "$NoticesHash  $NoticesSideName"
     ) | Set-Content -LiteralPath $SumsPath -Encoding ASCII
@@ -148,6 +151,7 @@ finally {
 Write-Host "Release assets created: $OutDir"
 Write-Host "- $ExeName"
 Write-Host "- $ZipName"
+Write-Host "- $ReadmeSideName"
 Write-Host "- $LicenseSideName"
 Write-Host "- $NoticesSideName"
 Write-Host "- SHA256SUMS"

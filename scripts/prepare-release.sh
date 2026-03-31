@@ -14,6 +14,7 @@ Notes:
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-windows-x86_64.exe
     - FlistWalker-<version>-windows-x86_64.zip
+    - FlistWalker-<version>-windows-x86_64.README.txt
     - FlistWalker-<version>-windows-x86_64.LICENSE.txt
     - FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt
     - SHA256SUMS
@@ -37,6 +38,7 @@ ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-windows-x86_64"
 EXE_NAME="${ASSET_BASENAME}.exe"
 ZIP_NAME="${ASSET_BASENAME}.zip"
 ZIP_EXE_NAME="flistwalker.exe"
+README_SIDE_NAME="${ASSET_BASENAME}.README.txt"
 LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
 NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
 ROOT_LICENSE="${REPO_DIR}/LICENSE"
@@ -58,11 +60,7 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_EXE}" "${OUT_DIR}/${EXE_NAME}"
 cp -f "${SOURCE_EXE}" "${WORK_DIR}/${ZIP_EXE_NAME}"
-cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
-cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
-cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
-cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
-cat > "${WORK_DIR}/README.txt" <<README
+cat > "${OUT_DIR}/${README_SIDE_NAME}" <<README
 FlistWalker ${VERSION}
 
 Contents:
@@ -129,6 +127,11 @@ Walker tuning (Environment variables):
 - FLISTWALKER_WALKER_MAX_ENTRIES: Walkerの最大走査件数（既定: 500000）
 - FLISTWALKER_WALKER_THREADS: Walkerの並列スレッド数（既定: 2、1でシリアル）
 README
+cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
+cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
+cp -f "${OUT_DIR}/${README_SIDE_NAME}" "${WORK_DIR}/README.txt"
+cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
+cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 
 (
   cd "${WORK_DIR}"
@@ -138,12 +141,12 @@ README
 if command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${EXE_NAME}" "${ZIP_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    sha256sum "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "sha256sum/shasum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -158,6 +161,7 @@ fi
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${EXE_NAME}"
 echo "- ${ZIP_NAME}"
+echo "- ${README_SIDE_NAME}"
 echo "- ${LICENSE_SIDE_NAME}"
 echo "- ${NOTICES_SIDE_NAME}"
 echo "- SHA256SUMS"

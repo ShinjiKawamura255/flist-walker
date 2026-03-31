@@ -25,6 +25,7 @@ jobs:
             upload_paths: |
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.exe
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.zip
+              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.README.txt
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.LICENSE.txt
               dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
@@ -34,6 +35,7 @@ jobs:
             upload_paths: |
               dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64
               dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.tar.gz
+              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.README.txt
               dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.LICENSE.txt
               dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
@@ -45,6 +47,7 @@ jobs:
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64-app.zip
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.tar.gz
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.README.txt
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.LICENSE.txt
               dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS
@@ -56,6 +59,7 @@ jobs:
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64-app.zip
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.tar.gz
+              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.README.txt
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.LICENSE.txt
               dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.THIRD_PARTY_NOTICES.txt
               dist/${{ github.ref_name }}/SHA256SUMS

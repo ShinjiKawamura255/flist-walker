@@ -225,6 +225,7 @@
 - MUST: 現在 version より新しい release が存在する場合、利用者へ更新承認ダイアログを表示する。
 - MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` / `SHA256SUMS.sig` に限定する。
 - MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.LICENSE.txt` と `*.THIRD_PARTY_NOTICES.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` として配置しなければならない。
+- MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.README.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `README.txt` として配置しなければならない。
 - MUST: ダウンロード後は埋め込み公開鍵で `SHA256SUMS.sig` が `SHA256SUMS` を正しく署名していることを確認し、失敗時は更新を中止する。
 - MUST: 署名検証通過後に、`SHA256SUMS` に記載された対象 asset の SHA-256 と一致することを確認し、一致しない場合は更新を中止する。
 - MUST: Windows では実行中 EXE を直接上書きせず、一時ディレクトリへ生成した補助 updater を別プロセスとして起動し、旧 EXE 終了後に置換と再起動を行う。
