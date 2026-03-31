@@ -136,7 +136,7 @@
 | Change Type | Typical Targets | Required Validation | Optional / Follow-up |
 | --- | --- | --- | --- |
 | VM-001 Docs only | `docs/*.md`, `AGENTS.md`, release note text only | affected doc diff review, `rg` で ID/参照整合を確認 | Rust 実装に触れない限り `cargo test` は不要 |
-| VM-002 App/UI orchestration | `rust/src/app.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験 |
+| VM-002 App/UI orchestration | `rust/src/app.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験。検索結果描画や入力応答性を変えた場合は、非空 query で検索窓の左右移動・Backspace・結果スクロールの体感遅延を手動確認 |
 | VM-003 Indexing path | `rust/src/indexer.rs`, `rust/src/app/workers.rs`, `rust/src/app.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験 |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review |

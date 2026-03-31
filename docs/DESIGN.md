@@ -28,6 +28,7 @@
 - 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
+- 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
 - 役割補足: `app.rs` は横断 orchestration を保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs` へ分離する。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。

@@ -2,6 +2,9 @@ use super::*;
 
 impl FlistWalkerApp {
     const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
+    const RESULT_ROW_H_MARGIN: f32 = 3.0;
+    const RESULT_ROW_V_MARGIN: f32 = 2.0;
+    const RESULT_ROW_ROUNDING: f32 = 3.0;
 
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
         [
@@ -156,6 +159,9 @@ impl FlistWalkerApp {
                 let mut execute_row: Option<usize> = None;
                 let prefer_relative = self.prefer_relative_display();
                 self.ensure_highlight_cache_scope(prefer_relative);
+                let clip_rect = ui.clip_rect();
+                let row_width = ui.available_width().max(0.0);
+                let row_height = Self::result_row_height(ui);
 
                 for i in 0..self.results.len() {
                     let Some((path, _score)) = self.results.get(i) else {
@@ -163,89 +169,15 @@ impl FlistWalkerApp {
                     };
                     let path = path.clone();
                     let is_current = self.current_row == Some(i);
-                    let is_pinned = self.pinned_paths.contains(&path);
-                    let marker_current = if is_current { "▶" } else { "·" };
-                    let marker_pin = if is_pinned { "◆" } else { "·" };
-                    let kind = self.entry_kinds.get(&path).copied();
-                    let display = display_path_with_mode(&path, &self.root, prefer_relative);
-                    let positions =
-                        self.highlight_positions_for_path_cached(&path, prefer_relative);
-
-                    let mut job = egui::text::LayoutJob::default();
-                    job.append(
-                        &format!("{} {} ", marker_current, marker_pin),
-                        0.0,
-                        egui::TextFormat {
-                            color: if is_current {
-                                egui::Color32::LIGHT_BLUE
-                            } else {
-                                ui.visuals().weak_text_color()
-                            },
-                            ..Default::default()
-                        },
+                    let (rect, response) = ui.allocate_exact_size(
+                        egui::vec2(row_width, row_height),
+                        egui::Sense::click(),
                     );
-                    let (kind_label, kind_color) = match kind.map(|k| k.display) {
-                        Some(EntryDisplayKind::Dir) => {
-                            ("DIR ", egui::Color32::from_rgb(52, 211, 153))
-                        }
-                        Some(EntryDisplayKind::File) => {
-                            ("FILE", egui::Color32::from_rgb(96, 165, 250))
-                        }
-                        Some(EntryDisplayKind::Link) => {
-                            ("LINK", egui::Color32::from_rgb(250, 204, 21))
-                        }
-                        None => ("....", ui.visuals().weak_text_color()),
-                    };
-                    job.append(
-                        kind_label,
-                        0.0,
-                        egui::TextFormat {
-                            color: kind_color,
-                            ..Default::default()
-                        },
-                    );
-                    job.append(" ", 0.0, egui::TextFormat::default());
-
-                    for (idx, ch) in display.chars().enumerate() {
-                        let color = if Self::is_highlighted_position(positions.as_slice(), idx) {
-                            egui::Color32::from_rgb(245, 158, 11)
-                        } else {
-                            ui.visuals().text_color()
-                        };
-                        job.append(
-                            &ch.to_string(),
-                            0.0,
-                            egui::TextFormat {
-                                color,
-                                ..Default::default()
-                            },
-                        );
-                    }
-
-                    let selected_bg = if ui.visuals().dark_mode {
-                        egui::Color32::from_rgb(48, 53, 62)
-                    } else {
-                        egui::Color32::from_rgb(228, 232, 238)
-                    };
-                    let fill = if is_current {
-                        selected_bg
-                    } else {
-                        egui::Color32::TRANSPARENT
-                    };
-                    let row = egui::Frame::none()
-                        .fill(fill)
-                        .inner_margin(egui::Margin::symmetric(3.0, 2.0))
-                        .rounding(egui::Rounding::same(3.0))
-                        .show(ui, |ui| {
-                            ui.add(
-                                egui::Label::new(job)
-                                    .wrap(false)
-                                    .sense(egui::Sense::click()),
-                            )
-                        });
-                    let response = row.inner;
                     if is_current && self.scroll_to_current {
-                        response.scroll_to_me(None);
+                        ui.scroll_to_rect(rect, None);
+                    }
+                    if clip_rect.intersects(rect) {
+                        self.render_result_row(ui, rect, &path, is_current, prefer_relative);
                     }
                     if response.clicked() {
                         clicked_row = Some(i);
@@ -265,6 +197,114 @@ impl FlistWalkerApp {
                     self.execute_selected_for_activation(open_parent_for_files);
                 }
             });
+    }
+
+    fn result_row_height(ui: &egui::Ui) -> f32 {
+        ui.text_style_height(&egui::TextStyle::Body) + (Self::RESULT_ROW_V_MARGIN * 2.0)
+    }
+
+    fn render_result_row(
+        &mut self,
+        ui: &mut egui::Ui,
+        rect: egui::Rect,
+        path: &Path,
+        is_current: bool,
+        prefer_relative: bool,
+    ) {
+        let is_pinned = self.pinned_paths.contains(path);
+        let kind = self.entry_kinds.get(path).copied();
+        let display = display_path_with_mode(path, &self.root, prefer_relative);
+        let positions = self.highlight_positions_for_path_cached(path, prefer_relative);
+        let job = self.build_result_row_job(
+            ui,
+            &display,
+            positions.as_slice(),
+            is_current,
+            is_pinned,
+            kind,
+        );
+        let selected_bg = if ui.visuals().dark_mode {
+            egui::Color32::from_rgb(48, 53, 62)
+        } else {
+            egui::Color32::from_rgb(228, 232, 238)
+        };
+        if is_current {
+            ui.painter().rect_filled(
+                rect,
+                egui::Rounding::same(Self::RESULT_ROW_ROUNDING),
+                selected_bg,
+            );
+        }
+
+        let inner_rect = rect.shrink2(egui::vec2(
+            Self::RESULT_ROW_H_MARGIN,
+            Self::RESULT_ROW_V_MARGIN,
+        ));
+        ui.allocate_ui_at_rect(inner_rect, |ui| {
+            ui.add(
+                egui::Label::new(job)
+                    .wrap(false)
+                    .sense(egui::Sense::hover()),
+            );
+        });
+    }
+
+    fn build_result_row_job(
+        &self,
+        ui: &egui::Ui,
+        display: &str,
+        positions: &[u16],
+        is_current: bool,
+        is_pinned: bool,
+        kind: Option<EntryKind>,
+    ) -> egui::text::LayoutJob {
+        let marker_current = if is_current { "▶" } else { "·" };
+        let marker_pin = if is_pinned { "◆" } else { "·" };
+        let mut job = egui::text::LayoutJob::default();
+        job.append(
+            &format!("{} {} ", marker_current, marker_pin),
+            0.0,
+            egui::TextFormat {
+                color: if is_current {
+                    egui::Color32::LIGHT_BLUE
+                } else {
+                    ui.visuals().weak_text_color()
+                },
+                ..Default::default()
+            },
+        );
+        let (kind_label, kind_color) = match kind.map(|k| k.display) {
+            Some(EntryDisplayKind::Dir) => ("DIR ", egui::Color32::from_rgb(52, 211, 153)),
+            Some(EntryDisplayKind::File) => ("FILE", egui::Color32::from_rgb(96, 165, 250)),
+            Some(EntryDisplayKind::Link) => ("LINK", egui::Color32::from_rgb(250, 204, 21)),
+            None => ("....", ui.visuals().weak_text_color()),
+        };
+        job.append(
+            kind_label,
+            0.0,
+            egui::TextFormat {
+                color: kind_color,
+                ..Default::default()
+            },
+        );
+        job.append(" ", 0.0, egui::TextFormat::default());
+
+        for (idx, ch) in display.chars().enumerate() {
+            let color = if Self::is_highlighted_position(positions, idx) {
+                egui::Color32::from_rgb(245, 158, 11)
+            } else {
+                ui.visuals().text_color()
+            };
+            job.append(
+                &ch.to_string(),
+                0.0,
+                egui::TextFormat {
+                    color,
+                    ..Default::default()
+                },
+            );
+        }
+        job
     }
 
     pub(super) fn render_history_search_results(&mut self, ui: &mut egui::Ui) {
