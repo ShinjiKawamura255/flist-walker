@@ -1265,11 +1265,12 @@ impl FlistWalkerApp {
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 88.0))
                 .show(ctx, |ui| {
-                    ui.label(
-                        "FlistWalker could not check for updates at startup. Search and file operations are unaffected.",
-                    );
+                    ui.label("FlistWalker couldn't check for updates right now.");
+                    ui.label("You can keep using the app as usual and try again later.");
                     ui.add_space(6.0);
-                    ui.label(&failure.error);
+                    ui.separator();
+                    ui.label("Details");
+                    ui.monospace(&failure.error);
                     ui.add_space(6.0);
                     ui.checkbox(
                         &mut suppress_future_errors,
