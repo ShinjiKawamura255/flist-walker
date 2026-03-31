@@ -132,6 +132,7 @@
 - FileList 作成完了時の再インデックス対象は request に紐づく tab_id/root で判定し、元タブが background 化していてもその tab へ再インデックス request を投げる。完了時点で元タブの root が変わっていた場合は旧 root 応答として notice のみ更新し、tab 状態は戻さない。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
 - Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。
+- プレビューデコーダは拡張子を見ず、先頭 64KiB を対象に UTF-8、BOM 付き UTF-16、その後に主要レガシー文字コードを順に試す。候補ごとに decode error と制御文字比率を評価し、妥当なテキストだけを preview に採用する。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。
 - query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。

@@ -3,10 +3,11 @@ use crate::query::{
     include_alternatives, parse_include_alternative, parse_query, split_anchor,
     token_uses_regex_syntax,
 };
+use encoding_rs::{EUC_JP, SHIFT_JIS, UTF_16BE, UTF_16LE, WINDOWS_1252};
 use regex::RegexBuilder;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::{ffi::c_void, os::windows::ffi::OsStrExt, ptr, sync::OnceLock};
@@ -349,23 +350,111 @@ fn read_preview_lines(
     max_lines: usize,
     max_bytes: usize,
 ) -> std::io::Result<Vec<String>> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let mut out = Vec::new();
-    let mut bytes_read = 0usize;
+    let mut file = File::open(path)?;
+    let mut bytes = Vec::with_capacity(max_bytes.min(8192));
+    let mut handle = (&mut file).take(max_bytes as u64);
+    handle.read_to_end(&mut bytes)?;
+    decode_preview_lines(&bytes, max_lines).ok_or_else(|| {
+        std::io::Error::new(std::io::ErrorKind::InvalidData, "preview decode failed")
+    })
+}
 
-    while out.len() < max_lines && bytes_read < max_bytes {
-        let mut line = String::new();
-        let n = reader.read_line(&mut line)?;
-        if n == 0 {
-            break;
-        }
-        bytes_read = bytes_read.saturating_add(n);
-        let trimmed = line.trim_end_matches(&['\r', '\n'][..]).to_string();
-        out.push(trimmed);
+fn decode_preview_lines(bytes: &[u8], max_lines: usize) -> Option<Vec<String>> {
+    if bytes.is_empty() {
+        return Some(Vec::new());
+    }
+    if looks_like_binary(bytes) {
+        return None;
     }
 
-    Ok(out)
+    let mut candidates = preview_decoding_candidates(bytes);
+    candidates.push(decode_utf8_preview(bytes));
+    candidates.extend(preview_fallback_decoders(bytes));
+
+    candidates
+        .into_iter()
+        .flatten()
+        .map(|decoded| split_preview_lines(&decoded, max_lines))
+        .next()
+}
+
+fn preview_decoding_candidates(bytes: &[u8]) -> Vec<Option<String>> {
+    if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        return vec![decode_utf8_preview(&bytes[3..])];
+    }
+    if bytes.starts_with(&[0xFF, 0xFE]) {
+        return vec![decode_with_encoding(&bytes[2..], UTF_16LE)];
+    }
+    if bytes.starts_with(&[0xFE, 0xFF]) {
+        return vec![decode_with_encoding(&bytes[2..], UTF_16BE)];
+    }
+    Vec::new()
+}
+
+fn preview_fallback_decoders(bytes: &[u8]) -> Vec<Option<String>> {
+    #[cfg(windows)]
+    {
+        vec![
+            decode_with_encoding(bytes, SHIFT_JIS),
+            decode_with_encoding(bytes, EUC_JP),
+            decode_with_encoding(bytes, WINDOWS_1252),
+        ]
+    }
+    #[cfg(not(windows))]
+    {
+        vec![
+            decode_with_encoding(bytes, SHIFT_JIS),
+            decode_with_encoding(bytes, EUC_JP),
+            decode_with_encoding(bytes, WINDOWS_1252),
+        ]
+    }
+}
+
+fn decode_utf8_preview(bytes: &[u8]) -> Option<String> {
+    std::str::from_utf8(bytes).ok().map(|text| text.to_string())
+}
+
+fn decode_with_encoding(bytes: &[u8], encoding: &'static encoding_rs::Encoding) -> Option<String> {
+    let (decoded, _used_encoding, had_errors) = encoding.decode(bytes);
+    if had_errors {
+        return None;
+    }
+    let text = decoded.into_owned();
+    if contains_too_many_control_chars(&text) {
+        return None;
+    }
+    Some(text)
+}
+
+fn split_preview_lines(decoded: &str, max_lines: usize) -> Vec<String> {
+    decoded
+        .lines()
+        .take(max_lines)
+        .map(|line| line.trim_end_matches('\r').to_string())
+        .collect()
+}
+
+fn looks_like_binary(bytes: &[u8]) -> bool {
+    bytes.contains(&0) && !has_utf16_bom(bytes)
+}
+
+fn has_utf16_bom(bytes: &[u8]) -> bool {
+    bytes.starts_with(&[0xFF, 0xFE]) || bytes.starts_with(&[0xFE, 0xFF])
+}
+
+fn contains_too_many_control_chars(text: &str) -> bool {
+    let mut suspicious = 0usize;
+    let mut total = 0usize;
+    for ch in text.chars() {
+        if ch == '\n' || ch == '\r' || ch == '\t' {
+            continue;
+        }
+        total = total.saturating_add(1);
+        if ch.is_control() {
+            suspicious = suspicious.saturating_add(1);
+        }
+    }
+    total > 0 && suspicious.saturating_mul(20) > total
 }
 
 pub fn should_skip_preview(path: &Path, is_dir: bool) -> bool {
@@ -911,6 +1000,49 @@ mod tests {
         assert!(preview.contains("line1"));
         assert!(preview.contains("line20"));
         assert!(!preview.contains("line21"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_decodes_shift_jis_script() {
+        let root = test_root("preview-shift-jis");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("script.vbs");
+        let (encoded, _used_encoding, had_errors) = SHIFT_JIS.encode("msgbox \"こんにちは\"\r\n");
+        assert!(!had_errors);
+        fs::write(&file, encoded.as_ref()).expect("write shift_jis file");
+
+        let preview = build_preview_text(&file);
+        assert!(preview.contains("script.vbs"));
+        assert!(preview.contains("こんにちは"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_decodes_utf16le_with_bom() {
+        let root = test_root("preview-utf16le");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("script.ps1");
+        let mut bytes = vec![0xFF, 0xFE];
+        for unit in "Write-Host \"hello\"\r\n".encode_utf16() {
+            bytes.extend_from_slice(&unit.to_le_bytes());
+        }
+        fs::write(&file, bytes).expect("write utf16 file");
+
+        let preview = build_preview_text(&file);
+        assert!(preview.contains("Write-Host \"hello\""), "{preview}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_keeps_binary_files_unreadable() {
+        let root = test_root("preview-binary");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("blob.bin");
+        fs::write(&file, [0x00, 0x01, 0x02, 0x03, 0x04]).expect("write binary file");
+
+        let preview = build_preview_text(&file);
+        assert!(preview.contains("<binary or unreadable file>"));
         let _ = fs::remove_dir_all(&root);
     }
 
