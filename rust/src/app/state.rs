@@ -1,6 +1,7 @@
 use super::{
     FileListDialogKind, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, UpdatePromptState,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, UpdateCheckFailureState,
+    UpdatePromptState,
 };
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -47,7 +48,9 @@ pub(super) struct UpdateState {
     pub(super) pending_request_id: Option<u64>,
     pub(super) in_progress: bool,
     pub(super) prompt: Option<UpdatePromptState>,
+    pub(super) check_failure: Option<UpdateCheckFailureState>,
     pub(super) skipped_target_version: Option<String>,
+    pub(super) suppress_check_failure_dialog: bool,
     pub(super) close_requested_for_install: bool,
 }
 
@@ -58,7 +61,9 @@ impl Default for UpdateState {
             pending_request_id: None,
             in_progress: false,
             prompt: None,
+            check_failure: None,
             skipped_target_version: None,
+            suppress_check_failure_dialog: false,
             close_requested_for_install: false,
         }
     }

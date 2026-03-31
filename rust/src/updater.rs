@@ -19,6 +19,7 @@ const RELEASES_LATEST_URL: &str =
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
+const FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpdateSupport {
@@ -71,6 +72,26 @@ pub fn self_update_disabled() -> bool {
     self_update_disabled_for_exe_path(std::env::current_exe().ok().as_deref())
 }
 
+pub fn forced_update_check_failure_message() -> Option<String> {
+    let value = std::env::var(FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME).ok()?;
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let message = if matches!(
+        trimmed.to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes" | "on"
+    ) {
+        "forced startup update check failure for debugging".to_string()
+    } else {
+        trimmed.to_string()
+    };
+    Some(format!(
+        "{} ({FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME})",
+        message
+    ))
+}
+
 fn self_update_disabled_for_exe_path(current_exe: Option<&Path>) -> bool {
     env_flag(SELF_UPDATE_DISABLE_FLAG_NAME) || self_update_disabled_by_sentinel_file(current_exe)
 }
@@ -86,6 +107,9 @@ fn self_update_disabled_by_sentinel_file(current_exe: Option<&Path>) -> bool {
 pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
     if self_update_disabled() {
         return Ok(None);
+    }
+    if let Some(message) = forced_update_check_failure_message() {
+        bail!("{message}");
     }
     let current_version = parse_version(env!("CARGO_PKG_VERSION"))?;
     let release = fetch_latest_release()?;
@@ -678,6 +702,27 @@ mod tests {
         assert!(result.is_none());
         unsafe {
             std::env::remove_var(SELF_UPDATE_DISABLE_FLAG_NAME);
+        }
+    }
+
+    #[test]
+    fn forced_update_check_failure_is_honored_before_network_access() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
+        unsafe {
+            std::env::set_var(FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME, "1");
+        }
+
+        let err = check_for_update().expect_err("forced failure should bypass network");
+        assert!(
+            err.to_string()
+                .contains("forced startup update check failure for debugging"),
+            "unexpected error: {err}"
+        );
+
+        unsafe {
+            std::env::remove_var(FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME);
         }
     }
 

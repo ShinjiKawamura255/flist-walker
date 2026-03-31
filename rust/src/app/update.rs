@@ -77,6 +77,18 @@ impl FlistWalkerApp {
         self.update_state.prompt = None;
     }
 
+    pub(super) fn dismiss_update_check_failure(&mut self) {
+        self.update_state.check_failure = None;
+    }
+
+    pub(super) fn suppress_update_check_failures(&mut self) {
+        self.update_state.suppress_check_failure_dialog = true;
+        self.update_state.check_failure = None;
+        self.mark_ui_state_dirty();
+        self.persist_ui_state_now();
+        self.set_notice("Startup update check errors will be hidden");
+    }
+
     pub(super) fn skip_update_prompt_until_next_version(&mut self) {
         let Some(target_version) = self
             .update_state
@@ -116,12 +128,21 @@ impl FlistWalkerApp {
                     self.update_state.pending_request_id = None;
                     self.update_state.in_progress = false;
                 }
-                UpdateResponse::CheckFailedSilent { request_id } => {
+                UpdateResponse::CheckFailed { request_id, error } => {
                     if request_id != pending {
                         continue;
                     }
                     self.update_state.pending_request_id = None;
                     self.update_state.in_progress = false;
+                    Self::append_window_trace("update_check_failed", &error);
+                    if !self.update_state.suppress_check_failure_dialog
+                        || forced_update_check_failure_message().is_some()
+                    {
+                        self.update_state.check_failure = Some(UpdateCheckFailureState {
+                            error,
+                            suppress_future_errors: false,
+                        });
+                    }
                 }
                 UpdateResponse::Available {
                     request_id,

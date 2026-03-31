@@ -181,12 +181,13 @@
 - GitHub Releases API の latest endpoint から `tag_name` / asset 名 / `browser_download_url` を取得し、現在 version と比較する。
 - asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary、対応する `*.LICENSE.txt` / `*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS` / `SHA256SUMS.sig` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
+- 起動時の update check 失敗は worker からエラー文字列つきで返し、GUI 側は通常操作を継続したまま軽量ダイアログで理由を表示する。利用者が「今後この種の起動時エラーを表示しない」を選んだ場合は UI state へ永続化し、次回以降の startup check failure dialog を抑止する。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
 - restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。
 - update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
 - 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。
 - `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy、または実行中バイナリと同一ディレクトリに同名ファイルがある場合は GUI 側で起動時 update request 自体を送らず、update install 側でも同じ判定で最終ガードする。
-- 手動試験用 override として `FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1` を読み取り、通常運用の GitHub latest 比較を一時的に差し替えられるようにする。
+- 手動試験用 override として `FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1`, `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE` を読み取り、通常運用の GitHub latest 比較や startup failure dialog を内部検証用に再現できるようにする。
 
 ## Error handling / timeout / logging / metrics
 - エラー戦略: ファイルアクセス失敗、実行失敗、正規表現不正を分類して表示。

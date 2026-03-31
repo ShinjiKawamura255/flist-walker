@@ -117,6 +117,27 @@ fn persist_ui_state_now_saves_skipped_update_version() {
 }
 
 #[test]
+fn persist_ui_state_now_saves_update_check_failure_suppression() {
+    let root = test_root("persist-update-check-failure-suppression");
+    let ui_state_dir = test_root("persist-update-check-failure-suppression-ui");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.update_state.suppress_check_failure_dialog = true;
+    app.mark_ui_state_dirty();
+    app.persist_ui_state_to_path_now(&ui_state_path);
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
+    assert!(launch.suppress_update_check_failure_dialog);
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn move_row_sets_scroll_tracking() {
     let root = test_root("scroll");
     fs::create_dir_all(&root).expect("create dir");
@@ -463,8 +484,8 @@ fn failed_update_response_sets_notice_without_closing_app() {
 }
 
 #[test]
-fn silent_update_check_failure_leaves_notice_unchanged() {
-    let root = test_root("silent-update-check-failure");
+fn update_check_failure_opens_failure_dialog() {
+    let root = test_root("update-check-failure-dialog");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
@@ -473,15 +494,83 @@ fn silent_update_check_failure_leaves_notice_unchanged() {
     app.update_state.in_progress = true;
     app.notice = "Existing notice".to_string();
 
-    tx.send(UpdateResponse::CheckFailedSilent { request_id: 1 })
-        .expect("send silent update failure");
+    tx.send(UpdateResponse::CheckFailed {
+        request_id: 1,
+        error: "Update check failed: offline".to_string(),
+    })
+    .expect("send update failure");
 
     app.poll_update_response();
 
     assert_eq!(app.notice, "Existing notice");
+    assert_eq!(
+        app.update_state
+            .check_failure
+            .as_ref()
+            .expect("update check failure dialog")
+            .error,
+        "Update check failed: offline"
+    );
     assert_eq!(app.update_state.pending_request_id, None);
     assert!(!app.update_state.in_progress);
     assert!(!app.update_state.close_requested_for_install);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn suppressed_update_check_failure_does_not_open_dialog() {
+    let root = test_root("suppressed-update-check-failure-dialog");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.update_state.pending_request_id = Some(1);
+    app.update_state.in_progress = true;
+    app.update_state.suppress_check_failure_dialog = true;
+
+    tx.send(UpdateResponse::CheckFailed {
+        request_id: 1,
+        error: "Update check failed: offline".to_string(),
+    })
+    .expect("send update failure");
+
+    app.poll_update_response();
+
+    assert!(app.update_state.check_failure.is_none());
+    assert_eq!(app.update_state.pending_request_id, None);
+    assert!(!app.update_state.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn forced_update_check_failure_bypasses_suppression_flag() {
+    let _env_lock = crate::env_var_test_lock()
+        .lock()
+        .expect("env var test lock");
+    let root = test_root("forced-update-check-failure-bypasses-suppression");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.update_rx = rx;
+    app.update_state.pending_request_id = Some(1);
+    app.update_state.in_progress = true;
+    app.update_state.suppress_check_failure_dialog = true;
+    unsafe {
+        std::env::set_var("FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE", "1");
+    }
+
+    tx.send(UpdateResponse::CheckFailed {
+        request_id: 1,
+        error: "Update check failed: forced startup update check failure for debugging (FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE)".to_string(),
+    })
+    .expect("send update failure");
+
+    app.poll_update_response();
+
+    assert!(app.update_state.check_failure.is_some());
+    unsafe {
+        std::env::remove_var("FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE");
+    }
     let _ = fs::remove_dir_all(&root);
 }
 

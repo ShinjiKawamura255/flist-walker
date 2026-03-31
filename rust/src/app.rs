@@ -7,7 +7,8 @@ use crate::ui_model::{
     normalize_path_for_display, should_skip_preview,
 };
 use crate::updater::{
-    self_update_disabled, should_skip_update_prompt, UpdateCandidate, UpdateSupport,
+    forced_update_check_failure_message, self_update_disabled, should_skip_update_prompt,
+    UpdateCandidate, UpdateSupport,
 };
 use eframe::egui;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -338,6 +339,12 @@ struct UpdatePromptState {
     candidate: UpdateCandidate,
     skip_until_next_version: bool,
     install_started: bool,
+}
+
+#[derive(Clone, Debug)]
+struct UpdateCheckFailureState {
+    error: String,
+    suppress_future_errors: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1754,6 +1761,7 @@ Search hints:
             active_tab: Some(self.active_tab),
             window: self.window_geometry.clone(),
             skipped_update_target_version: self.update_state.skipped_target_version.clone(),
+            suppress_update_check_failure_dialog: self.update_state.suppress_check_failure_dialog,
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
             let _ = write_text_atomic(path, &text);

@@ -108,6 +108,7 @@ impl FlistWalkerApp {
                 .max(Self::MIN_PREVIEW_PANEL_WIDTH),
             update_state: UpdateState {
                 skipped_target_version: launch.skipped_update_target_version.clone(),
+                suppress_check_failure_dialog: launch.suppress_update_check_failure_dialog,
                 ..UpdateState::default()
             },
         }

@@ -596,7 +596,9 @@ impl FlistWalkerApp {
         ui.painter().rect_filled(
             glow_rect,
             egui::Rounding::same(Self::TAB_ACCENT_LINE_HEIGHT),
-            palette.background.gamma_multiply(if ui.visuals().dark_mode { 0.72 } else { 0.62 }),
+            palette
+                .background
+                .gamma_multiply(if ui.visuals().dark_mode { 0.72 } else { 0.62 }),
         );
         ui.painter().rect_filled(
             line_rect,
@@ -1180,77 +1182,114 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_update_dialog(&mut self, ctx: &egui::Context) {
-        let Some(prompt) = self.update_state.prompt.as_ref().cloned() else {
-            return;
-        };
-
-        let mut confirm = false;
-        let mut later = false;
-        let mut skip_until_next_version = prompt.skip_until_next_version;
-        egui::Window::new("Update Available")
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
-            .show(ctx, |ui| {
-                ui.label(format!(
-                    "FlistWalker {} is available. Current version is {}.",
-                    prompt.candidate.target_version, prompt.candidate.current_version
-                ));
-                match &prompt.candidate.support {
-                    UpdateSupport::Auto => {
-                        ui.label(
-                            "Download the new release, replace the current binary, and restart?",
-                        );
-                        if prompt.install_started {
-                            ui.label("Downloading update... please wait.");
-                        }
-                        ui.checkbox(
-                            &mut skip_until_next_version,
-                            "Don't show again until the next version",
-                        );
-                        ui.horizontal(|ui| {
-                            if ui
-                                .add_enabled(
-                                    !prompt.install_started,
-                                    egui::Button::new("Download and Restart"),
-                                )
-                                .clicked()
-                            {
-                                confirm = true;
+        if let Some(prompt) = self.update_state.prompt.as_ref().cloned() {
+            let mut confirm = false;
+            let mut later = false;
+            let mut skip_until_next_version = prompt.skip_until_next_version;
+            egui::Window::new("Update Available")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+                .show(ctx, |ui| {
+                    ui.label(format!(
+                        "FlistWalker {} is available. Current version is {}.",
+                        prompt.candidate.target_version, prompt.candidate.current_version
+                    ));
+                    match &prompt.candidate.support {
+                        UpdateSupport::Auto => {
+                            ui.label(
+                                "Download the new release, replace the current binary, and restart?",
+                            );
+                            if prompt.install_started {
+                                ui.label("Downloading update... please wait.");
                             }
-                            if ui
-                                .add_enabled(!prompt.install_started, egui::Button::new("Later"))
-                                .clicked()
-                            {
+                            ui.checkbox(
+                                &mut skip_until_next_version,
+                                "Don't show again until the next version",
+                            );
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .add_enabled(
+                                        !prompt.install_started,
+                                        egui::Button::new("Download and Restart"),
+                                    )
+                                    .clicked()
+                                {
+                                    confirm = true;
+                                }
+                                if ui
+                                    .add_enabled(
+                                        !prompt.install_started,
+                                        egui::Button::new("Later"),
+                                    )
+                                    .clicked()
+                                {
+                                    later = true;
+                                }
+                            });
+                        }
+                        UpdateSupport::ManualOnly { message } => {
+                            ui.label(message);
+                            ui.label(format!("Release: {}", prompt.candidate.release_url));
+                            ui.checkbox(
+                                &mut skip_until_next_version,
+                                "Don't show again until the next version",
+                            );
+                            if ui.button("Later").clicked() {
                                 later = true;
                             }
-                        });
-                    }
-                    UpdateSupport::ManualOnly { message } => {
-                        ui.label(message);
-                        ui.label(format!("Release: {}", prompt.candidate.release_url));
-                        ui.checkbox(
-                            &mut skip_until_next_version,
-                            "Don't show again until the next version",
-                        );
-                        if ui.button("Later").clicked() {
-                            later = true;
                         }
                     }
-                }
-            });
+                });
 
-        if let Some(state) = self.update_state.prompt.as_mut() {
-            state.skip_until_next_version = skip_until_next_version;
+            if let Some(state) = self.update_state.prompt.as_mut() {
+                state.skip_until_next_version = skip_until_next_version;
+            }
+
+            if confirm {
+                self.start_update_install();
+            } else if later {
+                if skip_until_next_version {
+                    self.skip_update_prompt_until_next_version();
+                } else {
+                    self.dismiss_update_prompt();
+                }
+            }
         }
 
-        if confirm {
-            self.start_update_install();
-        } else if later {
-            if skip_until_next_version {
-                self.skip_update_prompt_until_next_version();
-            } else {
-                self.dismiss_update_prompt();
+        if let Some(failure) = self.update_state.check_failure.as_ref().cloned() {
+            let mut close = false;
+            let mut suppress_future_errors = failure.suppress_future_errors;
+            egui::Window::new("Update Check Failed")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 88.0))
+                .show(ctx, |ui| {
+                    ui.label(
+                        "FlistWalker could not check for updates at startup. Search and file operations are unaffected.",
+                    );
+                    ui.add_space(6.0);
+                    ui.label(&failure.error);
+                    ui.add_space(6.0);
+                    ui.checkbox(
+                        &mut suppress_future_errors,
+                        "Don't show this again for update check errors",
+                    );
+                    if ui.button("Close").clicked() {
+                        close = true;
+                    }
+                });
+
+            if let Some(state) = self.update_state.check_failure.as_mut() {
+                state.suppress_future_errors = suppress_future_errors;
+            }
+
+            if close {
+                if suppress_future_errors {
+                    self.suppress_update_check_failures();
+                } else {
+                    self.dismiss_update_check_failure();
+                }
             }
         }
     }
