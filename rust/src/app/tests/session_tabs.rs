@@ -18,6 +18,7 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
             include_dirs: true,
             query: "ok".to_string(),
             query_history: Vec::new(),
+            tab_accent: Some(TabAccentColor::Teal),
         },
         SavedTabState {
             root: root.join("missing").to_string_lossy().to_string(),
@@ -28,6 +29,7 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
             include_dirs: false,
             query: "skip".to_string(),
             query_history: Vec::new(),
+            tab_accent: Some(TabAccentColor::Amber),
         },
     ];
 
@@ -36,6 +38,7 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
     assert_eq!(sanitized.len(), 1);
     assert_eq!(active, 0);
     assert_eq!(sanitized[0].query, "ok");
+    assert_eq!(sanitized[0].tab_accent, Some(TabAccentColor::Teal));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -149,6 +152,7 @@ fn choose_startup_root_prefers_restored_tab_over_last_root() {
         include_dirs: true,
         query: String::new(),
         query_history: Vec::new(),
+        tab_accent: Some(TabAccentColor::Emerald),
     }];
 
     let chosen = FlistWalkerApp::choose_startup_root(
@@ -212,6 +216,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
                 include_dirs: true,
                 query: "alpha".to_string(),
                 query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Azure),
             },
             SavedTabState {
                 root: root_b.to_string_lossy().to_string(),
@@ -222,6 +227,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
                 include_dirs: false,
                 query: "beta".to_string(),
                 query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Crimson),
             },
         ],
         1,
@@ -231,6 +237,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     assert_eq!(app.active_tab, 1);
     assert_eq!(app.root, root_b);
     assert_eq!(app.query, "beta");
+    assert_eq!(app.tabs[1].tab_accent, Some(TabAccentColor::Crimson));
     assert!(!app.pending_restore_refresh);
     assert!(app.tabs[0].pending_restore_refresh);
     assert!(!app.tabs[1].pending_restore_refresh);
@@ -262,6 +269,7 @@ fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
             include_dirs: true,
             query: String::new(),
             query_history: Vec::new(),
+            tab_accent: None,
         }],
         0,
     );
@@ -292,6 +300,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
                 include_dirs: true,
                 query: "alpha".to_string(),
                 query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Olive),
             },
             SavedTabState {
                 root: root_b.to_string_lossy().to_string(),
@@ -302,6 +311,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
                 include_dirs: true,
                 query: "beta".to_string(),
                 query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Indigo),
             },
         ],
         1,
@@ -342,7 +352,57 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
     assert_eq!(app.active_tab, 1);
     assert!(app.query.is_empty());
     assert!(app.use_filelist);
+    assert_eq!(app.tabs[1].tab_accent, None);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn save_ui_state_persists_tab_accent() {
+    let root = test_root("save-ui-state-tab-accent");
+    let ui_state_dir = test_root("save-ui-state-tab-accent-ui");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.tabs[0].tab_accent = Some(TabAccentColor::Magenta);
+    app.save_ui_state_to_path(&ui_state_path);
+
+    let saved = FlistWalkerApp::load_ui_state_from_path(&ui_state_path);
+    assert_eq!(saved.tabs.len(), 1);
+    assert_eq!(saved.tabs[0].tab_accent, Some(TabAccentColor::Magenta));
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tab_accent_palette_matches_dropsendto_slot_colors() {
+    let dark_teal = TabAccentColor::Teal.palette(true);
+    assert_eq!(
+        dark_teal.background,
+        egui::Color32::from_rgb(0x10, 0x2A, 0x30)
+    );
+    assert_eq!(dark_teal.border, egui::Color32::from_rgb(0x1F, 0x76, 0x7D));
+    assert_eq!(
+        dark_teal.foreground,
+        egui::Color32::from_rgb(0xE4, 0xFD, 0xFF)
+    );
+
+    let light_magenta = TabAccentColor::Magenta.palette(false);
+    assert_eq!(
+        light_magenta.background,
+        egui::Color32::from_rgb(0xF7, 0xE8, 0xF8)
+    );
+    assert_eq!(
+        light_magenta.border,
+        egui::Color32::from_rgb(0xD0, 0x8F, 0xD8)
+    );
+    assert_eq!(
+        light_magenta.foreground,
+        egui::Color32::from_rgb(0x5A, 0x1F, 0x60)
+    );
 }
 
 #[test]

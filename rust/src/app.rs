@@ -92,6 +92,13 @@ pub(super) struct EntryKind {
     pub(super) is_dir: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct TabAccentPalette {
+    pub(super) background: egui::Color32,
+    pub(super) border: egui::Color32,
+    pub(super) foreground: egui::Color32,
+}
+
 impl EntryKind {
     pub(super) const fn file() -> Self {
         Self {
@@ -133,6 +140,95 @@ impl ResultSortMode {
             self,
             Self::ModifiedDesc | Self::ModifiedAsc | Self::CreatedDesc | Self::CreatedAsc
         )
+    }
+}
+
+impl TabAccentColor {
+    pub(super) const ALL: [Self; 8] = [
+        Self::Teal,
+        Self::Indigo,
+        Self::Azure,
+        Self::Amber,
+        Self::Olive,
+        Self::Emerald,
+        Self::Crimson,
+        Self::Magenta,
+    ];
+
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Teal => "Teal",
+            Self::Indigo => "Indigo",
+            Self::Azure => "Azure",
+            Self::Amber => "Amber",
+            Self::Olive => "Olive",
+            Self::Emerald => "Emerald",
+            Self::Crimson => "Crimson",
+            Self::Magenta => "Magenta",
+        }
+    }
+
+    pub(super) const fn palette(self, dark_mode: bool) -> TabAccentPalette {
+        match (dark_mode, self) {
+            (true, Self::Teal) => {
+                TabAccentPalette::new((0x10, 0x2A, 0x30), (0x1F, 0x76, 0x7D), (0xE4, 0xFD, 0xFF))
+            }
+            (true, Self::Indigo) => {
+                TabAccentPalette::new((0x16, 0x15, 0x2E), (0x4E, 0x52, 0xA6), (0xF4, 0xF2, 0xFF))
+            }
+            (true, Self::Azure) => {
+                TabAccentPalette::new((0x0F, 0x1B, 0x33), (0x2B, 0x78, 0xC4), (0xE2, 0xF1, 0xFF))
+            }
+            (true, Self::Amber) => {
+                TabAccentPalette::new((0x2D, 0x1F, 0x0F), (0xB5, 0x6B, 0x17), (0xFF, 0xE8, 0xC2))
+            }
+            (true, Self::Olive) => {
+                TabAccentPalette::new((0x20, 0x27, 0x12), (0x6E, 0x8C, 0x23), (0xF0, 0xFF, 0xD8))
+            }
+            (true, Self::Emerald) => {
+                TabAccentPalette::new((0x0F, 0x28, 0x1D), (0x1E, 0x8B, 0x5B), (0xE3, 0xFF, 0xF2))
+            }
+            (true, Self::Crimson) => {
+                TabAccentPalette::new((0x2B, 0x11, 0x16), (0xB5, 0x45, 0x4F), (0xFF, 0xE3, 0xE7))
+            }
+            (true, Self::Magenta) => {
+                TabAccentPalette::new((0x2A, 0x0F, 0x2B), (0x9B, 0x3E, 0xA8), (0xFF, 0xE6, 0xFF))
+            }
+            (false, Self::Teal) => {
+                TabAccentPalette::new((0xE3, 0xF4, 0xF6), (0x74, 0xB9, 0xC0), (0x1F, 0x5A, 0x62))
+            }
+            (false, Self::Indigo) => {
+                TabAccentPalette::new((0xEC, 0xEB, 0xFA), (0x8E, 0x87, 0xD6), (0x2F, 0x2F, 0x6A))
+            }
+            (false, Self::Azure) => {
+                TabAccentPalette::new((0xE6, 0xF0, 0xFB), (0x7A, 0xAD, 0xE3), (0x1F, 0x3E, 0x69))
+            }
+            (false, Self::Amber) => {
+                TabAccentPalette::new((0xFF, 0xF3, 0xDD), (0xE1, 0xA4, 0x4B), (0x6B, 0x4A, 0x16))
+            }
+            (false, Self::Olive) => {
+                TabAccentPalette::new((0xEE, 0xF5, 0xDA), (0xA2, 0xB8, 0x5F), (0x45, 0x55, 0x1F))
+            }
+            (false, Self::Emerald) => {
+                TabAccentPalette::new((0xE5, 0xF6, 0xEE), (0x6F, 0xB9, 0x8A), (0x1F, 0x5A, 0x3D))
+            }
+            (false, Self::Crimson) => {
+                TabAccentPalette::new((0xFB, 0xE7, 0xEA), (0xE1, 0x89, 0x95), (0x6A, 0x1E, 0x2A))
+            }
+            (false, Self::Magenta) => {
+                TabAccentPalette::new((0xF7, 0xE8, 0xF8), (0xD0, 0x8F, 0xD8), (0x5A, 0x1F, 0x60))
+            }
+        }
+    }
+}
+
+impl TabAccentPalette {
+    const fn new(background: (u8, u8, u8), border: (u8, u8, u8), foreground: (u8, u8, u8)) -> Self {
+        Self {
+            background: egui::Color32::from_rgb(background.0, background.1, background.2),
+            border: egui::Color32::from_rgb(border.0, border.1, border.2),
+            foreground: egui::Color32::from_rgb(foreground.0, foreground.1, foreground.2),
+        }
     }
 }
 
@@ -973,6 +1069,7 @@ Search hints:
         AppTabState {
             id,
             root: Self::normalize_windows_path(PathBuf::from(&saved.root)),
+            tab_accent: saved.tab_accent,
             use_filelist: saved.use_filelist,
             use_regex: saved.use_regex,
             ignore_case: saved.ignore_case,
@@ -1149,6 +1246,10 @@ Search hints:
         AppTabState {
             id,
             root: self.root.clone(),
+            tab_accent: self
+                .tabs
+                .get(self.active_tab)
+                .and_then(|tab| tab.tab_accent),
             use_filelist: self.use_filelist,
             use_regex: self.use_regex,
             ignore_case: self.ignore_case,
@@ -1312,6 +1413,18 @@ Search hints:
         self.trigger_restore_refresh_for_active_tab();
     }
 
+    fn set_tab_accent(&mut self, index: usize, accent: Option<TabAccentColor>) {
+        let Some(tab) = self.tabs.get_mut(index) else {
+            return;
+        };
+        if tab.tab_accent == accent {
+            return;
+        }
+        tab.tab_accent = accent;
+        self.mark_ui_state_dirty();
+        self.persist_ui_state_now();
+    }
+
     fn create_new_tab(&mut self) {
         self.tab_drag_state = None;
         let previous_active = self.active_tab;
@@ -1322,6 +1435,7 @@ Search hints:
         let id = self.next_tab_id;
         self.next_tab_id = self.next_tab_id.saturating_add(1);
         let mut tab = self.capture_active_tab_state(id);
+        tab.tab_accent = None;
         tab.use_filelist = true;
         tab.query_state.query.clear();
         tab.query_state.query_history = self.query_history.clone();
@@ -1549,6 +1663,10 @@ Search hints:
             } else {
                 self.query_history.iter().cloned().collect()
             },
+            tab_accent: self
+                .tabs
+                .get(self.active_tab)
+                .and_then(|tab| tab.tab_accent),
         }
     }
 
@@ -1566,6 +1684,7 @@ Search hints:
             } else {
                 tab.query_state.query_history.iter().cloned().collect()
             },
+            tab_accent: tab.tab_accent,
         }
     }
 

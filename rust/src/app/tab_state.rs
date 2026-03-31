@@ -53,6 +53,7 @@ pub(super) struct TabResultState {
 pub(super) struct AppTabState {
     pub(super) id: u64,
     pub(super) root: PathBuf,
+    pub(super) tab_accent: Option<TabAccentColor>,
     pub(super) use_filelist: bool,
     pub(super) use_regex: bool,
     pub(super) ignore_case: bool,

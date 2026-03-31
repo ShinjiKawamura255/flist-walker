@@ -5,6 +5,11 @@ impl FlistWalkerApp {
     const RESULT_ROW_H_MARGIN: f32 = 3.0;
     const RESULT_ROW_V_MARGIN: f32 = 2.0;
     const RESULT_ROW_ROUNDING: f32 = 3.0;
+    const TAB_ROUNDING: f32 = 4.0;
+    const TAB_ACCENT_GLOW_HEIGHT: f32 = 8.0;
+    const TAB_ACCENT_LINE_HEIGHT: f32 = 3.0;
+    const TAB_ACTIVE_BORDER_WIDTH: f32 = 2.0;
+    const TAB_INACTIVE_BORDER_WIDTH: f32 = 1.0;
 
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
         [
@@ -376,6 +381,9 @@ impl FlistWalkerApp {
                 let is_drag_source = drag_state.is_some_and(|state| state.source_index == i);
                 let is_drop_target = drag_state.is_some_and(|state| state.hover_index == i);
                 let is_active = self.active_tab == i;
+                let tab_accent = self.tabs.get(i).and_then(|tab| tab.tab_accent);
+                let accent_palette =
+                    tab_accent.map(|accent| accent.palette(ui.visuals().dark_mode));
                 let active_fill = if ui.visuals().dark_mode {
                     egui::Color32::from_rgb(48, 53, 62)
                 } else {
@@ -388,19 +396,32 @@ impl FlistWalkerApp {
                 } else if is_drop_target {
                     drop_fill
                 } else if is_active {
-                    active_fill
+                    accent_palette
+                        .map(|palette| palette.background)
+                        .unwrap_or(active_fill)
                 } else {
                     egui::Color32::TRANSPARENT
                 };
                 let frame_stroke = if is_drag_source || is_drop_target {
                     ui.visuals().selection.stroke
+                } else if let Some(palette) = accent_palette {
+                    egui::Stroke::new(
+                        if is_active {
+                            Self::TAB_ACTIVE_BORDER_WIDTH
+                        } else {
+                            Self::TAB_INACTIVE_BORDER_WIDTH
+                        },
+                        palette
+                            .border
+                            .gamma_multiply(if is_active { 1.0 } else { 0.72 }),
+                    )
                 } else {
                     ui.visuals().widgets.noninteractive.bg_stroke
                 };
                 let tab_response = egui::Frame::none()
                     .fill(frame_fill)
                     .stroke(frame_stroke)
-                    .rounding(egui::Rounding::same(4.0))
+                    .rounding(egui::Rounding::same(Self::TAB_ROUNDING))
                     .inner_margin(egui::Margin::symmetric(6.0, 2.0))
                     .show(ui, |ui| {
                         let title = self
@@ -410,10 +431,16 @@ impl FlistWalkerApp {
                             .unwrap_or_else(|| format!("Tab {}", i + 1));
                         let title_response = ui.add(
                             egui::Button::new(egui::RichText::new(title).strong().color(
-                                if is_active {
+                                if let Some(palette) = accent_palette {
+                                    if is_active {
+                                        palette.foreground
+                                    } else {
+                                        palette.foreground.gamma_multiply(0.92)
+                                    }
+                                } else if is_active {
                                     ui.visuals().strong_text_color()
                                 } else {
-                                    ui.visuals().text_color()
+                                    ui.visuals().text_color().gamma_multiply(0.78)
                                 },
                             ))
                             .frame(false)
@@ -422,7 +449,21 @@ impl FlistWalkerApp {
                         let close_response = ui
                             .add_enabled(
                                 self.tabs.len() > 1,
-                                egui::Button::new("×").small().frame(false),
+                                egui::Button::new(
+                                    egui::RichText::new("×").color(
+                                        accent_palette
+                                            .map(|palette| {
+                                                if is_active {
+                                                    palette.foreground
+                                                } else {
+                                                    palette.border
+                                                }
+                                            })
+                                            .unwrap_or_else(|| ui.visuals().text_color()),
+                                    ),
+                                )
+                                .small()
+                                .frame(false),
                             )
                             .on_hover_text("Close tab");
 
@@ -445,7 +486,21 @@ impl FlistWalkerApp {
                         if close_response.clicked() {
                             close_tab = Some(i);
                         }
+
+                        title_response.union(close_response)
                     });
+                let tab_interaction = tab_response.inner;
+                self.paint_tab_accent_decoration(
+                    ui,
+                    tab_response.response.rect,
+                    accent_palette,
+                    is_active,
+                    is_drag_source,
+                    is_drop_target,
+                );
+                tab_interaction.context_menu(|ui| {
+                    self.render_tab_accent_menu(ui, i, tab_accent);
+                });
                 tab_rects.push(tab_response.response.rect);
             }
             if let Some(mut state) = drag_state {
@@ -501,6 +556,92 @@ impl FlistWalkerApp {
             }
             if let Some(idx) = switch_to {
                 self.switch_to_tab_index(idx);
+            }
+        });
+    }
+
+    fn paint_tab_accent_decoration(
+        &self,
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        accent_palette: Option<TabAccentPalette>,
+        is_active: bool,
+        is_drag_source: bool,
+        is_drop_target: bool,
+    ) {
+        if is_drag_source || is_drop_target {
+            return;
+        }
+        let Some(palette) = accent_palette else {
+            return;
+        };
+        if is_active {
+            return;
+        }
+
+        let glow_rect = egui::Rect::from_min_max(
+            egui::pos2(
+                rect.left() + 2.0,
+                rect.bottom() - Self::TAB_ACCENT_GLOW_HEIGHT,
+            ),
+            egui::pos2(rect.right() - 2.0, rect.bottom() - 1.0),
+        );
+        let line_rect = egui::Rect::from_min_max(
+            egui::pos2(
+                rect.left() + 4.0,
+                rect.bottom() - Self::TAB_ACCENT_LINE_HEIGHT - 1.0,
+            ),
+            egui::pos2(rect.right() - 4.0, rect.bottom() - 1.0),
+        );
+        ui.painter().rect_filled(
+            glow_rect,
+            egui::Rounding::same(Self::TAB_ACCENT_LINE_HEIGHT),
+            palette.background.gamma_multiply(if ui.visuals().dark_mode { 0.72 } else { 0.62 }),
+        );
+        ui.painter().rect_filled(
+            line_rect,
+            egui::Rounding::same(Self::TAB_ACCENT_LINE_HEIGHT),
+            palette.border,
+        );
+    }
+
+    fn render_tab_accent_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        index: usize,
+        current_accent: Option<TabAccentColor>,
+    ) {
+        ui.set_min_width(220.0);
+        ui.label("Tab Color");
+        if ui.button("Clear").clicked() {
+            self.set_tab_accent(index, None);
+            ui.close_menu();
+            return;
+        }
+        ui.separator();
+        ui.horizontal_wrapped(|ui| {
+            for accent in TabAccentColor::ALL {
+                let palette = accent.palette(ui.visuals().dark_mode);
+                let mut button = egui::Button::new(
+                    egui::RichText::new(accent.label()).color(palette.foreground),
+                )
+                .fill(palette.background)
+                .stroke(egui::Stroke::new(
+                    if current_accent == Some(accent) {
+                        2.0
+                    } else {
+                        1.0
+                    },
+                    palette.border,
+                ))
+                .rounding(egui::Rounding::same(6.0));
+                if current_accent == Some(accent) {
+                    button = button.min_size(egui::vec2(86.0, 24.0));
+                }
+                if ui.add(button).clicked() {
+                    self.set_tab_accent(index, Some(accent));
+                    ui.close_menu();
+                }
             }
         });
     }

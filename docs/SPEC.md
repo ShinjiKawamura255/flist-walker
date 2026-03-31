@@ -181,6 +181,10 @@
 - MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: `FLISTWALKER_RESTORE_TABS=1` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
+- SHOULD: タブは任意の accent color を持てる。
+- MUST: 非 active tab に accent color が設定されている場合、タブ下部にその色の装飾を表示する。
+- MUST: active tab に accent color が設定されている場合、タブ全面をその色で装飾する。
+- MUST: タブ accent color は保存対象のタブ状態に含め、タブ復元時に保持する。
 - MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
 - MUST: `FLISTWALKER_RESTORE_TABS=1` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。

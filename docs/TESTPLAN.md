@@ -77,6 +77,8 @@
 | TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |
 | TC-046 | unit | `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
 | TC-064 | unit | タブのドラッグ移動は並び順のみを更新し、active tab の実体と保存順を維持する | SP-010 |
+| TC-094 | unit | タブ accent color は保存・復元時に維持される | SP-010 |
+| TC-095 | unit | tab accent palette は light/dark theme で DropSendTo の Slot Color と同じ RGB を返す | SP-010 |
 | TC-047 | unit | FileList 作成時は祖先の既存 FileList へ子 FileList 参照を重複なく追記し、親 mtime を維持する | SP-001 |
 | TC-048 | unit | 祖先探索は callback/失敗時に即停止し、それ以降の上位階層を処理しない | SP-001 |
 | TC-049 | unit | FileList に root 外パスが含まれても候補表示時の追加フィルタを行わず、インデクシング経路の挙動を維持する | SP-007 |
@@ -137,7 +139,7 @@
 | Change Type | Typical Targets | Required Validation | Optional / Follow-up |
 | --- | --- | --- | --- |
 | VM-001 Docs only | `docs/*.md`, `AGENTS.md`, release note text only | affected doc diff review, `rg` で ID/参照整合を確認 | Rust 実装に触れない限り `cargo test` は不要 |
-| VM-002 App/UI orchestration | `rust/src/app.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験。検索結果描画や入力応答性を変えた場合は、非空 query で検索窓の左右移動・Backspace・結果スクロールの体感遅延を手動確認 |
+| VM-002 App/UI orchestration | `rust/src/app.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験。検索結果描画や入力応答性を変えた場合は、非空 query で検索窓の左右移動・Backspace・結果スクロールの体感遅延を手動確認。タブ描画変更時は light/dark theme で active full-fill / inactive 下辺装飾 / 右クリック色変更を手動確認 |
 | VM-003 Indexing path | `rust/src/indexer.rs`, `rust/src/app/workers.rs`, `rust/src/app.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験 |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review |

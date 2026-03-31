@@ -1,6 +1,18 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(super) enum TabAccentColor {
+    Teal,
+    Indigo,
+    Azure,
+    Amber,
+    Olive,
+    Emerald,
+    Crimson,
+    Magenta,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub(super) struct SavedWindowGeometry {
     pub(super) x: f32,
@@ -53,6 +65,8 @@ pub(super) struct SavedTabState {
     pub(super) query: String,
     #[serde(default)]
     pub(super) query_history: Vec<String>,
+    #[serde(default)]
+    pub(super) tab_accent: Option<TabAccentColor>,
 }
 
 fn default_ignore_case() -> bool {
@@ -205,6 +219,7 @@ impl FlistWalkerApp {
                             .rev()
                             .collect()
                     },
+                    tab_accent: tab.tab_accent,
                 })
             })
             .collect();
