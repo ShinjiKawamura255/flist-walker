@@ -24,6 +24,37 @@
 ### Known issues
 - 
 
+## [0.15.0] - 2026-04-01
+### Added
+- tagged release 前に Linux / macOS / Windows native で `cargo test --locked` と `cargo audit` を実行する preflight gate を追加した。
+- 通常 CI に Windows native runner を追加し、Windows 固有分岐の回帰を早めに検出できるようにした。
+- `main.rs` の root viewport 構築を helper 化し、起動 geometry / icon / app_id の回帰を test で固定した。
+
+### Changed
+- `app.rs` の責務を段階的に分離し、tab lifecycle、pipeline、cache、search/index coordinator、session/state helper を専用 module へ移した。
+- `eframe` / `egui` を `0.29.1` 系へ更新し、`run_native`、text cursor、IME、widget API の追従を行った。
+- `EFRAME-UPGRADE-NOTES`、architecture 関連 docs、OSS compliance 運用メモを現在の構成に合わせて更新した。
+
+### Fixed
+- CLI の `--limit` に暗黙で入っていた 1000 件上限を撤廃した。
+- Results 行の描画と hitbox のずれで、表示がセンタリングされクリックが効きにくくなる回帰を修正した。
+- 日本語 IME の確定文字が消える問題と、変換中 Space が半角スペースとして混入する問題を修正した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- release 前 gate を workflow に追加し、tag push から draft release 作成までの導線で未検証 build が通らないようにした。
+- 依存更新に合わせて `THIRD_PARTY_NOTICES.txt` を更新し、OSS compliance チェック運用を docs に明文化した。
+- macOS 配布物は当面未 notarized のまま publish する場合がある。
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+- macOS 配布物は未 notarized の場合がある。
+
 ## [0.14.0] - 2026-03-31
 ### Added
 - タブごとに accent color を設定できるようにし、active / inactive で見分けやすい表示を追加した。
