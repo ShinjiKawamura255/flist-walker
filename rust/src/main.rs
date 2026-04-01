@@ -13,6 +13,11 @@ use flist_walker::indexer::build_index;
 use flist_walker::search::search_entries_with_scope;
 use resvg::{tiny_skia, usvg};
 
+const APP_TITLE: &str = "FlistWalker";
+const APP_ID: &str = "flistwalker";
+const DEFAULT_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(1400.0, 900.0);
+const MIN_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(640.0, 400.0);
+
 #[derive(Parser, Debug)]
 #[command(name = "flistwalker")]
 #[command(about = "FlistWalker Rust implementation")]
@@ -74,15 +79,12 @@ fn run_gui(args: &Args) -> Result<()> {
     let root_explicit = args.root.is_some();
     let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
     let mut native_options = eframe::NativeOptions::default();
-    let mut viewport =
-        eframe::egui::ViewportBuilder::default().with_inner_size(eframe::egui::vec2(1400.0, 900.0));
+    let startup_geometry = FlistWalkerApp::startup_window_geometry();
     FlistWalkerApp::trace_window_event(
         "run_gui_start",
         &format!("root={} limit={}", root.display(), args.limit),
     );
-    if let Some((pos, size)) = FlistWalkerApp::startup_window_geometry() {
-        viewport = viewport.with_position(pos);
-        viewport = viewport.with_inner_size(size);
+    if let Some((pos, size)) = startup_geometry {
         FlistWalkerApp::trace_window_event(
             "run_gui_apply_startup_geometry",
             &format!(
@@ -93,15 +95,12 @@ fn run_gui(args: &Args) -> Result<()> {
     } else {
         FlistWalkerApp::trace_window_event("run_gui_no_startup_size", "using_default_size");
     }
-    if let Some(icon) = load_app_icon() {
-        viewport = viewport.with_icon(icon);
-    }
-    native_options.viewport = viewport;
+    native_options.viewport = build_root_viewport(startup_geometry, load_app_icon());
     let query = args.query.clone();
     let limit = args.limit;
 
     eframe::run_native(
-        "FlistWalker",
+        APP_TITLE,
         native_options,
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
@@ -115,6 +114,24 @@ fn run_gui(args: &Args) -> Result<()> {
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(())
+}
+
+fn build_root_viewport(
+    startup_geometry: Option<(eframe::egui::Pos2, eframe::egui::Vec2)>,
+    icon: Option<eframe::egui::IconData>,
+) -> eframe::egui::ViewportBuilder {
+    let mut viewport = eframe::egui::ViewportBuilder::default()
+        .with_title(APP_TITLE)
+        .with_app_id(APP_ID)
+        .with_inner_size(DEFAULT_WINDOW_SIZE)
+        .with_min_inner_size(MIN_WINDOW_SIZE);
+    if let Some((pos, size)) = startup_geometry {
+        viewport = viewport.with_position(pos).with_inner_size(size);
+    }
+    if let Some(icon) = icon {
+        viewport = viewport.with_icon(icon);
+    }
+    viewport
 }
 
 fn load_app_icon() -> Option<eframe::egui::IconData> {
@@ -191,5 +208,39 @@ fn main() -> Result<()> {
         run_cli(&args)
     } else {
         run_gui(&args)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_root_viewport_applies_defaults() {
+        let viewport = build_root_viewport(None, None);
+
+        assert_eq!(viewport.title.as_deref(), Some(APP_TITLE));
+        assert_eq!(viewport.app_id.as_deref(), Some(APP_ID));
+        assert_eq!(viewport.inner_size, Some(DEFAULT_WINDOW_SIZE));
+        assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
+        assert_eq!(viewport.position, None);
+    }
+
+    #[test]
+    fn build_root_viewport_prefers_restored_geometry_and_icon() {
+        let icon = eframe::egui::IconData {
+            rgba: vec![255, 0, 0, 255],
+            width: 1,
+            height: 1,
+        };
+        let pos = eframe::egui::pos2(-1600.0, 120.0);
+        let size = eframe::egui::vec2(900.0, 700.0);
+
+        let viewport = build_root_viewport(Some((pos, size)), Some(icon));
+
+        assert_eq!(viewport.position, Some(pos));
+        assert_eq!(viewport.inner_size, Some(size));
+        assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
+        assert!(viewport.icon.is_some());
     }
 }

@@ -1,58 +1,63 @@
 # EFRAME Upgrade Notes
 
 ## Scope
-- Current: `eframe 0.24.x`
+- Current: `eframe 0.29.1`
 - Investigated target band: `0.25.x` through `0.29.x`
-- Goal of this note: 実アップグレード前に、FlistWalker 側の影響箇所と移行順序を固定する
+- Goal of this note: `0.24.x -> 0.29.1` 移行で実際に影響した箇所と、残る確認ポイントを残す
 
 ## Release Summary
 - `0.25.x`
   - 入力まわりの key enum と text API に breaking change が入っている。
-  - 影響候補: keyboard shortcut、IME、text edit 周辺。
+  - 実影響: keyboard shortcut、IME、text edit 周辺の追従が必要だった。
 - `0.29.x`
   - `winit 0.30` 系へ更新。
   - `NativeOptions::follow_system_theme` / `default_theme` は `egui::Options` 側へ移動。
+  - root viewport 初期化と `run_native` の app creator 戻り型追従が必要だった。
   - web runner 系の変更はあるが、FlistWalker の native build には直接関係しない。
 
 ## FlistWalker Impact Scan
-ローカル grep で、アップグレード時に再確認が必要な箇所を洗い出した。
+実アップグレードで影響が出た箇所。
 
 - `NativeOptions`, `ViewportBuilder`, `run_native`
   - [main.rs](/mnt/d/work/flistwalker/rust/src/main.rs)
+  - `ViewportBuilder` を helper 化し、title/app_id/min size/restore geometry をテストで固定した
 - `eframe::App` 実装
   - [mod.rs](/mnt/d/work/flistwalker/rust/src/app/mod.rs)
 - `TopBottomPanel`, `SidePanel`, `Frame::none`, `Rounding::same`, `Margin::symmetric`
   - [render.rs](/mnt/d/work/flistwalker/rust/src/app/render.rs)
 - `ComboBox::from_id_source`
   - [render.rs](/mnt/d/work/flistwalker/rust/src/app/render.rs)
+  - `from_id_salt` へ更新済み
 - shortcut / key handling
   - [input.rs](/mnt/d/work/flistwalker/rust/src/app/input.rs)
+  - `ImeEvent`, `physical_key`, `TextEditState::cursor` API へ更新済み
 - window geometry / viewport 操作
   - [session.rs](/mnt/d/work/flistwalker/rust/src/app/session.rs)
   - [main.rs](/mnt/d/work/flistwalker/rust/src/main.rs)
+  - geometry capture/restore ロジックは既存実装を維持、startup viewport 構築だけ明示化
 
 ## Risk Assessment
 - High
-  - `winit 0.30` 追従で native window / viewport 初期化の修正が入る可能性が高い。
-  - 現在の multi-display / window geometry 安定化コードに回帰リスクがある。
+  - `winit 0.30` 追従で native window / viewport 初期化の修正が必要だった。
+  - multi-display / window geometry の最終確認は GUI compositor がある環境で継続して必要。
 - Medium
   - shortcut / IME 周辺の key enum 変更で Windows 入力回りが崩れる可能性がある。
   - `render.rs` の panel / frame builder API に名前変更や deprecation が入る可能性がある。
 - Low
   - CLI 側は `eframe` に依存しないため直接影響は限定的。
 
-## Proposed Migration Order
-1. `eframe`, `egui`, `egui-winit`, `winit` の changelog 差分を version ごとに再確認する。
-2. `main.rs` の `NativeOptions` / `ViewportBuilder` / `run_native` を先に直す。
-3. `render.rs` の panel / frame / combo box API を追従する。
-4. `input.rs` と IME/shortcut テストを更新する。
-5. window geometry 回帰を GUI 手動確認で詰める。
+## Executed Migration Order
+1. `eframe 0.29.1` へ依存更新し、compile blocker になった `main.rs` / `render.rs` / `input.rs` を先に追従した。
+2. IME / shortcut / text cursor まわりの unit test を `egui 0.29` API に合わせて更新した。
+3. root viewport 初期化を helper 化し、restore geometry と icon 適用を test で固定した。
+4. `cargo test` と `cargo clippy --all-targets -- -D warnings` を通した。
+5. GUI 手動確認は compositor 不在のため未完了。
 
 ## Recommended Verification
 - `cargo test`
+- `cargo clippy --all-targets -- -D warnings`
 - ignored perf tests
-  - `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`
-  - `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`
+  - index 経路変更時のみ実施
 - GUI 手動確認
   - 起動 / 終了
   - 検索
@@ -61,11 +66,9 @@
   - window geometry restore
   - IME 入力
 
-## Effort Estimate
-- 調査と最小コンパイル通過: 0.5 から 1 日
-- GUI 回帰修正込み: 1 から 2 日
-- Windows multi-display 周りで追加調整が出た場合: +0.5 から 1 日
-
-## Recommendation
-- `eframe` アップグレードは別 change plan に切り出すべき。
-- 先にこの文書の影響箇所を起点に小さな spike branch を作り、`0.24 -> 0.29` を一気に上げるより `0.24 -> 0.25/0.26 -> 0.29` の差分確認を挟む方が安全。
+## Remaining Verification
+- compositor がある Linux / Windows 環境で以下を手動確認する
+  - window geometry restore
+  - multi-display 移動後の再起動
+  - IME 入力
+  - preview resize

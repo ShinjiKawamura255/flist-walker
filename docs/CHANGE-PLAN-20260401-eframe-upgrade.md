@@ -20,6 +20,11 @@ FlistWalker は現在 `eframe 0.24.x` を使っている。既存の [EFRAME-UPG
 - 既存の GUI 応答性、request_id 契約、window geometry 安定化を維持する。
 - 変更後も `cargo test`、perf regression test、主要 GUI 手動確認を通す。
 
+## 2.1 Progress Note
+- Phase 1 の compile gate を通すために、`render.rs` / `input.rs` / `main.rs` の API 追従を前倒しで実施した。
+- そのため Phase 3 の残タスクは、GUI 手動確認と最終 cleanup が中心になっている。
+- 現在のブロッカーは GUI compositor が無い環境での手動確認のみ。
+
 ## 3. Scope
 ### In Scope
 - `rust/Cargo.toml` / `rust/Cargo.lock` の `eframe` 関連依存更新
@@ -126,24 +131,27 @@ FlistWalker は現在 `eframe 0.24.x` を使っている。既存の [EFRAME-UPG
 - [x] 1-6: `cargo clippy --all-targets -- -D warnings`
 
 ### Phase 2
-- [ ] 2-1: `main.rs` の viewport 初期化を更新
-- [ ] 2-2: `session.rs` の geometry restore を更新
-- [ ] 2-3: compile/test を通す
+- [x] 2-1: `main.rs` の viewport 初期化を更新
+- [x] 2-2: `session.rs` の geometry restore を確認し、既存実装を維持
+- [x] 2-3: compile/test を通す
 - [ ] 2-4: GUI 手動確認を記録
+  - Current status: `cargo run --bin flistwalker -- --root ..` を試したが、Wayland compositor 不在で headless 確認は実施不可
 
 ### Phase 3
-- [ ] 3-1: `render.rs` の deprecated / changed API を更新
-- [ ] 3-2: `input.rs` の key handling を更新
-- [ ] 3-3: 関連 unit test を更新
-- [ ] 3-4: `cargo test`
+- [x] 3-1: `render.rs` の deprecated / changed API を更新
+- [x] 3-2: `input.rs` の key handling を更新
+- [x] 3-3: 関連 unit test を更新
+- [x] 3-4: `cargo test`
 - [ ] 3-5: GUI 手動確認を記録
+  - Current status: compositor 不在で IME / preview resize の手動確認は未実施
 
 ### Phase 4
-- [ ] 4-1: warning-free 状態へ cleanup
-- [ ] 4-2: 必要な docs を同期
-- [ ] 4-3: `cargo test`
-- [ ] 4-4: `cargo clippy --all-targets -- -D warnings`
-- [ ] 4-5: perf tests if needed
+- [x] 4-1: warning-free 状態へ cleanup
+- [x] 4-2: 必要な docs を同期
+- [x] 4-3: `cargo test`
+- [x] 4-4: `cargo clippy --all-targets -- -D warnings`
+- [x] 4-5: perf tests if needed
+  - Current status: index 経路は未変更のため VM-003 perf test は不要
 - [ ] 4-6: 一時ルールと本計画書を削除
 
 ## 8. Validation Plan
@@ -155,6 +163,7 @@ FlistWalker は現在 `eframe 0.24.x` を使っている。既存の [EFRAME-UPG
   - Phase 2: window/viewport
   - Phase 3: shortcut / IME / preview resize
   - Phase 4: end-to-end sweep
+  - Current status: 現在の環境では compositor 不在のため GUI 手動確認を完遂できていない
 
 ## 9. Rollback Plan
 - Phase 1 は依存更新だけなので単独 revert 可能
