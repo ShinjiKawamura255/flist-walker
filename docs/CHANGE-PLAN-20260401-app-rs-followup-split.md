@@ -101,8 +101,8 @@
 ## 7. Detailed Task Breakdown
 - [x] P-001 tab lifecycle の責務棚卸しと分割先の確定
 - [x] P-002 tab lifecycle の module 分離と test green
-- [ ] P-003 index/search pipeline の責務棚卸しと分割先の確定
-- [ ] P-004 index/search pipeline の module 分離と test/perf green
+- [x] P-003 index/search pipeline の責務棚卸しと分割先の確定
+- [x] P-004 index/search pipeline の module 分離と test/perf green
 - [ ] P-005 preview/highlight/cache の責務整理と module 分離
 - [ ] P-006 docs 同期、一時 `AGENTS.md` ルール削除、change plan 削除
 
@@ -139,6 +139,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-01 00:00 Planned.
 - 2026-04-01 00:00 Phase 1 completed. Moved tab lifecycle helpers from `rust/src/app.rs` to `rust/src/app/tabs.rs` and verified with `cargo test --locked`.
+- 2026-04-01 00:00 Phase 2 completed. Moved index/search queue, poll, and incremental refresh helpers from `rust/src/app.rs` to `rust/src/app/pipeline.rs` and verified with `cargo test --locked` plus the two ignored perf tests.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
