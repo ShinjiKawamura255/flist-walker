@@ -2,6 +2,7 @@ use crate::query::{
     include_alternatives, parse_include_alternative, parse_query, split_anchor,
     token_uses_regex_syntax,
 };
+use crate::path_utils::normalize_windows_path;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use rayon::prelude::*;
@@ -112,20 +113,6 @@ fn normalize_text(text: &str, ignore_case: bool) -> String {
     } else {
         text.to_string()
     }
-}
-
-fn normalize_windows_path(path: &Path) -> PathBuf {
-    #[cfg(windows)]
-    {
-        let raw = path.to_string_lossy();
-        if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
-            return PathBuf::from(format!(r"\\{}", rest));
-        }
-        if let Some(rest) = raw.strip_prefix(r"\\?\") {
-            return PathBuf::from(rest);
-        }
-    }
-    path.to_path_buf()
 }
 
 fn compile_literal_pattern(term: &str, ignore_case: bool) -> Option<LiteralPattern> {

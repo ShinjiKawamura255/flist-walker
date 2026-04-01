@@ -2,6 +2,7 @@ use crate::fs_atomic::write_text_atomic;
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
 };
+use crate::path_utils::normalize_windows_path_buf;
 use crate::ui_model::{
     build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
     normalize_path_for_display, should_skip_preview,
@@ -440,13 +441,13 @@ Search hints:
             .last_root
             .as_ref()
             .and_then(|p| p.canonicalize().ok())
-            .map(Self::normalize_windows_path)
+            .map(normalize_windows_path_buf)
             .filter(|p| p.is_dir());
         let saved_default = launch
             .default_root
             .as_ref()
             .and_then(|p| p.canonicalize().ok())
-            .map(Self::normalize_windows_path)
+            .map(normalize_windows_path_buf)
             .filter(|p| p.is_dir());
         let restore_session = if restore_tabs_enabled && !root_explicit && query.trim().is_empty() {
             Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
@@ -608,20 +609,6 @@ Search hints:
             app.request_index_refresh();
         }
         app
-    }
-
-    fn normalize_windows_path(path: PathBuf) -> PathBuf {
-        #[cfg(windows)]
-        {
-            let raw = path.to_string_lossy();
-            if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
-                return PathBuf::from(format!(r"\\{}", rest));
-            }
-            if let Some(rest) = raw.strip_prefix(r"\\?\") {
-                return PathBuf::from(rest);
-            }
-        }
-        path
     }
 
     fn history_persist_disabled() -> bool {
@@ -843,7 +830,7 @@ Search hints:
     }
 
     fn normalized_compare_key(path: &Path) -> String {
-        let mut key = Self::normalize_windows_path(path.to_path_buf())
+        let mut key = normalize_windows_path_buf(path.to_path_buf())
             .to_string_lossy()
             .replace('\\', "/");
         while key.len() > 1 && key.ends_with('/') {
@@ -890,7 +877,7 @@ Search hints:
     }
 
     fn root_display_text(&self) -> String {
-        Self::normalize_windows_path(self.root.clone())
+        normalize_windows_path_buf(self.root.clone())
             .to_string_lossy()
             .to_string()
     }
@@ -917,7 +904,7 @@ Search hints:
     }
 
     fn apply_root_change(&mut self, new_root: PathBuf) {
-        let normalized = Self::normalize_windows_path(new_root);
+        let normalized = normalize_windows_path_buf(new_root);
         if Self::path_key(&normalized) == Self::path_key(&self.root) {
             return;
         }
@@ -943,7 +930,7 @@ Search hints:
     }
 
     fn browse_for_root(&mut self) {
-        let dialog_root = Self::normalize_windows_path(self.root.clone());
+        let dialog_root = normalize_windows_path_buf(self.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => self.apply_root_change(dir),
             Ok(None) => {}
@@ -952,7 +939,7 @@ Search hints:
     }
 
     fn browse_for_root_in_new_tab(&mut self) {
-        let dialog_root = Self::normalize_windows_path(self.root.clone());
+        let dialog_root = normalize_windows_path_buf(self.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => {
                 self.create_new_tab();

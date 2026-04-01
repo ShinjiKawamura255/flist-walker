@@ -1,4 +1,5 @@
 use super::*;
+use crate::path_utils::normalize_windows_path_buf;
 
 impl FlistWalkerApp {
     const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
@@ -805,7 +806,7 @@ impl FlistWalkerApp {
                             |ui| {
                                 ui.set_min_width(field_width);
                                 for (index, path) in self.saved_roots.iter().enumerate() {
-                                    let text = Self::normalize_windows_path(path.clone())
+                                    let text = normalize_windows_path_buf(path.clone())
                                         .to_string_lossy()
                                         .to_string();
                                     let is_selected = self.root_dropdown_highlight == Some(index);

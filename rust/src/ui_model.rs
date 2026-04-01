@@ -1,4 +1,8 @@
 use crate::actions::choose_action;
+use crate::path_utils::{
+    normalize_path_for_display as normalize_display_path, normalize_windows_path,
+    strip_windows_extended_prefix,
+};
 use crate::query::{
     include_alternatives, parse_include_alternative, parse_query, split_anchor,
     token_uses_regex_syntax,
@@ -8,44 +12,16 @@ use regex::RegexBuilder;
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 #[cfg(windows)]
 use std::{ffi::c_void, os::windows::ffi::OsStrExt, ptr, sync::OnceLock};
-
-fn normalize_windows_display(text: &str) -> String {
-    #[cfg(windows)]
-    {
-        if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
-            return format!(r"\\{}", rest);
-        }
-        if let Some(rest) = text.strip_prefix(r"\\?\") {
-            return rest.to_string();
-        }
-    }
-    text.to_string()
-}
 
 pub fn display_path(path: &Path, root: &Path) -> String {
     display_path_with_mode(path, root, true)
 }
 
-fn normalize_windows_path(path: &Path) -> PathBuf {
-    #[cfg(windows)]
-    {
-        let raw = path.to_string_lossy();
-        if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
-            return PathBuf::from(format!(r"\\{}", rest));
-        }
-        if let Some(rest) = raw.strip_prefix(r"\\?\") {
-            return PathBuf::from(rest);
-        }
-    }
-    path.to_path_buf()
-}
-
 pub fn normalize_path_for_display(path: &Path) -> String {
-    let normalized = normalize_windows_path(path);
-    normalize_windows_display(&normalized.to_string_lossy())
+    normalize_display_path(path)
 }
 
 pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -> String {
@@ -59,7 +35,7 @@ pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -
     } else {
         normalized_path.to_string_lossy().to_string()
     };
-    normalize_windows_display(&raw)
+    strip_windows_extended_prefix(&raw)
 }
 
 fn chars_equal(a: char, b: char, ignore_case: bool) -> bool {
@@ -764,6 +740,7 @@ fn truncate_chars(text: &str, max_chars: usize) -> String {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn test_root(name: &str) -> PathBuf {

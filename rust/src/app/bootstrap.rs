@@ -1,4 +1,5 @@
 use super::*;
+use crate::path_utils::normalize_windows_path_buf;
 
 pub(super) struct AppWorkerBootstrap {
     pub(super) search_tx: Sender<SearchRequest>,
@@ -96,7 +97,7 @@ impl FlistWalkerApp {
         launch: &LaunchSettings,
     ) -> AppLaunchSeed {
         AppLaunchSeed {
-            root: Self::normalize_windows_path(root),
+            root: normalize_windows_path_buf(root),
             limit: limit.clamp(1, 1000),
             query,
             query_history: launch.query_history.iter().cloned().collect(),

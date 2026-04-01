@@ -1,4 +1,5 @@
 use super::*;
+use crate::path_utils::normalize_windows_path_buf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -141,12 +142,12 @@ impl FlistWalkerApp {
             .last_root
             .as_deref()
             .map(PathBuf::from)
-            .map(Self::normalize_windows_path);
+            .map(normalize_windows_path_buf);
         let default_root = ui_state
             .default_root
             .as_deref()
             .map(PathBuf::from)
-            .map(Self::normalize_windows_path);
+            .map(normalize_windows_path_buf);
         let show_preview = ui_state.show_preview.unwrap_or(true);
         let preview_panel_width = ui_state
             .preview_panel_width
@@ -198,7 +199,7 @@ impl FlistWalkerApp {
         let sanitized: Vec<SavedTabState> = tabs
             .iter()
             .filter_map(|tab| {
-                let root = Self::normalize_windows_path(PathBuf::from(&tab.root));
+                let root = normalize_windows_path_buf(PathBuf::from(&tab.root));
                 if !root.is_dir() {
                     return None;
                 }
@@ -296,7 +297,7 @@ impl FlistWalkerApp {
             if line.is_empty() {
                 continue;
             }
-            let path = Self::normalize_windows_path(PathBuf::from(line));
+            let path = normalize_windows_path_buf(PathBuf::from(line));
             let key = Self::path_key(&path);
             if seen.insert(key) {
                 out.push(path);
@@ -331,7 +332,7 @@ impl FlistWalkerApp {
             .root
             .canonicalize()
             .unwrap_or_else(|_| self.root.clone());
-        let root = Self::normalize_windows_path(root);
+        let root = normalize_windows_path_buf(root);
         let key = Self::path_key(&root);
         if self.saved_roots.iter().any(|p| Self::path_key(p) == key) {
             self.set_notice("Current root is already registered");
@@ -357,7 +358,7 @@ impl FlistWalkerApp {
             .root
             .canonicalize()
             .unwrap_or_else(|_| self.root.clone());
-        let root = Self::normalize_windows_path(root);
+        let root = normalize_windows_path_buf(root);
         self.default_root = Some(root.clone());
         self.mark_ui_state_dirty();
         self.persist_ui_state_now();

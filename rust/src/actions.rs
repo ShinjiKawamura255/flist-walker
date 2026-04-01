@@ -1,8 +1,11 @@
 use anyhow::{Context, Result};
+use crate::path_utils::normalize_path_for_display;
 use std::path::Path;
 use std::process::Command;
 #[cfg(target_os = "windows")]
-use std::{ffi::OsStr, os::windows::ffi::OsStrExt, path::PathBuf, ptr};
+use crate::path_utils::normalize_windows_shell_path;
+#[cfg(target_os = "windows")]
+use std::{ffi::OsStr, os::windows::ffi::OsStrExt, ptr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
@@ -11,29 +14,7 @@ pub enum Action {
 }
 
 fn normalize_action_path_for_display(path: &Path) -> String {
-    #[cfg(target_os = "windows")]
-    {
-        let raw = path.to_string_lossy();
-        if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
-            return format!(r"\\{}", rest);
-        }
-        if let Some(rest) = raw.strip_prefix(r"\\?\") {
-            return rest.to_string();
-        }
-    }
-    path.display().to_string()
-}
-
-#[cfg(target_os = "windows")]
-fn normalize_windows_shell_path(path: &Path) -> PathBuf {
-    let raw = path.to_string_lossy();
-    if let Some(rest) = raw.strip_prefix(r"\\?\UNC\") {
-        return PathBuf::from(format!(r"\\{}", rest));
-    }
-    if let Some(rest) = raw.strip_prefix(r"\\?\") {
-        return PathBuf::from(rest);
-    }
-    path.to_path_buf()
+    normalize_path_for_display(path)
 }
 
 #[cfg(target_os = "windows")]

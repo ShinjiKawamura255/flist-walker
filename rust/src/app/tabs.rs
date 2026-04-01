@@ -1,4 +1,5 @@
 use super::*;
+use crate::path_utils::normalize_windows_path_buf;
 
 impl FlistWalkerApp {
     pub(super) fn choose_startup_root(
@@ -34,7 +35,7 @@ impl FlistWalkerApp {
     pub(super) fn restored_tab_state(&self, id: u64, saved: &SavedTabState) -> AppTabState {
         AppTabState {
             id,
-            root: Self::normalize_windows_path(PathBuf::from(&saved.root)),
+            root: normalize_windows_path_buf(PathBuf::from(&saved.root)),
             tab_accent: saved.tab_accent,
             use_filelist: saved.use_filelist,
             use_regex: saved.use_regex,
@@ -587,7 +588,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn tab_root_label(root: &Path) -> String {
-        let normalized = Self::normalize_windows_path(root.to_path_buf());
+        let normalized = normalize_windows_path_buf(root.to_path_buf());
         let raw = normalized.to_string_lossy().to_string();
         let trimmed = raw.trim_end_matches(['/', '\\']);
         if trimmed.is_empty() {
