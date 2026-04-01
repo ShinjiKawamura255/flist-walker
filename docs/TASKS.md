@@ -1,6 +1,19 @@
 # TASKS
 
 ## Active Scope
+- Goal: `rust/src/app.rs` に残る tab lifecycle、index/search orchestration、preview/highlight/cache の責務を追加分割し、coordinator 境界をさらに明確化する。
+- Docs: `docs/TASKS.md`, `docs/CHANGE-PLAN-20260401-app-rs-followup-split.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`
+- Updated: 2026-04-01
+
+## Active Task List
+| ID | Status | Area | Summary | Dependencies | DoD | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| P-001 | TODO | Tabs | tab lifecycle の責務を `app.rs` から分離し、初期化/保存/切替/移動の境界を module 化する | - | tab 関連 helper が専用 module に移り、`cargo test --locked` が通る | tab helper 群と state 同期点を棚卸しする |
+| P-002 | TODO | Pipeline | index/search queue と incremental refresh を `app.rs` から分離する | P-001 | pipeline 契約が専用 module に寄り、`cargo test --locked` と ignored perf テスト 2 本が通る | queue/poll/update の境界を棚卸しする |
+| P-003 | TODO | Cache | preview/highlight/cache helper を整理し、cache state と invalidation policy を局所化する | P-002 | cache 操作が `app.rs` から外れ、関連 docs が更新される | cache helper と invalidation 条件を棚卸しする |
+| P-004 | TODO | Cleanup | docs 同期と一時 plan の撤去を完了する | P-001, P-002, P-003 | `AGENTS.md` 一時ルールと change plan が削除され、恒久 docs が code 構造と一致する | 各 Phase 完了後に docs を同期する |
+
+## Active Scope
 - Goal: レビュー指摘のうち、リリース安全性・Windows 検証・CLI 契約・保守性・性能回帰検知の弱点を、段階的に是正する。
 - Docs: `docs/TASKS.md`, `docs/REQUIREMENTS.md`, `docs/SPEC.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`, `docs/RELEASE.md`
 - Updated: 2026-04-01
