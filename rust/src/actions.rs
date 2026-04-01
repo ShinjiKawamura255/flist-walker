@@ -159,6 +159,8 @@ pub fn open_with_default(path: &Path) -> Result<()> {
 mod tests {
     use super::*;
     use std::fs;
+    #[cfg(target_os = "windows")]
+    use std::path::PathBuf;
 
     #[test]
     fn directory_is_open_action() {
