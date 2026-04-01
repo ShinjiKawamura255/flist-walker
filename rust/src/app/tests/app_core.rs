@@ -378,7 +378,7 @@ fn available_update_response_opens_prompt() {
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
-        candidate: test_update_candidate("0.12.4"),
+        candidate: Box::new(test_update_candidate("0.12.4")),
     })
     .expect("send update response");
 
@@ -417,7 +417,7 @@ fn skipped_update_response_is_not_prompted_again_until_newer_version() {
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
-        candidate: test_update_candidate("0.12.4"),
+        candidate: Box::new(test_update_candidate("0.12.4")),
     })
     .expect("send update response");
 
@@ -442,7 +442,7 @@ fn newer_update_response_ignores_previous_skip_version() {
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
-        candidate: test_update_candidate("0.12.5"),
+        candidate: Box::new(test_update_candidate("0.12.5")),
     })
     .expect("send update response");
 

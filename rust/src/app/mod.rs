@@ -25,29 +25,17 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-#[path = "app/bootstrap.rs"]
 mod bootstrap;
-#[path = "app/cache.rs"]
 mod cache;
-#[path = "app/filelist.rs"]
 mod filelist;
-#[path = "app/input.rs"]
 mod input;
-#[path = "app/pipeline.rs"]
 mod pipeline;
-#[path = "app/render.rs"]
 mod render;
-#[path = "app/session.rs"]
 mod session;
-#[path = "app/state.rs"]
 mod state;
-#[path = "app/tab_state.rs"]
 mod tab_state;
-#[path = "app/tabs.rs"]
 mod tabs;
-#[path = "app/update.rs"]
 mod update;
-#[path = "app/workers.rs"]
 mod workers;
 
 use cache::*;
@@ -954,7 +942,7 @@ Search hints:
     fn select_root_via_dialog(&mut self, _dialog_root: &Path) -> Result<Option<PathBuf>, String> {
         self.browse_dialog_result
             .take()
-            .unwrap_or_else(|| Ok(None))
+            .unwrap_or(Ok(None))
     }
 
     #[cfg(not(test))]
@@ -1687,5 +1675,4 @@ impl Drop for FlistWalkerApp {
 }
 
 #[cfg(test)]
-#[path = "app/tests/mod.rs"]
 mod tests;

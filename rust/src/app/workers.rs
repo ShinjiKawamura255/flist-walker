@@ -262,7 +262,7 @@ pub(super) enum UpdateResponse {
     },
     Available {
         request_id: u64,
-        candidate: UpdateCandidate,
+        candidate: Box<UpdateCandidate>,
     },
     ApplyStarted {
         request_id: u64,
@@ -898,7 +898,7 @@ pub(super) fn spawn_update_worker(
                 UpdateRequestKind::Check => match check_for_update() {
                     Ok(Some(candidate)) => UpdateResponse::Available {
                         request_id: req.request_id,
-                        candidate,
+                        candidate: Box::new(candidate),
                     },
                     Ok(None) => UpdateResponse::UpToDate {
                         request_id: req.request_id,
@@ -1235,6 +1235,7 @@ fn stream_walker_index(
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
     use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};

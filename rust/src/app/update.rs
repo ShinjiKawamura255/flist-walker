@@ -155,7 +155,7 @@ impl FlistWalkerApp {
                     self.update_state.in_progress = false;
                     if !self.update_prompt_is_suppressed(&candidate) {
                         self.update_state.prompt = Some(UpdatePromptState {
-                            candidate,
+                            candidate: *candidate,
                             skip_until_next_version: false,
                             install_started: false,
                         });
