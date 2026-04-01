@@ -11,6 +11,57 @@ impl FlistWalkerApp {
     const TAB_ACTIVE_BORDER_WIDTH: f32 = 2.0;
     const TAB_INACTIVE_BORDER_WIDTH: f32 = 1.0;
 
+    fn paint_root_selector_button(
+        ui: &egui::Ui,
+        rect: egui::Rect,
+        response: &egui::Response,
+        text: &str,
+        popup_open: bool,
+    ) {
+        let visuals = if popup_open {
+            &ui.visuals().widgets.open
+        } else {
+            ui.style().interact(response)
+        };
+        let rounding = ui.visuals().widgets.inactive.rounding;
+        ui.painter().rect(
+            rect.expand(visuals.expansion),
+            rounding,
+            visuals.bg_fill,
+            visuals.bg_stroke,
+        );
+
+        let inner_rect = rect.shrink2(ui.spacing().button_padding);
+        let icon_size = egui::Vec2::splat(ui.spacing().icon_width);
+        let icon_rect = egui::Align2::RIGHT_CENTER.align_size_within_rect(icon_size, inner_rect);
+        let icon_center = icon_rect.center();
+        let icon_width = icon_rect.width() * 0.45;
+        let icon_height = icon_rect.height() * 0.28;
+        ui.painter().add(egui::Shape::convex_polygon(
+            vec![
+                egui::pos2(icon_center.x - icon_width, icon_center.y - icon_height),
+                egui::pos2(icon_center.x + icon_width, icon_center.y - icon_height),
+                egui::pos2(icon_center.x, icon_center.y + icon_height),
+            ],
+            visuals.fg_stroke.color,
+            egui::Stroke::NONE,
+        ));
+
+        let text_right = icon_rect.left() - ui.spacing().icon_spacing;
+        let text_rect = egui::Rect::from_min_max(
+            inner_rect.left_top(),
+            egui::pos2(text_right.max(inner_rect.left()), inner_rect.bottom()),
+        );
+        let galley = egui::WidgetText::from(text.to_owned()).into_galley(
+            ui,
+            Some(false),
+            f32::INFINITY,
+            egui::TextStyle::Button,
+        );
+        let text_pos = egui::Align2::LEFT_CENTER.align_size_within_rect(galley.size(), text_rect);
+        galley.paint_with_visuals(ui.painter(), text_pos.min, visuals);
+    }
+
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
         [
             "Use FileList が有効です。Create File List には Walker indexing が必要です。",
@@ -724,21 +775,46 @@ impl FlistWalkerApp {
                     egui::vec2(field_width, row_height),
                     egui::Layout::left_to_right(egui::Align::Center),
                     |ui| {
-                        egui::ComboBox::from_id_source("root-selector")
-                            .width(field_width)
-                            .selected_text(selected_text)
-                            .show_ui(ui, |ui| {
-                                for p in &self.saved_roots {
-                                    let text = Self::normalize_windows_path(p.clone())
+                        self.sync_root_dropdown_highlight();
+                        let popup_open = self.is_root_dropdown_open(ui.ctx());
+                        let (rect, response) = ui.allocate_exact_size(
+                            egui::vec2(field_width, row_height),
+                            egui::Sense::click(),
+                        );
+                        Self::paint_root_selector_button(
+                            ui,
+                            rect,
+                            &response,
+                            &selected_text,
+                            popup_open,
+                        );
+                        if response.clicked() {
+                            if popup_open {
+                                self.close_root_dropdown(ui.ctx());
+                            } else {
+                                self.open_root_dropdown(ui.ctx());
+                            }
+                        }
+                        let popup_id = Self::root_selector_popup_id();
+                        let below = egui::AboveOrBelow::Below;
+                        egui::popup::popup_above_or_below_widget(
+                            ui,
+                            popup_id,
+                            &response,
+                            below,
+                            |ui| {
+                                ui.set_min_width(field_width);
+                                for (index, path) in self.saved_roots.iter().enumerate() {
+                                    let text = Self::normalize_windows_path(path.clone())
                                         .to_string_lossy()
                                         .to_string();
-                                    let is_selected =
-                                        Self::path_key(p) == Self::path_key(&self.root);
+                                    let is_selected = self.root_dropdown_highlight == Some(index);
                                     if ui.selectable_label(is_selected, text).clicked() {
-                                        next_root = Some(p.clone());
+                                        next_root = Some(path.clone());
                                     }
                                 }
-                            });
+                            },
+                        );
                     },
                 );
                 if ui
@@ -780,6 +856,7 @@ impl FlistWalkerApp {
                     self.remove_current_root_from_saved();
                 }
                 if let Some(root) = next_root {
+                    self.close_root_dropdown(ui.ctx());
                     self.apply_root_change(root);
                 }
             });

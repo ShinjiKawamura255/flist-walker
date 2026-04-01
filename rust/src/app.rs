@@ -440,6 +440,7 @@ pub struct FlistWalkerApp {
     pending_copy_shortcut: bool,
     #[cfg(test)]
     browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
+    root_dropdown_highlight: Option<usize>,
     scroll_to_current: bool,
     preview_resize_in_progress: bool,
     focus_query_requested: bool,
@@ -501,6 +502,7 @@ impl FlistWalkerApp {
     const DEFAULT_PREVIEW_PANEL_WIDTH: f32 = 440.0;
     const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
     const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
+    const ROOT_SELECTOR_POPUP_ID: &'static str = "root-selector-popup";
     const INDEX_MAX_CONCURRENT: usize = 2;
     const INDEX_MAX_QUEUE: usize = 4;
     const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
@@ -708,6 +710,7 @@ Search hints:
             pending_copy_shortcut: false,
             #[cfg(test)]
             browse_dialog_result: None,
+            root_dropdown_highlight: None,
             scroll_to_current: true,
             preview_resize_in_progress: false,
             focus_query_requested: true,
@@ -2175,6 +2178,64 @@ Search hints:
             .set_location(dialog_root)
             .show_open_single_dir()
             .map_err(|err| err.to_string())
+    }
+
+    fn root_selector_popup_id() -> egui::Id {
+        egui::Id::new(Self::ROOT_SELECTOR_POPUP_ID)
+    }
+
+    fn is_root_dropdown_open(&self, ctx: &egui::Context) -> bool {
+        ctx.memory(|mem| mem.is_popup_open(Self::root_selector_popup_id()))
+    }
+
+    fn current_root_dropdown_index(&self) -> Option<usize> {
+        let current_key = Self::path_key(&self.root);
+        self.saved_roots
+            .iter()
+            .position(|path| Self::path_key(path) == current_key)
+    }
+
+    fn sync_root_dropdown_highlight(&mut self) {
+        let max_index = self.saved_roots.len().checked_sub(1);
+        self.root_dropdown_highlight = match (self.root_dropdown_highlight, max_index) {
+            (_, None) => None,
+            (Some(index), Some(max)) => Some(index.min(max)),
+            (None, Some(_)) => self.current_root_dropdown_index().or(Some(0)),
+        };
+    }
+
+    fn open_root_dropdown(&mut self, ctx: &egui::Context) {
+        self.sync_root_dropdown_highlight();
+        ctx.memory_mut(|mem| mem.open_popup(Self::root_selector_popup_id()));
+        self.focus_query_requested = false;
+        self.unfocus_query_requested = true;
+    }
+
+    fn close_root_dropdown(&mut self, ctx: &egui::Context) {
+        ctx.memory_mut(|mem| mem.close_popup());
+    }
+
+    fn move_root_dropdown_selection(&mut self, delta: isize) {
+        let Some(max_index) = self.saved_roots.len().checked_sub(1) else {
+            self.root_dropdown_highlight = None;
+            return;
+        };
+        let current = self
+            .root_dropdown_highlight
+            .or_else(|| self.current_root_dropdown_index())
+            .unwrap_or(0) as isize;
+        let next = (current + delta).clamp(0, max_index as isize) as usize;
+        self.root_dropdown_highlight = Some(next);
+    }
+
+    fn apply_root_dropdown_selection(&mut self, ctx: &egui::Context) {
+        let selected = self
+            .root_dropdown_highlight
+            .and_then(|index| self.saved_roots.get(index).cloned());
+        self.close_root_dropdown(ctx);
+        if let Some(root) = selected {
+            self.apply_root_change(root);
+        }
     }
 
     fn prefer_relative_display(&self) -> bool {

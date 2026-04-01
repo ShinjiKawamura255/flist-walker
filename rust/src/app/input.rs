@@ -480,6 +480,38 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn handle_shortcuts_with_focus(&mut self, ctx: &egui::Context, query_focused: bool) {
+        if Self::consume_gui_shortcut(ctx, egui::Key::R, true) {
+            self.open_root_dropdown(ctx);
+            return;
+        }
+        if self.is_root_dropdown_open(ctx) {
+            if Self::consume_emacs_shortcut(ctx, egui::Key::N, false)
+                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+            {
+                self.move_root_dropdown_selection(1);
+                return;
+            }
+            if Self::consume_emacs_shortcut(ctx, egui::Key::P, false)
+                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+            {
+                self.move_root_dropdown_selection(-1);
+                return;
+            }
+            if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
+                || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
+                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
+            {
+                self.apply_root_dropdown_selection(ctx);
+                return;
+            }
+            if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
+                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            {
+                self.close_root_dropdown(ctx);
+                return;
+            }
+        }
+
         if Self::consume_gui_shortcut(ctx, egui::Key::T, false) {
             self.create_new_tab();
             return;

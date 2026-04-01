@@ -164,27 +164,143 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
 }
 
 #[test]
-fn ctrl_shift_r_does_not_start_history_search() {
-    let root = test_root("shortcut-ctrl-shift-r-noop");
+fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
+    let root = test_root("shortcut-ctrl-shift-r-root-dropdown");
+    let alt = root.join("alt");
     fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&alt).expect("create alt dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.query_history =
-        VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
+    app.saved_roots = vec![root.clone(), alt];
+    let ctx = egui::Context::default();
 
-    run_shortcuts_frame(
-        &mut app,
-        true,
-        vec![egui::Event::Key {
+    ctx.begin_frame(egui::RawInput {
+        modifiers: gui_shortcut_modifiers(true),
+        events: vec![egui::Event::Key {
             key: egui::Key::R,
             pressed: true,
             repeat: false,
-            modifiers: emacs_shortcut_modifiers(true),
+            modifiers: gui_shortcut_modifiers(true),
         }],
-    );
+        ..Default::default()
+    });
+    ctx.memory_mut(|m| m.request_focus(app.query_input_id));
+    app.handle_shortcuts(&ctx);
 
+    assert!(app.is_root_dropdown_open(&ctx));
+    assert_eq!(app.root_dropdown_highlight, Some(0));
     assert!(!app.history_search_active);
     assert_eq!(app.query, "draft");
+
+    let _ = ctx.end_frame();
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
+    let root = test_root("root-dropdown-ctrl-np");
+    let second = root.join("second");
+    let third = root.join("third");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&second).expect("create second");
+    fs::create_dir_all(&third).expect("create third");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.saved_roots = vec![root.clone(), second, third];
+    let ctx = egui::Context::default();
+    app.open_root_dropdown(&ctx);
+
+    ctx.begin_frame(egui::RawInput {
+        modifiers: emacs_shortcut_modifiers(false),
+        events: vec![egui::Event::Key {
+            key: egui::Key::N,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+        ..Default::default()
+    });
+    app.handle_shortcuts(&ctx);
+    assert_eq!(app.root_dropdown_highlight, Some(1));
+    let _ = ctx.end_frame();
+
+    ctx.begin_frame(egui::RawInput {
+        modifiers: emacs_shortcut_modifiers(false),
+        events: vec![egui::Event::Key {
+            key: egui::Key::P,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+        ..Default::default()
+    });
+    app.handle_shortcuts(&ctx);
+    assert_eq!(app.root_dropdown_highlight, Some(0));
+    let _ = ctx.end_frame();
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn root_dropdown_ctrl_g_closes_without_clearing_query() {
+    let root = test_root("root-dropdown-ctrl-g-close");
+    let second = root.join("second");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&second).expect("create second");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
+    app.saved_roots = vec![root.clone(), second];
+    let ctx = egui::Context::default();
+    app.open_root_dropdown(&ctx);
+
+    ctx.begin_frame(egui::RawInput {
+        modifiers: emacs_shortcut_modifiers(false),
+        events: vec![egui::Event::Key {
+            key: egui::Key::G,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+        ..Default::default()
+    });
+    app.handle_shortcuts(&ctx);
+
+    assert!(!app.is_root_dropdown_open(&ctx));
+    assert_eq!(app.query, "draft");
+    let _ = ctx.end_frame();
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn root_dropdown_ctrl_j_and_ctrl_m_accept_selection() {
+    for (name, key) in [
+        ("root-dropdown-ctrl-j-accept", egui::Key::J),
+        ("root-dropdown-ctrl-m-accept", egui::Key::M),
+    ] {
+        let root = test_root(name);
+        let second = root.join("second");
+        fs::create_dir_all(&root).expect("create dir");
+        fs::create_dir_all(&second).expect("create second");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.saved_roots = vec![root.clone(), second.clone()];
+        let ctx = egui::Context::default();
+        app.open_root_dropdown(&ctx);
+        app.move_root_dropdown_selection(1);
+
+        ctx.begin_frame(egui::RawInput {
+            modifiers: emacs_shortcut_modifiers(false),
+            events: vec![egui::Event::Key {
+                key,
+                pressed: true,
+                repeat: false,
+                modifiers: emacs_shortcut_modifiers(false),
+            }],
+            ..Default::default()
+        });
+        app.handle_shortcuts(&ctx);
+
+        assert!(!app.is_root_dropdown_open(&ctx));
+        assert_eq!(app.root, second);
+        let _ = ctx.end_frame();
+        let _ = fs::remove_dir_all(&root);
+    }
 }
 
 #[test]
