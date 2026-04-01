@@ -904,7 +904,6 @@ impl FlistWalkerApp {
                     );
                     if !text.is_empty() {
                         composition_commit_text = Some(text.clone());
-                        changed = true;
                         if text.contains(' ') || text.contains('\u{3000}') {
                             saw_text_space = true;
                         }
@@ -980,6 +979,11 @@ impl FlistWalkerApp {
                     ),
                 );
             }
+        } else if query_focused && text_changed_by_widget {
+            Self::append_window_trace(
+                "ime_composition_commit_widget_owned",
+                &format!("query_chars_after={}", self.query.chars().count()),
+            );
         }
 
         if query_focused && !saw_text_space {

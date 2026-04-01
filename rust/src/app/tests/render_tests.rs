@@ -63,6 +63,17 @@ fn results_scroll_enabled_is_false_when_preview_resize_is_active() {
 }
 
 #[test]
+fn result_row_text_pos_is_left_aligned_and_vertically_centered() {
+    let inner = egui::Rect::from_min_max(egui::pos2(8.0, 10.0), egui::pos2(208.0, 34.0));
+    let galley_size = egui::vec2(120.0, 14.0);
+
+    let pos = FlistWalkerApp::result_row_text_pos(inner, galley_size);
+
+    assert_eq!(pos.x, inner.left());
+    assert_eq!(pos.y, inner.center().y - (galley_size.y * 0.5));
+}
+
+#[test]
 fn tab_drop_index_returns_none_for_empty_tabs() {
     assert_eq!(FlistWalkerApp::tab_drop_index(&[], egui::pos2(10.0, 10.0)), None);
 }

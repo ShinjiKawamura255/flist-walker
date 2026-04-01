@@ -278,6 +278,30 @@ fn process_query_input_events_inserts_composition_commit_fallback_at_cursor_posi
 }
 
 #[test]
+fn process_query_input_events_does_not_override_widget_owned_ime_commit() {
+    let root = test_root("ime-commit-widget-owned");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.query = "変換済み".to_string();
+    let ctx = egui::Context::default();
+
+    let (changed, cursor) = app.process_query_input_events(
+        &ctx,
+        &[egui::Event::Ime(egui::ImeEvent::Commit("日本語".to_string()))],
+        true,
+        true,
+        Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(FlistWalkerApp::char_count(&app.query)),
+        )),
+    );
+
+    assert!(!changed);
+    assert_eq!(cursor, None);
+    assert_eq!(app.query, "変換済み");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn oversized_geometry_is_rejected_when_monitor_size_is_known() {
     let root = test_root("reject-oversize-geometry");
     fs::create_dir_all(&root).expect("create dir");

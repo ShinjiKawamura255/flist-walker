@@ -261,6 +261,13 @@ impl FlistWalkerApp {
         ui.text_style_height(&egui::TextStyle::Body) + (Self::RESULT_ROW_V_MARGIN * 2.0)
     }
 
+    pub(super) fn result_row_text_pos(inner_rect: egui::Rect, galley_size: egui::Vec2) -> egui::Pos2 {
+        egui::pos2(
+            inner_rect.left(),
+            inner_rect.center().y - (galley_size.y * 0.5),
+        )
+    }
+
     fn render_result_row(
         &mut self,
         ui: &mut egui::Ui,
@@ -298,12 +305,10 @@ impl FlistWalkerApp {
             Self::RESULT_ROW_H_MARGIN,
             Self::RESULT_ROW_V_MARGIN,
         ));
-        ui.put(
-            inner_rect,
-            egui::Label::new(job)
-                .extend()
-                .sense(egui::Sense::hover()),
-        );
+        let galley = ui.painter().layout_job(job);
+        let text_pos = Self::result_row_text_pos(inner_rect, galley.size());
+        ui.painter()
+            .galley(text_pos, galley, ui.visuals().text_color());
     }
 
     fn build_result_row_job(
