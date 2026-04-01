@@ -243,16 +243,20 @@ fn cli_returns_non_zero_when_root_is_file() {
 
 #[test]
 fn regression_gnu_build_links_windows_icon_into_final_exe() {
+    let build_dir = std::path::Path::new("/tmp/flistwalker-build");
     let directives = windows_resource_build::cargo_directives_for_windows_resource_bin(
         "gnu",
         windows_resource_build::WINDOWS_GUI_BIN_NAME,
-        std::path::Path::new("/tmp/flistwalker-build"),
+        build_dir,
     );
 
     assert_eq!(directives.len(), 1);
     assert_eq!(
         directives[0],
-        "cargo:rustc-link-arg-bin=flistwalker=/tmp/flistwalker-build/resource.o"
+        format!(
+            "cargo:rustc-link-arg-bin=flistwalker={}",
+            build_dir.join("resource.o").display()
+        )
     );
 }
 
