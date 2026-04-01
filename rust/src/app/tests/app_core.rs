@@ -216,17 +216,23 @@ fn execute_selected_for_activation_uses_open_folder_mode_when_requested() {
 fn execute_selected_notice_normalizes_extended_prefix() {
     let root = test_root("action-notice-normalize");
     fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("file.txt");
+    fs::write(&selected, "x").expect("write file");
+    let extended = PathBuf::from(format!(
+        r"\\?\{}",
+        selected.to_string_lossy().replace('/', r"\")
+    ));
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, _action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.action_tx = action_tx_req;
     app.action_rx = action_rx_res;
-    app.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
+    app.results = vec![(extended, 0.0)];
     app.current_row = Some(0);
 
     app.execute_selected();
 
-    assert_eq!(app.notice, r"Action: C:\Users\tester\file.txt");
+    assert_eq!(app.notice, format!("Action: {}", selected.display()));
     assert!(!app.notice.contains(r"\\?\"));
     let _ = fs::remove_dir_all(&root);
 }
