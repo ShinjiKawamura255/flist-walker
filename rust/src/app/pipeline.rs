@@ -289,11 +289,11 @@ impl FlistWalkerApp {
         }
     }
 
-    fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
+    pub(super) fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
         self.indexing.pending_queue.iter().any(|req| req.tab_id == tab_id)
     }
 
-    fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
+    pub(super) fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
         self.indexing.inflight_requests.iter().any(|request_id| {
             self.indexing.request_tabs
                 .get(request_id)
@@ -1097,7 +1097,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn should_refresh_incremental_search(&self) -> bool {
+    pub(super) fn should_refresh_incremental_search(&self) -> bool {
         let current_len = self.indexing.incremental_filtered_entries.len();
         let delta = current_len.saturating_sub(self.indexing.last_search_snapshot_len);
         if delta == 0 {

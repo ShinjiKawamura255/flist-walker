@@ -710,7 +710,7 @@ impl FlistWalkerApp {
         });
     }
 
-    fn tab_drop_index(tab_rects: &[egui::Rect], pointer_pos: egui::Pos2) -> Option<usize> {
+    pub(super) fn tab_drop_index(tab_rects: &[egui::Rect], pointer_pos: egui::Pos2) -> Option<usize> {
         if tab_rects.is_empty() {
             return None;
         }
