@@ -78,6 +78,41 @@ fn cli_outputs_at_most_limit_lines_for_empty_query() {
 }
 
 #[test]
+fn cli_does_not_cap_limit_to_1000() {
+    let root = test_root("limit-over-1000");
+    fs::create_dir_all(&root).expect("create root");
+
+    let file_count = 1105usize;
+    let mut expected = Vec::with_capacity(file_count);
+    for idx in 0..file_count {
+        let path = root.join(format!("item-{idx:04}.txt"));
+        fs::write(&path, "x").expect("write file");
+        expected.push(path);
+    }
+
+    let output = Command::new(bin_path())
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--limit",
+            "1105",
+        ])
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let lines: Vec<&str> = stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    assert_eq!(lines.len(), file_count);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn cli_returns_non_zero_when_root_does_not_exist() {
     let missing = test_root("missing");
     let output = Command::new(bin_path())

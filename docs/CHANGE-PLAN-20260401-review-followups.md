@@ -116,8 +116,8 @@
 ## 7. Detailed Task Breakdown
 - [x] R-001 release/tag workflow の gate 設計を確定する
 - [x] R-002 Windows native CI の対象テストと runner 構成を確定する
-- [ ] R-003 CLI `--limit` 契約を failing test で固定する
-- [ ] R-004 perf regression の gate/観測方針を確定する
+- [x] R-003 CLI `--limit` 契約を failing test で固定する
+- [x] R-004 perf regression の gate/観測方針を確定する
 - [ ] R-005 `FlistWalkerApp` の追加分割単位を棚卸しする
 - [ ] R-006 恒久 docs を新運用へ同期する
 
@@ -159,6 +159,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-01 20:39 Planned from review findings and converted to plan-driven workflow.
 - 2026-04-01 20:41 Temporary `AGENTS.md` rule added. Future implementation for this scope must follow this plan.
 - 2026-04-01 20:52 Phase 1 completed. Added release preflight gates, added Windows native CI coverage, validated workflow YAML parsing, and ran `cargo test --locked`.
+- 2026-04-01 21:03 Phase 2 completed. Removed the hidden CLI 1000-item cap, added a perf regression workflow, ran `cargo test --locked`, and executed both ignored perf regression tests.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

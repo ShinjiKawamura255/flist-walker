@@ -112,6 +112,7 @@
 - MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。
 - MUST: `--root` と `--limit` を受理する。
 - MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。
+- MUST: CLI の `--limit` は実効値を追加で 1000 件へ丸めてはならない。
 - SHOULD: 出力形式は機械処理しやすい行単位とする。
 
 ### Preconditions / Postconditions

@@ -47,7 +47,7 @@ fn run_cli(args: &Args) -> Result<()> {
     let entries = build_index(&root, true, true, true)?;
     let query = args.query.trim();
     if query.is_empty() {
-        for path in entries.iter().take(args.limit.min(1000)) {
+        for path in entries.iter().take(args.limit) {
             println!("{}", path.display());
         }
         return Ok(());
@@ -56,7 +56,7 @@ fn run_cli(args: &Args) -> Result<()> {
     let results = search_entries_with_scope(
         query,
         &entries,
-        args.limit.min(1000),
+        args.limit,
         false,
         true,
         Some(&root),
