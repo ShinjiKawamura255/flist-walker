@@ -28,7 +28,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - Windows extended path prefix 除去と display/shell 用 path 正規化を担当する。
 
 ## app Coordinator
-[app.rs](/mnt/d/work/flistwalker/rust/src/app.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。
+[mod.rs](/mnt/d/work/flistwalker/rust/src/app/mod.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。
 
 - [bootstrap.rs](/mnt/d/work/flistwalker/rust/src/app/bootstrap.rs)
   - worker 起動と launch seed 構築。
@@ -38,6 +38,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - tab lifecycle、snapshot capture/apply。
 - [pipeline.rs](/mnt/d/work/flistwalker/rust/src/app/pipeline.rs)
   - index/search queue、response poll、incremental refresh。
+- [search_coordinator.rs](/mnt/d/work/flistwalker/rust/src/app/search_coordinator.rs)
+  - search worker channel、request_id、tab routing を保持する。
+- [index_coordinator.rs](/mnt/d/work/flistwalker/rust/src/app/index_coordinator.rs)
+  - index worker channel、queue/inflight、incremental state、background tab state を保持する。
 - [cache.rs](/mnt/d/work/flistwalker/rust/src/app/cache.rs)
   - preview/highlight cache、preview request/response。
 - [render.rs](/mnt/d/work/flistwalker/rust/src/app/render.rs)
@@ -66,6 +70,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - テキスト preview を生成する。
 - Action / sort / kind / filelist / update workers:
   - 補助的な非同期処理を担当する。
+- Tracing:
+  - `RUST_LOG` 指定時のみ `tracing` が有効になり、index/search latency と worker channel 切断を構造化ログで記録する。
 
 request_id によって最新応答だけを反映し、古い応答による UI 巻き戻りを防ぐ。
 
