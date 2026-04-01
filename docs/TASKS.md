@@ -12,8 +12,8 @@
 | R-002 | DONE | Windows QA | Windows native runner を導入し、Windows 専用分岐（action / path / update helper）を CI で継続検証する | R-001 | Windows runner で少なくとも `cargo test --locked` 相当が回り、Windows 固有分岐が PR / release 前に検知可能になる | Phase 2 の CLI/perf 契約整理へ進む |
 | R-003 | DONE | CLI contract | CLI の `--limit` 契約を見直し、1000 件上限を撤廃するか、明示的な仕様として docs/help/test へ反映する | - | 実装・README・SPEC・CLI テストの解釈が一致し、利用者が `--limit` の実効値を誤解しない | Phase 3 の app architecture 整理へ進む |
 | R-004 | DONE | Perf guard | 10万件 / 100ms 目標と ignored perf テストの運用を見直し、自動回帰検知の仕組みを追加する | R-001 | perf の定点観測または gate が CI/workflow に追加され、`docs/TESTPLAN.md` の VM-003 / TC-007 と実態が一致する | Phase 3 の app architecture 整理へ進む |
-| R-005 | TODO | App architecture | `FlistWalkerApp` の責務を再分割し、state/coordinator/workflow 境界を明確化する | R-001 | `app.rs` の責務が縮小し、変更時の影響範囲とテスト対象が局所化される。設計 docs も更新される | `FlistWalkerApp` フィールド群と `impl` 群を責務単位で棚卸しする |
-| R-006 | TODO | Docs/process | 上記改善後の release / validation / review 観点を docs に反映し、運用依存の暗黙知を減らす | R-001, R-002, R-003, R-004 | `docs/RELEASE.md`, `docs/TESTPLAN.md`, 必要な `README.md` / `AGENTS.md` が新運用と一致する | 各タスク完了後に docs 差分を同一変更へ束ねる |
+| R-005 | DONE | App architecture | `FlistWalkerApp` の責務を再分割し、state/coordinator/workflow 境界を明確化する | R-001 | `app.rs` の責務が縮小し、変更時の影響範囲とテスト対象が局所化される。設計 docs も更新される | R-006 の docs/process 同期を完了する |
+| R-006 | DONE | Docs/process | 上記改善後の release / validation / review 観点を docs に反映し、運用依存の暗黙知を減らす | R-001, R-002, R-003, R-004 | `docs/RELEASE.md`, `docs/TESTPLAN.md`, 必要な `README.md` / `AGENTS.md` が新運用と一致する | review follow-ups をクローズする |
 
 ## Priority / Phase
 - Phase 1: `R-001`, `R-002`
@@ -32,6 +32,7 @@
 ## Active Progress
 - 2026-04-01: Phase 1 完了。tag release workflow に preflight test/audit gate を追加し、通常 CI に Windows native runner を追加。`ruby -e "require 'yaml'; ..."` で workflow YAML を読込確認し、`cd rust && cargo test --locked` を実行済み。
 - 2026-04-01: Phase 2 完了。CLI `--limit` の 1000 件暗黙上限を撤廃し、integration test と docs を更新。`.github/workflows/perf-regression.yml` を追加し、`cargo test --locked` と ignored perf テスト 2 本を実行済み。
+- 2026-04-01: Phase 3 完了。`app/session.rs` に UI state/saved roots/window geometry 永続化を寄せ、`app/state.rs` に GUI 横断 state 型を集約して `app.rs` の責務を縮小。`docs/DESIGN.md` を同期し、一時 change plan と AGENTS 一時ルールを撤去。
 
 ## Scope
 - Goal: `rust/src/app.rs` の段階的分割を、機能互換と既存テスト資産を維持したまま進める。

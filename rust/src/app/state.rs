@@ -1,11 +1,180 @@
-use super::{
-    FileListDialogKind, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, UpdateCheckFailureState,
-    UpdatePromptState,
-};
+use super::*;
+use eframe::egui;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::time::SystemTime;
+
+#[derive(Default)]
+pub(super) struct BackgroundIndexState {
+    pub(super) source: Option<IndexSource>,
+    pub(super) entries: Vec<PathBuf>,
+    pub(super) entry_kinds: HashMap<PathBuf, EntryKind>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) struct SortMetadata {
+    pub(super) modified: Option<SystemTime>,
+    pub(super) created: Option<SystemTime>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum ResultSortMode {
+    #[default]
+    Score,
+    NameAsc,
+    NameDesc,
+    ModifiedDesc,
+    ModifiedAsc,
+    CreatedDesc,
+    CreatedAsc,
+}
+
+impl ResultSortMode {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::Score => "Score",
+            Self::NameAsc => "Name (A-Z)",
+            Self::NameDesc => "Name (Z-A)",
+            Self::ModifiedDesc => "Modified (New)",
+            Self::ModifiedAsc => "Modified (Old)",
+            Self::CreatedDesc => "Created (New)",
+            Self::CreatedAsc => "Created (Old)",
+        }
+    }
+
+    pub(super) fn uses_metadata(self) -> bool {
+        matches!(
+            self,
+            Self::ModifiedDesc | Self::ModifiedAsc | Self::CreatedDesc | Self::CreatedAsc
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum EntryDisplayKind {
+    File,
+    Dir,
+    Link,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct EntryKind {
+    pub(super) display: EntryDisplayKind,
+    pub(super) is_dir: bool,
+}
+
+impl EntryKind {
+    pub(super) const fn file() -> Self {
+        Self {
+            display: EntryDisplayKind::File,
+            is_dir: false,
+        }
+    }
+
+    pub(super) const fn dir() -> Self {
+        Self {
+            display: EntryDisplayKind::Dir,
+            is_dir: true,
+        }
+    }
+
+    pub(super) const fn link(is_dir: bool) -> Self {
+        Self {
+            display: EntryDisplayKind::Link,
+            is_dir,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct TabAccentPalette {
+    pub(super) background: egui::Color32,
+    pub(super) border: egui::Color32,
+    pub(super) foreground: egui::Color32,
+}
+
+impl TabAccentPalette {
+    pub(super) const fn new(
+        background: (u8, u8, u8),
+        border: (u8, u8, u8),
+        foreground: (u8, u8, u8),
+    ) -> Self {
+        Self {
+            background: egui::Color32::from_rgb(background.0, background.1, background.2),
+            border: egui::Color32::from_rgb(border.0, border.1, border.2),
+            foreground: egui::Color32::from_rgb(foreground.0, foreground.1, foreground.2),
+        }
+    }
+
+    pub(super) const fn clear_outline(dark_mode: bool) -> Self {
+        if dark_mode {
+            Self::new((0x23, 0x27, 0x2E), (0x55, 0x5D, 0x68), (0xD7, 0xDC, 0xE4))
+        } else {
+            Self::new((0xF2, 0xF4, 0xF7), (0xC8, 0xCF, 0xD8), (0x4E, 0x56, 0x61))
+        }
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub(super) struct HighlightCacheKey {
+    pub(super) path: PathBuf,
+    pub(super) prefer_relative: bool,
+    pub(super) use_regex: bool,
+    pub(super) ignore_case: bool,
+}
+
+pub(super) struct PendingFileListConfirmation {
+    pub(super) tab_id: u64,
+    pub(super) root: PathBuf,
+    pub(super) entries: Vec<PathBuf>,
+    pub(super) existing_path: PathBuf,
+}
+
+pub(super) struct PendingFileListAncestorConfirmation {
+    pub(super) tab_id: u64,
+    pub(super) root: PathBuf,
+    pub(super) entries: Vec<PathBuf>,
+}
+
+pub(super) struct PendingFileListAfterIndex {
+    pub(super) tab_id: u64,
+    pub(super) root: PathBuf,
+}
+
+pub(super) struct PendingFileListUseWalkerConfirmation {
+    pub(super) source_tab_id: u64,
+    pub(super) root: PathBuf,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct UpdatePromptState {
+    pub(super) candidate: UpdateCandidate,
+    pub(super) skip_until_next_version: bool,
+    pub(super) install_started: bool,
+}
+
+#[derive(Clone, Debug)]
+pub(super) struct UpdateCheckFailureState {
+    pub(super) error: String,
+    pub(super) suppress_future_errors: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum FileListDialogKind {
+    Overwrite,
+    Ancestor,
+    UseWalker,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct TabDragState {
+    pub(super) source_index: usize,
+    pub(super) hover_index: usize,
+    pub(super) press_pos: egui::Pos2,
+    pub(super) dragging: bool,
+}
 
 pub(super) struct FileListWorkflowState {
     pub(super) next_request_id: u64,
