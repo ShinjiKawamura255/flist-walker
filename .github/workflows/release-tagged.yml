@@ -19,15 +19,12 @@ jobs:
           - os: ubuntu-latest
             label: linux-native
             workdir: rust
-            shell: bash
           - os: macos-latest
             label: macos-native
             workdir: rust
-            shell: bash
           - os: windows-latest
             label: windows-native
             workdir: rust
-            shell: pwsh
 
     steps:
       - name: Checkout
@@ -42,7 +39,6 @@ jobs:
           workspaces: rust
 
       - name: Run tests
-        shell: ${{ matrix.shell }}
         working-directory: ${{ matrix.workdir }}
         run: cargo test --locked
 

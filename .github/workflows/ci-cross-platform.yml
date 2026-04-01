@@ -18,26 +18,22 @@ jobs:
           - os: ubuntu-latest
             label: linux-native
             workdir: rust
-            shell: bash
             run_tests: true
             build_cmd: cargo build --release --locked
           - os: macos-latest
             label: macos-native
             workdir: rust
-            shell: bash
             run_tests: true
             build_cmd: cargo build --release --locked
           - os: windows-latest
             label: windows-native
             workdir: rust
-            shell: pwsh
             run_tests: true
             build_cmd: cargo build --release --locked
           - os: ubuntu-latest
             label: windows-gnu-cross
             workdir: .
             target: x86_64-pc-windows-gnu
-            shell: bash
             run_tests: false
             build_cmd: ./scripts/build-rust-win.sh --locked
 
@@ -69,12 +65,10 @@ jobs:
 
       - name: Run tests
         if: ${{ matrix.run_tests }}
-        shell: ${{ matrix.shell }}
         working-directory: ${{ matrix.workdir }}
         run: cargo test --locked
 
       - name: Build release
-        shell: ${{ matrix.shell }}
         working-directory: ${{ matrix.workdir }}
         run: ${{ matrix.build_cmd }}
 
