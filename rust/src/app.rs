@@ -438,6 +438,8 @@ pub struct FlistWalkerApp {
     sort_in_progress: bool,
     kind_resolution_in_progress: bool,
     pending_copy_shortcut: bool,
+    #[cfg(test)]
+    browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
     scroll_to_current: bool,
     preview_resize_in_progress: bool,
     focus_query_requested: bool,
@@ -704,6 +706,8 @@ Search hints:
             sort_in_progress: false,
             kind_resolution_in_progress: false,
             pending_copy_shortcut: false,
+            #[cfg(test)]
+            browse_dialog_result: None,
             scroll_to_current: true,
             preview_resize_in_progress: false,
             focus_query_requested: true,
@@ -2135,6 +2139,42 @@ Search hints:
         self.cancel_stale_pending_filelist_use_walker_confirmation();
         self.request_index_refresh();
         self.set_notice(format!("Root changed: {}", self.root_display_text()));
+    }
+
+    fn browse_for_root(&mut self) {
+        let dialog_root = Self::normalize_windows_path(self.root.clone());
+        match self.select_root_via_dialog(&dialog_root) {
+            Ok(Some(dir)) => self.apply_root_change(dir),
+            Ok(None) => {}
+            Err(err) => self.set_notice(format!("Browse failed: {}", err)),
+        }
+    }
+
+    fn browse_for_root_in_new_tab(&mut self) {
+        let dialog_root = Self::normalize_windows_path(self.root.clone());
+        match self.select_root_via_dialog(&dialog_root) {
+            Ok(Some(dir)) => {
+                self.create_new_tab();
+                self.apply_root_change(dir);
+            }
+            Ok(None) => {}
+            Err(err) => self.set_notice(format!("Browse failed: {}", err)),
+        }
+    }
+
+    #[cfg(test)]
+    fn select_root_via_dialog(&mut self, _dialog_root: &Path) -> Result<Option<PathBuf>, String> {
+        self.browse_dialog_result
+            .take()
+            .unwrap_or_else(|| Ok(None))
+    }
+
+    #[cfg(not(test))]
+    fn select_root_via_dialog(&mut self, dialog_root: &Path) -> Result<Option<PathBuf>, String> {
+        native_dialog::FileDialog::new()
+            .set_location(dialog_root)
+            .show_open_single_dir()
+            .map_err(|err| err.to_string())
     }
 
     fn prefer_relative_display(&self) -> bool {

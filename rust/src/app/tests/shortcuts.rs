@@ -317,6 +317,62 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
 }
 
 #[test]
+fn ctrl_o_browses_and_changes_root() {
+    let root = test_root("shortcut-ctrl-o");
+    let new_root = root.join("new-root");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&new_root).expect("create new root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.browse_dialog_result = Some(Ok(Some(new_root.clone())));
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::O,
+            pressed: true,
+            repeat: false,
+            modifiers: gui_shortcut_modifiers(false),
+        }],
+    );
+
+    assert_eq!(app.root, new_root);
+    assert_eq!(app.tabs.len(), 1);
+    assert_eq!(app.active_tab, 0);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ctrl_shift_o_browses_in_new_tab() {
+    let root = test_root("shortcut-ctrl-shift-o");
+    let new_root = root.join("new-root");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&new_root).expect("create new root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let original_tab_id = app.tabs[0].id;
+    app.browse_dialog_result = Some(Ok(Some(new_root.clone())));
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::O,
+            pressed: true,
+            repeat: false,
+            modifiers: gui_shortcut_modifiers(true),
+        }],
+    );
+
+    assert_eq!(app.tabs.len(), 2);
+    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.root, new_root);
+    assert_eq!(app.tabs[0].id, original_tab_id);
+    assert_eq!(app.tabs[0].root, root);
+    assert_eq!(app.tabs[1].root, new_root);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn home_and_end_move_selection_when_query_not_focused() {
     let root = test_root("shortcut-home-end-no-focus");
     fs::create_dir_all(&root).expect("create dir");

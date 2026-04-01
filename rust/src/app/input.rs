@@ -522,6 +522,14 @@ impl FlistWalkerApp {
             }
             return;
         }
+        if Self::consume_gui_shortcut(ctx, egui::Key::O, true) {
+            self.browse_for_root_in_new_tab();
+            return;
+        }
+        if Self::consume_gui_shortcut(ctx, egui::Key::O, false) {
+            self.browse_for_root();
+            return;
+        }
 
         if self.history_search_active {
             if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {

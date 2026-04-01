@@ -745,19 +745,7 @@ impl FlistWalkerApp {
                     .add_sized([button_width, row_height], egui::Button::new("Browse..."))
                     .clicked()
                 {
-                    let dialog_root = Self::normalize_windows_path(self.root.clone());
-                    match native_dialog::FileDialog::new()
-                        .set_location(&dialog_root)
-                        .show_open_single_dir()
-                    {
-                        Ok(Some(dir)) => {
-                            self.apply_root_change(dir);
-                        }
-                        Ok(None) => {}
-                        Err(err) => {
-                            self.set_notice(format!("Browse failed: {}", err));
-                        }
-                    }
+                    self.browse_for_root();
                 }
                 let set_default_enabled = self.can_set_current_root_as_default();
                 let set_default_response = ui.add_enabled_ui(set_default_enabled, |ui| {
