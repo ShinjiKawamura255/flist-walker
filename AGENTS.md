@@ -72,3 +72,11 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- For `eframe-upgrade`, read `docs/CHANGE-PLAN-20260401-eframe-upgrade.md` before starting implementation.
+- Execute the work in the documented order (Phase 1 → 2 → 3 → 4) unless the plan is updated first.
+- If scope, order, or risk changes, update the change plan before continuing.
+- Phase 2 以降は `cargo test` に加えて GUI 手動確認を行うこと。
+- `Cargo.toml` / `Cargo.lock` を変更するため、OSS compliance docs を同一変更で確認すること。
+- Remove this section from `AGENTS.md` after the planned work is complete.
