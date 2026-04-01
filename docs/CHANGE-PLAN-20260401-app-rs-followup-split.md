@@ -99,8 +99,8 @@
      - 必要に応じて `cargo test --locked` 再実行
 
 ## 7. Detailed Task Breakdown
-- [ ] P-001 tab lifecycle の責務棚卸しと分割先の確定
-- [ ] P-002 tab lifecycle の module 分離と test green
+- [x] P-001 tab lifecycle の責務棚卸しと分割先の確定
+- [x] P-002 tab lifecycle の module 分離と test green
 - [ ] P-003 index/search pipeline の責務棚卸しと分割先の確定
 - [ ] P-004 index/search pipeline の module 分離と test/perf green
 - [ ] P-005 preview/highlight/cache の責務整理と module 分離
@@ -138,6 +138,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-01 00:00 Planned.
+- 2026-04-01 00:00 Phase 1 completed. Moved tab lifecycle helpers from `rust/src/app.rs` to `rust/src/app/tabs.rs` and verified with `cargo test --locked`.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

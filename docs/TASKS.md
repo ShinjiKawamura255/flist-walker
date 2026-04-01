@@ -8,7 +8,7 @@
 ## Active Task List
 | ID | Status | Area | Summary | Dependencies | DoD | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| P-001 | TODO | Tabs | tab lifecycle の責務を `app.rs` から分離し、初期化/保存/切替/移動の境界を module 化する | - | tab 関連 helper が専用 module に移り、`cargo test --locked` が通る | tab helper 群と state 同期点を棚卸しする |
+| P-001 | DONE | Tabs | tab lifecycle の責務を `app.rs` から分離し、初期化/保存/切替/移動の境界を module 化する | - | tab 関連 helper が専用 module に移り、`cargo test --locked` が通る | P-002 の pipeline 境界整理へ進む |
 | P-002 | TODO | Pipeline | index/search queue と incremental refresh を `app.rs` から分離する | P-001 | pipeline 契約が専用 module に寄り、`cargo test --locked` と ignored perf テスト 2 本が通る | queue/poll/update の境界を棚卸しする |
 | P-003 | TODO | Cache | preview/highlight/cache helper を整理し、cache state と invalidation policy を局所化する | P-002 | cache 操作が `app.rs` から外れ、関連 docs が更新される | cache helper と invalidation 条件を棚卸しする |
 | P-004 | TODO | Cleanup | docs 同期と一時 plan の撤去を完了する | P-001, P-002, P-003 | `AGENTS.md` 一時ルールと change plan が削除され、恒久 docs が code 構造と一致する | 各 Phase 完了後に docs を同期する |
@@ -43,6 +43,7 @@
 - `R-005`: `rust/src/app.rs`, `rust/src/app/*.rs` の変更は `docs/TESTPLAN.md` の VM-002/VM-003 に従って検証する。
 
 ## Active Progress
+- 2026-04-01: `P-001` 完了。tab lifecycle helper を新規 `rust/src/app/tabs.rs` へ移し、`app.rs` には tab coordinator 呼び出しだけを残した。`cargo test --locked` を実行済み。
 - 2026-04-01: Phase 1 完了。tag release workflow に preflight test/audit gate を追加し、通常 CI に Windows native runner を追加。`ruby -e "require 'yaml'; ..."` で workflow YAML を読込確認し、`cd rust && cargo test --locked` を実行済み。
 - 2026-04-01: Phase 2 完了。CLI `--limit` の 1000 件暗黙上限を撤廃し、integration test と docs を更新。`.github/workflows/perf-regression.yml` を追加し、`cargo test --locked` と ignored perf テスト 2 本を実行済み。
 - 2026-04-01: Phase 3 完了。`app/session.rs` に UI state/saved roots/window geometry 永続化を寄せ、`app/state.rs` に GUI 横断 state 型を集約して `app.rs` の責務を縮小。`docs/DESIGN.md` を同期し、一時 change plan と AGENTS 一時ルールを撤去。
