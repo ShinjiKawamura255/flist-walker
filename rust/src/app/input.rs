@@ -986,7 +986,7 @@ impl FlistWalkerApp {
             );
         }
 
-        if query_focused && !saw_text_space {
+        if query_focused && !saw_text_space && !saw_composition_update {
             if let Some(space) = fallback_space {
                 if let Some((start, end)) = Self::selection_range(cursor, anchor) {
                     Self::remove_char_range(&mut self.query, start, end);

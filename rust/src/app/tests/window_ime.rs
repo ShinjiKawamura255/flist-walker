@@ -153,7 +153,7 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
 }
 
 #[test]
-fn process_query_input_events_inserts_space_fallback_when_composition_updates() {
+fn process_query_input_events_skips_space_fallback_when_composition_updates() {
     let root = test_root("ime-composition-space-allow-update");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -179,15 +179,15 @@ fn process_query_input_events_inserts_space_fallback_when_composition_updates() 
             egui::text::CCursor::new(3),
         )),
     );
-    assert!(inserted);
-    assert_eq!(cursor, Some(4));
-    assert_eq!(app.query, "abc ");
+    assert!(!inserted);
+    assert_eq!(cursor, None);
+    assert_eq!(app.query, "abc");
     assert!(app.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
 
 #[test]
-fn process_query_input_events_inserts_half_space_even_with_composition_update() {
+fn process_query_input_events_skips_shift_space_fallback_with_composition_update() {
     let root = test_root("ime-composition-half-space-allow");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -216,9 +216,9 @@ fn process_query_input_events_inserts_half_space_even_with_composition_update() 
             egui::text::CCursor::new(3),
         )),
     );
-    assert!(inserted);
-    assert_eq!(cursor, Some(4));
-    assert_eq!(app.query, "abc ");
+    assert!(!inserted);
+    assert_eq!(cursor, None);
+    assert_eq!(app.query, "abc");
     assert!(app.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
