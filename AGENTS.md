@@ -70,10 +70,5 @@
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
-## Temporary Change Plan Rule
-- `app-rs-followup-split` では [docs/CHANGE-PLAN-20260401-app-rs-followup-split.md](/mnt/d/work/flistwalker/docs/CHANGE-PLAN-20260401-app-rs-followup-split.md) を実装前に読むこと。
-- 実装順は change plan に従い、順序・スコープ・リスクが変わる場合は先に change plan を更新すること。
-- この追加分割の完了後は、この一時セクションを `AGENTS.md` から削除し、恒久的な内容だけを docs へ残すこと。
-
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###

@@ -29,13 +29,15 @@
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
-- 役割補足: `app.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs` へ分離する。
+- 役割補足: `app.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/cache.rs` へ分離する。
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
+- 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成など tab lifecycle を担当する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
-- 役割補足: preview/highlight/sort metadata cache は `app/cache.rs` の state struct として束ね、描画側 helper は専用 clear/cache API を介して参照する。
-- 実装: `rust/src/app.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
+- 役割補足: `app/pipeline.rs` は index/search queue、response poll、incremental refresh、entry filter 再適用を担当し、request_id 契約を局所化する。
+- 役割補足: `app/cache.rs` は preview/highlight cache state と invalidation、preview request/response helper、sort metadata cache を担当する。
+- 実装: `rust/src/app.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。
@@ -47,7 +49,7 @@
 
 - DES-013 Result Sort Controller
 - 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
-- 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
+- 実装: `rust/src/app.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`
 
 - DES-014 Self Update Coordinator
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
