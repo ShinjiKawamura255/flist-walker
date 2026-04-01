@@ -231,6 +231,14 @@ impl TabAccentPalette {
             foreground: egui::Color32::from_rgb(foreground.0, foreground.1, foreground.2),
         }
     }
+
+    pub(super) const fn clear_outline(dark_mode: bool) -> Self {
+        if dark_mode {
+            Self::new((0x23, 0x27, 0x2E), (0x55, 0x5D, 0x68), (0xD7, 0xDC, 0xE4))
+        } else {
+            Self::new((0xF2, 0xF4, 0xF7), (0xC8, 0xCF, 0xD8), (0x4E, 0x56, 0x61))
+        }
+    }
 }
 
 static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);

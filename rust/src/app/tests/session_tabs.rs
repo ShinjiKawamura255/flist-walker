@@ -403,6 +403,23 @@ fn tab_accent_palette_matches_dropsendto_slot_colors() {
         light_magenta.foreground,
         egui::Color32::from_rgb(0x5A, 0x1F, 0x60)
     );
+
+    let dark_clear = TabAccentPalette::clear_outline(true);
+    assert_eq!(
+        dark_clear.background,
+        egui::Color32::from_rgb(0x23, 0x27, 0x2E)
+    );
+    assert_eq!(dark_clear.border, egui::Color32::from_rgb(0x55, 0x5D, 0x68));
+
+    let light_clear = TabAccentPalette::clear_outline(false);
+    assert_eq!(
+        light_clear.background,
+        egui::Color32::from_rgb(0xF2, 0xF4, 0xF7)
+    );
+    assert_eq!(
+        light_clear.border,
+        egui::Color32::from_rgb(0xC8, 0xCF, 0xD8)
+    );
 }
 
 #[test]

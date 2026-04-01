@@ -416,7 +416,17 @@ impl FlistWalkerApp {
                             .gamma_multiply(if is_active { 1.0 } else { 0.72 }),
                     )
                 } else {
-                    ui.visuals().widgets.noninteractive.bg_stroke
+                    let palette = TabAccentPalette::clear_outline(ui.visuals().dark_mode);
+                    egui::Stroke::new(
+                        if is_active {
+                            Self::TAB_ACTIVE_BORDER_WIDTH
+                        } else {
+                            Self::TAB_INACTIVE_BORDER_WIDTH
+                        },
+                        palette
+                            .border
+                            .gamma_multiply(if is_active { 1.0 } else { 0.82 }),
+                    )
                 };
                 let tab_response = egui::Frame::none()
                     .fill(frame_fill)
