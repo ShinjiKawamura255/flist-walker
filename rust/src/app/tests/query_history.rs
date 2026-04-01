@@ -20,6 +20,7 @@ fn ctrl_r_starts_history_search_with_recent_entries_first() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::R,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers {

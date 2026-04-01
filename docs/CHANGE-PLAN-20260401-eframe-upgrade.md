@@ -118,12 +118,12 @@ FlistWalker は現在 `eframe 0.24.x` を使っている。既存の [EFRAME-UPG
 ## 7. Detailed Task Breakdown
 
 ### Phase 1
-- [ ] 1-1: `eframe` / `egui` 系 version を更新
-- [ ] 1-2: `Cargo.lock` を再生成
-- [ ] 1-3: `THIRD_PARTY_NOTICES.txt` を更新
-- [ ] 1-4: `docs/OSS_COMPLIANCE.md` の確認を反映
-- [ ] 1-5: `cargo test`
-- [ ] 1-6: `cargo clippy --all-targets -- -D warnings`
+- [x] 1-1: `eframe` / `egui` 系 version を更新
+- [x] 1-2: `Cargo.lock` を再生成
+- [x] 1-3: `THIRD_PARTY_NOTICES.txt` を更新
+- [x] 1-4: `docs/OSS_COMPLIANCE.md` の確認を反映
+- [x] 1-5: `cargo test`
+- [x] 1-6: `cargo clippy --all-targets -- -D warnings`
 
 ### Phase 2
 - [ ] 2-1: `main.rs` の viewport 初期化を更新

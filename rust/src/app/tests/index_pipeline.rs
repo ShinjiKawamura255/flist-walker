@@ -1649,6 +1649,7 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::ArrowRight,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -1682,6 +1683,7 @@ fn dialog_space_confirms_selected_dialog_action() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::ArrowRight,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -1692,6 +1694,7 @@ fn dialog_space_confirms_selected_dialog_action() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Space,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -1724,6 +1727,7 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Enter,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,

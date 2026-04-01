@@ -80,13 +80,14 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
         &ctx,
         &[egui::Event::Key {
             key: egui::Key::Space,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
         }],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(3),
         )),
     );
@@ -98,6 +99,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
         &ctx,
         &[egui::Event::Key {
             key: egui::Key::Space,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers {
@@ -107,7 +109,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
         }],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(4),
         )),
     );
@@ -128,9 +130,10 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
         &[
-            egui::Event::CompositionStart,
+            egui::Event::Ime(egui::ImeEvent::Enabled),
             egui::Event::Key {
                 key: egui::Key::Space,
+                physical_key: None,
                 pressed: true,
                 repeat: false,
                 modifiers: egui::Modifiers::NONE,
@@ -138,7 +141,7 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
         ],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(3),
         )),
     );
@@ -160,10 +163,11 @@ fn process_query_input_events_inserts_space_fallback_when_composition_updates() 
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
         &[
-            egui::Event::CompositionStart,
-            egui::Event::CompositionUpdate("あ".to_string()),
+            egui::Event::Ime(egui::ImeEvent::Enabled),
+            egui::Event::Ime(egui::ImeEvent::Preedit("あ".to_string())),
             egui::Event::Key {
                 key: egui::Key::Space,
+                physical_key: None,
                 pressed: true,
                 repeat: false,
                 modifiers: egui::Modifiers::NONE,
@@ -171,7 +175,7 @@ fn process_query_input_events_inserts_space_fallback_when_composition_updates() 
         ],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(3),
         )),
     );
@@ -193,10 +197,11 @@ fn process_query_input_events_inserts_half_space_even_with_composition_update() 
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
         &[
-            egui::Event::CompositionStart,
-            egui::Event::CompositionUpdate("あ".to_string()),
+            egui::Event::Ime(egui::ImeEvent::Enabled),
+            egui::Event::Ime(egui::ImeEvent::Preedit("あ".to_string())),
             egui::Event::Key {
                 key: egui::Key::Space,
+                physical_key: None,
                 pressed: true,
                 repeat: false,
                 modifiers: egui::Modifiers {
@@ -207,7 +212,7 @@ fn process_query_input_events_inserts_half_space_even_with_composition_update() 
         ],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(3),
         )),
     );
@@ -230,13 +235,14 @@ fn process_query_input_events_inserts_space_fallback_at_cursor_position() {
         &ctx,
         &[egui::Event::Key {
             key: egui::Key::Space,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
         }],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(2),
         )),
     );
@@ -257,10 +263,10 @@ fn process_query_input_events_inserts_composition_commit_fallback_at_cursor_posi
 
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
-        &[egui::Event::CompositionEnd("x".to_string())],
+        &[egui::Event::Ime(egui::ImeEvent::Commit("x".to_string()))],
         true,
         false,
-        Some(egui::text_edit::CCursorRange::one(
+        Some(egui::text::CCursorRange::one(
             egui::text::CCursor::new(2),
         )),
     );

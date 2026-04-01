@@ -36,7 +36,7 @@ pub(super) fn run_shortcuts_frame(
         }
     }
     let ctx = egui::Context::default();
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers,
         events,
         ..Default::default()
@@ -46,7 +46,7 @@ pub(super) fn run_shortcuts_frame(
     }
     app.handle_shortcuts(&ctx);
     app.run_deferred_shortcuts(&ctx);
-    let _ = ctx.end_frame();
+    let _ = ctx.end_pass();
 }
 
 pub(super) fn gui_shortcut_modifiers(shift: bool) -> egui::Modifiers {

@@ -55,12 +55,13 @@ impl FlistWalkerApp {
         );
         let galley = egui::WidgetText::from(text.to_owned()).into_galley(
             ui,
-            Some(false),
+            Some(egui::TextWrapMode::Extend),
             f32::INFINITY,
             egui::TextStyle::Button,
         );
         let text_pos = egui::Align2::LEFT_CENTER.align_size_within_rect(galley.size(), text_rect);
-        galley.paint_with_visuals(ui.painter(), text_pos.min, visuals);
+        ui.painter()
+            .galley(text_pos.min, galley, visuals.text_color());
     }
 
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
@@ -182,7 +183,7 @@ impl FlistWalkerApp {
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
                     let mut selected = self.result_sort_mode;
-                    egui::ComboBox::from_id_source("results-sort-selector")
+                    egui::ComboBox::from_id_salt("results-sort-selector")
                         .width(Self::RESULT_SORT_SELECTOR_WIDTH)
                         .selected_text(selected.label())
                         .show_ui(ui, |ui| {
@@ -297,13 +298,12 @@ impl FlistWalkerApp {
             Self::RESULT_ROW_H_MARGIN,
             Self::RESULT_ROW_V_MARGIN,
         ));
-        ui.allocate_ui_at_rect(inner_rect, |ui| {
-            ui.add(
-                egui::Label::new(job)
-                    .wrap(false)
-                    .sense(egui::Sense::hover()),
-            );
-        });
+        ui.put(
+            inner_rect,
+            egui::Label::new(job)
+                .extend()
+                .sense(egui::Sense::hover()),
+        );
     }
 
     fn build_result_row_job(
@@ -399,7 +399,7 @@ impl FlistWalkerApp {
                         .show(ui, |ui| {
                             ui.add(
                                 egui::Label::new(egui::RichText::new(text).monospace())
-                                    .wrap(false)
+                                    .extend()
                                     .sense(egui::Sense::click()),
                             )
                         });
@@ -803,7 +803,8 @@ impl FlistWalkerApp {
                             popup_id,
                             &response,
                             below,
-                            |ui| {
+                            egui::popup::PopupCloseBehavior::CloseOnClickOutside,
+                            |ui: &mut egui::Ui| {
                                 ui.set_min_width(field_width);
                                 for (index, path) in self.saved_roots.iter().enumerate() {
                                     let text = normalize_windows_path_buf(path.clone())
@@ -954,7 +955,7 @@ impl FlistWalkerApp {
                         &events,
                         output.response.has_focus(),
                         output.response.changed(),
-                        output.state.ccursor_range(),
+                        output.state.cursor.char_range(),
                     );
                 if query_event_changed {
                     self.mark_query_edited();
@@ -963,7 +964,8 @@ impl FlistWalkerApp {
                             .unwrap_or_else(|| Self::char_count(&self.query));
                         output
                             .state
-                            .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                            .cursor
+                            .set_char_range(Some(egui::text::CCursorRange::one(
                                 egui::text::CCursor::new(end),
                             )));
                         output.state.clone().store(ctx, output.response.id);
@@ -980,7 +982,8 @@ impl FlistWalkerApp {
                         let end = Self::char_count(&self.query);
                         output
                             .state
-                            .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                            .cursor
+                            .set_char_range(Some(egui::text::CCursorRange::one(
                                 egui::text::CCursor::new(end),
                             )));
                         output.state.clone().store(ctx, output.response.id);
@@ -1004,7 +1007,8 @@ impl FlistWalkerApp {
                     let end = Self::char_count(&self.history_search_query);
                     output
                         .state
-                        .set_ccursor_range(Some(egui::text_edit::CCursorRange::one(
+                        .cursor
+                        .set_char_range(Some(egui::text::CCursorRange::one(
                             egui::text::CCursor::new(end),
                         )));
                     output.state.clone().store(ctx, output.response.id);
@@ -1083,7 +1087,7 @@ impl FlistWalkerApp {
                         egui::Layout::left_to_right(egui::Align::Center),
                         |ui| {
                             ui.set_width(status_width);
-                            ui.add(egui::Label::new(&self.status_line).truncate(true));
+                            ui.add(egui::Label::new(&self.status_line).truncate());
                         },
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

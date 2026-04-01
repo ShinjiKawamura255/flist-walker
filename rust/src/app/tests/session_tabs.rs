@@ -342,6 +342,7 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::T,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(false),
@@ -435,6 +436,7 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::W,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(false),
@@ -447,6 +449,7 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::W,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(false),
@@ -472,6 +475,7 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: tab_switch_shortcut_modifiers(false),
@@ -484,6 +488,7 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: tab_switch_shortcut_modifiers(true),
@@ -509,6 +514,7 @@ fn ctrl_number_switches_to_matching_tab_from_left() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Num2,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(false),
@@ -533,6 +539,7 @@ fn ctrl_number_without_matching_tab_does_not_switch() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Num3,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(false),
@@ -826,6 +833,7 @@ fn background_tab_switch_does_not_stop_indexing_progress() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: tab_switch_shortcut_modifiers(true),

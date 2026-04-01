@@ -150,9 +150,11 @@ impl FlistWalkerApp {
         let mut text_changed = false;
         let mut cursor_changed = false;
         let char_len = Self::char_count(&self.query);
-        let ccursor = output.state.ccursor_range().unwrap_or_else(|| {
-            egui::text_edit::CCursorRange::one(egui::text::CCursor::new(char_len))
-        });
+        let ccursor = output
+            .state
+            .cursor
+            .char_range()
+            .unwrap_or_else(|| egui::text::CCursorRange::one(egui::text::CCursor::new(char_len)));
         let mut cursor = ccursor.primary.index.min(char_len);
         let mut anchor = ccursor.secondary.index.min(char_len);
 
@@ -255,7 +257,8 @@ impl FlistWalkerApp {
         if cursor_changed {
             output
                 .state
-                .set_ccursor_range(Some(egui::text_edit::CCursorRange::two(
+                .cursor
+                .set_char_range(Some(egui::text::CCursorRange::two(
                     egui::text::CCursor::new(anchor),
                     egui::text::CCursor::new(cursor),
                 )));
@@ -853,7 +856,7 @@ impl FlistWalkerApp {
         events: &[egui::Event],
         query_focused: bool,
         text_changed_by_widget: bool,
-        cursor_range: Option<egui::text_edit::CCursorRange>,
+        cursor_range: Option<egui::text::CCursorRange>,
     ) -> (bool, Option<usize>) {
         let mut changed = false;
         let mut saw_text_space = false;
@@ -874,11 +877,11 @@ impl FlistWalkerApp {
 
         for event in events {
             match event {
-                egui::Event::CompositionStart => {
+                egui::Event::Ime(egui::ImeEvent::Enabled) => {
                     self.ime_composition_active = true;
                     Self::append_window_trace("ime_composition_start", "active=true");
                 }
-                egui::Event::CompositionUpdate(text) => {
+                egui::Event::Ime(egui::ImeEvent::Preedit(text)) => {
                     self.ime_composition_active = true;
                     if !text.is_empty() {
                         saw_composition_update = true;
@@ -888,7 +891,7 @@ impl FlistWalkerApp {
                         );
                     }
                 }
-                egui::Event::CompositionEnd(text) => {
+                egui::Event::Ime(egui::ImeEvent::Commit(text)) => {
                     self.ime_composition_active = false;
                     Self::append_window_trace(
                         "ime_composition_end",
@@ -906,6 +909,10 @@ impl FlistWalkerApp {
                             saw_text_space = true;
                         }
                     }
+                }
+                egui::Event::Ime(egui::ImeEvent::Disabled) => {
+                    self.ime_composition_active = false;
+                    Self::append_window_trace("ime_composition_disabled", "active=false");
                 }
                 egui::Event::Text(text) => {
                     if text.contains(' ') || text.contains('\u{3000}') {

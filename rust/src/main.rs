@@ -105,12 +105,12 @@ fn run_gui(args: &Args) -> Result<()> {
         native_options,
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
-            Box::new(FlistWalkerApp::from_launch(
+            Ok(Box::new(FlistWalkerApp::from_launch(
                 root,
                 limit,
                 query,
                 root_explicit,
-            ))
+            )))
         }),
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;

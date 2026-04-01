@@ -40,10 +40,10 @@ Additional notice-bearing components
   License: BSD-3-Clause
   Source: https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek
 
-- eframe 0.24.1 / egui stack
+- eframe 0.29.1 / egui stack
   Primary license: MIT OR Apache-2.0
 
-- epaint 0.24.1
+- epaint 0.29.1
   License expression: (MIT OR Apache-2.0) AND OFL-1.1 AND LicenseRef-UFL-1.0
   Source: https://github.com/emilk/egui/tree/master/crates/epaint
   Notes: epaint bundles fonts and icon assets that carry OFL-1.1, UFL-1.0,

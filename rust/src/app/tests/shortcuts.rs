@@ -84,6 +84,7 @@ fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::N,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -96,6 +97,7 @@ fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::P,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -122,6 +124,7 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::G,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -151,6 +154,7 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::Escape,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -173,10 +177,11 @@ fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
     app.saved_roots = vec![root.clone(), alt];
     let ctx = egui::Context::default();
 
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers: gui_shortcut_modifiers(true),
         events: vec![egui::Event::Key {
             key: egui::Key::R,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(true),
@@ -191,7 +196,7 @@ fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
     assert!(!app.history_search_active);
     assert_eq!(app.query, "draft");
 
-    let _ = ctx.end_frame();
+    let _ = ctx.end_pass();
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -208,10 +213,11 @@ fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
     let ctx = egui::Context::default();
     app.open_root_dropdown(&ctx);
 
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers: emacs_shortcut_modifiers(false),
         events: vec![egui::Event::Key {
             key: egui::Key::N,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -220,12 +226,13 @@ fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
     });
     app.handle_shortcuts(&ctx);
     assert_eq!(app.root_dropdown_highlight, Some(1));
-    let _ = ctx.end_frame();
+    let _ = ctx.end_pass();
 
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers: emacs_shortcut_modifiers(false),
         events: vec![egui::Event::Key {
             key: egui::Key::P,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -234,7 +241,7 @@ fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
     });
     app.handle_shortcuts(&ctx);
     assert_eq!(app.root_dropdown_highlight, Some(0));
-    let _ = ctx.end_frame();
+    let _ = ctx.end_pass();
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -250,10 +257,11 @@ fn root_dropdown_ctrl_g_closes_without_clearing_query() {
     let ctx = egui::Context::default();
     app.open_root_dropdown(&ctx);
 
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers: emacs_shortcut_modifiers(false),
         events: vec![egui::Event::Key {
             key: egui::Key::G,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -264,7 +272,7 @@ fn root_dropdown_ctrl_g_closes_without_clearing_query() {
 
     assert!(!app.is_root_dropdown_open(&ctx));
     assert_eq!(app.query, "draft");
-    let _ = ctx.end_frame();
+    let _ = ctx.end_pass();
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -284,10 +292,11 @@ fn root_dropdown_ctrl_j_and_ctrl_m_accept_selection() {
         app.open_root_dropdown(&ctx);
         app.move_root_dropdown_selection(1);
 
-        ctx.begin_frame(egui::RawInput {
+        ctx.begin_pass(egui::RawInput {
             modifiers: emacs_shortcut_modifiers(false),
             events: vec![egui::Event::Key {
                 key,
+                physical_key: None,
                 pressed: true,
                 repeat: false,
                 modifiers: emacs_shortcut_modifiers(false),
@@ -298,7 +307,7 @@ fn root_dropdown_ctrl_j_and_ctrl_m_accept_selection() {
 
         assert!(!app.is_root_dropdown_open(&ctx));
         assert_eq!(app.root, second);
-        let _ = ctx.end_frame();
+        let _ = ctx.end_pass();
         let _ = fs::remove_dir_all(&root);
     }
 }
@@ -319,6 +328,7 @@ fn history_search_enter_accepts_selected_query() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::Enter,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -351,6 +361,7 @@ fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
             true,
             vec![egui::Event::Key {
                 key,
+                physical_key: None,
                 pressed: true,
                 repeat: false,
                 modifiers: emacs_shortcut_modifiers(false),
@@ -370,6 +381,7 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
             "history-search-escape-cancel",
             egui::Event::Key {
                 key: egui::Key::Escape,
+                physical_key: None,
                 pressed: true,
                 repeat: false,
                 modifiers: egui::Modifiers::NONE,
@@ -379,7 +391,8 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
             "history-search-ctrl-g-cancel",
             egui::Event::Key {
                 key: egui::Key::G,
-                pressed: true,
+                physical_key: None,
+            pressed: true,
                 repeat: false,
                 modifiers: emacs_shortcut_modifiers(false),
             },
@@ -418,6 +431,7 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
         true,
         vec![egui::Event::Key {
             key: egui::Key::C,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(true),
@@ -446,6 +460,7 @@ fn ctrl_o_browses_and_changes_root() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::O,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(false),
@@ -473,6 +488,7 @@ fn ctrl_shift_o_browses_in_new_tab() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::O,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: gui_shortcut_modifiers(true),
@@ -503,6 +519,7 @@ fn home_and_end_move_selection_when_query_not_focused() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Home,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -515,6 +532,7 @@ fn home_and_end_move_selection_when_query_not_focused() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::End,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -539,6 +557,7 @@ fn page_up_down_move_selection_when_query_not_focused() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::PageUp,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -551,6 +570,7 @@ fn page_up_down_move_selection_when_query_not_focused() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::PageDown,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -575,6 +595,7 @@ fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -588,6 +609,7 @@ fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -613,6 +635,7 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -626,6 +649,7 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -649,10 +673,11 @@ fn regression_tab_shortcut_clears_focus_traversal_target() {
     let dummy_focus = egui::Id::new("dummy-focus");
     ctx.memory_mut(|m| m.request_focus(dummy_focus));
 
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers: egui::Modifiers::NONE,
         events: vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -660,8 +685,8 @@ fn regression_tab_shortcut_clears_focus_traversal_target() {
         ..Default::default()
     });
     app.handle_shortcuts_with_focus(&ctx, false);
-    let focused_after = ctx.memory(|m| m.focus());
-    let _ = ctx.end_frame();
+    let focused_after = ctx.memory(|m| m.focused());
+    let _ = ctx.end_pass();
 
     assert!(app.pinned_paths.contains(&selected));
     assert_eq!(app.current_row, Some(0));
@@ -681,10 +706,11 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
     let ctx = egui::Context::default();
     ctx.memory_mut(|m| m.request_focus(app.query_input_id));
 
-    ctx.begin_frame(egui::RawInput {
+    ctx.begin_pass(egui::RawInput {
         modifiers: egui::Modifiers::NONE,
         events: vec![egui::Event::Key {
             key: egui::Key::Tab,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -693,7 +719,7 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
     });
     app.handle_shortcuts_with_focus(&ctx, true);
     let query_still_focused = ctx.memory(|m| m.has_focus(app.query_input_id));
-    let _ = ctx.end_frame();
+    let _ = ctx.end_pass();
 
     assert!(app.pinned_paths.contains(&selected));
     assert!(query_still_focused);
@@ -717,6 +743,7 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::ArrowDown,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -729,6 +756,7 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::ArrowUp,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -753,6 +781,7 @@ fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::I,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -766,6 +795,7 @@ fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::I,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -801,6 +831,7 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::J,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -814,6 +845,7 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::M,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: emacs_shortcut_modifiers(false),
@@ -848,6 +880,7 @@ fn regression_enter_executes_regardless_of_query_focus() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::Enter,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -861,6 +894,7 @@ fn regression_enter_executes_regardless_of_query_focus() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Enter,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers::NONE,
@@ -890,6 +924,7 @@ fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
         true,
         vec![egui::Event::Key {
             key: egui::Key::Enter,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers {
@@ -909,6 +944,7 @@ fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
         false,
         vec![egui::Event::Key {
             key: egui::Key::Enter,
+            physical_key: None,
             pressed: true,
             repeat: false,
             modifiers: egui::Modifiers {
