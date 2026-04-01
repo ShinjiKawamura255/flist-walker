@@ -146,7 +146,7 @@
 | VM-002 App/UI orchestration | `rust/src/app.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験。検索結果描画や入力応答性を変えた場合は、非空 query で検索窓の左右移動・Backspace・結果スクロールの体感遅延を手動確認。タブ描画変更時は light/dark theme で active full-fill / inactive 下辺装飾 / 右クリック色変更を手動確認 |
 | VM-003 Indexing path | `rust/src/indexer.rs`, `rust/src/app/workers.rs`, `rust/src/app.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験 |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
-| VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review |
+| VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit` の依存関係も確認する |
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`

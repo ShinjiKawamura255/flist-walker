@@ -145,12 +145,13 @@
 
 ## GitHub Actions 自動リリース
 1. `vX.Y.Z` 形式の新規 tag を push する。
-2. GitHub Actions の `Release Tagged Build` workflow が Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
-3. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
-4. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` で署名する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
-5. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
-6. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
-7. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
+2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
+3. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
+4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
+5. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` で署名する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
+6. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
+7. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
+8. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
@@ -160,7 +161,7 @@
 - 自動更新を有効にする配布ビルドでは、`FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` が build 時に設定されていること。
 - `SHA256SUMS.sig` を生成する release 作業では、`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` が package / draft release 作成時に設定されていること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
-- CI の Linux / macOS / Windows test と `cargo audit` が green であること。
+- CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
 - notarization 環境が未整備な当面の間は、macOS を publish 対象に含める場合でも notarization 完了を必須条件にしない。その代わり release note に未 notarized である旨を記載すること。
 
 ## Signing Key Provisioning

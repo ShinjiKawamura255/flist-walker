@@ -1,5 +1,37 @@
 # TASKS
 
+## Active Scope
+- Goal: レビュー指摘のうち、リリース安全性・Windows 検証・CLI 契約・保守性・性能回帰検知の弱点を、段階的に是正する。
+- Docs: `docs/TASKS.md`, `docs/REQUIREMENTS.md`, `docs/SPEC.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`, `docs/RELEASE.md`
+- Updated: 2026-04-01
+
+## Active Task List
+| ID | Status | Area | Summary | Dependencies | DoD | Next action |
+| --- | --- | --- | --- | --- | --- | --- |
+| R-001 | DONE | CI | release/tag workflow と通常 CI の関係を整理し、tag 側でも test/audit の成功を前提条件にする | - | tag push で draft release が作成される前に必要な検証 job が必ず通る構成になり、`docs/RELEASE.md` と整合する | Phase 2 の CLI/perf 契約整理へ進む |
+| R-002 | DONE | Windows QA | Windows native runner を導入し、Windows 専用分岐（action / path / update helper）を CI で継続検証する | R-001 | Windows runner で少なくとも `cargo test --locked` 相当が回り、Windows 固有分岐が PR / release 前に検知可能になる | Phase 2 の CLI/perf 契約整理へ進む |
+| R-003 | TODO | CLI contract | CLI の `--limit` 契約を見直し、1000 件上限を撤廃するか、明示的な仕様として docs/help/test へ反映する | - | 実装・README・SPEC・CLI テストの解釈が一致し、利用者が `--limit` の実効値を誤解しない | 期待契約を決めて failing test を先に追加する |
+| R-004 | TODO | Perf guard | 10万件 / 100ms 目標と ignored perf テストの運用を見直し、自動回帰検知の仕組みを追加する | R-001 | perf の定点観測または gate が CI/workflow に追加され、`docs/TESTPLAN.md` の VM-003 / TC-007 と実態が一致する | perf job を gate にするか nightly 観測にするか決める |
+| R-005 | TODO | App architecture | `FlistWalkerApp` の責務を再分割し、state/coordinator/workflow 境界を明確化する | R-001 | `app.rs` の責務が縮小し、変更時の影響範囲とテスト対象が局所化される。設計 docs も更新される | `FlistWalkerApp` フィールド群と `impl` 群を責務単位で棚卸しする |
+| R-006 | TODO | Docs/process | 上記改善後の release / validation / review 観点を docs に反映し、運用依存の暗黙知を減らす | R-001, R-002, R-003, R-004 | `docs/RELEASE.md`, `docs/TESTPLAN.md`, 必要な `README.md` / `AGENTS.md` が新運用と一致する | 各タスク完了後に docs 差分を同一変更へ束ねる |
+
+## Priority / Phase
+- Phase 1: `R-001`, `R-002`
+  release 事故防止と Windows 検証不足を先に塞ぐ。出荷導線に直接効くため最優先。
+- Phase 2: `R-003`, `R-004`
+  利用者契約の不一致と性能回帰検知の弱さを是正する。機能の信頼性を上げるフェーズ。
+- Phase 3: `R-005`, `R-006`
+  中長期の保守性改善と docs 同期を行う。Phase 1/2 の結果を反映して設計を安定化する。
+
+## Validation Notes
+- `R-001`, `R-002`: workflow 変更後は対象 workflow の dry-run 相当確認に加え、Linux/macOS/Windows での `cargo test --locked` 実行可否を確認する。
+- `R-003`: CLI 契約変更は integration test を先に更新し、`README.md` と `docs/SPEC.md` の記述を同一変更でそろえる。
+- `R-004`: 既存 ignored perf テストの位置づけを見直し、gate にしない場合も計測結果の保存先と失敗条件を明文化する。
+- `R-005`: `rust/src/app.rs`, `rust/src/app/*.rs` の変更は `docs/TESTPLAN.md` の VM-002/VM-003 に従って検証する。
+
+## Active Progress
+- 2026-04-01: Phase 1 完了。tag release workflow に preflight test/audit gate を追加し、通常 CI に Windows native runner を追加。`ruby -e "require 'yaml'; ..."` で workflow YAML を読込確認し、`cd rust && cargo test --locked` を実行済み。
+
 ## Scope
 - Goal: `rust/src/app.rs` の段階的分割を、機能互換と既存テスト資産を維持したまま進める。
 - Docs: `docs/TASKS.md`, `docs/REQUIREMENTS.md`, `docs/SPEC.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`

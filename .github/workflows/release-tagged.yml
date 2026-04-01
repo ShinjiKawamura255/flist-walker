@@ -9,9 +9,70 @@ permissions:
   contents: read
 
 jobs:
+  release-preflight:
+    name: Release Preflight (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-native
+            workdir: rust
+            shell: bash
+          - os: macos-latest
+            label: macos-native
+            workdir: rust
+            shell: bash
+          - os: windows-latest
+            label: windows-native
+            workdir: rust
+            shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Run tests
+        shell: ${{ matrix.shell }}
+        working-directory: ${{ matrix.workdir }}
+        run: cargo test --locked
+
+  release-cargo-audit:
+    name: Release Cargo Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit
+
   build-release-assets:
     name: Build Release Assets (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
+    needs:
+      - release-preflight
+      - release-cargo-audit
     env:
       FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: ${{ secrets.FLISTWALKER_UPDATE_PUBLIC_KEY_HEX }}
     strategy:
