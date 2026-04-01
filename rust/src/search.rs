@@ -11,7 +11,9 @@ use regex::{Regex, RegexBuilder};
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::time::Instant;
 use std::{env, thread};
+use tracing::{debug, warn};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndexedScore {
@@ -743,6 +745,7 @@ pub fn try_search_entries_with_scope(
     root: Option<&Path>,
     prefer_relative: bool,
 ) -> Result<Vec<(PathBuf, f64)>, String> {
+    let started_at = Instant::now();
     let scored = try_collect_search_matches(
         query,
         entries,
@@ -752,10 +755,31 @@ pub fn try_search_entries_with_scope(
         prefer_relative,
         None,
     )?;
-    Ok(materialize_scored_entries(
+    let results = materialize_scored_entries(
         entries,
         top_ranked_scores(scored.scored, limit),
-    ))
+    );
+    let elapsed_ms = started_at.elapsed().as_millis();
+    debug!(
+        query,
+        entry_count = entries.len(),
+        limit,
+        use_regex,
+        ignore_case,
+        prefer_relative,
+        elapsed_ms,
+        "search completed"
+    );
+    if elapsed_ms >= 100 {
+        warn!(
+            query,
+            entry_count = entries.len(),
+            limit,
+            elapsed_ms,
+            "search latency exceeded 100ms target"
+        );
+    }
+    Ok(results)
 }
 
 pub fn try_search_entries_indexed_with_scope(

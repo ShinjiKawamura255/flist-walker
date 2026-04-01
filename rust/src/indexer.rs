@@ -7,7 +7,8 @@ use std::fs;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Component, Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
+use tracing::info;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndexSource {
@@ -358,6 +359,7 @@ pub fn build_index_with_metadata(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<IndexBuildResult> {
+    let started_at = Instant::now();
     if !include_files && !include_dirs {
         return Ok(IndexBuildResult {
             entries: Vec::new(),
@@ -366,7 +368,7 @@ pub fn build_index_with_metadata(
     }
 
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    if use_filelist {
+    let result = if use_filelist {
         if let Some(filelist) = find_filelist_in_first_level(&root) {
             let entries = build_entries_from_filelist_hierarchy(
                 &filelist,
@@ -375,17 +377,33 @@ pub fn build_index_with_metadata(
                 include_dirs,
                 || false,
             )?;
-            return Ok(IndexBuildResult {
+            IndexBuildResult {
                 entries,
                 source: IndexSource::FileList(filelist),
-            });
+            }
+        } else {
+            IndexBuildResult {
+                entries: walk_entries(&root, include_files, include_dirs),
+                source: IndexSource::Walker,
+            }
         }
-    }
-
-    Ok(IndexBuildResult {
-        entries: walk_entries(&root, include_files, include_dirs),
-        source: IndexSource::Walker,
-    })
+    } else {
+        IndexBuildResult {
+            entries: walk_entries(&root, include_files, include_dirs),
+            source: IndexSource::Walker,
+        }
+    };
+    info!(
+        root = %root.display(),
+        use_filelist,
+        include_files,
+        include_dirs,
+        entry_count = result.entries.len(),
+        source = ?result.source,
+        elapsed_ms = started_at.elapsed().as_millis(),
+        "index build completed"
+    );
+    Ok(result)
 }
 
 pub fn build_index(

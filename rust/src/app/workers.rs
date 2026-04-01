@@ -20,6 +20,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use tracing::{debug, info, warn};
 
 pub(super) struct WorkerRuntime {
     shutdown: Arc<AtomicBool>,
@@ -639,6 +640,7 @@ pub(super) fn spawn_search_worker(
                 })
                 .is_err()
             {
+                warn!(request_id = req.request_id, "search worker receiver closed");
                 break;
             }
         }
@@ -674,6 +676,7 @@ pub(super) fn spawn_preview_worker(
                 })
                 .is_err()
             {
+                warn!(request_id = req.request_id, "preview worker receiver closed");
                 break;
             }
         }
@@ -706,6 +709,7 @@ pub(super) fn spawn_kind_resolver_worker(
                 })
                 .is_err()
             {
+                warn!(epoch = req.epoch, "kind resolver receiver closed");
                 break;
             }
         }
@@ -774,6 +778,7 @@ pub(super) fn spawn_filelist_worker(
                 }
             };
             if tx_res.send(msg).is_err() {
+                warn!(request_id = req.request_id, "filelist worker receiver closed");
                 break;
             }
         }
@@ -820,6 +825,7 @@ pub(super) fn spawn_action_worker(
                 })
                 .is_err()
             {
+                warn!(request_id = req.request_id, "action worker receiver closed");
                 break;
             }
         }
@@ -870,6 +876,7 @@ pub(super) fn spawn_sort_metadata_worker(
                 })
                 .is_err()
             {
+                warn!(request_id = req.request_id, "sort metadata receiver closed");
                 break;
             }
         }
@@ -924,6 +931,7 @@ pub(super) fn spawn_update_worker(
             };
 
             if tx_res.send(response).is_err() {
+                warn!(request_id = req.request_id, "update worker receiver closed");
                 break;
             }
         }
@@ -1016,6 +1024,13 @@ fn stream_filelist_index(
     latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::FileList(filelist.clone());
+    info!(
+        request_id = req.request_id,
+        tab_id = req.tab_id,
+        root = %root.display(),
+        filelist = %filelist.display(),
+        "index worker started filelist stream"
+    );
     if tx_res
         .send(IndexResponse::Started {
             request_id: req.request_id,
@@ -1023,6 +1038,7 @@ fn stream_filelist_index(
         })
         .is_err()
     {
+        warn!(request_id = req.request_id, "index receiver closed before filelist start");
         return Err("index receiver closed".to_string());
     }
 
@@ -1138,9 +1154,15 @@ fn stream_filelist_index(
             })
             .is_err()
         {
+            warn!(request_id = req.request_id, "index receiver closed during filelist replace");
             return Err("index receiver closed".to_string());
         }
     }
+    debug!(
+        request_id = req.request_id,
+        source = ?source,
+        "index worker finished filelist stream"
+    );
     Ok(source)
 }
 
@@ -1152,6 +1174,14 @@ fn stream_walker_index(
     latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::Walker;
+    info!(
+        request_id = req.request_id,
+        tab_id = req.tab_id,
+        root = %root.display(),
+        include_files = req.include_files,
+        include_dirs = req.include_dirs,
+        "index worker started walker stream"
+    );
     if tx_res
         .send(IndexResponse::Started {
             request_id: req.request_id,
@@ -1159,6 +1189,7 @@ fn stream_walker_index(
         })
         .is_err()
     {
+        warn!(request_id = req.request_id, "index receiver closed before walker start");
         return Err("index receiver closed".to_string());
     }
 
@@ -1229,8 +1260,15 @@ fn stream_walker_index(
             })
             .is_err()
     {
+        warn!(request_id = req.request_id, "index receiver closed during truncation notice");
         return Err("index receiver closed".to_string());
     }
+    debug!(
+        request_id = req.request_id,
+        emitted_entries,
+        truncated,
+        "index worker finished walker stream"
+    );
     Ok(source)
 }
 
@@ -1401,6 +1439,7 @@ pub(super) fn spawn_index_worker(
                     })
                     .is_err()
                 {
+                    warn!(request_id = req.request_id, "index receiver closed before empty start");
                     break;
                 }
                 if tx_res_worker
@@ -1410,6 +1449,7 @@ pub(super) fn spawn_index_worker(
                     })
                     .is_err()
                 {
+                    warn!(request_id = req.request_id, "index receiver closed before empty finish");
                     break;
                 }
                 continue;
@@ -1454,6 +1494,7 @@ pub(super) fn spawn_index_worker(
                         })
                         .is_err()
                     {
+                        warn!(request_id = req.request_id, "index receiver closed before finish");
                         break;
                     }
                 }
@@ -1471,6 +1512,7 @@ pub(super) fn spawn_index_worker(
                         })
                         .is_err()
                     {
+                        warn!(request_id = req.request_id, "index receiver closed before failure");
                         break;
                     }
                 }

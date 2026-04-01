@@ -24,6 +24,7 @@
 2. 追加依存の license / notice 要否を確認する。
    - crates.io / upstream repository / license file を見て、再配布条件と notice 要件を確認する。
    - copyleft や追加条件付き license は、そのまま採用せず影響を整理する。
+   - 観測性・診断用依存（例: `tracing`, `tracing-subscriber`）も対象外にしない。
 3. `THIRD_PARTY_NOTICES.txt` を更新する。
    - direct dependency と配布上重要な transitive dependency の変化を反映する。
    - release / self-update / sidecar 導線で配る内容と矛盾させない。
