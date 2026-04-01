@@ -93,12 +93,12 @@ pub(super) fn commit_query_history_for_test(app: &mut FlistWalkerApp) {
 }
 
 pub(super) fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
-    app.pending_index_request_id = None;
-    app.index_in_progress = false;
-    app.index_request_tabs.clear();
-    app.pending_index_queue.clear();
-    app.index_inflight_requests.clear();
-    if let Ok(mut latest) = app.latest_index_request_ids.lock() {
+    app.indexing.pending_request_id = None;
+    app.indexing.in_progress = false;
+    app.indexing.request_tabs.clear();
+    app.indexing.pending_queue.clear();
+    app.indexing.inflight_requests.clear();
+    if let Ok(mut latest) = app.indexing.latest_request_ids.lock() {
         latest.clear();
     }
 }

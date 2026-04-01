@@ -28,9 +28,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 mod bootstrap;
 mod cache;
 mod filelist;
+mod index_coordinator;
 mod input;
 mod pipeline;
 mod render;
+mod search_coordinator;
 mod session;
 mod state;
 mod tab_state;
@@ -39,10 +41,12 @@ mod update;
 mod workers;
 
 use cache::*;
+use index_coordinator::*;
 #[allow(unused_imports)]
 use input::*;
 #[allow(unused_imports)]
 use render::*;
+use search_coordinator::*;
 use session::*;
 use state::*;
 use tab_state::*;
@@ -229,8 +233,7 @@ pub struct FlistWalkerApp {
     notice: String,
     status_line: String,
     kill_buffer: String,
-    search_tx: Sender<SearchRequest>,
-    search_rx: Receiver<SearchResponse>,
+    search: SearchCoordinator,
     preview_tx: Sender<PreviewRequest>,
     preview_rx: Receiver<PreviewResponse>,
     action_tx: Sender<ActionRequest>,
@@ -243,27 +246,16 @@ pub struct FlistWalkerApp {
     filelist_rx: Receiver<FileListResponse>,
     update_tx: Sender<UpdateRequest>,
     update_rx: Receiver<UpdateResponse>,
-    index_tx: Sender<IndexRequest>,
-    index_rx: Receiver<IndexResponse>,
-    next_request_id: u64,
-    pending_request_id: Option<u64>,
-    next_index_request_id: u64,
-    pending_index_request_id: Option<u64>,
+    indexing: IndexCoordinator,
     next_preview_request_id: u64,
     pending_preview_request_id: Option<u64>,
     next_action_request_id: u64,
     pending_action_request_id: Option<u64>,
     next_sort_request_id: u64,
     pending_sort_request_id: Option<u64>,
-    latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
-    pending_index_queue: VecDeque<IndexRequest>,
-    index_inflight_requests: HashSet<u64>,
-    search_in_progress: bool,
-    index_in_progress: bool,
     preview_in_progress: bool,
     action_in_progress: bool,
     sort_in_progress: bool,
-    kind_resolution_in_progress: bool,
     pending_copy_shortcut: bool,
     #[cfg(test)]
     browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
@@ -290,23 +282,9 @@ pub struct FlistWalkerApp {
     preview_cache: PreviewCacheState,
     highlight_cache: HighlightCacheState,
     sort_metadata_cache: SortMetadataCacheState,
-    incremental_filtered_entries: Vec<PathBuf>,
-    pending_index_entries: VecDeque<IndexEntry>,
-    pending_index_entries_request_id: Option<u64>,
-    pending_kind_paths: VecDeque<PathBuf>,
-    pending_kind_paths_set: HashSet<PathBuf>,
-    in_flight_kind_paths: HashSet<PathBuf>,
-    kind_resolution_epoch: u64,
-    last_incremental_results_refresh: Instant,
-    last_search_snapshot_len: usize,
-    search_resume_pending: bool,
-    search_rerun_pending: bool,
     tabs: Vec<AppTabState>,
     active_tab: usize,
     next_tab_id: u64,
-    index_request_tabs: HashMap<u64, u64>,
-    background_index_states: HashMap<u64, BackgroundIndexState>,
-    search_request_tabs: HashMap<u64, u64>,
     preview_request_tabs: HashMap<u64, u64>,
     action_request_tabs: HashMap<u64, u64>,
     sort_request_tabs: HashMap<u64, u64>,
@@ -499,8 +477,7 @@ Search hints:
             notice: String::new(),
             status_line: "Initializing...".to_string(),
             kill_buffer: String::new(),
-            search_tx: bootstrap.search_tx,
-            search_rx: bootstrap.search_rx,
+            search: SearchCoordinator::new(bootstrap.search_tx, bootstrap.search_rx),
             preview_tx: bootstrap.preview_tx,
             preview_rx: bootstrap.preview_rx,
             action_tx: bootstrap.action_tx,
@@ -513,27 +490,20 @@ Search hints:
             filelist_rx: bootstrap.filelist_rx,
             update_tx: bootstrap.update_tx,
             update_rx: bootstrap.update_rx,
-            index_tx: bootstrap.index_tx,
-            index_rx: bootstrap.index_rx,
-            next_request_id: 1,
-            pending_request_id: None,
-            next_index_request_id: 1,
-            pending_index_request_id: None,
+            indexing: IndexCoordinator::new(
+                bootstrap.index_tx,
+                bootstrap.index_rx,
+                bootstrap.latest_index_request_ids,
+            ),
             next_preview_request_id: 1,
             pending_preview_request_id: None,
             next_action_request_id: 1,
             pending_action_request_id: None,
             next_sort_request_id: 1,
             pending_sort_request_id: None,
-            latest_index_request_ids: bootstrap.latest_index_request_ids,
-            pending_index_queue: VecDeque::new(),
-            index_inflight_requests: HashSet::new(),
-            search_in_progress: false,
-            index_in_progress: false,
             preview_in_progress: false,
             action_in_progress: false,
             sort_in_progress: false,
-            kind_resolution_in_progress: false,
             pending_copy_shortcut: false,
             #[cfg(test)]
             browse_dialog_result: None,
@@ -563,23 +533,9 @@ Search hints:
                 ..HighlightCacheState::default()
             },
             sort_metadata_cache: SortMetadataCacheState::default(),
-            incremental_filtered_entries: Vec::new(),
-            pending_index_entries: VecDeque::new(),
-            pending_index_entries_request_id: None,
-            pending_kind_paths: VecDeque::new(),
-            pending_kind_paths_set: HashSet::new(),
-            in_flight_kind_paths: HashSet::new(),
-            kind_resolution_epoch: 1,
-            last_incremental_results_refresh: Instant::now(),
-            last_search_snapshot_len: 0,
-            search_resume_pending: false,
-            search_rerun_pending: false,
             tabs: Vec::new(),
             active_tab: 0,
             next_tab_id: 1,
-            index_request_tabs: HashMap::new(),
-            background_index_states: HashMap::new(),
-            search_request_tabs: HashMap::new(),
             preview_request_tabs: HashMap::new(),
             action_request_tabs: HashMap::new(),
             sort_request_tabs: HashMap::new(),
@@ -882,13 +838,13 @@ Search hints:
         self.base_results.shrink_to_fit();
         self.results.clear();
         self.results.shrink_to_fit();
-        self.incremental_filtered_entries.clear();
-        self.incremental_filtered_entries.shrink_to_fit();
+        self.indexing.incremental_filtered_entries.clear();
+        self.indexing.incremental_filtered_entries.shrink_to_fit();
         self.pending_sort_request_id = None;
         self.sort_in_progress = false;
         self.result_sort_mode = ResultSortMode::Score;
         self.clear_sort_metadata_cache();
-        self.last_search_snapshot_len = 0;
+        self.indexing.last_search_snapshot_len = 0;
     }
 
     fn apply_root_change(&mut self, new_root: PathBuf) {
@@ -1044,7 +1000,7 @@ Search hints:
         } else {
             format!("Tab: {}/{}", self.active_tab + 1, self.tabs.len())
         };
-        let indexed_count = if self.index_in_progress {
+        let indexed_count = if self.indexing.in_progress {
             if self.index.entries.is_empty() {
                 self.all_entries.len()
             } else {
@@ -1064,12 +1020,12 @@ Search hints:
         } else {
             format!(" | Pinned: {}", self.pinned_paths.len())
         };
-        let searching = if self.search_in_progress {
+        let searching = if self.search.in_progress {
             " | Searching..."
         } else {
             ""
         };
-        let indexing = if self.index_in_progress {
+        let indexing = if self.indexing.in_progress {
             " | Indexing..."
         } else {
             ""
@@ -1287,18 +1243,18 @@ Search hints:
     }
 
     fn reset_kind_resolution_state(&mut self) {
-        self.pending_kind_paths.clear();
-        self.pending_kind_paths_set.clear();
-        self.in_flight_kind_paths.clear();
-        self.kind_resolution_in_progress = false;
-        self.kind_resolution_epoch = self.kind_resolution_epoch.saturating_add(1);
+        self.indexing.pending_kind_paths.clear();
+        self.indexing.pending_kind_paths_set.clear();
+        self.indexing.in_flight_kind_paths.clear();
+        self.indexing.kind_resolution_in_progress = false;
+        self.indexing.kind_resolution_epoch = self.indexing.kind_resolution_epoch.saturating_add(1);
     }
 
     fn queue_unknown_kind_paths_for_active_entries(&mut self) {
         if !self.kind_resolution_needed_for_filters() {
             return;
         }
-        let source: Vec<PathBuf> = if self.index_in_progress && !self.index.entries.is_empty() {
+        let source: Vec<PathBuf> = if self.indexing.in_progress && !self.index.entries.is_empty() {
             self.index.entries.clone()
         } else {
             self.all_entries.as_ref().clone()
@@ -1320,34 +1276,34 @@ Search hints:
     }
 
     fn queue_kind_resolution(&mut self, path: PathBuf) {
-        if self.pending_kind_paths_set.contains(&path) || self.in_flight_kind_paths.contains(&path)
+        if self.indexing.pending_kind_paths_set.contains(&path) || self.indexing.in_flight_kind_paths.contains(&path)
         {
             return;
         }
-        self.pending_kind_paths_set.insert(path.clone());
-        self.pending_kind_paths.push_back(path);
+        self.indexing.pending_kind_paths_set.insert(path.clone());
+        self.indexing.pending_kind_paths.push_back(path);
     }
 
     fn pump_kind_resolution_requests(&mut self) {
         const MAX_DISPATCH_PER_FRAME: usize = 128;
         let mut dispatched = 0usize;
         while dispatched < MAX_DISPATCH_PER_FRAME {
-            let Some(path) = self.pending_kind_paths.pop_front() else {
+            let Some(path) = self.indexing.pending_kind_paths.pop_front() else {
                 break;
             };
-            self.pending_kind_paths_set.remove(&path);
+            self.indexing.pending_kind_paths_set.remove(&path);
             let req = KindResolveRequest {
-                epoch: self.kind_resolution_epoch,
+                epoch: self.indexing.kind_resolution_epoch,
                 path: path.clone(),
             };
             if self.kind_tx.send(req).is_err() {
                 break;
             }
-            self.in_flight_kind_paths.insert(path);
+            self.indexing.in_flight_kind_paths.insert(path);
             dispatched = dispatched.saturating_add(1);
         }
-        self.kind_resolution_in_progress =
-            !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
+        self.indexing.kind_resolution_in_progress =
+            !self.indexing.pending_kind_paths.is_empty() || !self.indexing.in_flight_kind_paths.is_empty();
     }
 
     fn poll_kind_response(&mut self) {
@@ -1357,10 +1313,10 @@ Search hints:
         let mut resolved_current_row = false;
 
         while let Ok(response) = self.kind_rx.try_recv() {
-            if response.epoch != self.kind_resolution_epoch {
+            if response.epoch != self.indexing.kind_resolution_epoch {
                 continue;
             }
-            self.in_flight_kind_paths.remove(&response.path);
+            self.indexing.in_flight_kind_paths.remove(&response.path);
             if let Some(kind) = response.kind {
                 if self.current_row.is_some_and(|row| {
                     self.results
@@ -1378,8 +1334,8 @@ Search hints:
             }
         }
 
-        self.kind_resolution_in_progress =
-            !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
+        self.indexing.kind_resolution_in_progress =
+            !self.indexing.pending_kind_paths.is_empty() || !self.indexing.in_flight_kind_paths.is_empty();
 
         if resolved_any && (!self.include_files || !self.include_dirs) {
             self.apply_entry_filters(true);
@@ -1562,14 +1518,14 @@ Search hints:
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
-        let old_search_tx = std::mem::replace(&mut self.search_tx, dummy_search_tx);
+        let old_search_tx = std::mem::replace(&mut self.search.tx, dummy_search_tx);
         let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
         let old_action_tx = std::mem::replace(&mut self.action_tx, dummy_action_tx);
         let old_sort_tx = std::mem::replace(&mut self.sort_tx, dummy_sort_tx);
         let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
         let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
         let old_update_tx = std::mem::replace(&mut self.update_tx, dummy_update_tx);
-        let old_index_tx = std::mem::replace(&mut self.index_tx, dummy_index_tx);
+        let old_index_tx = std::mem::replace(&mut self.indexing.tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
         drop(old_action_tx);
@@ -1632,12 +1588,12 @@ impl eframe::App for FlistWalkerApp {
         } else {
             ctx.request_repaint_after(Self::MEMORY_SAMPLE_INTERVAL - memory_elapsed);
         }
-        if self.search_in_progress
-            || self.index_in_progress
+        if self.search.in_progress
+            || self.indexing.in_progress
             || self.preview_in_progress
             || self.action_in_progress
             || self.sort_in_progress
-            || self.kind_resolution_in_progress
+            || self.indexing.kind_resolution_in_progress
             || self.filelist_state.in_progress
             || self.update_state.in_progress
             || self.any_tab_async_in_progress()

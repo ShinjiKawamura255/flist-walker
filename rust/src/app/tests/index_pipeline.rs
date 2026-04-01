@@ -8,9 +8,9 @@ fn search_error_updates_notice() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<SearchResponse>();
-    app.search_rx = rx;
-    app.pending_request_id = Some(7);
-    app.search_in_progress = true;
+    app.search.rx = rx;
+    app.search.pending_request_id = Some(7);
+    app.search.in_progress = true;
 
     tx.send(SearchResponse {
         request_id: 7,
@@ -21,7 +21,7 @@ fn search_error_updates_notice() {
 
     app.poll_search_response();
 
-    assert!(!app.search_in_progress);
+    assert!(!app.search.in_progress);
     assert!(app.notice.contains("Search failed:"));
     assert!(app.notice.contains("invalid regex"));
     let _ = fs::remove_dir_all(&root);
@@ -34,10 +34,10 @@ fn stale_search_response_is_ignored_after_index_refresh() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     let (search_tx, search_rx) = mpsc::channel::<SearchResponse>();
     let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
-    app.search_rx = search_rx;
-    app.index_tx = index_tx;
-    app.pending_request_id = Some(5);
-    app.search_in_progress = true;
+    app.search.rx = search_rx;
+    app.indexing.tx = index_tx;
+    app.search.pending_request_id = Some(5);
+    app.search.in_progress = true;
     app.results = vec![(root.join("before.txt"), 0.0)];
 
     app.request_index_refresh();
@@ -52,8 +52,8 @@ fn stale_search_response_is_ignored_after_index_refresh() {
 
     app.poll_search_response();
 
-    assert!(!app.search_in_progress);
-    assert_eq!(app.pending_request_id, None);
+    assert!(!app.search.in_progress);
+    assert_eq!(app.search.pending_request_id, None);
     assert_eq!(app.results[0].0, root.join("before.txt"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -64,11 +64,11 @@ fn index_refresh_marks_search_resume_pending_for_non_empty_query() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
 
     app.request_index_refresh();
 
-    assert!(app.search_resume_pending);
+    assert!(app.indexing.search_resume_pending);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -78,16 +78,16 @@ fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     // Use a manual search channel so the test can inspect enqueued requests.
     let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
-    app.search_tx = search_tx_real;
+    app.search.tx = search_tx_real;
 
     app.request_index_refresh();
     let req = index_rx.try_recv().expect("index request should be sent");
 
     let (tx_idx, rx_idx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx_idx;
+    app.indexing.rx = rx_idx;
     tx_idx
         .send(IndexResponse::Batch {
             request_id: req.request_id,
@@ -100,7 +100,7 @@ fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
         .expect("send batch");
 
     // Simulate that normal throttle window has not elapsed yet.
-    app.last_incremental_results_refresh = Instant::now();
+    app.indexing.last_incremental_results_refresh = Instant::now();
     app.poll_index_response();
 
     let search_req = search_rx_real
@@ -109,7 +109,7 @@ fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
     assert_eq!(search_req.query, "main");
     assert_eq!(search_req.entries.len(), 1);
     assert_eq!(search_req.entries[0], root.join("main.rs"));
-    assert!(!app.search_resume_pending);
+    assert!(!app.indexing.search_resume_pending);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -121,15 +121,15 @@ fn filtered_out_batch_still_resumes_non_empty_query_search() {
     app.include_files = false;
     app.include_dirs = true;
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
-    app.search_tx = search_tx_real;
+    app.search.tx = search_tx_real;
 
     app.request_index_refresh();
     let req = index_rx.try_recv().expect("index request should be sent");
 
     let (tx_idx, rx_idx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx_idx;
+    app.indexing.rx = rx_idx;
     tx_idx
         .send(IndexResponse::Batch {
             request_id: req.request_id,
@@ -140,7 +140,7 @@ fn filtered_out_batch_still_resumes_non_empty_query_search() {
             }],
         })
         .expect("send batch");
-    app.last_incremental_results_refresh = Instant::now();
+    app.indexing.last_incremental_results_refresh = Instant::now();
     app.poll_index_response();
 
     let search_req = search_rx_real
@@ -148,7 +148,7 @@ fn filtered_out_batch_still_resumes_non_empty_query_search() {
         .expect("search should still resume even when batch is filtered out");
     assert!(search_req.entries.is_empty());
     assert_eq!(search_req.query, "main");
-    assert!(!app.search_resume_pending);
+    assert!(!app.indexing.search_resume_pending);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -158,12 +158,12 @@ fn create_filelist_waits_while_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     app.use_filelist = false;
     app.index.source = IndexSource::Walker;
     app.include_files = true;
     app.include_dirs = true;
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
 
     app.create_filelist();
 
@@ -187,12 +187,12 @@ fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     app.use_filelist = false;
     app.index.source = IndexSource::Walker;
     app.include_files = false;
     app.include_dirs = true;
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
 
     app.create_filelist();
 
@@ -210,7 +210,7 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     app.use_filelist = false;
     app.include_files = false;
     app.include_dirs = true;
@@ -235,7 +235,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
 
     assert!(app.use_filelist);
     app.create_filelist();
@@ -278,13 +278,13 @@ fn deferred_filelist_starts_after_index_finished() {
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.filelist_tx = filelist_tx;
     let (index_tx, index_rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = index_rx;
+    app.indexing.rx = index_rx;
 
     app.use_filelist = false;
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.create_filelist();
-    let request_id = app.pending_index_request_id.expect("pending index request");
+    let request_id = app.indexing.pending_request_id.expect("pending index request");
 
     index_tx
         .send(IndexResponse::Batch {
@@ -328,7 +328,7 @@ fn deferred_filelist_is_canceled_when_root_changes() {
     fs::create_dir_all(&root_new).expect("create new dir");
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
         tab_id,
@@ -363,7 +363,7 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
 
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     app.filelist_rx = filelist_rx;
     app.filelist_state.pending_request_id = Some(1);
     app.filelist_state.pending_request_tab_id = Some(source_tab_id);
@@ -418,7 +418,7 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
 
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     app.filelist_rx = filelist_rx;
     app.filelist_state.pending_request_id = Some(2);
     app.filelist_state.pending_request_tab_id = Some(source_tab_id);
@@ -467,7 +467,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     let (_, rx) = mpsc::channel::<IndexRequest>();
     let (closed_tx, _) = mpsc::channel::<IndexRequest>();
     drop(rx);
-    app.index_tx = closed_tx;
+    app.indexing.tx = closed_tx;
 
     app.request_background_index_refresh_for_tab(1);
 
@@ -495,7 +495,7 @@ fn root_change_clears_stale_selection_state() {
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.pinned_paths.insert(old_path);
     app.current_row = Some(0);
     app.preview = "stale preview".to_string();
@@ -527,7 +527,7 @@ fn root_change_cancels_pending_filelist_overwrite_confirmation() {
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.filelist_state.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
@@ -622,7 +622,7 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
     fs::write(&path, "fn main() {}").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.index_in_progress = false;
+    app.indexing.in_progress = false;
     app.use_filelist = false;
     app.all_entries = Arc::new(vec![path.clone()]);
     app.entry_kinds.insert(path, EntryKind::file());
@@ -773,7 +773,7 @@ fn filelist_finished_triggers_reindex_when_enabled() {
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.filelist_rx = filelist_rx;
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_tx;
+    app.indexing.tx = index_tx;
     app.filelist_state.pending_request_id = Some(12);
     app.filelist_state.pending_request_tab_id = app.current_tab_id();
     app.filelist_state.pending_root = Some(root.clone());
@@ -794,8 +794,8 @@ fn filelist_finished_triggers_reindex_when_enabled() {
     let req = index_rx.try_recv().expect("reindex request should be sent");
     assert_eq!(req.root, root);
     assert!(req.use_filelist);
-    assert!(app.index_in_progress);
-    assert!(app.pending_index_request_id.is_some());
+    assert!(app.indexing.in_progress);
+    assert!(app.indexing.pending_request_id.is_some());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -867,7 +867,7 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.filelist_rx = filelist_rx;
     let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = _index_tx;
+    app.indexing.tx = _index_tx;
     app.filelist_state.pending_request_id = Some(51);
     app.filelist_state.pending_request_tab_id = app.current_tab_id();
     app.filelist_state.pending_root = Some(root_old.clone());
@@ -929,18 +929,18 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
+    app.indexing.rx = rx;
     app.entries = Arc::new(Vec::new());
     app.all_entries = Arc::new(Vec::new());
     app.index.entries.clear();
-    app.incremental_filtered_entries.clear();
-    app.search_resume_pending = false;
-    app.last_search_snapshot_len = 0;
-    app.search_in_progress = false;
-    app.pending_request_id = None;
-    app.pending_index_request_id = Some(21);
-    app.index_in_progress = true;
-    app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+    app.indexing.incremental_filtered_entries.clear();
+    app.indexing.search_resume_pending = false;
+    app.indexing.last_search_snapshot_len = 0;
+    app.search.in_progress = false;
+    app.search.pending_request_id = None;
+    app.indexing.pending_request_id = Some(21);
+    app.indexing.in_progress = true;
+    app.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
 
     let path = root.join("main.rs");
     tx.send(IndexResponse::Batch {
@@ -956,8 +956,8 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     app.poll_index_response();
 
     assert!(app.entries.is_empty());
-    assert_eq!(app.incremental_filtered_entries, vec![path]);
-    assert!(!app.search_rerun_pending);
+    assert_eq!(app.indexing.incremental_filtered_entries, vec![path]);
+    assert!(!app.indexing.search_rerun_pending);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -967,18 +967,18 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
+    app.indexing.rx = rx;
     app.entries = Arc::new(Vec::new());
     app.all_entries = Arc::new(Vec::new());
     app.index.entries.clear();
-    app.incremental_filtered_entries.clear();
-    app.search_resume_pending = false;
-    app.last_search_snapshot_len = 0;
-    app.search_in_progress = false;
-    app.pending_request_id = None;
-    app.pending_index_request_id = Some(218);
-    app.index_in_progress = true;
-    app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+    app.indexing.incremental_filtered_entries.clear();
+    app.indexing.search_resume_pending = false;
+    app.indexing.last_search_snapshot_len = 0;
+    app.search.in_progress = false;
+    app.search.pending_request_id = None;
+    app.indexing.pending_request_id = Some(218);
+    app.indexing.in_progress = true;
+    app.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
 
     let entries = (0..FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX)
         .map(|i| IndexEntry {
@@ -994,7 +994,7 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     .expect("send index batch");
 
     for _ in 0..64 {
-        app.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+        app.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
         app.poll_index_response();
         if app.entries.len() >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
             break;
@@ -1005,7 +1005,7 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
         app.entries.len(),
         FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
     );
-    assert_eq!(app.incremental_filtered_entries.len(), app.entries.len());
+    assert_eq!(app.indexing.incremental_filtered_entries.len(), app.entries.len());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1015,12 +1015,12 @@ fn non_empty_query_batch_delta_updates_snapshot_even_without_search_refresh() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    app.pending_index_request_id = Some(88);
-    app.index_in_progress = true;
-    app.search_resume_pending = false;
-    app.last_incremental_results_refresh = Instant::now();
-    app.last_search_snapshot_len = 0;
+    app.indexing.rx = rx;
+    app.indexing.pending_request_id = Some(88);
+    app.indexing.in_progress = true;
+    app.indexing.search_resume_pending = false;
+    app.indexing.last_incremental_results_refresh = Instant::now();
+    app.indexing.last_search_snapshot_len = 0;
 
     let path_a = root.join("main-a.rs");
     let path_b = root.join("main-b.rs");
@@ -1045,9 +1045,9 @@ fn non_empty_query_batch_delta_updates_snapshot_even_without_search_refresh() {
     app.poll_index_response();
 
     assert!(app.entries.is_empty());
-    assert_eq!(app.incremental_filtered_entries.len(), 2);
-    assert_eq!(app.incremental_filtered_entries[0], path_a);
-    assert_eq!(app.incremental_filtered_entries[1], path_b);
+    assert_eq!(app.indexing.incremental_filtered_entries.len(), 2);
+    assert_eq!(app.indexing.incremental_filtered_entries[0], path_a);
+    assert_eq!(app.indexing.incremental_filtered_entries[1], path_b);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1057,9 +1057,9 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    app.pending_index_request_id = Some(31);
-    app.index_in_progress = true;
+    app.indexing.rx = rx;
+    app.indexing.pending_request_id = Some(31);
+    app.indexing.in_progress = true;
 
     let path = root.join("main.rs");
     tx.send(IndexResponse::Batch {
@@ -1090,7 +1090,7 @@ fn status_line_prefers_current_index_count_while_indexing() {
     let root = test_root("status-line-current-index-count");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
     app.all_entries = Arc::new(
         (0..10)
             .map(|i| root.join(format!("old-{i}.txt")))
@@ -1115,7 +1115,7 @@ fn request_index_refresh_keeps_existing_entries_visible_until_new_results_arrive
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.entries = Arc::new(vec![path.clone()]);
     app.results = vec![(path.clone(), 0.0)];
     app.current_row = Some(0);
@@ -1136,9 +1136,9 @@ fn incremental_empty_query_update_preserves_scroll_position_flag() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    app.pending_index_request_id = Some(41);
-    app.index_in_progress = true;
+    app.indexing.rx = rx;
+    app.indexing.pending_request_id = Some(41);
+    app.indexing.in_progress = true;
     app.scroll_to_current = false;
     app.current_row = Some(0);
 
@@ -1167,7 +1167,7 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     let dir = root.join("dir");
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
     app.index.entries = vec![file.clone(), dir.clone()];
     app.entry_kinds.insert(file.clone(), EntryKind::file());
     app.entry_kinds.insert(dir.clone(), EntryKind::dir());
@@ -1177,9 +1177,9 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     app.apply_entry_filters(true);
 
     assert_eq!(app.entries.as_ref(), &vec![dir.clone()]);
-    assert_eq!(app.incremental_filtered_entries, vec![dir]);
-    assert!(app.pending_index_entries.is_empty());
-    assert!(app.pending_index_entries_request_id.is_none());
+    assert_eq!(app.indexing.incremental_filtered_entries, vec![dir]);
+    assert!(app.indexing.pending_entries.is_empty());
+    assert!(app.indexing.pending_entries_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1191,7 +1191,7 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
     let dir = root.join("dir");
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
     app.index.entries = vec![file.clone()];
     app.entry_kinds.insert(file.clone(), EntryKind::file());
     app.include_files = false;
@@ -1199,11 +1199,11 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
 
     app.apply_entry_filters(true);
     assert!(app.entries.is_empty());
-    assert!(app.incremental_filtered_entries.is_empty());
+    assert!(app.indexing.incremental_filtered_entries.is_empty());
 
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    app.pending_index_request_id = Some(201);
+    app.indexing.rx = rx;
+    app.indexing.pending_request_id = Some(201);
     tx.send(IndexResponse::Batch {
         request_id: 201,
         entries: vec![IndexEntry {
@@ -1253,14 +1253,14 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
     app.include_dirs = true;
     app.show_preview = false;
     app.entry_kinds.clear();
-    app.pending_kind_paths.clear();
-    app.pending_kind_paths_set.clear();
-    app.in_flight_kind_paths.clear();
+    app.indexing.pending_kind_paths.clear();
+    app.indexing.pending_kind_paths_set.clear();
+    app.indexing.in_flight_kind_paths.clear();
 
     app.apply_entry_filters(true);
 
-    assert!(!app.pending_kind_paths.iter().any(|p| *p == path));
-    assert!(!app.in_flight_kind_paths.contains(&path));
+    assert!(!app.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(!app.indexing.in_flight_kind_paths.contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1273,8 +1273,8 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    let req_id = app.pending_index_request_id.expect("pending request");
+    app.indexing.rx = rx;
+    let req_id = app.indexing.pending_request_id.expect("pending request");
     app.include_files = true;
     app.include_dirs = true;
 
@@ -1295,11 +1295,11 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
 
     app.poll_index_response();
 
-    assert!(!app.index_in_progress);
+    assert!(!app.indexing.in_progress);
     assert_eq!(app.entries.as_ref(), &vec![path.clone()]);
     assert_eq!(app.all_entries.as_ref(), &vec![path.clone()]);
     assert!(!app.entry_kinds.contains_key(&path));
-    assert!(app.pending_kind_paths.is_empty());
+    assert!(app.indexing.pending_kind_paths.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1313,9 +1313,9 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
-    app.index_rx = rx;
+    app.indexing.rx = rx;
     app.kind_tx = kind_tx;
-    let req_id = app.pending_index_request_id.expect("pending request");
+    let req_id = app.indexing.pending_request_id.expect("pending request");
     app.include_files = true;
     app.include_dirs = true;
 
@@ -1341,8 +1341,8 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
         .try_recv()
         .expect("kind resolve request should be queued");
     assert_eq!(req.path, path.clone());
-    assert!(app.kind_resolution_in_progress);
-    assert!(app.in_flight_kind_paths.contains(&path));
+    assert!(app.indexing.kind_resolution_in_progress);
+    assert!(app.indexing.in_flight_kind_paths.contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1380,7 +1380,7 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
 
     app.apply_entry_filters(true);
 
-    assert!(app.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1393,8 +1393,8 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    let req_id = app.pending_index_request_id.expect("pending request");
+    app.indexing.rx = rx;
+    let req_id = app.indexing.pending_request_id.expect("pending request");
     app.include_files = false;
     app.include_dirs = true;
 
@@ -1411,7 +1411,7 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
     app.poll_index_response();
 
     assert!(app.entries.is_empty());
-    assert!(app.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1431,9 +1431,9 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
     app.kind_rx = rx;
-    app.in_flight_kind_paths.insert(dir.clone());
+    app.indexing.in_flight_kind_paths.insert(dir.clone());
     tx.send(KindResolveResponse {
-        epoch: app.kind_resolution_epoch,
+        epoch: app.indexing.kind_resolution_epoch,
         path: dir.clone(),
         kind: Some(EntryKind::dir()),
     })
@@ -1499,7 +1499,7 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
 
     let req = rx.try_recv().expect("kind resolve request should be sent");
     assert_eq!(req.path, path);
-    assert_eq!(req.epoch, app.kind_resolution_epoch);
+    assert_eq!(req.epoch, app.indexing.kind_resolution_epoch);
     assert_eq!(app.preview, "Resolving entry type...");
     assert!(app.pending_preview_request_id.is_none());
     assert!(!app.preview_in_progress);
@@ -1512,7 +1512,7 @@ fn request_index_refresh_reenables_files_when_both_filters_are_off() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.include_files = false;
     app.include_dirs = false;
 
@@ -1532,7 +1532,7 @@ fn request_index_refresh_uses_latest_toggle_state() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.use_filelist = false;
     app.include_files = false;
     app.include_dirs = true;
@@ -1552,7 +1552,7 @@ fn files_toggle_change_requests_reindex() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.use_filelist = false;
     app.include_files = false;
     app.include_dirs = true;
@@ -1571,7 +1571,7 @@ fn use_filelist_forces_type_filters_to_both_enabled() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.use_filelist = true;
     app.include_files = false;
     app.include_dirs = true;
@@ -1593,7 +1593,7 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     app.use_filelist = true;
     app.index.source = IndexSource::Walker;
     app.include_files = false;
@@ -1619,7 +1619,7 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
     app.filelist_tx = filelist_tx;
     app.use_filelist = true;
     app.index.source = IndexSource::Walker;
-    app.index_in_progress = false;
+    app.indexing.in_progress = false;
 
     app.create_filelist();
 
@@ -1758,11 +1758,11 @@ fn preempt_background_when_active_index_is_queued() {
     let bg_tab_b = app.tabs[1].id;
     app.active_tab = 2;
 
-    app.index_inflight_requests.insert(100);
-    app.index_inflight_requests.insert(101);
-    app.index_request_tabs.insert(100, bg_tab_a);
-    app.index_request_tabs.insert(101, bg_tab_b);
-    app.pending_index_queue.push_back(IndexRequest {
+    app.indexing.inflight_requests.insert(100);
+    app.indexing.inflight_requests.insert(101);
+    app.indexing.request_tabs.insert(100, bg_tab_a);
+    app.indexing.request_tabs.insert(101, bg_tab_b);
+    app.indexing.pending_queue.push_back(IndexRequest {
         request_id: 102,
         tab_id: active_tab_id,
         root: root.clone(),
@@ -1771,14 +1771,14 @@ fn preempt_background_when_active_index_is_queued() {
         include_dirs: true,
     });
     {
-        let mut latest = app.latest_index_request_ids.lock().expect("lock latest");
+        let mut latest = app.indexing.latest_request_ids.lock().expect("lock latest");
         latest.insert(bg_tab_a, 100);
         latest.insert(bg_tab_b, 101);
     }
 
     assert!(app.preempt_background_for_active_request());
 
-    let latest = app.latest_index_request_ids.lock().expect("lock latest");
+    let latest = app.indexing.latest_request_ids.lock().expect("lock latest");
     let preempted =
         latest.get(&bg_tab_a).copied() == Some(0) || latest.get(&bg_tab_b).copied() == Some(0);
     assert!(preempted);
@@ -1791,12 +1791,12 @@ fn stale_terminal_index_response_clears_inflight_slot() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
+    app.indexing.rx = rx;
     let stale_request_id = 777u64;
     let current_tab_id = app.current_tab_id().expect("tab id");
-    app.pending_index_request_id = Some(778);
-    app.index_inflight_requests.insert(stale_request_id);
-    app.index_request_tabs
+    app.indexing.pending_request_id = Some(778);
+    app.indexing.inflight_requests.insert(stale_request_id);
+    app.indexing.request_tabs
         .insert(stale_request_id, current_tab_id);
 
     tx.send(IndexResponse::Finished {
@@ -1807,8 +1807,8 @@ fn stale_terminal_index_response_clears_inflight_slot() {
 
     app.poll_index_response();
 
-    assert!(!app.index_inflight_requests.contains(&stale_request_id));
-    assert!(!app.index_request_tabs.contains_key(&stale_request_id));
+    assert!(!app.indexing.inflight_requests.contains(&stale_request_id));
+    assert!(!app.indexing.request_tabs.contains_key(&stale_request_id));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1818,11 +1818,11 @@ fn current_finished_index_response_clears_inflight_slot() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = rx;
-    let req_id = app.pending_index_request_id.expect("pending request");
+    app.indexing.rx = rx;
+    let req_id = app.indexing.pending_request_id.expect("pending request");
     let tab_id = app.current_tab_id().expect("tab id");
-    app.index_request_tabs.insert(req_id, tab_id);
-    app.index_inflight_requests.insert(req_id);
+    app.indexing.request_tabs.insert(req_id, tab_id);
+    app.indexing.inflight_requests.insert(req_id);
 
     tx.send(IndexResponse::Finished {
         request_id: req_id,
@@ -1832,7 +1832,7 @@ fn current_finished_index_response_clears_inflight_slot() {
 
     app.poll_index_response();
 
-    assert!(!app.index_inflight_requests.contains(&req_id));
+    assert!(!app.indexing.inflight_requests.contains(&req_id));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1843,9 +1843,9 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let tab_id = app.current_tab_id().expect("tab id");
 
-    app.index_inflight_requests.insert(1);
-    app.index_request_tabs.insert(1, tab_id);
-    app.pending_index_queue.push_back(IndexRequest {
+    app.indexing.inflight_requests.insert(1);
+    app.indexing.request_tabs.insert(1, tab_id);
+    app.indexing.pending_queue.push_back(IndexRequest {
         request_id: 2,
         tab_id,
         root: root.clone(),
@@ -1856,7 +1856,7 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
 
     assert!(app.pop_next_index_request().is_none());
 
-    app.index_inflight_requests.remove(&1);
+    app.indexing.inflight_requests.remove(&1);
     let popped = app
         .pop_next_index_request()
         .expect("queued same-tab request should run");

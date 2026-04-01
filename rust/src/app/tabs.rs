@@ -148,9 +148,9 @@ impl FlistWalkerApp {
 
     pub(super) fn shrink_checkpoint_buffers(&mut self) {
         Self::shrink_vec_if_sparse(&mut self.index.entries);
-        Self::shrink_vec_if_sparse(&mut self.incremental_filtered_entries);
-        Self::shrink_deque_if_sparse(&mut self.pending_index_entries);
-        Self::shrink_deque_if_sparse(&mut self.pending_kind_paths);
+        Self::shrink_vec_if_sparse(&mut self.indexing.incremental_filtered_entries);
+        Self::shrink_deque_if_sparse(&mut self.indexing.pending_entries);
+        Self::shrink_deque_if_sparse(&mut self.indexing.pending_kind_paths);
     }
 
     pub(super) fn shrink_tab_checkpoint_buffers(tab: &mut AppTabState) {
@@ -231,20 +231,20 @@ impl FlistWalkerApp {
                 all_entries: Arc::clone(&self.all_entries),
                 entries: Arc::clone(&self.entries),
                 entry_kinds: self.entry_kinds.clone(),
-                pending_index_request_id: self.pending_index_request_id,
-                index_in_progress: self.index_in_progress,
-                pending_index_entries: self.pending_index_entries.clone(),
-                pending_index_entries_request_id: self.pending_index_entries_request_id,
-                pending_kind_paths: self.pending_kind_paths.clone(),
-                pending_kind_paths_set: self.pending_kind_paths_set.clone(),
-                in_flight_kind_paths: self.in_flight_kind_paths.clone(),
-                kind_resolution_epoch: self.kind_resolution_epoch,
-                kind_resolution_in_progress: self.kind_resolution_in_progress,
-                incremental_filtered_entries: self.incremental_filtered_entries.clone(),
-                last_incremental_results_refresh: self.last_incremental_results_refresh,
-                last_search_snapshot_len: self.last_search_snapshot_len,
-                search_resume_pending: self.search_resume_pending,
-                search_rerun_pending: self.search_rerun_pending,
+                pending_index_request_id: self.indexing.pending_request_id,
+                index_in_progress: self.indexing.in_progress,
+                pending_index_entries: self.indexing.pending_entries.clone(),
+                pending_index_entries_request_id: self.indexing.pending_entries_request_id,
+                pending_kind_paths: self.indexing.pending_kind_paths.clone(),
+                pending_kind_paths_set: self.indexing.pending_kind_paths_set.clone(),
+                in_flight_kind_paths: self.indexing.in_flight_kind_paths.clone(),
+                kind_resolution_epoch: self.indexing.kind_resolution_epoch,
+                kind_resolution_in_progress: self.indexing.kind_resolution_in_progress,
+                incremental_filtered_entries: self.indexing.incremental_filtered_entries.clone(),
+                last_incremental_results_refresh: self.indexing.last_incremental_results_refresh,
+                last_search_snapshot_len: self.indexing.last_search_snapshot_len,
+                search_resume_pending: self.indexing.search_resume_pending,
+                search_rerun_pending: self.indexing.search_rerun_pending,
             },
             query_state: TabQueryState {
                 query: self.query.clone(),
@@ -271,10 +271,10 @@ impl FlistWalkerApp {
                 results_compacted: false,
             },
             notice: self.notice.clone(),
-            pending_request_id: self.pending_request_id,
+            pending_request_id: self.search.pending_request_id,
             pending_preview_request_id: self.pending_preview_request_id,
             pending_action_request_id: self.pending_action_request_id,
-            search_in_progress: self.search_in_progress,
+            search_in_progress: self.search.in_progress,
             preview_in_progress: self.preview_in_progress,
             action_in_progress: self.action_in_progress,
             scroll_to_current: self.scroll_to_current,
@@ -294,20 +294,20 @@ impl FlistWalkerApp {
         self.all_entries = Arc::clone(&tab.index_state.all_entries);
         self.entries = Arc::clone(&tab.index_state.entries);
         self.entry_kinds = tab.index_state.entry_kinds.clone();
-        self.pending_index_request_id = tab.index_state.pending_index_request_id;
-        self.index_in_progress = tab.index_state.index_in_progress;
-        self.pending_index_entries = tab.index_state.pending_index_entries.clone();
-        self.pending_index_entries_request_id = tab.index_state.pending_index_entries_request_id;
-        self.pending_kind_paths = tab.index_state.pending_kind_paths.clone();
-        self.pending_kind_paths_set = tab.index_state.pending_kind_paths_set.clone();
-        self.in_flight_kind_paths = tab.index_state.in_flight_kind_paths.clone();
-        self.kind_resolution_epoch = tab.index_state.kind_resolution_epoch;
-        self.kind_resolution_in_progress = tab.index_state.kind_resolution_in_progress;
-        self.incremental_filtered_entries = tab.index_state.incremental_filtered_entries.clone();
-        self.last_incremental_results_refresh = tab.index_state.last_incremental_results_refresh;
-        self.last_search_snapshot_len = tab.index_state.last_search_snapshot_len;
-        self.search_resume_pending = tab.index_state.search_resume_pending;
-        self.search_rerun_pending = tab.index_state.search_rerun_pending;
+        self.indexing.pending_request_id = tab.index_state.pending_index_request_id;
+        self.indexing.in_progress = tab.index_state.index_in_progress;
+        self.indexing.pending_entries = tab.index_state.pending_index_entries.clone();
+        self.indexing.pending_entries_request_id = tab.index_state.pending_index_entries_request_id;
+        self.indexing.pending_kind_paths = tab.index_state.pending_kind_paths.clone();
+        self.indexing.pending_kind_paths_set = tab.index_state.pending_kind_paths_set.clone();
+        self.indexing.in_flight_kind_paths = tab.index_state.in_flight_kind_paths.clone();
+        self.indexing.kind_resolution_epoch = tab.index_state.kind_resolution_epoch;
+        self.indexing.kind_resolution_in_progress = tab.index_state.kind_resolution_in_progress;
+        self.indexing.incremental_filtered_entries = tab.index_state.incremental_filtered_entries.clone();
+        self.indexing.last_incremental_results_refresh = tab.index_state.last_incremental_results_refresh;
+        self.indexing.last_search_snapshot_len = tab.index_state.last_search_snapshot_len;
+        self.indexing.search_resume_pending = tab.index_state.search_resume_pending;
+        self.indexing.search_rerun_pending = tab.index_state.search_rerun_pending;
         self.query = tab.query_state.query.clone();
         self.reset_query_history_navigation();
         self.query_history_dirty_since = None;
@@ -322,10 +322,10 @@ impl FlistWalkerApp {
         self.current_row = tab.result_state.current_row;
         self.preview = tab.result_state.preview.clone();
         self.notice = tab.notice.clone();
-        self.pending_request_id = tab.pending_request_id;
+        self.search.pending_request_id = tab.pending_request_id;
         self.pending_preview_request_id = tab.pending_preview_request_id;
         self.pending_action_request_id = tab.pending_action_request_id;
-        self.search_in_progress = tab.search_in_progress;
+        self.search.in_progress = tab.search_in_progress;
         self.preview_in_progress = tab.preview_in_progress;
         self.action_in_progress = tab.action_in_progress;
         self.scroll_to_current = tab.scroll_to_current;
@@ -509,16 +509,16 @@ impl FlistWalkerApp {
         {
             self.filelist_state.pending_use_walker_confirmation = None;
         }
-        self.index_request_tabs
+        self.indexing.request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);
-        self.pending_index_queue
+        self.indexing.pending_queue
             .retain(|req| req.tab_id != removed.id);
-        if let Ok(mut latest) = self.latest_index_request_ids.lock() {
+        if let Ok(mut latest) = self.indexing.latest_request_ids.lock() {
             latest.remove(&removed.id);
         }
-        self.background_index_states
-            .retain(|request_id, _| self.index_request_tabs.contains_key(request_id));
-        self.search_request_tabs
+        self.indexing.background_states
+            .retain(|request_id, _| self.indexing.request_tabs.contains_key(request_id));
+        self.search.request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);
         self.preview_request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);

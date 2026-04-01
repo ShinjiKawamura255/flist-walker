@@ -202,7 +202,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     fs::create_dir_all(&root_b).expect("create root b");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
 
     app.initialize_tabs_from_saved(
@@ -256,7 +256,7 @@ fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
 
     app.initialize_tabs_from_saved(
@@ -286,7 +286,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
     fs::create_dir_all(&root_b).expect("create root b");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = tx;
+    app.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
 
     app.initialize_tabs_from_saved(
@@ -758,8 +758,8 @@ fn background_tab_search_and_preview_responses_are_retained() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "hello").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "picked".to_string());
-    app.index_in_progress = false;
-    app.pending_index_request_id = None;
+    app.indexing.in_progress = false;
+    app.indexing.pending_request_id = None;
     app.entries = Arc::new(vec![selected.clone()]);
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
@@ -767,10 +767,10 @@ fn background_tab_search_and_preview_responses_are_retained() {
 
     let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
     let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
-    app.search_tx = search_tx_req;
-    app.search_rx = search_rx_res;
+    app.search.tx = search_tx_req;
+    app.search.rx = search_rx_res;
     app.enqueue_search_request();
-    let search_request_id = app.pending_request_id.expect("search request id");
+    let search_request_id = app.search.pending_request_id.expect("search request id");
     let first_tab_id = app.tabs[0].id;
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
@@ -818,7 +818,7 @@ fn background_tab_switch_does_not_stop_indexing_progress() {
     let root = test_root("background-tab-indexing-progress");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.index_in_progress = true;
+    app.indexing.in_progress = true;
     app.create_new_tab();
 
     run_shortcuts_frame(
@@ -832,7 +832,7 @@ fn background_tab_switch_does_not_stop_indexing_progress() {
         }],
     );
 
-    assert!(app.index_in_progress);
+    assert!(app.indexing.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -847,9 +847,9 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
-    app.index_tx = index_req_tx;
+    app.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
-    app.index_rx = index_res_rx;
+    app.indexing.rx = index_res_rx;
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
@@ -888,7 +888,7 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
     app.switch_to_tab_index(0);
     assert_eq!(app.entries.len(), 1);
     assert_eq!(app.entries[0], indexed_file);
-    assert!(!app.index_in_progress);
+    assert!(!app.indexing.in_progress);
 
     let _ = fs::remove_dir_all(&root);
 }

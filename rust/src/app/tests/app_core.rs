@@ -66,9 +66,9 @@ fn startup_index_request_is_bound_to_active_tab() {
     let root = test_root("startup-index-tab-binding");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let req_id = app.pending_index_request_id.expect("pending index request");
+    let req_id = app.indexing.pending_request_id.expect("pending index request");
     let tab_id = app.current_tab_id().expect("active tab id");
-    assert_eq!(app.index_request_tabs.get(&req_id).copied(), Some(tab_id));
+    assert_eq!(app.indexing.request_tabs.get(&req_id).copied(), Some(tab_id));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1004,15 +1004,15 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     app.show_preview = false;
     app.results = vec![(file.clone(), 0.0)];
     app.current_row = Some(0);
-    app.pending_kind_paths.push_back(file.clone());
-    app.pending_kind_paths_set.insert(file.clone());
-    app.kind_resolution_in_progress = true;
+    app.indexing.pending_kind_paths.push_back(file.clone());
+    app.indexing.pending_kind_paths_set.insert(file.clone());
+    app.indexing.kind_resolution_in_progress = true;
 
     app.request_preview_for_current();
 
-    assert!(app.pending_kind_paths.iter().any(|p| *p == file));
-    assert!(app.pending_kind_paths_set.contains(&file));
-    assert!(app.kind_resolution_in_progress);
+    assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == file));
+    assert!(app.indexing.pending_kind_paths_set.contains(&file));
+    assert!(app.indexing.kind_resolution_in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1050,8 +1050,8 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.show_preview = false;
-    app.index_in_progress = false;
-    app.pending_index_request_id = None;
+    app.indexing.in_progress = false;
+    app.indexing.pending_request_id = None;
     app.entries = Arc::new(vec![first.clone(), second.clone()]);
     app.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
     app.results = app.base_results.clone();

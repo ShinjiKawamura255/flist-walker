@@ -296,7 +296,7 @@ impl FlistWalkerApp {
         if !matches!(self.index.source, IndexSource::Walker) {
             needs_reindex = true;
         }
-        if self.index_in_progress {
+        if self.indexing.in_progress {
             self.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
                 tab_id,
                 root: self.root.clone(),
