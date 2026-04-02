@@ -195,6 +195,12 @@ $FeedDir = Join-Path $SandboxDir 'feed'
 $SandboxExe = Join-Path $AppSandboxDir 'flistwalker.exe'
 $AssetName = "FlistWalker-$FeedVersion-windows-x86_64.exe"
 $AssetPath = Join-Path $FeedDir $AssetName
+$ReadmeAssetName = "FlistWalker-$FeedVersion-windows-x86_64.README.txt"
+$ReadmeAssetPath = Join-Path $FeedDir $ReadmeAssetName
+$LicenseAssetName = "FlistWalker-$FeedVersion-windows-x86_64.LICENSE.txt"
+$LicenseAssetPath = Join-Path $FeedDir $LicenseAssetName
+$NoticesAssetName = "FlistWalker-$FeedVersion-windows-x86_64.THIRD_PARTY_NOTICES.txt"
+$NoticesAssetPath = Join-Path $FeedDir $NoticesAssetName
 $ChecksumPath = Join-Path $FeedDir 'SHA256SUMS'
 $ChecksumSigPath = Join-Path $FeedDir 'SHA256SUMS.sig'
 $LatestJsonPath = Join-Path $FeedDir 'latest.json'
@@ -206,9 +212,27 @@ New-Item -ItemType Directory -Path $FeedDir -Force | Out-Null
 
 Copy-Item -LiteralPath $AppPath -Destination $SandboxExe -Force
 Copy-Item -LiteralPath $UpdateBinaryPath -Destination $AssetPath -Force
+# Regression guard:
+# This manual feed must mirror production self-update assets, including README/LICENSE/notices sidecars.
+# Do not simplify/remove without updating the paired regression tests: docs/TESTPLAN.md manual self-update Regression Guard.
+@"
+FlistWalker v$FeedVersion
+
+Manual self-update test sidecar.
+"@ | Set-Content -LiteralPath $ReadmeAssetPath -Encoding UTF8
+Set-Content -LiteralPath $LicenseAssetPath -Value "manual self-update license stub for v$FeedVersion" -Encoding UTF8
+Set-Content -LiteralPath $NoticesAssetPath -Value "manual self-update notices stub for v$FeedVersion" -Encoding UTF8
 
 $AssetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $AssetPath).Hash.ToLowerInvariant()
-"$AssetHash  $AssetName" | Set-Content -LiteralPath $ChecksumPath -Encoding ASCII
+$ReadmeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ReadmeAssetPath).Hash.ToLowerInvariant()
+$LicenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $LicenseAssetPath).Hash.ToLowerInvariant()
+$NoticesHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $NoticesAssetPath).Hash.ToLowerInvariant()
+@(
+    "$AssetHash  $AssetName"
+    "$ReadmeHash  $ReadmeAssetName"
+    "$LicenseHash  $LicenseAssetName"
+    "$NoticesHash  $NoticesAssetName"
+) | Set-Content -LiteralPath $ChecksumPath -Encoding ASCII
 
 if (-not $env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
     throw "FLISTWALKER_UPDATE_SIGNING_KEY_HEX is required for manual self-update tests."
@@ -225,6 +249,18 @@ $release = [ordered]@{
         @{
             name = $AssetName
             browser_download_url = "$ReleaseUrl$AssetName"
+        },
+        @{
+            name = $ReadmeAssetName
+            browser_download_url = "$ReleaseUrl$ReadmeAssetName"
+        },
+        @{
+            name = $LicenseAssetName
+            browser_download_url = "$ReleaseUrl$LicenseAssetName"
+        },
+        @{
+            name = $NoticesAssetName
+            browser_download_url = "$ReleaseUrl$NoticesAssetName"
         },
         @{
             name = 'SHA256SUMS'
@@ -283,6 +319,7 @@ try {
         Write-Host '- 起動時に指定 version を使った更新ダイアログが表示される'
     }
     Write-Host '- Download and Restart を押すと sandbox 内の flistwalker.exe が置換されて再起動する'
+    Write-Host '- sandbox 内の README.txt / LICENSE.txt / THIRD_PARTY_NOTICES.txt も feed の sidecar へ更新される'
     Write-Host '- 元の build 出力は変更されない'
     Write-Host ''
     Write-Host 'Close the launched app to stop the local feed server.'

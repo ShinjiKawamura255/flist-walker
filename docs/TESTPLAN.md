@@ -182,7 +182,7 @@ Windows は `scripts/manual-self-update-test.ps1 -Mode SameVersion` を使い、
 2. downgrade 表示確認:
 Windows は `scripts/manual-self-update-test.ps1 -Mode Downgrade` を使い、旧 version の release JSON を自動生成して downgrade 候補でもダイアログが出ることを確認する。patch が `0` の場合は `-FeedVersion` を明示する。
 3. ローカル feed 確認:
-通常は PowerShell helper が sandbox、`latest.json`、`SHA256SUMS`、`SHA256SUMS.sig`、ローカル HTTP server をまとめて用意する。手動で feed を組みたい場合だけ、release JSON、対象 asset、`SHA256SUMS`、`SHA256SUMS.sig` を任意ディレクトリへ置き、`FLISTWALKER_UPDATE_FEED_URL` から参照する。
+通常は PowerShell helper が sandbox、`latest.json`、対象 binary、sidecar 文書（`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`）、`SHA256SUMS`、`SHA256SUMS.sig`、ローカル HTTP server をまとめて用意する。手動で feed を組みたい場合だけ、release JSON、対象 asset、sidecar 文書、`SHA256SUMS`、`SHA256SUMS.sig` を任意ディレクトリへ置き、`FLISTWALKER_UPDATE_FEED_URL` から参照する。
 4. update 適用確認:
 Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終了後に新 binary が起動し直すことを確認する。更新先ディレクトリに `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が新 release の内容で配置されることも合わせて確認する。Windows helper は sandbox 起動なので、元の build 出力が変更されていないことも確認する。
 5. suppress 確認:
@@ -238,6 +238,14 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 - 期待動作: 更新確認とダウンロードは worker で非同期実行され、失敗しても GUI の通常操作を継続できる。
 - 非対象範囲: GitHub 側の API / asset 配信停止そのもの。
 - 関連テストID: TC-078.
+
+## Regression Guard: manual-self-update-sidecars
+
+- Scenario: 手動の自己更新 feed が binary と `SHA256SUMS` だけを配り、`*.README.txt` を含む sidecar 文書を生成しないまま自己更新確認に使われる。
+- Expected Behavior: `scripts/manual-self-update-test.ps1` は production 相当の feed として binary、`*.README.txt`、`*.LICENSE.txt`、`*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS`、`SHA256SUMS.sig` を必ず生成し、更新後の sandbox に `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` がそろって配置される。
+- Non-goals: GitHub Releases 本番 asset の内容妥当性確認、README 本文そのものの文言レビュー。
+- Related Tests: Self Update Manual Test step 3, step 4.
+- Notes for Future Changes: 自己更新 asset 名や sidecar 種別を増減させた場合は、この helper script と manual test 手順を同一変更で更新すること。
 
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
