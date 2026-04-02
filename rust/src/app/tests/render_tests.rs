@@ -13,7 +13,7 @@ fn top_action_labels_show_history_actions_while_history_search_is_active() {
     let root = test_root("render-history-actions");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.history_search_active = true;
+    app.query_state.history_search_active = true;
 
     assert_eq!(
         app.top_action_labels(),

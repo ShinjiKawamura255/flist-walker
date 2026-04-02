@@ -41,7 +41,7 @@ fn clear_query_and_selection_clears_state() {
 
     app.clear_query_and_selection();
 
-    assert!(app.query.is_empty());
+    assert!(app.query_state.query.is_empty());
     assert!(app.pinned_paths.is_empty());
     assert!(app.ui.focus_query_requested);
     assert!(app.notice.contains("Cleared selection and query"));
@@ -831,7 +831,7 @@ fn clear_query_and_selection_restores_first_row_regression() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     app.ui.show_preview = false;
-    app.query = "abc".to_string();
+    app.query_state.query = "abc".to_string();
     app.current_row = Some(2);
     app.preview = "stale".to_string();
     app.entries = Arc::new(vec![
@@ -847,7 +847,7 @@ fn clear_query_and_selection_restores_first_row_regression() {
 
     app.clear_query_and_selection();
 
-    assert!(app.query.is_empty());
+    assert!(app.query_state.query.is_empty());
     assert_eq!(app.current_row, Some(0));
     assert!(app.preview.is_empty());
     let _ = fs::remove_dir_all(&root);

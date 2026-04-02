@@ -84,7 +84,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn top_action_labels(&self) -> Vec<&'static str> {
-        if self.history_search_active {
+        if self.query_state.history_search_active {
             return vec!["Apply History", "Cancel History Search"];
         }
 
@@ -103,7 +103,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
-        if self.history_search_active {
+        if self.query_state.history_search_active {
             self.ui.preview_resize_in_progress = false;
             self.render_history_search_results(ui);
             self.ui.scroll_to_current = false;
@@ -373,8 +373,8 @@ impl FlistWalkerApp {
         ui.heading("History Results");
         ui.label(format!(
             "{} items in history, {} matches",
-            self.query_history.len(),
-            self.history_search_results.len()
+            self.query_state.query_history.len(),
+            self.query_state.history_search_results.len()
         ));
         egui::ScrollArea::vertical()
             .drag_to_scroll(false)
@@ -383,8 +383,8 @@ impl FlistWalkerApp {
                 let mut clicked_row: Option<usize> = None;
                 let mut accept_row: Option<usize> = None;
 
-                for (index, entry) in self.history_search_results.iter().enumerate() {
-                    let is_current = self.history_search_current == Some(index);
+                for (index, entry) in self.query_state.history_search_results.iter().enumerate() {
+                    let is_current = self.query_state.history_search_current == Some(index);
                     let prefix = if is_current { "▶" } else { "·" };
                     let text = format!("{prefix} {entry}");
                     let selected_bg = if ui.visuals().dark_mode {
@@ -418,10 +418,10 @@ impl FlistWalkerApp {
                 }
 
                 if let Some(index) = clicked_row {
-                    self.history_search_current = Some(index);
+                    self.query_state.history_search_current = Some(index);
                 }
                 if let Some(index) = accept_row {
-                    self.history_search_current = Some(index);
+                    self.query_state.history_search_current = Some(index);
                     self.accept_history_search();
                 }
             });
@@ -916,18 +916,18 @@ impl FlistWalkerApp {
                 );
             });
 
-            if self.history_search_active {
+            if self.query_state.history_search_active {
                 ui.label(
                     egui::RichText::new("History Search")
                         .strong()
                         .color(ui.visuals().strong_text_color()),
                 );
             }
-            let editing_history_search = self.history_search_active;
+            let editing_history_search = self.query_state.history_search_active;
             let mut output = egui::TextEdit::singleline(if editing_history_search {
-                &mut self.history_search_query
+                &mut self.query_state.history_search_query
             } else {
-                &mut self.query
+                &mut self.query_state.query
             })
                 .id(self.ui.query_input_id)
                 .lock_focus(true)
@@ -967,7 +967,7 @@ impl FlistWalkerApp {
                     self.mark_query_edited();
                     if output.response.has_focus() {
                         let end = query_cursor_after_fallback
-                            .unwrap_or_else(|| Self::char_count(&self.query));
+                            .unwrap_or_else(|| Self::char_count(&self.query_state.query));
                         output
                             .state
                             .cursor
@@ -983,9 +983,9 @@ impl FlistWalkerApp {
                     self.update_results();
                 }
                 if output.response.changed() {
-                    let normalized = Self::normalize_singleline_input(&mut self.query);
+                    let normalized = Self::normalize_singleline_input(&mut self.query_state.query);
                     if normalized && output.response.has_focus() {
-                        let end = Self::char_count(&self.query);
+                        let end = Self::char_count(&self.query_state.query);
                         output
                             .state
                             .cursor
@@ -999,18 +999,18 @@ impl FlistWalkerApp {
                         "query_text_changed",
                         &format!(
                             "chars={} has_half_space={} has_full_space={}",
-                            self.query.chars().count(),
-                            self.query.contains(' '),
-                            self.query.contains('\u{3000}')
+                            self.query_state.query.chars().count(),
+                            self.query_state.query.contains(' '),
+                            self.query_state.query.contains('\u{3000}')
                         ),
                     );
                     self.update_results();
                 }
             } else if output.response.changed() {
-                if Self::normalize_singleline_input(&mut self.history_search_query)
+                if Self::normalize_singleline_input(&mut self.query_state.history_search_query)
                     && output.response.has_focus()
                 {
-                    let end = Self::char_count(&self.history_search_query);
+                    let end = Self::char_count(&self.query_state.history_search_query);
                     output
                         .state
                         .cursor

@@ -236,7 +236,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     assert_eq!(app.tabs.len(), 2);
     assert_eq!(app.active_tab, 1);
     assert_eq!(app.root, root_b);
-    assert_eq!(app.query, "beta");
+    assert_eq!(app.query_state.query, "beta");
     assert_eq!(app.tabs[1].tab_accent, Some(TabAccentColor::Crimson));
     assert!(!app.pending_restore_refresh);
     assert!(app.tabs[0].pending_restore_refresh);
@@ -351,7 +351,7 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
 
     assert_eq!(app.tabs.len(), 2);
     assert_eq!(app.active_tab, 1);
-    assert!(app.query.is_empty());
+    assert!(app.query_state.query.is_empty());
     assert!(app.use_filelist);
     assert_eq!(app.tabs[1].tab_accent, None);
     let _ = fs::remove_dir_all(&root);

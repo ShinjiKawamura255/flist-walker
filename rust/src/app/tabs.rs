@@ -67,7 +67,7 @@ impl FlistWalkerApp {
             },
             query_state: TabQueryState {
                 query: saved.query.clone(),
-                query_history: self.query_history.clone(),
+                query_history: self.query_state.query_history.clone(),
                 query_history_cursor: None,
                 query_history_draft: None,
                 query_history_dirty_since: None,
@@ -191,7 +191,7 @@ impl FlistWalkerApp {
         }
 
         if self.base_results.is_empty() {
-            if self.query.trim().is_empty() {
+            if self.query_state.query.trim().is_empty() {
                 let results = self
                     .entries
                     .iter()
@@ -247,16 +247,16 @@ impl FlistWalkerApp {
                 search_rerun_pending: self.indexing.search_rerun_pending,
             },
             query_state: TabQueryState {
-                query: self.query.clone(),
-                query_history: self.query_history.clone(),
-                query_history_cursor: self.query_history_cursor,
-                query_history_draft: self.query_history_draft.clone(),
-                query_history_dirty_since: self.query_history_dirty_since,
-                history_search_active: self.history_search_active,
-                history_search_query: self.history_search_query.clone(),
-                history_search_original_query: self.history_search_original_query.clone(),
-                history_search_results: self.history_search_results.clone(),
-                history_search_current: self.history_search_current,
+                query: self.query_state.query.clone(),
+                query_history: self.query_state.query_history.clone(),
+                query_history_cursor: self.query_state.query_history_cursor,
+                query_history_draft: self.query_state.query_history_draft.clone(),
+                query_history_dirty_since: self.query_state.query_history_dirty_since,
+                history_search_active: self.query_state.history_search_active,
+                history_search_query: self.query_state.history_search_query.clone(),
+                history_search_original_query: self.query_state.history_search_original_query.clone(),
+                history_search_results: self.query_state.history_search_results.clone(),
+                history_search_current: self.query_state.history_search_current,
             },
             pending_restore_refresh: self.pending_restore_refresh,
             result_state: TabResultState {
@@ -308,9 +308,9 @@ impl FlistWalkerApp {
         self.indexing.last_search_snapshot_len = tab.index_state.last_search_snapshot_len;
         self.indexing.search_resume_pending = tab.index_state.search_resume_pending;
         self.indexing.search_rerun_pending = tab.index_state.search_rerun_pending;
-        self.query = tab.query_state.query.clone();
+        self.query_state.query = tab.query_state.query.clone();
         self.reset_query_history_navigation();
-        self.query_history_dirty_since = None;
+        self.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.pending_restore_refresh = tab.pending_restore_refresh;
         self.base_results = tab.result_state.base_results.clone();
@@ -409,7 +409,7 @@ impl FlistWalkerApp {
         tab.tab_accent = None;
         tab.use_filelist = true;
         tab.query_state.query.clear();
-        tab.query_state.query_history = self.query_history.clone();
+        tab.query_state.query_history = self.query_state.query_history.clone();
         tab.query_state.query_history_cursor = None;
         tab.query_state.query_history_draft = None;
         tab.query_state.query_history_dirty_since = None;
@@ -628,11 +628,11 @@ impl FlistWalkerApp {
             ignore_case: self.ignore_case,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
-            query: self.query.clone(),
+            query: self.query_state.query.clone(),
             query_history: if Self::history_persist_disabled() {
                 Vec::new()
             } else {
-                self.query_history.iter().cloned().collect()
+                self.query_state.query_history.iter().cloned().collect()
             },
             tab_accent: self
                 .tabs

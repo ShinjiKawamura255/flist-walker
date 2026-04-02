@@ -31,6 +31,7 @@ mod filelist;
 mod index_coordinator;
 mod input;
 mod pipeline;
+mod query_state;
 mod render;
 mod search_coordinator;
 mod session;
@@ -44,6 +45,7 @@ mod workers;
 
 use cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
 use index_coordinator::IndexCoordinator;
+use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
@@ -220,16 +222,7 @@ fn load_cjk_font_bytes() -> Option<Vec<u8>> {
 pub struct FlistWalkerApp {
     root: PathBuf,
     limit: usize,
-    query: String,
-    query_history: VecDeque<String>,
-    query_history_cursor: Option<usize>,
-    query_history_draft: Option<String>,
-    query_history_dirty_since: Option<Instant>,
-    history_search_active: bool,
-    history_search_query: String,
-    history_search_original_query: String,
-    history_search_results: Vec<String>,
-    history_search_current: Option<usize>,
+    query_state: QueryState,
     pending_restore_refresh: bool,
     use_filelist: bool,
     use_regex: bool,
@@ -248,7 +241,6 @@ pub struct FlistWalkerApp {
     preview: String,
     notice: String,
     status_line: String,
-    kill_buffer: String,
     search: SearchCoordinator,
     worker_bus: WorkerBus,
     indexing: IndexCoordinator,
@@ -423,16 +415,7 @@ Search hints:
         let mut app = Self {
             root: seed.root,
             limit: seed.limit,
-            query: seed.query,
-            query_history: seed.query_history,
-            query_history_cursor: None,
-            query_history_draft: None,
-            query_history_dirty_since: None,
-            history_search_active: false,
-            history_search_query: String::new(),
-            history_search_original_query: String::new(),
-            history_search_results: Vec::new(),
-            history_search_current: None,
+            query_state: QueryState::new(seed.query, seed.query_history),
             pending_restore_refresh: false,
             use_filelist: true,
             use_regex: false,
@@ -454,7 +437,6 @@ Search hints:
             preview: String::new(),
             notice: String::new(),
             status_line: "Initializing...".to_string(),
-            kill_buffer: String::new(),
             search: SearchCoordinator::new(bootstrap.search_tx, bootstrap.search_rx),
             worker_bus: bootstrap.worker_bus,
             indexing: IndexCoordinator::new(
@@ -798,7 +780,7 @@ Search hints:
 
         self.root = normalized;
         self.reset_query_history_navigation();
-        self.query_history_dirty_since = None;
+        self.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         // Avoid launching/copying stale selections from the previous root.
         self.pinned_paths.clear();
@@ -999,11 +981,11 @@ Search hints:
         } else {
             ""
         };
-        let history_search = if self.history_search_active {
+        let history_search = if self.query_state.history_search_active {
             format!(
                 " | History search: {}/{}",
-                self.history_search_results.len(),
-                self.query_history.len()
+                self.query_state.history_search_results.len(),
+                self.query_state.query_history.len()
             )
         } else {
             String::new()
@@ -1424,10 +1406,10 @@ Search hints:
     }
 
     fn clear_query_and_selection(&mut self) {
-        self.query.clear();
+        self.query_state.query.clear();
         self.reset_query_history_navigation();
         self.reset_history_search_state();
-        self.query_history_dirty_since = None;
+        self.query_state.query_history_dirty_since = None;
         self.pinned_paths.clear();
         // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
         self.current_row = Some(0);

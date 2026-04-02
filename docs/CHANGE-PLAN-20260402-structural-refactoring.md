@@ -232,12 +232,12 @@
 - [x] P3-7: GUI smoke test は headless で実施不能なため、Phase 9 の手動確認へ集約
 
 ### Phase 4
-- [ ] P4-1: `QueryState` struct を設計 (履歴管理の不変条件を encapsulate)
-- [ ] P4-2: `query_state.rs` を新規作成
-- [ ] P4-3: `FlistWalkerApp` から query/history フィールドを移動
-- [ ] P4-4: `input.rs`, `pipeline.rs`, `tabs.rs` のアクセスパスを更新
-- [ ] P4-5: テスト更新
-- [ ] P4-6: `cargo test --lib` green
+- [x] P4-1: `QueryState` struct を設計 (履歴管理の不変条件を encapsulate)
+- [x] P4-2: `query_state.rs` を新規作成
+- [x] P4-3: `FlistWalkerApp` から query/history フィールドを移動
+- [x] P4-4: `input.rs`, `pipeline.rs`, `tabs.rs` のアクセスパスを更新
+- [x] P4-5: テスト更新
+- [x] P4-6: `cargo test --lib` green
 
 ### Phase 5
 - [ ] P5-1: `Entry` struct を `rust/src/entry.rs` に設計
@@ -316,6 +316,7 @@
 - 2026-04-02 Phase 2 completed. `rust/src/app/worker_bus.rs` を追加し、preview/action/sort/kind/filelist/update の worker channel と app-level request/in-progress state を `WorkerBus` へ集約した。`bootstrap.rs` と app/tests 一式のアクセス経路を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 68 行まで減少。
 - 2026-04-02 Phase 3 着手前に計画更新。`session.rs` に永続化用 `UiState` が既に存在するため、runtime 側の UI 集約 struct は `RuntimeUiState` などの別名で導入する方針へ修正。
 - 2026-04-02 Phase 3 completed. `rust/src/app/ui_state.rs` に `RuntimeUiState` を追加し、focus/scroll/IME/preview panel/window geometry debounce/tab drag などの runtime UI 状態を `self.ui` へ集約した。`render.rs` / `input.rs` / `session.rs` / `tabs.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 50 行まで減少。GUI smoke は headless のため Phase 9 へ集約。
+- 2026-04-02 Phase 4 completed. `rust/src/app/query_state.rs` に `QueryState` を追加し、query/history/history-search/kill-buffer を `self.query_state` へ集約した。`input.rs` / `render.rs` / `pipeline.rs` / `tabs.rs` / `session.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 40 行まで減少。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

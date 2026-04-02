@@ -15,7 +15,7 @@ fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
     let root = test_root("ctrl-h-single");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abcd".to_string();
+    app.query_state.query = "abcd".to_string();
     let mut cursor = 4usize;
     let mut anchor = 4usize;
 
@@ -23,7 +23,7 @@ fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
 
     assert!(text_changed);
     assert!(cursor_changed);
-    assert_eq!(app.query, "abc");
+    assert_eq!(app.query_state.query, "abc");
     assert_eq!(cursor, 3);
     assert_eq!(anchor, 3);
     let _ = fs::remove_dir_all(&root);
@@ -35,7 +35,7 @@ fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     // Simulate that TextEdit already handled one Backspace and this frame query is already updated.
-    app.query = "abc".to_string();
+    app.query_state.query = "abc".to_string();
     let mut cursor = 3usize;
     let mut anchor = 3usize;
 
@@ -43,7 +43,7 @@ fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
 
     assert!(!text_changed);
     assert!(!cursor_changed);
-    assert_eq!(app.query, "abc");
+    assert_eq!(app.query_state.query, "abc");
     assert_eq!(cursor, 3);
     assert_eq!(anchor, 3);
     let _ = fs::remove_dir_all(&root);
@@ -131,7 +131,7 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
         }],
     );
 
-    assert!(app.query.is_empty());
+    assert!(app.query_state.query.is_empty());
     assert!(app.pinned_paths.is_empty());
     assert_eq!(app.results.len(), 1);
     let _ = fs::remove_dir_all(&root);
@@ -161,7 +161,7 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
         }],
     );
 
-    assert!(app.query.is_empty());
+    assert!(app.query_state.query.is_empty());
     assert!(app.pinned_paths.is_empty());
     assert_eq!(app.results.len(), 1);
     let _ = fs::remove_dir_all(&root);
@@ -193,8 +193,8 @@ fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
 
     assert!(app.is_root_dropdown_open(&ctx));
     assert_eq!(app.ui.root_dropdown_highlight, Some(0));
-    assert!(!app.history_search_active);
-    assert_eq!(app.query, "draft");
+    assert!(!app.query_state.history_search_active);
+    assert_eq!(app.query_state.query, "draft");
 
     let _ = ctx.end_pass();
     let _ = fs::remove_dir_all(&root);
@@ -271,7 +271,7 @@ fn root_dropdown_ctrl_g_closes_without_clearing_query() {
     app.handle_shortcuts(&ctx);
 
     assert!(!app.is_root_dropdown_open(&ctx));
-    assert_eq!(app.query, "draft");
+    assert_eq!(app.query_state.query, "draft");
     let _ = ctx.end_pass();
     let _ = fs::remove_dir_all(&root);
 }
@@ -317,10 +317,10 @@ fn history_search_enter_accepts_selected_query() {
     let root = test_root("history-search-enter");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.query_history =
+    app.query_state.query_history =
         VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
     app.start_history_search();
-    app.history_search_query = "be".to_string();
+    app.query_state.history_search_query = "be".to_string();
     app.refresh_history_search_results();
 
     run_shortcuts_frame(
@@ -335,8 +335,8 @@ fn history_search_enter_accepts_selected_query() {
         }],
     );
 
-    assert!(!app.history_search_active);
-    assert_eq!(app.query, "beta");
+    assert!(!app.query_state.history_search_active);
+    assert_eq!(app.query_state.query, "beta");
     assert_eq!(app.notice, "Loaded query from history");
     let _ = fs::remove_dir_all(&root);
 }
@@ -350,10 +350,10 @@ fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
         let root = test_root(name);
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-        app.query_history =
+        app.query_state.query_history =
             VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
         app.start_history_search();
-        app.history_search_query = "ga".to_string();
+        app.query_state.history_search_query = "ga".to_string();
         app.refresh_history_search_results();
 
         run_shortcuts_frame(
@@ -368,8 +368,8 @@ fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
             }],
         );
 
-        assert!(!app.history_search_active);
-        assert_eq!(app.query, "gamma");
+        assert!(!app.query_state.history_search_active);
+        assert_eq!(app.query_state.query, "gamma");
         let _ = fs::remove_dir_all(&root);
     }
 }
@@ -401,16 +401,16 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
         let root = test_root(name);
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-        app.query_history =
+        app.query_state.query_history =
             VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
         app.start_history_search();
-        app.history_search_query = "ga".to_string();
+        app.query_state.history_search_query = "ga".to_string();
         app.refresh_history_search_results();
 
         run_shortcuts_frame(&mut app, true, vec![event]);
 
-        assert!(!app.history_search_active);
-        assert_eq!(app.query, "draft");
+        assert!(!app.query_state.history_search_active);
+        assert_eq!(app.query_state.query, "draft");
         assert_eq!(app.notice, "Canceled history search");
         let _ = fs::remove_dir_all(&root);
     }

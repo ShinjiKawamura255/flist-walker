@@ -73,7 +73,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
     let root = test_root("ime-space-fallback");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abc".to_string();
+    app.query_state.query = "abc".to_string();
 
     let ctx = egui::Context::default();
     let (inserted_half, cursor_half) = app.process_query_input_events(
@@ -93,7 +93,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
     );
     assert!(inserted_half);
     assert_eq!(cursor_half, Some(4));
-    assert_eq!(app.query, "abc ");
+    assert_eq!(app.query_state.query, "abc ");
 
     let (inserted_shift, cursor_shift) = app.process_query_input_events(
         &ctx,
@@ -115,7 +115,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
     );
     assert!(inserted_shift);
     assert_eq!(cursor_shift, Some(5));
-    assert_eq!(app.query, "abc  ");
+    assert_eq!(app.query_state.query, "abc  ");
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -124,7 +124,7 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
     let root = test_root("ime-composition-space-allow");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abc".to_string();
+    app.query_state.query = "abc".to_string();
 
     let ctx = egui::Context::default();
     let (inserted, cursor) = app.process_query_input_events(
@@ -147,7 +147,7 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
     );
     assert!(inserted);
     assert_eq!(cursor, Some(4));
-    assert_eq!(app.query, "abc ");
+    assert_eq!(app.query_state.query, "abc ");
     assert!(app.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
@@ -157,7 +157,7 @@ fn process_query_input_events_skips_space_fallback_when_composition_updates() {
     let root = test_root("ime-composition-space-allow-update");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abc".to_string();
+    app.query_state.query = "abc".to_string();
 
     let ctx = egui::Context::default();
     let (inserted, cursor) = app.process_query_input_events(
@@ -181,7 +181,7 @@ fn process_query_input_events_skips_space_fallback_when_composition_updates() {
     );
     assert!(!inserted);
     assert_eq!(cursor, None);
-    assert_eq!(app.query, "abc");
+    assert_eq!(app.query_state.query, "abc");
     assert!(app.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
@@ -191,7 +191,7 @@ fn process_query_input_events_skips_shift_space_fallback_with_composition_update
     let root = test_root("ime-composition-half-space-allow");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abc".to_string();
+    app.query_state.query = "abc".to_string();
 
     let ctx = egui::Context::default();
     let (inserted, cursor) = app.process_query_input_events(
@@ -218,7 +218,7 @@ fn process_query_input_events_skips_shift_space_fallback_with_composition_update
     );
     assert!(!inserted);
     assert_eq!(cursor, None);
-    assert_eq!(app.query, "abc");
+    assert_eq!(app.query_state.query, "abc");
     assert!(app.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
@@ -228,7 +228,7 @@ fn process_query_input_events_inserts_space_fallback_at_cursor_position() {
     let root = test_root("ime-space-fallback-cursor");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abCD".to_string();
+    app.query_state.query = "abCD".to_string();
     let ctx = egui::Context::default();
 
     let (inserted, cursor) = app.process_query_input_events(
@@ -248,7 +248,7 @@ fn process_query_input_events_inserts_space_fallback_at_cursor_position() {
     );
 
     assert!(inserted);
-    assert_eq!(app.query, "ab CD");
+    assert_eq!(app.query_state.query, "ab CD");
     assert_eq!(cursor, Some(3));
     let _ = fs::remove_dir_all(&root);
 }
@@ -258,7 +258,7 @@ fn process_query_input_events_inserts_composition_commit_fallback_at_cursor_posi
     let root = test_root("ime-commit-fallback-cursor");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "abCD".to_string();
+    app.query_state.query = "abCD".to_string();
     let ctx = egui::Context::default();
 
     let (inserted, cursor) = app.process_query_input_events(
@@ -272,7 +272,7 @@ fn process_query_input_events_inserts_composition_commit_fallback_at_cursor_posi
     );
 
     assert!(inserted);
-    assert_eq!(app.query, "abxCD");
+    assert_eq!(app.query_state.query, "abxCD");
     assert_eq!(cursor, Some(3));
     let _ = fs::remove_dir_all(&root);
 }
@@ -282,7 +282,7 @@ fn process_query_input_events_does_not_override_widget_owned_ime_commit() {
     let root = test_root("ime-commit-widget-owned");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query = "変換済み".to_string();
+    app.query_state.query = "変換済み".to_string();
     let ctx = egui::Context::default();
 
     let (changed, cursor) = app.process_query_input_events(
@@ -291,13 +291,13 @@ fn process_query_input_events_does_not_override_widget_owned_ime_commit() {
         true,
         true,
         Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(FlistWalkerApp::char_count(&app.query)),
+            egui::text::CCursor::new(FlistWalkerApp::char_count(&app.query_state.query)),
         )),
     );
 
     assert!(!changed);
     assert_eq!(cursor, None);
-    assert_eq!(app.query, "変換済み");
+    assert_eq!(app.query_state.query, "変換済み");
     let _ = fs::remove_dir_all(&root);
 }
 

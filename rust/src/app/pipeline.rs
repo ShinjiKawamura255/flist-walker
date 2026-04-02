@@ -37,7 +37,7 @@ impl FlistWalkerApp {
         self.indexing.in_progress = true;
         self.search.pending_request_id = None;
         self.search.in_progress = false;
-        self.indexing.search_resume_pending = !self.query.trim().is_empty();
+        self.indexing.search_resume_pending = !self.query_state.query.trim().is_empty();
         self.indexing.search_rerun_pending = false;
 
         self.index.entries.clear();
@@ -100,7 +100,7 @@ impl FlistWalkerApp {
         self.indexing.in_progress = true;
         self.search.pending_request_id = None;
         self.search.in_progress = false;
-        self.indexing.search_resume_pending = !self.query.trim().is_empty();
+        self.indexing.search_resume_pending = !self.query_state.query.trim().is_empty();
         self.indexing.search_rerun_pending = false;
 
         self.index.entries.clear();
@@ -823,7 +823,7 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self.query.trim().is_empty() {
+        if self.query_state.query.trim().is_empty() {
             self.apply_incremental_empty_query_results();
         } else {
             self.maybe_refresh_incremental_search();
@@ -888,7 +888,7 @@ impl FlistWalkerApp {
 
         let req = SearchRequest {
             request_id,
-            query: self.query.clone(),
+            query: self.query_state.query.clone(),
             entries: Arc::clone(&self.entries),
             limit: self.limit,
             use_regex: self.use_regex,
@@ -917,7 +917,7 @@ impl FlistWalkerApp {
                 }
                 self.replace_results_snapshot(response.results, false);
                 if self.indexing.search_rerun_pending
-                    && !self.query.trim().is_empty()
+                    && !self.query_state.query.trim().is_empty()
                     && self.indexing.in_progress
                     && self.should_refresh_incremental_search()
                 {
@@ -967,7 +967,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn update_results(&mut self) {
-        if self.query.trim().is_empty() {
+        if self.query_state.query.trim().is_empty() {
             self.search.pending_request_id = None;
             self.search.in_progress = false;
             let results = self
@@ -1067,7 +1067,7 @@ impl FlistWalkerApp {
     }
 
     fn maybe_refresh_incremental_search(&mut self) {
-        if self.query.trim().is_empty() {
+        if self.query_state.query.trim().is_empty() {
             return;
         }
 
@@ -1147,7 +1147,7 @@ impl FlistWalkerApp {
         self.indexing.last_search_snapshot_len = self.entries.len();
         self.indexing.search_rerun_pending = false;
 
-        if self.query.trim().is_empty() {
+        if self.query_state.query.trim().is_empty() {
             self.search.pending_request_id = None;
             self.search.in_progress = false;
             let results = self

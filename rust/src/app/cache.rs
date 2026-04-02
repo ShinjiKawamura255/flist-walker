@@ -102,7 +102,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
-        if self.highlight_cache.scope_query == self.query
+        if self.highlight_cache.scope_query == self.query_state.query
             && Self::path_key(&self.highlight_cache.scope_root) == Self::path_key(&self.root)
             && self.highlight_cache.scope_use_regex == self.use_regex
             && self.highlight_cache.scope_ignore_case == self.ignore_case
@@ -110,7 +110,7 @@ impl FlistWalkerApp {
         {
             return;
         }
-        self.highlight_cache.scope_query = self.query.clone();
+        self.highlight_cache.scope_query = self.query_state.query.clone();
         self.highlight_cache.scope_root = self.root.clone();
         self.highlight_cache.scope_use_regex = self.use_regex;
         self.highlight_cache.scope_ignore_case = self.ignore_case;
@@ -148,7 +148,7 @@ impl FlistWalkerApp {
         static EMPTY: OnceLock<Arc<Vec<u16>>> = OnceLock::new();
 
         self.ensure_highlight_cache_scope(prefer_relative);
-        if self.query.trim().is_empty() {
+        if self.query_state.query.trim().is_empty() {
             return Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new())));
         }
 
@@ -166,7 +166,7 @@ impl FlistWalkerApp {
         let positions = Self::compact_highlight_positions(match_positions_for_path(
             path,
             &self.root,
-            &self.query,
+            &self.query_state.query,
             prefer_relative,
             self.use_regex,
             self.ignore_case,

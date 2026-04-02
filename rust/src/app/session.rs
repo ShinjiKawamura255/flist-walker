@@ -442,7 +442,7 @@ impl FlistWalkerApp {
             query_history: if history_persist_disabled {
                 Vec::new()
             } else {
-                self.query_history.iter().cloned().collect()
+                self.query_state.query_history.iter().cloned().collect()
             },
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
