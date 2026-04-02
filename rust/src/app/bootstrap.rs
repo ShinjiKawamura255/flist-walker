@@ -2,25 +2,77 @@ use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
 pub(super) struct AppWorkerBootstrap {
-    pub(super) search_tx: Sender<SearchRequest>,
-    pub(super) search_rx: Receiver<SearchResponse>,
-    pub(super) worker_bus: WorkerBus,
-    pub(super) index_tx: Sender<IndexRequest>,
-    pub(super) index_rx: Receiver<IndexResponse>,
-    pub(super) latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
-    pub(super) worker_runtime: WorkerRuntime,
+    search_tx: Sender<SearchRequest>,
+    search_rx: Receiver<SearchResponse>,
+    worker_bus: WorkerBus,
+    index_tx: Sender<IndexRequest>,
+    index_rx: Receiver<IndexResponse>,
+    latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    worker_runtime: WorkerRuntime,
 }
 
 pub(super) struct AppLaunchSeed {
-    pub(super) root: PathBuf,
-    pub(super) limit: usize,
-    pub(super) query: String,
-    pub(super) query_history: VecDeque<String>,
-    pub(super) saved_roots: Vec<PathBuf>,
-    pub(super) default_root: Option<PathBuf>,
-    pub(super) show_preview: bool,
-    pub(super) preview_panel_width: f32,
-    pub(super) update_state: UpdateState,
+    root: PathBuf,
+    limit: usize,
+    query: String,
+    query_history: VecDeque<String>,
+    saved_roots: Vec<PathBuf>,
+    default_root: Option<PathBuf>,
+    show_preview: bool,
+    preview_panel_width: f32,
+    update_state: UpdateState,
+}
+
+impl AppWorkerBootstrap {
+    pub(super) fn into_parts(
+        self,
+    ) -> (
+        Sender<SearchRequest>,
+        Receiver<SearchResponse>,
+        WorkerBus,
+        Sender<IndexRequest>,
+        Receiver<IndexResponse>,
+        Arc<Mutex<HashMap<u64, u64>>>,
+        WorkerRuntime,
+    ) {
+        (
+            self.search_tx,
+            self.search_rx,
+            self.worker_bus,
+            self.index_tx,
+            self.index_rx,
+            self.latest_index_request_ids,
+            self.worker_runtime,
+        )
+    }
+}
+
+impl AppLaunchSeed {
+    pub(super) fn into_parts(
+        self,
+    ) -> (
+        PathBuf,
+        usize,
+        String,
+        VecDeque<String>,
+        Vec<PathBuf>,
+        Option<PathBuf>,
+        bool,
+        f32,
+        UpdateState,
+    ) {
+        (
+            self.root,
+            self.limit,
+            self.query,
+            self.query_history,
+            self.saved_roots,
+            self.default_root,
+            self.show_preview,
+            self.preview_panel_width,
+            self.update_state,
+        )
+    }
 }
 
 impl FlistWalkerApp {

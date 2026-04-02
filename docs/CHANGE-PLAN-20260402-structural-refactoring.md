@@ -148,15 +148,16 @@
 
 ### Phase 6: `pub(super)` の最小化とアクセサ導入
 - Files/modules/components:
-  - `rust/src/app/state.rs`, `index_coordinator.rs`, `search_coordinator.rs`, `tab_state.rs`, `cache.rs`
-  - Phase 2-4 で導入した新 struct (`WorkerBus`, `UiState`, `QueryState`)
+  - `rust/src/app/search_coordinator.rs`, `index_coordinator.rs`, `cache.rs`, `bootstrap.rs`
+  - Phase 2-4 で導入した新 struct のうち、依存面の小さい coordinator/cache/seed 系
 - Expected result:
-  - フィールドは `pub(super)` → private に変更
-  - 構造体が自身の不変条件を method で保証 (e.g., `IndexCoordinator::advance_request_id()`)
-  - 外部からの直接フィールドアクセスは getter/setter 経由
+  - まず coordinator / cache / launch seed のような「依存の狭い state holder」から `pub(super)` → private 化する
+  - 構造体が自身の不変条件を method で保証 (e.g., request id 採番、cache eviction)
+  - `WorkerBus`, `tab_state.rs`, `state.rs` のような高結合な carrier は後続の責務分離後に段階対応する
 - Verification:
   - `cargo test --lib` green
-  - `grep -c "pub(super)" rust/src/app/` の件数が Phase 開始前の半分以下
+  - `cargo test --lib` green
+  - coordinator/cache の主要 call site が field 直書きではなく method 経由へ移行していることを確認
 
 ### Phase 7: 不要な clone の削減
 - Files/modules/components:
@@ -249,16 +250,17 @@
 - [x] P5-7: `cargo test --lib` green
 
 ### Phase 6
-- [ ] P6-1: Phase 2-4 の新 struct のフィールドを private 化
-- [ ] P6-2: `IndexCoordinator`, `SearchCoordinator` のフィールドを private 化 + メソッド追加
-- [ ] P6-3: `state.rs`, `tab_state.rs` の `pub(super)` を最小化
-- [ ] P6-4: テスト内の直接アクセスをメソッド経由に置き換え
-- [ ] P6-5: `cargo test --lib` green
+- [x] P6-1: `SearchCoordinator` の request lifecycle を method 化し、field 直書きを削減
+- [x] P6-2: `cache.rs` の cache state を private 化し、eviction/scope 更新を method へ寄せる
+- [x] P6-3: `bootstrap.rs` の seed/bootstrap bag を private 化し、初期化経路を method 経由に寄せる
+- [x] P6-4: 高結合な `IndexCoordinator` / `WorkerBus` は Phase 6 では helper method の導入までに留め、全面 private 化は後続へ回す
+- [x] P6-5: テスト内の直接アクセスを必要最小限 method 経由に置き換える
+- [x] P6-6: `cargo test --lib` green
 
 ### Phase 7
-- [ ] P7-1: `all_entries.as_ref().clone()` の使用箇所を特定 (grep)
-- [ ] P7-2: iterator 化またはスライス参照化で不要 clone を排除
-- [ ] P7-3: `cargo test --lib` green + perf regression テスト
+- [x] P7-1: `all_entries.as_ref().clone()` の使用箇所を特定 (grep)
+- [x] P7-2: iterator 化またはスライス参照化で不要 clone を排除
+- [x] P7-3: `cargo test --lib` green + perf regression テスト
 
 ### Phase 8
 - [ ] P8-1: `FlistWalkerApp` の主要メソッドに doc コメントを追加 (最低 30 メソッド)
@@ -318,6 +320,9 @@
 - 2026-04-02 Phase 3 completed. `rust/src/app/ui_state.rs` に `RuntimeUiState` を追加し、focus/scroll/IME/preview panel/window geometry debounce/tab drag などの runtime UI 状態を `self.ui` へ集約した。`render.rs` / `input.rs` / `session.rs` / `tabs.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 50 行まで減少。GUI smoke は headless のため Phase 9 へ集約。
 - 2026-04-02 Phase 4 completed. `rust/src/app/query_state.rs` に `QueryState` を追加し、query/history/history-search/kill-buffer を `self.query_state` へ集約した。`input.rs` / `render.rs` / `pipeline.rs` / `tabs.rs` / `session.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 40 行まで減少。
 - 2026-04-02 Phase 5 completed. `rust/src/entry.rs` を追加して `Entry { path, kind }` を導入し、`EntryKind` / `EntryDisplayKind` を app state から移設した。`indexer.rs`、index/search worker 境界、`FlistWalkerApp` の `all_entries` / `entries`、background index state、tab snapshot を `Vec<Entry>` ベースへ寄せ、`entry_kinds` side-channel を除去した。search 本体アルゴリズムは path ベースのまま worker 境界で投影し、`sort_metadata` cache は計画どおり Phase 5 では未統合のままとした。`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 39 行まで減少。
+- 2026-04-02 Phase 6 着手前に計画更新。`WorkerBus` / `IndexCoordinator` / `tab_state` の全面 private 化は依存面が広く、単独 Phase では破壊範囲が大きいため、Phase 6 は `SearchCoordinator`・cache state・bootstrap seed/bootstrap bag の encapsulation を先行し、高結合 carrier は helper method 導入までに留める方針へ調整した。
+- 2026-04-02 Phase 6 completed. `SearchCoordinator` の request lifecycle を method 化し、`pending_request_id` / `in_progress` / tab map の field 直書きを削減した。あわせて `cache.rs` の preview/highlight/sort metadata cache state と `bootstrap.rs` の seed/bootstrap bag を private 化し、eviction/scope 更新/初期化経路を method 経由へ寄せた。tests も新 accessor に追従し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。
+- 2026-04-02 Phase 7 completed. incremental search/index path の clone hotspot を優先して、`pipeline.rs` に `overwrite_entries_arc` / `overwrite_entries_vec` を追加し、`sync_entries_from_incremental` と `apply_entry_filters` の全量再確保を抑制した。さらに `set_entry_kind` を `Arc::make_mut` ベースへ切り替え、kind 解決時の二重 clone 分岐を単純化した。検証は `cargo test --lib` に加え、`perf_regression_filelist_stream_matches_v0123_reference_budget` と `perf_walker_classification_is_faster_than_eager_metadata_resolution` を `--ignored --nocapture` で実行して通過した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

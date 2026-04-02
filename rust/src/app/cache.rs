@@ -2,26 +2,183 @@ use super::*;
 
 #[derive(Default)]
 pub(super) struct PreviewCacheState {
-    pub(super) entries: HashMap<PathBuf, String>,
-    pub(super) order: VecDeque<PathBuf>,
-    pub(super) total_bytes: usize,
+    entries: HashMap<PathBuf, String>,
+    order: VecDeque<PathBuf>,
+    total_bytes: usize,
 }
 
 #[derive(Default)]
 pub(super) struct HighlightCacheState {
-    pub(super) scope_query: String,
-    pub(super) scope_root: PathBuf,
-    pub(super) scope_use_regex: bool,
-    pub(super) scope_ignore_case: bool,
-    pub(super) scope_prefer_relative: bool,
-    pub(super) entries: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
-    pub(super) order: VecDeque<HighlightCacheKey>,
+    scope_query: String,
+    scope_root: PathBuf,
+    scope_use_regex: bool,
+    scope_ignore_case: bool,
+    scope_prefer_relative: bool,
+    entries: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
+    order: VecDeque<HighlightCacheKey>,
 }
 
 #[derive(Default)]
 pub(super) struct SortMetadataCacheState {
-    pub(super) entries: HashMap<PathBuf, SortMetadata>,
-    pub(super) order: VecDeque<PathBuf>,
+    entries: HashMap<PathBuf, SortMetadata>,
+    order: VecDeque<PathBuf>,
+}
+
+impl PreviewCacheState {
+    pub(super) fn clear(&mut self) {
+        self.entries.clear();
+        self.order.clear();
+        self.total_bytes = 0;
+    }
+
+    fn get(&self, path: &Path) -> Option<&String> {
+        self.entries.get(path)
+    }
+
+    fn insert_bounded(&mut self, path: PathBuf, preview: String, max_bytes: usize) {
+        let new_bytes = preview.len();
+        if let Some(old) = self.entries.get(&path) {
+            self.total_bytes = self.total_bytes.saturating_sub(old.len());
+        }
+        if !self.entries.contains_key(&path) {
+            self.order.push_back(path.clone());
+        }
+        self.entries.insert(path, preview);
+        self.total_bytes = self.total_bytes.saturating_add(new_bytes);
+        while self.total_bytes > max_bytes {
+            if let Some(oldest) = self.order.pop_front() {
+                if let Some(evicted) = self.entries.remove(&oldest) {
+                    self.total_bytes = self.total_bytes.saturating_sub(evicted.len());
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    pub(super) fn total_bytes(&self) -> usize {
+        self.total_bytes
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub(super) fn order_len(&self) -> usize {
+        self.order.len()
+    }
+
+    pub(super) fn contains(&self, path: &Path) -> bool {
+        self.entries.contains_key(path)
+    }
+}
+
+impl HighlightCacheState {
+    pub(super) fn with_scope_ignore_case(scope_ignore_case: bool) -> Self {
+        Self {
+            scope_ignore_case,
+            ..Self::default()
+        }
+    }
+
+    fn clear(&mut self) {
+        self.entries.clear();
+        self.order.clear();
+    }
+
+    fn matches_scope(
+        &self,
+        query: &str,
+        root: &Path,
+        use_regex: bool,
+        ignore_case: bool,
+        prefer_relative: bool,
+    ) -> bool {
+        self.scope_query == query
+            && FlistWalkerApp::path_key(&self.scope_root) == FlistWalkerApp::path_key(root)
+            && self.scope_use_regex == use_regex
+            && self.scope_ignore_case == ignore_case
+            && self.scope_prefer_relative == prefer_relative
+    }
+
+    fn reset_scope(
+        &mut self,
+        query: String,
+        root: PathBuf,
+        use_regex: bool,
+        ignore_case: bool,
+        prefer_relative: bool,
+    ) {
+        self.scope_query = query;
+        self.scope_root = root;
+        self.scope_use_regex = use_regex;
+        self.scope_ignore_case = ignore_case;
+        self.scope_prefer_relative = prefer_relative;
+        self.clear();
+    }
+
+    fn get(&self, key: &HighlightCacheKey) -> Option<Arc<Vec<u16>>> {
+        self.entries.get(key).cloned()
+    }
+
+    fn insert_bounded(&mut self, key: HighlightCacheKey, positions: Vec<u16>, max_entries: usize) {
+        if !self.entries.contains_key(&key) {
+            self.order.push_back(key.clone());
+        }
+        self.entries.insert(key, Arc::new(positions));
+        while self.order.len() > max_entries {
+            if let Some(oldest) = self.order.pop_front() {
+                self.entries.remove(&oldest);
+            }
+        }
+    }
+}
+
+impl SortMetadataCacheState {
+    pub(super) fn clear(&mut self) {
+        self.entries.clear();
+        self.order.clear();
+    }
+
+    pub(super) fn contains(&self, path: &Path) -> bool {
+        self.entries.contains_key(path)
+    }
+
+    pub(super) fn get_map(&self) -> &HashMap<PathBuf, SortMetadata> {
+        &self.entries
+    }
+
+    pub(super) fn insert_bounded(
+        &mut self,
+        path: PathBuf,
+        metadata: SortMetadata,
+        max_entries: usize,
+    ) {
+        if !self.entries.contains_key(&path) {
+            self.order.push_back(path.clone());
+        }
+        self.entries.insert(path.clone(), metadata);
+        while self.order.len() > max_entries {
+            if let Some(oldest) = self.order.pop_front() {
+                self.entries.remove(&oldest);
+            }
+        }
+        if !self.entries.contains_key(&path) {
+            self.order.retain(|entry| entry != &path);
+        }
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub(super) fn order_len(&self) -> usize {
+        self.order.len()
+    }
+
+    pub(super) fn contains_public(&self, path: &Path) -> bool {
+        self.contains(path)
+    }
 }
 
 impl FlistWalkerApp {
@@ -68,66 +225,41 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn clear_preview_cache(&mut self) {
-        self.preview_cache.entries.clear();
-        self.preview_cache.order.clear();
-        self.preview_cache.total_bytes = 0;
+        self.preview_cache.clear();
     }
 
     pub(super) fn cache_preview(&mut self, path: PathBuf, preview: String) {
-        let new_bytes = preview.len();
-        if let Some(old) = self.preview_cache.entries.get(&path) {
-            self.preview_cache.total_bytes =
-                self.preview_cache.total_bytes.saturating_sub(old.len());
-        }
-        if !self.preview_cache.entries.contains_key(&path) {
-            self.preview_cache.order.push_back(path.clone());
-        }
-        self.preview_cache.entries.insert(path, preview);
-        self.preview_cache.total_bytes = self.preview_cache.total_bytes.saturating_add(new_bytes);
-        while self.preview_cache.total_bytes > Self::PREVIEW_CACHE_MAX_BYTES {
-            if let Some(oldest) = self.preview_cache.order.pop_front() {
-                if let Some(evicted) = self.preview_cache.entries.remove(&oldest) {
-                    self.preview_cache.total_bytes =
-                        self.preview_cache.total_bytes.saturating_sub(evicted.len());
-                }
-            } else {
-                break;
-            }
-        }
+        self.preview_cache
+            .insert_bounded(path, preview, Self::PREVIEW_CACHE_MAX_BYTES);
     }
 
     pub(super) fn clear_highlight_cache(&mut self) {
-        self.highlight_cache.entries.clear();
-        self.highlight_cache.order.clear();
+        self.highlight_cache.clear();
     }
 
     pub(super) fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
-        if self.highlight_cache.scope_query == self.query_state.query
-            && Self::path_key(&self.highlight_cache.scope_root) == Self::path_key(&self.root)
-            && self.highlight_cache.scope_use_regex == self.use_regex
-            && self.highlight_cache.scope_ignore_case == self.ignore_case
-            && self.highlight_cache.scope_prefer_relative == prefer_relative
+        if self.highlight_cache.matches_scope(
+            &self.query_state.query,
+            &self.root,
+            self.use_regex,
+            self.ignore_case,
+            prefer_relative,
+        )
         {
             return;
         }
-        self.highlight_cache.scope_query = self.query_state.query.clone();
-        self.highlight_cache.scope_root = self.root.clone();
-        self.highlight_cache.scope_use_regex = self.use_regex;
-        self.highlight_cache.scope_ignore_case = self.ignore_case;
-        self.highlight_cache.scope_prefer_relative = prefer_relative;
-        self.clear_highlight_cache();
+        self.highlight_cache.reset_scope(
+            self.query_state.query.clone(),
+            self.root.clone(),
+            self.use_regex,
+            self.ignore_case,
+            prefer_relative,
+        );
     }
 
     fn cache_highlight_positions_for_key(&mut self, key: HighlightCacheKey, positions: Vec<u16>) {
-        if !self.highlight_cache.entries.contains_key(&key) {
-            self.highlight_cache.order.push_back(key.clone());
-        }
-        self.highlight_cache.entries.insert(key, Arc::new(positions));
-        while self.highlight_cache.order.len() > Self::HIGHLIGHT_CACHE_MAX {
-            if let Some(oldest) = self.highlight_cache.order.pop_front() {
-                self.highlight_cache.entries.remove(&oldest);
-            }
-        }
+        self.highlight_cache
+            .insert_bounded(key, positions, Self::HIGHLIGHT_CACHE_MAX);
     }
 
     fn compact_highlight_positions(positions: HashSet<usize>) -> Vec<u16> {
@@ -159,8 +291,8 @@ impl FlistWalkerApp {
             ignore_case: self.ignore_case,
         };
 
-        if let Some(positions) = self.highlight_cache.entries.get(&key) {
-            return Arc::clone(positions);
+        if let Some(positions) = self.highlight_cache.get(&key) {
+            return positions;
         }
 
         let positions = Self::compact_highlight_positions(match_positions_for_path(
@@ -173,9 +305,7 @@ impl FlistWalkerApp {
         ));
         self.cache_highlight_positions_for_key(key.clone(), positions);
         self.highlight_cache
-            .entries
             .get(&key)
-            .cloned()
             .unwrap_or_else(|| Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new()))))
     }
 
@@ -202,7 +332,7 @@ impl FlistWalkerApp {
 
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
-                if let Some(cached) = self.preview_cache.entries.get(path) {
+                if let Some(cached) = self.preview_cache.get(path) {
                     self.preview = cached.clone();
                     self.worker_bus.preview.in_progress = false;
                     self.worker_bus.preview.pending_request_id = None;

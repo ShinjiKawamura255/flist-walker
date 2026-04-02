@@ -777,7 +777,10 @@ fn background_tab_search_and_preview_responses_are_retained() {
     app.search.tx = search_tx_req;
     app.search.rx = search_rx_res;
     app.enqueue_search_request();
-    let search_request_id = app.search.pending_request_id.expect("search request id");
+    let search_request_id = app
+        .search
+        .pending_request_id()
+        .expect("search request id");
     let first_tab_id = app.tabs[0].id;
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();

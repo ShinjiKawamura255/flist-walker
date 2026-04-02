@@ -9,8 +9,8 @@ fn search_error_updates_notice() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<SearchResponse>();
     app.search.rx = rx;
-    app.search.pending_request_id = Some(7);
-    app.search.in_progress = true;
+    app.search.set_pending_request_id(Some(7));
+    app.search.set_in_progress(true);
 
     tx.send(SearchResponse {
         request_id: 7,
@@ -21,7 +21,7 @@ fn search_error_updates_notice() {
 
     app.poll_search_response();
 
-    assert!(!app.search.in_progress);
+    assert!(!app.search.in_progress());
     assert!(app.notice.contains("Search failed:"));
     assert!(app.notice.contains("invalid regex"));
     let _ = fs::remove_dir_all(&root);
@@ -36,8 +36,8 @@ fn stale_search_response_is_ignored_after_index_refresh() {
     let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
     app.search.rx = search_rx;
     app.indexing.tx = index_tx;
-    app.search.pending_request_id = Some(5);
-    app.search.in_progress = true;
+    app.search.set_pending_request_id(Some(5));
+    app.search.set_in_progress(true);
     app.results = vec![(root.join("before.txt"), 0.0)];
 
     app.request_index_refresh();
@@ -52,8 +52,8 @@ fn stale_search_response_is_ignored_after_index_refresh() {
 
     app.poll_search_response();
 
-    assert!(!app.search.in_progress);
-    assert_eq!(app.search.pending_request_id, None);
+    assert!(!app.search.in_progress());
+    assert_eq!(app.search.pending_request_id(), None);
     assert_eq!(app.results[0].0, root.join("before.txt"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -936,8 +936,8 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     app.indexing.incremental_filtered_entries.clear();
     app.indexing.search_resume_pending = false;
     app.indexing.last_search_snapshot_len = 0;
-    app.search.in_progress = false;
-    app.search.pending_request_id = None;
+    app.search.set_in_progress(false);
+    app.search.set_pending_request_id(None);
     app.indexing.pending_request_id = Some(21);
     app.indexing.in_progress = true;
     app.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
@@ -974,8 +974,8 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     app.indexing.incremental_filtered_entries.clear();
     app.indexing.search_resume_pending = false;
     app.indexing.last_search_snapshot_len = 0;
-    app.search.in_progress = false;
-    app.search.pending_request_id = None;
+    app.search.set_in_progress(false);
+    app.search.set_pending_request_id(None);
     app.indexing.pending_request_id = Some(218);
     app.indexing.in_progress = true;
     app.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);

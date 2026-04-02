@@ -740,14 +740,11 @@ fn preview_cache_is_bounded() {
         app.cache_preview(path, chunk.clone());
     }
 
-    assert!(app.preview_cache.total_bytes <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
-    assert!(!app.preview_cache.order.is_empty());
-    assert_eq!(
-        app.preview_cache.entries.len(),
-        app.preview_cache.order.len()
-    );
+    assert!(app.preview_cache.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
+    assert!(app.preview_cache.order_len() > 0);
+    assert_eq!(app.preview_cache.len(), app.preview_cache.order_len());
     let evicted = root.join("file-0.txt");
-    assert!(!app.preview_cache.entries.contains_key(&evicted));
+    assert!(!app.preview_cache.contains(&evicted));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -924,12 +921,11 @@ fn sort_metadata_cache_is_bounded() {
         );
     }
 
-    assert!(app.sort_metadata_cache.entries.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
-    assert!(app.sort_metadata_cache.order.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.sort_metadata_cache.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.sort_metadata_cache.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
     assert!(!app
         .sort_metadata_cache
-        .entries
-        .contains_key(&root.join("entry-0.txt")));
+        .contains_public(&root.join("entry-0.txt")));
     let _ = fs::remove_dir_all(&root);
 }
 

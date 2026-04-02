@@ -3,10 +3,10 @@ use super::*;
 pub(super) struct SearchCoordinator {
     pub(super) tx: Sender<SearchRequest>,
     pub(super) rx: Receiver<SearchResponse>,
-    pub(super) next_request_id: u64,
-    pub(super) pending_request_id: Option<u64>,
-    pub(super) in_progress: bool,
-    pub(super) request_tabs: HashMap<u64, u64>,
+    next_request_id: u64,
+    pending_request_id: Option<u64>,
+    in_progress: bool,
+    request_tabs: HashMap<u64, u64>,
 }
 
 impl SearchCoordinator {
@@ -19,5 +19,42 @@ impl SearchCoordinator {
             in_progress: false,
             request_tabs: HashMap::new(),
         }
+    }
+
+    pub(super) fn allocate_request_id(&mut self) -> u64 {
+        let request_id = self.next_request_id;
+        self.next_request_id = self.next_request_id.saturating_add(1);
+        request_id
+    }
+
+    pub(super) fn pending_request_id(&self) -> Option<u64> {
+        self.pending_request_id
+    }
+
+    pub(super) fn set_pending_request_id(&mut self, request_id: Option<u64>) {
+        self.pending_request_id = request_id;
+    }
+
+    pub(super) fn in_progress(&self) -> bool {
+        self.in_progress
+    }
+
+    pub(super) fn set_in_progress(&mut self, in_progress: bool) {
+        self.in_progress = in_progress;
+    }
+
+    pub(super) fn bind_request_tab(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tabs.insert(request_id, tab_id);
+    }
+
+    pub(super) fn take_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tabs.remove(&request_id)
+    }
+
+    pub(super) fn retain_request_tabs<F>(&mut self, mut predicate: F)
+    where
+        F: FnMut(&u64, &mut u64) -> bool,
+    {
+        self.request_tabs.retain(|request_id, tab_id| predicate(request_id, tab_id));
     }
 }

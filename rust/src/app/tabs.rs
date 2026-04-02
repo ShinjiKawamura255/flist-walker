@@ -269,10 +269,10 @@ impl FlistWalkerApp {
                 results_compacted: false,
             },
             notice: self.notice.clone(),
-            pending_request_id: self.search.pending_request_id,
+            pending_request_id: self.search.pending_request_id(),
             pending_preview_request_id: self.worker_bus.preview.pending_request_id,
             pending_action_request_id: self.worker_bus.action.pending_request_id,
-            search_in_progress: self.search.in_progress,
+            search_in_progress: self.search.in_progress(),
             preview_in_progress: self.worker_bus.preview.in_progress,
             action_in_progress: self.worker_bus.action.in_progress,
             scroll_to_current: self.ui.scroll_to_current,
@@ -319,10 +319,10 @@ impl FlistWalkerApp {
         self.current_row = tab.result_state.current_row;
         self.preview = tab.result_state.preview.clone();
         self.notice = tab.notice.clone();
-        self.search.pending_request_id = tab.pending_request_id;
+        self.search.set_pending_request_id(tab.pending_request_id);
         self.worker_bus.preview.pending_request_id = tab.pending_preview_request_id;
         self.worker_bus.action.pending_request_id = tab.pending_action_request_id;
-        self.search.in_progress = tab.search_in_progress;
+        self.search.set_in_progress(tab.search_in_progress);
         self.worker_bus.preview.in_progress = tab.preview_in_progress;
         self.worker_bus.action.in_progress = tab.action_in_progress;
         self.ui.scroll_to_current = tab.scroll_to_current;
@@ -515,8 +515,7 @@ impl FlistWalkerApp {
         }
         self.indexing.background_states
             .retain(|request_id, _| self.indexing.request_tabs.contains_key(request_id));
-        self.search.request_tabs
-            .retain(|_, tab_id| *tab_id != removed.id);
+        self.search.retain_request_tabs(|_, tab_id| *tab_id != removed.id);
         self.preview_request_tabs
             .retain(|_, tab_id| *tab_id != removed.id);
         self.action_request_tabs

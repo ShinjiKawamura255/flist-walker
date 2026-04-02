@@ -1,6 +1,20 @@
 use super::*;
 
 impl FlistWalkerApp {
+    fn overwrite_entries_arc(target: &mut Arc<Vec<Entry>>, source: &[Entry]) {
+        if let Some(entries) = Arc::get_mut(target) {
+            entries.clear();
+            entries.extend(source.iter().cloned());
+        } else {
+            *target = Arc::new(source.to_vec());
+        }
+    }
+
+    fn overwrite_entries_vec(target: &mut Vec<Entry>, source: &[Entry]) {
+        target.clear();
+        target.extend(source.iter().cloned());
+    }
+
     pub(super) fn request_index_refresh(&mut self) {
         self.ensure_entry_filters();
         self.invalidate_result_sort(true);
@@ -35,8 +49,8 @@ impl FlistWalkerApp {
             }
         }
         self.indexing.in_progress = true;
-        self.search.pending_request_id = None;
-        self.search.in_progress = false;
+        self.search.set_pending_request_id(None);
+        self.search.set_in_progress(false);
         self.indexing.search_resume_pending = !self.query_state.query.trim().is_empty();
         self.indexing.search_rerun_pending = false;
 
@@ -98,8 +112,8 @@ impl FlistWalkerApp {
         }
         self.indexing.inflight_requests.insert(request_id);
         self.indexing.in_progress = true;
-        self.search.pending_request_id = None;
-        self.search.in_progress = false;
+        self.search.set_pending_request_id(None);
+        self.search.set_in_progress(false);
         self.indexing.search_resume_pending = !self.query_state.query.trim().is_empty();
         self.indexing.search_rerun_pending = false;
 
@@ -390,11 +404,10 @@ impl FlistWalkerApp {
         let Some(tab) = self.tabs.get_mut(tab_index) else {
             return;
         };
-        let request_id = self.search.next_request_id;
-        self.search.next_request_id = self.search.next_request_id.saturating_add(1);
+        let request_id = self.search.allocate_request_id();
         tab.pending_request_id = Some(request_id);
         tab.search_in_progress = true;
-        self.search.request_tabs.insert(request_id, tab.id);
+        self.search.bind_request_tab(request_id, tab.id);
 
         let req = SearchRequest {
             request_id,
@@ -864,13 +877,12 @@ impl FlistWalkerApp {
 
     pub(super) fn enqueue_search_request(&mut self) {
         self.commit_query_history_if_needed(false);
-        let request_id = self.search.next_request_id;
-        self.search.next_request_id = self.search.next_request_id.saturating_add(1);
-        self.search.pending_request_id = Some(request_id);
+        let request_id = self.search.allocate_request_id();
+        self.search.set_pending_request_id(Some(request_id));
         if let Some(tab_id) = self.current_tab_id() {
-            self.search.request_tabs.insert(request_id, tab_id);
+            self.search.bind_request_tab(request_id, tab_id);
         }
-        self.search.in_progress = true;
+        self.search.set_in_progress(true);
         self.refresh_status_line();
 
         let req = SearchRequest {
@@ -885,18 +897,18 @@ impl FlistWalkerApp {
         };
 
         if self.search.tx.send(req).is_err() {
-            self.search.pending_request_id = None;
-            self.search.in_progress = false;
+            self.search.set_pending_request_id(None);
+            self.search.set_in_progress(false);
             self.set_notice("Search worker is unavailable");
         }
     }
 
     pub(super) fn poll_search_response(&mut self) {
         while let Ok(response) = self.search.rx.try_recv() {
-            let target_tab_id = self.search.request_tabs.remove(&response.request_id);
-            if Some(response.request_id) == self.search.pending_request_id {
-                self.search.pending_request_id = None;
-                self.search.in_progress = false;
+            let target_tab_id = self.search.take_request_tab(response.request_id);
+            if Some(response.request_id) == self.search.pending_request_id() {
+                self.search.set_pending_request_id(None);
+                self.search.set_in_progress(false);
                 if let Some(error) = response.error {
                     self.set_notice(format!("Search failed: {error}"));
                 } else {
@@ -955,8 +967,8 @@ impl FlistWalkerApp {
 
     pub(super) fn update_results(&mut self) {
         if self.query_state.query.trim().is_empty() {
-            self.search.pending_request_id = None;
-            self.search.in_progress = false;
+            self.search.set_pending_request_id(None);
+            self.search.set_in_progress(false);
             let results = self
                 .entries
                 .iter()
@@ -1032,13 +1044,13 @@ impl FlistWalkerApp {
     }
 
     fn sync_entries_from_incremental(&mut self) {
-        self.entries = Arc::new(self.indexing.incremental_filtered_entries.clone());
+        Self::overwrite_entries_arc(&mut self.entries, &self.indexing.incremental_filtered_entries);
     }
 
     fn apply_incremental_empty_query_results(&mut self) {
         self.sync_entries_from_incremental();
-        self.search.pending_request_id = None;
-        self.search.in_progress = false;
+        self.search.set_pending_request_id(None);
+        self.search.set_in_progress(false);
         let results = self
             .entries
             .iter()
@@ -1055,7 +1067,7 @@ impl FlistWalkerApp {
         }
 
         if self.indexing.search_resume_pending {
-            if self.search.in_progress {
+            if self.search.in_progress() {
                 self.indexing.search_rerun_pending = true;
                 return;
             }
@@ -1069,7 +1081,7 @@ impl FlistWalkerApp {
 
         let current_len = self.indexing.incremental_filtered_entries.len();
         if self.should_refresh_incremental_search() {
-            if self.search.in_progress {
+            if self.search.in_progress() {
                 self.indexing.search_rerun_pending = true;
                 return;
             }
@@ -1123,7 +1135,10 @@ impl FlistWalkerApp {
             self.entries = Arc::new(self.filtered_entries(base));
         }
         if self.indexing.in_progress {
-            self.indexing.incremental_filtered_entries = self.entries.as_ref().clone();
+            Self::overwrite_entries_vec(
+                &mut self.indexing.incremental_filtered_entries,
+                self.entries.as_ref(),
+            );
         } else {
             self.indexing.incremental_filtered_entries.clear();
         }
@@ -1131,8 +1146,8 @@ impl FlistWalkerApp {
         self.indexing.search_rerun_pending = false;
 
         if self.query_state.query.trim().is_empty() {
-            self.search.pending_request_id = None;
-            self.search.in_progress = false;
+            self.search.set_pending_request_id(None);
+            self.search.set_in_progress(false);
             let results = self
                 .entries
                 .iter()

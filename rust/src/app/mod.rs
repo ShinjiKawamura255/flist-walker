@@ -409,12 +409,23 @@ Search hints:
         launch: LaunchSettings,
         restore_session: Option<(Vec<SavedTabState>, usize)>,
     ) -> Self {
-        let bootstrap = Self::bootstrap_workers();
-        let seed = Self::launch_seed(root, limit, query, &launch);
+        let (search_tx, search_rx, worker_bus, index_tx, index_rx, latest_index_request_ids, worker_runtime) =
+            Self::bootstrap_workers().into_parts();
+        let (
+            root,
+            limit,
+            query,
+            query_history,
+            saved_roots,
+            default_root,
+            show_preview,
+            preview_panel_width,
+            update_state,
+        ) = Self::launch_seed(root, limit, query, &launch).into_parts();
         let mut app = Self {
-            root: seed.root,
-            limit: seed.limit,
-            query_state: QueryState::new(seed.query, seed.query_history),
+            root,
+            limit,
+            query_state: QueryState::new(query, query_history),
             pending_restore_refresh: false,
             use_filelist: true,
             use_regex: false,
@@ -435,23 +446,20 @@ Search hints:
             preview: String::new(),
             notice: String::new(),
             status_line: "Initializing...".to_string(),
-            search: SearchCoordinator::new(bootstrap.search_tx, bootstrap.search_rx),
-            worker_bus: bootstrap.worker_bus,
+            search: SearchCoordinator::new(search_tx, search_rx),
+            worker_bus,
             indexing: IndexCoordinator::new(
-                bootstrap.index_tx,
-                bootstrap.index_rx,
-                bootstrap.latest_index_request_ids,
+                index_tx,
+                index_rx,
+                latest_index_request_ids,
             ),
-            ui: RuntimeUiState::new(seed.show_preview, seed.preview_panel_width),
+            ui: RuntimeUiState::new(show_preview, preview_panel_width),
             #[cfg(test)]
             browse_dialog_result: None,
-            saved_roots: seed.saved_roots,
-            default_root: seed.default_root,
+            saved_roots,
+            default_root,
             preview_cache: PreviewCacheState::default(),
-            highlight_cache: HighlightCacheState {
-                scope_ignore_case: true,
-                ..HighlightCacheState::default()
-            },
+            highlight_cache: HighlightCacheState::with_scope_ignore_case(true),
             sort_metadata_cache: SortMetadataCacheState::default(),
             tabs: Vec::new(),
             active_tab: 0,
@@ -460,8 +468,8 @@ Search hints:
             action_request_tabs: HashMap::new(),
             sort_request_tabs: HashMap::new(),
             filelist_state: FileListWorkflowState::default(),
-            update_state: seed.update_state,
-            worker_runtime: Some(bootstrap.worker_runtime),
+            update_state,
+            worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
@@ -488,27 +496,12 @@ Search hints:
     }
 
     fn clear_sort_metadata_cache(&mut self) {
-        self.sort_metadata_cache.entries.clear();
-        self.sort_metadata_cache.order.clear();
+        self.sort_metadata_cache.clear();
     }
 
     fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
-        if !self.sort_metadata_cache.entries.contains_key(&path) {
-            self.sort_metadata_cache.order.push_back(path.clone());
-        }
         self.sort_metadata_cache
-            .entries
-            .insert(path.clone(), metadata);
-        while self.sort_metadata_cache.order.len() > Self::SORT_METADATA_CACHE_MAX {
-            if let Some(oldest) = self.sort_metadata_cache.order.pop_front() {
-                self.sort_metadata_cache.entries.remove(&oldest);
-            }
-        }
-        if !self.sort_metadata_cache.entries.contains_key(&path) {
-            self.sort_metadata_cache
-                .order
-                .retain(|entry| entry != &path);
-        }
+            .insert_bounded(path, metadata, Self::SORT_METADATA_CACHE_MAX);
     }
 
     fn sort_metadata_value(metadata: SortMetadata, mode: ResultSortMode) -> Option<SystemTime> {
@@ -598,7 +591,7 @@ Search hints:
     }
 
     fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
-        Self::build_sorted_results_from(&self.base_results, mode, &self.sort_metadata_cache.entries)
+        Self::build_sorted_results_from(&self.base_results, mode, self.sort_metadata_cache.get_map())
     }
 
     fn replace_results_snapshot(
@@ -678,7 +671,7 @@ Search hints:
             .base_results
             .iter()
             .map(|(path, _)| path.clone())
-            .filter(|path| !self.sort_metadata_cache.entries.contains_key(path))
+            .filter(|path| !self.sort_metadata_cache.contains(path))
             .collect::<Vec<_>>();
         if missing_paths.is_empty() {
             let sorted = self.build_sorted_results(self.result_sort_mode);
@@ -935,7 +928,7 @@ Search hints:
         } else {
             format!(" | Pinned: {}", self.pinned_paths.len())
         };
-        let searching = if self.search.in_progress {
+        let searching = if self.search.in_progress() {
             " | Searching..."
         } else {
             ""
@@ -1100,7 +1093,7 @@ Search hints:
                 tab.result_state.results = Self::build_sorted_results_from(
                     &tab.result_state.base_results,
                     tab.result_state.result_sort_mode,
-                    &self.sort_metadata_cache.entries,
+                    self.sort_metadata_cache.get_map(),
                 );
                 tab.result_state.results_compacted = false;
                 if tab.result_state.results.is_empty() {
@@ -1320,22 +1313,15 @@ Search hints:
         updated
     }
 
+    fn set_entry_kind_in_arc(entries: &mut Arc<Vec<Entry>>, path: &Path, kind: EntryKind) {
+        let entries = Arc::make_mut(entries);
+        let _ = Self::set_entry_kind_in_slice(entries.as_mut_slice(), path, kind);
+    }
+
     fn set_entry_kind(&mut self, path: &Path, kind: EntryKind) {
         let _ = Self::set_entry_kind_in_slice(&mut self.index.entries, path, kind);
-        if let Some(entries) = Arc::get_mut(&mut self.all_entries) {
-            let _ = Self::set_entry_kind_in_slice(entries, path, kind);
-        } else {
-            let mut entries = self.all_entries.as_ref().clone();
-            let _ = Self::set_entry_kind_in_slice(&mut entries, path, kind);
-            self.all_entries = Arc::new(entries);
-        }
-        if let Some(entries) = Arc::get_mut(&mut self.entries) {
-            let _ = Self::set_entry_kind_in_slice(entries, path, kind);
-        } else {
-            let mut entries = self.entries.as_ref().clone();
-            let _ = Self::set_entry_kind_in_slice(&mut entries, path, kind);
-            self.entries = Arc::new(entries);
-        }
+        Self::set_entry_kind_in_arc(&mut self.all_entries, path, kind);
+        Self::set_entry_kind_in_arc(&mut self.entries, path, kind);
         let _ = Self::set_entry_kind_in_slice(&mut self.indexing.incremental_filtered_entries, path, kind);
     }
 
@@ -1548,7 +1534,7 @@ impl eframe::App for FlistWalkerApp {
         } else {
             ctx.request_repaint_after(Self::MEMORY_SAMPLE_INTERVAL - memory_elapsed);
         }
-        if self.search.in_progress
+        if self.search.in_progress()
             || self.indexing.in_progress
             || self.worker_bus.preview.in_progress
             || self.worker_bus.action.in_progress
