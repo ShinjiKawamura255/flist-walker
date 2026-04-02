@@ -86,7 +86,7 @@ impl FlistWalkerApp {
             propagate_to_ancestors,
             cancel,
         };
-        if self.filelist_tx.send(req).is_err() {
+        if self.worker_bus.filelist.tx.send(req).is_err() {
             self.filelist_state.pending_request_id = None;
             self.filelist_state.pending_request_tab_id = None;
             self.filelist_state.pending_root = None;
@@ -343,7 +343,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_filelist_response(&mut self) {
-        while let Ok(response) = self.filelist_rx.try_recv() {
+        while let Ok(response) = self.worker_bus.filelist.rx.try_recv() {
             let Some(pending) = self.filelist_state.pending_request_id else {
                 continue;
             };

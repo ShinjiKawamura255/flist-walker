@@ -213,13 +213,13 @@
 - [x] P1-4: `cargo build` + `cargo test --lib` green
 
 ### Phase 2
-- [ ] P2-1: `WorkerBus` struct を設計 (preview/action/sort/kind/filelist/update のチャネルペアと request_id/in_progress)
-- [ ] P2-2: `worker_bus.rs` を新規作成
-- [ ] P2-3: `FlistWalkerApp` から該当フィールドを移動
-- [ ] P2-4: `bootstrap.rs` を `WorkerBus` 生成に対応
-- [ ] P2-5: `pipeline.rs`, `filelist.rs`, `update.rs`, `cache.rs`, `render.rs` のアクセスパスを更新
-- [ ] P2-6: テスト内の直接フィールドアクセスを更新
-- [ ] P2-7: `cargo test --lib` green
+- [x] P2-1: `WorkerBus` struct を設計 (preview/action/sort/kind/filelist/update のチャネルペアと request_id/in_progress)
+- [x] P2-2: `worker_bus.rs` を新規作成
+- [x] P2-3: `FlistWalkerApp` から該当フィールドを移動
+- [x] P2-4: `bootstrap.rs` を `WorkerBus` 生成に対応
+- [x] P2-5: `pipeline.rs`, `filelist.rs`, `update.rs`, `cache.rs`, `render.rs` のアクセスパスを更新
+- [x] P2-6: テスト内の直接フィールドアクセスを更新
+- [x] P2-7: `cargo test --lib` green
 
 ### Phase 3
 - [ ] P3-1: `UiState` struct を設計
@@ -311,6 +311,7 @@
 - 2026-04-02 20:19 Planned.
 - 2026-04-02 Phase 0 completed. `cargo test --lib` は現行ブランチで green（327 passed, 0 failed, 3 ignored）だったため、failure 修正ではなく baseline 再確認と計画同期のみを実施。
 - 2026-04-02 Phase 1 completed. `rust/src/app/mod.rs` の wildcard import を明示 import へ置換し、test 専用 helper import は `rust/src/app/tests/app_core.rs` へ局所化した。`cargo build` と `cargo test --lib` を実行済み。
+- 2026-04-02 Phase 2 completed. `rust/src/app/worker_bus.rs` を追加し、preview/action/sort/kind/filelist/update の worker channel と app-level request/in-progress state を `WorkerBus` へ集約した。`bootstrap.rs` と app/tests 一式のアクセス経路を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 68 行まで減少。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

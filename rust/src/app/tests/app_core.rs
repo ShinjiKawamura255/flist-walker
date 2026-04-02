@@ -174,8 +174,8 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.action_tx = action_tx_req;
-    app.action_rx = action_rx_res;
+    app.worker_bus.action.tx = action_tx_req;
+    app.worker_bus.action.rx = action_rx_res;
     app.results = vec![(missing.clone(), 0.0)];
     app.current_row = Some(0);
 
@@ -186,8 +186,8 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
         .expect("action request should be enqueued");
     assert_eq!(req.paths, vec![missing]);
     assert!(!req.open_parent_for_files);
-    assert!(app.pending_action_request_id.is_some());
-    assert!(app.action_in_progress);
+    assert!(app.worker_bus.action.pending_request_id.is_some());
+    assert!(app.worker_bus.action.in_progress);
     assert!(!app.notice.starts_with("Action failed:"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -202,8 +202,8 @@ fn execute_selected_for_activation_uses_open_folder_mode_when_requested() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.action_tx = action_tx_req;
-    app.action_rx = action_rx_res;
+    app.worker_bus.action.tx = action_tx_req;
+    app.worker_bus.action.rx = action_rx_res;
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
 
@@ -231,8 +231,8 @@ fn execute_selected_notice_normalizes_extended_prefix() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, _action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.action_tx = action_tx_req;
-    app.action_rx = action_rx_res;
+    app.worker_bus.action.tx = action_tx_req;
+    app.worker_bus.action.rx = action_rx_res;
     app.results = vec![(extended, 0.0)];
     app.current_row = Some(0);
 
@@ -254,8 +254,8 @@ fn execute_selected_blocks_path_outside_current_root() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.action_tx = action_tx_req;
-    app.action_rx = action_rx_res;
+    app.worker_bus.action.tx = action_tx_req;
+    app.worker_bus.action.rx = action_rx_res;
     app.results = vec![(outside.clone(), 0.0)];
     app.current_row = Some(0);
 
@@ -266,8 +266,8 @@ fn execute_selected_blocks_path_outside_current_root() {
         "action request must not be enqueued"
     );
     assert!(app.notice.contains("outside current root"));
-    assert!(app.pending_action_request_id.is_none());
-    assert!(!app.action_in_progress);
+    assert!(app.worker_bus.action.pending_request_id.is_none());
+    assert!(!app.worker_bus.action.in_progress);
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&outside_root);
 }
@@ -279,8 +279,8 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.action_tx = action_tx_req;
-    app.action_rx = action_rx_res;
+    app.worker_bus.action.tx = action_tx_req;
+    app.worker_bus.action.rx = action_rx_res;
     app.results = vec![(child.clone(), 0.0)];
     app.current_row = Some(0);
 
@@ -290,8 +290,8 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
         .try_recv()
         .expect("UNC-like child should be enqueued");
     assert_eq!(req.paths, vec![child]);
-    assert!(app.pending_action_request_id.is_some());
-    assert!(app.action_in_progress);
+    assert!(app.worker_bus.action.pending_request_id.is_some());
+    assert!(app.worker_bus.action.in_progress);
 }
 
 #[test]
@@ -336,10 +336,10 @@ fn stale_action_completion_is_ignored_by_request_id() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<ActionResponse>();
-    app.action_rx = rx;
+    app.worker_bus.action.rx = rx;
     app.notice = "latest notice".to_string();
-    app.pending_action_request_id = Some(2);
-    app.action_in_progress = true;
+    app.worker_bus.action.pending_request_id = Some(2);
+    app.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.action_request_tabs.insert(1, tab_id);
     app.action_request_tabs.insert(2, tab_id);
@@ -354,8 +354,8 @@ fn stale_action_completion_is_ignored_by_request_id() {
     app.poll_action_response();
 
     assert_eq!(app.notice, "latest notice");
-    assert_eq!(app.pending_action_request_id, Some(2));
-    assert!(app.action_in_progress);
+    assert_eq!(app.worker_bus.action.pending_request_id, Some(2));
+    assert!(app.worker_bus.action.in_progress);
 
     tx.send(ActionResponse {
         request_id: 2,
@@ -365,8 +365,8 @@ fn stale_action_completion_is_ignored_by_request_id() {
     app.poll_action_response();
 
     assert_eq!(app.notice, "Action: latest");
-    assert_eq!(app.pending_action_request_id, None);
-    assert!(!app.action_in_progress);
+    assert_eq!(app.worker_bus.action.pending_request_id, None);
+    assert!(!app.worker_bus.action.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -384,7 +384,7 @@ fn available_update_response_opens_prompt() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
 
@@ -422,7 +422,7 @@ fn skipped_update_response_is_not_prompted_again_until_newer_version() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
     app.update_state.skipped_target_version = Some("0.12.4".to_string());
@@ -447,7 +447,7 @@ fn newer_update_response_ignores_previous_skip_version() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
     app.update_state.skipped_target_version = Some("0.12.4".to_string());
@@ -478,7 +478,7 @@ fn failed_update_response_sets_notice_without_closing_app() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
 
@@ -503,7 +503,7 @@ fn update_check_failure_opens_failure_dialog() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
     app.notice = "Existing notice".to_string();
@@ -537,7 +537,7 @@ fn suppressed_update_check_failure_does_not_open_dialog() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
     app.update_state.suppress_check_failure_dialog = true;
@@ -565,7 +565,7 @@ fn forced_update_check_failure_bypasses_suppression_flag() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
     app.update_state.suppress_check_failure_dialog = true;
@@ -620,7 +620,7 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateRequest>();
-    app.update_tx = tx;
+    app.worker_bus.update.tx = tx;
     app.update_state.prompt = Some(UpdatePromptState {
         candidate: test_update_candidate("0.13.1"),
         skip_until_next_version: false,
@@ -654,7 +654,7 @@ fn failed_update_response_reenables_update_prompt_actions() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
-    app.update_rx = rx;
+    app.worker_bus.update.rx = rx;
     app.update_state.pending_request_id = Some(1);
     app.update_state.in_progress = true;
     app.update_state.prompt = Some(UpdatePromptState {
@@ -690,7 +690,7 @@ fn action_progress_label_is_shown_only_while_action_runs() {
 
     assert_eq!(app.action_progress_label(), None);
 
-    app.action_in_progress = true;
+    app.worker_bus.action.in_progress = true;
     assert_eq!(app.action_progress_label(), Some("Opening..."));
 
     let _ = fs::remove_dir_all(&root);
@@ -860,14 +860,14 @@ fn query_edit_invalidates_result_sort_and_cancels_pending_request() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
 
     app.result_sort_mode = ResultSortMode::ModifiedDesc;
-    app.sort_in_progress = true;
-    app.pending_sort_request_id = Some(42);
+    app.worker_bus.sort.in_progress = true;
+    app.worker_bus.sort.pending_request_id = Some(42);
 
     app.mark_query_edited();
 
     assert_eq!(app.result_sort_mode, ResultSortMode::Score);
-    assert!(!app.sort_in_progress);
-    assert!(app.pending_sort_request_id.is_none());
+    assert!(!app.worker_bus.sort.in_progress);
+    assert!(app.worker_bus.sort.pending_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -994,14 +994,14 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
     app.current_row = Some(0);
     app.entry_kinds.insert(file, EntryKind::file());
     app.preview = "stale preview".to_string();
-    app.pending_preview_request_id = Some(99);
-    app.preview_in_progress = true;
+    app.worker_bus.preview.pending_request_id = Some(99);
+    app.worker_bus.preview.in_progress = true;
 
     app.request_preview_for_current();
 
     assert!(app.preview.is_empty());
-    assert!(!app.preview_in_progress);
-    assert!(app.pending_preview_request_id.is_none());
+    assert!(!app.worker_bus.preview.in_progress);
+    assert!(app.worker_bus.preview.pending_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
 }
 

@@ -276,7 +276,7 @@ fn deferred_filelist_starts_after_index_finished() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
-    app.filelist_tx = filelist_tx;
+    app.worker_bus.filelist.tx = filelist_tx;
     let (index_tx, index_rx) = mpsc::channel::<IndexResponse>();
     app.indexing.rx = index_rx;
 
@@ -364,7 +364,7 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.indexing.tx = index_tx;
-    app.filelist_rx = filelist_rx;
+    app.worker_bus.filelist.rx = filelist_rx;
     app.filelist_state.pending_request_id = Some(1);
     app.filelist_state.pending_request_tab_id = Some(source_tab_id);
     app.filelist_state.pending_root = Some(root_a.clone());
@@ -419,7 +419,7 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.indexing.tx = index_tx;
-    app.filelist_rx = filelist_rx;
+    app.worker_bus.filelist.rx = filelist_rx;
     app.filelist_state.pending_request_id = Some(2);
     app.filelist_state.pending_request_tab_id = Some(source_tab_id);
     app.filelist_state.pending_root = Some(root_old.clone());
@@ -549,7 +549,7 @@ fn filelist_finished_updates_state_and_notice() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = rx;
+    app.worker_bus.filelist.rx = rx;
     app.filelist_state.pending_request_id = Some(11);
     app.filelist_state.pending_request_tab_id = app.current_tab_id();
     app.filelist_state.pending_root = Some(root.clone());
@@ -587,7 +587,7 @@ fn filelist_finished_enables_use_filelist_for_creator_tab() {
     app.sync_active_tab_state();
     let creator_tab_id = app.tabs[0].id;
     let (tx, rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = rx;
+    app.worker_bus.filelist.rx = rx;
     app.filelist_state.pending_request_id = Some(101);
     app.filelist_state.pending_request_tab_id = Some(creator_tab_id);
     app.filelist_state.pending_root = Some(root.clone());
@@ -644,7 +644,7 @@ fn confirm_pending_overwrite_starts_filelist_creation() {
     let entries = vec![root.join("src/main.rs")];
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
-    app.filelist_tx = filelist_tx;
+    app.worker_bus.filelist.tx = filelist_tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.filelist_state.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
@@ -750,7 +750,7 @@ fn denying_ancestor_propagation_still_creates_root_filelist() {
     app.all_entries = Arc::new(vec![root.join("main.rs")]);
     app.entries = Arc::clone(&app.all_entries);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
-    app.filelist_tx = filelist_tx;
+    app.worker_bus.filelist.tx = filelist_tx;
 
     app.create_filelist();
     app.skip_pending_filelist_ancestor_propagation();
@@ -771,7 +771,7 @@ fn filelist_finished_triggers_reindex_when_enabled() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = filelist_rx;
+    app.worker_bus.filelist.rx = filelist_rx;
     let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = index_tx;
     app.filelist_state.pending_request_id = Some(12);
@@ -805,7 +805,7 @@ fn filelist_failed_updates_state_and_notice() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = rx;
+    app.worker_bus.filelist.rx = rx;
     app.filelist_state.pending_request_id = Some(13);
     app.filelist_state.pending_request_tab_id = app.current_tab_id();
     app.filelist_state.pending_root = Some(root.clone());
@@ -833,7 +833,7 @@ fn filelist_canceled_updates_state_and_notice() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = rx;
+    app.worker_bus.filelist.rx = rx;
     app.filelist_state.pending_request_id = Some(14);
     app.filelist_state.pending_request_tab_id = app.current_tab_id();
     app.filelist_state.pending_root = Some(root.clone());
@@ -865,7 +865,7 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     fs::create_dir_all(&root_new).expect("create new dir");
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = filelist_rx;
+    app.worker_bus.filelist.rx = filelist_rx;
     let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = _index_tx;
     app.filelist_state.pending_request_id = Some(51);
@@ -901,7 +901,7 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
     fs::create_dir_all(&root_new).expect("create new dir");
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
-    app.filelist_rx = rx;
+    app.worker_bus.filelist.rx = rx;
     app.filelist_state.pending_request_id = Some(52);
     app.filelist_state.pending_request_tab_id = app.current_tab_id();
     app.filelist_state.pending_root = Some(root_old.clone());
@@ -1314,7 +1314,7 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
     app.indexing.rx = rx;
-    app.kind_tx = kind_tx;
+    app.worker_bus.kind.tx = kind_tx;
     let req_id = app.indexing.pending_request_id.expect("pending request");
     app.include_files = true;
     app.include_dirs = true;
@@ -1430,7 +1430,7 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     assert!(app.entries.is_empty());
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
-    app.kind_rx = rx;
+    app.worker_bus.kind.rx = rx;
     app.indexing.in_flight_kind_paths.insert(dir.clone());
     tx.send(KindResolveResponse {
         epoch: app.indexing.kind_resolution_epoch,
@@ -1488,7 +1488,7 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<KindResolveRequest>();
-    app.kind_tx = tx;
+    app.worker_bus.kind.tx = tx;
     app.results = vec![(path.clone(), 0.0)];
     app.current_row = Some(0);
     app.include_files = true;
@@ -1501,8 +1501,8 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
     assert_eq!(req.path, path);
     assert_eq!(req.epoch, app.indexing.kind_resolution_epoch);
     assert_eq!(app.preview, "Resolving entry type...");
-    assert!(app.pending_preview_request_id.is_none());
-    assert!(!app.preview_in_progress);
+    assert!(app.worker_bus.preview.pending_request_id.is_none());
+    assert!(!app.worker_bus.preview.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1616,7 +1616,7 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
-    app.filelist_tx = filelist_tx;
+    app.worker_bus.filelist.tx = filelist_tx;
     app.use_filelist = true;
     app.index.source = IndexSource::Walker;
     app.indexing.in_progress = false;
@@ -1671,7 +1671,7 @@ fn dialog_space_confirms_selected_dialog_action() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
-    app.filelist_tx = filelist_tx;
+    app.worker_bus.filelist.tx = filelist_tx;
     app.filelist_state.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: app.current_tab_id().expect("tab id"),
         root: root.clone(),

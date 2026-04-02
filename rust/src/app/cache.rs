@@ -26,11 +26,11 @@ pub(super) struct SortMetadataCacheState {
 
 impl FlistWalkerApp {
     pub(super) fn poll_preview_response(&mut self) {
-        while let Ok(response) = self.preview_rx.try_recv() {
+        while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
             let target_tab_id = self.preview_request_tabs.remove(&response.request_id);
-            if Some(response.request_id) == self.pending_preview_request_id {
-                self.pending_preview_request_id = None;
-                self.preview_in_progress = false;
+            if Some(response.request_id) == self.worker_bus.preview.pending_request_id {
+                self.worker_bus.preview.pending_request_id = None;
+                self.worker_bus.preview.in_progress = false;
                 self.cache_preview(response.path.clone(), response.preview.clone());
                 if let Some(row) = self.current_row {
                     if let Some((current_path, _)) = self.results.get(row) {
@@ -195,8 +195,8 @@ impl FlistWalkerApp {
     pub(super) fn request_preview_for_current(&mut self) {
         if !self.show_preview {
             self.preview.clear();
-            self.preview_in_progress = false;
-            self.pending_preview_request_id = None;
+            self.worker_bus.preview.in_progress = false;
+            self.worker_bus.preview.pending_request_id = None;
             return;
         }
 
@@ -204,8 +204,8 @@ impl FlistWalkerApp {
             if let Some((path, _)) = self.results.get(row) {
                 if let Some(cached) = self.preview_cache.entries.get(path) {
                     self.preview = cached.clone();
-                    self.preview_in_progress = false;
-                    self.pending_preview_request_id = None;
+                    self.worker_bus.preview.in_progress = false;
+                    self.worker_bus.preview.pending_request_id = None;
                     return;
                 }
 
@@ -213,8 +213,8 @@ impl FlistWalkerApp {
                     self.preview = "Resolving entry type...".to_string();
                     self.queue_kind_resolution(path.clone());
                     self.pump_kind_resolution_requests();
-                    self.preview_in_progress = false;
-                    self.pending_preview_request_id = None;
+                    self.worker_bus.preview.in_progress = false;
+                    self.worker_bus.preview.pending_request_id = None;
                     return;
                 };
                 let is_dir = kind.is_dir;
@@ -222,33 +222,34 @@ impl FlistWalkerApp {
                     let preview = build_preview_text_with_kind(path, is_dir);
                     self.cache_preview(path.clone(), preview.clone());
                     self.preview = preview;
-                    self.preview_in_progress = false;
-                    self.pending_preview_request_id = None;
+                    self.worker_bus.preview.in_progress = false;
+                    self.worker_bus.preview.pending_request_id = None;
                     return;
                 }
                 self.preview = "Loading preview...".to_string();
-                let request_id = self.next_preview_request_id;
-                self.next_preview_request_id = self.next_preview_request_id.saturating_add(1);
-                self.pending_preview_request_id = Some(request_id);
+                let request_id = self.worker_bus.preview.next_request_id;
+                self.worker_bus.preview.next_request_id =
+                    self.worker_bus.preview.next_request_id.saturating_add(1);
+                self.worker_bus.preview.pending_request_id = Some(request_id);
                 if let Some(tab_id) = self.current_tab_id() {
                     self.preview_request_tabs.insert(request_id, tab_id);
                 }
-                self.preview_in_progress = true;
+                self.worker_bus.preview.in_progress = true;
                 let req = PreviewRequest {
                     request_id,
                     path: path.clone(),
                     is_dir,
                 };
-                if self.preview_tx.send(req).is_err() {
-                    self.preview_in_progress = false;
-                    self.pending_preview_request_id = None;
+                if self.worker_bus.preview.tx.send(req).is_err() {
+                    self.worker_bus.preview.in_progress = false;
+                    self.worker_bus.preview.pending_request_id = None;
                     self.preview = "<preview unavailable>".to_string();
                 }
                 return;
             }
         }
         self.preview.clear();
-        self.preview_in_progress = false;
-        self.pending_preview_request_id = None;
+        self.worker_bus.preview.in_progress = false;
+        self.worker_bus.preview.pending_request_id = None;
     }
 }

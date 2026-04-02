@@ -263,8 +263,8 @@ impl FlistWalkerApp {
                 base_results: self.base_results.clone(),
                 results: self.results.clone(),
                 result_sort_mode: self.result_sort_mode,
-                pending_sort_request_id: self.pending_sort_request_id,
-                sort_in_progress: self.sort_in_progress,
+                pending_sort_request_id: self.worker_bus.sort.pending_request_id,
+                sort_in_progress: self.worker_bus.sort.in_progress,
                 pinned_paths: self.pinned_paths.clone(),
                 current_row: self.current_row,
                 preview: self.preview.clone(),
@@ -272,11 +272,11 @@ impl FlistWalkerApp {
             },
             notice: self.notice.clone(),
             pending_request_id: self.search.pending_request_id,
-            pending_preview_request_id: self.pending_preview_request_id,
-            pending_action_request_id: self.pending_action_request_id,
+            pending_preview_request_id: self.worker_bus.preview.pending_request_id,
+            pending_action_request_id: self.worker_bus.action.pending_request_id,
             search_in_progress: self.search.in_progress,
-            preview_in_progress: self.preview_in_progress,
-            action_in_progress: self.action_in_progress,
+            preview_in_progress: self.worker_bus.preview.in_progress,
+            action_in_progress: self.worker_bus.action.in_progress,
             scroll_to_current: self.scroll_to_current,
             focus_query_requested: self.focus_query_requested,
             unfocus_query_requested: self.unfocus_query_requested,
@@ -316,18 +316,18 @@ impl FlistWalkerApp {
         self.base_results = tab.result_state.base_results.clone();
         self.results = tab.result_state.results.clone();
         self.result_sort_mode = tab.result_state.result_sort_mode;
-        self.pending_sort_request_id = tab.result_state.pending_sort_request_id;
-        self.sort_in_progress = tab.result_state.sort_in_progress;
+        self.worker_bus.sort.pending_request_id = tab.result_state.pending_sort_request_id;
+        self.worker_bus.sort.in_progress = tab.result_state.sort_in_progress;
         self.pinned_paths = tab.result_state.pinned_paths.clone();
         self.current_row = tab.result_state.current_row;
         self.preview = tab.result_state.preview.clone();
         self.notice = tab.notice.clone();
         self.search.pending_request_id = tab.pending_request_id;
-        self.pending_preview_request_id = tab.pending_preview_request_id;
-        self.pending_action_request_id = tab.pending_action_request_id;
+        self.worker_bus.preview.pending_request_id = tab.pending_preview_request_id;
+        self.worker_bus.action.pending_request_id = tab.pending_action_request_id;
         self.search.in_progress = tab.search_in_progress;
-        self.preview_in_progress = tab.preview_in_progress;
-        self.action_in_progress = tab.action_in_progress;
+        self.worker_bus.preview.in_progress = tab.preview_in_progress;
+        self.worker_bus.action.in_progress = tab.action_in_progress;
         self.scroll_to_current = tab.scroll_to_current;
         self.focus_query_requested = tab.focus_query_requested;
         self.unfocus_query_requested = tab.unfocus_query_requested;

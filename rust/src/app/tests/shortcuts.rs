@@ -914,8 +914,8 @@ fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.action_tx = action_tx_req;
-    app.action_rx = action_rx_res;
+    app.worker_bus.action.tx = action_tx_req;
+    app.worker_bus.action.rx = action_rx_res;
     app.results = vec![(selected_file.clone(), 0.0)];
     app.current_row = Some(0);
 

@@ -782,10 +782,14 @@ fn background_tab_search_and_preview_responses_are_retained() {
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
     let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
-    app.preview_tx = preview_tx_req;
-    app.preview_rx = preview_rx_res;
+    app.worker_bus.preview.tx = preview_tx_req;
+    app.worker_bus.preview.rx = preview_rx_res;
     app.request_preview_for_current();
-    let preview_request_id = app.pending_preview_request_id.expect("preview request id");
+    let preview_request_id = app
+        .worker_bus
+        .preview
+        .pending_request_id
+        .expect("preview request id");
 
     app.create_new_tab();
     assert_eq!(app.active_tab, 1);

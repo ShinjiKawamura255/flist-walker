@@ -52,8 +52,8 @@ impl FlistWalkerApp {
         self.indexing.in_flight_kind_paths.clear();
         self.indexing.kind_resolution_in_progress = false;
         self.indexing.kind_resolution_epoch = self.indexing.kind_resolution_epoch.saturating_add(1);
-        self.pending_preview_request_id = None;
-        self.preview_in_progress = false;
+        self.worker_bus.preview.pending_request_id = None;
+        self.worker_bus.preview.in_progress = false;
         self.indexing.last_incremental_results_refresh = Instant::now();
         self.indexing.last_search_snapshot_len = 0;
         self.refresh_status_line();
@@ -112,8 +112,8 @@ impl FlistWalkerApp {
         self.indexing.pending_entries_request_id = None;
         self.reset_kind_resolution_state();
         self.indexing.incremental_filtered_entries.clear();
-        self.pending_preview_request_id = None;
-        self.preview_in_progress = false;
+        self.worker_bus.preview.pending_request_id = None;
+        self.worker_bus.preview.in_progress = false;
         self.indexing.last_incremental_results_refresh = Instant::now();
         self.indexing.last_search_snapshot_len = 0;
         self.refresh_status_line();
@@ -860,8 +860,8 @@ impl FlistWalkerApp {
         if self.results.is_empty() {
             self.current_row = None;
             self.preview.clear();
-            self.preview_in_progress = false;
-            self.pending_preview_request_id = None;
+            self.worker_bus.preview.in_progress = false;
+            self.worker_bus.preview.pending_request_id = None;
         } else {
             let previous_row = clamp_row(previous_row, self.results.len());
             self.current_row = selected_path

@@ -38,6 +38,7 @@ mod state;
 mod tab_state;
 mod tabs;
 mod update;
+mod worker_bus;
 mod workers;
 
 use cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
@@ -52,6 +53,7 @@ use state::{
     TabDragState, UpdateCheckFailureState, UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
+use worker_bus::{ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus, UpdateWorkerBus, WorkerBus};
 use workers::{
     spawn_action_worker, spawn_filelist_worker, spawn_index_worker, spawn_kind_resolver_worker,
     spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
@@ -243,28 +245,8 @@ pub struct FlistWalkerApp {
     status_line: String,
     kill_buffer: String,
     search: SearchCoordinator,
-    preview_tx: Sender<PreviewRequest>,
-    preview_rx: Receiver<PreviewResponse>,
-    action_tx: Sender<ActionRequest>,
-    action_rx: Receiver<ActionResponse>,
-    sort_tx: Sender<SortMetadataRequest>,
-    sort_rx: Receiver<SortMetadataResponse>,
-    kind_tx: Sender<KindResolveRequest>,
-    kind_rx: Receiver<KindResolveResponse>,
-    filelist_tx: Sender<FileListRequest>,
-    filelist_rx: Receiver<FileListResponse>,
-    update_tx: Sender<UpdateRequest>,
-    update_rx: Receiver<UpdateResponse>,
+    worker_bus: WorkerBus,
     indexing: IndexCoordinator,
-    next_preview_request_id: u64,
-    pending_preview_request_id: Option<u64>,
-    next_action_request_id: u64,
-    pending_action_request_id: Option<u64>,
-    next_sort_request_id: u64,
-    pending_sort_request_id: Option<u64>,
-    preview_in_progress: bool,
-    action_in_progress: bool,
-    sort_in_progress: bool,
     pending_copy_shortcut: bool,
     #[cfg(test)]
     browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
@@ -487,32 +469,12 @@ Search hints:
             status_line: "Initializing...".to_string(),
             kill_buffer: String::new(),
             search: SearchCoordinator::new(bootstrap.search_tx, bootstrap.search_rx),
-            preview_tx: bootstrap.preview_tx,
-            preview_rx: bootstrap.preview_rx,
-            action_tx: bootstrap.action_tx,
-            action_rx: bootstrap.action_rx,
-            sort_tx: bootstrap.sort_tx,
-            sort_rx: bootstrap.sort_rx,
-            kind_tx: bootstrap.kind_tx,
-            kind_rx: bootstrap.kind_rx,
-            filelist_tx: bootstrap.filelist_tx,
-            filelist_rx: bootstrap.filelist_rx,
-            update_tx: bootstrap.update_tx,
-            update_rx: bootstrap.update_rx,
+            worker_bus: bootstrap.worker_bus,
             indexing: IndexCoordinator::new(
                 bootstrap.index_tx,
                 bootstrap.index_rx,
                 bootstrap.latest_index_request_ids,
             ),
-            next_preview_request_id: 1,
-            pending_preview_request_id: None,
-            next_action_request_id: 1,
-            pending_action_request_id: None,
-            next_sort_request_id: 1,
-            pending_sort_request_id: None,
-            preview_in_progress: false,
-            action_in_progress: false,
-            sort_in_progress: false,
             pending_copy_shortcut: false,
             #[cfg(test)]
             browse_dialog_result: None,
@@ -695,8 +657,8 @@ Search hints:
         results: Vec<(PathBuf, f64)>,
         keep_scroll_position: bool,
     ) {
-        self.pending_sort_request_id = None;
-        self.sort_in_progress = false;
+        self.worker_bus.sort.pending_request_id = None;
+        self.worker_bus.sort.in_progress = false;
         self.result_sort_mode = ResultSortMode::Score;
         self.base_results = results.clone();
         // Regression guard: search refreshes must keep the cursor on the same row number.
@@ -706,8 +668,8 @@ Search hints:
 
     fn invalidate_result_sort(&mut self, keep_scroll_position: bool) {
         let had_non_score_sort = self.result_sort_mode != ResultSortMode::Score;
-        self.pending_sort_request_id = None;
-        self.sort_in_progress = false;
+        self.worker_bus.sort.pending_request_id = None;
+        self.worker_bus.sort.in_progress = false;
         self.result_sort_mode = ResultSortMode::Score;
         if had_non_score_sort && !self.base_results.is_empty() && self.results != self.base_results
         {
@@ -722,16 +684,19 @@ Search hints:
     }
 
     fn request_sort_metadata(&mut self, mode: ResultSortMode, missing_paths: Vec<PathBuf>) {
-        let request_id = self.next_sort_request_id;
-        self.next_sort_request_id = self.next_sort_request_id.saturating_add(1);
-        self.pending_sort_request_id = Some(request_id);
-        self.sort_in_progress = true;
+        let request_id = self.worker_bus.sort.next_request_id;
+        self.worker_bus.sort.next_request_id =
+            self.worker_bus.sort.next_request_id.saturating_add(1);
+        self.worker_bus.sort.pending_request_id = Some(request_id);
+        self.worker_bus.sort.in_progress = true;
         if let Some(tab_id) = self.current_tab_id() {
             self.sort_request_tabs.insert(request_id, tab_id);
         }
         self.refresh_status_line();
         if self
-            .sort_tx
+            .worker_bus
+            .sort
+            .tx
             .send(SortMetadataRequest {
                 request_id,
                 paths: missing_paths,
@@ -739,23 +704,23 @@ Search hints:
             })
             .is_err()
         {
-            self.pending_sort_request_id = None;
-            self.sort_in_progress = false;
+            self.worker_bus.sort.pending_request_id = None;
+            self.worker_bus.sort.in_progress = false;
             self.set_notice("Sort worker is unavailable");
         }
     }
 
     fn apply_result_sort(&mut self, keep_scroll_position: bool) {
         if self.base_results.is_empty() {
-            self.pending_sort_request_id = None;
-            self.sort_in_progress = false;
+            self.worker_bus.sort.pending_request_id = None;
+            self.worker_bus.sort.in_progress = false;
             self.refresh_status_line();
             return;
         }
         if !self.result_sort_mode.uses_metadata() {
             let sorted = self.build_sorted_results(self.result_sort_mode);
-            self.pending_sort_request_id = None;
-            self.sort_in_progress = false;
+            self.worker_bus.sort.pending_request_id = None;
+            self.worker_bus.sort.in_progress = false;
             self.apply_results_with_selection_policy(sorted, keep_scroll_position, false);
             return;
         }
@@ -768,8 +733,8 @@ Search hints:
             .collect::<Vec<_>>();
         if missing_paths.is_empty() {
             let sorted = self.build_sorted_results(self.result_sort_mode);
-            self.pending_sort_request_id = None;
-            self.sort_in_progress = false;
+            self.worker_bus.sort.pending_request_id = None;
+            self.worker_bus.sort.in_progress = false;
             self.apply_results_with_selection_policy(sorted, keep_scroll_position, false);
             return;
         }
@@ -849,8 +814,8 @@ Search hints:
         self.results.shrink_to_fit();
         self.indexing.incremental_filtered_entries.clear();
         self.indexing.incremental_filtered_entries.shrink_to_fit();
-        self.pending_sort_request_id = None;
-        self.sort_in_progress = false;
+        self.worker_bus.sort.pending_request_id = None;
+        self.worker_bus.sort.in_progress = false;
         self.result_sort_mode = ResultSortMode::Score;
         self.clear_sort_metadata_cache();
         self.indexing.last_search_snapshot_len = 0;
@@ -870,8 +835,8 @@ Search hints:
         self.pinned_paths.clear();
         self.current_row = None;
         self.preview.clear();
-        self.preview_in_progress = false;
-        self.pending_preview_request_id = None;
+        self.worker_bus.preview.in_progress = false;
+        self.worker_bus.preview.pending_request_id = None;
         self.clear_root_scoped_entry_state();
         self.sync_active_tab_state();
         self.mark_ui_state_dirty();
@@ -1039,7 +1004,7 @@ Search hints:
         } else {
             ""
         };
-        let executing = if self.action_in_progress {
+        let executing = if self.worker_bus.action.in_progress {
             " | Executing..."
         } else {
             ""
@@ -1058,7 +1023,7 @@ Search hints:
         } else {
             ""
         };
-        let sorting = if self.sort_in_progress {
+        let sorting = if self.worker_bus.sort.in_progress {
             " | Sorting..."
         } else {
             ""
@@ -1123,7 +1088,7 @@ Search hints:
     }
 
     fn action_progress_label(&self) -> Option<&'static str> {
-        if self.action_in_progress {
+        if self.worker_bus.action.in_progress {
             Some("Opening...")
         } else {
             None
@@ -1131,11 +1096,11 @@ Search hints:
     }
 
     fn poll_action_response(&mut self) {
-        while let Ok(response) = self.action_rx.try_recv() {
+        while let Ok(response) = self.worker_bus.action.rx.try_recv() {
             let target_tab_id = self.action_request_tabs.remove(&response.request_id);
-            if Some(response.request_id) == self.pending_action_request_id {
-                self.pending_action_request_id = None;
-                self.action_in_progress = false;
+            if Some(response.request_id) == self.worker_bus.action.pending_request_id {
+                self.worker_bus.action.pending_request_id = None;
+                self.worker_bus.action.in_progress = false;
                 self.set_notice(response.notice);
                 continue;
             }
@@ -1159,15 +1124,15 @@ Search hints:
     }
 
     fn poll_sort_response(&mut self) {
-        while let Ok(response) = self.sort_rx.try_recv() {
+        while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
             let target_tab_id = self.sort_request_tabs.remove(&response.request_id);
             for (path, metadata) in response.entries {
                 self.cache_sort_metadata(path, metadata);
             }
 
-            if Some(response.request_id) == self.pending_sort_request_id {
-                self.pending_sort_request_id = None;
-                self.sort_in_progress = false;
+            if Some(response.request_id) == self.worker_bus.sort.pending_request_id {
+                self.worker_bus.sort.pending_request_id = None;
+                self.worker_bus.sort.in_progress = false;
                 if response.mode == self.result_sort_mode {
                     self.apply_result_sort(false);
                 } else {
@@ -1305,7 +1270,7 @@ Search hints:
                 epoch: self.indexing.kind_resolution_epoch,
                 path: path.clone(),
             };
-            if self.kind_tx.send(req).is_err() {
+            if self.worker_bus.kind.tx.send(req).is_err() {
                 break;
             }
             self.indexing.in_flight_kind_paths.insert(path);
@@ -1321,7 +1286,7 @@ Search hints:
         let mut resolved_any = false;
         let mut resolved_current_row = false;
 
-        while let Ok(response) = self.kind_rx.try_recv() {
+        while let Ok(response) = self.worker_bus.kind.rx.try_recv() {
             if response.epoch != self.indexing.kind_resolution_epoch {
                 continue;
             }
@@ -1409,8 +1374,8 @@ Search hints:
             return;
         }
         if let Some(blocked) = self.first_action_path_outside_root(&paths) {
-            self.pending_action_request_id = None;
-            self.action_in_progress = false;
+            self.worker_bus.action.pending_request_id = None;
+            self.worker_bus.action.in_progress = false;
             self.set_notice(format!(
                 "Action blocked: path is outside current root: {}",
                 normalize_path_for_display(&blocked)
@@ -1418,10 +1383,11 @@ Search hints:
             return;
         }
 
-        let request_id = self.next_action_request_id;
-        self.next_action_request_id = self.next_action_request_id.saturating_add(1);
-        self.pending_action_request_id = Some(request_id);
-        self.action_in_progress = true;
+        let request_id = self.worker_bus.action.next_request_id;
+        self.worker_bus.action.next_request_id =
+            self.worker_bus.action.next_request_id.saturating_add(1);
+        self.worker_bus.action.pending_request_id = Some(request_id);
+        self.worker_bus.action.in_progress = true;
         if let Some(tab_id) = self.current_tab_id() {
             self.action_request_tabs.insert(request_id, tab_id);
         }
@@ -1449,9 +1415,9 @@ Search hints:
             paths,
             open_parent_for_files,
         };
-        if self.action_tx.send(req).is_err() {
-            self.pending_action_request_id = None;
-            self.action_in_progress = false;
+        if self.worker_bus.action.tx.send(req).is_err() {
+            self.worker_bus.action.pending_request_id = None;
+            self.worker_bus.action.in_progress = false;
             self.set_notice("Action worker is unavailable");
         }
     }
@@ -1528,12 +1494,14 @@ Search hints:
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
         let old_search_tx = std::mem::replace(&mut self.search.tx, dummy_search_tx);
-        let old_preview_tx = std::mem::replace(&mut self.preview_tx, dummy_preview_tx);
-        let old_action_tx = std::mem::replace(&mut self.action_tx, dummy_action_tx);
-        let old_sort_tx = std::mem::replace(&mut self.sort_tx, dummy_sort_tx);
-        let old_kind_tx = std::mem::replace(&mut self.kind_tx, dummy_kind_tx);
-        let old_filelist_tx = std::mem::replace(&mut self.filelist_tx, dummy_filelist_tx);
-        let old_update_tx = std::mem::replace(&mut self.update_tx, dummy_update_tx);
+        let old_preview_tx =
+            std::mem::replace(&mut self.worker_bus.preview.tx, dummy_preview_tx);
+        let old_action_tx = std::mem::replace(&mut self.worker_bus.action.tx, dummy_action_tx);
+        let old_sort_tx = std::mem::replace(&mut self.worker_bus.sort.tx, dummy_sort_tx);
+        let old_kind_tx = std::mem::replace(&mut self.worker_bus.kind.tx, dummy_kind_tx);
+        let old_filelist_tx =
+            std::mem::replace(&mut self.worker_bus.filelist.tx, dummy_filelist_tx);
+        let old_update_tx = std::mem::replace(&mut self.worker_bus.update.tx, dummy_update_tx);
         let old_index_tx = std::mem::replace(&mut self.indexing.tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
@@ -1599,9 +1567,9 @@ impl eframe::App for FlistWalkerApp {
         }
         if self.search.in_progress
             || self.indexing.in_progress
-            || self.preview_in_progress
-            || self.action_in_progress
-            || self.sort_in_progress
+            || self.worker_bus.preview.in_progress
+            || self.worker_bus.action.in_progress
+            || self.worker_bus.sort.in_progress
             || self.indexing.kind_resolution_in_progress
             || self.filelist_state.in_progress
             || self.update_state.in_progress

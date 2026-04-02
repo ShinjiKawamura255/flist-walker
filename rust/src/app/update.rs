@@ -12,7 +12,9 @@ impl FlistWalkerApp {
         self.update_state.pending_request_id = Some(request_id);
         self.update_state.in_progress = true;
         if self
-            .update_tx
+            .worker_bus
+            .update
+            .tx
             .send(UpdateRequest {
                 request_id,
                 kind: UpdateRequestKind::Check,
@@ -49,7 +51,9 @@ impl FlistWalkerApp {
         self.update_state.pending_request_id = Some(request_id);
         self.update_state.in_progress = true;
         if self
-            .update_tx
+            .worker_bus
+            .update
+            .tx
             .send(UpdateRequest {
                 request_id,
                 kind: UpdateRequestKind::DownloadAndApply {
@@ -116,7 +120,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_update_response(&mut self) {
-        while let Ok(response) = self.update_rx.try_recv() {
+        while let Ok(response) = self.worker_bus.update.rx.try_recv() {
             let Some(pending) = self.update_state.pending_request_id else {
                 continue;
             };
