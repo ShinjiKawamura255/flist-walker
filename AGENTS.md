@@ -70,5 +70,13 @@
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
+## Temporary Change Plan Rule
+- For `structural-refactoring`, read `docs/CHANGE-PLAN-20260402-structural-refactoring.md` before starting implementation.
+- Execute the work in the documented order (Phase 0 → Phase 9) unless the plan is updated first.
+- Each Phase MUST end with `cargo test --lib` green. Do not proceed to the next Phase with test failures.
+- If scope, order, or risk changes, update the change plan before continuing.
+- When modifying `rust/src/app/mod.rs` field layout, verify the resulting field count against the Phase target.
+- Remove this section from `AGENTS.md` after Phase 9 completion checklist is satisfied.
+
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
