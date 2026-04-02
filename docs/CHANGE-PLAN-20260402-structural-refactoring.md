@@ -263,16 +263,16 @@
 - [x] P7-3: `cargo test --lib` green + perf regression テスト
 
 ### Phase 8
-- [ ] P8-1: `FlistWalkerApp` の主要メソッドに doc コメントを追加 (最低 30 メソッド)
-- [ ] P8-2: `index_pipeline.rs` を機能単位に分割 (各 800 行以下)
-- [ ] P8-3: `ARCHITECTURE.md` のリンクを相対パスに修正 + 新モジュール追記
-- [ ] P8-4: `DESIGN.md` の DES-009 を更新
-- [ ] P8-5: `cargo doc --no-deps` warning ゼロ
+- [x] P8-1: `FlistWalkerApp` の主要メソッドに doc コメントを追加 (最低 30 メソッド)
+- [x] P8-2: `index_pipeline.rs` を機能単位に分割 (各 800 行以下)
+- [x] P8-3: `ARCHITECTURE.md` のリンクを相対パスに修正 + 新モジュール追記
+- [x] P8-4: `DESIGN.md` の DES-009 を更新
+- [x] P8-5: `cargo doc --no-deps` warning ゼロ
 
 ### Phase 9
 - [ ] P9-1: `FlistWalkerApp` フィールド数の最終計測 (目標: 25 以下)
-- [ ] P9-2: `cargo clippy -- -D warnings` clean
-- [ ] P9-3: perf regression テスト (2 本) 通過
+- [x] P9-2: `cargo clippy -- -D warnings` clean
+- [x] P9-3: perf regression テスト (2 本) 通過
 - [ ] P9-4: GUI smoke test (全主要操作)
 - [ ] P9-5: 一時ルールの削除と計画書の削除
 
@@ -323,6 +323,9 @@
 - 2026-04-02 Phase 6 着手前に計画更新。`WorkerBus` / `IndexCoordinator` / `tab_state` の全面 private 化は依存面が広く、単独 Phase では破壊範囲が大きいため、Phase 6 は `SearchCoordinator`・cache state・bootstrap seed/bootstrap bag の encapsulation を先行し、高結合 carrier は helper method 導入までに留める方針へ調整した。
 - 2026-04-02 Phase 6 completed. `SearchCoordinator` の request lifecycle を method 化し、`pending_request_id` / `in_progress` / tab map の field 直書きを削減した。あわせて `cache.rs` の preview/highlight/sort metadata cache state と `bootstrap.rs` の seed/bootstrap bag を private 化し、eviction/scope 更新/初期化経路を method 経由へ寄せた。tests も新 accessor に追従し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。
 - 2026-04-02 Phase 7 completed. incremental search/index path の clone hotspot を優先して、`pipeline.rs` に `overwrite_entries_arc` / `overwrite_entries_vec` を追加し、`sync_entries_from_incremental` と `apply_entry_filters` の全量再確保を抑制した。さらに `set_entry_kind` を `Arc::make_mut` ベースへ切り替え、kind 解決時の二重 clone 分岐を単純化した。検証は `cargo test --lib` に加え、`perf_regression_filelist_stream_matches_v0123_reference_budget` と `perf_walker_classification_is_faster_than_eager_metadata_resolution` を `--ignored --nocapture` で実行して通過した。
+- 2026-04-02 Phase 8 completed. `FlistWalkerApp` の主要メソッドへ 30 個超の doc コメントを追加し、`rust/src/app/tests/index_pipeline.rs` を `search_filelist.rs` / `filelist_lifecycle.rs` / `kind_resolution.rs` / `dialogs_and_inflight.rs` の 4 モジュールへ分割した。`docs/ARCHITECTURE.md` は相対リンク化し、`worker_bus.rs` / `ui_state.rs` / `query_state.rs` / `entry.rs` を追記した。`docs/DESIGN.md` の DES-009 も state holder 分離と `Entry` 導入に追従更新し、検証は `cargo test --lib` と `cargo doc --no-deps` warning ゼロで通過した。
+- 2026-04-02 Phase 9 着手前に計画更新。自動検証は継続できるが、`FlistWalkerApp` の直接フィールド数は 39 で目標 25 以下を未達のまま残っている。Phase 9 は現状値の計測記録と自動検証完了まで進め、追加の field 削減と GUI smoke は別途明示的に閉じる。
+- 2026-04-02 Phase 9 自動検証を実施。`cargo clippy --all-targets -- -D warnings` は `bootstrap.rs` の `into_parts()` 返り値を type alias 化して通過させた。perf regression 2 本も通過し、`perf_regression_filelist_stream_matches_v0123_reference_budget` は `reference_ms=208.872 current_ms=210.466 slowdown=1.01x`、`perf_walker_classification_is_faster_than_eager_metadata_resolution` は `eager_metadata_ms=257.562 fast_classify_ms=185.005 speedup=1.39x` を記録した。GUI smoke は headless 制約のため未実施。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

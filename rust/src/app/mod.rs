@@ -219,6 +219,7 @@ fn load_cjk_font_bytes() -> Option<Vec<u8>> {
     candidates.into_iter().find_map(|path| fs::read(path).ok())
 }
 
+/// eframe/egui の UI フレームと各種ワーカーを結線する coordinator。
 pub struct FlistWalkerApp {
     root: PathBuf,
     limit: usize,
@@ -356,10 +357,12 @@ Search hints:
         }
     }
 
+    /// ウィンドウ診断イベントを opt-in ログへ追記する。
     pub fn trace_window_event(event: &str, details: &str) {
         Self::append_window_trace(event, details);
     }
 
+    /// 既定の launch 設定でアプリを初期化する。
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         let launch = LaunchSettings {
             show_preview: true,
@@ -369,6 +372,7 @@ Search hints:
         Self::new_with_launch(root, limit, query, launch, None)
     }
 
+    /// 永続化済み launch 設定と保存 tab を考慮して起動する。
     pub fn from_launch(root: PathBuf, limit: usize, query: String, root_explicit: bool) -> Self {
         let launch = Self::load_launch_settings();
         let restore_tabs_enabled = Self::restore_tabs_enabled();
@@ -402,6 +406,7 @@ Search hints:
         app
     }
 
+    /// worker 群と launch seed を束ねて coordinator 本体を組み立てる。
     fn new_with_launch(
         root: PathBuf,
         limit: usize,
@@ -483,6 +488,7 @@ Search hints:
         app
     }
 
+    /// クエリ履歴の永続化を一時的に無効化しているかを返す。
     fn history_persist_disabled() -> bool {
         std::env::var("FLISTWALKER_DISABLE_HISTORY_PERSIST")
             .ok()
@@ -495,15 +501,18 @@ Search hints:
             .unwrap_or(false)
     }
 
+    /// root 単位で破棄すべき sort metadata cache をまとめて消す。
     fn clear_sort_metadata_cache(&mut self) {
         self.sort_metadata_cache.clear();
     }
 
+    /// 結果ソートに使う時刻属性を上限付き cache へ保存する。
     fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
         self.sort_metadata_cache
             .insert_bounded(path, metadata, Self::SORT_METADATA_CACHE_MAX);
     }
 
+    /// sort mode ごとに比較対象の timestamp を取り出す。
     fn sort_metadata_value(metadata: SortMetadata, mode: ResultSortMode) -> Option<SystemTime> {
         match mode {
             ResultSortMode::ModifiedDesc | ResultSortMode::ModifiedAsc => metadata.modified,
@@ -512,6 +521,7 @@ Search hints:
         }
     }
 
+    /// 指定 path の timestamp sort key を cache から取得する。
     fn sort_timestamp_for_path(
         cache: &HashMap<PathBuf, SortMetadata>,
         path: &Path,
@@ -523,6 +533,7 @@ Search hints:
             .and_then(|metadata| Self::sort_metadata_value(metadata, mode))
     }
 
+    /// Name sort 用の比較キーをファイル名優先で正規化する。
     fn path_name_key(path: &Path) -> String {
         path.file_name()
             .and_then(|name| name.to_str())
@@ -530,6 +541,7 @@ Search hints:
             .to_ascii_lowercase()
     }
 
+    /// base result snapshot から指定 sort mode の表示順を再構築する。
     fn build_sorted_results_from(
         base_results: &[(PathBuf, f64)],
         mode: ResultSortMode,
@@ -590,10 +602,12 @@ Search hints:
         items.into_iter().map(|(_, entry)| entry).collect()
     }
 
+    /// 現在の base result snapshot から表示用の整列結果を生成する。
     fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
         Self::build_sorted_results_from(&self.base_results, mode, self.sort_metadata_cache.get_map())
     }
 
+    /// 結果一覧を差し替えつつ current row と scroll 方針を維持する。
     fn replace_results_snapshot(
         &mut self,
         results: Vec<(PathBuf, f64)>,
@@ -608,6 +622,7 @@ Search hints:
         self.apply_results_with_selection_policy(results, keep_scroll_position, false);
     }
 
+    /// 非 score sort を解除し、必要なら base snapshot を前面へ戻す。
     fn invalidate_result_sort(&mut self, keep_scroll_position: bool) {
         let had_non_score_sort = self.result_sort_mode != ResultSortMode::Score;
         self.worker_bus.sort.pending_request_id = None;
@@ -625,6 +640,7 @@ Search hints:
         }
     }
 
+    /// 欠けている metadata だけを sort worker に依頼する。
     fn request_sort_metadata(&mut self, mode: ResultSortMode, missing_paths: Vec<PathBuf>) {
         let request_id = self.worker_bus.sort.next_request_id;
         self.worker_bus.sort.next_request_id =
@@ -652,6 +668,7 @@ Search hints:
         }
     }
 
+    /// 現在の sort mode を結果スナップショットへ反映する。
     fn apply_result_sort(&mut self, keep_scroll_position: bool) {
         if self.base_results.is_empty() {
             self.worker_bus.sort.pending_request_id = None;
@@ -684,11 +701,13 @@ Search hints:
         self.request_sort_metadata(self.result_sort_mode, missing_paths);
     }
 
+    /// sort mode を切り替え、即時適用または metadata 解決を始める。
     fn set_result_sort_mode(&mut self, mode: ResultSortMode) {
         self.result_sort_mode = mode;
         self.apply_result_sort(false);
     }
 
+    /// パス比較用の安定キーを OS 差分を吸収して生成する。
     fn normalized_compare_key(path: &Path) -> String {
         let mut key = normalize_windows_path_buf(path.to_path_buf())
             .to_string_lossy()
@@ -703,6 +722,7 @@ Search hints:
         key
     }
 
+    /// 操作対象 path が現在 root の配下にあるかを検証する。
     fn path_is_within_root(root: &Path, path: &Path) -> bool {
         let root_key = Self::normalized_compare_key(root);
         let path_key = Self::normalized_compare_key(path);
@@ -729,6 +749,7 @@ Search hints:
         }
     }
 
+    /// root 外の path を含む操作要求の先頭違反要素を返す。
     fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
         paths
             .iter()
@@ -736,12 +757,14 @@ Search hints:
             .cloned()
     }
 
+    /// 現在 root の表示文字列を UI 向けに整形する。
     fn root_display_text(&self) -> String {
         normalize_windows_path_buf(self.root.clone())
             .to_string_lossy()
             .to_string()
     }
 
+    /// root 変更で失効する entry/result 系 state を掃除する。
     fn clear_root_scoped_entry_state(&mut self) {
         self.index.entries.clear();
         self.index.entries.shrink_to_fit();
@@ -761,6 +784,7 @@ Search hints:
         self.indexing.last_search_snapshot_len = 0;
     }
 
+    /// root 切り替えに伴う state reset と再 index をまとめて適用する。
     fn apply_root_change(&mut self, new_root: PathBuf) {
         let normalized = normalize_windows_path_buf(new_root);
         if Self::path_key(&normalized) == Self::path_key(&self.root) {
@@ -787,6 +811,7 @@ Search hints:
         self.set_notice(format!("Root changed: {}", self.root_display_text()));
     }
 
+    /// ダイアログで選んだ root を現在 tab に適用する。
     fn browse_for_root(&mut self) {
         let dialog_root = normalize_windows_path_buf(self.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
@@ -796,6 +821,7 @@ Search hints:
         }
     }
 
+    /// ダイアログで選んだ root を新規 tab として開く。
     fn browse_for_root_in_new_tab(&mut self) {
         let dialog_root = normalize_windows_path_buf(self.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
@@ -823,6 +849,7 @@ Search hints:
             .map_err(|err| err.to_string())
     }
 
+    /// root selector popup の stable id を返す。
     fn root_selector_popup_id() -> egui::Id {
         egui::Id::new(Self::ROOT_SELECTOR_POPUP_ID)
     }
@@ -838,6 +865,7 @@ Search hints:
             .position(|path| Self::path_key(path) == current_key)
     }
 
+    /// dropdown のハイライト位置を保存済み root 一覧に同期する。
     fn sync_root_dropdown_highlight(&mut self) {
         let max_index = self.saved_roots.len().checked_sub(1);
         self.ui.root_dropdown_highlight = match (self.ui.root_dropdown_highlight, max_index) {
@@ -847,6 +875,7 @@ Search hints:
         };
     }
 
+    /// root dropdown を開き、入力 focus を切り替える。
     fn open_root_dropdown(&mut self, ctx: &egui::Context) {
         self.sync_root_dropdown_highlight();
         ctx.memory_mut(|mem| mem.open_popup(Self::root_selector_popup_id()));
@@ -854,10 +883,12 @@ Search hints:
         self.ui.unfocus_query_requested = true;
     }
 
+    /// root dropdown を閉じる。
     fn close_root_dropdown(&mut self, ctx: &egui::Context) {
         ctx.memory_mut(|mem| mem.close_popup());
     }
 
+    /// root dropdown 内の候補選択を上下へ移動する。
     fn move_root_dropdown_selection(&mut self, delta: isize) {
         let Some(max_index) = self.saved_roots.len().checked_sub(1) else {
             self.ui.root_dropdown_highlight = None;
@@ -872,6 +903,7 @@ Search hints:
         self.ui.root_dropdown_highlight = Some(next);
     }
 
+    /// dropdown で確定した root を現在 tab に反映する。
     fn apply_root_dropdown_selection(&mut self, ctx: &egui::Context) {
         let selected = self
             .ui
@@ -883,6 +915,7 @@ Search hints:
         }
     }
 
+    /// 現在の source に応じて相対パス表示を優先するかを返す。
     fn prefer_relative_display(&self) -> bool {
         matches!(
             self.index.source,
@@ -890,18 +923,22 @@ Search hints:
         )
     }
 
+    /// 指定 source に対する表示パス方針を返す。
     fn prefer_relative_display_for(source: &IndexSource) -> bool {
         matches!(source, IndexSource::Walker | IndexSource::FileList(_))
     }
 
+    /// FileList source で type filter を固定する必要があるかを返す。
     fn use_filelist_requires_locked_filters(&self) -> bool {
         self.use_filelist && !matches!(self.index.source, IndexSource::Walker)
     }
 
+    /// include flags に対して entry が可視対象かを判定する。
     fn is_entry_visible_for_flags(entry: &Entry, include_files: bool, include_dirs: bool) -> bool {
         entry.is_visible_for_flags(include_files, include_dirs)
     }
 
+    /// 現在の進行状況と notice から status line を再構築する。
     fn refresh_status_line(&mut self) {
         let tab_label = if self.tabs.is_empty() {
             "Tab: 1/1".to_string()
@@ -1000,6 +1037,7 @@ Search hints:
         );
     }
 
+    /// 定期的にメモリ使用量をサンプリングし表示文字列へ変換する。
     fn memory_usage_text(&mut self) -> Option<String> {
         if self.ui.memory_usage_bytes.is_none()
             || self.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
@@ -1011,16 +1049,19 @@ Search hints:
             .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
     }
 
+    /// notice を更新し status line と同期する。
     fn set_notice(&mut self, notice: impl Into<String>) {
         self.notice = notice.into();
         self.refresh_status_line();
     }
 
+    /// notice を消去し status line を再計算する。
     fn clear_notice(&mut self) {
         self.notice.clear();
         self.refresh_status_line();
     }
 
+    /// action worker 実行中の進捗ラベルを返す。
     fn action_progress_label(&self) -> Option<&'static str> {
         if self.worker_bus.action.in_progress {
             Some("Opening...")
@@ -1029,6 +1070,7 @@ Search hints:
         }
     }
 
+    /// action worker の応答を現在 tab または背景 tab に反映する。
     fn poll_action_response(&mut self) {
         while let Ok(response) = self.worker_bus.action.rx.try_recv() {
             let target_tab_id = self.action_request_tabs.remove(&response.request_id);
@@ -1057,6 +1099,7 @@ Search hints:
         }
     }
 
+    /// sort worker の応答を cache と tab state へ適用する。
     fn poll_sort_response(&mut self) {
         while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
             let target_tab_id = self.sort_request_tabs.remove(&response.request_id);
@@ -1111,10 +1154,12 @@ Search hints:
         }
     }
 
+    /// ページ単位のカーソル移動を行う。
     fn move_page(&mut self, direction: isize) {
         self.move_row(direction.saturating_mul(Self::PAGE_MOVE_ROWS));
     }
 
+    /// 先頭行へ移動し preview を更新する。
     fn move_to_first_row(&mut self) {
         self.commit_query_history_if_needed(true);
         if self.results.is_empty() {
@@ -1126,6 +1171,7 @@ Search hints:
         self.refresh_status_line();
     }
 
+    /// 末尾行へ移動し preview を更新する。
     fn move_to_last_row(&mut self) {
         self.commit_query_history_if_needed(true);
         if self.results.is_empty() {
@@ -1137,14 +1183,17 @@ Search hints:
         self.refresh_status_line();
     }
 
+    /// 現在の filter 設定で entry が見えるかを返す。
     fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
         entry.is_visible_for_flags(self.include_files, self.include_dirs)
     }
 
+    /// kind 未確定 entry の遅延解決が必要な filter 状態かを返す。
     fn kind_resolution_needed_for_filters(&self) -> bool {
         !self.include_files || !self.include_dirs
     }
 
+    /// kind 解決キューと epoch を初期化し直す。
     fn reset_kind_resolution_state(&mut self) {
         self.indexing.pending_kind_paths.clear();
         self.indexing.pending_kind_paths_set.clear();
@@ -1153,6 +1202,7 @@ Search hints:
         self.indexing.kind_resolution_epoch = self.indexing.kind_resolution_epoch.saturating_add(1);
     }
 
+    /// 表示中または incremental index 中の entry から kind 未解決 path を拾う。
     fn queue_unknown_kind_paths_for_active_entries(&mut self) {
         if !self.kind_resolution_needed_for_filters() {
             return;
@@ -1169,6 +1219,7 @@ Search hints:
         self.queue_unknown_kind_paths(&source);
     }
 
+    /// walker 完了後の全 entry から kind 未解決 path を拾う。
     fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
         let source = self
             .all_entries
@@ -1178,6 +1229,7 @@ Search hints:
         self.queue_unknown_kind_paths(&source);
     }
 
+    /// 指定 path 群から kind 未解決のものだけを queue へ積む。
     fn queue_unknown_kind_paths(&mut self, source: &[PathBuf]) {
         for path in source {
             if self.find_entry_kind(path).is_none() {
@@ -1186,6 +1238,7 @@ Search hints:
         }
     }
 
+    /// kind 解決キューへ重複なしで path を追加する。
     fn queue_kind_resolution(&mut self, path: PathBuf) {
         if self.indexing.pending_kind_paths_set.contains(&path) || self.indexing.in_flight_kind_paths.contains(&path)
         {
@@ -1195,6 +1248,7 @@ Search hints:
         self.indexing.pending_kind_paths.push_back(path);
     }
 
+    /// kind resolver worker へ frame 予算内で request を流す。
     fn pump_kind_resolution_requests(&mut self) {
         const MAX_DISPATCH_PER_FRAME: usize = 128;
         let mut dispatched = 0usize;
@@ -1217,6 +1271,7 @@ Search hints:
             !self.indexing.pending_kind_paths.is_empty() || !self.indexing.in_flight_kind_paths.is_empty();
     }
 
+    /// kind resolver 応答を吸収し filter/preview を必要最小限で更新する。
     fn poll_kind_response(&mut self) {
         const MAX_MESSAGES_PER_FRAME: usize = 512;
         let mut processed = 0usize;
@@ -1256,6 +1311,7 @@ Search hints:
         }
     }
 
+    /// 結果一覧内の current row を相対移動する。
     fn move_row(&mut self, delta: isize) {
         self.commit_query_history_if_needed(true);
         if self.results.is_empty() {
@@ -1269,6 +1325,7 @@ Search hints:
         self.refresh_status_line();
     }
 
+    /// current row を pinned selection に追加または解除する。
     fn toggle_pin_current(&mut self) {
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
@@ -1282,6 +1339,7 @@ Search hints:
         }
     }
 
+    /// pinned selection 優先で action 対象 path を列挙する。
     fn selected_paths(&self) -> Vec<PathBuf> {
         if !self.pinned_paths.is_empty() {
             let mut out: Vec<PathBuf> = self.pinned_paths.iter().cloned().collect();
@@ -1297,6 +1355,7 @@ Search hints:
         entries.iter().find(|entry| entry.path == path)
     }
 
+    /// entry snapshot から path に対応する kind を探す。
     fn find_entry_kind(&self, path: &Path) -> Option<EntryKind> {
         Self::find_entry_in_slice(&self.entries, path)
             .or_else(|| Self::find_entry_in_slice(&self.index.entries, path))
@@ -1313,11 +1372,13 @@ Search hints:
         updated
     }
 
+    /// Arc 化された entry snapshot を最小 clone で更新する。
     fn set_entry_kind_in_arc(entries: &mut Arc<Vec<Entry>>, path: &Path, kind: EntryKind) {
         let entries = Arc::make_mut(entries);
         let _ = Self::set_entry_kind_in_slice(entries.as_mut_slice(), path, kind);
     }
 
+    /// 同一 path を持つ entry へ解決済み kind を反映する。
     fn set_entry_kind(&mut self, path: &Path, kind: EntryKind) {
         let _ = Self::set_entry_kind_in_slice(&mut self.index.entries, path, kind);
         Self::set_entry_kind_in_arc(&mut self.all_entries, path, kind);
@@ -1325,18 +1386,22 @@ Search hints:
         let _ = Self::set_entry_kind_in_slice(&mut self.indexing.incremental_filtered_entries, path, kind);
     }
 
+    /// 既定動作で選択 path を実行またはオープンする。
     fn execute_selected(&mut self) {
         self.execute_selected_with_options(false);
     }
 
+    /// Enter 系アクション用に file は親フォルダオープンへ切り替えられる実行入口。
     fn execute_selected_for_activation(&mut self, open_parent_for_files: bool) {
         self.execute_selected_with_options(open_parent_for_files);
     }
 
+    /// 選択項目の格納フォルダを開く。
     fn execute_selected_open_folder(&mut self) {
         self.execute_selected_for_activation(true);
     }
 
+    /// worker dispatch と root 外 path ガードを含めて action を起動する。
     fn execute_selected_with_options(&mut self, open_parent_for_files: bool) {
         let paths = self.selected_paths();
         if paths.is_empty() {
@@ -1391,6 +1456,7 @@ Search hints:
         }
     }
 
+    /// 選択 path を clipboard 用文字列へ変換して UI 出力へ流す。
     fn copy_selected_paths(&mut self, ctx: &egui::Context) {
         let paths = self.selected_paths();
         if paths.is_empty() {
@@ -1408,6 +1474,7 @@ Search hints:
         }
     }
 
+    /// clipboard 向けの複数 path 文字列を構築する。
     fn clipboard_paths_text(paths: &[PathBuf]) -> String {
         paths
             .iter()
@@ -1416,11 +1483,13 @@ Search hints:
             .join("\n")
     }
 
+    /// pinned selection を全解除する。
     fn clear_pinned(&mut self) {
         self.pinned_paths.clear();
         self.set_notice("Cleared pinned selections");
     }
 
+    /// query と選択状態を初期化し一覧表示へ戻す。
     fn clear_query_and_selection(&mut self) {
         self.query_state.query.clear();
         self.reset_query_history_navigation();
@@ -1435,6 +1504,7 @@ Search hints:
         self.set_notice("Cleared selection and query");
     }
 
+    /// 現在の index source を status 向け文言へ整形する。
     fn source_text(&self) -> String {
         match &self.index.source {
             IndexSource::FileList(path) => format!(
@@ -1453,6 +1523,7 @@ Search hints:
         Self::WORKER_JOIN_TIMEOUT
     }
 
+    /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
     fn disconnect_worker_channels(&mut self) {
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
         let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
@@ -1482,6 +1553,7 @@ Search hints:
         drop(old_index_tx);
     }
 
+    /// worker 群へ shutdown を通知し、短い timeout で join を待つ。
     fn shutdown_workers_with_timeout(
         &mut self,
         timeout: Duration,

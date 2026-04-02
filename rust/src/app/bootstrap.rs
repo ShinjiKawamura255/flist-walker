@@ -1,6 +1,28 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
+type WorkerBootstrapParts = (
+    Sender<SearchRequest>,
+    Receiver<SearchResponse>,
+    WorkerBus,
+    Sender<IndexRequest>,
+    Receiver<IndexResponse>,
+    Arc<Mutex<HashMap<u64, u64>>>,
+    WorkerRuntime,
+);
+
+type LaunchSeedParts = (
+    PathBuf,
+    usize,
+    String,
+    VecDeque<String>,
+    Vec<PathBuf>,
+    Option<PathBuf>,
+    bool,
+    f32,
+    UpdateState,
+);
+
 pub(super) struct AppWorkerBootstrap {
     search_tx: Sender<SearchRequest>,
     search_rx: Receiver<SearchResponse>,
@@ -24,17 +46,7 @@ pub(super) struct AppLaunchSeed {
 }
 
 impl AppWorkerBootstrap {
-    pub(super) fn into_parts(
-        self,
-    ) -> (
-        Sender<SearchRequest>,
-        Receiver<SearchResponse>,
-        WorkerBus,
-        Sender<IndexRequest>,
-        Receiver<IndexResponse>,
-        Arc<Mutex<HashMap<u64, u64>>>,
-        WorkerRuntime,
-    ) {
+    pub(super) fn into_parts(self) -> WorkerBootstrapParts {
         (
             self.search_tx,
             self.search_rx,
@@ -48,19 +60,7 @@ impl AppWorkerBootstrap {
 }
 
 impl AppLaunchSeed {
-    pub(super) fn into_parts(
-        self,
-    ) -> (
-        PathBuf,
-        usize,
-        String,
-        VecDeque<String>,
-        Vec<PathBuf>,
-        Option<PathBuf>,
-        bool,
-        f32,
-        UpdateState,
-    ) {
+    pub(super) fn into_parts(self) -> LaunchSeedParts {
         (
             self.root,
             self.limit,

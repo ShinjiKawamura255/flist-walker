@@ -56,18 +56,22 @@ impl PreviewCacheState {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn total_bytes(&self) -> usize {
         self.total_bytes
     }
 
+    #[cfg(test)]
     pub(super) fn len(&self) -> usize {
         self.entries.len()
     }
 
+    #[cfg(test)]
     pub(super) fn order_len(&self) -> usize {
         self.order.len()
     }
 
+    #[cfg(test)]
     pub(super) fn contains(&self, path: &Path) -> bool {
         self.entries.contains_key(path)
     }
@@ -168,14 +172,17 @@ impl SortMetadataCacheState {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn len(&self) -> usize {
         self.entries.len()
     }
 
+    #[cfg(test)]
     pub(super) fn order_len(&self) -> usize {
         self.order.len()
     }
 
+    #[cfg(test)]
     pub(super) fn contains_public(&self, path: &Path) -> bool {
         self.contains(path)
     }
