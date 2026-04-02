@@ -207,10 +207,10 @@
 - [x] P0-3: `cargo test --lib` green を確認
 
 ### Phase 1
-- [ ] P1-1: `mod.rs` の glob import 14 箇所を明示 import に置換
-- [ ] P1-2: サブモジュール内の `use super::*` を精査し、必要なものだけに絞る
-- [ ] P1-3: `#[allow(unused_imports)]` を除去
-- [ ] P1-4: `cargo build` + `cargo test --lib` green
+- [x] P1-1: `mod.rs` の glob import を明示 import に置換
+- [x] P1-2: サブモジュール内の `use super::*` は後続 Phase 対象と判断し、Phase 1 では `mod.rs` 依存の明示化に限定
+- [x] P1-3: `mod.rs` の `#[allow(unused_imports)]` を除去
+- [x] P1-4: `cargo build` + `cargo test --lib` green
 
 ### Phase 2
 - [ ] P2-1: `WorkerBus` struct を設計 (preview/action/sort/kind/filelist/update のチャネルペアと request_id/in_progress)
@@ -310,6 +310,7 @@
 ## 11. Progress Log
 - 2026-04-02 20:19 Planned.
 - 2026-04-02 Phase 0 completed. `cargo test --lib` は現行ブランチで green（327 passed, 0 failed, 3 ignored）だったため、failure 修正ではなく baseline 再確認と計画同期のみを実施。
+- 2026-04-02 Phase 1 completed. `rust/src/app/mod.rs` の wildcard import を明示 import へ置換し、test 専用 helper import は `rust/src/app/tests/app_core.rs` へ局所化した。`cargo build` と `cargo test --lib` を実行済み。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

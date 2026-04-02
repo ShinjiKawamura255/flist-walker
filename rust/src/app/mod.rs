@@ -40,17 +40,26 @@ mod tabs;
 mod update;
 mod workers;
 
-use cache::*;
-use index_coordinator::*;
-#[allow(unused_imports)]
-use input::*;
-#[allow(unused_imports)]
-use render::*;
-use search_coordinator::*;
-use session::*;
-use state::*;
-use tab_state::*;
-use workers::*;
+use cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
+use index_coordinator::IndexCoordinator;
+use search_coordinator::SearchCoordinator;
+use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
+use state::{
+    BackgroundIndexState, EntryDisplayKind, EntryKind, FileListDialogKind,
+    FileListWorkflowState, HighlightCacheKey, PendingFileListAfterIndex,
+    PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    PendingFileListUseWalkerConfirmation, ResultSortMode, SortMetadata, TabAccentPalette,
+    TabDragState, UpdateCheckFailureState, UpdatePromptState, UpdateState,
+};
+use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
+use workers::{
+    spawn_action_worker, spawn_filelist_worker, spawn_index_worker, spawn_kind_resolver_worker,
+    spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
+    ActionRequest, ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest,
+    IndexResponse, KindResolveRequest, KindResolveResponse, PreviewRequest, PreviewResponse,
+    SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
+    UpdateRequestKind, UpdateResponse, WorkerJoinSummary, WorkerRuntime,
+};
 
 impl TabAccentColor {
     pub(super) const ALL: [Self; 8] = [
