@@ -24,6 +24,35 @@
 ### Known issues
 - 
 
+## [0.16.0] - 2026-04-02
+### Added
+- `Entry { path, kind }` domain model を導入し、index/search/app 間の候補表現を統一した。
+- structural refactoring 後の GUI smoke test 手順を `docs/TESTPLAN.md` に追加し、別環境での確認結果を記録できるようにした。
+
+### Changed
+- `FlistWalkerApp` の責務を段階的に再編し、worker bus、runtime UI state、query/history state、search coordinator、cache/root browser/request-tab routing を専用 state holder へ分離した。
+- `index_pipeline` test を機能別の複数 module へ分割し、`ARCHITECTURE.md` / `DESIGN.md` / `TESTPLAN.md` を現行構成へ追従更新した。
+- structural refactoring の完了に伴い temporary change plan rule を `AGENTS.md` から削除した。
+
+### Fixed
+- incremental search/index path の不要 clone を削減し、`sync_entries_from_incremental` と `apply_entry_filters` の全量再確保を抑制した。
+- `SearchCoordinator`、cache state、launch seed/bootstrap bag の field 直書きを減らし、request lifecycle と初期化経路の局所性を改善した。
+- `cargo clippy --all-targets -- -D warnings` と `cargo doc --no-deps` が通るように state accessor と bootstrap 型を整理した。
+
+### Breaking
+- 
+
+### Deprecated
+- 
+
+### Security
+- structural refactoring 後も self-update の sidecar 文書、署名検証、checksum 検証まわりの手動確認経路を維持し、GUI smoke 手順へ記録した。
+- macOS 配布物は当面未 notarized のまま publish する場合がある。
+
+### Known issues
+- macOS の自動更新は未対応で、GitHub Releases からの手動更新が必要。
+- macOS 配布物は未 notarized の場合がある。
+
 ## [0.15.0] - 2026-04-01
 ### Added
 - tagged release 前に Linux / macOS / Windows native で `cargo test --locked` と `cargo audit` を実行する preflight gate を追加した。
