@@ -49,7 +49,6 @@ impl FlistWalkerApp {
                 },
                 all_entries: Arc::new(Vec::new()),
                 entries: Arc::new(Vec::new()),
-                entry_kinds: HashMap::new(),
                 pending_index_request_id: None,
                 index_in_progress: false,
                 pending_index_entries: VecDeque::new(),
@@ -197,7 +196,7 @@ impl FlistWalkerApp {
                     .iter()
                     .take(self.limit)
                     .cloned()
-                    .map(|p| (p, 0.0))
+                    .map(|entry| (entry.path, 0.0))
                     .collect();
                 self.replace_results_snapshot(results, true);
             } else {
@@ -230,7 +229,6 @@ impl FlistWalkerApp {
                 index: self.index.clone(),
                 all_entries: Arc::clone(&self.all_entries),
                 entries: Arc::clone(&self.entries),
-                entry_kinds: self.entry_kinds.clone(),
                 pending_index_request_id: self.indexing.pending_request_id,
                 index_in_progress: self.indexing.in_progress,
                 pending_index_entries: self.indexing.pending_entries.clone(),
@@ -293,7 +291,6 @@ impl FlistWalkerApp {
         self.index = tab.index_state.index.clone();
         self.all_entries = Arc::clone(&tab.index_state.all_entries);
         self.entries = Arc::clone(&tab.index_state.entries);
-        self.entry_kinds = tab.index_state.entry_kinds.clone();
         self.indexing.pending_request_id = tab.index_state.pending_index_request_id;
         self.indexing.in_progress = tab.index_state.index_in_progress;
         self.indexing.pending_entries = tab.index_state.pending_index_entries.clone();
@@ -424,7 +421,7 @@ impl FlistWalkerApp {
             .iter()
             .take(self.limit)
             .cloned()
-            .map(|p| (p, 0.0))
+            .map(|entry| (entry.path, 0.0))
             .collect();
         tab.result_state.result_sort_mode = ResultSortMode::Score;
         tab.result_state.pending_sort_request_id = None;

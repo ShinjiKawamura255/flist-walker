@@ -1,6 +1,5 @@
 use super::*;
 use eframe::egui;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -9,8 +8,7 @@ use std::time::SystemTime;
 #[derive(Default)]
 pub(super) struct BackgroundIndexState {
     pub(super) source: Option<IndexSource>,
-    pub(super) entries: Vec<PathBuf>,
-    pub(super) entry_kinds: HashMap<PathBuf, EntryKind>,
+    pub(super) entries: Vec<Entry>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -49,42 +47,6 @@ impl ResultSortMode {
             self,
             Self::ModifiedDesc | Self::ModifiedAsc | Self::CreatedDesc | Self::CreatedAsc
         )
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum EntryDisplayKind {
-    File,
-    Dir,
-    Link,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct EntryKind {
-    pub(super) display: EntryDisplayKind,
-    pub(super) is_dir: bool,
-}
-
-impl EntryKind {
-    pub(super) const fn file() -> Self {
-        Self {
-            display: EntryDisplayKind::File,
-            is_dir: false,
-        }
-    }
-
-    pub(super) const fn dir() -> Self {
-        Self {
-            display: EntryDisplayKind::Dir,
-            is_dir: true,
-        }
-    }
-
-    pub(super) const fn link(is_dir: bool) -> Self {
-        Self {
-            display: EntryDisplayKind::Link,
-            is_dir,
-        }
     }
 }
 

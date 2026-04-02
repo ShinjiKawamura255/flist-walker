@@ -54,8 +54,8 @@ impl FlistWalkerApp {
     pub(super) fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
         self.all_entries
             .iter()
-            .filter(|path| self.is_entry_visible_for_current_filter(path))
-            .cloned()
+            .filter(|entry| self.is_entry_visible_for_current_filter(entry))
+            .map(|entry| entry.path.clone())
             .collect()
     }
 

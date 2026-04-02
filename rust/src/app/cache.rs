@@ -189,7 +189,7 @@ impl FlistWalkerApp {
     fn current_result_kind(&self) -> Option<EntryKind> {
         let row = self.current_row?;
         let (path, _) = self.results.get(row)?;
-        self.entry_kinds.get(path).copied()
+        self.find_entry_kind(path)
     }
 
     pub(super) fn request_preview_for_current(&mut self) {

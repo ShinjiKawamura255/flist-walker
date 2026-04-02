@@ -9,7 +9,7 @@ pub(super) struct IndexCoordinator {
     pub(super) pending_queue: VecDeque<IndexRequest>,
     pub(super) inflight_requests: HashSet<u64>,
     pub(super) in_progress: bool,
-    pub(super) incremental_filtered_entries: Vec<PathBuf>,
+    pub(super) incremental_filtered_entries: Vec<Entry>,
     pub(super) pending_entries: VecDeque<IndexEntry>,
     pub(super) pending_entries_request_id: Option<u64>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,

@@ -1,5 +1,6 @@
-use super::{EntryKind, ResultSortMode, SortMetadata};
+use super::{ResultSortMode, SortMetadata};
 use crate::actions::execute_or_open;
+use crate::entry::{Entry, EntryKind};
 use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
     write_filelist_cancellable, IndexSource,
@@ -113,7 +114,7 @@ impl WorkerRuntime {
 pub(super) struct SearchRequest {
     pub(super) request_id: u64,
     pub(super) query: String,
-    pub(super) entries: Arc<Vec<PathBuf>>,
+    pub(super) entries: Arc<Vec<Entry>>,
     pub(super) limit: usize,
     pub(super) use_regex: bool,
     pub(super) ignore_case: bool,
@@ -150,6 +151,12 @@ pub(super) struct IndexEntry {
     pub(super) path: PathBuf,
     pub(super) kind: EntryKind,
     pub(super) kind_known: bool,
+}
+
+impl From<IndexEntry> for Entry {
+    fn from(value: IndexEntry) -> Self {
+        Self::new(value.path, value.kind_known.then_some(value.kind))
+    }
 }
 
 pub(super) struct IndexRequest {
@@ -421,7 +428,7 @@ pub(super) struct SearchEntriesSnapshotKey {
 }
 
 impl SearchEntriesSnapshotKey {
-    fn from_entries(entries: &Arc<Vec<PathBuf>>) -> Self {
+    fn from_entries(entries: &Arc<Vec<Entry>>) -> Self {
         Self {
             ptr: Arc::as_ptr(entries) as usize,
             len: entries.len(),
@@ -552,7 +559,7 @@ impl SearchPrefixCache {
 }
 
 fn scored_indices_to_paths(
-    entries: &[PathBuf],
+    entries: &[Entry],
     scored: &[IndexedScore],
     limit: usize,
 ) -> Vec<(PathBuf, f64)> {
@@ -565,8 +572,7 @@ fn scored_indices_to_paths(
         .filter_map(|item| {
             entries
                 .get(item.index)
-                .cloned()
-                .map(|path| (path, item.score))
+                .map(|entry| (entry.path.clone(), item.score))
         })
         .collect()
 }
@@ -599,7 +605,10 @@ pub(super) fn spawn_search_worker(
             };
             let (results, error) = match try_collect_search_matches(
                 &req.query,
-                &req.entries,
+                &req.entries
+                    .iter()
+                    .map(|entry| entry.path.clone())
+                    .collect::<Vec<_>>(),
                 req.use_regex,
                 req.ignore_case,
                 Some(&req.root),

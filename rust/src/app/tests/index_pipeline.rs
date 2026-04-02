@@ -624,8 +624,8 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.indexing.in_progress = false;
     app.use_filelist = false;
-    app.all_entries = Arc::new(vec![path.clone()]);
-    app.entry_kinds.insert(path, EntryKind::file());
+    app.all_entries = Arc::new(vec![file_entry(path.clone())]);
+    app.set_entry_kind(&path, EntryKind::file());
     app.index.source = IndexSource::Walker;
 
     app.create_filelist();
@@ -717,7 +717,7 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
     app.index.source = IndexSource::Walker;
     app.include_files = true;
     app.include_dirs = true;
-    app.all_entries = Arc::new(vec![root.join("main.rs")]);
+    app.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
     app.entries = Arc::clone(&app.all_entries);
 
     app.create_filelist();
@@ -747,7 +747,7 @@ fn denying_ancestor_propagation_still_creates_root_filelist() {
     app.index.source = IndexSource::Walker;
     app.include_files = true;
     app.include_dirs = true;
-    app.all_entries = Arc::new(vec![root.join("main.rs")]);
+    app.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
     app.entries = Arc::clone(&app.all_entries);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.worker_bus.filelist.tx = filelist_tx;
@@ -956,7 +956,7 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     app.poll_index_response();
 
     assert!(app.entries.is_empty());
-    assert_eq!(app.indexing.incremental_filtered_entries, vec![path]);
+    assert_eq!(app.indexing.incremental_filtered_entries, vec![file_entry(path)]);
     assert!(!app.indexing.search_rerun_pending);
     let _ = fs::remove_dir_all(&root);
 }
@@ -1093,11 +1093,11 @@ fn status_line_prefers_current_index_count_while_indexing() {
     app.indexing.in_progress = true;
     app.all_entries = Arc::new(
         (0..10)
-            .map(|i| root.join(format!("old-{i}.txt")))
+            .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
             .collect::<Vec<_>>(),
     );
     app.index.entries = (0..3)
-        .map(|i| root.join(format!("new-{i}.txt")))
+        .map(|i| unknown_entry(root.join(format!("new-{i}.txt"))))
         .collect::<Vec<_>>();
 
     app.refresh_status_line();
@@ -1116,7 +1116,7 @@ fn request_index_refresh_keeps_existing_entries_visible_until_new_results_arrive
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.entries = Arc::new(vec![path.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(path.clone())]);
     app.results = vec![(path.clone(), 0.0)];
     app.current_row = Some(0);
     app.preview = "keep".to_string();
@@ -1168,16 +1168,16 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.indexing.in_progress = true;
-    app.index.entries = vec![file.clone(), dir.clone()];
-    app.entry_kinds.insert(file.clone(), EntryKind::file());
-    app.entry_kinds.insert(dir.clone(), EntryKind::dir());
+    app.index.entries = vec![file_entry(file.clone()), dir_entry(dir.clone())];
+    app.set_entry_kind(&file, EntryKind::file());
+    app.set_entry_kind(&dir, EntryKind::dir());
     app.include_files = false;
     app.include_dirs = true;
 
     app.apply_entry_filters(true);
 
     assert_eq!(app.entries.as_ref(), &vec![dir.clone()]);
-    assert_eq!(app.indexing.incremental_filtered_entries, vec![dir]);
+    assert_eq!(app.indexing.incremental_filtered_entries, vec![dir_entry(dir)]);
     assert!(app.indexing.pending_entries.is_empty());
     assert!(app.indexing.pending_entries_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
@@ -1192,8 +1192,8 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.indexing.in_progress = true;
-    app.index.entries = vec![file.clone()];
-    app.entry_kinds.insert(file.clone(), EntryKind::file());
+    app.index.entries = vec![file_entry(file.clone())];
+    app.set_entry_kind(&file, EntryKind::file());
     app.include_files = false;
     app.include_dirs = true;
 
@@ -1229,11 +1229,9 @@ fn unknown_kind_entries_remain_visible_when_both_filters_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.all_entries = Arc::new(vec![path.clone()]);
+    app.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
     app.include_files = true;
     app.include_dirs = true;
-    app.entry_kinds.clear();
-
     app.apply_entry_filters(true);
 
     assert_eq!(app.entries.as_ref(), &vec![path]);
@@ -1248,11 +1246,10 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.all_entries = Arc::new(vec![path.clone()]);
+    app.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
     app.include_files = true;
     app.include_dirs = true;
     app.ui.show_preview = false;
-    app.entry_kinds.clear();
     app.indexing.pending_kind_paths.clear();
     app.indexing.pending_kind_paths_set.clear();
     app.indexing.in_flight_kind_paths.clear();
@@ -1298,7 +1295,7 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
     assert!(!app.indexing.in_progress);
     assert_eq!(app.entries.as_ref(), &vec![path.clone()]);
     assert_eq!(app.all_entries.as_ref(), &vec![path.clone()]);
-    assert!(!app.entry_kinds.contains_key(&path));
+    assert!(app.find_entry_kind(&path).is_none());
     assert!(app.indexing.pending_kind_paths.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
@@ -1354,11 +1351,9 @@ fn unknown_kind_entries_are_hidden_when_single_filter_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.all_entries = Arc::new(vec![path]);
+    app.all_entries = Arc::new(vec![unknown_entry(path)]);
     app.include_files = false;
     app.include_dirs = true;
-    app.entry_kinds.clear();
-
     app.apply_entry_filters(true);
 
     assert!(app.entries.is_empty());
@@ -1373,11 +1368,9 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.all_entries = Arc::new(vec![path.clone()]);
+    app.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
     app.include_files = false;
     app.include_dirs = true;
-    app.entry_kinds.clear();
-
     app.apply_entry_filters(true);
 
     assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == path));
@@ -1422,10 +1415,9 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     let dir = root.join("dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.all_entries = Arc::new(vec![dir.clone()]);
+    app.all_entries = Arc::new(vec![unknown_entry(dir.clone())]);
     app.include_files = false;
     app.include_dirs = true;
-    app.entry_kinds.clear();
     app.apply_entry_filters(true);
     assert!(app.entries.is_empty());
 
@@ -1441,7 +1433,7 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
 
     app.poll_kind_response();
 
-    assert_eq!(app.entry_kinds.get(&dir), Some(&EntryKind::dir()));
+    assert_eq!(app.find_entry_kind(&dir), Some(EntryKind::dir()));
     assert_eq!(app.entries.as_ref(), &vec![dir]);
     let _ = fs::remove_dir_all(&root);
 }
@@ -1493,7 +1485,6 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
     app.current_row = Some(0);
     app.include_files = true;
     app.include_dirs = true;
-    app.entry_kinds.clear();
 
     app.request_preview_for_current();
 

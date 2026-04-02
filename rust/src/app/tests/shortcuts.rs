@@ -114,7 +114,7 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.entries = Arc::new(vec![selected.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(selected.clone())]);
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
     app.pinned_paths.insert(selected);
@@ -144,7 +144,7 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.entries = Arc::new(vec![selected.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(selected.clone())]);
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
     app.pinned_paths.insert(selected);

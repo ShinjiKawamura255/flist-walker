@@ -138,13 +138,13 @@
   - `rust/src/search.rs` (Entry ベースの入力)
   - `rust/src/app/mod.rs`, `state.rs`, `pipeline.rs`, `cache.rs` (HashMap 同期の解消)
 - Expected result:
-  - `Vec<PathBuf>` + `HashMap<PathBuf, EntryKind>` + `HashMap<PathBuf, SortMetadata>` → `Vec<Entry>` に統合
-  - `Entry { path: PathBuf, kind: Option<EntryKind>, sort_metadata: Option<SortMetadata> }`
-  - 3 重同期管理の解消
+  - まず `Vec<PathBuf>` + `HashMap<PathBuf, EntryKind>` を `Vec<Entry>` に統合し、path と kind の二重同期を解消する
+  - `Entry { path: PathBuf, kind: Option<EntryKind> }` を最小形として導入する
+  - `sort_metadata` の統合は Phase 5 では行わず、既存 cache を維持したまま `Entry` 導入を安全に完了する
 - Verification:
   - `cargo test --lib` green
-  - perf regression テスト通過
   - search/indexer のユニットテスト更新
+  - perf regression テストは `Entry` 化の影響が読み切れないため Phase 5 完了直後ではなく Phase 7/9 で実施
 
 ### Phase 6: `pub(super)` の最小化とアクセサ導入
 - Files/modules/components:
@@ -240,13 +240,13 @@
 - [x] P4-6: `cargo test --lib` green
 
 ### Phase 5
-- [ ] P5-1: `Entry` struct を `rust/src/entry.rs` に設計
-- [ ] P5-2: `indexer.rs` の返却値を `Entry` ベースに段階移行
-- [ ] P5-3: `search.rs` の入力を `Entry` 対応に更新
-- [ ] P5-4: `app/mod.rs` の `all_entries`, `entries`, `entry_kinds` を `Vec<Entry>` に統合
-- [ ] P5-5: `pipeline.rs`, `cache.rs` の HashMap 同期コードを除去
-- [ ] P5-6: テスト更新
-- [ ] P5-7: `cargo test --lib` green + perf regression テスト
+- [x] P5-1: `Entry` struct を `rust/src/entry.rs` に設計
+- [x] P5-2: `EntryKind` を `entry.rs` へ移し、`indexer.rs` / worker index response を `Entry` ベースに段階移行
+- [x] P5-3: `search` 呼び出し境界だけ `Entry` 入力に対応し、search 本体アルゴリズムは path ベースを維持
+- [x] P5-4: `app/mod.rs` の `all_entries`, `entries`, `entry_kinds` を `Vec<Entry>` に統合
+- [x] P5-5: `pipeline.rs`, `cache.rs`, `render.rs`, `tabs.rs` の kind side-channel を除去
+- [x] P5-6: テスト更新
+- [x] P5-7: `cargo test --lib` green
 
 ### Phase 6
 - [ ] P6-1: Phase 2-4 の新 struct のフィールドを private 化
@@ -317,6 +317,7 @@
 - 2026-04-02 Phase 3 着手前に計画更新。`session.rs` に永続化用 `UiState` が既に存在するため、runtime 側の UI 集約 struct は `RuntimeUiState` などの別名で導入する方針へ修正。
 - 2026-04-02 Phase 3 completed. `rust/src/app/ui_state.rs` に `RuntimeUiState` を追加し、focus/scroll/IME/preview panel/window geometry debounce/tab drag などの runtime UI 状態を `self.ui` へ集約した。`render.rs` / `input.rs` / `session.rs` / `tabs.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 50 行まで減少。GUI smoke は headless のため Phase 9 へ集約。
 - 2026-04-02 Phase 4 completed. `rust/src/app/query_state.rs` に `QueryState` を追加し、query/history/history-search/kill-buffer を `self.query_state` へ集約した。`input.rs` / `render.rs` / `pipeline.rs` / `tabs.rs` / `session.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 40 行まで減少。
+- 2026-04-02 Phase 5 completed. `rust/src/entry.rs` を追加して `Entry { path, kind }` を導入し、`EntryKind` / `EntryDisplayKind` を app state から移設した。`indexer.rs`、index/search worker 境界、`FlistWalkerApp` の `all_entries` / `entries`、background index state、tab snapshot を `Vec<Entry>` ベースへ寄せ、`entry_kinds` side-channel を除去した。search 本体アルゴリズムは path ベースのまま worker 境界で投影し、`sort_metadata` cache は計画どおり Phase 5 では未統合のままとした。`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 39 行まで減少。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

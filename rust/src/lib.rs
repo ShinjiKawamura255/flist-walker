@@ -1,3 +1,4 @@
+pub mod entry;
 pub mod actions;
 pub mod app;
 pub mod fs_atomic;

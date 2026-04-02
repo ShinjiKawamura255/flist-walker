@@ -107,7 +107,6 @@ impl FlistWalkerApp {
         self.index.source = IndexSource::None;
         self.clear_preview_cache();
         self.clear_highlight_cache();
-        self.entry_kinds.clear();
         self.indexing.pending_entries.clear();
         self.indexing.pending_entries_request_id = None;
         self.reset_kind_resolution_state();
@@ -443,10 +442,7 @@ impl FlistWalkerApp {
                     }
                     let state = self.indexing.background_states.entry(request_id).or_default();
                     for entry in entries {
-                        if entry.kind_known {
-                            state.entry_kinds.insert(entry.path.clone(), entry.kind);
-                        }
-                        state.entries.push(entry.path);
+                        state.entries.push(entry.into());
                     }
                 }
                 IndexResponse::ReplaceAll {
@@ -458,12 +454,8 @@ impl FlistWalkerApp {
                     }
                     let state = self.indexing.background_states.entry(request_id).or_default();
                     state.entries.clear();
-                    state.entry_kinds.clear();
                     for entry in entries {
-                        if entry.kind_known {
-                            state.entry_kinds.insert(entry.path.clone(), entry.kind);
-                        }
-                        state.entries.push(entry.path);
+                        state.entries.push(entry.into());
                     }
                 }
                 IndexResponse::Finished { request_id, source } => {
@@ -478,22 +470,14 @@ impl FlistWalkerApp {
                         tab.index_state.index.source = state.source.unwrap_or(source);
                         tab.index_state.index.entries.clear();
                         tab.index_state.all_entries = Arc::new(state.entries);
-                        tab.index_state.entry_kinds = state.entry_kinds;
                         if tab.include_files && tab.include_dirs {
                             tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
                         } else {
-                            let filtered: Vec<PathBuf> = tab
+                            let filtered: Vec<Entry> = tab
                                 .index_state
                                 .all_entries
                                 .iter()
-                                .filter(|path| {
-                                    Self::is_entry_visible_for_flags(
-                                        &tab.index_state.entry_kinds,
-                                        path,
-                                        tab.include_files,
-                                        tab.include_dirs,
-                                    )
-                                })
+                                .filter(|entry| Self::is_entry_visible_for_flags(entry, tab.include_files, tab.include_dirs))
                                 .cloned()
                                 .collect();
                             tab.index_state.entries = Arc::new(filtered);
@@ -507,13 +491,13 @@ impl FlistWalkerApp {
                         tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
                         tab.index_state.last_incremental_results_refresh = Instant::now();
                         if matches!(tab.index_state.index.source, IndexSource::Walker) {
-                            for path in tab.index_state.all_entries.iter() {
-                                if !tab.index_state.entry_kinds.contains_key(path)
-                                    && !tab.index_state.pending_kind_paths_set.contains(path)
-                                    && !tab.index_state.in_flight_kind_paths.contains(path)
+                            for entry in tab.index_state.all_entries.iter() {
+                                if entry.kind.is_none()
+                                    && !tab.index_state.pending_kind_paths_set.contains(&entry.path)
+                                    && !tab.index_state.in_flight_kind_paths.contains(&entry.path)
                                 {
-                                    tab.index_state.pending_kind_paths_set.insert(path.clone());
-                                    tab.index_state.pending_kind_paths.push_back(path.clone());
+                                    tab.index_state.pending_kind_paths_set.insert(entry.path.clone());
+                                    tab.index_state.pending_kind_paths.push_back(entry.path.clone());
                                 }
                             }
                             tab.index_state.kind_resolution_in_progress =
@@ -537,7 +521,11 @@ impl FlistWalkerApp {
                             deferred_filelist = Some((
                                 tab.id,
                                 tab.root.clone(),
-                                tab.index_state.all_entries.as_ref().clone(),
+                                tab.index_state
+                                    .all_entries
+                                    .iter()
+                                    .map(|entry| entry.path.clone())
+                                    .collect(),
                             ));
                             self.filelist_state.pending_after_index = None;
                         }
@@ -549,7 +537,7 @@ impl FlistWalkerApp {
                                 .iter()
                                 .take(self.limit)
                                 .cloned()
-                                .map(|p| (p, 0.0))
+                                .map(|entry| (entry.path, 0.0))
                                 .collect();
                             if tab.result_state.results.is_empty() {
                                 tab.result_state.current_row = None;
@@ -695,7 +683,6 @@ impl FlistWalkerApp {
                     self.indexing.pending_entries_request_id = None;
                     self.index.entries.clear();
                     self.indexing.incremental_filtered_entries.clear();
-                    self.entry_kinds.clear();
                     self.queue_index_batch(request_id, entries);
                     has_index_progress = true;
                 }
@@ -975,7 +962,7 @@ impl FlistWalkerApp {
                 .iter()
                 .take(self.limit)
                 .cloned()
-                .map(|p| (p, 0.0))
+                .map(|entry| (entry.path, 0.0))
                 .collect();
             self.replace_results_snapshot(results, false);
             return;
@@ -992,18 +979,14 @@ impl FlistWalkerApp {
     }
 
     fn ingest_index_entry(&mut self, entry: IndexEntry) {
-        if entry.kind_known {
-            self.entry_kinds.insert(entry.path.clone(), entry.kind);
-        } else {
-            self.entry_kinds.remove(&entry.path);
-            if self.kind_resolution_needed_for_filters() {
-                self.queue_kind_resolution(entry.path.clone());
-            }
+        let entry: Entry = entry.into();
+        if entry.kind.is_none() && self.kind_resolution_needed_for_filters() {
+            self.queue_kind_resolution(entry.path.clone());
         }
-        self.index.entries.push(entry.path.clone());
-        if self.is_entry_visible_for_current_filter(&entry.path) {
-            self.indexing.incremental_filtered_entries.push(entry.path);
+        if self.is_entry_visible_for_current_filter(&entry) {
+            self.indexing.incremental_filtered_entries.push(entry.clone());
         }
+        self.index.entries.push(entry);
     }
 
     fn drain_queued_index_entries(&mut self, request_id: u64, max_entries: usize) -> bool {
@@ -1061,7 +1044,7 @@ impl FlistWalkerApp {
             .iter()
             .take(self.limit)
             .cloned()
-            .map(|p| (p, 0.0))
+            .map(|entry| (entry.path, 0.0))
             .collect();
         self.replace_results_snapshot(results, true);
     }
@@ -1113,10 +1096,10 @@ impl FlistWalkerApp {
         self.indexing.last_incremental_results_refresh.elapsed() >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
     }
 
-    fn filtered_entries(&self, source: &[PathBuf]) -> Vec<PathBuf> {
+    fn filtered_entries(&self, source: &[Entry]) -> Vec<Entry> {
         source
             .iter()
-            .filter(|path| self.is_entry_visible_for_current_filter(path))
+            .filter(|entry| self.is_entry_visible_for_current_filter(entry))
             .cloned()
             .collect()
     }
@@ -1155,7 +1138,7 @@ impl FlistWalkerApp {
                 .iter()
                 .take(self.limit)
                 .cloned()
-                .map(|p| (p, 0.0))
+                .map(|entry| (entry.path, 0.0))
                 .collect();
             self.replace_results_snapshot(results, keep_scroll_position);
         } else {

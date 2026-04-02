@@ -1,3 +1,4 @@
+use crate::entry::{Entry, EntryDisplayKind, EntryKind};
 use crate::fs_atomic::write_text_atomic;
 use crate::indexer::{
     find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
@@ -49,9 +50,8 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    BackgroundIndexState, EntryDisplayKind, EntryKind, FileListDialogKind,
-    FileListWorkflowState, HighlightCacheKey, PendingFileListAfterIndex,
-    PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    BackgroundIndexState, FileListDialogKind, FileListWorkflowState, HighlightCacheKey,
+    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
     PendingFileListUseWalkerConfirmation, ResultSortMode, SortMetadata, TabAccentPalette,
     TabDragState, UpdateCheckFailureState, UpdatePromptState, UpdateState,
 };
@@ -230,9 +230,8 @@ pub struct FlistWalkerApp {
     include_files: bool,
     include_dirs: bool,
     index: IndexBuildResult,
-    all_entries: Arc<Vec<PathBuf>>,
-    entries: Arc<Vec<PathBuf>>,
-    entry_kinds: HashMap<PathBuf, EntryKind>,
+    all_entries: Arc<Vec<Entry>>,
+    entries: Arc<Vec<Entry>>,
     base_results: Vec<(PathBuf, f64)>,
     results: Vec<(PathBuf, f64)>,
     result_sort_mode: ResultSortMode,
@@ -428,7 +427,6 @@ Search hints:
             },
             all_entries: Arc::new(Vec::new()),
             entries: Arc::new(Vec::new()),
-            entry_kinds: HashMap::new(),
             base_results: Vec::new(),
             results: Vec::new(),
             result_sort_mode: ResultSortMode::Score,
@@ -757,8 +755,6 @@ Search hints:
         self.index.source = IndexSource::None;
         self.all_entries = Arc::new(Vec::new());
         self.entries = Arc::new(Vec::new());
-        self.entry_kinds.clear();
-        self.entry_kinds.shrink_to_fit();
         self.base_results.clear();
         self.base_results.shrink_to_fit();
         self.results.clear();
@@ -909,16 +905,8 @@ Search hints:
         self.use_filelist && !matches!(self.index.source, IndexSource::Walker)
     }
 
-    fn is_entry_visible_for_flags(
-        entry_kinds: &HashMap<PathBuf, EntryKind>,
-        path: &Path,
-        include_files: bool,
-        include_dirs: bool,
-    ) -> bool {
-        match entry_kinds.get(path).copied() {
-            Some(kind) => (kind.is_dir && include_dirs) || (!kind.is_dir && include_files),
-            None => include_files && include_dirs,
-        }
+    fn is_entry_visible_for_flags(entry: &Entry, include_files: bool, include_dirs: bool) -> bool {
+        entry.is_visible_for_flags(include_files, include_dirs)
     }
 
     fn refresh_status_line(&mut self) {
@@ -1156,13 +1144,8 @@ Search hints:
         self.refresh_status_line();
     }
 
-    fn is_entry_visible_for_current_filter(&self, path: &Path) -> bool {
-        match self.entry_kinds.get(path).copied() {
-            Some(kind) => {
-                (kind.is_dir && self.include_dirs) || (!kind.is_dir && self.include_files)
-            }
-            None => self.include_files && self.include_dirs,
-        }
+    fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
+        entry.is_visible_for_flags(self.include_files, self.include_dirs)
     }
 
     fn kind_resolution_needed_for_filters(&self) -> bool {
@@ -1182,21 +1165,29 @@ Search hints:
             return;
         }
         let source: Vec<PathBuf> = if self.indexing.in_progress && !self.index.entries.is_empty() {
-            self.index.entries.clone()
+            self.index
+                .entries
+                .iter()
+                .map(|entry| entry.path.clone())
+                .collect()
         } else {
-            self.all_entries.as_ref().clone()
+            self.all_entries.iter().map(|entry| entry.path.clone()).collect()
         };
         self.queue_unknown_kind_paths(&source);
     }
 
     fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
-        let source = self.all_entries.as_ref().clone();
+        let source = self
+            .all_entries
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
         self.queue_unknown_kind_paths(&source);
     }
 
     fn queue_unknown_kind_paths(&mut self, source: &[PathBuf]) {
         for path in source {
-            if !self.entry_kinds.contains_key(path) {
+            if self.find_entry_kind(path).is_none() {
                 self.queue_kind_resolution(path.clone());
             }
         }
@@ -1252,7 +1243,7 @@ Search hints:
                 }) {
                     resolved_current_row = true;
                 }
-                self.entry_kinds.insert(response.path, kind);
+                self.set_entry_kind(&response.path, kind);
                 resolved_any = true;
             }
             processed = processed.saturating_add(1);
@@ -1307,6 +1298,45 @@ Search hints:
         self.current_row
             .and_then(|row| self.results.get(row).map(|(p, _)| vec![p.clone()]))
             .unwrap_or_default()
+    }
+
+    fn find_entry_in_slice<'a>(entries: &'a [Entry], path: &Path) -> Option<&'a Entry> {
+        entries.iter().find(|entry| entry.path == path)
+    }
+
+    fn find_entry_kind(&self, path: &Path) -> Option<EntryKind> {
+        Self::find_entry_in_slice(&self.entries, path)
+            .or_else(|| Self::find_entry_in_slice(&self.index.entries, path))
+            .or_else(|| Self::find_entry_in_slice(&self.all_entries, path))
+            .and_then(|entry| entry.kind)
+    }
+
+    fn set_entry_kind_in_slice(entries: &mut [Entry], path: &Path, kind: EntryKind) -> bool {
+        let mut updated = false;
+        for entry in entries.iter_mut().filter(|entry| entry.path == path) {
+            entry.kind = Some(kind);
+            updated = true;
+        }
+        updated
+    }
+
+    fn set_entry_kind(&mut self, path: &Path, kind: EntryKind) {
+        let _ = Self::set_entry_kind_in_slice(&mut self.index.entries, path, kind);
+        if let Some(entries) = Arc::get_mut(&mut self.all_entries) {
+            let _ = Self::set_entry_kind_in_slice(entries, path, kind);
+        } else {
+            let mut entries = self.all_entries.as_ref().clone();
+            let _ = Self::set_entry_kind_in_slice(&mut entries, path, kind);
+            self.all_entries = Arc::new(entries);
+        }
+        if let Some(entries) = Arc::get_mut(&mut self.entries) {
+            let _ = Self::set_entry_kind_in_slice(entries, path, kind);
+        } else {
+            let mut entries = self.entries.as_ref().clone();
+            let _ = Self::set_entry_kind_in_slice(&mut entries, path, kind);
+            self.entries = Arc::new(entries);
+        }
+        let _ = Self::set_entry_kind_in_slice(&mut self.indexing.incremental_filtered_entries, path, kind);
     }
 
     fn execute_selected(&mut self) {

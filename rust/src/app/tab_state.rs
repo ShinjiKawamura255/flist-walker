@@ -17,9 +17,8 @@ pub(super) struct TabQueryState {
 #[derive(Clone, Debug)]
 pub(super) struct TabIndexState {
     pub(super) index: IndexBuildResult,
-    pub(super) all_entries: Arc<Vec<PathBuf>>,
-    pub(super) entries: Arc<Vec<PathBuf>>,
-    pub(super) entry_kinds: HashMap<PathBuf, EntryKind>,
+    pub(super) all_entries: Arc<Vec<Entry>>,
+    pub(super) entries: Arc<Vec<Entry>>,
     pub(super) pending_index_request_id: Option<u64>,
     pub(super) index_in_progress: bool,
     pub(super) pending_index_entries: VecDeque<IndexEntry>,
@@ -29,7 +28,7 @@ pub(super) struct TabIndexState {
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
     pub(super) kind_resolution_epoch: u64,
     pub(super) kind_resolution_in_progress: bool,
-    pub(super) incremental_filtered_entries: Vec<PathBuf>,
+    pub(super) incremental_filtered_entries: Vec<Entry>,
     pub(super) last_incremental_results_refresh: Instant,
     pub(super) last_search_snapshot_len: usize,
     pub(super) search_resume_pending: bool,

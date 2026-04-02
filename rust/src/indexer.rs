@@ -1,3 +1,4 @@
+use crate::entry::Entry;
 use crate::fs_atomic::write_text_atomic;
 use anyhow::{Context, Result};
 use jwalk::WalkDir;
@@ -19,7 +20,7 @@ pub enum IndexSource {
 
 #[derive(Debug, Clone)]
 pub struct IndexBuildResult {
-    pub entries: Vec<PathBuf>,
+    pub entries: Vec<Entry>,
     pub source: IndexSource,
 }
 
@@ -378,18 +379,24 @@ pub fn build_index_with_metadata(
                 || false,
             )?;
             IndexBuildResult {
-                entries,
+                entries: entries.into_iter().map(Entry::from).collect(),
                 source: IndexSource::FileList(filelist),
             }
         } else {
             IndexBuildResult {
-                entries: walk_entries(&root, include_files, include_dirs),
+                entries: walk_entries(&root, include_files, include_dirs)
+                    .into_iter()
+                    .map(Entry::from)
+                    .collect(),
                 source: IndexSource::Walker,
             }
         }
     } else {
         IndexBuildResult {
-            entries: walk_entries(&root, include_files, include_dirs),
+            entries: walk_entries(&root, include_files, include_dirs)
+                .into_iter()
+                .map(Entry::from)
+                .collect(),
             source: IndexSource::Walker,
         }
     };
@@ -412,7 +419,11 @@ pub fn build_index(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<Vec<PathBuf>> {
-    Ok(build_index_with_metadata(root, use_filelist, include_files, include_dirs)?.entries)
+    Ok(build_index_with_metadata(root, use_filelist, include_files, include_dirs)?
+        .entries
+        .into_iter()
+        .map(|entry| entry.path)
+        .collect())
 }
 
 pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
@@ -929,8 +940,10 @@ mod tests {
         canonical_or_original(left) == canonical_or_original(right)
     }
 
-    fn contains_path(entries: &[PathBuf], expected: &Path) -> bool {
-        entries.iter().any(|entry| same_path(entry, expected))
+    fn contains_path<T: AsRef<Path>>(entries: &[T], expected: &Path) -> bool {
+        entries
+            .iter()
+            .any(|entry| same_path(entry.as_ref(), expected))
     }
 
     fn expected_backslash_relative_path(root: &Path) -> PathBuf {

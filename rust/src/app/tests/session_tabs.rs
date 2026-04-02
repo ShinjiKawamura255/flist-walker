@@ -583,15 +583,15 @@ fn switching_tabs_restores_entries_and_filters_per_tab() {
     fs::write(&b, "b").expect("write b");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.entries = Arc::new(vec![a.clone(), b.clone()]);
-    app.all_entries = Arc::new(vec![a.clone(), b.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
+    app.all_entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
     app.include_files = true;
     app.include_dirs = true;
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    app.entries = Arc::new(vec![a.clone()]);
-    app.all_entries = Arc::new(vec![a.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(a.clone())]);
+    app.all_entries = Arc::new(vec![unknown_entry(a.clone())]);
     app.include_files = true;
     app.include_dirs = false;
     app.sync_active_tab_state();
@@ -767,10 +767,10 @@ fn background_tab_search_and_preview_responses_are_retained() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "picked".to_string());
     app.indexing.in_progress = false;
     app.indexing.pending_request_id = None;
-    app.entries = Arc::new(vec![selected.clone()]);
+    app.entries = Arc::new(vec![file_entry(selected.clone())]);
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
-    app.entry_kinds.insert(selected.clone(), EntryKind::file());
+    app.set_entry_kind(&selected, EntryKind::file());
 
     let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
     let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
@@ -865,14 +865,14 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
-    app.entries = Arc::new(vec![active_file.clone()]);
-    app.all_entries = Arc::new(vec![active_file.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
 
     app.create_new_tab();
     assert_eq!(app.active_tab, 1);
-    app.entries = Arc::new(vec![active_file.clone()]);
-    app.all_entries = Arc::new(vec![active_file.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
 
     index_res_tx

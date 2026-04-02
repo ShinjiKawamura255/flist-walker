@@ -277,7 +277,7 @@ impl FlistWalkerApp {
         prefer_relative: bool,
     ) {
         let is_pinned = self.pinned_paths.contains(path);
-        let kind = self.entry_kinds.get(path).copied();
+        let kind = self.find_entry_kind(path);
         let display = display_path_with_mode(path, &self.root, prefer_relative);
         let positions = self.highlight_positions_for_path_cached(path, prefer_relative);
         let job = self.build_result_row_job(

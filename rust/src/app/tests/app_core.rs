@@ -835,9 +835,9 @@ fn clear_query_and_selection_restores_first_row_regression() {
     app.current_row = Some(2);
     app.preview = "stale".to_string();
     app.entries = Arc::new(vec![
-        root.join("first.txt"),
-        root.join("second.txt"),
-        root.join("third.txt"),
+        unknown_entry(root.join("first.txt")),
+        unknown_entry(root.join("second.txt")),
+        unknown_entry(root.join("third.txt")),
     ]);
     app.results = vec![
         (root.join("first.txt"), 1.0),
@@ -992,7 +992,7 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
     app.ui.show_preview = false;
     app.results = vec![(file.clone(), 0.0)];
     app.current_row = Some(0);
-    app.entry_kinds.insert(file, EntryKind::file());
+    app.set_entry_kind(&file, EntryKind::file());
     app.preview = "stale preview".to_string();
     app.worker_bus.preview.pending_request_id = Some(99);
     app.worker_bus.preview.in_progress = true;
@@ -1064,7 +1064,7 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     app.ui.show_preview = false;
     app.indexing.in_progress = false;
     app.indexing.pending_request_id = None;
-    app.entries = Arc::new(vec![first.clone(), second.clone()]);
+    app.entries = Arc::new(vec![unknown_entry(first.clone()), unknown_entry(second.clone())]);
     app.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
     app.results = app.base_results.clone();
     app.current_row = Some(1);
