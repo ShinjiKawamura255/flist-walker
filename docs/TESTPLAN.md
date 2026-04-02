@@ -130,6 +130,7 @@
 | TC-086 | unit | 実行バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合も、自己更新を無効化する | SP-014 |
 | TC-094 | unit | Windows の一般 `.ps1` は Execute ではなく Open 分岐を選ぶ | SP-004 |
 | TC-095 | unit | `SHA256SUMS.sig` は改ざんされた manifest を検証失敗にする | SP-014 |
+| TC-099 | manual | structural refactoring 後も GUI の主要操作が連続利用に耐える | SP-010 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
@@ -191,6 +192,40 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 ローカル feed を無効 URL に向ける、または `api.github.com` 到達不能環境を再現し、`Update Check Failed` ダイアログに原因が表示されることを確認する。`Don't show this again for update check errors` をチェックした場合は次回起動で同種ダイアログが出ないことも確認する。
 7. startup check failure dialog 強制表示:
 `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE=1 cargo run -- --root .. --limit 1000` で起動し、ネットワーク状態に関係なく `Update Check Failed` ダイアログが表示されることを確認する。必要なら `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE=\"debug message\"` で表示文言を固定する。
+
+## Structural Refactoring GUI Smoke Test
+Phase 9 の structural refactoring 完了判定では、この手順を別環境で 1 回通せば GUI smoke 合格とみなす。
+
+1. 起動と初期表示
+`cargo run -- --root .. --limit 1000` で起動し、一覧が表示されること。候補がある場合は 1 行目が選択され、入力欄へすぐ打鍵できることを確認する。
+2. 検索入力と応答性
+非空 query を数文字入力し、`Backspace`、左右矢印、`ArrowUp` / `ArrowDown` を混ぜても UI が固まらないことを確認する。`'`, `!`, `^`, `$`, `|` を含む query を少なくとも 1 回ずつ試す。
+3. プレビュー追従
+結果一覧で current row を数回動かし、preview が追従することを確認する。preview 非表示切替がある場合は表示/非表示を切り替えて一覧操作が継続できることも確認する。
+4. Root 切替
+`Ctrl+O` または root selector で root を変更し、旧 root の preview / current row / pinned selection が残らず、新 root の index が始まることを確認する。
+5. Tab 操作
+新規 tab 作成、tab 切替、tab close、可能なら tab 並べ替えを行い、tab ごとの query / root / result 状態が混線しないことを確認する。
+6. FileList 作成
+Walker source で `Create File List` を実行し、確認ダイアログ、進捗表示、完了後の notice が動くことを確認する。FileList source で同操作を行い、background Walker 準備メッセージが出ることも確認する。
+7. Sort
+`Score`, `Name`, `Modified`, `Created` を切り替え、`Modified` / `Created` 中も入力とスクロールが継続できることを確認する。`Score` へ戻したときに一覧が破綻しないことも確認する。
+8. Self-update ダイアログ
+更新確認ダイアログを出せる環境なら、表示、Later、抑止チェック、失敗ダイアログのいずれか 1 系統を確認する。難しい場合はこの項目だけ `not run` と記録し、理由を残す。
+
+### Structural Refactoring GUI Smoke Test Report Template
+- Date:
+- Environment: OS / display 構成 / build 種別
+- Step 1:
+- Step 2:
+- Step 3:
+- Step 4:
+- Step 5:
+- Step 6:
+- Step 7:
+- Step 8:
+- Overall: pass / fail
+- Notes:
 
 ## Entry / Exit criteria
 - Entry:
