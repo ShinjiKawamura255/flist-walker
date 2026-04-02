@@ -11,6 +11,7 @@ use std::os::unix::fs::PermissionsExt;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
+#[cfg(any(target_os = "windows", all(unix, not(target_os = "macos"))))]
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
