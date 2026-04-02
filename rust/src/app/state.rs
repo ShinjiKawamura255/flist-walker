@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
 use eframe::egui;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -198,4 +199,24 @@ impl Default for UpdateState {
             close_requested_for_install: false,
         }
     }
+}
+
+pub(super) struct CacheStateBundle {
+    pub(super) preview: PreviewCacheState,
+    pub(super) highlight: HighlightCacheState,
+    pub(super) sort_metadata: SortMetadataCacheState,
+}
+
+pub(super) struct RootBrowserState {
+    #[cfg(test)]
+    pub(super) browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
+    pub(super) saved_roots: Vec<PathBuf>,
+    pub(super) default_root: Option<PathBuf>,
+}
+
+#[derive(Default)]
+pub(super) struct RequestTabRoutingState {
+    pub(super) preview: HashMap<u64, u64>,
+    pub(super) action: HashMap<u64, u64>,
+    pub(super) sort: HashMap<u64, u64>,
 }

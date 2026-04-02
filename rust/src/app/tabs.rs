@@ -516,11 +516,14 @@ impl FlistWalkerApp {
         self.indexing.background_states
             .retain(|request_id, _| self.indexing.request_tabs.contains_key(request_id));
         self.search.retain_request_tabs(|_, tab_id| *tab_id != removed.id);
-        self.preview_request_tabs
+        self.request_tab_routing
+            .preview
             .retain(|_, tab_id| *tab_id != removed.id);
-        self.action_request_tabs
+        self.request_tab_routing
+            .action
             .retain(|_, tab_id| *tab_id != removed.id);
-        self.sort_request_tabs
+        self.request_tab_routing
+            .sort
             .retain(|_, tab_id| *tab_id != removed.id);
         if index < self.active_tab {
             self.active_tab = self.active_tab.saturating_sub(1);

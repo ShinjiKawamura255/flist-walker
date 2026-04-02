@@ -811,7 +811,7 @@ impl FlistWalkerApp {
                             egui::popup::PopupCloseBehavior::CloseOnClickOutside,
                             |ui: &mut egui::Ui| {
                                 ui.set_min_width(field_width);
-                                for (index, path) in self.saved_roots.iter().enumerate() {
+                                for (index, path) in self.root_browser.saved_roots.iter().enumerate() {
                                     let text = normalize_windows_path_buf(path.clone())
                                         .to_string_lossy()
                                         .to_string();

@@ -191,7 +191,7 @@ impl SortMetadataCacheState {
 impl FlistWalkerApp {
     pub(super) fn poll_preview_response(&mut self) {
         while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
-            let target_tab_id = self.preview_request_tabs.remove(&response.request_id);
+            let target_tab_id = self.request_tab_routing.preview.remove(&response.request_id);
             if Some(response.request_id) == self.worker_bus.preview.pending_request_id {
                 self.worker_bus.preview.pending_request_id = None;
                 self.worker_bus.preview.in_progress = false;
@@ -232,20 +232,21 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn clear_preview_cache(&mut self) {
-        self.preview_cache.clear();
+        self.cache.preview.clear();
     }
 
     pub(super) fn cache_preview(&mut self, path: PathBuf, preview: String) {
-        self.preview_cache
+        self.cache
+            .preview
             .insert_bounded(path, preview, Self::PREVIEW_CACHE_MAX_BYTES);
     }
 
     pub(super) fn clear_highlight_cache(&mut self) {
-        self.highlight_cache.clear();
+        self.cache.highlight.clear();
     }
 
     pub(super) fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
-        if self.highlight_cache.matches_scope(
+        if self.cache.highlight.matches_scope(
             &self.query_state.query,
             &self.root,
             self.use_regex,
@@ -255,7 +256,7 @@ impl FlistWalkerApp {
         {
             return;
         }
-        self.highlight_cache.reset_scope(
+        self.cache.highlight.reset_scope(
             self.query_state.query.clone(),
             self.root.clone(),
             self.use_regex,
@@ -265,7 +266,8 @@ impl FlistWalkerApp {
     }
 
     fn cache_highlight_positions_for_key(&mut self, key: HighlightCacheKey, positions: Vec<u16>) {
-        self.highlight_cache
+        self.cache
+            .highlight
             .insert_bounded(key, positions, Self::HIGHLIGHT_CACHE_MAX);
     }
 
@@ -298,7 +300,7 @@ impl FlistWalkerApp {
             ignore_case: self.ignore_case,
         };
 
-        if let Some(positions) = self.highlight_cache.get(&key) {
+        if let Some(positions) = self.cache.highlight.get(&key) {
             return positions;
         }
 
@@ -311,7 +313,8 @@ impl FlistWalkerApp {
             self.ignore_case,
         ));
         self.cache_highlight_positions_for_key(key.clone(), positions);
-        self.highlight_cache
+        self.cache
+            .highlight
             .get(&key)
             .unwrap_or_else(|| Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new()))))
     }
@@ -339,8 +342,8 @@ impl FlistWalkerApp {
 
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
-                if let Some(cached) = self.preview_cache.get(path) {
-                    self.preview = cached.clone();
+                if let Some(cached) = self.cache.preview.get(path) {
+                    self.preview = cached.to_string();
                     self.worker_bus.preview.in_progress = false;
                     self.worker_bus.preview.pending_request_id = None;
                     return;
@@ -369,7 +372,7 @@ impl FlistWalkerApp {
                     self.worker_bus.preview.next_request_id.saturating_add(1);
                 self.worker_bus.preview.pending_request_id = Some(request_id);
                 if let Some(tab_id) = self.current_tab_id() {
-                    self.preview_request_tabs.insert(request_id, tab_id);
+                    self.request_tab_routing.preview.insert(request_id, tab_id);
                 }
                 self.worker_bus.preview.in_progress = true;
                 let req = PreviewRequest {

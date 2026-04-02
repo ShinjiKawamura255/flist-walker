@@ -50,10 +50,11 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    BackgroundIndexState, FileListDialogKind, FileListWorkflowState, HighlightCacheKey,
-    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
-    PendingFileListUseWalkerConfirmation, ResultSortMode, SortMetadata, TabAccentPalette,
-    TabDragState, UpdateCheckFailureState, UpdatePromptState, UpdateState,
+    BackgroundIndexState, CacheStateBundle, FileListDialogKind, FileListWorkflowState,
+    HighlightCacheKey, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, RequestTabRoutingState,
+    ResultSortMode, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
+    UpdateCheckFailureState, UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
@@ -245,19 +246,12 @@ pub struct FlistWalkerApp {
     worker_bus: WorkerBus,
     indexing: IndexCoordinator,
     ui: RuntimeUiState,
-    #[cfg(test)]
-    browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
-    saved_roots: Vec<PathBuf>,
-    default_root: Option<PathBuf>,
-    preview_cache: PreviewCacheState,
-    highlight_cache: HighlightCacheState,
-    sort_metadata_cache: SortMetadataCacheState,
+    root_browser: RootBrowserState,
+    cache: CacheStateBundle,
     tabs: Vec<AppTabState>,
     active_tab: usize,
     next_tab_id: u64,
-    preview_request_tabs: HashMap<u64, u64>,
-    action_request_tabs: HashMap<u64, u64>,
-    sort_request_tabs: HashMap<u64, u64>,
+    request_tab_routing: RequestTabRoutingState,
     filelist_state: FileListWorkflowState,
     update_state: UpdateState,
     worker_runtime: Option<WorkerRuntime>,
@@ -459,19 +453,21 @@ Search hints:
                 latest_index_request_ids,
             ),
             ui: RuntimeUiState::new(show_preview, preview_panel_width),
-            #[cfg(test)]
-            browse_dialog_result: None,
-            saved_roots,
-            default_root,
-            preview_cache: PreviewCacheState::default(),
-            highlight_cache: HighlightCacheState::with_scope_ignore_case(true),
-            sort_metadata_cache: SortMetadataCacheState::default(),
+            root_browser: RootBrowserState {
+                #[cfg(test)]
+                browse_dialog_result: None,
+                saved_roots,
+                default_root,
+            },
+            cache: CacheStateBundle {
+                preview: PreviewCacheState::default(),
+                highlight: HighlightCacheState::with_scope_ignore_case(true),
+                sort_metadata: SortMetadataCacheState::default(),
+            },
             tabs: Vec::new(),
             active_tab: 0,
             next_tab_id: 1,
-            preview_request_tabs: HashMap::new(),
-            action_request_tabs: HashMap::new(),
-            sort_request_tabs: HashMap::new(),
+            request_tab_routing: RequestTabRoutingState::default(),
             filelist_state: FileListWorkflowState::default(),
             update_state,
             worker_runtime: Some(worker_runtime),
@@ -503,12 +499,13 @@ Search hints:
 
     /// root 単位で破棄すべき sort metadata cache をまとめて消す。
     fn clear_sort_metadata_cache(&mut self) {
-        self.sort_metadata_cache.clear();
+        self.cache.sort_metadata.clear();
     }
 
     /// 結果ソートに使う時刻属性を上限付き cache へ保存する。
     fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
-        self.sort_metadata_cache
+        self.cache
+            .sort_metadata
             .insert_bounded(path, metadata, Self::SORT_METADATA_CACHE_MAX);
     }
 
@@ -604,7 +601,7 @@ Search hints:
 
     /// 現在の base result snapshot から表示用の整列結果を生成する。
     fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
-        Self::build_sorted_results_from(&self.base_results, mode, self.sort_metadata_cache.get_map())
+        Self::build_sorted_results_from(&self.base_results, mode, self.cache.sort_metadata.get_map())
     }
 
     /// 結果一覧を差し替えつつ current row と scroll 方針を維持する。
@@ -648,7 +645,7 @@ Search hints:
         self.worker_bus.sort.pending_request_id = Some(request_id);
         self.worker_bus.sort.in_progress = true;
         if let Some(tab_id) = self.current_tab_id() {
-            self.sort_request_tabs.insert(request_id, tab_id);
+            self.request_tab_routing.sort.insert(request_id, tab_id);
         }
         self.refresh_status_line();
         if self
@@ -688,7 +685,7 @@ Search hints:
             .base_results
             .iter()
             .map(|(path, _)| path.clone())
-            .filter(|path| !self.sort_metadata_cache.contains(path))
+            .filter(|path| !self.cache.sort_metadata.contains(path))
             .collect::<Vec<_>>();
         if missing_paths.is_empty() {
             let sorted = self.build_sorted_results(self.result_sort_mode);
@@ -836,7 +833,8 @@ Search hints:
 
     #[cfg(test)]
     fn select_root_via_dialog(&mut self, _dialog_root: &Path) -> Result<Option<PathBuf>, String> {
-        self.browse_dialog_result
+        self.root_browser
+            .browse_dialog_result
             .take()
             .unwrap_or(Ok(None))
     }
@@ -860,18 +858,19 @@ Search hints:
 
     fn current_root_dropdown_index(&self) -> Option<usize> {
         let current_key = Self::path_key(&self.root);
-        self.saved_roots
+        self.root_browser
+            .saved_roots
             .iter()
             .position(|path| Self::path_key(path) == current_key)
     }
 
     /// dropdown のハイライト位置を保存済み root 一覧に同期する。
     fn sync_root_dropdown_highlight(&mut self) {
-        let max_index = self.saved_roots.len().checked_sub(1);
+        let max_index = self.root_browser.saved_roots.len().checked_sub(1);
         self.ui.root_dropdown_highlight = match (self.ui.root_dropdown_highlight, max_index) {
             (_, None) => None,
             (Some(index), Some(max)) => Some(index.min(max)),
-            (None, Some(_)) => self.current_root_dropdown_index().or(Some(0)),
+            (None, Some(_)) => self.current_root_dropdown_index().or(Some(0usize)),
         };
     }
 
@@ -890,7 +889,7 @@ Search hints:
 
     /// root dropdown 内の候補選択を上下へ移動する。
     fn move_root_dropdown_selection(&mut self, delta: isize) {
-        let Some(max_index) = self.saved_roots.len().checked_sub(1) else {
+        let Some(max_index) = self.root_browser.saved_roots.len().checked_sub(1) else {
             self.ui.root_dropdown_highlight = None;
             return;
         };
@@ -908,7 +907,7 @@ Search hints:
         let selected = self
             .ui
             .root_dropdown_highlight
-            .and_then(|index| self.saved_roots.get(index).cloned());
+            .and_then(|index| self.root_browser.saved_roots.get(index).cloned());
         self.close_root_dropdown(ctx);
         if let Some(root) = selected {
             self.apply_root_change(root);
@@ -1073,7 +1072,7 @@ Search hints:
     /// action worker の応答を現在 tab または背景 tab に反映する。
     fn poll_action_response(&mut self) {
         while let Ok(response) = self.worker_bus.action.rx.try_recv() {
-            let target_tab_id = self.action_request_tabs.remove(&response.request_id);
+            let target_tab_id = self.request_tab_routing.action.remove(&response.request_id);
             if Some(response.request_id) == self.worker_bus.action.pending_request_id {
                 self.worker_bus.action.pending_request_id = None;
                 self.worker_bus.action.in_progress = false;
@@ -1102,7 +1101,7 @@ Search hints:
     /// sort worker の応答を cache と tab state へ適用する。
     fn poll_sort_response(&mut self) {
         while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
-            let target_tab_id = self.sort_request_tabs.remove(&response.request_id);
+            let target_tab_id = self.request_tab_routing.sort.remove(&response.request_id);
             for (path, metadata) in response.entries {
                 self.cache_sort_metadata(path, metadata);
             }
@@ -1136,7 +1135,7 @@ Search hints:
                 tab.result_state.results = Self::build_sorted_results_from(
                     &tab.result_state.base_results,
                     tab.result_state.result_sort_mode,
-                    self.sort_metadata_cache.get_map(),
+                    self.cache.sort_metadata.get_map(),
                 );
                 tab.result_state.results_compacted = false;
                 if tab.result_state.results.is_empty() {
@@ -1423,7 +1422,7 @@ Search hints:
         self.worker_bus.action.pending_request_id = Some(request_id);
         self.worker_bus.action.in_progress = true;
         if let Some(tab_id) = self.current_tab_id() {
-            self.action_request_tabs.insert(request_id, tab_id);
+            self.request_tab_routing.action.insert(request_id, tab_id);
         }
 
         if paths.len() == 1 {

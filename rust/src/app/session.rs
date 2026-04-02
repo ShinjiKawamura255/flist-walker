@@ -314,6 +314,7 @@ impl FlistWalkerApp {
             let _ = fs::create_dir_all(parent);
         }
         let text = self
+            .root_browser
             .saved_roots
             .iter()
             .map(|p| p.to_string_lossy().to_string())
@@ -334,12 +335,18 @@ impl FlistWalkerApp {
             .unwrap_or_else(|_| self.root.clone());
         let root = normalize_windows_path_buf(root);
         let key = Self::path_key(&root);
-        if self.saved_roots.iter().any(|p| Self::path_key(p) == key) {
+        if self
+            .root_browser
+            .saved_roots
+            .iter()
+            .any(|p| Self::path_key(p) == key)
+        {
             self.set_notice("Current root is already registered");
             return;
         }
-        self.saved_roots.push(root.clone());
-        self.saved_roots
+        self.root_browser.saved_roots.push(root.clone());
+        self.root_browser
+            .saved_roots
             .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
         self.save_saved_roots();
         self.set_notice(format!("Registered root: {}", root.display()));
@@ -359,7 +366,7 @@ impl FlistWalkerApp {
             .canonicalize()
             .unwrap_or_else(|_| self.root.clone());
         let root = normalize_windows_path_buf(root);
-        self.default_root = Some(root.clone());
+        self.root_browser.default_root = Some(root.clone());
         self.mark_ui_state_dirty();
         self.persist_ui_state_now();
         self.set_notice(format!("Set default root: {}", root.display()));
@@ -375,18 +382,21 @@ impl FlistWalkerApp {
 
     pub(super) fn remove_current_root_from_saved(&mut self) {
         let key = Self::path_key(&self.root);
-        let before = self.saved_roots.len();
-        self.saved_roots.retain(|p| Self::path_key(p) != key);
-        if self.saved_roots.len() == before {
+        let before = self.root_browser.saved_roots.len();
+        self.root_browser
+            .saved_roots
+            .retain(|p| Self::path_key(p) != key);
+        if self.root_browser.saved_roots.len() == before {
             self.set_notice("Current root is not in saved list");
             return;
         }
         if self
+            .root_browser
             .default_root
             .as_ref()
             .is_some_and(|p| Self::path_key(p) == key)
         {
-            self.default_root = None;
+            self.root_browser.default_root = None;
             self.mark_ui_state_dirty();
         }
         self.save_saved_roots();
@@ -418,7 +428,8 @@ impl FlistWalkerApp {
             let _ = fs::create_dir_all(parent);
         }
         let last_root_for_startup = if !Self::restore_tabs_enabled() {
-            self.default_root
+            self.root_browser
+                .default_root
                 .clone()
                 .or_else(|| Some(self.root.clone()))
                 .unwrap_or_else(|| self.root.clone())
@@ -434,6 +445,7 @@ impl FlistWalkerApp {
                     .to_string(),
             ),
             default_root: self
+                .root_browser
                 .default_root
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),

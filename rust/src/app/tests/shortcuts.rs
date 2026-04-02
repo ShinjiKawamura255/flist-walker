@@ -174,7 +174,7 @@ fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
     fs::create_dir_all(&root).expect("create dir");
     fs::create_dir_all(&alt).expect("create alt dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.saved_roots = vec![root.clone(), alt];
+    app.root_browser.saved_roots = vec![root.clone(), alt];
     let ctx = egui::Context::default();
 
     ctx.begin_pass(egui::RawInput {
@@ -209,7 +209,7 @@ fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
     fs::create_dir_all(&second).expect("create second");
     fs::create_dir_all(&third).expect("create third");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.saved_roots = vec![root.clone(), second, third];
+    app.root_browser.saved_roots = vec![root.clone(), second, third];
     let ctx = egui::Context::default();
     app.open_root_dropdown(&ctx);
 
@@ -253,7 +253,7 @@ fn root_dropdown_ctrl_g_closes_without_clearing_query() {
     fs::create_dir_all(&root).expect("create dir");
     fs::create_dir_all(&second).expect("create second");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.saved_roots = vec![root.clone(), second];
+    app.root_browser.saved_roots = vec![root.clone(), second];
     let ctx = egui::Context::default();
     app.open_root_dropdown(&ctx);
 
@@ -287,7 +287,7 @@ fn root_dropdown_ctrl_j_and_ctrl_m_accept_selection() {
         fs::create_dir_all(&root).expect("create dir");
         fs::create_dir_all(&second).expect("create second");
         let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-        app.saved_roots = vec![root.clone(), second.clone()];
+        app.root_browser.saved_roots = vec![root.clone(), second.clone()];
         let ctx = egui::Context::default();
         app.open_root_dropdown(&ctx);
         app.move_root_dropdown_selection(1);
@@ -453,7 +453,7 @@ fn ctrl_o_browses_and_changes_root() {
     fs::create_dir_all(&root).expect("create dir");
     fs::create_dir_all(&new_root).expect("create new root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.browse_dialog_result = Some(Ok(Some(new_root.clone())));
+    app.root_browser.browse_dialog_result = Some(Ok(Some(new_root.clone())));
 
     run_shortcuts_frame(
         &mut app,
@@ -481,7 +481,7 @@ fn ctrl_shift_o_browses_in_new_tab() {
     fs::create_dir_all(&new_root).expect("create new root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let original_tab_id = app.tabs[0].id;
-    app.browse_dialog_result = Some(Ok(Some(new_root.clone())));
+    app.root_browser.browse_dialog_result = Some(Ok(Some(new_root.clone())));
 
     run_shortcuts_frame(
         &mut app,

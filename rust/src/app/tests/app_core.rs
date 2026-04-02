@@ -341,8 +341,8 @@ fn stale_action_completion_is_ignored_by_request_id() {
     app.worker_bus.action.pending_request_id = Some(2);
     app.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
-    app.action_request_tabs.insert(1, tab_id);
-    app.action_request_tabs.insert(2, tab_id);
+    app.request_tab_routing.action.insert(1, tab_id);
+    app.request_tab_routing.action.insert(2, tab_id);
     app.tabs[app.active_tab].pending_action_request_id = Some(2);
     app.tabs[app.active_tab].action_in_progress = true;
 
@@ -740,11 +740,11 @@ fn preview_cache_is_bounded() {
         app.cache_preview(path, chunk.clone());
     }
 
-    assert!(app.preview_cache.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
-    assert!(app.preview_cache.order_len() > 0);
-    assert_eq!(app.preview_cache.len(), app.preview_cache.order_len());
+    assert!(app.cache.preview.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
+    assert!(app.cache.preview.order_len() > 0);
+    assert_eq!(app.cache.preview.len(), app.cache.preview.order_len());
     let evicted = root.join("file-0.txt");
-    assert!(!app.preview_cache.contains(&evicted));
+    assert!(!app.cache.preview.contains(&evicted));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -921,10 +921,11 @@ fn sort_metadata_cache_is_bounded() {
         );
     }
 
-    assert!(app.sort_metadata_cache.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
-    assert!(app.sort_metadata_cache.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.cache.sort_metadata.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.cache.sort_metadata.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
     assert!(!app
-        .sort_metadata_cache
+        .cache
+        .sort_metadata
         .contains_public(&root.join("entry-0.txt")));
     let _ = fs::remove_dir_all(&root);
 }

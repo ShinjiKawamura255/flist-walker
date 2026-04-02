@@ -87,7 +87,7 @@ fn set_as_default_is_disabled_while_restore_tabs_env_is_enabled() {
 
     app.set_current_root_as_default_with(true);
 
-    assert!(app.default_root.is_none());
+    assert!(app.root_browser.default_root.is_none());
     assert!(app.notice.contains("Set as default is disabled"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -102,7 +102,7 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
     assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
     app.set_current_root_as_default_with(false);
 
-    let saved = app.default_root.as_ref().expect("default root");
+    let saved = app.root_browser.default_root.as_ref().expect("default root");
     assert_eq!(canonical_or_self(saved), canonical_or_self(&root));
     let _ = fs::remove_dir_all(&root);
 }
@@ -118,7 +118,7 @@ fn save_ui_state_uses_default_root_as_last_root_when_restore_tabs_is_disabled() 
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(current_root.clone(), 50, String::new());
-    app.default_root = Some(default_root.clone());
+    app.root_browser.default_root = Some(default_root.clone());
     app.save_ui_state_to_path(&ui_state_path);
 
     let saved = FlistWalkerApp::load_ui_state_from_path(&ui_state_path);
