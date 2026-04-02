@@ -118,8 +118,8 @@ impl FlistWalkerApp {
         self.active_tab = active_tab.min(self.tabs.len().saturating_sub(1));
         if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
             self.apply_tab_state(&tab);
-            self.focus_query_requested = true;
-            self.unfocus_query_requested = false;
+            self.ui.focus_query_requested = true;
+            self.ui.unfocus_query_requested = false;
             self.trigger_restore_refresh_for_active_tab();
             self.notice = "Restored tab session".to_string();
             self.refresh_status_line();
@@ -277,9 +277,9 @@ impl FlistWalkerApp {
             search_in_progress: self.search.in_progress,
             preview_in_progress: self.worker_bus.preview.in_progress,
             action_in_progress: self.worker_bus.action.in_progress,
-            scroll_to_current: self.scroll_to_current,
-            focus_query_requested: self.focus_query_requested,
-            unfocus_query_requested: self.unfocus_query_requested,
+            scroll_to_current: self.ui.scroll_to_current,
+            focus_query_requested: self.ui.focus_query_requested,
+            unfocus_query_requested: self.ui.unfocus_query_requested,
         }
     }
 
@@ -328,9 +328,9 @@ impl FlistWalkerApp {
         self.search.in_progress = tab.search_in_progress;
         self.worker_bus.preview.in_progress = tab.preview_in_progress;
         self.worker_bus.action.in_progress = tab.action_in_progress;
-        self.scroll_to_current = tab.scroll_to_current;
-        self.focus_query_requested = tab.focus_query_requested;
-        self.unfocus_query_requested = tab.unfocus_query_requested;
+        self.ui.scroll_to_current = tab.scroll_to_current;
+        self.ui.focus_query_requested = tab.focus_query_requested;
+        self.ui.unfocus_query_requested = tab.unfocus_query_requested;
         self.refresh_status_line();
     }
 
@@ -364,7 +364,7 @@ impl FlistWalkerApp {
         if next_index >= self.tabs.len() || next_index == self.active_tab {
             return;
         }
-        self.tab_drag_state = None;
+        self.ui.tab_drag_state = None;
         self.shrink_checkpoint_buffers();
         let previous_active = self.active_tab;
         self.sync_active_tab_state();
@@ -379,8 +379,8 @@ impl FlistWalkerApp {
             self.apply_tab_state(&tab);
         }
         self.restore_results_from_compacted_tab();
-        self.focus_query_requested = true;
-        self.unfocus_query_requested = false;
+        self.ui.focus_query_requested = true;
+        self.ui.unfocus_query_requested = false;
         self.trigger_restore_refresh_for_active_tab();
     }
 
@@ -397,7 +397,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn create_new_tab(&mut self) {
-        self.tab_drag_state = None;
+        self.ui.tab_drag_state = None;
         let previous_active = self.active_tab;
         self.sync_active_tab_state();
         if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
@@ -474,7 +474,7 @@ impl FlistWalkerApp {
             }
             return;
         }
-        self.tab_drag_state = None;
+        self.ui.tab_drag_state = None;
         self.sync_active_tab_state();
         let removed = self.tabs.remove(index);
         if self
@@ -532,7 +532,7 @@ impl FlistWalkerApp {
         if self.active_tab >= self.tabs.len() {
             self.active_tab = self.tabs.len().saturating_sub(1);
         }
-        self.memory_usage_bytes = None;
+        self.ui.memory_usage_bytes = None;
         if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
             self.apply_tab_state(&tab);
         }
@@ -542,7 +542,7 @@ impl FlistWalkerApp {
         if from_index >= self.tabs.len() || to_index >= self.tabs.len() || from_index == to_index {
             return;
         }
-        self.tab_drag_state = None;
+        self.ui.tab_drag_state = None;
         self.sync_active_tab_state();
         let Some(active_tab_id) = self.tabs.get(self.active_tab).map(|tab| tab.id) else {
             return;

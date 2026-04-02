@@ -43,7 +43,7 @@ fn clear_query_and_selection_clears_state() {
 
     assert!(app.query.is_empty());
     assert!(app.pinned_paths.is_empty());
-    assert!(app.focus_query_requested);
+    assert!(app.ui.focus_query_requested);
     assert!(app.notice.contains("Cleared selection and query"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -53,7 +53,7 @@ fn startup_requests_query_focus() {
     let root = test_root("startup-focus");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    assert!(app.focus_query_requested);
+    assert!(app.ui.focus_query_requested);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -87,13 +87,13 @@ fn persist_ui_state_now_saves_preview_visibility_immediately() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
     let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
     assert!(!launch.show_preview);
-    assert!(!app.ui_state_dirty);
+    assert!(!app.ui.ui_state_dirty);
 
     let _ = fs::remove_file(&ui_state_path);
     let _ = fs::remove_dir_all(&ui_state_dir);
@@ -157,12 +157,12 @@ fn move_row_sets_scroll_tracking() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "".to_string());
     app.results = vec![(file1, 0.0), (file2, 0.0)];
     app.current_row = Some(0);
-    app.scroll_to_current = false;
+    app.ui.scroll_to_current = false;
 
     app.move_row(1);
 
     assert_eq!(app.current_row, Some(1));
-    assert!(app.scroll_to_current);
+    assert!(app.ui.scroll_to_current);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -787,7 +787,7 @@ fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression(
     let root = test_root("search-refresh-clamp-row");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.current_row = Some(100);
     app.preview = "stale".to_string();
 
@@ -809,7 +809,7 @@ fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regr
     let root = test_root("search-refresh-keep-none");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.current_row = None;
     app.preview = "stale".to_string();
 
@@ -830,7 +830,7 @@ fn clear_query_and_selection_restores_first_row_regression() {
     let root = test_root("clear-query-row-reset");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.query = "abc".to_string();
     app.current_row = Some(2);
     app.preview = "stale".to_string();
@@ -989,7 +989,7 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
     fs::write(&file, "content").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.results = vec![(file.clone(), 0.0)];
     app.current_row = Some(0);
     app.entry_kinds.insert(file, EntryKind::file());
@@ -1013,7 +1013,7 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     fs::write(&file, "shortcut").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.results = vec![(file.clone(), 0.0)];
     app.current_row = Some(0);
     app.indexing.pending_kind_paths.push_back(file.clone());
@@ -1037,17 +1037,17 @@ fn close_tab_invalidates_memory_cache_for_immediate_resample() {
     assert_eq!(app.tabs.len(), 2);
 
     let sentinel = u64::MAX;
-    app.memory_usage_bytes = Some(sentinel);
+    app.ui.memory_usage_bytes = Some(sentinel);
     let stale = Instant::now()
         .checked_sub(Duration::from_secs(5))
         .unwrap_or_else(Instant::now);
-    app.last_memory_sample = stale;
+    app.ui.last_memory_sample = stale;
 
     app.close_tab_index(1);
 
     assert_eq!(app.tabs.len(), 1);
-    assert_ne!(app.memory_usage_bytes, Some(sentinel));
-    assert!(app.last_memory_sample > stale);
+    assert_ne!(app.ui.memory_usage_bytes, Some(sentinel));
+    assert!(app.ui.last_memory_sample > stale);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1061,7 +1061,7 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     fs::write(&second, "b").expect("write second");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.indexing.in_progress = false;
     app.indexing.pending_request_id = None;
     app.entries = Arc::new(vec![first.clone(), second.clone()]);

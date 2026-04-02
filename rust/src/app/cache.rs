@@ -193,7 +193,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_preview_for_current(&mut self) {
-        if !self.show_preview {
+        if !self.ui.show_preview {
             self.preview.clear();
             self.worker_bus.preview.in_progress = false;
             self.worker_bus.preview.pending_request_id = None;

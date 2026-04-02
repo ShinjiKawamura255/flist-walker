@@ -1139,7 +1139,7 @@ fn incremental_empty_query_update_preserves_scroll_position_flag() {
     app.indexing.rx = rx;
     app.indexing.pending_request_id = Some(41);
     app.indexing.in_progress = true;
-    app.scroll_to_current = false;
+    app.ui.scroll_to_current = false;
     app.current_row = Some(0);
 
     let path = root.join("main.rs");
@@ -1155,7 +1155,7 @@ fn incremental_empty_query_update_preserves_scroll_position_flag() {
 
     app.poll_index_response();
 
-    assert!(!app.scroll_to_current);
+    assert!(!app.ui.scroll_to_current);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1251,7 +1251,7 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
     app.all_entries = Arc::new(vec![path.clone()]);
     app.include_files = true;
     app.include_dirs = true;
-    app.show_preview = false;
+    app.ui.show_preview = false;
     app.entry_kinds.clear();
     app.indexing.pending_kind_paths.clear();
     app.indexing.pending_kind_paths_set.clear();

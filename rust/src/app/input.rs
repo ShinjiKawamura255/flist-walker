@@ -134,7 +134,7 @@ impl FlistWalkerApp {
         ctx: &egui::Context,
         output: &mut egui::text_edit::TextEditOutput,
     ) -> bool {
-        if self.ime_composition_active {
+        if self.ui.ime_composition_active {
             return false;
         }
         if !output.response.has_focus() {
@@ -284,7 +284,7 @@ impl FlistWalkerApp {
         if self.handle_filelist_dialog_shortcuts(ctx) {
             return;
         }
-        let query_focused = ctx.memory(|m| m.has_focus(self.query_input_id));
+        let query_focused = ctx.memory(|m| m.has_focus(self.ui.query_input_id));
         self.handle_shortcuts_with_focus(ctx, query_focused);
     }
 
@@ -549,11 +549,11 @@ impl FlistWalkerApp {
         }
         if Self::consume_gui_shortcut(ctx, egui::Key::L, false) {
             if query_focused {
-                self.focus_query_requested = false;
-                self.unfocus_query_requested = true;
+                self.ui.focus_query_requested = false;
+                self.ui.unfocus_query_requested = true;
             } else {
-                self.focus_query_requested = true;
-                self.unfocus_query_requested = false;
+                self.ui.focus_query_requested = true;
+                self.ui.unfocus_query_requested = false;
             }
             return;
         }
@@ -591,7 +591,7 @@ impl FlistWalkerApp {
                 self.accept_history_search();
             }
             if query_focused {
-                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+                ctx.memory_mut(|m| m.request_focus(self.ui.query_input_id));
             }
             return;
         }
@@ -605,13 +605,13 @@ impl FlistWalkerApp {
         if Self::consume_emacs_shortcut(ctx, egui::Key::R, false) {
             self.start_history_search();
             if query_focused {
-                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+                ctx.memory_mut(|m| m.request_focus(self.ui.query_input_id));
             }
         }
         if Self::consume_gui_shortcut(ctx, egui::Key::C, true) {
             // Keep this deferred until after TextEdit processing so query-focus copy
             // cannot overwrite the intended "copy selected path(s)" shortcut result.
-            self.pending_copy_shortcut = true;
+            self.ui.pending_copy_shortcut = true;
         }
         if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
             || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
@@ -623,7 +623,7 @@ impl FlistWalkerApp {
             self.toggle_pin_current();
             // Keep Tab dedicated to pin toggle without changing query focus active/inactive state.
             if query_focused {
-                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+                ctx.memory_mut(|m| m.request_focus(self.ui.query_input_id));
             } else {
                 ctx.memory_mut(|m| m.stop_text_input());
             }
@@ -633,7 +633,7 @@ impl FlistWalkerApp {
             self.toggle_pin_current();
             // Keep Shift+Tab dedicated to pin toggle without changing query focus active/inactive state.
             if query_focused {
-                ctx.memory_mut(|m| m.request_focus(self.query_input_id));
+                ctx.memory_mut(|m| m.request_focus(self.ui.query_input_id));
             } else {
                 ctx.memory_mut(|m| m.stop_text_input());
             }
@@ -659,7 +659,7 @@ impl FlistWalkerApp {
             self.execute_selected();
         }
 
-        if self.ime_composition_active {
+        if self.ui.ime_composition_active {
             return;
         }
         // Regression guard: query focus must not disable row movement/pin toggle/execute shortcuts.
@@ -688,12 +688,12 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn run_deferred_shortcuts(&mut self, ctx: &egui::Context) {
-        if !self.pending_copy_shortcut {
+        if !self.ui.pending_copy_shortcut {
             return;
         }
-        self.pending_copy_shortcut = false;
+        self.ui.pending_copy_shortcut = false;
         self.copy_selected_paths(ctx);
-        self.focus_query_requested = true;
+        self.ui.focus_query_requested = true;
     }
 
     pub(super) fn reset_query_history_navigation(&mut self) {
@@ -757,8 +757,8 @@ impl FlistWalkerApp {
         self.history_search_query.clear();
         self.history_search_original_query = self.query.clone();
         self.refresh_history_search_results();
-        self.focus_query_requested = true;
-        self.unfocus_query_requested = false;
+        self.ui.focus_query_requested = true;
+        self.ui.unfocus_query_requested = false;
     }
 
     pub(super) fn cancel_history_search(&mut self) {
@@ -768,7 +768,7 @@ impl FlistWalkerApp {
         self.query = self.history_search_original_query.clone();
         self.reset_history_search_state();
         self.update_results();
-        self.focus_query_requested = true;
+        self.ui.focus_query_requested = true;
         self.set_notice("Canceled history search");
     }
 
@@ -787,7 +787,7 @@ impl FlistWalkerApp {
         self.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.update_results();
-        self.focus_query_requested = true;
+        self.ui.focus_query_requested = true;
         self.set_notice("Loaded query from history");
     }
 
@@ -827,7 +827,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn commit_query_history_if_needed(&mut self, force: bool) {
-        if self.ime_composition_active {
+        if self.ui.ime_composition_active {
             return;
         }
         let should_commit = self
@@ -878,11 +878,11 @@ impl FlistWalkerApp {
         for event in events {
             match event {
                 egui::Event::Ime(egui::ImeEvent::Enabled) => {
-                    self.ime_composition_active = true;
+                    self.ui.ime_composition_active = true;
                     Self::append_window_trace("ime_composition_start", "active=true");
                 }
                 egui::Event::Ime(egui::ImeEvent::Preedit(text)) => {
-                    self.ime_composition_active = true;
+                    self.ui.ime_composition_active = true;
                     if !text.is_empty() {
                         saw_composition_update = true;
                         Self::append_window_trace(
@@ -892,7 +892,7 @@ impl FlistWalkerApp {
                     }
                 }
                 egui::Event::Ime(egui::ImeEvent::Commit(text)) => {
-                    self.ime_composition_active = false;
+                    self.ui.ime_composition_active = false;
                     Self::append_window_trace(
                         "ime_composition_end",
                         &format!(
@@ -910,7 +910,7 @@ impl FlistWalkerApp {
                     }
                 }
                 egui::Event::Ime(egui::ImeEvent::Disabled) => {
-                    self.ime_composition_active = false;
+                    self.ui.ime_composition_active = false;
                     Self::append_window_trace("ime_composition_disabled", "active=false");
                 }
                 egui::Event::Text(text) => {
@@ -948,7 +948,11 @@ impl FlistWalkerApp {
 
         let space_down_now = ctx.input(|i| i.key_down(egui::Key::Space));
         let shift_down_now = ctx.input(|i| i.modifiers.shift);
-        if query_focused && space_down_now && !self.prev_space_down && fallback_space.is_none() {
+        if query_focused
+            && space_down_now
+            && !self.ui.prev_space_down
+            && fallback_space.is_none()
+        {
             requested_full_space = shift_down_now;
             fallback_space = Some(' ');
             saw_space_key = true;
@@ -957,7 +961,7 @@ impl FlistWalkerApp {
                 &format!("shift={}", shift_down_now),
             );
         }
-        self.prev_space_down = space_down_now;
+        self.ui.prev_space_down = space_down_now;
 
         if let Some(commit_text) = composition_commit_text {
             if query_focused && !text_changed_by_widget {
@@ -1009,7 +1013,7 @@ impl FlistWalkerApp {
                     "focused={} widget_changed={} comp_active={} text_space={} comp_update={} requested_full={} fallback_present={}",
                     query_focused,
                     text_changed_by_widget,
-                    self.ime_composition_active,
+                    self.ui.ime_composition_active,
                     saw_text_space,
                     saw_composition_update,
                     requested_full_space,

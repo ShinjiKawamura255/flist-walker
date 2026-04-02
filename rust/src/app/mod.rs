@@ -37,6 +37,7 @@ mod session;
 mod state;
 mod tab_state;
 mod tabs;
+mod ui_state;
 mod update;
 mod worker_bus;
 mod workers;
@@ -53,7 +54,11 @@ use state::{
     TabDragState, UpdateCheckFailureState, UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
-use worker_bus::{ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus, UpdateWorkerBus, WorkerBus};
+use ui_state::RuntimeUiState;
+use worker_bus::{
+    ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,
+    UpdateWorkerBus, WorkerBus,
+};
 use workers::{
     spawn_action_worker, spawn_filelist_worker, spawn_index_worker, spawn_kind_resolver_worker,
     spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
@@ -247,29 +252,11 @@ pub struct FlistWalkerApp {
     search: SearchCoordinator,
     worker_bus: WorkerBus,
     indexing: IndexCoordinator,
-    pending_copy_shortcut: bool,
+    ui: RuntimeUiState,
     #[cfg(test)]
     browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
-    root_dropdown_highlight: Option<usize>,
-    scroll_to_current: bool,
-    preview_resize_in_progress: bool,
-    focus_query_requested: bool,
-    unfocus_query_requested: bool,
     saved_roots: Vec<PathBuf>,
     default_root: Option<PathBuf>,
-    show_preview: bool,
-    preview_panel_width: f32,
-    window_geometry: Option<SavedWindowGeometry>,
-    pending_window_geometry: Option<SavedWindowGeometry>,
-    last_window_geometry_change: Instant,
-    ui_state_dirty: bool,
-    last_ui_state_save: Instant,
-    last_memory_sample: Instant,
-    memory_usage_bytes: Option<u64>,
-    ime_composition_active: bool,
-    prev_space_down: bool,
-    query_input_id: egui::Id,
-    tab_drag_state: Option<TabDragState>,
     preview_cache: PreviewCacheState,
     highlight_cache: HighlightCacheState,
     sort_metadata_cache: SortMetadataCacheState,
@@ -475,29 +462,11 @@ Search hints:
                 bootstrap.index_rx,
                 bootstrap.latest_index_request_ids,
             ),
-            pending_copy_shortcut: false,
+            ui: RuntimeUiState::new(seed.show_preview, seed.preview_panel_width),
             #[cfg(test)]
             browse_dialog_result: None,
-            root_dropdown_highlight: None,
-            scroll_to_current: true,
-            preview_resize_in_progress: false,
-            focus_query_requested: true,
-            unfocus_query_requested: false,
             saved_roots: seed.saved_roots,
             default_root: seed.default_root,
-            show_preview: seed.show_preview,
-            preview_panel_width: seed.preview_panel_width,
-            window_geometry: None,
-            pending_window_geometry: None,
-            last_window_geometry_change: Instant::now(),
-            ui_state_dirty: false,
-            last_ui_state_save: Instant::now(),
-            last_memory_sample: Instant::now(),
-            memory_usage_bytes: None,
-            ime_composition_active: false,
-            prev_space_down: false,
-            query_input_id: egui::Id::new("query-input"),
-            tab_drag_state: None,
             preview_cache: PreviewCacheState::default(),
             highlight_cache: HighlightCacheState {
                 scope_ignore_case: true,
@@ -900,7 +869,7 @@ Search hints:
 
     fn sync_root_dropdown_highlight(&mut self) {
         let max_index = self.saved_roots.len().checked_sub(1);
-        self.root_dropdown_highlight = match (self.root_dropdown_highlight, max_index) {
+        self.ui.root_dropdown_highlight = match (self.ui.root_dropdown_highlight, max_index) {
             (_, None) => None,
             (Some(index), Some(max)) => Some(index.min(max)),
             (None, Some(_)) => self.current_root_dropdown_index().or(Some(0)),
@@ -910,8 +879,8 @@ Search hints:
     fn open_root_dropdown(&mut self, ctx: &egui::Context) {
         self.sync_root_dropdown_highlight();
         ctx.memory_mut(|mem| mem.open_popup(Self::root_selector_popup_id()));
-        self.focus_query_requested = false;
-        self.unfocus_query_requested = true;
+        self.ui.focus_query_requested = false;
+        self.ui.unfocus_query_requested = true;
     }
 
     fn close_root_dropdown(&mut self, ctx: &egui::Context) {
@@ -920,19 +889,21 @@ Search hints:
 
     fn move_root_dropdown_selection(&mut self, delta: isize) {
         let Some(max_index) = self.saved_roots.len().checked_sub(1) else {
-            self.root_dropdown_highlight = None;
+            self.ui.root_dropdown_highlight = None;
             return;
         };
         let current = self
+            .ui
             .root_dropdown_highlight
             .or_else(|| self.current_root_dropdown_index())
             .unwrap_or(0) as isize;
         let next = (current + delta).clamp(0, max_index as isize) as usize;
-        self.root_dropdown_highlight = Some(next);
+        self.ui.root_dropdown_highlight = Some(next);
     }
 
     fn apply_root_dropdown_selection(&mut self, ctx: &egui::Context) {
         let selected = self
+            .ui
             .root_dropdown_highlight
             .and_then(|index| self.saved_roots.get(index).cloned());
         self.close_root_dropdown(ctx);
@@ -1067,13 +1038,13 @@ Search hints:
     }
 
     fn memory_usage_text(&mut self) -> Option<String> {
-        if self.memory_usage_bytes.is_none()
-            || self.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
+        if self.ui.memory_usage_bytes.is_none()
+            || self.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
         {
-            self.last_memory_sample = Instant::now();
-            self.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
+            self.ui.last_memory_sample = Instant::now();
+            self.ui.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
         }
-        self.memory_usage_bytes
+        self.ui.memory_usage_bytes
             .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
     }
 
@@ -1187,7 +1158,7 @@ Search hints:
             return;
         }
         self.current_row = Some(0);
-        self.scroll_to_current = true;
+        self.ui.scroll_to_current = true;
         self.request_preview_for_current();
         self.refresh_status_line();
     }
@@ -1198,7 +1169,7 @@ Search hints:
             return;
         }
         self.current_row = Some(self.results.len().saturating_sub(1));
-        self.scroll_to_current = true;
+        self.ui.scroll_to_current = true;
         self.request_preview_for_current();
         self.refresh_status_line();
     }
@@ -1314,7 +1285,7 @@ Search hints:
         if resolved_any && (!self.include_files || !self.include_dirs) {
             self.apply_entry_filters(true);
         }
-        if resolved_current_row && self.show_preview {
+        if resolved_current_row && self.ui.show_preview {
             self.request_preview_for_current();
         }
     }
@@ -1327,7 +1298,7 @@ Search hints:
         let row = self.current_row.unwrap_or(0) as isize;
         let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
         self.current_row = Some(next);
-        self.scroll_to_current = true;
+        self.ui.scroll_to_current = true;
         self.request_preview_for_current();
         self.refresh_status_line();
     }
@@ -1462,7 +1433,7 @@ Search hints:
         self.current_row = Some(0);
         self.preview.clear();
         self.update_results();
-        self.focus_query_requested = true;
+        self.ui.focus_query_requested = true;
         self.set_notice("Cleared selection and query");
     }
 
@@ -1559,7 +1530,7 @@ impl eframe::App for FlistWalkerApp {
             return;
         }
         self.commit_query_history_if_needed(false);
-        let memory_elapsed = self.last_memory_sample.elapsed();
+        let memory_elapsed = self.ui.last_memory_sample.elapsed();
         if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
             self.refresh_status_line();
         } else {
@@ -1592,7 +1563,7 @@ impl eframe::App for FlistWalkerApp {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.apply_stable_window_geometry(true);
-        self.ui_state_dirty = true;
+        self.ui.ui_state_dirty = true;
         self.maybe_save_ui_state(true);
         let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, "app exit");
     }
@@ -1601,7 +1572,7 @@ impl eframe::App for FlistWalkerApp {
 impl Drop for FlistWalkerApp {
     fn drop(&mut self) {
         self.apply_stable_window_geometry(true);
-        self.ui_state_dirty = true;
+        self.ui.ui_state_dirty = true;
         self.maybe_save_ui_state(true);
         let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, "drop fallback");
     }

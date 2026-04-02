@@ -113,7 +113,8 @@
   - `rust/src/app/mod.rs` (フィールド移動)
   - `rust/src/app/render.rs`, `input.rs`, `session.rs` (アクセスパス変更)
 - Expected result:
-  - `scroll_to_current`, `focus_query_requested`, `unfocus_query_requested`, `preview_resize_in_progress`, `pending_copy_shortcut`, `root_dropdown_highlight`, `tab_drag_state`, `ime_composition_active`, `prev_space_down`, `query_input_id` 等の UI フラグを `UiState` に集約
+  - runtime 側の `scroll_to_current`, `focus_query_requested`, `unfocus_query_requested`, `preview_resize_in_progress`, `pending_copy_shortcut`, `root_dropdown_highlight`, `tab_drag_state`, `ime_composition_active`, `prev_space_down`, `query_input_id` 等の UI フラグを `ui_state.rs` の新 struct に集約
+  - `session.rs` に既存の永続化用 `UiState` があるため、Phase 3 の runtime struct 名は衝突回避のため別名 (`RuntimeUiState` 想定) を採用してよい
 - Verification:
   - `cargo test --lib` green
   - GUI smoke test: タブ切替、検索、プレビュー、ピン留め
@@ -222,12 +223,13 @@
 - [x] P2-7: `cargo test --lib` green
 
 ### Phase 3
-- [ ] P3-1: `UiState` struct を設計
-- [ ] P3-2: `ui_state.rs` を新規作成
-- [ ] P3-3: `FlistWalkerApp` から UI フラグを移動
-- [ ] P3-4: `render.rs`, `input.rs` のアクセスパスを更新
-- [ ] P3-5: テスト更新
-- [ ] P3-6: `cargo test --lib` green + GUI smoke test
+- [x] P3-1: `UiState` struct を設計
+- [x] P3-2: `ui_state.rs` を新規作成
+- [x] P3-3: `FlistWalkerApp` から UI フラグを移動
+- [x] P3-4: `render.rs`, `input.rs` のアクセスパスを更新
+- [x] P3-5: テスト更新
+- [x] P3-6: `cargo test --lib` green
+- [x] P3-7: GUI smoke test は headless で実施不能なため、Phase 9 の手動確認へ集約
 
 ### Phase 4
 - [ ] P4-1: `QueryState` struct を設計 (履歴管理の不変条件を encapsulate)
@@ -312,6 +314,8 @@
 - 2026-04-02 Phase 0 completed. `cargo test --lib` は現行ブランチで green（327 passed, 0 failed, 3 ignored）だったため、failure 修正ではなく baseline 再確認と計画同期のみを実施。
 - 2026-04-02 Phase 1 completed. `rust/src/app/mod.rs` の wildcard import を明示 import へ置換し、test 専用 helper import は `rust/src/app/tests/app_core.rs` へ局所化した。`cargo build` と `cargo test --lib` を実行済み。
 - 2026-04-02 Phase 2 completed. `rust/src/app/worker_bus.rs` を追加し、preview/action/sort/kind/filelist/update の worker channel と app-level request/in-progress state を `WorkerBus` へ集約した。`bootstrap.rs` と app/tests 一式のアクセス経路を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 68 行まで減少。
+- 2026-04-02 Phase 3 着手前に計画更新。`session.rs` に永続化用 `UiState` が既に存在するため、runtime 側の UI 集約 struct は `RuntimeUiState` などの別名で導入する方針へ修正。
+- 2026-04-02 Phase 3 completed. `rust/src/app/ui_state.rs` に `RuntimeUiState` を追加し、focus/scroll/IME/preview panel/window geometry debounce/tab drag などの runtime UI 状態を `self.ui` へ集約した。`render.rs` / `input.rs` / `session.rs` / `tabs.rs` / tests を更新し、`cargo test --lib` は green（327 passed, 0 failed, 3 ignored）。`FlistWalkerApp` の直接フィールド数は 50 行まで減少。GUI smoke は headless のため Phase 9 へ集約。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

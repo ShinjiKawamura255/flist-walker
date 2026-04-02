@@ -104,17 +104,17 @@ impl FlistWalkerApp {
 
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
         if self.history_search_active {
-            self.preview_resize_in_progress = false;
+            self.ui.preview_resize_in_progress = false;
             self.render_history_search_results(ui);
-            self.scroll_to_current = false;
+            self.ui.scroll_to_current = false;
             return;
         }
-        if self.show_preview {
+        if self.ui.show_preview {
             let max_preview_width = (ui.available_width() - Self::MIN_RESULTS_PANEL_WIDTH)
                 .max(Self::MIN_PREVIEW_PANEL_WIDTH);
             let panel = egui::SidePanel::right("preview-panel")
                 .resizable(true)
-                .default_width(self.preview_panel_width.min(max_preview_width))
+                .default_width(self.ui.preview_panel_width.min(max_preview_width))
                 .min_width(Self::MIN_PREVIEW_PANEL_WIDTH)
                 .max_width(max_preview_width);
             let response = panel.show_inside(ui, |ui| {
@@ -149,8 +149,8 @@ impl FlistWalkerApp {
                 .rect
                 .width()
                 .max(Self::MIN_PREVIEW_PANEL_WIDTH);
-            if (new_width - self.preview_panel_width).abs() > 1.0 {
-                self.preview_panel_width = new_width;
+            if (new_width - self.ui.preview_panel_width).abs() > 1.0 {
+                self.ui.preview_panel_width = new_width;
                 self.mark_ui_state_dirty();
             }
             let splitter_x = response.response.rect.left();
@@ -160,13 +160,13 @@ impl FlistWalkerApp {
                 };
                 i.pointer.primary_down() && (pos.x - splitter_x).abs() <= 8.0
             });
-            self.preview_resize_in_progress = response.response.dragged() || splitter_pressed;
+            self.ui.preview_resize_in_progress = response.response.dragged() || splitter_pressed;
             self.render_results_list(ui);
         } else {
-            self.preview_resize_in_progress = false;
+            self.ui.preview_resize_in_progress = false;
             self.render_results_list(ui);
         }
-        self.scroll_to_current = false;
+        self.ui.scroll_to_current = false;
     }
 
     pub(super) fn results_scroll_enabled(preview_resize_in_progress: bool) -> bool {
@@ -207,7 +207,7 @@ impl FlistWalkerApp {
                 },
             );
         });
-        let scroll_enabled = Self::results_scroll_enabled(self.preview_resize_in_progress);
+        let scroll_enabled = Self::results_scroll_enabled(self.ui.preview_resize_in_progress);
         egui::ScrollArea::both()
             .enable_scrolling(scroll_enabled)
             .drag_to_scroll(false)
@@ -231,7 +231,7 @@ impl FlistWalkerApp {
                         egui::vec2(row_width, row_height),
                         egui::Sense::click(),
                     );
-                    if is_current && self.scroll_to_current {
+                    if is_current && self.ui.scroll_to_current {
                         ui.scroll_to_rect(rect, None);
                     }
                     if clip_rect.intersects(rect) {
@@ -432,7 +432,7 @@ impl FlistWalkerApp {
             let mut switch_to: Option<usize> = None;
             let mut close_tab: Option<usize> = None;
             let mut reorder_tab: Option<(usize, usize)> = None;
-            let mut drag_state = self.tab_drag_state;
+            let mut drag_state = self.ui.tab_drag_state;
             let mut tab_rects: Vec<egui::Rect> = Vec::with_capacity(self.tabs.len());
             for i in 0..self.tabs.len() {
                 let is_drag_source = drag_state.is_some_and(|state| state.source_index == i);
@@ -747,11 +747,11 @@ impl FlistWalkerApp {
                     }
                 }
             }
-            self.tab_drag_state = Some(*state);
+            self.ui.tab_drag_state = Some(*state);
             return None;
         }
 
-        self.tab_drag_state = None;
+        self.ui.tab_drag_state = None;
         state
             .dragging
             .then_some((state.source_index, state.hover_index))
@@ -815,7 +815,8 @@ impl FlistWalkerApp {
                                     let text = normalize_windows_path_buf(path.clone())
                                         .to_string_lossy()
                                         .to_string();
-                                    let is_selected = self.root_dropdown_highlight == Some(index);
+                                    let is_selected =
+                                        self.ui.root_dropdown_highlight == Some(index);
                                     if ui.selectable_label(is_selected, text).clicked() {
                                         next_root = Some(path.clone());
                                     }
@@ -899,8 +900,8 @@ impl FlistWalkerApp {
                         ui.checkbox(&mut self.include_dirs, "Folders").changed(),
                     )
                 };
-                if ui.checkbox(&mut self.show_preview, "Preview").changed() {
-                    if !self.show_preview {
+                if ui.checkbox(&mut self.ui.show_preview, "Preview").changed() {
+                    if !self.ui.show_preview {
                         self.clear_preview_cache();
                     }
                     self.mark_ui_state_dirty();
@@ -928,7 +929,7 @@ impl FlistWalkerApp {
             } else {
                 &mut self.query
             })
-                .id(self.query_input_id)
+                .id(self.ui.query_input_id)
                 .lock_focus(true)
                 .desired_width(f32::INFINITY)
                 .hint_text(if editing_history_search {
@@ -944,13 +945,13 @@ impl FlistWalkerApp {
                     ui.label(Self::SEARCH_HINTS_TOOLTIP);
                 }
             });
-            if self.focus_query_requested {
+            if self.ui.focus_query_requested {
                 output.response.request_focus();
-                self.focus_query_requested = false;
+                self.ui.focus_query_requested = false;
             }
-            if self.unfocus_query_requested {
+            if self.ui.unfocus_query_requested {
                 output.response.surrender_focus();
-                self.unfocus_query_requested = false;
+                self.ui.unfocus_query_requested = false;
             }
             let events = ctx.input(|i| i.events.clone());
             if !editing_history_search {

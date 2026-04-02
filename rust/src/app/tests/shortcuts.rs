@@ -188,11 +188,11 @@ fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
         }],
         ..Default::default()
     });
-    ctx.memory_mut(|m| m.request_focus(app.query_input_id));
+    ctx.memory_mut(|m| m.request_focus(app.ui.query_input_id));
     app.handle_shortcuts(&ctx);
 
     assert!(app.is_root_dropdown_open(&ctx));
-    assert_eq!(app.root_dropdown_highlight, Some(0));
+    assert_eq!(app.ui.root_dropdown_highlight, Some(0));
     assert!(!app.history_search_active);
     assert_eq!(app.query, "draft");
 
@@ -225,7 +225,7 @@ fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
         ..Default::default()
     });
     app.handle_shortcuts(&ctx);
-    assert_eq!(app.root_dropdown_highlight, Some(1));
+    assert_eq!(app.ui.root_dropdown_highlight, Some(1));
     let _ = ctx.end_pass();
 
     ctx.begin_pass(egui::RawInput {
@@ -240,7 +240,7 @@ fn root_dropdown_ctrl_n_and_ctrl_p_move_selection() {
         ..Default::default()
     });
     app.handle_shortcuts(&ctx);
-    assert_eq!(app.root_dropdown_highlight, Some(0));
+    assert_eq!(app.ui.root_dropdown_highlight, Some(0));
     let _ = ctx.end_pass();
 
     let _ = fs::remove_dir_all(&root);
@@ -438,7 +438,7 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
         }],
     );
 
-    assert!(!app.pending_copy_shortcut);
+    assert!(!app.ui.pending_copy_shortcut);
     assert!(app.notice.contains(&format!(
         "Copied path: {}",
         normalize_path_for_display(&selected)
@@ -704,7 +704,7 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
     let ctx = egui::Context::default();
-    ctx.memory_mut(|m| m.request_focus(app.query_input_id));
+    ctx.memory_mut(|m| m.request_focus(app.ui.query_input_id));
 
     ctx.begin_pass(egui::RawInput {
         modifiers: egui::Modifiers::NONE,
@@ -718,7 +718,7 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
         ..Default::default()
     });
     app.handle_shortcuts_with_focus(&ctx, true);
-    let query_still_focused = ctx.memory(|m| m.has_focus(app.query_input_id));
+    let query_still_focused = ctx.memory(|m| m.has_focus(app.ui.query_input_id));
     let _ = ctx.end_pass();
 
     assert!(app.pinned_paths.contains(&selected));
@@ -970,13 +970,13 @@ fn deferred_copy_shortcut_copies_selected_path_even_with_query_text() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query text".to_string());
     app.results = vec![(selected.clone(), 0.0)];
     app.current_row = Some(0);
-    app.pending_copy_shortcut = true;
+    app.ui.pending_copy_shortcut = true;
     let ctx = egui::Context::default();
 
     app.run_deferred_shortcuts(&ctx);
 
-    assert!(!app.pending_copy_shortcut);
-    assert!(app.focus_query_requested);
+    assert!(!app.ui.pending_copy_shortcut);
+    assert!(app.ui.focus_query_requested);
     assert!(app.notice.contains(&format!(
         "Copied path: {}",
         normalize_path_for_display(&selected)

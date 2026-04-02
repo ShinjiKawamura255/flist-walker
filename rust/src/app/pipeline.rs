@@ -869,7 +869,7 @@ impl FlistWalkerApp {
                 .or(previous_row);
             self.request_preview_for_current();
             if !keep_scroll_position {
-                self.scroll_to_current = true;
+                self.ui.scroll_to_current = true;
             }
         }
         self.refresh_status_line();

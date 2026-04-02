@@ -437,8 +437,8 @@ impl FlistWalkerApp {
                 .default_root
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),
-            show_preview: Some(self.show_preview),
-            preview_panel_width: Some(self.preview_panel_width),
+            show_preview: Some(self.ui.show_preview),
+            preview_panel_width: Some(self.ui.preview_panel_width),
             query_history: if history_persist_disabled {
                 Vec::new()
             } else {
@@ -447,7 +447,7 @@ impl FlistWalkerApp {
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
             active_tab: Some(self.active_tab),
-            window: self.window_geometry.clone(),
+            window: self.ui.window_geometry.clone(),
             skipped_update_target_version: self.update_state.skipped_target_version.clone(),
             suppress_update_check_failure_dialog: self.update_state.suppress_check_failure_dialog,
         };
@@ -457,38 +457,38 @@ impl FlistWalkerApp {
                 "save_ui_state",
                 &format!(
                     "window={:?} preview_panel_width={:.1}",
-                    state.window, self.preview_panel_width
+                    state.window, self.ui.preview_panel_width
                 ),
             );
         }
     }
 
     pub(super) fn mark_ui_state_dirty(&mut self) {
-        self.ui_state_dirty = true;
+        self.ui.ui_state_dirty = true;
     }
 
     pub(super) fn maybe_save_ui_state(&mut self, force: bool) {
-        if !self.ui_state_dirty {
+        if !self.ui.ui_state_dirty {
             return;
         }
-        if force || self.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
+        if force || self.ui.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
             self.save_ui_state();
-            self.ui_state_dirty = false;
-            self.last_ui_state_save = Instant::now();
+            self.ui.ui_state_dirty = false;
+            self.ui.last_ui_state_save = Instant::now();
         }
     }
 
     pub(super) fn persist_ui_state_now(&mut self) {
         self.save_ui_state();
-        self.ui_state_dirty = false;
-        self.last_ui_state_save = Instant::now();
+        self.ui.ui_state_dirty = false;
+        self.ui.last_ui_state_save = Instant::now();
     }
 
     #[cfg(test)]
     pub(super) fn persist_ui_state_to_path_now(&mut self, path: &Path) {
         self.save_ui_state_to_path(path);
-        self.ui_state_dirty = false;
-        self.last_ui_state_save = Instant::now();
+        self.ui.ui_state_dirty = false;
+        self.ui.last_ui_state_save = Instant::now();
     }
 
     fn to_stable_window_geometry(geom: SavedWindowGeometry) -> SavedWindowGeometry {
@@ -549,23 +549,23 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_stable_window_geometry(&mut self, force: bool) {
-        let Some(pending) = self.pending_window_geometry.clone() else {
+        let Some(pending) = self.ui.pending_window_geometry.clone() else {
             return;
         };
         if !force
-            && self.last_window_geometry_change.elapsed() < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
+            && self.ui.last_window_geometry_change.elapsed() < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
         {
             return;
         }
-        if self.window_geometry.as_ref() != Some(&pending) {
-            self.window_geometry = Some(pending.clone());
+        if self.ui.window_geometry.as_ref() != Some(&pending) {
+            self.ui.window_geometry = Some(pending.clone());
             self.mark_ui_state_dirty();
             Self::append_window_trace(
                 "window_geometry_committed",
-                &format!("committed={:?} force={}", self.window_geometry, force),
+                &format!("committed={:?} force={}", self.ui.window_geometry, force),
             );
         }
-        self.pending_window_geometry = None;
+        self.ui.pending_window_geometry = None;
     }
 
     pub(super) fn capture_window_geometry(&mut self, ctx: &egui::Context) {
@@ -592,19 +592,19 @@ impl FlistWalkerApp {
                 return;
             }
         }
-        if self.pending_window_geometry.as_ref() != Some(&next)
-            && self.window_geometry.as_ref() != Some(&next)
+        if self.ui.pending_window_geometry.as_ref() != Some(&next)
+            && self.ui.window_geometry.as_ref() != Some(&next)
         {
-            let prev_committed = self.window_geometry.clone();
-            let prev_pending = self.pending_window_geometry.clone();
-            self.pending_window_geometry = Some(next);
-            self.last_window_geometry_change = Instant::now();
+            let prev_committed = self.ui.window_geometry.clone();
+            let prev_pending = self.ui.pending_window_geometry.clone();
+            self.ui.pending_window_geometry = Some(next);
+            self.ui.last_window_geometry_change = Instant::now();
             if Self::window_trace_verbose_enabled() {
                 Self::append_window_trace(
                     "capture_window_geometry_changed",
                     &format!(
                         "prev_committed={:?} prev_pending={:?} next_pending={:?}",
-                        prev_committed, prev_pending, self.pending_window_geometry
+                        prev_committed, prev_pending, self.ui.pending_window_geometry
                     ),
                 );
             }

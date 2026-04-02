@@ -45,9 +45,9 @@ fn apply_stable_window_geometry_force_commits_pending() {
     let root = test_root("window-geometry-commit");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.window_geometry = None;
-    app.ui_state_dirty = false;
-    app.pending_window_geometry = Some(SavedWindowGeometry {
+    app.ui.window_geometry = None;
+    app.ui.ui_state_dirty = false;
+    app.ui.pending_window_geometry = Some(SavedWindowGeometry {
         x: 100.0,
         y: 120.0,
         width: 900.0,
@@ -58,9 +58,9 @@ fn apply_stable_window_geometry_force_commits_pending() {
 
     app.apply_stable_window_geometry(true);
 
-    assert!(app.pending_window_geometry.is_none());
-    assert!(app.ui_state_dirty);
-    let geom = app.window_geometry.clone().expect("committed geometry");
+    assert!(app.ui.pending_window_geometry.is_none());
+    assert!(app.ui.ui_state_dirty);
+    let geom = app.ui.window_geometry.clone().expect("committed geometry");
     assert_eq!(geom.x, 100.0);
     assert_eq!(geom.y, 120.0);
     assert_eq!(geom.width, 900.0);
@@ -148,7 +148,7 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
     assert!(inserted);
     assert_eq!(cursor, Some(4));
     assert_eq!(app.query, "abc ");
-    assert!(app.ime_composition_active);
+    assert!(app.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -182,7 +182,7 @@ fn process_query_input_events_skips_space_fallback_when_composition_updates() {
     assert!(!inserted);
     assert_eq!(cursor, None);
     assert_eq!(app.query, "abc");
-    assert!(app.ime_composition_active);
+    assert!(app.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -219,7 +219,7 @@ fn process_query_input_events_skips_shift_space_fallback_with_composition_update
     assert!(!inserted);
     assert_eq!(cursor, None);
     assert_eq!(app.query, "abc");
-    assert!(app.ime_composition_active);
+    assert!(app.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -328,9 +328,9 @@ fn oversized_geometry_is_rejected_when_monitor_size_is_known() {
         if next.width > w_limit || next.height > h_limit {
             // keep state untouched
         } else {
-            app.pending_window_geometry = Some(next);
+            app.ui.pending_window_geometry = Some(next);
         }
     }
-    assert!(app.pending_window_geometry.is_none());
+    assert!(app.ui.pending_window_geometry.is_none());
     let _ = fs::remove_dir_all(&root);
 }

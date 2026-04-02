@@ -171,7 +171,7 @@ fn query_history_skips_ime_intermediate_text_until_composition_ends() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
     app.query = "t".to_string();
-    app.ime_composition_active = true;
+    app.ui.ime_composition_active = true;
     app.mark_query_edited();
     app.update_results();
     commit_query_history_for_test(&mut app);
@@ -183,7 +183,7 @@ fn query_history_skips_ime_intermediate_text_until_composition_ends() {
 
     assert!(app.query_history.is_empty());
 
-    app.ime_composition_active = false;
+    app.ui.ime_composition_active = false;
     app.query = "テスト".to_string();
     app.mark_query_edited();
     app.update_results();
