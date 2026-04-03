@@ -50,7 +50,7 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    BackgroundIndexState, CacheStateBundle, FileListDialogKind, FileListWorkflowState,
+    BackgroundIndexState, CacheStateBundle, FileListDialogKind, FileListManager,
     HighlightCacheKey, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
     PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, RequestTabRoutingState,
     ResultSortMode, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
@@ -252,7 +252,7 @@ pub struct FlistWalkerApp {
     active_tab: usize,
     next_tab_id: u64,
     request_tab_routing: RequestTabRoutingState,
-    filelist_state: FileListWorkflowState,
+    filelist_state: FileListManager,
     update_state: UpdateState,
     worker_runtime: Option<WorkerRuntime>,
 }
@@ -468,7 +468,7 @@ Search hints:
             active_tab: 0,
             next_tab_id: 1,
             request_tab_routing: RequestTabRoutingState::default(),
-            filelist_state: FileListWorkflowState::default(),
+            filelist_state: FileListManager::default(),
             update_state,
             worker_runtime: Some(worker_runtime),
         };

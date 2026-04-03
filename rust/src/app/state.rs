@@ -1,6 +1,7 @@
 use super::*;
 use crate::app::cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
 use eframe::egui;
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -172,6 +173,146 @@ impl Default for FileListWorkflowState {
             active_dialog: None,
             active_dialog_button: 0,
         }
+    }
+}
+
+pub(super) struct FileListRequestContext {
+    pub(super) root: Option<PathBuf>,
+    pub(super) tab_id: Option<u64>,
+}
+
+pub(super) struct FileListManager {
+    workflow: FileListWorkflowState,
+}
+
+impl FileListManager {
+    pub(super) fn begin_request(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
+        cancel: Arc<AtomicBool>,
+    ) -> u64 {
+        self.workflow.pending_after_index = None;
+        let request_id = self.workflow.next_request_id;
+        self.workflow.next_request_id = self.workflow.next_request_id.saturating_add(1);
+        self.workflow.pending_request_id = Some(request_id);
+        self.workflow.pending_request_tab_id = Some(tab_id);
+        self.workflow.pending_root = Some(root);
+        self.workflow.pending_cancel = Some(cancel);
+        self.workflow.in_progress = true;
+        self.workflow.cancel_requested = false;
+        request_id
+    }
+
+    pub(super) fn clear_request(&mut self) {
+        self.workflow.pending_request_id = None;
+        self.workflow.pending_request_tab_id = None;
+        self.workflow.pending_root = None;
+        self.workflow.pending_cancel = None;
+        self.workflow.in_progress = false;
+        self.workflow.cancel_requested = false;
+    }
+
+    pub(super) fn settle_response(
+        &mut self,
+        request_id: u64,
+    ) -> Option<FileListRequestContext> {
+        if self.workflow.pending_request_id != Some(request_id) {
+            return None;
+        }
+        let context = FileListRequestContext {
+            root: self.workflow.pending_root.clone(),
+            tab_id: self.workflow.pending_request_tab_id,
+        };
+        self.clear_request();
+        Some(context)
+    }
+
+    pub(super) fn request_cancel(&mut self) -> Option<Arc<AtomicBool>> {
+        if !self.workflow.in_progress || self.workflow.cancel_requested {
+            return None;
+        }
+        self.workflow.cancel_requested = true;
+        self.workflow.pending_cancel.as_ref().map(Arc::clone)
+    }
+
+    pub(super) fn cancel_stale_pending_confirmation(
+        &mut self,
+        current_tab_id: u64,
+        current_root_key: &str,
+    ) -> bool {
+        let should_cancel = self
+            .workflow
+            .pending_confirmation
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && super::FlistWalkerApp::path_key(&pending.root) != current_root_key
+            });
+        if should_cancel {
+            self.workflow.pending_confirmation = None;
+        }
+        should_cancel
+    }
+
+    pub(super) fn cancel_stale_pending_ancestor_confirmation(
+        &mut self,
+        current_tab_id: u64,
+        current_root_key: &str,
+    ) -> bool {
+        let should_cancel = self
+            .workflow
+            .pending_ancestor_confirmation
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && super::FlistWalkerApp::path_key(&pending.root) != current_root_key
+            });
+        if should_cancel {
+            self.workflow.pending_ancestor_confirmation = None;
+        }
+        should_cancel
+    }
+
+    pub(super) fn cancel_stale_pending_use_walker_confirmation(
+        &mut self,
+        current_tab_id: u64,
+        current_root_key: &str,
+    ) -> bool {
+        let should_cancel = self
+            .workflow
+            .pending_use_walker_confirmation
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.source_tab_id == current_tab_id
+                    && super::FlistWalkerApp::path_key(&pending.root) != current_root_key
+            });
+        if should_cancel {
+            self.workflow.pending_use_walker_confirmation = None;
+        }
+        should_cancel
+    }
+}
+
+impl Default for FileListManager {
+    fn default() -> Self {
+        Self {
+            workflow: FileListWorkflowState::default(),
+        }
+    }
+}
+
+impl Deref for FileListManager {
+    type Target = FileListWorkflowState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.workflow
+    }
+}
+
+impl DerefMut for FileListManager {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.workflow
     }
 }
 

@@ -34,32 +34,22 @@ pub(super) enum FileListCommand {
 impl FlistWalkerApp {
     pub(super) fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
+        let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
             .filelist_state
-            .pending_confirmation
-            .as_ref()
-            .is_some_and(|pending| {
-                pending.tab_id == current_tab_id
-                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
-            });
+            .cancel_stale_pending_confirmation(current_tab_id, current_root_key.as_ref());
         if should_cancel {
-            self.filelist_state.pending_confirmation = None;
             self.set_notice("Pending FileList overwrite canceled because root changed");
         }
     }
 
     pub(super) fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
+        let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
             .filelist_state
-            .pending_ancestor_confirmation
-            .as_ref()
-            .is_some_and(|pending| {
-                pending.tab_id == current_tab_id
-                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
-            });
+            .cancel_stale_pending_ancestor_confirmation(current_tab_id, current_root_key.as_ref());
         if should_cancel {
-            self.filelist_state.pending_ancestor_confirmation = None;
             self.set_notice(
                 "Pending Create File List ancestor update canceled because root changed",
             );
@@ -68,16 +58,11 @@ impl FlistWalkerApp {
 
     pub(super) fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
+        let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
             .filelist_state
-            .pending_use_walker_confirmation
-            .as_ref()
-            .is_some_and(|pending| {
-                pending.source_tab_id == current_tab_id
-                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
-            });
+            .cancel_stale_pending_use_walker_confirmation(current_tab_id, current_root_key.as_ref());
         if should_cancel {
-            self.filelist_state.pending_use_walker_confirmation = None;
             self.set_notice("Pending Create File List confirmation canceled because root changed");
         }
     }
@@ -97,16 +82,10 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
         propagate_to_ancestors: bool,
     ) {
-        self.filelist_state.pending_after_index = None;
         let cancel = Arc::new(AtomicBool::new(false));
-        let request_id = self.filelist_state.next_request_id;
-        self.filelist_state.next_request_id = self.filelist_state.next_request_id.saturating_add(1);
-        self.filelist_state.pending_request_id = Some(request_id);
-        self.filelist_state.pending_request_tab_id = Some(tab_id);
-        self.filelist_state.pending_root = Some(root.clone());
-        self.filelist_state.pending_cancel = Some(Arc::clone(&cancel));
-        self.filelist_state.in_progress = true;
-        self.filelist_state.cancel_requested = false;
+        let request_id = self
+            .filelist_state
+            .begin_request(tab_id, root.clone(), Arc::clone(&cancel));
         self.refresh_status_line();
 
         let req = FileListRequest {
@@ -118,12 +97,7 @@ impl FlistWalkerApp {
             cancel,
         };
         if self.worker_bus.filelist.tx.send(req).is_err() {
-            self.filelist_state.pending_request_id = None;
-            self.filelist_state.pending_request_tab_id = None;
-            self.filelist_state.pending_root = None;
-            self.filelist_state.pending_cancel = None;
-            self.filelist_state.in_progress = false;
-            self.filelist_state.cancel_requested = false;
+            self.filelist_state.clear_request();
             self.refresh_status_line();
             self.set_notice("Create File List worker is unavailable");
         }
@@ -273,11 +247,8 @@ impl FlistWalkerApp {
             self.set_notice("Create File List canceled");
             return;
         }
-        if self.filelist_state.in_progress && !self.filelist_state.cancel_requested {
-            if let Some(cancel) = self.filelist_state.pending_cancel.as_ref() {
-                cancel.store(true, Ordering::Relaxed);
-            }
-            self.filelist_state.cancel_requested = true;
+        if let Some(cancel) = self.filelist_state.request_cancel() {
+            cancel.store(true, Ordering::Relaxed);
             self.refresh_status_line();
             self.set_notice("Canceling Create File List...");
         }
@@ -375,11 +346,6 @@ impl FlistWalkerApp {
 
     pub(super) fn poll_filelist_response(&mut self) {
         while let Ok(response) = self.worker_bus.filelist.rx.try_recv() {
-            let Some(pending) = self.filelist_state.pending_request_id else {
-                continue;
-            };
-            let requested_root = self.filelist_state.pending_root.clone();
-            let requested_tab_id = self.filelist_state.pending_request_tab_id;
             match response {
                 FileListResponse::Finished {
                     request_id,
@@ -387,18 +353,13 @@ impl FlistWalkerApp {
                     path,
                     count,
                 } => {
-                    if request_id != pending {
+                    let Some(context) = self.filelist_state.settle_response(request_id) else {
                         continue;
-                    }
-                    self.filelist_state.pending_request_id = None;
-                    self.filelist_state.pending_request_tab_id = None;
-                    self.filelist_state.pending_root = None;
-                    self.filelist_state.pending_cancel = None;
-                    self.filelist_state.in_progress = false;
-                    self.filelist_state.cancel_requested = false;
+                    };
                     self.refresh_status_line();
 
-                    let same_requested_root = requested_root
+                    let same_requested_root = context
+                        .root
                         .as_ref()
                         .map(|r| Self::path_key(r) == Self::path_key(&root))
                         .unwrap_or(true);
@@ -408,7 +369,7 @@ impl FlistWalkerApp {
                         continue;
                     }
                     let mut target_tab_index = None;
-                    if let Some(tab_id) = requested_tab_id {
+                    if let Some(tab_id) = context.tab_id {
                         if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
                             let tab_matches_root = self.tabs.get(tab_index).is_some_and(|tab| {
                                 Self::path_key(&tab.root) == Self::path_key(&root)
@@ -452,18 +413,13 @@ impl FlistWalkerApp {
                     root,
                     error,
                 } => {
-                    if request_id != pending {
+                    let Some(context) = self.filelist_state.settle_response(request_id) else {
                         continue;
-                    }
-                    self.filelist_state.pending_request_id = None;
-                    self.filelist_state.pending_request_tab_id = None;
-                    self.filelist_state.pending_root = None;
-                    self.filelist_state.pending_cancel = None;
-                    self.filelist_state.in_progress = false;
-                    self.filelist_state.cancel_requested = false;
+                    };
                     self.refresh_status_line();
 
-                    let same_requested_root = requested_root
+                    let same_requested_root = context
+                        .root
                         .as_ref()
                         .map(|r| Self::path_key(r) == Self::path_key(&root))
                         .unwrap_or(true);
@@ -479,18 +435,13 @@ impl FlistWalkerApp {
                     self.set_notice(format!("Create File List failed: {}", error));
                 }
                 FileListResponse::Canceled { request_id, root } => {
-                    if request_id != pending {
+                    let Some(context) = self.filelist_state.settle_response(request_id) else {
                         continue;
-                    }
-                    self.filelist_state.pending_request_id = None;
-                    self.filelist_state.pending_request_tab_id = None;
-                    self.filelist_state.pending_root = None;
-                    self.filelist_state.pending_cancel = None;
-                    self.filelist_state.in_progress = false;
-                    self.filelist_state.cancel_requested = false;
+                    };
                     self.refresh_status_line();
 
-                    let same_requested_root = requested_root
+                    let same_requested_root = context
+                        .root
                         .as_ref()
                         .map(|r| Self::path_key(r) == Self::path_key(&root))
                         .unwrap_or(true);
