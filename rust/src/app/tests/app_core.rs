@@ -1078,6 +1078,103 @@ fn close_tab_invalidates_memory_cache_for_immediate_resample() {
 }
 
 #[test]
+fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
+    let root = test_root("close-tab-clears-routing");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    assert_eq!(app.tabs.len(), 2);
+
+    let removed_tab_id = app.tabs[0].id;
+    let survivor_tab_id = app.tabs[1].id;
+    let path = root.join("item.txt");
+    fs::write(&path, "x").expect("write file");
+
+    app.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
+        tab_id: removed_tab_id,
+        root: root.clone(),
+    });
+    app.filelist_state.pending_confirmation = Some(PendingFileListConfirmation {
+        tab_id: removed_tab_id,
+        root: root.clone(),
+        entries: vec![path.clone()],
+        existing_path: root.join("FileList.txt"),
+    });
+    app.filelist_state.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id: removed_tab_id,
+        root: root.clone(),
+        entries: vec![path.clone()],
+    });
+    app.filelist_state.pending_use_walker_confirmation =
+        Some(PendingFileListUseWalkerConfirmation {
+            source_tab_id: removed_tab_id,
+            root: root.clone(),
+        });
+
+    app.indexing.request_tabs.insert(11, removed_tab_id);
+    app.indexing.request_tabs.insert(12, survivor_tab_id);
+    app.indexing.pending_queue.push_back(IndexRequest {
+        request_id: 11,
+        tab_id: removed_tab_id,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+    });
+    app.indexing.pending_queue.push_back(IndexRequest {
+        request_id: 12,
+        tab_id: survivor_tab_id,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+    });
+    if let Ok(mut latest) = app.indexing.latest_request_ids.lock() {
+        latest.insert(removed_tab_id, 11);
+        latest.insert(survivor_tab_id, 12);
+    }
+    app.indexing.background_states.insert(11, BackgroundIndexState::default());
+    app.indexing.background_states.insert(12, BackgroundIndexState::default());
+
+    app.search.bind_request_tab(21, removed_tab_id);
+    app.search.bind_request_tab(22, survivor_tab_id);
+    app.request_tab_routing.preview.insert(31, removed_tab_id);
+    app.request_tab_routing.preview.insert(32, survivor_tab_id);
+    app.request_tab_routing.action.insert(41, removed_tab_id);
+    app.request_tab_routing.action.insert(42, survivor_tab_id);
+    app.request_tab_routing.sort.insert(51, removed_tab_id);
+    app.request_tab_routing.sort.insert(52, survivor_tab_id);
+
+    app.close_tab_index(0);
+
+    assert_eq!(app.tabs.len(), 1);
+    assert_eq!(app.tabs[0].id, survivor_tab_id);
+    assert!(app.filelist_state.pending_after_index.is_none());
+    assert!(app.filelist_state.pending_confirmation.is_none());
+    assert!(app.filelist_state.pending_ancestor_confirmation.is_none());
+    assert!(app.filelist_state.pending_use_walker_confirmation.is_none());
+    assert_eq!(app.indexing.request_tabs.get(&11), None);
+    assert_eq!(app.indexing.request_tabs.get(&12), Some(&survivor_tab_id));
+    assert!(app.indexing.pending_queue.iter().all(|req| req.tab_id != removed_tab_id));
+    assert!(app.indexing.background_states.contains_key(&12));
+    assert!(!app.indexing.background_states.contains_key(&11));
+    if let Ok(latest) = app.indexing.latest_request_ids.lock() {
+        assert_eq!(latest.get(&removed_tab_id), None);
+        assert_eq!(latest.get(&survivor_tab_id), Some(&12));
+    }
+    assert_eq!(app.search.take_request_tab(21), None);
+    assert_eq!(app.search.take_request_tab(22), Some(survivor_tab_id));
+    assert_eq!(app.request_tab_routing.preview.get(&31), None);
+    assert_eq!(app.request_tab_routing.preview.get(&32), Some(&survivor_tab_id));
+    assert_eq!(app.request_tab_routing.action.get(&41), None);
+    assert_eq!(app.request_tab_routing.action.get(&42), Some(&survivor_tab_id));
+    assert_eq!(app.request_tab_routing.sort.get(&51), None);
+    assert_eq!(app.request_tab_routing.sort.get(&52), Some(&survivor_tab_id));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     let root = test_root("inactive-tab-results-compaction");
     fs::create_dir_all(&root).expect("create dir");

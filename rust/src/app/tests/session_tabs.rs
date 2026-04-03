@@ -461,6 +461,101 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
 }
 
 #[test]
+fn close_tab_ignores_late_background_responses_for_removed_tab() {
+    let root = test_root("close-tab-ignores-late-background");
+    fs::create_dir_all(&root).expect("create dir");
+    let active_file = root.join("active.txt");
+    let removed_file = root.join("removed.txt");
+    fs::write(&active_file, "active").expect("write active");
+    fs::write(&removed_file, "removed").expect("write removed");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_req_tx, _index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.indexing.tx = index_req_tx;
+    app.indexing.rx = index_res_rx;
+    let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
+    let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
+    app.search.tx = search_tx_req;
+    app.search.rx = search_rx_res;
+    let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
+    let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
+    app.worker_bus.preview.tx = preview_tx_req;
+    app.worker_bus.preview.rx = preview_rx_res;
+
+    app.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.results = vec![(active_file.clone(), 0.0)];
+    app.base_results = app.results.clone();
+    app.preview = "active-preview".to_string();
+    app.current_row = Some(0);
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+    let removed_tab_id = app.tabs[1].id;
+    let survivor_tab_id = app.tabs[0].id;
+
+    app.search.bind_request_tab(501, removed_tab_id);
+    app.request_tab_routing.preview.insert(601, removed_tab_id);
+    app.indexing.request_tabs.insert(701, removed_tab_id);
+    app.tabs[1].index_state.pending_index_request_id = Some(701);
+    app.tabs[1].index_state.index_in_progress = true;
+
+    app.close_tab_index(1);
+    let expected_preview = app.preview.clone();
+    let expected_results = app.results.clone();
+    let expected_entries = app.entries.clone();
+
+    search_tx_res
+        .send(SearchResponse {
+            request_id: 501,
+            results: vec![(removed_file.clone(), 9.0)],
+            error: None,
+        })
+        .expect("send stale search response");
+    preview_tx_res
+        .send(PreviewResponse {
+            request_id: 601,
+            path: removed_file.clone(),
+            preview: "removed-preview".to_string(),
+        })
+        .expect("send stale preview response");
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: 701,
+            entries: vec![IndexEntry {
+                path: removed_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send stale batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: 701,
+            source: IndexSource::Walker,
+        })
+        .expect("send stale finished");
+
+    app.poll_search_response();
+    app.poll_preview_response();
+    app.poll_index_response();
+
+    assert_eq!(app.tabs.len(), 1);
+    assert_eq!(app.tabs[0].id, survivor_tab_id);
+    assert_eq!(&*app.entries, &*expected_entries);
+    assert_eq!(app.results, expected_results);
+    assert_eq!(app.preview, expected_preview);
+    assert_eq!(app.search.take_request_tab(501), None);
+    assert_eq!(app.request_tab_routing.preview.get(&601), None);
+    assert_eq!(app.indexing.request_tabs.get(&701), None);
+    assert!(!app.indexing.background_states.contains_key(&701));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn ctrl_t_creates_new_tab_and_activates_it() {
     let root = test_root("shortcut-ctrl-t-new-tab");
     fs::create_dir_all(&root).expect("create dir");
