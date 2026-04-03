@@ -88,6 +88,26 @@ pub(super) enum TabCloseCleanupCommand {
     App(TabCloseCleanupAppCommand),
 }
 
+// Phase 1 scaffolding for the tab-reorder split. Later phases will move
+// reorder-specific transition ordering behind a dedicated helper that emits
+// these commands instead of open-coding drag cleanup and active-tab reapply in
+// move_tab().
+#[allow(dead_code)]
+pub(super) enum TabReorderUiCommand {
+    ClearTabDragState,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabReorderAppCommand {
+    ApplyActiveTabState,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabReorderCommand {
+    Ui(TabReorderUiCommand),
+    App(TabReorderAppCommand),
+}
+
 impl FlistWalkerApp {
     #[allow(dead_code)]
     fn dispatch_tab_restore_commands(&mut self, commands: Vec<TabRestoreCommand>) {
@@ -132,6 +152,22 @@ impl FlistWalkerApp {
                 }
                 TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample) => {
                     self.ui.memory_usage_bytes = None;
+                }
+            }
+        }
+    }
+
+    #[allow(dead_code)]
+    fn dispatch_tab_reorder_commands(&mut self, commands: Vec<TabReorderCommand>) {
+        for command in commands {
+            match command {
+                TabReorderCommand::Ui(TabReorderUiCommand::ClearTabDragState) => {
+                    self.ui.tab_drag_state = None;
+                }
+                TabReorderCommand::App(TabReorderAppCommand::ApplyActiveTabState) => {
+                    if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
+                        self.apply_tab_state(&tab);
+                    }
                 }
             }
         }
