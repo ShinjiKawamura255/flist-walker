@@ -932,6 +932,104 @@ fn move_tab_ignores_invalid_or_noop_indices() {
 }
 
 #[test]
+fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
+    let root_a = test_root("move-tab-carryover-a");
+    let root_b = test_root("move-tab-carryover-b");
+    let root_c = test_root("move-tab-carryover-c");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+    fs::create_dir_all(&root_c).expect("create root c");
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, "alpha".to_string());
+
+    app.include_dirs = false;
+    app.preview = "preview-a".to_string();
+    app.ui.focus_query_requested = true;
+    app.ui.unfocus_query_requested = false;
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    app.root = root_b.clone();
+    app.query_state.query = "beta".to_string();
+    app.include_files = false;
+    app.include_dirs = true;
+    app.preview = "preview-b".to_string();
+    app.ui.focus_query_requested = false;
+    app.ui.unfocus_query_requested = true;
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    app.root = root_c.clone();
+    app.query_state.query = "gamma".to_string();
+    app.include_files = true;
+    app.include_dirs = true;
+    app.preview = "preview-c".to_string();
+    app.ui.focus_query_requested = true;
+    app.ui.unfocus_query_requested = false;
+    app.sync_active_tab_state();
+
+    app.switch_to_tab_index(1);
+    assert_eq!(app.root, root_b);
+    assert_eq!(app.query_state.query, "beta");
+    let expected_active_root = app.root.clone();
+    let expected_active_query = app.query_state.query.clone();
+    let expected_active_preview = app.preview.clone();
+    let expected_active_include_files = app.include_files;
+    let expected_active_include_dirs = app.include_dirs;
+    let expected_active_focus = app.ui.focus_query_requested;
+    let expected_active_unfocus = app.ui.unfocus_query_requested;
+    let expected_tab_b = app.tabs[1].clone();
+    let expected_tab_c = app.tabs[2].clone();
+    let expected_tab_a = app.tabs[0].clone();
+
+    app.move_tab(0, 2);
+
+    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.root, expected_active_root);
+    assert_eq!(app.query_state.query, expected_active_query);
+    assert_eq!(app.preview, expected_active_preview);
+    assert_eq!(app.include_files, expected_active_include_files);
+    assert_eq!(app.include_dirs, expected_active_include_dirs);
+    assert_eq!(app.ui.focus_query_requested, expected_active_focus);
+    assert_eq!(app.ui.unfocus_query_requested, expected_active_unfocus);
+
+    assert_eq!(app.tabs[0].root, expected_tab_b.root);
+    assert_eq!(app.tabs[0].query_state.query, expected_tab_b.query_state.query);
+    assert_eq!(app.tabs[0].result_state.preview, expected_tab_b.result_state.preview);
+    assert_eq!(app.tabs[1].root, expected_tab_c.root);
+    assert_eq!(app.tabs[1].query_state.query, expected_tab_c.query_state.query);
+    assert_eq!(app.tabs[1].result_state.preview, expected_tab_c.result_state.preview);
+    assert_eq!(app.tabs[2].root, expected_tab_a.root);
+    assert_eq!(app.tabs[2].query_state.query, expected_tab_a.query_state.query);
+    assert_eq!(app.tabs[2].result_state.preview, expected_tab_a.result_state.preview);
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+    let _ = fs::remove_dir_all(&root_c);
+}
+
+#[test]
+fn move_tab_clears_drag_state_on_direct_reorder() {
+    let root = test_root("move-tab-clears-drag-state");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    app.ui.tab_drag_state = Some(TabDragState {
+        source_index: 2,
+        hover_index: 0,
+        press_pos: egui::pos2(10.0, 12.0),
+        dragging: true,
+    });
+
+    app.move_tab(2, 0);
+
+    assert_eq!(app.ui.tab_drag_state, None);
+    app.switch_to_tab_index(1);
+    assert_eq!(app.ui.tab_drag_state, None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tab_drag_below_threshold_does_not_reorder_on_release() {
     let root = test_root("tab-drag-below-threshold");
     fs::create_dir_all(&root).expect("create dir");
