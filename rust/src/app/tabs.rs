@@ -99,7 +99,7 @@ impl FlistWalkerApp {
                 TabLifecycleCommand::Pipeline(
                     TabLifecyclePipelineCommand::TriggerRestoreRefresh,
                 ) => {
-                    self.trigger_restore_refresh_for_active_tab();
+                    self.dispatch_tab_restore_for_activation(true);
                 }
                 TabLifecycleCommand::App(TabLifecycleAppCommand::ClearTabDragState) => {
                     self.ui.tab_drag_state = None;
@@ -119,6 +119,14 @@ impl FlistWalkerApp {
             TabRestoreCommand::App(TabRestoreAppCommand::ConsumePendingRestoreRefresh),
             TabRestoreCommand::Pipeline(TabRestorePipelineCommand::RequestIndexRefresh),
         ]
+    }
+
+    fn dispatch_tab_restore_for_activation(&mut self, trigger_restore_refresh: bool) {
+        let commands = self.tab_restore_commands_for_activation(trigger_restore_refresh);
+        if commands.is_empty() {
+            return;
+        }
+        self.dispatch_tab_restore_commands(commands);
     }
 
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
@@ -324,7 +332,7 @@ impl FlistWalkerApp {
             self.apply_tab_state(&tab);
             self.ui.focus_query_requested = true;
             self.ui.unfocus_query_requested = false;
-            self.trigger_restore_refresh_for_active_tab();
+            self.dispatch_tab_restore_for_activation(true);
             self.notice = "Restored tab session".to_string();
             self.refresh_status_line();
         }
@@ -549,14 +557,6 @@ impl FlistWalkerApp {
 
     pub(super) fn find_tab_index_by_id(&self, tab_id: u64) -> Option<usize> {
         self.tabs.iter().position(|tab| tab.id == tab_id)
-    }
-
-    pub(super) fn trigger_restore_refresh_for_active_tab(&mut self) {
-        let commands = self.tab_restore_commands_for_activation(true);
-        if commands.is_empty() {
-            return;
-        }
-        self.dispatch_tab_restore_commands(commands);
     }
 
     pub(super) fn switch_to_tab_index(&mut self, next_index: usize) {

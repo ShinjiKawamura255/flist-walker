@@ -330,6 +330,137 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
 }
 
 #[test]
+fn background_tab_activation_consumes_pending_restore_refresh_once() {
+    let root_a = test_root("background-activation-consumes-pending-a");
+    let root_b = test_root("background-activation-consumes-pending-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+    let indexed_file = root_a.join("indexed.txt");
+    fs::write(&indexed_file, "indexed").expect("write indexed file");
+
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.indexing.tx = index_req_tx;
+    app.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
+
+    app.initialize_tabs_from_saved(
+        vec![
+            SavedTabState {
+                root: root_a.to_string_lossy().to_string(),
+                use_filelist: true,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                query: String::new(),
+                query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Olive),
+            },
+            SavedTabState {
+                root: root_b.to_string_lossy().to_string(),
+                use_filelist: true,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                query: String::new(),
+                query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Indigo),
+            },
+        ],
+        1,
+    );
+    let _ = index_req_rx.try_recv().expect("initial active refresh");
+
+    let background_tab_id = app.tabs[0].id;
+
+    let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
+    let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
+    app.search.tx = search_tx_req;
+    app.search.rx = search_rx_res;
+    let search_request_id = app.search.allocate_request_id();
+    app.search.bind_request_tab(search_request_id, background_tab_id);
+
+    let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
+    let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
+    app.worker_bus.preview.tx = preview_tx_req;
+    app.worker_bus.preview.rx = preview_rx_res;
+    let preview_request_id = 41;
+    app.request_tab_routing
+        .preview
+        .insert(preview_request_id, background_tab_id);
+
+    let background_index_request_id = 77;
+    app.indexing
+        .request_tabs
+        .insert(background_index_request_id, background_tab_id);
+    app.tabs[0].index_state.pending_index_request_id = Some(background_index_request_id);
+    app.tabs[0].index_state.index_in_progress = true;
+
+    search_tx_res
+        .send(SearchResponse {
+            request_id: search_request_id,
+            results: vec![(indexed_file.clone(), 9.0)],
+            error: None,
+        })
+        .expect("send background search response");
+    preview_tx_res
+        .send(PreviewResponse {
+            request_id: preview_request_id,
+            path: indexed_file.clone(),
+            preview: "preview-body".to_string(),
+        })
+        .expect("send background preview response");
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: background_index_request_id,
+            entries: vec![IndexEntry {
+                path: indexed_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send background batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: background_index_request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background finished");
+
+    app.poll_search_response();
+    app.poll_preview_response();
+    app.poll_index_response();
+
+    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.root, root_b);
+    assert!(app.tabs[0].pending_restore_refresh);
+    assert_eq!(app.tabs[0].result_state.preview, "preview-body");
+    assert_eq!(app.tabs[0].index_state.entries.len(), 1);
+    assert_eq!(app.tabs[0].index_state.entries[0], indexed_file);
+
+    app.switch_to_tab_index(0);
+
+    let refresh_req = index_req_rx
+        .try_recv()
+        .expect("lazy refresh request for activated background tab");
+    assert_eq!(refresh_req.root, root_a);
+    assert!(index_req_rx.try_recv().is_err());
+    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.root, root_a);
+    assert!(!app.pending_restore_refresh);
+    assert!(!app.tabs[0].pending_restore_refresh);
+    assert_eq!(app.preview, "preview-body");
+    assert_eq!(app.results.len(), 1);
+    assert_eq!(app.results[0].0, indexed_file);
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
 fn ctrl_t_creates_new_tab_and_activates_it() {
     let root = test_root("shortcut-ctrl-t-new-tab");
     fs::create_dir_all(&root).expect("create dir");
