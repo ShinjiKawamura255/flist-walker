@@ -52,6 +52,37 @@ pub(super) enum TabLifecycleCommand {
 }
 
 impl FlistWalkerApp {
+    fn deactivate_active_tab_for_transition(&mut self) -> usize {
+        self.ui.tab_drag_state = None;
+        self.shrink_checkpoint_buffers();
+        let previous_active = self.active_tab;
+        self.sync_active_tab_state();
+        if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
+            Self::compact_inactive_tab_state(previous_tab);
+        }
+        previous_active
+    }
+
+    fn activate_tab_after_transition(
+        &mut self,
+        tab: &AppTabState,
+        restore_results: bool,
+        request_focus: bool,
+        trigger_restore_refresh: bool,
+    ) {
+        self.apply_tab_state(tab);
+        if restore_results {
+            self.restore_results_from_compacted_tab();
+        }
+        if request_focus {
+            self.ui.focus_query_requested = true;
+            self.ui.unfocus_query_requested = false;
+        }
+        if trigger_restore_refresh {
+            self.trigger_restore_refresh_for_active_tab();
+        }
+    }
+
     pub(super) fn dispatch_root_change_commands(&mut self, commands: Vec<RootChangeCommand>) {
         for command in commands {
             match command {
@@ -459,24 +490,14 @@ impl FlistWalkerApp {
         if next_index >= self.tabs.len() || next_index == self.active_tab {
             return;
         }
-        self.ui.tab_drag_state = None;
-        self.shrink_checkpoint_buffers();
-        let previous_active = self.active_tab;
-        self.sync_active_tab_state();
-        if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
-            Self::compact_inactive_tab_state(previous_tab);
-        }
+        self.deactivate_active_tab_for_transition();
         if let Some(next_tab) = self.tabs.get_mut(next_index) {
             Self::shrink_tab_checkpoint_buffers(next_tab);
         }
         self.active_tab = next_index;
         if let Some(tab) = self.tabs.get(next_index).cloned() {
-            self.apply_tab_state(&tab);
+            self.activate_tab_after_transition(&tab, true, true, true);
         }
-        self.restore_results_from_compacted_tab();
-        self.ui.focus_query_requested = true;
-        self.ui.unfocus_query_requested = false;
-        self.trigger_restore_refresh_for_active_tab();
     }
 
     pub(super) fn set_tab_accent(&mut self, index: usize, accent: Option<TabAccentColor>) {
@@ -492,12 +513,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn create_new_tab(&mut self) {
-        self.ui.tab_drag_state = None;
-        let previous_active = self.active_tab;
-        self.sync_active_tab_state();
-        if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
-            Self::compact_inactive_tab_state(previous_tab);
-        }
+        self.deactivate_active_tab_for_transition();
         let id = self.next_tab_id;
         self.next_tab_id = self.next_tab_id.saturating_add(1);
         let mut tab = self.capture_active_tab_state(id);
@@ -555,7 +571,7 @@ impl FlistWalkerApp {
         tab.result_state.results = tab.result_state.base_results.clone();
         self.tabs.push(tab.clone());
         self.active_tab = self.tabs.len().saturating_sub(1);
-        self.apply_tab_state(&tab);
+        self.activate_tab_after_transition(&tab, false, true, false);
     }
 
     pub(super) fn close_active_tab(&mut self) {
@@ -631,7 +647,7 @@ impl FlistWalkerApp {
         }
         self.ui.memory_usage_bytes = None;
         if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
-            self.apply_tab_state(&tab);
+            self.activate_tab_after_transition(&tab, false, false, false);
         }
     }
 
