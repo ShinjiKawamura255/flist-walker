@@ -51,7 +51,44 @@ pub(super) enum TabLifecycleCommand {
     App(TabLifecycleAppCommand),
 }
 
+// Phase 1 scaffolding for the tab-activation/background-restore split. Later
+// phases will move restore-decision and activation-time lazy refresh handling
+// behind a dedicated helper that emits these commands instead of open-coding
+// pending_restore_refresh transitions across tabs.rs and pipeline.rs.
+#[allow(dead_code)]
+pub(super) enum TabRestorePipelineCommand {
+    RequestIndexRefresh,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabRestoreAppCommand {
+    ConsumePendingRestoreRefresh,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabRestoreCommand {
+    Pipeline(TabRestorePipelineCommand),
+    App(TabRestoreAppCommand),
+}
+
 impl FlistWalkerApp {
+    #[allow(dead_code)]
+    fn dispatch_tab_restore_commands(&mut self, commands: Vec<TabRestoreCommand>) {
+        for command in commands {
+            match command {
+                TabRestoreCommand::Pipeline(TabRestorePipelineCommand::RequestIndexRefresh) => {
+                    self.request_index_refresh();
+                }
+                TabRestoreCommand::App(TabRestoreAppCommand::ConsumePendingRestoreRefresh) => {
+                    self.pending_restore_refresh = false;
+                    if let Some(tab) = self.tabs.get_mut(self.active_tab) {
+                        tab.pending_restore_refresh = false;
+                    }
+                }
+            }
+        }
+    }
+
     fn dispatch_tab_lifecycle_commands(&mut self, commands: Vec<TabLifecycleCommand>) {
         for command in commands {
             match command {
