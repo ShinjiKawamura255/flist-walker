@@ -72,9 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- For `tab-activation-background-restore`, read `docs/CHANGE-PLAN-20260404-tab-activation-background-restore.md` before starting implementation.
-- Execute the work in the documented order unless the plan is updated first.
-- If scope, order, or risk changes, update the change plan before continuing.
-- Remove this section from `AGENTS.md` after the planned work is complete.
