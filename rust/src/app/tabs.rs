@@ -71,6 +71,23 @@ pub(super) enum TabRestoreCommand {
     App(TabRestoreAppCommand),
 }
 
+// Phase 1 scaffolding for the tab-close cleanup split. Later phases will move
+// close-specific pending/routing cleanup behind a dedicated helper that emits
+// these commands instead of open-coding subsystem cleanup in close_tab_index().
+#[allow(dead_code)]
+pub(super) enum TabCloseCleanupAppCommand {
+    ClearFileListPendingForTab(u64),
+    ClearIndexRoutingForTab(u64),
+    ClearSearchRoutingForTab(u64),
+    ClearRequestRoutingForTab(u64),
+    InvalidateMemorySample,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabCloseCleanupCommand {
+    App(TabCloseCleanupAppCommand),
+}
+
 impl FlistWalkerApp {
     #[allow(dead_code)]
     fn dispatch_tab_restore_commands(&mut self, commands: Vec<TabRestoreCommand>) {
@@ -84,6 +101,77 @@ impl FlistWalkerApp {
                     if let Some(tab) = self.tabs.get_mut(self.active_tab) {
                         tab.pending_restore_refresh = false;
                     }
+                }
+            }
+        }
+    }
+
+    #[allow(dead_code)]
+    fn dispatch_tab_close_cleanup_commands(&mut self, commands: Vec<TabCloseCleanupCommand>) {
+        for command in commands {
+            match command {
+                TabCloseCleanupCommand::App(
+                    TabCloseCleanupAppCommand::ClearFileListPendingForTab(tab_id),
+                ) => {
+                    if self
+                        .filelist_state
+                        .pending_after_index
+                        .as_ref()
+                        .is_some_and(|pending| pending.tab_id == tab_id)
+                    {
+                        self.filelist_state.pending_after_index = None;
+                    }
+                    if self
+                        .filelist_state
+                        .pending_confirmation
+                        .as_ref()
+                        .is_some_and(|pending| pending.tab_id == tab_id)
+                    {
+                        self.filelist_state.pending_confirmation = None;
+                    }
+                    if self
+                        .filelist_state
+                        .pending_ancestor_confirmation
+                        .as_ref()
+                        .is_some_and(|pending| pending.tab_id == tab_id)
+                    {
+                        self.filelist_state.pending_ancestor_confirmation = None;
+                    }
+                    if self
+                        .filelist_state
+                        .pending_use_walker_confirmation
+                        .as_ref()
+                        .is_some_and(|pending| pending.source_tab_id == tab_id)
+                    {
+                        self.filelist_state.pending_use_walker_confirmation = None;
+                    }
+                }
+                TabCloseCleanupCommand::App(
+                    TabCloseCleanupAppCommand::ClearIndexRoutingForTab(tab_id),
+                ) => {
+                    self.indexing.request_tabs.retain(|_, id| *id != tab_id);
+                    self.indexing.pending_queue.retain(|req| req.tab_id != tab_id);
+                    if let Ok(mut latest) = self.indexing.latest_request_ids.lock() {
+                        latest.remove(&tab_id);
+                    }
+                    self.indexing
+                        .background_states
+                        .retain(|request_id, _| self.indexing.request_tabs.contains_key(request_id));
+                }
+                TabCloseCleanupCommand::App(
+                    TabCloseCleanupAppCommand::ClearSearchRoutingForTab(tab_id),
+                ) => {
+                    self.search.retain_request_tabs(|_, id| *id != tab_id);
+                }
+                TabCloseCleanupCommand::App(
+                    TabCloseCleanupAppCommand::ClearRequestRoutingForTab(tab_id),
+                ) => {
+                    self.request_tab_routing.preview.retain(|_, id| *id != tab_id);
+                    self.request_tab_routing.action.retain(|_, id| *id != tab_id);
+                    self.request_tab_routing.sort.retain(|_, id| *id != tab_id);
+                }
+                TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample) => {
+                    self.ui.memory_usage_bytes = None;
                 }
             }
         }

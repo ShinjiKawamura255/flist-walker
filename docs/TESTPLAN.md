@@ -154,6 +154,7 @@
 - Root change orchestration の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `app_core`、`query_history`、`session_tabs`、root-change 回帰テストを含む `cargo test` へ昇格させる。
 - Tab lifecycle shared helper の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `session_tabs`、`app_core`、targeted tab lifecycle regression を含む `cargo test` へ昇格させる。
 - Tab activation/background restore の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `session_tabs`、`app_core`、background restore 回帰テストを含む `cargo test` へ昇格させる。
+- Tab close cleanup の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `session_tabs`、`app_core`、targeted close cleanup regression を含む `cargo test` へ昇格させる。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`
