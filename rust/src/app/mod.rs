@@ -56,6 +56,9 @@ use state::{
     ResultSortMode, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
     UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
 };
+use self::tabs::{
+    RootChangeAppCommand, RootChangeCommand, RootChangePipelineCommand, RootChangeUiCommand,
+};
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
 use worker_bus::{
@@ -783,29 +786,23 @@ Search hints:
 
     /// root 切り替えに伴う state reset と再 index をまとめて適用する。
     fn apply_root_change(&mut self, new_root: PathBuf) {
-        let normalized = normalize_windows_path_buf(new_root);
-        if Self::path_key(&normalized) == Self::path_key(&self.root) {
+        let commands = self.root_change_commands(new_root);
+        if commands.is_empty() {
             return;
         }
-
-        self.root = normalized;
-        self.reset_query_history_navigation();
-        self.query_state.query_history_dirty_since = None;
-        self.reset_history_search_state();
-        // Avoid launching/copying stale selections from the previous root.
-        self.pinned_paths.clear();
-        self.current_row = None;
-        self.preview.clear();
-        self.worker_bus.preview.in_progress = false;
-        self.worker_bus.preview.pending_request_id = None;
-        self.clear_root_scoped_entry_state();
-        self.sync_active_tab_state();
-        self.mark_ui_state_dirty();
-        self.cancel_stale_pending_filelist_confirmation();
-        self.cancel_stale_pending_filelist_ancestor_confirmation();
-        self.cancel_stale_pending_filelist_use_walker_confirmation();
-        self.request_index_refresh();
-        self.set_notice(format!("Root changed: {}", self.root_display_text()));
+        for command in commands {
+            match command {
+                RootChangeCommand::Ui(RootChangeUiCommand::SetNotice(notice)) => {
+                    self.set_notice(notice);
+                }
+                RootChangeCommand::Pipeline(RootChangePipelineCommand::RequestIndexRefresh) => {
+                    self.request_index_refresh();
+                }
+                RootChangeCommand::App(RootChangeAppCommand::MarkUiStateDirty) => {
+                    self.mark_ui_state_dirty();
+                }
+            }
+        }
     }
 
     /// ダイアログで選んだ root を現在 tab に適用する。

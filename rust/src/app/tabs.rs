@@ -27,6 +27,38 @@ pub(super) enum RootChangeCommand {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn root_change_commands(&mut self, new_root: PathBuf) -> Vec<RootChangeCommand> {
+        let normalized = normalize_windows_path_buf(new_root);
+        if Self::path_key(&normalized) == Self::path_key(&self.root) {
+            return Vec::new();
+        }
+
+        self.root = normalized;
+        self.reset_query_history_navigation();
+        self.query_state.query_history_dirty_since = None;
+        self.reset_history_search_state();
+        // Avoid launching/copying stale selections from the previous root.
+        self.pinned_paths.clear();
+        self.current_row = None;
+        self.preview.clear();
+        self.worker_bus.preview.in_progress = false;
+        self.worker_bus.preview.pending_request_id = None;
+        self.clear_root_scoped_entry_state();
+        self.sync_active_tab_state();
+        self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_ancestor_confirmation();
+        self.cancel_stale_pending_filelist_use_walker_confirmation();
+
+        vec![
+            RootChangeCommand::App(RootChangeAppCommand::MarkUiStateDirty),
+            RootChangeCommand::Pipeline(RootChangePipelineCommand::RequestIndexRefresh),
+            RootChangeCommand::Ui(RootChangeUiCommand::SetNotice(format!(
+                "Root changed: {}",
+                self.root_display_text()
+            ))),
+        ]
+    }
+
     pub(super) fn choose_startup_root(
         root: PathBuf,
         root_explicit: bool,
