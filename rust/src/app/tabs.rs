@@ -52,8 +52,29 @@ pub(super) enum TabLifecycleCommand {
 }
 
 impl FlistWalkerApp {
+    fn dispatch_tab_lifecycle_commands(&mut self, commands: Vec<TabLifecycleCommand>) {
+        for command in commands {
+            match command {
+                TabLifecycleCommand::Ui(TabLifecycleUiCommand::FocusQuery) => {
+                    self.ui.focus_query_requested = true;
+                    self.ui.unfocus_query_requested = false;
+                }
+                TabLifecycleCommand::Pipeline(
+                    TabLifecyclePipelineCommand::TriggerRestoreRefresh,
+                ) => {
+                    self.trigger_restore_refresh_for_active_tab();
+                }
+                TabLifecycleCommand::App(TabLifecycleAppCommand::ClearTabDragState) => {
+                    self.ui.tab_drag_state = None;
+                }
+            }
+        }
+    }
+
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
-        self.ui.tab_drag_state = None;
+        self.dispatch_tab_lifecycle_commands(vec![TabLifecycleCommand::App(
+            TabLifecycleAppCommand::ClearTabDragState,
+        )]);
         self.shrink_checkpoint_buffers();
         let previous_active = self.active_tab;
         self.sync_active_tab_state();
@@ -74,12 +95,17 @@ impl FlistWalkerApp {
         if restore_results {
             self.restore_results_from_compacted_tab();
         }
+        let mut commands = Vec::new();
         if request_focus {
-            self.ui.focus_query_requested = true;
-            self.ui.unfocus_query_requested = false;
+            commands.push(TabLifecycleCommand::Ui(TabLifecycleUiCommand::FocusQuery));
         }
         if trigger_restore_refresh {
-            self.trigger_restore_refresh_for_active_tab();
+            commands.push(TabLifecycleCommand::Pipeline(
+                TabLifecyclePipelineCommand::TriggerRestoreRefresh,
+            ));
+        }
+        if !commands.is_empty() {
+            self.dispatch_tab_lifecycle_commands(commands);
         }
     }
 

@@ -354,6 +354,8 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
     assert!(app.query_state.query.is_empty());
     assert!(app.use_filelist);
     assert_eq!(app.tabs[1].tab_accent, None);
+    assert!(app.ui.focus_query_requested);
+    assert!(!app.ui.unfocus_query_requested);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -430,6 +432,8 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     assert_eq!(app.tabs.len(), 2);
+    app.tabs[0].focus_query_requested = false;
+    app.tabs[0].unfocus_query_requested = true;
 
     run_shortcuts_frame(
         &mut app,
@@ -443,6 +447,8 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
         }],
     );
     assert_eq!(app.tabs.len(), 1);
+    assert!(!app.ui.focus_query_requested);
+    assert!(app.ui.unfocus_query_requested);
 
     run_shortcuts_frame(
         &mut app,
@@ -482,6 +488,8 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
         }],
     );
     assert_eq!(app.active_tab, 0);
+    assert!(app.ui.focus_query_requested);
+    assert!(!app.ui.unfocus_query_requested);
 
     run_shortcuts_frame(
         &mut app,
