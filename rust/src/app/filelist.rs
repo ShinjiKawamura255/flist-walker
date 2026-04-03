@@ -1,5 +1,36 @@
 use super::*;
 
+// Phase 1 scaffolding for the FileList reducer split. Later phases will emit
+// these commands from a FileList-focused manager instead of mutating app state
+// directly from every branch.
+#[allow(dead_code)]
+pub(super) enum FileListUiCommand {
+    RefreshStatusLine,
+    SetNotice(String),
+}
+
+#[allow(dead_code)]
+pub(super) enum FileListWorkerCommand {
+    Start(FileListRequest),
+}
+
+#[allow(dead_code)]
+pub(super) enum FileListAppCommand {
+    SetPendingAfterIndex(Option<PendingFileListAfterIndex>),
+    SetIncludeFilesAndDirs { include_files: bool, include_dirs: bool },
+    RequestIndexRefresh,
+    RequestCreateFileListWalkerRefresh,
+    RequestBackgroundIndexRefreshForTab(usize),
+    SetUseFileListForTab { tab_index: usize, use_filelist: bool },
+}
+
+#[allow(dead_code)]
+pub(super) enum FileListCommand {
+    Ui(FileListUiCommand),
+    Worker(FileListWorkerCommand),
+    App(FileListAppCommand),
+}
+
 impl FlistWalkerApp {
     pub(super) fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();

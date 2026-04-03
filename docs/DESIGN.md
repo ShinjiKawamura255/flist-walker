@@ -123,6 +123,9 @@
 - OS シグナル（例: `Ctrl+C`）受信時は shutdown 要求を立て、GUI 側で window close を発行して終了処理へ収束させる。
 - FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - Create File List は app 側で pending confirmation / pending after index / in-flight request を 1 系列の状態として管理し、status panel の `Cancel Create File List` から共通キャンセル処理へ流す。
+- God Object 解消の第一段として、Create File List は `app/filelist.rs` 内の FileList 専用 reducer/manager 境界へ寄せ、FileList worker request/response の lifecycle と stale/cancel 判定だけを manager 側で所有する。
+- FileList 系の副作用は `UiCommand`、`WorkerCommand`、`FileListAppCommand` のようなカテゴリ化した戻り値で表現し、単一巨大 enum や `&mut FlistWalkerApp` への直接依存を増やさない。
+- `pending_after_index`、tab/root 切替時の再インデックス判断、active/background tab への反映は orchestration として `FlistWalkerApp` 側に残し、manager は必要な app command を返すだけに留める。
 - FileList 作成は OS 一時領域に出力してから最終配置へ移動する。クロスデバイスで `rename` 不可の場合は `copy` フォールバックし、最終配置のみを更新する。
 - Create File List の worker request は cancel flag を持ち、テキスト生成、root 直下への最終置換、祖先 FileList 追記の各境界で中断確認する。キャンセル後は `Canceled` 応答を返し、UI は notice 更新だけ行う。
 - FileList 作成後は root の親から filesystem root まで順に辿り、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ子 FileList 参照を相対表現で追記する。既に同一参照がある場合は追記しない。

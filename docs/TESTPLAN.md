@@ -149,6 +149,7 @@
 | VM-003 Indexing path | `rust/src/indexer.rs`, `rust/src/app/workers.rs`, `rust/src/app.rs`, `rust/src/app/pipeline.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験 |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
+- FileList reducer / command boundary の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、挙動変更が入る Phase 2 以降は VM-002 / VM-003 へ昇格させる。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`
