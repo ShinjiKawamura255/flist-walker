@@ -498,6 +498,35 @@ fn failed_update_response_sets_notice_without_closing_app() {
 }
 
 #[test]
+fn apply_started_update_response_requests_app_close() {
+    let root = test_root("apply-started-update-close-request");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<UpdateResponse>();
+    app.worker_bus.update.rx = rx;
+    app.update_state.pending_request_id = Some(1);
+    app.update_state.in_progress = true;
+    app.update_state.prompt = Some(UpdatePromptState {
+        candidate: test_update_candidate("0.13.1"),
+        skip_until_next_version: false,
+        install_started: true,
+    });
+
+    tx.send(UpdateResponse::ApplyStarted {
+        request_id: 1,
+        target_version: "0.13.1".to_string(),
+    })
+    .expect("send apply started");
+
+    app.poll_update_response();
+
+    assert!(app.update_state.close_requested_for_install);
+    assert!(app.update_state.prompt.is_none());
+    assert_eq!(app.notice, "Restarting to apply update 0.13.1...");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn update_check_failure_opens_failure_dialog() {
     let root = test_root("update-check-failure-dialog");
     fs::create_dir_all(&root).expect("create dir");

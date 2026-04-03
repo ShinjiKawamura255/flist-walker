@@ -54,7 +54,7 @@ use state::{
     HighlightCacheKey, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
     PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, RequestTabRoutingState,
     ResultSortMode, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
-    UpdateCheckFailureState, UpdatePromptState, UpdateState,
+    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
@@ -253,7 +253,7 @@ pub struct FlistWalkerApp {
     next_tab_id: u64,
     request_tab_routing: RequestTabRoutingState,
     filelist_state: FileListManager,
-    update_state: UpdateState,
+    update_state: UpdateManager,
     worker_runtime: Option<WorkerRuntime>,
 }
 
@@ -469,7 +469,7 @@ Search hints:
             next_tab_id: 1,
             request_tab_routing: RequestTabRoutingState::default(),
             filelist_state: FileListManager::default(),
-            update_state,
+            update_state: UpdateManager::from_state(update_state),
             worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {

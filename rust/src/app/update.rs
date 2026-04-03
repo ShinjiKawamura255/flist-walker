@@ -30,14 +30,10 @@ pub(super) enum UpdateCommand {
 impl FlistWalkerApp {
     pub(super) fn request_startup_update_check(&mut self) {
         if self_update_disabled() {
-            self.update_state.pending_request_id = None;
-            self.update_state.in_progress = false;
+            self.update_state.clear_for_disabled_update();
             return;
         }
-        let request_id = self.update_state.next_request_id;
-        self.update_state.next_request_id = self.update_state.next_request_id.saturating_add(1);
-        self.update_state.pending_request_id = Some(request_id);
-        self.update_state.in_progress = true;
+        let request_id = self.update_state.begin_request();
         if self
             .worker_bus
             .update
@@ -48,8 +44,7 @@ impl FlistWalkerApp {
             })
             .is_err()
         {
-            self.update_state.pending_request_id = None;
-            self.update_state.in_progress = false;
+            self.update_state.clear_request();
         }
     }
 
@@ -73,10 +68,7 @@ impl FlistWalkerApp {
         if let Some(prompt) = self.update_state.prompt.as_mut() {
             prompt.install_started = true;
         }
-        let request_id = self.update_state.next_request_id;
-        self.update_state.next_request_id = self.update_state.next_request_id.saturating_add(1);
-        self.update_state.pending_request_id = Some(request_id);
-        self.update_state.in_progress = true;
+        let request_id = self.update_state.begin_request();
         if self
             .worker_bus
             .update
@@ -90,8 +82,7 @@ impl FlistWalkerApp {
             })
             .is_err()
         {
-            self.update_state.pending_request_id = None;
-            self.update_state.in_progress = false;
+            self.update_state.clear_request();
             if let Some(prompt) = self.update_state.prompt.as_mut() {
                 prompt.install_started = false;
             }
@@ -148,23 +139,16 @@ impl FlistWalkerApp {
 
     pub(super) fn poll_update_response(&mut self) {
         while let Ok(response) = self.worker_bus.update.rx.try_recv() {
-            let Some(pending) = self.update_state.pending_request_id else {
-                continue;
-            };
             match response {
                 UpdateResponse::UpToDate { request_id } => {
-                    if request_id != pending {
+                    if !self.update_state.settle_response(request_id) {
                         continue;
                     }
-                    self.update_state.pending_request_id = None;
-                    self.update_state.in_progress = false;
                 }
                 UpdateResponse::CheckFailed { request_id, error } => {
-                    if request_id != pending {
+                    if !self.update_state.settle_response(request_id) {
                         continue;
                     }
-                    self.update_state.pending_request_id = None;
-                    self.update_state.in_progress = false;
                     Self::append_window_trace("update_check_failed", &error);
                     if !self.update_state.suppress_check_failure_dialog
                         || forced_update_check_failure_message().is_some()
@@ -179,11 +163,9 @@ impl FlistWalkerApp {
                     request_id,
                     candidate,
                 } => {
-                    if request_id != pending {
+                    if !self.update_state.settle_response(request_id) {
                         continue;
                     }
-                    self.update_state.pending_request_id = None;
-                    self.update_state.in_progress = false;
                     if !self.update_prompt_is_suppressed(&candidate) {
                         self.update_state.prompt = Some(UpdatePromptState {
                             candidate: *candidate,
@@ -196,21 +178,17 @@ impl FlistWalkerApp {
                     request_id,
                     target_version,
                 } => {
-                    if request_id != pending {
+                    if !self.update_state.settle_response(request_id) {
                         continue;
                     }
-                    self.update_state.pending_request_id = None;
-                    self.update_state.in_progress = false;
                     self.update_state.prompt = None;
                     self.set_notice(format!("Restarting to apply update {}...", target_version));
                     self.update_state.close_requested_for_install = true;
                 }
                 UpdateResponse::Failed { request_id, error } => {
-                    if request_id != pending {
+                    if !self.update_state.settle_response(request_id) {
                         continue;
                     }
-                    self.update_state.pending_request_id = None;
-                    self.update_state.in_progress = false;
                     if let Some(prompt) = self.update_state.prompt.as_mut() {
                         prompt.install_started = false;
                     }

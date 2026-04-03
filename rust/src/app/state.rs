@@ -396,6 +396,63 @@ impl Default for UpdateState {
     }
 }
 
+pub(super) struct UpdateManager {
+    state: UpdateState,
+}
+
+impl UpdateManager {
+    pub(super) fn from_state(state: UpdateState) -> Self {
+        Self { state }
+    }
+
+    pub(super) fn clear_request(&mut self) {
+        self.state.pending_request_id = None;
+        self.state.in_progress = false;
+    }
+
+    pub(super) fn clear_for_disabled_update(&mut self) {
+        self.clear_request();
+    }
+
+    pub(super) fn begin_request(&mut self) -> u64 {
+        let request_id = self.state.next_request_id;
+        self.state.next_request_id = self.state.next_request_id.saturating_add(1);
+        self.state.pending_request_id = Some(request_id);
+        self.state.in_progress = true;
+        request_id
+    }
+
+    pub(super) fn settle_response(&mut self, request_id: u64) -> bool {
+        if self.state.pending_request_id != Some(request_id) {
+            return false;
+        }
+        self.clear_request();
+        true
+    }
+}
+
+impl Default for UpdateManager {
+    fn default() -> Self {
+        Self {
+            state: UpdateState::default(),
+        }
+    }
+}
+
+impl Deref for UpdateManager {
+    type Target = UpdateState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl DerefMut for UpdateManager {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
+}
+
 pub(super) struct CacheStateBundle {
     pub(super) preview: PreviewCacheState,
     pub(super) highlight: HighlightCacheState,
