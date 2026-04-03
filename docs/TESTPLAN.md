@@ -151,6 +151,7 @@
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
 - FileList reducer / command boundary の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、挙動変更が入る Phase 2 以降は VM-002 / VM-003 へ昇格させる。
 - Update manager extraction の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `app_core` と `session_tabs` を含む `cargo test` へ昇格させる。
+- Root change orchestration の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `app_core`、`query_history`、`session_tabs`、root-change 回帰テストを含む `cargo test` へ昇格させる。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`

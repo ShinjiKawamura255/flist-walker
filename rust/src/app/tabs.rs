@@ -1,6 +1,31 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
+// Phase 1 scaffolding for the root-change reducer split. Later phases will
+// move root-change-specific state transitions behind an orchestrator that emits
+// these commands instead of mutating FlistWalkerApp directly from mod.rs.
+#[allow(dead_code)]
+pub(super) enum RootChangeUiCommand {
+    SetNotice(String),
+}
+
+#[allow(dead_code)]
+pub(super) enum RootChangePipelineCommand {
+    RequestIndexRefresh,
+}
+
+#[allow(dead_code)]
+pub(super) enum RootChangeAppCommand {
+    MarkUiStateDirty,
+}
+
+#[allow(dead_code)]
+pub(super) enum RootChangeCommand {
+    Ui(RootChangeUiCommand),
+    Pipeline(RootChangePipelineCommand),
+    App(RootChangeAppCommand),
+}
+
 impl FlistWalkerApp {
     pub(super) fn choose_startup_root(
         root: PathBuf,
