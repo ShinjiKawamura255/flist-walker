@@ -72,9 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- For `god-object-resolution`, read `docs/CHANGE-PLAN-20260403-god-object-resolution.md` before starting implementation.
-- Execute the work in the documented order unless the plan is updated first.
-- If scope, order, or risk changes, update the change plan before continuing.
-- Remove this section from `AGENTS.md` after the planned work is complete.
