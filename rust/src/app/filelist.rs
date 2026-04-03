@@ -32,6 +32,57 @@ pub(super) enum FileListCommand {
 }
 
 impl FlistWalkerApp {
+    fn dispatch_filelist_commands(&mut self, commands: Vec<FileListCommand>) {
+        for command in commands {
+            match command {
+                FileListCommand::Ui(FileListUiCommand::RefreshStatusLine) => {
+                    self.refresh_status_line();
+                }
+                FileListCommand::Ui(FileListUiCommand::SetNotice(notice)) => {
+                    self.set_notice(notice);
+                }
+                FileListCommand::Worker(FileListWorkerCommand::Start(req)) => {
+                    if self.worker_bus.filelist.tx.send(req).is_err() {
+                        let fallback = self.filelist_state.send_failure_commands();
+                        self.dispatch_filelist_commands(fallback);
+                    }
+                }
+                FileListCommand::App(FileListAppCommand::SetPendingAfterIndex(pending)) => {
+                    self.filelist_state.pending_after_index = pending;
+                }
+                FileListCommand::App(FileListAppCommand::SetIncludeFilesAndDirs {
+                    include_files,
+                    include_dirs,
+                }) => {
+                    self.include_files = include_files;
+                    self.include_dirs = include_dirs;
+                }
+                FileListCommand::App(FileListAppCommand::RequestIndexRefresh) => {
+                    self.request_index_refresh();
+                }
+                FileListCommand::App(FileListAppCommand::RequestCreateFileListWalkerRefresh) => {
+                    self.request_create_filelist_walker_refresh();
+                }
+                FileListCommand::App(FileListAppCommand::RequestBackgroundIndexRefreshForTab(
+                    tab_index,
+                )) => {
+                    self.request_background_index_refresh_for_tab(tab_index);
+                }
+                FileListCommand::App(FileListAppCommand::SetUseFileListForTab {
+                    tab_index,
+                    use_filelist,
+                }) => {
+                    if let Some(tab) = self.tabs.get_mut(tab_index) {
+                        tab.use_filelist = use_filelist;
+                    }
+                    if tab_index == self.active_tab {
+                        self.use_filelist = use_filelist;
+                    }
+                }
+            }
+        }
+    }
+
     pub(super) fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = Self::path_key(&self.root);
@@ -82,25 +133,10 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
         propagate_to_ancestors: bool,
     ) {
-        let cancel = Arc::new(AtomicBool::new(false));
-        let request_id = self
+        let commands = self
             .filelist_state
-            .begin_request(tab_id, root.clone(), Arc::clone(&cancel));
-        self.refresh_status_line();
-
-        let req = FileListRequest {
-            request_id,
-            tab_id,
-            root,
-            entries,
-            propagate_to_ancestors,
-            cancel,
-        };
-        if self.worker_bus.filelist.tx.send(req).is_err() {
-            self.filelist_state.clear_request();
-            self.refresh_status_line();
-            self.set_notice("Create File List worker is unavailable");
-        }
+            .start_request_commands(tab_id, root, entries, propagate_to_ancestors);
+        self.dispatch_filelist_commands(commands);
     }
 
     pub(super) fn request_filelist_creation(
@@ -353,10 +389,12 @@ impl FlistWalkerApp {
                     path,
                     count,
                 } => {
-                    let Some(context) = self.filelist_state.settle_response(request_id) else {
+                    let Some((context, commands)) =
+                        self.filelist_state.settle_response_commands(request_id)
+                    else {
                         continue;
                     };
-                    self.refresh_status_line();
+                    self.dispatch_filelist_commands(commands);
 
                     let same_requested_root = context
                         .root
@@ -375,12 +413,12 @@ impl FlistWalkerApp {
                                 Self::path_key(&tab.root) == Self::path_key(&root)
                             });
                             if tab_matches_root {
-                                if let Some(tab) = self.tabs.get_mut(tab_index) {
-                                    tab.use_filelist = true;
-                                }
-                                if tab_index == self.active_tab {
-                                    self.use_filelist = true;
-                                }
+                                self.dispatch_filelist_commands(vec![FileListCommand::App(
+                                    FileListAppCommand::SetUseFileListForTab {
+                                        tab_index,
+                                        use_filelist: true,
+                                    },
+                                )]);
                                 target_tab_index = Some(tab_index);
                             }
                         }
@@ -393,7 +431,11 @@ impl FlistWalkerApp {
                         ));
                         if let Some(tab_index) = target_tab_index {
                             if tab_index != self.active_tab {
-                                self.request_background_index_refresh_for_tab(tab_index);
+                                self.dispatch_filelist_commands(vec![FileListCommand::App(
+                                    FileListAppCommand::RequestBackgroundIndexRefreshForTab(
+                                        tab_index,
+                                    ),
+                                )]);
                             }
                         }
                         continue;
@@ -402,9 +444,15 @@ impl FlistWalkerApp {
                     self.set_notice(format!("Created {}: {} entries", path.display(), count));
                     if let Some(tab_index) = target_tab_index {
                         if tab_index == self.active_tab && self.use_filelist {
-                            self.request_index_refresh();
+                            self.dispatch_filelist_commands(vec![FileListCommand::App(
+                                FileListAppCommand::RequestIndexRefresh,
+                            )]);
                         } else if tab_index != self.active_tab {
-                            self.request_background_index_refresh_for_tab(tab_index);
+                            self.dispatch_filelist_commands(vec![FileListCommand::App(
+                                FileListAppCommand::RequestBackgroundIndexRefreshForTab(
+                                    tab_index,
+                                ),
+                            )]);
                         }
                     }
                 }
@@ -413,10 +461,12 @@ impl FlistWalkerApp {
                     root,
                     error,
                 } => {
-                    let Some(context) = self.filelist_state.settle_response(request_id) else {
+                    let Some((context, commands)) =
+                        self.filelist_state.settle_response_commands(request_id)
+                    else {
                         continue;
                     };
-                    self.refresh_status_line();
+                    self.dispatch_filelist_commands(commands);
 
                     let same_requested_root = context
                         .root
@@ -435,10 +485,12 @@ impl FlistWalkerApp {
                     self.set_notice(format!("Create File List failed: {}", error));
                 }
                 FileListResponse::Canceled { request_id, root } => {
-                    let Some(context) = self.filelist_state.settle_response(request_id) else {
+                    let Some((context, commands)) =
+                        self.filelist_state.settle_response_commands(request_id)
+                    else {
                         continue;
                     };
-                    self.refresh_status_line();
+                    self.dispatch_filelist_commands(commands);
 
                     let same_requested_root = context
                         .root

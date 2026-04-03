@@ -186,6 +186,47 @@ pub(super) struct FileListManager {
 }
 
 impl FileListManager {
+    pub(super) fn start_request_commands(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
+        entries: Vec<PathBuf>,
+        propagate_to_ancestors: bool,
+    ) -> Vec<super::filelist::FileListCommand> {
+        let cancel = Arc::new(AtomicBool::new(false));
+        let request_id = self.begin_request(tab_id, root.clone(), Arc::clone(&cancel));
+        let req = super::FileListRequest {
+            request_id,
+            tab_id,
+            root,
+            entries,
+            propagate_to_ancestors,
+            cancel,
+        };
+        vec![
+            super::filelist::FileListCommand::Ui(
+                super::filelist::FileListUiCommand::RefreshStatusLine,
+            ),
+            super::filelist::FileListCommand::Worker(
+                super::filelist::FileListWorkerCommand::Start(req),
+            ),
+        ]
+    }
+
+    pub(super) fn send_failure_commands(&mut self) -> Vec<super::filelist::FileListCommand> {
+        self.clear_request();
+        vec![
+            super::filelist::FileListCommand::Ui(
+                super::filelist::FileListUiCommand::RefreshStatusLine,
+            ),
+            super::filelist::FileListCommand::Ui(
+                super::filelist::FileListUiCommand::SetNotice(
+                    "Create File List worker is unavailable".to_string(),
+                ),
+            ),
+        ]
+    }
+
     pub(super) fn begin_request(
         &mut self,
         tab_id: u64,
@@ -226,6 +267,19 @@ impl FileListManager {
         };
         self.clear_request();
         Some(context)
+    }
+
+    pub(super) fn settle_response_commands(
+        &mut self,
+        request_id: u64,
+    ) -> Option<(FileListRequestContext, Vec<super::filelist::FileListCommand>)> {
+        let context = self.settle_response(request_id)?;
+        Some((
+            context,
+            vec![super::filelist::FileListCommand::Ui(
+                super::filelist::FileListUiCommand::RefreshStatusLine,
+            )],
+        ))
     }
 
     pub(super) fn request_cancel(&mut self) -> Option<Arc<AtomicBool>> {
