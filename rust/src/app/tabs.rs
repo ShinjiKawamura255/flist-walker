@@ -27,6 +27,22 @@ pub(super) enum RootChangeCommand {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn dispatch_root_change_commands(&mut self, commands: Vec<RootChangeCommand>) {
+        for command in commands {
+            match command {
+                RootChangeCommand::Ui(RootChangeUiCommand::SetNotice(notice)) => {
+                    self.set_notice(notice);
+                }
+                RootChangeCommand::Pipeline(RootChangePipelineCommand::RequestIndexRefresh) => {
+                    self.request_index_refresh();
+                }
+                RootChangeCommand::App(RootChangeAppCommand::MarkUiStateDirty) => {
+                    self.mark_ui_state_dirty();
+                }
+            }
+        }
+    }
+
     pub(super) fn root_change_commands(&mut self, new_root: PathBuf) -> Vec<RootChangeCommand> {
         let normalized = normalize_windows_path_buf(new_root);
         if Self::path_key(&normalized) == Self::path_key(&self.root) {

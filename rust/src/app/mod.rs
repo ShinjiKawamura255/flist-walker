@@ -56,9 +56,6 @@ use state::{
     ResultSortMode, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
     UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
 };
-use self::tabs::{
-    RootChangeAppCommand, RootChangeCommand, RootChangePipelineCommand, RootChangeUiCommand,
-};
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
 use worker_bus::{
@@ -790,19 +787,7 @@ Search hints:
         if commands.is_empty() {
             return;
         }
-        for command in commands {
-            match command {
-                RootChangeCommand::Ui(RootChangeUiCommand::SetNotice(notice)) => {
-                    self.set_notice(notice);
-                }
-                RootChangeCommand::Pipeline(RootChangePipelineCommand::RequestIndexRefresh) => {
-                    self.request_index_refresh();
-                }
-                RootChangeCommand::App(RootChangeAppCommand::MarkUiStateDirty) => {
-                    self.mark_ui_state_dirty();
-                }
-            }
-        }
+        self.dispatch_root_change_commands(commands);
     }
 
     /// ダイアログで選んだ root を現在 tab に適用する。
