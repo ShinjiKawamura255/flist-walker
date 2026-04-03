@@ -108,6 +108,19 @@ impl FlistWalkerApp {
         }
     }
 
+    fn tab_restore_commands_for_activation(
+        &self,
+        trigger_restore_refresh: bool,
+    ) -> Vec<TabRestoreCommand> {
+        if !trigger_restore_refresh || !self.pending_restore_refresh {
+            return Vec::new();
+        }
+        vec![
+            TabRestoreCommand::App(TabRestoreAppCommand::ConsumePendingRestoreRefresh),
+            TabRestoreCommand::Pipeline(TabRestorePipelineCommand::RequestIndexRefresh),
+        ]
+    }
+
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
         self.dispatch_tab_lifecycle_commands(vec![TabLifecycleCommand::App(
             TabLifecycleAppCommand::ClearTabDragState,
@@ -539,14 +552,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn trigger_restore_refresh_for_active_tab(&mut self) {
-        if !self.pending_restore_refresh {
+        let commands = self.tab_restore_commands_for_activation(true);
+        if commands.is_empty() {
             return;
         }
-        self.pending_restore_refresh = false;
-        if let Some(tab) = self.tabs.get_mut(self.active_tab) {
-            tab.pending_restore_refresh = false;
-        }
-        self.request_index_refresh();
+        self.dispatch_tab_restore_commands(commands);
     }
 
     pub(super) fn switch_to_tab_index(&mut self, next_index: usize) {
