@@ -113,68 +113,46 @@ impl FlistWalkerApp {
                 TabCloseCleanupCommand::App(
                     TabCloseCleanupAppCommand::ClearFileListPendingForTab(tab_id),
                 ) => {
-                    if self
-                        .filelist_state
-                        .pending_after_index
-                        .as_ref()
-                        .is_some_and(|pending| pending.tab_id == tab_id)
-                    {
-                        self.filelist_state.pending_after_index = None;
-                    }
-                    if self
-                        .filelist_state
-                        .pending_confirmation
-                        .as_ref()
-                        .is_some_and(|pending| pending.tab_id == tab_id)
-                    {
-                        self.filelist_state.pending_confirmation = None;
-                    }
-                    if self
-                        .filelist_state
-                        .pending_ancestor_confirmation
-                        .as_ref()
-                        .is_some_and(|pending| pending.tab_id == tab_id)
-                    {
-                        self.filelist_state.pending_ancestor_confirmation = None;
-                    }
-                    if self
-                        .filelist_state
-                        .pending_use_walker_confirmation
-                        .as_ref()
-                        .is_some_and(|pending| pending.source_tab_id == tab_id)
-                    {
-                        self.filelist_state.pending_use_walker_confirmation = None;
-                    }
+                    self.filelist_state.clear_pending_for_tab(tab_id);
                 }
                 TabCloseCleanupCommand::App(
                     TabCloseCleanupAppCommand::ClearIndexRoutingForTab(tab_id),
                 ) => {
-                    self.indexing.request_tabs.retain(|_, id| *id != tab_id);
-                    self.indexing.pending_queue.retain(|req| req.tab_id != tab_id);
-                    if let Ok(mut latest) = self.indexing.latest_request_ids.lock() {
-                        latest.remove(&tab_id);
-                    }
-                    self.indexing
-                        .background_states
-                        .retain(|request_id, _| self.indexing.request_tabs.contains_key(request_id));
+                    self.indexing.clear_for_tab(tab_id);
                 }
                 TabCloseCleanupCommand::App(
                     TabCloseCleanupAppCommand::ClearSearchRoutingForTab(tab_id),
                 ) => {
-                    self.search.retain_request_tabs(|_, id| *id != tab_id);
+                    self.search.clear_for_tab(tab_id);
                 }
                 TabCloseCleanupCommand::App(
                     TabCloseCleanupAppCommand::ClearRequestRoutingForTab(tab_id),
                 ) => {
-                    self.request_tab_routing.preview.retain(|_, id| *id != tab_id);
-                    self.request_tab_routing.action.retain(|_, id| *id != tab_id);
-                    self.request_tab_routing.sort.retain(|_, id| *id != tab_id);
+                    self.request_tab_routing.clear_for_tab(tab_id);
                 }
                 TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample) => {
                     self.ui.memory_usage_bytes = None;
                 }
             }
         }
+    }
+
+    fn tab_close_cleanup_commands(&self, tab_id: u64) -> Vec<TabCloseCleanupCommand> {
+        vec![
+            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearFileListPendingForTab(
+                tab_id,
+            )),
+            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearIndexRoutingForTab(
+                tab_id,
+            )),
+            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearSearchRoutingForTab(
+                tab_id,
+            )),
+            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearRequestRoutingForTab(
+                tab_id,
+            )),
+            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample),
+        ]
     }
 
     fn dispatch_tab_lifecycle_commands(&mut self, commands: Vec<TabLifecycleCommand>) {
@@ -749,64 +727,13 @@ impl FlistWalkerApp {
         self.ui.tab_drag_state = None;
         self.sync_active_tab_state();
         let removed = self.tabs.remove(index);
-        if self
-            .filelist_state
-            .pending_after_index
-            .as_ref()
-            .is_some_and(|pending| pending.tab_id == removed.id)
-        {
-            self.filelist_state.pending_after_index = None;
-        }
-        if self
-            .filelist_state
-            .pending_confirmation
-            .as_ref()
-            .is_some_and(|pending| pending.tab_id == removed.id)
-        {
-            self.filelist_state.pending_confirmation = None;
-        }
-        if self
-            .filelist_state
-            .pending_ancestor_confirmation
-            .as_ref()
-            .is_some_and(|pending| pending.tab_id == removed.id)
-        {
-            self.filelist_state.pending_ancestor_confirmation = None;
-        }
-        if self
-            .filelist_state
-            .pending_use_walker_confirmation
-            .as_ref()
-            .is_some_and(|pending| pending.source_tab_id == removed.id)
-        {
-            self.filelist_state.pending_use_walker_confirmation = None;
-        }
-        self.indexing.request_tabs
-            .retain(|_, tab_id| *tab_id != removed.id);
-        self.indexing.pending_queue
-            .retain(|req| req.tab_id != removed.id);
-        if let Ok(mut latest) = self.indexing.latest_request_ids.lock() {
-            latest.remove(&removed.id);
-        }
-        self.indexing.background_states
-            .retain(|request_id, _| self.indexing.request_tabs.contains_key(request_id));
-        self.search.retain_request_tabs(|_, tab_id| *tab_id != removed.id);
-        self.request_tab_routing
-            .preview
-            .retain(|_, tab_id| *tab_id != removed.id);
-        self.request_tab_routing
-            .action
-            .retain(|_, tab_id| *tab_id != removed.id);
-        self.request_tab_routing
-            .sort
-            .retain(|_, tab_id| *tab_id != removed.id);
+        self.dispatch_tab_close_cleanup_commands(self.tab_close_cleanup_commands(removed.id));
         if index < self.active_tab {
             self.active_tab = self.active_tab.saturating_sub(1);
         }
         if self.active_tab >= self.tabs.len() {
             self.active_tab = self.tabs.len().saturating_sub(1);
         }
-        self.ui.memory_usage_bytes = None;
         if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
             self.activate_tab_after_transition(&tab, false, false, false);
         }

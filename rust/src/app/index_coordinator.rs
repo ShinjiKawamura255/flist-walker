@@ -56,4 +56,14 @@ impl IndexCoordinator {
             background_states: HashMap::new(),
         }
     }
+
+    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+        self.request_tabs.retain(|_, id| *id != tab_id);
+        self.pending_queue.retain(|req| req.tab_id != tab_id);
+        if let Ok(mut latest) = self.latest_request_ids.lock() {
+            latest.remove(&tab_id);
+        }
+        self.background_states
+            .retain(|request_id, _| self.request_tabs.contains_key(request_id));
+    }
 }

@@ -51,10 +51,7 @@ impl SearchCoordinator {
         self.request_tabs.remove(&request_id)
     }
 
-    pub(super) fn retain_request_tabs<F>(&mut self, mut predicate: F)
-    where
-        F: FnMut(&u64, &mut u64) -> bool,
-    {
-        self.request_tabs.retain(|request_id, tab_id| predicate(request_id, tab_id));
+    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+        self.request_tabs.retain(|_, id| *id != tab_id);
     }
 }

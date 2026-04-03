@@ -346,6 +346,41 @@ impl FileListManager {
         }
         should_cancel
     }
+
+    pub(super) fn clear_pending_for_tab(&mut self, tab_id: u64) {
+        if self
+            .workflow
+            .pending_after_index
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == tab_id)
+        {
+            self.workflow.pending_after_index = None;
+        }
+        if self
+            .workflow
+            .pending_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == tab_id)
+        {
+            self.workflow.pending_confirmation = None;
+        }
+        if self
+            .workflow
+            .pending_ancestor_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.tab_id == tab_id)
+        {
+            self.workflow.pending_ancestor_confirmation = None;
+        }
+        if self
+            .workflow
+            .pending_use_walker_confirmation
+            .as_ref()
+            .is_some_and(|pending| pending.source_tab_id == tab_id)
+        {
+            self.workflow.pending_use_walker_confirmation = None;
+        }
+    }
 }
 
 impl Default for FileListManager {
@@ -670,4 +705,12 @@ pub(super) struct RequestTabRoutingState {
     pub(super) preview: HashMap<u64, u64>,
     pub(super) action: HashMap<u64, u64>,
     pub(super) sort: HashMap<u64, u64>,
+}
+
+impl RequestTabRoutingState {
+    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+        self.preview.retain(|_, id| *id != tab_id);
+        self.action.retain(|_, id| *id != tab_id);
+        self.sort.retain(|_, id| *id != tab_id);
+    }
 }
