@@ -26,6 +26,31 @@ pub(super) enum RootChangeCommand {
     App(RootChangeAppCommand),
 }
 
+// Phase 1 scaffolding for the shared tab-lifecycle split. Later phases will
+// move the common deactivate/activate ordering behind helpers that emit these
+// commands instead of open-coding the lifecycle steps in each call site.
+#[allow(dead_code)]
+pub(super) enum TabLifecycleUiCommand {
+    FocusQuery,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabLifecyclePipelineCommand {
+    TriggerRestoreRefresh,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabLifecycleAppCommand {
+    ClearTabDragState,
+}
+
+#[allow(dead_code)]
+pub(super) enum TabLifecycleCommand {
+    Ui(TabLifecycleUiCommand),
+    Pipeline(TabLifecyclePipelineCommand),
+    App(TabLifecycleAppCommand),
+}
+
 impl FlistWalkerApp {
     pub(super) fn dispatch_root_change_commands(&mut self, commands: Vec<RootChangeCommand>) {
         for command in commands {

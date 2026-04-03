@@ -35,6 +35,7 @@
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成など tab lifecycle を担当する。
 - 役割補足: God Object 解消の次段では root change を独立 slice として扱い、`apply_root_change` が担う selection/pinned/preview cleanup、stale filelist cleanup、current tab sync、reindex 要求を `RootChangeCommand` 境界へ寄せる。`request_id` と queue/inflight bookkeeping は `app/pipeline.rs` と coordinator に残し、root-change orchestrator は高レベル意図だけを返す。
+- 役割補足: その次段では `app/tabs.rs` の shared lifecycle を `deactivate` / `activate` helper 境界へ寄せ、`switch_to_tab_index` と `create_new_tab` に散っている sync/compact/apply/restore/focus の順序制御を `TabLifecycleCommand` 境界で共有する。`close_tab_index` の request routing cleanup は call-site 側に残し、shared helper へ持ち込まない。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
