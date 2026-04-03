@@ -1328,9 +1328,8 @@ impl FlistWalkerApp {
                     }
                 });
 
-            if let Some(state) = self.update_state.prompt.as_mut() {
-                state.skip_until_next_version = skip_until_next_version;
-            }
+            self.update_state
+                .set_prompt_skip_until_next_version(skip_until_next_version);
 
             if confirm {
                 self.start_update_install();
@@ -1367,9 +1366,8 @@ impl FlistWalkerApp {
                     }
                 });
 
-            if let Some(state) = self.update_state.check_failure.as_mut() {
-                state.suppress_future_errors = suppress_future_errors;
-            }
+            self.update_state
+                .set_check_failure_suppress_future_errors(suppress_future_errors);
 
             if close {
                 if suppress_future_errors {

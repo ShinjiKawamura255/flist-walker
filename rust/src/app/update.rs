@@ -18,6 +18,10 @@ pub(super) enum UpdateAppCommand {
     MarkUiStateDirty,
     PersistUiStateNow,
     RequestViewportClose,
+    AppendWindowTrace {
+        event: &'static str,
+        details: String,
+    },
 }
 
 #[allow(dead_code)]
@@ -28,34 +32,53 @@ pub(super) enum UpdateCommand {
 }
 
 impl FlistWalkerApp {
-    pub(super) fn request_startup_update_check(&mut self) {
-        if self_update_disabled() {
-            self.update_state.clear_for_disabled_update();
-            return;
-        }
-        let request_id = self.update_state.begin_request();
-        if self
-            .worker_bus
-            .update
-            .tx
-            .send(UpdateRequest {
-                request_id,
-                kind: UpdateRequestKind::Check,
-            })
-            .is_err()
-        {
-            self.update_state.clear_request();
+    fn dispatch_update_commands(
+        &mut self,
+        ctx: Option<&egui::Context>,
+        commands: Vec<UpdateCommand>,
+    ) {
+        for command in commands {
+            match command {
+                UpdateCommand::Ui(UpdateUiCommand::SetNotice(notice)) => {
+                    self.set_notice(notice);
+                }
+                UpdateCommand::Worker(UpdateWorkerCommand::Start(req)) => {
+                    let is_install = matches!(req.kind, UpdateRequestKind::DownloadAndApply { .. });
+                    if self.worker_bus.update.tx.send(req).is_err() {
+                        if is_install {
+                            let fallback = self.update_state.install_send_failure_commands();
+                            self.dispatch_update_commands(ctx, fallback);
+                        } else {
+                            self.update_state.clear_request();
+                        }
+                    }
+                }
+                UpdateCommand::App(UpdateAppCommand::MarkUiStateDirty) => {
+                    self.mark_ui_state_dirty();
+                }
+                UpdateCommand::App(UpdateAppCommand::PersistUiStateNow) => {
+                    self.persist_ui_state_now();
+                }
+                UpdateCommand::App(UpdateAppCommand::RequestViewportClose) => {
+                    if let Some(ctx) = ctx {
+                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                }
+                UpdateCommand::App(UpdateAppCommand::AppendWindowTrace { event, details }) => {
+                    Self::append_window_trace(event, &details);
+                }
+            }
         }
     }
 
+    pub(super) fn request_startup_update_check(&mut self) {
+        let commands = self
+            .update_state
+            .request_startup_check_commands(self_update_disabled());
+        self.dispatch_update_commands(None, commands);
+    }
+
     pub(super) fn start_update_install(&mut self) {
-        let Some(prompt) = self.update_state.prompt.as_ref() else {
-            return;
-        };
-        if prompt.install_started {
-            return;
-        }
-        let candidate = prompt.candidate.clone();
         let current_exe = match std::env::current_exe() {
             Ok(path) => path,
             Err(err) => {
@@ -65,136 +88,41 @@ impl FlistWalkerApp {
                 return;
             }
         };
-        if let Some(prompt) = self.update_state.prompt.as_mut() {
-            prompt.install_started = true;
-        }
-        let request_id = self.update_state.begin_request();
-        if self
-            .worker_bus
-            .update
-            .tx
-            .send(UpdateRequest {
-                request_id,
-                kind: UpdateRequestKind::DownloadAndApply {
-                    candidate: Box::new(candidate.clone()),
-                    current_exe,
-                },
-            })
-            .is_err()
-        {
-            self.update_state.clear_request();
-            if let Some(prompt) = self.update_state.prompt.as_mut() {
-                prompt.install_started = false;
+        let commands = match self.update_state.start_install_commands(current_exe) {
+            Ok(commands) => commands,
+            Err(error) => {
+                self.set_notice(error);
+                return;
             }
-            self.set_notice("Update worker is unavailable");
+        };
+        if commands.is_empty() {
             return;
         }
-        self.set_notice(format!(
-            "Downloading update {}...",
-            candidate.target_version
-        ));
+        self.dispatch_update_commands(None, commands);
     }
 
     pub(super) fn dismiss_update_prompt(&mut self) {
-        self.update_state.prompt = None;
+        self.update_state.dismiss_prompt();
     }
 
     pub(super) fn dismiss_update_check_failure(&mut self) {
-        self.update_state.check_failure = None;
+        self.update_state.dismiss_check_failure();
     }
 
     pub(super) fn suppress_update_check_failures(&mut self) {
-        self.update_state.suppress_check_failure_dialog = true;
-        self.update_state.check_failure = None;
-        self.mark_ui_state_dirty();
-        self.persist_ui_state_now();
-        self.set_notice("Startup update check errors will be hidden");
+        let commands = self.update_state.suppress_check_failures_commands();
+        self.dispatch_update_commands(None, commands);
     }
 
     pub(super) fn skip_update_prompt_until_next_version(&mut self) {
-        let Some(target_version) = self
-            .update_state
-            .prompt
-            .as_ref()
-            .map(|prompt| prompt.candidate.target_version.clone())
-        else {
-            return;
-        };
-        self.update_state.skipped_target_version = Some(target_version.clone());
-        self.mark_ui_state_dirty();
-        self.persist_ui_state_now();
-        self.update_state.prompt = None;
-        self.set_notice(format!(
-            "Update {} hidden until a newer version is available",
-            target_version
-        ));
-    }
-
-    pub(super) fn update_prompt_is_suppressed(&self, candidate: &UpdateCandidate) -> bool {
-        should_skip_update_prompt(
-            &candidate.target_version,
-            self.update_state.skipped_target_version.as_deref(),
-        )
+        let commands = self.update_state.skip_prompt_until_next_version_commands();
+        self.dispatch_update_commands(None, commands);
     }
 
     pub(super) fn poll_update_response(&mut self) {
         while let Ok(response) = self.worker_bus.update.rx.try_recv() {
-            match response {
-                UpdateResponse::UpToDate { request_id } => {
-                    if !self.update_state.settle_response(request_id) {
-                        continue;
-                    }
-                }
-                UpdateResponse::CheckFailed { request_id, error } => {
-                    if !self.update_state.settle_response(request_id) {
-                        continue;
-                    }
-                    Self::append_window_trace("update_check_failed", &error);
-                    if !self.update_state.suppress_check_failure_dialog
-                        || forced_update_check_failure_message().is_some()
-                    {
-                        self.update_state.check_failure = Some(UpdateCheckFailureState {
-                            error,
-                            suppress_future_errors: false,
-                        });
-                    }
-                }
-                UpdateResponse::Available {
-                    request_id,
-                    candidate,
-                } => {
-                    if !self.update_state.settle_response(request_id) {
-                        continue;
-                    }
-                    if !self.update_prompt_is_suppressed(&candidate) {
-                        self.update_state.prompt = Some(UpdatePromptState {
-                            candidate: *candidate,
-                            skip_until_next_version: false,
-                            install_started: false,
-                        });
-                    }
-                }
-                UpdateResponse::ApplyStarted {
-                    request_id,
-                    target_version,
-                } => {
-                    if !self.update_state.settle_response(request_id) {
-                        continue;
-                    }
-                    self.update_state.prompt = None;
-                    self.set_notice(format!("Restarting to apply update {}...", target_version));
-                    self.update_state.close_requested_for_install = true;
-                }
-                UpdateResponse::Failed { request_id, error } => {
-                    if !self.update_state.settle_response(request_id) {
-                        continue;
-                    }
-                    if let Some(prompt) = self.update_state.prompt.as_mut() {
-                        prompt.install_started = false;
-                    }
-                    self.set_notice(error);
-                }
-            }
+            let commands = self.update_state.handle_response_commands(response);
+            self.dispatch_update_commands(None, commands);
         }
     }
 }

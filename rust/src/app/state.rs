@@ -405,6 +405,205 @@ impl UpdateManager {
         Self { state }
     }
 
+    pub(super) fn request_startup_check_commands(
+        &mut self,
+        disabled: bool,
+    ) -> Vec<super::update::UpdateCommand> {
+        if disabled {
+            self.clear_for_disabled_update();
+            return Vec::new();
+        }
+        let request_id = self.begin_request();
+        vec![super::update::UpdateCommand::Worker(
+            super::update::UpdateWorkerCommand::Start(super::UpdateRequest {
+                request_id,
+                kind: super::UpdateRequestKind::Check,
+            }),
+        )]
+    }
+
+    pub(super) fn start_install_commands(
+        &mut self,
+        current_exe: PathBuf,
+    ) -> Result<Vec<super::update::UpdateCommand>, String> {
+        let Some(prompt) = self.state.prompt.as_ref() else {
+            return Ok(Vec::new());
+        };
+        if prompt.install_started {
+            return Ok(Vec::new());
+        }
+        let candidate = prompt.candidate.clone();
+        if let Some(prompt) = self.state.prompt.as_mut() {
+            prompt.install_started = true;
+        }
+        let request_id = self.begin_request();
+        Ok(vec![
+            super::update::UpdateCommand::Worker(super::update::UpdateWorkerCommand::Start(
+                super::UpdateRequest {
+                    request_id,
+                    kind: super::UpdateRequestKind::DownloadAndApply {
+                        candidate: Box::new(candidate.clone()),
+                        current_exe,
+                    },
+                },
+            )),
+            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
+                format!("Downloading update {}...", candidate.target_version),
+            )),
+        ])
+    }
+
+    pub(super) fn install_send_failure_commands(&mut self) -> Vec<super::update::UpdateCommand> {
+        self.clear_request();
+        if let Some(prompt) = self.state.prompt.as_mut() {
+            prompt.install_started = false;
+        }
+        vec![super::update::UpdateCommand::Ui(
+            super::update::UpdateUiCommand::SetNotice("Update worker is unavailable".to_string()),
+        )]
+    }
+
+    pub(super) fn dismiss_prompt(&mut self) {
+        self.state.prompt = None;
+    }
+
+    pub(super) fn dismiss_check_failure(&mut self) {
+        self.state.check_failure = None;
+    }
+
+    pub(super) fn set_prompt_skip_until_next_version(&mut self, skip: bool) {
+        if let Some(prompt) = self.state.prompt.as_mut() {
+            prompt.skip_until_next_version = skip;
+        }
+    }
+
+    pub(super) fn set_check_failure_suppress_future_errors(&mut self, suppress: bool) {
+        if let Some(failure) = self.state.check_failure.as_mut() {
+            failure.suppress_future_errors = suppress;
+        }
+    }
+
+    pub(super) fn suppress_check_failures_commands(
+        &mut self,
+    ) -> Vec<super::update::UpdateCommand> {
+        self.state.suppress_check_failure_dialog = true;
+        self.state.check_failure = None;
+        vec![
+            super::update::UpdateCommand::App(super::update::UpdateAppCommand::MarkUiStateDirty),
+            super::update::UpdateCommand::App(super::update::UpdateAppCommand::PersistUiStateNow),
+            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
+                "Startup update check errors will be hidden".to_string(),
+            )),
+        ]
+    }
+
+    pub(super) fn skip_prompt_until_next_version_commands(
+        &mut self,
+    ) -> Vec<super::update::UpdateCommand> {
+        let Some(target_version) = self
+            .state
+            .prompt
+            .as_ref()
+            .map(|prompt| prompt.candidate.target_version.clone())
+        else {
+            return Vec::new();
+        };
+        self.state.skipped_target_version = Some(target_version.clone());
+        self.state.prompt = None;
+        vec![
+            super::update::UpdateCommand::App(super::update::UpdateAppCommand::MarkUiStateDirty),
+            super::update::UpdateCommand::App(super::update::UpdateAppCommand::PersistUiStateNow),
+            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
+                format!(
+                    "Update {} hidden until a newer version is available",
+                    target_version
+                ),
+            )),
+        ]
+    }
+
+    pub(super) fn handle_response_commands(
+        &mut self,
+        response: super::UpdateResponse,
+    ) -> Vec<super::update::UpdateCommand> {
+        match response {
+            super::UpdateResponse::UpToDate { request_id } => {
+                if !self.settle_response(request_id) {
+                    return Vec::new();
+                }
+                Vec::new()
+            }
+            super::UpdateResponse::CheckFailed { request_id, error } => {
+                if !self.settle_response(request_id) {
+                    return Vec::new();
+                }
+                let commands = vec![super::update::UpdateCommand::App(
+                    super::update::UpdateAppCommand::AppendWindowTrace {
+                        event: "update_check_failed",
+                        details: error.clone(),
+                    },
+                )];
+                if !self.state.suppress_check_failure_dialog
+                    || super::forced_update_check_failure_message().is_some()
+                {
+                    self.state.check_failure = Some(super::UpdateCheckFailureState {
+                        error,
+                        suppress_future_errors: false,
+                    });
+                }
+                commands
+            }
+            super::UpdateResponse::Available {
+                request_id,
+                candidate,
+            } => {
+                if !self.settle_response(request_id) {
+                    return Vec::new();
+                }
+                if !super::should_skip_update_prompt(
+                    &candidate.target_version,
+                    self.state.skipped_target_version.as_deref(),
+                ) {
+                    self.state.prompt = Some(super::UpdatePromptState {
+                        candidate: *candidate,
+                        skip_until_next_version: false,
+                        install_started: false,
+                    });
+                }
+                Vec::new()
+            }
+            super::UpdateResponse::ApplyStarted {
+                request_id,
+                target_version,
+            } => {
+                if !self.settle_response(request_id) {
+                    return Vec::new();
+                }
+                self.state.prompt = None;
+                self.state.close_requested_for_install = true;
+                vec![
+                    super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
+                        format!("Restarting to apply update {}...", target_version),
+                    )),
+                    super::update::UpdateCommand::App(
+                        super::update::UpdateAppCommand::RequestViewportClose,
+                    ),
+                ]
+            }
+            super::UpdateResponse::Failed { request_id, error } => {
+                if !self.settle_response(request_id) {
+                    return Vec::new();
+                }
+                if let Some(prompt) = self.state.prompt.as_mut() {
+                    prompt.install_started = false;
+                }
+                vec![super::update::UpdateCommand::Ui(
+                    super::update::UpdateUiCommand::SetNotice(error),
+                )]
+            }
+        }
+    }
+
     pub(super) fn clear_request(&mut self) {
         self.state.pending_request_id = None;
         self.state.in_progress = false;
