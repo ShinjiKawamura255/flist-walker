@@ -92,16 +92,19 @@ pub(super) enum TabCloseCleanupCommand {
 // reorder-specific transition ordering behind a dedicated helper that emits
 // these commands instead of open-coding drag cleanup and active-tab reapply in
 // move_tab().
+#[derive(Clone, Copy)]
 #[allow(dead_code)]
 pub(super) enum TabReorderUiCommand {
     ClearTabDragState,
 }
 
+#[derive(Clone, Copy)]
 #[allow(dead_code)]
 pub(super) enum TabReorderAppCommand {
     ApplyActiveTabState,
 }
 
+#[derive(Clone, Copy)]
 #[allow(dead_code)]
 pub(super) enum TabReorderCommand {
     Ui(TabReorderUiCommand),
@@ -188,6 +191,13 @@ impl FlistWalkerApp {
                 tab_id,
             )),
             TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample),
+        ]
+    }
+
+    fn tab_reorder_commands_for_move(&self) -> Vec<TabReorderCommand> {
+        vec![
+            TabReorderCommand::Ui(TabReorderUiCommand::ClearTabDragState),
+            TabReorderCommand::App(TabReorderAppCommand::ApplyActiveTabState),
         ]
     }
 
@@ -779,7 +789,8 @@ impl FlistWalkerApp {
         if from_index >= self.tabs.len() || to_index >= self.tabs.len() || from_index == to_index {
             return;
         }
-        self.ui.tab_drag_state = None;
+        let commands = self.tab_reorder_commands_for_move();
+        self.dispatch_tab_reorder_commands(vec![commands[0].clone()]);
         self.sync_active_tab_state();
         let Some(active_tab_id) = self.tabs.get(self.active_tab).map(|tab| tab.id) else {
             return;
@@ -789,9 +800,7 @@ impl FlistWalkerApp {
         if let Some(new_active) = self.find_tab_index_by_id(active_tab_id) {
             self.active_tab = new_active;
         }
-        if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
-            self.apply_tab_state(&tab);
-        }
+        self.dispatch_tab_reorder_commands(vec![commands[1].clone()]);
     }
 
     pub(super) fn activate_next_tab(&mut self) {
