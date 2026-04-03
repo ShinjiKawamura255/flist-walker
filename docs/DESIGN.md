@@ -57,6 +57,8 @@
 - DES-014 Self Update Coordinator
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
 - 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
+- 役割補足: God Object 解消の次段では `UpdateState` を `UpdateManager` 境界へ寄せ、update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移を manager 側へ集約する。
+- 役割補足: `render.rs` は update dialog の描画と入力取得だけを担当し、永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。

@@ -1,5 +1,32 @@
 use super::*;
 
+// Phase 1 scaffolding for the Update reducer split. Later phases will move
+// update-specific state transitions behind an UpdateManager that emits these
+// commands instead of mutating FlistWalkerApp directly from every branch.
+#[allow(dead_code)]
+pub(super) enum UpdateUiCommand {
+    SetNotice(String),
+}
+
+#[allow(dead_code)]
+pub(super) enum UpdateWorkerCommand {
+    Start(UpdateRequest),
+}
+
+#[allow(dead_code)]
+pub(super) enum UpdateAppCommand {
+    MarkUiStateDirty,
+    PersistUiStateNow,
+    RequestViewportClose,
+}
+
+#[allow(dead_code)]
+pub(super) enum UpdateCommand {
+    Ui(UpdateUiCommand),
+    Worker(UpdateWorkerCommand),
+    App(UpdateAppCommand),
+}
+
 impl FlistWalkerApp {
     pub(super) fn request_startup_update_check(&mut self) {
         if self_update_disabled() {
