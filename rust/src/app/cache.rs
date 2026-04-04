@@ -189,9 +189,23 @@ impl SortMetadataCacheState {
 }
 
 impl FlistWalkerApp {
+    fn bind_preview_request_to_current_tab(&mut self, request_id: u64) {
+        if let Some(tab_id) = self.current_tab_id() {
+            self.request_tab_routing.bind_preview(request_id, tab_id);
+        }
+    }
+
+    fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.take_preview(request_id)
+    }
+
+    pub(super) fn clear_preview_request_routing_for_tab(&mut self, tab_id: u64) {
+        self.request_tab_routing.clear_preview_for_tab(tab_id);
+    }
+
     pub(super) fn poll_preview_response(&mut self) {
         while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
-            let target_tab_id = self.request_tab_routing.preview.remove(&response.request_id);
+            let target_tab_id = self.take_preview_request_tab(response.request_id);
             if Some(response.request_id) == self.worker_bus.preview.pending_request_id {
                 self.worker_bus.preview.pending_request_id = None;
                 self.worker_bus.preview.in_progress = false;
@@ -348,18 +362,19 @@ impl FlistWalkerApp {
                     self.worker_bus.preview.pending_request_id = None;
                     return;
                 }
+                let path = path.clone();
 
                 let Some(kind) = self.current_result_kind() else {
                     self.preview = "Resolving entry type...".to_string();
-                    self.queue_kind_resolution(path.clone());
+                    self.queue_kind_resolution(path);
                     self.pump_kind_resolution_requests();
                     self.worker_bus.preview.in_progress = false;
                     self.worker_bus.preview.pending_request_id = None;
                     return;
                 };
                 let is_dir = kind.is_dir;
-                if should_skip_preview(path, is_dir) {
-                    let preview = build_preview_text_with_kind(path, is_dir);
+                if should_skip_preview(&path, is_dir) {
+                    let preview = build_preview_text_with_kind(&path, is_dir);
                     self.cache_preview(path.clone(), preview.clone());
                     self.preview = preview;
                     self.worker_bus.preview.in_progress = false;
@@ -371,13 +386,11 @@ impl FlistWalkerApp {
                 self.worker_bus.preview.next_request_id =
                     self.worker_bus.preview.next_request_id.saturating_add(1);
                 self.worker_bus.preview.pending_request_id = Some(request_id);
-                if let Some(tab_id) = self.current_tab_id() {
-                    self.request_tab_routing.preview.insert(request_id, tab_id);
-                }
+                self.bind_preview_request_to_current_tab(request_id);
                 self.worker_bus.preview.in_progress = true;
                 let req = PreviewRequest {
                     request_id,
-                    path: path.clone(),
+                    path,
                     is_dir,
                 };
                 if self.worker_bus.preview.tx.send(req).is_err() {

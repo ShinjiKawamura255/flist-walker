@@ -64,6 +64,7 @@
 ## 7. Validation Strategy
 - 各下位 plan は、`docs/TESTPLAN.md` の Validation Matrix に従う。
 - `request_tab_routing` や `render.rs` に触る slice では、少なくとも `cargo test` を前提とする。
+- ただし Phase 1 が docs 更新と owner API の型追加だけに留まり、worker request/response の挙動変更を伴わない場合は、下位 plan と `docs/TESTPLAN.md` の両方に明記したうえで `cargo check` を最小検証としてよい。挙動変更が入る Phase 2 以降は `cargo test` へ昇格する。
 - index/filelist/walker 経路へ触れる slice だけ、ignored perf テスト 2 本を追加実行する。
 - 上位 roadmap 自体は docs-only とし、review は architecture 観点を優先する。
 

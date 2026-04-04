@@ -708,9 +708,46 @@ pub(super) struct RequestTabRoutingState {
 }
 
 impl RequestTabRoutingState {
-    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+    pub(super) fn bind_preview(&mut self, request_id: u64, tab_id: u64) {
+        self.preview.insert(request_id, tab_id);
+    }
+
+    pub(super) fn bind_action(&mut self, request_id: u64, tab_id: u64) {
+        self.action.insert(request_id, tab_id);
+    }
+
+    pub(super) fn bind_sort(&mut self, request_id: u64, tab_id: u64) {
+        self.sort.insert(request_id, tab_id);
+    }
+
+    pub(super) fn take_preview(&mut self, request_id: u64) -> Option<u64> {
+        self.preview.remove(&request_id)
+    }
+
+    pub(super) fn take_action(&mut self, request_id: u64) -> Option<u64> {
+        self.action.remove(&request_id)
+    }
+
+    pub(super) fn take_sort(&mut self, request_id: u64) -> Option<u64> {
+        self.sort.remove(&request_id)
+    }
+
+    pub(super) fn clear_preview_for_tab(&mut self, tab_id: u64) {
         self.preview.retain(|_, id| *id != tab_id);
+    }
+
+    pub(super) fn clear_action_for_tab(&mut self, tab_id: u64) {
         self.action.retain(|_, id| *id != tab_id);
+    }
+
+    pub(super) fn clear_sort_for_tab(&mut self, tab_id: u64) {
         self.sort.retain(|_, id| *id != tab_id);
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+        self.clear_preview_for_tab(tab_id);
+        self.clear_action_for_tab(tab_id);
+        self.clear_sort_for_tab(tab_id);
     }
 }

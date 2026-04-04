@@ -644,9 +644,7 @@ Search hints:
             self.worker_bus.sort.next_request_id.saturating_add(1);
         self.worker_bus.sort.pending_request_id = Some(request_id);
         self.worker_bus.sort.in_progress = true;
-        if let Some(tab_id) = self.current_tab_id() {
-            self.request_tab_routing.sort.insert(request_id, tab_id);
-        }
+        self.bind_sort_request_to_current_tab(request_id);
         self.refresh_status_line();
         if self
             .worker_bus
@@ -1054,7 +1052,7 @@ Search hints:
     /// action worker の応答を現在 tab または背景 tab に反映する。
     fn poll_action_response(&mut self) {
         while let Ok(response) = self.worker_bus.action.rx.try_recv() {
-            let target_tab_id = self.request_tab_routing.action.remove(&response.request_id);
+            let target_tab_id = self.take_action_request_tab(response.request_id);
             if Some(response.request_id) == self.worker_bus.action.pending_request_id {
                 self.worker_bus.action.pending_request_id = None;
                 self.worker_bus.action.in_progress = false;
@@ -1083,7 +1081,7 @@ Search hints:
     /// sort worker の応答を cache と tab state へ適用する。
     fn poll_sort_response(&mut self) {
         while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
-            let target_tab_id = self.request_tab_routing.sort.remove(&response.request_id);
+            let target_tab_id = self.take_sort_request_tab(response.request_id);
             for (path, metadata) in response.entries {
                 self.cache_sort_metadata(path, metadata);
             }
@@ -1403,9 +1401,7 @@ Search hints:
             self.worker_bus.action.next_request_id.saturating_add(1);
         self.worker_bus.action.pending_request_id = Some(request_id);
         self.worker_bus.action.in_progress = true;
-        if let Some(tab_id) = self.current_tab_id() {
-            self.request_tab_routing.action.insert(request_id, tab_id);
-        }
+        self.bind_action_request_to_current_tab(request_id);
 
         if paths.len() == 1 {
             if open_parent_for_files {

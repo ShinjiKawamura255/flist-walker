@@ -34,6 +34,7 @@
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成など tab lifecycle を担当する。
+- 役割補足: request routing localization の Phase 1 では shared bag をまだ `app/state.rs` に残しつつ、preview routing の bind/take/cleanup は `app/cache.rs` の owner API、action/sort routing の bind/take/cleanup は `app/tabs.rs` の owner API を経由させ、`app/mod.rs` から routing map 直接操作を段階的に除去する。
 - 役割補足: God Object 解消の次段では root change を独立 slice として扱い、`apply_root_change` が担う selection/pinned/preview cleanup、stale filelist cleanup、current tab sync、reindex 要求を `RootChangeCommand` 境界へ寄せる。`request_id` と queue/inflight bookkeeping は `app/pipeline.rs` と coordinator に残し、root-change orchestrator は高レベル意図だけを返す。
 - 役割補足: その次段では `app/tabs.rs` の shared lifecycle を `deactivate` / `activate` helper 境界へ寄せ、`switch_to_tab_index` と `create_new_tab` に散っている sync/compact/apply/restore/focus の順序制御を `TabLifecycleCommand` 境界で共有する。`close_tab_index` の request routing cleanup は call-site 側に残し、shared helper へ持ち込まない。
 - 役割補足: 次段の tab activation/background restore slice では、`pending_restore_refresh` と activation 時 lazy refresh の判断を `TabRestoreCommand` 境界へ寄せる。background tab の search/preview/index 応答保持ロジック本体と request bookkeeping は引き続き `app/pipeline.rs` に残し、この slice では activation seam の state transition だけを切り出す。
@@ -43,7 +44,7 @@
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
 - 役割補足: `app/pipeline.rs` は index/search queue、response poll、incremental refresh、entry filter 再適用を担当し、request_id 契約を局所化する。
-- 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation、preview request/response helper を担当し、cache の scope 更新や eviction を method 経由へ局所化する。
+- 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation、preview request/response helper、preview request routing owner API を担当し、cache の scope 更新や eviction を method 経由へ局所化する。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 

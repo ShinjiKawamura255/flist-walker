@@ -112,6 +112,31 @@ pub(super) enum TabReorderCommand {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn bind_action_request_to_current_tab(&mut self, request_id: u64) {
+        if let Some(tab_id) = self.current_tab_id() {
+            self.request_tab_routing.bind_action(request_id, tab_id);
+        }
+    }
+
+    pub(super) fn take_action_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.take_action(request_id)
+    }
+
+    pub(super) fn bind_sort_request_to_current_tab(&mut self, request_id: u64) {
+        if let Some(tab_id) = self.current_tab_id() {
+            self.request_tab_routing.bind_sort(request_id, tab_id);
+        }
+    }
+
+    pub(super) fn take_sort_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.take_sort(request_id)
+    }
+
+    pub(super) fn clear_tab_owned_request_routing(&mut self, tab_id: u64) {
+        self.request_tab_routing.clear_action_for_tab(tab_id);
+        self.request_tab_routing.clear_sort_for_tab(tab_id);
+    }
+
     #[allow(dead_code)]
     fn dispatch_tab_restore_commands(&mut self, commands: Vec<TabRestoreCommand>) {
         for command in commands {
@@ -151,7 +176,8 @@ impl FlistWalkerApp {
                 TabCloseCleanupCommand::App(
                     TabCloseCleanupAppCommand::ClearRequestRoutingForTab(tab_id),
                 ) => {
-                    self.request_tab_routing.clear_for_tab(tab_id);
+                    self.clear_preview_request_routing_for_tab(tab_id);
+                    self.clear_tab_owned_request_routing(tab_id);
                 }
                 TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample) => {
                     self.ui.memory_usage_bytes = None;
