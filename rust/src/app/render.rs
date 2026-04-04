@@ -162,6 +162,21 @@ impl FlistWalkerApp {
         ]
     }
 
+    fn top_action_command(label: &str) -> Option<RenderTopActionCommand> {
+        match label {
+            "Apply History" => Some(RenderTopActionCommand::ApplyHistory),
+            "Cancel History Search" => Some(RenderTopActionCommand::CancelHistorySearch),
+            "Open / Execute" => Some(RenderTopActionCommand::ExecuteSelected),
+            "Copy Path(s)" => Some(RenderTopActionCommand::CopySelectedPaths),
+            "Clear Selected" => Some(RenderTopActionCommand::ClearPinned),
+            "Create File List" | "Create File List (Running...)" => {
+                Some(RenderTopActionCommand::CreateFileList)
+            }
+            "Refresh Index" => Some(RenderTopActionCommand::RefreshIndex),
+            _ => None,
+        }
+    }
+
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
         if self.query_state.history_search_active {
             self.ui.preview_resize_in_progress = false;
@@ -1088,17 +1103,8 @@ impl FlistWalkerApp {
                     if !ui.button(label).clicked() {
                         continue;
                     }
-                    match label {
-                        "Apply History" => self.accept_history_search(),
-                        "Cancel History Search" => self.cancel_history_search(),
-                        "Open / Execute" => self.execute_selected(),
-                        "Copy Path(s)" => self.copy_selected_paths(ctx),
-                        "Clear Selected" => self.clear_pinned(),
-                        "Create File List" | "Create File List (Running...)" => {
-                            self.create_filelist()
-                        }
-                        "Refresh Index" => self.request_index_refresh(),
-                        _ => {}
+                    if let Some(command) = Self::top_action_command(label) {
+                        self.queue_render_command(RenderCommand::TopAction(command));
                     }
                 }
             });
@@ -1210,9 +1216,13 @@ impl FlistWalkerApp {
                 });
         }
         if overwrite {
-            self.confirm_pending_filelist_overwrite();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::ConfirmOverwrite,
+            ));
         } else if cancel_overwrite {
-            self.cancel_pending_filelist_overwrite();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::CancelOverwrite,
+            ));
         }
 
         let mut confirm_ancestor = false;
@@ -1269,11 +1279,17 @@ impl FlistWalkerApp {
                     });
         }
         if confirm_ancestor {
-            self.confirm_pending_filelist_ancestor_propagation();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::ConfirmAncestorPropagation,
+            ));
         } else if current_root_only {
-            self.skip_pending_filelist_ancestor_propagation();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::SkipAncestorPropagation,
+            ));
         } else if cancel_ancestor {
-            self.cancel_pending_filelist_ancestor_confirmation();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::CancelAncestorConfirmation,
+            ));
         }
 
         let mut confirm_walker = false;
@@ -1318,9 +1334,13 @@ impl FlistWalkerApp {
                 });
         }
         if confirm_walker {
-            self.confirm_pending_filelist_use_walker();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::ConfirmUseWalker,
+            ));
         } else if cancel_walker {
-            self.cancel_pending_filelist_use_walker();
+            self.queue_render_command(RenderCommand::FileListDialog(
+                RenderFileListDialogCommand::CancelUseWalker,
+            ));
         }
         if self.current_filelist_dialog_kind().is_none() {
             self.clear_filelist_dialog_selection();
@@ -1392,12 +1412,18 @@ impl FlistWalkerApp {
                 .set_prompt_skip_until_next_version(skip_until_next_version);
 
             if confirm {
-                self.start_update_install();
+                self.queue_render_command(RenderCommand::UpdateDialog(
+                    RenderUpdateDialogCommand::StartInstall,
+                ));
             } else if later {
                 if skip_until_next_version {
-                    self.skip_update_prompt_until_next_version();
+                    self.queue_render_command(RenderCommand::UpdateDialog(
+                        RenderUpdateDialogCommand::SkipPromptUntilNextVersion,
+                    ));
                 } else {
-                    self.dismiss_update_prompt();
+                    self.queue_render_command(RenderCommand::UpdateDialog(
+                        RenderUpdateDialogCommand::DismissPrompt,
+                    ));
                 }
             }
         }
@@ -1431,9 +1457,13 @@ impl FlistWalkerApp {
 
             if close {
                 if suppress_future_errors {
-                    self.suppress_update_check_failures();
+                    self.queue_render_command(RenderCommand::UpdateDialog(
+                        RenderUpdateDialogCommand::SuppressCheckFailures,
+                    ));
                 } else {
-                    self.dismiss_update_check_failure();
+                    self.queue_render_command(RenderCommand::UpdateDialog(
+                        RenderUpdateDialogCommand::DismissCheckFailure,
+                    ));
                 }
             }
         }
