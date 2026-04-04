@@ -160,6 +160,7 @@
 - Render/UI orchestration の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が render intent / command 型の追加と docs 更新のみに留まり、dialog/action/reorder の実動作を変えない段階では `cd rust && cargo check` を最小検証とする。描画イベントからの command dispatch や dialog 確定動作に変更が入る Phase 2 以降は `render_tests`、`session_tabs`、`app_core` を含む `cargo test` へ昇格させる。
 - Final coordinator cleanup の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が frame/update/exit orchestration helper の型追加と docs 更新のみに留まり、response handling や shutdown/repaint の実動作を変えない段階では `cd rust && cargo check` を最小検証とする。`mod.rs` の frame loop、poll/dispatch sequencing、shutdown/exit ordering に変更が入る Phase 2 以降は `app_core`、`session_tabs`、`shortcuts` を含む `cargo test` へ昇格させる。
 - Final coordinator cleanup の完了時は、doc diff review と `rg` 参照整合確認に加え、`regression_gui_close_uses_short_worker_join_timeout_budget`、`stale_action_completion_is_ignored_by_request_id`、`late_sort_metadata_response_is_ignored_for_removed_tab`、`apply_started_update_response_requests_app_close` を含む targeted regression と `cargo test` を実行し、frame/update/exit orchestration の順序変更で既存契約を崩していないことを確認する。
+- Docs and validation closure は docs-only slice とし、全 phase で doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、temporary rule / change plan 撤去を含むため、closure 完了時は `git diff --stat` で docs cleanup の対象が `AGENTS.md` と `docs/*.md` に限られていることも確認する。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`

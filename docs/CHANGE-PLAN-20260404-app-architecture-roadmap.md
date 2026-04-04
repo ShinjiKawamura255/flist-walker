@@ -38,9 +38,10 @@
    - Status: DONE on 2026-04-04.
 3. Final Coordinator Cleanup
    - `mod.rs` に残る cross-feature dispatch と shared glue を見直し、`FlistWalkerApp` を coordinator として最小化する。
-   - Next active slice はこの workstream を対象にする。
+   - Status: DONE on 2026-04-04.
 4. Docs and Validation Closure
    - `DESIGN.md` / `TESTPLAN.md` / `TASKS.md` を最終形へ同期し、一時 plan をすべて撤去する。
+   - Next active slice はこの workstream を対象にする。
 
 ## 5. Execution Model
 - 各 workstream は、別の下位 plan (`docs/CHANGE-PLAN-<date>-<slice>.md`) として具体化する。
@@ -90,6 +91,11 @@
   - roadmap reviewer からは blocking 指摘なし。
   - active slice reviewer の指摘により、`Final Coordinator Cleanup` slice から docs closure 専用 cleanup を外し、docs 更新は touched boundary の局所同期に限定した。
 - 2026-04-04 convergence review: review 反映後、依存順は `request routing` → `render` → `final coordinator cleanup` → `docs closure` のまま維持されており、next active slice は `Final Coordinator Cleanup` でよいと確認した。blocking issue はなし。
+- 2026-04-04 closure planning review:
+  - `Final Coordinator Cleanup` 完了を roadmap に反映し、next active slice を `Docs and Validation Closure` へ切り替える前提で lower-level plan を更新した。
+  - closure workstream は docs-only cleanup に限定し、Rust 実装変更を混ぜない方針を固定した。
+  - subagent 指摘により、plan 削除前に `docs/TASKS.md` へ closure 完了理由と実施日の永続記録を残す gate を lower-level plan に追加した。
+- 2026-04-04 closure convergence review: subagent review 後、`Docs and Validation Closure` slice は durable history を残してから temporary rule / plan docs を削除する順序になっており、blocking issue はないと確認した。
 
 ## 11. Temporary Rule Draft
 - For the remaining app architecture work, read both `docs/CHANGE-PLAN-20260404-app-architecture-roadmap.md` and the active lower-level change plan before starting implementation.
