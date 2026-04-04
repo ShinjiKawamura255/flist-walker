@@ -1510,21 +1510,17 @@ Search hints:
         Some(summary)
     }
 
-    fn request_viewport_close_for_signal(&mut self, ctx: &egui::Context) -> bool {
-        if !process_shutdown_requested() {
-            return false;
+    fn request_viewport_close_if_needed(&mut self, ctx: &egui::Context) -> bool {
+        if process_shutdown_requested() {
+            self.set_notice("Shutdown requested by signal");
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return true;
         }
-        self.set_notice("Shutdown requested by signal");
-        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        true
-    }
-
-    fn request_viewport_close_for_install(&mut self, ctx: &egui::Context) -> bool {
-        if !self.update_state.close_requested_for_install {
-            return false;
+        if self.update_state.close_requested_for_install {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return true;
         }
-        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        true
+        false
     }
 
     fn poll_runtime_events(&mut self) {
@@ -1575,6 +1571,17 @@ Search hints:
         self.maybe_save_ui_state(false);
     }
 
+    fn run_update_cycle(&mut self, ctx: &egui::Context) -> bool {
+        self.poll_runtime_events();
+        if self.request_viewport_close_if_needed(ctx) {
+            return false;
+        }
+        self.commit_query_history_if_needed(false);
+        self.schedule_frame_repaint(ctx);
+        self.run_ui_frame(ctx);
+        true
+    }
+
     fn persist_state_and_shutdown(&mut self, phase: &str) {
         self.apply_stable_window_geometry(true);
         self.ui.ui_state_dirty = true;
@@ -1585,16 +1592,9 @@ Search hints:
 
 impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.request_viewport_close_for_signal(ctx) {
+        if !self.run_update_cycle(ctx) {
             return;
         }
-        self.poll_runtime_events();
-        if self.request_viewport_close_for_install(ctx) {
-            return;
-        }
-        self.commit_query_history_if_needed(false);
-        self.schedule_frame_repaint(ctx);
-        self.run_ui_frame(ctx);
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
