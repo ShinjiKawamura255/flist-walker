@@ -1,4 +1,8 @@
 use super::*;
+use crate::app::render::{
+    RenderCommand, RenderFileListDialogCommand, RenderTopActionCommand,
+    RenderUpdateDialogCommand,
+};
 
 #[test]
 fn filelist_use_walker_dialog_lines_are_stable() {
@@ -49,6 +53,68 @@ fn top_action_labels_show_running_create_label_when_filelist_is_in_progress() {
     app.filelist_state.in_progress = true;
 
     assert_eq!(app.top_action_labels()[3], "Create File List (Running...)");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dispatch_render_commands_consumes_top_action_queue() {
+    let root = test_root("render-command-top-action");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.pinned_paths.insert(root.join("keep.txt"));
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::TopAction(RenderTopActionCommand::ClearPinned));
+    app.dispatch_render_commands(&ctx);
+
+    assert!(app.pinned_paths.is_empty());
+    assert!(app.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dispatch_render_commands_consumes_filelist_dialog_queue() {
+    let root = test_root("render-command-filelist-dialog");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("active tab id");
+    app.filelist_state.pending_confirmation = Some(PendingFileListConfirmation {
+        tab_id,
+        root: root.clone(),
+        entries: vec![root.join("entry.txt")],
+        existing_path: root.join("FileList.txt"),
+    });
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::FileListDialog(
+        RenderFileListDialogCommand::CancelOverwrite,
+    ));
+    app.dispatch_render_commands(&ctx);
+
+    assert!(app.filelist_state.pending_confirmation.is_none());
+    assert_eq!(app.notice, "Create File List canceled");
+    assert!(app.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dispatch_render_commands_consumes_update_dialog_queue() {
+    let root = test_root("render-command-update-dialog");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.update_state.check_failure = Some(UpdateCheckFailureState {
+        error: "network timeout".to_string(),
+        suppress_future_errors: false,
+    });
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::UpdateDialog(
+        RenderUpdateDialogCommand::DismissCheckFailure,
+    ));
+    app.dispatch_render_commands(&ctx);
+
+    assert!(app.update_state.check_failure.is_none());
+    assert!(app.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
