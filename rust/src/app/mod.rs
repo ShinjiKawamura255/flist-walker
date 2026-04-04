@@ -1572,6 +1572,7 @@ impl eframe::App for FlistWalkerApp {
         self.render_filelist_dialogs(ctx);
         self.render_update_dialog(ctx);
         self.render_central_panel(ctx);
+        self.dispatch_render_commands(ctx);
         self.maybe_save_ui_state(false);
     }
 

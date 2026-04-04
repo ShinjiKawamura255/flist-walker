@@ -1,6 +1,66 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
+// Phase 1 scaffolding for the render-orchestration split. Later phases will
+// queue these commands from top actions, dialogs, and tab bar interactions so
+// render.rs can stay focused on widget drawing and input collection.
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub(super) enum RenderTopActionCommand {
+    ApplyHistory,
+    CancelHistorySearch,
+    ExecuteSelected,
+    CopySelectedPaths,
+    ClearPinned,
+    CreateFileList,
+    RefreshIndex,
+}
+
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub(super) enum RenderFileListDialogCommand {
+    ConfirmOverwrite,
+    CancelOverwrite,
+    ConfirmAncestorPropagation,
+    SkipAncestorPropagation,
+    CancelAncestorConfirmation,
+    ConfirmUseWalker,
+    CancelUseWalker,
+}
+
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub(super) enum RenderUpdateDialogCommand {
+    StartInstall,
+    SkipPromptUntilNextVersion,
+    DismissPrompt,
+    SuppressCheckFailures,
+    DismissCheckFailure,
+}
+
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub(super) enum RenderTabBarCommand {
+    CreateNewTab,
+    CloseTab(usize),
+    MoveTab { from_index: usize, to_index: usize },
+    SwitchToTab(usize),
+    ClearTabAccent(usize),
+    SetTabAccent {
+        index: usize,
+        accent: TabAccentColor,
+    },
+}
+
+#[derive(Clone, Copy)]
+#[allow(dead_code)]
+pub(super) enum RenderCommand {
+    TopAction(RenderTopActionCommand),
+    FileListDialog(RenderFileListDialogCommand),
+    UpdateDialog(RenderUpdateDialogCommand),
+    TabBar(RenderTabBarCommand),
+}
+
 impl FlistWalkerApp {
     const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
     const RESULT_ROW_H_MARGIN: f32 = 3.0;
@@ -1383,5 +1443,106 @@ impl FlistWalkerApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_results_and_preview(ui);
         });
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn queue_render_command(&mut self, command: RenderCommand) {
+        self.ui.pending_render_commands.push(command);
+    }
+
+    pub(super) fn dispatch_render_commands(&mut self, ctx: &egui::Context) {
+        let commands = std::mem::take(&mut self.ui.pending_render_commands);
+        for command in commands {
+            match command {
+                RenderCommand::TopAction(RenderTopActionCommand::ApplyHistory) => {
+                    self.accept_history_search();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::CancelHistorySearch) => {
+                    self.cancel_history_search();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::ExecuteSelected) => {
+                    self.execute_selected();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::CopySelectedPaths) => {
+                    self.copy_selected_paths(ctx);
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::ClearPinned) => {
+                    self.clear_pinned();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::CreateFileList) => {
+                    self.create_filelist();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::RefreshIndex) => {
+                    self.request_index_refresh();
+                }
+                RenderCommand::FileListDialog(RenderFileListDialogCommand::ConfirmOverwrite) => {
+                    self.confirm_pending_filelist_overwrite();
+                }
+                RenderCommand::FileListDialog(RenderFileListDialogCommand::CancelOverwrite) => {
+                    self.cancel_pending_filelist_overwrite();
+                }
+                RenderCommand::FileListDialog(
+                    RenderFileListDialogCommand::ConfirmAncestorPropagation,
+                ) => {
+                    self.confirm_pending_filelist_ancestor_propagation();
+                }
+                RenderCommand::FileListDialog(
+                    RenderFileListDialogCommand::SkipAncestorPropagation,
+                ) => {
+                    self.skip_pending_filelist_ancestor_propagation();
+                }
+                RenderCommand::FileListDialog(
+                    RenderFileListDialogCommand::CancelAncestorConfirmation,
+                ) => {
+                    self.cancel_pending_filelist_ancestor_confirmation();
+                }
+                RenderCommand::FileListDialog(RenderFileListDialogCommand::ConfirmUseWalker) => {
+                    self.confirm_pending_filelist_use_walker();
+                }
+                RenderCommand::FileListDialog(RenderFileListDialogCommand::CancelUseWalker) => {
+                    self.cancel_pending_filelist_use_walker();
+                }
+                RenderCommand::UpdateDialog(RenderUpdateDialogCommand::StartInstall) => {
+                    self.start_update_install();
+                }
+                RenderCommand::UpdateDialog(
+                    RenderUpdateDialogCommand::SkipPromptUntilNextVersion,
+                ) => {
+                    self.skip_update_prompt_until_next_version();
+                }
+                RenderCommand::UpdateDialog(RenderUpdateDialogCommand::DismissPrompt) => {
+                    self.dismiss_update_prompt();
+                }
+                RenderCommand::UpdateDialog(
+                    RenderUpdateDialogCommand::SuppressCheckFailures,
+                ) => {
+                    self.suppress_update_check_failures();
+                }
+                RenderCommand::UpdateDialog(RenderUpdateDialogCommand::DismissCheckFailure) => {
+                    self.dismiss_update_check_failure();
+                }
+                RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab) => {
+                    self.create_new_tab();
+                }
+                RenderCommand::TabBar(RenderTabBarCommand::CloseTab(index)) => {
+                    self.close_tab_index(index);
+                }
+                RenderCommand::TabBar(RenderTabBarCommand::MoveTab {
+                    from_index,
+                    to_index,
+                }) => {
+                    self.move_tab(from_index, to_index);
+                }
+                RenderCommand::TabBar(RenderTabBarCommand::SwitchToTab(index)) => {
+                    self.switch_to_tab_index(index);
+                }
+                RenderCommand::TabBar(RenderTabBarCommand::ClearTabAccent(index)) => {
+                    self.set_tab_accent(index, None);
+                }
+                RenderCommand::TabBar(RenderTabBarCommand::SetTabAccent { index, accent }) => {
+                    self.set_tab_accent(index, Some(accent));
+                }
+            }
+        }
     }
 }

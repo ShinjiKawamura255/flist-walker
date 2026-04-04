@@ -20,6 +20,7 @@ pub(super) struct RuntimeUiState {
     pub(super) prev_space_down: bool,
     pub(super) query_input_id: egui::Id,
     pub(super) tab_drag_state: Option<TabDragState>,
+    pub(super) pending_render_commands: Vec<super::render::RenderCommand>,
 }
 
 impl RuntimeUiState {
@@ -44,6 +45,7 @@ impl RuntimeUiState {
             prev_space_down: false,
             query_input_id: egui::Id::new("query-input"),
             tab_drag_state: None,
+            pending_render_commands: Vec::new(),
         }
     }
 }

@@ -40,6 +40,7 @@
 - 役割補足: 次段の tab activation/background restore slice では、`pending_restore_refresh` と activation 時 lazy refresh の判断を `TabRestoreCommand` 境界へ寄せる。background tab の search/preview/index 応答保持ロジック本体と request bookkeeping は引き続き `app/pipeline.rs` に残し、この slice では activation seam の state transition だけを切り出す。
 - 役割補足: 次段の tab close cleanup slice では、`close_tab_index()` に残る filelist pending cleanup、index/search/request routing cleanup、memory sample invalidation を `TabCloseCleanupCommand` 境界へ寄せる。last-tab guard、tab removal、fallback active tab 決定、fallback activation は `close_tab_index()` 側に残し、cleanup helper は close-specific cleanup だけを扱う。
 - 役割補足: 次段の tab reorder slice では、`move_tab()` に残る drag-state cleanup、active tab id 再解決、reordered active tab apply を `TabReorderCommand` 境界へ寄せる。drag gesture / hit-test は `render.rs` に残し、この slice では reorder-specific state transition だけを切り出す。
+- 役割補足: Render/UI orchestration slice の Phase 1 では `render.rs` に `RenderCommand` scaffold を置き、top action / dialog / tab bar から発行する command を描画後に `dispatch_render_commands()` で消化できる seam を先に用意する。root selector と query/history input はこの slice では direct mutation のまま残す。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
@@ -65,6 +66,7 @@
 - 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
 - 役割補足: God Object 解消の次段では `UpdateState` を `UpdateManager` 境界へ寄せ、update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移を manager 側へ集約する。
 - 役割補足: `render.rs` は update dialog の描画と入力取得だけを担当し、永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
+- 役割補足: top action button、FileList dialog、update dialog、tab bar reorder/close/switch は最終的に `RenderCommand` 境界を経由して owner helper (`filelist.rs`, `update.rs`, `tabs.rs`) へ渡す。render slice では command queue と dispatch seam を先に追加し、挙動移設は後続 phase で段階的に進める。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。

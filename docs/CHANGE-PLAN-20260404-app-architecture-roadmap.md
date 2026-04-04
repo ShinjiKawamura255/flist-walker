@@ -8,8 +8,8 @@
 - Related Tickets/Issues: God Object follow-up
 
 ## 1. Background
-- `FlistWalkerApp` の God Object 解消は、`FileList`、`Update`、`root change`、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder まで段階的に分割してきた。
-- その結果、主要な tab lifecycle と workflow の大半は局所化されたが、まだ `request_tab_routing` の owner が shared bag に近いこと、`render.rs` と `mod.rs` に残る横断 orchestration があること、slice 間の最終整理が残っている。
+- `FlistWalkerApp` の God Object 解消は、`FileList`、`Update`、`root change`、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder、request routing owner localization まで段階的に分割してきた。
+- その結果、主要な tab lifecycle と workflow の大半に加え request-tab binding の owner も局所化されたが、まだ `render.rs` と `mod.rs` に残る横断 orchestration があること、slice 間の最終整理が残っている。
 - 今後は「大きな枠」と「小さな枠」を分けて、上位ロードマップに沿って個別 slice を進める。
 
 ## 2. Goal
@@ -32,9 +32,10 @@
 ## 4. Remaining Workstreams
 1. Request Routing Ownership
    - `RequestTabRoutingState` を shared bag のまま持たず、preview/action/sort の owner を近接 module へ寄せる。
-   - 最初の下位 plan はこの workstream を対象にする。
+   - Status: DONE on 2026-04-04.
 2. Render/UI Orchestration
    - `render.rs` に残る dialog / action / reorder 周辺の coordinator を整理し、描画と state transition の境界をさらに明確化する。
+   - Next active slice はこの workstream を対象にする。
 3. Final Coordinator Cleanup
    - `mod.rs` に残る cross-feature dispatch と shared glue を見直し、`FlistWalkerApp` を coordinator として最小化する。
 4. Docs and Validation Closure
@@ -78,7 +79,11 @@
 - 実装は必ず下位 plan を通じて行う。
 - 下位 plan は、この roadmap の該当 workstream、依存する前提、逸脱時に更新すべき上位項目を明記する。
 
-## 10. Temporary Rule Draft
+## 10. Review Notes
+- 2026-04-04 initial review: active slice の scope / verification / ownership boundary を main thread でレビューした。今回のセッションではユーザからサブエージェント委譲の明示がないため、`two-level-plan-driven-changes` のレビュー工程は main thread で代替した。
+- 2026-04-04 convergence review: review 反映後、roadmap と active slice の依存順は維持されており、next active slice は `Render/UI Orchestration` のままでよいと確認した。
+
+## 11. Temporary Rule Draft
 - For the remaining app architecture work, read both `docs/CHANGE-PLAN-20260404-app-architecture-roadmap.md` and the active lower-level change plan before starting implementation.
 - Follow the roadmap first for scope/order decisions, then follow the lower-level change plan for implementation detail.
 - If a lower-level plan changes the roadmap's scope, dependency, or order, update the roadmap first.
