@@ -35,9 +35,10 @@
    - Status: DONE on 2026-04-04.
 2. Render/UI Orchestration
    - `render.rs` に残る dialog / action / reorder 周辺の coordinator を整理し、描画と state transition の境界をさらに明確化する。
-   - Next active slice はこの workstream を対象にする。
+   - Status: DONE on 2026-04-04.
 3. Final Coordinator Cleanup
    - `mod.rs` に残る cross-feature dispatch と shared glue を見直し、`FlistWalkerApp` を coordinator として最小化する。
+   - Next active slice はこの workstream を対象にする。
 4. Docs and Validation Closure
    - `DESIGN.md` / `TESTPLAN.md` / `TASKS.md` を最終形へ同期し、一時 plan をすべて撤去する。
 
@@ -80,8 +81,15 @@
 - 下位 plan は、この roadmap の該当 workstream、依存する前提、逸脱時に更新すべき上位項目を明記する。
 
 ## 10. Review Notes
-- 2026-04-04 initial review: active slice の scope / verification / ownership boundary を main thread でレビューした。今回のセッションではユーザからサブエージェント委譲の明示がないため、`two-level-plan-driven-changes` のレビュー工程は main thread で代替した。
-- 2026-04-04 convergence review: review 反映後、roadmap と active slice の依存順は維持されており、next active slice は `Render/UI Orchestration` のままでよいと確認した。
+- 2026-04-04 initial review: render slice の完了を roadmap に反映し、next active slice を `Final Coordinator Cleanup` へ切り替える前提で main thread から review した。今回のセッションでもユーザからサブエージェント委譲の明示がないため、`two-level-plan-driven-changes` のレビュー工程は main thread で代替した。
+- Adopted:
+  - `Render/UI Orchestration` を完了済み workstream として明記した。
+  - `Final Coordinator Cleanup` を active slice 対象へ繰り上げた。
+  - 次 slice は `mod.rs` の frame/update/exit coordination に限定し、feature 契約変更を out of scope にする方針を固定した。
+- 2026-04-04 subagent review:
+  - roadmap reviewer からは blocking 指摘なし。
+  - active slice reviewer の指摘により、`Final Coordinator Cleanup` slice から docs closure 専用 cleanup を外し、docs 更新は touched boundary の局所同期に限定した。
+- 2026-04-04 convergence review: review 反映後、依存順は `request routing` → `render` → `final coordinator cleanup` → `docs closure` のまま維持されており、next active slice は `Final Coordinator Cleanup` でよいと確認した。blocking issue はなし。
 
 ## 11. Temporary Rule Draft
 - For the remaining app architecture work, read both `docs/CHANGE-PLAN-20260404-app-architecture-roadmap.md` and the active lower-level change plan before starting implementation.

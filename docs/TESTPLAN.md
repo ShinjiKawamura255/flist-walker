@@ -158,6 +158,7 @@
 - Tab reorder の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が command 型追加のみで挙動変更を伴わない段階では `cd rust && cargo check` を最小検証とし、Phase 2 以降は `session_tabs` と targeted reorder regression を含む `cargo test` へ昇格させる。
 - Request routing localization の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が owner API の型追加と docs 更新のみに留まり、preview/action/sort worker の request/response 挙動を変えない段階では `cd rust && cargo check` を最小検証とする。preview/action/sort の routing 実移設が入る Phase 2 以降は `session_tabs`、`app_core`、targeted stale response regression を含む `cargo test` へ昇格させる。
 - Render/UI orchestration の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が render intent / command 型の追加と docs 更新のみに留まり、dialog/action/reorder の実動作を変えない段階では `cd rust && cargo check` を最小検証とする。描画イベントからの command dispatch や dialog 確定動作に変更が入る Phase 2 以降は `render_tests`、`session_tabs`、`app_core` を含む `cargo test` へ昇格させる。
+- Final coordinator cleanup の Phase 1 では、`docs/DESIGN.md` と `docs/TESTPLAN.md` の差分レビュー、および `rg` による参照整合確認を先に完了させる。Rust 側が frame/update/exit orchestration helper の型追加と docs 更新のみに留まり、response handling や shutdown/repaint の実動作を変えない段階では `cd rust && cargo check` を最小検証とする。`mod.rs` の frame loop、poll/dispatch sequencing、shutdown/exit ordering に変更が入る Phase 2 以降は `app_core`、`session_tabs`、`shortcuts` を含む `cargo test` へ昇格させる。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`
