@@ -42,6 +42,7 @@
 - 役割補足: 次段の tab reorder slice では、`move_tab()` に残る drag-state cleanup、active tab id 再解決、reordered active tab apply を `TabReorderCommand` 境界へ寄せる。drag gesture / hit-test は `render.rs` に残し、この slice では reorder-specific state transition だけを切り出す。
 - 役割補足: Render/UI orchestration slice により、`render.rs` は top action / FileList dialog / update dialog / tab bar interaction から `RenderCommand` を queue し、描画後に `dispatch_render_commands()` で state transition を消化する。root selector と query/history input はこの slice では direct mutation のまま残す。
 - 役割補足: Final Coordinator Cleanup の Phase 1 では、`app/mod.rs` の `update()` / `on_exit()` / `Drop` に残る frame tick、viewport close、repaint scheduling、persist-and-shutdown の並びを helper seam (`poll_runtime_events()`, `schedule_frame_repaint()`, `run_ui_frame()`, `persist_state_and_shutdown()`) へ畳み、挙動を変えずに coordinator cleanup の入口を作る。
+- 役割補足: Final Coordinator Cleanup では、active-tab 向け action/sort response consume を `app/tabs.rs` の helper 経由へ寄せ、`app/mod.rs` 側の poll loop は「response を feature owner へ振り分ける」責務に縮小する。`update()` は `run_update_cycle()` から tick 全体を呼ぶ構造へ寄せ、signal / install close path も `request_viewport_close_if_needed()` に集約する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
