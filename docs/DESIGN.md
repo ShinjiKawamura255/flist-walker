@@ -33,16 +33,10 @@
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
-- 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成など tab lifecycle を担当する。
-- 役割補足: request routing localization の Phase 1 では shared bag をまだ `app/state.rs` に残しつつ、preview routing の bind/take/cleanup は `app/cache.rs` の owner API、action/sort routing の bind/take/cleanup は `app/tabs.rs` の owner API を経由させ、`app/mod.rs` から routing map 直接操作を段階的に除去する。
-- 役割補足: God Object 解消の次段では root change を独立 slice として扱い、`apply_root_change` が担う selection/pinned/preview cleanup、stale filelist cleanup、current tab sync、reindex 要求を `RootChangeCommand` 境界へ寄せる。`request_id` と queue/inflight bookkeeping は `app/pipeline.rs` と coordinator に残し、root-change orchestrator は高レベル意図だけを返す。
-- 役割補足: その次段では `app/tabs.rs` の shared lifecycle を `deactivate` / `activate` helper 境界へ寄せ、`switch_to_tab_index` と `create_new_tab` に散っている sync/compact/apply/restore/focus の順序制御を `TabLifecycleCommand` 境界で共有する。`close_tab_index` の request routing cleanup は call-site 側に残し、shared helper へ持ち込まない。
-- 役割補足: 次段の tab activation/background restore slice では、`pending_restore_refresh` と activation 時 lazy refresh の判断を `TabRestoreCommand` 境界へ寄せる。background tab の search/preview/index 応答保持ロジック本体と request bookkeeping は引き続き `app/pipeline.rs` に残し、この slice では activation seam の state transition だけを切り出す。
-- 役割補足: 次段の tab close cleanup slice では、`close_tab_index()` に残る filelist pending cleanup、index/search/request routing cleanup、memory sample invalidation を `TabCloseCleanupCommand` 境界へ寄せる。last-tab guard、tab removal、fallback active tab 決定、fallback activation は `close_tab_index()` 側に残し、cleanup helper は close-specific cleanup だけを扱う。
-- 役割補足: 次段の tab reorder slice では、`move_tab()` に残る drag-state cleanup、active tab id 再解決、reordered active tab apply を `TabReorderCommand` 境界へ寄せる。drag gesture / hit-test は `render.rs` に残し、この slice では reorder-specific state transition だけを切り出す。
-- 役割補足: Render/UI orchestration slice により、`render.rs` は top action / FileList dialog / update dialog / tab bar interaction から `RenderCommand` を queue し、描画後に `dispatch_render_commands()` で state transition を消化する。root selector と query/history input はこの slice では direct mutation のまま残す。
-- 役割補足: Final Coordinator Cleanup の Phase 1 では、`app/mod.rs` の `update()` / `on_exit()` / `Drop` に残る frame tick、viewport close、repaint scheduling、persist-and-shutdown の並びを helper seam (`poll_runtime_events()`, `schedule_frame_repaint()`, `run_ui_frame()`, `persist_state_and_shutdown()`) へ畳み、挙動を変えずに coordinator cleanup の入口を作る。
-- 役割補足: Final Coordinator Cleanup では、active-tab 向け action/sort response consume を `app/tabs.rs` の helper 経由へ寄せ、`app/mod.rs` 側の poll loop は「response を feature owner へ振り分ける」責務に縮小する。`update()` は `run_update_cycle()` から tick 全体を呼ぶ構造へ寄せ、signal / install close path も `request_viewport_close_if_needed()` に集約する。
+- 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と active/background tab 向け response consume helper を担当する。
+- 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。
+- 役割補足: `app/render.rs` は top action / FileList dialog / update dialog / tab bar interaction から `RenderCommand` を queue し、描画後に `dispatch_render_commands()` で state transition を消化する。root selector と query/history input は描画側の direct mutation を維持する。
+- 役割補足: `app/mod.rs` の frame/update/exit orchestration は `poll_runtime_events()`, `run_update_cycle()`, `schedule_frame_repaint()`, `request_viewport_close_if_needed()`, `persist_state_and_shutdown()` といった helper seam を経由し、`update()` / `on_exit()` / `Drop` の open-coded sequence を最小化する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
@@ -66,7 +60,7 @@
 - DES-014 Self Update Coordinator
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
 - 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
-- 役割補足: God Object 解消の次段では `UpdateState` を `UpdateManager` 境界へ寄せ、update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移を manager 側へ集約する。
+- 役割補足: `UpdateState` と update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移は `app/update.rs` の manager 境界へ集約する。
 - 役割補足: `render.rs` は update dialog の描画と入力取得だけを担当し、永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
 - 役割補足: top action button、FileList dialog、update dialog、tab bar reorder/close/switch は `RenderCommand` 境界を経由して owner helper (`filelist.rs`, `update.rs`, `tabs.rs`) へ渡す。描画コードは click/drag/dialog input の収集に寄せ、state transition は描画後 dispatcher で一段遅らせて実行する。
 
