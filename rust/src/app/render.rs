@@ -685,19 +685,28 @@ impl FlistWalkerApp {
                 .on_hover_text(format!("New tab ({}+T)", Self::primary_shortcut_label()))
                 .clicked()
             {
-                self.create_new_tab();
+                self.queue_render_command(RenderCommand::TabBar(
+                    RenderTabBarCommand::CreateNewTab,
+                ));
                 return;
             }
             if let Some(index) = close_tab {
-                self.close_tab_index(index);
+                self.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CloseTab(
+                    index,
+                )));
                 return;
             }
             if let Some((from_index, to_index)) = reorder_tab {
-                self.move_tab(from_index, to_index);
+                self.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::MoveTab {
+                    from_index,
+                    to_index,
+                }));
                 return;
             }
             if let Some(idx) = switch_to {
-                self.switch_to_tab_index(idx);
+                self.queue_render_command(RenderCommand::TabBar(
+                    RenderTabBarCommand::SwitchToTab(idx),
+                ));
             }
         });
     }
@@ -758,7 +767,9 @@ impl FlistWalkerApp {
         ui.set_min_width(220.0);
         ui.label("Tab Color");
         if ui.button("Clear").clicked() {
-            self.set_tab_accent(index, None);
+            self.queue_render_command(RenderCommand::TabBar(
+                RenderTabBarCommand::ClearTabAccent(index),
+            ));
             ui.close_menu();
             return;
         }
@@ -783,7 +794,9 @@ impl FlistWalkerApp {
                     button = button.min_size(egui::vec2(86.0, 24.0));
                 }
                 if ui.add(button).clicked() {
-                    self.set_tab_accent(index, Some(accent));
+                    self.queue_render_command(RenderCommand::TabBar(
+                        RenderTabBarCommand::SetTabAccent { index, accent },
+                    ));
                     ui.close_menu();
                 }
             }
