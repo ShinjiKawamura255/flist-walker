@@ -173,6 +173,17 @@ impl FlistWalkerApp {
         tab.notice = response.notice;
     }
 
+    pub(super) fn apply_active_action_response(&mut self, response: &ActionResponse) -> bool {
+        if Some(response.request_id) != self.worker_bus.action.pending_request_id {
+            return false;
+        }
+        self.take_action_request_tab(response.request_id);
+        self.worker_bus.action.pending_request_id = None;
+        self.worker_bus.action.in_progress = false;
+        self.set_notice(response.notice.clone());
+        true
+    }
+
     pub(super) fn apply_background_sort_response(&mut self, response: SortMetadataResponse) {
         let Some(tab_id) = self.take_sort_request_tab(response.request_id) else {
             return;
@@ -207,6 +218,21 @@ impl FlistWalkerApp {
             }
             Self::compact_inactive_tab_state(tab);
         }
+    }
+
+    pub(super) fn apply_active_sort_response(&mut self, response: &SortMetadataResponse) -> bool {
+        if Some(response.request_id) != self.worker_bus.sort.pending_request_id {
+            return false;
+        }
+        self.take_sort_request_tab(response.request_id);
+        self.worker_bus.sort.pending_request_id = None;
+        self.worker_bus.sort.in_progress = false;
+        if response.mode == self.result_sort_mode {
+            self.apply_result_sort(false);
+        } else {
+            self.refresh_status_line();
+        }
+        true
     }
 
     #[allow(dead_code)]
