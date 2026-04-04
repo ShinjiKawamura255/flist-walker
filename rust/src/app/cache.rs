@@ -189,9 +189,13 @@ impl SortMetadataCacheState {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tab_routing.bind_preview(request_id, tab_id);
+    }
+
     fn bind_preview_request_to_current_tab(&mut self, request_id: u64) {
         if let Some(tab_id) = self.current_tab_id() {
-            self.request_tab_routing.bind_preview(request_id, tab_id);
+            self.bind_preview_request_to_tab(request_id, tab_id);
         }
     }
 
@@ -203,10 +207,41 @@ impl FlistWalkerApp {
         self.request_tab_routing.clear_preview_for_tab(tab_id);
     }
 
+    #[cfg(test)]
+    pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.preview.get(&request_id).copied()
+    }
+
+    fn apply_background_preview_response(&mut self, response: PreviewResponse) {
+        let Some(tab_id) = self.take_preview_request_tab(response.request_id) else {
+            return;
+        };
+        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+            return;
+        };
+        self.cache_preview(response.path.clone(), response.preview.clone());
+        if let Some(tab) = self.tabs.get_mut(tab_index) {
+            tab.pending_preview_request_id = None;
+            tab.preview_in_progress = false;
+            let current_path = if tab.result_state.results_compacted {
+                tab.result_state
+                    .current_row
+                    .and_then(|row| tab.result_state.base_results.get(row).map(|(path, _)| path))
+            } else {
+                tab.result_state
+                    .current_row
+                    .and_then(|row| tab.result_state.results.get(row).map(|(path, _)| path))
+            };
+            if current_path.is_some_and(|current_path| *current_path == response.path) {
+                tab.result_state.preview = response.preview;
+            }
+        }
+    }
+
     pub(super) fn poll_preview_response(&mut self) {
         while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
-            let target_tab_id = self.take_preview_request_tab(response.request_id);
             if Some(response.request_id) == self.worker_bus.preview.pending_request_id {
+                self.take_preview_request_tab(response.request_id);
                 self.worker_bus.preview.pending_request_id = None;
                 self.worker_bus.preview.in_progress = false;
                 self.cache_preview(response.path.clone(), response.preview.clone());
@@ -219,29 +254,7 @@ impl FlistWalkerApp {
                 }
                 continue;
             }
-            let Some(tab_id) = target_tab_id else {
-                continue;
-            };
-            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-                continue;
-            };
-            self.cache_preview(response.path.clone(), response.preview.clone());
-            if let Some(tab) = self.tabs.get_mut(tab_index) {
-                tab.pending_preview_request_id = None;
-                tab.preview_in_progress = false;
-                let current_path = if tab.result_state.results_compacted {
-                    tab.result_state.current_row.and_then(|row| {
-                        tab.result_state.base_results.get(row).map(|(path, _)| path)
-                    })
-                } else {
-                    tab.result_state
-                        .current_row
-                        .and_then(|row| tab.result_state.results.get(row).map(|(path, _)| path))
-                };
-                if current_path.is_some_and(|current_path| *current_path == response.path) {
-                    tab.result_state.preview = response.preview;
-                }
-            }
+            self.apply_background_preview_response(response);
         }
     }
 
@@ -266,8 +279,7 @@ impl FlistWalkerApp {
             self.use_regex,
             self.ignore_case,
             prefer_relative,
-        )
-        {
+        ) {
             return;
         }
         self.cache.highlight.reset_scope(

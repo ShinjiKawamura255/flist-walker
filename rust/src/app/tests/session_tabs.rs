@@ -102,7 +102,11 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
     assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
     app.set_current_root_as_default_with(false);
 
-    let saved = app.root_browser.default_root.as_ref().expect("default root");
+    let saved = app
+        .root_browser
+        .default_root
+        .as_ref()
+        .expect("default root");
     assert_eq!(canonical_or_self(saved), canonical_or_self(&root));
     let _ = fs::remove_dir_all(&root);
 }
@@ -381,16 +385,15 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     app.search.tx = search_tx_req;
     app.search.rx = search_rx_res;
     let search_request_id = app.search.allocate_request_id();
-    app.search.bind_request_tab(search_request_id, background_tab_id);
+    app.search
+        .bind_request_tab(search_request_id, background_tab_id);
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
     let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
     app.worker_bus.preview.tx = preview_tx_req;
     app.worker_bus.preview.rx = preview_rx_res;
     let preview_request_id = 41;
-    app.request_tab_routing
-        .preview
-        .insert(preview_request_id, background_tab_id);
+    app.bind_preview_request_to_tab(preview_request_id, background_tab_id);
 
     let background_index_request_id = 77;
     app.indexing
@@ -497,7 +500,7 @@ fn close_tab_ignores_late_background_responses_for_removed_tab() {
     let survivor_tab_id = app.tabs[0].id;
 
     app.search.bind_request_tab(501, removed_tab_id);
-    app.request_tab_routing.preview.insert(601, removed_tab_id);
+    app.bind_preview_request_to_tab(601, removed_tab_id);
     app.indexing.request_tabs.insert(701, removed_tab_id);
     app.tabs[1].index_state.pending_index_request_id = Some(701);
     app.tabs[1].index_state.index_in_progress = true;
@@ -548,9 +551,74 @@ fn close_tab_ignores_late_background_responses_for_removed_tab() {
     assert_eq!(app.results, expected_results);
     assert_eq!(app.preview, expected_preview);
     assert_eq!(app.search.take_request_tab(501), None);
-    assert_eq!(app.request_tab_routing.preview.get(&601), None);
+    assert_eq!(app.preview_request_tab(601), None);
     assert_eq!(app.indexing.request_tabs.get(&701), None);
     assert!(!app.indexing.background_states.contains_key(&701));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn late_sort_metadata_response_is_ignored_for_removed_tab() {
+    let root = test_root("late-sort-response-removed-tab");
+    fs::create_dir_all(&root).expect("create dir");
+    let active_file = root.join("active.txt");
+    let removed_file = root.join("removed.txt");
+    fs::write(&active_file, "active").expect("write active");
+    fs::write(&removed_file, "removed").expect("write removed");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (_sort_tx_req, _sort_rx_req) = mpsc::channel::<SortMetadataRequest>();
+    let (sort_tx_res, sort_rx_res) = mpsc::channel::<SortMetadataResponse>();
+    app.worker_bus.sort.rx = sort_rx_res;
+
+    app.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.results = vec![(active_file.clone(), 1.0)];
+    app.base_results = app.results.clone();
+    app.result_sort_mode = ResultSortMode::Score;
+    app.current_row = Some(0);
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+    let removed_tab_index = 1;
+    let removed_tab_id = app.tabs[removed_tab_index].id;
+    let survivor_tab_id = app.tabs[0].id;
+
+    app.tabs[removed_tab_index].result_state.base_results = vec![(removed_file.clone(), 1.0)];
+    app.tabs[removed_tab_index].result_state.results = vec![(removed_file.clone(), 1.0)];
+    app.tabs[removed_tab_index].result_state.result_sort_mode = ResultSortMode::ModifiedDesc;
+    app.tabs[removed_tab_index]
+        .result_state
+        .pending_sort_request_id = Some(801);
+    app.tabs[removed_tab_index].result_state.sort_in_progress = true;
+    app.bind_sort_request_to_tab(801, removed_tab_id);
+
+    app.close_tab_index(removed_tab_index);
+    let expected_results = app.results.clone();
+
+    sort_tx_res
+        .send(SortMetadataResponse {
+            request_id: 801,
+            mode: ResultSortMode::ModifiedDesc,
+            entries: vec![(
+                removed_file.clone(),
+                SortMetadata {
+                    modified: Some(SystemTime::UNIX_EPOCH),
+                    created: Some(SystemTime::UNIX_EPOCH),
+                },
+            )],
+        })
+        .expect("send stale sort response");
+
+    app.poll_sort_response();
+
+    assert_eq!(app.tabs.len(), 1);
+    assert_eq!(app.tabs[0].id, survivor_tab_id);
+    assert_eq!(app.results, expected_results);
+    assert_eq!(app.sort_request_tab(801), None);
+    assert!(app.tabs.iter().all(|tab| tab.id != removed_tab_id));
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -993,14 +1061,32 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     assert_eq!(app.ui.unfocus_query_requested, expected_active_unfocus);
 
     assert_eq!(app.tabs[0].root, expected_tab_b.root);
-    assert_eq!(app.tabs[0].query_state.query, expected_tab_b.query_state.query);
-    assert_eq!(app.tabs[0].result_state.preview, expected_tab_b.result_state.preview);
+    assert_eq!(
+        app.tabs[0].query_state.query,
+        expected_tab_b.query_state.query
+    );
+    assert_eq!(
+        app.tabs[0].result_state.preview,
+        expected_tab_b.result_state.preview
+    );
     assert_eq!(app.tabs[1].root, expected_tab_c.root);
-    assert_eq!(app.tabs[1].query_state.query, expected_tab_c.query_state.query);
-    assert_eq!(app.tabs[1].result_state.preview, expected_tab_c.result_state.preview);
+    assert_eq!(
+        app.tabs[1].query_state.query,
+        expected_tab_c.query_state.query
+    );
+    assert_eq!(
+        app.tabs[1].result_state.preview,
+        expected_tab_c.result_state.preview
+    );
     assert_eq!(app.tabs[2].root, expected_tab_a.root);
-    assert_eq!(app.tabs[2].query_state.query, expected_tab_a.query_state.query);
-    assert_eq!(app.tabs[2].result_state.preview, expected_tab_a.result_state.preview);
+    assert_eq!(
+        app.tabs[2].query_state.query,
+        expected_tab_a.query_state.query
+    );
+    assert_eq!(
+        app.tabs[2].result_state.preview,
+        expected_tab_a.result_state.preview
+    );
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -1109,10 +1195,7 @@ fn background_tab_search_and_preview_responses_are_retained() {
     app.search.tx = search_tx_req;
     app.search.rx = search_rx_res;
     app.enqueue_search_request();
-    let search_request_id = app
-        .search
-        .pending_request_id()
-        .expect("search request id");
+    let search_request_id = app.search.pending_request_id().expect("search request id");
     let first_tab_id = app.tabs[0].id;
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();

@@ -219,11 +219,9 @@ impl FileListManager {
             super::filelist::FileListCommand::Ui(
                 super::filelist::FileListUiCommand::RefreshStatusLine,
             ),
-            super::filelist::FileListCommand::Ui(
-                super::filelist::FileListUiCommand::SetNotice(
-                    "Create File List worker is unavailable".to_string(),
-                ),
-            ),
+            super::filelist::FileListCommand::Ui(super::filelist::FileListUiCommand::SetNotice(
+                "Create File List worker is unavailable".to_string(),
+            )),
         ]
     }
 
@@ -254,10 +252,7 @@ impl FileListManager {
         self.workflow.cancel_requested = false;
     }
 
-    pub(super) fn settle_response(
-        &mut self,
-        request_id: u64,
-    ) -> Option<FileListRequestContext> {
+    pub(super) fn settle_response(&mut self, request_id: u64) -> Option<FileListRequestContext> {
         if self.workflow.pending_request_id != Some(request_id) {
             return None;
         }
@@ -272,7 +267,10 @@ impl FileListManager {
     pub(super) fn settle_response_commands(
         &mut self,
         request_id: u64,
-    ) -> Option<(FileListRequestContext, Vec<super::filelist::FileListCommand>)> {
+    ) -> Option<(
+        FileListRequestContext,
+        Vec<super::filelist::FileListCommand>,
+    )> {
         let context = self.settle_response(request_id)?;
         Some((
             context,
@@ -482,9 +480,10 @@ impl UpdateManager {
                     },
                 },
             )),
-            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
-                format!("Downloading update {}...", candidate.target_version),
-            )),
+            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(format!(
+                "Downloading update {}...",
+                candidate.target_version
+            ))),
         ])
     }
 
@@ -518,9 +517,7 @@ impl UpdateManager {
         }
     }
 
-    pub(super) fn suppress_check_failures_commands(
-        &mut self,
-    ) -> Vec<super::update::UpdateCommand> {
+    pub(super) fn suppress_check_failures_commands(&mut self) -> Vec<super::update::UpdateCommand> {
         self.state.suppress_check_failure_dialog = true;
         self.state.check_failure = None;
         vec![
@@ -548,12 +545,10 @@ impl UpdateManager {
         vec![
             super::update::UpdateCommand::App(super::update::UpdateAppCommand::MarkUiStateDirty),
             super::update::UpdateCommand::App(super::update::UpdateAppCommand::PersistUiStateNow),
-            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
-                format!(
-                    "Update {} hidden until a newer version is available",
-                    target_version
-                ),
-            )),
+            super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(format!(
+                "Update {} hidden until a newer version is available",
+                target_version
+            ))),
         ]
     }
 

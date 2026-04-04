@@ -112,9 +112,13 @@ pub(super) enum TabReorderCommand {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn bind_action_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tab_routing.bind_action(request_id, tab_id);
+    }
+
     pub(super) fn bind_action_request_to_current_tab(&mut self, request_id: u64) {
         if let Some(tab_id) = self.current_tab_id() {
-            self.request_tab_routing.bind_action(request_id, tab_id);
+            self.bind_action_request_to_tab(request_id, tab_id);
         }
     }
 
@@ -122,9 +126,13 @@ impl FlistWalkerApp {
         self.request_tab_routing.take_action(request_id)
     }
 
+    pub(super) fn bind_sort_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tab_routing.bind_sort(request_id, tab_id);
+    }
+
     pub(super) fn bind_sort_request_to_current_tab(&mut self, request_id: u64) {
         if let Some(tab_id) = self.current_tab_id() {
-            self.request_tab_routing.bind_sort(request_id, tab_id);
+            self.bind_sort_request_to_tab(request_id, tab_id);
         }
     }
 
@@ -135,6 +143,70 @@ impl FlistWalkerApp {
     pub(super) fn clear_tab_owned_request_routing(&mut self, tab_id: u64) {
         self.request_tab_routing.clear_action_for_tab(tab_id);
         self.request_tab_routing.clear_sort_for_tab(tab_id);
+    }
+
+    #[cfg(test)]
+    pub(super) fn action_request_tab(&self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.action.get(&request_id).copied()
+    }
+
+    #[cfg(test)]
+    pub(super) fn sort_request_tab(&self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.sort.get(&request_id).copied()
+    }
+
+    pub(super) fn apply_background_action_response(&mut self, response: ActionResponse) {
+        let Some(tab_id) = self.take_action_request_tab(response.request_id) else {
+            return;
+        };
+        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+            return;
+        };
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return;
+        };
+        if Some(response.request_id) != tab.pending_action_request_id {
+            return;
+        }
+        tab.pending_action_request_id = None;
+        tab.action_in_progress = false;
+        tab.notice = response.notice;
+    }
+
+    pub(super) fn apply_background_sort_response(&mut self, response: SortMetadataResponse) {
+        let Some(tab_id) = self.take_sort_request_tab(response.request_id) else {
+            return;
+        };
+        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+            return;
+        };
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return;
+        };
+        if Some(response.request_id) != tab.result_state.pending_sort_request_id {
+            return;
+        }
+        tab.result_state.pending_sort_request_id = None;
+        tab.result_state.sort_in_progress = false;
+        if response.mode == tab.result_state.result_sort_mode {
+            tab.result_state.results = Self::build_sorted_results_from(
+                &tab.result_state.base_results,
+                tab.result_state.result_sort_mode,
+                self.cache.sort_metadata.get_map(),
+            );
+            tab.result_state.results_compacted = false;
+            if tab.result_state.results.is_empty() {
+                tab.result_state.current_row = None;
+                tab.result_state.preview.clear();
+                tab.pending_preview_request_id = None;
+                tab.preview_in_progress = false;
+            } else {
+                let max_index = tab.result_state.results.len().saturating_sub(1);
+                tab.result_state.current_row =
+                    tab.result_state.current_row.map(|row| row.min(max_index));
+            }
+            Self::compact_inactive_tab_state(tab);
+        }
     }
 
     #[allow(dead_code)]
@@ -207,9 +279,7 @@ impl FlistWalkerApp {
             TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearFileListPendingForTab(
                 tab_id,
             )),
-            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearIndexRoutingForTab(
-                tab_id,
-            )),
+            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearIndexRoutingForTab(tab_id)),
             TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearSearchRoutingForTab(
                 tab_id,
             )),
@@ -603,7 +673,10 @@ impl FlistWalkerApp {
                 query_history_dirty_since: self.query_state.query_history_dirty_since,
                 history_search_active: self.query_state.history_search_active,
                 history_search_query: self.query_state.history_search_query.clone(),
-                history_search_original_query: self.query_state.history_search_original_query.clone(),
+                history_search_original_query: self
+                    .query_state
+                    .history_search_original_query
+                    .clone(),
                 history_search_results: self.query_state.history_search_results.clone(),
                 history_search_current: self.query_state.history_search_current,
             },
@@ -651,8 +724,10 @@ impl FlistWalkerApp {
         self.indexing.in_flight_kind_paths = tab.index_state.in_flight_kind_paths.clone();
         self.indexing.kind_resolution_epoch = tab.index_state.kind_resolution_epoch;
         self.indexing.kind_resolution_in_progress = tab.index_state.kind_resolution_in_progress;
-        self.indexing.incremental_filtered_entries = tab.index_state.incremental_filtered_entries.clone();
-        self.indexing.last_incremental_results_refresh = tab.index_state.last_incremental_results_refresh;
+        self.indexing.incremental_filtered_entries =
+            tab.index_state.incremental_filtered_entries.clone();
+        self.indexing.last_incremental_results_refresh =
+            tab.index_state.last_incremental_results_refresh;
         self.indexing.last_search_snapshot_len = tab.index_state.last_search_snapshot_len;
         self.indexing.search_resume_pending = tab.index_state.search_resume_pending;
         self.indexing.search_rerun_pending = tab.index_state.search_rerun_pending;

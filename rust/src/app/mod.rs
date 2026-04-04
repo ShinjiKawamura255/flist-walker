@@ -50,11 +50,11 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    BackgroundIndexState, CacheStateBundle, FileListDialogKind, FileListManager,
-    HighlightCacheKey, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, RequestTabRoutingState,
-    ResultSortMode, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
-    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
+    BackgroundIndexState, CacheStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
+    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    PendingFileListUseWalkerConfirmation, RequestTabRoutingState, ResultSortMode, RootBrowserState,
+    SortMetadata, TabAccentPalette, TabDragState, UpdateCheckFailureState, UpdateManager,
+    UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
@@ -408,8 +408,15 @@ Search hints:
         launch: LaunchSettings,
         restore_session: Option<(Vec<SavedTabState>, usize)>,
     ) -> Self {
-        let (search_tx, search_rx, worker_bus, index_tx, index_rx, latest_index_request_ids, worker_runtime) =
-            Self::bootstrap_workers().into_parts();
+        let (
+            search_tx,
+            search_rx,
+            worker_bus,
+            index_tx,
+            index_rx,
+            latest_index_request_ids,
+            worker_runtime,
+        ) = Self::bootstrap_workers().into_parts();
         let (
             root,
             limit,
@@ -447,11 +454,7 @@ Search hints:
             status_line: "Initializing...".to_string(),
             search: SearchCoordinator::new(search_tx, search_rx),
             worker_bus,
-            indexing: IndexCoordinator::new(
-                index_tx,
-                index_rx,
-                latest_index_request_ids,
-            ),
+            indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
             ui: RuntimeUiState::new(show_preview, preview_panel_width),
             root_browser: RootBrowserState {
                 #[cfg(test)]
@@ -601,7 +604,11 @@ Search hints:
 
     /// 現在の base result snapshot から表示用の整列結果を生成する。
     fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
-        Self::build_sorted_results_from(&self.base_results, mode, self.cache.sort_metadata.get_map())
+        Self::build_sorted_results_from(
+            &self.base_results,
+            mode,
+            self.cache.sort_metadata.get_map(),
+        )
     }
 
     /// 結果一覧を差し替えつつ current row と scroll 方針を維持する。
@@ -1024,7 +1031,8 @@ Search hints:
             self.ui.last_memory_sample = Instant::now();
             self.ui.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
         }
-        self.ui.memory_usage_bytes
+        self.ui
+            .memory_usage_bytes
             .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
     }
 
@@ -1052,41 +1060,26 @@ Search hints:
     /// action worker の応答を現在 tab または背景 tab に反映する。
     fn poll_action_response(&mut self) {
         while let Ok(response) = self.worker_bus.action.rx.try_recv() {
-            let target_tab_id = self.take_action_request_tab(response.request_id);
             if Some(response.request_id) == self.worker_bus.action.pending_request_id {
+                self.take_action_request_tab(response.request_id);
                 self.worker_bus.action.pending_request_id = None;
                 self.worker_bus.action.in_progress = false;
                 self.set_notice(response.notice);
                 continue;
             }
-
-            let Some(tab_id) = target_tab_id else {
-                continue;
-            };
-            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-                continue;
-            };
-            let Some(tab) = self.tabs.get_mut(tab_index) else {
-                continue;
-            };
-            if Some(response.request_id) != tab.pending_action_request_id {
-                continue;
-            }
-            tab.pending_action_request_id = None;
-            tab.action_in_progress = false;
-            tab.notice = response.notice;
+            self.apply_background_action_response(response);
         }
     }
 
     /// sort worker の応答を cache と tab state へ適用する。
     fn poll_sort_response(&mut self) {
         while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
-            let target_tab_id = self.take_sort_request_tab(response.request_id);
-            for (path, metadata) in response.entries {
-                self.cache_sort_metadata(path, metadata);
+            for (path, metadata) in &response.entries {
+                self.cache_sort_metadata(path.clone(), *metadata);
             }
 
             if Some(response.request_id) == self.worker_bus.sort.pending_request_id {
+                self.take_sort_request_tab(response.request_id);
                 self.worker_bus.sort.pending_request_id = None;
                 self.worker_bus.sort.in_progress = false;
                 if response.mode == self.result_sort_mode {
@@ -1096,40 +1089,7 @@ Search hints:
                 }
                 continue;
             }
-
-            let Some(tab_id) = target_tab_id else {
-                continue;
-            };
-            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-                continue;
-            };
-            let Some(tab) = self.tabs.get_mut(tab_index) else {
-                continue;
-            };
-            if Some(response.request_id) != tab.result_state.pending_sort_request_id {
-                continue;
-            }
-            tab.result_state.pending_sort_request_id = None;
-            tab.result_state.sort_in_progress = false;
-            if response.mode == tab.result_state.result_sort_mode {
-                tab.result_state.results = Self::build_sorted_results_from(
-                    &tab.result_state.base_results,
-                    tab.result_state.result_sort_mode,
-                    self.cache.sort_metadata.get_map(),
-                );
-                tab.result_state.results_compacted = false;
-                if tab.result_state.results.is_empty() {
-                    tab.result_state.current_row = None;
-                    tab.result_state.preview.clear();
-                    tab.pending_preview_request_id = None;
-                    tab.preview_in_progress = false;
-                } else {
-                    let max_index = tab.result_state.results.len().saturating_sub(1);
-                    tab.result_state.current_row =
-                        tab.result_state.current_row.map(|row| row.min(max_index));
-                }
-                Self::compact_inactive_tab_state(tab);
-            }
+            self.apply_background_sort_response(response);
         }
     }
 
@@ -1193,7 +1153,10 @@ Search hints:
                 .map(|entry| entry.path.clone())
                 .collect()
         } else {
-            self.all_entries.iter().map(|entry| entry.path.clone()).collect()
+            self.all_entries
+                .iter()
+                .map(|entry| entry.path.clone())
+                .collect()
         };
         self.queue_unknown_kind_paths(&source);
     }
@@ -1219,7 +1182,8 @@ Search hints:
 
     /// kind 解決キューへ重複なしで path を追加する。
     fn queue_kind_resolution(&mut self, path: PathBuf) {
-        if self.indexing.pending_kind_paths_set.contains(&path) || self.indexing.in_flight_kind_paths.contains(&path)
+        if self.indexing.pending_kind_paths_set.contains(&path)
+            || self.indexing.in_flight_kind_paths.contains(&path)
         {
             return;
         }
@@ -1246,8 +1210,8 @@ Search hints:
             self.indexing.in_flight_kind_paths.insert(path);
             dispatched = dispatched.saturating_add(1);
         }
-        self.indexing.kind_resolution_in_progress =
-            !self.indexing.pending_kind_paths.is_empty() || !self.indexing.in_flight_kind_paths.is_empty();
+        self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
+            || !self.indexing.in_flight_kind_paths.is_empty();
     }
 
     /// kind resolver 応答を吸収し filter/preview を必要最小限で更新する。
@@ -1279,8 +1243,8 @@ Search hints:
             }
         }
 
-        self.indexing.kind_resolution_in_progress =
-            !self.indexing.pending_kind_paths.is_empty() || !self.indexing.in_flight_kind_paths.is_empty();
+        self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
+            || !self.indexing.in_flight_kind_paths.is_empty();
 
         if resolved_any && (!self.include_files || !self.include_dirs) {
             self.apply_entry_filters(true);
@@ -1362,7 +1326,11 @@ Search hints:
         let _ = Self::set_entry_kind_in_slice(&mut self.index.entries, path, kind);
         Self::set_entry_kind_in_arc(&mut self.all_entries, path, kind);
         Self::set_entry_kind_in_arc(&mut self.entries, path, kind);
-        let _ = Self::set_entry_kind_in_slice(&mut self.indexing.incremental_filtered_entries, path, kind);
+        let _ = Self::set_entry_kind_in_slice(
+            &mut self.indexing.incremental_filtered_entries,
+            path,
+            kind,
+        );
     }
 
     /// 既定動作で選択 path を実行またはオープンする。
@@ -1511,8 +1479,7 @@ Search hints:
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
         let old_search_tx = std::mem::replace(&mut self.search.tx, dummy_search_tx);
-        let old_preview_tx =
-            std::mem::replace(&mut self.worker_bus.preview.tx, dummy_preview_tx);
+        let old_preview_tx = std::mem::replace(&mut self.worker_bus.preview.tx, dummy_preview_tx);
         let old_action_tx = std::mem::replace(&mut self.worker_bus.action.tx, dummy_action_tx);
         let old_sort_tx = std::mem::replace(&mut self.worker_bus.sort.tx, dummy_sort_tx);
         let old_kind_tx = std::mem::replace(&mut self.worker_bus.kind.tx, dummy_kind_tx);
