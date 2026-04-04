@@ -5,7 +5,7 @@
 - Current active engineering roadmap: なし
 - App architecture change-plan program: DONE
 - Notes:
-  - app architecture の multi-slice refactor は closure まで完了し、一時 plan 運用の撤去段階へ入った。
+  - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 新しい大規模 workstream を開始する場合は、必要に応じて別の change plan / roadmap を起こす。
 
 ## Completed Programs
@@ -58,4 +58,4 @@
 
 ## Durable History
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。
-- 2026-04-04: closure 完了後は app architecture 用 temporary rule を `AGENTS.md` から削除し、validation は `docs/TESTPLAN.md` の Validation Matrix を直接適用する運用へ戻す。
+- 2026-04-04: closure 完了後、app architecture 用 temporary rule を `AGENTS.md` から削除し、validation は `docs/TESTPLAN.md` の Validation Matrix を直接適用する運用へ戻した。

@@ -149,7 +149,7 @@
 | VM-003 Indexing path | `rust/src/indexer.rs`, `rust/src/app/workers.rs`, `rust/src/app.rs`, `rust/src/app/pipeline.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験 |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
-- Docs and validation closure は docs-only slice とし、全 phase で doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、temporary rule / change plan 撤去を含むため、closure 完了時は `git diff --stat` で docs cleanup の対象が `AGENTS.md` と `docs/*.md` に限られていることも確認する。
+- 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
 - 2026-04-04 app architecture roadmap 完了時点で、request routing localization、Render/UI orchestration、final coordinator cleanup の targeted regression はすべて `cargo test` で green を確認済みである。以後の app architecture 関連変更は VM-001 / VM-002 / VM-003 を直接適用し、slice 固有の Phase rule を増やさない。
 - Commands:
 - `cd rust`

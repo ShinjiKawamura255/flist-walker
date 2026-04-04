@@ -72,10 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- For the remaining app architecture work, read `docs/CHANGE-PLAN-20260404-app-architecture-roadmap.md` before any implementation.
-- For the active slice, also read `docs/CHANGE-PLAN-20260404-docs-validation-closure-slice.md` before implementation.
-- Use the roadmap for large-scope order/dependency decisions, and use the active slice plan for implementation detail and validation.
-- If the active slice changes the roadmap's scope, dependency, or order, update the roadmap first and then update the slice plan.
-- Remove this section and delete both plans after the covered work is complete.
