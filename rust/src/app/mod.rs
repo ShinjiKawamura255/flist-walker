@@ -1521,15 +1521,25 @@ Search hints:
         }
         Some(summary)
     }
-}
 
-impl eframe::App for FlistWalkerApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if process_shutdown_requested() {
-            self.set_notice("Shutdown requested by signal");
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            return;
+    fn request_viewport_close_for_signal(&mut self, ctx: &egui::Context) -> bool {
+        if !process_shutdown_requested() {
+            return false;
         }
+        self.set_notice("Shutdown requested by signal");
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        true
+    }
+
+    fn request_viewport_close_for_install(&mut self, ctx: &egui::Context) -> bool {
+        if !self.update_state.close_requested_for_install {
+            return false;
+        }
+        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        true
+    }
+
+    fn poll_runtime_events(&mut self) {
         self.poll_index_response();
         self.poll_search_response();
         self.poll_action_response();
@@ -1539,11 +1549,9 @@ impl eframe::App for FlistWalkerApp {
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
         self.poll_update_response();
-        if self.update_state.close_requested_for_install {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            return;
-        }
-        self.commit_query_history_if_needed(false);
+    }
+
+    fn schedule_frame_repaint(&mut self, ctx: &egui::Context) {
         let memory_elapsed = self.ui.last_memory_sample.elapsed();
         if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
             self.refresh_status_line();
@@ -1562,6 +1570,9 @@ impl eframe::App for FlistWalkerApp {
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
         }
+    }
+
+    fn run_ui_frame(&mut self, ctx: &egui::Context) {
         self.capture_window_geometry(ctx);
         self.apply_stable_window_geometry(false);
         // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
@@ -1576,20 +1587,36 @@ impl eframe::App for FlistWalkerApp {
         self.maybe_save_ui_state(false);
     }
 
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+    fn persist_state_and_shutdown(&mut self, phase: &str) {
         self.apply_stable_window_geometry(true);
         self.ui.ui_state_dirty = true;
         self.maybe_save_ui_state(true);
-        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, "app exit");
+        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
+    }
+}
+
+impl eframe::App for FlistWalkerApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.request_viewport_close_for_signal(ctx) {
+            return;
+        }
+        self.poll_runtime_events();
+        if self.request_viewport_close_for_install(ctx) {
+            return;
+        }
+        self.commit_query_history_if_needed(false);
+        self.schedule_frame_repaint(ctx);
+        self.run_ui_frame(ctx);
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.persist_state_and_shutdown("app exit");
     }
 }
 
 impl Drop for FlistWalkerApp {
     fn drop(&mut self) {
-        self.apply_stable_window_geometry(true);
-        self.ui.ui_state_dirty = true;
-        self.maybe_save_ui_state(true);
-        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, "drop fallback");
+        self.persist_state_and_shutdown("drop fallback");
     }
 }
 
