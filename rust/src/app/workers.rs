@@ -1,4 +1,5 @@
 use super::{ResultSortMode, SortMetadata};
+#[cfg(not(test))]
 use crate::actions::execute_or_open;
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::{
@@ -815,7 +816,7 @@ pub(super) fn spawn_action_worker(
             let targets = action_targets_for_request(&req.paths, req.open_parent_for_files);
             let mut failure: Option<String> = None;
             for target in &targets {
-                if let Err(err) = execute_or_open(target) {
+                if let Err(err) = run_action_target(target) {
                     failure = Some(format!("Action failed: {}", err));
                     break;
                 }
@@ -841,6 +842,18 @@ pub(super) fn spawn_action_worker(
     });
 
     (tx_req, rx_res, handle)
+}
+
+#[cfg(not(test))]
+fn run_action_target(path: &Path) -> anyhow::Result<()> {
+    execute_or_open(path)
+}
+
+#[cfg(test)]
+fn run_action_target(_path: &Path) -> anyhow::Result<()> {
+    // GUI shortcut / action worker tests only need request/notice behavior.
+    // Avoid spawning xdg-open/open during test runs so stderr stays clean.
+    Ok(())
 }
 
 pub(super) fn spawn_sort_metadata_worker(
