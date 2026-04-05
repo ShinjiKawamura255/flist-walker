@@ -24,6 +24,11 @@ pub(super) struct SortMetadataCacheState {
     order: VecDeque<PathBuf>,
 }
 
+#[derive(Default)]
+pub(super) struct EntryKindCacheState {
+    pub(super) entries: HashMap<PathBuf, EntryKind>,
+}
+
 impl PreviewCacheState {
     pub(super) fn clear(&mut self) {
         self.entries.clear();
@@ -185,6 +190,35 @@ impl SortMetadataCacheState {
     #[cfg(test)]
     pub(super) fn contains_public(&self, path: &Path) -> bool {
         self.contains(path)
+    }
+}
+
+impl EntryKindCacheState {
+    pub(super) fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    pub(super) fn get(&self, path: &Path) -> Option<EntryKind> {
+        self.entries.get(path).copied()
+    }
+
+    pub(super) fn set(&mut self, path: PathBuf, kind: EntryKind) {
+        self.entries.insert(path, kind);
+    }
+
+    pub(super) fn rebuild_from_entries(&mut self, entries: &[Entry]) {
+        for entry in entries {
+            if let Some(kind) = entry.kind {
+                self.entries.insert(entry.path.clone(), kind);
+            }
+        }
+    }
+
+    pub(super) fn rebuild_from_sources(&mut self, sources: &[&[Entry]]) {
+        self.clear();
+        for entries in sources {
+            self.rebuild_from_entries(entries);
+        }
     }
 }
 

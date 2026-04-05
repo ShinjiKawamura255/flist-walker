@@ -686,7 +686,10 @@ pub(super) fn spawn_preview_worker(
                 })
                 .is_err()
             {
-                warn!(request_id = req.request_id, "preview worker receiver closed");
+                warn!(
+                    request_id = req.request_id,
+                    "preview worker receiver closed"
+                );
                 break;
             }
         }
@@ -788,7 +791,10 @@ pub(super) fn spawn_filelist_worker(
                 }
             };
             if tx_res.send(msg).is_err() {
-                warn!(request_id = req.request_id, "filelist worker receiver closed");
+                warn!(
+                    request_id = req.request_id,
+                    "filelist worker receiver closed"
+                );
                 break;
             }
         }
@@ -1060,7 +1066,10 @@ fn stream_filelist_index(
         })
         .is_err()
     {
-        warn!(request_id = req.request_id, "index receiver closed before filelist start");
+        warn!(
+            request_id = req.request_id,
+            "index receiver closed before filelist start"
+        );
         return Err("index receiver closed".to_string());
     }
 
@@ -1176,7 +1185,10 @@ fn stream_filelist_index(
             })
             .is_err()
         {
-            warn!(request_id = req.request_id, "index receiver closed during filelist replace");
+            warn!(
+                request_id = req.request_id,
+                "index receiver closed during filelist replace"
+            );
             return Err("index receiver closed".to_string());
         }
     }
@@ -1211,7 +1223,10 @@ fn stream_walker_index(
         })
         .is_err()
     {
-        warn!(request_id = req.request_id, "index receiver closed before walker start");
+        warn!(
+            request_id = req.request_id,
+            "index receiver closed before walker start"
+        );
         return Err("index receiver closed".to_string());
     }
 
@@ -1282,14 +1297,15 @@ fn stream_walker_index(
             })
             .is_err()
     {
-        warn!(request_id = req.request_id, "index receiver closed during truncation notice");
+        warn!(
+            request_id = req.request_id,
+            "index receiver closed during truncation notice"
+        );
         return Err("index receiver closed".to_string());
     }
     debug!(
         request_id = req.request_id,
-        emitted_entries,
-        truncated,
-        "index worker finished walker stream"
+        emitted_entries, truncated, "index worker finished walker stream"
     );
     Ok(source)
 }
@@ -1461,7 +1477,10 @@ pub(super) fn spawn_index_worker(
                     })
                     .is_err()
                 {
-                    warn!(request_id = req.request_id, "index receiver closed before empty start");
+                    warn!(
+                        request_id = req.request_id,
+                        "index receiver closed before empty start"
+                    );
                     break;
                 }
                 if tx_res_worker
@@ -1471,7 +1490,10 @@ pub(super) fn spawn_index_worker(
                     })
                     .is_err()
                 {
-                    warn!(request_id = req.request_id, "index receiver closed before empty finish");
+                    warn!(
+                        request_id = req.request_id,
+                        "index receiver closed before empty finish"
+                    );
                     break;
                 }
                 continue;
@@ -1516,7 +1538,10 @@ pub(super) fn spawn_index_worker(
                         })
                         .is_err()
                     {
-                        warn!(request_id = req.request_id, "index receiver closed before finish");
+                        warn!(
+                            request_id = req.request_id,
+                            "index receiver closed before finish"
+                        );
                         break;
                     }
                 }
@@ -1534,7 +1559,10 @@ pub(super) fn spawn_index_worker(
                         })
                         .is_err()
                     {
-                        warn!(request_id = req.request_id, "index receiver closed before failure");
+                        warn!(
+                            request_id = req.request_id,
+                            "index receiver closed before failure"
+                        );
                         break;
                     }
                 }

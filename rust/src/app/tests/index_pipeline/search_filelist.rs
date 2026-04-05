@@ -284,7 +284,10 @@ fn deferred_filelist_starts_after_index_finished() {
     app.indexing.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.create_filelist();
-    let request_id = app.indexing.pending_request_id.expect("pending index request");
+    let request_id = app
+        .indexing
+        .pending_request_id
+        .expect("pending index request");
 
     index_tx
         .send(IndexResponse::Batch {

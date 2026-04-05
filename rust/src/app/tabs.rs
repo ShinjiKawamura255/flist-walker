@@ -1,116 +1,6 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
-// Phase 1 scaffolding for the root-change reducer split. Later phases will
-// move root-change-specific state transitions behind an orchestrator that emits
-// these commands instead of mutating FlistWalkerApp directly from mod.rs.
-#[allow(dead_code)]
-pub(super) enum RootChangeUiCommand {
-    SetNotice(String),
-}
-
-#[allow(dead_code)]
-pub(super) enum RootChangePipelineCommand {
-    RequestIndexRefresh,
-}
-
-#[allow(dead_code)]
-pub(super) enum RootChangeAppCommand {
-    MarkUiStateDirty,
-}
-
-#[allow(dead_code)]
-pub(super) enum RootChangeCommand {
-    Ui(RootChangeUiCommand),
-    Pipeline(RootChangePipelineCommand),
-    App(RootChangeAppCommand),
-}
-
-// Phase 1 scaffolding for the shared tab-lifecycle split. Later phases will
-// move the common deactivate/activate ordering behind helpers that emit these
-// commands instead of open-coding the lifecycle steps in each call site.
-#[allow(dead_code)]
-pub(super) enum TabLifecycleUiCommand {
-    FocusQuery,
-}
-
-#[allow(dead_code)]
-pub(super) enum TabLifecyclePipelineCommand {
-    TriggerRestoreRefresh,
-}
-
-#[allow(dead_code)]
-pub(super) enum TabLifecycleAppCommand {
-    ClearTabDragState,
-}
-
-#[allow(dead_code)]
-pub(super) enum TabLifecycleCommand {
-    Ui(TabLifecycleUiCommand),
-    Pipeline(TabLifecyclePipelineCommand),
-    App(TabLifecycleAppCommand),
-}
-
-// Phase 1 scaffolding for the tab-activation/background-restore split. Later
-// phases will move restore-decision and activation-time lazy refresh handling
-// behind a dedicated helper that emits these commands instead of open-coding
-// pending_restore_refresh transitions across tabs.rs and pipeline.rs.
-#[allow(dead_code)]
-pub(super) enum TabRestorePipelineCommand {
-    RequestIndexRefresh,
-}
-
-#[allow(dead_code)]
-pub(super) enum TabRestoreAppCommand {
-    ConsumePendingRestoreRefresh,
-}
-
-#[allow(dead_code)]
-pub(super) enum TabRestoreCommand {
-    Pipeline(TabRestorePipelineCommand),
-    App(TabRestoreAppCommand),
-}
-
-// Phase 1 scaffolding for the tab-close cleanup split. Later phases will move
-// close-specific pending/routing cleanup behind a dedicated helper that emits
-// these commands instead of open-coding subsystem cleanup in close_tab_index().
-#[allow(dead_code)]
-pub(super) enum TabCloseCleanupAppCommand {
-    ClearFileListPendingForTab(u64),
-    ClearIndexRoutingForTab(u64),
-    ClearSearchRoutingForTab(u64),
-    ClearRequestRoutingForTab(u64),
-    InvalidateMemorySample,
-}
-
-#[allow(dead_code)]
-pub(super) enum TabCloseCleanupCommand {
-    App(TabCloseCleanupAppCommand),
-}
-
-// Phase 1 scaffolding for the tab-reorder split. Later phases will move
-// reorder-specific transition ordering behind a dedicated helper that emits
-// these commands instead of open-coding drag cleanup and active-tab reapply in
-// move_tab().
-#[derive(Clone, Copy)]
-#[allow(dead_code)]
-pub(super) enum TabReorderUiCommand {
-    ClearTabDragState,
-}
-
-#[derive(Clone, Copy)]
-#[allow(dead_code)]
-pub(super) enum TabReorderAppCommand {
-    ApplyActiveTabState,
-}
-
-#[derive(Clone, Copy)]
-#[allow(dead_code)]
-pub(super) enum TabReorderCommand {
-    Ui(TabReorderUiCommand),
-    App(TabReorderAppCommand),
-}
-
 impl FlistWalkerApp {
     pub(super) fn bind_action_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
         self.request_tab_routing.bind_action(request_id, tab_id);
@@ -235,138 +125,38 @@ impl FlistWalkerApp {
         true
     }
 
-    #[allow(dead_code)]
-    fn dispatch_tab_restore_commands(&mut self, commands: Vec<TabRestoreCommand>) {
-        for command in commands {
-            match command {
-                TabRestoreCommand::Pipeline(TabRestorePipelineCommand::RequestIndexRefresh) => {
-                    self.request_index_refresh();
-                }
-                TabRestoreCommand::App(TabRestoreAppCommand::ConsumePendingRestoreRefresh) => {
-                    self.pending_restore_refresh = false;
-                    if let Some(tab) = self.tabs.get_mut(self.active_tab) {
-                        tab.pending_restore_refresh = false;
-                    }
-                }
-            }
-        }
+    fn clear_tab_drag_state(&mut self) {
+        self.ui.tab_drag_state = None;
     }
 
-    #[allow(dead_code)]
-    fn dispatch_tab_close_cleanup_commands(&mut self, commands: Vec<TabCloseCleanupCommand>) {
-        for command in commands {
-            match command {
-                TabCloseCleanupCommand::App(
-                    TabCloseCleanupAppCommand::ClearFileListPendingForTab(tab_id),
-                ) => {
-                    self.filelist_state.clear_pending_for_tab(tab_id);
-                }
-                TabCloseCleanupCommand::App(
-                    TabCloseCleanupAppCommand::ClearIndexRoutingForTab(tab_id),
-                ) => {
-                    self.indexing.clear_for_tab(tab_id);
-                }
-                TabCloseCleanupCommand::App(
-                    TabCloseCleanupAppCommand::ClearSearchRoutingForTab(tab_id),
-                ) => {
-                    self.search.clear_for_tab(tab_id);
-                }
-                TabCloseCleanupCommand::App(
-                    TabCloseCleanupAppCommand::ClearRequestRoutingForTab(tab_id),
-                ) => {
-                    self.clear_preview_request_routing_for_tab(tab_id);
-                    self.clear_tab_owned_request_routing(tab_id);
-                }
-                TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample) => {
-                    self.ui.memory_usage_bytes = None;
-                }
-            }
-        }
-    }
-
-    #[allow(dead_code)]
-    fn dispatch_tab_reorder_commands(&mut self, commands: Vec<TabReorderCommand>) {
-        for command in commands {
-            match command {
-                TabReorderCommand::Ui(TabReorderUiCommand::ClearTabDragState) => {
-                    self.ui.tab_drag_state = None;
-                }
-                TabReorderCommand::App(TabReorderAppCommand::ApplyActiveTabState) => {
-                    if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
-                        self.apply_tab_state(&tab);
-                    }
-                }
-            }
-        }
-    }
-
-    fn tab_close_cleanup_commands(&self, tab_id: u64) -> Vec<TabCloseCleanupCommand> {
-        vec![
-            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearFileListPendingForTab(
-                tab_id,
-            )),
-            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearIndexRoutingForTab(tab_id)),
-            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearSearchRoutingForTab(
-                tab_id,
-            )),
-            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::ClearRequestRoutingForTab(
-                tab_id,
-            )),
-            TabCloseCleanupCommand::App(TabCloseCleanupAppCommand::InvalidateMemorySample),
-        ]
-    }
-
-    fn tab_reorder_commands_for_move(&self) -> Vec<TabReorderCommand> {
-        vec![
-            TabReorderCommand::Ui(TabReorderUiCommand::ClearTabDragState),
-            TabReorderCommand::App(TabReorderAppCommand::ApplyActiveTabState),
-        ]
-    }
-
-    fn dispatch_tab_lifecycle_commands(&mut self, commands: Vec<TabLifecycleCommand>) {
-        for command in commands {
-            match command {
-                TabLifecycleCommand::Ui(TabLifecycleUiCommand::FocusQuery) => {
-                    self.ui.focus_query_requested = true;
-                    self.ui.unfocus_query_requested = false;
-                }
-                TabLifecycleCommand::Pipeline(
-                    TabLifecyclePipelineCommand::TriggerRestoreRefresh,
-                ) => {
-                    self.dispatch_tab_restore_for_activation(true);
-                }
-                TabLifecycleCommand::App(TabLifecycleAppCommand::ClearTabDragState) => {
-                    self.ui.tab_drag_state = None;
-                }
-            }
-        }
-    }
-
-    fn tab_restore_commands_for_activation(
-        &self,
-        trigger_restore_refresh: bool,
-    ) -> Vec<TabRestoreCommand> {
-        if !trigger_restore_refresh || !self.pending_restore_refresh {
-            return Vec::new();
-        }
-        vec![
-            TabRestoreCommand::App(TabRestoreAppCommand::ConsumePendingRestoreRefresh),
-            TabRestoreCommand::Pipeline(TabRestorePipelineCommand::RequestIndexRefresh),
-        ]
-    }
-
-    fn dispatch_tab_restore_for_activation(&mut self, trigger_restore_refresh: bool) {
-        let commands = self.tab_restore_commands_for_activation(trigger_restore_refresh);
-        if commands.is_empty() {
+    fn trigger_pending_restore_refresh(&mut self) {
+        if !self.pending_restore_refresh {
             return;
         }
-        self.dispatch_tab_restore_commands(commands);
+        self.pending_restore_refresh = false;
+        if let Some(tab) = self.tabs.get_mut(self.active_tab) {
+            tab.pending_restore_refresh = false;
+        }
+        self.request_index_refresh();
+    }
+
+    fn clear_closed_tab_state(&mut self, tab_id: u64) {
+        self.filelist_state.clear_pending_for_tab(tab_id);
+        self.indexing.clear_for_tab(tab_id);
+        self.search.clear_for_tab(tab_id);
+        self.clear_preview_request_routing_for_tab(tab_id);
+        self.clear_tab_owned_request_routing(tab_id);
+        self.ui.memory_usage_bytes = None;
+    }
+
+    fn reapply_active_tab_state(&mut self) {
+        if let Some(tab) = self.tabs.get(self.active_tab).cloned() {
+            self.apply_tab_state(&tab);
+        }
     }
 
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
-        self.dispatch_tab_lifecycle_commands(vec![TabLifecycleCommand::App(
-            TabLifecycleAppCommand::ClearTabDragState,
-        )]);
+        self.clear_tab_drag_state();
         self.shrink_checkpoint_buffers();
         let previous_active = self.active_tab;
         self.sync_active_tab_state();
@@ -387,40 +177,18 @@ impl FlistWalkerApp {
         if restore_results {
             self.restore_results_from_compacted_tab();
         }
-        let mut commands = Vec::new();
         if request_focus {
-            commands.push(TabLifecycleCommand::Ui(TabLifecycleUiCommand::FocusQuery));
+            self.ui.focus_query_requested = true;
+            self.ui.unfocus_query_requested = false;
         }
         if trigger_restore_refresh {
-            commands.push(TabLifecycleCommand::Pipeline(
-                TabLifecyclePipelineCommand::TriggerRestoreRefresh,
-            ));
-        }
-        if !commands.is_empty() {
-            self.dispatch_tab_lifecycle_commands(commands);
+            self.trigger_pending_restore_refresh();
         }
     }
-
-    pub(super) fn dispatch_root_change_commands(&mut self, commands: Vec<RootChangeCommand>) {
-        for command in commands {
-            match command {
-                RootChangeCommand::Ui(RootChangeUiCommand::SetNotice(notice)) => {
-                    self.set_notice(notice);
-                }
-                RootChangeCommand::Pipeline(RootChangePipelineCommand::RequestIndexRefresh) => {
-                    self.request_index_refresh();
-                }
-                RootChangeCommand::App(RootChangeAppCommand::MarkUiStateDirty) => {
-                    self.mark_ui_state_dirty();
-                }
-            }
-        }
-    }
-
-    pub(super) fn root_change_commands(&mut self, new_root: PathBuf) -> Vec<RootChangeCommand> {
+    pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
         let normalized = normalize_windows_path_buf(new_root);
         if Self::path_key(&normalized) == Self::path_key(&self.root) {
-            return Vec::new();
+            return;
         }
 
         self.root = normalized;
@@ -438,15 +206,9 @@ impl FlistWalkerApp {
         self.cancel_stale_pending_filelist_confirmation();
         self.cancel_stale_pending_filelist_ancestor_confirmation();
         self.cancel_stale_pending_filelist_use_walker_confirmation();
-
-        vec![
-            RootChangeCommand::App(RootChangeAppCommand::MarkUiStateDirty),
-            RootChangeCommand::Pipeline(RootChangePipelineCommand::RequestIndexRefresh),
-            RootChangeCommand::Ui(RootChangeUiCommand::SetNotice(format!(
-                "Root changed: {}",
-                self.root_display_text()
-            ))),
-        ]
+        self.mark_ui_state_dirty();
+        self.request_index_refresh();
+        self.set_notice(format!("Root changed: {}", self.root_display_text()));
     }
 
     pub(super) fn choose_startup_root(
@@ -566,7 +328,7 @@ impl FlistWalkerApp {
             self.apply_tab_state(&tab);
             self.ui.focus_query_requested = true;
             self.ui.unfocus_query_requested = false;
-            self.dispatch_tab_restore_for_activation(true);
+            self.trigger_pending_restore_refresh();
             self.notice = "Restored tab session".to_string();
             self.refresh_status_line();
         }
@@ -780,6 +542,7 @@ impl FlistWalkerApp {
         self.ui.scroll_to_current = tab.scroll_to_current;
         self.ui.focus_query_requested = tab.focus_query_requested;
         self.ui.unfocus_query_requested = tab.unfocus_query_requested;
+        self.rebuild_entry_kind_cache();
         self.refresh_status_line();
     }
 
@@ -897,10 +660,10 @@ impl FlistWalkerApp {
             }
             return;
         }
-        self.ui.tab_drag_state = None;
+        self.clear_tab_drag_state();
         self.sync_active_tab_state();
         let removed = self.tabs.remove(index);
-        self.dispatch_tab_close_cleanup_commands(self.tab_close_cleanup_commands(removed.id));
+        self.clear_closed_tab_state(removed.id);
         if index < self.active_tab {
             self.active_tab = self.active_tab.saturating_sub(1);
         }
@@ -916,8 +679,7 @@ impl FlistWalkerApp {
         if from_index >= self.tabs.len() || to_index >= self.tabs.len() || from_index == to_index {
             return;
         }
-        let commands = self.tab_reorder_commands_for_move();
-        self.dispatch_tab_reorder_commands(vec![commands[0].clone()]);
+        self.clear_tab_drag_state();
         self.sync_active_tab_state();
         let Some(active_tab_id) = self.tabs.get(self.active_tab).map(|tab| tab.id) else {
             return;
@@ -927,7 +689,7 @@ impl FlistWalkerApp {
         if let Some(new_active) = self.find_tab_index_by_id(active_tab_id) {
             self.active_tab = new_active;
         }
-        self.dispatch_tab_reorder_commands(vec![commands[1].clone()]);
+        self.reapply_active_tab_state();
     }
 
     pub(super) fn activate_next_tab(&mut self) {

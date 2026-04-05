@@ -150,11 +150,10 @@ impl FlistWalkerApp {
         let mut text_changed = false;
         let mut cursor_changed = false;
         let char_len = Self::char_count(&self.query_state.query);
-        let ccursor = output
-            .state
-            .cursor
-            .char_range()
-            .unwrap_or_else(|| egui::text::CCursorRange::one(egui::text::CCursor::new(char_len)));
+        let ccursor =
+            output.state.cursor.char_range().unwrap_or_else(|| {
+                egui::text::CCursorRange::one(egui::text::CCursor::new(char_len))
+            });
         let mut cursor = ccursor.primary.index.min(char_len);
         let mut anchor = ccursor.secondary.index.min(char_len);
 
@@ -802,12 +801,16 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn move_history_search_selection(&mut self, delta: isize) {
-        if !self.query_state.history_search_active || self.query_state.history_search_results.is_empty() {
+        if !self.query_state.history_search_active
+            || self.query_state.history_search_results.is_empty()
+        {
             return;
         }
         let current = self.query_state.history_search_current.unwrap_or(0) as isize;
-        let next = (current + delta)
-            .clamp(0, self.query_state.history_search_results.len() as isize - 1);
+        let next = (current + delta).clamp(
+            0,
+            self.query_state.history_search_results.len() as isize - 1,
+        );
         self.query_state.history_search_current = Some(next as usize);
     }
 
@@ -961,11 +964,7 @@ impl FlistWalkerApp {
 
         let space_down_now = ctx.input(|i| i.key_down(egui::Key::Space));
         let shift_down_now = ctx.input(|i| i.modifiers.shift);
-        if query_focused
-            && space_down_now
-            && !self.ui.prev_space_down
-            && fallback_space.is_none()
-        {
+        if query_focused && space_down_now && !self.ui.prev_space_down && fallback_space.is_none() {
             requested_full_space = shift_down_now;
             fallback_space = Some(' ');
             saw_space_key = true;
@@ -999,7 +998,10 @@ impl FlistWalkerApp {
         } else if query_focused && text_changed_by_widget {
             Self::append_window_trace(
                 "ime_composition_commit_widget_owned",
-                &format!("query_chars_after={}", self.query_state.query.chars().count()),
+                &format!(
+                    "query_chars_after={}",
+                    self.query_state.query.chars().count()
+                ),
             );
         }
 

@@ -1,7 +1,6 @@
 use super::*;
 use crate::app::render::{
-    RenderCommand, RenderFileListDialogCommand, RenderTopActionCommand,
-    RenderUpdateDialogCommand,
+    RenderCommand, RenderFileListDialogCommand, RenderTopActionCommand, RenderUpdateDialogCommand,
 };
 
 #[test]
@@ -64,7 +63,9 @@ fn dispatch_render_commands_consumes_top_action_queue() {
     app.pinned_paths.insert(root.join("keep.txt"));
     let ctx = egui::Context::default();
 
-    app.queue_render_command(RenderCommand::TopAction(RenderTopActionCommand::ClearPinned));
+    app.queue_render_command(RenderCommand::TopAction(
+        RenderTopActionCommand::ClearPinned,
+    ));
     app.dispatch_render_commands(&ctx);
 
     assert!(app.pinned_paths.is_empty());
@@ -141,7 +142,10 @@ fn result_row_text_pos_is_left_aligned_and_vertically_centered() {
 
 #[test]
 fn tab_drop_index_returns_none_for_empty_tabs() {
-    assert_eq!(FlistWalkerApp::tab_drop_index(&[], egui::pos2(10.0, 10.0)), None);
+    assert_eq!(
+        FlistWalkerApp::tab_drop_index(&[], egui::pos2(10.0, 10.0)),
+        None
+    );
 }
 
 #[test]
@@ -151,7 +155,10 @@ fn tab_drop_index_chooses_first_tab_before_first_center() {
         egui::Rect::from_min_max(egui::pos2(110.0, 0.0), egui::pos2(210.0, 24.0)),
     ];
 
-    assert_eq!(FlistWalkerApp::tab_drop_index(&rects, egui::pos2(20.0, 12.0)), Some(0));
+    assert_eq!(
+        FlistWalkerApp::tab_drop_index(&rects, egui::pos2(20.0, 12.0)),
+        Some(0)
+    );
 }
 
 #[test]
@@ -162,7 +169,10 @@ fn tab_drop_index_chooses_middle_tab_when_pointer_is_between_centers() {
         egui::Rect::from_min_max(egui::pos2(220.0, 0.0), egui::pos2(320.0, 24.0)),
     ];
 
-    assert_eq!(FlistWalkerApp::tab_drop_index(&rects, egui::pos2(170.0, 12.0)), Some(2));
+    assert_eq!(
+        FlistWalkerApp::tab_drop_index(&rects, egui::pos2(170.0, 12.0)),
+        Some(2)
+    );
 }
 
 #[test]
@@ -172,5 +182,8 @@ fn tab_drop_index_returns_last_tab_after_all_centers() {
         egui::Rect::from_min_max(egui::pos2(110.0, 0.0), egui::pos2(210.0, 24.0)),
     ];
 
-    assert_eq!(FlistWalkerApp::tab_drop_index(&rects, egui::pos2(260.0, 12.0)), Some(1));
+    assert_eq!(
+        FlistWalkerApp::tab_drop_index(&rects, egui::pos2(260.0, 12.0)),
+        Some(1)
+    );
 }

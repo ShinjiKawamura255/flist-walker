@@ -17,11 +17,17 @@ pub(super) enum FileListWorkerCommand {
 #[allow(dead_code)]
 pub(super) enum FileListAppCommand {
     SetPendingAfterIndex(Option<PendingFileListAfterIndex>),
-    SetIncludeFilesAndDirs { include_files: bool, include_dirs: bool },
+    SetIncludeFilesAndDirs {
+        include_files: bool,
+        include_dirs: bool,
+    },
     RequestIndexRefresh,
     RequestCreateFileListWalkerRefresh,
     RequestBackgroundIndexRefreshForTab(usize),
-    SetUseFileListForTab { tab_index: usize, use_filelist: bool },
+    SetUseFileListForTab {
+        tab_index: usize,
+        use_filelist: bool,
+    },
 }
 
 #[allow(dead_code)]
@@ -112,7 +118,10 @@ impl FlistWalkerApp {
         let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
             .filelist_state
-            .cancel_stale_pending_use_walker_confirmation(current_tab_id, current_root_key.as_ref());
+            .cancel_stale_pending_use_walker_confirmation(
+                current_tab_id,
+                current_root_key.as_ref(),
+            );
         if should_cancel {
             self.set_notice("Pending Create File List confirmation canceled because root changed");
         }
@@ -133,9 +142,12 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
         propagate_to_ancestors: bool,
     ) {
-        let commands = self
-            .filelist_state
-            .start_request_commands(tab_id, root, entries, propagate_to_ancestors);
+        let commands = self.filelist_state.start_request_commands(
+            tab_id,
+            root,
+            entries,
+            propagate_to_ancestors,
+        );
         self.dispatch_filelist_commands(commands);
     }
 
@@ -449,9 +461,7 @@ impl FlistWalkerApp {
                             )]);
                         } else if tab_index != self.active_tab {
                             self.dispatch_filelist_commands(vec![FileListCommand::App(
-                                FileListAppCommand::RequestBackgroundIndexRefreshForTab(
-                                    tab_index,
-                                ),
+                                FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
                             )]);
                         }
                     }

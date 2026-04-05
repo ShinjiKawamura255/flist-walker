@@ -685,6 +685,7 @@ impl DerefMut for UpdateManager {
 pub(super) struct CacheStateBundle {
     pub(super) preview: PreviewCacheState,
     pub(super) highlight: HighlightCacheState,
+    pub(super) entry_kind: EntryKindCacheState,
     pub(super) sort_metadata: SortMetadataCacheState,
 }
 

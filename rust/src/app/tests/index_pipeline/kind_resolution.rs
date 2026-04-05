@@ -218,6 +218,49 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[test]
+fn kind_response_batch_updates_multiple_entries_in_one_poll() {
+    let root = test_root("kind-response-batch-updates");
+    let left = root.join("left");
+    let right = root.join("right");
+    fs::create_dir_all(&left).expect("create left dir");
+    fs::create_dir_all(&right).expect("create right dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.all_entries = Arc::new(vec![
+        unknown_entry(left.clone()),
+        unknown_entry(right.clone()),
+    ]);
+    app.include_files = false;
+    app.include_dirs = true;
+    app.apply_entry_filters(true);
+
+    let (tx, rx) = mpsc::channel::<KindResolveResponse>();
+    app.worker_bus.kind.rx = rx;
+    app.indexing.in_flight_kind_paths.insert(left.clone());
+    app.indexing.in_flight_kind_paths.insert(right.clone());
+    let epoch = app.indexing.kind_resolution_epoch;
+    tx.send(KindResolveResponse {
+        epoch,
+        path: left.clone(),
+        kind: Some(EntryKind::dir()),
+    })
+    .expect("send left kind response");
+    tx.send(KindResolveResponse {
+        epoch,
+        path: right.clone(),
+        kind: Some(EntryKind::dir()),
+    })
+    .expect("send right kind response");
+
+    app.poll_kind_response();
+
+    assert_eq!(app.find_entry_kind(&left), Some(EntryKind::dir()));
+    assert_eq!(app.find_entry_kind(&right), Some(EntryKind::dir()));
+    assert_eq!(app.entries.as_ref(), &vec![left.clone(), right.clone()]);
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[cfg(unix)]
 #[test]
 fn kind_resolver_marks_symlink_as_link() {

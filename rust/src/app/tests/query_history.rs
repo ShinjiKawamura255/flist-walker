@@ -68,7 +68,11 @@ fn query_history_skips_empty_and_consecutive_duplicates() {
     commit_query_history_for_test(&mut app);
 
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["same".to_string(), "other".to_string()]
     );
     let _ = fs::remove_dir_all(&root);
@@ -86,7 +90,11 @@ fn query_history_is_shared_across_tabs() {
 
     app.create_new_tab();
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["tab-a".to_string()]
     );
     app.query_state.query = "tab-b".to_string();
@@ -96,14 +104,22 @@ fn query_history_is_shared_across_tabs() {
 
     app.switch_to_tab_index(0);
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["tab-a".to_string(), "tab-b".to_string()]
     );
     assert_eq!(app.query_state.query, "tab-a");
 
     app.switch_to_tab_index(1);
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["tab-a".to_string(), "tab-b".to_string()]
     );
     assert_eq!(app.query_state.query, "tab-b");
@@ -137,7 +153,11 @@ fn root_change_resets_query_history_navigation_state() {
     assert!(app.query_state.query_history_draft.is_none());
     assert!(!app.query_state.history_search_active);
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["first".to_string(), "second".to_string()]
     );
     let _ = fs::remove_dir_all(&root_a);
@@ -158,7 +178,11 @@ fn query_history_commits_only_final_query_after_typing_burst() {
     commit_query_history_for_test(&mut app);
 
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["test".to_string()]
     );
     let _ = fs::remove_dir_all(&root);
@@ -190,7 +214,11 @@ fn query_history_skips_ime_intermediate_text_until_composition_ends() {
     commit_query_history_for_test(&mut app);
 
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["テスト".to_string()]
     );
     let _ = fs::remove_dir_all(&root);
@@ -209,7 +237,10 @@ fn query_history_keeps_only_the_latest_hundred_entries() {
         commit_query_history_for_test(&mut app);
     }
 
-    assert_eq!(app.query_state.query_history.len(), FlistWalkerApp::QUERY_HISTORY_MAX);
+    assert_eq!(
+        app.query_state.query_history.len(),
+        FlistWalkerApp::QUERY_HISTORY_MAX
+    );
     assert_eq!(
         app.query_state.query_history.front().map(String::as_str),
         Some("query-005")
@@ -269,7 +300,11 @@ fn query_history_is_saved_and_loaded_via_ui_state() {
         commit_query_history_for_test(&mut app);
     }
     assert_eq!(
-        app.query_state.query_history.iter().cloned().collect::<Vec<_>>(),
+        app.query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
         vec!["alpha".to_string(), "beta".to_string(), "gamma".to_string()]
     );
 

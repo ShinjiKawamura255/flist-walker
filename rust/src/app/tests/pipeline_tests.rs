@@ -61,13 +61,12 @@ fn should_refresh_incremental_search_is_false_for_small_delta_while_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     app.indexing.in_progress = true;
-    app.indexing.incremental_filtered_entries =
-        (0..64)
-            .map(|i| unknown_entry(root.join(format!("file-{i}.txt"))))
-            .collect();
+    app.indexing.incremental_filtered_entries = (0..64)
+        .map(|i| unknown_entry(root.join(format!("file-{i}.txt"))))
+        .collect();
     app.indexing.last_search_snapshot_len = 0;
-    app.indexing.last_incremental_results_refresh = Instant::now()
-        - FlistWalkerApp::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
+    app.indexing.last_incremental_results_refresh =
+        Instant::now() - FlistWalkerApp::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
 
     assert!(!app.should_refresh_incremental_search());
     let _ = fs::remove_dir_all(&root);
@@ -79,12 +78,13 @@ fn should_refresh_incremental_search_is_true_for_large_delta_after_interval() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     app.indexing.in_progress = true;
-    app.indexing.incremental_filtered_entries = (0..(FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX + 1))
+    app.indexing.incremental_filtered_entries = (0
+        ..(FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX + 1))
         .map(|i| unknown_entry(root.join(format!("file-{i}.txt"))))
         .collect();
     app.indexing.last_search_snapshot_len = 0;
-    app.indexing.last_incremental_results_refresh = Instant::now()
-        - FlistWalkerApp::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
+    app.indexing.last_incremental_results_refresh =
+        Instant::now() - FlistWalkerApp::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
 
     assert!(app.should_refresh_incremental_search());
     let _ = fs::remove_dir_all(&root);

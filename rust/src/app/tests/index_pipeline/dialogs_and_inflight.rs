@@ -294,7 +294,8 @@ fn stale_terminal_index_response_clears_inflight_slot() {
     let current_tab_id = app.current_tab_id().expect("tab id");
     app.indexing.pending_request_id = Some(778);
     app.indexing.inflight_requests.insert(stale_request_id);
-    app.indexing.request_tabs
+    app.indexing
+        .request_tabs
         .insert(stale_request_id, current_tab_id);
 
     tx.send(IndexResponse::Finished {

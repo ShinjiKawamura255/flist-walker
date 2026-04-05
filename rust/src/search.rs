@@ -1,8 +1,8 @@
+use crate::path_utils::normalize_windows_path;
 use crate::query::{
     include_alternatives, parse_include_alternative, parse_query, split_anchor,
     token_uses_regex_syntax,
 };
-use crate::path_utils::normalize_windows_path;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use rayon::prelude::*;
@@ -755,10 +755,7 @@ pub fn try_search_entries_with_scope(
         prefer_relative,
         None,
     )?;
-    let results = materialize_scored_entries(
-        entries,
-        top_ranked_scores(scored.scored, limit),
-    );
+    let results = materialize_scored_entries(entries, top_ranked_scores(scored.scored, limit));
     let elapsed_ms = started_at.elapsed().as_millis();
     debug!(
         query,

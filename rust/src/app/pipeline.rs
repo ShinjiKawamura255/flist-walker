@@ -58,6 +58,7 @@ impl FlistWalkerApp {
         self.index.source = IndexSource::None;
         self.clear_preview_cache();
         self.clear_highlight_cache();
+        self.cache.entry_kind.clear();
         self.indexing.incremental_filtered_entries.clear();
         self.indexing.pending_entries.clear();
         self.indexing.pending_entries_request_id = None;
@@ -121,6 +122,7 @@ impl FlistWalkerApp {
         self.index.source = IndexSource::None;
         self.clear_preview_cache();
         self.clear_highlight_cache();
+        self.cache.entry_kind.clear();
         self.indexing.pending_entries.clear();
         self.indexing.pending_entries_request_id = None;
         self.reset_kind_resolution_state();
@@ -265,7 +267,8 @@ impl FlistWalkerApp {
             .iter()
             .copied()
             .filter(|request_id| {
-                self.indexing.request_tabs
+                self.indexing
+                    .request_tabs
                     .get(request_id)
                     .is_some_and(|tab_id| *tab_id == req.tab_id)
             })
@@ -275,7 +278,9 @@ impl FlistWalkerApp {
             self.indexing.request_tabs.remove(&request_id);
             self.indexing.background_states.remove(&request_id);
         }
-        self.indexing.pending_queue.retain(|queued| queued.tab_id != req.tab_id);
+        self.indexing
+            .pending_queue
+            .retain(|queued| queued.tab_id != req.tab_id);
         self.indexing.pending_queue.push_back(req);
 
         while self.indexing.pending_queue.len() > Self::INDEX_MAX_QUEUE {
@@ -303,12 +308,16 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
-        self.indexing.pending_queue.iter().any(|req| req.tab_id == tab_id)
+        self.indexing
+            .pending_queue
+            .iter()
+            .any(|req| req.tab_id == tab_id)
     }
 
     pub(super) fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
         self.indexing.inflight_requests.iter().any(|request_id| {
-            self.indexing.request_tabs
+            self.indexing
+                .request_tabs
                 .get(request_id)
                 .is_some_and(|rid_tab_id| *rid_tab_id == tab_id)
         })
@@ -316,11 +325,10 @@ impl FlistWalkerApp {
 
     pub(super) fn pop_next_index_request(&mut self) -> Option<IndexRequest> {
         let active_tab_id = self.current_tab_id()?;
-        if let Some(pos) = self
-            .indexing
-            .pending_queue
-            .iter()
-            .position(|req| req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id))
+        if let Some(pos) =
+            self.indexing.pending_queue.iter().position(|req| {
+                req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id)
+            })
         {
             return self.indexing.pending_queue.remove(pos);
         }
@@ -346,20 +354,22 @@ impl FlistWalkerApp {
             return false;
         }
 
-        let victim_request_id = self
-            .indexing
-            .inflight_requests
-            .iter()
-            .copied()
-            .find(|request_id| {
-                self.indexing.request_tabs
-                    .get(request_id)
-                    .is_some_and(|tab_id| *tab_id != active_tab_id)
-            });
+        let victim_request_id =
+            self.indexing
+                .inflight_requests
+                .iter()
+                .copied()
+                .find(|request_id| {
+                    self.indexing
+                        .request_tabs
+                        .get(request_id)
+                        .is_some_and(|tab_id| *tab_id != active_tab_id)
+                });
         let Some(victim_request_id) = victim_request_id else {
             return false;
         };
-        let Some(victim_tab_id) = self.indexing.request_tabs.get(&victim_request_id).copied() else {
+        let Some(victim_tab_id) = self.indexing.request_tabs.get(&victim_request_id).copied()
+        else {
             return false;
         };
         let replacement_request_id = self
@@ -441,7 +451,8 @@ impl FlistWalkerApp {
                         return;
                     }
                     tab.index_state.index.source = source.clone();
-                    self.indexing.background_states
+                    self.indexing
+                        .background_states
                         .entry(request_id)
                         .or_default()
                         .source = Some(source);
@@ -453,7 +464,11 @@ impl FlistWalkerApp {
                     if tab.index_state.pending_index_request_id != Some(request_id) {
                         return;
                     }
-                    let state = self.indexing.background_states.entry(request_id).or_default();
+                    let state = self
+                        .indexing
+                        .background_states
+                        .entry(request_id)
+                        .or_default();
                     for entry in entries {
                         state.entries.push(entry.into());
                     }
@@ -465,7 +480,11 @@ impl FlistWalkerApp {
                     if tab.index_state.pending_index_request_id != Some(request_id) {
                         return;
                     }
-                    let state = self.indexing.background_states.entry(request_id).or_default();
+                    let state = self
+                        .indexing
+                        .background_states
+                        .entry(request_id)
+                        .or_default();
                     state.entries.clear();
                     for entry in entries {
                         state.entries.push(entry.into());
@@ -490,7 +509,13 @@ impl FlistWalkerApp {
                                 .index_state
                                 .all_entries
                                 .iter()
-                                .filter(|entry| Self::is_entry_visible_for_flags(entry, tab.include_files, tab.include_dirs))
+                                .filter(|entry| {
+                                    Self::is_entry_visible_for_flags(
+                                        entry,
+                                        tab.include_files,
+                                        tab.include_dirs,
+                                    )
+                                })
                                 .cloned()
                                 .collect();
                             tab.index_state.entries = Arc::new(filtered);
@@ -509,8 +534,12 @@ impl FlistWalkerApp {
                                     && !tab.index_state.pending_kind_paths_set.contains(&entry.path)
                                     && !tab.index_state.in_flight_kind_paths.contains(&entry.path)
                                 {
-                                    tab.index_state.pending_kind_paths_set.insert(entry.path.clone());
-                                    tab.index_state.pending_kind_paths.push_back(entry.path.clone());
+                                    tab.index_state
+                                        .pending_kind_paths_set
+                                        .insert(entry.path.clone());
+                                    tab.index_state
+                                        .pending_kind_paths
+                                        .push_back(entry.path.clone());
                                 }
                             }
                             tab.index_state.kind_resolution_in_progress =
@@ -718,6 +747,7 @@ impl FlistWalkerApp {
                     self.indexing.background_states.remove(&request_id);
                     self.indexing.in_progress = false;
                     self.apply_entry_filters(true);
+                    self.rebuild_entry_kind_cache();
                     if matches!(self.index.source, IndexSource::Walker) {
                         self.queue_unknown_kind_paths_for_completed_walker_entries();
                     } else {
@@ -992,11 +1022,16 @@ impl FlistWalkerApp {
 
     fn ingest_index_entry(&mut self, entry: IndexEntry) {
         let entry: Entry = entry.into();
+        if let Some(kind) = entry.kind {
+            self.cache.entry_kind.set(entry.path.clone(), kind);
+        }
         if entry.kind.is_none() && self.kind_resolution_needed_for_filters() {
             self.queue_kind_resolution(entry.path.clone());
         }
         if self.is_entry_visible_for_current_filter(&entry) {
-            self.indexing.incremental_filtered_entries.push(entry.clone());
+            self.indexing
+                .incremental_filtered_entries
+                .push(entry.clone());
         }
         self.index.entries.push(entry);
     }
@@ -1044,7 +1079,10 @@ impl FlistWalkerApp {
     }
 
     fn sync_entries_from_incremental(&mut self) {
-        Self::overwrite_entries_arc(&mut self.entries, &self.indexing.incremental_filtered_entries);
+        Self::overwrite_entries_arc(
+            &mut self.entries,
+            &self.indexing.incremental_filtered_entries,
+        );
     }
 
     fn apply_incremental_empty_query_results(&mut self) {
@@ -1105,7 +1143,8 @@ impl FlistWalkerApp {
             return self.indexing.last_incremental_results_refresh.elapsed()
                 >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
         }
-        self.indexing.last_incremental_results_refresh.elapsed() >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
+        self.indexing.last_incremental_results_refresh.elapsed()
+            >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
     }
 
     fn filtered_entries(&self, source: &[Entry]) -> Vec<Entry> {
@@ -1119,7 +1158,9 @@ impl FlistWalkerApp {
     pub(super) fn apply_entry_filters(&mut self, keep_scroll_position: bool) {
         if self.kind_resolution_needed_for_filters() {
             self.queue_unknown_kind_paths_for_active_entries();
-        } else if !self.indexing.pending_kind_paths.is_empty() || !self.indexing.in_flight_kind_paths.is_empty() {
+        } else if !self.indexing.pending_kind_paths.is_empty()
+            || !self.indexing.in_flight_kind_paths.is_empty()
+        {
             self.reset_kind_resolution_state();
         }
 

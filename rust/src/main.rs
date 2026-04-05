@@ -59,15 +59,8 @@ fn run_cli(args: &Args) -> Result<()> {
         return Ok(());
     }
 
-    let results = search_entries_with_scope(
-        query,
-        &entries,
-        args.limit,
-        false,
-        true,
-        Some(&root),
-        true,
-    );
+    let results =
+        search_entries_with_scope(query, &entries, args.limit, false, true, Some(&root), true);
     for (path, score) in results {
         println!("[{score:6.1}] {}", path.display());
     }

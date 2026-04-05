@@ -1,9 +1,9 @@
-use anyhow::{Context, Result};
 use crate::path_utils::normalize_path_for_display;
-use std::path::Path;
-use std::process::Command;
 #[cfg(target_os = "windows")]
 use crate::path_utils::normalize_windows_shell_path;
+use anyhow::{Context, Result};
+use std::path::Path;
+use std::process::Command;
 #[cfg(target_os = "windows")]
 use std::{ffi::OsStr, os::windows::ffi::OsStrExt, ptr};
 

@@ -43,7 +43,10 @@ pub(super) enum RenderUpdateDialogCommand {
 pub(super) enum RenderTabBarCommand {
     CreateNewTab,
     CloseTab(usize),
-    MoveTab { from_index: usize, to_index: usize },
+    MoveTab {
+        from_index: usize,
+        to_index: usize,
+    },
     SwitchToTab(usize),
     ClearTabAccent(usize),
     SetTabAccent {
@@ -336,7 +339,10 @@ impl FlistWalkerApp {
         ui.text_style_height(&egui::TextStyle::Body) + (Self::RESULT_ROW_V_MARGIN * 2.0)
     }
 
-    pub(super) fn result_row_text_pos(inner_rect: egui::Rect, galley_size: egui::Vec2) -> egui::Pos2 {
+    pub(super) fn result_row_text_pos(
+        inner_rect: egui::Rect,
+        galley_size: egui::Vec2,
+    ) -> egui::Pos2 {
         egui::pos2(
             inner_rect.left(),
             inner_rect.center().y - (galley_size.y * 0.5),
@@ -685,9 +691,7 @@ impl FlistWalkerApp {
                 .on_hover_text(format!("New tab ({}+T)", Self::primary_shortcut_label()))
                 .clicked()
             {
-                self.queue_render_command(RenderCommand::TabBar(
-                    RenderTabBarCommand::CreateNewTab,
-                ));
+                self.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab));
                 return;
             }
             if let Some(index) = close_tab {
@@ -704,9 +708,9 @@ impl FlistWalkerApp {
                 return;
             }
             if let Some(idx) = switch_to {
-                self.queue_render_command(RenderCommand::TabBar(
-                    RenderTabBarCommand::SwitchToTab(idx),
-                ));
+                self.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::SwitchToTab(
+                    idx,
+                )));
             }
         });
     }
@@ -767,9 +771,9 @@ impl FlistWalkerApp {
         ui.set_min_width(220.0);
         ui.label("Tab Color");
         if ui.button("Clear").clicked() {
-            self.queue_render_command(RenderCommand::TabBar(
-                RenderTabBarCommand::ClearTabAccent(index),
-            ));
+            self.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::ClearTabAccent(
+                index,
+            )));
             ui.close_menu();
             return;
         }
@@ -803,7 +807,10 @@ impl FlistWalkerApp {
         });
     }
 
-    pub(super) fn tab_drop_index(tab_rects: &[egui::Rect], pointer_pos: egui::Pos2) -> Option<usize> {
+    pub(super) fn tab_drop_index(
+        tab_rects: &[egui::Rect],
+        pointer_pos: egui::Pos2,
+    ) -> Option<usize> {
         if tab_rects.is_empty() {
             return None;
         }
@@ -1556,9 +1563,7 @@ impl FlistWalkerApp {
                 RenderCommand::UpdateDialog(RenderUpdateDialogCommand::DismissPrompt) => {
                     self.dismiss_update_prompt();
                 }
-                RenderCommand::UpdateDialog(
-                    RenderUpdateDialogCommand::SuppressCheckFailures,
-                ) => {
+                RenderCommand::UpdateDialog(RenderUpdateDialogCommand::SuppressCheckFailures) => {
                     self.suppress_update_check_failures();
                 }
                 RenderCommand::UpdateDialog(RenderUpdateDialogCommand::DismissCheckFailure) => {

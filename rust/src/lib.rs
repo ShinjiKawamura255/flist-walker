@@ -1,6 +1,6 @@
-pub mod entry;
 pub mod actions;
 pub mod app;
+pub mod entry;
 pub mod fs_atomic;
 pub mod indexer;
 pub mod path_utils;

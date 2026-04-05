@@ -44,7 +44,7 @@ mod update;
 mod worker_bus;
 mod workers;
 
-use cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
+use cache::{EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
 use index_coordinator::IndexCoordinator;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
@@ -465,6 +465,7 @@ Search hints:
             cache: CacheStateBundle {
                 preview: PreviewCacheState::default(),
                 highlight: HighlightCacheState::with_scope_ignore_case(true),
+                entry_kind: EntryKindCacheState::default(),
                 sort_metadata: SortMetadataCacheState::default(),
             },
             tabs: Vec::new(),
@@ -773,6 +774,7 @@ Search hints:
         self.index.source = IndexSource::None;
         self.all_entries = Arc::new(Vec::new());
         self.entries = Arc::new(Vec::new());
+        self.cache.entry_kind.clear();
         self.base_results.clear();
         self.base_results.shrink_to_fit();
         self.results.clear();
@@ -788,11 +790,7 @@ Search hints:
 
     /// root 切り替えに伴う state reset と再 index をまとめて適用する。
     fn apply_root_change(&mut self, new_root: PathBuf) {
-        let commands = self.root_change_commands(new_root);
-        if commands.is_empty() {
-            return;
-        }
-        self.dispatch_root_change_commands(commands);
+        self.apply_root_change_direct(new_root);
     }
 
     /// ダイアログで選んだ root を現在 tab に適用する。
@@ -1112,7 +1110,13 @@ Search hints:
 
     /// 現在の filter 設定で entry が見えるかを返す。
     fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
-        entry.is_visible_for_flags(self.include_files, self.include_dirs)
+        let kind = self.find_entry_kind(entry.path()).or(entry.kind);
+        match kind {
+            Some(kind) => {
+                (kind.is_dir && self.include_dirs) || (!kind.is_dir && self.include_files)
+            }
+            None => self.include_files && self.include_dirs,
+        }
     }
 
     /// kind 未確定 entry の遅延解決が必要な filter 状態かを返す。
@@ -1208,6 +1212,7 @@ Search hints:
         let mut processed = 0usize;
         let mut resolved_any = false;
         let mut resolved_current_row = false;
+        let mut resolved_updates: Vec<(PathBuf, EntryKind)> = Vec::new();
 
         while let Ok(response) = self.worker_bus.kind.rx.try_recv() {
             if response.epoch != self.indexing.kind_resolution_epoch {
@@ -1222,13 +1227,17 @@ Search hints:
                 }) {
                     resolved_current_row = true;
                 }
-                self.set_entry_kind(&response.path, kind);
+                resolved_updates.push((response.path.clone(), kind));
                 resolved_any = true;
             }
             processed = processed.saturating_add(1);
             if processed >= MAX_MESSAGES_PER_FRAME {
                 break;
             }
+        }
+
+        if !resolved_updates.is_empty() {
+            self.apply_entry_kind_updates(&resolved_updates);
         }
 
         self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
@@ -1282,43 +1291,63 @@ Search hints:
             .unwrap_or_default()
     }
 
-    fn find_entry_in_slice<'a>(entries: &'a [Entry], path: &Path) -> Option<&'a Entry> {
-        entries.iter().find(|entry| entry.path == path)
+    fn rebuild_entry_kind_cache(&mut self) {
+        self.cache.entry_kind.rebuild_from_sources(&[
+            self.all_entries.as_ref(),
+            &self.index.entries,
+            self.entries.as_ref(),
+        ]);
+    }
+
+    fn set_entry_kind_in_slice_batch(entries: &mut [Entry], updates: &[(PathBuf, EntryKind)]) {
+        if updates.is_empty() {
+            return;
+        }
+        let lookup: HashMap<&Path, EntryKind> = updates
+            .iter()
+            .map(|(path, kind)| (path.as_path(), *kind))
+            .collect();
+        for entry in entries.iter_mut() {
+            if let Some(kind) = lookup.get(entry.path.as_path()) {
+                entry.kind = Some(*kind);
+            }
+        }
+    }
+
+    fn set_entry_kind_in_arc_batch(
+        entries: &mut Arc<Vec<Entry>>,
+        updates: &[(PathBuf, EntryKind)],
+    ) {
+        let entries = Arc::make_mut(entries);
+        Self::set_entry_kind_in_slice_batch(entries.as_mut_slice(), updates);
+    }
+
+    fn apply_entry_kind_updates(&mut self, updates: &[(PathBuf, EntryKind)]) {
+        if updates.is_empty() {
+            return;
+        }
+        for (path, kind) in updates {
+            self.cache.entry_kind.set(path.clone(), *kind);
+        }
+        Self::set_entry_kind_in_slice_batch(&mut self.index.entries, updates);
+        Self::set_entry_kind_in_arc_batch(&mut self.all_entries, updates);
+        Self::set_entry_kind_in_arc_batch(&mut self.entries, updates);
+        Self::set_entry_kind_in_slice_batch(
+            &mut self.indexing.incremental_filtered_entries,
+            updates,
+        );
     }
 
     /// entry snapshot から path に対応する kind を探す。
     fn find_entry_kind(&self, path: &Path) -> Option<EntryKind> {
-        Self::find_entry_in_slice(&self.entries, path)
-            .or_else(|| Self::find_entry_in_slice(&self.index.entries, path))
-            .or_else(|| Self::find_entry_in_slice(&self.all_entries, path))
-            .and_then(|entry| entry.kind)
-    }
-
-    fn set_entry_kind_in_slice(entries: &mut [Entry], path: &Path, kind: EntryKind) -> bool {
-        let mut updated = false;
-        for entry in entries.iter_mut().filter(|entry| entry.path == path) {
-            entry.kind = Some(kind);
-            updated = true;
-        }
-        updated
-    }
-
-    /// Arc 化された entry snapshot を最小 clone で更新する。
-    fn set_entry_kind_in_arc(entries: &mut Arc<Vec<Entry>>, path: &Path, kind: EntryKind) {
-        let entries = Arc::make_mut(entries);
-        let _ = Self::set_entry_kind_in_slice(entries.as_mut_slice(), path, kind);
+        self.cache.entry_kind.get(path)
     }
 
     /// 同一 path を持つ entry へ解決済み kind を反映する。
+    #[cfg(test)]
+    #[allow(dead_code)]
     fn set_entry_kind(&mut self, path: &Path, kind: EntryKind) {
-        let _ = Self::set_entry_kind_in_slice(&mut self.index.entries, path, kind);
-        Self::set_entry_kind_in_arc(&mut self.all_entries, path, kind);
-        Self::set_entry_kind_in_arc(&mut self.entries, path, kind);
-        let _ = Self::set_entry_kind_in_slice(
-            &mut self.indexing.incremental_filtered_entries,
-            path,
-            kind,
-        );
+        self.apply_entry_kind_updates(&[(path.to_path_buf(), kind)]);
     }
 
     /// 既定動作で選択 path を実行またはオープンする。

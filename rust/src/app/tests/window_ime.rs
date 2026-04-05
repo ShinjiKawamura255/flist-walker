@@ -87,9 +87,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
         }],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(3),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(3))),
     );
     assert!(inserted_half);
     assert_eq!(cursor_half, Some(4));
@@ -109,9 +107,7 @@ fn process_query_input_events_inserts_half_space_for_space_keys() {
         }],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(4),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(4))),
     );
     assert!(inserted_shift);
     assert_eq!(cursor_shift, Some(5));
@@ -141,9 +137,7 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
         ],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(3),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(3))),
     );
     assert!(inserted);
     assert_eq!(cursor, Some(4));
@@ -175,9 +169,7 @@ fn process_query_input_events_skips_space_fallback_when_composition_updates() {
         ],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(3),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(3))),
     );
     assert!(!inserted);
     assert_eq!(cursor, None);
@@ -212,9 +204,7 @@ fn process_query_input_events_skips_shift_space_fallback_with_composition_update
         ],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(3),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(3))),
     );
     assert!(!inserted);
     assert_eq!(cursor, None);
@@ -242,9 +232,7 @@ fn process_query_input_events_inserts_space_fallback_at_cursor_position() {
         }],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(2),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(2))),
     );
 
     assert!(inserted);
@@ -266,9 +254,7 @@ fn process_query_input_events_inserts_composition_commit_fallback_at_cursor_posi
         &[egui::Event::Ime(egui::ImeEvent::Commit("x".to_string()))],
         true,
         false,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(2),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(2))),
     );
 
     assert!(inserted);
@@ -287,12 +273,14 @@ fn process_query_input_events_does_not_override_widget_owned_ime_commit() {
 
     let (changed, cursor) = app.process_query_input_events(
         &ctx,
-        &[egui::Event::Ime(egui::ImeEvent::Commit("日本語".to_string()))],
+        &[egui::Event::Ime(egui::ImeEvent::Commit(
+            "日本語".to_string(),
+        ))],
         true,
         true,
-        Some(egui::text::CCursorRange::one(
-            egui::text::CCursor::new(FlistWalkerApp::char_count(&app.query_state.query)),
-        )),
+        Some(egui::text::CCursorRange::one(egui::text::CCursor::new(
+            FlistWalkerApp::char_count(&app.query_state.query),
+        ))),
     );
 
     assert!(!changed);

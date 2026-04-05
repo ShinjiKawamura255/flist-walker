@@ -392,7 +392,7 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
             egui::Event::Key {
                 key: egui::Key::G,
                 physical_key: None,
-            pressed: true,
+                pressed: true,
                 repeat: false,
                 modifiers: emacs_shortcut_modifiers(false),
             },

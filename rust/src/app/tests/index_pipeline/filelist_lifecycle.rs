@@ -159,7 +159,10 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     app.poll_index_response();
 
     assert!(app.entries.is_empty());
-    assert_eq!(app.indexing.incremental_filtered_entries, vec![file_entry(path)]);
+    assert_eq!(
+        app.indexing.incremental_filtered_entries,
+        vec![file_entry(path)]
+    );
     assert!(!app.indexing.search_rerun_pending);
     let _ = fs::remove_dir_all(&root);
 }
@@ -208,7 +211,10 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
         app.entries.len(),
         FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
     );
-    assert_eq!(app.indexing.incremental_filtered_entries.len(), app.entries.len());
+    assert_eq!(
+        app.indexing.incremental_filtered_entries.len(),
+        app.entries.len()
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -380,7 +386,10 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     app.apply_entry_filters(true);
 
     assert_eq!(app.entries.as_ref(), &vec![dir.clone()]);
-    assert_eq!(app.indexing.incremental_filtered_entries, vec![dir_entry(dir)]);
+    assert_eq!(
+        app.indexing.incremental_filtered_entries,
+        vec![dir_entry(dir)]
+    );
     assert!(app.indexing.pending_entries.is_empty());
     assert!(app.indexing.pending_entries_request_id.is_none());
     let _ = fs::remove_dir_all(&root);

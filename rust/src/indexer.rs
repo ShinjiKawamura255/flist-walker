@@ -419,11 +419,13 @@ pub fn build_index(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<Vec<PathBuf>> {
-    Ok(build_index_with_metadata(root, use_filelist, include_files, include_dirs)?
-        .entries
-        .into_iter()
-        .map(|entry| entry.path)
-        .collect())
+    Ok(
+        build_index_with_metadata(root, use_filelist, include_files, include_dirs)?
+            .entries
+            .into_iter()
+            .map(|entry| entry.path)
+            .collect(),
+    )
 }
 
 pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {

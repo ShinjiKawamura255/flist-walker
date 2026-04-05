@@ -1061,6 +1061,30 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
 }
 
 #[test]
+fn entry_kind_cache_survives_tab_state_roundtrip_and_preserves_precedence() {
+    let root = test_root("entry-kind-cache-roundtrip");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("shared.txt");
+    fs::write(&path, "content").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.all_entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
+    app.index.entries = vec![Entry::new(path.clone(), Some(EntryKind::dir()))];
+    app.entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
+    app.rebuild_entry_kind_cache();
+
+    assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
+
+    let tab_id = app.current_tab_id().expect("active tab id");
+    let snapshot = app.capture_active_tab_state(tab_id);
+    app.cache.entry_kind.clear();
+    app.apply_tab_state(&snapshot);
+
+    assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn close_tab_invalidates_memory_cache_for_immediate_resample() {
     let root = test_root("close-tab-memory-resample");
     fs::create_dir_all(&root).expect("create dir");
