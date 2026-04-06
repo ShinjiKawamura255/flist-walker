@@ -1155,12 +1155,18 @@ Search hints:
 
     /// walker 完了後の全 entry から kind 未解決 path を拾う。
     fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
-        let source = self
-            .all_entries
-            .iter()
-            .map(|entry| entry.path.clone())
-            .collect::<Vec<_>>();
-        self.queue_unknown_kind_paths(&source);
+        for i in 0..self.all_entries.len() {
+            let path = &self.all_entries[i].path;
+            if self.find_entry_kind(path).is_none() {
+                if !self.indexing.pending_kind_paths_set.contains(path)
+                    && !self.indexing.in_flight_kind_paths.contains(path)
+                {
+                    let p = path.clone();
+                    self.indexing.pending_kind_paths_set.insert(p.clone());
+                    self.indexing.pending_kind_paths.push_back(p);
+                }
+            }
+        }
     }
 
     /// 指定 path 群から kind 未解決のものだけを queue へ積む。
@@ -1299,29 +1305,11 @@ Search hints:
         ]);
     }
 
-    fn set_entry_kind_in_slice_batch(entries: &mut [Entry], updates: &[(PathBuf, EntryKind)]) {
-        if updates.is_empty() {
-            return;
-        }
-        let lookup: HashMap<&Path, EntryKind> = updates
-            .iter()
-            .map(|(path, kind)| (path.as_path(), *kind))
-            .collect();
-        for entry in entries.iter_mut() {
-            if let Some(kind) = lookup.get(entry.path.as_path()) {
-                entry.kind = Some(*kind);
-            }
-        }
-    }
-
-    fn set_entry_kind_in_arc_batch(
-        entries: &mut Arc<Vec<Entry>>,
-        updates: &[(PathBuf, EntryKind)],
-    ) {
-        let entries = Arc::make_mut(entries);
-        Self::set_entry_kind_in_slice_batch(entries.as_mut_slice(), updates);
-    }
-
+    // Regression Guard (v0.16.0):
+    // DO NOT invoke `set_entry_kind_in_arc_batch` or `Arc::make_mut` here.
+    // Iterating and cloning all elements in the 500k+ `entries` arrays for every 512-item batch
+    // from the background worker locks up the main frame loop entirely. All kinds are now fetched
+    // lazily/reactively via `self.cache.entry_kind` specifically to avoid UI freezes.
     fn apply_entry_kind_updates(&mut self, updates: &[(PathBuf, EntryKind)]) {
         if updates.is_empty() {
             return;
@@ -1329,13 +1317,6 @@ Search hints:
         for (path, kind) in updates {
             self.cache.entry_kind.set(path.clone(), *kind);
         }
-        Self::set_entry_kind_in_slice_batch(&mut self.index.entries, updates);
-        Self::set_entry_kind_in_arc_batch(&mut self.all_entries, updates);
-        Self::set_entry_kind_in_arc_batch(&mut self.entries, updates);
-        Self::set_entry_kind_in_slice_batch(
-            &mut self.indexing.incremental_filtered_entries,
-            updates,
-        );
     }
 
     /// entry snapshot から path に対応する kind を探す。

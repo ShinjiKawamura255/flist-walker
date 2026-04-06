@@ -319,3 +319,43 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
     assert!(!app.worker_bus.preview.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
+    let root = test_root("kind-response-no-arc-clone-regression");
+    let left = root.join("left");
+    fs::create_dir_all(&left).expect("create left dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.all_entries = Arc::new(vec![unknown_entry(left.clone())]);
+    app.entries = Arc::clone(&app.all_entries);
+
+    // Simulate search worker holding a clone of the Arc, making strong_count > 1
+    let worker_entries = Arc::clone(&app.all_entries);
+    assert!(Arc::strong_count(&app.all_entries) > 1);
+
+    let ptr_before = app.all_entries.as_ptr();
+
+    let (tx, rx) = mpsc::channel::<KindResolveResponse>();
+    app.worker_bus.kind.rx = rx;
+    app.indexing.in_flight_kind_paths.insert(left.clone());
+    tx.send(KindResolveResponse {
+        epoch: app.indexing.kind_resolution_epoch,
+        path: left.clone(),
+        kind: Some(EntryKind::dir()),
+    })
+    .expect("send left kind response");
+
+    app.poll_kind_response();
+
+    let ptr_after = app.all_entries.as_ptr();
+    assert_eq!(
+        ptr_before, ptr_after,
+        "Arc<Vec> should not be reallocated/cloned during kind metadata updates. Arc cloning causes severe UI freezes (v0.16.0 regression)."
+    );
+    assert_eq!(app.find_entry_kind(&left), Some(EntryKind::dir()));
+
+    // Keep it alive until the check passes
+    drop(worker_entries);
+    let _ = fs::remove_dir_all(&root);
+}

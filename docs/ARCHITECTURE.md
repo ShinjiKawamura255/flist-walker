@@ -107,3 +107,13 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 - [DESIGN.md](./DESIGN.md)
 - [TESTPLAN.md](./TESTPLAN.md)
 - [RELEASE.md](./RELEASE.md)
+
+## Regression Guards
+
+### Kind Resolution Arc Clone Freeze (v0.16.0)
+
+- Scenario: 50万件のエントリを持つ Walker インデクシングの途中で、UI が `KindResolverWorker` から解決済みのメタデータ（`EntryKind`）バッチを 512 個受け取る。このとき `apply_entry_kind_updates` 内で `Arc::make_mut(&mut self.entries)` などを呼び出すと、検索スレッドが別のスナップショットをホールドしているため毎フレーム50万要素の巨大な `Arc<Vec<Entry>>` クローン（数百万回の `PathBuf` アロケーション）が発生し、UI が完全にフリーズする。
+- Expected Behavior: UI は巨大リストに対する O(N) のクローンをせず、`self.cache.entry_kind` へ解決された Kind を安全に書き込み、それを参照することでメタデータ解決の恩恵（アイコン表示やフィルタ反映）を O(1) で得る。
+- Non-goals: `WalkDir` 自身の遅延解決以外の部分（メタデータ取得そのものの OS I/O 遅延）は Background スレッドに閉じるため本件の責務ではない。
+- Related Tests: `poll_kind_response_does_not_clone_arc_shared_entries_regression` (in `kind_resolution.rs`)
+- Notes for Future Changes: `app.entries` および他のエントリリスト(`all_entries`, `incremental_filtered_entries`, `index.entries`) に対して、チャンク処理中のループ内で一括更新を目的に `mut` 参照を要求・上書きしてはいけない。常に Cache (辞書) を更新し、描画やフィルタリング時は Cache を `Entry` より優先して参照すること。
