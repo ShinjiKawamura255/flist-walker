@@ -33,14 +33,14 @@
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
-- 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と active/background tab 向け response consume helper を担当する。
+- 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と background tab 向け search/index response consume helper、activation 時の restore/refresh 入口を担当する。
 - 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。
 - 役割補足: `app/render.rs` は top action / FileList dialog / update dialog / tab bar interaction から `RenderCommand` を queue し、描画後に `dispatch_render_commands()` で state transition を消化する。root selector と query/history input は描画側の direct mutation を維持する。
 - 役割補足: `app/mod.rs` の frame/update/exit orchestration は `poll_runtime_events()`, `run_update_cycle()`, `schedule_frame_repaint()`, `request_viewport_close_if_needed()`, `persist_state_and_shutdown()` といった helper seam を経由し、`update()` / `on_exit()` / `Drop` の open-coded sequence を最小化する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
-- 役割補足: `app/pipeline.rs` は index queue、index response poll、dispatcher を担当し、search/result refresh と entry filter 再適用は `app/pipeline_owner.rs` の dedicated owner surface へ委譲する。index request の採番・tracking・active/background refresh 開始・terminal cleanup の owner API は `app/index_coordinator.rs` 側へ寄せ、search worker の request/tab routing helper は `app/search_coordinator.rs` 側へ寄せる。
+- 役割補足: `app/pipeline.rs` は index queue、index response poll、dispatcher を担当し、active tab 向け search/result refresh と entry filter 再適用は `app/pipeline_owner.rs` の dedicated owner surface へ、background tab 向け search/index response apply は `app/tabs.rs` の background-flow helper へ委譲する。index request の採番・tracking・active/background refresh 開始・terminal cleanup の owner API は `app/index_coordinator.rs` 側へ寄せ、search worker の request/tab routing helper は `app/search_coordinator.rs` 側へ寄せる。
 - 役割補足: `app/index_worker.rs` は FileList / Walker streaming、kind classification、index worker 実装を担当し、`app/workers.rs` から indexing concern を切り離す。
 - 役割補足: `app/worker_runtime.rs` は worker shutdown signal と join timeout の管理だけを持ち、個別 worker 実装から runtime orchestration を分離する。
 - 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation、preview request/response helper、preview request routing owner API を担当し、cache の scope 更新や eviction を method 経由へ局所化する。
@@ -169,6 +169,7 @@
 - 起動時の優先順位は `--root` 明示 > 復元タブ（env 有効時） > 最後に使っていた root > `Set as default` > 通常 root とし、バージョン更新やバイナリ差し替えでも最後の root を維持する。
 - `FLISTWALKER_RESTORE_TABS=1` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。
 - タブ復元時は active tab だけ即時 `request_index_refresh()` を行い、background tab は `pending_restore_refresh` を保持して初回 `switch_to_tab_index()` 時に lazy refresh する。
+- background tab の search/index 応答は active tab の結果スナップショットへ直接触れず、tab-local state へ適用してから activation 時の restore 経路で前面へ戻す。
 - タブ並び替えは `render_tab_bar` がドラッグ開始/ホバー/ドロップを扱い、実際の `Vec<AppTabState>` 更新は `move_tab(from, to)` に集約する。
 - `move_tab` は並び替え前に `sync_active_tab_state()` を実行し、active tab の `tab.id` を基準に移動後 index を再解決することで UI 状態の取り違えを防ぐ。
 - タブ accent は `DropSendTo` の Slot Color palette を参照し、light/dark theme ごとに background/border/foreground を切り替える。

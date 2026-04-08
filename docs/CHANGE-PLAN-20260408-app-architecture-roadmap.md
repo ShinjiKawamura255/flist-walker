@@ -85,7 +85,7 @@
 | Slice | Focus | Status | Activation / Exit Notes |
 | --- | --- | --- | --- |
 | Slice A | Pipeline Owner Extraction | DONE | Completed on 2026-04-08 after owner-surface extraction and steady-state doc sync. |
-| Slice B | Background Tab Result-Flow Separation | ACTIVE | Activated on 2026-04-08 after Slice A stabilized the pipeline owner surface. |
+| Slice B | Background Tab Result-Flow Separation | DONE | Completed on 2026-04-08 after background search/index apply helpers and restore boundaries were separated. |
 | Slice C | Worker Protocol Separation | PLANNED | Activate after Slice B or earlier only if Slice A produces a protocol-friendly boundary without destabilizing tabs. |
 | Slice D | Command-Oriented App Tests | PLANNED | Activate after ownership seams exist to test against. |
 | Slice E | Structured Tracing and Supportability | PLANNED | Prefer after ownership and protocol boundaries settle, so tracing lands on stable surfaces. |
@@ -93,7 +93,7 @@
 ## 7. Detailed Task Breakdown
 - [x] Add roadmap and active slice documents before implementation resumes
 - [x] Execute Slice A and update roadmap status
-- [ ] Execute Slice B and update roadmap status
+- [x] Execute Slice B and update roadmap status
 - [ ] Execute Slice C and update roadmap status
 - [ ] Execute Slice D and update roadmap status
 - [ ] Execute Slice E and update roadmap status
@@ -138,6 +138,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08: Slice A Phase 3 completed. Steady-state architecture/design docs now describe `pipeline_owner.rs` as the search/result refresh owner surface and `pipeline.rs` as the thinner dispatcher layer.
 - 2026-04-08: Activated Slice B and created `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` as the new active child plan.
 - 2026-04-08: Slice B handoff reviewed. Cleared stale roadmap task state and confirmed the new child plan/AGENTS/TASKS references are aligned.
+- 2026-04-08: Slice B completed. Background search/index apply helpers now live in `tabs.rs`, active/background branching in pipeline paths is reduced, and steady-state docs describe the new boundary.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

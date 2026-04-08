@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::tabs::BackgroundIndexResponseEffect;
 
 impl FlistWalkerApp {
     fn pipeline_owner(&mut self) -> PipelineOwner<'_> {
@@ -64,19 +65,6 @@ impl FlistWalkerApp {
         self.search.set_pending_request_id(None);
         self.search.set_in_progress(false);
         self.reset_active_index_refresh_state(reset_kind_resolution);
-    }
-
-    fn settle_background_index_failure(tab: &mut AppTabState, notice: Option<String>) {
-        tab.index_state.index_in_progress = false;
-        tab.index_state.pending_index_request_id = None;
-        tab.index_state.search_resume_pending = false;
-        tab.index_state.search_rerun_pending = false;
-        tab.index_state.pending_index_entries.clear();
-        tab.index_state.pending_index_entries_request_id = None;
-        Self::shrink_tab_checkpoint_buffers(tab);
-        if let Some(notice) = notice {
-            tab.notice = notice;
-        }
     }
 
     pub(super) fn request_index_refresh(&mut self) {
@@ -367,194 +355,11 @@ impl FlistWalkerApp {
     }
 
     fn handle_background_index_response(&mut self, tab_index: usize, msg: IndexResponse) {
-        let mut trigger_search = false;
-        let mut cleanup_request_id: Option<u64> = None;
-        let mut deferred_filelist: Option<(u64, PathBuf, Vec<PathBuf>)> = None;
-
-        {
-            let Some(tab) = self.tabs.get_mut(tab_index) else {
-                return;
-            };
-            match msg {
-                IndexResponse::Started { request_id, source } => {
-                    if tab.index_state.pending_index_request_id != Some(request_id) {
-                        return;
-                    }
-                    tab.index_state.index.source = source.clone();
-                    self.indexing
-                        .background_states
-                        .entry(request_id)
-                        .or_default()
-                        .source = Some(source);
-                }
-                IndexResponse::Batch {
-                    request_id,
-                    entries,
-                } => {
-                    if tab.index_state.pending_index_request_id != Some(request_id) {
-                        return;
-                    }
-                    let state = self
-                        .indexing
-                        .background_states
-                        .entry(request_id)
-                        .or_default();
-                    for entry in entries {
-                        state.entries.push(entry.into());
-                    }
-                }
-                IndexResponse::ReplaceAll {
-                    request_id,
-                    entries,
-                } => {
-                    if tab.index_state.pending_index_request_id != Some(request_id) {
-                        return;
-                    }
-                    let state = self
-                        .indexing
-                        .background_states
-                        .entry(request_id)
-                        .or_default();
-                    state.entries.clear();
-                    for entry in entries {
-                        state.entries.push(entry.into());
-                    }
-                }
-                IndexResponse::Finished { request_id, source } => {
-                    if tab.index_state.pending_index_request_id != Some(request_id) {
-                        cleanup_request_id = Some(request_id);
-                    } else {
-                        let state = self
-                            .indexing
-                            .background_states
-                            .remove(&request_id)
-                            .unwrap_or_default();
-                        tab.index_state.index.source = state.source.unwrap_or(source);
-                        tab.index_state.index.entries.clear();
-                        tab.index_state.all_entries = Arc::new(state.entries);
-                        if tab.include_files && tab.include_dirs {
-                            tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
-                        } else {
-                            let filtered: Vec<Entry> = tab
-                                .index_state
-                                .all_entries
-                                .iter()
-                                .filter(|entry| {
-                                    Self::is_entry_visible_for_flags(
-                                        entry,
-                                        tab.include_files,
-                                        tab.include_dirs,
-                                    )
-                                })
-                                .cloned()
-                                .collect();
-                            tab.index_state.entries = Arc::new(filtered);
-                        }
-                        tab.index_state.pending_index_request_id = None;
-                        tab.index_state.index_in_progress = false;
-                        tab.index_state.pending_index_entries.clear();
-                        tab.index_state.pending_index_entries_request_id = None;
-                        tab.index_state.search_resume_pending = false;
-                        tab.index_state.search_rerun_pending = false;
-                        tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
-                        tab.index_state.last_incremental_results_refresh = Instant::now();
-                        if matches!(tab.index_state.index.source, IndexSource::Walker) {
-                            for entry in tab.index_state.all_entries.iter() {
-                                if entry.kind.is_none()
-                                    && !tab.index_state.pending_kind_paths_set.contains(&entry.path)
-                                    && !tab.index_state.in_flight_kind_paths.contains(&entry.path)
-                                {
-                                    tab.index_state
-                                        .pending_kind_paths_set
-                                        .insert(entry.path.clone());
-                                    tab.index_state
-                                        .pending_kind_paths
-                                        .push_back(entry.path.clone());
-                                }
-                            }
-                            tab.index_state.kind_resolution_in_progress =
-                                !tab.index_state.pending_kind_paths.is_empty()
-                                    || !tab.index_state.in_flight_kind_paths.is_empty();
-                        } else {
-                            tab.index_state.pending_kind_paths.clear();
-                            tab.index_state.pending_kind_paths_set.clear();
-                            tab.index_state.in_flight_kind_paths.clear();
-                            tab.index_state.kind_resolution_in_progress = false;
-                        }
-                        if self
-                            .filelist_state
-                            .pending_after_index
-                            .as_ref()
-                            .is_some_and(|pending| {
-                                pending.tab_id == tab.id
-                                    && Self::path_key(&pending.root) == Self::path_key(&tab.root)
-                            })
-                        {
-                            deferred_filelist = Some((
-                                tab.id,
-                                tab.root.clone(),
-                                tab.index_state
-                                    .all_entries
-                                    .iter()
-                                    .map(|entry| entry.path.clone())
-                                    .collect(),
-                            ));
-                            self.filelist_state.pending_after_index = None;
-                        }
-
-                        if tab.query_state.query.trim().is_empty() {
-                            tab.result_state.results = tab
-                                .index_state
-                                .entries
-                                .iter()
-                                .take(self.limit)
-                                .cloned()
-                                .map(|entry| (entry.path, 0.0))
-                                .collect();
-                            if tab.result_state.results.is_empty() {
-                                tab.result_state.current_row = None;
-                                tab.result_state.preview.clear();
-                                tab.pending_preview_request_id = None;
-                                tab.preview_in_progress = false;
-                            } else {
-                                let max_index = tab.result_state.results.len().saturating_sub(1);
-                                tab.result_state.current_row =
-                                    Some(tab.result_state.current_row.unwrap_or(0).min(max_index));
-                            }
-                        } else {
-                            trigger_search = true;
-                        }
-                        Self::shrink_tab_checkpoint_buffers(tab);
-                        cleanup_request_id = Some(request_id);
-                    }
-                }
-                IndexResponse::Failed { request_id, error } => {
-                    if tab.index_state.pending_index_request_id != Some(request_id) {
-                        cleanup_request_id = Some(request_id);
-                    } else {
-                        Self::settle_background_index_failure(
-                            tab,
-                            Some(format!("Indexing failed: {}", error)),
-                        );
-                        cleanup_request_id = Some(request_id);
-                    }
-                }
-                IndexResponse::Canceled { request_id } => {
-                    if tab.index_state.pending_index_request_id == Some(request_id) {
-                        Self::settle_background_index_failure(tab, None);
-                    }
-                    cleanup_request_id = Some(request_id);
-                }
-                IndexResponse::Truncated { request_id, limit } => {
-                    if tab.index_state.pending_index_request_id == Some(request_id) {
-                        tab.notice = format!(
-                            "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
-                            limit
-                        );
-                    }
-                }
-            }
-        }
+        let BackgroundIndexResponseEffect {
+            trigger_search,
+            cleanup_request_id,
+            deferred_filelist,
+        } = self.apply_background_index_response(tab_index, msg);
 
         if let Some((tab_id, root, entries)) = deferred_filelist {
             self.request_filelist_creation(tab_id, root, entries);
@@ -854,7 +659,8 @@ impl FlistWalkerApp {
     }
 
     fn apply_incremental_empty_query_results(&mut self) {
-        self.pipeline_owner().apply_incremental_empty_query_results();
+        self.pipeline_owner()
+            .apply_incremental_empty_query_results();
     }
 
     fn maybe_refresh_incremental_search(&mut self) {
@@ -879,6 +685,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_entry_filters(&mut self, keep_scroll_position: bool) {
-        self.pipeline_owner().apply_entry_filters(keep_scroll_position);
+        self.pipeline_owner()
+            .apply_entry_filters(keep_scroll_position);
     }
 }

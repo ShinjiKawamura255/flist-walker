@@ -1324,6 +1324,105 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 }
 
 #[test]
+fn background_tab_search_and_index_responses_do_not_override_active_results() {
+    let root = test_root("background-tab-response-isolation");
+    fs::create_dir_all(&root).expect("create dir");
+    let active_file = root.join("active.txt");
+    let background_file = root.join("background.txt");
+    fs::write(&active_file, "active").expect("write active");
+    fs::write(&background_file, "background").expect("write background");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.indexing.tx = index_req_tx;
+    app.indexing.rx = index_res_rx;
+    let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
+    let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
+    app.search.tx = search_tx_req;
+    app.search.rx = search_rx_res;
+
+    app.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.results = vec![(active_file.clone(), 0.0)];
+    app.base_results = app.results.clone();
+    app.current_row = Some(0);
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    assert_eq!(app.active_tab, 1);
+    app.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.results = vec![(active_file.clone(), 0.0)];
+    app.base_results = app.results.clone();
+    app.current_row = Some(0);
+    app.sync_active_tab_state();
+
+    app.switch_to_tab_index(0);
+    app.query_state.query = "background".to_string();
+    app.sync_active_tab_state();
+    app.switch_to_tab_index(1);
+
+    let background_tab_id = app.tabs[0].id;
+    let background_index_request = IndexRequest {
+        request_id: 88,
+        tab_id: background_tab_id,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+    };
+    app.indexing.request_tabs.insert(88, background_tab_id);
+    app.tabs[0].index_state.pending_index_request_id = Some(88);
+    app.tabs[0].index_state.index_in_progress = true;
+    app.search.bind_request_tab(89, background_tab_id);
+    app.tabs[0].pending_request_id = Some(89);
+    app.tabs[0].search_in_progress = true;
+
+    let active_results = app.results.clone();
+    let active_base_results = app.base_results.clone();
+    let active_current_row = app.current_row;
+
+    search_tx_res
+        .send(SearchResponse {
+            request_id: 89,
+            results: vec![(background_file.clone(), 9.0)],
+            error: None,
+        })
+        .expect("send background search response");
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: background_index_request.request_id,
+            entries: vec![IndexEntry {
+                path: background_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send background batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: background_index_request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background finished");
+
+    app.poll_search_response();
+    app.poll_index_response();
+
+    assert_eq!(app.results, active_results);
+    assert_eq!(app.base_results, active_base_results);
+    assert_eq!(app.current_row, active_current_row);
+    assert_eq!(app.tabs[0].result_state.base_results.len(), 1);
+    assert_eq!(app.tabs[0].result_state.base_results[0].0, background_file);
+    assert_eq!(app.tabs[0].index_state.entries.len(), 1);
+    assert_eq!(app.tabs[0].index_state.entries[0], background_file);
+    assert!(index_req_rx.try_recv().is_err());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tab_root_label_uses_leaf_directory_name() {
     let root = PathBuf::from("/tmp/flistwalker-tab-root-label");
     assert_eq!(

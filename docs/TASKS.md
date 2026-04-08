@@ -15,6 +15,7 @@
   - 2026-04-08 に Slice A Phase 2 を完了し、`pipeline_owner.rs` へ search/result refresh と entry-filter application の owner surface を移して `pipeline.rs` を thin wrapper 化した。
   - 2026-04-08 に Slice A Phase 3 を完了し、`ARCHITECTURE.md` / `DESIGN.md` を `pipeline_owner.rs` ベースの owner boundary に同期した。
   - 2026-04-08 に Slice B 向けの active child plan `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation へ進む状態に切り替えた。
+  - 2026-04-08 に Slice B を完了し、background search/index apply helper を `tabs.rs` 側へ揃えて active/background result-flow の境界を明示した。
 
 ## Completed Programs
 

@@ -86,10 +86,7 @@ impl<'a> PipelineOwner<'a> {
             match self.app.search.route_response(response.request_id) {
                 SearchResponseRoute::Active => self.handle_active_search_response(response),
                 SearchResponseRoute::Background(tab_id) => {
-                    let Some(tab_index) = self.app.find_tab_index_by_id(tab_id) else {
-                        continue;
-                    };
-                    self.handle_background_search_response(tab_index, response);
+                    self.app.apply_background_search_response(tab_id, response);
                 }
                 SearchResponseRoute::Stale => continue,
             }
@@ -207,7 +204,11 @@ impl<'a> PipelineOwner<'a> {
         }
     }
 
-    fn build_search_request_for_tab(tab: &AppTabState, request_id: u64, limit: usize) -> SearchRequest {
+    fn build_search_request_for_tab(
+        tab: &AppTabState,
+        request_id: u64,
+        limit: usize,
+    ) -> SearchRequest {
         SearchRequest {
             request_id,
             query: tab.query_state.query.clone(),
@@ -216,7 +217,9 @@ impl<'a> PipelineOwner<'a> {
             use_regex: tab.use_regex,
             ignore_case: tab.ignore_case,
             root: tab.root.clone(),
-            prefer_relative: FlistWalkerApp::prefer_relative_display_for(&tab.index_state.index.source),
+            prefer_relative: FlistWalkerApp::prefer_relative_display_for(
+                &tab.index_state.index.source,
+            ),
         }
     }
 
@@ -254,36 +257,6 @@ impl<'a> PipelineOwner<'a> {
             self.update_results();
         }
     }
-
-    fn handle_background_search_response(&mut self, tab_index: usize, response: SearchResponse) {
-        let Some(tab) = self.app.tabs.get_mut(tab_index) else {
-            return;
-        };
-        tab.pending_request_id = None;
-        tab.search_in_progress = false;
-        tab.notice = response
-            .error
-            .map(|error| format!("Search failed: {error}"))
-            .unwrap_or_default();
-        tab.result_state.base_results = response.results.clone();
-        tab.result_state.results = response.results;
-        tab.result_state.results_compacted = false;
-        tab.result_state.result_sort_mode = ResultSortMode::Score;
-        tab.result_state.pending_sort_request_id = None;
-        tab.result_state.sort_in_progress = false;
-        if tab.result_state.results.is_empty() {
-            tab.result_state.current_row = None;
-            tab.result_state.preview.clear();
-            tab.pending_preview_request_id = None;
-            tab.preview_in_progress = false;
-        } else {
-            let max_index = tab.result_state.results.len().saturating_sub(1);
-            tab.result_state.current_row =
-                tab.result_state.current_row.map(|row| row.min(max_index));
-        }
-        FlistWalkerApp::compact_inactive_tab_state(tab);
-    }
-
     fn filtered_entries(&self, source: &[Entry]) -> Vec<Entry> {
         source
             .iter()

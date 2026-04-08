@@ -114,13 +114,16 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-08 00:00 Created as the active slice after Slice A completed.
 - 2026-04-08 00:00 Review completed. Confirmed the parent-child handoff, active slice references, and phase boundaries are coherent after clearing stale checklist/task items.
+- 2026-04-08: Phase 1 completed. `poll_index_response()` の background dispatch から tab-local mutation を `tabs.rs` の helper へ寄せ、background-only seam を明示した。`cd rust && cargo test` passed.
+- 2026-04-08: Phase 2 completed. background search/index response apply helper を `tabs.rs` 側へ揃え、active/background result-flow の branching を `pipeline.rs` / `pipeline_owner.rs` からさらに減らした。focused session-tab regression tests and `cd rust && cargo test` passed.
+- 2026-04-08: Phase 3 completed. `ARCHITECTURE.md` と `DESIGN.md` を background-flow helper 境界へ同期し、Slice B の steady-state docs を更新した.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Temporary `AGENTS.md` rule updated to point at this active slice
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after roadmap completion
 - [ ] Change plan deleted after roadmap completion
 

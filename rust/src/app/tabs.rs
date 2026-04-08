@@ -1,7 +1,28 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
+pub(super) struct BackgroundIndexResponseEffect {
+    pub(super) trigger_search: bool,
+    pub(super) cleanup_request_id: Option<u64>,
+    pub(super) deferred_filelist: Option<(u64, PathBuf, Vec<PathBuf>)>,
+}
+
 impl FlistWalkerApp {
+    fn settle_background_tab_index_failure(tab: &mut AppTabState, notice: Option<String>) {
+        tab.index_state.pending_index_request_id = None;
+        tab.index_state.index_in_progress = false;
+        tab.index_state.pending_index_entries.clear();
+        tab.index_state.pending_index_entries_request_id = None;
+        tab.index_state.search_resume_pending = false;
+        tab.index_state.search_rerun_pending = false;
+        tab.pending_restore_refresh = false;
+        if let Some(notice) = notice {
+            tab.notice = notice;
+        } else if tab.notice.is_empty() {
+            tab.notice = "Indexing canceled".to_string();
+        }
+    }
+
     pub(super) fn bind_action_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
         self.request_tab_routing.bind_action(request_id, tab_id);
     }
@@ -61,6 +82,42 @@ impl FlistWalkerApp {
         tab.pending_action_request_id = None;
         tab.action_in_progress = false;
         tab.notice = response.notice;
+    }
+
+    pub(super) fn apply_background_search_response(
+        &mut self,
+        tab_id: u64,
+        response: SearchResponse,
+    ) {
+        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+            return;
+        };
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return;
+        };
+        tab.pending_request_id = None;
+        tab.search_in_progress = false;
+        tab.notice = response
+            .error
+            .map(|error| format!("Search failed: {error}"))
+            .unwrap_or_default();
+        tab.result_state.base_results = response.results.clone();
+        tab.result_state.results = response.results;
+        tab.result_state.results_compacted = false;
+        tab.result_state.result_sort_mode = ResultSortMode::Score;
+        tab.result_state.pending_sort_request_id = None;
+        tab.result_state.sort_in_progress = false;
+        if tab.result_state.results.is_empty() {
+            tab.result_state.current_row = None;
+            tab.result_state.preview.clear();
+            tab.pending_preview_request_id = None;
+            tab.preview_in_progress = false;
+        } else {
+            let max_index = tab.result_state.results.len().saturating_sub(1);
+            tab.result_state.current_row =
+                tab.result_state.current_row.map(|row| row.min(max_index));
+        }
+        Self::compact_inactive_tab_state(tab);
     }
 
     pub(super) fn apply_active_action_response(&mut self, response: &ActionResponse) -> bool {
@@ -140,6 +197,10 @@ impl FlistWalkerApp {
         self.request_index_refresh();
     }
 
+    fn activate_background_tab_after_transition(&mut self, tab: &AppTabState) {
+        self.activate_tab_after_transition(tab, true, true, true);
+    }
+
     fn clear_closed_tab_state(&mut self, tab_id: u64) {
         self.filelist_state.clear_pending_for_tab(tab_id);
         self.indexing.clear_for_tab(tab_id);
@@ -184,6 +245,204 @@ impl FlistWalkerApp {
         if trigger_restore_refresh {
             self.trigger_pending_restore_refresh();
         }
+    }
+
+    pub(super) fn apply_background_index_response(
+        &mut self,
+        tab_index: usize,
+        msg: IndexResponse,
+    ) -> BackgroundIndexResponseEffect {
+        let mut effect = BackgroundIndexResponseEffect {
+            trigger_search: false,
+            cleanup_request_id: None,
+            deferred_filelist: None,
+        };
+
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return effect;
+        };
+
+        match msg {
+            IndexResponse::Started { request_id, source } => {
+                if tab.index_state.pending_index_request_id != Some(request_id) {
+                    return effect;
+                }
+                tab.index_state.index.source = source.clone();
+                self.indexing
+                    .background_states
+                    .entry(request_id)
+                    .or_default()
+                    .source = Some(source);
+            }
+            IndexResponse::Batch {
+                request_id,
+                entries,
+            } => {
+                if tab.index_state.pending_index_request_id != Some(request_id) {
+                    return effect;
+                }
+                let state = self
+                    .indexing
+                    .background_states
+                    .entry(request_id)
+                    .or_default();
+                for entry in entries {
+                    state.entries.push(entry.into());
+                }
+            }
+            IndexResponse::ReplaceAll {
+                request_id,
+                entries,
+            } => {
+                if tab.index_state.pending_index_request_id != Some(request_id) {
+                    return effect;
+                }
+                let state = self
+                    .indexing
+                    .background_states
+                    .entry(request_id)
+                    .or_default();
+                state.entries.clear();
+                for entry in entries {
+                    state.entries.push(entry.into());
+                }
+            }
+            IndexResponse::Finished { request_id, source } => {
+                if tab.index_state.pending_index_request_id != Some(request_id) {
+                    effect.cleanup_request_id = Some(request_id);
+                    return effect;
+                }
+                let state = self
+                    .indexing
+                    .background_states
+                    .remove(&request_id)
+                    .unwrap_or_default();
+                tab.index_state.index.source = state.source.unwrap_or(source);
+                tab.index_state.index.entries.clear();
+                tab.index_state.all_entries = Arc::new(state.entries);
+                if tab.include_files && tab.include_dirs {
+                    tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
+                } else {
+                    let filtered: Vec<Entry> = tab
+                        .index_state
+                        .all_entries
+                        .iter()
+                        .filter(|entry| {
+                            Self::is_entry_visible_for_flags(
+                                entry,
+                                tab.include_files,
+                                tab.include_dirs,
+                            )
+                        })
+                        .cloned()
+                        .collect();
+                    tab.index_state.entries = Arc::new(filtered);
+                }
+                tab.index_state.pending_index_request_id = None;
+                tab.index_state.index_in_progress = false;
+                tab.index_state.pending_index_entries.clear();
+                tab.index_state.pending_index_entries_request_id = None;
+                tab.index_state.search_resume_pending = false;
+                tab.index_state.search_rerun_pending = false;
+                tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
+                tab.index_state.last_incremental_results_refresh = Instant::now();
+                if matches!(tab.index_state.index.source, IndexSource::Walker) {
+                    for entry in tab.index_state.all_entries.iter() {
+                        if entry.kind.is_none()
+                            && !tab.index_state.pending_kind_paths_set.contains(&entry.path)
+                            && !tab.index_state.in_flight_kind_paths.contains(&entry.path)
+                        {
+                            tab.index_state
+                                .pending_kind_paths_set
+                                .insert(entry.path.clone());
+                            tab.index_state
+                                .pending_kind_paths
+                                .push_back(entry.path.clone());
+                        }
+                    }
+                    tab.index_state.kind_resolution_in_progress =
+                        !tab.index_state.pending_kind_paths.is_empty()
+                            || !tab.index_state.in_flight_kind_paths.is_empty();
+                } else {
+                    tab.index_state.pending_kind_paths.clear();
+                    tab.index_state.pending_kind_paths_set.clear();
+                    tab.index_state.in_flight_kind_paths.clear();
+                    tab.index_state.kind_resolution_in_progress = false;
+                }
+                if self
+                    .filelist_state
+                    .pending_after_index
+                    .as_ref()
+                    .is_some_and(|pending| {
+                        pending.tab_id == tab.id
+                            && Self::path_key(&pending.root) == Self::path_key(&tab.root)
+                    })
+                {
+                    effect.deferred_filelist = Some((
+                        tab.id,
+                        tab.root.clone(),
+                        tab.index_state
+                            .all_entries
+                            .iter()
+                            .map(|entry| entry.path.clone())
+                            .collect(),
+                    ));
+                    self.filelist_state.pending_after_index = None;
+                }
+
+                if tab.query_state.query.trim().is_empty() {
+                    tab.result_state.results = tab
+                        .index_state
+                        .entries
+                        .iter()
+                        .take(self.limit)
+                        .cloned()
+                        .map(|entry| (entry.path, 0.0))
+                        .collect();
+                    if tab.result_state.results.is_empty() {
+                        tab.result_state.current_row = None;
+                        tab.result_state.preview.clear();
+                        tab.pending_preview_request_id = None;
+                        tab.preview_in_progress = false;
+                    } else {
+                        let max_index = tab.result_state.results.len().saturating_sub(1);
+                        tab.result_state.current_row =
+                            Some(tab.result_state.current_row.unwrap_or(0).min(max_index));
+                    }
+                } else {
+                    effect.trigger_search = true;
+                }
+                Self::shrink_tab_checkpoint_buffers(tab);
+                effect.cleanup_request_id = Some(request_id);
+            }
+            IndexResponse::Failed { request_id, error } => {
+                if tab.index_state.pending_index_request_id != Some(request_id) {
+                    effect.cleanup_request_id = Some(request_id);
+                    return effect;
+                }
+                Self::settle_background_tab_index_failure(
+                    tab,
+                    Some(format!("Indexing failed: {}", error)),
+                );
+                effect.cleanup_request_id = Some(request_id);
+            }
+            IndexResponse::Canceled { request_id } => {
+                if tab.index_state.pending_index_request_id == Some(request_id) {
+                    Self::settle_background_tab_index_failure(tab, None);
+                }
+                effect.cleanup_request_id = Some(request_id);
+            }
+            IndexResponse::Truncated { request_id, limit } => {
+                if tab.index_state.pending_index_request_id == Some(request_id) {
+                    tab.notice = format!(
+                        "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
+                        limit
+                    );
+                }
+            }
+        }
+
+        effect
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
         let normalized = normalize_windows_path_buf(new_root);
@@ -571,7 +830,7 @@ impl FlistWalkerApp {
         }
         self.active_tab = next_index;
         if let Some(tab) = self.tabs.get(next_index).cloned() {
-            self.activate_tab_after_transition(&tab, true, true, true);
+            self.activate_background_tab_after_transition(&tab);
         }
     }
 
