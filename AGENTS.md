@@ -59,7 +59,7 @@
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 検証は `docs/TESTPLAN.md` の Validation Matrix に従って選択する。
 - Rust 実装を変更した場合は最低限 `cargo test` を実行してから完了報告する。docs-only 変更は matrix 上の docs 手順で代替してよい。
-- `rust/src/indexer.rs`、`rust/src/app/workers.rs`、`rust/src/app.rs` のインデクシング経路を変更した場合は、Validation Matrix の VM-003 に従い、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
+- `rust/src/indexer.rs`、`rust/src/app/workers.rs`、`rust/src/app/mod.rs` のインデクシング経路を変更した場合は、Validation Matrix の VM-003 に従い、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
 - `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`
 - `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`
 - 上記 perf テストは、FileList / Walker の初期インデクシング速度が基準実装より悪化していないことを確認する目的で使う。
@@ -69,6 +69,12 @@
 - `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れがあれば tag 作成前に修正する。
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
+
+## Temporary Change Plan Rule
+- For `improvement-roadmap`, read [docs/CHANGE-PLAN-20260408-improvement-roadmap.md](/mnt/d/work/flistwalker/docs/CHANGE-PLAN-20260408-improvement-roadmap.md) and [docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md](/mnt/d/work/flistwalker/docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md) before starting implementation.
+- Execute the App Coordinator Compression work in the documented phase order unless the roadmap or slice plan is updated first.
+- If scope, order, or risk changes, update the relevant change plan before continuing.
+- Remove this section from `AGENTS.md` after the planned work is complete.
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###

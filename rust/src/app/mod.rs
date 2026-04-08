@@ -27,6 +27,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod bootstrap;
+mod coordinator;
 mod cache;
 mod filelist;
 mod index_coordinator;
@@ -45,6 +46,9 @@ mod worker_bus;
 mod workers;
 
 use cache::{EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
+use coordinator::{
+    build_status_line, normalized_compare_key, path_is_within_root, StatusLineContext,
+};
 use index_coordinator::IndexCoordinator;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
@@ -557,8 +561,7 @@ Search hints:
                     let cmp = Self::path_name_key(path_a)
                         .cmp(&Self::path_name_key(path_b))
                         .then_with(|| {
-                            Self::normalized_compare_key(path_a)
-                                .cmp(&Self::normalized_compare_key(path_b))
+                            normalized_compare_key(path_a).cmp(&normalized_compare_key(path_b))
                         })
                         .then_with(|| idx_a.cmp(idx_b));
                     if desc {
@@ -593,8 +596,7 @@ Search hints:
                     }
                     .then_with(|| Self::path_name_key(path_a).cmp(&Self::path_name_key(path_b)))
                     .then_with(|| {
-                        Self::normalized_compare_key(path_a)
-                            .cmp(&Self::normalized_compare_key(path_b))
+                        normalized_compare_key(path_a).cmp(&normalized_compare_key(path_b))
                     })
                     .then_with(|| idx_a.cmp(idx_b))
                 });
@@ -710,53 +712,11 @@ Search hints:
         self.apply_result_sort(false);
     }
 
-    /// パス比較用の安定キーを OS 差分を吸収して生成する。
-    fn normalized_compare_key(path: &Path) -> String {
-        let mut key = normalize_windows_path_buf(path.to_path_buf())
-            .to_string_lossy()
-            .replace('\\', "/");
-        while key.len() > 1 && key.ends_with('/') {
-            key.pop();
-        }
-        #[cfg(windows)]
-        {
-            key.make_ascii_lowercase();
-        }
-        key
-    }
-
-    /// 操作対象 path が現在 root の配下にあるかを検証する。
-    fn path_is_within_root(root: &Path, path: &Path) -> bool {
-        let root_key = Self::normalized_compare_key(root);
-        let path_key = Self::normalized_compare_key(path);
-        if path_key == root_key
-            || path_key
-                .strip_prefix(&root_key)
-                .is_some_and(|suffix| suffix.starts_with('/'))
-        {
-            return true;
-        }
-
-        let canonical_root = root.canonicalize().ok();
-        let canonical_path = path.canonicalize().ok();
-        match (canonical_root, canonical_path) {
-            (Some(canonical_root), Some(canonical_path)) => {
-                let root_key = Self::normalized_compare_key(&canonical_root);
-                let path_key = Self::normalized_compare_key(&canonical_path);
-                path_key == root_key
-                    || path_key
-                        .strip_prefix(&root_key)
-                        .is_some_and(|suffix| suffix.starts_with('/'))
-            }
-            _ => false,
-        }
-    }
-
     /// root 外の path を含む操作要求の先頭違反要素を返す。
     fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
         paths
             .iter()
-            .find(|path| !Self::path_is_within_root(&self.root, path))
+            .find(|path| !path_is_within_root(&self.root, path))
             .cloned()
     }
 
@@ -924,11 +884,6 @@ Search hints:
 
     /// 現在の進行状況と notice から status line を再構築する。
     fn refresh_status_line(&mut self) {
-        let tab_label = if self.tabs.is_empty() {
-            "Tab: 1/1".to_string()
-        } else {
-            format!("Tab: {}/{}", self.active_tab + 1, self.tabs.len())
-        };
         let indexed_count = if self.indexing.in_progress {
             if self.index.entries.is_empty() {
                 self.all_entries.len()
@@ -938,87 +893,27 @@ Search hints:
         } else {
             self.all_entries.len()
         };
-        let clipped = self.results.len() >= self.limit;
-        let clip_text = if clipped {
-            format!(" (limit {} reached)", self.limit)
-        } else {
-            String::new()
-        };
-        let pinned = if self.pinned_paths.is_empty() {
-            String::new()
-        } else {
-            format!(" | Pinned: {}", self.pinned_paths.len())
-        };
-        let searching = if self.search.in_progress() {
-            " | Searching..."
-        } else {
-            ""
-        };
-        let indexing = if self.indexing.in_progress {
-            " | Indexing..."
-        } else {
-            ""
-        };
-        let executing = if self.worker_bus.action.in_progress {
-            " | Executing..."
-        } else {
-            ""
-        };
-        let creating_filelist = if self.filelist_state.in_progress {
-            if self.filelist_state.cancel_requested {
-                " | Canceling FileList..."
-            } else {
-                " | Creating FileList..."
-            }
-        } else {
-            ""
-        };
-        let updating = if self.update_state.in_progress {
-            " | Updating..."
-        } else {
-            ""
-        };
-        let sorting = if self.worker_bus.sort.in_progress {
-            " | Sorting..."
-        } else {
-            ""
-        };
-        let history_search = if self.query_state.history_search_active {
-            format!(
-                " | History search: {}/{}",
-                self.query_state.history_search_results.len(),
-                self.query_state.query_history.len()
-            )
-        } else {
-            String::new()
-        };
-        let notice = if self.notice.is_empty() {
-            String::new()
-        } else {
-            format!(" | {}", self.notice)
-        };
-        let memory = match self.memory_usage_text() {
-            Some(mem) => format!(" | Mem: {mem}"),
-            None => String::new(),
-        };
-
-        self.status_line = format!(
-            "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}{}{}",
-            tab_label,
+        let memory = self.memory_usage_text();
+        self.status_line = build_status_line(StatusLineContext {
+            active_tab: self.active_tab,
+            tab_count: self.tabs.len(),
             indexed_count,
-            self.results.len(),
-            clip_text,
-            pinned,
-            searching,
-            indexing,
-            executing,
-            creating_filelist,
-            updating,
-            sorting,
-            history_search,
-            memory,
-            notice
-        );
+            results_len: self.results.len(),
+            limit: self.limit,
+            pinned_paths_len: self.pinned_paths.len(),
+            search_in_progress: self.search.in_progress(),
+            indexing_in_progress: self.indexing.in_progress,
+            action_in_progress: self.worker_bus.action.in_progress,
+            filelist_in_progress: self.filelist_state.in_progress,
+            filelist_cancel_requested: self.filelist_state.cancel_requested,
+            update_in_progress: self.update_state.in_progress,
+            sort_in_progress: self.worker_bus.sort.in_progress,
+            history_search_active: self.query_state.history_search_active,
+            history_search_results_len: self.query_state.history_search_results.len(),
+            query_history_len: self.query_state.query_history.len(),
+            notice: &self.notice,
+            memory_text: memory,
+        });
     }
 
     /// 定期的にメモリ使用量をサンプリングし表示文字列へ変換する。

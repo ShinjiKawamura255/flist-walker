@@ -1,12 +1,14 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-04
-- Current active engineering roadmap: なし
+- Updated: 2026-04-08
+- Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-improvement-roadmap.md`
 - App architecture change-plan program: DONE
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
-  - 新しい大規模 workstream を開始する場合は、必要に応じて別の change plan / roadmap を起こす。
+  - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。
+  - active slice は `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` とし、roadmap と親子関係を持たせる。
+  - Temporary Change Plan Rule は収束レビュー後に追加する。
 
 ## Completed Programs
 
@@ -59,3 +61,5 @@
 ## Durable History
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。
 - 2026-04-04: closure 完了後、app architecture 用 temporary rule を `AGENTS.md` から削除し、validation は `docs/TESTPLAN.md` の Validation Matrix を直接適用する運用へ戻した。
+- 2026-04-08: 2026-04-08 のレビュー結果を踏まえ、`plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。
+- 2026-04-08: 初回レビューの指摘を受け、child slice として `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` を追加した。roadmap 側の slice-level detail は上位計画向けに圧縮した。
