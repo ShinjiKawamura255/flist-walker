@@ -21,6 +21,7 @@
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
+- Perf: 軽量 PR gate は `perf_regression_filelist_stream_matches_v0123_reference_budget` とし、FileList stream budget を日常 validation に載せる。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` として分離する。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
 - Sec: Windows の一般 `.ps1` は既定で直接実行せず、既定アプリでオープンする。

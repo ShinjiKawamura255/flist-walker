@@ -112,6 +112,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-08 00:00 Drafted as the active perf gate slice after updater hardening.
+- 2026-04-08 00:00 Phase 1 started: FileList stream budget is the lightweight PR gate candidate, and the walker perf test remains the heavy suite.
 
 ## 12. Completion Checklist
 - [ ] Planned document created before implementation
