@@ -48,6 +48,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - index worker channel、queue/inflight、incremental state、background tab state を保持する。
 - [worker_bus.rs](../rust/src/app/worker_bus.rs)
   - preview/action/sort/kind/filelist/update worker channel を束ねる。
+- [worker_support.rs](../rust/src/app/worker_support.rs)
+  - worker routing の共通 helper、search prefix cache、action target helper を集約する。
 - [ui_state.rs](../rust/src/app/ui_state.rs)
   - runtime UI focus、scroll、preview panel、tab drag などの一時状態を保持する。
 - [query_state.rs](../rust/src/app/query_state.rs)
@@ -67,7 +69,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。
 - [workers.rs](../rust/src/app/workers.rs)
-  - worker request/response 型と worker 実装。
+  - worker request/response 型と worker 実装、worker thread orchestration を担当する。
 
 ## Threading Model
 - UI thread:

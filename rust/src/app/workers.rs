@@ -1,3 +1,6 @@
+use super::worker_support::{
+    action_notice_for_targets, action_targets_for_request, rank_search_results, SearchPrefixCache,
+};
 use super::{ResultSortMode, SortMetadata};
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
@@ -6,15 +9,10 @@ use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
     write_filelist_cancellable, IndexSource,
 };
-use crate::search::{
-    sort_scored_matches, top_ranked_scores, try_collect_search_matches, IndexedScore,
-};
-use crate::ui_model::{
-    build_preview_text_with_kind, has_visible_match, normalize_path_for_display,
-};
+use crate::ui_model::build_preview_text_with_kind;
 use crate::updater::{check_for_update, prepare_and_start_update, UpdateCandidate};
 use jwalk::{Parallelism, WalkDir};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 use std::fs::FileType;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -127,24 +125,6 @@ pub(super) struct SearchResponse {
     pub(super) request_id: u64,
     pub(super) results: Vec<(PathBuf, f64)>,
     pub(super) error: Option<String>,
-}
-
-pub(super) fn filter_search_results(
-    results: Vec<(PathBuf, f64)>,
-    root: &Path,
-    query: &str,
-    prefer_relative: bool,
-    use_regex: bool,
-    ignore_case: bool,
-) -> Vec<(PathBuf, f64)> {
-    if use_regex {
-        return results;
-    }
-
-    results
-        .into_iter()
-        .filter(|(path, _)| has_visible_match(path, root, query, prefer_relative, ignore_case))
-        .collect()
 }
 
 #[derive(Clone, Debug)]
@@ -283,14 +263,6 @@ pub(super) enum UpdateResponse {
     },
 }
 
-pub(super) fn action_notice_for_targets(targets: &[PathBuf]) -> String {
-    if targets.len() == 1 {
-        format!("Action: {}", normalize_path_for_display(&targets[0]))
-    } else {
-        format!("Action: launched {} items", targets.len())
-    }
-}
-
 pub(super) struct SortMetadataRequest {
     pub(super) request_id: u64,
     pub(super) paths: Vec<PathBuf>,
@@ -422,162 +394,6 @@ pub(super) enum FileListResponse {
     },
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub(super) struct SearchEntriesSnapshotKey {
-    pub(super) ptr: usize,
-    pub(super) len: usize,
-}
-
-impl SearchEntriesSnapshotKey {
-    fn from_entries(entries: &Arc<Vec<Entry>>) -> Self {
-        Self {
-            ptr: Arc::as_ptr(entries) as usize,
-            len: entries.len(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct SearchPrefixCacheEntry {
-    snapshot: SearchEntriesSnapshotKey,
-    query: String,
-    matched_indices: Arc<Vec<usize>>,
-    approx_bytes: usize,
-}
-
-#[derive(Default)]
-pub(super) struct SearchPrefixCache {
-    pub(super) entries: VecDeque<SearchPrefixCacheEntry>,
-    pub(super) total_bytes: usize,
-}
-
-impl SearchPrefixCache {
-    pub(super) const MAX_ENTRIES: usize = 64;
-    pub(super) const MAX_BYTES: usize = 8 * 1024 * 1024;
-    pub(super) const MAX_MATCHED_INDICES: usize = 20_000;
-    const MIN_QUERY_LEN: usize = 3;
-
-    pub(super) fn is_cacheable_query(query: &str) -> bool {
-        let q = query.trim();
-        if q.len() < Self::MIN_QUERY_LEN {
-            return false;
-        }
-        if q.contains(char::is_whitespace) {
-            return false;
-        }
-        !q.contains(['|', '!', '\'', '^', '$'])
-    }
-
-    pub(super) fn is_safe_prefix_extension(prefix: &str, query: &str) -> bool {
-        if !Self::is_cacheable_query(prefix) || !Self::is_cacheable_query(query) {
-            return false;
-        }
-        query.starts_with(prefix) && query.len() > prefix.len()
-    }
-
-    pub(super) fn lookup_candidates(
-        &mut self,
-        snapshot: SearchEntriesSnapshotKey,
-        query: &str,
-    ) -> Option<Arc<Vec<usize>>> {
-        if !Self::is_cacheable_query(query) {
-            return None;
-        }
-
-        let mut best_idx = None;
-        let mut best_len = 0usize;
-        for (idx, entry) in self.entries.iter().enumerate() {
-            if entry.snapshot != snapshot {
-                continue;
-            }
-            if !Self::is_safe_prefix_extension(&entry.query, query) {
-                continue;
-            }
-            if entry.query.len() > best_len {
-                best_len = entry.query.len();
-                best_idx = Some(idx);
-            }
-        }
-
-        let idx = best_idx?;
-        let entry = self.entries.remove(idx)?;
-        let matched = Arc::clone(&entry.matched_indices);
-        self.entries.push_back(entry);
-        Some(matched)
-    }
-
-    pub(super) fn maybe_store(
-        &mut self,
-        snapshot: SearchEntriesSnapshotKey,
-        query: &str,
-        matched_indices: Vec<usize>,
-    ) {
-        if !Self::is_cacheable_query(query) {
-            return;
-        }
-        if matched_indices.is_empty() || matched_indices.len() > Self::MAX_MATCHED_INDICES {
-            return;
-        }
-
-        let query = query.trim().to_string();
-        let approx_bytes = query.len().saturating_add(
-            matched_indices
-                .len()
-                .saturating_mul(std::mem::size_of::<usize>()),
-        );
-        if approx_bytes > Self::MAX_BYTES {
-            return;
-        }
-
-        if let Some(existing_pos) = self
-            .entries
-            .iter()
-            .position(|entry| entry.snapshot == snapshot && entry.query == query)
-        {
-            if let Some(old) = self.entries.remove(existing_pos) {
-                self.total_bytes = self.total_bytes.saturating_sub(old.approx_bytes);
-            }
-        }
-
-        self.total_bytes = self.total_bytes.saturating_add(approx_bytes);
-        self.entries.push_back(SearchPrefixCacheEntry {
-            snapshot,
-            query,
-            matched_indices: Arc::new(matched_indices),
-            approx_bytes,
-        });
-        self.evict_over_limit();
-    }
-
-    fn evict_over_limit(&mut self) {
-        while self.entries.len() > Self::MAX_ENTRIES || self.total_bytes > Self::MAX_BYTES {
-            let Some(oldest) = self.entries.pop_front() else {
-                break;
-            };
-            self.total_bytes = self.total_bytes.saturating_sub(oldest.approx_bytes);
-        }
-    }
-}
-
-fn scored_indices_to_paths(
-    entries: &[Entry],
-    scored: &[IndexedScore],
-    limit: usize,
-) -> Vec<(PathBuf, f64)> {
-    if limit == 0 || scored.is_empty() {
-        return Vec::new();
-    }
-    scored
-        .iter()
-        .take(limit)
-        .filter_map(|item| {
-            entries
-                .get(item.index)
-                .map(|entry| (entry.path.clone(), item.score))
-        })
-        .collect()
-}
-
 pub(super) fn spawn_search_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
@@ -597,50 +413,16 @@ pub(super) fn spawn_search_worker(
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
-            let query_trimmed = req.query.trim().to_string();
-            let snapshot = SearchEntriesSnapshotKey::from_entries(&req.entries);
-            let cached_candidates = if req.use_regex {
-                None
-            } else {
-                prefix_cache.lookup_candidates(snapshot, &query_trimmed)
-            };
-            let (results, error) = match try_collect_search_matches(
+            let (results, error) = rank_search_results(
+                &req.entries,
                 &req.query,
-                &req.entries
-                    .iter()
-                    .map(|entry| entry.path.clone())
-                    .collect::<Vec<_>>(),
+                &req.root,
+                req.limit,
                 req.use_regex,
                 req.ignore_case,
-                Some(&req.root),
                 req.prefer_relative,
-                cached_candidates.as_ref().map(|items| items.as_slice()),
-            ) {
-                Ok(scored_matches) => {
-                    if SearchPrefixCache::is_cacheable_query(&query_trimmed)
-                        && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
-                    {
-                        let mut ranked = scored_matches.scored.clone();
-                        sort_scored_matches(&mut ranked);
-                        let matched_indices = ranked.iter().map(|item| item.index).collect();
-                        prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
-                    }
-                    let ranked = top_ranked_scores(scored_matches.scored, req.limit);
-                    let raw_results = scored_indices_to_paths(&req.entries, &ranked, req.limit);
-                    (
-                        filter_search_results(
-                            raw_results,
-                            &req.root,
-                            &req.query,
-                            req.prefer_relative,
-                            req.use_regex,
-                            req.ignore_case,
-                        ),
-                        None,
-                    )
-                }
-                Err(err) => (Vec::new(), Some(err)),
-            };
+                &mut prefix_cache,
+            );
 
             if tx_res
                 .send(SearchResponse {
@@ -968,25 +750,6 @@ pub(super) fn spawn_update_worker(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn action_targets_for_request(
-    paths: &[PathBuf],
-    open_parent_for_files: bool,
-) -> Vec<PathBuf> {
-    if !open_parent_for_files {
-        return paths.to_vec();
-    }
-
-    let mut unique = HashSet::with_capacity(paths.len());
-    let mut targets = Vec::with_capacity(paths.len());
-    for path in paths {
-        let target = action_target_path_for_open_in_folder(path);
-        if unique.insert(target.clone()) {
-            targets.push(target);
-        }
-    }
-    targets
-}
-
 fn flush_batch(
     tx_res: &Sender<IndexResponse>,
     request_id: u64,
@@ -1002,16 +765,6 @@ fn flush_batch(
             entries,
         })
         .is_ok()
-}
-
-pub(super) fn action_target_path_for_open_in_folder(path: &Path) -> PathBuf {
-    if path.is_dir() {
-        return path.to_path_buf();
-    }
-    path.parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| path.to_path_buf())
 }
 
 fn is_nested_filelist_candidate(path: &Path, root_filelist: &Path, root: &Path) -> bool {

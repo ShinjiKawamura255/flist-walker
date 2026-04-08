@@ -27,8 +27,8 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod bootstrap;
-mod coordinator;
 mod cache;
+mod coordinator;
 mod filelist;
 mod index_coordinator;
 mod input;
@@ -43,6 +43,7 @@ mod tabs;
 mod ui_state;
 mod update;
 mod worker_bus;
+mod worker_support;
 mod workers;
 
 use cache::{EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState};

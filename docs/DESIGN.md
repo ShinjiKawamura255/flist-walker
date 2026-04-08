@@ -42,8 +42,9 @@
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
 - 役割補足: `app/pipeline.rs` は index/search queue、response poll、incremental refresh、entry filter 再適用を担当し、request_id 契約を局所化する。
 - 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation、preview request/response helper、preview request routing owner API を担当し、cache の scope 更新や eviction を method 経由へ局所化する。
+- 役割補足: `app/worker_support.rs` は worker routing の共通 helper、search prefix cache、action target helper を担当し、`workers.rs` から reusable helper を切り離す。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
-- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
+- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。

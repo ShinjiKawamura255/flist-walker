@@ -98,8 +98,8 @@
      - indexing/search regression review
 
 ## 7. Detailed Task Breakdown
-- [ ] Define the worker routing boundary that should move out of `workers.rs`
-- [ ] Decide which request/response helpers belong with `worker_bus`, `pipeline`, or coordinator-owned modules
+- [x] Define the worker routing boundary that should move out of `workers.rs`
+- [x] Decide which request/response helpers belong with `worker_bus`, `pipeline`, or coordinator-owned modules
 - [ ] Separate the index/search domain helpers from worker glue
 - [ ] Sync architecture/design/test docs with the new module boundaries
 - [ ] Reconfirm regression coverage for request routing and indexing/search flows
@@ -138,6 +138,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Drafted after Slice A completion.
 - 2026-04-08 00:00 Intended to become the next active child slice of the improvement roadmap.
 - 2026-04-08 00:00 Narrowed after review so updater/OS hardening stays out of scope.
+- 2026-04-08 00:00 Phase 1 completed by extracting worker routing helpers into `app/worker_support.rs` and keeping `workers.rs` focused on worker thread orchestration.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
