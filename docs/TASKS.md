@@ -14,6 +14,7 @@
   - 2026-04-08 に Slice A Phase 1 の seam 抽出を完了し、active request cleanup を `IndexCoordinator` 経由へ寄せたうえで search refresh request/response routing を `SearchCoordinator` lifecycle helper と pipeline-local handler に整理した。
   - 2026-04-08 に Slice A Phase 2 を完了し、`pipeline_owner.rs` へ search/result refresh と entry-filter application の owner surface を移して `pipeline.rs` を thin wrapper 化した。
   - 2026-04-08 に Slice A Phase 3 を完了し、`ARCHITECTURE.md` / `DESIGN.md` を `pipeline_owner.rs` ベースの owner boundary に同期した。
+  - 2026-04-08 に Slice B 向けの active child plan `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation へ進む状態に切り替えた。
 
 ## Completed Programs
 
@@ -96,6 +97,7 @@
 
 ## Durable History
 - 2026-04-08: 次の app architecture 改善を 2 段 change plan に再編し、`docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` と `docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md` を追加した。
+- 2026-04-08: Slice A 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation に進める状態へ更新した。
 - 2026-04-08: single-plan の architecture refactor program として `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を追加し、`AGENTS.md` に temporary rule を追記した。
 - 2026-04-08: architecture refactor follow-up program を close し、恒久内容を `ARCHITECTURE.md` / `DESIGN.md` / `TASKS.md` へ移したうえで temporary rule と `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を削除した。
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。

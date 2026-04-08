@@ -7,7 +7,7 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md`
 - Scope Label: app-architecture-roadmap
 - Related Tickets/Issues: none
 - Review Status: reviewed
@@ -85,14 +85,14 @@
 | Slice | Focus | Status | Activation / Exit Notes |
 | --- | --- | --- | --- |
 | Slice A | Pipeline Owner Extraction | DONE | Completed on 2026-04-08 after owner-surface extraction and steady-state doc sync. |
-| Slice B | Background Tab Result-Flow Separation | PLANNED | Activate after Slice A stabilizes the pipeline owner surface. |
+| Slice B | Background Tab Result-Flow Separation | ACTIVE | Activated on 2026-04-08 after Slice A stabilized the pipeline owner surface. |
 | Slice C | Worker Protocol Separation | PLANNED | Activate after Slice B or earlier only if Slice A produces a protocol-friendly boundary without destabilizing tabs. |
 | Slice D | Command-Oriented App Tests | PLANNED | Activate after ownership seams exist to test against. |
 | Slice E | Structured Tracing and Supportability | PLANNED | Prefer after ownership and protocol boundaries settle, so tracing lands on stable surfaces. |
 
 ## 7. Detailed Task Breakdown
-- [ ] Add roadmap and active slice documents before implementation resumes
-- [ ] Execute Slice A and update roadmap status
+- [x] Add roadmap and active slice documents before implementation resumes
+- [x] Execute Slice A and update roadmap status
 - [ ] Execute Slice B and update roadmap status
 - [ ] Execute Slice C and update roadmap status
 - [ ] Execute Slice D and update roadmap status
@@ -124,7 +124,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ```md
 ## Temporary Change Plan Rule
-- For `app-architecture-roadmap`, read `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` and then `docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md` before starting implementation.
+- For `app-architecture-roadmap`, read `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` and then `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` before starting implementation.
 - Execute the work in the documented order unless the roadmap or active slice is updated first.
 - If scope, order, or risk changes, update the relevant change plan before continuing.
 - Remove this section from `AGENTS.md` after the planned work is complete.
@@ -136,6 +136,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08: Slice A Phase 1 completed. The active request cleanup seam now routes through `IndexCoordinator`, and search refresh request/response routing is grouped around `SearchCoordinator` lifecycle helpers plus pipeline-local response handlers; later slice phases remain active.
 - 2026-04-08: Slice A Phase 2 completed. `pipeline_owner.rs` now carries the dedicated owner surface for search/result refresh and entry-filter application, reducing direct pipeline orchestration inside `pipeline.rs`.
 - 2026-04-08: Slice A Phase 3 completed. Steady-state architecture/design docs now describe `pipeline_owner.rs` as the search/result refresh owner surface and `pipeline.rs` as the thinner dispatcher layer.
+- 2026-04-08: Activated Slice B and created `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` as the new active child plan.
+- 2026-04-08: Slice B handoff reviewed. Cleared stale roadmap task state and confirmed the new child plan/AGENTS/TASKS references are aligned.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
