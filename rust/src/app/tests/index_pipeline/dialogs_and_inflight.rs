@@ -53,9 +53,15 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
         kind_known: true,
     });
     app.indexing.pending_entries_request_id = Some(7);
-    app.indexing.pending_kind_paths.push_back(root.join("stale-kind.txt"));
-    app.indexing.pending_kind_paths_set.insert(root.join("stale-kind.txt"));
-    app.indexing.in_flight_kind_paths.insert(root.join("in-flight.txt"));
+    app.indexing
+        .pending_kind_paths
+        .push_back(root.join("stale-kind.txt"));
+    app.indexing
+        .pending_kind_paths_set
+        .insert(root.join("stale-kind.txt"));
+    app.indexing
+        .in_flight_kind_paths
+        .insert(root.join("in-flight.txt"));
     app.indexing.kind_resolution_in_progress = true;
     app.worker_bus.preview.pending_request_id = Some(9);
     app.worker_bus.preview.in_progress = true;

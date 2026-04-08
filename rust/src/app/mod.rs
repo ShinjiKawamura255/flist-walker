@@ -31,6 +31,7 @@ mod cache;
 mod coordinator;
 mod filelist;
 mod index_coordinator;
+mod index_worker;
 mod input;
 mod pipeline;
 mod query_state;
@@ -43,6 +44,7 @@ mod tabs;
 mod ui_state;
 mod update;
 mod worker_bus;
+mod worker_runtime;
 mod worker_support;
 mod workers;
 
@@ -51,6 +53,7 @@ use coordinator::{
     build_status_line, normalized_compare_key, path_is_within_root, StatusLineContext,
 };
 use index_coordinator::IndexCoordinator;
+use index_worker::spawn_index_worker;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
@@ -67,13 +70,14 @@ use worker_bus::{
     ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,
     UpdateWorkerBus, WorkerBus,
 };
+use worker_runtime::{WorkerJoinSummary, WorkerRuntime};
 use workers::{
-    spawn_action_worker, spawn_filelist_worker, spawn_index_worker, spawn_kind_resolver_worker,
-    spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
-    ActionRequest, ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest,
-    IndexResponse, KindResolveRequest, KindResolveResponse, PreviewRequest, PreviewResponse,
-    SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
-    UpdateRequestKind, UpdateResponse, WorkerJoinSummary, WorkerRuntime,
+    spawn_action_worker, spawn_filelist_worker, spawn_kind_resolver_worker, spawn_preview_worker,
+    spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker, ActionRequest,
+    ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest, IndexResponse,
+    KindResolveRequest, KindResolveResponse, PreviewRequest, PreviewResponse, SearchRequest,
+    SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind,
+    UpdateResponse,
 };
 
 impl TabAccentColor {

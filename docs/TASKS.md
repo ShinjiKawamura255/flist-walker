@@ -2,16 +2,31 @@
 
 ## Status Snapshot
 - Updated: 2026-04-08
-- Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-architecture-refactor.md`
-- App architecture change-plan program: IN PROGRESS
+- Current active engineering roadmap: none
+- App architecture change-plan program: DONE
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
   - 2026-04-08 の architecture debt closure program は closure まで完了し、temporary rule と change-plan 文書を撤去した。
-  - 2026-04-08 に single-plan の architecture refactor program を再導入し、pipeline ownership と worker modularization を優先順に進める方針を固定した。
+  - 2026-04-08 に single-plan の architecture refactor program を再導入し、Phase 1 の pipeline state-transition 整理、Phase 2 の `IndexCoordinator` owner API 化、Phase 3 の worker modularization を完了した。
 
 ## Completed Programs
+
+### Program E: Architecture Refactor Follow-up
+- Status: DONE on 2026-04-08
+- Goal: pipeline 重複遷移を整理し、index request lifecycle の owner 境界を明示し、`workers.rs` を concern ごとに分割して app architecture の保守コストを下げる。
+- Outcome:
+  - `pipeline.rs` は active/background refresh と terminal cleanup の重複 state transition を helper 化した。
+  - `index_coordinator.rs` は request id 採番、refresh 開始、terminal cleanup を持つ owner API を担当する構造になった。
+  - `worker_runtime.rs` と `index_worker.rs` を追加し、`workers.rs` から runtime orchestration と index streaming/classification を切り離した。
+  - `ARCHITECTURE.md` と `DESIGN.md` は新しい owner/module 境界へ同期し、temporary rule と change plan は closure 時に撤去した。
+
+| Phase | Status | Completed |
+| --- | --- | --- |
+| Phase 1: Pipeline State-Transition Consolidation | DONE | 2026-04-08 |
+| Phase 2: Pipeline Ownership Extraction | DONE | 2026-04-08 |
+| Phase 3: Worker Modularization and Docs Closure | DONE | 2026-04-08 |
 
 ### Program D: Architecture Debt Closure
 - Status: DONE on 2026-04-08
@@ -77,6 +92,7 @@
 
 ## Durable History
 - 2026-04-08: single-plan の architecture refactor program として `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を追加し、`AGENTS.md` に temporary rule を追記した。
+- 2026-04-08: architecture refactor follow-up program を close し、恒久内容を `ARCHITECTURE.md` / `DESIGN.md` / `TASKS.md` へ移したうえで temporary rule と `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を削除した。
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。
 - 2026-04-04: closure 完了後、app architecture 用 temporary rule を `AGENTS.md` から削除し、validation は `docs/TESTPLAN.md` の Validation Matrix を直接適用する運用へ戻した。
 - 2026-04-08: 2026-04-08 のレビュー結果を踏まえ、`plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。

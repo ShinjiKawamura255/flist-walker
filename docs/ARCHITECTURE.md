@@ -41,13 +41,17 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [tabs.rs](../rust/src/app/tabs.rs)
   - tab lifecycle、snapshot capture/apply。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
-  - index/search queue、response poll、incremental refresh。
+  - index/search queue、response poll、incremental refresh。`IndexCoordinator` の owner API を経由して index request lifecycle を調停する。
 - [search_coordinator.rs](../rust/src/app/search_coordinator.rs)
   - search worker channel、request_id、tab routing を保持する。
 - [index_coordinator.rs](../rust/src/app/index_coordinator.rs)
-  - index worker channel、queue/inflight、incremental state、background tab state を保持する。
+  - index worker channel、queue/inflight、incremental state、background tab state に加え、request id 採番、active/background refresh 開始、terminal cleanup など index request lifecycle の owner API を保持する。
+- [index_worker.rs](../rust/src/app/index_worker.rs)
+  - FileList / Walker streaming、kind classification、index worker thread 実装を担当する。
 - [worker_bus.rs](../rust/src/app/worker_bus.rs)
   - preview/action/sort/kind/filelist/update worker channel を束ねる。
+- [worker_runtime.rs](../rust/src/app/worker_runtime.rs)
+  - worker shutdown signal と join timeout 管理を担当する。
 - [worker_support.rs](../rust/src/app/worker_support.rs)
   - worker routing の共通 helper と action target helper を集約する。
 - [ui_state.rs](../rust/src/app/ui_state.rs)
@@ -69,7 +73,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。
 - [workers.rs](../rust/src/app/workers.rs)
-  - worker request/response 型と worker 実装、worker thread orchestration を担当する。
+  - worker request/response 型と search/preview/action/sort/update worker 実装を担当する。
 
 ## Threading Model
 - UI thread:

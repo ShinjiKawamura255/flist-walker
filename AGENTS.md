@@ -70,10 +70,5 @@
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
-## Temporary Change Plan Rule
-- `architecture-refactor` では、実装前に `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を読むこと。
-- 実装順と検証順は当該 change plan に従い、途中で順序・範囲・リスク認識を変える場合は先に plan を更新すること。
-- この一時ルールは当該 refactor program の完了後に削除すること。
-
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
