@@ -2,8 +2,10 @@ use super::*;
 #[cfg(target_os = "windows")]
 use crate::app::worker_support::action_notice_for_targets;
 use crate::app::worker_support::{
-    action_target_path_for_open_in_folder, action_targets_for_request, filter_search_results,
-    SearchEntriesSnapshotKey, SearchPrefixCache,
+    action_target_path_for_open_in_folder, action_targets_for_request,
+};
+use crate::search::{
+    filter_search_results, SearchEntriesSnapshotKey, SearchPrefixCache,
 };
 
 fn test_update_candidate(target_version: &str) -> UpdateCandidate {

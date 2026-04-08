@@ -1,6 +1,4 @@
-use super::worker_support::{
-    action_notice_for_targets, action_targets_for_request, rank_search_results, SearchPrefixCache,
-};
+use super::worker_support::{action_notice_for_targets, action_targets_for_request};
 use super::{ResultSortMode, SortMetadata};
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
@@ -9,6 +7,7 @@ use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
     write_filelist_cancellable, IndexSource,
 };
+use crate::search::{rank_search_results, SearchPrefixCache};
 use crate::ui_model::build_preview_text_with_kind;
 use crate::updater::{check_for_update, prepare_and_start_update, UpdateCandidate};
 use jwalk::{Parallelism, WalkDir};

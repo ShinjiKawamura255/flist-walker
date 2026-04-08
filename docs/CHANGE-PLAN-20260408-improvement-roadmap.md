@@ -174,6 +174,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Slice A completed and is ready to serve as the dependency base for Slice B.
 - 2026-04-08 00:00 Slice B draft created for worker/domain modularization.
 - 2026-04-08 00:00 Slice B narrowed to worker/domain modularization with updater deferred to Slice C.
+- 2026-04-08 00:00 Slice B Phase 2 completed by moving search prefix cache and result materialization into `search.rs`.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

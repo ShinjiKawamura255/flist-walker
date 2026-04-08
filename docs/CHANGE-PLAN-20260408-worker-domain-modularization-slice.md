@@ -100,9 +100,9 @@
 ## 7. Detailed Task Breakdown
 - [x] Define the worker routing boundary that should move out of `workers.rs`
 - [x] Decide which request/response helpers belong with `worker_bus`, `pipeline`, or coordinator-owned modules
-- [ ] Separate the index/search domain helpers from worker glue
-- [ ] Sync architecture/design/test docs with the new module boundaries
-- [ ] Reconfirm regression coverage for request routing and indexing/search flows
+- [x] Separate the index/search domain helpers from worker glue
+- [x] Sync architecture/design/test docs with the new module boundaries
+- [x] Reconfirm regression coverage for request routing and indexing/search flows
 
 ## 8. Validation Plan
 - Automated tests:
@@ -139,13 +139,14 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Intended to become the next active child slice of the improvement roadmap.
 - 2026-04-08 00:00 Narrowed after review so updater/OS hardening stays out of scope.
 - 2026-04-08 00:00 Phase 1 completed by extracting worker routing helpers into `app/worker_support.rs` and keeping `workers.rs` focused on worker thread orchestration.
+- 2026-04-08 00:00 Phase 2 completed by moving search prefix cache and result materialization into `search.rs` and syncing architecture/design docs.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

@@ -15,7 +15,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [query.rs](../rust/src/query.rs)
   - fzf 互換 query tokenization と演算子解釈を担当する。
 - [search.rs](../rust/src/search.rs)
-  - candidate scoring と top-N 抽出を担当する。
+  - candidate scoring、prefix cache、top-N 抽出、search result materialization を担当する。
 - [ui_model.rs](../rust/src/ui_model.rs)
   - highlight 判定、preview 文面、表示パス整形を担当する。
 - [app/coordinator.rs](../rust/src/app/coordinator.rs)
@@ -49,7 +49,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [worker_bus.rs](../rust/src/app/worker_bus.rs)
   - preview/action/sort/kind/filelist/update worker channel を束ねる。
 - [worker_support.rs](../rust/src/app/worker_support.rs)
-  - worker routing の共通 helper、search prefix cache、action target helper を集約する。
+  - worker routing の共通 helper と action target helper を集約する。
 - [ui_state.rs](../rust/src/app/ui_state.rs)
   - runtime UI focus、scroll、preview panel、tab drag などの一時状態を保持する。
 - [query_state.rs](../rust/src/app/query_state.rs)
