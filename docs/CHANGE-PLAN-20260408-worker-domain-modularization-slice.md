@@ -10,8 +10,8 @@
 - Child Plan(s): none
 - Scope Label: improvement-worker-domain
 - Related Tickets/Issues: none
-- Review Status: not reviewed
-- Review Notes: Draft created after Slice A completion. This slice is intended to be the next active child plan of the improvement roadmap.
+- Review Status: reviewed
+- Review Notes: Draft created after Slice A completion. Slice scope is narrowed to worker routing plus index/search boundary work; updater/OS hardening is deferred to later slices.
 
 ## 1. Background
 - Slice A completed the coordinator compression work and left `app/mod.rs` in a cleaner orchestration role.
@@ -137,10 +137,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-08 00:00 Drafted after Slice A completion.
 - 2026-04-08 00:00 Intended to become the next active child slice of the improvement roadmap.
+- 2026-04-08 00:00 Narrowed after review so updater/OS hardening stays out of scope.
 
 ## 12. Completion Checklist
-- [ ] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
+- [x] Planned document created before implementation
+- [x] Temporary `AGENTS.md` rule added
 - [ ] Work executed according to the plan or the plan updated first
 - [ ] Verification completed
 - [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed

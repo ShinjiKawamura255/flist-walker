@@ -7,8 +7,8 @@
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。
-  - active slice は `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` とし、roadmap と親子関係を持たせる。
-  - Temporary Change Plan Rule は収束レビュー後に追加する。
+  - active slice は `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md` とし、roadmap と親子関係を持たせる。
+  - Temporary Change Plan Rule は `AGENTS.md` に追加済みで、現在の active slice を参照している。
 
 ## Completed Programs
 
@@ -63,3 +63,4 @@
 - 2026-04-04: closure 完了後、app architecture 用 temporary rule を `AGENTS.md` から削除し、validation は `docs/TESTPLAN.md` の Validation Matrix を直接適用する運用へ戻した。
 - 2026-04-08: 2026-04-08 のレビュー結果を踏まえ、`plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。
 - 2026-04-08: 初回レビューの指摘を受け、child slice として `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` を追加した。roadmap 側の slice-level detail は上位計画向けに圧縮した。
+- 2026-04-08: Slice A 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md` を追加し、worker/domain modularization に進める状態へ更新した。
