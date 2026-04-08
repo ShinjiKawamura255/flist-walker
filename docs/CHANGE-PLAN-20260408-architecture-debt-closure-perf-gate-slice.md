@@ -10,8 +10,8 @@
 - Child Plan(s): none
 - Scope Label: architecture-debt-perf-gate
 - Related Tickets/Issues: none
-- Review Status: not reviewed
-- Review Notes: Draft created after Slice A closure. This slice is intended to keep the perf guard light, explicit, and closeable without a third layer.
+- Review Status: reviewed
+- Review Notes: No blockers. The slice stayed narrow, the lightweight gate candidate was explicit, and the heavy suite remained separate.
 
 ## 1. Background
 - The project already has ignored perf tests, but the most important regression budgets are not part of the default PR hot path.
@@ -115,6 +115,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Phase 1 completed: the lightweight perf gate candidate and budget are defined in `docs/TESTPLAN.md`.
 - 2026-04-08 00:00 Phase 2 completed: the lightweight perf gate is now wired into `ci-cross-platform.yml` on the linux-native job.
 - 2026-04-08 00:00 Phase 1 started: FileList stream budget is the lightweight PR gate candidate, and the walker perf test remains the heavy suite.
+- 2026-04-08 00:00 Slice B closed and diagnostics/supportability is the next active slice.
 
 ## 12. Completion Checklist
 - [ ] Planned document created before implementation
