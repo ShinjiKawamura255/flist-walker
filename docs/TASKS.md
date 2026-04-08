@@ -12,6 +12,7 @@
   - 2026-04-08 に single-plan の architecture refactor program を再導入し、Phase 1 の pipeline state-transition 整理、Phase 2 の `IndexCoordinator` owner API 化、Phase 3 の worker modularization を完了した。
   - 2026-04-08 に次の app architecture 改善を roadmap 化し、Slice A として pipeline owner extraction を active slice に設定した。
   - 2026-04-08 に Slice A Phase 1 の seam 抽出を完了し、active request cleanup を `IndexCoordinator` 経由へ寄せたうえで search refresh request/response routing を `SearchCoordinator` lifecycle helper と pipeline-local handler に整理した。
+  - 2026-04-08 に Slice A Phase 2 を完了し、`pipeline_owner.rs` へ search/result refresh と entry-filter application の owner surface を移して `pipeline.rs` を thin wrapper 化した。
 
 ## Completed Programs
 

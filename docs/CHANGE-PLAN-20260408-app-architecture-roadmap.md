@@ -134,6 +134,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Planned roadmap for the next five app-architecture improvements and selected Slice A as the active starting point.
 - 2026-04-08 00:00 Local roadmap review completed. Added explicit slice status/activation tracking and confirmed the 2-level plan split is justified.
 - 2026-04-08: Slice A Phase 1 completed. The active request cleanup seam now routes through `IndexCoordinator`, and search refresh request/response routing is grouped around `SearchCoordinator` lifecycle helpers plus pipeline-local response handlers; later slice phases remain active.
+- 2026-04-08: Slice A Phase 2 completed. `pipeline_owner.rs` now carries the dedicated owner surface for search/result refresh and entry-filter application, reducing direct pipeline orchestration inside `pipeline.rs`.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

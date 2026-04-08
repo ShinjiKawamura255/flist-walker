@@ -34,6 +34,7 @@ mod index_coordinator;
 mod index_worker;
 mod input;
 mod pipeline;
+mod pipeline_owner;
 mod query_state;
 mod render;
 mod search_coordinator;
@@ -54,6 +55,7 @@ use coordinator::{
 };
 use index_coordinator::IndexCoordinator;
 use index_worker::spawn_index_worker;
+use pipeline_owner::PipelineOwner;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
