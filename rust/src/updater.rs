@@ -55,6 +55,16 @@ struct PlatformReleaseTarget {
     support: UpdateSupport,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct UpdateReleaseAssets {
+    asset: GitHubAsset,
+    readme_asset: GitHubAsset,
+    license_asset: GitHubAsset,
+    notices_asset: GitHubAsset,
+    checksum: GitHubAsset,
+    checksum_signature: GitHubAsset,
+}
+
 #[derive(Debug, Deserialize)]
 struct GitHubRelease {
     tag_name: String,
@@ -62,7 +72,7 @@ struct GitHubRelease {
     assets: Vec<GitHubAsset>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 struct GitHubAsset {
     name: String,
     browser_download_url: String,
@@ -117,93 +127,74 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
     }
     let current_version = parse_version(env!("CARGO_PKG_VERSION"))?;
     let release = fetch_latest_release()?;
+    resolve_update_candidate_from_release(&current_version, &release)
+}
+
+fn resolve_update_candidate_from_release(
+    current_version: &Version,
+    release: &GitHubRelease,
+) -> Result<Option<UpdateCandidate>> {
     let target_version = parse_version(&release.tag_name)?;
-    if !should_offer_update(&current_version, &target_version) {
+    if !should_offer_update(current_version, &target_version) {
         return Ok(None);
     }
 
     let Some(platform_target) = current_platform_target(&target_version)? else {
         return Ok(None);
     };
-    let asset = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == platform_target.asset_name)
-        .cloned()
-        .with_context(|| format!("release asset missing: {}", platform_target.asset_name))?;
-    let readme_asset = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == platform_target.readme_asset_name)
-        .cloned()
-        .with_context(|| {
-            format!(
-                "release asset missing: {}",
-                platform_target.readme_asset_name
-            )
-        })?;
-    let license_asset = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == platform_target.license_asset_name)
-        .cloned()
-        .with_context(|| {
-            format!(
-                "release asset missing: {}",
-                platform_target.license_asset_name
-            )
-        })?;
-    let notices_asset = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == platform_target.notices_asset_name)
-        .cloned()
-        .with_context(|| {
-            format!(
-                "release asset missing: {}",
-                platform_target.notices_asset_name
-            )
-        })?;
-    let checksum = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == "SHA256SUMS")
-        .cloned()
-        .context("release asset missing: SHA256SUMS")?;
-    let checksum_signature = release
-        .assets
-        .iter()
-        .find(|asset| asset.name == CHECKSUM_SIGNATURE_NAME)
-        .cloned()
-        .context("release asset missing: SHA256SUMS.sig")?;
-    let support = if platform_target.support == UpdateSupport::Auto
-        && !update_security::has_embedded_public_key()
-    {
-        UpdateSupport::ManualOnly {
-            message:
-                "このビルドには更新署名公開鍵が埋め込まれていないため、自動更新は利用できません。GitHub Releases から手動更新してください。"
-                    .to_string(),
-        }
-    } else {
-        platform_target.support
-    };
+    let assets = select_release_assets(release, &platform_target)?;
+    let support = effective_update_support(platform_target.support);
 
     Ok(Some(UpdateCandidate {
         current_version: current_version.to_string(),
         target_version: target_version.to_string(),
-        release_url: release.html_url,
-        asset_name: asset.name,
-        asset_url: asset.browser_download_url,
-        readme_asset_name: readme_asset.name,
-        readme_asset_url: readme_asset.browser_download_url,
-        license_asset_name: license_asset.name,
-        license_asset_url: license_asset.browser_download_url,
-        notices_asset_name: notices_asset.name,
-        notices_asset_url: notices_asset.browser_download_url,
-        checksum_url: checksum.browser_download_url,
-        checksum_signature_url: checksum_signature.browser_download_url,
+        release_url: release.html_url.clone(),
+        asset_name: assets.asset.name,
+        asset_url: assets.asset.browser_download_url,
+        readme_asset_name: assets.readme_asset.name,
+        readme_asset_url: assets.readme_asset.browser_download_url,
+        license_asset_name: assets.license_asset.name,
+        license_asset_url: assets.license_asset.browser_download_url,
+        notices_asset_name: assets.notices_asset.name,
+        notices_asset_url: assets.notices_asset.browser_download_url,
+        checksum_url: assets.checksum.browser_download_url,
+        checksum_signature_url: assets.checksum_signature.browser_download_url,
         support,
     }))
+}
+
+fn select_release_assets(
+    release: &GitHubRelease,
+    platform_target: &PlatformReleaseTarget,
+) -> Result<UpdateReleaseAssets> {
+    Ok(UpdateReleaseAssets {
+        asset: release_asset_by_name(release, &platform_target.asset_name)?,
+        readme_asset: release_asset_by_name(release, &platform_target.readme_asset_name)?,
+        license_asset: release_asset_by_name(release, &platform_target.license_asset_name)?,
+        notices_asset: release_asset_by_name(release, &platform_target.notices_asset_name)?,
+        checksum: release_asset_by_name(release, "SHA256SUMS")?,
+        checksum_signature: release_asset_by_name(release, CHECKSUM_SIGNATURE_NAME)?,
+    })
+}
+
+fn effective_update_support(platform_support: UpdateSupport) -> UpdateSupport {
+    if platform_support == UpdateSupport::Auto && !update_security::has_embedded_public_key() {
+        return UpdateSupport::ManualOnly {
+            message:
+                "このビルドには更新署名公開鍵が埋め込まれていないため、自動更新は利用できません。GitHub Releases から手動更新してください。"
+                    .to_string(),
+        };
+    }
+    platform_support
+}
+
+fn release_asset_by_name(release: &GitHubRelease, name: &str) -> Result<GitHubAsset> {
+    release
+        .assets
+        .iter()
+        .find(|asset| asset.name == name)
+        .cloned()
+        .with_context(|| format!("release asset missing: {name}"))
 }
 
 pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path) -> Result<()> {
@@ -817,6 +808,100 @@ mod tests {
         assert!(should_skip_update_prompt("0.12.2", Some("0.12.3")));
         assert!(!should_skip_update_prompt("0.12.4", Some("0.12.3")));
         assert!(!should_skip_update_prompt("0.12.4", None));
+    }
+
+    fn test_release(tag_name: &str) -> GitHubRelease {
+        GitHubRelease {
+            tag_name: tag_name.to_string(),
+            html_url: "https://example.invalid/release".to_string(),
+            assets: vec![
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
+                    browser_download_url: "https://example.invalid/asset".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-linux-x86_64.README.txt".to_string(),
+                    browser_download_url: "https://example.invalid/readme".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-linux-x86_64.LICENSE.txt".to_string(),
+                    browser_download_url: "https://example.invalid/license".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-linux-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
+                    browser_download_url: "https://example.invalid/notices".to_string(),
+                },
+                GitHubAsset {
+                    name: "SHA256SUMS".to_string(),
+                    browser_download_url: "https://example.invalid/SHA256SUMS".to_string(),
+                },
+                GitHubAsset {
+                    name: CHECKSUM_SIGNATURE_NAME.to_string(),
+                    browser_download_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn resolve_update_candidate_from_release_builds_candidate_from_assets() {
+        let release = test_release("v0.13.1");
+        let candidate = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
+            .expect("candidate resolution")
+            .expect("update candidate");
+
+        assert_eq!(candidate.current_version, "0.13.0");
+        assert_eq!(candidate.target_version, "0.13.1");
+        assert_eq!(candidate.release_url, "https://example.invalid/release");
+        assert_eq!(candidate.asset_name, "FlistWalker-0.13.1-linux-x86_64");
+        assert_eq!(candidate.checksum_signature_url, "https://example.invalid/SHA256SUMS.sig");
+
+        if update_security::has_embedded_public_key() {
+            #[cfg(target_os = "macos")]
+            assert!(matches!(candidate.support, UpdateSupport::ManualOnly { .. }));
+
+            #[cfg(not(target_os = "macos"))]
+            assert_eq!(candidate.support, UpdateSupport::Auto);
+        } else {
+            assert!(matches!(candidate.support, UpdateSupport::ManualOnly { .. }));
+        }
+    }
+
+    #[test]
+    fn select_release_assets_collects_expected_assets() {
+        let release = test_release("v0.13.1");
+        let target = current_platform_target(&Version::new(0, 13, 1))
+            .expect("platform target")
+            .expect("target");
+
+        let assets = select_release_assets(&release, &target).expect("release assets");
+
+        assert_eq!(assets.asset.name, target.asset_name);
+        assert_eq!(assets.readme_asset.name, target.readme_asset_name);
+        assert_eq!(assets.license_asset.name, target.license_asset_name);
+        assert_eq!(assets.notices_asset.name, target.notices_asset_name);
+        assert_eq!(assets.checksum.name, "SHA256SUMS");
+        assert_eq!(assets.checksum_signature.name, CHECKSUM_SIGNATURE_NAME);
+    }
+
+    #[test]
+    fn effective_update_support_respects_embedded_public_key_availability() {
+        let support = effective_update_support(UpdateSupport::Auto);
+
+        if update_security::has_embedded_public_key() {
+            assert_eq!(support, UpdateSupport::Auto);
+        } else {
+            assert!(matches!(support, UpdateSupport::ManualOnly { .. }));
+        }
+    }
+
+    #[test]
+    fn resolve_update_candidate_from_release_skips_non_newer_versions() {
+        let release = test_release("v0.13.0");
+        let candidate = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
+            .expect("candidate resolution");
+
+        assert!(candidate.is_none());
     }
 
     #[test]

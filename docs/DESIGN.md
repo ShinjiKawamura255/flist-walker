@@ -62,6 +62,7 @@
 - DES-014 Self Update Coordinator
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
 - 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
+- 役割補足: `check_for_update()` は release fetch と candidate 解決を分け、candidate 解決側では release asset 選択と support classification を helper 化して contract を小さく保つ。
 - 役割補足: `UpdateState` と update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移は `app/update.rs` の manager 境界へ集約する。
 - 役割補足: `render.rs` は update dialog の描画と入力取得だけを担当し、永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
 - 役割補足: top action button、FileList dialog、update dialog、tab bar reorder/close/switch は `RenderCommand` 境界を経由して owner helper (`filelist.rs`, `update.rs`, `tabs.rs`) へ渡す。描画コードは click/drag/dialog input の収集に寄せ、state transition は描画後 dispatcher で一段遅らせて実行する。
