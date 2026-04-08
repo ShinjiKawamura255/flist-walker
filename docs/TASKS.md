@@ -2,13 +2,14 @@
 
 ## Status Snapshot
 - Updated: 2026-04-08
-- Current active engineering roadmap: none
-- App architecture change-plan program: DONE
+- Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-architecture-refactor.md`
+- App architecture change-plan program: IN PROGRESS
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
   - 2026-04-08 の architecture debt closure program は closure まで完了し、temporary rule と change-plan 文書を撤去した。
+  - 2026-04-08 に single-plan の architecture refactor program を再導入し、pipeline ownership と worker modularization を優先順に進める方針を固定した。
 
 ## Completed Programs
 
@@ -75,6 +76,7 @@
 | Docs and Validation Closure | DONE | 2026-04-04 |
 
 ## Durable History
+- 2026-04-08: single-plan の architecture refactor program として `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を追加し、`AGENTS.md` に temporary rule を追記した。
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。
 - 2026-04-04: closure 完了後、app architecture 用 temporary rule を `AGENTS.md` から削除し、validation は `docs/TESTPLAN.md` の Validation Matrix を直接適用する運用へ戻した。
 - 2026-04-08: 2026-04-08 のレビュー結果を踏まえ、`plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。

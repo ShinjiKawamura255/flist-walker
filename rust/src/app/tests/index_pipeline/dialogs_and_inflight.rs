@@ -41,6 +41,44 @@ fn request_index_refresh_uses_latest_toggle_state() {
 }
 
 #[test]
+fn request_create_filelist_walker_refresh_resets_index_state_and_registers_request() {
+    let root = test_root("create-filelist-walker-refresh-reset");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    app.indexing.tx = tx;
+    app.indexing.pending_entries.push_back(IndexEntry {
+        path: root.join("stale.txt"),
+        kind: EntryKind::file(),
+        kind_known: true,
+    });
+    app.indexing.pending_entries_request_id = Some(7);
+    app.indexing.pending_kind_paths.push_back(root.join("stale-kind.txt"));
+    app.indexing.pending_kind_paths_set.insert(root.join("stale-kind.txt"));
+    app.indexing.in_flight_kind_paths.insert(root.join("in-flight.txt"));
+    app.indexing.kind_resolution_in_progress = true;
+    app.worker_bus.preview.pending_request_id = Some(9);
+    app.worker_bus.preview.in_progress = true;
+
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.request_create_filelist_walker_refresh();
+
+    let req = rx.try_recv().expect("index request should be sent");
+    assert_eq!(req.tab_id, tab_id);
+    assert!(!req.use_filelist);
+    assert!(app.indexing.inflight_requests.contains(&req.request_id));
+    assert!(app.indexing.pending_entries.is_empty());
+    assert_eq!(app.indexing.pending_entries_request_id, None);
+    assert!(app.indexing.pending_kind_paths.is_empty());
+    assert!(app.indexing.pending_kind_paths_set.is_empty());
+    assert!(app.indexing.in_flight_kind_paths.is_empty());
+    assert!(!app.indexing.kind_resolution_in_progress);
+    assert_eq!(app.worker_bus.preview.pending_request_id, None);
+    assert!(!app.worker_bus.preview.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn files_toggle_change_requests_reindex() {
     let root = test_root("files-toggle-reindex");
     fs::create_dir_all(&root).expect("create dir");
