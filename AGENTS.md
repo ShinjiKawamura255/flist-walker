@@ -71,7 +71,7 @@
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
 ## Temporary Change Plan Rule
-- `app-architecture-roadmap` では、実装前に `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` を読み、その後 `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を読むこと。
+- `app-architecture-roadmap` では、実装前に `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` を読み、その後 `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を読むこと。
 - 実装順と検証順は roadmap と active slice に従い、途中で順序・範囲・リスク認識を変える場合は先に該当 plan を更新すること。
 - この一時ルールは当該 roadmap program の完了後に削除すること。
 
