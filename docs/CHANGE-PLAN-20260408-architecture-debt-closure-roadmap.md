@@ -7,11 +7,11 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260408-architecture-debt-closure-perf-gate-slice.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260408-architecture-debt-closure-diagnostics-slice.md`
 - Scope Label: architecture-debt-closure
 - Related Tickets/Issues: none
 - Review Status: reviewed
-- Review Notes: Initial review found no blockers. The slice ordering is acceptable, and the feature freeze language now allows debt-closure docs/tests to continue while new feature work stays paused.
+- Review Notes: Active child slice is diagnostics/supportability and has been reviewed with no blockers.
 
 ## 1. Background
 - The coordinator, worker/domain, and open/execute seam cleanup have removed the highest-friction structural issues, but the project still has visible architecture debt in updater hardening, perf gates, diagnostics, and docs/process separation.
@@ -43,7 +43,7 @@
 - The existing SDD/TDD document set remains the source of truth for stable requirements, specs, design, and tests.
 - Feature work is paused until this debt program is closed or explicitly re-scoped. Work needed to keep the roadmap, slices, and supporting docs consistent is still allowed.
 - Each slice may be updated if discovery reveals a narrower or safer boundary, but the roadmap should continue to reflect the currently visible debt classes.
-- The roadmap is intentionally broader than a single slice; the active slice and its subslice will carry the implementation detail.
+- The roadmap is intentionally broader than a single slice; the active slice will carry the implementation detail, and a subslice can be added later if a slice grows beyond two phases.
 
 ## 5. Current Risks
 - Risk:
@@ -152,8 +152,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ```md
 ## Temporary Change Plan Rule
-- For `architecture-debt-closure`, read `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-perf-gate-slice.md]` before starting implementation.
-- Execute the perf gate work in the documented order unless the roadmap or slice is updated first.
+- For `architecture-debt-closure`, read `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-diagnostics-slice.md]` before starting implementation.
+- Execute the diagnostics work in the documented order unless the roadmap or slice is updated first.
 - If scope, order, or risk changes, update the relevant change plan before continuing.
 - Remove this section from `AGENTS.md` after the planned work is complete.
 ```
@@ -167,6 +167,9 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Slice B Phase 1 completed: the lightweight perf gate candidate and budget were defined in `docs/TESTPLAN.md`.
 - 2026-04-08 00:00 Slice B Phase 2 completed: the lightweight perf gate now runs in the linux-native PR CI job.
 - 2026-04-08 00:00 Slice B Phase 1 started: `perf_regression_filelist_stream_matches_v0123_reference_budget` is the lightweight PR gate candidate; heavy suite remains separated.
+- 2026-04-08 00:00 Slice B closed and Slice C drafted as the next active slice for diagnostics and supportability.
+- 2026-04-08 00:00 Slice C draft focuses on request-owned traces, support notes, and validation references.
+- 2026-04-08 00:00 Slice C Phase 1 completed: update request and response paths now emit request_id-correlated trace commands and worker logs.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

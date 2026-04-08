@@ -9,6 +9,8 @@
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
   - 2026-04-08 に Slice A を close し、Slice B として perf gate strengthening の slice を起動した。
+  - 2026-04-08 に Slice B を close し、Slice C として diagnostics and supportability の slice を起動した。
+  - 2026-04-08 に Slice C Phase 1 を完了し、update request / response の trace と worker logs を request_id で追えるようにした。
 
 ## Completed Programs
 
@@ -69,3 +71,5 @@
 - 2026-04-08: architecture debt closure 用の roadmap / slice / subslice を再追加し、`AGENTS.md` に一時ルールを復活させた。
 - 2026-04-08: updater slice を close し、perf gate strengthening slice に切り替えた。
 - 2026-04-08: architecture debt closure の Slice A Phase 1 を完了し、updater candidate resolution を staged apply から分離した。
+- 2026-04-08: perf gate strengthening slice を close し、diagnostics and supportability slice に切り替えた。
+- 2026-04-08: diagnostics and supportability slice の Phase 1 を完了し、update の supportability traces を request_id 対応にした。

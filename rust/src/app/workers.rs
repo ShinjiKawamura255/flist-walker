@@ -710,6 +710,19 @@ pub(super) fn spawn_update_worker(
                 break;
             }
 
+            match &req.kind {
+                UpdateRequestKind::Check => {
+                    info!(request_id = req.request_id, "update worker starting check");
+                }
+                UpdateRequestKind::DownloadAndApply { candidate, .. } => {
+                    info!(
+                        request_id = req.request_id,
+                        target_version = %candidate.target_version,
+                        "update worker starting install"
+                    );
+                }
+            }
+
             let response = match req.kind {
                 UpdateRequestKind::Check => match check_for_update() {
                     Ok(Some(candidate)) => UpdateResponse::Available {
@@ -738,6 +751,38 @@ pub(super) fn spawn_update_worker(
                     },
                 },
             };
+
+            match &response {
+                UpdateResponse::UpToDate { request_id } => {
+                    info!(request_id = *request_id, "update worker finished check: up to date");
+                }
+                UpdateResponse::Available {
+                    request_id,
+                    candidate,
+                } => {
+                    info!(
+                        request_id = *request_id,
+                        target_version = %candidate.target_version,
+                        "update worker found candidate"
+                    );
+                }
+                UpdateResponse::ApplyStarted {
+                    request_id,
+                    target_version,
+                } => {
+                    info!(
+                        request_id = *request_id,
+                        target_version = %target_version,
+                        "update worker started apply"
+                    );
+                }
+                UpdateResponse::CheckFailed { request_id, error } => {
+                    warn!(request_id = *request_id, error = %error, "update worker check failed");
+                }
+                UpdateResponse::Failed { request_id, error } => {
+                    warn!(request_id = *request_id, error = %error, "update worker apply failed");
+                }
+            }
 
             if tx_res.send(response).is_err() {
                 warn!(request_id = req.request_id, "update worker receiver closed");

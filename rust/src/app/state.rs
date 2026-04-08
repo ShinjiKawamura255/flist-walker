@@ -447,12 +447,18 @@ impl UpdateManager {
             return Vec::new();
         }
         let request_id = self.begin_request();
-        vec![super::update::UpdateCommand::Worker(
-            super::update::UpdateWorkerCommand::Start(super::UpdateRequest {
-                request_id,
-                kind: super::UpdateRequestKind::Check,
+        vec![
+            super::update::UpdateCommand::Worker(super::update::UpdateWorkerCommand::Start(
+                super::UpdateRequest {
+                    request_id,
+                    kind: super::UpdateRequestKind::Check,
+                },
+            )),
+            super::update::UpdateCommand::App(super::update::UpdateAppCommand::AppendWindowTrace {
+                event: "update_check_requested",
+                details: format!("request_id={request_id}"),
             }),
-        )]
+        ]
     }
 
     pub(super) fn start_install_commands(
@@ -484,6 +490,13 @@ impl UpdateManager {
                 "Downloading update {}...",
                 candidate.target_version
             ))),
+            super::update::UpdateCommand::App(super::update::UpdateAppCommand::AppendWindowTrace {
+                event: "update_install_requested",
+                details: format!(
+                    "request_id={request_id} target_version={}",
+                    candidate.target_version
+                ),
+            }),
         ])
     }
 
@@ -561,7 +574,12 @@ impl UpdateManager {
                 if !self.settle_response(request_id) {
                     return Vec::new();
                 }
-                Vec::new()
+                vec![super::update::UpdateCommand::App(
+                    super::update::UpdateAppCommand::AppendWindowTrace {
+                        event: "update_up_to_date",
+                        details: format!("request_id={request_id}"),
+                    },
+                )]
             }
             super::UpdateResponse::CheckFailed { request_id, error } => {
                 if !self.settle_response(request_id) {
@@ -570,7 +588,7 @@ impl UpdateManager {
                 let commands = vec![super::update::UpdateCommand::App(
                     super::update::UpdateAppCommand::AppendWindowTrace {
                         event: "update_check_failed",
-                        details: error.clone(),
+                        details: format!("request_id={request_id} error={error}"),
                     },
                 )];
                 if !self.state.suppress_check_failure_dialog
@@ -590,8 +608,9 @@ impl UpdateManager {
                 if !self.settle_response(request_id) {
                     return Vec::new();
                 }
+                let target_version = candidate.target_version.clone();
                 if !super::should_skip_update_prompt(
-                    &candidate.target_version,
+                    &target_version,
                     self.state.skipped_target_version.as_deref(),
                 ) {
                     self.state.prompt = Some(super::UpdatePromptState {
@@ -600,7 +619,14 @@ impl UpdateManager {
                         install_started: false,
                     });
                 }
-                Vec::new()
+                vec![super::update::UpdateCommand::App(
+                    super::update::UpdateAppCommand::AppendWindowTrace {
+                        event: "update_available",
+                        details: format!(
+                            "request_id={request_id} target_version={target_version}"
+                        ),
+                    },
+                )]
             }
             super::UpdateResponse::ApplyStarted {
                 request_id,
@@ -618,18 +644,35 @@ impl UpdateManager {
                     super::update::UpdateCommand::App(
                         super::update::UpdateAppCommand::RequestViewportClose,
                     ),
+                    super::update::UpdateCommand::App(
+                        super::update::UpdateAppCommand::AppendWindowTrace {
+                            event: "update_apply_started",
+                            details: format!(
+                                "request_id={request_id} target_version={target_version}"
+                            ),
+                        },
+                    ),
                 ]
             }
             super::UpdateResponse::Failed { request_id, error } => {
                 if !self.settle_response(request_id) {
                     return Vec::new();
                 }
+                let details_error = error.clone();
                 if let Some(prompt) = self.state.prompt.as_mut() {
                     prompt.install_started = false;
                 }
-                vec![super::update::UpdateCommand::Ui(
-                    super::update::UpdateUiCommand::SetNotice(error),
-                )]
+                vec![
+                    super::update::UpdateCommand::Ui(super::update::UpdateUiCommand::SetNotice(
+                        error,
+                    )),
+                    super::update::UpdateCommand::App(
+                        super::update::UpdateAppCommand::AppendWindowTrace {
+                            event: "update_failed",
+                            details: format!("request_id={request_id} error={details_error}"),
+                        },
+                    ),
+                ]
             }
         }
     }
