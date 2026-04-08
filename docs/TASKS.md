@@ -2,13 +2,12 @@
 
 ## Status Snapshot
 - Updated: 2026-04-08
-- Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-improvement-roadmap.md`
+- Current active engineering roadmap: none
 - App architecture change-plan program: DONE
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
-  - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。
-  - active slice は `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md` とし、roadmap と親子関係を持たせる。
-  - Temporary Change Plan Rule は `AGENTS.md` に追加済みで、現在の active slice を参照している。
+  - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
+  - `AGENTS.md` の Temporary Change Plan Rule は Slice C 完了後に削除済みで、plan 文書も撤去済みである。
 
 ## Completed Programs
 
@@ -64,3 +63,5 @@
 - 2026-04-08: 2026-04-08 のレビュー結果を踏まえ、`plan-driven-changes` 用の上位 roadmap として `docs/CHANGE-PLAN-20260408-improvement-roadmap.md` を追加した。
 - 2026-04-08: 初回レビューの指摘を受け、child slice として `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` を追加した。roadmap 側の slice-level detail は上位計画向けに圧縮した。
 - 2026-04-08: Slice A 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md` を追加し、worker/domain modularization に進める状態へ更新した。
+- 2026-04-08: Slice B 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-os-integration-hardening-slice.md` を追加し、OS integration hardening に進める状態へ更新した。
+- 2026-04-08: `plan-driven-changes` の roadmap と child slice を close し、関連 plan 文書を削除した。

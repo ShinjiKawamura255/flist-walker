@@ -17,7 +17,7 @@
 - 実装: `rust/src/query.rs`, `rust/src/search.rs`
 
 - DES-004 Action Executor
-- 役割: ファイル実行/オープン、フォルダオープンを OS 差分吸収して実行。
+- 役割: ファイル実行/オープン、フォルダオープンを OS 差分吸収して実行し、open/execute の testable seam を保つ。
 - 実装: `rust/src/actions.rs`
 
 - DES-005 CLI Adapter

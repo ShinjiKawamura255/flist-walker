@@ -70,11 +70,5 @@
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
-## Temporary Change Plan Rule
-- For `improvement-roadmap`, read [docs/CHANGE-PLAN-20260408-improvement-roadmap.md](/mnt/d/work/flistwalker/docs/CHANGE-PLAN-20260408-improvement-roadmap.md) and [docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md](/mnt/d/work/flistwalker/docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md) before starting implementation.
-- Execute the Worker and Domain Modularization work in the documented phase order unless the roadmap or slice plan is updated first.
-- If scope, order, or risk changes, update the relevant change plan before continuing.
-- Remove this section from `AGENTS.md` after the planned work is complete.
-
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###

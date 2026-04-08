@@ -34,6 +34,7 @@
 | TC-003 | unit | ファジー検索が関連度順・件数制限を満たす | SP-003 |
 | TC-003A | unit | 通常語の各 token は subsequence-only よりリテラル一致を高順位にする | SP-003 |
 | TC-004 | unit | 実行可能ファイルで execute 分岐 | SP-004 |
+| TC-004A | unit | open / execute helper seam が open/execute handler を適切に呼び分ける | SP-004, SP-005 |
 | TC-005 | unit | フォルダで open 分岐 | SP-005 |
 | TC-006 | integration | CLI 契約（`--cli`/`--root`/`--limit`）を満たす | SP-006 |
 | TC-006A | integration | CLI の `--limit` は 1000 件へ暗黙丸めせず、そのまま実効上限として扱う | SP-006 |

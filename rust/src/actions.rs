@@ -92,28 +92,31 @@ pub fn choose_action(path: &Path) -> Action {
     }
 }
 
-pub fn execute_or_open(path: &Path) -> Result<()> {
+fn spawn_executable(path: &Path) -> std::io::Result<()> {
+    Command::new(path).spawn().map(|_| ())
+}
+
+fn execute_or_open_with(
+    path: &Path,
+    execute: impl FnOnce(&Path) -> std::io::Result<()>,
+    open: impl FnOnce(&Path) -> Result<()>,
+) -> Result<()> {
     match choose_action(path) {
-        Action::Open => open_with_default(path),
+        Action::Open => open(path),
         Action::Execute => {
-            #[cfg(target_os = "windows")]
-            let result = Command::new(path).spawn();
-            #[cfg(not(target_os = "windows"))]
-            let result = Command::new(path).spawn();
+            let result = execute(path);
             #[cfg(target_os = "windows")]
             {
-                if let Err(err) = result {
-                    if err.raw_os_error() == Some(193) {
-                        return open_with_default(path);
-                    }
-                    return Err(err).with_context(|| {
+                match result {
+                    Ok(()) => Ok(()),
+                    Err(err) if err.raw_os_error() == Some(193) => open(path),
+                    Err(err) => Err(err).with_context(|| {
                         format!(
                             "failed to execute {}",
                             normalize_action_path_for_display(path)
                         )
-                    });
+                    }),
                 }
-                Ok(())
             }
             #[cfg(not(target_os = "windows"))]
             {
@@ -126,6 +129,10 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
             }
         }
     }
+}
+
+pub fn execute_or_open(path: &Path) -> Result<()> {
+    execute_or_open_with(path, spawn_executable, open_with_default)
 }
 
 pub fn open_with_default(path: &Path) -> Result<()> {
@@ -158,6 +165,7 @@ pub fn open_with_default(path: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::Cell;
     use std::fs;
     #[cfg(target_os = "windows")]
     use std::path::PathBuf;
@@ -218,6 +226,150 @@ mod tests {
             let script = root.join("tool.ps1");
             fs::write(&script, "Write-Host test").expect("write script");
             assert_eq!(choose_action(&script), Action::Open);
+        }
+    }
+
+    #[test]
+    fn open_action_uses_open_handler_and_skips_execute_handler() {
+        let path = std::env::temp_dir().join("fff-rs-actions-open");
+        let execute_called = Cell::new(false);
+        let open_called = Cell::new(false);
+
+        execute_or_open_with(
+            &path,
+            |_| {
+                execute_called.set(true);
+                Ok(())
+            },
+            |_| {
+                open_called.set(true);
+                Ok(())
+            },
+        )
+        .expect("open path");
+
+        assert!(!execute_called.get());
+        assert!(open_called.get());
+    }
+
+    #[test]
+    fn execute_action_uses_execute_handler_and_skips_open_handler() {
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let root = std::env::temp_dir().join("fff-rs-actions-exec-handler");
+            let _ = fs::create_dir_all(&root);
+            let file = root.join("run.sh");
+            fs::write(&file, "#!/bin/sh\necho hi\n").expect("write file");
+            let mut perms = fs::metadata(&file).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&file, perms).expect("set permissions");
+
+            let execute_called = Cell::new(false);
+            let open_called = Cell::new(false);
+
+            execute_or_open_with(
+                &file,
+                |_| {
+                    execute_called.set(true);
+                    Ok(())
+                },
+                |_| {
+                    open_called.set(true);
+                    Ok(())
+                },
+            )
+            .expect("execute path");
+
+            assert!(execute_called.get());
+            assert!(!open_called.get());
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let root = std::env::temp_dir().join("fff-rs-actions-exec-handler");
+            let _ = fs::create_dir_all(&root);
+            let exe = root.join("run.exe");
+            fs::write(&exe, "bin").expect("write exe");
+
+            let execute_called = Cell::new(false);
+            let open_called = Cell::new(false);
+
+            execute_or_open_with(
+                &exe,
+                |_| {
+                    execute_called.set(true);
+                    Ok(())
+                },
+                |_| {
+                    open_called.set(true);
+                    Ok(())
+                },
+            )
+            .expect("execute path");
+
+            assert!(execute_called.get());
+            assert!(!open_called.get());
+        }
+    }
+
+    #[test]
+    fn execute_failure_returns_error_without_open_fallback_on_non_windows() {
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let root = std::env::temp_dir().join("fff-rs-actions-exec-failure");
+            let _ = fs::create_dir_all(&root);
+            let file = root.join("run.sh");
+            fs::write(&file, "#!/bin/sh\necho hi\n").expect("write file");
+            let mut perms = fs::metadata(&file).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&file, perms).expect("set permissions");
+
+            let execute_called = Cell::new(false);
+            let open_called = Cell::new(false);
+            let err = std::io::Error::other("boom");
+
+            let result = execute_or_open_with(
+                &file,
+                |_| {
+                    execute_called.set(true);
+                    Err(std::io::Error::other(err.to_string()))
+                },
+                |_| {
+                    open_called.set(true);
+                    Ok(())
+                },
+            );
+
+            assert!(result.is_err());
+            assert!(execute_called.get());
+            assert!(!open_called.get());
+        }
+    }
+
+    #[test]
+    fn windows_execute_error_193_falls_back_to_open_handler() {
+        #[cfg(target_os = "windows")]
+        {
+            let root = std::env::temp_dir().join("fff-rs-actions-exec-fallback");
+            let _ = fs::create_dir_all(&root);
+            let exe = root.join("run.exe");
+            fs::write(&exe, "bin").expect("write exe");
+
+            let open_called = Cell::new(false);
+            let result = execute_or_open_with(
+                &exe,
+                |_| Err(std::io::Error::from_raw_os_error(193)),
+                |_| {
+                    open_called.set(true);
+                    Ok(())
+                },
+            );
+
+            assert!(result.is_ok());
+            assert!(open_called.get());
         }
     }
 
