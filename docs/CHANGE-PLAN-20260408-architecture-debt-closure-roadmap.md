@@ -164,6 +164,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Slice A Phase 1 completed: updater candidate resolution is now isolated from staged apply work; Phase 2 docs/contract sync remains pending.
 - 2026-04-08 00:00 Slice A Phase 2 completed: updater command-surface comments and docs/testplan references now match the current boundary.
 - 2026-04-08 00:00 Slice A closed and Slice B drafted as the next active slice for perf gate strengthening.
+- 2026-04-08 00:00 Slice B Phase 1 completed: the lightweight perf gate candidate and budget were defined in `docs/TESTPLAN.md`.
+- 2026-04-08 00:00 Slice B Phase 2 completed: the lightweight perf gate now runs in the linux-native PR CI job.
 - 2026-04-08 00:00 Slice B Phase 1 started: `perf_regression_filelist_stream_matches_v0123_reference_budget` is the lightweight PR gate candidate; heavy suite remains separated.
 
 ## 12. Completion Checklist

@@ -68,6 +68,11 @@ jobs:
         working-directory: ${{ matrix.workdir }}
         run: cargo test --locked
 
+      - name: Run lightweight perf gate
+        if: ${{ matrix.label == 'linux-native' }}
+        working-directory: rust
+        run: cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture
+
       - name: Build release
         working-directory: ${{ matrix.workdir }}
         run: ${{ matrix.build_cmd }}

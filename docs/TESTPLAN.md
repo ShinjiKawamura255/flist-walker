@@ -159,7 +159,8 @@
 - `source ~/.cargo/env`
 - `cargo test`
 - `cargo audit`
-- perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または schedule
+- heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または schedule
+- lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_regression_filelist_stream_matches_v0123_reference_budget` を実行
 - GUI 手動試験: `cargo run -- --root .. --limit 1000`
 - GUI 手動試験: `cargo run -- --root .. --limit 1000` で新版検知ダイアログと更新承認導線を確認
 - GUI 手動試験:
