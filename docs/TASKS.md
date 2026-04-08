@@ -7,7 +7,8 @@
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
-  - 2026-04-08 に architecture debt closure の 3 段計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
+  - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
+  - 2026-04-08 に Slice A を close し、Slice B として perf gate strengthening の slice を起動した。
 
 ## Completed Programs
 
@@ -66,4 +67,5 @@
 - 2026-04-08: Slice B 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-os-integration-hardening-slice.md` を追加し、OS integration hardening に進める状態へ更新した。
 - 2026-04-08: `plan-driven-changes` の roadmap と child slice を close し、関連 plan 文書を削除した。
 - 2026-04-08: architecture debt closure 用の roadmap / slice / subslice を再追加し、`AGENTS.md` に一時ルールを復活させた。
+- 2026-04-08: updater slice を close し、perf gate strengthening slice に切り替えた。
 - 2026-04-08: architecture debt closure の Slice A Phase 1 を完了し、updater candidate resolution を staged apply から分離した。
