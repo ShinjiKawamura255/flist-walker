@@ -41,9 +41,11 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [tabs.rs](../rust/src/app/tabs.rs)
   - tab lifecycle、snapshot capture/apply。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
-  - index/search queue、response poll、incremental refresh。`IndexCoordinator` の owner API を経由して index request lifecycle を調停する。
+  - index queue、index response poll、dispatcher を担当し、`PipelineOwner` / `IndexCoordinator` へ橋渡しする thin coordinator として振る舞う。
+- [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)
+  - search/result refresh、entry filter 再適用、incremental search refresh を担当する dedicated owner surface。
 - [search_coordinator.rs](../rust/src/app/search_coordinator.rs)
-  - search worker channel、request_id、tab routing を保持する。
+  - search worker channel、request_id、tab routing に加え、active/background search request lifecycle helper を保持する。
 - [index_coordinator.rs](../rust/src/app/index_coordinator.rs)
   - index worker channel、queue/inflight、incremental state、background tab state に加え、request id 採番、active/background refresh 開始、terminal cleanup など index request lifecycle の owner API を保持する。
 - [index_worker.rs](../rust/src/app/index_worker.rs)

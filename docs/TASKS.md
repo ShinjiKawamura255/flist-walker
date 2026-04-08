@@ -13,6 +13,7 @@
   - 2026-04-08 に次の app architecture 改善を roadmap 化し、Slice A として pipeline owner extraction を active slice に設定した。
   - 2026-04-08 に Slice A Phase 1 の seam 抽出を完了し、active request cleanup を `IndexCoordinator` 経由へ寄せたうえで search refresh request/response routing を `SearchCoordinator` lifecycle helper と pipeline-local handler に整理した。
   - 2026-04-08 に Slice A Phase 2 を完了し、`pipeline_owner.rs` へ search/result refresh と entry-filter application の owner surface を移して `pipeline.rs` を thin wrapper 化した。
+  - 2026-04-08 に Slice A Phase 3 を完了し、`ARCHITECTURE.md` / `DESIGN.md` を `pipeline_owner.rs` ベースの owner boundary に同期した。
 
 ## Completed Programs
 

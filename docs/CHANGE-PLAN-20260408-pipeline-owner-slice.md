@@ -114,13 +114,14 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Local slice review completed. Confirmed that the slice boundary is valid and that later concerns remain deferred to roadmap slices B-E.
 - 2026-04-08: Phase 1 completed. Active request cleanup now routes through `IndexCoordinator`, and search refresh request/response routing is grouped around `SearchCoordinator` lifecycle helpers plus pipeline-local response handlers. `cd rust && cargo test` passed after the seam extraction.
 - 2026-04-08: Phase 2 completed. `pipeline_owner.rs` now provides a dedicated owner surface for search/result refresh and entry-filter application, while `pipeline.rs` delegates through thin wrappers. `cd rust && cargo test` passed after the owner routing change.
+- 2026-04-08: Phase 3 completed. `ARCHITECTURE.md` と `DESIGN.md` を `pipeline_owner.rs` ベースの owner boundary に同期し、Slice A の steady-state docs を更新した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

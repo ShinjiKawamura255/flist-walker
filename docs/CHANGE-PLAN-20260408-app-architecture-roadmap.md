@@ -84,7 +84,7 @@
 ### Slice Status Matrix
 | Slice | Focus | Status | Activation / Exit Notes |
 | --- | --- | --- | --- |
-| Slice A | Pipeline Owner Extraction | ACTIVE | Start here. Exit when pipeline orchestration has a narrower owner boundary and steady-state docs are updated. |
+| Slice A | Pipeline Owner Extraction | DONE | Completed on 2026-04-08 after owner-surface extraction and steady-state doc sync. |
 | Slice B | Background Tab Result-Flow Separation | PLANNED | Activate after Slice A stabilizes the pipeline owner surface. |
 | Slice C | Worker Protocol Separation | PLANNED | Activate after Slice B or earlier only if Slice A produces a protocol-friendly boundary without destabilizing tabs. |
 | Slice D | Command-Oriented App Tests | PLANNED | Activate after ownership seams exist to test against. |
@@ -135,6 +135,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Local roadmap review completed. Added explicit slice status/activation tracking and confirmed the 2-level plan split is justified.
 - 2026-04-08: Slice A Phase 1 completed. The active request cleanup seam now routes through `IndexCoordinator`, and search refresh request/response routing is grouped around `SearchCoordinator` lifecycle helpers plus pipeline-local response handlers; later slice phases remain active.
 - 2026-04-08: Slice A Phase 2 completed. `pipeline_owner.rs` now carries the dedicated owner surface for search/result refresh and entry-filter application, reducing direct pipeline orchestration inside `pipeline.rs`.
+- 2026-04-08: Slice A Phase 3 completed. Steady-state architecture/design docs now describe `pipeline_owner.rs` as the search/result refresh owner surface and `pipeline.rs` as the thinner dispatcher layer.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
