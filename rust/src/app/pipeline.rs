@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::search_coordinator::SearchResponseRoute;
 
 impl FlistWalkerApp {
     fn cancel_stale_pending_after_index_for_active_root(&mut self) {
@@ -165,16 +166,6 @@ impl FlistWalkerApp {
         self.dispatch_index_queue();
     }
 
-    fn clear_active_index_request_state(&mut self) {
-        self.indexing.pending_request_id = None;
-        self.indexing.in_progress = false;
-        self.indexing.pending_entries.clear();
-        self.indexing.pending_entries_request_id = None;
-        self.indexing.search_resume_pending = false;
-        self.indexing.search_rerun_pending = false;
-        self.pending_restore_refresh = false;
-    }
-
     fn clear_tab_index_request_state(tab: &mut AppTabState) {
         tab.index_state.pending_index_request_id = None;
         tab.index_state.index_in_progress = false;
@@ -195,7 +186,8 @@ impl FlistWalkerApp {
         self.indexing.inflight_requests.clear();
         self.indexing.request_tabs.clear();
 
-        self.clear_active_index_request_state();
+        self.indexing
+            .clear_active_request_state(&mut self.pending_restore_refresh);
         self.set_notice(notice.clone());
 
         for tab in &mut self.tabs {
@@ -384,21 +376,8 @@ impl FlistWalkerApp {
         let Some(tab) = self.tabs.get_mut(tab_index) else {
             return;
         };
-        let request_id = self.search.allocate_request_id();
-        tab.pending_request_id = Some(request_id);
-        tab.search_in_progress = true;
-        self.search.bind_request_tab(request_id, tab.id);
-
-        let req = SearchRequest {
-            request_id,
-            query: tab.query_state.query.clone(),
-            entries: Arc::clone(&tab.index_state.entries),
-            limit: self.limit,
-            use_regex: tab.use_regex,
-            ignore_case: tab.ignore_case,
-            root: tab.root.clone(),
-            prefer_relative: Self::prefer_relative_display_for(&tab.index_state.index.source),
-        };
+        let request_id = self.search.begin_tab_request(tab);
+        let req = Self::build_search_request_for_tab(tab, request_id, self.limit);
         if self.search.tx.send(req).is_err() {
             tab.pending_request_id = None;
             tab.search_in_progress = false;
@@ -801,6 +780,87 @@ impl FlistWalkerApp {
         false
     }
 
+    fn build_search_request_for_tab(
+        tab: &AppTabState,
+        request_id: u64,
+        limit: usize,
+    ) -> SearchRequest {
+        SearchRequest {
+            request_id,
+            query: tab.query_state.query.clone(),
+            entries: Arc::clone(&tab.index_state.entries),
+            limit,
+            use_regex: tab.use_regex,
+            ignore_case: tab.ignore_case,
+            root: tab.root.clone(),
+            prefer_relative: Self::prefer_relative_display_for(&tab.index_state.index.source),
+        }
+    }
+
+    fn build_active_search_request(&self, request_id: u64) -> SearchRequest {
+        SearchRequest {
+            request_id,
+            query: self.query_state.query.clone(),
+            entries: Arc::clone(&self.entries),
+            limit: self.limit,
+            use_regex: self.use_regex,
+            ignore_case: self.ignore_case,
+            root: self.root.clone(),
+            prefer_relative: self.prefer_relative_display(),
+        }
+    }
+
+    fn handle_active_search_response(&mut self, response: SearchResponse) {
+        self.search.clear_active_request_state();
+        if let Some(error) = response.error {
+            self.set_notice(format!("Search failed: {error}"));
+        } else {
+            self.clear_notice();
+        }
+        self.replace_results_snapshot(response.results, false);
+        if self.indexing.search_rerun_pending
+            && !self.query_state.query.trim().is_empty()
+            && self.indexing.in_progress
+            && self.should_refresh_incremental_search()
+        {
+            self.indexing.search_rerun_pending = false;
+            self.indexing.search_resume_pending = false;
+            self.sync_entries_from_incremental();
+            self.indexing.last_search_snapshot_len = self.entries.len();
+            self.indexing.last_incremental_results_refresh = Instant::now();
+            self.update_results();
+        }
+    }
+
+    fn handle_background_search_response(&mut self, tab_index: usize, response: SearchResponse) {
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return;
+        };
+        tab.pending_request_id = None;
+        tab.search_in_progress = false;
+        tab.notice = response
+            .error
+            .map(|error| format!("Search failed: {error}"))
+            .unwrap_or_default();
+        tab.result_state.base_results = response.results.clone();
+        tab.result_state.results = response.results;
+        tab.result_state.results_compacted = false;
+        tab.result_state.result_sort_mode = ResultSortMode::Score;
+        tab.result_state.pending_sort_request_id = None;
+        tab.result_state.sort_in_progress = false;
+        if tab.result_state.results.is_empty() {
+            tab.result_state.current_row = None;
+            tab.result_state.preview.clear();
+            tab.pending_preview_request_id = None;
+            tab.preview_in_progress = false;
+        } else {
+            let max_index = tab.result_state.results.len().saturating_sub(1);
+            tab.result_state.current_row =
+                tab.result_state.current_row.map(|row| row.min(max_index));
+        }
+        Self::compact_inactive_tab_state(tab);
+    }
+
     pub(super) fn apply_results_with_selection_policy(
         &mut self,
         results: Vec<(PathBuf, f64)>,
@@ -839,91 +899,28 @@ impl FlistWalkerApp {
 
     pub(super) fn enqueue_search_request(&mut self) {
         self.commit_query_history_if_needed(false);
-        let request_id = self.search.allocate_request_id();
-        self.search.set_pending_request_id(Some(request_id));
-        if let Some(tab_id) = self.current_tab_id() {
-            self.search.bind_request_tab(request_id, tab_id);
-        }
-        self.search.set_in_progress(true);
+        let request_id = self.search.begin_active_request(self.current_tab_id());
         self.refresh_status_line();
 
-        let req = SearchRequest {
-            request_id,
-            query: self.query_state.query.clone(),
-            entries: Arc::clone(&self.entries),
-            limit: self.limit,
-            use_regex: self.use_regex,
-            ignore_case: self.ignore_case,
-            root: self.root.clone(),
-            prefer_relative: self.prefer_relative_display(),
-        };
-
+        let req = self.build_active_search_request(request_id);
         if self.search.tx.send(req).is_err() {
-            self.search.set_pending_request_id(None);
-            self.search.set_in_progress(false);
+            self.search.clear_active_request_state();
             self.set_notice("Search worker is unavailable");
         }
     }
 
     pub(super) fn poll_search_response(&mut self) {
         while let Ok(response) = self.search.rx.try_recv() {
-            let target_tab_id = self.search.take_request_tab(response.request_id);
-            if Some(response.request_id) == self.search.pending_request_id() {
-                self.search.set_pending_request_id(None);
-                self.search.set_in_progress(false);
-                if let Some(error) = response.error {
-                    self.set_notice(format!("Search failed: {error}"));
-                } else {
-                    self.clear_notice();
+            match self.search.route_response(response.request_id) {
+                SearchResponseRoute::Active => self.handle_active_search_response(response),
+                SearchResponseRoute::Background(tab_id) => {
+                    let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
+                        continue;
+                    };
+                    self.handle_background_search_response(tab_index, response);
                 }
-                self.replace_results_snapshot(response.results, false);
-                if self.indexing.search_rerun_pending
-                    && !self.query_state.query.trim().is_empty()
-                    && self.indexing.in_progress
-                    && self.should_refresh_incremental_search()
-                {
-                    self.indexing.search_rerun_pending = false;
-                    self.indexing.search_resume_pending = false;
-                    self.sync_entries_from_incremental();
-                    self.indexing.last_search_snapshot_len = self.entries.len();
-                    self.indexing.last_incremental_results_refresh = Instant::now();
-                    self.update_results();
-                }
-                continue;
+                SearchResponseRoute::Stale => continue,
             }
-
-            let Some(tab_id) = target_tab_id else {
-                continue;
-            };
-            let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-                continue;
-            };
-            let Some(tab) = self.tabs.get_mut(tab_index) else {
-                continue;
-            };
-            tab.pending_request_id = None;
-            tab.search_in_progress = false;
-            tab.notice = response
-                .error
-                .map(|error| format!("Search failed: {error}"))
-                .unwrap_or_default();
-            tab.result_state.base_results = response.results.clone();
-            tab.result_state.results = response.results;
-            tab.result_state.results_compacted = false;
-            tab.result_state.result_sort_mode = ResultSortMode::Score;
-            tab.result_state.pending_sort_request_id = None;
-            tab.result_state.sort_in_progress = false;
-            if tab.result_state.results.is_empty() {
-                tab.result_state.current_row = None;
-                tab.result_state.preview.clear();
-                tab.pending_preview_request_id = None;
-                tab.preview_in_progress = false;
-            } else {
-                let max_index = tab.result_state.results.len().saturating_sub(1);
-                tab.result_state.current_row =
-                    tab.result_state.current_row.map(|row| row.min(max_index));
-            }
-            Self::compact_inactive_tab_state(tab);
         }
     }
 

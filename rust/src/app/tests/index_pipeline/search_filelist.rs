@@ -466,6 +466,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     }
     app.sync_active_tab_state();
     app.switch_to_tab_index(0);
+    app.pending_restore_refresh = true;
 
     let (_, rx) = mpsc::channel::<IndexRequest>();
     let (closed_tx, _) = mpsc::channel::<IndexRequest>();
@@ -478,6 +479,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert!(!background_tab.index_state.index_in_progress);
     assert_eq!(background_tab.index_state.pending_index_request_id, None);
     assert!(background_tab.index_state.pending_index_entries.is_empty());
+    assert!(!app.pending_restore_refresh);
     assert!(background_tab
         .notice
         .contains("Index worker is unavailable"));

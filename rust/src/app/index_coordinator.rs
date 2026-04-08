@@ -139,4 +139,9 @@ impl IndexCoordinator {
         self.pending_entries.clear();
         self.pending_entries_request_id = None;
     }
+
+    pub(super) fn clear_active_request_state(&mut self, pending_restore_refresh: &mut bool) {
+        self.settle_active_terminal_state();
+        *pending_restore_refresh = false;
+    }
 }

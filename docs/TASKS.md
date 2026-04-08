@@ -2,14 +2,16 @@
 
 ## Status Snapshot
 - Updated: 2026-04-08
-- Current active engineering roadmap: none
-- App architecture change-plan program: DONE
+- Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md`
+- App architecture change-plan program: IN PROGRESS
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
   - 2026-04-08 の architecture debt closure program は closure まで完了し、temporary rule と change-plan 文書を撤去した。
   - 2026-04-08 に single-plan の architecture refactor program を再導入し、Phase 1 の pipeline state-transition 整理、Phase 2 の `IndexCoordinator` owner API 化、Phase 3 の worker modularization を完了した。
+  - 2026-04-08 に次の app architecture 改善を roadmap 化し、Slice A として pipeline owner extraction を active slice に設定した。
+  - 2026-04-08 に Slice A Phase 1 の seam 抽出を完了し、active request cleanup を `IndexCoordinator` 経由へ寄せたうえで search refresh request/response routing を `SearchCoordinator` lifecycle helper と pipeline-local handler に整理した。
 
 ## Completed Programs
 
@@ -91,6 +93,7 @@
 | Docs and Validation Closure | DONE | 2026-04-04 |
 
 ## Durable History
+- 2026-04-08: 次の app architecture 改善を 2 段 change plan に再編し、`docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` と `docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md` を追加した。
 - 2026-04-08: single-plan の architecture refactor program として `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を追加し、`AGENTS.md` に temporary rule を追記した。
 - 2026-04-08: architecture refactor follow-up program を close し、恒久内容を `ARCHITECTURE.md` / `DESIGN.md` / `TASKS.md` へ移したうえで temporary rule と `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を削除した。
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。
