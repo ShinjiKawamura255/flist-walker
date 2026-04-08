@@ -2,31 +2,31 @@
 
 ## Status Snapshot
 - Updated: 2026-04-08
-- Current active engineering roadmap: architecture debt closure in progress
+- Current active engineering roadmap: none
 - App architecture change-plan program: DONE
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
-  - 2026-04-08 の architecture debt closure program は Slice A-C を完了し、現在は final docs/closure slice を実施中。
-
-## Active Programs
-
-### Program D: Architecture Debt Closure
-- Status: IN PROGRESS on 2026-04-08
-- Goal: updater, perf, diagnostics, docs/closure の順で visible architecture debt を解消し、新規機能再開前の steady-state docs と validation rule を確定する。
-- Progress:
-  - Slice A `Updater Hardening`: DONE
-  - Slice B `Perf Gate Strengthening`: DONE
-  - Slice C `Diagnostics and Supportability`: DONE
-  - Slice D `Docs and Closure Restructuring`: IN PROGRESS
-- Durable outcomes so far:
-  - self-update contract は candidate selection / support classification / app command boundary に分割された。
-  - lightweight perf gate は PR CI に載り、heavy suite は分離維持された。
-  - update request / response は request_id-correlated trace で追跡できる。
-  - final closure record はこの `TASKS.md` に集約する。
+  - 2026-04-08 の architecture debt closure program は closure まで完了し、temporary rule と change-plan 文書を撤去した。
 
 ## Completed Programs
+
+### Program D: Architecture Debt Closure
+- Status: DONE on 2026-04-08
+- Goal: updater, perf, diagnostics, docs/closure の順で visible architecture debt を解消し、新規機能再開前の steady-state docs と validation rule を確定する。
+- Outcome:
+  - updater contract は candidate selection / support classification / app command boundary に分割された。
+  - lightweight perf gate は PR CI に載り、heavy suite は分離維持された。
+  - diagnostics は request_id-correlated trace と supportability notes で追跡できるようになった。
+  - closure record は `TASKS.md` に集約し、temporary rule と debt-program change plans は撤去した。
+
+| Slice | Status | Completed |
+| --- | --- | --- |
+| Slice A: Updater Hardening | DONE | 2026-04-08 |
+| Slice B: Perf Gate Strengthening | DONE | 2026-04-08 |
+| Slice C: Diagnostics and Supportability | DONE | 2026-04-08 |
+| Slice D: Docs and Closure Restructuring | DONE | 2026-04-08 |
 
 ### Program A: `app.rs` Split Follow-up
 - Status: DONE on 2026-04-01
@@ -89,3 +89,4 @@
 - 2026-04-08: diagnostics and supportability slice の Phase 1 を完了し、update の supportability traces を request_id 対応にした。
 - 2026-04-08: diagnostics and supportability slice の Phase 2 を完了し、supportability notes を docs 側へ同期した。
 - 2026-04-08: diagnostics and supportability slice を close し、docs and closure restructuring slice に切り替えた。
+- 2026-04-08: architecture debt closure program を close し、temporary rule と debt-program change-plan 文書を削除した。

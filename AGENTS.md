@@ -72,9 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- For `architecture-debt-closure`, read `docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md` and `docs/CHANGE-PLAN-20260408-architecture-debt-closure-docs-slice.md` in that order before starting implementation.
-- Execute the debt closure work in the documented roadmap and slice order unless one of those plans is updated first.
-- If scope, order, or risk changes, update the relevant change plan before continuing.
-- Remove this section after the architecture debt closure program is complete.
