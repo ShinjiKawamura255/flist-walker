@@ -152,8 +152,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ```md
 ## Temporary Change Plan Rule
-- For `architecture-debt-closure`, read `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md]`, `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-slice.md]`, and `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-updater-subslice.md]` before starting implementation.
-- Execute the updater hardening work in the documented order unless the roadmap, slice, or subslice is updated first.
+- For `architecture-debt-closure`, read `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-perf-gate-slice.md]` before starting implementation.
+- Execute the perf gate work in the documented order unless the roadmap or slice is updated first.
 - If scope, order, or risk changes, update the relevant change plan before continuing.
 - Remove this section from `AGENTS.md` after the planned work is complete.
 ```
