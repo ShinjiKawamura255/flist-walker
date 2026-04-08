@@ -1,9 +1,8 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
 
-// Phase 1 scaffolding for the render-orchestration split. Later phases will
-// queue these commands from top actions, dialogs, and tab bar interactions so
-// render.rs can stay focused on widget drawing and input collection.
+// Render command surface. Render.rs stays focused on drawing and input
+// collection while FlistWalkerApp dispatches the resulting commands.
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
 pub(super) enum RenderTopActionCommand {

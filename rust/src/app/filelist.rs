@@ -1,8 +1,7 @@
 use super::*;
 
-// Phase 1 scaffolding for the FileList reducer split. Later phases will emit
-// these commands from a FileList-focused manager instead of mutating app state
-// directly from every branch.
+// FileList reducer command surface. FileListManager owns the workflow state,
+// and this module bridges those commands back into FlistWalkerApp.
 #[allow(dead_code)]
 pub(super) enum FileListUiCommand {
     RefreshStatusLine,

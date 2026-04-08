@@ -1,8 +1,7 @@
 use super::*;
 
-// Phase 1 scaffolding for the Update reducer split. Later phases will move
-// update-specific state transitions behind an UpdateManager that emits these
-// commands instead of mutating FlistWalkerApp directly from every branch.
+// Update reducer command surface. Update-specific state transitions live in
+// UpdateManager; this module bridges those commands back into FlistWalkerApp.
 #[allow(dead_code)]
 pub(super) enum UpdateUiCommand {
     SetNotice(String),
