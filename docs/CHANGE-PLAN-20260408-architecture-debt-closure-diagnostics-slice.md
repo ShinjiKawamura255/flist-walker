@@ -115,13 +115,14 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-08 00:00 Drafted as the active diagnostics slice after perf gate stabilization.
 - 2026-04-08 00:00 Phase 1 completed: update request and response traces now carry request_id-correlated support details.
+- 2026-04-08 00:00 Phase 2 completed: supportability notes are synchronized in architecture/design/testplan/task tracking docs.
 
 ## 12. Completion Checklist
-- [ ] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Planned document created before implementation
+- [x] Temporary `AGENTS.md` rule added
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

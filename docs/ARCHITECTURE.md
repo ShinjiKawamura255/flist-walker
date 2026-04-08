@@ -63,7 +63,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [filelist.rs](../rust/src/app/filelist.rs)
   - FileList 作成フロー。
 - [update.rs](../rust/src/app/update.rs)
-  - self-update dialog と update state transition。
+  - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しする。
 - [state.rs](../rust/src/app/state.rs)
   - GUI 横断 state 型。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
@@ -84,6 +84,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - 補助的な非同期処理を担当する。
 - Tracing:
   - `RUST_LOG` 指定時のみ `tracing` が有効になり、index/search latency と worker channel 切断を構造化ログで記録する。
+  - update worker は request/start/apply/failure の主要遷移を request_id 付きで残し、support 時の再現と切り分けを助ける。
 
 request_id によって最新応答だけを反映し、古い応答による UI 巻き戻りを防ぐ。
 
