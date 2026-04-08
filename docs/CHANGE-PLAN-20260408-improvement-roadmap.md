@@ -7,11 +7,11 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md`, `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md`
 - Scope Label: improvement-roadmap
 - Related Tickets/Issues: none
 - Review Status: reviewed
-- Review Notes: 初回レビューで child slice 不在と roadmap/slice 混在を指摘されたため active slice を追加。収束レビューの stale path 指摘も反映済み。
+- Review Notes: 初回レビューで child slice 不在と roadmap/slice 混在を指摘されたため active slice を追加。Slice A 完了後、次の active slice として worker/domain modularization draft を追加した。
 
 ## 1. Background
 - 2026-04-08 のレビューで、FlistWalker は機能品質とテスト投資の水準は高い一方、今後の継続開発に対して構造的な負債が残っていることを確認した。
@@ -41,7 +41,7 @@
 ## 4. Constraints and Assumptions
 - 既存の SDD/TDD 文書体系 (`REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, `TESTPLAN.md`) は維持する。
 - UI 応答性ポリシーと既存の検索契約 (`'`, `!`, `^`, `$`) は後方互換前提で扱う。
-- 本計画は 2 段構えとし、active slice として `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` を持つ。
+- 本計画は 2 段構えとし、active slice として `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md` を持つ。
 - active slice の実装順と詳細検証は child slice plan 側で管理し、本書は slice 間の依存順と着手条件に集中する。
 - `AGENTS.md` の Temporary Change Plan Rule は roadmap と active slice の両方を参照する前提で追加する。
 
@@ -73,9 +73,9 @@
      - `app/mod.rs` の残責務整理方針がコード・docs・tests で確定すること。
 2. Slice B: Worker and Domain Modularization
    - Purpose:
-     - coordinator 圧縮後に、`workers.rs`、`indexer.rs`、`search.rs`、`updater.rs` の責務分離を進める。
+     - coordinator 圧縮後に、`workers.rs`、`indexer.rs`、`search.rs` の責務分離を進める。
    - Boundary:
-     - domain / worker の境界整理に集中し、OS hardening は主目的にしない。
+     - domain / worker の境界整理に集中し、updater と OS hardening は主目的にしない。
    - Dependency / Ordering:
      - Slice A の後。A の owner 境界が固まってから着手する。
    - Entry condition:
@@ -130,7 +130,7 @@
 ## 7. Detailed Task Breakdown
 - [x] active slice を 1 つ選び、child slice plan を追加する
 - [x] Slice A の phase 定義を executable batch に再構成し、roadmap へ結果を反映する
-- [ ] Slice B の前提条件を確定する
+- [x] Slice B の前提条件を確定する
 - [ ] Slice B-C の並行可否を roadmap 上で再判定する
 - [ ] Slice D の PR perf gate 候補と budget を roadmap 上で固定する
 - [ ] Slice E-F の着手順を、A-D の結果を踏まえて再評価する
@@ -158,8 +158,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ```md
 ## Temporary Change Plan Rule
-- For `improvement-roadmap`, read `[docs/CHANGE-PLAN-20260408-improvement-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md]` before starting implementation.
-- Execute the work in the documented order unless the plan is updated first.
+- For `improvement-roadmap`, read `[docs/CHANGE-PLAN-20260408-improvement-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md]` before starting implementation.
+- Execute the Worker and Domain Modularization work in the documented order unless the plan is updated first.
 - If scope, order, or risk changes, update the roadmap or slice plan before continuing.
 - Remove this section from `AGENTS.md` after the planned work is complete.
 ```
@@ -172,6 +172,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Slice A implementation started with coordinator helper extraction and docs sync.
 - 2026-04-08 00:00 Slice A phase structure reconstructed to use two executable phases instead of inventory-only steps.
 - 2026-04-08 00:00 Slice A completed and is ready to serve as the dependency base for Slice B.
+- 2026-04-08 00:00 Slice B draft created for worker/domain modularization.
+- 2026-04-08 00:00 Slice B narrowed to worker/domain modularization with updater deferred to Slice C.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
@@ -183,6 +185,6 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [ ] Change plan deleted after completion
 
 ## 13. Final Notes
-- 本書は上位 roadmap であり、active slice は `docs/CHANGE-PLAN-20260408-improvement-app-coordinator-slice.md` とする。
+- 本書は上位 roadmap であり、active slice は `docs/CHANGE-PLAN-20260408-worker-domain-modularization-slice.md` とする。
 - 後続 slice の着手前には、本書を更新して依存順と前提条件を最新化する。
 - 恒久仕様へ移すべき内容が発生した場合だけ、`REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, `TESTPLAN.md` へ反映する。
