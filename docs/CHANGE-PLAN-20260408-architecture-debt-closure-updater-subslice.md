@@ -110,6 +110,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-08 00:00 Drafted as the active updater helper subslice.
 - 2026-04-08: Batch 1 completed with helper extraction for release-asset selection and support classification, plus direct contract tests.
+- 2026-04-08 00:00 Batch 2 completed with command-surface comment cleanup and updater contract docs alignment.
 
 ## 12. Completion Checklist
 - [ ] Planned document created before implementation

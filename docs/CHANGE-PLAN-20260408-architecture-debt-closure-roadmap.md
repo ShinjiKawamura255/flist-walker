@@ -162,6 +162,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Planned architecture debt closure roadmap created after previous plan close.
 - 2026-04-08: Slice A active batch split the updater decision path into asset-selection and support-classification helpers, with contract tests added.
 - 2026-04-08 00:00 Slice A Phase 1 completed: updater candidate resolution is now isolated from staged apply work; Phase 2 docs/contract sync remains pending.
+- 2026-04-08 00:00 Slice A Phase 2 completed: updater command-surface comments and docs/testplan references now match the current boundary.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

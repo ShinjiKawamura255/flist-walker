@@ -121,6 +121,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Drafted as the active slice for architecture debt closure.
 - 2026-04-08: Phase 1 work began by splitting updater candidate resolution into release-asset selection and support-classification helpers.
 - 2026-04-08 00:00 Phase 1 completed: updater candidate resolution now goes through a pure helper, and the contract stays testable without mixing staged apply logic.
+- 2026-04-08 00:00 Phase 2 completed: updater command-surface comments now match the current manager/bridge boundary, and docs/testplan stay aligned with the updater contract.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
