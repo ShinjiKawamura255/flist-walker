@@ -7,11 +7,11 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260408-architecture-debt-closure-diagnostics-slice.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260408-architecture-debt-closure-docs-slice.md`
 - Scope Label: architecture-debt-closure
 - Related Tickets/Issues: none
 - Review Status: reviewed
-- Review Notes: Active child slice is diagnostics/supportability and has been reviewed with no blockers.
+- Review Notes: Active child slice is docs/closure restructuring and has been reviewed with no blockers.
 
 ## 1. Background
 - The coordinator, worker/domain, and open/execute seam cleanup have removed the highest-friction structural issues, but the project still has visible architecture debt in updater hardening, perf gates, diagnostics, and docs/process separation.
@@ -127,7 +127,7 @@
 - [ ] Draft the updater hardening slice and active subslice
 - [ ] Define the first lightweight perf gate candidate and budget
 - [ ] Define the diagnostics/supportability boundary
-- [ ] Define the docs/closure cleanup boundary
+- [x] Define the docs/closure cleanup boundary
 
 ## 8. Validation Plan
 - Automated tests:
@@ -152,8 +152,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ```md
 ## Temporary Change Plan Rule
-- For `architecture-debt-closure`, read `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-diagnostics-slice.md]` before starting implementation.
-- Execute the diagnostics work in the documented order unless the roadmap or slice is updated first.
+- For `architecture-debt-closure`, read `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-roadmap.md]` and `[docs/CHANGE-PLAN-20260408-architecture-debt-closure-docs-slice.md]` before starting implementation.
+- Execute the docs/closure work in the documented order unless the roadmap or slice is updated first.
 - If scope, order, or risk changes, update the relevant change plan before continuing.
 - Remove this section from `AGENTS.md` after the planned work is complete.
 ```
@@ -171,6 +171,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08 00:00 Slice C draft focuses on request-owned traces, support notes, and validation references.
 - 2026-04-08 00:00 Slice C Phase 1 completed: update request and response paths now emit request_id-correlated trace commands and worker logs.
 - 2026-04-08 00:00 Slice C Phase 2 completed: supportability notes are synchronized in architecture/design/testplan/task tracking docs.
+- 2026-04-08 00:00 Slice C closed and Slice D drafted as the final docs/closure restructuring slice.
+- 2026-04-08 00:00 Slice D review completed with no blockers; closure can proceed in two docs-only phases.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

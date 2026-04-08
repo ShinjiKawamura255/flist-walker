@@ -8,10 +8,23 @@
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
-  - 2026-04-08 に Slice A を close し、Slice B として perf gate strengthening の slice を起動した。
-  - 2026-04-08 に Slice B を close し、Slice C として diagnostics and supportability の slice を起動した。
-  - 2026-04-08 に Slice C Phase 1 を完了し、update request / response の trace と worker logs を request_id で追えるようにした。
-  - 2026-04-08 に Slice C Phase 2 を完了し、architecture/design/testplan/task docs を supportability 前提で同期した。
+  - 2026-04-08 の architecture debt closure program は Slice A-C を完了し、現在は final docs/closure slice を実施中。
+
+## Active Programs
+
+### Program D: Architecture Debt Closure
+- Status: IN PROGRESS on 2026-04-08
+- Goal: updater, perf, diagnostics, docs/closure の順で visible architecture debt を解消し、新規機能再開前の steady-state docs と validation rule を確定する。
+- Progress:
+  - Slice A `Updater Hardening`: DONE
+  - Slice B `Perf Gate Strengthening`: DONE
+  - Slice C `Diagnostics and Supportability`: DONE
+  - Slice D `Docs and Closure Restructuring`: IN PROGRESS
+- Durable outcomes so far:
+  - self-update contract は candidate selection / support classification / app command boundary に分割された。
+  - lightweight perf gate は PR CI に載り、heavy suite は分離維持された。
+  - update request / response は request_id-correlated trace で追跡できる。
+  - final closure record はこの `TASKS.md` に集約する。
 
 ## Completed Programs
 
@@ -75,3 +88,4 @@
 - 2026-04-08: perf gate strengthening slice を close し、diagnostics and supportability slice に切り替えた。
 - 2026-04-08: diagnostics and supportability slice の Phase 1 を完了し、update の supportability traces を request_id 対応にした。
 - 2026-04-08: diagnostics and supportability slice の Phase 2 を完了し、supportability notes を docs 側へ同期した。
+- 2026-04-08: diagnostics and supportability slice を close し、docs and closure restructuring slice に切り替えた。

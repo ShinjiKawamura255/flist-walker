@@ -154,7 +154,7 @@
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
 - 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
-- 2026-04-04 app architecture roadmap 完了時点で、request routing localization、Render/UI orchestration、final coordinator cleanup の targeted regression はすべて `cargo test` で green を確認済みである。以後の app architecture 関連変更は VM-001 / VM-002 / VM-003 を直接適用し、slice 固有の Phase rule を増やさない。
+- app architecture のような構造改善後も、恒久的な検証基準は VM-001 / VM-002 / VM-003 を直接適用する。temporary slice 固有の validation rule はこの文書へ持ち込まない。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`

@@ -112,6 +112,19 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 - [DESIGN.md](./DESIGN.md)
 - [TESTPLAN.md](./TESTPLAN.md)
 - [RELEASE.md](./RELEASE.md)
+- [TASKS.md](./TASKS.md)
+
+## Document Roles
+- `REQUIREMENTS.md` / `SPEC.md`
+  - プロダクト契約と振る舞いの規範面を保持する。
+- `ARCHITECTURE.md` / `DESIGN.md`
+  - steady-state の構造、責務境界、運用上の設計判断を保持する。
+- `TESTPLAN.md`
+  - 継続運用する validation matrix、manual test、regression guard を保持する。
+- `RELEASE.md`
+  - release 運用と配布手順を保持する。
+- `TASKS.md`
+  - change program の履歴、closure record、恒久的に残す進捗サマリを保持する。
 
 ## Regression Guards
 
