@@ -187,6 +187,7 @@
 - indexer/search/actions/ui_model を独立モジュール化。
 - query 解釈は `rust/src/query.rs` へ集約し、search と UI highlight で同じ token 分解・正規化を再利用する。
 - OS 依存処理は抽象境界を薄くして単体テスト可能性を維持。
+- app regression tests は monolithic な `FlistWalkerApp` fixture へ集約し続けず、owner/command seam ごとに module を分ける。update lifecycle は `rust/src/app/tests/update_commands.rs`、session restore/startup root は `rust/src/app/tests/session_restore.rs`、tab interaction/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を基準に保守する。
 
 - DES-011 Window/IME Stability (Windows)
 - マルチディスプレイ跨ぎ時の一時的な巨大ウィンドウサイズを永続化しないよう、保存前に monitor 幅/高さでジオメトリをクランプする。

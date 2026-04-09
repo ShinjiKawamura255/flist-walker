@@ -87,7 +87,7 @@
 - [x] Map oversized test files and assign them to owner/command targets
 - [x] Introduce or refine support helpers needed for command-oriented tests
 - [x] Move the highest-churn tests away from broad app-fixture modules
-- [ ] Sync architecture/design/task docs after the test layout settles
+- [x] Sync architecture/design/task docs after the test layout settles
 
 ## 8. Validation Plan
 - Automated tests:
@@ -123,15 +123,17 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-09: Phase 2 started by moving the update command/manager tests out of `app_core.rs` into `rust/src/app/tests/update_commands.rs`, reducing one mixed-concern hotspot without changing behavior.
 - 2026-04-09: Phase 2 continued by moving session restore/startup-root coverage out of `rust/src/app/tests/session_tabs.rs` into `rust/src/app/tests/session_restore.rs`, separating restore-owner behavior from direct tab interaction coverage.
 - 2026-04-09: Phase 2 completed after `cargo test` passed with the narrower test-module layout and no production-code seam changes were required beyond existing owner/command surfaces.
+- 2026-04-09: Verification found an unrelated updater-test env race during `cargo test`; added the same env lock used by the existing self-update env tests so full-suite validation remains stable under parallel execution.
+- 2026-04-09: Phase 3 completed. `ARCHITECTURE.md`, `DESIGN.md`, `TESTPLAN.md`, `TASKS.md`, and the parent roadmap now describe the command-oriented app test boundaries and record Slice D as complete.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Temporary `AGENTS.md` rule updated to point at this active slice
 - [x] Work executed according to the plan or the plan updated first
 - [x] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after roadmap completion
 - [ ] Change plan deleted after roadmap completion
 
 ## 13. Final Notes
-- This slice assumes Slice A-C are stable. Structured tracing/supportability remains deferred to roadmap Slice E.
+- This slice assumes Slice A-C are stable and is now complete. Structured tracing/supportability remains deferred to roadmap Slice E.

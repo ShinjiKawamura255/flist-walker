@@ -79,6 +79,18 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [workers.rs](../rust/src/app/workers.rs)
   - search/preview/action/sort/update/filelist/kind worker の spawn 実装を担当する。
 
+## App Test Boundaries
+- `rust/src/app/tests/update_commands.rs`
+  - update dialog / manager / worker-response lifecycle を command 境界で検証する。
+- `rust/src/app/tests/session_restore.rs`
+  - startup root 選択、saved tab sanitize、restore 時の active/background tab 初期化を restore owner 境界で検証する。
+- `rust/src/app/tests/session_tabs.rs`
+  - tab switch/reorder/close と background tab 応答 routing を tab owner 境界で検証する。
+- `rust/src/app/tests/index_pipeline/*`
+  - filelist、index inflight、kind resolution、search refresh の pipeline lifecycle を command 単位で検証する。
+- `rust/src/app/tests/app_core.rs`
+  - app coordinator の汎用 state transition と cross-cutting regression だけを保持し、update/restore の専用責務は各 owner-aligned module へ寄せる。
+
 ## Threading Model
 - UI thread:
   - egui frame ごとに request enqueue と response poll を行う。

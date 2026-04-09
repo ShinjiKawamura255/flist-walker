@@ -98,15 +98,15 @@
 | Slice A | Pipeline Owner Extraction | DONE | Completed on 2026-04-08 after owner-surface extraction and steady-state doc sync. |
 | Slice B | Background Tab Result-Flow Separation | DONE | Completed on 2026-04-08 after background search/index apply helpers and restore boundaries were separated. |
 | Slice C | Worker Protocol Separation | DONE | Completed on 2026-04-09 after protocol types moved into `worker_protocol.rs` and steady-state docs were synchronized. |
-| Slice D | Command-Oriented App Tests | ACTIVE | Activated on 2026-04-09 after Slice C completed and owner/protocol seams were ready for test-boundary reshaping. |
-| Slice E | Structured Tracing and Supportability + Roadmap Closure Review | PLANNED | Prefer after ownership and protocol boundaries settle, so tracing lands on stable surfaces; this terminal slice must also decide whether the roadmap closes or continues with a newly added slice. |
+| Slice D | Command-Oriented App Tests | DONE | Completed on 2026-04-09 after update/restore regressions moved into owner-aligned test modules and steady-state docs were synchronized. |
+| Slice E | Structured Tracing and Supportability + Roadmap Closure Review | PLANNED | Next slice candidate after Slice D. Prefer after ownership, protocol, and test boundaries settle, so tracing lands on stable surfaces; this terminal slice must also decide whether the roadmap closes or continues with a newly added slice. |
 
 ## 7. Detailed Task Breakdown
 - [x] Add roadmap and active slice documents before implementation resumes
 - [x] Execute Slice A and update roadmap status
 - [x] Execute Slice B and update roadmap status
 - [x] Execute Slice C and update roadmap status
-- [ ] Execute Slice D and update roadmap status
+- [x] Execute Slice D and update roadmap status
 - [ ] Execute Slice E and update roadmap status
 - [ ] Record roadmap goal attainment and close or extend the roadmap at Slice E exit
 - [ ] Remove temporary planning rules after roadmap closure
@@ -158,6 +158,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-09: Slice C completed. Worker request/response protocols now live in `worker_protocol.rs`, the remaining worker modules import that narrower surface, and steady-state docs were updated before leaving the slice.
 - 2026-04-09: Activated Slice D and created `docs/CHANGE-PLAN-20260409-command-oriented-app-tests-slice.md` as the new active child plan.
 - 2026-04-09: Slice D handoff reviewed. Confirmed the active child-plan references are aligned and the slice stays distinct from both Slice C and Slice E.
+- 2026-04-09: Slice D completed. Update command coverage now lives in `rust/src/app/tests/update_commands.rs`, session restore/startup-root coverage lives in `rust/src/app/tests/session_restore.rs`, and steady-state docs now describe the owner/command-oriented app test boundaries. During validation, an unrelated updater env race surfaced and was fixed by aligning the remaining self-update disable tests with the existing env lock.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
