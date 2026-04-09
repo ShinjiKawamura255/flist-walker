@@ -822,20 +822,71 @@ mod tests {
             html_url: "https://example.invalid/release".to_string(),
             assets: vec![
                 GitHubAsset {
+                    name: "FlistWalker-0.13.1-windows-x86_64.exe".to_string(),
+                    browser_download_url: "https://example.invalid/windows-exe".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-windows-x86_64.README.txt".to_string(),
+                    browser_download_url: "https://example.invalid/windows-readme".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-windows-x86_64.LICENSE.txt".to_string(),
+                    browser_download_url: "https://example.invalid/windows-license".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-windows-x86_64.THIRD_PARTY_NOTICES.txt"
+                        .to_string(),
+                    browser_download_url: "https://example.invalid/windows-notices".to_string(),
+                },
+                GitHubAsset {
                     name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
-                    browser_download_url: "https://example.invalid/asset".to_string(),
+                    browser_download_url: "https://example.invalid/linux-bin".to_string(),
                 },
                 GitHubAsset {
                     name: "FlistWalker-0.13.1-linux-x86_64.README.txt".to_string(),
-                    browser_download_url: "https://example.invalid/readme".to_string(),
+                    browser_download_url: "https://example.invalid/linux-readme".to_string(),
                 },
                 GitHubAsset {
                     name: "FlistWalker-0.13.1-linux-x86_64.LICENSE.txt".to_string(),
-                    browser_download_url: "https://example.invalid/license".to_string(),
+                    browser_download_url: "https://example.invalid/linux-license".to_string(),
                 },
                 GitHubAsset {
                     name: "FlistWalker-0.13.1-linux-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
-                    browser_download_url: "https://example.invalid/notices".to_string(),
+                    browser_download_url: "https://example.invalid/linux-notices".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-x86_64".to_string(),
+                    browser_download_url: "https://example.invalid/macos-x64-bin".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-x86_64.README.txt".to_string(),
+                    browser_download_url: "https://example.invalid/macos-x64-readme".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-x86_64.LICENSE.txt".to_string(),
+                    browser_download_url: "https://example.invalid/macos-x64-license".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-x86_64.THIRD_PARTY_NOTICES.txt"
+                        .to_string(),
+                    browser_download_url: "https://example.invalid/macos-x64-notices".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-arm64".to_string(),
+                    browser_download_url: "https://example.invalid/macos-arm-bin".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-arm64.README.txt".to_string(),
+                    browser_download_url: "https://example.invalid/macos-arm-readme".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-arm64.LICENSE.txt".to_string(),
+                    browser_download_url: "https://example.invalid/macos-arm-license".to_string(),
+                },
+                GitHubAsset {
+                    name: "FlistWalker-0.13.1-macos-arm64.THIRD_PARTY_NOTICES.txt"
+                        .to_string(),
+                    browser_download_url: "https://example.invalid/macos-arm-notices".to_string(),
                 },
                 GitHubAsset {
                     name: "SHA256SUMS".to_string(),
