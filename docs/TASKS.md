@@ -19,6 +19,8 @@
   - 2026-04-08 に Slice C 向けの active child plan `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を追加し、worker protocol separation へ進む状態に切り替えた。
   - 2026-04-09 に Slice C を完了し、`worker_protocol.rs` へ worker request/response 型を集約して `workers.rs` / `index_worker.rs` / `worker_bus.rs` / `mod.rs` の protocol 参照境界を同期した。
   - 2026-04-09 に Slice D 向けの active child plan `docs/CHANGE-PLAN-20260409-command-oriented-app-tests-slice.md` を追加し、command-oriented app tests へ進む状態に切り替えた。
+  - 2026-04-09 に Slice D Phase 1/2 を進め、update command/manager 系テストを `app_core.rs` から `rust/src/app/tests/update_commands.rs` へ分離した。
+  - 2026-04-09 に Slice D Phase 2 を完了し、session restore/startup-root 系テストを `session_tabs.rs` から `rust/src/app/tests/session_restore.rs` へ分離して `cargo test` で回帰がないことを確認した。
 
 ## Completed Programs
 

@@ -767,6 +767,9 @@ mod tests {
 
     #[test]
     fn self_update_disabled_sentinel_file_is_honored() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
         let root = std::env::temp_dir().join(format!(
             "flistwalker-update-disable-{}",
             SystemTime::now()
@@ -786,6 +789,9 @@ mod tests {
 
     #[test]
     fn self_update_disabled_sentinel_file_is_false_when_missing() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
         let root = std::env::temp_dir().join(format!(
             "flistwalker-update-disable-missing-{}",
             SystemTime::now()

@@ -25,6 +25,8 @@ mod index_pipeline;
 mod pipeline_tests;
 mod query_history;
 mod render_tests;
+mod session_restore;
 mod session_tabs;
 mod shortcuts;
+mod update_commands;
 mod window_ime;
