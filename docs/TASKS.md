@@ -18,6 +18,7 @@
   - 2026-04-08 に Slice B を完了し、background search/index apply helper を `tabs.rs` 側へ揃えて active/background result-flow の境界を明示した。
   - 2026-04-08 に Slice C 向けの active child plan `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を追加し、worker protocol separation へ進む状態に切り替えた。
   - 2026-04-09 に Slice C を完了し、`worker_protocol.rs` へ worker request/response 型を集約して `workers.rs` / `index_worker.rs` / `worker_bus.rs` / `mod.rs` の protocol 参照境界を同期した。
+  - 2026-04-09 に Slice D 向けの active child plan `docs/CHANGE-PLAN-20260409-command-oriented-app-tests-slice.md` を追加し、command-oriented app tests へ進む状態に切り替えた。
 
 ## Completed Programs
 
@@ -102,6 +103,7 @@
 - 2026-04-08: 次の app architecture 改善を 2 段 change plan に再編し、`docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` と `docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md` を追加した。
 - 2026-04-08: Slice A 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation に進める状態へ更新した。
 - 2026-04-08: Slice B 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を追加し、worker protocol separation に進める状態へ更新した。
+- 2026-04-09: Slice C 完了後、次の child slice として `docs/CHANGE-PLAN-20260409-command-oriented-app-tests-slice.md` を追加し、command-oriented app tests に進める状態へ更新した。
 - 2026-04-08: single-plan の architecture refactor program として `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を追加し、`AGENTS.md` に temporary rule を追記した。
 - 2026-04-08: architecture refactor follow-up program を close し、恒久内容を `ARCHITECTURE.md` / `DESIGN.md` / `TASKS.md` へ移したうえで temporary rule と `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を削除した。
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。
