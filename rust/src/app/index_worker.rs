@@ -1,4 +1,4 @@
-use super::workers::{IndexEntry, IndexRequest, IndexResponse};
+use super::worker_protocol::{IndexEntry, IndexRequest, IndexResponse};
 use crate::entry::EntryKind;
 use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,

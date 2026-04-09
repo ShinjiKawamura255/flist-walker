@@ -1,4 +1,9 @@
-use super::*;
+use super::worker_protocol::{
+    ActionRequest, ActionResponse, FileListRequest, FileListResponse, KindResolveRequest,
+    KindResolveResponse, PreviewRequest, PreviewResponse, SortMetadataRequest,
+    SortMetadataResponse, UpdateRequest, UpdateResponse,
+};
+use std::sync::mpsc::{Receiver, Sender};
 
 pub(super) struct PreviewWorkerBus {
     pub(super) tx: Sender<PreviewRequest>,

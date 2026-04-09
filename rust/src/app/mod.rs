@@ -45,6 +45,7 @@ mod tabs;
 mod ui_state;
 mod update;
 mod worker_bus;
+mod worker_protocol;
 mod worker_runtime;
 mod worker_support;
 mod workers;
@@ -72,14 +73,18 @@ use worker_bus::{
     ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,
     UpdateWorkerBus, WorkerBus,
 };
+use worker_protocol::{
+    ActionRequest, ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest,
+    IndexResponse, KindResolveRequest, PreviewRequest, PreviewResponse, SearchRequest,
+    SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind,
+    UpdateResponse,
+};
+#[cfg(test)]
+use worker_protocol::KindResolveResponse;
 use worker_runtime::{WorkerJoinSummary, WorkerRuntime};
 use workers::{
     spawn_action_worker, spawn_filelist_worker, spawn_kind_resolver_worker, spawn_preview_worker,
-    spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker, ActionRequest,
-    ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest, IndexResponse,
-    KindResolveRequest, KindResolveResponse, PreviewRequest, PreviewResponse, SearchRequest,
-    SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind,
-    UpdateResponse,
+    spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
 };
 
 impl TabAccentColor {

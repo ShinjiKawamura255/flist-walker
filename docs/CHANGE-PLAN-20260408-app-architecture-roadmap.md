@@ -11,7 +11,7 @@
 - Scope Label: app-architecture-roadmap
 - Related Tickets/Issues: none
 - Review Status: reviewed
-- Review Notes: Local review completed on 2026-04-08. The roadmap/slice split is valid because the roadmap manages five distinct future slices and the active slice has multiple execution phases. The roadmap was updated during review to make slice status and activation order explicit.
+- Review Notes: Feasibility review completed on 2026-04-08 and judged this program `feasible` because the remaining architecture work stays inside existing app-layer seams, can be validated with the current Rust test/perf coverage, and preserves per-slice rollback boundaries. Layered review then confirmed the roadmap/slice split is valid because the roadmap manages five distinct future slices and the active slice has multiple execution phases. Convergence review completed on 2026-04-08 after making slice status, activation order, and roadmap-closure expectations explicit.
 
 ## 1. Background
 - The previous architecture refactor reduced duplication in pipeline state transitions, moved index request lifecycle ownership into `IndexCoordinator`, and split worker runtime/indexing concerns out of `workers.rs`.
@@ -44,6 +44,17 @@
 - The roadmap should track all five requested improvements, but only one active slice should drive implementation at a time.
 - Validation must keep following `docs/TESTPLAN.md`, especially VM-002 and VM-003 when applicable.
 - Temporary plan rules should be removed after the roadmap and active slice are fully closed.
+
+## 4.5 Feasibility Review
+- Status: `feasible`
+- Checked assumptions:
+  - The requested architecture work is confined to existing `rust/src/app/` ownership seams and does not require new external dependencies or release-process changes.
+  - The current docs/test harness already provide a workable validation path for each slice via `cargo test` plus VM-003 perf guards when indexing paths move.
+  - Per-slice rollback remains practical because each planned slice is scoped to a single architectural concern.
+- Why this is feasible now:
+  - Slice A/B already created stable owner seams, so Slice C-E can build on bounded app-layer modules instead of reopening the earlier refactor.
+  - No unresolved migration or compatibility prerequisite blocks Slice C from starting.
+  - The remaining risk is mainly scope drift, which is mitigated by keeping one concern per slice and updating the roadmap before any order/scope change.
 
 ## 5. Current Risks
 - Risk:
@@ -78,7 +89,7 @@
    - Verification: `cd rust && cargo test`.
 5. Slice E: Structured Tracing and Supportability
    - Files/modules/components: app owners, workers, diagnostics docs
-   - Expected result: request_id-correlated tracing is more uniform and support/debug workflows get clearer event surfaces.
+   - Expected result: request_id-correlated tracing is more uniform, support/debug workflows get clearer event surfaces, and this final slice also records whether the roadmap goal is now satisfied or whether a follow-up slice must be added.
    - Verification: `cd rust && cargo test`; docs review for supportability notes.
 
 ### Slice Status Matrix
@@ -86,18 +97,19 @@
 | --- | --- | --- | --- |
 | Slice A | Pipeline Owner Extraction | DONE | Completed on 2026-04-08 after owner-surface extraction and steady-state doc sync. |
 | Slice B | Background Tab Result-Flow Separation | DONE | Completed on 2026-04-08 after background search/index apply helpers and restore boundaries were separated. |
-| Slice C | Worker Protocol Separation | ACTIVE | Activated on 2026-04-08 after Slice B completed and protocol separation became the next bounded concern. |
+| Slice C | Worker Protocol Separation | DONE | Completed on 2026-04-09 after protocol types moved into `worker_protocol.rs` and steady-state docs were synchronized. |
 | Slice D | Command-Oriented App Tests | PLANNED | Activate after ownership seams exist to test against. |
-| Slice E | Structured Tracing and Supportability | PLANNED | Prefer after ownership and protocol boundaries settle, so tracing lands on stable surfaces. |
+| Slice E | Structured Tracing and Supportability + Roadmap Closure Review | PLANNED | Prefer after ownership and protocol boundaries settle, so tracing lands on stable surfaces; this terminal slice must also decide whether the roadmap closes or continues with a newly added slice. |
 
 ## 7. Detailed Task Breakdown
 - [x] Add roadmap and active slice documents before implementation resumes
 - [x] Execute Slice A and update roadmap status
 - [x] Execute Slice B and update roadmap status
-- [ ] Execute Slice C and update roadmap status
+- [x] Execute Slice C and update roadmap status
 - [ ] Execute Slice D and update roadmap status
 - [ ] Execute Slice E and update roadmap status
-- [ ] Close the roadmap and remove temporary planning rules
+- [ ] Record roadmap goal attainment and close or extend the roadmap at Slice E exit
+- [ ] Remove temporary planning rules after roadmap closure
 
 ## 8. Validation Plan
 - Automated tests:
@@ -132,7 +144,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-08 00:00 Planned roadmap for the next five app-architecture improvements and selected Slice A as the active starting point.
-- 2026-04-08 00:00 Local roadmap review completed. Added explicit slice status/activation tracking and confirmed the 2-level plan split is justified.
+- 2026-04-08 00:00 Feasibility review judged the program feasible with current app-layer seams, validation coverage, and per-slice rollback boundaries.
+- 2026-04-08 00:00 Layered roadmap review completed. Added explicit slice status/activation tracking and confirmed the 2-level plan split is justified.
 - 2026-04-08: Slice A Phase 1 completed. The active request cleanup seam now routes through `IndexCoordinator`, and search refresh request/response routing is grouped around `SearchCoordinator` lifecycle helpers plus pipeline-local response handlers; later slice phases remain active.
 - 2026-04-08: Slice A Phase 2 completed. `pipeline_owner.rs` now carries the dedicated owner surface for search/result refresh and entry-filter application, reducing direct pipeline orchestration inside `pipeline.rs`.
 - 2026-04-08: Slice A Phase 3 completed. Steady-state architecture/design docs now describe `pipeline_owner.rs` as the search/result refresh owner surface and `pipeline.rs` as the thinner dispatcher layer.
@@ -141,6 +154,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-08: Slice B completed. Background search/index apply helpers now live in `tabs.rs`, active/background branching in pipeline paths is reduced, and steady-state docs describe the new boundary.
 - 2026-04-08: Activated Slice C and created `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` as the new active child plan.
 - 2026-04-08: Slice C handoff reviewed. Confirmed the active child-plan references are aligned and the slice stays distinct from both Slice B and Slice D.
+- 2026-04-09: Rechecked this roadmap against the updated `plan-driven-changes` skill. Kept the 2-level plan, documented the feasibility review explicitly, and marked Slice E as the terminal slice that must record roadmap closure or continuation.
+- 2026-04-09: Slice C completed. Worker request/response protocols now live in `worker_protocol.rs`, the remaining worker modules import that narrower surface, and steady-state docs were updated before leaving the slice.
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation

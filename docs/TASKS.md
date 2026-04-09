@@ -1,7 +1,7 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-08
+- Updated: 2026-04-09
 - Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md`
 - App architecture change-plan program: IN PROGRESS
 - Notes:
@@ -17,6 +17,7 @@
   - 2026-04-08 に Slice B 向けの active child plan `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation へ進む状態に切り替えた。
   - 2026-04-08 に Slice B を完了し、background search/index apply helper を `tabs.rs` 側へ揃えて active/background result-flow の境界を明示した。
   - 2026-04-08 に Slice C 向けの active child plan `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を追加し、worker protocol separation へ進む状態に切り替えた。
+  - 2026-04-09 に Slice C を完了し、`worker_protocol.rs` へ worker request/response 型を集約して `workers.rs` / `index_worker.rs` / `worker_bus.rs` / `mod.rs` の protocol 参照境界を同期した。
 
 ## Completed Programs
 
