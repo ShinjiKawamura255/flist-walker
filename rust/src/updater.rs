@@ -903,6 +903,9 @@ mod tests {
     #[test]
     fn resolve_update_candidate_from_release_builds_candidate_from_assets() {
         let release = test_release("v0.13.1");
+        let target = current_platform_target(&Version::new(0, 13, 1))
+            .expect("platform target")
+            .expect("target");
         let candidate = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
             .expect("candidate resolution")
             .expect("update candidate");
@@ -910,7 +913,7 @@ mod tests {
         assert_eq!(candidate.current_version, "0.13.0");
         assert_eq!(candidate.target_version, "0.13.1");
         assert_eq!(candidate.release_url, "https://example.invalid/release");
-        assert_eq!(candidate.asset_name, "FlistWalker-0.13.1-linux-x86_64");
+        assert_eq!(candidate.asset_name, target.asset_name);
         assert_eq!(
             candidate.checksum_signature_url,
             "https://example.invalid/SHA256SUMS.sig"
