@@ -13,7 +13,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
 const WALKER_THREADS_DEFAULT: usize = 2;
@@ -148,6 +148,14 @@ fn is_nested_filelist_candidate(path: &Path, root_filelist: &Path, root: &Path) 
         .is_some_and(|name| name.eq_ignore_ascii_case("filelist.txt"))
 }
 
+fn index_source_kind(source: &IndexSource) -> &'static str {
+    match source {
+        IndexSource::None => "none",
+        IndexSource::Walker => "walker",
+        IndexSource::FileList(_) => "filelist",
+    }
+}
+
 fn collect_filelist_entries_with_cancel(
     filelist: &Path,
     root: &Path,
@@ -178,11 +186,14 @@ fn stream_filelist_index(
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::FileList(filelist.clone());
     info!(
+        flow = "index",
+        source_kind = "filelist",
+        event = "started",
         request_id = req.request_id,
         tab_id = req.tab_id,
         root = %root.display(),
         filelist = %filelist.display(),
-        "index worker started filelist stream"
+        "worker request started"
     );
     if tx_res
         .send(IndexResponse::Started {
@@ -192,8 +203,11 @@ fn stream_filelist_index(
         .is_err()
     {
         warn!(
+            flow = "index",
+            source_kind = "filelist",
+            event = "receiver_closed",
             request_id = req.request_id,
-            "index receiver closed before filelist start"
+            "worker response receiver closed before start"
         );
         return Err("index receiver closed".to_string());
     }
@@ -311,16 +325,22 @@ fn stream_filelist_index(
             .is_err()
         {
             warn!(
+                flow = "index",
+                source_kind = "filelist",
+                event = "receiver_closed",
                 request_id = req.request_id,
-                "index receiver closed during filelist replace"
+                "worker response receiver closed during replace"
             );
             return Err("index receiver closed".to_string());
         }
     }
-    debug!(
+    info!(
+        flow = "index",
+        source_kind = "filelist",
+        event = "finished",
         request_id = req.request_id,
         source = ?source,
-        "index worker finished filelist stream"
+        "worker request finished"
     );
     Ok(source)
 }
@@ -334,12 +354,15 @@ fn stream_walker_index(
 ) -> std::result::Result<IndexSource, String> {
     let source = IndexSource::Walker;
     info!(
+        flow = "index",
+        source_kind = "walker",
+        event = "started",
         request_id = req.request_id,
         tab_id = req.tab_id,
         root = %root.display(),
         include_files = req.include_files,
         include_dirs = req.include_dirs,
-        "index worker started walker stream"
+        "worker request started"
     );
     if tx_res
         .send(IndexResponse::Started {
@@ -349,8 +372,11 @@ fn stream_walker_index(
         .is_err()
     {
         warn!(
+            flow = "index",
+            source_kind = "walker",
+            event = "receiver_closed",
             request_id = req.request_id,
-            "index receiver closed before walker start"
+            "worker response receiver closed before start"
         );
         return Err("index receiver closed".to_string());
     }
@@ -423,14 +449,22 @@ fn stream_walker_index(
             .is_err()
     {
         warn!(
+            flow = "index",
+            source_kind = "walker",
+            event = "receiver_closed",
             request_id = req.request_id,
-            "index receiver closed during truncation notice"
+            "worker response receiver closed during truncation notice"
         );
         return Err("index receiver closed".to_string());
     }
-    debug!(
+    info!(
+        flow = "index",
+        source_kind = "walker",
+        event = "finished",
         request_id = req.request_id,
-        emitted_entries, truncated, "index worker finished walker stream"
+        emitted_entries,
+        truncated,
+        "worker request finished"
     );
     Ok(source)
 }
@@ -476,8 +510,11 @@ pub(super) fn spawn_index_worker(
                     .is_err()
                 {
                     warn!(
+                        flow = "index",
+                        source_kind = "none",
+                        event = "receiver_closed",
                         request_id = req.request_id,
-                        "index receiver closed before empty start"
+                        "worker response receiver closed before empty start"
                     );
                     break;
                 }
@@ -489,8 +526,11 @@ pub(super) fn spawn_index_worker(
                     .is_err()
                 {
                     warn!(
+                        flow = "index",
+                        source_kind = "none",
+                        event = "receiver_closed",
                         request_id = req.request_id,
-                        "index receiver closed before empty finish"
+                        "worker response receiver closed before empty finish"
                     );
                     break;
                 }
@@ -529,27 +569,51 @@ pub(super) fn spawn_index_worker(
 
             match result {
                 Ok(source) => {
+                    let source_kind = index_source_kind(&source);
+                    info!(
+                        flow = "index",
+                        source_kind,
+                        event = "completed",
+                        request_id = req.request_id,
+                        "worker lifecycle completed"
+                    );
                     if tx_res_worker
                         .send(IndexResponse::Finished {
                             request_id: req.request_id,
-                            source,
+                            source: source.clone(),
                         })
                         .is_err()
                     {
                         warn!(
+                            flow = "index",
+                            source_kind,
+                            event = "receiver_closed",
                             request_id = req.request_id,
-                            "index receiver closed before finish"
+                            "worker response receiver closed before finish"
                         );
                         break;
                     }
                 }
                 Err(error) => {
                     if error == "superseded" {
+                        info!(
+                            flow = "index",
+                            event = "superseded",
+                            request_id = req.request_id,
+                            "worker request superseded"
+                        );
                         let _ = tx_res_worker.send(IndexResponse::Canceled {
                             request_id: req.request_id,
                         });
                         continue;
                     }
+                    warn!(
+                        flow = "index",
+                        event = "failed",
+                        request_id = req.request_id,
+                        error = %error,
+                        "worker request failed"
+                    );
                     if tx_res_worker
                         .send(IndexResponse::Failed {
                             request_id: req.request_id,
@@ -558,8 +622,10 @@ pub(super) fn spawn_index_worker(
                         .is_err()
                     {
                         warn!(
+                            flow = "index",
+                            event = "receiver_closed",
                             request_id = req.request_id,
-                            "index receiver closed before failure"
+                            "worker response receiver closed before failure"
                         );
                         break;
                     }
@@ -577,6 +643,20 @@ pub(super) fn spawn_index_worker(
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+    use tracing_subscriber::EnvFilter;
+
+    fn init_test_tracing() {
+        static INIT: std::sync::Once = std::sync::Once::new();
+        INIT.call_once(|| {
+            let filter =
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off"));
+            let _ = tracing_subscriber::fmt()
+                .with_env_filter(filter)
+                .without_time()
+                .with_test_writer()
+                .try_init();
+        });
+    }
 
     fn test_root(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
@@ -622,6 +702,57 @@ mod tests {
         assert_eq!(classified, (EntryKind::file(), false));
         #[cfg(not(windows))]
         assert_eq!(classified, (EntryKind::file(), true));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn index_worker_trace_smoke_emits_canonical_fields() {
+        init_test_tracing();
+        let root = test_root("trace-smoke");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("create dir");
+        std::fs::write(root.join("main.rs"), "fn main() {}").expect("write file");
+
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let latest_request_ids = Arc::new(Mutex::new(HashMap::new()));
+        let (tx_req, rx_res, handles) = spawn_index_worker(shutdown.clone(), latest_request_ids);
+        let request_id = 41u64;
+        let tab_id = 7u64;
+        tx_req
+            .send(IndexRequest {
+                request_id,
+                tab_id,
+                root: root.clone(),
+                use_filelist: false,
+                include_files: true,
+                include_dirs: true,
+            })
+            .expect("send request");
+
+        assert!(matches!(
+            rx_res.recv().expect("started response"),
+            IndexResponse::Started {
+                request_id: 41,
+                source: IndexSource::Walker,
+            }
+        ));
+        assert!(matches!(
+            rx_res.recv().expect("batch response"),
+            IndexResponse::Batch { request_id: 41, .. }
+        ));
+        assert!(matches!(
+            rx_res.recv().expect("finished response"),
+            IndexResponse::Finished {
+                request_id: 41,
+                source: IndexSource::Walker,
+            }
+        ));
+
+        drop(tx_req);
+        shutdown.store(true, Ordering::Relaxed);
+        for handle in handles {
+            handle.join().expect("join index worker");
+        }
         let _ = std::fs::remove_dir_all(&root);
     }
 

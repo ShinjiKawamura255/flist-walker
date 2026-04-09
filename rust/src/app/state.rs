@@ -622,9 +622,7 @@ impl UpdateManager {
                 vec![super::update::UpdateCommand::App(
                     super::update::UpdateAppCommand::AppendWindowTrace {
                         event: "update_available",
-                        details: format!(
-                            "request_id={request_id} target_version={target_version}"
-                        ),
+                        details: format!("request_id={request_id} target_version={target_version}"),
                     },
                 )]
             }

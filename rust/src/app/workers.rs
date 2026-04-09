@@ -19,6 +19,24 @@ use std::sync::Arc;
 use std::thread;
 use tracing::{info, warn};
 
+fn trace_worker_started(flow: &'static str, request_id: u64) {
+    info!(
+        flow,
+        event = "started",
+        request_id,
+        "worker request started"
+    );
+}
+
+fn trace_worker_receiver_closed(flow: &'static str, request_id: u64) {
+    warn!(
+        flow,
+        event = "receiver_closed",
+        request_id,
+        "worker response receiver closed"
+    );
+}
+
 pub(super) fn spawn_search_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
@@ -38,6 +56,7 @@ pub(super) fn spawn_search_worker(
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
+            trace_worker_started("search", req.request_id);
             let (results, error) = rank_search_results(
                 &req.entries,
                 &req.query,
@@ -48,6 +67,14 @@ pub(super) fn spawn_search_worker(
                 req.prefer_relative,
                 &mut prefix_cache,
             );
+            info!(
+                flow = "search",
+                event = "finished",
+                request_id = req.request_id,
+                result_count = results.len(),
+                has_error = error.is_some(),
+                "worker request finished"
+            );
 
             if tx_res
                 .send(SearchResponse {
@@ -57,7 +84,7 @@ pub(super) fn spawn_search_worker(
                 })
                 .is_err()
             {
-                warn!(request_id = req.request_id, "search worker receiver closed");
+                trace_worker_receiver_closed("search", req.request_id);
                 break;
             }
         }
@@ -84,7 +111,16 @@ pub(super) fn spawn_preview_worker(
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
+            trace_worker_started("preview", req.request_id);
             let preview = build_preview_text_with_kind(&req.path, req.is_dir);
+            info!(
+                flow = "preview",
+                event = "finished",
+                request_id = req.request_id,
+                path = %req.path.display(),
+                preview_chars = preview.chars().count(),
+                "worker request finished"
+            );
             if tx_res
                 .send(PreviewResponse {
                     request_id: req.request_id,
@@ -93,10 +129,7 @@ pub(super) fn spawn_preview_worker(
                 })
                 .is_err()
             {
-                warn!(
-                    request_id = req.request_id,
-                    "preview worker receiver closed"
-                );
+                trace_worker_receiver_closed("preview", req.request_id);
                 break;
             }
         }
@@ -121,6 +154,14 @@ pub(super) fn spawn_kind_resolver_worker(
                 break;
             }
             let kind = resolve_entry_kind(&req.path);
+            info!(
+                flow = "kind_resolver",
+                event = "finished",
+                epoch = req.epoch,
+                path = %req.path.display(),
+                kind_known = kind.is_some(),
+                "worker request finished"
+            );
             if tx_res
                 .send(KindResolveResponse {
                     epoch: req.epoch,
@@ -129,7 +170,12 @@ pub(super) fn spawn_kind_resolver_worker(
                 })
                 .is_err()
             {
-                warn!(epoch = req.epoch, "kind resolver receiver closed");
+                warn!(
+                    flow = "kind_resolver",
+                    event = "receiver_closed",
+                    epoch = req.epoch,
+                    "worker response receiver closed"
+                );
                 break;
             }
         }
@@ -153,7 +199,15 @@ pub(super) fn spawn_filelist_worker(
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
+            trace_worker_started("filelist", req.request_id);
             if req.cancel.load(Ordering::Relaxed) {
+                info!(
+                    flow = "filelist",
+                    event = "canceled",
+                    request_id = req.request_id,
+                    root = %req.root.display(),
+                    "worker request canceled before execution"
+                );
                 if tx_res
                     .send(FileListResponse::Canceled {
                         request_id: req.request_id,
@@ -197,11 +251,43 @@ pub(super) fn spawn_filelist_worker(
                     }
                 }
             };
+            match &msg {
+                FileListResponse::Finished {
+                    request_id,
+                    root,
+                    path,
+                    count,
+                } => info!(
+                    flow = "filelist",
+                    event = "finished",
+                    request_id = *request_id,
+                    root = %root.display(),
+                    path = %path.display(),
+                    count = *count,
+                    "worker request finished"
+                ),
+                FileListResponse::Canceled { request_id, root } => info!(
+                    flow = "filelist",
+                    event = "canceled",
+                    request_id = *request_id,
+                    root = %root.display(),
+                    "worker request canceled"
+                ),
+                FileListResponse::Failed {
+                    request_id,
+                    root,
+                    error,
+                } => warn!(
+                    flow = "filelist",
+                    event = "failed",
+                    request_id = *request_id,
+                    root = %root.display(),
+                    error = %error,
+                    "worker request failed"
+                ),
+            }
             if tx_res.send(msg).is_err() {
-                warn!(
-                    request_id = req.request_id,
-                    "filelist worker receiver closed"
-                );
+                trace_worker_receiver_closed("filelist", req.request_id);
                 break;
             }
         }
@@ -225,6 +311,7 @@ pub(super) fn spawn_action_worker(
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
+            trace_worker_started("action", req.request_id);
 
             let targets = action_targets_for_request(&req.paths, req.open_parent_for_files);
             let mut failure: Option<String> = None;
@@ -240,6 +327,13 @@ pub(super) fn spawn_action_worker(
             } else {
                 action_notice_for_targets(&targets)
             };
+            info!(
+                flow = "action",
+                event = "finished",
+                request_id = req.request_id,
+                target_count = targets.len(),
+                "worker request finished"
+            );
 
             if tx_res
                 .send(ActionResponse {
@@ -248,7 +342,7 @@ pub(super) fn spawn_action_worker(
                 })
                 .is_err()
             {
-                warn!(request_id = req.request_id, "action worker receiver closed");
+                trace_worker_receiver_closed("action", req.request_id);
                 break;
             }
         }
@@ -287,6 +381,7 @@ pub(super) fn spawn_sort_metadata_worker(
             while let Ok(newer) = rx_req.try_recv() {
                 req = newer;
             }
+            trace_worker_started("sort_metadata", req.request_id);
 
             let mut entries = Vec::with_capacity(req.paths.len());
             for path in req.paths {
@@ -302,6 +397,14 @@ pub(super) fn spawn_sort_metadata_worker(
                     .unwrap_or_default();
                 entries.push((path, metadata));
             }
+            info!(
+                flow = "sort_metadata",
+                event = "finished",
+                request_id = req.request_id,
+                entry_count = entries.len(),
+                mode = ?req.mode,
+                "worker request finished"
+            );
 
             if tx_res
                 .send(SortMetadataResponse {
@@ -311,7 +414,7 @@ pub(super) fn spawn_sort_metadata_worker(
                 })
                 .is_err()
             {
-                warn!(request_id = req.request_id, "sort metadata receiver closed");
+                trace_worker_receiver_closed("sort_metadata", req.request_id);
                 break;
             }
         }
@@ -338,13 +441,20 @@ pub(super) fn spawn_update_worker(
 
             match &req.kind {
                 UpdateRequestKind::Check => {
-                    info!(request_id = req.request_id, "update worker starting check");
+                    info!(
+                        flow = "update",
+                        event = "check_started",
+                        request_id = req.request_id,
+                        "worker request started"
+                    );
                 }
                 UpdateRequestKind::DownloadAndApply { candidate, .. } => {
                     info!(
+                        flow = "update",
+                        event = "install_started",
                         request_id = req.request_id,
                         target_version = %candidate.target_version,
-                        "update worker starting install"
+                        "worker request started"
                     );
                 }
             }
@@ -381,8 +491,10 @@ pub(super) fn spawn_update_worker(
             match &response {
                 UpdateResponse::UpToDate { request_id } => {
                     info!(
+                        flow = "update",
+                        event = "check_finished_up_to_date",
                         request_id = *request_id,
-                        "update worker finished check: up to date"
+                        "worker request finished"
                     );
                 }
                 UpdateResponse::Available {
@@ -390,9 +502,11 @@ pub(super) fn spawn_update_worker(
                     candidate,
                 } => {
                     info!(
+                        flow = "update",
+                        event = "check_finished_available",
                         request_id = *request_id,
                         target_version = %candidate.target_version,
-                        "update worker found candidate"
+                        "worker request finished"
                     );
                 }
                 UpdateResponse::ApplyStarted {
@@ -400,21 +514,35 @@ pub(super) fn spawn_update_worker(
                     target_version,
                 } => {
                     info!(
+                        flow = "update",
+                        event = "install_finished_apply_started",
                         request_id = *request_id,
                         target_version = %target_version,
-                        "update worker started apply"
+                        "worker request finished"
                     );
                 }
                 UpdateResponse::CheckFailed { request_id, error } => {
-                    warn!(request_id = *request_id, error = %error, "update worker check failed");
+                    warn!(
+                        flow = "update",
+                        event = "check_failed",
+                        request_id = *request_id,
+                        error = %error,
+                        "worker request failed"
+                    );
                 }
                 UpdateResponse::Failed { request_id, error } => {
-                    warn!(request_id = *request_id, error = %error, "update worker apply failed");
+                    warn!(
+                        flow = "update",
+                        event = "install_failed",
+                        request_id = *request_id,
+                        error = %error,
+                        "worker request failed"
+                    );
                 }
             }
 
             if tx_res.send(response).is_err() {
-                warn!(request_id = req.request_id, "update worker receiver closed");
+                trace_worker_receiver_closed("update", req.request_id);
                 break;
             }
         }

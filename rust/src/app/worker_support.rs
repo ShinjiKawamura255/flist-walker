@@ -10,7 +10,10 @@ pub(crate) fn action_notice_for_targets(targets: &[PathBuf]) -> String {
     }
 }
 
-pub(crate) fn action_targets_for_request(paths: &[PathBuf], open_parent_for_files: bool) -> Vec<PathBuf> {
+pub(crate) fn action_targets_for_request(
+    paths: &[PathBuf],
+    open_parent_for_files: bool,
+) -> Vec<PathBuf> {
     if !open_parent_for_files {
         return paths.to_vec();
     }

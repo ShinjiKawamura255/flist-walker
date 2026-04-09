@@ -860,16 +860,25 @@ mod tests {
         assert_eq!(candidate.target_version, "0.13.1");
         assert_eq!(candidate.release_url, "https://example.invalid/release");
         assert_eq!(candidate.asset_name, "FlistWalker-0.13.1-linux-x86_64");
-        assert_eq!(candidate.checksum_signature_url, "https://example.invalid/SHA256SUMS.sig");
+        assert_eq!(
+            candidate.checksum_signature_url,
+            "https://example.invalid/SHA256SUMS.sig"
+        );
 
         if update_security::has_embedded_public_key() {
             #[cfg(target_os = "macos")]
-            assert!(matches!(candidate.support, UpdateSupport::ManualOnly { .. }));
+            assert!(matches!(
+                candidate.support,
+                UpdateSupport::ManualOnly { .. }
+            ));
 
             #[cfg(not(target_os = "macos"))]
             assert_eq!(candidate.support, UpdateSupport::Auto);
         } else {
-            assert!(matches!(candidate.support, UpdateSupport::ManualOnly { .. }));
+            assert!(matches!(
+                candidate.support,
+                UpdateSupport::ManualOnly { .. }
+            ));
         }
     }
 

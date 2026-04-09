@@ -2,8 +2,8 @@
 
 ## Status Snapshot
 - Updated: 2026-04-09
-- Current active engineering roadmap: `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md`
-- App architecture change-plan program: IN PROGRESS
+- Current active engineering roadmap: none
+- App architecture change-plan program: DONE on 2026-04-09
 - Notes:
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
@@ -22,8 +22,29 @@
   - 2026-04-09 に Slice D Phase 1/2 を進め、update command/manager 系テストを `app_core.rs` から `rust/src/app/tests/update_commands.rs` へ分離した。
   - 2026-04-09 に Slice D Phase 2 を完了し、session restore/startup-root 系テストを `session_tabs.rs` から `rust/src/app/tests/session_restore.rs` へ分離して `cargo test` で回帰がないことを確認した。
   - 2026-04-09 に Slice D Phase 3 を完了し、`ARCHITECTURE.md` / `DESIGN.md` / `TESTPLAN.md` / roadmap を command-oriented な test boundary に同期した。
+  - 2026-04-09 に Slice E 向けの active child plan `docs/CHANGE-PLAN-20260409-structured-tracing-supportability-slice.md` を追加し、structured tracing/supportability と roadmap closure review へ進む状態に切り替えた。
+  - 2026-04-09 に Slice E を完了し、worker-side trace の canonical `flow` / `event` / `request_id` 契約、index trace smoke、supportability docs を同期した。
+  - 2026-04-09 に `cargo test`、VM-003 perf guard 2 本、`RUST_LOG=flist_walker::app::index_worker=info cargo test index_worker_trace_smoke_emits_canonical_fields --lib -- --nocapture` を実施し、roadmap closure 条件を満たすことを確認した。
+  - 2026-04-09 に app architecture improvement roadmap を close し、`AGENTS.md` の temporary rule と関連 change-plan 文書群を撤去する状態へ移行した。
 
 ## Completed Programs
+
+### Program F: App Architecture Improvement Roadmap
+- Status: DONE on 2026-04-09
+- Goal: pipeline owner、background result flow、worker protocol、app test boundary、structured tracing/supportability を slice 単位で段階改善し、最終的に roadmap を閉じる。
+- Outcome:
+  - `pipeline_owner.rs` と `tabs.rs` を軸に active/background の owner 境界を明確化した。
+  - `worker_protocol.rs` と owner-aligned app test modules により protocol/test seams を薄く保守できる構造へ寄せた。
+  - worker-side diagnostics は canonical `flow` / `event` / `request_id` field を中心に揃え、index trace smoke と docs で supportability contract を固定した。
+  - `AGENTS.md` temporary rule と roadmap/slice change-plan 文書を closure 時に撤去し、恒久情報は `ARCHITECTURE.md` / `DESIGN.md` / `TESTPLAN.md` / `TASKS.md` へ移した。
+
+| Slice | Status | Completed |
+| --- | --- | --- |
+| Slice A: Pipeline Owner Extraction | DONE | 2026-04-08 |
+| Slice B: Background Tab Result-Flow Separation | DONE | 2026-04-08 |
+| Slice C: Worker Protocol Separation | DONE | 2026-04-09 |
+| Slice D: Command-Oriented App Tests | DONE | 2026-04-09 |
+| Slice E: Structured Tracing and Supportability | DONE | 2026-04-09 |
 
 ### Program E: Architecture Refactor Follow-up
 - Status: DONE on 2026-04-08
@@ -107,6 +128,9 @@
 - 2026-04-08: Slice A 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation に進める状態へ更新した。
 - 2026-04-08: Slice B 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を追加し、worker protocol separation に進める状態へ更新した。
 - 2026-04-09: Slice C 完了後、次の child slice として `docs/CHANGE-PLAN-20260409-command-oriented-app-tests-slice.md` を追加し、command-oriented app tests に進める状態へ更新した。
+- 2026-04-09: Slice D 完了後、次の child slice として `docs/CHANGE-PLAN-20260409-structured-tracing-supportability-slice.md` を追加し、structured tracing/supportability と roadmap closure review に進める状態へ更新した。
+- 2026-04-09: Slice E を完了し、worker-side trace contract と diagnostics docs を同期したうえで `cargo test`、VM-003 perf guard、index trace smoke を通した。
+- 2026-04-09: app architecture improvement roadmap を close し、`AGENTS.md` の temporary rule と `docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md`、`docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md`、`docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md`、`docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md`、`docs/CHANGE-PLAN-20260409-command-oriented-app-tests-slice.md`、`docs/CHANGE-PLAN-20260409-structured-tracing-supportability-slice.md` を削除した。
 - 2026-04-08: single-plan の architecture refactor program として `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を追加し、`AGENTS.md` に temporary rule を追記した。
 - 2026-04-08: architecture refactor follow-up program を close し、恒久内容を `ARCHITECTURE.md` / `DESIGN.md` / `TASKS.md` へ移したうえで temporary rule と `docs/CHANGE-PLAN-20260408-architecture-refactor.md` を削除した。
 - 2026-04-04: app architecture roadmap closure のため、roadmap と active slice plan を削除する前に本ファイルへ完了理由と実施日を転記した。

@@ -103,8 +103,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - Action / sort / kind / filelist / update workers:
   - 補助的な非同期処理を担当する。
 - Tracing:
-  - `RUST_LOG` 指定時のみ `tracing` が有効になり、index/search latency と worker channel 切断を構造化ログで記録する。
-  - update worker は request/start/apply/failure の主要遷移を request_id 付きで残し、support 時の再現と切り分けを助ける。
+  - `RUST_LOG` 指定時のみ worker-side `tracing` が有効になり、async worker flow は canonical な `flow` / `event` / `request_id`（request-scoped flow のみ）を構造化 field として記録する。
+  - search / preview / filelist / action / sort metadata / update worker は `started` / `finished` / `failed` / `receiver_closed` 系の event family を使い、support 時に request 単位で追跡できるようにする。
+  - index worker は `flow=index` を共有しつつ `source_kind=filelist|walker|none` を併記して started/finished/completed/superseded/failed を記録する。
+  - `FLISTWALKER_WINDOW_TRACE=1` は GUI/session/input/update の opt-in 診断面であり、`append_window_trace` 経由の event family を `RUST_LOG` 側へ混在させない。
 
 request_id によって最新応答だけを反映し、古い応答による UI 巻き戻りを防ぐ。
 

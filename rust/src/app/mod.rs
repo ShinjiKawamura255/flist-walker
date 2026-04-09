@@ -73,14 +73,14 @@ use worker_bus::{
     ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,
     UpdateWorkerBus, WorkerBus,
 };
+#[cfg(test)]
+use worker_protocol::KindResolveResponse;
 use worker_protocol::{
     ActionRequest, ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest,
     IndexResponse, KindResolveRequest, PreviewRequest, PreviewResponse, SearchRequest,
     SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind,
     UpdateResponse,
 };
-#[cfg(test)]
-use worker_protocol::KindResolveResponse;
 use worker_runtime::{WorkerJoinSummary, WorkerRuntime};
 use workers::{
     spawn_action_worker, spawn_filelist_worker, spawn_kind_resolver_worker, spawn_preview_worker,

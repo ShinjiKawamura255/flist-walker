@@ -66,11 +66,19 @@
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
 - 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
 - 役割補足: `check_for_update()` は release fetch と candidate 解決を分け、candidate 解決側では release asset 選択と support classification を helper 化して contract を小さく保つ。
-- 役割補足: update request / apply / failure の主要遷移は `AppendWindowTrace` と worker `info!` / `warn!` で残し、support 時の request_id correlation を取りやすくする。
+- 役割補足: update request / apply / failure の主要遷移は `AppendWindowTrace` と worker-side `tracing` の両方で残し、worker trace は `flow=update` / `event=*` / `request_id=*` を canonical field として support 時の request_id correlation を取りやすくする。
 - 役割補足: request/response trace の details には request_id を必ず含め、update_check_failed や update_failed は error 内容も併記して support 時の切り分けをしやすくする。
 - 役割補足: `UpdateState` と update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移は `app/update.rs` の manager 境界へ集約する。
 - 役割補足: `render.rs` は update dialog の描画と入力取得だけを担当し、永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
 - 役割補足: top action button、FileList dialog、update dialog、tab bar reorder/close/switch は `RenderCommand` 境界を経由して owner helper (`filelist.rs`, `update.rs`, `tabs.rs`) へ渡す。描画コードは click/drag/dialog input の収集に寄せ、state transition は描画後 dispatcher で一段遅らせて実行する。
+
+- DES-015 Diagnostics and Supportability Contract
+- 役割: worker-side `tracing` と opt-in window trace の責務を分け、support/debug 用の canonical event family を維持する。
+- 実装: `rust/src/app/workers.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/mod.rs`, `rust/src/app/session.rs`, `rust/src/app/input.rs`, `rust/src/main.rs`
+- 役割補足: worker-side async flow は `flow` / `event` / `request_id` を中心に記録し、request-scoped でない flow は `epoch` や `source_kind` など最小の補助 field だけを追加する。
+- 役割補足: search / preview / filelist / action / sort metadata / update は started/finished/failed/receiver_closed 系の event family に寄せ、index は `flow=index` と `source_kind` で filelist/walker/none を切り分ける。
+- 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。
+- 役割補足: diagnostics 強化で request routing や response acceptance を変えない。hot UI path へ重い同期 I/O や新しい汎用 logging framework を導入しない。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
@@ -220,6 +228,7 @@
 - エラー戦略: ファイルアクセス失敗、実行失敗、正規表現不正を分類して表示。
 - タイムアウト: 外部プロセス起動はブロッキング待機しない。
 - ログ: 現状は標準出力/標準エラー中心。必要に応じて構造化ログへ拡張。
+- ログ補足: worker-side supportability trace は `RUST_LOG` で opt-in し、canonical field (`flow`, `event`, `request_id`) を優先する。GUI/session/input diagnostics は `FLISTWALKER_WINDOW_TRACE=1` の file trace を使い分ける。
 - メトリクス: 検索遅延(ms)と候補件数を測定対象とする。
 
 ## Migration / rollback
@@ -248,3 +257,4 @@
 - DES-012 -> TC-056 (SP-012)
 - DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)
 - DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081 (SP-014)
+- DES-015 -> TC-100 (SP-010, SP-014)

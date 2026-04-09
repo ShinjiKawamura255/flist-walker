@@ -22,10 +22,7 @@ fn test_update_candidate(target_version: &str) -> UpdateCandidate {
     }
 }
 
-fn update_trace_details<'a>(
-    commands: &'a [UpdateCommand],
-    event: &'static str,
-) -> Option<&'a str> {
+fn update_trace_details<'a>(commands: &'a [UpdateCommand], event: &'static str) -> Option<&'a str> {
     commands.iter().find_map(|command| match command {
         UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
             event: trace_event,
@@ -305,9 +302,10 @@ fn startup_update_check_emits_request_trace_command() {
     let mut manager = UpdateManager::default();
     let commands = manager.request_startup_check_commands(false);
 
-    assert!(commands
-        .iter()
-        .any(|command| matches!(command, UpdateCommand::Worker(UpdateWorkerCommand::Start(_)))));
+    assert!(commands.iter().any(|command| matches!(
+        command,
+        UpdateCommand::Worker(UpdateWorkerCommand::Start(_))
+    )));
     assert!(commands.iter().any(|command| matches!(
         command,
         UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
@@ -322,12 +320,9 @@ fn update_up_to_date_response_emits_trace_command() {
     let mut manager = UpdateManager::default();
     manager.pending_request_id = Some(7);
 
-    let commands = manager.handle_response_commands(UpdateResponse::UpToDate {
-        request_id: 7,
-    });
+    let commands = manager.handle_response_commands(UpdateResponse::UpToDate { request_id: 7 });
 
-    let details = update_trace_details(&commands, "update_up_to_date")
-        .expect("up to date trace");
+    let details = update_trace_details(&commands, "update_up_to_date").expect("up to date trace");
     assert!(details.contains("request_id=7"));
 }
 
@@ -341,8 +336,8 @@ fn update_check_failed_response_emits_trace_command() {
         error: "Update check failed: offline".to_string(),
     });
 
-    let details = update_trace_details(&commands, "update_check_failed")
-        .expect("check failed trace");
+    let details =
+        update_trace_details(&commands, "update_check_failed").expect("check failed trace");
     assert!(details.contains("request_id=8"));
     assert!(details.contains("Update check failed: offline"));
 }
@@ -357,8 +352,7 @@ fn update_available_response_emits_trace_command() {
         candidate: Box::new(test_update_candidate("0.12.4")),
     });
 
-    let details = update_trace_details(&commands, "update_available")
-        .expect("available trace");
+    let details = update_trace_details(&commands, "update_available").expect("available trace");
     assert!(details.contains("request_id=9"));
     assert!(details.contains("target_version=0.12.4"));
 }
@@ -429,8 +423,8 @@ fn update_apply_started_response_emits_trace_command() {
         target_version: "0.13.1".to_string(),
     });
 
-    let details = update_trace_details(&commands, "update_apply_started")
-        .expect("apply started trace");
+    let details =
+        update_trace_details(&commands, "update_apply_started").expect("apply started trace");
     assert!(details.contains("request_id=10"));
     assert!(details.contains("target_version=0.13.1"));
 }
@@ -445,8 +439,7 @@ fn update_failed_response_emits_trace_command() {
         error: "Update failed: offline".to_string(),
     });
 
-    let details = update_trace_details(&commands, "update_failed")
-        .expect("failed trace");
+    let details = update_trace_details(&commands, "update_failed").expect("failed trace");
     assert!(details.contains("request_id=11"));
     assert!(details.contains("Update failed: offline"));
 }
