@@ -145,3 +145,143 @@ impl IndexCoordinator {
         *pending_restore_refresh = false;
     }
 }
+
+impl FlistWalkerApp {
+    /// kind 未確定 entry の遅延解決が必要な filter 状態かを返す。
+    pub(super) fn kind_resolution_needed_for_filters(&self) -> bool {
+        !self.include_files || !self.include_dirs
+    }
+
+    /// kind 解決キューと epoch を初期化し直す。
+    pub(super) fn reset_kind_resolution_state(&mut self) {
+        self.indexing.pending_kind_paths.clear();
+        self.indexing.pending_kind_paths_set.clear();
+        self.indexing.in_flight_kind_paths.clear();
+        self.indexing.kind_resolution_in_progress = false;
+        self.indexing.kind_resolution_epoch = self.indexing.kind_resolution_epoch.saturating_add(1);
+    }
+
+    /// 表示中または incremental index 中の entry から kind 未解決 path を拾う。
+    pub(super) fn queue_unknown_kind_paths_for_active_entries(&mut self) {
+        if !self.kind_resolution_needed_for_filters() {
+            return;
+        }
+        let source: Vec<PathBuf> = if self.indexing.in_progress && !self.index.entries.is_empty() {
+            self.index
+                .entries
+                .iter()
+                .map(|entry| entry.path.clone())
+                .collect()
+        } else {
+            self.all_entries
+                .iter()
+                .map(|entry| entry.path.clone())
+                .collect()
+        };
+        self.queue_unknown_kind_paths(&source);
+    }
+
+    /// walker 完了後の全 entry から kind 未解決 path を拾う。
+    pub(super) fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
+        for i in 0..self.all_entries.len() {
+            let path = &self.all_entries[i].path;
+            if self.find_entry_kind(path).is_none() {
+                if !self.indexing.pending_kind_paths_set.contains(path)
+                    && !self.indexing.in_flight_kind_paths.contains(path)
+                {
+                    let p = path.clone();
+                    self.indexing.pending_kind_paths_set.insert(p.clone());
+                    self.indexing.pending_kind_paths.push_back(p);
+                }
+            }
+        }
+    }
+
+    /// 指定 path 群から kind 未解決のものだけを queue へ積む。
+    pub(super) fn queue_unknown_kind_paths(&mut self, source: &[PathBuf]) {
+        for path in source {
+            if self.find_entry_kind(path).is_none() {
+                self.queue_kind_resolution(path.clone());
+            }
+        }
+    }
+
+    /// kind 解決キューへ重複なしで path を追加する。
+    pub(super) fn queue_kind_resolution(&mut self, path: PathBuf) {
+        if self.indexing.pending_kind_paths_set.contains(&path)
+            || self.indexing.in_flight_kind_paths.contains(&path)
+        {
+            return;
+        }
+        self.indexing.pending_kind_paths_set.insert(path.clone());
+        self.indexing.pending_kind_paths.push_back(path);
+    }
+
+    /// kind resolver worker へ frame 予算内で request を流す。
+    pub(super) fn pump_kind_resolution_requests(&mut self) {
+        const MAX_DISPATCH_PER_FRAME: usize = 128;
+        let mut dispatched = 0usize;
+        while dispatched < MAX_DISPATCH_PER_FRAME {
+            let Some(path) = self.indexing.pending_kind_paths.pop_front() else {
+                break;
+            };
+            self.indexing.pending_kind_paths_set.remove(&path);
+            let req = KindResolveRequest {
+                epoch: self.indexing.kind_resolution_epoch,
+                path: path.clone(),
+            };
+            if self.worker_bus.kind.tx.send(req).is_err() {
+                break;
+            }
+            self.indexing.in_flight_kind_paths.insert(path);
+            dispatched = dispatched.saturating_add(1);
+        }
+        self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
+            || !self.indexing.in_flight_kind_paths.is_empty();
+    }
+
+    /// kind resolver 応答を吸収し filter/preview を必要最小限で更新する。
+    pub(super) fn poll_kind_response(&mut self) {
+        const MAX_MESSAGES_PER_FRAME: usize = 512;
+        let mut processed = 0usize;
+        let mut resolved_any = false;
+        let mut resolved_current_row = false;
+        let mut resolved_updates: Vec<(PathBuf, EntryKind)> = Vec::new();
+
+        while let Ok(response) = self.worker_bus.kind.rx.try_recv() {
+            if response.epoch != self.indexing.kind_resolution_epoch {
+                continue;
+            }
+            self.indexing.in_flight_kind_paths.remove(&response.path);
+            if let Some(kind) = response.kind {
+                if self.current_row.is_some_and(|row| {
+                    self.results
+                        .get(row)
+                        .is_some_and(|(path, _)| *path == response.path)
+                }) {
+                    resolved_current_row = true;
+                }
+                resolved_updates.push((response.path.clone(), kind));
+                resolved_any = true;
+            }
+            processed = processed.saturating_add(1);
+            if processed >= MAX_MESSAGES_PER_FRAME {
+                break;
+            }
+        }
+
+        if !resolved_updates.is_empty() {
+            self.apply_entry_kind_updates(&resolved_updates);
+        }
+
+        self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
+            || !self.indexing.in_flight_kind_paths.is_empty();
+
+        if resolved_any && (!self.include_files || !self.include_dirs) {
+            self.apply_entry_filters(true);
+        }
+        if resolved_current_row && self.ui.show_preview {
+            self.request_preview_for_current();
+        }
+    }
+}

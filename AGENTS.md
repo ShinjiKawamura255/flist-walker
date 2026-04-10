@@ -78,6 +78,9 @@
 - `docs/CHANGE-PLAN-20260410-roadmap-ideal-architecture.md`
 - `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`
 - roadmap の `Execution Mode: autonomous` と `Execution Mode Policy` に従い、blocking issue がない限り roadmap 更新、phase 実行、slice 完了反映、次 slice 着手まで継続すること。
+- `autonomous` 実行中は、ユーザへの途中報告だけを目的に作業を止めたりプロンプトを戻したりしてはならない。ユーザへ戻してよいのは、roadmap 完遂時、または blocking issue / 権限不足 / 破壊的判断が必要なときに限る。
 - 実装順と確認順は計画書に従い、scope / order / risk を変える場合は先に計画書を更新すること。
-- phase 実行は main agent が担当し、phase 列が大きすぎる場合のみ `subslice` 追加を先に検討すること。
+- phase 実行は原則として subagent へ委譲し、main agent は orchestrator / reviewer として計画更新、レビュー反映、完了判定、コミットを担当すること。
+- main agent が phase 実装を自分で行ってよいのは、subagent が利用不能な場合、phase が短すぎて委譲コストの方が高い場合、または直前の統合判断と密結合で main agent がそのまま処理した方が安全な場合に限る。
+- phase 列が大きすぎる場合は、実装を始める前に `subslice` 追加の要否を先に検討すること。
 - この一時ルールは計画対応の完了後に削除すること。

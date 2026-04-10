@@ -1,6 +1,110 @@
 use super::*;
 
 impl FlistWalkerApp {
+    /// pinned selection 優先で action 対象 path を列挙する。
+    fn selected_paths(&self) -> Vec<PathBuf> {
+        if !self.pinned_paths.is_empty() {
+            let mut out: Vec<PathBuf> = self.pinned_paths.iter().cloned().collect();
+            out.sort();
+            return out;
+        }
+        self.current_row
+            .and_then(|row| self.results.get(row).map(|(p, _)| vec![p.clone()]))
+            .unwrap_or_default()
+    }
+
+    /// 既定動作で選択 path を実行またはオープンする。
+    pub(super) fn execute_selected(&mut self) {
+        self.execute_selected_with_options(false);
+    }
+
+    /// Enter 系アクション用に file は親フォルダオープンへ切り替えられる実行入口。
+    pub(super) fn execute_selected_for_activation(&mut self, open_parent_for_files: bool) {
+        self.execute_selected_with_options(open_parent_for_files);
+    }
+
+    /// 選択項目の格納フォルダを開く。
+    pub(super) fn execute_selected_open_folder(&mut self) {
+        self.execute_selected_for_activation(true);
+    }
+
+    /// worker dispatch と root 外 path ガードを含めて action を起動する。
+    pub(super) fn execute_selected_with_options(&mut self, open_parent_for_files: bool) {
+        let paths = self.selected_paths();
+        if paths.is_empty() {
+            return;
+        }
+        if let Some(blocked) = self.first_action_path_outside_root(&paths) {
+            self.worker_bus.action.pending_request_id = None;
+            self.worker_bus.action.in_progress = false;
+            self.set_notice(format!(
+                "Action blocked: path is outside current root: {}",
+                normalize_path_for_display(&blocked)
+            ));
+            return;
+        }
+
+        let request_id = self.worker_bus.action.next_request_id;
+        self.worker_bus.action.next_request_id =
+            self.worker_bus.action.next_request_id.saturating_add(1);
+        self.worker_bus.action.pending_request_id = Some(request_id);
+        self.worker_bus.action.in_progress = true;
+        self.bind_action_request_to_current_tab(request_id);
+
+        if paths.len() == 1 {
+            if open_parent_for_files {
+                self.set_notice(format!(
+                    "Action: open containing folder for {}",
+                    normalize_path_for_display(&paths[0])
+                ));
+            } else {
+                self.set_notice(format!("Action: {}", normalize_path_for_display(&paths[0])));
+            }
+        } else if open_parent_for_files {
+            self.set_notice(format!(
+                "Action: launched {} containing folder items",
+                paths.len()
+            ));
+        } else {
+            self.set_notice(format!("Action: launched {} items", paths.len()));
+        }
+
+        let req = ActionRequest {
+            request_id,
+            paths,
+            open_parent_for_files,
+        };
+        if self.worker_bus.action.tx.send(req).is_err() {
+            self.worker_bus.action.pending_request_id = None;
+            self.worker_bus.action.in_progress = false;
+            self.set_notice("Action worker is unavailable");
+        }
+    }
+
+    /// 選択 path を clipboard 用文字列へ変換して UI 出力へ流す。
+    pub(super) fn copy_selected_paths(&mut self, ctx: &egui::Context) {
+        let paths = self.selected_paths();
+        if paths.is_empty() {
+            return;
+        }
+        let text = Self::clipboard_paths_text(&paths);
+        ctx.output_mut(|o| o.copied_text = text);
+        if paths.len() == 1 {
+            self.set_notice(format!(
+                "Copied path: {}",
+                normalize_path_for_display(&paths[0])
+            ));
+        } else {
+            self.set_notice(format!("Copied {} paths to clipboard", paths.len()));
+        }
+    }
+
+    /// pinned selection を全解除する。
+    pub(super) fn clear_pinned(&mut self) {
+        self.pinned_paths.clear();
+        self.set_notice("Cleared pinned selections");
+    }
+
     pub(super) fn normalize_singleline_input(text: &mut String) -> bool {
         let original = text.as_str();
         let mut normalized = String::with_capacity(original.len());

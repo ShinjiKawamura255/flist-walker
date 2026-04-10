@@ -172,6 +172,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Phase 2 の初手として、root browse/dropdown helper を `mod.rs` から `tabs.rs` へ移し、tab/root routing owner を明確化した。`cargo test` は green。
 - 2026-04-11 00:00 Phase 3 の初手として、worker shutdown / viewport close helper を `worker_runtime.rs` へ、persist + shutdown seam を `session.rs` へ移し、`update()` / `on_exit()` / `Drop` の top-level orchestration を薄くした。`cargo test` は green。
 - 2026-04-11 00:00 frame lifecycle の render 側 owner を強めるため、`run_ui_frame()` を `render.rs` へ移した。`cargo test` は green。
+- 2026-04-11 00:00 kind resolution の queue / pump / poll を `index_coordinator.rs` へ寄せ、`mod.rs` から kind resolution owner を縮小した。`cargo test` は green。
 
 ## 12. Communication Plan
 - Return to user when:

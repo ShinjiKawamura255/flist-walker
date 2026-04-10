@@ -915,144 +915,6 @@ Search hints:
         }
     }
 
-    /// kind 未確定 entry の遅延解決が必要な filter 状態かを返す。
-    fn kind_resolution_needed_for_filters(&self) -> bool {
-        !self.include_files || !self.include_dirs
-    }
-
-    /// kind 解決キューと epoch を初期化し直す。
-    fn reset_kind_resolution_state(&mut self) {
-        self.indexing.pending_kind_paths.clear();
-        self.indexing.pending_kind_paths_set.clear();
-        self.indexing.in_flight_kind_paths.clear();
-        self.indexing.kind_resolution_in_progress = false;
-        self.indexing.kind_resolution_epoch = self.indexing.kind_resolution_epoch.saturating_add(1);
-    }
-
-    /// 表示中または incremental index 中の entry から kind 未解決 path を拾う。
-    fn queue_unknown_kind_paths_for_active_entries(&mut self) {
-        if !self.kind_resolution_needed_for_filters() {
-            return;
-        }
-        let source: Vec<PathBuf> = if self.indexing.in_progress && !self.index.entries.is_empty() {
-            self.index
-                .entries
-                .iter()
-                .map(|entry| entry.path.clone())
-                .collect()
-        } else {
-            self.all_entries
-                .iter()
-                .map(|entry| entry.path.clone())
-                .collect()
-        };
-        self.queue_unknown_kind_paths(&source);
-    }
-
-    /// walker 完了後の全 entry から kind 未解決 path を拾う。
-    fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
-        for i in 0..self.all_entries.len() {
-            let path = &self.all_entries[i].path;
-            if self.find_entry_kind(path).is_none() {
-                if !self.indexing.pending_kind_paths_set.contains(path)
-                    && !self.indexing.in_flight_kind_paths.contains(path)
-                {
-                    let p = path.clone();
-                    self.indexing.pending_kind_paths_set.insert(p.clone());
-                    self.indexing.pending_kind_paths.push_back(p);
-                }
-            }
-        }
-    }
-
-    /// 指定 path 群から kind 未解決のものだけを queue へ積む。
-    fn queue_unknown_kind_paths(&mut self, source: &[PathBuf]) {
-        for path in source {
-            if self.find_entry_kind(path).is_none() {
-                self.queue_kind_resolution(path.clone());
-            }
-        }
-    }
-
-    /// kind 解決キューへ重複なしで path を追加する。
-    fn queue_kind_resolution(&mut self, path: PathBuf) {
-        if self.indexing.pending_kind_paths_set.contains(&path)
-            || self.indexing.in_flight_kind_paths.contains(&path)
-        {
-            return;
-        }
-        self.indexing.pending_kind_paths_set.insert(path.clone());
-        self.indexing.pending_kind_paths.push_back(path);
-    }
-
-    /// kind resolver worker へ frame 予算内で request を流す。
-    fn pump_kind_resolution_requests(&mut self) {
-        const MAX_DISPATCH_PER_FRAME: usize = 128;
-        let mut dispatched = 0usize;
-        while dispatched < MAX_DISPATCH_PER_FRAME {
-            let Some(path) = self.indexing.pending_kind_paths.pop_front() else {
-                break;
-            };
-            self.indexing.pending_kind_paths_set.remove(&path);
-            let req = KindResolveRequest {
-                epoch: self.indexing.kind_resolution_epoch,
-                path: path.clone(),
-            };
-            if self.worker_bus.kind.tx.send(req).is_err() {
-                break;
-            }
-            self.indexing.in_flight_kind_paths.insert(path);
-            dispatched = dispatched.saturating_add(1);
-        }
-        self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
-            || !self.indexing.in_flight_kind_paths.is_empty();
-    }
-
-    /// kind resolver 応答を吸収し filter/preview を必要最小限で更新する。
-    fn poll_kind_response(&mut self) {
-        const MAX_MESSAGES_PER_FRAME: usize = 512;
-        let mut processed = 0usize;
-        let mut resolved_any = false;
-        let mut resolved_current_row = false;
-        let mut resolved_updates: Vec<(PathBuf, EntryKind)> = Vec::new();
-
-        while let Ok(response) = self.worker_bus.kind.rx.try_recv() {
-            if response.epoch != self.indexing.kind_resolution_epoch {
-                continue;
-            }
-            self.indexing.in_flight_kind_paths.remove(&response.path);
-            if let Some(kind) = response.kind {
-                if self.current_row.is_some_and(|row| {
-                    self.results
-                        .get(row)
-                        .is_some_and(|(path, _)| *path == response.path)
-                }) {
-                    resolved_current_row = true;
-                }
-                resolved_updates.push((response.path.clone(), kind));
-                resolved_any = true;
-            }
-            processed = processed.saturating_add(1);
-            if processed >= MAX_MESSAGES_PER_FRAME {
-                break;
-            }
-        }
-
-        if !resolved_updates.is_empty() {
-            self.apply_entry_kind_updates(&resolved_updates);
-        }
-
-        self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
-            || !self.indexing.in_flight_kind_paths.is_empty();
-
-        if resolved_any && (!self.include_files || !self.include_dirs) {
-            self.apply_entry_filters(true);
-        }
-        if resolved_current_row && self.ui.show_preview {
-            self.request_preview_for_current();
-        }
-    }
-
     /// 結果一覧内の current row を相対移動する。
     fn move_row(&mut self, delta: isize) {
         self.commit_query_history_if_needed(true);
@@ -1079,18 +941,6 @@ Search hints:
                 self.refresh_status_line();
             }
         }
-    }
-
-    /// pinned selection 優先で action 対象 path を列挙する。
-    fn selected_paths(&self) -> Vec<PathBuf> {
-        if !self.pinned_paths.is_empty() {
-            let mut out: Vec<PathBuf> = self.pinned_paths.iter().cloned().collect();
-            out.sort();
-            return out;
-        }
-        self.current_row
-            .and_then(|row| self.results.get(row).map(|(p, _)| vec![p.clone()]))
-            .unwrap_or_default()
     }
 
     fn rebuild_entry_kind_cache(&mut self) {
@@ -1127,92 +977,6 @@ Search hints:
         self.apply_entry_kind_updates(&[(path.to_path_buf(), kind)]);
     }
 
-    /// 既定動作で選択 path を実行またはオープンする。
-    fn execute_selected(&mut self) {
-        self.execute_selected_with_options(false);
-    }
-
-    /// Enter 系アクション用に file は親フォルダオープンへ切り替えられる実行入口。
-    fn execute_selected_for_activation(&mut self, open_parent_for_files: bool) {
-        self.execute_selected_with_options(open_parent_for_files);
-    }
-
-    /// 選択項目の格納フォルダを開く。
-    fn execute_selected_open_folder(&mut self) {
-        self.execute_selected_for_activation(true);
-    }
-
-    /// worker dispatch と root 外 path ガードを含めて action を起動する。
-    fn execute_selected_with_options(&mut self, open_parent_for_files: bool) {
-        let paths = self.selected_paths();
-        if paths.is_empty() {
-            return;
-        }
-        if let Some(blocked) = self.first_action_path_outside_root(&paths) {
-            self.worker_bus.action.pending_request_id = None;
-            self.worker_bus.action.in_progress = false;
-            self.set_notice(format!(
-                "Action blocked: path is outside current root: {}",
-                normalize_path_for_display(&blocked)
-            ));
-            return;
-        }
-
-        let request_id = self.worker_bus.action.next_request_id;
-        self.worker_bus.action.next_request_id =
-            self.worker_bus.action.next_request_id.saturating_add(1);
-        self.worker_bus.action.pending_request_id = Some(request_id);
-        self.worker_bus.action.in_progress = true;
-        self.bind_action_request_to_current_tab(request_id);
-
-        if paths.len() == 1 {
-            if open_parent_for_files {
-                self.set_notice(format!(
-                    "Action: open containing folder for {}",
-                    normalize_path_for_display(&paths[0])
-                ));
-            } else {
-                self.set_notice(format!("Action: {}", normalize_path_for_display(&paths[0])));
-            }
-        } else if open_parent_for_files {
-            self.set_notice(format!(
-                "Action: launched {} containing folder items",
-                paths.len()
-            ));
-        } else {
-            self.set_notice(format!("Action: launched {} items", paths.len()));
-        }
-
-        let req = ActionRequest {
-            request_id,
-            paths,
-            open_parent_for_files,
-        };
-        if self.worker_bus.action.tx.send(req).is_err() {
-            self.worker_bus.action.pending_request_id = None;
-            self.worker_bus.action.in_progress = false;
-            self.set_notice("Action worker is unavailable");
-        }
-    }
-
-    /// 選択 path を clipboard 用文字列へ変換して UI 出力へ流す。
-    fn copy_selected_paths(&mut self, ctx: &egui::Context) {
-        let paths = self.selected_paths();
-        if paths.is_empty() {
-            return;
-        }
-        let text = Self::clipboard_paths_text(&paths);
-        ctx.output_mut(|o| o.copied_text = text);
-        if paths.len() == 1 {
-            self.set_notice(format!(
-                "Copied path: {}",
-                normalize_path_for_display(&paths[0])
-            ));
-        } else {
-            self.set_notice(format!("Copied {} paths to clipboard", paths.len()));
-        }
-    }
-
     /// clipboard 向けの複数 path 文字列を構築する。
     fn clipboard_paths_text(paths: &[PathBuf]) -> String {
         paths
@@ -1220,12 +984,6 @@ Search hints:
             .map(|p| normalize_path_for_display(p))
             .collect::<Vec<_>>()
             .join("\n")
-    }
-
-    /// pinned selection を全解除する。
-    fn clear_pinned(&mut self) {
-        self.pinned_paths.clear();
-        self.set_notice("Cleared pinned selections");
     }
 
     /// query と選択状態を初期化し一覧表示へ戻す。
