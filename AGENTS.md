@@ -72,3 +72,12 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- `ideal-architecture` の対応では、実装前に以下の計画書を上から順に読むこと。
+- `docs/CHANGE-PLAN-20260410-roadmap-ideal-architecture.md`
+- `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`
+- roadmap の `Execution Mode: autonomous` と `Execution Mode Policy` に従い、blocking issue がない限り roadmap 更新、phase 実行、slice 完了反映、次 slice 着手まで継続すること。
+- 実装順と確認順は計画書に従い、scope / order / risk を変える場合は先に計画書を更新すること。
+- phase 実行は main agent が担当し、phase 列が大きすぎる場合のみ `subslice` 追加を先に検討すること。
+- この一時ルールは計画対応の完了後に削除すること。

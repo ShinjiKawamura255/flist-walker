@@ -34,12 +34,33 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 ## app Coordinator
 [mod.rs](../rust/src/app/mod.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。state holder は worker / UI / query の単位でも分離されている。
 
+- `FlistWalkerApp` に残す fixed point は「egui/eframe entrypoint」「top-level orchestration」「cross-feature state holder」「owner API の呼び分け」に限定し、feature ごとの state transition と policy 判定は各 owner module へ寄せる。
+- `mod.rs` の責務棚卸しは少なくとも次の 6 区分で追跡する。
+  - `startup/bootstrap`
+    - 残置: `new` / `from_launch` / `new_with_launch` による app 初期化の入口。
+    - owner: worker 起動と launch seed 構築は [bootstrap.rs](../rust/src/app/bootstrap.rs)、session restore は [session.rs](../rust/src/app/session.rs)。
+  - `frame update cycle`
+    - 残置: egui frame ごとの top-level update loop と repaint 判断。
+    - owner: index/search/poll の lifecycle は [pipeline.rs](../rust/src/app/pipeline.rs)、active result refresh は [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)、render command は [render.rs](../rust/src/app/render.rs)。
+  - `shutdown/persist`
+    - 残置: eframe callback から shutdown seam を呼ぶ top-level exit orchestration。
+    - owner: state 永続化は [session.rs](../rust/src/app/session.rs)、worker join/shutdown は [worker_runtime.rs](../rust/src/app/worker_runtime.rs)。
+  - `tab routing`
+    - 残置: active tab index と owner API 呼び分け。
+    - owner: tab snapshot / switch / move / close / background response apply は [tabs.rs](../rust/src/app/tabs.rs)。
+  - `filelist/update dialog dispatch`
+    - 残置: dialog command の top-level dispatch と status/notice 連携。
+    - owner: FileList flow は [filelist.rs](../rust/src/app/filelist.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
+  - `trace helper`
+    - 残置: opt-in 診断の入口と egui lifecycle に紐づく top-level trace 発火。
+    - owner: worker protocol tracing は [workers.rs](../rust/src/app/workers.rs) と [worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
+
 - [bootstrap.rs](../rust/src/app/bootstrap.rs)
   - worker 起動と launch seed 構築。
 - [session.rs](../rust/src/app/session.rs)
-  - saved roots、UI state 永続化、window geometry restore。
+  - saved roots、UI state 永続化、window geometry restore、shutdown/persist owner。
 - [tabs.rs](../rust/src/app/tabs.rs)
-  - tab lifecycle、snapshot capture/apply、background tab 向け search/index response apply、activation 時の restore/refresh 入口を担当する。
+  - tab lifecycle、snapshot capture/apply、background tab 向け search/index response apply、activation 時の restore/refresh 入口、tab routing owner を担当する。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
   - index queue、index response poll、dispatcher を担当し、active path は `PipelineOwner`、background path は `tabs.rs` の background-flow helper 群へ橋渡しする thin coordinator として振る舞う。
 - [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)
@@ -65,13 +86,13 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [cache.rs](../rust/src/app/cache.rs)
   - preview/highlight cache、preview request/response。
 - [render.rs](../rust/src/app/render.rs)
-  - panel/dialog/results 描画。
+  - panel/dialog/results 描画と frame 後段の render command 生成。
 - [input.rs](../rust/src/app/input.rs)
   - shortcut、IME、history search。
 - [filelist.rs](../rust/src/app/filelist.rs)
-  - FileList 作成フロー。
+  - FileList 作成フローと filelist dialog dispatch owner。
 - [update.rs](../rust/src/app/update.rs)
-  - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しする。
+  - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
   - GUI 横断 state 型。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
