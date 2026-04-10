@@ -191,6 +191,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 `Execution Mode` を `autonomous` へ更新し、Slice A Phase 1 から継続実装する前提へ切り替えた。
 - 2026-04-11 00:00 Slice A Phase 2 の初手として、root browse/dropdown routing を `tabs.rs` owner へ寄せ、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice A Phase 3 の初手として、worker shutdown / viewport close / persist shutdown seam を `worker_runtime.rs` と `session.rs` へ寄せ、`cargo test` green を確認した。
+- 2026-04-11 00:00 Slice A の frame lifecycle 整理として、`run_ui_frame()` を `render.rs` owner へ移し、`mod.rs` の update loop をさらに薄くした。`cargo test` green。
 
 ## 12. Communication Plan
 - Return to user when:

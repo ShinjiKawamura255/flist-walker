@@ -1295,21 +1295,6 @@ Search hints:
         }
     }
 
-    fn run_ui_frame(&mut self, ctx: &egui::Context) {
-        self.capture_window_geometry(ctx);
-        self.apply_stable_window_geometry(false);
-        // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
-        self.handle_shortcuts(ctx);
-
-        self.render_top_panel(ctx);
-        self.render_status_panel(ctx);
-        self.render_filelist_dialogs(ctx);
-        self.render_update_dialog(ctx);
-        self.render_central_panel(ctx);
-        self.dispatch_render_commands(ctx);
-        self.maybe_save_ui_state(false);
-    }
-
     fn run_update_cycle(&mut self, ctx: &egui::Context) -> bool {
         self.poll_runtime_events();
         if self.request_viewport_close_if_needed(ctx) {
