@@ -644,59 +644,6 @@ Search hints:
         }
     }
 
-    /// action worker の応答を現在 tab または背景 tab に反映する。
-    fn poll_action_response(&mut self) {
-        while let Ok(response) = self.worker_bus.action.rx.try_recv() {
-            if self.apply_active_action_response(&response) {
-                continue;
-            }
-            self.apply_background_action_response(response);
-        }
-    }
-
-    /// sort worker の応答を cache と tab state へ適用する。
-    fn poll_sort_response(&mut self) {
-        while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
-            for (path, metadata) in &response.entries {
-                self.cache_sort_metadata(path.clone(), *metadata);
-            }
-
-            if self.apply_active_sort_response(&response) {
-                continue;
-            }
-            self.apply_background_sort_response(response);
-        }
-    }
-
-    /// ページ単位のカーソル移動を行う。
-    fn move_page(&mut self, direction: isize) {
-        self.move_row(direction.saturating_mul(Self::PAGE_MOVE_ROWS));
-    }
-
-    /// 先頭行へ移動し preview を更新する。
-    fn move_to_first_row(&mut self) {
-        self.commit_query_history_if_needed(true);
-        if self.results.is_empty() {
-            return;
-        }
-        self.current_row = Some(0);
-        self.ui.scroll_to_current = true;
-        self.request_preview_for_current();
-        self.refresh_status_line();
-    }
-
-    /// 末尾行へ移動し preview を更新する。
-    fn move_to_last_row(&mut self) {
-        self.commit_query_history_if_needed(true);
-        if self.results.is_empty() {
-            return;
-        }
-        self.current_row = Some(self.results.len().saturating_sub(1));
-        self.ui.scroll_to_current = true;
-        self.request_preview_for_current();
-        self.refresh_status_line();
-    }
-
     /// 現在の filter 設定で entry が見えるかを返す。
     fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
         let kind = self.find_entry_kind(entry.path()).or(entry.kind);
@@ -777,21 +724,6 @@ Search hints:
             .map(|p| normalize_path_for_display(p))
             .collect::<Vec<_>>()
             .join("\n")
-    }
-
-    /// query と選択状態を初期化し一覧表示へ戻す。
-    fn clear_query_and_selection(&mut self) {
-        self.query_state.query.clear();
-        self.reset_query_history_navigation();
-        self.reset_history_search_state();
-        self.query_state.query_history_dirty_since = None;
-        self.pinned_paths.clear();
-        // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
-        self.current_row = Some(0);
-        self.preview.clear();
-        self.update_results();
-        self.ui.focus_query_requested = true;
-        self.set_notice("Cleared selection and query");
     }
 
     /// 現在の index source を status 向け文言へ整形する。

@@ -8,6 +8,16 @@ pub(super) struct BackgroundIndexResponseEffect {
 }
 
 impl FlistWalkerApp {
+    /// action worker の応答を現在 tab または背景 tab に反映する。
+    pub(super) fn poll_action_response(&mut self) {
+        while let Ok(response) = self.worker_bus.action.rx.try_recv() {
+            if self.apply_active_action_response(&response) {
+                continue;
+            }
+            self.apply_background_action_response(response);
+        }
+    }
+
     /// root 切り替えに伴う state reset と再 index をまとめて適用する。
     pub(super) fn apply_root_change(&mut self, new_root: PathBuf) {
         self.apply_root_change_direct(new_root);

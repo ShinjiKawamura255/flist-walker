@@ -174,6 +174,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 frame lifecycle の render 側 owner を強めるため、`run_ui_frame()` を `render.rs` へ移した。`cargo test` は green。
 - 2026-04-11 00:00 kind resolution の queue / pump / poll を `index_coordinator.rs` へ寄せ、`mod.rs` から kind resolution owner を縮小した。`cargo test` は green。
 - 2026-04-11 00:00 sort metadata / result ordering helper を `cache.rs` へ寄せ、`mod.rs` から sort owner を縮小した。`cargo test` は green。
+- 2026-04-11 00:00 action response polling を `tabs.rs` へ、sort response polling を `cache.rs` へ、row/query command を `input.rs` へ寄せ、`mod.rs` から user command / worker response owner をさらに外した。`cargo test` は green。
 
 ## 12. Communication Plan
 - Return to user when:

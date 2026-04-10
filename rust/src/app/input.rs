@@ -105,6 +105,50 @@ impl FlistWalkerApp {
         self.set_notice("Cleared pinned selections");
     }
 
+    /// ページ単位のカーソル移動を行う。
+    pub(super) fn move_page(&mut self, direction: isize) {
+        self.move_row(direction.saturating_mul(Self::PAGE_MOVE_ROWS));
+    }
+
+    /// 先頭行へ移動し preview を更新する。
+    pub(super) fn move_to_first_row(&mut self) {
+        self.commit_query_history_if_needed(true);
+        if self.results.is_empty() {
+            return;
+        }
+        self.current_row = Some(0);
+        self.ui.scroll_to_current = true;
+        self.request_preview_for_current();
+        self.refresh_status_line();
+    }
+
+    /// 末尾行へ移動し preview を更新する。
+    pub(super) fn move_to_last_row(&mut self) {
+        self.commit_query_history_if_needed(true);
+        if self.results.is_empty() {
+            return;
+        }
+        self.current_row = Some(self.results.len().saturating_sub(1));
+        self.ui.scroll_to_current = true;
+        self.request_preview_for_current();
+        self.refresh_status_line();
+    }
+
+    /// query と選択状態を初期化し一覧表示へ戻す。
+    pub(super) fn clear_query_and_selection(&mut self) {
+        self.query_state.query.clear();
+        self.reset_query_history_navigation();
+        self.reset_history_search_state();
+        self.query_state.query_history_dirty_since = None;
+        self.pinned_paths.clear();
+        // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
+        self.current_row = Some(0);
+        self.preview.clear();
+        self.update_results();
+        self.ui.focus_query_requested = true;
+        self.set_notice("Cleared selection and query");
+    }
+
     pub(super) fn normalize_singleline_input(text: &mut String) -> bool {
         let original = text.as_str();
         let mut normalized = String::with_capacity(original.len());
