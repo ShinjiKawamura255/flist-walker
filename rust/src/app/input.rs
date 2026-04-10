@@ -110,6 +110,34 @@ impl FlistWalkerApp {
         self.move_row(direction.saturating_mul(Self::PAGE_MOVE_ROWS));
     }
 
+    /// 結果一覧内の current row を相対移動する。
+    pub(super) fn move_row(&mut self, delta: isize) {
+        self.commit_query_history_if_needed(true);
+        if self.results.is_empty() {
+            return;
+        }
+        let row = self.current_row.unwrap_or(0) as isize;
+        let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
+        self.current_row = Some(next);
+        self.ui.scroll_to_current = true;
+        self.request_preview_for_current();
+        self.refresh_status_line();
+    }
+
+    /// current row を pinned selection に追加または解除する。
+    pub(super) fn toggle_pin_current(&mut self) {
+        if let Some(row) = self.current_row {
+            if let Some((path, _)) = self.results.get(row) {
+                if self.pinned_paths.contains(path) {
+                    self.pinned_paths.remove(path);
+                } else {
+                    self.pinned_paths.insert(path.clone());
+                }
+                self.refresh_status_line();
+            }
+        }
+    }
+
     /// 先頭行へ移動し preview を更新する。
     pub(super) fn move_to_first_row(&mut self) {
         self.commit_query_history_if_needed(true);

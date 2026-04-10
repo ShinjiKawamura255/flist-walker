@@ -127,8 +127,8 @@
 - [x] `FlistWalkerApp` に残す責務の定義を fixed point として文書化する
 - [x] `mod.rs` 内の helper / state transition / request routing を owner 候補ごとに棚卸しする
 - [x] `startup/bootstrap`, `frame update cycle`, `shutdown/persist`, `tab routing`, `filelist/update dialog dispatch`, `trace helper` の 6 区分ごとに残置/移譲方針を決める
-- [ ] owner module へ移せる責務を phase 単位で移す
-- [ ] `tab switch/reorder/close`, `filelist confirmation/apply`, `update request/response handling`, `search/index refresh dispatch` から少なくとも 2 系統以上を owner module 側へ寄せる
+- [x] owner module へ移せる責務を phase 単位で移す
+- [x] `tab switch/reorder/close`, `filelist confirmation/apply`, `update request/response handling`, `search/index refresh dispatch` から少なくとも 2 系統以上を owner module 側へ寄せる
 - [ ] `update()` / `on_exit()` / `Drop` に残る orchestration を見直す
 - [ ] Slice A で追加した seam と validation rule を docs へ反映する
 - [ ] Slice A 完了時に roadmap へ結果と残課題を戻す
@@ -175,6 +175,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 kind resolution の queue / pump / poll を `index_coordinator.rs` へ寄せ、`mod.rs` から kind resolution owner を縮小した。`cargo test` は green。
 - 2026-04-11 00:00 sort metadata / result ordering helper を `cache.rs` へ寄せ、`mod.rs` から sort owner を縮小した。`cargo test` は green。
 - 2026-04-11 00:00 action response polling を `tabs.rs` へ、sort response polling を `cache.rs` へ、row/query command を `input.rs` へ寄せ、`mod.rs` から user command / worker response owner をさらに外した。`cargo test` は green。
+- 2026-04-11 00:00 result row navigation と pin toggle を `input.rs` へ寄せ、`mod.rs` から current row mutation の残件を縮小した。`cargo test` は green。
 
 ## 12. Communication Plan
 - Return to user when:
@@ -185,7 +186,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 13. Completion Checklist
 - [x] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
+- [x] Temporary `AGENTS.md` rule added
 - [ ] Work executed according to the plan or the plan updated first
 - [ ] If the project is under git control, each completed phase was committed separately
 - [ ] Verification completed

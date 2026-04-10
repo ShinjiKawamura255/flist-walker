@@ -655,34 +655,6 @@ Search hints:
         }
     }
 
-    /// 結果一覧内の current row を相対移動する。
-    fn move_row(&mut self, delta: isize) {
-        self.commit_query_history_if_needed(true);
-        if self.results.is_empty() {
-            return;
-        }
-        let row = self.current_row.unwrap_or(0) as isize;
-        let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
-        self.current_row = Some(next);
-        self.ui.scroll_to_current = true;
-        self.request_preview_for_current();
-        self.refresh_status_line();
-    }
-
-    /// current row を pinned selection に追加または解除する。
-    fn toggle_pin_current(&mut self) {
-        if let Some(row) = self.current_row {
-            if let Some((path, _)) = self.results.get(row) {
-                if self.pinned_paths.contains(path) {
-                    self.pinned_paths.remove(path);
-                } else {
-                    self.pinned_paths.insert(path.clone());
-                }
-                self.refresh_status_line();
-            }
-        }
-    }
-
     fn rebuild_entry_kind_cache(&mut self) {
         self.cache.entry_kind.rebuild_from_sources(&[
             self.all_entries.as_ref(),

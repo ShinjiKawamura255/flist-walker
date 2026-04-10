@@ -195,6 +195,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice A 継続として、kind resolution queue / pump / response handling を `index_coordinator.rs` owner へ寄せ、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice A 継続として、sort metadata / result ordering helper を `cache.rs` owner へ寄せ、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice A 継続として、action response polling を `tabs.rs` owner へ、sort response polling を `cache.rs` owner へ、row/query command を `input.rs` owner へ寄せ、`cargo test` green を確認した。
+- 2026-04-11 00:00 Slice A 継続として、result row navigation と pin toggle を `input.rs` owner へ寄せ、`mod.rs` に残る user command mutation をさらに削減した。`cargo test` green。
 
 ## 12. Communication Plan
 - Return to user when:
