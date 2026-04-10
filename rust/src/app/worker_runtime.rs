@@ -4,6 +4,8 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use super::*;
+
 pub(super) struct WorkerRuntime {
     shutdown: Arc<AtomicBool>,
     handles: Vec<NamedWorkerHandle>,
@@ -89,5 +91,74 @@ impl WorkerRuntime {
             total,
             pending,
         }
+    }
+}
+
+impl FlistWalkerApp {
+    /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
+    fn disconnect_worker_channels(&mut self) {
+        let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
+        let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
+        let (dummy_action_tx, _) = mpsc::channel::<ActionRequest>();
+        let (dummy_sort_tx, _) = mpsc::channel::<SortMetadataRequest>();
+        let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
+        let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
+        let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
+        let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
+        let old_search_tx = std::mem::replace(&mut self.search.tx, dummy_search_tx);
+        let old_preview_tx = std::mem::replace(&mut self.worker_bus.preview.tx, dummy_preview_tx);
+        let old_action_tx = std::mem::replace(&mut self.worker_bus.action.tx, dummy_action_tx);
+        let old_sort_tx = std::mem::replace(&mut self.worker_bus.sort.tx, dummy_sort_tx);
+        let old_kind_tx = std::mem::replace(&mut self.worker_bus.kind.tx, dummy_kind_tx);
+        let old_filelist_tx =
+            std::mem::replace(&mut self.worker_bus.filelist.tx, dummy_filelist_tx);
+        let old_update_tx = std::mem::replace(&mut self.worker_bus.update.tx, dummy_update_tx);
+        let old_index_tx = std::mem::replace(&mut self.indexing.tx, dummy_index_tx);
+        drop(old_search_tx);
+        drop(old_preview_tx);
+        drop(old_action_tx);
+        drop(old_sort_tx);
+        drop(old_kind_tx);
+        drop(old_filelist_tx);
+        drop(old_update_tx);
+        drop(old_index_tx);
+    }
+
+    /// worker 群へ shutdown を通知し、短い timeout で join を待つ。
+    pub(super) fn shutdown_workers_with_timeout(
+        &mut self,
+        timeout: Duration,
+        phase: &str,
+    ) -> Option<WorkerJoinSummary> {
+        let runtime = self.worker_runtime.as_ref()?;
+        runtime.request_shutdown();
+        self.disconnect_worker_channels();
+        let runtime = self.worker_runtime.take()?;
+        let summary = runtime.join_all_with_timeout(timeout);
+        if summary.joined < summary.total {
+            let pending = if summary.pending.is_empty() {
+                "unknown".to_string()
+            } else {
+                summary.pending.join(", ")
+            };
+            eprintln!(
+                "Worker shutdown timeout during {phase}: joined {}/{} threads within {:?}; pending: {pending}",
+                summary.joined, summary.total, timeout
+            );
+        }
+        Some(summary)
+    }
+
+    pub(super) fn request_viewport_close_if_needed(&mut self, ctx: &egui::Context) -> bool {
+        if process_shutdown_requested() {
+            self.set_notice("Shutdown requested by signal");
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return true;
+        }
+        if self.update_state.close_requested_for_install {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return true;
+        }
+        false
     }
 }

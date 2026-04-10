@@ -78,6 +78,13 @@ fn default_ignore_case() -> bool {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn persist_state_and_shutdown(&mut self, phase: &str) {
+        self.apply_stable_window_geometry(true);
+        self.ui.ui_state_dirty = true;
+        self.maybe_save_ui_state(true);
+        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
+    }
+
     pub(super) fn ui_state_file_path() -> Option<PathBuf> {
         #[cfg(windows)]
         {

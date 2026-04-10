@@ -22,7 +22,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -81,7 +81,7 @@ use worker_protocol::{
     SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind,
     UpdateResponse,
 };
-use worker_runtime::{WorkerJoinSummary, WorkerRuntime};
+use worker_runtime::WorkerRuntime;
 use workers::{
     spawn_action_worker, spawn_filelist_worker, spawn_kind_resolver_worker, spawn_preview_worker,
     spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
@@ -1262,73 +1262,6 @@ Search hints:
         Self::WORKER_JOIN_TIMEOUT
     }
 
-    /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
-    fn disconnect_worker_channels(&mut self) {
-        let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
-        let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
-        let (dummy_action_tx, _) = mpsc::channel::<ActionRequest>();
-        let (dummy_sort_tx, _) = mpsc::channel::<SortMetadataRequest>();
-        let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
-        let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
-        let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
-        let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
-        let old_search_tx = std::mem::replace(&mut self.search.tx, dummy_search_tx);
-        let old_preview_tx = std::mem::replace(&mut self.worker_bus.preview.tx, dummy_preview_tx);
-        let old_action_tx = std::mem::replace(&mut self.worker_bus.action.tx, dummy_action_tx);
-        let old_sort_tx = std::mem::replace(&mut self.worker_bus.sort.tx, dummy_sort_tx);
-        let old_kind_tx = std::mem::replace(&mut self.worker_bus.kind.tx, dummy_kind_tx);
-        let old_filelist_tx =
-            std::mem::replace(&mut self.worker_bus.filelist.tx, dummy_filelist_tx);
-        let old_update_tx = std::mem::replace(&mut self.worker_bus.update.tx, dummy_update_tx);
-        let old_index_tx = std::mem::replace(&mut self.indexing.tx, dummy_index_tx);
-        drop(old_search_tx);
-        drop(old_preview_tx);
-        drop(old_action_tx);
-        drop(old_sort_tx);
-        drop(old_kind_tx);
-        drop(old_filelist_tx);
-        drop(old_update_tx);
-        drop(old_index_tx);
-    }
-
-    /// worker 群へ shutdown を通知し、短い timeout で join を待つ。
-    fn shutdown_workers_with_timeout(
-        &mut self,
-        timeout: Duration,
-        phase: &str,
-    ) -> Option<WorkerJoinSummary> {
-        let runtime = self.worker_runtime.as_ref()?;
-        runtime.request_shutdown();
-        self.disconnect_worker_channels();
-        let runtime = self.worker_runtime.take()?;
-        let summary = runtime.join_all_with_timeout(timeout);
-        if summary.joined < summary.total {
-            let pending = if summary.pending.is_empty() {
-                "unknown".to_string()
-            } else {
-                summary.pending.join(", ")
-            };
-            eprintln!(
-                "Worker shutdown timeout during {phase}: joined {}/{} threads within {:?}; pending: {pending}",
-                summary.joined, summary.total, timeout
-            );
-        }
-        Some(summary)
-    }
-
-    fn request_viewport_close_if_needed(&mut self, ctx: &egui::Context) -> bool {
-        if process_shutdown_requested() {
-            self.set_notice("Shutdown requested by signal");
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            return true;
-        }
-        if self.update_state.close_requested_for_install {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            return true;
-        }
-        false
-    }
-
     fn poll_runtime_events(&mut self) {
         self.poll_index_response();
         self.poll_search_response();
@@ -1388,12 +1321,6 @@ Search hints:
         true
     }
 
-    fn persist_state_and_shutdown(&mut self, phase: &str) {
-        self.apply_stable_window_geometry(true);
-        self.ui.ui_state_dirty = true;
-        self.maybe_save_ui_state(true);
-        let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
-    }
 }
 
 impl eframe::App for FlistWalkerApp {
