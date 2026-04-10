@@ -1,5 +1,5 @@
-use crate::path_utils::normalize_windows_path_buf;
-use std::path::Path;
+use super::*;
+use memory_stats::memory_stats;
 
 #[derive(Debug, Clone)]
 pub(super) struct StatusLineContext<'a> {
@@ -147,6 +147,128 @@ pub(super) fn path_is_within_root(root: &Path, path: &Path) -> bool {
                     .is_some_and(|suffix| suffix.starts_with('/'))
         }
         _ => false,
+    }
+}
+
+impl FlistWalkerApp {
+    /// 現在の進行状況と notice から status line を再構築する。
+    pub(super) fn refresh_status_line(&mut self) {
+        let indexed_count = if self.indexing.in_progress {
+            if self.index.entries.is_empty() {
+                self.all_entries.len()
+            } else {
+                self.index.entries.len()
+            }
+        } else {
+            self.all_entries.len()
+        };
+        let memory = self.memory_usage_text();
+        self.status_line = build_status_line(StatusLineContext {
+            active_tab: self.active_tab,
+            tab_count: self.tabs.len(),
+            indexed_count,
+            results_len: self.results.len(),
+            limit: self.limit,
+            pinned_paths_len: self.pinned_paths.len(),
+            search_in_progress: self.search.in_progress(),
+            indexing_in_progress: self.indexing.in_progress,
+            action_in_progress: self.worker_bus.action.in_progress,
+            filelist_in_progress: self.filelist_state.in_progress,
+            filelist_cancel_requested: self.filelist_state.cancel_requested,
+            update_in_progress: self.update_state.in_progress,
+            sort_in_progress: self.worker_bus.sort.in_progress,
+            history_search_active: self.query_state.history_search_active,
+            history_search_results_len: self.query_state.history_search_results.len(),
+            query_history_len: self.query_state.query_history.len(),
+            notice: &self.notice,
+            memory_text: memory,
+        });
+    }
+
+    /// 定期的にメモリ使用量をサンプリングし表示文字列へ変換する。
+    fn memory_usage_text(&mut self) -> Option<String> {
+        if self.ui.memory_usage_bytes.is_none()
+            || self.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
+        {
+            self.ui.last_memory_sample = Instant::now();
+            self.ui.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
+        }
+        self.ui
+            .memory_usage_bytes
+            .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
+    }
+
+    /// notice を更新し status line と同期する。
+    pub(super) fn set_notice(&mut self, notice: impl Into<String>) {
+        self.notice = notice.into();
+        self.refresh_status_line();
+    }
+
+    /// notice を消去し status line を再計算する。
+    pub(super) fn clear_notice(&mut self) {
+        self.notice.clear();
+        self.refresh_status_line();
+    }
+
+    /// action worker 実行中の進捗ラベルを返す。
+    pub(super) fn action_progress_label(&self) -> Option<&'static str> {
+        if self.worker_bus.action.in_progress {
+            Some("Opening...")
+        } else {
+            None
+        }
+    }
+
+    /// clipboard 向けの複数 path 文字列を構築する。
+    pub(super) fn clipboard_paths_text(paths: &[PathBuf]) -> String {
+        paths
+            .iter()
+            .map(|p| normalize_path_for_display(p))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    /// 現在の index source を status 向け文言へ整形する。
+    pub(super) fn source_text(&self) -> String {
+        match &self.index.source {
+            IndexSource::FileList(path) => format!(
+                "Source: FileList ({})",
+                path.file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("FileList.txt")
+            ),
+            IndexSource::Walker => "Source: Walker".to_string(),
+            IndexSource::None => "Source: None".to_string(),
+        }
+    }
+
+    pub(super) fn run_update_cycle(&mut self, ctx: &egui::Context) -> bool {
+        self.poll_runtime_events();
+        if self.request_viewport_close_if_needed(ctx) {
+            return false;
+        }
+        self.commit_query_history_if_needed(false);
+        self.schedule_frame_repaint(ctx);
+        self.run_ui_frame(ctx);
+        true
+    }
+}
+
+impl eframe::App for FlistWalkerApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !self.run_update_cycle(ctx) {
+            return;
+        }
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        self.persist_state_and_shutdown("app exit");
+    }
+}
+
+impl Drop for FlistWalkerApp {
+    fn drop(&mut self) {
+        self.persist_state_and_shutdown("drop fallback");
     }
 }
 

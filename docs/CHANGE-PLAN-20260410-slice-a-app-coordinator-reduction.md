@@ -129,9 +129,9 @@
 - [x] `startup/bootstrap`, `frame update cycle`, `shutdown/persist`, `tab routing`, `filelist/update dialog dispatch`, `trace helper` の 6 区分ごとに残置/移譲方針を決める
 - [x] owner module へ移せる責務を phase 単位で移す
 - [x] `tab switch/reorder/close`, `filelist confirmation/apply`, `update request/response handling`, `search/index refresh dispatch` から少なくとも 2 系統以上を owner module 側へ寄せる
-- [ ] `update()` / `on_exit()` / `Drop` に残る orchestration を見直す
-- [ ] Slice A で追加した seam と validation rule を docs へ反映する
-- [ ] Slice A 完了時に roadmap へ結果と残課題を戻す
+- [x] `update()` / `on_exit()` / `Drop` に残る orchestration を見直す
+- [x] Slice A で追加した seam と validation rule を docs へ反映する
+- [x] Slice A 完了時に roadmap へ結果と残課題を戻す
 
 ## 8. Validation Plan
 - Automated tests:
@@ -176,6 +176,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 sort metadata / result ordering helper を `cache.rs` へ寄せ、`mod.rs` から sort owner を縮小した。`cargo test` は green。
 - 2026-04-11 00:00 action response polling を `tabs.rs` へ、sort response polling を `cache.rs` へ、row/query command を `input.rs` へ寄せ、`mod.rs` から user command / worker response owner をさらに外した。`cargo test` は green。
 - 2026-04-11 00:00 result row navigation と pin toggle を `input.rs` へ寄せ、`mod.rs` から current row mutation の残件を縮小した。`cargo test` は green。
+- 2026-04-11 00:00 status/notice helper と `run_update_cycle()` / `update()` / `on_exit()` / `Drop` の glue を `coordinator.rs` へ寄せ、`mod.rs` をさらに薄くした。`cargo test` は green。
+- 2026-04-11 00:00 Slice A 完了判定: `coordinator.rs` へ coordinator glue を寄せ切り、phase 目標を満たした。`cargo test` green を確認した。
 
 ## 12. Communication Plan
 - Return to user when:

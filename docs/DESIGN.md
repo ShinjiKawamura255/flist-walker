@@ -29,7 +29,7 @@
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
-- 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs` へ分離する。status line と root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
+- 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
 - 役割補足: `app/mod.rs` の fixed point は `startup/bootstrap`、`frame update cycle`、`shutdown/persist`、`tab routing`、`filelist/update dialog dispatch`、`trace helper` の 6 区分を top-level で束ねることに限定し、各区分の state transition と policy 判定は owner module 側へ寄せる。
 - 役割補足: `startup/bootstrap` では `new` / `from_launch` / `new_with_launch` が eframe entrypoint と app 初期化を束ねる一方、worker wiring と launch seed 構築は `app/bootstrap.rs`、restore/persist 契約は `app/session.rs` が owner を持つ。
 - 役割補足: `frame update cycle` では `app/mod.rs` が egui frame ごとの orchestration と repaint 判断だけを持ち、index/search/poll の進行管理は `app/pipeline.rs`、active result refresh は `app/pipeline_owner.rs`、render command 生成は `app/render.rs` が担当する。

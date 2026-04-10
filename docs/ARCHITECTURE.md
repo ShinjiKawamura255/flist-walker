@@ -19,7 +19,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [ui_model.rs](../rust/src/ui_model.rs)
   - highlight 判定、preview 文面、表示パス整形を担当する。
 - [app/coordinator.rs](../rust/src/app/coordinator.rs)
-  - status line と root/path compare の coordinator helper を担当する。
+  - status line、notice/status helper、frame/update glue、root/path compare の coordinator helper を担当する。
 - [actions.rs](../rust/src/actions.rs)
   - open / execute の OS 差分吸収と testable seam を担当する。
 - [updater.rs](../rust/src/updater.rs)

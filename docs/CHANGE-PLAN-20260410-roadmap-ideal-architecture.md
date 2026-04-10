@@ -147,7 +147,7 @@
 - [x] active slice として Slice A の詳細計画を作る
 - [x] Slice A の実現性レビューを通し、必要なら phase 粒度を修正する
 - [ ] Slice B 完了時に、Slice C/D をこの roadmap に残すか follow-up roadmap へ分離するかを判断する
-- [ ] Slice A 完了後に roadmap を更新し、Slice B 以降の前提差分を反映する
+- [x] Slice A 完了後に roadmap を更新し、Slice B 以降の前提差分を反映する
 - [ ] 最終 slice で roadmap goal の達成可否を明示する
 
 ## 8. Validation Plan
@@ -196,6 +196,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice A 継続として、sort metadata / result ordering helper を `cache.rs` owner へ寄せ、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice A 継続として、action response polling を `tabs.rs` owner へ、sort response polling を `cache.rs` owner へ、row/query command を `input.rs` owner へ寄せ、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice A 継続として、result row navigation と pin toggle を `input.rs` owner へ寄せ、`mod.rs` に残る user command mutation をさらに削減した。`cargo test` green。
+- 2026-04-11 00:00 Slice A 継続として、status/notice helper と `run_update_cycle()` / `update()` / `on_exit()` / `Drop` の glue を `coordinator.rs` owner へ寄せ、`mod.rs` をさらに薄くした。`cargo test` green を確認した。
+- 2026-04-11 00:00 Slice A 完了判定: `mod.rs` の coordinator glue を `coordinator.rs` へ寄せ、owner 境界の可読性を改善した。`cargo test` green を確認し、Slice B へ進む準備を整えた。
 
 ## 12. Communication Plan
 - Return to user when:
