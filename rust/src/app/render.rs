@@ -179,6 +179,27 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn schedule_frame_repaint(&mut self, ctx: &egui::Context) {
+        let memory_elapsed = self.ui.last_memory_sample.elapsed();
+        if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
+            self.refresh_status_line();
+        } else {
+            ctx.request_repaint_after(Self::MEMORY_SAMPLE_INTERVAL - memory_elapsed);
+        }
+        if self.search.in_progress()
+            || self.indexing.in_progress
+            || self.worker_bus.preview.in_progress
+            || self.worker_bus.action.in_progress
+            || self.worker_bus.sort.in_progress
+            || self.indexing.kind_resolution_in_progress
+            || self.filelist_state.in_progress
+            || self.update_state.in_progress
+            || self.any_tab_async_in_progress()
+        {
+            ctx.request_repaint_after(std::time::Duration::from_millis(16));
+        }
+    }
+
     pub(super) fn run_ui_frame(&mut self, ctx: &egui::Context) {
         self.capture_window_geometry(ctx);
         self.apply_stable_window_geometry(false);

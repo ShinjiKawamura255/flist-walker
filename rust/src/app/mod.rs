@@ -1262,39 +1262,6 @@ Search hints:
         Self::WORKER_JOIN_TIMEOUT
     }
 
-    fn poll_runtime_events(&mut self) {
-        self.poll_index_response();
-        self.poll_search_response();
-        self.poll_action_response();
-        self.poll_sort_response();
-        self.poll_preview_response();
-        self.poll_kind_response();
-        self.pump_kind_resolution_requests();
-        self.poll_filelist_response();
-        self.poll_update_response();
-    }
-
-    fn schedule_frame_repaint(&mut self, ctx: &egui::Context) {
-        let memory_elapsed = self.ui.last_memory_sample.elapsed();
-        if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
-            self.refresh_status_line();
-        } else {
-            ctx.request_repaint_after(Self::MEMORY_SAMPLE_INTERVAL - memory_elapsed);
-        }
-        if self.search.in_progress()
-            || self.indexing.in_progress
-            || self.worker_bus.preview.in_progress
-            || self.worker_bus.action.in_progress
-            || self.worker_bus.sort.in_progress
-            || self.indexing.kind_resolution_in_progress
-            || self.filelist_state.in_progress
-            || self.update_state.in_progress
-            || self.any_tab_async_in_progress()
-        {
-            ctx.request_repaint_after(std::time::Duration::from_millis(16));
-        }
-    }
-
     fn run_update_cycle(&mut self, ctx: &egui::Context) -> bool {
         self.poll_runtime_events();
         if self.request_viewport_close_if_needed(ctx) {
