@@ -178,6 +178,8 @@
 - MUST: `Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
 - MUST: `Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
+- MUST: search / index の非同期応答は、active request_id または request-tab routing で結び付いた background tab に対してのみ適用し、stale 応答で現在の root / tab / result state を巻き戻してはならない。
+- MUST: supersede または cancel された非同期 flow は、pending / in_progress / deferred action 状態を解放し、現在の UI state を壊さずに継続操作可能でなければならない。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
 - MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。
@@ -238,6 +240,8 @@
 - MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
 - MUST: 抑止済み target version 以下の更新候補は次回起動以降も再表示してはならず、より新しい version を検知した場合のみ再び更新ダイアログを表示しなければならない。
 - MUST: 起動時の更新確認が失敗した場合、失敗理由を利用者へ確認できる軽量ダイアログを表示しなければならない。ただし通常の検索/操作は継続可能でなければならない。
+- MUST: update worker 応答は request_id で相関し、stale 応答が新しい prompt / failure / install_started 状態を上書きしてはならない。
+- MUST: update check / install が失敗、抑止、または supersede された場合、pending / in_progress 状態は解放され、通常操作を継続できなければならない。
 - SHOULD: 上記の起動時更新確認失敗ダイアログは、「今後この種の起動時エラーを表示しない」として抑止でき、この設定は起動間で保持される。
 - MUST: `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy な場合、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` というファイルが存在する場合、起動時の更新確認、更新ダイアログ表示、更新適用開始を行ってはならない。
 - MUST: 手動試験用 override 環境変数（更新 feed URL 差し替え、同一 version 許可、downgrade 許可）は内部検証専用とし、README、release note、配布物、ユーザ向けヘルプへ露出してはならない。

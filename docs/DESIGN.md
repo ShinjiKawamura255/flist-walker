@@ -48,6 +48,9 @@
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
 - 役割補足: `app/pipeline.rs` は index queue、index response poll、dispatcher を担当し、active tab 向け search/result refresh と entry filter 再適用は `app/pipeline_owner.rs` の dedicated owner surface へ、background tab 向け search/index response apply は `app/tabs.rs` の background-flow helper へ委譲する。index request の採番・tracking・active/background refresh 開始・terminal cleanup の owner API は `app/index_coordinator.rs` 側へ寄せ、search worker の request/tab routing helper は `app/search_coordinator.rs` 側へ寄せる。
+- 役割補足: `app/search_coordinator.rs` は search request_id 採番、active/background tab routing、stale response route 判定を担当し、active search の apply / rerun は `app/pipeline_owner.rs`、background search 応答の保持は `app/tabs.rs` が担当する。
+- 役割補足: `app/filelist.rs` は overwrite/ancestor/use-walker/deferred-after-index の pending state、cancel flag 伝播、`Finished` / `Failed` / `Canceled` 応答後の cleanup と follow-up dispatch を owner として扱う。
+- 役割補足: `app/update.rs` は startup check / install request の dispatch、request_id-correlated response apply、stale 応答吸収、prompt/failure/install_started 遷移の cleanup を owner として扱う。
 - 役割補足: `app/index_worker.rs` は FileList / Walker streaming、kind classification、index worker 実装を担当し、`app/workers.rs` から indexing concern を切り離す。
 - 役割補足: `app/worker_protocol.rs` は search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を worker 実装や bus wiring から独立して保守できるようにする。
 - 役割補足: `app/worker_runtime.rs` は worker shutdown signal と join timeout の管理だけを持ち、個別 worker 実装から runtime orchestration を分離する。

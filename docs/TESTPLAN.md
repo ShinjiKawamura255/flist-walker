@@ -19,6 +19,7 @@
 - CLI 実行で出力契約を確認。
 - App test module policy:
 - app-level regression は owner/command seam ごとに module を分けて保守する。update は `rust/src/app/tests/update_commands.rs`、session restore は `rust/src/app/tests/session_restore.rs`、tab/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を主対象にし、`app_core.rs` へ unrelated fixture regression を増やし続けない。
+- stale response discard、cancel cleanup、pending/inflight 解放の契約は `update_commands.rs` と `index_pipeline/*` を優先対象にし、`app_core.rs` へ cross-cutting でない lifecycle regression を戻さない。
 - GUI Manual:
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:

@@ -117,7 +117,7 @@
 - Slice B 完了後は、本計画だけで閉じず、親 roadmap へ carry-over と Slice C/D gate 判断材料を反映する。
 
 ## 7. Detailed Task Breakdown
-- [ ] lifecycle 契約の owner matrix を index/search/update/filelist ごとに文書化する
+- [x] lifecycle 契約の owner matrix を index/search/update/filelist ごとに文書化する
 - [ ] index/search の stale discard / cancel / terminal cleanup を owner API 経由で追いやすくする
 - [ ] update/filelist の pending / inflight / cancel / completion notice 契約を整理する
 - [ ] lifecycle 契約に対応する regression test を補強する
@@ -159,6 +159,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-11 00:00 Initial Slice B plan created after Slice A completion.
 - 2026-04-11 00:00 Slice B review を反映し、実行責務を親 roadmap と統一した。`subslice` は不要と判断した。
+- 2026-04-11 00:00 Phase 1 として、`SPEC.md` / `DESIGN.md` / `TESTPLAN.md` に lifecycle owner matrix と stale/cancel cleanup 契約を反映した。docs diff review で整合を確認した。
 
 ## 12. Communication Plan
 - Return to user when:
