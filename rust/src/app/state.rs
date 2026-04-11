@@ -181,6 +181,7 @@ pub(super) struct FileListRequestContext {
     pub(super) tab_id: Option<u64>,
 }
 
+#[allow(clippy::enum_variant_names)]
 pub(super) enum FileListResponseScope {
     CurrentRoot,
     PreviousRoot,
@@ -192,6 +193,7 @@ pub(super) struct FileListResponseContext {
     pub(super) root_scope: FileListResponseScope,
 }
 
+#[derive(Default)]
 pub(super) struct FileListManager {
     workflow: FileListWorkflowState,
 }
@@ -421,14 +423,6 @@ impl FileListManager {
     }
 }
 
-impl Default for FileListManager {
-    fn default() -> Self {
-        Self {
-            workflow: FileListWorkflowState::default(),
-        }
-    }
-}
-
 impl Deref for FileListManager {
     type Target = FileListWorkflowState;
 
@@ -469,6 +463,7 @@ impl Default for UpdateState {
     }
 }
 
+#[derive(Default)]
 pub(super) struct UpdateManager {
     state: UpdateState,
 }
@@ -738,14 +733,6 @@ impl UpdateManager {
         }
         self.clear_request();
         true
-    }
-}
-
-impl Default for UpdateManager {
-    fn default() -> Self {
-        Self {
-            state: UpdateState::default(),
-        }
     }
 }
 

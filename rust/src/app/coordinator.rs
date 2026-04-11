@@ -256,9 +256,7 @@ impl FlistWalkerApp {
 
 impl eframe::App for FlistWalkerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if !self.run_update_cycle(ctx) {
-            return;
-        }
+        self.run_update_cycle(ctx);
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

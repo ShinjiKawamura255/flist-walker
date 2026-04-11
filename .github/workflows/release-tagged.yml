@@ -42,6 +42,11 @@ jobs:
         working-directory: ${{ matrix.workdir }}
         run: cargo test --locked
 
+      - name: Run clippy
+        if: ${{ matrix.label == 'linux-native' }}
+        working-directory: ${{ matrix.workdir }}
+        run: cargo clippy --all-targets -- -D warnings
+
   release-cargo-audit:
     name: Release Cargo Audit
     runs-on: ubuntu-latest

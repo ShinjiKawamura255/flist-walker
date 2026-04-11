@@ -454,6 +454,7 @@ fn evaluate_candidate(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn rank_search_results(
     entries: &Arc<Vec<Entry>>,
     query: &str,

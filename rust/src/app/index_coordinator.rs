@@ -210,14 +210,13 @@ impl FlistWalkerApp {
     pub(super) fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
         for i in 0..self.all_entries.len() {
             let path = &self.all_entries[i].path;
-            if self.find_entry_kind(path).is_none() {
-                if !self.indexing.pending_kind_paths_set.contains(path)
-                    && !self.indexing.in_flight_kind_paths.contains(path)
-                {
-                    let p = path.clone();
-                    self.indexing.pending_kind_paths_set.insert(p.clone());
-                    self.indexing.pending_kind_paths.push_back(p);
-                }
+            if self.find_entry_kind(path).is_none()
+                && !self.indexing.pending_kind_paths_set.contains(path)
+                && !self.indexing.in_flight_kind_paths.contains(path)
+            {
+                let p = path.clone();
+                self.indexing.pending_kind_paths_set.insert(p.clone());
+                self.indexing.pending_kind_paths.push_back(p);
             }
         }
     }
