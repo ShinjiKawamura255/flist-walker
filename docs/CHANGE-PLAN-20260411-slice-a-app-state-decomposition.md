@@ -92,10 +92,10 @@
      - doc diff review
 
 ## 7. Detailed Task Breakdown
-- [ ] `FlistWalkerApp` field inventory を bundle 方針へ整理する
-- [ ] tab/session 境界を tighten する
-- [ ] app-global / feature state bundle を導入する
-- [ ] owner API と docs/test を同期する
+- [x] `FlistWalkerApp` field inventory を bundle 方針へ整理する
+- [x] tab/session 境界を tighten する
+- [x] app-global / feature state bundle を導入する
+- [x] owner API と docs/test を同期する
 
 ## 8. Validation Plan
 - Automated tests:
@@ -136,6 +136,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 12:20 Planned initial Slice A draft.
 - 2026-04-11 12:55 Phase 1 completed. inventory gate として `FlistWalkerApp` field の 4-way classification を docs へ反映した。Phase 2 は tab/session boundary tightening へ進む。
 - 2026-04-11 14:35 Phase 2 completed. `tabs` field は `TabSessionState` bundle へ置き換え、`active_tab` / `next_tab_id` / `pending_restore_refresh` / request routing を tab/session registry としてまとめた。`cargo test` green。
+- 2026-04-11 19:05 Phase 3 completed. `root_browser` / `filelist_state` / `update_state` を `FeatureStateBundle` へ寄せ、feature dialog/update の live owner を `state.rs` へ集約した。`cargo test` green。
+- 2026-04-11 19:20 Phase 4 completed. `ARCHITECTURE.md` / `DESIGN.md` / `TESTPLAN.md` を新しい bundle ownership に同期し、Slice A を closure-ready にした。
 
 ## 12. Communication Plan
 - Return to user when:
@@ -145,12 +147,12 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - If the project is under git control, commit at the end of each completed phase.
 
 ## 13. Completion Checklist
-- [ ] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] If the project is under git control, each completed phase was committed separately
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Planned document created before implementation
+- [x] Temporary `AGENTS.md` rule added
+- [x] Work executed according to the plan or the plan updated first
+- [x] If the project is under git control, each completed phase was committed separately
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

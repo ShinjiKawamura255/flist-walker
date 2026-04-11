@@ -41,6 +41,7 @@
 - 役割補足: `trace helper` では `app/mod.rs` が opt-in window trace の入口だけを保持し、worker trace は `app/workers.rs` と `app/worker_protocol.rs`、session/window 永続化まわりの補助 trace は `app/session.rs` など各 owner helper へ分離する。
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
+- 役割補足: feature 単位の live state は `app/state.rs` の `FeatureStateBundle` (`root_browser`, `filelist`, `update`) に寄せ、`FlistWalkerApp` 直下から dialog/update/root browser field を外す。tab/session registry は `TabSessionState`、feature dialog/update は `FeatureStateBundle` として ownership を分離する。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と background tab 向け search/index response consume helper、activation 時の restore/refresh 入口を担当する。live 側の tab/session registry（`tabs`, `active_tab`, `next_tab_id`, `pending_restore_refresh`, request routing）は `app/state.rs` の `TabSessionState` に束ねる。
 - 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。

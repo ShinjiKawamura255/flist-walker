@@ -43,7 +43,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - `persisted/background tab state`
     - `AppTabState` と restore/switch/reorder/request-routing に紐づく tab/session 束。
   - `feature dialog/update state`
-    - FileList dialog、self-update dialog、window/root browser など feature 単位の補助束。
+    - FileList dialog、self-update dialog、window/root browser など feature 単位の補助束。live owner は `state.rs` の `FeatureStateBundle` に寄せる。
 - `mod.rs` の責務棚卸しは少なくとも次の 6 区分で追跡する。
   - `startup/bootstrap`
     - 残置: `new` / `from_launch` / `new_with_launch` による app 初期化の入口。
@@ -103,7 +103,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [update.rs](../rust/src/app/update.rs)
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
-  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / cache/root browser/request routing に加えて、`TabSessionState` のような bundle inventory の受け皿として扱う。
+  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` を束ねる `FeatureStateBundle`、live tab/session registry を束ねる `TabSessionState`、cache/request routing など bundle inventory の受け皿として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。
 - [workers.rs](../rust/src/app/workers.rs)

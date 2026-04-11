@@ -138,7 +138,7 @@
 
 ## 7. Detailed Task Breakdown
 - [ ] roadmap と active slice の計画作成・review・Temporary Rule 追加
-- [ ] Slice A で `FlistWalkerApp` state decomposition を進める
+- [x] Slice A で `FlistWalkerApp` state decomposition を進める
 - [ ] Slice B で `search.rs` / `indexer.rs` を責務分割する
 - [ ] Slice C で CI / config / dependency hygiene を整える
 - [ ] Slice D で roadmap closure と恒久 docs 反映を行う
@@ -181,6 +181,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 12:20 Planned initial roadmap draft.
 - 2026-04-11 12:55 Phase 1 inventory gate completed. `ARCHITECTURE.md` / `DESIGN.md` に 4-way state inventory (`app-global shared`, `active-tab-local`, `persisted/background tab`, `feature dialog/update`) を固定した。
 - 2026-04-11 14:35 Slice A Phase 2 completed. `tabs` は `TabSessionState` bundle を介して live tab/session registry を保持する構造へ移行し、`cargo test` green を確認した。
+- 2026-04-11 19:05 Slice A Phase 3 completed. `root_browser` / `filelist_state` / `update_state` を `FeatureStateBundle` へ抽出し、feature dialog/update owner を `state.rs` へ寄せた。`cargo test` green。
+- 2026-04-11 19:20 Slice A completed. 恒久 docs を state bundle ownership に同期し、roadmap は Slice B planning へ進める状態になった。
 
 ## 12. Communication Plan
 - Return to user when:
