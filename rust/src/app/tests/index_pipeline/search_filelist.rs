@@ -549,6 +549,56 @@ fn root_change_cancels_pending_filelist_overwrite_confirmation() {
 }
 
 #[test]
+fn root_change_cancels_pending_filelist_ancestor_confirmation() {
+    let root_old = test_root("root-change-cancel-ancestor-old");
+    let root_new = test_root("root-change-cancel-ancestor-new");
+    fs::create_dir_all(&root_old).expect("create old dir");
+    fs::create_dir_all(&root_new).expect("create new dir");
+
+    let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    app.indexing.tx = tx;
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.filelist_state.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id,
+        root: root_old.clone(),
+        entries: vec![root_old.join("a.txt")],
+    });
+
+    app.apply_root_change(root_new.clone());
+
+    assert!(app.filelist_state.pending_ancestor_confirmation.is_none());
+    assert!(app.notice.contains("Root changed"));
+    let _ = fs::remove_dir_all(&root_old);
+    let _ = fs::remove_dir_all(&root_new);
+}
+
+#[test]
+fn root_change_cancels_pending_filelist_use_walker_confirmation() {
+    let root_old = test_root("root-change-cancel-use-walker-old");
+    let root_new = test_root("root-change-cancel-use-walker-new");
+    fs::create_dir_all(&root_old).expect("create old dir");
+    fs::create_dir_all(&root_new).expect("create new dir");
+
+    let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
+    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    app.indexing.tx = tx;
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.filelist_state.pending_use_walker_confirmation =
+        Some(PendingFileListUseWalkerConfirmation {
+            source_tab_id: tab_id,
+            root: root_old.clone(),
+        });
+
+    app.apply_root_change(root_new.clone());
+
+    assert!(app.filelist_state.pending_use_walker_confirmation.is_none());
+    assert!(app.notice.contains("Root changed"));
+    let _ = fs::remove_dir_all(&root_old);
+    let _ = fs::remove_dir_all(&root_new);
+}
+
+#[test]
 fn filelist_finished_updates_state_and_notice() {
     let root = test_root("filelist-finished");
     fs::create_dir_all(&root).expect("create dir");

@@ -84,9 +84,9 @@
 - 各 phase 完了時は、完了条件、検証結果、残課題を本計画へ記録し、git 管理下では phase 単位コミットを作成する。
 
 ## 7. Detailed Task Breakdown
-- [ ] manual smoke と既存 test の対応表を固定する
-- [ ] root/tab/render interaction の regression test を補強する
-- [ ] filelist dialog / background flow の regression test を補強する
+- [x] manual smoke と既存 test の対応表を固定する
+- [x] root/tab/render interaction の regression test を補強する
+- [x] filelist dialog / background flow の regression test を補強する
 - [ ] TESTPLAN と roadmap を同期する
 
 ## 8. Validation Plan
@@ -123,6 +123,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 初回レビューを反映し、Slice C の goal を「manual smoke 全面置換」ではなく「自動化の足場づくり」へ補正した。Phase 1 は mapping gate、Phase 4 は slice closure gate と位置付けた。
 - 2026-04-11 00:00 Phase 1 として、`TESTPLAN.md` に structural GUI smoke step と owner test module の対応表を追加し、Phase 2/3 の automation target を固定した。docs diff review で整合を確認した。
 - 2026-04-11 00:00 Phase 2 として、`render_tests.rs` と `session_tabs.rs` に tab close/move と root dropdown selection cleanup の regression test を追加し、`cargo test` green を確認した。
+- 2026-04-11 00:00 Phase 3 として、`search_filelist.rs` に root change 時の ancestor/use-walker confirmation cleanup regression test を追加し、`cargo test` green を確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
@@ -130,6 +131,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [x] Temporary `AGENTS.md` rule added
 - [x] manual smoke と既存 test の対応表を固定する
 - [x] root/tab/render interaction の regression test を補強する
+- [x] filelist dialog / background flow の regression test を補強する
 - [ ] Each completed phase committed separately
 - [ ] Verification completed
 - [ ] Temporary `AGENTS.md` rule removed after completion
