@@ -116,7 +116,7 @@ impl FlistWalkerApp {
     }
 
     /// 現在の base result snapshot から表示用の整列結果を生成する。
-    fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
+    pub(super) fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
         Self::build_sorted_results_from(
             &self.base_results,
             mode,
@@ -130,95 +130,22 @@ impl FlistWalkerApp {
         results: Vec<(PathBuf, f64)>,
         keep_scroll_position: bool,
     ) {
-        self.worker_bus.sort.pending_request_id = None;
-        self.worker_bus.sort.in_progress = false;
-        self.result_sort_mode = ResultSortMode::Score;
-        self.base_results = results.clone();
-        // Regression guard: search refreshes must keep the cursor on the same row number.
-        // Following the previous path here makes the highlight jump when the query changes.
-        self.apply_results_with_selection_policy(results, keep_scroll_position, false);
+        result_reducer::replace_results_snapshot(self, results, keep_scroll_position);
     }
 
     /// 非 score sort を解除し、必要なら base snapshot を前面へ戻す。
     pub(super) fn invalidate_result_sort(&mut self, keep_scroll_position: bool) {
-        let had_non_score_sort = self.result_sort_mode != ResultSortMode::Score;
-        self.worker_bus.sort.pending_request_id = None;
-        self.worker_bus.sort.in_progress = false;
-        self.result_sort_mode = ResultSortMode::Score;
-        if had_non_score_sort && !self.base_results.is_empty() && self.results != self.base_results
-        {
-            self.apply_results_with_selection_policy(
-                self.base_results.clone(),
-                keep_scroll_position,
-                true,
-            );
-        } else {
-            self.refresh_status_line();
-        }
-    }
-
-    /// 欠けている metadata だけを sort worker に依頼する。
-    fn request_sort_metadata(&mut self, mode: ResultSortMode, missing_paths: Vec<PathBuf>) {
-        let request_id = self.worker_bus.sort.next_request_id;
-        self.worker_bus.sort.next_request_id =
-            self.worker_bus.sort.next_request_id.saturating_add(1);
-        self.worker_bus.sort.pending_request_id = Some(request_id);
-        self.worker_bus.sort.in_progress = true;
-        self.bind_sort_request_to_current_tab(request_id);
-        self.refresh_status_line();
-        if self
-            .worker_bus
-            .sort
-            .tx
-            .send(SortMetadataRequest {
-                request_id,
-                paths: missing_paths,
-                mode,
-            })
-            .is_err()
-        {
-            self.worker_bus.sort.pending_request_id = None;
-            self.worker_bus.sort.in_progress = false;
-            self.set_notice("Sort worker is unavailable");
-        }
+        result_reducer::invalidate_result_sort(self, keep_scroll_position);
     }
 
     /// 現在の sort mode を結果スナップショットへ反映する。
     pub(super) fn apply_result_sort(&mut self, keep_scroll_position: bool) {
-        if self.base_results.is_empty() {
-            self.worker_bus.sort.pending_request_id = None;
-            self.worker_bus.sort.in_progress = false;
-            self.refresh_status_line();
-            return;
-        }
-        if !self.result_sort_mode.uses_metadata() {
-            let sorted = self.build_sorted_results(self.result_sort_mode);
-            self.worker_bus.sort.pending_request_id = None;
-            self.worker_bus.sort.in_progress = false;
-            self.apply_results_with_selection_policy(sorted, keep_scroll_position, false);
-            return;
-        }
-
-        let missing_paths = self
-            .base_results
-            .iter()
-            .map(|(path, _)| path.clone())
-            .filter(|path| !self.cache.sort_metadata.contains(path))
-            .collect::<Vec<_>>();
-        if missing_paths.is_empty() {
-            let sorted = self.build_sorted_results(self.result_sort_mode);
-            self.worker_bus.sort.pending_request_id = None;
-            self.worker_bus.sort.in_progress = false;
-            self.apply_results_with_selection_policy(sorted, keep_scroll_position, false);
-            return;
-        }
-
-        self.request_sort_metadata(self.result_sort_mode, missing_paths);
+        result_reducer::apply_result_sort(self, keep_scroll_position);
     }
 
     /// sort mode を切り替え、即時適用または metadata 解決を始める。
     pub(super) fn set_result_sort_mode(&mut self, mode: ResultSortMode) {
-        self.result_sort_mode = mode;
-        self.apply_result_sort(false);
+        result_reducer::set_result_sort_mode(self, mode);
     }
+
 }

@@ -11,6 +11,7 @@
 - Parent Plan: none
 - Child Plan(s):
   - docs/CHANGE-PLAN-20260412-slice-a-app-shell-usecase-decoupling.md
+  - docs/CHANGE-PLAN-20260412-slice-b-app-shell-usecase-decoupling.md
 - Scope Label: app-shell-usecase-decoupling
 - Related Tickets/Issues: none
 - Review Status: reviewed
@@ -126,6 +127,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-12 Planned.
 - 2026-04-12 Slice A completed: `FlistWalkerApp` now dereferences through `AppShellState`, the app shell owns the runtime/ui/cache/feature bundles explicitly, and the full Rust test suite passed after the change.
+- 2026-04-12 Slice B completed: result/preview/sort response handling moved behind `app/result_reducer.rs`, shell-facing wrappers were thinned out, and `cd rust && cargo test` passed after the extraction.
 
 ## 12. Communication Plan
 - Return to user when:
@@ -135,12 +137,12 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - If the project is under git control, commit when a completed phase forms an independent verification/rollback unit.
 
 ## 13. Completion Checklist
-- [ ] Planned document created before implementation
+- [x] Planned document created before implementation
 - [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] If the project is under git control, each commit corresponds to an independent verification/rollback unit, and grouped phases are documented in the plan
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Work executed according to the plan or the plan updated first
+- [x] If the project is under git control, each commit corresponds to an independent verification/rollback unit, and grouped phases are documented in the plan
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

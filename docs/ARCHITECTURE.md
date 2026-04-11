@@ -109,10 +109,12 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - query、history、history search、kill buffer をまとめる。
 - [cache.rs](../rust/src/app/cache.rs)
   - preview/highlight/sort metadata cache state と bounded invalidation を担当する。
+- [result_reducer.rs](../rust/src/app/result_reducer.rs)
+  - result snapshot refresh、preview 応答反映、sort 応答反映の state transition を集約し、shell-facing flow modules から reducer boundary へ切り出す。
 - [result_flow.rs](../rust/src/app/result_flow.rs)
-  - result sort の orchestration を担当する。
+  - result sort の orchestration を担当しつつ、reducer boundary への thin wrapper として振る舞う。
 - [preview_flow.rs](../rust/src/app/preview_flow.rs)
-  - preview request/response、highlight lookup、preview routing の orchestration を担当する。
+  - preview request/response、highlight lookup、preview routing の orchestration を担当しつつ、response apply は reducer boundary を呼ぶ。
 - [render.rs](../rust/src/app/render.rs)
   - panel/dialog/results 描画と frame 後段の render command 生成。
 - [input.rs](../rust/src/app/input.rs)

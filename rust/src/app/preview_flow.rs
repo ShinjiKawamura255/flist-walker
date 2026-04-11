@@ -13,7 +13,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
+    pub(super) fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
         self.tabs.request_tab_routing.take_preview(request_id)
     }
 
@@ -31,29 +31,7 @@ impl FlistWalkerApp {
     }
 
     fn apply_background_preview_response(&mut self, response: PreviewResponse) {
-        let Some(tab_id) = self.take_preview_request_tab(response.request_id) else {
-            return;
-        };
-        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-            return;
-        };
-        self.cache_preview(response.path.clone(), response.preview.clone());
-        if let Some(tab) = self.tabs.get_mut(tab_index) {
-            tab.pending_preview_request_id = None;
-            tab.preview_in_progress = false;
-            let current_path = if tab.result_state.results_compacted {
-                tab.result_state
-                    .current_row
-                    .and_then(|row| tab.result_state.base_results.get(row).map(|(path, _)| path))
-            } else {
-                tab.result_state
-                    .current_row
-                    .and_then(|row| tab.result_state.results.get(row).map(|(path, _)| path))
-            };
-            if current_path.is_some_and(|current_path| *current_path == response.path) {
-                tab.result_state.preview = response.preview;
-            }
-        }
+        result_reducer::apply_background_preview_response(self, response);
     }
 
     pub(super) fn poll_preview_response(&mut self) {

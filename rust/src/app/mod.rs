@@ -38,6 +38,7 @@ mod preview_flow;
 mod query_state;
 mod render;
 mod result_flow;
+mod result_reducer;
 mod search_coordinator;
 mod session;
 mod state;

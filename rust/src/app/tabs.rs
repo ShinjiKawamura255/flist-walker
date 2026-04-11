@@ -219,37 +219,7 @@ impl FlistWalkerApp {
         tab_id: u64,
         response: SearchResponse,
     ) {
-        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-            return;
-        };
-        let Some(tab) = self.tabs.get_mut(tab_index) else {
-            return;
-        };
-        tab.pending_request_id = None;
-        tab.search_in_progress = false;
-        tab.notice = response
-            .error
-            .map(|error| format!("Search failed: {error}"))
-            .unwrap_or_default();
-        tab.result_state.base_results = response.results.clone();
-        tab.result_state.results = response.results;
-        tab.result_state.results_compacted = false;
-        tab.result_state.result_sort_mode = ResultSortMode::Score;
-        tab.result_state.pending_sort_request_id = None;
-        tab.result_state.sort_in_progress = false;
-        if tab.result_state.results.is_empty() {
-            tab.result_state.current_row = None;
-            tab.result_state.preview.clear();
-            tab.pending_preview_request_id = None;
-            tab.preview_in_progress = false;
-        } else {
-            let max_index = tab.result_state.results.len().saturating_sub(1);
-            tab.result_state.current_row = tab
-                .result_state
-                .current_row
-                .map(|row: usize| row.min(max_index));
-        }
-        Self::compact_inactive_tab_state(tab);
+        result_reducer::apply_background_search_response(self, tab_id, response);
     }
 
     pub(super) fn apply_active_action_response(&mut self, response: &ActionResponse) -> bool {
@@ -264,57 +234,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_background_sort_response(&mut self, response: SortMetadataResponse) {
-        let Some(tab_id) = self.take_sort_request_tab(response.request_id) else {
-            return;
-        };
-        let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
-            return;
-        };
-        let sort_metadata = self.cache.sort_metadata.get_map().clone();
-        let Some(tab) = self.tabs.get_mut(tab_index) else {
-            return;
-        };
-        if Some(response.request_id) != tab.result_state.pending_sort_request_id {
-            return;
-        }
-        tab.result_state.pending_sort_request_id = None;
-        tab.result_state.sort_in_progress = false;
-        if response.mode == tab.result_state.result_sort_mode {
-            tab.result_state.results = Self::build_sorted_results_from(
-                &tab.result_state.base_results,
-                tab.result_state.result_sort_mode,
-                &sort_metadata,
-            );
-            tab.result_state.results_compacted = false;
-            if tab.result_state.results.is_empty() {
-                tab.result_state.current_row = None;
-                tab.result_state.preview.clear();
-                tab.pending_preview_request_id = None;
-                tab.preview_in_progress = false;
-            } else {
-                let max_index = tab.result_state.results.len().saturating_sub(1);
-                tab.result_state.current_row = tab
-                    .result_state
-                    .current_row
-                    .map(|row: usize| row.min(max_index));
-            }
-            Self::compact_inactive_tab_state(tab);
-        }
+        result_reducer::apply_background_sort_response(self, response);
     }
 
     pub(super) fn apply_active_sort_response(&mut self, response: &SortMetadataResponse) -> bool {
-        if Some(response.request_id) != self.worker_bus.sort.pending_request_id {
-            return false;
-        }
-        self.take_sort_request_tab(response.request_id);
-        self.worker_bus.sort.pending_request_id = None;
-        self.worker_bus.sort.in_progress = false;
-        if response.mode == self.result_sort_mode {
-            self.apply_result_sort(false);
-        } else {
-            self.refresh_status_line();
-        }
-        true
+        result_reducer::apply_active_sort_response(self, response)
     }
 
     fn clear_tab_drag_state(&mut self) {
