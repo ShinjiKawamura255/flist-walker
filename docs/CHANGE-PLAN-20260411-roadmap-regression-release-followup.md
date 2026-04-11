@@ -7,7 +7,7 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260411-slice-c-gui-regression-automation-expansion.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260411-slice-c-gui-regression-automation-expansion.md`, `docs/CHANGE-PLAN-20260411-slice-d-release-platform-docs-consolidation.md`
 - Scope Label: regression-release-followup
 - Related Tickets/Issues: none
 - Execution Mode: standard
@@ -21,6 +21,7 @@
   - 2026-04-11 実現性レビュー: feasible。致命的 blocker はないが、Slice C 単体で manual smoke 依存を大幅削減するのではなく、自動化の足場づくりとして扱う方が現実的。
   - 2026-04-11 粒度レビュー: 2 段構成は許容。roadmap は Slice C を先に閉じるための standard-mode roadmap として使い、Slice D の詳細化は Slice C 完了後に再レビューする。
   - 2026-04-11 収束レビュー: 着手可能。重大な未解決事項なし。期待値は「自動化の足場づくり」に合わせる。
+  - 2026-04-11 Slice D 初回レビュー: release/platform/docs consolidation は feasible。workflow-touching phase の検証を docs-only phase と分離し、active slice は Slice D review 完了後に着手する。
 
 ## 1. Background
 - `ideal-architecture` roadmap では app coordinator 縮小と lifecycle contract hardening を完了した。
@@ -63,9 +64,9 @@
      - 必要時 `cd rust && cargo test`
 
 ## 5. Slice Ordering and Gates
-- Active slice は `Slice C` とする。
-- `Slice C` 完了時に、manual smoke 依存の残量と release/platform docs の整理量を見て `Slice D` の詳細 plan を作成する。
-- `Execution Mode: standard` のため、`Slice C` 完了後に `Slice D` を自動着手せず、roadmap 更新と active slice 見直しを先に行う。
+- Active slice は `Slice D` とする。着手条件は Slice D plan がレビュー済みであること。
+- `Slice C` 完了結果として、GUI smoke の自動化対象と manual-heavy 領域は整理できたため、次は release/platform/docs の恒久ルール整理へ進む。
+- `Execution Mode: standard` のため、`Slice D` は詳細 plan の review 完了後に着手する。
 
 ## 6. Temporary `AGENTS.md` Rule Draft
 Add a temporary section to the project `AGENTS.md` with content equivalent to:
@@ -74,7 +75,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## Temporary Change Plan Rule
 - `regression-release-followup` の対応では、実装前に以下の計画書を上から順に読むこと。
 - `docs/CHANGE-PLAN-20260411-roadmap-regression-release-followup.md`
-- `docs/CHANGE-PLAN-20260411-slice-c-gui-regression-automation-expansion.md`
+- active slice plan
 - roadmap の `Execution Mode: standard` と `Execution Mode Policy` に従うこと。
 - phase 実行は原則として subagent へ委譲し、main agent は orchestrator / reviewer として計画更新、レビュー反映、完了判定、コミットを担当すること。
 - 実装順と確認順は計画書に従い、scope / order / risk を変える場合は先に計画書を更新すること。
@@ -88,6 +89,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice C Phase 2 として、`render_tests.rs` と `session_tabs.rs` に root/tab/render interaction の regression test を追加し、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice C Phase 3 として、`search_filelist.rs` に filelist dialog / background flow の regression test を追加し、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice C 完了判定: `TESTPLAN.md` に新規 automated coverage を反映し、current HEAD で `cargo test` green を再確認した。次は standard-mode gate として Slice D の詳細 plan を作成する。
+- 2026-04-11 00:00 Slice D 初版を作成し、release/platform/docs の不整合整理を次の active slice として詳細化した。
+- 2026-04-11 00:00 Slice D Phase 1 として、notarization 運用、README sidecar 一覧、GitHub Release 本文の `Security` / `Known issues` 前提の不整合を棚卸しし、同期対象を確定した。
 
 ## 8. Completion Checklist
 - [x] Planned document created before implementation
