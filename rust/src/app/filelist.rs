@@ -81,7 +81,7 @@ impl FlistWalkerApp {
                     if let Some(tab) = self.tabs.get_mut(tab_index) {
                         tab.use_filelist = use_filelist;
                     }
-                    if tab_index == self.active_tab {
+                    if tab_index == self.tabs.active_tab {
                         self.use_filelist = use_filelist;
                     }
                 }
@@ -170,7 +170,9 @@ impl FlistWalkerApp {
                     path.display(),
                     count
                 ));
-                if let Some(tab_index) = target_tab_index.filter(|index| *index != self.active_tab) {
+                if let Some(tab_index) =
+                    target_tab_index.filter(|index| *index != self.tabs.active_tab)
+                {
                     self.dispatch_filelist_commands(vec![FileListCommand::App(
                         FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
                     )]);
@@ -179,11 +181,11 @@ impl FlistWalkerApp {
             FileListResponseScope::CurrentRoot => {
                 self.set_notice(format!("Created {}: {} entries", path.display(), count));
                 if let Some(tab_index) = target_tab_index {
-                    if tab_index == self.active_tab && self.use_filelist {
+                    if tab_index == self.tabs.active_tab && self.use_filelist {
                         self.dispatch_filelist_commands(vec![FileListCommand::App(
                             FileListAppCommand::RequestIndexRefresh,
                         )]);
-                    } else if tab_index != self.active_tab {
+                    } else if tab_index != self.tabs.active_tab {
                         self.dispatch_filelist_commands(vec![FileListCommand::App(
                             FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
                         )]);

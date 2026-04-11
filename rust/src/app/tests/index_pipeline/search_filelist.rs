@@ -245,7 +245,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     app.confirm_pending_filelist_use_walker();
 
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert!(app.use_filelist);
     assert!(app.include_files);
     assert!(app.include_dirs);
@@ -357,7 +357,8 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
     let source_tab_id = app.current_tab_id().expect("source tab id");
     app.use_filelist = false;
-    if let Some(tab) = app.tabs.get_mut(app.active_tab) {
+    let active_tab = app.tabs.active_tab;
+    if let Some(tab) = app.tabs.get_mut(active_tab) {
         tab.use_filelist = false;
     }
     app.create_new_tab();
@@ -397,7 +398,7 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
         .expect("source tab should remain");
     assert!(source_tab.use_filelist);
     assert!(source_tab.index_state.index_in_progress);
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     assert_eq!(app.root, root_b);
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -413,7 +414,8 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let source_tab_id = app.current_tab_id().expect("source tab id");
     app.use_filelist = false;
-    if let Some(tab) = app.tabs.get_mut(app.active_tab) {
+    let active_tab = app.tabs.active_tab;
+    if let Some(tab) = app.tabs.get_mut(active_tab) {
         tab.use_filelist = false;
         tab.root = root_new.clone();
     }
@@ -461,12 +463,13 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
     app.create_new_tab();
     app.root = root_b.clone();
-    if let Some(tab) = app.tabs.get_mut(app.active_tab) {
+    let active_tab = app.tabs.active_tab;
+    if let Some(tab) = app.tabs.get_mut(active_tab) {
         tab.root = root_b.clone();
     }
     app.sync_active_tab_state();
     app.switch_to_tab_index(0);
-    app.pending_restore_refresh = true;
+    app.tabs.pending_restore_refresh = true;
 
     let (_, rx) = mpsc::channel::<IndexRequest>();
     let (closed_tx, _) = mpsc::channel::<IndexRequest>();
@@ -479,7 +482,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert!(!background_tab.index_state.index_in_progress);
     assert_eq!(background_tab.index_state.pending_index_request_id, None);
     assert!(background_tab.index_state.pending_index_entries.is_empty());
-    assert!(!app.pending_restore_refresh);
+    assert!(!app.tabs.pending_restore_refresh);
     assert!(background_tab
         .notice
         .contains("Index worker is unavailable"));
@@ -514,9 +517,10 @@ fn root_change_clears_stale_selection_state() {
     assert!(app.all_entries.is_empty());
     assert!(app.entries.is_empty());
     assert!(app.results.is_empty());
-    assert_eq!(app.tabs[app.active_tab].root, root_new);
-    assert!(app.tabs[app.active_tab].index_state.all_entries.is_empty());
-    assert!(app.tabs[app.active_tab].index_state.entries.is_empty());
+    let active_tab = app.tabs.active_tab;
+    assert_eq!(app.tabs[active_tab].root, root_new);
+    assert!(app.tabs[active_tab].index_state.all_entries.is_empty());
+    assert!(app.tabs[active_tab].index_state.entries.is_empty());
     let req = rx.try_recv().expect("index request should be sent");
     assert_eq!(req.root, app.root);
     let _ = fs::remove_dir_all(&root_old);

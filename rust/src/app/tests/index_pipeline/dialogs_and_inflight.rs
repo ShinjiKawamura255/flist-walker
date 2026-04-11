@@ -298,7 +298,7 @@ fn preempt_background_when_active_index_is_queued() {
     let active_tab_id = app.tabs[2].id;
     let bg_tab_a = app.tabs[0].id;
     let bg_tab_b = app.tabs[1].id;
-    app.active_tab = 2;
+    app.tabs.active_tab = 2;
 
     app.indexing.inflight_requests.insert(100);
     app.indexing.inflight_requests.insert(101);

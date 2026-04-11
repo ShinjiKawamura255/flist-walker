@@ -164,7 +164,7 @@ impl FlistWalkerApp {
         };
         let memory = self.memory_usage_text();
         self.status_line = build_status_line(StatusLineContext {
-            active_tab: self.active_tab,
+            active_tab: self.tabs.active_tab,
             tab_count: self.tabs.len(),
             indexed_count,
             results_len: self.results.len(),

@@ -180,6 +180,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-11 12:20 Planned initial roadmap draft.
 - 2026-04-11 12:55 Phase 1 inventory gate completed. `ARCHITECTURE.md` / `DESIGN.md` に 4-way state inventory (`app-global shared`, `active-tab-local`, `persisted/background tab`, `feature dialog/update`) を固定した。
+- 2026-04-11 14:35 Slice A Phase 2 completed. `tabs` は `TabSessionState` bundle を介して live tab/session registry を保持する構造へ移行し、`cargo test` green を確認した。
 
 ## 12. Communication Plan
 - Return to user when:

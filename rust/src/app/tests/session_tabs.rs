@@ -32,7 +32,7 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
 
     run_shortcuts_frame(
         &mut app,
@@ -47,7 +47,7 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
     );
 
     assert_eq!(app.tabs.len(), 2);
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     assert!(app.query_state.query.is_empty());
     assert!(app.use_filelist);
     assert_eq!(app.tabs[1].tab_accent, None);
@@ -171,7 +171,7 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
     app.create_new_tab();
     app.create_new_tab();
     assert_eq!(app.tabs.len(), 3);
-    assert_eq!(app.active_tab, 2);
+    assert_eq!(app.tabs.active_tab, 2);
 
     run_shortcuts_frame(
         &mut app,
@@ -184,7 +184,7 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
             modifiers: tab_switch_shortcut_modifiers(false),
         }],
     );
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert!(app.ui.focus_query_requested);
     assert!(!app.ui.unfocus_query_requested);
 
@@ -199,7 +199,7 @@ fn ctrl_tab_and_ctrl_shift_tab_switch_active_tab() {
             modifiers: tab_switch_shortcut_modifiers(true),
         }],
     );
-    assert_eq!(app.active_tab, 2);
+    assert_eq!(app.tabs.active_tab, 2);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -212,7 +212,7 @@ fn ctrl_number_switches_to_matching_tab_from_left() {
     app.create_new_tab();
     app.create_new_tab();
     assert_eq!(app.tabs.len(), 4);
-    assert_eq!(app.active_tab, 3);
+    assert_eq!(app.tabs.active_tab, 3);
 
     run_shortcuts_frame(
         &mut app,
@@ -226,7 +226,7 @@ fn ctrl_number_switches_to_matching_tab_from_left() {
         }],
     );
 
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -237,7 +237,7 @@ fn ctrl_number_without_matching_tab_does_not_switch() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     assert_eq!(app.tabs.len(), 2);
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
 
     run_shortcuts_frame(
         &mut app,
@@ -251,7 +251,7 @@ fn ctrl_number_without_matching_tab_does_not_switch() {
         }],
     );
 
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -266,7 +266,7 @@ fn switching_tabs_restores_root_per_tab() {
     app.create_new_tab();
     app.root = root_b.clone();
     app.sync_active_tab_state();
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
 
     app.switch_to_tab_index(0);
     assert_eq!(app.root, root_a);
@@ -356,11 +356,11 @@ fn move_tab_reorders_tabs_and_preserves_active_tab_identity() {
     app.create_new_tab();
     app.root = root_c.clone();
     app.sync_active_tab_state();
-    assert_eq!(app.active_tab, 2);
+    assert_eq!(app.tabs.active_tab, 2);
 
     app.move_tab(2, 0);
 
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert_eq!(app.root, root_c);
     assert_eq!(app.tabs[0].root, root_c);
     assert_eq!(app.tabs[1].root, root_a);
@@ -389,11 +389,11 @@ fn move_tab_updates_active_index_when_other_tab_crosses_it() {
     app.sync_active_tab_state();
     app.switch_to_tab_index(1);
     assert_eq!(app.root, root_b);
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
 
     app.move_tab(0, 2);
 
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert_eq!(app.root, root_b);
     assert_eq!(app.tabs[0].root, root_b);
     assert_eq!(app.tabs[1].root, root_c);
@@ -411,7 +411,7 @@ fn move_tab_ignores_invalid_or_noop_indices() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     let original_ids: Vec<u64> = app.tabs.iter().map(|tab| tab.id).collect();
-    let original_active = app.active_tab;
+    let original_active = app.tabs.active_tab;
 
     app.move_tab(1, 1);
     app.move_tab(99, 0);
@@ -421,7 +421,7 @@ fn move_tab_ignores_invalid_or_noop_indices() {
         app.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>(),
         original_ids
     );
-    assert_eq!(app.active_tab, original_active);
+    assert_eq!(app.tabs.active_tab, original_active);
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -478,7 +478,7 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
 
     app.move_tab(0, 2);
 
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert_eq!(app.root, expected_active_root);
     assert_eq!(app.query_state.query, expected_active_query);
     assert_eq!(app.preview, expected_active_preview);
@@ -637,7 +637,7 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .expect("preview request id");
 
     app.create_new_tab();
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
 
     search_tx_res
         .send(SearchResponse {
@@ -715,7 +715,7 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     app.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
     app.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
@@ -777,7 +777,7 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     app.entries = Arc::new(vec![file_entry(active_file.clone())]);
     app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
     app.results = vec![(active_file.clone(), 0.0)];

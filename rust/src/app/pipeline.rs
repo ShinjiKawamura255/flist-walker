@@ -71,8 +71,9 @@ impl FlistWalkerApp {
         self.ensure_entry_filters();
         self.invalidate_result_sort(true);
         self.clear_sort_metadata_cache();
-        self.pending_restore_refresh = false;
-        if let Some(tab) = self.tabs.get_mut(self.active_tab) {
+        self.tabs.pending_restore_refresh = false;
+        let active_tab = self.tabs.active_tab;
+        if let Some(tab) = self.tabs.get_mut(active_tab) {
             tab.pending_restore_refresh = false;
         }
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
@@ -160,7 +161,7 @@ impl FlistWalkerApp {
         self.indexing.request_tabs.clear();
 
         self.indexing
-            .clear_active_request_state(&mut self.pending_restore_refresh);
+            .clear_active_request_state(&mut self.tabs.pending_restore_refresh);
         self.set_notice(notice.clone());
 
         for tab in &mut self.tabs {

@@ -469,7 +469,7 @@ fn ctrl_o_browses_and_changes_root() {
 
     assert_eq!(app.root, new_root);
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -496,7 +496,7 @@ fn ctrl_shift_o_browses_in_new_tab() {
     );
 
     assert_eq!(app.tabs.len(), 2);
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     assert_eq!(app.root, new_root);
     assert_eq!(app.tabs[0].id, original_tab_id);
     assert_eq!(app.tabs[0].root, root);

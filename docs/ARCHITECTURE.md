@@ -69,7 +69,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [session.rs](../rust/src/app/session.rs)
   - saved roots、UI state 永続化、window geometry restore、shutdown/persist owner。
 - [tabs.rs](../rust/src/app/tabs.rs)
-  - tab lifecycle、snapshot capture/apply、background tab 向け search/index response apply、activation 時の restore/refresh 入口、tab routing owner を担当する。
+  - tab lifecycle、snapshot capture/apply、background tab 向け search/index response apply、activation 時の restore/refresh 入口、tab routing owner を担当する。live 側の tab/session orchestration は `state.rs` の `TabSessionState` を介して保持する。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
   - index queue、index response poll、dispatcher を担当し、active path は `PipelineOwner`、background path は `tabs.rs` の background-flow helper 群へ橋渡しする thin coordinator として振る舞う。
 - [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)
@@ -103,7 +103,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [update.rs](../rust/src/app/update.rs)
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
-  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / cache/root browser/request routing に加えて、change plan で導入する bundle inventory の受け皿として扱う。
+  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / cache/root browser/request routing に加えて、`TabSessionState` のような bundle inventory の受け皿として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。
 - [workers.rs](../rust/src/app/workers.rs)

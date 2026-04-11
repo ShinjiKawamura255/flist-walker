@@ -49,7 +49,7 @@ pub(super) struct TabResultState {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct AppTabState {
+pub(crate) struct AppTabState {
     pub(super) id: u64,
     pub(super) root: PathBuf,
     pub(super) tab_accent: Option<TabAccentColor>,

@@ -135,6 +135,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-11 12:20 Planned initial Slice A draft.
 - 2026-04-11 12:55 Phase 1 completed. inventory gate として `FlistWalkerApp` field の 4-way classification を docs へ反映した。Phase 2 は tab/session boundary tightening へ進む。
+- 2026-04-11 14:35 Phase 2 completed. `tabs` field は `TabSessionState` bundle へ置き換え、`active_tab` / `next_tab_id` / `pending_restore_refresh` / request routing を tab/session registry としてまとめた。`cargo test` green。
 
 ## 12. Communication Plan
 - Return to user when:

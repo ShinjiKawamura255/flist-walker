@@ -465,7 +465,7 @@ impl FlistWalkerApp {
             },
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
-            active_tab: Some(self.active_tab),
+            active_tab: Some(self.tabs.active_tab),
             window: self.ui.window_geometry.clone(),
             skipped_update_target_version: self.update_state.skipped_target_version.clone(),
             suppress_update_check_failure_dialog: self.update_state.suppress_check_failure_dialog,

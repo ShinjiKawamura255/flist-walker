@@ -132,7 +132,7 @@ fn dispatch_render_commands_consumes_tab_bar_close_queue() {
     app.dispatch_render_commands(&ctx);
 
     assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert!(app.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
@@ -158,7 +158,7 @@ fn dispatch_render_commands_consumes_tab_bar_move_queue() {
     assert_eq!(app.tabs[0].root, active_root);
     assert_eq!(app.tabs[1].root, middle_root);
     assert_eq!(app.tabs[2].root, last_root);
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert!(app.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }

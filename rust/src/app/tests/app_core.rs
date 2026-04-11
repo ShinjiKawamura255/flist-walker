@@ -328,8 +328,9 @@ fn stale_action_completion_is_ignored_by_request_id() {
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(1, tab_id);
     app.bind_action_request_to_tab(2, tab_id);
-    app.tabs[app.active_tab].pending_action_request_id = Some(2);
-    app.tabs[app.active_tab].action_in_progress = true;
+    let active_tab = app.tabs.active_tab;
+    app.tabs[active_tab].pending_action_request_id = Some(2);
+    app.tabs[active_tab].action_in_progress = true;
 
     tx.send(ActionResponse {
         request_id: 1,

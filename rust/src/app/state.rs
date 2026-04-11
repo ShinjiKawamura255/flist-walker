@@ -828,3 +828,55 @@ impl RequestTabRoutingState {
         self.clear_sort_for_tab(tab_id);
     }
 }
+
+pub(crate) struct TabSessionState {
+    tabs: Vec<AppTabState>,
+    pub(super) active_tab: usize,
+    pub(super) next_tab_id: u64,
+    pub(super) pending_restore_refresh: bool,
+    pub(super) request_tab_routing: RequestTabRoutingState,
+}
+
+impl Default for TabSessionState {
+    fn default() -> Self {
+        Self {
+            tabs: Vec::new(),
+            active_tab: 0,
+            next_tab_id: 1,
+            pending_restore_refresh: false,
+            request_tab_routing: RequestTabRoutingState::default(),
+        }
+    }
+}
+
+impl Deref for TabSessionState {
+    type Target = Vec<AppTabState>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tabs
+    }
+}
+
+impl DerefMut for TabSessionState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tabs
+    }
+}
+
+impl<'a> IntoIterator for &'a TabSessionState {
+    type Item = &'a AppTabState;
+    type IntoIter = std::slice::Iter<'a, AppTabState>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tabs.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a mut TabSessionState {
+    type Item = &'a mut AppTabState;
+    type IntoIter = std::slice::IterMut<'a, AppTabState>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tabs.iter_mut()
+    }
+}

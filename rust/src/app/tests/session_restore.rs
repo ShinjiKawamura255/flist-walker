@@ -211,11 +211,11 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     );
 
     assert_eq!(app.tabs.len(), 2);
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     assert_eq!(app.root, root_b);
     assert_eq!(app.query_state.query, "beta");
     assert_eq!(app.tabs[1].tab_accent, Some(TabAccentColor::Crimson));
-    assert!(!app.pending_restore_refresh);
+    assert!(!app.tabs.pending_restore_refresh);
     assert!(app.tabs[0].pending_restore_refresh);
     assert!(!app.tabs[1].pending_restore_refresh);
 
@@ -299,7 +299,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
 
     let req = rx.try_recv().expect("background tab lazy refresh");
     assert_eq!(req.root, root_a);
-    assert!(!app.pending_restore_refresh);
+    assert!(!app.tabs.pending_restore_refresh);
     assert!(!app.tabs[0].pending_restore_refresh);
 
     let _ = fs::remove_dir_all(&root_a);
@@ -410,7 +410,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     app.poll_preview_response();
     app.poll_index_response();
 
-    assert_eq!(app.active_tab, 1);
+    assert_eq!(app.tabs.active_tab, 1);
     assert_eq!(app.root, root_b);
     assert!(app.tabs[0].pending_restore_refresh);
     assert_eq!(app.tabs[0].result_state.preview, "preview-body");
@@ -424,9 +424,9 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
         .expect("lazy refresh request for activated background tab");
     assert_eq!(refresh_req.root, root_a);
     assert!(index_req_rx.try_recv().is_err());
-    assert_eq!(app.active_tab, 0);
+    assert_eq!(app.tabs.active_tab, 0);
     assert_eq!(app.root, root_a);
-    assert!(!app.pending_restore_refresh);
+    assert!(!app.tabs.pending_restore_refresh);
     assert!(!app.tabs[0].pending_restore_refresh);
     assert_eq!(app.preview, "preview-body");
     assert_eq!(app.results.len(), 1);

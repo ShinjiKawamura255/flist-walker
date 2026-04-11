@@ -447,7 +447,7 @@ impl FlistWalkerApp {
 
 impl FlistWalkerApp {
     pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.request_tab_routing.bind_preview(request_id, tab_id);
+        self.tabs.request_tab_routing.bind_preview(request_id, tab_id);
     }
 
     fn bind_preview_request_to_current_tab(&mut self, request_id: u64) {
@@ -457,16 +457,16 @@ impl FlistWalkerApp {
     }
 
     fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
-        self.request_tab_routing.take_preview(request_id)
+        self.tabs.request_tab_routing.take_preview(request_id)
     }
 
     pub(super) fn clear_preview_request_routing_for_tab(&mut self, tab_id: u64) {
-        self.request_tab_routing.clear_preview_for_tab(tab_id);
+        self.tabs.request_tab_routing.clear_preview_for_tab(tab_id);
     }
 
     #[cfg(test)]
     pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.request_tab_routing.preview.get(&request_id).copied()
+        self.tabs.request_tab_routing.preview.get(&request_id).copied()
     }
 
     fn apply_background_preview_response(&mut self, response: PreviewResponse) {
