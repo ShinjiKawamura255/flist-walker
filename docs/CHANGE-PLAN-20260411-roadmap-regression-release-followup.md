@@ -91,6 +91,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice C 完了判定: `TESTPLAN.md` に新規 automated coverage を反映し、current HEAD で `cargo test` green を再確認した。次は standard-mode gate として Slice D の詳細 plan を作成する。
 - 2026-04-11 00:00 Slice D 初版を作成し、release/platform/docs の不整合整理を次の active slice として詳細化した。
 - 2026-04-11 00:00 Slice D Phase 1 として、notarization 運用、README sidecar 一覧、GitHub Release 本文の `Security` / `Known issues` 前提の不整合を棚卸しし、同期対象を確定した。
+- 2026-04-11 00:00 Slice D Phase 2 として、`docs/SPEC.md`、`.github/release-template.md`、`docs/TESTPLAN.md` を同期し、release/platform/docs の暫定運用を一貫した表現へ寄せた。
 
 ## 8. Completion Checklist
 - [x] Planned document created before implementation

@@ -263,7 +263,8 @@
 - MUST: 通常 CI は Windows/macOS/Linux の release 対象 OS を継続検証する。
 - MUST: 通常 CI で `cargo audit` による依存脆弱性検査を実行する。
 - MUST: `x86_64-pc-windows-gnu` 向け release build は最終 `flistwalker.exe` に Windows icon resource を含み、Explorer 上で埋め込みアイコンを表示できなければならない。
-- MUST: draft release 作成後、macOS notarization は別工程で確認されるまで publish 前提にしてはならない。
+- MUST: draft release 作成後、macOS notarization は別工程で確認できる状態を維持する。
+- MUST: notarization 環境が未整備な当面の間は、macOS 配布物の notarization 確認を publish 前提条件にしてはならない。その場合 publish 時は GitHub Release 本文の `Security` または `Known issues` に未 notarized である旨を明記しなければならない。
 - SHOULD: release note / release template / release docs に checksum 検証手順と notarization の扱いを明記する。
 
 ### Preconditions / Postconditions

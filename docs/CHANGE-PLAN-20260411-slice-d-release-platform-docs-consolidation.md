@@ -129,12 +129,14 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice D 初版を作成した。
 - 2026-04-11 00:00 初回レビューを反映し、docs-only phase と workflow-touching phase を分離した。GitHub Release 本文の運用前提は template / docs 経由で scope に含めることへ補正した。
 - 2026-04-11 00:00 Phase 1 として、release/platform policy の不整合を棚卸しした。主な差分は、`docs/SPEC.md` の SP-012 が notarization を publish 前提条件として読める一方、`AGENTS.md` / `docs/RELEASE.md` / `.github/release-template.md` は未 notarized publish を暫定許容している点、`.github/release-template.md` の Downloads が `README.txt` sidecar を列挙していない点、GitHub Release 本文の `Security` / `Known issues` 記載前提が docs 間で分散している点。
+- 2026-04-11 00:00 Phase 2 として、`docs/SPEC.md`、`.github/release-template.md`、`docs/TESTPLAN.md` を同期し、notarization の暫定運用、README sidecar asset、GitHub Release 本文の `Security` / `Known issues` 記載前提を一貫させた。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Review completed and reflected
 - [x] Temporary `AGENTS.md` rule added
 - [x] release/platform policy の不整合を棚卸しする
+- [x] 恒久ルールを docs/template/AGENTS へ同期する
 - [ ] Each completed phase committed separately
 - [ ] Verification completed
 - [ ] Temporary `AGENTS.md` rule removed after completion

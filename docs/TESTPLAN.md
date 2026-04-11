@@ -104,7 +104,7 @@
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、v0.12.3 の解析速度基準から 15% 以内に維持する | SP-001, SP-007 |
 | TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決より高速に `Finished` へ到達し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
-| TC-055 | manual | README / release docs / release template に平文 history 保存と notarization 手順が明記されている | SP-010, SP-012 |
+| TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
 | TC-057 | unit | `Score` / `Name` / `Modified` / `Created` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
 | TC-058 | unit | query 変更や結果更新時にソートを破棄し、インデクシング経路へ属性取得を追加しない | SP-013 |
