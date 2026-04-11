@@ -90,10 +90,10 @@
      - doc diff review
 
 ## 7. Detailed Task Breakdown
-- [ ] audit 結果を固定する
-- [ ] dependency と env var 分類を同期する
-- [ ] CI に clippy / coverage を追加する
-- [ ] docs と plan を closure する
+- [x] audit 結果を固定する
+- [x] dependency と env var 分類を同期する
+- [x] CI に clippy / coverage を追加する
+- [x] docs と plan を closure する
 
 ## 8. Validation Plan
 - Automated tests:
@@ -130,6 +130,10 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-11 21:05 Planned Slice C draft.
 - 2026-04-11 21:10 Feasibility review completed. config file 導入までは広げず、dependency cleanup / CI enhancement / env var classification の最小 steady-state で進めると判断した。
+- 2026-04-11 21:40 Phase 1 completed. `walkdir` 未使用、CI の lint/coverage 不足、env var の 3 分類を audit で固定した。
+- 2026-04-11 22:05 Phase 2 completed. `walkdir` を削除し、公開 docs では user-facing env var だけを前面に出す分類へ整理した。`cargo test` green。
+- 2026-04-11 22:25 Phase 3 completed. CI に `cargo clippy --all-targets -- -D warnings` と coverage artifact job を追加し、ローカル `cargo clippy` / `cargo test` を green で通した。
+- 2026-04-11 22:30 Phase 4 completed. Slice C の steady-state を docs/roadmap に反映し、closure-ready にした。
 
 ## 12. Communication Plan
 - Return to user when:
@@ -138,11 +142,11 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - If the project is under git control, commit at the end of each completed phase.
 
 ## 13. Completion Checklist
-- [ ] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] If the project is under git control, each completed phase was committed separately
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Planned document created before implementation
+- [x] Temporary `AGENTS.md` rule added
+- [x] Work executed according to the plan or the plan updated first
+- [x] If the project is under git control, each completed phase was committed separately
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion

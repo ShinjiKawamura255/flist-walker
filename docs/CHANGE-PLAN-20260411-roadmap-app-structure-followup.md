@@ -9,7 +9,7 @@
 - Execution Mode: autonomous
 - Execution Mode Policy: Review 済み roadmap を起点に、問題がない限り roadmap 完遂まで active slice の作成、review、phase 実行、phase ごとの commit、roadmap 更新を継続する。phase 実行は原則 subagent に委譲し、main agent は orchestrator と reviewer を担う。Slice 完了後は roadmap を更新し、goal 未達なら次 slice を同じ方針で継続する。
 - Parent Plan: none
-- Child Plan(s): docs/CHANGE-PLAN-20260411-slice-c-tooling-config-hygiene.md (active). Slice D plan doc is intentionally created when it becomes active.
+- Child Plan(s): docs/CHANGE-PLAN-20260411-slice-d-roadmap-closure.md (active).
 - Scope Label: app-structure-followup
 - Related Tickets/Issues: none
 - Review Status: レビュー済み
@@ -186,6 +186,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 19:40 Slice B activated. `search` / `indexer` module split を 4 phase で進める slice plan を作成し、active child plan を切り替えた。
 - 2026-04-11 20:55 Slice B completed. `search` は `cache/config/execute/rank`、`indexer` は `filelist_reader/walker/filelist_writer` へ分割し、`cargo test` と VM-003 perf guard 2 本を green で通した。roadmap は Slice C planning へ進める状態になった。
 - 2026-04-11 21:10 Slice C activated. dependency cleanup / CI enhancement / env var classification を扱う slice plan を作成し、active child plan を切り替えた。
+- 2026-04-11 22:30 Slice C completed. `walkdir` 除去、env var 分類、CI の clippy/coverage gate を整え、`cargo test` と `cargo clippy --all-targets -- -D warnings` を green で通した。
+- 2026-04-11 22:35 Slice D activated. roadmap closure 専用の docs-only slice plan を作成し、active child plan を切り替えた。
 
 ## 12. Communication Plan
 - Return to user when:
