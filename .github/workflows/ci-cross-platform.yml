@@ -126,6 +126,9 @@ jobs:
       - name: Run cargo clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      - name: Prepare coverage output directory
+        run: mkdir -p target/llvm-cov
+
       - name: Generate coverage report
         run: cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info
 
