@@ -76,7 +76,7 @@
 ## Temporary Change Plan Rule
 - `app-structure-followup` の対応では、実装前に以下の計画書を上から順に読むこと。
 - `docs/CHANGE-PLAN-20260411-roadmap-app-structure-followup.md`
-- `docs/CHANGE-PLAN-20260411-slice-b-search-indexer-decomposition.md`
+- `docs/CHANGE-PLAN-20260411-slice-c-tooling-config-hygiene.md`
 - roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
 - roadmap は `Execution Mode: autonomous` なので、問題がない限り roadmap 完遂まで slice 作成、review、phase 実行、phase ごとの commit、roadmap 更新を自律継続すること。
 - phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として成果確認と commit 境界管理を行うこと。
