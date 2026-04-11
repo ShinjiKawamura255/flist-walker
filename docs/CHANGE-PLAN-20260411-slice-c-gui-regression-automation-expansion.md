@@ -87,7 +87,7 @@
 - [x] manual smoke と既存 test の対応表を固定する
 - [x] root/tab/render interaction の regression test を補強する
 - [x] filelist dialog / background flow の regression test を補強する
-- [ ] TESTPLAN と roadmap を同期する
+- [x] TESTPLAN と roadmap を同期する
 
 ## 8. Validation Plan
 - Automated tests:
@@ -124,6 +124,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Phase 1 として、`TESTPLAN.md` に structural GUI smoke step と owner test module の対応表を追加し、Phase 2/3 の automation target を固定した。docs diff review で整合を確認した。
 - 2026-04-11 00:00 Phase 2 として、`render_tests.rs` と `session_tabs.rs` に tab close/move と root dropdown selection cleanup の regression test を追加し、`cargo test` green を確認した。
 - 2026-04-11 00:00 Phase 3 として、`search_filelist.rs` に root change 時の ancestor/use-walker confirmation cleanup regression test を追加し、`cargo test` green を確認した。
+- 2026-04-11 00:00 Phase 4 として、`TESTPLAN.md` に新規 automated coverage を TC/automation map へ反映し、current HEAD で `cargo test` green を再確認した。
 
 ## 12. Completion Checklist
 - [x] Planned document created before implementation
@@ -133,6 +134,6 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - [x] root/tab/render interaction の regression test を補強する
 - [x] filelist dialog / background flow の regression test を補強する
 - [ ] Each completed phase committed separately
-- [ ] Verification completed
+- [x] Verification completed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion

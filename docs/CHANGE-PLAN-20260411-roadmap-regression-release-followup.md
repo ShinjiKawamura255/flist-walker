@@ -87,11 +87,12 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice C Phase 1 として、`TESTPLAN.md` に structural GUI smoke と owner test module の対応表を追加し、automation target と manual-only 領域を固定した。
 - 2026-04-11 00:00 Slice C Phase 2 として、`render_tests.rs` と `session_tabs.rs` に root/tab/render interaction の regression test を追加し、`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice C Phase 3 として、`search_filelist.rs` に filelist dialog / background flow の regression test を追加し、`cargo test` green を確認した。
+- 2026-04-11 00:00 Slice C 完了判定: `TESTPLAN.md` に新規 automated coverage を反映し、current HEAD で `cargo test` green を再確認した。次は standard-mode gate として Slice D の詳細 plan を作成する。
 
 ## 8. Completion Checklist
 - [x] Planned document created before implementation
 - [x] Review completed and reflected
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Active slice completed and committed phase by phase
-- [ ] Roadmap updated after slice completion
+- [x] Temporary `AGENTS.md` rule added
+- [x] Active slice completed and committed phase by phase
+- [x] Roadmap updated after slice completion
 - [ ] Temporary `AGENTS.md` rule removed after completion
