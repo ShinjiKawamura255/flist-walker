@@ -7,15 +7,15 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`, `docs/CHANGE-PLAN-20260410-slice-b-lifecycle-contract-hardening.md`
 - Scope Label: ideal-architecture
 - Related Tickets/Issues: none
 - Execution Mode: autonomous
 - Execution Mode Policy:
   - review 済み roadmap を基準に、blocking issue がない限り active slice の phase 実行、slice 完了反映、次 slice への遷移まで継続する。
   - roadmap goal 未達の場合は、slice 完了結果を roadmap へ反映したうえで追加 slice の要否を判断し、継続可能なら同じ roadmap 配下で次の active slice へ進む。
-  - phase 実行は main agent が担い、計画更新、実装、検証、完了判定を単一ループで進める。phase が大きすぎると判断した場合のみ `subslice` 追加を検討する。
-  - main agent は roadmap / slice 更新、レビュー反映、実装、検証、phase 完了記録、slice 間の引き継ぎを担当する。
+  - phase 実行は原則として subagent へ委譲し、main agent は計画更新、レビュー反映、完了判定、コミット、slice 間の引き継ぎを担当する。phase が短すぎて委譲コストの方が高い場合のみ main agent が直接実装する。
+  - main agent は roadmap / slice 更新、レビュー反映、subagent への phase 指示、成果レビュー、phase 完了記録、slice 間の引き継ぎを担当する。
 - Review Status: レビュー済み
 - Review Notes:
   - 2026-04-10 実現性レビュー: feasible。致命的な blocker はなし。
@@ -24,6 +24,7 @@
   - 2026-04-10 反映: roadmap の後半 slice は Slice B 完了時の gate で継続/分離を再判定する方針を追記した。
   - 2026-04-11 plan-driven-changes 更新追従: `Execution Mode` / `Execution Mode Policy` を追加し、Temporary Change Plan Rule との対応を明文化した。
   - 2026-04-11 実行方針更新: ユーザ指示に合わせて `Execution Mode` を `autonomous` へ変更し、blocking issue がない限り roadmap を継続実行する運用へ切り替えた。
+  - 2026-04-11 Slice B review 反映: phase 実行の責務を subagent 委譲前提へ統一した。
 
 ## 1. Background
 - 現状の FlistWalker は、検索契約、非同期処理、self-update、release hygiene、クロスプラットフォーム CI まで含めて品質は高い。
@@ -136,8 +137,8 @@
      - 各 slice の完了条件の確認、残課題の明示
 
 ## 6.1 Slice Ordering and Gates
-- Active slice は `Slice A` とする。着手前に active slice plan を更新し、review 済み状態を維持する。
-- `Slice A` 完了時は roadmap へ結果差分、残課題、`Slice B` へ引き継ぐ制約を反映する。
+- Active slice は `Slice B` とする。着手前に active slice plan を更新し、review 済み状態を維持する。
+- `Slice A` は完了済み。roadmap へ結果差分、残課題、`Slice B` へ引き継ぐ制約を反映した。
 - `Slice B` 完了時は `Slice C` / `Slice D` をこの roadmap で継続するか、follow-up roadmap へ分離するかを再判定する。
 - `Final validation slice` は終端 slice として扱い、この roadmap を完了として閉じるか、追加 slice を定義して継続するかを判断する。
 - `Execution Mode: autonomous` のため、各 slice 完了後に明示的な停止理由がなければ、roadmap 更新後に次の active slice へ継続する。
@@ -178,10 +179,10 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## Temporary Change Plan Rule
 - `ideal-architecture` の対応では、実装前に以下の計画書を上から順に読むこと。
 - `docs/CHANGE-PLAN-20260410-roadmap-ideal-architecture.md`
-- `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`
+- `docs/CHANGE-PLAN-20260410-slice-b-lifecycle-contract-hardening.md`
 - roadmap の `Execution Mode: autonomous` と `Execution Mode Policy` に従い、blocking issue がない限り roadmap 更新、phase 実行、slice 完了反映、次 slice 着手まで継続すること。
 - 実装順と確認順は計画書に従い、scope / order / risk を変える場合は先に計画書を更新すること。
-- phase 実行は main agent が担当し、phase 列が大きすぎる場合のみ `subslice` 追加を先に検討すること。
+- phase 実行は原則として subagent へ委譲し、main agent は orchestrator / reviewer として成果確認、計画更新、コミットを担当すること。
 - この一時ルールは計画対応の完了後に削除すること。
 ```
 
@@ -208,10 +209,10 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 13. Completion Checklist
 - [x] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] If the project is under git control, each completed phase was committed separately
-- [ ] Verification completed
+- [x] Temporary `AGENTS.md` rule added
+- [x] Work executed according to the plan or the plan updated first
+- [x] If the project is under git control, each completed phase was committed separately
+- [x] Verification completed
 - [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
