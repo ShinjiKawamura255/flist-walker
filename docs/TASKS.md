@@ -2,7 +2,7 @@
 
 ## Status Snapshot
 - Updated: 2026-04-12
-- Current active engineering roadmap: docs/CHANGE-PLAN-20260412-roadmap-app-shell-usecase-decoupling.md
+- Current active engineering roadmap: none
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
@@ -10,6 +10,11 @@
   - 2026-04-12 に Slice A を実装し、`AppShellState` で app shell を包み、`cd rust && cargo test` を通した。次の slice を起こす前に roadmap 側へ結果を反映した。
   - 2026-04-12 に Slice B を実装し、result/preview/sort response handling を reducer boundary へ移したうえで `cd rust && cargo test` を再実行した。
   - 2026-04-12 に Slice B を完了し、result/preview/sort response handling を reducer boundary へ移した。
+  - 2026-04-12 に app-shell/use-case decoupling roadmap を close し、temporary rule を撤去して change-plan 文書群を削除した。
+  - 2026-04-12 に app-shell/use-case decoupling roadmap を復元し、継続判断用 Slice C を追加して plan-driven-changes の再開点へ戻した。
+  - 2026-04-12 に Slice C で continue を判断し、残る shell-policy/helper extraction を Slice D として追加した。
+  - 2026-04-12 に Slice D を完了し、`shell_support.rs` へ shell/runtime helper policy を移して `mod.rs` を薄くしたうえで `cd rust && cargo test` を通した。
+  - 2026-04-12 に Slice E で closure judgment を完了し、roadmap を閉じて temporary plan machinery を撤去した。
   - 2026-04-11 に app architecture boundary cleanup の single plan を追加し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-11 に plan review を完了し、`path_key` を `path_utils.rs` へ移し、`result_flow.rs` へ result orchestration を分離したうえで `cargo test` を通した。
   - 2026-04-11 に app architecture boundary cleanup を完了し、temporary rule と change plan を撤去した。

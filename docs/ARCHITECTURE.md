@@ -36,6 +36,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - Windows path normalization と path identity helper を担当する。
 - [app/coordinator.rs](../rust/src/app/coordinator.rs)
   - status line、notice/status helper、frame/update glue、root/path compare の coordinator helper を担当する。
+- [app/shell_support.rs](../rust/src/app/shell_support.rs)
+  - process shutdown、egui font setup、window trace、root visibility/cache helper など shell-local helper policy を担当する。
 - [actions.rs](../rust/src/actions.rs)
   - open / execute の OS 差分吸収と testable seam を担当する。
 - [updater.rs](../rust/src/updater.rs)
@@ -47,7 +49,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 
 ## app Coordinator
 [mod.rs](../rust/src/app/mod.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。state holder は worker / UI / query の単位でも分離されている。
-- `FlistWalkerApp` は `AppShellState` を介して app-global / tab-local / feature-local state をまとめ、`AppRuntimeState` を内側の runtime bundle として保持する。coordinator 直下には shell/orchestration の入口だけを残し、細かな state ownership は shell bundle を経由して参照する。
+- `FlistWalkerApp` は `AppShellState` を介して app-global / tab-local / feature-local state をまとめ、`AppRuntimeState` を内側の runtime bundle として保持する。coordinator 直下には shell/orchestration の入口だけを残し、細かな state ownership は shell bundle を経由して参照する。shell-local helper policy は [shell_support.rs](../rust/src/app/shell_support.rs) へ移した。
 
 - `FlistWalkerApp` に残す fixed point は「egui/eframe entrypoint」「top-level orchestration」「cross-feature state holder」「owner API の呼び分け」に限定し、feature ごとの state transition と policy 判定は各 owner module へ寄せる。
 - `FlistWalkerApp` の state inventory は少なくとも次の 4 束で追跡する。

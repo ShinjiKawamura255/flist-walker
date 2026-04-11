@@ -16,13 +16,19 @@ use eframe::egui;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use std::collections::{HashMap, HashSet, VecDeque};
+#[allow(unused_imports)]
 use std::fs;
+#[allow(unused_imports)]
 use std::fs::OpenOptions;
+#[allow(unused_imports)]
 use std::io::Write;
 use std::path::{Path, PathBuf};
+#[allow(unused_imports)]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
+#[allow(unused_imports)]
 use std::sync::{Arc, Mutex, OnceLock};
+#[allow(unused_imports)]
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod bootstrap;
@@ -87,6 +93,11 @@ use workers::{
     spawn_action_worker, spawn_filelist_worker, spawn_kind_resolver_worker, spawn_preview_worker,
     spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
 };
+mod shell_support;
+pub use shell_support::{configure_egui_fonts, request_process_shutdown};
+pub(crate) use shell_support::process_shutdown_requested;
+#[cfg(test)]
+pub(crate) use shell_support::clear_process_shutdown_request;
 
 impl TabAccentColor {
     pub(super) const ALL: [Self; 8] = [
@@ -167,76 +178,6 @@ impl TabAccentColor {
     }
 }
 
-static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
-
-pub fn request_process_shutdown() {
-    PROCESS_SHUTDOWN_REQUESTED.store(true, Ordering::SeqCst);
-}
-
-fn process_shutdown_requested() -> bool {
-    PROCESS_SHUTDOWN_REQUESTED.load(Ordering::SeqCst)
-}
-
-#[cfg(test)]
-fn clear_process_shutdown_request() {
-    PROCESS_SHUTDOWN_REQUESTED.store(false, Ordering::SeqCst);
-}
-
-pub fn configure_egui_fonts(ctx: &egui::Context) {
-    let mut fonts = egui::FontDefinitions::default();
-
-    if let Some(font_bytes) = load_cjk_font_bytes() {
-        let font_name = "cjk_ui".to_string();
-        fonts
-            .font_data
-            .insert(font_name.clone(), egui::FontData::from_owned(font_bytes));
-        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
-            family.insert(0, font_name.clone());
-        }
-        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
-            family.push(font_name);
-        }
-    }
-
-    ctx.set_fonts(fonts);
-}
-
-fn load_cjk_font_bytes() -> Option<Vec<u8>> {
-    let mut candidates: Vec<&str> = Vec::new();
-
-    #[cfg(windows)]
-    {
-        candidates.extend([
-            r"C:\Windows\Fonts\YuGothR.ttc",
-            r"C:\Windows\Fonts\YuGothM.ttc",
-            r"C:\Windows\Fonts\meiryo.ttc",
-            r"C:\Windows\Fonts\msgothic.ttc",
-            r"C:\Windows\Fonts\MSYH.TTC",
-        ]);
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        candidates.extend([
-            "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
-            "/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc",
-            "/System/Library/Fonts/Hiragino Sans GB.ttc",
-        ]);
-    }
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        candidates.extend([
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansJP-Regular.otf",
-            "/usr/share/fonts/truetype/noto/NotoSansJP-Regular.otf",
-        ]);
-    }
-
-    candidates.into_iter().find_map(|path| fs::read(path).ok())
-}
-
 /// eframe/egui の UI フレームと各種ワーカーを結線する coordinator。
 pub struct FlistWalkerApp {
     shell: AppShellState,
@@ -288,72 +229,6 @@ Search hints:
 - !term : 除外トークン（例: main !test）
 - ^term : 先頭一致を優先（例: ^src）
 - term$ : 末尾一致を優先（例: .rs$）";
-
-    fn window_trace_enabled() -> bool {
-        static ENABLED: OnceLock<bool> = OnceLock::new();
-        *ENABLED.get_or_init(|| {
-            std::env::var("FLISTWALKER_WINDOW_TRACE")
-                .map(|v| {
-                    !(v == "0" || v.eq_ignore_ascii_case("false") || v.eq_ignore_ascii_case("off"))
-                })
-                .unwrap_or(false)
-        })
-    }
-
-    fn window_trace_verbose_enabled() -> bool {
-        static VERBOSE: OnceLock<bool> = OnceLock::new();
-        *VERBOSE.get_or_init(|| {
-            std::env::var("FLISTWALKER_WINDOW_TRACE_VERBOSE")
-                .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("on"))
-                .unwrap_or(false)
-        })
-    }
-
-    fn window_trace_path() -> Option<PathBuf> {
-        if let Some(path) = std::env::var_os("FLISTWALKER_WINDOW_TRACE_PATH") {
-            let path = PathBuf::from(path);
-            if !path.as_os_str().is_empty() {
-                return Some(path);
-            }
-        }
-        #[cfg(windows)]
-        {
-            if let Some(base) = std::env::var_os("USERPROFILE") {
-                return Some(PathBuf::from(base).join(".flistwalker_window_trace.log"));
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            if let Some(base) = std::env::var_os("HOME") {
-                return Some(PathBuf::from(base).join(".flistwalker_window_trace.log"));
-            }
-        }
-        None
-    }
-
-    fn append_window_trace(event: &str, details: &str) {
-        if !Self::window_trace_enabled() {
-            return;
-        }
-        let Some(path) = Self::window_trace_path() else {
-            return;
-        };
-        if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        let ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis())
-            .unwrap_or_default();
-        if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-            let _ = writeln!(file, "ts={} event={} {}", ts, event, details);
-        }
-    }
-
-    /// ウィンドウ診断イベントを opt-in ログへ追記する。
-    pub fn trace_window_event(event: &str, details: &str) {
-        Self::append_window_trace(event, details);
-    }
 
     /// 既定の launch 設定でアプリを初期化する。
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
@@ -487,131 +362,6 @@ Search hints:
             app.request_index_refresh();
         }
         app
-    }
-
-    /// クエリ履歴の永続化を一時的に無効化しているかを返す。
-    fn history_persist_disabled() -> bool {
-        std::env::var("FLISTWALKER_DISABLE_HISTORY_PERSIST")
-            .ok()
-            .map(|value| {
-                matches!(
-                    value.trim().to_ascii_lowercase().as_str(),
-                    "1" | "true" | "yes" | "on"
-                )
-            })
-            .unwrap_or(false)
-    }
-
-    /// root 外の path を含む操作要求の先頭違反要素を返す。
-    fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
-        paths
-            .iter()
-            .find(|path| !path_is_within_root(&self.root, path))
-            .cloned()
-    }
-
-    /// 現在 root の表示文字列を UI 向けに整形する。
-    fn root_display_text(&self) -> String {
-        normalize_windows_path_buf(self.root.clone())
-            .to_string_lossy()
-            .to_string()
-    }
-
-    /// root 変更で失効する entry/result 系 state を掃除する。
-    fn clear_root_scoped_entry_state(&mut self) {
-        self.index.entries.clear();
-        self.index.entries.shrink_to_fit();
-        self.index.source = IndexSource::None;
-        self.all_entries = Arc::new(Vec::new());
-        self.entries = Arc::new(Vec::new());
-        self.cache.entry_kind.clear();
-        self.base_results.clear();
-        self.base_results.shrink_to_fit();
-        self.results.clear();
-        self.results.shrink_to_fit();
-        self.indexing.incremental_filtered_entries.clear();
-        self.indexing.incremental_filtered_entries.shrink_to_fit();
-        self.worker_bus.sort.pending_request_id = None;
-        self.worker_bus.sort.in_progress = false;
-        self.result_sort_mode = ResultSortMode::Score;
-        self.clear_sort_metadata_cache();
-        self.indexing.last_search_snapshot_len = 0;
-    }
-
-    /// 現在の source に応じて相対パス表示を優先するかを返す。
-    fn prefer_relative_display(&self) -> bool {
-        matches!(
-            self.index.source,
-            IndexSource::Walker | IndexSource::FileList(_)
-        )
-    }
-
-    /// 指定 source に対する表示パス方針を返す。
-    fn prefer_relative_display_for(source: &IndexSource) -> bool {
-        matches!(source, IndexSource::Walker | IndexSource::FileList(_))
-    }
-
-    /// FileList source で type filter を固定する必要があるかを返す。
-    fn use_filelist_requires_locked_filters(&self) -> bool {
-        self.use_filelist && !matches!(self.index.source, IndexSource::Walker)
-    }
-
-    /// include flags に対して entry が可視対象かを判定する。
-    fn is_entry_visible_for_flags(entry: &Entry, include_files: bool, include_dirs: bool) -> bool {
-        entry.is_visible_for_flags(include_files, include_dirs)
-    }
-
-    /// 現在の filter 設定で entry が見えるかを返す。
-    fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
-        let kind = self.find_entry_kind(entry.path()).or(entry.kind);
-        match kind {
-            Some(kind) => {
-                (kind.is_dir && self.include_dirs) || (!kind.is_dir && self.include_files)
-            }
-            None => self.include_files && self.include_dirs,
-        }
-    }
-
-    fn rebuild_entry_kind_cache(&mut self) {
-        let all_entries = Arc::clone(&self.all_entries);
-        let index_entries = self.index.entries.clone();
-        let entries = Arc::clone(&self.entries);
-        self.cache.entry_kind.rebuild_from_sources(&[
-            all_entries.as_ref(),
-            &index_entries,
-            entries.as_ref(),
-        ]);
-    }
-
-    // Regression Guard (v0.16.0):
-    // DO NOT invoke `set_entry_kind_in_arc_batch` or `Arc::make_mut` here.
-    // Iterating and cloning all elements in the 500k+ `entries` arrays for every 512-item batch
-    // from the background worker locks up the main frame loop entirely. All kinds are now fetched
-    // lazily/reactively via `self.cache.entry_kind` specifically to avoid UI freezes.
-    fn apply_entry_kind_updates(&mut self, updates: &[(PathBuf, EntryKind)]) {
-        if updates.is_empty() {
-            return;
-        }
-        for (path, kind) in updates {
-            self.cache.entry_kind.set(path.clone(), *kind);
-        }
-    }
-
-    /// entry snapshot から path に対応する kind を探す。
-    fn find_entry_kind(&self, path: &Path) -> Option<EntryKind> {
-        self.cache.entry_kind.get(path)
-    }
-
-    /// 同一 path を持つ entry へ解決済み kind を反映する。
-    #[cfg(test)]
-    #[allow(dead_code)]
-    fn set_entry_kind(&mut self, path: &Path, kind: EntryKind) {
-        self.apply_entry_kind_updates(&[(path.to_path_buf(), kind)]);
-    }
-
-    #[cfg(test)]
-    fn worker_join_timeout() -> Duration {
-        Self::WORKER_JOIN_TIMEOUT
     }
 }
 
