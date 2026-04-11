@@ -1,3 +1,8 @@
+mod cache;
+mod config;
+mod execute;
+mod rank;
+
 use crate::entry::Entry;
 use crate::path_utils::normalize_windows_path;
 use crate::query::{
@@ -6,16 +11,19 @@ use crate::query::{
 };
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
-use rayon::prelude::*;
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use regex::{Regex, RegexBuilder};
-use std::cmp::Ordering;
-use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use std::time::Instant;
-use std::{env, thread};
 use tracing::{debug, warn};
+
+pub(crate) use cache::{SearchEntriesSnapshotKey, SearchPrefixCache};
+use config::{resolve_execution_mode, SearchExecutionMode};
+use execute::{collect_parallel, collect_sequential};
+use rank::{
+    materialize_scored_entries, scored_indices_to_paths, sort_scored_matches, top_ranked_scores,
+};
+pub(crate) use rank::filter_search_results;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndexedScore {
@@ -33,150 +41,6 @@ pub(crate) struct SearchCandidateScore {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub(crate) struct SearchScoredMatches {
     pub(crate) scored: Vec<SearchCandidateScore>,
-}
-
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct SearchEntriesSnapshotKey {
-    pub(crate) ptr: usize,
-    pub(crate) len: usize,
-}
-
-impl SearchEntriesSnapshotKey {
-    pub(crate) fn from_entries(entries: &Arc<Vec<Entry>>) -> Self {
-        Self {
-            ptr: Arc::as_ptr(entries) as usize,
-            len: entries.len(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct SearchPrefixCacheEntry {
-    snapshot: SearchEntriesSnapshotKey,
-    query: String,
-    matched_indices: Arc<Vec<usize>>,
-    approx_bytes: usize,
-}
-
-#[derive(Default)]
-pub(crate) struct SearchPrefixCache {
-    pub(crate) entries: VecDeque<SearchPrefixCacheEntry>,
-    pub(crate) total_bytes: usize,
-}
-
-impl SearchPrefixCache {
-    pub(crate) const MAX_ENTRIES: usize = 64;
-    pub(crate) const MAX_BYTES: usize = 8 * 1024 * 1024;
-    pub(crate) const MAX_MATCHED_INDICES: usize = 20_000;
-    const MIN_QUERY_LEN: usize = 3;
-
-    pub(crate) fn is_cacheable_query(query: &str) -> bool {
-        let q = query.trim();
-        if q.len() < Self::MIN_QUERY_LEN {
-            return false;
-        }
-        if q.contains(char::is_whitespace) {
-            return false;
-        }
-        !q.contains(['|', '!', '\'', '^', '$'])
-    }
-
-    pub(crate) fn is_safe_prefix_extension(prefix: &str, query: &str) -> bool {
-        if !Self::is_cacheable_query(prefix) || !Self::is_cacheable_query(query) {
-            return false;
-        }
-        query.starts_with(prefix) && query.len() > prefix.len()
-    }
-
-    pub(crate) fn lookup_candidates(
-        &mut self,
-        snapshot: SearchEntriesSnapshotKey,
-        query: &str,
-    ) -> Option<Arc<Vec<usize>>> {
-        if !Self::is_cacheable_query(query) {
-            return None;
-        }
-
-        let mut best_idx = None;
-        let mut best_len = 0usize;
-        for (idx, entry) in self.entries.iter().enumerate() {
-            if entry.snapshot != snapshot {
-                continue;
-            }
-            if !Self::is_safe_prefix_extension(&entry.query, query) {
-                continue;
-            }
-            if entry.query.len() > best_len {
-                best_len = entry.query.len();
-                best_idx = Some(idx);
-            }
-        }
-
-        let idx = best_idx?;
-        let entry = self.entries.remove(idx)?;
-        let matched = Arc::clone(&entry.matched_indices);
-        self.entries.push_back(entry);
-        Some(matched)
-    }
-
-    pub(crate) fn maybe_store(
-        &mut self,
-        snapshot: SearchEntriesSnapshotKey,
-        query: &str,
-        matched_indices: Vec<usize>,
-    ) {
-        if !Self::is_cacheable_query(query) {
-            return;
-        }
-        if matched_indices.is_empty() || matched_indices.len() > Self::MAX_MATCHED_INDICES {
-            return;
-        }
-
-        let query = query.trim().to_string();
-        let approx_bytes = query.len().saturating_add(
-            matched_indices
-                .len()
-                .saturating_mul(std::mem::size_of::<usize>()),
-        );
-        if approx_bytes > Self::MAX_BYTES {
-            return;
-        }
-
-        if let Some(existing_pos) = self
-            .entries
-            .iter()
-            .position(|entry| entry.snapshot == snapshot && entry.query == query)
-        {
-            if let Some(old) = self.entries.remove(existing_pos) {
-                self.total_bytes = self.total_bytes.saturating_sub(old.approx_bytes);
-            }
-        }
-
-        self.total_bytes = self.total_bytes.saturating_add(approx_bytes);
-        self.entries.push_back(SearchPrefixCacheEntry {
-            snapshot,
-            query,
-            matched_indices: Arc::new(matched_indices),
-            approx_bytes,
-        });
-        self.evict_over_limit();
-    }
-
-    fn evict_over_limit(&mut self) {
-        while self.entries.len() > Self::MAX_ENTRIES || self.total_bytes > Self::MAX_BYTES {
-            let Some(oldest) = self.entries.pop_front() else {
-                break;
-            };
-            self.total_bytes = self.total_bytes.saturating_sub(oldest.approx_bytes);
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum SearchExecutionMode {
-    Auto,
-    Sequential,
-    Parallel,
 }
 
 #[derive(Debug, Clone)]
@@ -227,16 +91,6 @@ struct SearchableEntry {
     name: String,
     full: String,
 }
-
-#[derive(Default)]
-struct SearchChunkResult {
-    scored: Vec<SearchCandidateScore>,
-}
-
-const SEARCH_PARALLEL_THRESHOLD_DEFAULT: usize = 25_000;
-const SEARCH_PARALLEL_CHUNK_MIN: usize = 1_024;
-const SEARCH_PARALLEL_CHUNK_MAX: usize = 16_384;
-const SEARCH_THREADS_MAX: usize = 32;
 
 fn is_subsequence(query: &[char], text: &str) -> bool {
     let mut qi = 0usize;
@@ -600,246 +454,6 @@ fn evaluate_candidate(
     })
 }
 
-fn merge_chunk_results(
-    mut left: SearchChunkResult,
-    mut right: SearchChunkResult,
-) -> SearchChunkResult {
-    left.scored.append(&mut right.scored);
-    left
-}
-
-fn collect_sequential(
-    entries: &[PathBuf],
-    compiled: &CompiledQuery,
-    ctx: SearchContext<'_>,
-    candidate_indices: Option<&[usize]>,
-) -> SearchScoredMatches {
-    let matcher = SkimMatcherV2::default();
-    let scored = match candidate_indices {
-        Some(indices) => indices
-            .iter()
-            .copied()
-            .enumerate()
-            .filter_map(|(ordinal, index)| {
-                entries.get(index).and_then(|path| {
-                    evaluate_candidate(path, index, ordinal, compiled, ctx, &matcher)
-                })
-            })
-            .collect(),
-        None => entries
-            .iter()
-            .enumerate()
-            .filter_map(|(index, path)| {
-                evaluate_candidate(path, index, index, compiled, ctx, &matcher)
-            })
-            .collect(),
-    };
-    SearchScoredMatches { scored }
-}
-
-fn search_parallel_threshold() -> usize {
-    env::var("FLISTWALKER_SEARCH_PARALLEL_THRESHOLD")
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .filter(|value| *value > 0)
-        .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT)
-}
-
-fn search_threads() -> usize {
-    env::var("FLISTWALKER_SEARCH_THREADS")
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .filter(|value| *value > 0)
-        .unwrap_or_else(|| {
-            thread::available_parallelism()
-                .map(|value| value.get())
-                .unwrap_or(1)
-        })
-        .min(SEARCH_THREADS_MAX)
-}
-
-fn search_parallel_chunk_size(candidate_count: usize) -> usize {
-    let threads = search_threads().max(1);
-    let target = candidate_count / threads.saturating_mul(8).max(1);
-    target.clamp(SEARCH_PARALLEL_CHUNK_MIN, SEARCH_PARALLEL_CHUNK_MAX)
-}
-
-fn search_thread_pool() -> &'static Option<ThreadPool> {
-    static POOL: OnceLock<Option<ThreadPool>> = OnceLock::new();
-    POOL.get_or_init(|| {
-        let threads = search_threads();
-        if threads <= 1 {
-            None
-        } else {
-            ThreadPoolBuilder::new().num_threads(threads).build().ok()
-        }
-    })
-}
-
-fn with_search_thread_pool<R: Send>(f: impl FnOnce() -> R + Send) -> R {
-    match search_thread_pool() {
-        Some(pool) => pool.install(f),
-        None => f(),
-    }
-}
-
-fn collect_parallel(
-    entries: &[PathBuf],
-    compiled: &CompiledQuery,
-    ctx: SearchContext<'_>,
-    candidate_indices: Option<&[usize]>,
-) -> SearchScoredMatches {
-    let candidate_count = candidate_indices.map_or(entries.len(), |items| items.len());
-    let chunk_size = search_parallel_chunk_size(candidate_count);
-
-    let scored = with_search_thread_pool(|| match candidate_indices {
-        Some(indices) => {
-            indices
-                .par_chunks(chunk_size)
-                .enumerate()
-                .map(|(chunk_idx, chunk)| {
-                    let matcher = SkimMatcherV2::default();
-                    let base_ordinal = chunk_idx.saturating_mul(chunk_size);
-                    let scored = chunk
-                        .iter()
-                        .copied()
-                        .enumerate()
-                        .filter_map(|(offset, index)| {
-                            entries.get(index).and_then(|path| {
-                                evaluate_candidate(
-                                    path,
-                                    index,
-                                    base_ordinal + offset,
-                                    compiled,
-                                    ctx,
-                                    &matcher,
-                                )
-                            })
-                        })
-                        .collect();
-                    SearchChunkResult { scored }
-                })
-                .reduce(SearchChunkResult::default, merge_chunk_results)
-                .scored
-        }
-        None => {
-            (0..entries.len())
-                .into_par_iter()
-                .with_min_len(chunk_size)
-                .fold(
-                    || (SkimMatcherV2::default(), Vec::<SearchCandidateScore>::new()),
-                    |(matcher, mut scored), index| {
-                        if let Some(item) = evaluate_candidate(
-                            &entries[index],
-                            index,
-                            index,
-                            compiled,
-                            ctx,
-                            &matcher,
-                        ) {
-                            scored.push(item);
-                        }
-                        (matcher, scored)
-                    },
-                )
-                .map(|(_, scored)| SearchChunkResult { scored })
-                .reduce(SearchChunkResult::default, merge_chunk_results)
-                .scored
-        }
-    });
-
-    SearchScoredMatches { scored }
-}
-
-fn resolve_execution_mode(
-    mode: SearchExecutionMode,
-    candidate_count: usize,
-) -> SearchExecutionMode {
-    match mode {
-        SearchExecutionMode::Auto => {
-            if candidate_count >= search_parallel_threshold() && search_threads() > 1 {
-                SearchExecutionMode::Parallel
-            } else {
-                SearchExecutionMode::Sequential
-            }
-        }
-        other => other,
-    }
-}
-
-fn compare_scored_candidates(a: &SearchCandidateScore, b: &SearchCandidateScore) -> Ordering {
-    b.score
-        .partial_cmp(&a.score)
-        .unwrap_or(Ordering::Equal)
-        .then_with(|| a.ordinal.cmp(&b.ordinal))
-}
-
-pub(crate) fn sort_scored_matches(scored: &mut [SearchCandidateScore]) {
-    scored.sort_unstable_by(compare_scored_candidates);
-}
-
-pub(crate) fn top_ranked_scores(
-    mut scored: Vec<SearchCandidateScore>,
-    limit: usize,
-) -> Vec<IndexedScore> {
-    if limit == 0 || scored.is_empty() {
-        return Vec::new();
-    }
-
-    if scored.len() > limit {
-        let keep = limit - 1;
-        scored.select_nth_unstable_by(keep, compare_scored_candidates);
-        scored.truncate(limit);
-    }
-    sort_scored_matches(&mut scored);
-    scored
-        .into_iter()
-        .map(|item| IndexedScore {
-            index: item.index,
-            score: item.score,
-        })
-        .collect()
-}
-
-pub(crate) fn filter_search_results(
-    results: Vec<(PathBuf, f64)>,
-    root: &Path,
-    query: &str,
-    prefer_relative: bool,
-    use_regex: bool,
-    ignore_case: bool,
-) -> Vec<(PathBuf, f64)> {
-    if use_regex {
-        return results;
-    }
-
-    results
-        .into_iter()
-        .filter(|(path, _)| {
-            crate::ui_model::has_visible_match(path, root, query, prefer_relative, ignore_case)
-        })
-        .collect()
-}
-
-fn scored_indices_to_paths(
-    entries: &[Entry],
-    scored: &[IndexedScore],
-    limit: usize,
-) -> Vec<(PathBuf, f64)> {
-    if limit == 0 || scored.is_empty() {
-        return Vec::new();
-    }
-    scored
-        .iter()
-        .take(limit)
-        .filter_map(|item| {
-            entries
-                .get(item.index)
-                .map(|entry| (entry.path.clone(), item.score))
-        })
-        .collect()
-}
-
 pub(crate) fn rank_search_results(
     entries: &Arc<Vec<Entry>>,
     query: &str,
@@ -1039,21 +653,6 @@ pub fn try_search_entries_indexed_with_scope(
             score: item.score,
         })
         .collect())
-}
-
-fn materialize_scored_entries(
-    entries: &[PathBuf],
-    scored: Vec<IndexedScore>,
-) -> Vec<(PathBuf, f64)> {
-    scored
-        .into_iter()
-        .filter_map(|item| {
-            entries
-                .get(item.index)
-                .cloned()
-                .map(|path| (path, item.score))
-        })
-        .collect()
 }
 
 pub fn search_entries_with_scope(
