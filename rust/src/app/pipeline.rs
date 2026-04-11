@@ -54,14 +54,14 @@ impl FlistWalkerApp {
         reset_kind_resolution: bool,
         mark_inflight: bool,
     ) {
+        let query_non_empty = !self.query_state.query.trim().is_empty();
         if mark_inflight {
             self.indexing.begin_active_refresh_with_inflight(
                 request_id,
-                !self.query_state.query.trim().is_empty(),
+                query_non_empty,
             );
         } else {
-            self.indexing
-                .begin_active_refresh(request_id, !self.query_state.query.trim().is_empty());
+            self.indexing.begin_active_refresh(request_id, query_non_empty);
         }
         self.search.set_pending_request_id(None);
         self.search.set_in_progress(false);
@@ -117,17 +117,18 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_background_index_refresh_for_tab(&mut self, tab_index: usize) {
-        let Some(tab_id) = self.tabs.get(tab_index).map(|tab| tab.id) else {
+        let shell = &mut self.shell;
+        let (tabs, indexing) = (&mut shell.tabs, &mut shell.indexing);
+        let Some(tab_id) = tabs.get(tab_index).map(|tab| tab.id) else {
             return;
         };
-        let request_id = self.indexing.allocate_request_id(Some(tab_id));
+        let request_id = indexing.allocate_request_id(Some(tab_id));
 
-        let Some(tab) = self.tabs.get_mut(tab_index) else {
-            self.indexing.request_tabs.remove(&request_id);
+        let Some(tab) = tabs.get_mut(tab_index) else {
+            indexing.request_tabs.remove(&request_id);
             return;
         };
-        self.indexing
-            .begin_background_refresh(tab, request_id, "Refreshing from created FileList");
+        indexing.begin_background_refresh(tab, request_id, "Refreshing from created FileList");
 
         let req = IndexRequest {
             request_id,
@@ -152,27 +153,31 @@ impl FlistWalkerApp {
     }
 
     fn handle_index_worker_unavailable(&mut self) {
-        let affected_tab_ids: HashSet<u64> = self.indexing.request_tabs.values().copied().collect();
         let notice = "Index worker is unavailable".to_string();
+        {
+            let shell = &mut self.shell;
+            let (tabs, indexing, features) =
+                (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
+            let affected_tab_ids: HashSet<u64> = indexing.request_tabs.values().copied().collect();
 
-        self.features.filelist.pending_after_index = None;
-        self.indexing.pending_queue.clear();
-        self.indexing.background_states.clear();
-        self.indexing.inflight_requests.clear();
-        self.indexing.request_tabs.clear();
+            features.filelist.pending_after_index = None;
+            indexing.pending_queue.clear();
+            indexing.background_states.clear();
+            indexing.inflight_requests.clear();
+            indexing.request_tabs.clear();
 
-        self.indexing
-            .clear_active_request_state(&mut self.tabs.pending_restore_refresh);
-        self.set_notice(notice.clone());
+            indexing.clear_active_request_state(&mut tabs.pending_restore_refresh);
 
-        for tab in &mut self.tabs {
-            if affected_tab_ids.contains(&tab.id)
-                || tab.index_state.pending_index_request_id.is_some()
-            {
-                Self::clear_tab_index_request_state(tab);
-                tab.notice = notice.clone();
+            for tab in tabs {
+                if affected_tab_ids.contains(&tab.id)
+                    || tab.index_state.pending_index_request_id.is_some()
+                {
+                    Self::clear_tab_index_request_state(tab);
+                    tab.notice = notice.clone();
+                }
             }
         }
+        self.set_notice(notice.clone());
     }
 
     pub(super) fn maybe_reindex_from_filter_toggles(

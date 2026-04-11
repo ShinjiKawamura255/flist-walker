@@ -72,3 +72,11 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- For `app-shell-usecase-decoupling`, read `docs/CHANGE-PLAN-20260412-roadmap-app-shell-usecase-decoupling.md` and `docs/CHANGE-PLAN-20260412-slice-a-app-shell-usecase-decoupling.md` before starting implementation.
+- Follow the roadmap `Execution Mode` and `Execution Mode Policy`.
+- Execute the work in the documented order unless the plan is updated first.
+- If scope, order, or risk changes, update the change plan before continuing.
+- If later slices are added under this roadmap, read them in upper-to-lower order before the relevant work.
+- Remove this section from `AGENTS.md` after the planned work is complete.

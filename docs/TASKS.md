@@ -1,11 +1,13 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-11
-- Current active engineering roadmap: none
+- Updated: 2026-04-12
+- Current active engineering roadmap: docs/CHANGE-PLAN-20260412-roadmap-app-shell-usecase-decoupling.md
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-12 に app-shell/use-case decoupling roadmap と initial slice A を作成し、`AGENTS.md` に temporary rule を追記した。
+  - 2026-04-12 に Slice A を実装し、`AppShellState` で app shell を包み、`cd rust && cargo test` を通した。次の slice を起こす前に roadmap 側へ結果を反映した。
   - 2026-04-11 に app architecture boundary cleanup の single plan を追加し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-11 に plan review を完了し、`path_key` を `path_utils.rs` へ移し、`result_flow.rs` へ result orchestration を分離したうえで `cargo test` を通した。
   - 2026-04-11 に app architecture boundary cleanup を完了し、temporary rule と change plan を撤去した。

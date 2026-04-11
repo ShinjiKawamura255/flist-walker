@@ -778,6 +778,32 @@ pub struct AppRuntimeState {
     pub(super) status_line: String,
 }
 
+pub struct AppShellState {
+    pub(super) runtime: AppRuntimeState,
+    pub(super) search: SearchCoordinator,
+    pub(super) worker_bus: WorkerBus,
+    pub(super) indexing: IndexCoordinator,
+    pub(super) ui: RuntimeUiState,
+    pub(super) cache: CacheStateBundle,
+    pub(super) tabs: TabSessionState,
+    pub(super) features: FeatureStateBundle,
+    pub(super) worker_runtime: Option<WorkerRuntime>,
+}
+
+impl std::ops::Deref for AppShellState {
+    type Target = AppRuntimeState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.runtime
+    }
+}
+
+impl std::ops::DerefMut for AppShellState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.runtime
+    }
+}
+
 pub(super) struct RootBrowserState {
     #[cfg(test)]
     pub(super) browse_dialog_result: Option<Result<Option<PathBuf>, String>>,

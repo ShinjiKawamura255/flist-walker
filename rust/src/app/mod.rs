@@ -60,7 +60,7 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    AppRuntimeState, BackgroundIndexState, CacheStateBundle, FeatureStateBundle,
+    AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, FeatureStateBundle,
     FileListDialogKind, FileListManager, HighlightCacheKey, PendingFileListAfterIndex,
     PendingFileListAncestorConfirmation, PendingFileListConfirmation,
     PendingFileListUseWalkerConfirmation, ResultSortMode, RootBrowserState, SortMetadata,
@@ -238,28 +238,20 @@ fn load_cjk_font_bytes() -> Option<Vec<u8>> {
 
 /// eframe/egui の UI フレームと各種ワーカーを結線する coordinator。
 pub struct FlistWalkerApp {
-    runtime: AppRuntimeState,
-    search: SearchCoordinator,
-    worker_bus: WorkerBus,
-    indexing: IndexCoordinator,
-    ui: RuntimeUiState,
-    cache: CacheStateBundle,
-    tabs: TabSessionState,
-    features: FeatureStateBundle,
-    worker_runtime: Option<WorkerRuntime>,
+    shell: AppShellState,
 }
 
 impl std::ops::Deref for FlistWalkerApp {
-    type Target = AppRuntimeState;
+    type Target = AppShellState;
 
     fn deref(&self) -> &Self::Target {
-        &self.runtime
+        &self.shell
     }
 }
 
 impl std::ops::DerefMut for FlistWalkerApp {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.runtime
+        &mut self.shell
     }
 }
 
@@ -435,52 +427,54 @@ Search hints:
             update_state,
         ) = Self::launch_seed(root, limit, query, &launch).into_parts();
         let mut app = Self {
-            runtime: AppRuntimeState {
-                root,
-                limit,
-                query_state: QueryState::new(query, query_history),
-                use_filelist: true,
-                use_regex: false,
-                ignore_case: true,
-                include_files: true,
-                include_dirs: true,
-                index: IndexBuildResult {
-                    entries: Vec::new(),
-                    source: IndexSource::None,
+            shell: AppShellState {
+                runtime: AppRuntimeState {
+                    root,
+                    limit,
+                    query_state: QueryState::new(query, query_history),
+                    use_filelist: true,
+                    use_regex: false,
+                    ignore_case: true,
+                    include_files: true,
+                    include_dirs: true,
+                    index: IndexBuildResult {
+                        entries: Vec::new(),
+                        source: IndexSource::None,
+                    },
+                    all_entries: Arc::new(Vec::new()),
+                    entries: Arc::new(Vec::new()),
+                    base_results: Vec::new(),
+                    results: Vec::new(),
+                    result_sort_mode: ResultSortMode::Score,
+                    pinned_paths: HashSet::new(),
+                    current_row: Some(0),
+                    preview: String::new(),
+                    notice: String::new(),
+                    status_line: "Initializing...".to_string(),
                 },
-                all_entries: Arc::new(Vec::new()),
-                entries: Arc::new(Vec::new()),
-                base_results: Vec::new(),
-                results: Vec::new(),
-                result_sort_mode: ResultSortMode::Score,
-                pinned_paths: HashSet::new(),
-                current_row: Some(0),
-                preview: String::new(),
-                notice: String::new(),
-                status_line: "Initializing...".to_string(),
-            },
-            search: SearchCoordinator::new(search_tx, search_rx),
-            worker_bus,
-            indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
-            ui: RuntimeUiState::new(show_preview, preview_panel_width),
-            cache: CacheStateBundle {
-                preview: PreviewCacheState::default(),
-                highlight: HighlightCacheState::with_scope_ignore_case(true),
-                entry_kind: EntryKindCacheState::default(),
-                sort_metadata: SortMetadataCacheState::default(),
-            },
-            tabs: TabSessionState::default(),
-            features: FeatureStateBundle {
-                root_browser: RootBrowserState {
-                    #[cfg(test)]
-                    browse_dialog_result: None,
-                    saved_roots,
-                    default_root,
+                search: SearchCoordinator::new(search_tx, search_rx),
+                worker_bus,
+                indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
+                ui: RuntimeUiState::new(show_preview, preview_panel_width),
+                cache: CacheStateBundle {
+                    preview: PreviewCacheState::default(),
+                    highlight: HighlightCacheState::with_scope_ignore_case(true),
+                    entry_kind: EntryKindCacheState::default(),
+                    sort_metadata: SortMetadataCacheState::default(),
                 },
-                filelist: FileListManager::default(),
-                update: UpdateManager::from_state(update_state),
+                tabs: TabSessionState::default(),
+                features: FeatureStateBundle {
+                    root_browser: RootBrowserState {
+                        #[cfg(test)]
+                        browse_dialog_result: None,
+                        saved_roots,
+                        default_root,
+                    },
+                    filelist: FileListManager::default(),
+                    update: UpdateManager::from_state(update_state),
+                },
+                worker_runtime: Some(worker_runtime),
             },
-            worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));

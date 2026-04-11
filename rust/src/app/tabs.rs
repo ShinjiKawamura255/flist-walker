@@ -270,6 +270,7 @@ impl FlistWalkerApp {
         let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
             return;
         };
+        let sort_metadata = self.cache.sort_metadata.get_map().clone();
         let Some(tab) = self.tabs.get_mut(tab_index) else {
             return;
         };
@@ -282,7 +283,7 @@ impl FlistWalkerApp {
             tab.result_state.results = Self::build_sorted_results_from(
                 &tab.result_state.base_results,
                 tab.result_state.result_sort_mode,
-                self.cache.sort_metadata.get_map(),
+                &sort_metadata,
             );
             tab.result_state.results_compacted = false;
             if tab.result_state.results.is_empty() {
@@ -388,13 +389,15 @@ impl FlistWalkerApp {
         msg: IndexResponse,
     ) -> BackgroundIndexResponseEffect {
         let limit = self.limit;
+        let shell = &mut self.shell;
+        let (tabs, indexing, features) = (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
         let mut effect = BackgroundIndexResponseEffect {
             trigger_search: false,
             cleanup_request_id: None,
             deferred_filelist: None,
         };
 
-        let Some(tab) = self.tabs.get_mut(tab_index) else {
+        let Some(tab) = tabs.get_mut(tab_index) else {
             return effect;
         };
 
@@ -404,11 +407,7 @@ impl FlistWalkerApp {
                     return effect;
                 }
                 tab.index_state.index.source = source.clone();
-                self.indexing
-                    .background_states
-                    .entry(request_id)
-                    .or_default()
-                    .source = Some(source);
+                indexing.background_states.entry(request_id).or_default().source = Some(source);
             }
             IndexResponse::Batch {
                 request_id,
@@ -417,11 +416,7 @@ impl FlistWalkerApp {
                 if tab.index_state.pending_index_request_id != Some(request_id) {
                     return effect;
                 }
-                let state = self
-                    .indexing
-                    .background_states
-                    .entry(request_id)
-                    .or_default();
+                let state = indexing.background_states.entry(request_id).or_default();
                 for entry in entries {
                     state.entries.push(entry.into());
                 }
@@ -433,11 +428,7 @@ impl FlistWalkerApp {
                 if tab.index_state.pending_index_request_id != Some(request_id) {
                     return effect;
                 }
-                let state = self
-                    .indexing
-                    .background_states
-                    .entry(request_id)
-                    .or_default();
+                let state = indexing.background_states.entry(request_id).or_default();
                 state.entries.clear();
                 for entry in entries {
                     state.entries.push(entry.into());
@@ -448,11 +439,7 @@ impl FlistWalkerApp {
                     effect.cleanup_request_id = Some(request_id);
                     return effect;
                 }
-                let state = self
-                    .indexing
-                    .background_states
-                    .remove(&request_id)
-                    .unwrap_or_default();
+                let state = indexing.background_states.remove(&request_id).unwrap_or_default();
                 tab.index_state.index.source = state.source.unwrap_or(source);
                 tab.index_state.index.entries.clear();
                 tab.index_state.all_entries = Arc::new(state.entries);
@@ -505,15 +492,14 @@ impl FlistWalkerApp {
                     tab.index_state.in_flight_kind_paths.clear();
                     tab.index_state.kind_resolution_in_progress = false;
                 }
-                if self
-                    .features
+                let pending_after_index_matches = features
                     .filelist
                     .pending_after_index
                     .as_ref()
                     .is_some_and(|pending| {
                         pending.tab_id == tab.id && path_key(&pending.root) == path_key(&tab.root)
-                    })
-                {
+                    });
+                if pending_after_index_matches {
                     effect.deferred_filelist = Some((
                         tab.id,
                         tab.root.clone(),
@@ -523,7 +509,7 @@ impl FlistWalkerApp {
                             .map(|entry| entry.path.clone())
                             .collect(),
                     ));
-                    self.features.filelist.pending_after_index = None;
+                    features.filelist.pending_after_index = None;
                 }
 
                 if tab.query_state.query.trim().is_empty() {

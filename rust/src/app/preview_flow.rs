@@ -91,22 +91,20 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
-        if self.cache.highlight.matches_scope(
-            &self.query_state.query,
-            &self.root,
-            self.use_regex,
-            self.ignore_case,
-            prefer_relative,
-        ) {
+        let query = self.query_state.query.clone();
+        let root = self.root.clone();
+        let use_regex = self.use_regex;
+        let ignore_case = self.ignore_case;
+        if self
+            .cache
+            .highlight
+            .matches_scope(&query, &root, use_regex, ignore_case, prefer_relative)
+        {
             return;
         }
-        self.cache.highlight.reset_scope(
-            self.query_state.query.clone(),
-            self.root.clone(),
-            self.use_regex,
-            self.ignore_case,
-            prefer_relative,
-        );
+        self.cache
+            .highlight
+            .reset_scope(query, root, use_regex, ignore_case, prefer_relative);
     }
 
     fn cache_highlight_positions_for_key(&mut self, key: HighlightCacheKey, positions: Vec<u16>) {

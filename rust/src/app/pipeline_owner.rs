@@ -68,10 +68,8 @@ impl<'a> PipelineOwner<'a> {
 
     pub(super) fn enqueue_search_request(&mut self) {
         self.app.commit_query_history_if_needed(false);
-        let request_id = self
-            .app
-            .search
-            .begin_active_request(self.app.current_tab_id());
+        let current_tab_id = self.app.current_tab_id();
+        let request_id = self.app.search.begin_active_request(current_tab_id);
         self.app.refresh_status_line();
 
         let req = self.build_active_search_request(request_id);
@@ -275,13 +273,23 @@ impl<'a> PipelineOwner<'a> {
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {
         let limit = self.app.limit;
-        let Some(tab) = self.app.tabs.get_mut(tab_index) else {
-            return;
+        let (request_id, req) = {
+            let shell = &mut self.app.shell;
+            let (tabs, search) = (&mut shell.tabs, &mut shell.search);
+            let Some(tab) = tabs.get_mut(tab_index) else {
+                return;
+            };
+            let request_id = search.begin_tab_request(tab);
+            let req = Self::build_search_request_for_tab(tab, request_id, limit);
+            (request_id, req)
         };
-        let request_id = self.app.search.begin_tab_request(tab);
-        let req = Self::build_search_request_for_tab(tab, request_id, limit);
         if self.app.search.tx.send(req).is_err() {
-            tab.pending_request_id = None;
+            let Some(tab) = self.app.tabs.get_mut(tab_index) else {
+                return;
+            };
+            if Some(request_id) == tab.pending_request_id {
+                tab.pending_request_id = None;
+            }
             tab.search_in_progress = false;
             tab.notice = "Search worker is unavailable".to_string();
         }
