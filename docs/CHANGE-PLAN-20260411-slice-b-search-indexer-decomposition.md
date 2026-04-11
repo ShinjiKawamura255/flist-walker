@@ -101,10 +101,10 @@
      - doc diff review
 
 ## 7. Detailed Task Breakdown
-- [ ] `search` を module directory へ分割する
-- [ ] `indexer` を module directory へ分割する
-- [ ] import / visibility / test scope を同期する
-- [ ] perf guard と docs を同期する
+- [x] `search` を module directory へ分割する
+- [x] `indexer` を module directory へ分割する
+- [x] import / visibility / test scope を同期する
+- [x] perf guard と docs を同期する
 
 ## 8. Validation Plan
 - Automated tests:
@@ -144,6 +144,9 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-11 19:35 Planned Slice B draft.
 - 2026-04-11 19:40 Feasibility review completed. 2 段のまま `search` / `indexer` / closure の phase 分割で進められると判断した。
+- 2026-04-11 20:15 Phase 1 completed. `search.rs` を `search/mod.rs` + `cache/config/execute/rank` へ分割し、既存 public search API を維持したまま `cargo test` green を確認した。
+- 2026-04-11 20:45 Phase 2-3 completed. `indexer.rs` を `indexer/mod.rs` + `filelist_reader/walker/filelist_writer` へ分割し、test/import compatibility を同期したうえで `cargo test` green を確認した。
+- 2026-04-11 20:55 Phase 4 completed. VM-003 perf guard 2 本と docs 同期を通し、Slice B を closure-ready にした。
 
 ## 12. Communication Plan
 - Return to user when:
@@ -152,12 +155,12 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - If the project is under git control, commit at the end of each completed phase.
 
 ## 13. Completion Checklist
-- [ ] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] If the project is under git control, each completed phase was committed separately
-- [ ] Verification completed
-- [ ] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
+- [x] Planned document created before implementation
+- [x] Temporary `AGENTS.md` rule added
+- [x] Work executed according to the plan or the plan updated first
+- [x] If the project is under git control, each completed phase was committed separately
+- [x] Verification completed
+- [x] Lasting requirements/spec/design/test updates moved into `REQUIREMENTS.md`, `SPEC.md`, `DESIGN.md`, and `TESTPLAN.md` as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Change plan deleted after completion
 

@@ -139,7 +139,7 @@
 ## 7. Detailed Task Breakdown
 - [ ] roadmap と active slice の計画作成・review・Temporary Rule 追加
 - [x] Slice A で `FlistWalkerApp` state decomposition を進める
-- [ ] Slice B で `search.rs` / `indexer.rs` を責務分割する
+- [x] Slice B で `search.rs` / `indexer.rs` を責務分割する
 - [ ] Slice C で CI / config / dependency hygiene を整える
 - [ ] Slice D で roadmap closure と恒久 docs 反映を行う
 
@@ -184,6 +184,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 19:05 Slice A Phase 3 completed. `root_browser` / `filelist_state` / `update_state` を `FeatureStateBundle` へ抽出し、feature dialog/update owner を `state.rs` へ寄せた。`cargo test` green。
 - 2026-04-11 19:20 Slice A completed. 恒久 docs を state bundle ownership に同期し、roadmap は Slice B planning へ進める状態になった。
 - 2026-04-11 19:40 Slice B activated. `search` / `indexer` module split を 4 phase で進める slice plan を作成し、active child plan を切り替えた。
+- 2026-04-11 20:55 Slice B completed. `search` は `cache/config/execute/rank`、`indexer` は `filelist_reader/walker/filelist_writer` へ分割し、`cargo test` と VM-003 perf guard 2 本を green で通した。roadmap は Slice C planning へ進める状態になった。
 
 ## 12. Communication Plan
 - Return to user when:

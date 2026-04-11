@@ -3,18 +3,18 @@
 ## Architecture overview
 - DES-001 Index Source Resolver
 - 役割: FileList 優先モード有効時に `FileList.txt`/`filelist.txt`（`filelist.txt` の大小違い含む）を検出して優先読み込み。
-- 実装: `rust/src/indexer.rs`
+- 実装: `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-002 Walker Indexer
 - 役割: FileList 未使用時の再帰走査。
-- 実装: `rust/src/indexer.rs`
+- 実装: `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`
 
 - DES-003 Fuzzy Search Engine
 - 役割: クエリ解釈（`'` `!` `^` `$` `|`）とスコアリングを担う。query 分解と正規化は shared module へ集約し、非 regex の `^`/`$` は隣接文字制約付きファジーとして評価する。regex モードでも plain include token は regex へ昇格させず、regex 構文を含む token だけを regex matcher として扱う。
 - 役割補足: 空白で分割した通常語 token は AND 条件で絞り込みつつ、score では token ごとのリテラル一致を subsequence 一致より優先して順位付けする。
 - 役割補足: GUI/CLI の `Ignore Case` フラグを受け取り、search と highlight で同じ比較モードを使う。
 - 役割補足: 検索クエリは要求単位で前処理し、候補ごとの path 文字列化・正規化を 1 回に抑える。大規模候補集合では search worker 内で並列評価しつつ、表示用には上位 `limit` 件だけを抽出する。
-- 実装: `rust/src/query.rs`, `rust/src/search.rs`
+- 実装: `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`
 
 - DES-004 Action Executor
 - 役割: ファイル実行/オープン、フォルダオープンを OS 差分吸収して実行し、open/execute の testable seam を保つ。
@@ -59,9 +59,10 @@
 - 役割補足: `app/worker_runtime.rs` は worker shutdown signal と join timeout の管理だけを持ち、個別 worker 実装から runtime orchestration を分離する。
 - 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation、preview request/response helper、preview request routing owner API を担当し、cache の scope 更新や eviction を method 経由へ局所化する。
 - 役割補足: `app/worker_support.rs` は worker routing の共通 helper と action target helper を担当し、`workers.rs` から reusable helper を切り離す。
-- 役割補足: `search.rs` は candidate scoring に加えて prefix cache、search result materialization、visible-result filtering を担当し、worker から search domain へ戻す。
+- 役割補足: search domain は `search/mod.rs` を public API と query compile の入口に保ちつつ、prefix cache は `search/cache.rs`、execution mode と parallel tuning は `search/config.rs`、candidate collect は `search/execute.rs`、ranking/materialization は `search/rank.rs` へ分割して保守する。
+- 役割補足: indexer domain は `indexer/mod.rs` を build orchestration と nested FileList override の入口に保ちつつ、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
-- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search.rs`
+- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。

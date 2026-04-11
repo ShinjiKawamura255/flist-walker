@@ -10,12 +10,26 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - 共有モジュール公開面。
 - [entry.rs](../rust/src/entry.rs)
   - `Entry` / `EntryKind` を定義し、index/search/app 間の候補表現を統一する。
-- [indexer.rs](../rust/src/indexer.rs)
-  - FileList 優先読み込み、walker 走査、FileList 書き出しを担当する。
+- [indexer/mod.rs](../rust/src/indexer/mod.rs)
+  - index build orchestration と nested FileList override を担当する。
+- [indexer/filelist_reader.rs](../rust/src/indexer/filelist_reader.rs)
+  - FileList 検出、stream parse、hierarchy 読み込みを担当する。
+- [indexer/filelist_writer.rs](../rust/src/indexer/filelist_writer.rs)
+  - FileList text 生成、書き出し、ancestor 伝播、write 補助を担当する。
+- [indexer/walker.rs](../rust/src/indexer/walker.rs)
+  - walker ベースの file/dir 収集を担当する。
 - [query.rs](../rust/src/query.rs)
   - fzf 互換 query tokenization と演算子解釈を担当する。
-- [search.rs](../rust/src/search.rs)
-  - candidate scoring、prefix cache、top-N 抽出、search result materialization を担当する。
+- [search/mod.rs](../rust/src/search/mod.rs)
+  - query compile と public search API の入口を担当する。
+- [search/cache.rs](../rust/src/search/cache.rs)
+  - prefix cache と snapshot key を担当する。
+- [search/config.rs](../rust/src/search/config.rs)
+  - parallel threshold / thread count / execution mode 判定を担当する。
+- [search/execute.rs](../rust/src/search/execute.rs)
+  - sequential / parallel collect と candidate evaluation の execution path を担当する。
+- [search/rank.rs](../rust/src/search/rank.rs)
+  - ranking、result materialization、visible-result filter を担当する。
 - [ui_model.rs](../rust/src/ui_model.rs)
   - highlight 判定、preview 文面、表示パス整形を担当する。
 - [app/coordinator.rs](../rust/src/app/coordinator.rs)
