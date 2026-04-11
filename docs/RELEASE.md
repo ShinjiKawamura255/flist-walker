@@ -164,6 +164,16 @@
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
 - notarization 環境が未整備な当面の間は、macOS を publish 対象に含める場合でも notarization 完了を必須条件にしない。その代わり release note に未 notarized である旨を記載すること。
 
+## Build / Release 環境変数の扱い
+- build/release secret:
+  - `FLISTWALKER_UPDATE_SIGNING_KEY_HEX`
+  - `FLISTWALKER_UPDATE_PUBLIC_KEY_HEX`
+- build toolchain override:
+  - `FLISTWALKER_WINDOWS_WINDRES`
+  - `FLISTWALKER_WINDOWS_AR`
+  - `FLISTWALKER_MACOS_SIGN_IDENTITY`
+- dev/test override (`FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE`, `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE`, `FLISTWALKER_DISABLE_SELF_UPDATE`) は release 手順の前提条件として扱わず、手動試験と内部検証に限定する。
+
 ## Signing Key Provisioning
 - 初回導入または鍵ローテーション時は `cd rust && cargo run --quiet --bin generate_update_keypair` で `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` と `FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` を生成する。
 - `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` は GitHub Actions secret とローカルの安全な保管先にのみ置き、リポジトリへ保存しない。

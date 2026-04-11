@@ -1125,7 +1125,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "ureq",
- "walkdir",
  "winres",
 ]
 

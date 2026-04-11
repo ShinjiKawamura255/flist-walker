@@ -22,6 +22,7 @@
 - `FeatureStateBundle` / `TabSessionState` のような state bundle 導入後も、bundle 単位の ownership を直接確認したい回帰は既存 owner test module に寄せ、bundle 配置だけを検証するための横断 fixture を増やさない。
 - stale response discard、cancel cleanup、pending/inflight 解放の契約は `update_commands.rs` と `index_pipeline/*` を優先対象にし、`app_core.rs` へ cross-cutting でない lifecycle regression を戻さない。
 - filelist response の current/previous/stale-requested-root 分岐は `rust/src/app/tests/index_pipeline/filelist_lifecycle.rs` を owner test とし、request cleanup と post-settle routing を同じ module で固定する。
+- 環境変数は validation 上 `user-facing`、`dev/test override`、`build/release` に分けて扱う。`README.md` に載せるのは user-facing のみとし、dev/test override は `TESTPLAN.md` と実装近傍 test に閉じる。
 - GUI Manual:
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:

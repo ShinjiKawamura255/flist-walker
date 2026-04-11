@@ -140,6 +140,12 @@ Linux で永続設定（bash）:
 echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 ```
 
+### 環境変数の公開区分
+
+- user-facing として案内するのは `FLISTWALKER_RESTORE_TABS=1` と `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のみです。
+- search 並列度、walker cap、window trace、update feed override などの環境変数は開発・手動試験専用です。公開向け設定としては扱いません。
+- signing / release build 用の環境変数は `docs/RELEASE.md` の build/release 用セクションだけで扱います。
+
 ## Rust 実装
 
 ```bash

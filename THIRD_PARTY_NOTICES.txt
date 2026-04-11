@@ -65,7 +65,6 @@ following license families:
   tracing-subscriber, ureq
 - MIT: fuzzy-matcher, ico, jwalk, native-dialog, winres
 - BSD-3-Clause: ed25519-dalek
-- MIT OR Unlicense: walkdir
 - MPL-2.0: resvg
 
 Distribution policy in this repository
