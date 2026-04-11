@@ -1,0 +1,34 @@
+# Heavy perf regression suite. The lightweight PR gate lives in CI Cross Platform.
+name: Heavy Perf Regression
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *"
+
+jobs:
+  perf-regression:
+    name: Heavy Perf Regression Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Run heavy FileList perf regression test
+        run: cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture
+
+      - name: Run heavy walker perf regression test
+        run: cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture
