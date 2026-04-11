@@ -31,6 +31,8 @@
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
 - 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
 - 役割補足: `app/mod.rs` の fixed point は `startup/bootstrap`、`frame update cycle`、`shutdown/persist`、`tab routing`、`filelist/update dialog dispatch`、`trace helper` の 6 区分を top-level で束ねることに限定し、各区分の state transition と policy 判定は owner module 側へ寄せる。
+- 役割補足: `FlistWalkerApp` の field inventory は、`app-global shared state`、`active-tab-local state`、`persisted/background tab state`、`feature dialog/update state` の 4 束で追跡し、以後の state decomposition はこの分類を崩さない。
+- 役割補足: `AppTabState` は persisted/background tab の snapshot 契約として維持し、active tab 側の live state は別 bundle から owner module へ渡す方針を取る。
 - 役割補足: `startup/bootstrap` では `new` / `from_launch` / `new_with_launch` が eframe entrypoint と app 初期化を束ねる一方、worker wiring と launch seed 構築は `app/bootstrap.rs`、restore/persist 契約は `app/session.rs` が owner を持つ。
 - 役割補足: `frame update cycle` では `app/mod.rs` が egui frame ごとの orchestration と repaint 判断だけを持ち、index/search/poll の進行管理は `app/pipeline.rs`、active result refresh は `app/pipeline_owner.rs`、render command 生成は `app/render.rs` が担当する。
 - 役割補足: `shutdown/persist` では `app/mod.rs` が eframe callback から shutdown seam を呼ぶだけに留め、UI state 永続化は `app/session.rs`、worker stop/join は `app/worker_runtime.rs` が担当する。

@@ -35,6 +35,15 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 [mod.rs](../rust/src/app/mod.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。state holder は worker / UI / query の単位でも分離されている。
 
 - `FlistWalkerApp` に残す fixed point は「egui/eframe entrypoint」「top-level orchestration」「cross-feature state holder」「owner API の呼び分け」に限定し、feature ごとの state transition と policy 判定は各 owner module へ寄せる。
+- `FlistWalkerApp` の state inventory は少なくとも次の 4 束で追跡する。
+  - `app-global shared state`
+    - root、filter flag、index snapshot、worker-facing coordinator state のように active tab 以外でも参照される束。
+  - `active-tab-local state`
+    - query、results、selection、preview、notice のように現在前面 tab にだけ適用される束。
+  - `persisted/background tab state`
+    - `AppTabState` と restore/switch/reorder/request-routing に紐づく tab/session 束。
+  - `feature dialog/update state`
+    - FileList dialog、self-update dialog、window/root browser など feature 単位の補助束。
 - `mod.rs` の責務棚卸しは少なくとも次の 6 区分で追跡する。
   - `startup/bootstrap`
     - 残置: `new` / `from_launch` / `new_with_launch` による app 初期化の入口。
@@ -94,9 +103,9 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [update.rs](../rust/src/app/update.rs)
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
-  - GUI 横断 state 型。
+  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / cache/root browser/request routing に加えて、change plan で導入する bundle inventory の受け皿として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
-  - tab snapshot 用 state 型。
+  - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。
 - [workers.rs](../rust/src/app/workers.rs)
   - search/preview/action/sort/update/filelist/kind worker の spawn 実装を担当する。
 

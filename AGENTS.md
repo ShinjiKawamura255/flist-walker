@@ -72,3 +72,13 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- `app-structure-followup` の対応では、実装前に以下の計画書を上から順に読むこと。
+- `docs/CHANGE-PLAN-20260411-roadmap-app-structure-followup.md`
+- `docs/CHANGE-PLAN-20260411-slice-a-app-state-decomposition.md`
+- roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
+- roadmap は `Execution Mode: autonomous` なので、問題がない限り roadmap 完遂まで slice 作成、review、phase 実行、phase ごとの commit、roadmap 更新を自律継続すること。
+- phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として成果確認と commit 境界管理を行うこと。
+- 実装順と確認順は計画書に従い、scope / order / risk を変える場合は先に計画書を更新すること。
+- この一時ルールは計画対応の完了後に削除すること。
