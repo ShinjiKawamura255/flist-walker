@@ -9,7 +9,7 @@
 - Execution Mode: autonomous
 - Execution Mode Policy: Review 済み roadmap を起点に、問題がない限り roadmap 完遂まで active slice の作成、review、phase 実行、phase ごとの commit、roadmap 更新を継続する。phase 実行は原則 subagent に委譲し、main agent は orchestrator と reviewer を担う。Slice 完了後は roadmap を更新し、goal 未達なら次 slice を同じ方針で継続する。
 - Parent Plan: none
-- Child Plan(s): docs/CHANGE-PLAN-20260411-slice-a-app-state-decomposition.md (active). Slice B/C/D plan docs are intentionally created when each slice becomes active.
+- Child Plan(s): docs/CHANGE-PLAN-20260411-slice-b-search-indexer-decomposition.md (active). Slice C/D plan docs are intentionally created when each slice becomes active.
 - Scope Label: app-structure-followup
 - Related Tickets/Issues: none
 - Review Status: レビュー済み
@@ -183,6 +183,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 14:35 Slice A Phase 2 completed. `tabs` は `TabSessionState` bundle を介して live tab/session registry を保持する構造へ移行し、`cargo test` green を確認した。
 - 2026-04-11 19:05 Slice A Phase 3 completed. `root_browser` / `filelist_state` / `update_state` を `FeatureStateBundle` へ抽出し、feature dialog/update owner を `state.rs` へ寄せた。`cargo test` green。
 - 2026-04-11 19:20 Slice A completed. 恒久 docs を state bundle ownership に同期し、roadmap は Slice B planning へ進める状態になった。
+- 2026-04-11 19:40 Slice B activated. `search` / `indexer` module split を 4 phase で進める slice plan を作成し、active child plan を切り替えた。
 
 ## 12. Communication Plan
 - Return to user when:
