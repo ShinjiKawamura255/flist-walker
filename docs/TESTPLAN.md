@@ -20,6 +20,7 @@
 - App test module policy:
 - app-level regression は owner/command seam ごとに module を分けて保守する。update は `rust/src/app/tests/update_commands.rs`、session restore は `rust/src/app/tests/session_restore.rs`、tab/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を主対象にし、`app_core.rs` へ unrelated fixture regression を増やし続けない。
 - stale response discard、cancel cleanup、pending/inflight 解放の契約は `update_commands.rs` と `index_pipeline/*` を優先対象にし、`app_core.rs` へ cross-cutting でない lifecycle regression を戻さない。
+- filelist response の current/previous/stale-requested-root 分岐は `rust/src/app/tests/index_pipeline/filelist_lifecycle.rs` を owner test とし、request cleanup と post-settle routing を同じ module で固定する。
 - GUI Manual:
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:
@@ -122,6 +123,7 @@
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |
 | TC-100 | unit | self-update candidate 解決は release asset 選択と support classification を分離し、manual-only fallback を契約として保持する | SP-014 |
 | TC-101 | unit | update request / install transitions emit trace commands for supportability and retain request_id correlation | SP-014 |
+| TC-102 | unit | Create File List の stale requested root completion は cleanup だけを行い、`use_filelist` 復帰や notice 更新を行わない | SP-001, SP-010 |
 | TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と sidecar 文書（README / LICENSE / THIRD_PARTY_NOTICES）と `SHA256SUMS` を選択できる | SP-014 |
 | TC-075 | unit | staged binary と sidecar 文書は `SHA256SUMS.sig` の署名検証と `SHA256SUMS` の checksum 検証を通過した場合のみ自己更新へ進む | SP-014 |
 | TC-076 | unit | Windows の自己更新は補助 updater 経由で target EXE 置換コマンドを生成し、実行中 EXE の直接上書きを避ける | SP-014 |

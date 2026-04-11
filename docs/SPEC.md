@@ -17,6 +17,7 @@
 - MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
 - MUST: Source が FileList のタブで Create File List を実行する場合、新規タブを開かずに同一タブの裏で Walker indexing を実行し、その結果で FileList を作成しなければならない。作成完了後は同じタブを新しい FileList で再インデックスしなければならない。
 - MUST: 上記の FileList 作成完了後再インデックスは、元タブが非アクティブに変わっていても元タブに対して継続しなければならない。一方、完了前にその元タブの root が変更されていた場合は、旧 root 向けの再インデックスや `use_filelist` 復帰を行ってはならない。
+- MUST: Create File List worker 応答は request_id と requested root の組で相関し、requested root と一致しない stale completion / failure / cancel では pending / in_progress cleanup 以外の follow-up（`use_filelist` 復帰、再インデックス、notice 更新）を行ってはならない。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
 - SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR/LINK）は遅延解決して初期読み込みを優先する。
@@ -181,7 +182,7 @@
 - MUST: search / index の非同期応答は、active request_id または request-tab routing で結び付いた background tab に対してのみ適用し、stale 応答で現在の root / tab / result state を巻き戻してはならない。
 - MUST: supersede または cancel された非同期 flow は、pending / in_progress / deferred action 状態を解放し、現在の UI state を壊さずに継続操作可能でなければならない。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
-- MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認を破棄する。
+- MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認、祖先追記確認、Walker 利用確認、deferred-after-index を破棄する。
 - MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: `FLISTWALKER_RESTORE_TABS=1` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。

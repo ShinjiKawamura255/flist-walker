@@ -7,7 +7,7 @@
 - Plan Depth: 2
 - Plan Role: roadmap
 - Parent Plan: none
-- Child Plan(s): `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`, `docs/CHANGE-PLAN-20260410-slice-b-lifecycle-contract-hardening.md`
+- Child Plan(s): `docs/CHANGE-PLAN-20260410-slice-a-app-coordinator-reduction.md`, `docs/CHANGE-PLAN-20260410-slice-b-lifecycle-contract-hardening.md`, `docs/CHANGE-PLAN-20260411-roadmap-regression-release-followup.md`
 - Scope Label: ideal-architecture
 - Related Tickets/Issues: none
 - Execution Mode: autonomous
@@ -137,9 +137,9 @@
      - 各 slice の完了条件の確認、残課題の明示
 
 ## 6.1 Slice Ordering and Gates
-- Active slice は `Slice B` とする。着手前に active slice plan を更新し、review 済み状態を維持する。
+- Active slice は `Final validation slice` とする。着手前に active slice plan を更新し、review 済み状態を維持する。
 - `Slice A` は完了済み。roadmap へ結果差分、残課題、`Slice B` へ引き継ぐ制約を反映した。
-- `Slice B` 完了時は `Slice C` / `Slice D` をこの roadmap で継続するか、follow-up roadmap へ分離するかを再判定する。
+- `Slice B` は完了済み。`Slice C` / `Slice D` は GUI regression automation と release/platform docs consolidation が architecture/lifecycle hardening と独立に大きいため、follow-up roadmap へ分離した。
 - `Final validation slice` は終端 slice として扱い、この roadmap を完了として閉じるか、追加 slice を定義して継続するかを判断する。
 - `Execution Mode: autonomous` のため、各 slice 完了後に明示的な停止理由がなければ、roadmap 更新後に次の active slice へ継続する。
 
@@ -147,7 +147,7 @@
 - [x] roadmap の slice 境界、着手順、完了条件を固定する
 - [x] active slice として Slice A の詳細計画を作る
 - [x] Slice A の実現性レビューを通し、必要なら phase 粒度を修正する
-- [ ] Slice B 完了時に、Slice C/D をこの roadmap に残すか follow-up roadmap へ分離するかを判断する
+- [x] Slice B 完了時に、Slice C/D をこの roadmap に残すか follow-up roadmap へ分離するかを判断する
 - [x] Slice A 完了後に roadmap を更新し、Slice B 以降の前提差分を反映する
 - [ ] 最終 slice で roadmap goal の達成可否を明示する
 
@@ -199,6 +199,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Slice A 継続として、result row navigation と pin toggle を `input.rs` owner へ寄せ、`mod.rs` に残る user command mutation をさらに削減した。`cargo test` green。
 - 2026-04-11 00:00 Slice A 継続として、status/notice helper と `run_update_cycle()` / `update()` / `on_exit()` / `Drop` の glue を `coordinator.rs` owner へ寄せ、`mod.rs` をさらに薄くした。`cargo test` green を確認した。
 - 2026-04-11 00:00 Slice A 完了判定: `mod.rs` の coordinator glue を `coordinator.rs` へ寄せ、owner 境界の可読性を改善した。`cargo test` green を確認し、Slice B へ進む準備を整えた。
+- 2026-04-11 00:00 Slice B 完了判定: index/search の terminal cleanup と filelist root-scope routing を owner module へ寄せ、`SPEC` / `DESIGN` / `TESTPLAN` を同期した。`cargo test` と VM-003 perf guard 2 本を green で確認した。
+- 2026-04-11 00:00 Slice C/D gate 判定: GUI regression automation と release/platform docs consolidation は architecture/lifecycle hardening と独立に大きいため、`docs/CHANGE-PLAN-20260411-roadmap-regression-release-followup.md` へ分離した。現 roadmap は final validation で閉じる。
 
 ## 12. Communication Plan
 - Return to user when:

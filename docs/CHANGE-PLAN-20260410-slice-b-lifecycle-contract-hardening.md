@@ -121,8 +121,8 @@
 - [x] index/search の stale discard / cancel / terminal cleanup を owner API 経由で追いやすくする
 - [x] update/filelist の pending / inflight / cancel / completion notice 契約を整理する
 - [x] lifecycle 契約に対応する regression test を補強する
-- [ ] SPEC / DESIGN / TESTPLAN を code に同期する
-- [ ] Slice B 完了時に roadmap へ結果と Slice C/D gate 判断材料を戻す
+- [x] SPEC / DESIGN / TESTPLAN を code に同期する
+- [x] Slice B 完了時に roadmap へ結果と Slice C/D gate 判断材料を戻す
 
 ## 8. Validation Plan
 - Automated tests:
@@ -162,6 +162,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 Phase 1 として、`SPEC.md` / `DESIGN.md` / `TESTPLAN.md` に lifecycle owner matrix と stale/cancel cleanup 契約を反映した。docs diff review で整合を確認した。
 - 2026-04-11 00:00 Phase 2 として、index response の active/stale terminal cleanup を `IndexCoordinator` helper 経由へ整理し、stale `Failed` / current `Canceled` の regression test を追加した。`cargo test` と VM-003 perf guard 2 本を green で確認した。
 - 2026-04-11 00:00 Phase 3 として、filelist response の root scope 判定を `FileListManager` 側へ寄せ、`poll_filelist_response()` の post-settle routing を reducer 化した。stale requested root を無視する regression test を追加し、`cargo test` と VM-003 perf guard 2 本を green で確認した。
+- 2026-04-11 00:00 Phase 4 として、`SPEC.md` / `DESIGN.md` / `TESTPLAN.md` に filelist root-scope 契約と owner test 方針を反映し、roadmap 側へ Slice B 完了と Slice C/D follow-up 分離判断を戻した。
 
 ## 12. Communication Plan
 - Return to user when:
