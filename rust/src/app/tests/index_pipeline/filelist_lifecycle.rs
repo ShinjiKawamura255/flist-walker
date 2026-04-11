@@ -127,6 +127,40 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
 }
 
 #[test]
+fn filelist_finished_for_stale_requested_root_is_ignored() {
+    let root_requested = test_root("filelist-stale-requested-root-requested");
+    let root_response = test_root("filelist-stale-requested-root-response");
+    fs::create_dir_all(&root_requested).expect("create requested dir");
+    fs::create_dir_all(&root_response).expect("create response dir");
+    let mut app = FlistWalkerApp::new(root_response.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+    app.worker_bus.filelist.rx = filelist_rx;
+    app.filelist_state.pending_request_id = Some(53);
+    app.filelist_state.pending_request_tab_id = app.current_tab_id();
+    app.filelist_state.pending_root = Some(root_requested.clone());
+    app.filelist_state.in_progress = true;
+    app.use_filelist = false;
+
+    filelist_tx
+        .send(FileListResponse::Finished {
+            request_id: 53,
+            root: root_response.clone(),
+            path: root_response.join("FileList.txt"),
+            count: 4,
+        })
+        .expect("send filelist response");
+
+    app.poll_filelist_response();
+
+    assert_eq!(app.filelist_state.pending_request_id, None);
+    assert!(!app.filelist_state.in_progress);
+    assert!(!app.use_filelist);
+    assert!(app.notice.is_empty());
+    let _ = fs::remove_dir_all(&root_requested);
+    let _ = fs::remove_dir_all(&root_response);
+}
+
+#[test]
 fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     let root = test_root("incremental-small-delta-skip");
     fs::create_dir_all(&root).expect("create dir");

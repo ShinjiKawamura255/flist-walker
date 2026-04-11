@@ -583,9 +583,7 @@ impl FlistWalkerApp {
         self.worker_bus.preview.pending_request_id = None;
         self.clear_root_scoped_entry_state();
         self.sync_active_tab_state();
-        self.cancel_stale_pending_filelist_confirmation();
-        self.cancel_stale_pending_filelist_ancestor_confirmation();
-        self.cancel_stale_pending_filelist_use_walker_confirmation();
+        self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.mark_ui_state_dirty();
         self.request_index_refresh();
         self.set_notice(format!("Root changed: {}", self.root_display_text()));

@@ -181,6 +181,17 @@ pub(super) struct FileListRequestContext {
     pub(super) tab_id: Option<u64>,
 }
 
+pub(super) enum FileListResponseScope {
+    CurrentRoot,
+    PreviousRoot,
+    StaleRequestedRoot,
+}
+
+pub(super) struct FileListResponseContext {
+    pub(super) tab_id: Option<u64>,
+    pub(super) root_scope: FileListResponseScope,
+}
+
 pub(super) struct FileListManager {
     workflow: FileListWorkflowState,
 }
@@ -264,16 +275,45 @@ impl FileListManager {
         Some(context)
     }
 
-    pub(super) fn settle_response_commands(
+    fn classify_response_scope(
+        requested_root: Option<&Path>,
+        response_root: &Path,
+        current_root: &Path,
+    ) -> FileListResponseScope {
+        let response_root_key = super::FlistWalkerApp::path_key(response_root);
+        let same_requested_root = requested_root
+            .map(|root| super::FlistWalkerApp::path_key(root) == response_root_key)
+            .unwrap_or(true);
+        if !same_requested_root {
+            return FileListResponseScope::StaleRequestedRoot;
+        }
+        if super::FlistWalkerApp::path_key(current_root) == response_root_key {
+            FileListResponseScope::CurrentRoot
+        } else {
+            FileListResponseScope::PreviousRoot
+        }
+    }
+
+    pub(super) fn settle_response_context_commands(
         &mut self,
         request_id: u64,
+        response_root: &Path,
+        current_root: &Path,
     ) -> Option<(
-        FileListRequestContext,
+        FileListResponseContext,
         Vec<super::filelist::FileListCommand>,
     )> {
         let context = self.settle_response(request_id)?;
+        let response_context = FileListResponseContext {
+            tab_id: context.tab_id,
+            root_scope: Self::classify_response_scope(
+                context.root.as_deref(),
+                response_root,
+                current_root,
+            ),
+        };
         Some((
-            context,
+            response_context,
             vec![super::filelist::FileListCommand::Ui(
                 super::filelist::FileListUiCommand::RefreshStatusLine,
             )],

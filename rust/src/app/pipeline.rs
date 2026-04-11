@@ -75,9 +75,7 @@ impl FlistWalkerApp {
         if let Some(tab) = self.tabs.get_mut(self.active_tab) {
             tab.pending_restore_refresh = false;
         }
-        self.cancel_stale_pending_filelist_confirmation();
-        self.cancel_stale_pending_filelist_ancestor_confirmation();
-        self.cancel_stale_pending_filelist_use_walker_confirmation();
+        self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
         let request_id = self.indexing.allocate_request_id(tab_id);
@@ -97,9 +95,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_create_filelist_walker_refresh(&mut self) {
-        self.cancel_stale_pending_filelist_confirmation();
-        self.cancel_stale_pending_filelist_ancestor_confirmation();
-        self.cancel_stale_pending_filelist_use_walker_confirmation();
+        self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
         let request_id = self.indexing.allocate_request_id(tab_id);

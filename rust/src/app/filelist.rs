@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::state::{FileListResponseContext, FileListResponseScope};
 
 // FileList reducer command surface. FileListManager owns the workflow state,
 // and this module bridges those commands back into FlistWalkerApp.
@@ -88,7 +89,7 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn cancel_stale_pending_filelist_confirmation(&mut self) {
+    fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
@@ -99,7 +100,7 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
+    fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
@@ -112,7 +113,7 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
+    fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = Self::path_key(&self.root);
         let should_cancel = self
@@ -123,6 +124,98 @@ impl FlistWalkerApp {
             );
         if should_cancel {
             self.set_notice("Pending Create File List confirmation canceled because root changed");
+        }
+    }
+
+    pub(super) fn cancel_stale_pending_filelist_confirmations_for_active_root(&mut self) {
+        self.cancel_stale_pending_filelist_confirmation();
+        self.cancel_stale_pending_filelist_ancestor_confirmation();
+        self.cancel_stale_pending_filelist_use_walker_confirmation();
+    }
+
+    fn resolve_filelist_target_tab_index(&self, tab_id: Option<u64>, root: &Path) -> Option<usize> {
+        let tab_id = tab_id?;
+        let tab_index = self.find_tab_index_by_id(tab_id)?;
+        let tab_matches_root = self
+            .tabs
+            .get(tab_index)
+            .is_some_and(|tab| Self::path_key(&tab.root) == Self::path_key(root));
+        tab_matches_root.then_some(tab_index)
+    }
+
+    fn handle_filelist_finished_response(
+        &mut self,
+        context: FileListResponseContext,
+        root: PathBuf,
+        path: PathBuf,
+        count: usize,
+    ) {
+        if matches!(context.root_scope, FileListResponseScope::StaleRequestedRoot) {
+            return;
+        }
+        let target_tab_index = self.resolve_filelist_target_tab_index(context.tab_id, &root);
+        if let Some(tab_index) = target_tab_index {
+            self.dispatch_filelist_commands(vec![FileListCommand::App(
+                FileListAppCommand::SetUseFileListForTab {
+                    tab_index,
+                    use_filelist: true,
+                },
+            )]);
+        }
+
+        match context.root_scope {
+            FileListResponseScope::PreviousRoot => {
+                self.set_notice(format!(
+                    "Created {}: {} entries (previous root)",
+                    path.display(),
+                    count
+                ));
+                if let Some(tab_index) = target_tab_index.filter(|index| *index != self.active_tab) {
+                    self.dispatch_filelist_commands(vec![FileListCommand::App(
+                        FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
+                    )]);
+                }
+            }
+            FileListResponseScope::CurrentRoot => {
+                self.set_notice(format!("Created {}: {} entries", path.display(), count));
+                if let Some(tab_index) = target_tab_index {
+                    if tab_index == self.active_tab && self.use_filelist {
+                        self.dispatch_filelist_commands(vec![FileListCommand::App(
+                            FileListAppCommand::RequestIndexRefresh,
+                        )]);
+                    } else if tab_index != self.active_tab {
+                        self.dispatch_filelist_commands(vec![FileListCommand::App(
+                            FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
+                        )]);
+                    }
+                }
+            }
+            FileListResponseScope::StaleRequestedRoot => {}
+        }
+    }
+
+    fn handle_filelist_failed_response(
+        &mut self,
+        context: FileListResponseContext,
+        error: String,
+    ) {
+        match context.root_scope {
+            FileListResponseScope::StaleRequestedRoot => {}
+            FileListResponseScope::PreviousRoot => {
+                self.set_notice(format!(
+                    "Create File List failed for previous root: {}",
+                    error
+                ));
+            }
+            FileListResponseScope::CurrentRoot => {
+                self.set_notice(format!("Create File List failed: {}", error));
+            }
+        }
+    }
+
+    fn handle_filelist_canceled_response(&mut self, context: FileListResponseContext) {
+        if !matches!(context.root_scope, FileListResponseScope::StaleRequestedRoot) {
+            self.set_notice("Create File List canceled");
         }
     }
 
@@ -400,117 +493,38 @@ impl FlistWalkerApp {
                     path,
                     count,
                 } => {
-                    let Some((context, commands)) =
-                        self.filelist_state.settle_response_commands(request_id)
+                    let Some((context, commands)) = self
+                        .filelist_state
+                        .settle_response_context_commands(request_id, &root, &self.root)
                     else {
                         continue;
                     };
                     self.dispatch_filelist_commands(commands);
-
-                    let same_requested_root = context
-                        .root
-                        .as_ref()
-                        .map(|r| Self::path_key(r) == Self::path_key(&root))
-                        .unwrap_or(true);
-                    let same_current_root = Self::path_key(&self.root) == Self::path_key(&root);
-
-                    if !same_requested_root {
-                        continue;
-                    }
-                    let mut target_tab_index = None;
-                    if let Some(tab_id) = context.tab_id {
-                        if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
-                            let tab_matches_root = self.tabs.get(tab_index).is_some_and(|tab| {
-                                Self::path_key(&tab.root) == Self::path_key(&root)
-                            });
-                            if tab_matches_root {
-                                self.dispatch_filelist_commands(vec![FileListCommand::App(
-                                    FileListAppCommand::SetUseFileListForTab {
-                                        tab_index,
-                                        use_filelist: true,
-                                    },
-                                )]);
-                                target_tab_index = Some(tab_index);
-                            }
-                        }
-                    }
-                    if !same_current_root {
-                        self.set_notice(format!(
-                            "Created {}: {} entries (previous root)",
-                            path.display(),
-                            count
-                        ));
-                        if let Some(tab_index) = target_tab_index {
-                            if tab_index != self.active_tab {
-                                self.dispatch_filelist_commands(vec![FileListCommand::App(
-                                    FileListAppCommand::RequestBackgroundIndexRefreshForTab(
-                                        tab_index,
-                                    ),
-                                )]);
-                            }
-                        }
-                        continue;
-                    }
-
-                    self.set_notice(format!("Created {}: {} entries", path.display(), count));
-                    if let Some(tab_index) = target_tab_index {
-                        if tab_index == self.active_tab && self.use_filelist {
-                            self.dispatch_filelist_commands(vec![FileListCommand::App(
-                                FileListAppCommand::RequestIndexRefresh,
-                            )]);
-                        } else if tab_index != self.active_tab {
-                            self.dispatch_filelist_commands(vec![FileListCommand::App(
-                                FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
-                            )]);
-                        }
-                    }
+                    self.handle_filelist_finished_response(context, root, path, count);
                 }
                 FileListResponse::Failed {
                     request_id,
                     root,
                     error,
                 } => {
-                    let Some((context, commands)) =
-                        self.filelist_state.settle_response_commands(request_id)
+                    let Some((context, commands)) = self
+                        .filelist_state
+                        .settle_response_context_commands(request_id, &root, &self.root)
                     else {
                         continue;
                     };
                     self.dispatch_filelist_commands(commands);
-
-                    let same_requested_root = context
-                        .root
-                        .as_ref()
-                        .map(|r| Self::path_key(r) == Self::path_key(&root))
-                        .unwrap_or(true);
-                    let same_current_root = Self::path_key(&self.root) == Self::path_key(&root);
-                    if !same_requested_root || !same_current_root {
-                        self.set_notice(format!(
-                            "Create File List failed for previous root: {}",
-                            error
-                        ));
-                        continue;
-                    }
-
-                    self.set_notice(format!("Create File List failed: {}", error));
+                    self.handle_filelist_failed_response(context, error);
                 }
                 FileListResponse::Canceled { request_id, root } => {
-                    let Some((context, commands)) =
-                        self.filelist_state.settle_response_commands(request_id)
+                    let Some((context, commands)) = self
+                        .filelist_state
+                        .settle_response_context_commands(request_id, &root, &self.root)
                     else {
                         continue;
                     };
                     self.dispatch_filelist_commands(commands);
-
-                    let same_requested_root = context
-                        .root
-                        .as_ref()
-                        .map(|r| Self::path_key(r) == Self::path_key(&root))
-                        .unwrap_or(true);
-                    if !same_requested_root {
-                        continue;
-                    }
-
-                    self.set_notice("Create File List canceled");
+                    self.handle_filelist_canceled_response(context);
                 }
             }
         }
