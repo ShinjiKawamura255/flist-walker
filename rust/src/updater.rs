@@ -834,8 +834,7 @@ mod tests {
                     browser_download_url: "https://example.invalid/windows-license".to_string(),
                 },
                 GitHubAsset {
-                    name: "FlistWalker-0.13.1-windows-x86_64.THIRD_PARTY_NOTICES.txt"
-                        .to_string(),
+                    name: "FlistWalker-0.13.1-windows-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
                     browser_download_url: "https://example.invalid/windows-notices".to_string(),
                 },
                 GitHubAsset {
@@ -867,8 +866,7 @@ mod tests {
                     browser_download_url: "https://example.invalid/macos-x64-license".to_string(),
                 },
                 GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-x86_64.THIRD_PARTY_NOTICES.txt"
-                        .to_string(),
+                    name: "FlistWalker-0.13.1-macos-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
                     browser_download_url: "https://example.invalid/macos-x64-notices".to_string(),
                 },
                 GitHubAsset {
@@ -884,8 +882,7 @@ mod tests {
                     browser_download_url: "https://example.invalid/macos-arm-license".to_string(),
                 },
                 GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-arm64.THIRD_PARTY_NOTICES.txt"
-                        .to_string(),
+                    name: "FlistWalker-0.13.1-macos-arm64.THIRD_PARTY_NOTICES.txt".to_string(),
                     browser_download_url: "https://example.invalid/macos-arm-notices".to_string(),
                 },
                 GitHubAsset {

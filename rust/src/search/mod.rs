@@ -20,10 +20,10 @@ use tracing::{debug, warn};
 pub(crate) use cache::{SearchEntriesSnapshotKey, SearchPrefixCache};
 use config::{resolve_execution_mode, SearchExecutionMode};
 use execute::{collect_parallel, collect_sequential};
+pub(crate) use rank::filter_search_results;
 use rank::{
     materialize_scored_entries, scored_indices_to_paths, sort_scored_matches, top_ranked_scores,
 };
-pub(crate) use rank::filter_search_results;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IndexedScore {

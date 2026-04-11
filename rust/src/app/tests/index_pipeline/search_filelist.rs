@@ -168,7 +168,8 @@ fn create_filelist_waits_while_indexing() {
     app.create_filelist();
 
     assert_eq!(
-        app.features.filelist
+        app.features
+            .filelist
             .pending_after_index
             .as_ref()
             .map(|pending| pending.root.clone()),
@@ -239,7 +240,11 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
 
     assert!(app.use_filelist);
     app.create_filelist();
-    assert!(app.features.filelist.pending_use_walker_confirmation.is_some());
+    assert!(app
+        .features
+        .filelist
+        .pending_use_walker_confirmation
+        .is_some());
     assert_eq!(app.tabs.len(), 1);
 
     app.confirm_pending_filelist_use_walker();
@@ -250,7 +255,8 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     assert!(app.include_files);
     assert!(app.include_dirs);
     let pending = app
-        .features.filelist
+        .features
+        .filelist
         .pending_after_index
         .as_ref()
         .expect("deferred filelist pending");
@@ -308,7 +314,12 @@ fn deferred_filelist_starts_after_index_finished() {
         .expect("send finished");
     app.poll_index_response();
 
-    if app.features.filelist.pending_ancestor_confirmation.is_some() {
+    if app
+        .features
+        .filelist
+        .pending_ancestor_confirmation
+        .is_some()
+    {
         app.skip_pending_filelist_ancestor_propagation();
     }
 
@@ -563,15 +574,20 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
-    app.features.filelist.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
-        tab_id,
-        root: root_old.clone(),
-        entries: vec![root_old.join("a.txt")],
-    });
+    app.features.filelist.pending_ancestor_confirmation =
+        Some(PendingFileListAncestorConfirmation {
+            tab_id,
+            root: root_old.clone(),
+            entries: vec![root_old.join("a.txt")],
+        });
 
     app.apply_root_change(root_new.clone());
 
-    assert!(app.features.filelist.pending_ancestor_confirmation.is_none());
+    assert!(app
+        .features
+        .filelist
+        .pending_ancestor_confirmation
+        .is_none());
     assert!(app.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
@@ -596,7 +612,11 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
 
     app.apply_root_change(root_new.clone());
 
-    assert!(app.features.filelist.pending_use_walker_confirmation.is_none());
+    assert!(app
+        .features
+        .filelist
+        .pending_use_walker_confirmation
+        .is_none());
     assert!(app.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
@@ -786,7 +806,11 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
         "notice should mention ancestor confirmation, got: {}",
         app.notice
     );
-    assert!(app.features.filelist.pending_ancestor_confirmation.is_some());
+    assert!(app
+        .features
+        .filelist
+        .pending_ancestor_confirmation
+        .is_some());
     assert!(app.features.filelist.pending_request_id.is_none());
     assert!(!app.features.filelist.in_progress);
     let _ = fs::remove_dir_all(&top);

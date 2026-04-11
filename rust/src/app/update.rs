@@ -72,7 +72,8 @@ impl FlistWalkerApp {
 
     pub(super) fn request_startup_update_check(&mut self) {
         let commands = self
-            .features.update
+            .features
+            .update
             .request_startup_check_commands(self_update_disabled());
         self.dispatch_update_commands(None, commands);
     }
@@ -114,7 +115,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn skip_update_prompt_until_next_version(&mut self) {
-        let commands = self.features.update.skip_prompt_until_next_version_commands();
+        let commands = self
+            .features
+            .update
+            .skip_prompt_until_next_version_commands();
         self.dispatch_update_commands(None, commands);
     }
 

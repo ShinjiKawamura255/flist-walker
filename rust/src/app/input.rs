@@ -128,10 +128,11 @@ impl FlistWalkerApp {
     pub(super) fn toggle_pin_current(&mut self) {
         if let Some(row) = self.current_row {
             if let Some((path, _)) = self.results.get(row) {
-                if self.pinned_paths.contains(path) {
-                    self.pinned_paths.remove(path);
+                let path = path.clone();
+                if self.pinned_paths.contains(&path) {
+                    self.pinned_paths.remove(&path);
                 } else {
-                    self.pinned_paths.insert(path.clone());
+                    self.pinned_paths.insert(path);
                 }
                 self.refresh_status_line();
             }
@@ -414,16 +415,13 @@ impl FlistWalkerApp {
             }
         } else if pressed(egui::Key::Y) {
             if !self.query_state.kill_buffer.is_empty() {
+                let kill_buffer = self.query_state.kill_buffer.clone();
                 if let Some((start, end)) = Self::selection_range(cursor, anchor) {
                     Self::remove_char_range(&mut self.query_state.query, start, end);
                     cursor = start;
                 }
-                Self::insert_at_char(
-                    &mut self.query_state.query,
-                    cursor,
-                    &self.query_state.kill_buffer,
-                );
-                cursor += Self::char_count(&self.query_state.kill_buffer);
+                Self::insert_at_char(&mut self.query_state.query, cursor, &kill_buffer);
+                cursor += Self::char_count(&kill_buffer);
                 anchor = cursor;
                 text_changed = true;
                 cursor_changed = true;
@@ -539,7 +537,8 @@ impl FlistWalkerApp {
     pub(super) fn current_filelist_dialog_kind(&self) -> Option<FileListDialogKind> {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .features.filelist
+            .features
+            .filelist
             .pending_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
@@ -547,7 +546,8 @@ impl FlistWalkerApp {
             return Some(FileListDialogKind::Overwrite);
         }
         if self
-            .features.filelist
+            .features
+            .filelist
             .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
@@ -555,7 +555,8 @@ impl FlistWalkerApp {
             return Some(FileListDialogKind::Ancestor);
         }
         if self
-            .features.filelist
+            .features
+            .filelist
             .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
@@ -1011,8 +1012,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn sync_shared_query_history_to_tabs(&mut self) {
+        let history = self.query_state.query_history.clone();
         for tab in &mut self.tabs {
-            tab.query_state.query_history = self.query_state.query_history.clone();
+            tab.query_state.query_history = history.clone();
         }
     }
 
@@ -1028,14 +1030,15 @@ impl FlistWalkerApp {
             return;
         }
         let before_len = self.query_state.query_history.len();
-        Self::push_query_history(&mut self.query_state.query_history, &self.query_state.query);
+        let query = self.query_state.query.clone();
+        Self::push_query_history(&mut self.query_state.query_history, &query);
         self.query_state.query_history_dirty_since = None;
         if self.query_state.query_history.len() != before_len
             || self
                 .query_state
                 .query_history
                 .back()
-                .is_some_and(|entry| entry == self.query_state.query.trim())
+                .is_some_and(|entry| entry == query.trim())
         {
             self.sync_shared_query_history_to_tabs();
             self.mark_ui_state_dirty();

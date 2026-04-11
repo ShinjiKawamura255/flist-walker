@@ -1,5 +1,6 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
+use crate::path_utils::path_key;
 
 pub(super) struct BackgroundIndexResponseEffect {
     pub(super) trigger_search: bool,
@@ -73,12 +74,12 @@ impl FlistWalkerApp {
     }
 
     fn current_root_dropdown_index(&self) -> Option<usize> {
-        let current_key = Self::path_key(&self.root);
+        let current_key = path_key(&self.root);
         self.features
             .root_browser
             .saved_roots
             .iter()
-            .position(|path| Self::path_key(path) == current_key)
+            .position(|path| path_key(path) == current_key)
     }
 
     /// dropdown のハイライト位置を保存済み root 一覧に同期する。
@@ -147,7 +148,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_action_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.tabs.request_tab_routing.bind_action(request_id, tab_id);
+        self.tabs
+            .request_tab_routing
+            .bind_action(request_id, tab_id);
     }
 
     pub(super) fn bind_action_request_to_current_tab(&mut self, request_id: u64) {
@@ -181,7 +184,11 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     pub(super) fn action_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.tabs.request_tab_routing.action.get(&request_id).copied()
+        self.tabs
+            .request_tab_routing
+            .action
+            .get(&request_id)
+            .copied()
     }
 
     #[cfg(test)]
@@ -237,8 +244,10 @@ impl FlistWalkerApp {
             tab.preview_in_progress = false;
         } else {
             let max_index = tab.result_state.results.len().saturating_sub(1);
-            tab.result_state.current_row =
-                tab.result_state.current_row.map(|row: usize| row.min(max_index));
+            tab.result_state.current_row = tab
+                .result_state
+                .current_row
+                .map(|row: usize| row.min(max_index));
         }
         Self::compact_inactive_tab_state(tab);
     }
@@ -283,8 +292,10 @@ impl FlistWalkerApp {
                 tab.preview_in_progress = false;
             } else {
                 let max_index = tab.result_state.results.len().saturating_sub(1);
-                tab.result_state.current_row =
-                    tab.result_state.current_row.map(|row: usize| row.min(max_index));
+                tab.result_state.current_row = tab
+                    .result_state
+                    .current_row
+                    .map(|row: usize| row.min(max_index));
             }
             Self::compact_inactive_tab_state(tab);
         }
@@ -376,6 +387,7 @@ impl FlistWalkerApp {
         tab_index: usize,
         msg: IndexResponse,
     ) -> BackgroundIndexResponseEffect {
+        let limit = self.limit;
         let mut effect = BackgroundIndexResponseEffect {
             trigger_search: false,
             cleanup_request_id: None,
@@ -494,12 +506,12 @@ impl FlistWalkerApp {
                     tab.index_state.kind_resolution_in_progress = false;
                 }
                 if self
-                    .features.filelist
+                    .features
+                    .filelist
                     .pending_after_index
                     .as_ref()
                     .is_some_and(|pending| {
-                        pending.tab_id == tab.id
-                            && Self::path_key(&pending.root) == Self::path_key(&tab.root)
+                        pending.tab_id == tab.id && path_key(&pending.root) == path_key(&tab.root)
                     })
                 {
                     effect.deferred_filelist = Some((
@@ -519,7 +531,7 @@ impl FlistWalkerApp {
                         .index_state
                         .entries
                         .iter()
-                        .take(self.limit)
+                        .take(limit)
                         .cloned()
                         .map(|entry| (entry.path, 0.0))
                         .collect();
@@ -570,7 +582,7 @@ impl FlistWalkerApp {
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
         let normalized = normalize_windows_path_buf(new_root);
-        if Self::path_key(&normalized) == Self::path_key(&self.root) {
+        if path_key(&normalized) == path_key(&self.root) {
             return;
         }
 

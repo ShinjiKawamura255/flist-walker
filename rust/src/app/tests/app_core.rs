@@ -777,11 +777,12 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         entries: vec![path.clone()],
         existing_path: root.join("FileList.txt"),
     });
-    app.features.filelist.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
-        tab_id: removed_tab_id,
-        root: root.clone(),
-        entries: vec![path.clone()],
-    });
+    app.features.filelist.pending_ancestor_confirmation =
+        Some(PendingFileListAncestorConfirmation {
+            tab_id: removed_tab_id,
+            root: root.clone(),
+            entries: vec![path.clone()],
+        });
     app.features.filelist.pending_use_walker_confirmation =
         Some(PendingFileListUseWalkerConfirmation {
             source_tab_id: removed_tab_id,
@@ -832,8 +833,16 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     assert_eq!(app.tabs[0].id, survivor_tab_id);
     assert!(app.features.filelist.pending_after_index.is_none());
     assert!(app.features.filelist.pending_confirmation.is_none());
-    assert!(app.features.filelist.pending_ancestor_confirmation.is_none());
-    assert!(app.features.filelist.pending_use_walker_confirmation.is_none());
+    assert!(app
+        .features
+        .filelist
+        .pending_ancestor_confirmation
+        .is_none());
+    assert!(app
+        .features
+        .filelist
+        .pending_use_walker_confirmation
+        .is_none());
     assert_eq!(app.indexing.request_tabs.get(&11), None);
     assert_eq!(app.indexing.request_tabs.get(&12), Some(&survivor_tab_id));
     assert!(app

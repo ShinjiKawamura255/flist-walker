@@ -132,9 +132,11 @@ impl<'a> PipelineOwner<'a> {
             self.app.entries = Arc::new(self.filtered_entries(base));
         }
         if self.app.indexing.in_progress {
+            let entries = Arc::clone(&self.app.entries);
+            let source_entries = entries.as_ref().to_vec();
             Self::overwrite_entries_vec(
                 &mut self.app.indexing.incremental_filtered_entries,
-                self.app.entries.as_ref(),
+                &source_entries,
             );
         } else {
             self.app.indexing.incremental_filtered_entries.clear();
@@ -266,18 +268,18 @@ impl<'a> PipelineOwner<'a> {
     }
 
     fn sync_entries_from_incremental(&mut self) {
-        Self::overwrite_entries_arc(
-            &mut self.app.entries,
-            &self.app.indexing.incremental_filtered_entries,
-        );
+        let incremental = self.app.indexing.incremental_filtered_entries.clone();
+        let incremental_entries = incremental.clone();
+        Self::overwrite_entries_arc(&mut self.app.entries, &incremental_entries);
     }
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {
+        let limit = self.app.limit;
         let Some(tab) = self.app.tabs.get_mut(tab_index) else {
             return;
         };
         let request_id = self.app.search.begin_tab_request(tab);
-        let req = Self::build_search_request_for_tab(tab, request_id, self.app.limit);
+        let req = Self::build_search_request_for_tab(tab, request_id, limit);
         if self.app.search.tx.send(req).is_err() {
             tab.pending_request_id = None;
             tab.search_in_progress = false;

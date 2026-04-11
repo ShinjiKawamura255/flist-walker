@@ -1,5 +1,5 @@
 use super::*;
-use crate::path_utils::normalize_windows_path_buf;
+use crate::path_utils::{normalize_windows_path_buf, path_key};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -279,17 +279,6 @@ impl FlistWalkerApp {
         None
     }
 
-    pub(super) fn path_key(path: &Path) -> String {
-        #[cfg(windows)]
-        {
-            return path.to_string_lossy().to_string().to_ascii_lowercase();
-        }
-        #[cfg(not(windows))]
-        {
-            path.to_string_lossy().to_string()
-        }
-    }
-
     pub(super) fn load_saved_roots() -> Vec<PathBuf> {
         let Some(file) = Self::saved_roots_file_path() else {
             return Vec::new();
@@ -305,7 +294,7 @@ impl FlistWalkerApp {
                 continue;
             }
             let path = normalize_windows_path_buf(PathBuf::from(line));
-            let key = Self::path_key(&path);
+            let key = path_key(&path);
             if seen.insert(key) {
                 out.push(path);
             }
@@ -321,7 +310,8 @@ impl FlistWalkerApp {
             let _ = fs::create_dir_all(parent);
         }
         let text = self
-            .features.root_browser
+            .features
+            .root_browser
             .saved_roots
             .iter()
             .map(|p| p.to_string_lossy().to_string())
@@ -341,12 +331,13 @@ impl FlistWalkerApp {
             .canonicalize()
             .unwrap_or_else(|_| self.root.clone());
         let root = normalize_windows_path_buf(root);
-        let key = Self::path_key(&root);
+        let key = path_key(&root);
         if self
-            .features.root_browser
+            .features
+            .root_browser
             .saved_roots
             .iter()
-            .any(|p| Self::path_key(p) == key)
+            .any(|p| path_key(p) == key)
         {
             self.set_notice("Current root is already registered");
             return;
@@ -389,21 +380,22 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn remove_current_root_from_saved(&mut self) {
-        let key = Self::path_key(&self.root);
+        let key = path_key(&self.root);
         let before = self.features.root_browser.saved_roots.len();
         self.features
             .root_browser
             .saved_roots
-            .retain(|p| Self::path_key(p) != key);
+            .retain(|p| path_key(p) != key);
         if self.features.root_browser.saved_roots.len() == before {
             self.set_notice("Current root is not in saved list");
             return;
         }
         if self
-            .features.root_browser
+            .features
+            .root_browser
             .default_root
             .as_ref()
-            .is_some_and(|p| Self::path_key(p) == key)
+            .is_some_and(|p| path_key(p) == key)
         {
             self.features.root_browser.default_root = None;
             self.mark_ui_state_dirty();
@@ -455,7 +447,8 @@ impl FlistWalkerApp {
                     .to_string(),
             ),
             default_root: self
-                .features.root_browser
+                .features
+                .root_browser
                 .default_root
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),
@@ -471,7 +464,10 @@ impl FlistWalkerApp {
             active_tab: Some(self.tabs.active_tab),
             window: self.ui.window_geometry.clone(),
             skipped_update_target_version: self.features.update.skipped_target_version.clone(),
-            suppress_update_check_failure_dialog: self.features.update.suppress_check_failure_dialog,
+            suppress_update_check_failure_dialog: self
+                .features
+                .update
+                .suppress_check_failure_dialog,
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {
             let _ = write_text_atomic(path, &text);

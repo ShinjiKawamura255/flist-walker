@@ -34,8 +34,10 @@ mod index_worker;
 mod input;
 mod pipeline;
 mod pipeline_owner;
+mod preview_flow;
 mod query_state;
 mod render;
+mod result_flow;
 mod search_coordinator;
 mod session;
 mod state;
@@ -58,12 +60,12 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    BackgroundIndexState, CacheStateBundle, FeatureStateBundle, FileListDialogKind,
-    FileListManager,
-    HighlightCacheKey, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, ResultSortMode,
-    RootBrowserState, SortMetadata, TabAccentPalette, TabDragState, TabSessionState,
-    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
+    AppRuntimeState, BackgroundIndexState, CacheStateBundle, FeatureStateBundle,
+    FileListDialogKind, FileListManager, HighlightCacheKey, PendingFileListAfterIndex,
+    PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    PendingFileListUseWalkerConfirmation, ResultSortMode, RootBrowserState, SortMetadata,
+    TabAccentPalette, TabDragState, TabSessionState, UpdateCheckFailureState, UpdateManager,
+    UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
@@ -236,25 +238,7 @@ fn load_cjk_font_bytes() -> Option<Vec<u8>> {
 
 /// eframe/egui の UI フレームと各種ワーカーを結線する coordinator。
 pub struct FlistWalkerApp {
-    root: PathBuf,
-    limit: usize,
-    query_state: QueryState,
-    use_filelist: bool,
-    use_regex: bool,
-    ignore_case: bool,
-    include_files: bool,
-    include_dirs: bool,
-    index: IndexBuildResult,
-    all_entries: Arc<Vec<Entry>>,
-    entries: Arc<Vec<Entry>>,
-    base_results: Vec<(PathBuf, f64)>,
-    results: Vec<(PathBuf, f64)>,
-    result_sort_mode: ResultSortMode,
-    pinned_paths: HashSet<PathBuf>,
-    current_row: Option<usize>,
-    preview: String,
-    notice: String,
-    status_line: String,
+    runtime: AppRuntimeState,
     search: SearchCoordinator,
     worker_bus: WorkerBus,
     indexing: IndexCoordinator,
@@ -263,6 +247,20 @@ pub struct FlistWalkerApp {
     tabs: TabSessionState,
     features: FeatureStateBundle,
     worker_runtime: Option<WorkerRuntime>,
+}
+
+impl std::ops::Deref for FlistWalkerApp {
+    type Target = AppRuntimeState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.runtime
+    }
+}
+
+impl std::ops::DerefMut for FlistWalkerApp {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.runtime
+    }
 }
 
 impl FlistWalkerApp {
@@ -437,28 +435,30 @@ Search hints:
             update_state,
         ) = Self::launch_seed(root, limit, query, &launch).into_parts();
         let mut app = Self {
-            root,
-            limit,
-            query_state: QueryState::new(query, query_history),
-            use_filelist: true,
-            use_regex: false,
-            ignore_case: true,
-            include_files: true,
-            include_dirs: true,
-            index: IndexBuildResult {
-                entries: Vec::new(),
-                source: IndexSource::None,
+            runtime: AppRuntimeState {
+                root,
+                limit,
+                query_state: QueryState::new(query, query_history),
+                use_filelist: true,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                index: IndexBuildResult {
+                    entries: Vec::new(),
+                    source: IndexSource::None,
+                },
+                all_entries: Arc::new(Vec::new()),
+                entries: Arc::new(Vec::new()),
+                base_results: Vec::new(),
+                results: Vec::new(),
+                result_sort_mode: ResultSortMode::Score,
+                pinned_paths: HashSet::new(),
+                current_row: Some(0),
+                preview: String::new(),
+                notice: String::new(),
+                status_line: "Initializing...".to_string(),
             },
-            all_entries: Arc::new(Vec::new()),
-            entries: Arc::new(Vec::new()),
-            base_results: Vec::new(),
-            results: Vec::new(),
-            result_sort_mode: ResultSortMode::Score,
-            pinned_paths: HashSet::new(),
-            current_row: Some(0),
-            preview: String::new(),
-            notice: String::new(),
-            status_line: "Initializing...".to_string(),
             search: SearchCoordinator::new(search_tx, search_rx),
             worker_bus,
             indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
@@ -578,10 +578,13 @@ Search hints:
     }
 
     fn rebuild_entry_kind_cache(&mut self) {
+        let all_entries = Arc::clone(&self.all_entries);
+        let index_entries = self.index.entries.clone();
+        let entries = Arc::clone(&self.entries);
         self.cache.entry_kind.rebuild_from_sources(&[
-            self.all_entries.as_ref(),
-            &self.index.entries,
-            self.entries.as_ref(),
+            all_entries.as_ref(),
+            &index_entries,
+            entries.as_ref(),
         ]);
     }
 

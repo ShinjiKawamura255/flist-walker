@@ -1,11 +1,17 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-09
+- Updated: 2026-04-11
 - Current active engineering roadmap: none
+- Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-11 に app architecture boundary cleanup の single plan を追加し、`AGENTS.md` に temporary rule を追記した。
+  - 2026-04-11 に plan review を完了し、`path_key` を `path_utils.rs` へ移し、`result_flow.rs` へ result orchestration を分離したうえで `cargo test` を通した。
+  - 2026-04-11 に app architecture boundary cleanup を完了し、temporary rule と change plan を撤去した。
   - app architecture の multi-slice refactor は closure まで完了し、恒久 docs だけを残す状態へ移行した。
+  - 2026-04-11 に app state cohesion / ownership transfer の next-step roadmap を再導入し、`FlistWalkerApp` の field cohesion と ownership transfer を別 slice で進める方針へ切り替えた。
+  - 2026-04-11 に app state cohesion / ownership transfer roadmap を autonomous で完遂し、`AppRuntimeState` を導入して coordinator の direct field surface を runtime bundle へ寄せ、preview/highlight ownership を `preview_flow.rs` に分離したうえで roadmap / slice / temporary rule を撤去した。
   - 2026-04-08 に `plan-driven-changes` 用の上位 roadmap と child slice を追加し、同日中に close した。
   - 2026-04-08 に architecture debt closure の計画を再導入し、feature freeze 前提で debt を重要度順に解消する方針へ切り替えた。
   - 2026-04-08 の architecture debt closure program は closure まで完了し、temporary rule と change-plan 文書を撤去した。

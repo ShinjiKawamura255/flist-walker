@@ -1,5 +1,6 @@
 use super::*;
 use crate::app::tabs::BackgroundIndexResponseEffect;
+use crate::path_utils::path_key;
 
 impl FlistWalkerApp {
     fn pipeline_owner(&mut self) -> PipelineOwner<'_> {
@@ -9,12 +10,12 @@ impl FlistWalkerApp {
     fn cancel_stale_pending_after_index_for_active_root(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .features.filelist
+            .features
+            .filelist
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == current_tab_id
-                    && Self::path_key(&pending.root) != Self::path_key(&self.root)
+                pending.tab_id == current_tab_id && path_key(&pending.root) != path_key(&self.root)
             })
         {
             self.features.filelist.pending_after_index = None;
@@ -454,12 +455,13 @@ impl FlistWalkerApp {
                     self.clear_notice();
                     let current_tab_id = self.current_tab_id().unwrap_or_default();
                     if self
-                        .features.filelist
+                        .features
+                        .filelist
                         .pending_after_index
                         .as_ref()
                         .is_some_and(|pending| {
                             pending.tab_id == current_tab_id
-                                && Self::path_key(&pending.root) == Self::path_key(&self.root)
+                                && path_key(&pending.root) == path_key(&self.root)
                         })
                     {
                         let root = self.root.clone();

@@ -103,7 +103,8 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
     app.set_current_root_as_default_with(false);
 
     let saved = app
-        .features.root_browser
+        .features
+        .root_browser
         .default_root
         .as_ref()
         .expect("default root");

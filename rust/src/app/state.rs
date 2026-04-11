@@ -1,5 +1,6 @@
 use super::*;
 use crate::app::cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
+use crate::path_utils::path_key;
 use eframe::egui;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
@@ -282,14 +283,14 @@ impl FileListManager {
         response_root: &Path,
         current_root: &Path,
     ) -> FileListResponseScope {
-        let response_root_key = super::FlistWalkerApp::path_key(response_root);
+        let response_root_key = path_key(response_root);
         let same_requested_root = requested_root
-            .map(|root| super::FlistWalkerApp::path_key(root) == response_root_key)
+            .map(|root| path_key(root) == response_root_key)
             .unwrap_or(true);
         if !same_requested_root {
             return FileListResponseScope::StaleRequestedRoot;
         }
-        if super::FlistWalkerApp::path_key(current_root) == response_root_key {
+        if path_key(current_root) == response_root_key {
             FileListResponseScope::CurrentRoot
         } else {
             FileListResponseScope::PreviousRoot
@@ -340,8 +341,7 @@ impl FileListManager {
             .pending_confirmation
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == current_tab_id
-                    && super::FlistWalkerApp::path_key(&pending.root) != current_root_key
+                pending.tab_id == current_tab_id && path_key(&pending.root) != current_root_key
             });
         if should_cancel {
             self.workflow.pending_confirmation = None;
@@ -359,8 +359,7 @@ impl FileListManager {
             .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == current_tab_id
-                    && super::FlistWalkerApp::path_key(&pending.root) != current_root_key
+                pending.tab_id == current_tab_id && path_key(&pending.root) != current_root_key
             });
         if should_cancel {
             self.workflow.pending_ancestor_confirmation = None;
@@ -379,7 +378,7 @@ impl FileListManager {
             .as_ref()
             .is_some_and(|pending| {
                 pending.source_tab_id == current_tab_id
-                    && super::FlistWalkerApp::path_key(&pending.root) != current_root_key
+                    && path_key(&pending.root) != current_root_key
             });
         if should_cancel {
             self.workflow.pending_use_walker_confirmation = None;
@@ -755,6 +754,28 @@ pub(super) struct CacheStateBundle {
     pub(super) highlight: HighlightCacheState,
     pub(super) entry_kind: EntryKindCacheState,
     pub(super) sort_metadata: SortMetadataCacheState,
+}
+
+pub struct AppRuntimeState {
+    pub(super) root: PathBuf,
+    pub(super) limit: usize,
+    pub(super) query_state: QueryState,
+    pub(super) use_filelist: bool,
+    pub(super) use_regex: bool,
+    pub(super) ignore_case: bool,
+    pub(super) include_files: bool,
+    pub(super) include_dirs: bool,
+    pub(super) index: IndexBuildResult,
+    pub(super) all_entries: Arc<Vec<Entry>>,
+    pub(super) entries: Arc<Vec<Entry>>,
+    pub(super) base_results: Vec<(PathBuf, f64)>,
+    pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) result_sort_mode: ResultSortMode,
+    pub(super) pinned_paths: HashSet<PathBuf>,
+    pub(super) current_row: Option<usize>,
+    pub(super) preview: String,
+    pub(super) notice: String,
+    pub(super) status_line: String,
 }
 
 pub(super) struct RootBrowserState {

@@ -32,6 +32,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - ranking、result materialization、visible-result filter を担当する。
 - [ui_model.rs](../rust/src/ui_model.rs)
   - highlight 判定、preview 文面、表示パス整形を担当する。
+- [path_utils.rs](../rust/src/path_utils.rs)
+  - Windows path normalization と path identity helper を担当する。
 - [app/coordinator.rs](../rust/src/app/coordinator.rs)
   - status line、notice/status helper、frame/update glue、root/path compare の coordinator helper を担当する。
 - [actions.rs](../rust/src/actions.rs)
@@ -42,8 +44,6 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - update manifest 署名検証を担当する。
 - [fs_atomic.rs](../rust/src/fs_atomic.rs)
   - atomic write helper。
-- [path_utils.rs](../rust/src/path_utils.rs)
-  - Windows extended path prefix 除去と display/shell 用 path 正規化を担当する。
 
 ## app Coordinator
 [mod.rs](../rust/src/app/mod.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。state holder は worker / UI / query の単位でも分離されている。
@@ -107,7 +107,11 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [query_state.rs](../rust/src/app/query_state.rs)
   - query、history、history search、kill buffer をまとめる。
 - [cache.rs](../rust/src/app/cache.rs)
-  - preview/highlight cache、preview request/response。
+  - preview/highlight/sort metadata cache state と bounded invalidation を担当する。
+- [result_flow.rs](../rust/src/app/result_flow.rs)
+  - result sort の orchestration を担当する。
+- [preview_flow.rs](../rust/src/app/preview_flow.rs)
+  - preview request/response、highlight lookup、preview routing の orchestration を担当する。
 - [render.rs](../rust/src/app/render.rs)
   - panel/dialog/results 描画と frame 後段の render command 生成。
 - [input.rs](../rust/src/app/input.rs)
@@ -117,7 +121,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [update.rs](../rust/src/app/update.rs)
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
-  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` を束ねる `FeatureStateBundle`、live tab/session registry を束ねる `TabSessionState`、cache/request routing など bundle inventory の受け皿として扱う。
+  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` を束ねる `FeatureStateBundle`、live tab/session registry を束ねる `TabSessionState`、cache/request routing など bundle inventory の受け皿として扱う。`AppRuntimeState` は `FlistWalkerApp` の app-global / active-result live state を束ねる runtime bundle として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。
 - [workers.rs](../rust/src/app/workers.rs)
@@ -166,7 +170,7 @@ request_id によって最新応答だけを反映し、古い応答による UI
 OS ごとの差異や表示用正規化のような cross-cutting helper は app 内に複製せず shared utility に寄せる。
 
 - [path_utils.rs](../rust/src/path_utils.rs)
-  - Windows パス正規化と display/shell 変換。
+  - Windows パス正規化、path identity、display/shell 変換。
 - [ui_model.rs](../rust/src/ui_model.rs)
   - preview/highlight 計算。
 - [fs_atomic.rs](../rust/src/fs_atomic.rs)

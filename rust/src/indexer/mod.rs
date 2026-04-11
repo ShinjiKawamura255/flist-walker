@@ -265,8 +265,6 @@ fn is_filelist_newer(candidate: Option<SystemTime>, baseline: Option<SystemTime>
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Context;
-    use super::*;
     use super::filelist_reader::resolve_filelist_entry_candidates;
     #[cfg(not(windows))]
     use super::filelist_reader::windows_path_to_wsl;
@@ -274,6 +272,8 @@ mod tests {
         annotate_write_target_error, normalize_filelist_entry_for_text_compare,
         visit_ancestor_directories,
     };
+    use super::*;
+    use anyhow::Context;
     use std::fs;
     use std::fs::File;
     use std::io::{BufRead, BufReader};

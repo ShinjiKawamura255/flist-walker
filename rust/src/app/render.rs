@@ -1057,12 +1057,13 @@ impl FlistWalkerApp {
                 );
             }
             let editing_history_search = self.query_state.history_search_active;
+            let query_input_id = self.ui.query_input_id;
             let mut output = egui::TextEdit::singleline(if editing_history_search {
                 &mut self.query_state.history_search_query
             } else {
                 &mut self.query_state.query
             })
-                .id(self.ui.query_input_id)
+                .id(query_input_id)
                 .lock_focus(true)
                 .desired_width(f32::INFINITY)
                 .hint_text(if editing_history_search {
@@ -1233,7 +1234,8 @@ impl FlistWalkerApp {
         let mut cancel_overwrite = false;
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if let Some(existing_path) = self
-            .features.filelist
+            .features
+            .filelist
             .pending_confirmation
             .as_ref()
             .filter(|pending| pending.tab_id == current_tab_id)
@@ -1287,7 +1289,8 @@ impl FlistWalkerApp {
         let mut current_root_only = false;
         let mut cancel_ancestor = false;
         if self
-            .features.filelist
+            .features
+            .filelist
             .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
@@ -1353,7 +1356,8 @@ impl FlistWalkerApp {
         let mut confirm_walker = false;
         let mut cancel_walker = false;
         if self
-            .features.filelist
+            .features
+            .filelist
             .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
@@ -1466,7 +1470,8 @@ impl FlistWalkerApp {
                     }
                 });
 
-            self.features.update
+            self.features
+                .update
                 .set_prompt_skip_until_next_version(skip_until_next_version);
 
             if confirm {
@@ -1510,7 +1515,8 @@ impl FlistWalkerApp {
                     }
                 });
 
-            self.features.update
+            self.features
+                .update
                 .set_check_failure_suppress_future_errors(suppress_future_errors);
 
             if close {
