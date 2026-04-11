@@ -317,6 +317,30 @@ fn switching_tabs_restores_entries_and_filters_per_tab() {
 }
 
 #[test]
+fn root_dropdown_selection_closes_popup_and_applies_selected_root() {
+    let root_a = test_root("root-dropdown-select-a");
+    let root_b = test_root("root-dropdown-select-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    app.root_browser.saved_roots = vec![root_a.clone(), root_b.clone()];
+    let ctx = egui::Context::default();
+
+    app.open_root_dropdown(&ctx);
+    app.move_root_dropdown_selection(1);
+    assert!(app.is_root_dropdown_open(&ctx));
+    assert_eq!(app.ui.root_dropdown_highlight, Some(1));
+
+    app.apply_root_dropdown_selection(&ctx);
+
+    assert!(!app.is_root_dropdown_open(&ctx));
+    assert_eq!(app.root, root_b);
+    assert_eq!(app.ui.root_dropdown_highlight, Some(1));
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
 fn move_tab_reorders_tabs_and_preserves_active_tab_identity() {
     let root_a = test_root("move-tab-root-a");
     let root_b = test_root("move-tab-root-b");

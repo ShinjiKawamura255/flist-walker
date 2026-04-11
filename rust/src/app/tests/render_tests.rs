@@ -1,6 +1,7 @@
 use super::*;
 use crate::app::render::{
-    RenderCommand, RenderFileListDialogCommand, RenderTopActionCommand, RenderUpdateDialogCommand,
+    RenderCommand, RenderFileListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
+    RenderUpdateDialogCommand,
 };
 
 #[test]
@@ -115,6 +116,49 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
     app.dispatch_render_commands(&ctx);
 
     assert!(app.update_state.check_failure.is_none());
+    assert!(app.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dispatch_render_commands_consumes_tab_bar_close_queue() {
+    let root = test_root("render-command-tab-bar-close");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CloseTab(0)));
+    app.dispatch_render_commands(&ctx);
+
+    assert_eq!(app.tabs.len(), 1);
+    assert_eq!(app.active_tab, 0);
+    assert!(app.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dispatch_render_commands_consumes_tab_bar_move_queue() {
+    let root = test_root("render-command-tab-bar-move");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    let active_root = app.root.clone();
+    let middle_root = app.tabs[1].root.clone();
+    let last_root = app.tabs[2].root.clone();
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::MoveTab {
+        from_index: 2,
+        to_index: 0,
+    }));
+    app.dispatch_render_commands(&ctx);
+
+    assert_eq!(app.tabs[0].root, active_root);
+    assert_eq!(app.tabs[1].root, middle_root);
+    assert_eq!(app.tabs[2].root, last_root);
+    assert_eq!(app.active_tab, 0);
     assert!(app.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }

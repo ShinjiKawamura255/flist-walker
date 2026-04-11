@@ -85,6 +85,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-11 00:00 follow-up backlog を 2 段の roadmap へ昇格し、Slice C を active slice 候補として選定した。
 - 2026-04-11 00:00 初回レビューを反映し、Slice C の goal を「manual smoke の全面置換」ではなく「自動化の足場づくり」に補正した。Slice D の詳細化は Slice C 完了後の standard-mode gate で見直す。
 - 2026-04-11 00:00 Slice C Phase 1 として、`TESTPLAN.md` に structural GUI smoke と owner test module の対応表を追加し、automation target と manual-only 領域を固定した。
+- 2026-04-11 00:00 Slice C Phase 2 として、`render_tests.rs` と `session_tabs.rs` に root/tab/render interaction の regression test を追加し、`cargo test` green を確認した。
 
 ## 8. Completion Checklist
 - [x] Planned document created before implementation
