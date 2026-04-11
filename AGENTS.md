@@ -72,3 +72,12 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- `regression-release-followup` の対応では、実装前に以下の計画書を上から順に読むこと。
+- `docs/CHANGE-PLAN-20260411-roadmap-regression-release-followup.md`
+- `docs/CHANGE-PLAN-20260411-slice-c-gui-regression-automation-expansion.md`
+- roadmap の `Execution Mode: standard` と `Execution Mode Policy` に従うこと。
+- phase 実行は原則として subagent へ委譲し、main agent は orchestrator / reviewer として計画更新、レビュー反映、完了判定、コミットを担当すること。
+- 実装順と確認順は計画書に従い、scope / order / risk を変える場合は先に計画書を更新すること。
+- この一時ルールは計画対応の完了後に削除すること。
