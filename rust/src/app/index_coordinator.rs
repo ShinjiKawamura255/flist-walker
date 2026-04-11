@@ -144,6 +144,31 @@ impl IndexCoordinator {
         self.settle_active_terminal_state();
         *pending_restore_refresh = false;
     }
+
+    pub(super) fn response_request_id(response: &IndexResponse) -> u64 {
+        match response {
+            IndexResponse::Started { request_id, .. }
+            | IndexResponse::Batch { request_id, .. }
+            | IndexResponse::ReplaceAll { request_id, .. }
+            | IndexResponse::Finished { request_id, .. }
+            | IndexResponse::Failed { request_id, .. }
+            | IndexResponse::Canceled { request_id }
+            | IndexResponse::Truncated { request_id, .. } => *request_id,
+        }
+    }
+
+    pub(super) fn is_active_request(&self, request_id: u64) -> bool {
+        Some(request_id) == self.pending_request_id
+    }
+
+    pub(super) fn complete_active_request(&mut self, request_id: u64) {
+        self.settle_active_terminal_state();
+        self.cleanup_request(request_id);
+    }
+
+    pub(super) fn cleanup_stale_terminal_response(&mut self, request_id: u64) {
+        self.cleanup_request(request_id);
+    }
 }
 
 impl FlistWalkerApp {

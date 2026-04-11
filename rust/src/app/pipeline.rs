@@ -383,15 +383,7 @@ impl FlistWalkerApp {
         let mut has_index_progress = false;
         let mut finished_current_request = false;
         while let Ok(msg) = self.indexing.rx.try_recv() {
-            let request_id = match &msg {
-                IndexResponse::Started { request_id, .. }
-                | IndexResponse::Batch { request_id, .. }
-                | IndexResponse::ReplaceAll { request_id, .. }
-                | IndexResponse::Finished { request_id, .. }
-                | IndexResponse::Failed { request_id, .. }
-                | IndexResponse::Canceled { request_id }
-                | IndexResponse::Truncated { request_id, .. } => *request_id,
-            };
+            let request_id = IndexCoordinator::response_request_id(&msg);
             let target_tab_id = self.indexing.request_tabs.get(&request_id).copied();
             let current_tab_id = self.current_tab_id();
             if let Some(tab_id) = target_tab_id {
@@ -410,16 +402,11 @@ impl FlistWalkerApp {
                 }
             }
 
-            let terminal_request_id = match &msg {
-                IndexResponse::Finished { request_id, .. }
-                | IndexResponse::Failed { request_id, .. }
-                | IndexResponse::Canceled { request_id } => Some(*request_id),
-                _ => None,
-            };
+            let is_active_request = self.indexing.is_active_request(request_id);
 
             match msg {
-                IndexResponse::Started { request_id, source } => {
-                    if Some(request_id) != self.indexing.pending_request_id {
+                IndexResponse::Started { source, .. } => {
+                    if !is_active_request {
                         continue;
                     }
                     self.index.source = source;
@@ -429,7 +416,7 @@ impl FlistWalkerApp {
                     request_id,
                     entries,
                 } => {
-                    if Some(request_id) != self.indexing.pending_request_id {
+                    if !is_active_request {
                         continue;
                     }
                     self.queue_index_batch(request_id, entries);
@@ -439,7 +426,7 @@ impl FlistWalkerApp {
                     request_id,
                     entries,
                 } => {
-                    if Some(request_id) != self.indexing.pending_request_id {
+                    if !is_active_request {
                         continue;
                     }
                     self.indexing.pending_entries.clear();
@@ -450,8 +437,8 @@ impl FlistWalkerApp {
                     has_index_progress = true;
                 }
                 IndexResponse::Finished { request_id, source } => {
-                    if Some(request_id) != self.indexing.pending_request_id {
-                        self.indexing.cleanup_request(request_id);
+                    if !is_active_request {
+                        self.indexing.cleanup_stale_terminal_response(request_id);
                         continue;
                     }
                     self.drain_queued_index_entries(request_id, usize::MAX);
@@ -484,39 +471,36 @@ impl FlistWalkerApp {
                         self.request_filelist_creation(current_tab_id, root, entries);
                     }
                     self.shrink_checkpoint_buffers();
-                    self.indexing.cleanup_request(request_id);
+                    self.indexing.complete_active_request(request_id);
                     finished_current_request = true;
                     break;
                 }
                 IndexResponse::Failed { request_id, error } => {
-                    if Some(request_id) != self.indexing.pending_request_id {
-                        self.indexing.cleanup_request(request_id);
+                    if !is_active_request {
+                        self.indexing.cleanup_stale_terminal_response(request_id);
                         continue;
                     }
-                    self.indexing.settle_active_terminal_state();
                     self.filelist_state.pending_after_index = None;
                     self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
-                    self.indexing.cleanup_request(request_id);
+                    self.indexing.complete_active_request(request_id);
                 }
                 IndexResponse::Canceled { request_id } => {
-                    if Some(request_id) == self.indexing.pending_request_id {
-                        self.indexing.settle_active_terminal_state();
+                    if is_active_request {
                         self.shrink_checkpoint_buffers();
+                        self.indexing.complete_active_request(request_id);
+                    } else {
+                        self.indexing.cleanup_stale_terminal_response(request_id);
                     }
-                    self.indexing.cleanup_request(request_id);
                 }
-                IndexResponse::Truncated { request_id, limit } => {
-                    if Some(request_id) == self.indexing.pending_request_id {
+                IndexResponse::Truncated { limit, .. } => {
+                    if is_active_request {
                         self.set_notice(format!(
                             "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
                             limit
                         ));
                     }
                 }
-            }
-            if let Some(request_id) = terminal_request_id {
-                self.indexing.inflight_requests.remove(&request_id);
             }
 
             processed = processed.saturating_add(1);

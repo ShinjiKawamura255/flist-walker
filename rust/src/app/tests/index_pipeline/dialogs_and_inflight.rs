@@ -380,6 +380,58 @@ fn current_finished_index_response_clears_inflight_slot() {
 }
 
 #[test]
+fn stale_failed_index_response_clears_inflight_slot() {
+    let root = test_root("stale-failed-clears-inflight");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.indexing.rx = rx;
+    let stale_request_id = 779u64;
+    let current_tab_id = app.current_tab_id().expect("tab id");
+    app.indexing.pending_request_id = Some(780);
+    app.indexing.inflight_requests.insert(stale_request_id);
+    app.indexing
+        .request_tabs
+        .insert(stale_request_id, current_tab_id);
+
+    tx.send(IndexResponse::Failed {
+        request_id: stale_request_id,
+        error: "old request".to_string(),
+    })
+    .expect("send failed");
+
+    app.poll_index_response();
+
+    assert!(!app.indexing.inflight_requests.contains(&stale_request_id));
+    assert!(!app.indexing.request_tabs.contains_key(&stale_request_id));
+    assert_eq!(app.indexing.pending_request_id, Some(780));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn current_canceled_index_response_clears_active_request_state() {
+    let root = test_root("current-canceled-clears-active");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.indexing.rx = rx;
+    let req_id = app.indexing.pending_request_id.expect("pending request");
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.indexing.request_tabs.insert(req_id, tab_id);
+    app.indexing.inflight_requests.insert(req_id);
+
+    tx.send(IndexResponse::Canceled { request_id: req_id })
+        .expect("send canceled");
+
+    app.poll_index_response();
+
+    assert!(!app.indexing.inflight_requests.contains(&req_id));
+    assert_eq!(app.indexing.pending_request_id, None);
+    assert!(!app.indexing.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn same_tab_request_waits_until_previous_inflight_finishes() {
     let root = test_root("same-tab-inflight-serialization");
     fs::create_dir_all(&root).expect("create dir");
