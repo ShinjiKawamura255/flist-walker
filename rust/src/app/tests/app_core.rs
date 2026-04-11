@@ -94,7 +94,7 @@ fn persist_ui_state_now_saves_skipped_update_version() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.update_state.skipped_target_version = Some("0.12.4".to_string());
+    app.features.update.skipped_target_version = Some("0.12.4".to_string());
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
@@ -118,7 +118,7 @@ fn persist_ui_state_now_saves_update_check_failure_suppression() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.update_state.suppress_check_failure_dialog = true;
+    app.features.update.suppress_check_failure_dialog = true;
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
@@ -767,22 +767,22 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     let path = root.join("item.txt");
     fs::write(&path, "x").expect("write file");
 
-    app.filelist_state.pending_after_index = Some(PendingFileListAfterIndex {
+    app.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
         tab_id: removed_tab_id,
         root: root.clone(),
     });
-    app.filelist_state.pending_confirmation = Some(PendingFileListConfirmation {
+    app.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id: removed_tab_id,
         root: root.clone(),
         entries: vec![path.clone()],
         existing_path: root.join("FileList.txt"),
     });
-    app.filelist_state.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+    app.features.filelist.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: removed_tab_id,
         root: root.clone(),
         entries: vec![path.clone()],
     });
-    app.filelist_state.pending_use_walker_confirmation =
+    app.features.filelist.pending_use_walker_confirmation =
         Some(PendingFileListUseWalkerConfirmation {
             source_tab_id: removed_tab_id,
             root: root.clone(),
@@ -830,10 +830,10 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
 
     assert_eq!(app.tabs.len(), 1);
     assert_eq!(app.tabs[0].id, survivor_tab_id);
-    assert!(app.filelist_state.pending_after_index.is_none());
-    assert!(app.filelist_state.pending_confirmation.is_none());
-    assert!(app.filelist_state.pending_ancestor_confirmation.is_none());
-    assert!(app.filelist_state.pending_use_walker_confirmation.is_none());
+    assert!(app.features.filelist.pending_after_index.is_none());
+    assert!(app.features.filelist.pending_confirmation.is_none());
+    assert!(app.features.filelist.pending_ancestor_confirmation.is_none());
+    assert!(app.features.filelist.pending_use_walker_confirmation.is_none());
     assert_eq!(app.indexing.request_tabs.get(&11), None);
     assert_eq!(app.indexing.request_tabs.get(&12), Some(&survivor_tab_id));
     assert!(app

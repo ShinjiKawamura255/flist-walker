@@ -48,7 +48,8 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     fn select_root_via_dialog(&mut self, _dialog_root: &Path) -> Result<Option<PathBuf>, String> {
-        self.root_browser
+        self.features
+            .root_browser
             .browse_dialog_result
             .take()
             .unwrap_or(Ok(None))
@@ -73,7 +74,8 @@ impl FlistWalkerApp {
 
     fn current_root_dropdown_index(&self) -> Option<usize> {
         let current_key = Self::path_key(&self.root);
-        self.root_browser
+        self.features
+            .root_browser
             .saved_roots
             .iter()
             .position(|path| Self::path_key(path) == current_key)
@@ -81,7 +83,7 @@ impl FlistWalkerApp {
 
     /// dropdown のハイライト位置を保存済み root 一覧に同期する。
     pub(super) fn sync_root_dropdown_highlight(&mut self) {
-        let max_index = self.root_browser.saved_roots.len().checked_sub(1);
+        let max_index = self.features.root_browser.saved_roots.len().checked_sub(1);
         self.ui.root_dropdown_highlight = match (self.ui.root_dropdown_highlight, max_index) {
             (_, None) => None,
             (Some(index), Some(max)) => Some(index.min(max)),
@@ -104,7 +106,7 @@ impl FlistWalkerApp {
 
     /// root dropdown 内の候補選択を上下へ移動する。
     pub(super) fn move_root_dropdown_selection(&mut self, delta: isize) {
-        let Some(max_index) = self.root_browser.saved_roots.len().checked_sub(1) else {
+        let Some(max_index) = self.features.root_browser.saved_roots.len().checked_sub(1) else {
             self.ui.root_dropdown_highlight = None;
             return;
         };
@@ -122,7 +124,7 @@ impl FlistWalkerApp {
         let selected = self
             .ui
             .root_dropdown_highlight
-            .and_then(|index| self.root_browser.saved_roots.get(index).cloned());
+            .and_then(|index| self.features.root_browser.saved_roots.get(index).cloned());
         self.close_root_dropdown(ctx);
         if let Some(root) = selected {
             self.apply_root_change(root);
@@ -324,7 +326,7 @@ impl FlistWalkerApp {
     }
 
     fn clear_closed_tab_state(&mut self, tab_id: u64) {
-        self.filelist_state.clear_pending_for_tab(tab_id);
+        self.features.filelist.clear_pending_for_tab(tab_id);
         self.indexing.clear_for_tab(tab_id);
         self.search.clear_for_tab(tab_id);
         self.clear_preview_request_routing_for_tab(tab_id);
@@ -492,7 +494,7 @@ impl FlistWalkerApp {
                     tab.index_state.kind_resolution_in_progress = false;
                 }
                 if self
-                    .filelist_state
+                    .features.filelist
                     .pending_after_index
                     .as_ref()
                     .is_some_and(|pending| {
@@ -509,7 +511,7 @@ impl FlistWalkerApp {
                             .map(|entry| entry.path.clone())
                             .collect(),
                     ));
-                    self.filelist_state.pending_after_index = None;
+                    self.features.filelist.pending_after_index = None;
                 }
 
                 if tab.query_state.query.trim().is_empty() {

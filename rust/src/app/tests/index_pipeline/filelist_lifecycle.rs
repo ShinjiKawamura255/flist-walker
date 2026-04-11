@@ -9,10 +9,10 @@ fn filelist_failed_updates_state_and_notice() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.worker_bus.filelist.rx = rx;
-    app.filelist_state.pending_request_id = Some(13);
-    app.filelist_state.pending_request_tab_id = app.current_tab_id();
-    app.filelist_state.pending_root = Some(root.clone());
-    app.filelist_state.in_progress = true;
+    app.features.filelist.pending_request_id = Some(13);
+    app.features.filelist.pending_request_tab_id = app.current_tab_id();
+    app.features.filelist.pending_root = Some(root.clone());
+    app.features.filelist.in_progress = true;
 
     tx.send(FileListResponse::Failed {
         request_id: 13,
@@ -23,9 +23,9 @@ fn filelist_failed_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.filelist_state.pending_request_id, None);
-    assert_eq!(app.filelist_state.pending_request_tab_id, None);
-    assert!(!app.filelist_state.in_progress);
+    assert_eq!(app.features.filelist.pending_request_id, None);
+    assert_eq!(app.features.filelist.pending_request_tab_id, None);
+    assert!(!app.features.filelist.in_progress);
     assert!(app.notice.contains("Create File List failed: disk full"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -37,12 +37,12 @@ fn filelist_canceled_updates_state_and_notice() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.worker_bus.filelist.rx = rx;
-    app.filelist_state.pending_request_id = Some(14);
-    app.filelist_state.pending_request_tab_id = app.current_tab_id();
-    app.filelist_state.pending_root = Some(root.clone());
-    app.filelist_state.pending_cancel = Some(Arc::new(AtomicBool::new(true)));
-    app.filelist_state.in_progress = true;
-    app.filelist_state.cancel_requested = true;
+    app.features.filelist.pending_request_id = Some(14);
+    app.features.filelist.pending_request_tab_id = app.current_tab_id();
+    app.features.filelist.pending_root = Some(root.clone());
+    app.features.filelist.pending_cancel = Some(Arc::new(AtomicBool::new(true)));
+    app.features.filelist.in_progress = true;
+    app.features.filelist.cancel_requested = true;
 
     tx.send(FileListResponse::Canceled {
         request_id: 14,
@@ -52,10 +52,10 @@ fn filelist_canceled_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.filelist_state.pending_request_id, None);
-    assert!(app.filelist_state.pending_cancel.is_none());
-    assert!(!app.filelist_state.in_progress);
-    assert!(!app.filelist_state.cancel_requested);
+    assert_eq!(app.features.filelist.pending_request_id, None);
+    assert!(app.features.filelist.pending_cancel.is_none());
+    assert!(!app.features.filelist.in_progress);
+    assert!(!app.features.filelist.cancel_requested);
     assert!(app.notice.contains("Create File List canceled"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -71,10 +71,10 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     app.worker_bus.filelist.rx = filelist_rx;
     let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = _index_tx;
-    app.filelist_state.pending_request_id = Some(51);
-    app.filelist_state.pending_request_tab_id = app.current_tab_id();
-    app.filelist_state.pending_root = Some(root_old.clone());
-    app.filelist_state.in_progress = true;
+    app.features.filelist.pending_request_id = Some(51);
+    app.features.filelist.pending_request_tab_id = app.current_tab_id();
+    app.features.filelist.pending_root = Some(root_old.clone());
+    app.features.filelist.in_progress = true;
     app.use_filelist = true;
     app.root = root_new.clone();
 
@@ -90,7 +90,7 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     app.poll_filelist_response();
 
     assert!(index_rx.try_recv().is_err());
-    assert!(!app.filelist_state.in_progress);
+    assert!(!app.features.filelist.in_progress);
     assert!(app.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
@@ -105,10 +105,10 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.worker_bus.filelist.rx = rx;
-    app.filelist_state.pending_request_id = Some(52);
-    app.filelist_state.pending_request_tab_id = app.current_tab_id();
-    app.filelist_state.pending_root = Some(root_old.clone());
-    app.filelist_state.in_progress = true;
+    app.features.filelist.pending_request_id = Some(52);
+    app.features.filelist.pending_request_tab_id = app.current_tab_id();
+    app.features.filelist.pending_root = Some(root_old.clone());
+    app.features.filelist.in_progress = true;
     app.root = root_new;
 
     tx.send(FileListResponse::Failed {
@@ -120,8 +120,8 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.filelist_state.pending_request_id, None);
-    assert!(!app.filelist_state.in_progress);
+    assert_eq!(app.features.filelist.pending_request_id, None);
+    assert!(!app.features.filelist.in_progress);
     assert!(app.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
 }
@@ -135,10 +135,10 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
     let mut app = FlistWalkerApp::new(root_response.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.worker_bus.filelist.rx = filelist_rx;
-    app.filelist_state.pending_request_id = Some(53);
-    app.filelist_state.pending_request_tab_id = app.current_tab_id();
-    app.filelist_state.pending_root = Some(root_requested.clone());
-    app.filelist_state.in_progress = true;
+    app.features.filelist.pending_request_id = Some(53);
+    app.features.filelist.pending_request_tab_id = app.current_tab_id();
+    app.features.filelist.pending_root = Some(root_requested.clone());
+    app.features.filelist.in_progress = true;
     app.use_filelist = false;
 
     filelist_tx
@@ -152,8 +152,8 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.filelist_state.pending_request_id, None);
-    assert!(!app.filelist_state.in_progress);
+    assert_eq!(app.features.filelist.pending_request_id, None);
+    assert!(!app.features.filelist.in_progress);
     assert!(!app.use_filelist);
     assert!(app.notice.is_empty());
     let _ = fs::remove_dir_all(&root_requested);

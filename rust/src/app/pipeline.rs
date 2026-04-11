@@ -9,7 +9,7 @@ impl FlistWalkerApp {
     fn cancel_stale_pending_after_index_for_active_root(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         if self
-            .filelist_state
+            .features.filelist
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
@@ -17,7 +17,7 @@ impl FlistWalkerApp {
                     && Self::path_key(&pending.root) != Self::path_key(&self.root)
             })
         {
-            self.filelist_state.pending_after_index = None;
+            self.features.filelist.pending_after_index = None;
             self.set_notice("Deferred Create File List canceled because root changed");
         }
     }
@@ -154,7 +154,7 @@ impl FlistWalkerApp {
         let affected_tab_ids: HashSet<u64> = self.indexing.request_tabs.values().copied().collect();
         let notice = "Index worker is unavailable".to_string();
 
-        self.filelist_state.pending_after_index = None;
+        self.features.filelist.pending_after_index = None;
         self.indexing.pending_queue.clear();
         self.indexing.background_states.clear();
         self.indexing.inflight_requests.clear();
@@ -454,7 +454,7 @@ impl FlistWalkerApp {
                     self.clear_notice();
                     let current_tab_id = self.current_tab_id().unwrap_or_default();
                     if self
-                        .filelist_state
+                        .features.filelist
                         .pending_after_index
                         .as_ref()
                         .is_some_and(|pending| {
@@ -464,7 +464,7 @@ impl FlistWalkerApp {
                     {
                         let root = self.root.clone();
                         let entries = self.filelist_entries_snapshot();
-                        self.filelist_state.pending_after_index = None;
+                        self.features.filelist.pending_after_index = None;
                         self.request_filelist_creation(current_tab_id, root, entries);
                     }
                     self.shrink_checkpoint_buffers();
@@ -477,7 +477,7 @@ impl FlistWalkerApp {
                         self.indexing.cleanup_stale_terminal_response(request_id);
                         continue;
                     }
-                    self.filelist_state.pending_after_index = None;
+                    self.features.filelist.pending_after_index = None;
                     self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
                     self.indexing.complete_active_request(request_id);

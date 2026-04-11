@@ -58,11 +58,12 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    BackgroundIndexState, CacheStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
-    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
-    PendingFileListUseWalkerConfirmation, ResultSortMode, RootBrowserState, SortMetadata,
-    TabAccentPalette, TabDragState, TabSessionState, UpdateCheckFailureState, UpdateManager,
-    UpdatePromptState, UpdateState,
+    BackgroundIndexState, CacheStateBundle, FeatureStateBundle, FileListDialogKind,
+    FileListManager,
+    HighlightCacheKey, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, ResultSortMode,
+    RootBrowserState, SortMetadata, TabAccentPalette, TabDragState, TabSessionState,
+    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
 };
 use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 use ui_state::RuntimeUiState;
@@ -258,11 +259,9 @@ pub struct FlistWalkerApp {
     worker_bus: WorkerBus,
     indexing: IndexCoordinator,
     ui: RuntimeUiState,
-    root_browser: RootBrowserState,
     cache: CacheStateBundle,
     tabs: TabSessionState,
-    filelist_state: FileListManager,
-    update_state: UpdateManager,
+    features: FeatureStateBundle,
     worker_runtime: Option<WorkerRuntime>,
 }
 
@@ -464,12 +463,6 @@ Search hints:
             worker_bus,
             indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
             ui: RuntimeUiState::new(show_preview, preview_panel_width),
-            root_browser: RootBrowserState {
-                #[cfg(test)]
-                browse_dialog_result: None,
-                saved_roots,
-                default_root,
-            },
             cache: CacheStateBundle {
                 preview: PreviewCacheState::default(),
                 highlight: HighlightCacheState::with_scope_ignore_case(true),
@@ -477,8 +470,16 @@ Search hints:
                 sort_metadata: SortMetadataCacheState::default(),
             },
             tabs: TabSessionState::default(),
-            filelist_state: FileListManager::default(),
-            update_state: UpdateManager::from_state(update_state),
+            features: FeatureStateBundle {
+                root_browser: RootBrowserState {
+                    #[cfg(test)]
+                    browse_dialog_result: None,
+                    saved_roots,
+                    default_root,
+                },
+                filelist: FileListManager::default(),
+                update: UpdateManager::from_state(update_state),
+            },
             worker_runtime: Some(worker_runtime),
         };
         if let Some(path) = Self::window_trace_path() {

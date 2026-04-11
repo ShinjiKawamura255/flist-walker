@@ -39,8 +39,8 @@ fn available_update_response_opens_prompt() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
@@ -50,23 +50,23 @@ fn available_update_response_opens_prompt() {
 
     app.poll_update_response();
 
-    assert!(app.update_state.prompt.is_some());
+    assert!(app.features.update.prompt.is_some());
     assert!(
-        !app.update_state
+        !app.features.update
             .prompt
             .as_ref()
             .expect("update prompt")
             .skip_until_next_version
     );
     assert!(
-        !app.update_state
+        !app.features.update
             .prompt
             .as_ref()
             .expect("update prompt")
             .install_started
     );
-    assert_eq!(app.update_state.pending_request_id, None);
-    assert!(!app.update_state.in_progress);
+    assert_eq!(app.features.update.pending_request_id, None);
+    assert!(!app.features.update.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -77,9 +77,9 @@ fn skipped_update_response_is_not_prompted_again_until_newer_version() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
-    app.update_state.skipped_target_version = Some("0.12.4".to_string());
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
+    app.features.update.skipped_target_version = Some("0.12.4".to_string());
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
@@ -89,9 +89,9 @@ fn skipped_update_response_is_not_prompted_again_until_newer_version() {
 
     app.poll_update_response();
 
-    assert!(app.update_state.prompt.is_none());
-    assert_eq!(app.update_state.pending_request_id, None);
-    assert!(!app.update_state.in_progress);
+    assert!(app.features.update.prompt.is_none());
+    assert_eq!(app.features.update.pending_request_id, None);
+    assert!(!app.features.update.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -102,9 +102,9 @@ fn newer_update_response_ignores_previous_skip_version() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
-    app.update_state.skipped_target_version = Some("0.12.4".to_string());
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
+    app.features.update.skipped_target_version = Some("0.12.4".to_string());
 
     tx.send(UpdateResponse::Available {
         request_id: 1,
@@ -115,7 +115,7 @@ fn newer_update_response_ignores_previous_skip_version() {
     app.poll_update_response();
 
     assert_eq!(
-        app.update_state
+        app.features.update
             .prompt
             .as_ref()
             .expect("newer version should be prompted")
@@ -133,8 +133,8 @@ fn failed_update_response_sets_notice_without_closing_app() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
 
     tx.send(UpdateResponse::Failed {
         request_id: 1,
@@ -145,9 +145,9 @@ fn failed_update_response_sets_notice_without_closing_app() {
     app.poll_update_response();
 
     assert_eq!(app.notice, "Update check failed: offline");
-    assert_eq!(app.update_state.pending_request_id, None);
-    assert!(!app.update_state.in_progress);
-    assert!(!app.update_state.close_requested_for_install);
+    assert_eq!(app.features.update.pending_request_id, None);
+    assert!(!app.features.update.in_progress);
+    assert!(!app.features.update.close_requested_for_install);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -158,9 +158,9 @@ fn apply_started_update_response_requests_app_close() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
-    app.update_state.prompt = Some(UpdatePromptState {
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
+    app.features.update.prompt = Some(UpdatePromptState {
         candidate: test_update_candidate("0.13.1"),
         skip_until_next_version: false,
         install_started: true,
@@ -174,8 +174,8 @@ fn apply_started_update_response_requests_app_close() {
 
     app.poll_update_response();
 
-    assert!(app.update_state.close_requested_for_install);
-    assert!(app.update_state.prompt.is_none());
+    assert!(app.features.update.close_requested_for_install);
+    assert!(app.features.update.prompt.is_none());
     assert_eq!(app.notice, "Restarting to apply update 0.13.1...");
     let _ = fs::remove_dir_all(&root);
 }
@@ -187,8 +187,8 @@ fn update_check_failure_opens_failure_dialog() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
     app.notice = "Existing notice".to_string();
 
     tx.send(UpdateResponse::CheckFailed {
@@ -201,16 +201,16 @@ fn update_check_failure_opens_failure_dialog() {
 
     assert_eq!(app.notice, "Existing notice");
     assert_eq!(
-        app.update_state
+        app.features.update
             .check_failure
             .as_ref()
             .expect("update check failure dialog")
             .error,
         "Update check failed: offline"
     );
-    assert_eq!(app.update_state.pending_request_id, None);
-    assert!(!app.update_state.in_progress);
-    assert!(!app.update_state.close_requested_for_install);
+    assert_eq!(app.features.update.pending_request_id, None);
+    assert!(!app.features.update.in_progress);
+    assert!(!app.features.update.close_requested_for_install);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -221,9 +221,9 @@ fn suppressed_update_check_failure_does_not_open_dialog() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
-    app.update_state.suppress_check_failure_dialog = true;
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
+    app.features.update.suppress_check_failure_dialog = true;
 
     tx.send(UpdateResponse::CheckFailed {
         request_id: 1,
@@ -233,9 +233,9 @@ fn suppressed_update_check_failure_does_not_open_dialog() {
 
     app.poll_update_response();
 
-    assert!(app.update_state.check_failure.is_none());
-    assert_eq!(app.update_state.pending_request_id, None);
-    assert!(!app.update_state.in_progress);
+    assert!(app.features.update.check_failure.is_none());
+    assert_eq!(app.features.update.pending_request_id, None);
+    assert!(!app.features.update.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -249,9 +249,9 @@ fn forced_update_check_failure_bypasses_suppression_flag() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
-    app.update_state.suppress_check_failure_dialog = true;
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
+    app.features.update.suppress_check_failure_dialog = true;
     unsafe {
         std::env::set_var("FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE", "1");
     }
@@ -264,7 +264,7 @@ fn forced_update_check_failure_bypasses_suppression_flag() {
 
     app.poll_update_response();
 
-    assert!(app.update_state.check_failure.is_some());
+    assert!(app.features.update.check_failure.is_some());
     unsafe {
         std::env::remove_var("FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE");
     }
@@ -283,13 +283,13 @@ fn startup_update_check_is_skipped_when_self_update_is_disabled() {
     }
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.update_state.pending_request_id = Some(99);
-    app.update_state.in_progress = true;
+    app.features.update.pending_request_id = Some(99);
+    app.features.update.in_progress = true;
 
     app.request_startup_update_check();
 
-    assert_eq!(app.update_state.pending_request_id, None);
-    assert!(!app.update_state.in_progress);
+    assert_eq!(app.features.update.pending_request_id, None);
+    assert!(!app.features.update.in_progress);
 
     unsafe {
         std::env::remove_var("FLISTWALKER_DISABLE_SELF_UPDATE");
@@ -364,7 +364,7 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateRequest>();
     app.worker_bus.update.tx = tx;
-    app.update_state.prompt = Some(UpdatePromptState {
+    app.features.update.prompt = Some(UpdatePromptState {
         candidate: test_update_candidate("0.13.1"),
         skip_until_next_version: false,
         install_started: false,
@@ -380,13 +380,13 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
     ));
     assert!(rx.try_recv().is_err());
     assert!(
-        app.update_state
+        app.features.update
             .prompt
             .as_ref()
             .expect("update prompt")
             .install_started
     );
-    assert!(app.update_state.in_progress);
+    assert!(app.features.update.in_progress);
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -451,9 +451,9 @@ fn failed_update_response_reenables_update_prompt_actions() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<UpdateResponse>();
     app.worker_bus.update.rx = rx;
-    app.update_state.pending_request_id = Some(1);
-    app.update_state.in_progress = true;
-    app.update_state.prompt = Some(UpdatePromptState {
+    app.features.update.pending_request_id = Some(1);
+    app.features.update.in_progress = true;
+    app.features.update.prompt = Some(UpdatePromptState {
         candidate: test_update_candidate("0.13.1"),
         skip_until_next_version: false,
         install_started: true,
@@ -468,7 +468,7 @@ fn failed_update_response_reenables_update_prompt_actions() {
     app.poll_update_response();
 
     assert!(
-        !app.update_state
+        !app.features.update
             .prompt
             .as_ref()
             .expect("update prompt")

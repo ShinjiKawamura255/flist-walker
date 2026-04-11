@@ -777,6 +777,12 @@ pub(super) struct RootBrowserState {
     pub(super) default_root: Option<PathBuf>,
 }
 
+pub(crate) struct FeatureStateBundle {
+    pub(super) root_browser: RootBrowserState,
+    pub(super) filelist: FileListManager,
+    pub(super) update: UpdateManager,
+}
+
 #[derive(Default)]
 pub(super) struct RequestTabRoutingState {
     pub(super) preview: HashMap<u64, u64>,

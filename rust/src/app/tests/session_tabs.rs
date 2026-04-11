@@ -323,7 +323,7 @@ fn root_dropdown_selection_closes_popup_and_applies_selected_root() {
     fs::create_dir_all(&root_a).expect("create root a");
     fs::create_dir_all(&root_b).expect("create root b");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
-    app.root_browser.saved_roots = vec![root_a.clone(), root_b.clone()];
+    app.features.root_browser.saved_roots = vec![root_a.clone(), root_b.clone()];
     let ctx = egui::Context::default();
 
     app.open_root_dropdown(&ctx);

@@ -161,7 +161,7 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
 
     app.create_filelist();
 
-    assert!(app.filelist_state.pending_use_walker_confirmation.is_none());
+    assert!(app.features.filelist.pending_use_walker_confirmation.is_none());
     let req = filelist_rx
         .try_recv()
         .expect("filelist request should be sent without confirmation");
@@ -176,7 +176,7 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
     app.current_row = Some(1);
-    app.filelist_state.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+    app.features.filelist.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: app.current_tab_id().expect("tab id"),
         root: root.clone(),
         entries: vec![root.join("a.txt")],
@@ -196,10 +196,10 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
 
     assert_eq!(app.current_row, Some(1));
     assert_eq!(
-        app.filelist_state.active_dialog,
+        app.features.filelist.active_dialog,
         Some(FileListDialogKind::Ancestor)
     );
-    assert_eq!(app.filelist_state.active_dialog_button, 1);
+    assert_eq!(app.features.filelist.active_dialog_button, 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -210,7 +210,7 @@ fn dialog_space_confirms_selected_dialog_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.worker_bus.filelist.tx = filelist_tx;
-    app.filelist_state.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+    app.features.filelist.pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: app.current_tab_id().expect("tab id"),
         root: root.clone(),
         entries: vec![root.join("a.txt")],
@@ -243,7 +243,7 @@ fn dialog_space_confirms_selected_dialog_action() {
         .try_recv()
         .expect("filelist request should be sent");
     assert!(!req.propagate_to_ancestors);
-    assert!(app.filelist_state.pending_ancestor_confirmation.is_none());
+    assert!(app.features.filelist.pending_ancestor_confirmation.is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -254,7 +254,7 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.results = vec![(root.join("a.txt"), 0.0)];
     app.current_row = Some(0);
-    app.filelist_state.pending_use_walker_confirmation =
+    app.features.filelist.pending_use_walker_confirmation =
         Some(PendingFileListUseWalkerConfirmation {
             source_tab_id: app.current_tab_id().expect("tab id"),
             root: root.clone(),
@@ -273,7 +273,7 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     );
 
     assert_eq!(app.tabs.len(), 1);
-    assert!(app.filelist_state.pending_use_walker_confirmation.is_none());
+    assert!(app.features.filelist.pending_use_walker_confirmation.is_none());
     assert!(app.notice.contains("Preparing background Walker index"));
     let _ = fs::remove_dir_all(&root);
 }
