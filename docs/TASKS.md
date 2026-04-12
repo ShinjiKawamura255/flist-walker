@@ -2,14 +2,15 @@
 
 ## Status Snapshot
 - Updated: 2026-04-12
-- Current active engineering roadmap: state sync finalization roadmap (2026-04-12)
-- Current active engineering change plan: docs/CHANGE-PLAN-20260412-roadmap-state-sync-finalization.md
+- Current active engineering roadmap: none
+- Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
   - 2026-04-12 に app state ownership consolidation roadmap を新規作成し、runtime/tab snapshot の二重管理と event-routing の direct mutation を整理する方針へ切り替えた。
   - 2026-04-12 に app state ownership consolidation roadmap の closure validation を行い、残課題がまだ material だと判断したため state sync finalization roadmap へ再計画した。
   - 2026-04-12 に state sync finalization roadmap を新規作成し、残る live/snapshot ownership overlap をさらに削る次の pass へ切り替えた。
   - 2026-04-12 に state sync finalization Slice A を実装し、`query_history_dirty_since` を runtime-only に寄せ、`pending_restore_refresh_tabs` で tab restore pending を管理するようにしたうえで `cargo test` を通した。
+  - 2026-04-12 に state sync finalization roadmap を closure し、残る overlap は設計上の live/snapshot split として許容可能と判断した。
   - 2026-04-12 に shell boundary closure roadmap を完了し、`FlistWalkerApp` の透明な shell 露出を除去したうえで `status_line` を render-time derived data として扱うように切り替え、`cd rust && cargo test` を通した。
   - 2026-04-12 に architecture score uplift roadmap と slice A/B/C の change-plan 文書を作成し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-12 の外部レビューで、現在の architecture は 60〜65 点相当と評価され、`Deref` 連鎖、direct mutation、state duplication、imperative UI refresh が主な未解消点として指摘された。
