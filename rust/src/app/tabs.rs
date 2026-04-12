@@ -20,7 +20,6 @@ impl FlistWalkerApp {
         tab.index_state.pending_index_entries_request_id = None;
         tab.index_state.search_resume_pending = false;
         tab.index_state.search_rerun_pending = false;
-        tab.pending_restore_refresh = false;
         if let Some(notice) = notice {
             tab.notice = notice;
         } else if tab.notice.is_empty() {
@@ -41,10 +40,9 @@ impl FlistWalkerApp {
     }
 
     fn trigger_pending_restore_refresh(&mut self) {
-        if !self.shell.tabs.pending_restore_refresh {
+        if !self.take_pending_restore_refresh_for_active_tab() {
             return;
         }
-        self.clear_pending_restore_refresh();
         self.request_index_refresh();
     }
 
@@ -57,6 +55,7 @@ impl FlistWalkerApp {
         self.shell.indexing.clear_for_tab(tab_id);
         self.shell.search.clear_for_tab(tab_id);
         self.clear_response_routing_for_tab(tab_id);
+        self.clear_pending_restore_refresh_for_tab(tab_id);
         self.shell.ui.memory_usage_bytes = None;
     }
 
@@ -85,6 +84,7 @@ impl FlistWalkerApp {
         trigger_restore_refresh: bool,
     ) {
         self.apply_tab_state(tab);
+        self.request_scroll_to_current();
         if restore_results {
             self.restore_results_from_compacted_tab();
         }
@@ -359,9 +359,14 @@ impl FlistWalkerApp {
                 self.restored_tab_state(id, saved)
             })
             .collect();
+        let restored_tab_ids = self.shell.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>();
+        for tab_id in restored_tab_ids {
+            self.mark_pending_restore_refresh_for_tab(tab_id);
+        }
         self.shell.tabs.active_tab = active_tab.min(self.shell.tabs.len().saturating_sub(1));
         if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab).cloned() {
             self.apply_tab_state(&tab);
+            self.request_scroll_to_current();
             self.request_focus_query();
             self.clear_unfocus_query_request();
             self.trigger_pending_restore_refresh();
@@ -545,7 +550,6 @@ impl FlistWalkerApp {
         tab.query_state.history_search_original_query.clear();
         tab.query_state.history_search_results.clear();
         tab.query_state.history_search_current = None;
-        tab.pending_restore_refresh = false;
         tab.result_state.base_results = self
             .shell
             .runtime
@@ -583,9 +587,6 @@ impl FlistWalkerApp {
         tab.index_state.last_incremental_results_refresh = Instant::now();
         tab.index_state.search_resume_pending = false;
         tab.index_state.search_rerun_pending = false;
-        tab.scroll_to_current = true;
-        tab.focus_query_requested = true;
-        tab.unfocus_query_requested = false;
         tab.result_state.results = tab.result_state.base_results.clone();
         self.shell.tabs.push(tab.clone());
         self.shell.tabs.active_tab = self.shell.tabs.len().saturating_sub(1);

@@ -103,7 +103,6 @@ impl IndexCoordinator {
     ) {
         tab.index_state.pending_index_request_id = Some(request_id);
         tab.index_state.index_in_progress = true;
-        tab.pending_restore_refresh = false;
         tab.pending_request_id = None;
         tab.search_in_progress = false;
         tab.index_state.search_resume_pending = !tab.query_state.query.trim().is_empty();

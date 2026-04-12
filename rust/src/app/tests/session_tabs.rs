@@ -129,8 +129,8 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     assert_eq!(app.shell.tabs.len(), 2);
-    app.shell.tabs[0].focus_query_requested = false;
-    app.shell.tabs[0].unfocus_query_requested = true;
+    app.shell.ui.focus_query_requested = false;
+    app.shell.ui.unfocus_query_requested = true;
 
     run_shortcuts_frame(
         &mut app,

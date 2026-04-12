@@ -60,7 +60,6 @@ pub(crate) struct AppTabState {
     pub(super) include_dirs: bool,
     pub(super) index_state: TabIndexState,
     pub(super) query_state: TabQueryState,
-    pub(super) pending_restore_refresh: bool,
     pub(super) result_state: TabResultState,
     pub(super) notice: String,
     pub(super) pending_request_id: Option<u64>,
@@ -69,9 +68,6 @@ pub(crate) struct AppTabState {
     pub(super) search_in_progress: bool,
     pub(super) preview_in_progress: bool,
     pub(super) action_in_progress: bool,
-    pub(super) scroll_to_current: bool,
-    pub(super) focus_query_requested: bool,
-    pub(super) unfocus_query_requested: bool,
 }
 
 impl TabIndexState {
@@ -209,7 +205,6 @@ impl AppTabState {
             include_dirs: shell.shell.runtime.include_dirs,
             index_state: TabIndexState::from_shell(shell),
             query_state: TabQueryState::from_shell(shell),
-            pending_restore_refresh: shell.shell.tabs.pending_restore_refresh,
             result_state: TabResultState::from_shell(shell),
             notice: shell.shell.runtime.notice.clone(),
             pending_request_id: shell.shell.search.pending_request_id(),
@@ -218,9 +213,6 @@ impl AppTabState {
             search_in_progress: shell.shell.search.in_progress(),
             preview_in_progress: shell.shell.worker_bus.preview.in_progress,
             action_in_progress: shell.shell.worker_bus.action.in_progress,
-            scroll_to_current: shell.shell.ui.scroll_to_current,
-            focus_query_requested: shell.shell.ui.focus_query_requested,
-            unfocus_query_requested: shell.shell.ui.unfocus_query_requested,
         }
     }
 
@@ -268,7 +260,6 @@ impl AppTabState {
                 history_search_results: Vec::new(),
                 history_search_current: None,
             },
-            pending_restore_refresh: true,
             result_state: TabResultState {
                 base_results: Vec::new(),
                 results: Vec::new(),
@@ -287,9 +278,6 @@ impl AppTabState {
             search_in_progress: false,
             preview_in_progress: false,
             action_in_progress: false,
-            scroll_to_current: true,
-            focus_query_requested: false,
-            unfocus_query_requested: false,
         }
     }
 
@@ -302,7 +290,6 @@ impl AppTabState {
         shell.shell.runtime.include_dirs = self.include_dirs;
         self.index_state.apply_shell(shell);
         self.query_state.apply_shell(shell);
-        shell.shell.tabs.pending_restore_refresh = self.pending_restore_refresh;
         self.result_state.apply_shell(shell);
         shell.shell.runtime.notice = self.notice.clone();
         shell
@@ -314,9 +301,6 @@ impl AppTabState {
         shell.shell.search.set_in_progress(self.search_in_progress);
         shell.shell.worker_bus.preview.in_progress = self.preview_in_progress;
         shell.shell.worker_bus.action.in_progress = self.action_in_progress;
-        shell.shell.ui.scroll_to_current = self.scroll_to_current;
-        shell.shell.ui.focus_query_requested = self.focus_query_requested;
-        shell.shell.ui.unfocus_query_requested = self.unfocus_query_requested;
     }
 
     pub(super) fn into_saved(self, history_persist_disabled: bool) -> SavedTabState {

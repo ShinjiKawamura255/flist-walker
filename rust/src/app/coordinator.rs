@@ -252,10 +252,25 @@ impl FlistWalkerApp {
 
     pub(super) fn clear_pending_restore_refresh(&mut self) {
         self.shell.tabs.pending_restore_refresh = false;
-        let active_tab = self.shell.tabs.active_tab;
-        if let Some(tab) = self.shell.tabs.get_mut(active_tab) {
-            tab.pending_restore_refresh = false;
+    }
+
+    pub(super) fn mark_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
+        self.shell.tabs.pending_restore_refresh_tabs.insert(tab_id);
+    }
+
+    pub(super) fn clear_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
+        self.shell.tabs.pending_restore_refresh_tabs.remove(&tab_id);
+    }
+
+    pub(super) fn take_pending_restore_refresh_for_active_tab(&mut self) -> bool {
+        if self.shell.tabs.pending_restore_refresh {
+            self.clear_pending_restore_refresh();
+            return true;
         }
+        let Some(tab_id) = self.current_tab_id() else {
+            return false;
+        };
+        self.shell.tabs.pending_restore_refresh_tabs.remove(&tab_id)
     }
 
     /// action worker 実行中の進捗ラベルを返す。

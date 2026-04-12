@@ -148,7 +148,6 @@ impl FlistWalkerApp {
         tab.index_state.pending_index_entries_request_id = None;
         tab.index_state.search_resume_pending = false;
         tab.index_state.search_rerun_pending = false;
-        tab.pending_restore_refresh = false;
     }
 
     fn handle_index_worker_unavailable(&mut self) {

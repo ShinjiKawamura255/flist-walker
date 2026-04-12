@@ -860,6 +860,7 @@ pub(crate) struct TabSessionState {
     pub(super) active_tab: usize,
     pub(super) next_tab_id: u64,
     pub(super) pending_restore_refresh: bool,
+    pub(super) pending_restore_refresh_tabs: HashSet<u64>,
     pub(super) request_tab_routing: RequestTabRoutingState,
 }
 
@@ -870,6 +871,7 @@ impl Default for TabSessionState {
             active_tab: 0,
             next_tab_id: 1,
             pending_restore_refresh: false,
+            pending_restore_refresh_tabs: HashSet::new(),
             request_tab_routing: RequestTabRoutingState::default(),
         }
     }
