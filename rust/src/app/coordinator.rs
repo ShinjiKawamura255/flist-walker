@@ -151,68 +151,74 @@ pub(super) fn path_is_within_root(root: &Path, path: &Path) -> bool {
 }
 
 impl FlistWalkerApp {
-    /// 現在の進行状況と notice から status line を再構築する。
-    pub(super) fn refresh_status_line(&mut self) {
-        let indexed_count = if self.indexing.in_progress {
-            if self.runtime.index.entries.is_empty() {
-                self.runtime.all_entries.len()
+    pub(super) fn status_line_text(&mut self) -> String {
+        let indexed_count = if self.shell.indexing.in_progress {
+            if self.shell.runtime.index.entries.is_empty() {
+                self.shell.runtime.all_entries.len()
             } else {
-                self.runtime.index.entries.len()
+                self.shell.runtime.index.entries.len()
             }
         } else {
-            self.runtime.all_entries.len()
+            self.shell.runtime.all_entries.len()
         };
         let memory = self.memory_usage_text();
-        self.runtime.status_line = build_status_line(StatusLineContext {
-            active_tab: self.tabs.active_tab,
-            tab_count: self.tabs.len(),
+        let status_line = build_status_line(StatusLineContext {
+            active_tab: self.shell.tabs.active_tab,
+            tab_count: self.shell.tabs.len(),
             indexed_count,
-            results_len: self.runtime.results.len(),
-            limit: self.runtime.limit,
-            pinned_paths_len: self.runtime.pinned_paths.len(),
-            search_in_progress: self.search.in_progress(),
-            indexing_in_progress: self.indexing.in_progress,
-            action_in_progress: self.worker_bus.action.in_progress,
-            filelist_in_progress: self.features.filelist.in_progress,
-            filelist_cancel_requested: self.features.filelist.cancel_requested,
-            update_in_progress: self.features.update.in_progress,
-            sort_in_progress: self.worker_bus.sort.in_progress,
-            history_search_active: self.runtime.query_state.history_search_active,
-            history_search_results_len: self.runtime.query_state.history_search_results.len(),
-            query_history_len: self.runtime.query_state.query_history.len(),
-            notice: &self.runtime.notice,
+            results_len: self.shell.runtime.results.len(),
+            limit: self.shell.runtime.limit,
+            pinned_paths_len: self.shell.runtime.pinned_paths.len(),
+            search_in_progress: self.shell.search.in_progress(),
+            indexing_in_progress: self.shell.indexing.in_progress,
+            action_in_progress: self.shell.worker_bus.action.in_progress,
+            filelist_in_progress: self.shell.features.filelist.in_progress,
+            filelist_cancel_requested: self.shell.features.filelist.cancel_requested,
+            update_in_progress: self.shell.features.update.in_progress,
+            sort_in_progress: self.shell.worker_bus.sort.in_progress,
+            history_search_active: self.shell.runtime.query_state.history_search_active,
+            history_search_results_len: self.shell.runtime.query_state.history_search_results.len(),
+            query_history_len: self.shell.runtime.query_state.query_history.len(),
+            notice: &self.shell.runtime.notice,
             memory_text: memory,
         });
+        self.shell.runtime.status_line = status_line.clone();
+        status_line
+    }
+
+    /// 現在の進行状況と notice から status line を再構築する。
+    pub(super) fn refresh_status_line(&mut self) {
+        self.shell.runtime.status_line = self.status_line_text();
     }
 
     /// 定期的にメモリ使用量をサンプリングし表示文字列へ変換する。
     fn memory_usage_text(&mut self) -> Option<String> {
-        if self.ui.memory_usage_bytes.is_none()
-            || self.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
+        if self.shell.ui.memory_usage_bytes.is_none()
+            || self.shell.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
         {
-            self.ui.last_memory_sample = Instant::now();
-            self.ui.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
+            self.shell.ui.last_memory_sample = Instant::now();
+            self.shell.ui.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
         }
-        self.ui
+        self.shell.ui
             .memory_usage_bytes
             .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
     }
 
     /// notice を更新し status line と同期する。
     pub(super) fn set_notice(&mut self, notice: impl Into<String>) {
-        self.runtime.notice = notice.into();
+        self.shell.runtime.notice = notice.into();
         self.refresh_status_line();
     }
 
     /// notice を消去し status line を再計算する。
     pub(super) fn clear_notice(&mut self) {
-        self.runtime.notice.clear();
+        self.shell.runtime.notice.clear();
         self.refresh_status_line();
     }
 
     /// action worker 実行中の進捗ラベルを返す。
     pub(super) fn action_progress_label(&self) -> Option<&'static str> {
-        if self.worker_bus.action.in_progress {
+        if self.shell.worker_bus.action.in_progress {
             Some("Opening...")
         } else {
             None
@@ -230,7 +236,7 @@ impl FlistWalkerApp {
 
     /// 現在の index source を status 向け文言へ整形する。
     pub(super) fn source_text(&self) -> String {
-        match &self.runtime.index.source {
+        match &self.shell.runtime.index.source {
             IndexSource::FileList(path) => format!(
                 "Source: FileList ({})",
                 path.file_name()

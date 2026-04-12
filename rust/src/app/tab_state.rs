@@ -77,102 +77,102 @@ pub(crate) struct AppTabState {
 impl TabIndexState {
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            index: shell.runtime.index.clone(),
-            all_entries: Arc::clone(&shell.runtime.all_entries),
-            entries: Arc::clone(&shell.runtime.entries),
-            pending_index_request_id: shell.indexing.pending_request_id,
-            index_in_progress: shell.indexing.in_progress,
-            pending_index_entries: shell.indexing.pending_entries.clone(),
-            pending_index_entries_request_id: shell.indexing.pending_entries_request_id,
-            pending_kind_paths: shell.indexing.pending_kind_paths.clone(),
-            pending_kind_paths_set: shell.indexing.pending_kind_paths_set.clone(),
-            in_flight_kind_paths: shell.indexing.in_flight_kind_paths.clone(),
-            kind_resolution_epoch: shell.indexing.kind_resolution_epoch,
-            kind_resolution_in_progress: shell.indexing.kind_resolution_in_progress,
-            incremental_filtered_entries: shell.indexing.incremental_filtered_entries.clone(),
-            last_incremental_results_refresh: shell.indexing.last_incremental_results_refresh,
-            last_search_snapshot_len: shell.indexing.last_search_snapshot_len,
-            search_resume_pending: shell.indexing.search_resume_pending,
-            search_rerun_pending: shell.indexing.search_rerun_pending,
+            index: shell.shell.runtime.index.clone(),
+            all_entries: Arc::clone(&shell.shell.runtime.all_entries),
+            entries: Arc::clone(&shell.shell.runtime.entries),
+            pending_index_request_id: shell.shell.indexing.pending_request_id,
+            index_in_progress: shell.shell.indexing.in_progress,
+            pending_index_entries: shell.shell.indexing.pending_entries.clone(),
+            pending_index_entries_request_id: shell.shell.indexing.pending_entries_request_id,
+            pending_kind_paths: shell.shell.indexing.pending_kind_paths.clone(),
+            pending_kind_paths_set: shell.shell.indexing.pending_kind_paths_set.clone(),
+            in_flight_kind_paths: shell.shell.indexing.in_flight_kind_paths.clone(),
+            kind_resolution_epoch: shell.shell.indexing.kind_resolution_epoch,
+            kind_resolution_in_progress: shell.shell.indexing.kind_resolution_in_progress,
+            incremental_filtered_entries: shell.shell.indexing.incremental_filtered_entries.clone(),
+            last_incremental_results_refresh: shell.shell.indexing.last_incremental_results_refresh,
+            last_search_snapshot_len: shell.shell.indexing.last_search_snapshot_len,
+            search_resume_pending: shell.shell.indexing.search_resume_pending,
+            search_rerun_pending: shell.shell.indexing.search_rerun_pending,
         }
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.runtime.index = self.index.clone();
-        shell.runtime.all_entries = Arc::clone(&self.all_entries);
-        shell.runtime.entries = Arc::clone(&self.entries);
-        shell.indexing.pending_request_id = self.pending_index_request_id;
-        shell.indexing.in_progress = self.index_in_progress;
-        shell.indexing.pending_entries = self.pending_index_entries.clone();
-        shell.indexing.pending_entries_request_id = self.pending_index_entries_request_id;
-        shell.indexing.pending_kind_paths = self.pending_kind_paths.clone();
-        shell.indexing.pending_kind_paths_set = self.pending_kind_paths_set.clone();
-        shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths.clone();
-        shell.indexing.kind_resolution_epoch = self.kind_resolution_epoch;
-        shell.indexing.kind_resolution_in_progress = self.kind_resolution_in_progress;
-        shell.indexing.incremental_filtered_entries = self.incremental_filtered_entries.clone();
-        shell.indexing.last_incremental_results_refresh = self.last_incremental_results_refresh;
-        shell.indexing.last_search_snapshot_len = self.last_search_snapshot_len;
-        shell.indexing.search_resume_pending = self.search_resume_pending;
-        shell.indexing.search_rerun_pending = self.search_rerun_pending;
+        shell.shell.runtime.index = self.index.clone();
+        shell.shell.runtime.all_entries = Arc::clone(&self.all_entries);
+        shell.shell.runtime.entries = Arc::clone(&self.entries);
+        shell.shell.indexing.pending_request_id = self.pending_index_request_id;
+        shell.shell.indexing.in_progress = self.index_in_progress;
+        shell.shell.indexing.pending_entries = self.pending_index_entries.clone();
+        shell.shell.indexing.pending_entries_request_id = self.pending_index_entries_request_id;
+        shell.shell.indexing.pending_kind_paths = self.pending_kind_paths.clone();
+        shell.shell.indexing.pending_kind_paths_set = self.pending_kind_paths_set.clone();
+        shell.shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths.clone();
+        shell.shell.indexing.kind_resolution_epoch = self.kind_resolution_epoch;
+        shell.shell.indexing.kind_resolution_in_progress = self.kind_resolution_in_progress;
+        shell.shell.indexing.incremental_filtered_entries = self.incremental_filtered_entries.clone();
+        shell.shell.indexing.last_incremental_results_refresh = self.last_incremental_results_refresh;
+        shell.shell.indexing.last_search_snapshot_len = self.last_search_snapshot_len;
+        shell.shell.indexing.search_resume_pending = self.search_resume_pending;
+        shell.shell.indexing.search_rerun_pending = self.search_rerun_pending;
     }
 }
 
 impl TabQueryState {
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            query: shell.runtime.query_state.query.clone(),
-            query_history: shell.runtime.query_state.query_history.clone(),
-            query_history_cursor: shell.runtime.query_state.query_history_cursor,
-            query_history_draft: shell.runtime.query_state.query_history_draft.clone(),
-            query_history_dirty_since: shell.runtime.query_state.query_history_dirty_since,
-            history_search_active: shell.runtime.query_state.history_search_active,
-            history_search_query: shell.runtime.query_state.history_search_query.clone(),
-            history_search_original_query: shell.runtime.query_state.history_search_original_query.clone(),
-            history_search_results: shell.runtime.query_state.history_search_results.clone(),
-            history_search_current: shell.runtime.query_state.history_search_current,
+            query: shell.shell.runtime.query_state.query.clone(),
+            query_history: shell.shell.runtime.query_state.query_history.clone(),
+            query_history_cursor: shell.shell.runtime.query_state.query_history_cursor,
+            query_history_draft: shell.shell.runtime.query_state.query_history_draft.clone(),
+            query_history_dirty_since: shell.shell.runtime.query_state.query_history_dirty_since,
+            history_search_active: shell.shell.runtime.query_state.history_search_active,
+            history_search_query: shell.shell.runtime.query_state.history_search_query.clone(),
+            history_search_original_query: shell.shell.runtime.query_state.history_search_original_query.clone(),
+            history_search_results: shell.shell.runtime.query_state.history_search_results.clone(),
+            history_search_current: shell.shell.runtime.query_state.history_search_current,
         }
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.runtime.query_state.query = self.query.clone();
-        shell.runtime.query_state.query_history = self.query_history.clone();
-        shell.runtime.query_state.query_history_cursor = self.query_history_cursor;
-        shell.runtime.query_state.query_history_draft = self.query_history_draft.clone();
-        shell.runtime.query_state.query_history_dirty_since = self.query_history_dirty_since;
-        shell.runtime.query_state.history_search_active = self.history_search_active;
-        shell.runtime.query_state.history_search_query = self.history_search_query.clone();
-        shell.runtime.query_state.history_search_original_query =
+        shell.shell.runtime.query_state.query = self.query.clone();
+        shell.shell.runtime.query_state.query_history = self.query_history.clone();
+        shell.shell.runtime.query_state.query_history_cursor = self.query_history_cursor;
+        shell.shell.runtime.query_state.query_history_draft = self.query_history_draft.clone();
+        shell.shell.runtime.query_state.query_history_dirty_since = self.query_history_dirty_since;
+        shell.shell.runtime.query_state.history_search_active = self.history_search_active;
+        shell.shell.runtime.query_state.history_search_query = self.history_search_query.clone();
+        shell.shell.runtime.query_state.history_search_original_query =
             self.history_search_original_query.clone();
-        shell.runtime.query_state.history_search_results = self.history_search_results.clone();
-        shell.runtime.query_state.history_search_current = self.history_search_current;
+        shell.shell.runtime.query_state.history_search_results = self.history_search_results.clone();
+        shell.shell.runtime.query_state.history_search_current = self.history_search_current;
     }
 }
 
 impl TabResultState {
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            base_results: shell.runtime.base_results.clone(),
-            results: shell.runtime.results.clone(),
-            result_sort_mode: shell.runtime.result_sort_mode,
-            pending_sort_request_id: shell.worker_bus.sort.pending_request_id,
-            sort_in_progress: shell.worker_bus.sort.in_progress,
-            pinned_paths: shell.runtime.pinned_paths.clone(),
-            current_row: shell.runtime.current_row,
-            preview: shell.runtime.preview.clone(),
+            base_results: shell.shell.runtime.base_results.clone(),
+            results: shell.shell.runtime.results.clone(),
+            result_sort_mode: shell.shell.runtime.result_sort_mode,
+            pending_sort_request_id: shell.shell.worker_bus.sort.pending_request_id,
+            sort_in_progress: shell.shell.worker_bus.sort.in_progress,
+            pinned_paths: shell.shell.runtime.pinned_paths.clone(),
+            current_row: shell.shell.runtime.current_row,
+            preview: shell.shell.runtime.preview.clone(),
             results_compacted: false,
         }
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.runtime.base_results = self.base_results.clone();
-        shell.runtime.results = self.results.clone();
-        shell.runtime.result_sort_mode = self.result_sort_mode;
-        shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
-        shell.worker_bus.sort.in_progress = self.sort_in_progress;
-        shell.runtime.pinned_paths = self.pinned_paths.clone();
-        shell.runtime.current_row = self.current_row;
-        shell.runtime.preview = self.preview.clone();
+        shell.shell.runtime.base_results = self.base_results.clone();
+        shell.shell.runtime.results = self.results.clone();
+        shell.shell.runtime.result_sort_mode = self.result_sort_mode;
+        shell.shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
+        shell.shell.worker_bus.sort.in_progress = self.sort_in_progress;
+        shell.shell.runtime.pinned_paths = self.pinned_paths.clone();
+        shell.shell.runtime.current_row = self.current_row;
+        shell.shell.runtime.preview = self.preview.clone();
     }
 }
 
@@ -180,30 +180,31 @@ impl AppTabState {
     pub(super) fn from_shell(shell: &FlistWalkerApp, id: u64) -> Self {
         Self {
             id,
-            root: shell.runtime.root.clone(),
+            root: shell.shell.runtime.root.clone(),
             tab_accent: shell
+                .shell
                 .tabs
-                .get(shell.tabs.active_tab)
+                .get(shell.shell.tabs.active_tab)
                 .and_then(|tab| tab.tab_accent),
-            use_filelist: shell.runtime.use_filelist,
-            use_regex: shell.runtime.use_regex,
-            ignore_case: shell.runtime.ignore_case,
-            include_files: shell.runtime.include_files,
-            include_dirs: shell.runtime.include_dirs,
+            use_filelist: shell.shell.runtime.use_filelist,
+            use_regex: shell.shell.runtime.use_regex,
+            ignore_case: shell.shell.runtime.ignore_case,
+            include_files: shell.shell.runtime.include_files,
+            include_dirs: shell.shell.runtime.include_dirs,
             index_state: TabIndexState::from_shell(shell),
             query_state: TabQueryState::from_shell(shell),
-            pending_restore_refresh: shell.tabs.pending_restore_refresh,
+            pending_restore_refresh: shell.shell.tabs.pending_restore_refresh,
             result_state: TabResultState::from_shell(shell),
-            notice: shell.runtime.notice.clone(),
-            pending_request_id: shell.search.pending_request_id(),
-            pending_preview_request_id: shell.worker_bus.preview.pending_request_id,
-            pending_action_request_id: shell.worker_bus.action.pending_request_id,
-            search_in_progress: shell.search.in_progress(),
-            preview_in_progress: shell.worker_bus.preview.in_progress,
-            action_in_progress: shell.worker_bus.action.in_progress,
-            scroll_to_current: shell.ui.scroll_to_current,
-            focus_query_requested: shell.ui.focus_query_requested,
-            unfocus_query_requested: shell.ui.unfocus_query_requested,
+            notice: shell.shell.runtime.notice.clone(),
+            pending_request_id: shell.shell.search.pending_request_id(),
+            pending_preview_request_id: shell.shell.worker_bus.preview.pending_request_id,
+            pending_action_request_id: shell.shell.worker_bus.action.pending_request_id,
+            search_in_progress: shell.shell.search.in_progress(),
+            preview_in_progress: shell.shell.worker_bus.preview.in_progress,
+            action_in_progress: shell.shell.worker_bus.action.in_progress,
+            scroll_to_current: shell.shell.ui.scroll_to_current,
+            focus_query_requested: shell.shell.ui.focus_query_requested,
+            unfocus_query_requested: shell.shell.ui.unfocus_query_requested,
         }
     }
 
@@ -241,7 +242,7 @@ impl AppTabState {
             },
             query_state: TabQueryState {
             query: saved.query.clone(),
-            query_history: shell.runtime.query_state.query_history.clone(),
+            query_history: shell.shell.runtime.query_state.query_history.clone(),
                 query_history_cursor: None,
                 query_history_draft: None,
                 query_history_dirty_since: None,
@@ -277,26 +278,26 @@ impl AppTabState {
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.runtime.root = self.root.clone();
-        shell.runtime.use_filelist = self.use_filelist;
-        shell.runtime.use_regex = self.use_regex;
-        shell.runtime.ignore_case = self.ignore_case;
-        shell.runtime.include_files = self.include_files;
-        shell.runtime.include_dirs = self.include_dirs;
+        shell.shell.runtime.root = self.root.clone();
+        shell.shell.runtime.use_filelist = self.use_filelist;
+        shell.shell.runtime.use_regex = self.use_regex;
+        shell.shell.runtime.ignore_case = self.ignore_case;
+        shell.shell.runtime.include_files = self.include_files;
+        shell.shell.runtime.include_dirs = self.include_dirs;
         self.index_state.apply_shell(shell);
         self.query_state.apply_shell(shell);
-        shell.tabs.pending_restore_refresh = self.pending_restore_refresh;
+        shell.shell.tabs.pending_restore_refresh = self.pending_restore_refresh;
         self.result_state.apply_shell(shell);
-        shell.runtime.notice = self.notice.clone();
-        shell.search.set_pending_request_id(self.pending_request_id);
-        shell.worker_bus.preview.pending_request_id = self.pending_preview_request_id;
-        shell.worker_bus.action.pending_request_id = self.pending_action_request_id;
-        shell.search.set_in_progress(self.search_in_progress);
-        shell.worker_bus.preview.in_progress = self.preview_in_progress;
-        shell.worker_bus.action.in_progress = self.action_in_progress;
-        shell.ui.scroll_to_current = self.scroll_to_current;
-        shell.ui.focus_query_requested = self.focus_query_requested;
-        shell.ui.unfocus_query_requested = self.unfocus_query_requested;
+        shell.shell.runtime.notice = self.notice.clone();
+        shell.shell.search.set_pending_request_id(self.pending_request_id);
+        shell.shell.worker_bus.preview.pending_request_id = self.pending_preview_request_id;
+        shell.shell.worker_bus.action.pending_request_id = self.pending_action_request_id;
+        shell.shell.search.set_in_progress(self.search_in_progress);
+        shell.shell.worker_bus.preview.in_progress = self.preview_in_progress;
+        shell.shell.worker_bus.action.in_progress = self.action_in_progress;
+        shell.shell.ui.scroll_to_current = self.scroll_to_current;
+        shell.shell.ui.focus_query_requested = self.focus_query_requested;
+        shell.shell.ui.unfocus_query_requested = self.unfocus_query_requested;
     }
 
     pub(super) fn into_saved(self, history_persist_disabled: bool) -> SavedTabState {

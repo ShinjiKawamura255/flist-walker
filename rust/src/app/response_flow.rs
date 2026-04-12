@@ -2,7 +2,7 @@ use super::*;
 
 impl FlistWalkerApp {
     pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.tabs
+        self.shell.tabs
             .request_tab_routing
             .bind_preview(request_id, tab_id);
     }
@@ -14,16 +14,16 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
-        self.tabs.request_tab_routing.take_preview(request_id)
+        self.shell.tabs.request_tab_routing.take_preview(request_id)
     }
 
     pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) {
-        self.tabs.request_tab_routing.clear_for_tab(tab_id);
+        self.shell.tabs.request_tab_routing.clear_for_tab(tab_id);
     }
 
     #[cfg(test)]
     pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.tabs
+        self.shell.tabs
             .request_tab_routing
             .preview
             .get(&request_id)
@@ -31,7 +31,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_action_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.tabs
+        self.shell.tabs
             .request_tab_routing
             .bind_action(request_id, tab_id);
     }
@@ -43,11 +43,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn take_action_request_tab(&mut self, request_id: u64) -> Option<u64> {
-        self.tabs.request_tab_routing.take_action(request_id)
+        self.shell.tabs.request_tab_routing.take_action(request_id)
     }
 
     pub(super) fn bind_sort_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.tabs.request_tab_routing.bind_sort(request_id, tab_id);
+        self.shell.tabs.request_tab_routing.bind_sort(request_id, tab_id);
     }
 
     pub(super) fn bind_sort_request_to_current_tab(&mut self, request_id: u64) {
@@ -57,12 +57,12 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn take_sort_request_tab(&mut self, request_id: u64) -> Option<u64> {
-        self.tabs.request_tab_routing.take_sort(request_id)
+        self.shell.tabs.request_tab_routing.take_sort(request_id)
     }
 
     #[cfg(test)]
     pub(super) fn action_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.tabs
+        self.shell.tabs
             .request_tab_routing
             .action
             .get(&request_id)
@@ -71,7 +71,7 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     pub(super) fn sort_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.tabs.request_tab_routing.sort.get(&request_id).copied()
+        self.shell.tabs.request_tab_routing.sort.get(&request_id).copied()
     }
 
     /// action/preview/sort の応答を一括で処理する。
@@ -83,7 +83,7 @@ impl FlistWalkerApp {
 
     /// action worker の応答を現在 tab または背景 tab に反映する。
     pub(super) fn poll_action_response(&mut self) {
-        while let Ok(response) = self.worker_bus.action.rx.try_recv() {
+        while let Ok(response) = self.shell.worker_bus.action.rx.try_recv() {
             if self.apply_active_action_response(&response) {
                 continue;
             }
@@ -98,7 +98,7 @@ impl FlistWalkerApp {
         let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
             return;
         };
-        let Some(tab) = self.tabs.get_mut(tab_index) else {
+        let Some(tab) = self.shell.tabs.get_mut(tab_index) else {
             return;
         };
         if Some(response.request_id) != tab.pending_action_request_id {
@@ -110,19 +110,19 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_active_action_response(&mut self, response: &ActionResponse) -> bool {
-        if Some(response.request_id) != self.worker_bus.action.pending_request_id {
+        if Some(response.request_id) != self.shell.worker_bus.action.pending_request_id {
             return false;
         }
         self.take_action_request_tab(response.request_id);
-        self.worker_bus.action.pending_request_id = None;
-        self.worker_bus.action.in_progress = false;
+        self.shell.worker_bus.action.pending_request_id = None;
+        self.shell.worker_bus.action.in_progress = false;
         self.set_notice(response.notice.clone());
         true
     }
 
     /// sort worker の応答を cache と tab state へ適用する。
     pub(super) fn poll_sort_response(&mut self) {
-        while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
+        while let Ok(response) = self.shell.worker_bus.sort.rx.try_recv() {
             for (path, metadata) in &response.entries {
                 self.cache_sort_metadata(path.clone(), *metadata);
             }
@@ -143,7 +143,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_preview_response(&mut self) {
-        while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
+        while let Ok(response) = self.shell.worker_bus.preview.rx.try_recv() {
             if self.apply_active_preview_response(&response) {
                 continue;
             }

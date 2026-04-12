@@ -105,15 +105,15 @@ impl FlistWalkerApp {
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
-        let old_search_tx = std::mem::replace(&mut self.search.tx, dummy_search_tx);
-        let old_preview_tx = std::mem::replace(&mut self.worker_bus.preview.tx, dummy_preview_tx);
-        let old_action_tx = std::mem::replace(&mut self.worker_bus.action.tx, dummy_action_tx);
-        let old_sort_tx = std::mem::replace(&mut self.worker_bus.sort.tx, dummy_sort_tx);
-        let old_kind_tx = std::mem::replace(&mut self.worker_bus.kind.tx, dummy_kind_tx);
+        let old_search_tx = std::mem::replace(&mut self.shell.search.tx, dummy_search_tx);
+        let old_preview_tx = std::mem::replace(&mut self.shell.worker_bus.preview.tx, dummy_preview_tx);
+        let old_action_tx = std::mem::replace(&mut self.shell.worker_bus.action.tx, dummy_action_tx);
+        let old_sort_tx = std::mem::replace(&mut self.shell.worker_bus.sort.tx, dummy_sort_tx);
+        let old_kind_tx = std::mem::replace(&mut self.shell.worker_bus.kind.tx, dummy_kind_tx);
         let old_filelist_tx =
-            std::mem::replace(&mut self.worker_bus.filelist.tx, dummy_filelist_tx);
-        let old_update_tx = std::mem::replace(&mut self.worker_bus.update.tx, dummy_update_tx);
-        let old_index_tx = std::mem::replace(&mut self.indexing.tx, dummy_index_tx);
+            std::mem::replace(&mut self.shell.worker_bus.filelist.tx, dummy_filelist_tx);
+        let old_update_tx = std::mem::replace(&mut self.shell.worker_bus.update.tx, dummy_update_tx);
+        let old_index_tx = std::mem::replace(&mut self.shell.indexing.tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
         drop(old_action_tx);
@@ -130,10 +130,10 @@ impl FlistWalkerApp {
         timeout: Duration,
         phase: &str,
     ) -> Option<WorkerJoinSummary> {
-        let runtime = self.worker_runtime.as_ref()?;
+        let runtime = self.shell.worker_runtime.as_ref()?;
         runtime.request_shutdown();
         self.disconnect_worker_channels();
-        let runtime = self.worker_runtime.take()?;
+        let runtime = self.shell.worker_runtime.take()?;
         let summary = runtime.join_all_with_timeout(timeout);
         if summary.joined < summary.total {
             let pending = if summary.pending.is_empty() {
@@ -155,7 +155,7 @@ impl FlistWalkerApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return true;
         }
-        if self.features.update.close_requested_for_install {
+        if self.shell.features.update.close_requested_for_install {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return true;
         }

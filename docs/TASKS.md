@@ -2,10 +2,11 @@
 
 ## Status Snapshot
 - Updated: 2026-04-12
-- Current active engineering roadmap: architecture score uplift roadmap (2026-04-12)
-- Current active engineering change plan: docs/CHANGE-PLAN-20260412-roadmap-architecture-score-uplift.md
+- Current active engineering roadmap: none
+- Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-12 に shell boundary closure roadmap を完了し、`FlistWalkerApp` の透明な shell 露出を除去したうえで `status_line` を render-time derived data として扱うように切り替え、`cd rust && cargo test` を通した。
   - 2026-04-12 に architecture score uplift roadmap と slice A/B/C の change-plan 文書を作成し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-12 の外部レビューで、現在の architecture は 60〜65 点相当と評価され、`Deref` 連鎖、direct mutation、state duplication、imperative UI refresh が主な未解消点として指摘された。
   - 2026-04-12 に app-shell/use-case decoupling roadmap と initial slice A を作成し、`AGENTS.md` に temporary rule を追記した。
@@ -13,6 +14,7 @@
   - 2026-04-12 に Slice B を実装し、result/preview/sort response handling を reducer boundary へ移したうえで `cd rust && cargo test` を再実行した。
   - 2026-04-12 に Slice B を完了し、result/preview/sort response handling を reducer boundary へ移した。
   - 2026-04-12 に Slice C で closure validation を実施し、`cargo test` を再実行したうえで roadmap は未閉鎖と判断した。残課題は `FlistWalkerApp` の透明な shell 露出、`status_line` の命令的更新、そして direct mutation / derived UI state の整理である。
+  - 2026-04-12 に shell boundary closure roadmap を新規作成し、残課題を `Deref` 廃止と `status_line` の派生化に絞った。
   - 2026-04-12 に app-shell/use-case decoupling roadmap を close し、temporary rule を撤去して change-plan 文書群を削除した。
   - 2026-04-12 に app-shell/use-case decoupling roadmap を復元し、継続判断用 Slice C を追加して plan-driven-changes の再開点へ戻した。
   - 2026-04-12 に Slice C で continue を判断し、残る shell-policy/helper extraction を Slice D として追加した。

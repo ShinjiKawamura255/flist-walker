@@ -185,20 +185,6 @@ pub struct FlistWalkerApp {
     shell: AppShellState,
 }
 
-impl std::ops::Deref for FlistWalkerApp {
-    type Target = AppShellState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.shell
-    }
-}
-
-impl std::ops::DerefMut for FlistWalkerApp {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.shell
-    }
-}
-
 impl FlistWalkerApp {
     const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
     const HIGHLIGHT_CACHE_MAX: usize = 256;

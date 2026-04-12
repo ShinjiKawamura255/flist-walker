@@ -37,16 +37,16 @@ impl FlistWalkerApp {
     }
 
     fn clear_tab_drag_state(&mut self) {
-        self.ui.tab_drag_state = None;
+        self.shell.ui.tab_drag_state = None;
     }
 
     fn trigger_pending_restore_refresh(&mut self) {
-        if !self.tabs.pending_restore_refresh {
+        if !self.shell.tabs.pending_restore_refresh {
             return;
         }
-        self.tabs.pending_restore_refresh = false;
-        let active_tab = self.tabs.active_tab;
-        if let Some(tab) = self.tabs.get_mut(active_tab) {
+        self.shell.tabs.pending_restore_refresh = false;
+        let active_tab = self.shell.tabs.active_tab;
+        if let Some(tab) = self.shell.tabs.get_mut(active_tab) {
             tab.pending_restore_refresh = false;
         }
         self.request_index_refresh();
@@ -57,15 +57,15 @@ impl FlistWalkerApp {
     }
 
     fn clear_closed_tab_state(&mut self, tab_id: u64) {
-        self.features.filelist.clear_pending_for_tab(tab_id);
-        self.indexing.clear_for_tab(tab_id);
-        self.search.clear_for_tab(tab_id);
+        self.shell.features.filelist.clear_pending_for_tab(tab_id);
+        self.shell.indexing.clear_for_tab(tab_id);
+        self.shell.search.clear_for_tab(tab_id);
         self.clear_response_routing_for_tab(tab_id);
-        self.ui.memory_usage_bytes = None;
+        self.shell.ui.memory_usage_bytes = None;
     }
 
     fn reapply_active_tab_state(&mut self) {
-        if let Some(tab) = self.tabs.get(self.tabs.active_tab).cloned() {
+        if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab).cloned() {
             self.apply_tab_state(&tab);
         }
     }
@@ -73,9 +73,9 @@ impl FlistWalkerApp {
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
         self.clear_tab_drag_state();
         self.shrink_checkpoint_buffers();
-        let previous_active = self.tabs.active_tab;
+        let previous_active = self.shell.tabs.active_tab;
         self.sync_active_tab_state();
-        if let Some(previous_tab) = self.tabs.get_mut(previous_active) {
+        if let Some(previous_tab) = self.shell.tabs.get_mut(previous_active) {
             Self::compact_inactive_tab_state(previous_tab);
         }
         previous_active
@@ -93,8 +93,8 @@ impl FlistWalkerApp {
             self.restore_results_from_compacted_tab();
         }
         if request_focus {
-            self.ui.focus_query_requested = true;
-            self.ui.unfocus_query_requested = false;
+            self.shell.ui.focus_query_requested = true;
+            self.shell.ui.unfocus_query_requested = false;
         }
         if trigger_restore_refresh {
             self.trigger_pending_restore_refresh();
@@ -106,7 +106,7 @@ impl FlistWalkerApp {
         tab_index: usize,
         msg: IndexResponse,
     ) -> BackgroundIndexResponseEffect {
-        let limit = self.runtime.limit;
+        let limit = self.shell.runtime.limit;
         let shell = &mut self.shell;
         let (tabs, indexing, features) = (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
         let mut effect = BackgroundIndexResponseEffect {
@@ -286,20 +286,20 @@ impl FlistWalkerApp {
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
         let normalized = normalize_windows_path_buf(new_root);
-        if path_key(&normalized) == path_key(&self.runtime.root) {
+        if path_key(&normalized) == path_key(&self.shell.runtime.root) {
             return;
         }
 
-        self.runtime.root = normalized;
+        self.shell.runtime.root = normalized;
         self.reset_query_history_navigation();
-        self.runtime.query_state.query_history_dirty_since = None;
+        self.shell.runtime.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         // Avoid launching/copying stale selections from the previous root.
-        self.runtime.pinned_paths.clear();
-        self.runtime.current_row = None;
-        self.runtime.preview.clear();
-        self.worker_bus.preview.in_progress = false;
-        self.worker_bus.preview.pending_request_id = None;
+        self.shell.runtime.pinned_paths.clear();
+        self.shell.runtime.current_row = None;
+        self.shell.runtime.preview.clear();
+        self.shell.worker_bus.preview.in_progress = false;
+        self.shell.worker_bus.preview.pending_request_id = None;
         self.clear_root_scoped_entry_state();
         self.sync_active_tab_state();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
@@ -332,10 +332,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn initialize_tabs(&mut self) {
-        let id = self.tabs.next_tab_id;
-        self.tabs.next_tab_id = self.tabs.next_tab_id.saturating_add(1);
-        *self.tabs = vec![self.capture_active_tab_state(id)];
-        self.tabs.active_tab = 0;
+        let id = self.shell.tabs.next_tab_id;
+        self.shell.tabs.next_tab_id = self.shell.tabs.next_tab_id.saturating_add(1);
+        *self.shell.tabs = vec![self.capture_active_tab_state(id)];
+        self.shell.tabs.active_tab = 0;
     }
 
     pub(super) fn restored_tab_state(&self, id: u64, saved: &SavedTabState) -> AppTabState {
@@ -347,27 +347,27 @@ impl FlistWalkerApp {
         saved_tabs: Vec<SavedTabState>,
         active_tab: usize,
     ) {
-        *self.tabs = saved_tabs
+        *self.shell.tabs = saved_tabs
             .iter()
             .map(|saved| {
-                let id = self.tabs.next_tab_id;
-                self.tabs.next_tab_id = self.tabs.next_tab_id.saturating_add(1);
+                let id = self.shell.tabs.next_tab_id;
+                self.shell.tabs.next_tab_id = self.shell.tabs.next_tab_id.saturating_add(1);
                 self.restored_tab_state(id, saved)
             })
             .collect();
-        self.tabs.active_tab = active_tab.min(self.tabs.len().saturating_sub(1));
-        if let Some(tab) = self.tabs.get(self.tabs.active_tab).cloned() {
+        self.shell.tabs.active_tab = active_tab.min(self.shell.tabs.len().saturating_sub(1));
+        if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab).cloned() {
             self.apply_tab_state(&tab);
-            self.ui.focus_query_requested = true;
-            self.ui.unfocus_query_requested = false;
+            self.shell.ui.focus_query_requested = true;
+            self.shell.ui.unfocus_query_requested = false;
             self.trigger_pending_restore_refresh();
-            self.runtime.notice = "Restored tab session".to_string();
+            self.shell.runtime.notice = "Restored tab session".to_string();
             self.refresh_status_line();
         }
     }
 
     pub(super) fn current_tab_id(&self) -> Option<u64> {
-        self.tabs.get(self.tabs.active_tab).map(|tab| tab.id)
+        self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id)
     }
 
     fn shrink_vec_if_sparse<T>(vec: &mut Vec<T>) {
@@ -387,10 +387,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn shrink_checkpoint_buffers(&mut self) {
-        Self::shrink_vec_if_sparse(&mut self.runtime.index.entries);
-        Self::shrink_vec_if_sparse(&mut self.indexing.incremental_filtered_entries);
-        Self::shrink_deque_if_sparse(&mut self.indexing.pending_entries);
-        Self::shrink_deque_if_sparse(&mut self.indexing.pending_kind_paths);
+        Self::shrink_vec_if_sparse(&mut self.shell.runtime.index.entries);
+        Self::shrink_vec_if_sparse(&mut self.shell.indexing.incremental_filtered_entries);
+        Self::shrink_deque_if_sparse(&mut self.shell.indexing.pending_entries);
+        Self::shrink_deque_if_sparse(&mut self.shell.indexing.pending_kind_paths);
     }
 
     pub(super) fn shrink_tab_checkpoint_buffers(tab: &mut AppTabState) {
@@ -418,26 +418,24 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn restore_results_from_compacted_tab(&mut self) {
-        let was_compacted = self
-            .tabs
-            .get(self.tabs.active_tab)
+        let was_compacted = self.shell.tabs
+            .get(self.shell.tabs.active_tab)
             .map(|tab| tab.result_state.results_compacted)
             .unwrap_or(false);
         if !was_compacted {
             return;
         }
-        let active_tab = self.tabs.active_tab;
-        if let Some(tab) = self.tabs.get_mut(active_tab) {
+        let active_tab = self.shell.tabs.active_tab;
+        if let Some(tab) = self.shell.tabs.get_mut(active_tab) {
             tab.result_state.results_compacted = false;
         }
 
-        if self.runtime.base_results.is_empty() {
-            if self.runtime.query_state.query.trim().is_empty() {
-                let results = self
-                    .runtime
+        if self.shell.runtime.base_results.is_empty() {
+            if self.shell.runtime.query_state.query.trim().is_empty() {
+                let results = self.shell.runtime
                     .entries
                     .iter()
-                    .take(self.runtime.limit)
+                    .take(self.shell.runtime.limit)
                     .cloned()
                     .map(|entry| (entry.path, 0.0))
                     .collect();
@@ -448,8 +446,8 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self.runtime.result_sort_mode == ResultSortMode::Score {
-            self.apply_results_with_selection_policy(self.runtime.base_results.clone(), true, false);
+        if self.shell.runtime.result_sort_mode == ResultSortMode::Score {
+            self.apply_results_with_selection_policy(self.shell.runtime.base_results.clone(), true, false);
         } else {
             self.apply_result_sort(true);
         }
@@ -462,44 +460,44 @@ impl FlistWalkerApp {
     pub(super) fn apply_tab_state(&mut self, tab: &AppTabState) {
         tab.apply_shell(self);
         self.reset_query_history_navigation();
-        self.runtime.query_state.query_history_dirty_since = None;
+        self.shell.runtime.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.rebuild_entry_kind_cache();
         self.refresh_status_line();
     }
 
     pub(super) fn sync_active_tab_state(&mut self) {
-        let Some(id) = self.tabs.get(self.tabs.active_tab).map(|tab| tab.id) else {
+        let Some(id) = self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id) else {
             return;
         };
         self.commit_query_history_if_needed(true);
         let snapshot = self.capture_active_tab_state(id);
-        let active_tab = self.tabs.active_tab;
-        if let Some(slot) = self.tabs.get_mut(active_tab) {
+        let active_tab = self.shell.tabs.active_tab;
+        if let Some(slot) = self.shell.tabs.get_mut(active_tab) {
             *slot = snapshot;
         }
     }
 
     pub(super) fn find_tab_index_by_id(&self, tab_id: u64) -> Option<usize> {
-        self.tabs.iter().position(|tab| tab.id == tab_id)
+        self.shell.tabs.iter().position(|tab| tab.id == tab_id)
     }
 
     pub(super) fn switch_to_tab_index(&mut self, next_index: usize) {
-        if next_index >= self.tabs.len() || next_index == self.tabs.active_tab {
+        if next_index >= self.shell.tabs.len() || next_index == self.shell.tabs.active_tab {
             return;
         }
         self.deactivate_active_tab_for_transition();
-        if let Some(next_tab) = self.tabs.get_mut(next_index) {
+        if let Some(next_tab) = self.shell.tabs.get_mut(next_index) {
             Self::shrink_tab_checkpoint_buffers(next_tab);
         }
-        self.tabs.active_tab = next_index;
-        if let Some(tab) = self.tabs.get(next_index).cloned() {
+        self.shell.tabs.active_tab = next_index;
+        if let Some(tab) = self.shell.tabs.get(next_index).cloned() {
             self.activate_background_tab_after_transition(&tab);
         }
     }
 
     pub(super) fn set_tab_accent(&mut self, index: usize, accent: Option<TabAccentColor>) {
-        let Some(tab) = self.tabs.get_mut(index) else {
+        let Some(tab) = self.shell.tabs.get_mut(index) else {
             return;
         };
         if tab.tab_accent == accent {
@@ -512,13 +510,13 @@ impl FlistWalkerApp {
 
     pub(super) fn create_new_tab(&mut self) {
         self.deactivate_active_tab_for_transition();
-        let id = self.tabs.next_tab_id;
-        self.tabs.next_tab_id = self.tabs.next_tab_id.saturating_add(1);
+        let id = self.shell.tabs.next_tab_id;
+        self.shell.tabs.next_tab_id = self.shell.tabs.next_tab_id.saturating_add(1);
         let mut tab = self.capture_active_tab_state(id);
         tab.tab_accent = None;
         tab.use_filelist = true;
         tab.query_state.query.clear();
-        tab.query_state.query_history = self.runtime.query_state.query_history.clone();
+        tab.query_state.query_history = self.shell.runtime.query_state.query_history.clone();
         tab.query_state.query_history_cursor = None;
         tab.query_state.query_history_draft = None;
         tab.query_state.query_history_dirty_since = None;
@@ -528,11 +526,10 @@ impl FlistWalkerApp {
         tab.query_state.history_search_results.clear();
         tab.query_state.history_search_current = None;
         tab.pending_restore_refresh = false;
-        tab.result_state.base_results = self
-            .runtime
+        tab.result_state.base_results = self.shell.runtime
             .entries
             .iter()
-            .take(self.runtime.limit)
+            .take(self.shell.runtime.limit)
             .cloned()
             .map(|entry| (entry.path, 0.0))
             .collect();
@@ -568,70 +565,70 @@ impl FlistWalkerApp {
         tab.focus_query_requested = true;
         tab.unfocus_query_requested = false;
         tab.result_state.results = tab.result_state.base_results.clone();
-        self.tabs.push(tab.clone());
-        self.tabs.active_tab = self.tabs.len().saturating_sub(1);
+        self.shell.tabs.push(tab.clone());
+        self.shell.tabs.active_tab = self.shell.tabs.len().saturating_sub(1);
         self.activate_tab_after_transition(&tab, false, true, false);
     }
 
     pub(super) fn close_active_tab(&mut self) {
-        self.close_tab_index(self.tabs.active_tab);
+        self.close_tab_index(self.shell.tabs.active_tab);
     }
 
     pub(super) fn close_tab_index(&mut self, index: usize) {
-        if self.tabs.len() <= 1 || index >= self.tabs.len() {
-            if self.tabs.len() <= 1 {
+        if self.shell.tabs.len() <= 1 || index >= self.shell.tabs.len() {
+            if self.shell.tabs.len() <= 1 {
                 self.set_notice("Cannot close the last tab");
             }
             return;
         }
         self.clear_tab_drag_state();
         self.sync_active_tab_state();
-        let removed = self.tabs.remove(index);
+        let removed = self.shell.tabs.remove(index);
         self.clear_closed_tab_state(removed.id);
-        if index < self.tabs.active_tab {
-            self.tabs.active_tab = self.tabs.active_tab.saturating_sub(1);
+        if index < self.shell.tabs.active_tab {
+            self.shell.tabs.active_tab = self.shell.tabs.active_tab.saturating_sub(1);
         }
-        if self.tabs.active_tab >= self.tabs.len() {
-            self.tabs.active_tab = self.tabs.len().saturating_sub(1);
+        if self.shell.tabs.active_tab >= self.shell.tabs.len() {
+            self.shell.tabs.active_tab = self.shell.tabs.len().saturating_sub(1);
         }
-        if let Some(tab) = self.tabs.get(self.tabs.active_tab).cloned() {
+        if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab).cloned() {
             self.activate_tab_after_transition(&tab, false, false, false);
         }
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {
-        if from_index >= self.tabs.len() || to_index >= self.tabs.len() || from_index == to_index {
+        if from_index >= self.shell.tabs.len() || to_index >= self.shell.tabs.len() || from_index == to_index {
             return;
         }
         self.clear_tab_drag_state();
         self.sync_active_tab_state();
-        let Some(active_tab_id) = self.tabs.get(self.tabs.active_tab).map(|tab| tab.id) else {
+        let Some(active_tab_id) = self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id) else {
             return;
         };
-        let moved = self.tabs.remove(from_index);
-        self.tabs.insert(to_index, moved);
+        let moved = self.shell.tabs.remove(from_index);
+        self.shell.tabs.insert(to_index, moved);
         if let Some(new_active) = self.find_tab_index_by_id(active_tab_id) {
-            self.tabs.active_tab = new_active;
+            self.shell.tabs.active_tab = new_active;
         }
         self.reapply_active_tab_state();
     }
 
     pub(super) fn activate_next_tab(&mut self) {
-        if self.tabs.len() <= 1 {
+        if self.shell.tabs.len() <= 1 {
             return;
         }
-        let next = (self.tabs.active_tab + 1) % self.tabs.len();
+        let next = (self.shell.tabs.active_tab + 1) % self.shell.tabs.len();
         self.switch_to_tab_index(next);
     }
 
     pub(super) fn activate_previous_tab(&mut self) {
-        if self.tabs.len() <= 1 {
+        if self.shell.tabs.len() <= 1 {
             return;
         }
-        let next = if self.tabs.active_tab == 0 {
-            self.tabs.len() - 1
+        let next = if self.shell.tabs.active_tab == 0 {
+            self.shell.tabs.len() - 1
         } else {
-            self.tabs.active_tab - 1
+            self.shell.tabs.active_tab - 1
         };
         self.switch_to_tab_index(next);
     }
@@ -640,7 +637,7 @@ impl FlistWalkerApp {
         let Some(target_index) = shortcut_number.checked_sub(1) else {
             return;
         };
-        if target_index >= self.tabs.len() || target_index >= 9 {
+        if target_index >= self.shell.tabs.len() || target_index >= 9 {
             return;
         }
         self.switch_to_tab_index(target_index);
@@ -670,7 +667,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn any_tab_async_in_progress(&self) -> bool {
-        self.tabs.iter().any(|tab| {
+        self.shell.tabs.iter().any(|tab| {
             tab.search_in_progress
                 || tab.preview_in_progress
                 || tab.action_in_progress
@@ -680,7 +677,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn saved_tab_state_from_app(&self) -> SavedTabState {
-        self.capture_active_tab_state(self.tabs.get(self.tabs.active_tab).map(|tab| tab.id).unwrap_or_default())
+        self.capture_active_tab_state(self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id).unwrap_or_default())
             .into_saved(Self::history_persist_disabled())
     }
 
@@ -689,11 +686,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn saved_tabs_for_ui_state(&self) -> Vec<SavedTabState> {
-        self.tabs
+        self.shell.tabs
             .iter()
             .enumerate()
             .map(|(index, tab)| {
-                if index == self.tabs.active_tab {
+                if index == self.shell.tabs.active_tab {
                     self.saved_tab_state_from_app()
                 } else {
                     Self::saved_tab_state_from_tab(tab)

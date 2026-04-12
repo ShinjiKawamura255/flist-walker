@@ -14,16 +14,16 @@ fn clear_query_and_selection_clears_state() {
     fs::write(&file, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.runtime.pinned_paths.insert(file.clone());
-    app.runtime.current_row = Some(0);
-    app.runtime.preview = "preview".to_string();
+    app.shell.runtime.pinned_paths.insert(file.clone());
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.preview = "preview".to_string();
 
     app.clear_query_and_selection();
 
-    assert!(app.runtime.query_state.query.is_empty());
-    assert!(app.runtime.pinned_paths.is_empty());
-    assert!(app.ui.focus_query_requested);
-    assert!(app.runtime.notice.contains("Cleared selection and query"));
+    assert!(app.shell.runtime.query_state.query.is_empty());
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+    assert!(app.shell.ui.focus_query_requested);
+    assert!(app.shell.runtime.notice.contains("Cleared selection and query"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -32,7 +32,7 @@ fn startup_requests_query_focus() {
     let root = test_root("startup-focus");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    assert!(app.ui.focus_query_requested);
+    assert!(app.shell.ui.focus_query_requested);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -42,7 +42,7 @@ fn startup_defaults_current_row_to_first_row_regression() {
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    assert_eq!(app.runtime.current_row, Some(0));
+    assert_eq!(app.shell.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -51,13 +51,12 @@ fn startup_index_request_is_bound_to_active_tab() {
     let root = test_root("startup-index-tab-binding");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let req_id = app
-        .indexing
+    let req_id = app.shell.indexing
         .pending_request_id
         .expect("pending index request");
     let tab_id = app.current_tab_id().expect("active tab id");
     assert_eq!(
-        app.indexing.request_tabs.get(&req_id).copied(),
+        app.shell.indexing.request_tabs.get(&req_id).copied(),
         Some(tab_id)
     );
     let _ = fs::remove_dir_all(&root);
@@ -72,13 +71,13 @@ fn persist_ui_state_now_saves_preview_visibility_immediately() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.ui.show_preview = false;
+    app.shell.ui.show_preview = false;
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
     let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
     assert!(!launch.show_preview);
-    assert!(!app.ui.ui_state_dirty);
+    assert!(!app.shell.ui.ui_state_dirty);
 
     let _ = fs::remove_file(&ui_state_path);
     let _ = fs::remove_dir_all(&ui_state_dir);
@@ -94,7 +93,7 @@ fn persist_ui_state_now_saves_skipped_update_version() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.features.update.skipped_target_version = Some("0.12.4".to_string());
+    app.shell.features.update.skipped_target_version = Some("0.12.4".to_string());
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
@@ -118,7 +117,7 @@ fn persist_ui_state_now_saves_update_check_failure_suppression() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.features.update.suppress_check_failure_dialog = true;
+    app.shell.features.update.suppress_check_failure_dialog = true;
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
@@ -140,14 +139,14 @@ fn move_row_sets_scroll_tracking() {
     fs::write(&file2, "x").expect("write file2");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, "".to_string());
-    app.runtime.results = vec![(file1, 0.0), (file2, 0.0)];
-    app.runtime.current_row = Some(0);
-    app.ui.scroll_to_current = false;
+    app.shell.runtime.results = vec![(file1, 0.0), (file2, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.ui.scroll_to_current = false;
 
     app.move_row(1);
 
-    assert_eq!(app.runtime.current_row, Some(1));
-    assert!(app.ui.scroll_to_current);
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    assert!(app.shell.ui.scroll_to_current);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -159,10 +158,10 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.worker_bus.action.tx = action_tx_req;
-    app.worker_bus.action.rx = action_rx_res;
-    app.runtime.results = vec![(missing.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(missing.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
 
     app.execute_selected();
 
@@ -171,9 +170,9 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
         .expect("action request should be enqueued");
     assert_eq!(req.paths, vec![missing]);
     assert!(!req.open_parent_for_files);
-    assert!(app.worker_bus.action.pending_request_id.is_some());
-    assert!(app.worker_bus.action.in_progress);
-    assert!(!app.runtime.notice.starts_with("Action failed:"));
+    assert!(app.shell.worker_bus.action.pending_request_id.is_some());
+    assert!(app.shell.worker_bus.action.in_progress);
+    assert!(!app.shell.runtime.notice.starts_with("Action failed:"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -187,10 +186,10 @@ fn execute_selected_for_activation_uses_open_folder_mode_when_requested() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.worker_bus.action.tx = action_tx_req;
-    app.worker_bus.action.rx = action_rx_res;
-    app.runtime.results = vec![(selected.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
 
     app.execute_selected_for_activation(true);
 
@@ -216,15 +215,15 @@ fn execute_selected_notice_normalizes_extended_prefix() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, _action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.worker_bus.action.tx = action_tx_req;
-    app.worker_bus.action.rx = action_rx_res;
-    app.runtime.results = vec![(extended, 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(extended, 0.0)];
+    app.shell.runtime.current_row = Some(0);
 
     app.execute_selected();
 
-    assert_eq!(app.runtime.notice, format!("Action: {}", selected.display()));
-    assert!(!app.runtime.notice.contains(r"\\?\"));
+    assert_eq!(app.shell.runtime.notice, format!("Action: {}", selected.display()));
+    assert!(!app.shell.runtime.notice.contains(r"\\?\"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -239,10 +238,10 @@ fn execute_selected_blocks_path_outside_current_root() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.worker_bus.action.tx = action_tx_req;
-    app.worker_bus.action.rx = action_rx_res;
-    app.runtime.results = vec![(outside.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(outside.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
 
     app.execute_selected();
 
@@ -250,9 +249,9 @@ fn execute_selected_blocks_path_outside_current_root() {
         action_rx_req.try_recv().is_err(),
         "action request must not be enqueued"
     );
-    assert!(app.runtime.notice.contains("outside current root"));
-    assert!(app.worker_bus.action.pending_request_id.is_none());
-    assert!(!app.worker_bus.action.in_progress);
+    assert!(app.shell.runtime.notice.contains("outside current root"));
+    assert!(app.shell.worker_bus.action.pending_request_id.is_none());
+    assert!(!app.shell.worker_bus.action.in_progress);
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&outside_root);
 }
@@ -264,10 +263,10 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
-    app.worker_bus.action.tx = action_tx_req;
-    app.worker_bus.action.rx = action_rx_res;
-    app.runtime.results = vec![(child.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(child.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
 
     app.execute_selected();
 
@@ -275,8 +274,8 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
         .try_recv()
         .expect("UNC-like child should be enqueued");
     assert_eq!(req.paths, vec![child]);
-    assert!(app.worker_bus.action.pending_request_id.is_some());
-    assert!(app.worker_bus.action.in_progress);
+    assert!(app.shell.worker_bus.action.pending_request_id.is_some());
+    assert!(app.shell.worker_bus.action.in_progress);
 }
 
 #[test]
@@ -321,16 +320,16 @@ fn stale_action_completion_is_ignored_by_request_id() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<ActionResponse>();
-    app.worker_bus.action.rx = rx;
-    app.runtime.notice = "latest notice".to_string();
-    app.worker_bus.action.pending_request_id = Some(2);
-    app.worker_bus.action.in_progress = true;
+    app.shell.worker_bus.action.rx = rx;
+    app.shell.runtime.notice = "latest notice".to_string();
+    app.shell.worker_bus.action.pending_request_id = Some(2);
+    app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(1, tab_id);
     app.bind_action_request_to_tab(2, tab_id);
-    let active_tab = app.tabs.active_tab;
-    app.tabs[active_tab].pending_action_request_id = Some(2);
-    app.tabs[active_tab].action_in_progress = true;
+    let active_tab = app.shell.tabs.active_tab;
+    app.shell.tabs[active_tab].pending_action_request_id = Some(2);
+    app.shell.tabs[active_tab].action_in_progress = true;
 
     tx.send(ActionResponse {
         request_id: 1,
@@ -339,9 +338,9 @@ fn stale_action_completion_is_ignored_by_request_id() {
     .expect("send stale action response");
     app.poll_action_response();
 
-    assert_eq!(app.runtime.notice, "latest notice");
-    assert_eq!(app.worker_bus.action.pending_request_id, Some(2));
-    assert!(app.worker_bus.action.in_progress);
+    assert_eq!(app.shell.runtime.notice, "latest notice");
+    assert_eq!(app.shell.worker_bus.action.pending_request_id, Some(2));
+    assert!(app.shell.worker_bus.action.in_progress);
 
     tx.send(ActionResponse {
         request_id: 2,
@@ -350,9 +349,9 @@ fn stale_action_completion_is_ignored_by_request_id() {
     .expect("send latest action response");
     app.poll_action_response();
 
-    assert_eq!(app.runtime.notice, "Action: latest");
-    assert_eq!(app.worker_bus.action.pending_request_id, None);
-    assert!(!app.worker_bus.action.in_progress);
+    assert_eq!(app.shell.runtime.notice, "Action: latest");
+    assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
+    assert!(!app.shell.worker_bus.action.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -372,7 +371,7 @@ fn action_progress_label_is_shown_only_while_action_runs() {
 
     assert_eq!(app.action_progress_label(), None);
 
-    app.worker_bus.action.in_progress = true;
+    app.shell.worker_bus.action.in_progress = true;
     assert_eq!(app.action_progress_label(), Some("Opening..."));
 
     let _ = fs::remove_dir_all(&root);
@@ -383,7 +382,7 @@ fn prefer_relative_display_is_enabled_for_filelist_source() {
     let root = test_root("prefer-relative-filelist");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.index.source = IndexSource::FileList(root.join("FileList.txt"));
+    app.shell.runtime.index.source = IndexSource::FileList(root.join("FileList.txt"));
 
     assert!(app.prefer_relative_display());
     let _ = fs::remove_dir_all(&root);
@@ -422,11 +421,11 @@ fn preview_cache_is_bounded() {
         app.cache_preview(path, chunk.clone());
     }
 
-    assert!(app.cache.preview.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
-    assert!(app.cache.preview.order_len() > 0);
-    assert_eq!(app.cache.preview.len(), app.cache.preview.order_len());
+    assert!(app.shell.cache.preview.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
+    assert!(app.shell.cache.preview.order_len() > 0);
+    assert_eq!(app.shell.cache.preview.len(), app.shell.cache.preview.order_len());
     let evicted = root.join("file-0.txt");
-    assert!(!app.cache.preview.contains(&evicted));
+    assert!(!app.shell.cache.preview.contains(&evicted));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -440,13 +439,13 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
     let base = vec![(beta.clone(), 10.0), (alpha.clone(), 9.0)];
 
     app.replace_results_snapshot(base.clone(), false);
-    app.runtime.current_row = Some(0);
+    app.shell.runtime.current_row = Some(0);
     app.set_result_sort_mode(ResultSortMode::NameAsc);
 
-    assert_eq!(app.runtime.result_sort_mode, ResultSortMode::NameAsc);
-    assert_eq!(app.runtime.current_row, Some(0));
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
     assert_eq!(
-        app.runtime.results
+        app.shell.runtime.results
             .iter()
             .map(|(path, _)| path.clone())
             .collect::<Vec<_>>(),
@@ -455,9 +454,9 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
 
     app.set_result_sort_mode(ResultSortMode::Score);
 
-    assert_eq!(app.runtime.result_sort_mode, ResultSortMode::Score);
-    assert_eq!(app.runtime.current_row, Some(0));
-    assert_eq!(app.runtime.results, base);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::Score);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert_eq!(app.shell.runtime.results, base);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -466,9 +465,9 @@ fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression(
     let root = test_root("search-refresh-clamp-row");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.ui.show_preview = false;
-    app.runtime.current_row = Some(100);
-    app.runtime.preview = "stale".to_string();
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.current_row = Some(100);
+    app.shell.runtime.preview = "stale".to_string();
 
     let results = vec![
         (root.join("first.txt"), 1.0),
@@ -478,8 +477,8 @@ fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression(
 
     app.replace_results_snapshot(results, false);
 
-    assert_eq!(app.runtime.current_row, Some(2));
-    assert!(app.runtime.preview.is_empty());
+    assert_eq!(app.shell.runtime.current_row, Some(2));
+    assert!(app.shell.runtime.preview.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -488,9 +487,9 @@ fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regr
     let root = test_root("search-refresh-keep-none");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.ui.show_preview = false;
-    app.runtime.current_row = None;
-    app.runtime.preview = "stale".to_string();
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.current_row = None;
+    app.shell.runtime.preview = "stale".to_string();
 
     let results = vec![
         (root.join("first.txt"), 1.0),
@@ -499,8 +498,8 @@ fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regr
 
     app.replace_results_snapshot(results, false);
 
-    assert_eq!(app.runtime.current_row, None);
-    assert!(app.runtime.preview.is_empty());
+    assert_eq!(app.shell.runtime.current_row, None);
+    assert!(app.shell.runtime.preview.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -509,16 +508,16 @@ fn clear_query_and_selection_restores_first_row_regression() {
     let root = test_root("clear-query-row-reset");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    app.ui.show_preview = false;
-    app.runtime.query_state.query = "abc".to_string();
-    app.runtime.current_row = Some(2);
-    app.runtime.preview = "stale".to_string();
-    app.runtime.entries = Arc::new(vec![
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.query_state.query = "abc".to_string();
+    app.shell.runtime.current_row = Some(2);
+    app.shell.runtime.preview = "stale".to_string();
+    app.shell.runtime.entries = Arc::new(vec![
         unknown_entry(root.join("first.txt")),
         unknown_entry(root.join("second.txt")),
         unknown_entry(root.join("third.txt")),
     ]);
-    app.runtime.results = vec![
+    app.shell.runtime.results = vec![
         (root.join("first.txt"), 1.0),
         (root.join("second.txt"), 1.0),
         (root.join("third.txt"), 1.0),
@@ -526,9 +525,9 @@ fn clear_query_and_selection_restores_first_row_regression() {
 
     app.clear_query_and_selection();
 
-    assert!(app.runtime.query_state.query.is_empty());
-    assert_eq!(app.runtime.current_row, Some(0));
-    assert!(app.runtime.preview.is_empty());
+    assert!(app.shell.runtime.query_state.query.is_empty());
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert!(app.shell.runtime.preview.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -538,15 +537,15 @@ fn query_edit_invalidates_result_sort_and_cancels_pending_request() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
 
-    app.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
-    app.worker_bus.sort.in_progress = true;
-    app.worker_bus.sort.pending_request_id = Some(42);
+    app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
+    app.shell.worker_bus.sort.in_progress = true;
+    app.shell.worker_bus.sort.pending_request_id = Some(42);
 
     app.mark_query_edited();
 
-    assert_eq!(app.runtime.result_sort_mode, ResultSortMode::Score);
-    assert!(!app.worker_bus.sort.in_progress);
-    assert!(app.worker_bus.sort.pending_request_id.is_none());
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::Score);
+    assert!(!app.shell.worker_bus.sort.in_progress);
+    assert!(app.shell.worker_bus.sort.pending_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -578,7 +577,7 @@ fn created_sort_places_missing_timestamps_last() {
     app.set_result_sort_mode(ResultSortMode::CreatedDesc);
 
     assert_eq!(
-        app.runtime.results
+        app.shell.runtime.results
             .iter()
             .map(|(path, _)| path.clone())
             .collect::<Vec<_>>(),
@@ -603,10 +602,9 @@ fn sort_metadata_cache_is_bounded() {
         );
     }
 
-    assert!(app.cache.sort_metadata.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
-    assert!(app.cache.sort_metadata.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
-    assert!(!app
-        .cache
+    assert!(app.shell.cache.sort_metadata.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.shell.cache.sort_metadata.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(!app.shell.cache
         .sort_metadata
         .contains_public(&root.join("entry-0.txt")));
     let _ = fs::remove_dir_all(&root);
@@ -668,19 +666,19 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
     fs::write(&file, "content").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.ui.show_preview = false;
-    app.runtime.results = vec![(file.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.results = vec![(file.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
     app.set_entry_kind(&file, EntryKind::file());
-    app.runtime.preview = "stale preview".to_string();
-    app.worker_bus.preview.pending_request_id = Some(99);
-    app.worker_bus.preview.in_progress = true;
+    app.shell.runtime.preview = "stale preview".to_string();
+    app.shell.worker_bus.preview.pending_request_id = Some(99);
+    app.shell.worker_bus.preview.in_progress = true;
 
     app.request_preview_for_current();
 
-    assert!(app.runtime.preview.is_empty());
-    assert!(!app.worker_bus.preview.in_progress);
-    assert!(app.worker_bus.preview.pending_request_id.is_none());
+    assert!(app.shell.runtime.preview.is_empty());
+    assert!(!app.shell.worker_bus.preview.in_progress);
+    assert!(app.shell.worker_bus.preview.pending_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -692,18 +690,18 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     fs::write(&file, "shortcut").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.ui.show_preview = false;
-    app.runtime.results = vec![(file.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
-    app.indexing.pending_kind_paths.push_back(file.clone());
-    app.indexing.pending_kind_paths_set.insert(file.clone());
-    app.indexing.kind_resolution_in_progress = true;
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.results = vec![(file.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.indexing.pending_kind_paths.push_back(file.clone());
+    app.shell.indexing.pending_kind_paths_set.insert(file.clone());
+    app.shell.indexing.kind_resolution_in_progress = true;
 
     app.request_preview_for_current();
 
-    assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == file));
-    assert!(app.indexing.pending_kind_paths_set.contains(&file));
-    assert!(app.indexing.kind_resolution_in_progress);
+    assert!(app.shell.indexing.pending_kind_paths.iter().any(|p| *p == file));
+    assert!(app.shell.indexing.pending_kind_paths_set.contains(&file));
+    assert!(app.shell.indexing.kind_resolution_in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -715,16 +713,16 @@ fn entry_kind_cache_survives_tab_state_roundtrip_and_preserves_precedence() {
     fs::write(&path, "content").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.runtime.all_entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
-    app.runtime.index.entries = vec![Entry::new(path.clone(), Some(EntryKind::dir()))];
-    app.runtime.entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
+    app.shell.runtime.all_entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
+    app.shell.runtime.index.entries = vec![Entry::new(path.clone(), Some(EntryKind::dir()))];
+    app.shell.runtime.entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
     app.rebuild_entry_kind_cache();
 
     assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
 
     let tab_id = app.current_tab_id().expect("active tab id");
     let snapshot = app.capture_active_tab_state(tab_id);
-    app.cache.entry_kind.clear();
+    app.shell.cache.entry_kind.clear();
     app.apply_tab_state(&snapshot);
 
     assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
@@ -737,20 +735,20 @@ fn close_tab_invalidates_memory_cache_for_immediate_resample() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
-    assert_eq!(app.tabs.len(), 2);
+    assert_eq!(app.shell.tabs.len(), 2);
 
     let sentinel = u64::MAX;
-    app.ui.memory_usage_bytes = Some(sentinel);
+    app.shell.ui.memory_usage_bytes = Some(sentinel);
     let stale = Instant::now()
         .checked_sub(Duration::from_secs(5))
         .unwrap_or_else(Instant::now);
-    app.ui.last_memory_sample = stale;
+    app.shell.ui.last_memory_sample = stale;
 
     app.close_tab_index(1);
 
-    assert_eq!(app.tabs.len(), 1);
-    assert_ne!(app.ui.memory_usage_bytes, Some(sentinel));
-    assert!(app.ui.last_memory_sample > stale);
+    assert_eq!(app.shell.tabs.len(), 1);
+    assert_ne!(app.shell.ui.memory_usage_bytes, Some(sentinel));
+    assert!(app.shell.ui.last_memory_sample > stale);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -760,38 +758,38 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
-    assert_eq!(app.tabs.len(), 2);
+    assert_eq!(app.shell.tabs.len(), 2);
 
-    let removed_tab_id = app.tabs[0].id;
-    let survivor_tab_id = app.tabs[1].id;
+    let removed_tab_id = app.shell.tabs[0].id;
+    let survivor_tab_id = app.shell.tabs[1].id;
     let path = root.join("item.txt");
     fs::write(&path, "x").expect("write file");
 
-    app.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
+    app.shell.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
         tab_id: removed_tab_id,
         root: root.clone(),
     });
-    app.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
+    app.shell.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id: removed_tab_id,
         root: root.clone(),
         entries: vec![path.clone()],
         existing_path: root.join("FileList.txt"),
     });
-    app.features.filelist.pending_ancestor_confirmation =
+    app.shell.features.filelist.pending_ancestor_confirmation =
         Some(PendingFileListAncestorConfirmation {
             tab_id: removed_tab_id,
             root: root.clone(),
             entries: vec![path.clone()],
         });
-    app.features.filelist.pending_use_walker_confirmation =
+    app.shell.features.filelist.pending_use_walker_confirmation =
         Some(PendingFileListUseWalkerConfirmation {
             source_tab_id: removed_tab_id,
             root: root.clone(),
         });
 
-    app.indexing.request_tabs.insert(11, removed_tab_id);
-    app.indexing.request_tabs.insert(12, survivor_tab_id);
-    app.indexing.pending_queue.push_back(IndexRequest {
+    app.shell.indexing.request_tabs.insert(11, removed_tab_id);
+    app.shell.indexing.request_tabs.insert(12, survivor_tab_id);
+    app.shell.indexing.pending_queue.push_back(IndexRequest {
         request_id: 11,
         tab_id: removed_tab_id,
         root: root.clone(),
@@ -799,7 +797,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         include_files: true,
         include_dirs: true,
     });
-    app.indexing.pending_queue.push_back(IndexRequest {
+    app.shell.indexing.pending_queue.push_back(IndexRequest {
         request_id: 12,
         tab_id: survivor_tab_id,
         root: root.clone(),
@@ -807,19 +805,19 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         include_files: true,
         include_dirs: true,
     });
-    if let Ok(mut latest) = app.indexing.latest_request_ids.lock() {
+    if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
         latest.insert(removed_tab_id, 11);
         latest.insert(survivor_tab_id, 12);
     }
-    app.indexing
+    app.shell.indexing
         .background_states
         .insert(11, BackgroundIndexState::default());
-    app.indexing
+    app.shell.indexing
         .background_states
         .insert(12, BackgroundIndexState::default());
 
-    app.search.bind_request_tab(21, removed_tab_id);
-    app.search.bind_request_tab(22, survivor_tab_id);
+    app.shell.search.bind_request_tab(21, removed_tab_id);
+    app.shell.search.bind_request_tab(22, survivor_tab_id);
     app.bind_preview_request_to_tab(31, removed_tab_id);
     app.bind_preview_request_to_tab(32, survivor_tab_id);
     app.bind_action_request_to_tab(41, removed_tab_id);
@@ -829,35 +827,32 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
 
     app.close_tab_index(0);
 
-    assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.tabs[0].id, survivor_tab_id);
-    assert!(app.features.filelist.pending_after_index.is_none());
-    assert!(app.features.filelist.pending_confirmation.is_none());
-    assert!(app
-        .features
+    assert_eq!(app.shell.tabs.len(), 1);
+    assert_eq!(app.shell.tabs[0].id, survivor_tab_id);
+    assert!(app.shell.features.filelist.pending_after_index.is_none());
+    assert!(app.shell.features.filelist.pending_confirmation.is_none());
+    assert!(app.shell.features
         .filelist
         .pending_ancestor_confirmation
         .is_none());
-    assert!(app
-        .features
+    assert!(app.shell.features
         .filelist
         .pending_use_walker_confirmation
         .is_none());
-    assert_eq!(app.indexing.request_tabs.get(&11), None);
-    assert_eq!(app.indexing.request_tabs.get(&12), Some(&survivor_tab_id));
-    assert!(app
-        .indexing
+    assert_eq!(app.shell.indexing.request_tabs.get(&11), None);
+    assert_eq!(app.shell.indexing.request_tabs.get(&12), Some(&survivor_tab_id));
+    assert!(app.shell.indexing
         .pending_queue
         .iter()
         .all(|req| req.tab_id != removed_tab_id));
-    assert!(app.indexing.background_states.contains_key(&12));
-    assert!(!app.indexing.background_states.contains_key(&11));
-    if let Ok(latest) = app.indexing.latest_request_ids.lock() {
+    assert!(app.shell.indexing.background_states.contains_key(&12));
+    assert!(!app.shell.indexing.background_states.contains_key(&11));
+    if let Ok(latest) = app.shell.indexing.latest_request_ids.lock() {
         assert_eq!(latest.get(&removed_tab_id), None);
         assert_eq!(latest.get(&survivor_tab_id), Some(&12));
     }
-    assert_eq!(app.search.take_request_tab(21), None);
-    assert_eq!(app.search.take_request_tab(22), Some(survivor_tab_id));
+    assert_eq!(app.shell.search.take_request_tab(21), None);
+    assert_eq!(app.shell.search.take_request_tab(22), Some(survivor_tab_id));
     assert_eq!(app.preview_request_tab(31), None);
     assert_eq!(app.preview_request_tab(32), Some(survivor_tab_id));
     assert_eq!(app.action_request_tab(41), None);
@@ -878,33 +873,33 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     fs::write(&second, "b").expect("write second");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.ui.show_preview = false;
-    app.indexing.in_progress = false;
-    app.indexing.pending_request_id = None;
-    app.runtime.entries = Arc::new(vec![
+    app.shell.ui.show_preview = false;
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![
         unknown_entry(first.clone()),
         unknown_entry(second.clone()),
     ]);
-    app.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
-    app.runtime.results = app.runtime.base_results.clone();
-    app.runtime.current_row = Some(1);
-    app.runtime.preview = "preview".to_string();
+    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(1);
+    app.shell.runtime.preview = "preview".to_string();
 
     app.create_new_tab();
 
-    assert_eq!(app.tabs.len(), 2);
-    assert!(app.tabs[0].result_state.results_compacted);
-    assert!(app.tabs[0].result_state.results.is_empty());
-    assert_eq!(app.tabs[0].result_state.base_results.len(), 2);
-    assert!(app.tabs[0].result_state.preview.is_empty());
+    assert_eq!(app.shell.tabs.len(), 2);
+    assert!(app.shell.tabs[0].result_state.results_compacted);
+    assert!(app.shell.tabs[0].result_state.results.is_empty());
+    assert_eq!(app.shell.tabs[0].result_state.base_results.len(), 2);
+    assert!(app.shell.tabs[0].result_state.preview.is_empty());
 
     app.switch_to_tab_index(0);
 
-    assert_eq!(app.runtime.results.len(), 2);
-    assert_eq!(app.runtime.results[0].0, first);
-    assert_eq!(app.runtime.results[1].0, second);
-    assert_eq!(app.runtime.current_row, Some(1));
-    assert!(!app.tabs[0].result_state.results_compacted);
+    assert_eq!(app.shell.runtime.results.len(), 2);
+    assert_eq!(app.shell.runtime.results[0].0, first);
+    assert_eq!(app.shell.runtime.results[1].0, second);
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    assert!(!app.shell.tabs[0].result_state.results_compacted);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -913,7 +908,7 @@ fn app_defaults_use_filelist_on() {
     let root = test_root("default-use-filelist-on");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    assert!(app.runtime.use_filelist);
+    assert!(app.shell.runtime.use_filelist);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -936,8 +931,8 @@ fn copy_selected_paths_notice_normalizes_extended_prefix() {
     let root = test_root("copy-path-notice-normalize");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
-    app.runtime.current_row = Some(0);
+    app.shell.runtime.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
+    app.shell.runtime.current_row = Some(0);
     let ctx = egui::Context::default();
 
     app.copy_selected_paths(&ctx);
@@ -945,7 +940,7 @@ fn copy_selected_paths_notice_normalizes_extended_prefix() {
     assert!(app
         .notice
         .contains(r"Copied path: C:\Users\tester\file.txt"));
-    assert!(!app.runtime.notice.contains(r"\\?\"));
+    assert!(!app.shell.runtime.notice.contains(r"\\?\"));
     let _ = fs::remove_dir_all(&root);
 }
 

@@ -17,7 +17,7 @@ fn top_action_labels_show_history_actions_while_history_search_is_active() {
     let root = test_root("render-history-actions");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.query_state.history_search_active = true;
+    app.shell.runtime.query_state.history_search_active = true;
 
     assert_eq!(
         app.top_action_labels(),
@@ -50,7 +50,7 @@ fn top_action_labels_show_running_create_label_when_filelist_is_in_progress() {
     let root = test_root("render-running-actions");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.features.filelist.in_progress = true;
+    app.shell.features.filelist.in_progress = true;
 
     assert_eq!(app.top_action_labels()[3], "Create File List (Running...)");
     let _ = fs::remove_dir_all(&root);
@@ -61,7 +61,7 @@ fn dispatch_render_commands_consumes_top_action_queue() {
     let root = test_root("render-command-top-action");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.pinned_paths.insert(root.join("keep.txt"));
+    app.shell.runtime.pinned_paths.insert(root.join("keep.txt"));
     let ctx = egui::Context::default();
 
     app.queue_render_command(RenderCommand::TopAction(
@@ -69,8 +69,8 @@ fn dispatch_render_commands_consumes_top_action_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.runtime.pinned_paths.is_empty());
-    assert!(app.ui.pending_render_commands.is_empty());
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+    assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -80,7 +80,7 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let tab_id = app.current_tab_id().expect("active tab id");
-    app.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
+    app.shell.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
         entries: vec![root.join("entry.txt")],
@@ -93,9 +93,9 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.features.filelist.pending_confirmation.is_none());
-    assert_eq!(app.runtime.notice, "Create File List canceled");
-    assert!(app.ui.pending_render_commands.is_empty());
+    assert!(app.shell.features.filelist.pending_confirmation.is_none());
+    assert_eq!(app.shell.runtime.notice, "Create File List canceled");
+    assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -104,7 +104,7 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
     let root = test_root("render-command-update-dialog");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.features.update.check_failure = Some(UpdateCheckFailureState {
+    app.shell.features.update.check_failure = Some(UpdateCheckFailureState {
         error: "network timeout".to_string(),
         suppress_future_errors: false,
     });
@@ -115,8 +115,8 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.features.update.check_failure.is_none());
-    assert!(app.ui.pending_render_commands.is_empty());
+    assert!(app.shell.features.update.check_failure.is_none());
+    assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -131,9 +131,9 @@ fn dispatch_render_commands_consumes_tab_bar_close_queue() {
     app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CloseTab(0)));
     app.dispatch_render_commands(&ctx);
 
-    assert_eq!(app.tabs.len(), 1);
-    assert_eq!(app.tabs.active_tab, 0);
-    assert!(app.ui.pending_render_commands.is_empty());
+    assert_eq!(app.shell.tabs.len(), 1);
+    assert_eq!(app.shell.tabs.active_tab, 0);
+    assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -144,9 +144,9 @@ fn dispatch_render_commands_consumes_tab_bar_move_queue() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     app.create_new_tab();
-    let active_root = app.runtime.root.clone();
-    let middle_root = app.tabs[1].root.clone();
-    let last_root = app.tabs[2].root.clone();
+    let active_root = app.shell.runtime.root.clone();
+    let middle_root = app.shell.tabs[1].root.clone();
+    let last_root = app.shell.tabs[2].root.clone();
     let ctx = egui::Context::default();
 
     app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::MoveTab {
@@ -155,11 +155,11 @@ fn dispatch_render_commands_consumes_tab_bar_move_queue() {
     }));
     app.dispatch_render_commands(&ctx);
 
-    assert_eq!(app.tabs[0].root, active_root);
-    assert_eq!(app.tabs[1].root, middle_root);
-    assert_eq!(app.tabs[2].root, last_root);
-    assert_eq!(app.tabs.active_tab, 0);
-    assert!(app.ui.pending_render_commands.is_empty());
+    assert_eq!(app.shell.tabs[0].root, active_root);
+    assert_eq!(app.shell.tabs[1].root, middle_root);
+    assert_eq!(app.shell.tabs[2].root, last_root);
+    assert_eq!(app.shell.tabs.active_tab, 0);
+    assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 

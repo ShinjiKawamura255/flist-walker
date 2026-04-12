@@ -9,12 +9,12 @@ fn unknown_kind_entries_remain_visible_when_both_filters_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
-    app.runtime.include_files = true;
-    app.runtime.include_dirs = true;
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
 
-    assert_eq!(app.runtime.entries.as_ref(), &vec![path]);
+    assert_eq!(app.shell.runtime.entries.as_ref(), &vec![path]);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -26,18 +26,18 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
-    app.runtime.include_files = true;
-    app.runtime.include_dirs = true;
-    app.ui.show_preview = false;
-    app.indexing.pending_kind_paths.clear();
-    app.indexing.pending_kind_paths_set.clear();
-    app.indexing.in_flight_kind_paths.clear();
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.show_preview = false;
+    app.shell.indexing.pending_kind_paths.clear();
+    app.shell.indexing.pending_kind_paths_set.clear();
+    app.shell.indexing.in_flight_kind_paths.clear();
 
     app.apply_entry_filters(true);
 
-    assert!(!app.indexing.pending_kind_paths.iter().any(|p| *p == path));
-    assert!(!app.indexing.in_flight_kind_paths.contains(&path));
+    assert!(!app.shell.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(!app.shell.indexing.in_flight_kind_paths.contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -50,10 +50,10 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.indexing.rx = rx;
-    let req_id = app.indexing.pending_request_id.expect("pending request");
-    app.runtime.include_files = true;
-    app.runtime.include_dirs = true;
+    app.shell.indexing.rx = rx;
+    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
 
     tx.send(IndexResponse::Batch {
         request_id: req_id,
@@ -72,11 +72,11 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
 
     app.poll_index_response();
 
-    assert!(!app.indexing.in_progress);
-    assert_eq!(app.runtime.entries.as_ref(), &vec![path.clone()]);
-    assert_eq!(app.runtime.all_entries.as_ref(), &vec![path.clone()]);
+    assert!(!app.shell.indexing.in_progress);
+    assert_eq!(app.shell.runtime.entries.as_ref(), &vec![path.clone()]);
+    assert_eq!(app.shell.runtime.all_entries.as_ref(), &vec![path.clone()]);
     assert!(app.find_entry_kind(&path).is_none());
-    assert!(app.indexing.pending_kind_paths.is_empty());
+    assert!(app.shell.indexing.pending_kind_paths.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -90,11 +90,11 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
-    app.indexing.rx = rx;
-    app.worker_bus.kind.tx = kind_tx;
-    let req_id = app.indexing.pending_request_id.expect("pending request");
-    app.runtime.include_files = true;
-    app.runtime.include_dirs = true;
+    app.shell.indexing.rx = rx;
+    app.shell.worker_bus.kind.tx = kind_tx;
+    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
 
     tx.send(IndexResponse::Batch {
         request_id: req_id,
@@ -118,8 +118,8 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
         .try_recv()
         .expect("kind resolve request should be queued");
     assert_eq!(req.path, path.clone());
-    assert!(app.indexing.kind_resolution_in_progress);
-    assert!(app.indexing.in_flight_kind_paths.contains(&path));
+    assert!(app.shell.indexing.kind_resolution_in_progress);
+    assert!(app.shell.indexing.in_flight_kind_paths.contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -131,12 +131,12 @@ fn unknown_kind_entries_are_hidden_when_single_filter_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![unknown_entry(path)]);
-    app.runtime.include_files = false;
-    app.runtime.include_dirs = true;
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path)]);
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
 
-    assert!(app.runtime.entries.is_empty());
+    assert!(app.shell.runtime.entries.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -148,12 +148,12 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
-    app.runtime.include_files = false;
-    app.runtime.include_dirs = true;
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
 
-    assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(app.shell.indexing.pending_kind_paths.iter().any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -166,10 +166,10 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    app.indexing.rx = rx;
-    let req_id = app.indexing.pending_request_id.expect("pending request");
-    app.runtime.include_files = false;
-    app.runtime.include_dirs = true;
+    app.shell.indexing.rx = rx;
+    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
 
     tx.send(IndexResponse::Batch {
         request_id: req_id,
@@ -183,8 +183,8 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
 
     app.poll_index_response();
 
-    assert!(app.runtime.entries.is_empty());
-    assert!(app.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(app.shell.runtime.entries.is_empty());
+    assert!(app.shell.indexing.pending_kind_paths.iter().any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -195,17 +195,17 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     let dir = root.join("dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![unknown_entry(dir.clone())]);
-    app.runtime.include_files = false;
-    app.runtime.include_dirs = true;
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(dir.clone())]);
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
-    assert!(app.runtime.entries.is_empty());
+    assert!(app.shell.runtime.entries.is_empty());
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
-    app.worker_bus.kind.rx = rx;
-    app.indexing.in_flight_kind_paths.insert(dir.clone());
+    app.shell.worker_bus.kind.rx = rx;
+    app.shell.indexing.in_flight_kind_paths.insert(dir.clone());
     tx.send(KindResolveResponse {
-        epoch: app.indexing.kind_resolution_epoch,
+        epoch: app.shell.indexing.kind_resolution_epoch,
         path: dir.clone(),
         kind: Some(EntryKind::dir()),
     })
@@ -214,7 +214,7 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     app.poll_kind_response();
 
     assert_eq!(app.find_entry_kind(&dir), Some(EntryKind::dir()));
-    assert_eq!(app.runtime.entries.as_ref(), &vec![dir]);
+    assert_eq!(app.shell.runtime.entries.as_ref(), &vec![dir]);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -227,19 +227,19 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
     fs::create_dir_all(&right).expect("create right dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![
+    app.shell.runtime.all_entries = Arc::new(vec![
         unknown_entry(left.clone()),
         unknown_entry(right.clone()),
     ]);
-    app.runtime.include_files = false;
-    app.runtime.include_dirs = true;
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
-    app.worker_bus.kind.rx = rx;
-    app.indexing.in_flight_kind_paths.insert(left.clone());
-    app.indexing.in_flight_kind_paths.insert(right.clone());
-    let epoch = app.indexing.kind_resolution_epoch;
+    app.shell.worker_bus.kind.rx = rx;
+    app.shell.indexing.in_flight_kind_paths.insert(left.clone());
+    app.shell.indexing.in_flight_kind_paths.insert(right.clone());
+    let epoch = app.shell.indexing.kind_resolution_epoch;
     tx.send(KindResolveResponse {
         epoch,
         path: left.clone(),
@@ -257,7 +257,7 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
 
     assert_eq!(app.find_entry_kind(&left), Some(EntryKind::dir()));
     assert_eq!(app.find_entry_kind(&right), Some(EntryKind::dir()));
-    assert_eq!(app.runtime.entries.as_ref(), &vec![left.clone(), right.clone()]);
+    assert_eq!(app.shell.runtime.entries.as_ref(), &vec![left.clone(), right.clone()]);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -303,20 +303,20 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<KindResolveRequest>();
-    app.worker_bus.kind.tx = tx;
-    app.runtime.results = vec![(path.clone(), 0.0)];
-    app.runtime.current_row = Some(0);
-    app.runtime.include_files = true;
-    app.runtime.include_dirs = true;
+    app.shell.worker_bus.kind.tx = tx;
+    app.shell.runtime.results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
 
     app.request_preview_for_current();
 
     let req = rx.try_recv().expect("kind resolve request should be sent");
     assert_eq!(req.path, path);
-    assert_eq!(req.epoch, app.indexing.kind_resolution_epoch);
-    assert_eq!(app.runtime.preview, "Resolving entry type...");
-    assert!(app.worker_bus.preview.pending_request_id.is_none());
-    assert!(!app.worker_bus.preview.in_progress);
+    assert_eq!(req.epoch, app.shell.indexing.kind_resolution_epoch);
+    assert_eq!(app.shell.runtime.preview, "Resolving entry type...");
+    assert!(app.shell.worker_bus.preview.pending_request_id.is_none());
+    assert!(!app.shell.worker_bus.preview.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -327,20 +327,20 @@ fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
     fs::create_dir_all(&left).expect("create left dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.runtime.all_entries = Arc::new(vec![unknown_entry(left.clone())]);
-    app.runtime.entries = Arc::clone(&app.runtime.all_entries);
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(left.clone())]);
+    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
 
     // Simulate search worker holding a clone of the Arc, making strong_count > 1
-    let worker_entries = Arc::clone(&app.runtime.all_entries);
-    assert!(Arc::strong_count(&app.runtime.all_entries) > 1);
+    let worker_entries = Arc::clone(&app.shell.runtime.all_entries);
+    assert!(Arc::strong_count(&app.shell.runtime.all_entries) > 1);
 
-    let ptr_before = app.runtime.all_entries.as_ptr();
+    let ptr_before = app.shell.runtime.all_entries.as_ptr();
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
-    app.worker_bus.kind.rx = rx;
-    app.indexing.in_flight_kind_paths.insert(left.clone());
+    app.shell.worker_bus.kind.rx = rx;
+    app.shell.indexing.in_flight_kind_paths.insert(left.clone());
     tx.send(KindResolveResponse {
-        epoch: app.indexing.kind_resolution_epoch,
+        epoch: app.shell.indexing.kind_resolution_epoch,
         path: left.clone(),
         kind: Some(EntryKind::dir()),
     })
@@ -348,7 +348,7 @@ fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
 
     app.poll_kind_response();
 
-    let ptr_after = app.runtime.all_entries.as_ptr();
+    let ptr_after = app.shell.runtime.all_entries.as_ptr();
     assert_eq!(
         ptr_before, ptr_after,
         "Arc<Vec> should not be reallocated/cloned during kind metadata updates. Arc cloning causes severe UI freezes (v0.16.0 regression)."

@@ -3,12 +3,12 @@ use super::*;
 impl FlistWalkerApp {
     /// root 単位で破棄すべき sort metadata cache をまとめて消す。
     pub(super) fn clear_sort_metadata_cache(&mut self) {
-        self.cache.sort_metadata.clear();
+        self.shell.cache.sort_metadata.clear();
     }
 
     /// 結果ソートに使う時刻属性を上限付き cache へ保存する。
     pub(super) fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
-        self.cache
+        self.shell.cache
             .sort_metadata
             .insert_bounded(path, metadata, Self::SORT_METADATA_CACHE_MAX);
     }
@@ -104,9 +104,9 @@ impl FlistWalkerApp {
     /// 現在の base result snapshot から表示用の整列結果を生成する。
     pub(super) fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
         Self::build_sorted_results_from(
-            &self.runtime.base_results,
+            &self.shell.runtime.base_results,
             mode,
-            self.cache.sort_metadata.get_map(),
+            self.shell.cache.sort_metadata.get_map(),
         )
     }
 

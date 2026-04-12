@@ -80,7 +80,7 @@ fn default_ignore_case() -> bool {
 impl FlistWalkerApp {
     pub(super) fn persist_state_and_shutdown(&mut self, phase: &str) {
         self.apply_stable_window_geometry(true);
-        self.ui.ui_state_dirty = true;
+        self.shell.ui.ui_state_dirty = true;
         self.maybe_save_ui_state(true);
         let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
     }
@@ -309,8 +309,7 @@ impl FlistWalkerApp {
         if let Some(parent) = file.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        let text = self
-            .features
+        let text = self.shell.features
             .root_browser
             .saved_roots
             .iter()
@@ -326,15 +325,13 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn add_current_root_to_saved(&mut self) {
-        let root = self
-            .runtime
+        let root = self.shell.runtime
             .root
             .canonicalize()
-            .unwrap_or_else(|_| self.runtime.root.clone());
+            .unwrap_or_else(|_| self.shell.runtime.root.clone());
         let root = normalize_windows_path_buf(root);
         let key = path_key(&root);
-        if self
-            .features
+        if self.shell.features
             .root_browser
             .saved_roots
             .iter()
@@ -343,8 +340,8 @@ impl FlistWalkerApp {
             self.set_notice("Current root is already registered");
             return;
         }
-        self.features.root_browser.saved_roots.push(root.clone());
-        self.features
+        self.shell.features.root_browser.saved_roots.push(root.clone());
+        self.shell.features
             .root_browser
             .saved_roots
             .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
@@ -361,13 +358,12 @@ impl FlistWalkerApp {
             self.set_notice("Set as default is disabled while FLISTWALKER_RESTORE_TABS is enabled");
             return;
         }
-        let root = self
-            .runtime
+        let root = self.shell.runtime
             .root
             .canonicalize()
-            .unwrap_or_else(|_| self.runtime.root.clone());
+            .unwrap_or_else(|_| self.shell.runtime.root.clone());
         let root = normalize_windows_path_buf(root);
-        self.features.root_browser.default_root = Some(root.clone());
+        self.shell.features.root_browser.default_root = Some(root.clone());
         self.mark_ui_state_dirty();
         self.persist_ui_state_now();
         self.set_notice(format!("Set default root: {}", root.display()));
@@ -382,24 +378,23 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn remove_current_root_from_saved(&mut self) {
-        let key = path_key(&self.runtime.root);
-        let before = self.features.root_browser.saved_roots.len();
-        self.features
+        let key = path_key(&self.shell.runtime.root);
+        let before = self.shell.features.root_browser.saved_roots.len();
+        self.shell.features
             .root_browser
             .saved_roots
             .retain(|p| path_key(p) != key);
-        if self.features.root_browser.saved_roots.len() == before {
+        if self.shell.features.root_browser.saved_roots.len() == before {
             self.set_notice("Current root is not in saved list");
             return;
         }
-        if self
-            .features
+        if self.shell.features
             .root_browser
             .default_root
             .as_ref()
             .is_some_and(|p| path_key(p) == key)
         {
-            self.features.root_browser.default_root = None;
+            self.shell.features.root_browser.default_root = None;
             self.mark_ui_state_dirty();
         }
         self.save_saved_roots();
@@ -431,14 +426,14 @@ impl FlistWalkerApp {
             let _ = fs::create_dir_all(parent);
         }
         let last_root_for_startup = if !Self::restore_tabs_enabled() {
-            self.features
+            self.shell.features
                 .root_browser
                 .default_root
                 .clone()
-                .or_else(|| Some(self.runtime.root.clone()))
-                .unwrap_or_else(|| self.runtime.root.clone())
+                .or_else(|| Some(self.shell.runtime.root.clone()))
+                .unwrap_or_else(|| self.shell.runtime.root.clone())
         } else {
-            self.runtime.root.clone()
+            self.shell.runtime.root.clone()
         };
         let state = UiState {
             last_root: Some(
@@ -448,26 +443,24 @@ impl FlistWalkerApp {
                     .to_string_lossy()
                     .to_string(),
             ),
-            default_root: self
-                .features
+            default_root: self.shell.features
                 .root_browser
                 .default_root
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),
-            show_preview: Some(self.ui.show_preview),
-            preview_panel_width: Some(self.ui.preview_panel_width),
+            show_preview: Some(self.shell.ui.show_preview),
+            preview_panel_width: Some(self.shell.ui.preview_panel_width),
             query_history: if history_persist_disabled {
                 Vec::new()
             } else {
-                self.runtime.query_state.query_history.iter().cloned().collect()
+                self.shell.runtime.query_state.query_history.iter().cloned().collect()
             },
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
-            active_tab: Some(self.tabs.active_tab),
-            window: self.ui.window_geometry.clone(),
-            skipped_update_target_version: self.features.update.skipped_target_version.clone(),
-            suppress_update_check_failure_dialog: self
-                .features
+            active_tab: Some(self.shell.tabs.active_tab),
+            window: self.shell.ui.window_geometry.clone(),
+            skipped_update_target_version: self.shell.features.update.skipped_target_version.clone(),
+            suppress_update_check_failure_dialog: self.shell.features
                 .update
                 .suppress_check_failure_dialog,
         };
@@ -477,38 +470,38 @@ impl FlistWalkerApp {
                 "save_ui_state",
                 &format!(
                     "window={:?} preview_panel_width={:.1}",
-                    state.window, self.ui.preview_panel_width
+                    state.window, self.shell.ui.preview_panel_width
                 ),
             );
         }
     }
 
     pub(super) fn mark_ui_state_dirty(&mut self) {
-        self.ui.ui_state_dirty = true;
+        self.shell.ui.ui_state_dirty = true;
     }
 
     pub(super) fn maybe_save_ui_state(&mut self, force: bool) {
-        if !self.ui.ui_state_dirty {
+        if !self.shell.ui.ui_state_dirty {
             return;
         }
-        if force || self.ui.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
+        if force || self.shell.ui.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
             self.save_ui_state();
-            self.ui.ui_state_dirty = false;
-            self.ui.last_ui_state_save = Instant::now();
+            self.shell.ui.ui_state_dirty = false;
+            self.shell.ui.last_ui_state_save = Instant::now();
         }
     }
 
     pub(super) fn persist_ui_state_now(&mut self) {
         self.save_ui_state();
-        self.ui.ui_state_dirty = false;
-        self.ui.last_ui_state_save = Instant::now();
+        self.shell.ui.ui_state_dirty = false;
+        self.shell.ui.last_ui_state_save = Instant::now();
     }
 
     #[cfg(test)]
     pub(super) fn persist_ui_state_to_path_now(&mut self, path: &Path) {
         self.save_ui_state_to_path(path);
-        self.ui.ui_state_dirty = false;
-        self.ui.last_ui_state_save = Instant::now();
+        self.shell.ui.ui_state_dirty = false;
+        self.shell.ui.last_ui_state_save = Instant::now();
     }
 
     fn to_stable_window_geometry(geom: SavedWindowGeometry) -> SavedWindowGeometry {
@@ -569,23 +562,23 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_stable_window_geometry(&mut self, force: bool) {
-        let Some(pending) = self.ui.pending_window_geometry.clone() else {
+        let Some(pending) = self.shell.ui.pending_window_geometry.clone() else {
             return;
         };
         if !force
-            && self.ui.last_window_geometry_change.elapsed() < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
+            && self.shell.ui.last_window_geometry_change.elapsed() < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
         {
             return;
         }
-        if self.ui.window_geometry.as_ref() != Some(&pending) {
-            self.ui.window_geometry = Some(pending.clone());
+        if self.shell.ui.window_geometry.as_ref() != Some(&pending) {
+            self.shell.ui.window_geometry = Some(pending.clone());
             self.mark_ui_state_dirty();
             Self::append_window_trace(
                 "window_geometry_committed",
-                &format!("committed={:?} force={}", self.ui.window_geometry, force),
+                &format!("committed={:?} force={}", self.shell.ui.window_geometry, force),
             );
         }
-        self.ui.pending_window_geometry = None;
+        self.shell.ui.pending_window_geometry = None;
     }
 
     pub(super) fn capture_window_geometry(&mut self, ctx: &egui::Context) {
@@ -612,19 +605,19 @@ impl FlistWalkerApp {
                 return;
             }
         }
-        if self.ui.pending_window_geometry.as_ref() != Some(&next)
-            && self.ui.window_geometry.as_ref() != Some(&next)
+        if self.shell.ui.pending_window_geometry.as_ref() != Some(&next)
+            && self.shell.ui.window_geometry.as_ref() != Some(&next)
         {
-            let prev_committed = self.ui.window_geometry.clone();
-            let prev_pending = self.ui.pending_window_geometry.clone();
-            self.ui.pending_window_geometry = Some(next);
-            self.ui.last_window_geometry_change = Instant::now();
+            let prev_committed = self.shell.ui.window_geometry.clone();
+            let prev_pending = self.shell.ui.pending_window_geometry.clone();
+            self.shell.ui.pending_window_geometry = Some(next);
+            self.shell.ui.last_window_geometry_change = Instant::now();
             if Self::window_trace_verbose_enabled() {
                 Self::append_window_trace(
                     "capture_window_geometry_changed",
                     &format!(
                         "prev_committed={:?} prev_pending={:?} next_pending={:?}",
-                        prev_committed, prev_pending, self.ui.pending_window_geometry
+                        prev_committed, prev_pending, self.shell.ui.pending_window_geometry
                     ),
                 );
             }

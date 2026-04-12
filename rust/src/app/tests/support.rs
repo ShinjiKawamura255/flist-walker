@@ -42,7 +42,7 @@ pub(super) fn run_shortcuts_frame(
         ..Default::default()
     });
     if query_focused {
-        ctx.memory_mut(|m| m.request_focus(app.ui.query_input_id));
+        ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
     }
     app.handle_shortcuts(&ctx);
     app.run_deferred_shortcuts(&ctx);
@@ -93,12 +93,12 @@ pub(super) fn commit_query_history_for_test(app: &mut FlistWalkerApp) {
 }
 
 pub(super) fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
-    app.indexing.pending_request_id = None;
-    app.indexing.in_progress = false;
-    app.indexing.request_tabs.clear();
-    app.indexing.pending_queue.clear();
-    app.indexing.inflight_requests.clear();
-    if let Ok(mut latest) = app.indexing.latest_request_ids.lock() {
+    app.shell.indexing.pending_request_id = None;
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.request_tabs.clear();
+    app.shell.indexing.pending_queue.clear();
+    app.shell.indexing.inflight_requests.clear();
+    if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
         latest.clear();
     }
 }

@@ -5,7 +5,7 @@ use crate::path_utils::path_key;
 impl FlistWalkerApp {
     /// ダイアログで選んだ root を現在 tab に適用する。
     pub(super) fn browse_for_root(&mut self) {
-        let dialog_root = normalize_windows_path_buf(self.runtime.root.clone());
+        let dialog_root = normalize_windows_path_buf(self.shell.runtime.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => self.apply_root_change(dir),
             Ok(None) => {}
@@ -15,7 +15,7 @@ impl FlistWalkerApp {
 
     /// ダイアログで選んだ root を新規 tab として開く。
     pub(super) fn browse_for_root_in_new_tab(&mut self) {
-        let dialog_root = normalize_windows_path_buf(self.runtime.root.clone());
+        let dialog_root = normalize_windows_path_buf(self.shell.runtime.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => {
                 self.create_new_tab();
@@ -28,7 +28,7 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     fn select_root_via_dialog(&mut self, _dialog_root: &Path) -> Result<Option<PathBuf>, String> {
-        self.features
+        self.shell.features
             .root_browser
             .browse_dialog_result
             .take()
@@ -53,8 +53,8 @@ impl FlistWalkerApp {
     }
 
     fn current_root_dropdown_index(&self) -> Option<usize> {
-        let current_key = path_key(&self.runtime.root);
-        self.features
+        let current_key = path_key(&self.shell.runtime.root);
+        self.shell.features
             .root_browser
             .saved_roots
             .iter()
@@ -63,8 +63,8 @@ impl FlistWalkerApp {
 
     /// dropdown のハイライト位置を保存済み root 一覧に同期する。
     pub(super) fn sync_root_dropdown_highlight(&mut self) {
-        let max_index = self.features.root_browser.saved_roots.len().checked_sub(1);
-        self.ui.root_dropdown_highlight = match (self.ui.root_dropdown_highlight, max_index) {
+        let max_index = self.shell.features.root_browser.saved_roots.len().checked_sub(1);
+        self.shell.ui.root_dropdown_highlight = match (self.shell.ui.root_dropdown_highlight, max_index) {
             (_, None) => None,
             (Some(index), Some(max)) => Some(index.min(max)),
             (None, Some(_)) => self.current_root_dropdown_index().or(Some(0usize)),
@@ -75,8 +75,8 @@ impl FlistWalkerApp {
     pub(super) fn open_root_dropdown(&mut self, ctx: &egui::Context) {
         self.sync_root_dropdown_highlight();
         ctx.memory_mut(|mem| mem.open_popup(Self::root_selector_popup_id()));
-        self.ui.focus_query_requested = false;
-        self.ui.unfocus_query_requested = true;
+        self.shell.ui.focus_query_requested = false;
+        self.shell.ui.unfocus_query_requested = true;
     }
 
     /// root dropdown を閉じる。
@@ -86,25 +86,23 @@ impl FlistWalkerApp {
 
     /// root dropdown 内の候補選択を上下へ移動する。
     pub(super) fn move_root_dropdown_selection(&mut self, delta: isize) {
-        let Some(max_index) = self.features.root_browser.saved_roots.len().checked_sub(1) else {
-            self.ui.root_dropdown_highlight = None;
+        let Some(max_index) = self.shell.features.root_browser.saved_roots.len().checked_sub(1) else {
+            self.shell.ui.root_dropdown_highlight = None;
             return;
         };
-        let current = self
-            .ui
+        let current = self.shell.ui
             .root_dropdown_highlight
             .or_else(|| self.current_root_dropdown_index())
             .unwrap_or(0) as isize;
         let next = (current + delta).clamp(0, max_index as isize) as usize;
-        self.ui.root_dropdown_highlight = Some(next);
+        self.shell.ui.root_dropdown_highlight = Some(next);
     }
 
     /// dropdown で確定した root を現在 tab に反映する。
     pub(super) fn apply_root_dropdown_selection(&mut self, ctx: &egui::Context) {
-        let selected = self
-            .ui
+        let selected = self.shell.ui
             .root_dropdown_highlight
-            .and_then(|index| self.features.root_browser.saved_roots.get(index).cloned());
+            .and_then(|index| self.shell.features.root_browser.saved_roots.get(index).cloned());
         self.close_root_dropdown(ctx);
         if let Some(root) = selected {
             self.apply_root_change(root);
