@@ -103,6 +103,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12 Planned.
+- 2026-04-12 Slice A completed: reduced remaining ownership overlap by making `query_history_dirty_since` runtime-only and consolidating pending restore refresh tracking into `pending_restore_refresh_tabs`.
 
 ## 12. Communication Plan
 - Return the closure decision and any follow-up plan if the target is still not met.

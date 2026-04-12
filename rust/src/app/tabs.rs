@@ -544,7 +544,6 @@ impl FlistWalkerApp {
         tab.query_state.query_history = self.shell.runtime.query_state.query_history.clone();
         tab.query_state.query_history_cursor = None;
         tab.query_state.query_history_draft = None;
-        tab.query_state.query_history_dirty_since = None;
         tab.query_state.history_search_active = false;
         tab.query_state.history_search_query.clear();
         tab.query_state.history_search_original_query.clear();

@@ -78,4 +78,4 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12 Planned.
-
+- 2026-04-12 Completed: runtime-only `query_history_dirty_since` and per-tab `pending_restore_refresh_tabs` now own the remaining sync-sensitive state instead of duplicating it across snapshot and session layers.

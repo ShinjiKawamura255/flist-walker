@@ -251,7 +251,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn clear_pending_restore_refresh(&mut self) {
-        self.shell.tabs.pending_restore_refresh = false;
+        if let Some(tab_id) = self.current_tab_id() {
+            self.shell.tabs.pending_restore_refresh_tabs.remove(&tab_id);
+        }
     }
 
     pub(super) fn mark_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
@@ -263,10 +265,6 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn take_pending_restore_refresh_for_active_tab(&mut self) -> bool {
-        if self.shell.tabs.pending_restore_refresh {
-            self.clear_pending_restore_refresh();
-            return true;
-        }
         let Some(tab_id) = self.current_tab_id() else {
             return false;
         };

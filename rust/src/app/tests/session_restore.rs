@@ -221,7 +221,16 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     assert_eq!(app.shell.runtime.root, root_b);
     assert_eq!(app.shell.runtime.query_state.query, "beta");
     assert_eq!(app.shell.tabs[1].tab_accent, Some(TabAccentColor::Crimson));
-    assert!(!app.shell.tabs.pending_restore_refresh);
+    assert!(app
+        .shell
+        .tabs
+        .pending_restore_refresh_tabs
+        .contains(&app.shell.tabs[0].id));
+    assert!(!app
+        .shell
+        .tabs
+        .pending_restore_refresh_tabs
+        .contains(&app.shell.tabs[1].id));
 
     let req = rx.try_recv().expect("active tab refresh");
     assert_eq!(req.root, root_b);
@@ -303,7 +312,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
 
     let req = rx.try_recv().expect("background tab lazy refresh");
     assert_eq!(req.root, root_a);
-    assert!(!app.shell.tabs.pending_restore_refresh);
+    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -430,7 +439,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     assert!(index_req_rx.try_recv().is_err());
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_a);
-    assert!(!app.shell.tabs.pending_restore_refresh);
+    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
     assert_eq!(app.shell.runtime.preview, "preview-body");
     assert_eq!(app.shell.runtime.results.len(), 1);
     assert_eq!(app.shell.runtime.results[0].0, indexed_file);

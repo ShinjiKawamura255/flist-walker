@@ -6,7 +6,6 @@ pub(super) struct TabQueryState {
     pub(super) query_history: VecDeque<String>,
     pub(super) query_history_cursor: Option<usize>,
     pub(super) query_history_draft: Option<String>,
-    pub(super) query_history_dirty_since: Option<Instant>,
     pub(super) history_search_active: bool,
     pub(super) history_search_query: String,
     pub(super) history_search_original_query: String,
@@ -123,7 +122,6 @@ impl TabQueryState {
             query_history: shell.shell.runtime.query_state.query_history.clone(),
             query_history_cursor: shell.shell.runtime.query_state.query_history_cursor,
             query_history_draft: shell.shell.runtime.query_state.query_history_draft.clone(),
-            query_history_dirty_since: shell.shell.runtime.query_state.query_history_dirty_since,
             history_search_active: shell.shell.runtime.query_state.history_search_active,
             history_search_query: shell.shell.runtime.query_state.history_search_query.clone(),
             history_search_original_query: shell
@@ -147,7 +145,6 @@ impl TabQueryState {
         shell.shell.runtime.query_state.query_history = self.query_history.clone();
         shell.shell.runtime.query_state.query_history_cursor = self.query_history_cursor;
         shell.shell.runtime.query_state.query_history_draft = self.query_history_draft.clone();
-        shell.shell.runtime.query_state.query_history_dirty_since = self.query_history_dirty_since;
         shell.shell.runtime.query_state.history_search_active = self.history_search_active;
         shell.shell.runtime.query_state.history_search_query = self.history_search_query.clone();
         shell
@@ -253,7 +250,6 @@ impl AppTabState {
                 query_history: shell.shell.runtime.query_state.query_history.clone(),
                 query_history_cursor: None,
                 query_history_draft: None,
-                query_history_dirty_since: None,
                 history_search_active: false,
                 history_search_query: String::new(),
                 history_search_original_query: String::new(),
