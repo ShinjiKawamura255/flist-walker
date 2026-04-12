@@ -136,6 +136,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-12  Planned.
 - 2026-04-12  B1 implemented: bootstrap/launch entrypoints were moved behind the bootstrap owner boundary and validated with `cargo test`.
+- 2026-04-12  B2 implemented: canonical tab/state projection helpers were centralized in `tab_state.rs` and validated with `cargo test`.
 - 2026-04-12  slice B review flagged scope/phase mismatch and missing B1 entry gate; plan updated before implementation.
 
 ## 12. Communication Plan

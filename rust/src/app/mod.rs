@@ -74,7 +74,7 @@ use state::{
     TabAccentPalette, TabDragState, TabSessionState, UpdateCheckFailureState, UpdateManager,
     UpdatePromptState, UpdateState,
 };
-use tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
+use tab_state::AppTabState;
 use ui_state::RuntimeUiState;
 use worker_bus::{
     ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,

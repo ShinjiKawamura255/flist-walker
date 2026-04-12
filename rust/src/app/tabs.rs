@@ -545,72 +545,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn restored_tab_state(&self, id: u64, saved: &SavedTabState) -> AppTabState {
-        AppTabState {
-            id,
-            root: normalize_windows_path_buf(PathBuf::from(&saved.root)),
-            tab_accent: saved.tab_accent,
-            use_filelist: saved.use_filelist,
-            use_regex: saved.use_regex,
-            ignore_case: saved.ignore_case,
-            include_files: saved.include_files,
-            include_dirs: saved.include_dirs,
-            index_state: TabIndexState {
-                index: IndexBuildResult {
-                    entries: Vec::new(),
-                    source: IndexSource::None,
-                },
-                all_entries: Arc::new(Vec::new()),
-                entries: Arc::new(Vec::new()),
-                pending_index_request_id: None,
-                index_in_progress: false,
-                pending_index_entries: VecDeque::new(),
-                pending_index_entries_request_id: None,
-                pending_kind_paths: VecDeque::new(),
-                pending_kind_paths_set: HashSet::new(),
-                in_flight_kind_paths: HashSet::new(),
-                kind_resolution_epoch: 1,
-                kind_resolution_in_progress: false,
-                incremental_filtered_entries: Vec::new(),
-                last_incremental_results_refresh: Instant::now(),
-                last_search_snapshot_len: 0,
-                search_resume_pending: false,
-                search_rerun_pending: false,
-            },
-            query_state: TabQueryState {
-                query: saved.query.clone(),
-                query_history: self.query_state.query_history.clone(),
-                query_history_cursor: None,
-                query_history_draft: None,
-                query_history_dirty_since: None,
-                history_search_active: false,
-                history_search_query: String::new(),
-                history_search_original_query: String::new(),
-                history_search_results: Vec::new(),
-                history_search_current: None,
-            },
-            pending_restore_refresh: true,
-            result_state: TabResultState {
-                base_results: Vec::new(),
-                results: Vec::new(),
-                result_sort_mode: ResultSortMode::Score,
-                pending_sort_request_id: None,
-                sort_in_progress: false,
-                pinned_paths: HashSet::new(),
-                current_row: Some(0),
-                preview: String::new(),
-                results_compacted: false,
-            },
-            notice: "Restored tab".to_string(),
-            pending_request_id: None,
-            pending_preview_request_id: None,
-            pending_action_request_id: None,
-            search_in_progress: false,
-            preview_in_progress: false,
-            action_in_progress: false,
-            scroll_to_current: true,
-            focus_query_requested: false,
-            unfocus_query_requested: false,
-        }
+        AppTabState::from_saved(self, id, saved)
     }
 
     pub(super) fn initialize_tabs_from_saved(
@@ -726,126 +661,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn capture_active_tab_state(&self, id: u64) -> AppTabState {
-        AppTabState {
-            id,
-            root: self.root.clone(),
-            tab_accent: self
-                .tabs
-                .get(self.tabs.active_tab)
-                .and_then(|tab| tab.tab_accent),
-            use_filelist: self.use_filelist,
-            use_regex: self.use_regex,
-            ignore_case: self.ignore_case,
-            include_files: self.include_files,
-            include_dirs: self.include_dirs,
-            index_state: TabIndexState {
-                index: self.index.clone(),
-                all_entries: Arc::clone(&self.all_entries),
-                entries: Arc::clone(&self.entries),
-                pending_index_request_id: self.indexing.pending_request_id,
-                index_in_progress: self.indexing.in_progress,
-                pending_index_entries: self.indexing.pending_entries.clone(),
-                pending_index_entries_request_id: self.indexing.pending_entries_request_id,
-                pending_kind_paths: self.indexing.pending_kind_paths.clone(),
-                pending_kind_paths_set: self.indexing.pending_kind_paths_set.clone(),
-                in_flight_kind_paths: self.indexing.in_flight_kind_paths.clone(),
-                kind_resolution_epoch: self.indexing.kind_resolution_epoch,
-                kind_resolution_in_progress: self.indexing.kind_resolution_in_progress,
-                incremental_filtered_entries: self.indexing.incremental_filtered_entries.clone(),
-                last_incremental_results_refresh: self.indexing.last_incremental_results_refresh,
-                last_search_snapshot_len: self.indexing.last_search_snapshot_len,
-                search_resume_pending: self.indexing.search_resume_pending,
-                search_rerun_pending: self.indexing.search_rerun_pending,
-            },
-            query_state: TabQueryState {
-                query: self.query_state.query.clone(),
-                query_history: self.query_state.query_history.clone(),
-                query_history_cursor: self.query_state.query_history_cursor,
-                query_history_draft: self.query_state.query_history_draft.clone(),
-                query_history_dirty_since: self.query_state.query_history_dirty_since,
-                history_search_active: self.query_state.history_search_active,
-                history_search_query: self.query_state.history_search_query.clone(),
-                history_search_original_query: self
-                    .query_state
-                    .history_search_original_query
-                    .clone(),
-                history_search_results: self.query_state.history_search_results.clone(),
-                history_search_current: self.query_state.history_search_current,
-            },
-            pending_restore_refresh: self.tabs.pending_restore_refresh,
-            result_state: TabResultState {
-                base_results: self.base_results.clone(),
-                results: self.results.clone(),
-                result_sort_mode: self.result_sort_mode,
-                pending_sort_request_id: self.worker_bus.sort.pending_request_id,
-                sort_in_progress: self.worker_bus.sort.in_progress,
-                pinned_paths: self.pinned_paths.clone(),
-                current_row: self.current_row,
-                preview: self.preview.clone(),
-                results_compacted: false,
-            },
-            notice: self.notice.clone(),
-            pending_request_id: self.search.pending_request_id(),
-            pending_preview_request_id: self.worker_bus.preview.pending_request_id,
-            pending_action_request_id: self.worker_bus.action.pending_request_id,
-            search_in_progress: self.search.in_progress(),
-            preview_in_progress: self.worker_bus.preview.in_progress,
-            action_in_progress: self.worker_bus.action.in_progress,
-            scroll_to_current: self.ui.scroll_to_current,
-            focus_query_requested: self.ui.focus_query_requested,
-            unfocus_query_requested: self.ui.unfocus_query_requested,
-        }
+        AppTabState::from_shell(self, id)
     }
 
     pub(super) fn apply_tab_state(&mut self, tab: &AppTabState) {
-        self.root = tab.root.clone();
-        self.use_filelist = tab.use_filelist;
-        self.use_regex = tab.use_regex;
-        self.ignore_case = tab.ignore_case;
-        self.include_files = tab.include_files;
-        self.include_dirs = tab.include_dirs;
-        self.index = tab.index_state.index.clone();
-        self.all_entries = Arc::clone(&tab.index_state.all_entries);
-        self.entries = Arc::clone(&tab.index_state.entries);
-        self.indexing.pending_request_id = tab.index_state.pending_index_request_id;
-        self.indexing.in_progress = tab.index_state.index_in_progress;
-        self.indexing.pending_entries = tab.index_state.pending_index_entries.clone();
-        self.indexing.pending_entries_request_id = tab.index_state.pending_index_entries_request_id;
-        self.indexing.pending_kind_paths = tab.index_state.pending_kind_paths.clone();
-        self.indexing.pending_kind_paths_set = tab.index_state.pending_kind_paths_set.clone();
-        self.indexing.in_flight_kind_paths = tab.index_state.in_flight_kind_paths.clone();
-        self.indexing.kind_resolution_epoch = tab.index_state.kind_resolution_epoch;
-        self.indexing.kind_resolution_in_progress = tab.index_state.kind_resolution_in_progress;
-        self.indexing.incremental_filtered_entries =
-            tab.index_state.incremental_filtered_entries.clone();
-        self.indexing.last_incremental_results_refresh =
-            tab.index_state.last_incremental_results_refresh;
-        self.indexing.last_search_snapshot_len = tab.index_state.last_search_snapshot_len;
-        self.indexing.search_resume_pending = tab.index_state.search_resume_pending;
-        self.indexing.search_rerun_pending = tab.index_state.search_rerun_pending;
-        self.query_state.query = tab.query_state.query.clone();
+        tab.apply_shell(self);
         self.reset_query_history_navigation();
         self.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
-        self.tabs.pending_restore_refresh = tab.pending_restore_refresh;
-        self.base_results = tab.result_state.base_results.clone();
-        self.results = tab.result_state.results.clone();
-        self.result_sort_mode = tab.result_state.result_sort_mode;
-        self.worker_bus.sort.pending_request_id = tab.result_state.pending_sort_request_id;
-        self.worker_bus.sort.in_progress = tab.result_state.sort_in_progress;
-        self.pinned_paths = tab.result_state.pinned_paths.clone();
-        self.current_row = tab.result_state.current_row;
-        self.preview = tab.result_state.preview.clone();
-        self.notice = tab.notice.clone();
-        self.search.set_pending_request_id(tab.pending_request_id);
-        self.worker_bus.preview.pending_request_id = tab.pending_preview_request_id;
-        self.worker_bus.action.pending_request_id = tab.pending_action_request_id;
-        self.search.set_in_progress(tab.search_in_progress);
-        self.worker_bus.preview.in_progress = tab.preview_in_progress;
-        self.worker_bus.action.in_progress = tab.action_in_progress;
-        self.ui.scroll_to_current = tab.scroll_to_current;
-        self.ui.focus_query_requested = tab.focus_query_requested;
-        self.ui.unfocus_query_requested = tab.unfocus_query_requested;
         self.rebuild_entry_kind_cache();
         self.refresh_status_line();
     }
@@ -1061,42 +884,12 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn saved_tab_state_from_app(&self) -> SavedTabState {
-        SavedTabState {
-            root: self.root.to_string_lossy().to_string(),
-            use_filelist: self.use_filelist,
-            use_regex: self.use_regex,
-            ignore_case: self.ignore_case,
-            include_files: self.include_files,
-            include_dirs: self.include_dirs,
-            query: self.query_state.query.clone(),
-            query_history: if Self::history_persist_disabled() {
-                Vec::new()
-            } else {
-                self.query_state.query_history.iter().cloned().collect()
-            },
-            tab_accent: self
-                .tabs
-                .get(self.tabs.active_tab)
-                .and_then(|tab| tab.tab_accent),
-        }
+        self.capture_active_tab_state(self.tabs.get(self.tabs.active_tab).map(|tab| tab.id).unwrap_or_default())
+            .into_saved(Self::history_persist_disabled())
     }
 
     fn saved_tab_state_from_tab(tab: &AppTabState) -> SavedTabState {
-        SavedTabState {
-            root: tab.root.to_string_lossy().to_string(),
-            use_filelist: tab.use_filelist,
-            use_regex: tab.use_regex,
-            ignore_case: tab.ignore_case,
-            include_files: tab.include_files,
-            include_dirs: tab.include_dirs,
-            query: tab.query_state.query.clone(),
-            query_history: if Self::history_persist_disabled() {
-                Vec::new()
-            } else {
-                tab.query_state.query_history.iter().cloned().collect()
-            },
-            tab_accent: tab.tab_accent,
-        }
+        tab.clone().into_saved(Self::history_persist_disabled())
     }
 
     pub(super) fn saved_tabs_for_ui_state(&self) -> Vec<SavedTabState> {
