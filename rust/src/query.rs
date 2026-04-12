@@ -1,3 +1,6 @@
+use crate::path_utils::{display_path_with_mode, normalize_windows_path};
+use std::path::Path;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuerySpec {
     pub include_terms: Vec<String>,
@@ -103,6 +106,147 @@ pub fn token_uses_regex_syntax(token: &str) -> bool {
             '.' | '*' | '+' | '?' | '(' | ')' | '[' | ']' | '{' | '}' | '\\'
         )
     })
+}
+
+fn chars_equal(a: char, b: char, ignore_case: bool) -> bool {
+    if ignore_case && a.is_ascii() && b.is_ascii() {
+        a.eq_ignore_ascii_case(&b)
+    } else {
+        a == b
+    }
+}
+
+fn exact_candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> bool {
+    let (anchored_start, anchored_end, core) = split_anchor(candidate);
+    if core.is_empty() {
+        return false;
+    }
+
+    let text_chars: Vec<char> = text.chars().collect();
+    let core_chars: Vec<char> = core.chars().collect();
+    if core_chars.len() > text_chars.len() {
+        return false;
+    }
+
+    for start in 0..=text_chars.len() - core_chars.len() {
+        if !core_chars
+            .iter()
+            .enumerate()
+            .all(|(offset, query)| chars_equal(text_chars[start + offset], *query, ignore_case))
+        {
+            continue;
+        }
+        if anchored_start && start != 0 {
+            continue;
+        }
+        if anchored_end && start + core_chars.len() != text_chars.len() {
+            continue;
+        }
+        return true;
+    }
+
+    false
+}
+
+fn fuzzy_candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> bool {
+    let (anchored_start, anchored_end, core) = split_anchor(candidate);
+    if core.is_empty() {
+        return false;
+    }
+
+    if anchored_start {
+        let Some(first_char) = core.chars().next() else {
+            return false;
+        };
+        if !text
+            .chars()
+            .next()
+            .is_some_and(|value| chars_equal(value, first_char, ignore_case))
+        {
+            return false;
+        }
+    }
+    if anchored_end {
+        let Some(last_char) = core.chars().last() else {
+            return false;
+        };
+        if !text
+            .chars()
+            .last()
+            .is_some_and(|value| chars_equal(value, last_char, ignore_case))
+        {
+            return false;
+        }
+    }
+
+    let mut qi = 0usize;
+    let query_chars: Vec<char> = core.chars().collect();
+    for ch in text.chars() {
+        if qi < query_chars.len() && chars_equal(ch, query_chars[qi], ignore_case) {
+            qi += 1;
+        }
+    }
+    qi == query_chars.len() || text.contains(core)
+}
+
+fn candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> bool {
+    let Some((exact, parsed)) = parse_include_alternative(candidate) else {
+        return false;
+    };
+    if exact {
+        exact_candidate_matches_text(text, &parsed, ignore_case)
+    } else {
+        fuzzy_candidate_matches_text(text, &parsed, ignore_case)
+    }
+}
+
+pub fn has_visible_match(
+    path: &Path,
+    root: &Path,
+    query: &str,
+    prefer_relative: bool,
+    ignore_case: bool,
+) -> bool {
+    if query.trim().is_empty() {
+        return true;
+    }
+
+    let spec = parse_query(query);
+    if spec.include_terms.is_empty() && spec.exact_terms.is_empty() {
+        return true;
+    }
+
+    let display = display_path_with_mode(path, root, prefer_relative);
+    let normalized_path = normalize_windows_path(path);
+    let filename = normalized_path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+
+    for term in &spec.exact_terms {
+        if !exact_candidate_matches_text(filename, term, ignore_case)
+            && !exact_candidate_matches_text(&display, term, ignore_case)
+        {
+            return false;
+        }
+    }
+
+    for term in &spec.include_terms {
+        let mut matched = false;
+        for candidate in include_alternatives(term) {
+            if candidate_matches_text(filename, candidate, ignore_case)
+                || candidate_matches_text(&display, candidate, ignore_case)
+            {
+                matched = true;
+                break;
+            }
+        }
+        if !matched {
+            return false;
+        }
+    }
+
+    true
 }
 
 #[cfg(test)]

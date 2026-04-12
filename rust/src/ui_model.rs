@@ -1,7 +1,7 @@
 use crate::actions::choose_action;
 use crate::path_utils::{
-    normalize_path_for_display as normalize_display_path, normalize_windows_path,
-    strip_windows_extended_prefix,
+    display_path_with_mode as display_display_path_with_mode,
+    normalize_path_for_display as normalize_display_path,
 };
 use crate::query::{
     include_alternatives, parse_include_alternative, parse_query, split_anchor,
@@ -25,17 +25,7 @@ pub fn normalize_path_for_display(path: &Path) -> String {
 }
 
 pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -> String {
-    let normalized_path = normalize_windows_path(path);
-    let normalized_root = normalize_windows_path(root);
-    let raw = if prefer_relative {
-        normalized_path
-            .strip_prefix(&normalized_root)
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| normalized_path.to_string_lossy().to_string())
-    } else {
-        normalized_path.to_string_lossy().to_string()
-    };
-    strip_windows_extended_prefix(&raw)
+    display_display_path_with_mode(path, root, prefer_relative)
 }
 
 fn chars_equal(a: char, b: char, ignore_case: bool) -> bool {
@@ -253,15 +243,7 @@ pub fn has_visible_match(
     prefer_relative: bool,
     ignore_case: bool,
 ) -> bool {
-    if query.trim().is_empty() {
-        return true;
-    }
-    let spec = parse_query(query);
-    if spec.include_terms.is_empty() && spec.exact_terms.is_empty() {
-        // Exclusion-only queries are already filtered by search logic.
-        return true;
-    }
-    !match_positions_for_path(path, root, query, prefer_relative, false, ignore_case).is_empty()
+    crate::query::has_visible_match(path, root, query, prefer_relative, ignore_case)
 }
 
 fn find_regex_match_positions(text: &str, pattern: &str, ignore_case: bool) -> HashSet<usize> {

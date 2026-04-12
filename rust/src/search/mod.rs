@@ -466,6 +466,10 @@ pub(crate) fn rank_search_results(
     prefix_cache: &mut SearchPrefixCache,
 ) -> (Vec<(PathBuf, f64)>, Option<String>) {
     let query_trimmed = query.trim().to_string();
+    let path_refs = entries
+        .iter()
+        .map(|entry| entry.path.as_path())
+        .collect::<Vec<_>>();
     let snapshot = SearchEntriesSnapshotKey::from_entries(entries);
     let cached_candidates = if use_regex {
         None
@@ -474,10 +478,7 @@ pub(crate) fn rank_search_results(
     };
     let scored_matches = match try_collect_search_matches(
         query,
-        &entries
-            .iter()
-            .map(|entry| entry.path.clone())
-            .collect::<Vec<_>>(),
+        &path_refs,
         use_regex,
         ignore_case,
         Some(root),
@@ -512,7 +513,7 @@ pub(crate) fn rank_search_results(
 
 pub(crate) fn try_collect_search_matches(
     query: &str,
-    entries: &[PathBuf],
+    entries: &[&Path],
     use_regex: bool,
     ignore_case: bool,
     root: Option<&Path>,
@@ -545,7 +546,7 @@ struct SearchCollectOptions<'a> {
 
 fn try_collect_search_matches_with_mode(
     query: &str,
-    entries: &[PathBuf],
+    entries: &[&Path],
     options: SearchCollectOptions<'_>,
 ) -> Result<SearchScoredMatches, String> {
     let query = query.trim();
@@ -594,16 +595,17 @@ pub fn try_search_entries_with_scope(
     prefer_relative: bool,
 ) -> Result<Vec<(PathBuf, f64)>, String> {
     let started_at = Instant::now();
+    let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
     let scored = try_collect_search_matches(
         query,
-        entries,
+        &path_refs,
         use_regex,
         ignore_case,
         root,
         prefer_relative,
         None,
     )?;
-    let results = materialize_scored_entries(entries, top_ranked_scores(scored.scored, limit));
+    let results = materialize_scored_entries(&path_refs, top_ranked_scores(scored.scored, limit));
     let elapsed_ms = started_at.elapsed().as_millis();
     debug!(
         query,
@@ -636,9 +638,10 @@ pub fn try_search_entries_indexed_with_scope(
     prefer_relative: bool,
     candidate_indices: Option<&[usize]>,
 ) -> Result<Vec<IndexedScore>, String> {
+    let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
     let mut scored = try_collect_search_matches(
         query,
-        entries,
+        &path_refs,
         use_regex,
         ignore_case,
         root,
@@ -716,8 +719,9 @@ mod tests {
             "module_1", &entries, false, true, None, false, None,
         )
         .expect("full ranked search");
+        let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
         let expected =
-            materialize_scored_entries(entries.as_slice(), full.into_iter().take(7).collect());
+            materialize_scored_entries(&path_refs, full.into_iter().take(7).collect());
 
         assert_eq!(limited, expected);
     }
@@ -727,10 +731,11 @@ mod tests {
         let entries: Vec<PathBuf> = (0..50_000)
             .map(|i| PathBuf::from(format!("/tmp/src/module_{i:05}.rs")))
             .collect();
+        let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
 
         let sequential = try_collect_search_matches_with_mode(
             "module_123",
-            &entries,
+            &path_refs,
             SearchCollectOptions {
                 use_regex: false,
                 ignore_case: true,
@@ -744,7 +749,7 @@ mod tests {
         .scored;
         let parallel = try_collect_search_matches_with_mode(
             "module_123",
-            &entries,
+            &path_refs,
             SearchCollectOptions {
                 use_regex: false,
                 ignore_case: true,

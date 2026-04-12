@@ -72,3 +72,15 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- 対象は `FlistWalker` のアーキテクチャ理想形への段階的移行。
+- 実装や追加修正を始める前に、次の順で計画書を読むこと。
+  - `[docs/CHANGE-PLAN-20260412-roadmap-architecture-idealization.md](docs/CHANGE-PLAN-20260412-roadmap-architecture-idealization.md)`
+  - `[docs/CHANGE-PLAN-20260412-slice-a-core-boundary.md](docs/CHANGE-PLAN-20260412-slice-a-core-boundary.md)`
+  - `[docs/CHANGE-PLAN-20260412-slice-b-shell-decomposition.md](docs/CHANGE-PLAN-20260412-slice-b-shell-decomposition.md)`
+  - `[docs/CHANGE-PLAN-20260412-slice-c-closure.md](docs/CHANGE-PLAN-20260412-slice-c-closure.md)`
+- roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
+- phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として成果を確認すること。
+- 実装順は計画書に従い、scope / order / risk が変わる場合は先に計画書を更新すること。
+- 完了後はこの一時セクションを削除すること。

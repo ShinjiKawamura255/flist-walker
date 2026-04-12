@@ -40,6 +40,20 @@ pub fn normalize_windows_path_buf(path: PathBuf) -> PathBuf {
     normalize_windows_path(&path)
 }
 
+pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -> String {
+    let normalized_path = normalize_windows_path(path);
+    let normalized_root = normalize_windows_path(root);
+    let raw = if prefer_relative {
+        normalized_path
+            .strip_prefix(&normalized_root)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| normalized_path.to_string_lossy().to_string())
+    } else {
+        normalized_path.to_string_lossy().to_string()
+    };
+    strip_windows_extended_prefix(&raw)
+}
+
 pub fn normalize_path_for_display(path: &Path) -> String {
     let normalized = normalize_windows_path(path);
     strip_windows_extended_prefix(&normalized.to_string_lossy())

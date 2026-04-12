@@ -4,7 +4,7 @@ use super::{
 };
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rayon::prelude::*;
-use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Default)]
 struct SearchChunkResult {
@@ -20,7 +20,7 @@ fn merge_chunk_results(
 }
 
 pub(super) fn collect_sequential(
-    entries: &[PathBuf],
+    entries: &[&Path],
     compiled: &CompiledQuery,
     ctx: SearchContext<'_>,
     candidate_indices: Option<&[usize]>,
@@ -49,7 +49,7 @@ pub(super) fn collect_sequential(
 }
 
 pub(super) fn collect_parallel(
-    entries: &[PathBuf],
+    entries: &[&Path],
     compiled: &CompiledQuery,
     ctx: SearchContext<'_>,
     candidate_indices: Option<&[usize]>,
@@ -95,7 +95,7 @@ pub(super) fn collect_parallel(
                     || (SkimMatcherV2::default(), Vec::<SearchCandidateScore>::new()),
                     |(matcher, mut scored), index| {
                         if let Some(item) = evaluate_candidate(
-                            &entries[index],
+                            entries[index],
                             index,
                             index,
                             compiled,

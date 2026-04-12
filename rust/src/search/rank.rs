@@ -52,7 +52,7 @@ pub(crate) fn filter_search_results(
     results
         .into_iter()
         .filter(|(path, _)| {
-            crate::ui_model::has_visible_match(path, root, query, prefer_relative, ignore_case)
+            crate::query::has_visible_match(path, root, query, prefer_relative, ignore_case)
         })
         .collect()
 }
@@ -77,7 +77,7 @@ pub(super) fn scored_indices_to_paths(
 }
 
 pub(super) fn materialize_scored_entries(
-    entries: &[PathBuf],
+    entries: &[&Path],
     scored: Vec<IndexedScore>,
 ) -> Vec<(PathBuf, f64)> {
     scored
@@ -85,8 +85,7 @@ pub(super) fn materialize_scored_entries(
         .filter_map(|item| {
             entries
                 .get(item.index)
-                .cloned()
-                .map(|path| (path, item.score))
+                .map(|path| (path.to_path_buf(), item.score))
         })
         .collect()
 }
