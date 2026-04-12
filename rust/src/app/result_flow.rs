@@ -1,20 +1,6 @@
 use super::*;
 
 impl FlistWalkerApp {
-    /// sort worker の応答を cache と tab state へ適用する。
-    pub(super) fn poll_sort_response(&mut self) {
-        while let Ok(response) = self.worker_bus.sort.rx.try_recv() {
-            for (path, metadata) in &response.entries {
-                self.cache_sort_metadata(path.clone(), *metadata);
-            }
-
-            if self.apply_active_sort_response(&response) {
-                continue;
-            }
-            self.apply_background_sort_response(response);
-        }
-    }
-
     /// root 単位で破棄すべき sort metadata cache をまとめて消す。
     pub(super) fn clear_sort_metadata_cache(&mut self) {
         self.cache.sort_metadata.clear();
@@ -147,5 +133,4 @@ impl FlistWalkerApp {
     pub(super) fn set_result_sort_mode(&mut self, mode: ResultSortMode) {
         result_reducer::set_result_sort_mode(self, mode);
     }
-
 }

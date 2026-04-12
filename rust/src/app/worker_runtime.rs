@@ -165,9 +165,7 @@ impl FlistWalkerApp {
     pub(super) fn poll_runtime_events(&mut self) {
         self.poll_index_response();
         self.poll_search_response();
-        self.poll_action_response();
-        self.poll_sort_response();
-        self.poll_preview_response();
+        self.poll_routed_worker_responses();
         self.poll_kind_response();
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();

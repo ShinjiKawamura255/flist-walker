@@ -33,6 +33,8 @@
 - `rust/src/app/search_coordinator.rs`
 - `rust/src/app/index_coordinator.rs`
 - `rust/src/app/worker_bus.rs`
+- `rust/src/app/response_flow.rs`
+- `rust/src/app/root_browser.rs`
 - `rust/src/app/preview_flow.rs`
 - `rust/src/app/result_flow.rs`
 - `rust/src/app/tabs.rs`
@@ -61,13 +63,13 @@
 
 ## 6. Execution Strategy
 1. Phase C1: routing owner normalization
-   - Files/modules/components: `worker_bus.rs`, `search_coordinator.rs`, `index_coordinator.rs`, `preview_flow.rs`, `result_flow.rs`, `worker_runtime.rs`
+   - Files/modules/components: `response_flow.rs`, `worker_bus.rs`, `search_coordinator.rs`, `index_coordinator.rs`, `preview_flow.rs`, `result_flow.rs`, `worker_runtime.rs`
    - Expected result: request routing helpers and polling entrypoints share one ownership model instead of being split by request type.
    - Verification: background response routing tests and queue/inflight tests.
    - Entry condition: slice B review has identified the remaining routing split and the owner boundary to normalize is frozen.
    - Exit condition: bind/take/clear/poll operations follow one routing boundary and no longer depend on per-request-file ownership drift.
 2. Phase C2: lifecycle cleanup consolidation
-   - Files/modules/components: `tabs.rs`, `input.rs`, `state.rs`
+   - Files/modules/components: `root_browser.rs`, `tabs.rs`, `input.rs`, `state.rs`
    - Expected result: `tabs.rs` keeps lifecycle transitions, and close-time cleanup uses one path for preview/action/sort/request routing.
    - Verification: tab close / switch / reorder tests and stale response cleanup tests.
    - Entry condition: routing owner normalization has stabilized the remaining request maps.
@@ -120,6 +122,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12  Planned after closure review found routing/lifecycle ownership still split.
+- 2026-04-12  C1 implemented: routing and response polling ownership was consolidated into `response_flow.rs`, validated with `cargo test`.
+- 2026-04-12  C2 implemented: root browser UI/state ownership was moved out of `tabs.rs` into `root_browser.rs`, validated with `cargo test`.
 
 ## 12. Communication Plan
 - Return to user when the slice is reviewed and ready for implementation, or when a blocking issue requires plan update.

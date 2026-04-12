@@ -155,6 +155,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-12  Slice B progressed: B3 reducer boundary consolidation landed, verified by `cargo test`.
 - 2026-04-12  Slice B progressed: B4 request routing cleanup landed, verified by `cargo test`.
 - 2026-04-12  Closure review found routing/lifecycle ownership still split; a new implementation slice was appended before the closure validation step.
+- 2026-04-12  Slice C implemented: routing ownership and root browser lifecycle ownership were consolidated, verified by `cargo test`.
 
 ## 12. Communication Plan
 - Return to user when:

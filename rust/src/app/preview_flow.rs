@@ -1,48 +1,5 @@
 use super::*;
-
 impl FlistWalkerApp {
-    pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.tabs
-            .request_tab_routing
-            .bind_preview(request_id, tab_id);
-    }
-
-    fn bind_preview_request_to_current_tab(&mut self, request_id: u64) {
-        if let Some(tab_id) = self.current_tab_id() {
-            self.bind_preview_request_to_tab(request_id, tab_id);
-        }
-    }
-
-    pub(super) fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
-        self.tabs.request_tab_routing.take_preview(request_id)
-    }
-
-    pub(super) fn clear_preview_request_routing_for_tab(&mut self, tab_id: u64) {
-        self.tabs.request_tab_routing.clear_preview_for_tab(tab_id);
-    }
-
-    #[cfg(test)]
-    pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.tabs
-            .request_tab_routing
-            .preview
-            .get(&request_id)
-            .copied()
-    }
-
-    fn apply_background_preview_response(&mut self, response: PreviewResponse) {
-        result_reducer::apply_background_preview_response(self, response);
-    }
-
-    pub(super) fn poll_preview_response(&mut self) {
-        while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
-            if result_reducer::apply_active_preview_response(self, &response) {
-                continue;
-            }
-            self.apply_background_preview_response(response);
-        }
-    }
-
     pub(super) fn clear_preview_cache(&mut self) {
         self.cache.preview.clear();
     }
