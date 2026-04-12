@@ -168,7 +168,8 @@ fn create_filelist_waits_while_indexing() {
     app.create_filelist();
 
     assert_eq!(
-        app.shell.features
+        app.shell
+            .features
             .filelist
             .pending_after_index
             .as_ref()
@@ -178,7 +179,11 @@ fn create_filelist_waits_while_indexing() {
     assert!(app.shell.features.filelist.pending_request_id.is_none());
     assert!(!app.shell.features.filelist.in_progress);
     assert!(index_rx.try_recv().is_err());
-    assert!(app.shell.runtime.notice.contains("Waiting for current indexing"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Waiting for current indexing"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -240,7 +245,9 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
 
     assert!(app.shell.runtime.use_filelist);
     app.create_filelist();
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_use_walker_confirmation
         .is_some());
@@ -253,7 +260,9 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     assert!(app.shell.runtime.use_filelist);
     assert!(app.shell.runtime.include_files);
     assert!(app.shell.runtime.include_dirs);
-    let pending = app.shell.features
+    let pending = app
+        .shell
+        .features
         .filelist
         .pending_after_index
         .as_ref()
@@ -267,7 +276,11 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     assert_eq!(req.tab_id, current_tab_id);
     assert_eq!(req.root, root);
     assert!(!req.use_filelist);
-    assert!(app.shell.runtime.notice.contains("Preparing background Walker index"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Preparing background Walker index"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -288,7 +301,9 @@ fn deferred_filelist_starts_after_index_finished() {
     app.shell.indexing.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.create_filelist();
-    let request_id = app.shell.indexing
+    let request_id = app
+        .shell
+        .indexing
         .pending_request_id
         .expect("pending index request");
 
@@ -311,7 +326,9 @@ fn deferred_filelist_starts_after_index_finished() {
         .expect("send finished");
     app.poll_index_response();
 
-    if app.shell.features
+    if app
+        .shell
+        .features
         .filelist
         .pending_ancestor_confirmation
         .is_some()
@@ -349,7 +366,11 @@ fn deferred_filelist_is_canceled_when_root_changes() {
     app.request_index_refresh();
 
     assert!(app.shell.features.filelist.pending_after_index.is_none());
-    assert!(app.shell.runtime.notice.contains("Deferred Create File List canceled"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Deferred Create File List canceled"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
 }
@@ -398,7 +419,9 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
     assert_eq!(req.tab_id, source_tab_id);
     assert_eq!(req.root, root_a);
     assert!(req.use_filelist);
-    let source_tab = app.shell.tabs
+    let source_tab = app
+        .shell
+        .tabs
         .iter()
         .find(|tab| tab.id == source_tab_id)
         .expect("source tab should remain");
@@ -448,7 +471,9 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
     app.poll_filelist_response();
 
     assert!(index_rx.try_recv().is_err());
-    let source_tab = app.shell.tabs
+    let source_tab = app
+        .shell
+        .tabs
         .iter()
         .find(|tab| tab.id == source_tab_id)
         .expect("source tab should remain");
@@ -491,7 +516,11 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert!(background_tab
         .notice
         .contains("Index worker is unavailable"));
-    assert!(app.shell.runtime.notice.contains("Index worker is unavailable"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Index worker is unavailable"));
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -524,7 +553,10 @@ fn root_change_clears_stale_selection_state() {
     assert!(app.shell.runtime.results.is_empty());
     let active_tab = app.shell.tabs.active_tab;
     assert_eq!(app.shell.tabs[active_tab].root, root_new);
-    assert!(app.shell.tabs[active_tab].index_state.all_entries.is_empty());
+    assert!(app.shell.tabs[active_tab]
+        .index_state
+        .all_entries
+        .is_empty());
     assert!(app.shell.tabs[active_tab].index_state.entries.is_empty());
     let req = rx.try_recv().expect("index request should be sent");
     assert_eq!(req.root, app.shell.runtime.root);
@@ -577,7 +609,9 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
 
     app.apply_root_change(root_new.clone());
 
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_ancestor_confirmation
         .is_none());
@@ -605,7 +639,9 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
 
     app.apply_root_change(root_new.clone());
 
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_use_walker_confirmation
         .is_none());
@@ -644,7 +680,11 @@ fn filelist_finished_updates_state_and_notice() {
     assert!(app.shell.runtime.use_filelist);
     assert!(app.shell.runtime.notice.contains("Created"));
     assert!(app.shell.runtime.notice.contains("3 entries"));
-    assert!(app.shell.runtime.notice.contains(filelist.to_string_lossy().as_ref()));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains(filelist.to_string_lossy().as_ref()));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -674,7 +714,9 @@ fn filelist_finished_enables_use_filelist_for_creator_tab() {
 
     app.poll_filelist_response();
 
-    let creator_tab = app.shell.tabs
+    let creator_tab = app
+        .shell
+        .tabs
         .iter()
         .find(|tab| tab.id == creator_tab_id)
         .expect("creator tab");
@@ -749,7 +791,11 @@ fn cancel_create_filelist_clears_pending_after_index() {
     app.cancel_create_filelist();
 
     assert!(app.shell.features.filelist.pending_after_index.is_none());
-    assert!(app.shell.runtime.notice.contains("Create File List canceled"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Create File List canceled"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -770,7 +816,11 @@ fn cancel_create_filelist_marks_inflight_request() {
 
     assert!(cancel.load(Ordering::Relaxed));
     assert!(app.shell.features.filelist.cancel_requested);
-    assert!(app.shell.runtime.notice.contains("Canceling Create File List"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Canceling Create File List"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -793,11 +843,14 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
     app.create_filelist();
 
     assert!(
-        app.shell.runtime.notice.contains("ancestor") || app.shell.runtime.notice.contains("parent"),
+        app.shell.runtime.notice.contains("ancestor")
+            || app.shell.runtime.notice.contains("parent"),
         "notice should mention ancestor confirmation, got: {}",
         app.shell.runtime.notice
     );
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_ancestor_confirmation
         .is_some());

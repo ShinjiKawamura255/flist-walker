@@ -100,7 +100,10 @@ impl<'a> PipelineOwner<'a> {
         } else {
             self.app.shell.runtime.all_entries.as_ref()
         };
-        if source_is_all_entries && self.app.shell.runtime.include_files && self.app.shell.runtime.include_dirs {
+        if source_is_all_entries
+            && self.app.shell.runtime.include_files
+            && self.app.shell.runtime.include_dirs
+        {
             self.app.shell.runtime.entries = Arc::clone(&self.app.shell.runtime.all_entries);
         } else {
             self.app.shell.runtime.entries = Arc::new(self.filtered_entries(base));

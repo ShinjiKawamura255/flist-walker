@@ -180,7 +180,10 @@ impl FlistWalkerApp {
         self.shell.runtime.results.clear();
         self.shell.runtime.results.shrink_to_fit();
         self.shell.indexing.incremental_filtered_entries.clear();
-        self.shell.indexing.incremental_filtered_entries.shrink_to_fit();
+        self.shell
+            .indexing
+            .incremental_filtered_entries
+            .shrink_to_fit();
         self.shell.worker_bus.sort.pending_request_id = None;
         self.shell.worker_bus.sort.in_progress = false;
         self.shell.runtime.result_sort_mode = ResultSortMode::Score;
@@ -200,10 +203,15 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn use_filelist_requires_locked_filters(&self) -> bool {
-        self.shell.runtime.use_filelist && !matches!(self.shell.runtime.index.source, IndexSource::Walker)
+        self.shell.runtime.use_filelist
+            && !matches!(self.shell.runtime.index.source, IndexSource::Walker)
     }
 
-    pub(super) fn is_entry_visible_for_flags(entry: &Entry, include_files: bool, include_dirs: bool) -> bool {
+    pub(super) fn is_entry_visible_for_flags(
+        entry: &Entry,
+        include_files: bool,
+        include_dirs: bool,
+    ) -> bool {
         entry.is_visible_for_flags(include_files, include_dirs)
     }
 
@@ -211,7 +219,8 @@ impl FlistWalkerApp {
         let kind = self.find_entry_kind(entry.path()).or(entry.kind);
         match kind {
             Some(kind) => {
-                (kind.is_dir && self.shell.runtime.include_dirs) || (!kind.is_dir && self.shell.runtime.include_files)
+                (kind.is_dir && self.shell.runtime.include_dirs)
+                    || (!kind.is_dir && self.shell.runtime.include_files)
             }
             None => self.shell.runtime.include_files && self.shell.runtime.include_dirs,
         }

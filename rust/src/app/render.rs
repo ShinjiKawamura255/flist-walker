@@ -219,7 +219,7 @@ impl FlistWalkerApp {
         if self.shell.runtime.query_state.history_search_active {
             self.shell.ui.preview_resize_in_progress = false;
             self.render_history_search_results(ui);
-            self.shell.ui.scroll_to_current = false;
+            self.clear_scroll_to_current();
             return;
         }
         if self.shell.ui.show_preview {
@@ -273,13 +273,14 @@ impl FlistWalkerApp {
                 };
                 i.pointer.primary_down() && (pos.x - splitter_x).abs() <= 8.0
             });
-            self.shell.ui.preview_resize_in_progress = response.response.dragged() || splitter_pressed;
+            self.shell.ui.preview_resize_in_progress =
+                response.response.dragged() || splitter_pressed;
             self.render_results_list(ui);
         } else {
             self.shell.ui.preview_resize_in_progress = false;
             self.render_results_list(ui);
         }
-        self.shell.ui.scroll_to_current = false;
+        self.clear_scroll_to_current();
     }
 
     pub(super) fn results_scroll_enabled(preview_resize_in_progress: bool) -> bool {
@@ -358,12 +359,12 @@ impl FlistWalkerApp {
                     }
                 }
                 if let Some(i) = clicked_row {
-                    self.shell.runtime.current_row = Some(i);
+                    self.set_current_row(Some(i));
                     self.request_preview_for_current();
                     self.refresh_status_line();
                 }
                 if let Some(i) = execute_row {
-                    self.shell.runtime.current_row = Some(i);
+                    self.set_current_row(Some(i));
                     let open_parent_for_files = ui.input(|i| i.modifiers.shift);
                     self.execute_selected_for_activation(open_parent_for_files);
                 }
@@ -499,8 +500,16 @@ impl FlistWalkerApp {
                 let mut clicked_row: Option<usize> = None;
                 let mut accept_row: Option<usize> = None;
 
-                for (index, entry) in self.shell.runtime.query_state.history_search_results.iter().enumerate() {
-                    let is_current = self.shell.runtime.query_state.history_search_current == Some(index);
+                for (index, entry) in self
+                    .shell
+                    .runtime
+                    .query_state
+                    .history_search_results
+                    .iter()
+                    .enumerate()
+                {
+                    let is_current =
+                        self.shell.runtime.query_state.history_search_current == Some(index);
                     let prefix = if is_current { "▶" } else { "·" };
                     let text = format!("{prefix} {entry}");
                     let selected_bg = if ui.visuals().dark_mode {
@@ -608,7 +617,9 @@ impl FlistWalkerApp {
                     .rounding(egui::Rounding::same(Self::TAB_ROUNDING))
                     .inner_margin(egui::Margin::symmetric(6.0, 2.0))
                     .show(ui, |ui| {
-                        let title = self.shell.tabs
+                        let title = self
+                            .shell
+                            .tabs
                             .get(i)
                             .map(|tab| self.tab_title(tab, i))
                             .unwrap_or_else(|| format!("Tab {}", i + 1));
@@ -1080,11 +1091,11 @@ impl FlistWalkerApp {
             });
             if self.shell.ui.focus_query_requested {
                 output.response.request_focus();
-                self.shell.ui.focus_query_requested = false;
+                self.clear_focus_query_request();
             }
             if self.shell.ui.unfocus_query_requested {
                 output.response.surrender_focus();
-                self.shell.ui.unfocus_query_requested = false;
+                self.clear_unfocus_query_request();
             }
             let events = ctx.input(|i| i.events.clone());
             if !editing_history_search {
@@ -1233,7 +1244,9 @@ impl FlistWalkerApp {
         let mut overwrite = false;
         let mut cancel_overwrite = false;
         let current_tab_id = self.current_tab_id().unwrap_or_default();
-        if let Some(existing_path) = self.shell.features
+        if let Some(existing_path) = self
+            .shell
+            .features
             .filelist
             .pending_confirmation
             .as_ref()
@@ -1287,7 +1300,9 @@ impl FlistWalkerApp {
         let mut confirm_ancestor = false;
         let mut current_root_only = false;
         let mut cancel_ancestor = false;
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_ancestor_confirmation
             .as_ref()
@@ -1353,7 +1368,9 @@ impl FlistWalkerApp {
 
         let mut confirm_walker = false;
         let mut cancel_walker = false;
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_use_walker_confirmation
             .as_ref()
@@ -1467,7 +1484,8 @@ impl FlistWalkerApp {
                     }
                 });
 
-            self.shell.features
+            self.shell
+                .features
                 .update
                 .set_prompt_skip_until_next_version(skip_until_next_version);
 
@@ -1512,7 +1530,8 @@ impl FlistWalkerApp {
                     }
                 });
 
-            self.shell.features
+            self.shell
+                .features
                 .update
                 .set_check_failure_suppress_future_errors(suppress_future_errors);
 

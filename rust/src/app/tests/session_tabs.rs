@@ -159,7 +159,11 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
         }],
     );
     assert_eq!(app.shell.tabs.len(), 1);
-    assert!(app.shell.runtime.notice.contains("Cannot close the last tab"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Cannot close the last tab"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -289,7 +293,8 @@ fn switching_tabs_restores_entries_and_filters_per_tab() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
+    app.shell.runtime.all_entries =
+        Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.sync_active_tab_state();
@@ -482,10 +487,16 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     assert_eq!(app.shell.runtime.root, expected_active_root);
     assert_eq!(app.shell.runtime.query_state.query, expected_active_query);
     assert_eq!(app.shell.runtime.preview, expected_active_preview);
-    assert_eq!(app.shell.runtime.include_files, expected_active_include_files);
+    assert_eq!(
+        app.shell.runtime.include_files,
+        expected_active_include_files
+    );
     assert_eq!(app.shell.runtime.include_dirs, expected_active_include_dirs);
     assert_eq!(app.shell.ui.focus_query_requested, expected_active_focus);
-    assert_eq!(app.shell.ui.unfocus_query_requested, expected_active_unfocus);
+    assert_eq!(
+        app.shell.ui.unfocus_query_requested,
+        expected_active_unfocus
+    );
 
     assert_eq!(app.shell.tabs[0].root, expected_tab_b.root);
     assert_eq!(
@@ -622,7 +633,11 @@ fn background_tab_search_and_preview_responses_are_retained() {
     app.shell.search.tx = search_tx_req;
     app.shell.search.rx = search_rx_res;
     app.enqueue_search_request();
-    let search_request_id = app.shell.search.pending_request_id().expect("search request id");
+    let search_request_id = app
+        .shell
+        .search
+        .pending_request_id()
+        .expect("search request id");
     let first_tab_id = app.shell.tabs[0].id;
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
@@ -630,7 +645,9 @@ fn background_tab_search_and_preview_responses_are_retained() {
     app.shell.worker_bus.preview.tx = preview_tx_req;
     app.shell.worker_bus.preview.rx = preview_rx_res;
     app.request_preview_for_current();
-    let preview_request_id = app.shell.worker_bus
+    let preview_request_id = app
+        .shell
+        .worker_bus
         .preview
         .pending_request_id
         .expect("preview request id");
@@ -655,7 +672,9 @@ fn background_tab_search_and_preview_responses_are_retained() {
     app.poll_search_response();
     app.poll_preview_response();
 
-    let first_tab = app.shell.tabs
+    let first_tab = app
+        .shell
+        .tabs
         .iter()
         .find(|tab| tab.id == first_tab_id)
         .expect("first tab");
@@ -797,7 +816,10 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         include_files: true,
         include_dirs: true,
     };
-    app.shell.indexing.request_tabs.insert(88, background_tab_id);
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(88, background_tab_id);
     app.shell.tabs[0].index_state.pending_index_request_id = Some(88);
     app.shell.tabs[0].index_state.index_in_progress = true;
     app.shell.search.bind_request_tab(89, background_tab_id);
@@ -839,7 +861,10 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     assert_eq!(app.shell.runtime.base_results, active_base_results);
     assert_eq!(app.shell.runtime.current_row, active_current_row);
     assert_eq!(app.shell.tabs[0].result_state.base_results.len(), 1);
-    assert_eq!(app.shell.tabs[0].result_state.base_results[0].0, background_file);
+    assert_eq!(
+        app.shell.tabs[0].result_state.base_results[0].0,
+        background_file
+    );
     assert_eq!(app.shell.tabs[0].index_state.entries.len(), 1);
     assert_eq!(app.shell.tabs[0].index_state.entries[0], background_file);
     assert!(index_req_rx.try_recv().is_err());

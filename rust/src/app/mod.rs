@@ -41,9 +41,9 @@ mod input;
 mod pipeline;
 mod pipeline_owner;
 mod preview_flow;
-mod response_flow;
 mod query_state;
 mod render;
+mod response_flow;
 mod result_flow;
 mod result_reducer;
 mod root_browser;
@@ -96,10 +96,10 @@ use workers::{
     spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
 };
 mod shell_support;
-pub use shell_support::{configure_egui_fonts, request_process_shutdown};
-pub(crate) use shell_support::process_shutdown_requested;
 #[cfg(test)]
 pub(crate) use shell_support::clear_process_shutdown_request;
+pub(crate) use shell_support::process_shutdown_requested;
+pub use shell_support::{configure_egui_fonts, request_process_shutdown};
 
 impl TabAccentColor {
     pub(super) const ALL: [Self; 8] = [

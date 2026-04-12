@@ -183,7 +183,8 @@ impl FlistWalkerApp {
         self.shell.indexing.pending_kind_paths_set.clear();
         self.shell.indexing.in_flight_kind_paths.clear();
         self.shell.indexing.kind_resolution_in_progress = false;
-        self.shell.indexing.kind_resolution_epoch = self.shell.indexing.kind_resolution_epoch.saturating_add(1);
+        self.shell.indexing.kind_resolution_epoch =
+            self.shell.indexing.kind_resolution_epoch.saturating_add(1);
     }
 
     /// 表示中または incremental index 中の entry から kind 未解決 path を拾う。
@@ -191,18 +192,23 @@ impl FlistWalkerApp {
         if !self.kind_resolution_needed_for_filters() {
             return;
         }
-        let source: Vec<PathBuf> = if self.shell.indexing.in_progress && !self.shell.runtime.index.entries.is_empty() {
-            self.shell.runtime.index
-                .entries
-                .iter()
-                .map(|entry| entry.path.clone())
-                .collect()
-        } else {
-            self.shell.runtime.all_entries
-                .iter()
-                .map(|entry| entry.path.clone())
-                .collect()
-        };
+        let source: Vec<PathBuf> =
+            if self.shell.indexing.in_progress && !self.shell.runtime.index.entries.is_empty() {
+                self.shell
+                    .runtime
+                    .index
+                    .entries
+                    .iter()
+                    .map(|entry| entry.path.clone())
+                    .collect()
+            } else {
+                self.shell
+                    .runtime
+                    .all_entries
+                    .iter()
+                    .map(|entry| entry.path.clone())
+                    .collect()
+            };
         self.queue_unknown_kind_paths(&source);
     }
 
@@ -237,7 +243,10 @@ impl FlistWalkerApp {
         {
             return;
         }
-        self.shell.indexing.pending_kind_paths_set.insert(path.clone());
+        self.shell
+            .indexing
+            .pending_kind_paths_set
+            .insert(path.clone());
         self.shell.indexing.pending_kind_paths.push_back(path);
     }
 
@@ -260,8 +269,9 @@ impl FlistWalkerApp {
             self.shell.indexing.in_flight_kind_paths.insert(path);
             dispatched = dispatched.saturating_add(1);
         }
-        self.shell.indexing.kind_resolution_in_progress = !self.shell.indexing.pending_kind_paths.is_empty()
-            || !self.shell.indexing.in_flight_kind_paths.is_empty();
+        self.shell.indexing.kind_resolution_in_progress =
+            !self.shell.indexing.pending_kind_paths.is_empty()
+                || !self.shell.indexing.in_flight_kind_paths.is_empty();
     }
 
     /// kind resolver 応答を吸収し filter/preview を必要最小限で更新する。
@@ -276,10 +286,15 @@ impl FlistWalkerApp {
             if response.epoch != self.shell.indexing.kind_resolution_epoch {
                 continue;
             }
-            self.shell.indexing.in_flight_kind_paths.remove(&response.path);
+            self.shell
+                .indexing
+                .in_flight_kind_paths
+                .remove(&response.path);
             if let Some(kind) = response.kind {
                 if self.shell.runtime.current_row.is_some_and(|row| {
-                    self.shell.runtime.results
+                    self.shell
+                        .runtime
+                        .results
                         .get(row)
                         .is_some_and(|(path, _)| *path == response.path)
                 }) {
@@ -298,8 +313,9 @@ impl FlistWalkerApp {
             self.apply_entry_kind_updates(&resolved_updates);
         }
 
-        self.shell.indexing.kind_resolution_in_progress = !self.shell.indexing.pending_kind_paths.is_empty()
-            || !self.shell.indexing.in_flight_kind_paths.is_empty();
+        self.shell.indexing.kind_resolution_in_progress =
+            !self.shell.indexing.pending_kind_paths.is_empty()
+                || !self.shell.indexing.in_flight_kind_paths.is_empty();
 
         if resolved_any && (!self.shell.runtime.include_files || !self.shell.runtime.include_dirs) {
             self.apply_entry_filters(true);

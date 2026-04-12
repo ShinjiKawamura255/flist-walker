@@ -110,8 +110,10 @@ impl TabIndexState {
         shell.shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths.clone();
         shell.shell.indexing.kind_resolution_epoch = self.kind_resolution_epoch;
         shell.shell.indexing.kind_resolution_in_progress = self.kind_resolution_in_progress;
-        shell.shell.indexing.incremental_filtered_entries = self.incremental_filtered_entries.clone();
-        shell.shell.indexing.last_incremental_results_refresh = self.last_incremental_results_refresh;
+        shell.shell.indexing.incremental_filtered_entries =
+            self.incremental_filtered_entries.clone();
+        shell.shell.indexing.last_incremental_results_refresh =
+            self.last_incremental_results_refresh;
         shell.shell.indexing.last_search_snapshot_len = self.last_search_snapshot_len;
         shell.shell.indexing.search_resume_pending = self.search_resume_pending;
         shell.shell.indexing.search_rerun_pending = self.search_rerun_pending;
@@ -128,8 +130,18 @@ impl TabQueryState {
             query_history_dirty_since: shell.shell.runtime.query_state.query_history_dirty_since,
             history_search_active: shell.shell.runtime.query_state.history_search_active,
             history_search_query: shell.shell.runtime.query_state.history_search_query.clone(),
-            history_search_original_query: shell.shell.runtime.query_state.history_search_original_query.clone(),
-            history_search_results: shell.shell.runtime.query_state.history_search_results.clone(),
+            history_search_original_query: shell
+                .shell
+                .runtime
+                .query_state
+                .history_search_original_query
+                .clone(),
+            history_search_results: shell
+                .shell
+                .runtime
+                .query_state
+                .history_search_results
+                .clone(),
             history_search_current: shell.shell.runtime.query_state.history_search_current,
         }
     }
@@ -142,9 +154,13 @@ impl TabQueryState {
         shell.shell.runtime.query_state.query_history_dirty_since = self.query_history_dirty_since;
         shell.shell.runtime.query_state.history_search_active = self.history_search_active;
         shell.shell.runtime.query_state.history_search_query = self.history_search_query.clone();
-        shell.shell.runtime.query_state.history_search_original_query =
-            self.history_search_original_query.clone();
-        shell.shell.runtime.query_state.history_search_results = self.history_search_results.clone();
+        shell
+            .shell
+            .runtime
+            .query_state
+            .history_search_original_query = self.history_search_original_query.clone();
+        shell.shell.runtime.query_state.history_search_results =
+            self.history_search_results.clone();
         shell.shell.runtime.query_state.history_search_current = self.history_search_current;
     }
 }
@@ -241,8 +257,8 @@ impl AppTabState {
                 search_rerun_pending: false,
             },
             query_state: TabQueryState {
-            query: saved.query.clone(),
-            query_history: shell.shell.runtime.query_state.query_history.clone(),
+                query: saved.query.clone(),
+                query_history: shell.shell.runtime.query_state.query_history.clone(),
                 query_history_cursor: None,
                 query_history_draft: None,
                 query_history_dirty_since: None,
@@ -289,7 +305,10 @@ impl AppTabState {
         shell.shell.tabs.pending_restore_refresh = self.pending_restore_refresh;
         self.result_state.apply_shell(shell);
         shell.shell.runtime.notice = self.notice.clone();
-        shell.shell.search.set_pending_request_id(self.pending_request_id);
+        shell
+            .shell
+            .search
+            .set_pending_request_id(self.pending_request_id);
         shell.shell.worker_bus.preview.pending_request_id = self.pending_preview_request_id;
         shell.shell.worker_bus.action.pending_request_id = self.pending_action_request_id;
         shell.shell.search.set_in_progress(self.search_in_progress);

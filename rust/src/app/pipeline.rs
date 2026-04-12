@@ -9,12 +9,15 @@ impl FlistWalkerApp {
 
     fn cancel_stale_pending_after_index_for_active_root(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == current_tab_id && path_key(&pending.root) != path_key(&self.shell.runtime.root)
+                pending.tab_id == current_tab_id
+                    && path_key(&pending.root) != path_key(&self.shell.runtime.root)
             })
         {
             self.shell.features.filelist.pending_after_index = None;
@@ -55,12 +58,13 @@ impl FlistWalkerApp {
     ) {
         let query_non_empty = !self.shell.runtime.query_state.query.trim().is_empty();
         if mark_inflight {
-            self.shell.indexing.begin_active_refresh_with_inflight(
-                request_id,
-                query_non_empty,
-            );
+            self.shell
+                .indexing
+                .begin_active_refresh_with_inflight(request_id, query_non_empty);
         } else {
-            self.shell.indexing.begin_active_refresh(request_id, query_non_empty);
+            self.shell
+                .indexing
+                .begin_active_refresh(request_id, query_non_empty);
         }
         self.shell.search.set_pending_request_id(None);
         self.shell.search.set_in_progress(false);
@@ -71,11 +75,7 @@ impl FlistWalkerApp {
         self.ensure_entry_filters();
         self.invalidate_result_sort(true);
         self.clear_sort_metadata_cache();
-        self.shell.tabs.pending_restore_refresh = false;
-        let active_tab = self.shell.tabs.active_tab;
-        if let Some(tab) = self.shell.tabs.get_mut(active_tab) {
-            tab.pending_restore_refresh = false;
-        }
+        self.clear_pending_restore_refresh();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
@@ -202,12 +202,15 @@ impl FlistWalkerApp {
 
     fn enqueue_index_request(&mut self, req: IndexRequest) {
         let active_tab_id = self.current_tab_id().unwrap_or_default();
-        let stale_inflight: Vec<u64> = self.shell.indexing
+        let stale_inflight: Vec<u64> = self
+            .shell
+            .indexing
             .inflight_requests
             .iter()
             .copied()
             .filter(|request_id| {
-                self.shell.indexing
+                self.shell
+                    .indexing
                     .request_tabs
                     .get(request_id)
                     .is_some_and(|tab_id| *tab_id == req.tab_id)
@@ -218,13 +221,16 @@ impl FlistWalkerApp {
             self.shell.indexing.request_tabs.remove(&request_id);
             self.shell.indexing.background_states.remove(&request_id);
         }
-        self.shell.indexing
+        self.shell
+            .indexing
             .pending_queue
             .retain(|queued| queued.tab_id != req.tab_id);
         self.shell.indexing.pending_queue.push_back(req);
 
         while self.shell.indexing.pending_queue.len() > Self::INDEX_MAX_QUEUE {
-            let drop_idx = self.shell.indexing
+            let drop_idx = self
+                .shell
+                .indexing
                 .pending_queue
                 .iter()
                 .position(|queued| queued.tab_id != active_tab_id)
@@ -241,25 +247,34 @@ impl FlistWalkerApp {
                     }
                 }
                 self.shell.indexing.request_tabs.remove(&dropped.request_id);
-                self.shell.indexing.background_states.remove(&dropped.request_id);
+                self.shell
+                    .indexing
+                    .background_states
+                    .remove(&dropped.request_id);
             }
         }
     }
 
     pub(super) fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
-        self.shell.indexing
+        self.shell
+            .indexing
             .pending_queue
             .iter()
             .any(|req| req.tab_id == tab_id)
     }
 
     pub(super) fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
-        self.shell.indexing.inflight_requests.iter().any(|request_id| {
-            self.shell.indexing
-                .request_tabs
-                .get(request_id)
-                .is_some_and(|rid_tab_id| *rid_tab_id == tab_id)
-        })
+        self.shell
+            .indexing
+            .inflight_requests
+            .iter()
+            .any(|request_id| {
+                self.shell
+                    .indexing
+                    .request_tabs
+                    .get(request_id)
+                    .is_some_and(|rid_tab_id| *rid_tab_id == tab_id)
+            })
     }
 
     pub(super) fn pop_next_index_request(&mut self) -> Option<IndexRequest> {
@@ -271,7 +286,9 @@ impl FlistWalkerApp {
         {
             return self.shell.indexing.pending_queue.remove(pos);
         }
-        if let Some(pos) = self.shell.indexing
+        if let Some(pos) = self
+            .shell
+            .indexing
             .pending_queue
             .iter()
             .position(|req| !self.has_inflight_for_tab(req.tab_id))
@@ -293,12 +310,14 @@ impl FlistWalkerApp {
         }
 
         let victim_request_id =
-            self.shell.indexing
+            self.shell
+                .indexing
                 .inflight_requests
                 .iter()
                 .copied()
                 .find(|request_id| {
-                    self.shell.indexing
+                    self.shell
+                        .indexing
                         .request_tabs
                         .get(request_id)
                         .is_some_and(|tab_id| *tab_id != active_tab_id)
@@ -306,11 +325,18 @@ impl FlistWalkerApp {
         let Some(victim_request_id) = victim_request_id else {
             return false;
         };
-        let Some(victim_tab_id) = self.shell.indexing.request_tabs.get(&victim_request_id).copied()
+        let Some(victim_tab_id) = self
+            .shell
+            .indexing
+            .request_tabs
+            .get(&victim_request_id)
+            .copied()
         else {
             return false;
         };
-        let replacement_request_id = self.shell.indexing
+        let replacement_request_id = self
+            .shell
+            .indexing
             .pending_queue
             .iter()
             .rev()
@@ -436,13 +462,17 @@ impl FlistWalkerApp {
                 }
                 IndexResponse::Finished { request_id, source } => {
                     if !is_active_request {
-                        self.shell.indexing.cleanup_stale_terminal_response(request_id);
+                        self.shell
+                            .indexing
+                            .cleanup_stale_terminal_response(request_id);
                         continue;
                     }
                     self.drain_queued_index_entries(request_id, usize::MAX);
                     self.shell.runtime.index.source = source;
-                    self.shell.runtime.all_entries = Arc::new(std::mem::take(&mut self.shell.runtime.index.entries));
-                    self.shell.indexing.last_search_snapshot_len = self.shell.runtime.all_entries.len();
+                    self.shell.runtime.all_entries =
+                        Arc::new(std::mem::take(&mut self.shell.runtime.index.entries));
+                    self.shell.indexing.last_search_snapshot_len =
+                        self.shell.runtime.all_entries.len();
                     self.shell.indexing.incremental_filtered_entries.clear();
                     self.shell.indexing.settle_active_terminal_state();
                     self.apply_entry_filters(true);
@@ -454,7 +484,9 @@ impl FlistWalkerApp {
                     }
                     self.clear_notice();
                     let current_tab_id = self.current_tab_id().unwrap_or_default();
-                    if self.shell.features
+                    if self
+                        .shell
+                        .features
                         .filelist
                         .pending_after_index
                         .as_ref()
@@ -475,7 +507,9 @@ impl FlistWalkerApp {
                 }
                 IndexResponse::Failed { request_id, error } => {
                     if !is_active_request {
-                        self.shell.indexing.cleanup_stale_terminal_response(request_id);
+                        self.shell
+                            .indexing
+                            .cleanup_stale_terminal_response(request_id);
                         continue;
                     }
                     self.shell.features.filelist.pending_after_index = None;
@@ -488,7 +522,9 @@ impl FlistWalkerApp {
                         self.shrink_checkpoint_buffers();
                         self.shell.indexing.complete_active_request(request_id);
                     } else {
-                        self.shell.indexing.cleanup_stale_terminal_response(request_id);
+                        self.shell
+                            .indexing
+                            .cleanup_stale_terminal_response(request_id);
                     }
                 }
                 IndexResponse::Truncated { limit, .. } => {
@@ -591,7 +627,8 @@ impl FlistWalkerApp {
             self.queue_kind_resolution(entry.path.clone());
         }
         if self.is_entry_visible_for_current_filter(&entry) {
-            self.shell.indexing
+            self.shell
+                .indexing
                 .incremental_filtered_entries
                 .push(entry.clone());
         }
@@ -659,10 +696,17 @@ impl FlistWalkerApp {
             if delta < Self::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
                 return false;
             }
-            return self.shell.indexing.last_incremental_results_refresh.elapsed()
+            return self
+                .shell
+                .indexing
+                .last_incremental_results_refresh
+                .elapsed()
                 >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX;
         }
-        self.shell.indexing.last_incremental_results_refresh.elapsed()
+        self.shell
+            .indexing
+            .last_incremental_results_refresh
+            .elapsed()
             >= Self::INCREMENTAL_SEARCH_REFRESH_INTERVAL
     }
 

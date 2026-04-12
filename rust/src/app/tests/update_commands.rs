@@ -52,7 +52,8 @@ fn available_update_response_opens_prompt() {
 
     assert!(app.shell.features.update.prompt.is_some());
     assert!(
-        !app.shell.features
+        !app.shell
+            .features
             .update
             .prompt
             .as_ref()
@@ -60,7 +61,8 @@ fn available_update_response_opens_prompt() {
             .skip_until_next_version
     );
     assert!(
-        !app.shell.features
+        !app.shell
+            .features
             .update
             .prompt
             .as_ref()
@@ -117,7 +119,8 @@ fn newer_update_response_ignores_previous_skip_version() {
     app.poll_update_response();
 
     assert_eq!(
-        app.shell.features
+        app.shell
+            .features
             .update
             .prompt
             .as_ref()
@@ -179,7 +182,10 @@ fn apply_started_update_response_requests_app_close() {
 
     assert!(app.shell.features.update.close_requested_for_install);
     assert!(app.shell.features.update.prompt.is_none());
-    assert_eq!(app.shell.runtime.notice, "Restarting to apply update 0.13.1...");
+    assert_eq!(
+        app.shell.runtime.notice,
+        "Restarting to apply update 0.13.1..."
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -204,7 +210,8 @@ fn update_check_failure_opens_failure_dialog() {
 
     assert_eq!(app.shell.runtime.notice, "Existing notice");
     assert_eq!(
-        app.shell.features
+        app.shell
+            .features
             .update
             .check_failure
             .as_ref()
@@ -384,7 +391,8 @@ fn start_update_install_ignores_repeat_requests_after_first_click() {
     ));
     assert!(rx.try_recv().is_err());
     assert!(
-        app.shell.features
+        app.shell
+            .features
             .update
             .prompt
             .as_ref()
@@ -473,7 +481,8 @@ fn failed_update_response_reenables_update_prompt_actions() {
     app.poll_update_response();
 
     assert!(
-        !app.shell.features
+        !app.shell
+            .features
             .update
             .prompt
             .as_ref()

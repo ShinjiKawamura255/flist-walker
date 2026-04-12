@@ -44,11 +44,7 @@ impl FlistWalkerApp {
         if !self.shell.tabs.pending_restore_refresh {
             return;
         }
-        self.shell.tabs.pending_restore_refresh = false;
-        let active_tab = self.shell.tabs.active_tab;
-        if let Some(tab) = self.shell.tabs.get_mut(active_tab) {
-            tab.pending_restore_refresh = false;
-        }
+        self.clear_pending_restore_refresh();
         self.request_index_refresh();
     }
 
@@ -93,8 +89,8 @@ impl FlistWalkerApp {
             self.restore_results_from_compacted_tab();
         }
         if request_focus {
-            self.shell.ui.focus_query_requested = true;
-            self.shell.ui.unfocus_query_requested = false;
+            self.request_focus_query();
+            self.clear_unfocus_query_request();
         }
         if trigger_restore_refresh {
             self.trigger_pending_restore_refresh();
@@ -108,7 +104,8 @@ impl FlistWalkerApp {
     ) -> BackgroundIndexResponseEffect {
         let limit = self.shell.runtime.limit;
         let shell = &mut self.shell;
-        let (tabs, indexing, features) = (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
+        let (tabs, indexing, features) =
+            (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
         let mut effect = BackgroundIndexResponseEffect {
             trigger_search: false,
             cleanup_request_id: None,
@@ -125,7 +122,11 @@ impl FlistWalkerApp {
                     return effect;
                 }
                 tab.index_state.index.source = source.clone();
-                indexing.background_states.entry(request_id).or_default().source = Some(source);
+                indexing
+                    .background_states
+                    .entry(request_id)
+                    .or_default()
+                    .source = Some(source);
             }
             IndexResponse::Batch {
                 request_id,
@@ -157,7 +158,10 @@ impl FlistWalkerApp {
                     effect.cleanup_request_id = Some(request_id);
                     return effect;
                 }
-                let state = indexing.background_states.remove(&request_id).unwrap_or_default();
+                let state = indexing
+                    .background_states
+                    .remove(&request_id)
+                    .unwrap_or_default();
                 tab.index_state.index.source = state.source.unwrap_or(source);
                 tab.index_state.index.entries.clear();
                 tab.index_state.all_entries = Arc::new(state.entries);
@@ -292,11 +296,11 @@ impl FlistWalkerApp {
 
         self.shell.runtime.root = normalized;
         self.reset_query_history_navigation();
-        self.shell.runtime.query_state.query_history_dirty_since = None;
+        self.set_query_history_dirty_since(None);
         self.reset_history_search_state();
         // Avoid launching/copying stale selections from the previous root.
         self.shell.runtime.pinned_paths.clear();
-        self.shell.runtime.current_row = None;
+        self.set_current_row(None);
         self.shell.runtime.preview.clear();
         self.shell.worker_bus.preview.in_progress = false;
         self.shell.worker_bus.preview.pending_request_id = None;
@@ -358,8 +362,8 @@ impl FlistWalkerApp {
         self.shell.tabs.active_tab = active_tab.min(self.shell.tabs.len().saturating_sub(1));
         if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab).cloned() {
             self.apply_tab_state(&tab);
-            self.shell.ui.focus_query_requested = true;
-            self.shell.ui.unfocus_query_requested = false;
+            self.request_focus_query();
+            self.clear_unfocus_query_request();
             self.trigger_pending_restore_refresh();
             self.shell.runtime.notice = "Restored tab session".to_string();
             self.refresh_status_line();
@@ -367,7 +371,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn current_tab_id(&self) -> Option<u64> {
-        self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id)
+        self.shell
+            .tabs
+            .get(self.shell.tabs.active_tab)
+            .map(|tab| tab.id)
     }
 
     fn shrink_vec_if_sparse<T>(vec: &mut Vec<T>) {
@@ -418,7 +425,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn restore_results_from_compacted_tab(&mut self) {
-        let was_compacted = self.shell.tabs
+        let was_compacted = self
+            .shell
+            .tabs
             .get(self.shell.tabs.active_tab)
             .map(|tab| tab.result_state.results_compacted)
             .unwrap_or(false);
@@ -432,7 +441,9 @@ impl FlistWalkerApp {
 
         if self.shell.runtime.base_results.is_empty() {
             if self.shell.runtime.query_state.query.trim().is_empty() {
-                let results = self.shell.runtime
+                let results = self
+                    .shell
+                    .runtime
                     .entries
                     .iter()
                     .take(self.shell.runtime.limit)
@@ -447,7 +458,11 @@ impl FlistWalkerApp {
         }
 
         if self.shell.runtime.result_sort_mode == ResultSortMode::Score {
-            self.apply_results_with_selection_policy(self.shell.runtime.base_results.clone(), true, false);
+            self.apply_results_with_selection_policy(
+                self.shell.runtime.base_results.clone(),
+                true,
+                false,
+            );
         } else {
             self.apply_result_sort(true);
         }
@@ -460,14 +475,19 @@ impl FlistWalkerApp {
     pub(super) fn apply_tab_state(&mut self, tab: &AppTabState) {
         tab.apply_shell(self);
         self.reset_query_history_navigation();
-        self.shell.runtime.query_state.query_history_dirty_since = None;
+        self.set_query_history_dirty_since(None);
         self.reset_history_search_state();
         self.rebuild_entry_kind_cache();
         self.refresh_status_line();
     }
 
     pub(super) fn sync_active_tab_state(&mut self) {
-        let Some(id) = self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id) else {
+        let Some(id) = self
+            .shell
+            .tabs
+            .get(self.shell.tabs.active_tab)
+            .map(|tab| tab.id)
+        else {
             return;
         };
         self.commit_query_history_if_needed(true);
@@ -526,7 +546,9 @@ impl FlistWalkerApp {
         tab.query_state.history_search_results.clear();
         tab.query_state.history_search_current = None;
         tab.pending_restore_refresh = false;
-        tab.result_state.base_results = self.shell.runtime
+        tab.result_state.base_results = self
+            .shell
+            .runtime
             .entries
             .iter()
             .take(self.shell.runtime.limit)
@@ -597,12 +619,20 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {
-        if from_index >= self.shell.tabs.len() || to_index >= self.shell.tabs.len() || from_index == to_index {
+        if from_index >= self.shell.tabs.len()
+            || to_index >= self.shell.tabs.len()
+            || from_index == to_index
+        {
             return;
         }
         self.clear_tab_drag_state();
         self.sync_active_tab_state();
-        let Some(active_tab_id) = self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id) else {
+        let Some(active_tab_id) = self
+            .shell
+            .tabs
+            .get(self.shell.tabs.active_tab)
+            .map(|tab| tab.id)
+        else {
             return;
         };
         let moved = self.shell.tabs.remove(from_index);
@@ -677,8 +707,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn saved_tab_state_from_app(&self) -> SavedTabState {
-        self.capture_active_tab_state(self.shell.tabs.get(self.shell.tabs.active_tab).map(|tab| tab.id).unwrap_or_default())
-            .into_saved(Self::history_persist_disabled())
+        self.capture_active_tab_state(
+            self.shell
+                .tabs
+                .get(self.shell.tabs.active_tab)
+                .map(|tab| tab.id)
+                .unwrap_or_default(),
+        )
+        .into_saved(Self::history_persist_disabled())
     }
 
     fn saved_tab_state_from_tab(tab: &AppTabState) -> SavedTabState {
@@ -686,7 +722,8 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn saved_tabs_for_ui_state(&self) -> Vec<SavedTabState> {
-        self.shell.tabs
+        self.shell
+            .tabs
             .iter()
             .enumerate()
             .map(|(index, tab)| {

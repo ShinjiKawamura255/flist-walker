@@ -2,7 +2,8 @@ use super::*;
 
 impl FlistWalkerApp {
     pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.shell.tabs
+        self.shell
+            .tabs
             .request_tab_routing
             .bind_preview(request_id, tab_id);
     }
@@ -23,7 +24,8 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.shell.tabs
+        self.shell
+            .tabs
             .request_tab_routing
             .preview
             .get(&request_id)
@@ -31,7 +33,8 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_action_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.shell.tabs
+        self.shell
+            .tabs
             .request_tab_routing
             .bind_action(request_id, tab_id);
     }
@@ -47,7 +50,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_sort_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
-        self.shell.tabs.request_tab_routing.bind_sort(request_id, tab_id);
+        self.shell
+            .tabs
+            .request_tab_routing
+            .bind_sort(request_id, tab_id);
     }
 
     pub(super) fn bind_sort_request_to_current_tab(&mut self, request_id: u64) {
@@ -62,7 +68,8 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     pub(super) fn action_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.shell.tabs
+        self.shell
+            .tabs
             .request_tab_routing
             .action
             .get(&request_id)
@@ -71,7 +78,12 @@ impl FlistWalkerApp {
 
     #[cfg(test)]
     pub(super) fn sort_request_tab(&self, request_id: u64) -> Option<u64> {
-        self.shell.tabs.request_tab_routing.sort.get(&request_id).copied()
+        self.shell
+            .tabs
+            .request_tab_routing
+            .sort
+            .get(&request_id)
+            .copied()
     }
 
     /// action/preview/sort の応答を一括で処理する。

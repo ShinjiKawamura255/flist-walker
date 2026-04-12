@@ -29,26 +29,40 @@ pub(super) fn apply_results_with_selection_policy(
         current_row.map(|row| row.min(results_len.saturating_sub(1)))
     }
 
-    let selected_path = preserve_selected_path.then(|| {
-        app.shell.runtime
-            .current_row
-            .and_then(|row| app.shell.runtime.results.get(row).map(|(path, _)| path.clone()))
-    }).flatten();
+    let selected_path = preserve_selected_path
+        .then(|| {
+            app.shell.runtime.current_row.and_then(|row| {
+                app.shell
+                    .runtime
+                    .results
+                    .get(row)
+                    .map(|(path, _)| path.clone())
+            })
+        })
+        .flatten();
     let previous_row = app.shell.runtime.current_row;
     app.shell.runtime.results = results;
     if app.shell.runtime.results.is_empty() {
-        app.shell.runtime.current_row = None;
+        app.set_current_row(None);
         app.shell.runtime.preview.clear();
         app.shell.worker_bus.preview.in_progress = false;
         app.shell.worker_bus.preview.pending_request_id = None;
     } else {
         let previous_row = clamp_row(previous_row, app.shell.runtime.results.len());
-        app.shell.runtime.current_row = selected_path
-            .and_then(|selected| app.shell.runtime.results.iter().position(|(path, _)| *path == selected))
-            .or(previous_row);
+        app.set_current_row(
+            selected_path
+                .and_then(|selected| {
+                    app.shell
+                        .runtime
+                        .results
+                        .iter()
+                        .position(|(path, _)| *path == selected)
+                })
+                .or(previous_row),
+        );
         app.request_preview_for_current();
         if !keep_scroll_position {
-            app.shell.ui.scroll_to_current = true;
+            app.request_scroll_to_current();
         }
     }
     app.refresh_status_line();
@@ -102,7 +116,8 @@ pub(super) fn apply_active_search_response(
     {
         app.shell.indexing.search_rerun_pending = false;
         app.shell.indexing.search_resume_pending = false;
-        app.shell.runtime.entries = Arc::new(app.shell.indexing.incremental_filtered_entries.clone());
+        app.shell.runtime.entries =
+            Arc::new(app.shell.indexing.incremental_filtered_entries.clone());
         app.shell.indexing.last_search_snapshot_len = app.shell.runtime.entries.len();
         app.shell.indexing.last_incremental_results_refresh = Instant::now();
         app.enqueue_search_request();
@@ -129,7 +144,10 @@ pub(super) fn invalidate_result_sort(app: &mut FlistWalkerApp, keep_scroll_posit
     app.shell.worker_bus.sort.pending_request_id = None;
     app.shell.worker_bus.sort.in_progress = false;
     app.shell.runtime.result_sort_mode = ResultSortMode::Score;
-    if had_non_score_sort && !app.shell.runtime.base_results.is_empty() && app.shell.runtime.results != app.shell.runtime.base_results {
+    if had_non_score_sort
+        && !app.shell.runtime.base_results.is_empty()
+        && app.shell.runtime.results != app.shell.runtime.base_results
+    {
         apply_results_with_selection_policy(
             app,
             app.shell.runtime.base_results.clone(),
@@ -141,15 +159,21 @@ pub(super) fn invalidate_result_sort(app: &mut FlistWalkerApp, keep_scroll_posit
     }
 }
 
-fn request_sort_metadata(app: &mut FlistWalkerApp, mode: ResultSortMode, missing_paths: Vec<PathBuf>) {
+fn request_sort_metadata(
+    app: &mut FlistWalkerApp,
+    mode: ResultSortMode,
+    missing_paths: Vec<PathBuf>,
+) {
     let request_id = app.shell.worker_bus.sort.next_request_id;
-    app.shell.worker_bus.sort.next_request_id = app.shell.worker_bus.sort.next_request_id.saturating_add(1);
+    app.shell.worker_bus.sort.next_request_id =
+        app.shell.worker_bus.sort.next_request_id.saturating_add(1);
     app.shell.worker_bus.sort.pending_request_id = Some(request_id);
     app.shell.worker_bus.sort.in_progress = true;
     app.bind_sort_request_to_current_tab(request_id);
     app.refresh_status_line();
     if app
-        .shell.worker_bus
+        .shell
+        .worker_bus
         .sort
         .tx
         .send(SortMetadataRequest {
@@ -181,7 +205,8 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
     }
 
     let missing_paths = app
-        .shell.runtime
+        .shell
+        .runtime
         .base_results
         .iter()
         .map(|(path, _)| path.clone())
@@ -203,7 +228,10 @@ pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMod
     apply_result_sort(app, false);
 }
 
-pub(super) fn apply_background_preview_response(app: &mut FlistWalkerApp, response: PreviewResponse) {
+pub(super) fn apply_background_preview_response(
+    app: &mut FlistWalkerApp,
+    response: PreviewResponse,
+) {
     let Some(tab_id) = app.take_preview_request_tab(response.request_id) else {
         return;
     };
@@ -250,7 +278,10 @@ pub(super) fn apply_active_preview_response(
     true
 }
 
-pub(super) fn apply_background_sort_response(app: &mut FlistWalkerApp, response: SortMetadataResponse) {
+pub(super) fn apply_background_sort_response(
+    app: &mut FlistWalkerApp,
+    response: SortMetadataResponse,
+) {
     let Some(tab_id) = app.take_sort_request_tab(response.request_id) else {
         return;
     };

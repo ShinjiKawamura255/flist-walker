@@ -106,13 +106,16 @@ impl FlistWalkerApp {
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
         let old_search_tx = std::mem::replace(&mut self.shell.search.tx, dummy_search_tx);
-        let old_preview_tx = std::mem::replace(&mut self.shell.worker_bus.preview.tx, dummy_preview_tx);
-        let old_action_tx = std::mem::replace(&mut self.shell.worker_bus.action.tx, dummy_action_tx);
+        let old_preview_tx =
+            std::mem::replace(&mut self.shell.worker_bus.preview.tx, dummy_preview_tx);
+        let old_action_tx =
+            std::mem::replace(&mut self.shell.worker_bus.action.tx, dummy_action_tx);
         let old_sort_tx = std::mem::replace(&mut self.shell.worker_bus.sort.tx, dummy_sort_tx);
         let old_kind_tx = std::mem::replace(&mut self.shell.worker_bus.kind.tx, dummy_kind_tx);
         let old_filelist_tx =
             std::mem::replace(&mut self.shell.worker_bus.filelist.tx, dummy_filelist_tx);
-        let old_update_tx = std::mem::replace(&mut self.shell.worker_bus.update.tx, dummy_update_tx);
+        let old_update_tx =
+            std::mem::replace(&mut self.shell.worker_bus.update.tx, dummy_update_tx);
         let old_index_tx = std::mem::replace(&mut self.shell.indexing.tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);

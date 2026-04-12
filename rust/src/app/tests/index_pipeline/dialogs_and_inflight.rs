@@ -53,13 +53,16 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
         kind_known: true,
     });
     app.shell.indexing.pending_entries_request_id = Some(7);
-    app.shell.indexing
+    app.shell
+        .indexing
         .pending_kind_paths
         .push_back(root.join("stale-kind.txt"));
-    app.shell.indexing
+    app.shell
+        .indexing
         .pending_kind_paths_set
         .insert(root.join("stale-kind.txt"));
-    app.shell.indexing
+    app.shell
+        .indexing
         .in_flight_kind_paths
         .insert(root.join("in-flight.txt"));
     app.shell.indexing.kind_resolution_in_progress = true;
@@ -72,7 +75,11 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
     let req = rx.try_recv().expect("index request should be sent");
     assert_eq!(req.tab_id, tab_id);
     assert!(!req.use_filelist);
-    assert!(app.shell.indexing.inflight_requests.contains(&req.request_id));
+    assert!(app
+        .shell
+        .indexing
+        .inflight_requests
+        .contains(&req.request_id));
     assert!(app.shell.indexing.pending_entries.is_empty());
     assert_eq!(app.shell.indexing.pending_entries_request_id, None);
     assert!(app.shell.indexing.pending_kind_paths.is_empty());
@@ -161,7 +168,9 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
 
     app.create_filelist();
 
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_use_walker_confirmation
         .is_none());
@@ -248,7 +257,9 @@ fn dialog_space_confirms_selected_dialog_action() {
         .try_recv()
         .expect("filelist request should be sent");
     assert!(!req.propagate_to_ancestors);
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_ancestor_confirmation
         .is_none());
@@ -281,11 +292,17 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     );
 
     assert_eq!(app.shell.tabs.len(), 1);
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_use_walker_confirmation
         .is_none());
-    assert!(app.shell.runtime.notice.contains("Preparing background Walker index"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Preparing background Walker index"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -324,14 +341,24 @@ fn preempt_background_when_active_index_is_queued() {
         include_dirs: true,
     });
     {
-        let mut latest = app.shell.indexing.latest_request_ids.lock().expect("lock latest");
+        let mut latest = app
+            .shell
+            .indexing
+            .latest_request_ids
+            .lock()
+            .expect("lock latest");
         latest.insert(bg_tab_a, 100);
         latest.insert(bg_tab_b, 101);
     }
 
     assert!(app.preempt_background_for_active_request());
 
-    let latest = app.shell.indexing.latest_request_ids.lock().expect("lock latest");
+    let latest = app
+        .shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("lock latest");
     let preempted =
         latest.get(&bg_tab_a).copied() == Some(0) || latest.get(&bg_tab_b).copied() == Some(0);
     assert!(preempted);
@@ -348,8 +375,12 @@ fn stale_terminal_index_response_clears_inflight_slot() {
     let stale_request_id = 777u64;
     let current_tab_id = app.current_tab_id().expect("tab id");
     app.shell.indexing.pending_request_id = Some(778);
-    app.shell.indexing.inflight_requests.insert(stale_request_id);
-    app.shell.indexing
+    app.shell
+        .indexing
+        .inflight_requests
+        .insert(stale_request_id);
+    app.shell
+        .indexing
         .request_tabs
         .insert(stale_request_id, current_tab_id);
 
@@ -361,8 +392,16 @@ fn stale_terminal_index_response_clears_inflight_slot() {
 
     app.poll_index_response();
 
-    assert!(!app.shell.indexing.inflight_requests.contains(&stale_request_id));
-    assert!(!app.shell.indexing.request_tabs.contains_key(&stale_request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .inflight_requests
+        .contains(&stale_request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .request_tabs
+        .contains_key(&stale_request_id));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -373,7 +412,11 @@ fn current_finished_index_response_clears_inflight_slot() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
-    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    let req_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("pending request");
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell.indexing.request_tabs.insert(req_id, tab_id);
     app.shell.indexing.inflight_requests.insert(req_id);
@@ -400,8 +443,12 @@ fn stale_failed_index_response_clears_inflight_slot() {
     let stale_request_id = 779u64;
     let current_tab_id = app.current_tab_id().expect("tab id");
     app.shell.indexing.pending_request_id = Some(780);
-    app.shell.indexing.inflight_requests.insert(stale_request_id);
-    app.shell.indexing
+    app.shell
+        .indexing
+        .inflight_requests
+        .insert(stale_request_id);
+    app.shell
+        .indexing
         .request_tabs
         .insert(stale_request_id, current_tab_id);
 
@@ -413,8 +460,16 @@ fn stale_failed_index_response_clears_inflight_slot() {
 
     app.poll_index_response();
 
-    assert!(!app.shell.indexing.inflight_requests.contains(&stale_request_id));
-    assert!(!app.shell.indexing.request_tabs.contains_key(&stale_request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .inflight_requests
+        .contains(&stale_request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .request_tabs
+        .contains_key(&stale_request_id));
     assert_eq!(app.shell.indexing.pending_request_id, Some(780));
     let _ = fs::remove_dir_all(&root);
 }
@@ -426,7 +481,11 @@ fn current_canceled_index_response_clears_active_request_state() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
-    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    let req_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("pending request");
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell.indexing.request_tabs.insert(req_id, tab_id);
     app.shell.indexing.inflight_requests.insert(req_id);

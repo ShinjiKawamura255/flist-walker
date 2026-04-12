@@ -5,7 +5,8 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn cache_preview(&mut self, path: PathBuf, preview: String) {
-        self.shell.cache
+        self.shell
+            .cache
             .preview
             .insert_bounded(path, preview, Self::PREVIEW_CACHE_MAX_BYTES);
     }
@@ -19,19 +20,27 @@ impl FlistWalkerApp {
         let root = self.shell.runtime.root.clone();
         let use_regex = self.shell.runtime.use_regex;
         let ignore_case = self.shell.runtime.ignore_case;
-        if self.shell.cache
-            .highlight
-            .matches_scope(&query, &root, use_regex, ignore_case, prefer_relative)
-        {
+        if self.shell.cache.highlight.matches_scope(
+            &query,
+            &root,
+            use_regex,
+            ignore_case,
+            prefer_relative,
+        ) {
             return;
         }
-        self.shell.cache
-            .highlight
-            .reset_scope(query, root, use_regex, ignore_case, prefer_relative);
+        self.shell.cache.highlight.reset_scope(
+            query,
+            root,
+            use_regex,
+            ignore_case,
+            prefer_relative,
+        );
     }
 
     fn cache_highlight_positions_for_key(&mut self, key: HighlightCacheKey, positions: Vec<u16>) {
-        self.shell.cache
+        self.shell
+            .cache
             .highlight
             .insert_bounded(key, positions, Self::HIGHLIGHT_CACHE_MAX);
     }
@@ -78,7 +87,8 @@ impl FlistWalkerApp {
             self.shell.runtime.ignore_case,
         ));
         self.cache_highlight_positions_for_key(key.clone(), positions);
-        self.shell.cache
+        self.shell
+            .cache
             .highlight
             .get(&key)
             .unwrap_or_else(|| Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new()))))
@@ -134,8 +144,12 @@ impl FlistWalkerApp {
                 }
                 self.shell.runtime.preview = "Loading preview...".to_string();
                 let request_id = self.shell.worker_bus.preview.next_request_id;
-                self.shell.worker_bus.preview.next_request_id =
-                    self.shell.worker_bus.preview.next_request_id.saturating_add(1);
+                self.shell.worker_bus.preview.next_request_id = self
+                    .shell
+                    .worker_bus
+                    .preview
+                    .next_request_id
+                    .saturating_add(1);
                 self.shell.worker_bus.preview.pending_request_id = Some(request_id);
                 self.bind_preview_request_to_current_tab(request_id);
                 self.shell.worker_bus.preview.in_progress = true;

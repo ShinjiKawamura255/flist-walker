@@ -197,9 +197,11 @@ impl FlistWalkerApp {
             || self.shell.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
         {
             self.shell.ui.last_memory_sample = Instant::now();
-            self.shell.ui.memory_usage_bytes = memory_stats().map(|stats| stats.physical_mem as u64);
+            self.shell.ui.memory_usage_bytes =
+                memory_stats().map(|stats| stats.physical_mem as u64);
         }
-        self.shell.ui
+        self.shell
+            .ui
             .memory_usage_bytes
             .map(|bytes| format!("{:.1} MiB", bytes as f64 / 1024.0 / 1024.0))
     }
@@ -214,6 +216,46 @@ impl FlistWalkerApp {
     pub(super) fn clear_notice(&mut self) {
         self.shell.runtime.notice.clear();
         self.refresh_status_line();
+    }
+
+    pub(super) fn set_current_row(&mut self, row: Option<usize>) {
+        self.shell.runtime.current_row = row;
+    }
+
+    pub(super) fn request_scroll_to_current(&mut self) {
+        self.shell.ui.scroll_to_current = true;
+    }
+
+    pub(super) fn clear_scroll_to_current(&mut self) {
+        self.shell.ui.scroll_to_current = false;
+    }
+
+    pub(super) fn request_focus_query(&mut self) {
+        self.shell.ui.focus_query_requested = true;
+    }
+
+    pub(super) fn request_unfocus_query(&mut self) {
+        self.shell.ui.unfocus_query_requested = true;
+    }
+
+    pub(super) fn clear_focus_query_request(&mut self) {
+        self.shell.ui.focus_query_requested = false;
+    }
+
+    pub(super) fn clear_unfocus_query_request(&mut self) {
+        self.shell.ui.unfocus_query_requested = false;
+    }
+
+    pub(super) fn set_query_history_dirty_since(&mut self, value: Option<Instant>) {
+        self.shell.runtime.query_state.query_history_dirty_since = value;
+    }
+
+    pub(super) fn clear_pending_restore_refresh(&mut self) {
+        self.shell.tabs.pending_restore_refresh = false;
+        let active_tab = self.shell.tabs.active_tab;
+        if let Some(tab) = self.shell.tabs.get_mut(active_tab) {
+            tab.pending_restore_refresh = false;
+        }
     }
 
     /// action worker 実行中の進捗ラベルを返す。

@@ -26,7 +26,11 @@ fn filelist_failed_updates_state_and_notice() {
     assert_eq!(app.shell.features.filelist.pending_request_id, None);
     assert_eq!(app.shell.features.filelist.pending_request_tab_id, None);
     assert!(!app.shell.features.filelist.in_progress);
-    assert!(app.shell.runtime.notice.contains("Create File List failed: disk full"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Create File List failed: disk full"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -56,7 +60,11 @@ fn filelist_canceled_updates_state_and_notice() {
     assert!(app.shell.features.filelist.pending_cancel.is_none());
     assert!(!app.shell.features.filelist.in_progress);
     assert!(!app.shell.features.filelist.cancel_requested);
-    assert!(app.shell.runtime.notice.contains("Create File List canceled"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Create File List canceled"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -234,9 +242,12 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     .expect("send index batch");
 
     for _ in 0..64 {
-        app.shell.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+        app.shell.indexing.last_incremental_results_refresh =
+            Instant::now() - Duration::from_secs(3);
         app.poll_index_response();
-        if app.shell.runtime.entries.len() >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
+        if app.shell.runtime.entries.len()
+            >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
+        {
             break;
         }
     }

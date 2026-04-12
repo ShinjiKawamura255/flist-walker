@@ -88,7 +88,11 @@ fn set_as_default_is_disabled_while_restore_tabs_env_is_enabled() {
     app.set_current_root_as_default_with(true);
 
     assert!(app.shell.features.root_browser.default_root.is_none());
-    assert!(app.shell.runtime.notice.contains("Set as default is disabled"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Set as default is disabled"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -102,7 +106,9 @@ fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
     assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
     app.set_current_root_as_default_with(false);
 
-    let saved = app.shell.features
+    let saved = app
+        .shell
+        .features
         .root_browser
         .default_root
         .as_ref()
@@ -358,7 +364,8 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     app.shell.search.tx = search_tx_req;
     app.shell.search.rx = search_rx_res;
     let search_request_id = app.shell.search.allocate_request_id();
-    app.shell.search
+    app.shell
+        .search
         .bind_request_tab(search_request_id, background_tab_id);
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
@@ -369,7 +376,8 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     app.bind_preview_request_to_tab(preview_request_id, background_tab_id);
 
     let background_index_request_id = 77;
-    app.shell.indexing
+    app.shell
+        .indexing
         .request_tabs
         .insert(background_index_request_id, background_tab_id);
     app.shell.tabs[0].index_state.pending_index_request_id = Some(background_index_request_id);

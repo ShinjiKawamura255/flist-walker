@@ -60,7 +60,12 @@ fn apply_stable_window_geometry_force_commits_pending() {
 
     assert!(app.shell.ui.pending_window_geometry.is_none());
     assert!(app.shell.ui.ui_state_dirty);
-    let geom = app.shell.ui.window_geometry.clone().expect("committed geometry");
+    let geom = app
+        .shell
+        .ui
+        .window_geometry
+        .clone()
+        .expect("committed geometry");
     assert_eq!(geom.x, 100.0);
     assert_eq!(geom.y, 120.0);
     assert_eq!(geom.width, 900.0);

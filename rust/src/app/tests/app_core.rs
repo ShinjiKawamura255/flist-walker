@@ -23,7 +23,11 @@ fn clear_query_and_selection_clears_state() {
     assert!(app.shell.runtime.query_state.query.is_empty());
     assert!(app.shell.runtime.pinned_paths.is_empty());
     assert!(app.shell.ui.focus_query_requested);
-    assert!(app.shell.runtime.notice.contains("Cleared selection and query"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Cleared selection and query"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -51,7 +55,9 @@ fn startup_index_request_is_bound_to_active_tab() {
     let root = test_root("startup-index-tab-binding");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let req_id = app.shell.indexing
+    let req_id = app
+        .shell
+        .indexing
         .pending_request_id
         .expect("pending index request");
     let tab_id = app.current_tab_id().expect("active tab id");
@@ -222,7 +228,10 @@ fn execute_selected_notice_normalizes_extended_prefix() {
 
     app.execute_selected();
 
-    assert_eq!(app.shell.runtime.notice, format!("Action: {}", selected.display()));
+    assert_eq!(
+        app.shell.runtime.notice,
+        format!("Action: {}", selected.display())
+    );
     assert!(!app.shell.runtime.notice.contains(r"\\?\"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -423,7 +432,10 @@ fn preview_cache_is_bounded() {
 
     assert!(app.shell.cache.preview.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
     assert!(app.shell.cache.preview.order_len() > 0);
-    assert_eq!(app.shell.cache.preview.len(), app.shell.cache.preview.order_len());
+    assert_eq!(
+        app.shell.cache.preview.len(),
+        app.shell.cache.preview.order_len()
+    );
     let evicted = root.join("file-0.txt");
     assert!(!app.shell.cache.preview.contains(&evicted));
     let _ = fs::remove_dir_all(&root);
@@ -445,7 +457,9 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
     assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
     assert_eq!(app.shell.runtime.current_row, Some(0));
     assert_eq!(
-        app.shell.runtime.results
+        app.shell
+            .runtime
+            .results
             .iter()
             .map(|(path, _)| path.clone())
             .collect::<Vec<_>>(),
@@ -577,7 +591,9 @@ fn created_sort_places_missing_timestamps_last() {
     app.set_result_sort_mode(ResultSortMode::CreatedDesc);
 
     assert_eq!(
-        app.shell.runtime.results
+        app.shell
+            .runtime
+            .results
             .iter()
             .map(|(path, _)| path.clone())
             .collect::<Vec<_>>(),
@@ -604,7 +620,9 @@ fn sort_metadata_cache_is_bounded() {
 
     assert!(app.shell.cache.sort_metadata.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
     assert!(app.shell.cache.sort_metadata.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
-    assert!(!app.shell.cache
+    assert!(!app
+        .shell
+        .cache
         .sort_metadata
         .contains_public(&root.join("entry-0.txt")));
     let _ = fs::remove_dir_all(&root);
@@ -693,13 +711,24 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     app.shell.ui.show_preview = false;
     app.shell.runtime.results = vec![(file.clone(), 0.0)];
     app.shell.runtime.current_row = Some(0);
-    app.shell.indexing.pending_kind_paths.push_back(file.clone());
-    app.shell.indexing.pending_kind_paths_set.insert(file.clone());
+    app.shell
+        .indexing
+        .pending_kind_paths
+        .push_back(file.clone());
+    app.shell
+        .indexing
+        .pending_kind_paths_set
+        .insert(file.clone());
     app.shell.indexing.kind_resolution_in_progress = true;
 
     app.request_preview_for_current();
 
-    assert!(app.shell.indexing.pending_kind_paths.iter().any(|p| *p == file));
+    assert!(app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|p| *p == file));
     assert!(app.shell.indexing.pending_kind_paths_set.contains(&file));
     assert!(app.shell.indexing.kind_resolution_in_progress);
     let _ = fs::remove_dir_all(&root);
@@ -713,9 +742,11 @@ fn entry_kind_cache_survives_tab_state_roundtrip_and_preserves_precedence() {
     fs::write(&path, "content").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.shell.runtime.all_entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
+    app.shell.runtime.all_entries =
+        Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
     app.shell.runtime.index.entries = vec![Entry::new(path.clone(), Some(EntryKind::dir()))];
-    app.shell.runtime.entries = Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
+    app.shell.runtime.entries =
+        Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
     app.rebuild_entry_kind_cache();
 
     assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
@@ -809,10 +840,12 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         latest.insert(removed_tab_id, 11);
         latest.insert(survivor_tab_id, 12);
     }
-    app.shell.indexing
+    app.shell
+        .indexing
         .background_states
         .insert(11, BackgroundIndexState::default());
-    app.shell.indexing
+    app.shell
+        .indexing
         .background_states
         .insert(12, BackgroundIndexState::default());
 
@@ -831,17 +864,26 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     assert_eq!(app.shell.tabs[0].id, survivor_tab_id);
     assert!(app.shell.features.filelist.pending_after_index.is_none());
     assert!(app.shell.features.filelist.pending_confirmation.is_none());
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_ancestor_confirmation
         .is_none());
-    assert!(app.shell.features
+    assert!(app
+        .shell
+        .features
         .filelist
         .pending_use_walker_confirmation
         .is_none());
     assert_eq!(app.shell.indexing.request_tabs.get(&11), None);
-    assert_eq!(app.shell.indexing.request_tabs.get(&12), Some(&survivor_tab_id));
-    assert!(app.shell.indexing
+    assert_eq!(
+        app.shell.indexing.request_tabs.get(&12),
+        Some(&survivor_tab_id)
+    );
+    assert!(app
+        .shell
+        .indexing
         .pending_queue
         .iter()
         .all(|req| req.tab_id != removed_tab_id));

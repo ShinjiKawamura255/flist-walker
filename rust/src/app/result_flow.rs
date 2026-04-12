@@ -8,9 +8,11 @@ impl FlistWalkerApp {
 
     /// 結果ソートに使う時刻属性を上限付き cache へ保存する。
     pub(super) fn cache_sort_metadata(&mut self, path: PathBuf, metadata: SortMetadata) {
-        self.shell.cache
-            .sort_metadata
-            .insert_bounded(path, metadata, Self::SORT_METADATA_CACHE_MAX);
+        self.shell.cache.sort_metadata.insert_bounded(
+            path,
+            metadata,
+            Self::SORT_METADATA_CACHE_MAX,
+        );
     }
 
     /// sort mode ごとに比較対象の timestamp を取り出す。

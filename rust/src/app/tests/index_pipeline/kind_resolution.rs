@@ -36,7 +36,12 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
 
     app.apply_entry_filters(true);
 
-    assert!(!app.shell.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(!app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|p| *p == path));
     assert!(!app.shell.indexing.in_flight_kind_paths.contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
@@ -51,7 +56,11 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
-    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    let req_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("pending request");
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
 
@@ -92,7 +101,11 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
     let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
     app.shell.indexing.rx = rx;
     app.shell.worker_bus.kind.tx = kind_tx;
-    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    let req_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("pending request");
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
 
@@ -153,7 +166,12 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
     app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
 
-    assert!(app.shell.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -167,7 +185,11 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
-    let req_id = app.shell.indexing.pending_request_id.expect("pending request");
+    let req_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("pending request");
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
 
@@ -184,7 +206,12 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
     app.poll_index_response();
 
     assert!(app.shell.runtime.entries.is_empty());
-    assert!(app.shell.indexing.pending_kind_paths.iter().any(|p| *p == path));
+    assert!(app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|p| *p == path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -238,7 +265,10 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
     app.shell.worker_bus.kind.rx = rx;
     app.shell.indexing.in_flight_kind_paths.insert(left.clone());
-    app.shell.indexing.in_flight_kind_paths.insert(right.clone());
+    app.shell
+        .indexing
+        .in_flight_kind_paths
+        .insert(right.clone());
     let epoch = app.shell.indexing.kind_resolution_epoch;
     tx.send(KindResolveResponse {
         epoch,
@@ -257,7 +287,10 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
 
     assert_eq!(app.find_entry_kind(&left), Some(EntryKind::dir()));
     assert_eq!(app.find_entry_kind(&right), Some(EntryKind::dir()));
-    assert_eq!(app.shell.runtime.entries.as_ref(), &vec![left.clone(), right.clone()]);
+    assert_eq!(
+        app.shell.runtime.entries.as_ref(),
+        &vec![left.clone(), right.clone()]
+    );
     let _ = fs::remove_dir_all(&root);
 }
 

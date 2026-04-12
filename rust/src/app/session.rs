@@ -309,7 +309,9 @@ impl FlistWalkerApp {
         if let Some(parent) = file.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        let text = self.shell.features
+        let text = self
+            .shell
+            .features
             .root_browser
             .saved_roots
             .iter()
@@ -325,13 +327,17 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn add_current_root_to_saved(&mut self) {
-        let root = self.shell.runtime
+        let root = self
+            .shell
+            .runtime
             .root
             .canonicalize()
             .unwrap_or_else(|_| self.shell.runtime.root.clone());
         let root = normalize_windows_path_buf(root);
         let key = path_key(&root);
-        if self.shell.features
+        if self
+            .shell
+            .features
             .root_browser
             .saved_roots
             .iter()
@@ -340,8 +346,13 @@ impl FlistWalkerApp {
             self.set_notice("Current root is already registered");
             return;
         }
-        self.shell.features.root_browser.saved_roots.push(root.clone());
-        self.shell.features
+        self.shell
+            .features
+            .root_browser
+            .saved_roots
+            .push(root.clone());
+        self.shell
+            .features
             .root_browser
             .saved_roots
             .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
@@ -358,7 +369,9 @@ impl FlistWalkerApp {
             self.set_notice("Set as default is disabled while FLISTWALKER_RESTORE_TABS is enabled");
             return;
         }
-        let root = self.shell.runtime
+        let root = self
+            .shell
+            .runtime
             .root
             .canonicalize()
             .unwrap_or_else(|_| self.shell.runtime.root.clone());
@@ -380,7 +393,8 @@ impl FlistWalkerApp {
     pub(super) fn remove_current_root_from_saved(&mut self) {
         let key = path_key(&self.shell.runtime.root);
         let before = self.shell.features.root_browser.saved_roots.len();
-        self.shell.features
+        self.shell
+            .features
             .root_browser
             .saved_roots
             .retain(|p| path_key(p) != key);
@@ -388,7 +402,9 @@ impl FlistWalkerApp {
             self.set_notice("Current root is not in saved list");
             return;
         }
-        if self.shell.features
+        if self
+            .shell
+            .features
             .root_browser
             .default_root
             .as_ref()
@@ -426,7 +442,8 @@ impl FlistWalkerApp {
             let _ = fs::create_dir_all(parent);
         }
         let last_root_for_startup = if !Self::restore_tabs_enabled() {
-            self.shell.features
+            self.shell
+                .features
                 .root_browser
                 .default_root
                 .clone()
@@ -443,7 +460,9 @@ impl FlistWalkerApp {
                     .to_string_lossy()
                     .to_string(),
             ),
-            default_root: self.shell.features
+            default_root: self
+                .shell
+                .features
                 .root_browser
                 .default_root
                 .as_ref()
@@ -453,14 +472,27 @@ impl FlistWalkerApp {
             query_history: if history_persist_disabled {
                 Vec::new()
             } else {
-                self.shell.runtime.query_state.query_history.iter().cloned().collect()
+                self.shell
+                    .runtime
+                    .query_state
+                    .query_history
+                    .iter()
+                    .cloned()
+                    .collect()
             },
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),
             active_tab: Some(self.shell.tabs.active_tab),
             window: self.shell.ui.window_geometry.clone(),
-            skipped_update_target_version: self.shell.features.update.skipped_target_version.clone(),
-            suppress_update_check_failure_dialog: self.shell.features
+            skipped_update_target_version: self
+                .shell
+                .features
+                .update
+                .skipped_target_version
+                .clone(),
+            suppress_update_check_failure_dialog: self
+                .shell
+                .features
                 .update
                 .suppress_check_failure_dialog,
         };
@@ -566,7 +598,8 @@ impl FlistWalkerApp {
             return;
         };
         if !force
-            && self.shell.ui.last_window_geometry_change.elapsed() < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
+            && self.shell.ui.last_window_geometry_change.elapsed()
+                < Self::WINDOW_GEOMETRY_SETTLE_INTERVAL
         {
             return;
         }
@@ -575,7 +608,10 @@ impl FlistWalkerApp {
             self.mark_ui_state_dirty();
             Self::append_window_trace(
                 "window_geometry_committed",
-                &format!("committed={:?} force={}", self.shell.ui.window_geometry, force),
+                &format!(
+                    "committed={:?} force={}",
+                    self.shell.ui.window_geometry, force
+                ),
             );
         }
         self.shell.ui.pending_window_geometry = None;

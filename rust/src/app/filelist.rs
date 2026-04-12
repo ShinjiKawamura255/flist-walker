@@ -93,7 +93,9 @@ impl FlistWalkerApp {
     fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = path_key(&self.shell.runtime.root);
-        let should_cancel = self.shell.features
+        let should_cancel = self
+            .shell
+            .features
             .filelist
             .cancel_stale_pending_confirmation(current_tab_id, current_root_key.as_ref());
         if should_cancel {
@@ -104,7 +106,9 @@ impl FlistWalkerApp {
     fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = path_key(&self.shell.runtime.root);
-        let should_cancel = self.shell.features
+        let should_cancel = self
+            .shell
+            .features
             .filelist
             .cancel_stale_pending_ancestor_confirmation(current_tab_id, current_root_key.as_ref());
         if should_cancel {
@@ -117,7 +121,9 @@ impl FlistWalkerApp {
     fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
         let current_root_key = path_key(&self.shell.runtime.root);
-        let should_cancel = self.shell.features
+        let should_cancel = self
+            .shell
+            .features
             .filelist
             .cancel_stale_pending_use_walker_confirmation(
                 current_tab_id,
@@ -137,7 +143,9 @@ impl FlistWalkerApp {
     fn resolve_filelist_target_tab_index(&self, tab_id: Option<u64>, root: &Path) -> Option<usize> {
         let tab_id = tab_id?;
         let tab_index = self.find_tab_index_by_id(tab_id)?;
-        let tab_matches_root = self.shell.tabs
+        let tab_matches_root = self
+            .shell
+            .tabs
             .get(tab_index)
             .is_some_and(|tab| path_key(&tab.root) == path_key(root));
         tab_matches_root.then_some(tab_index)
@@ -224,7 +232,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
-        self.shell.runtime.all_entries
+        self.shell
+            .runtime
+            .all_entries
             .iter()
             .filter(|entry| self.is_entry_visible_for_current_filter(entry))
             .map(|entry| entry.path.clone())
@@ -302,21 +312,35 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn confirm_pending_filelist_ancestor_propagation(&mut self) {
-        let Some(pending) = self.shell.features.filelist.pending_ancestor_confirmation.take() else {
+        let Some(pending) = self
+            .shell
+            .features
+            .filelist
+            .pending_ancestor_confirmation
+            .take()
+        else {
             return;
         };
         self.start_filelist_creation(pending.tab_id, pending.root, pending.entries, true);
     }
 
     pub(super) fn skip_pending_filelist_ancestor_propagation(&mut self) {
-        let Some(pending) = self.shell.features.filelist.pending_ancestor_confirmation.take() else {
+        let Some(pending) = self
+            .shell
+            .features
+            .filelist
+            .pending_ancestor_confirmation
+            .take()
+        else {
             return;
         };
         self.start_filelist_creation(pending.tab_id, pending.root, pending.entries, false);
     }
 
     pub(super) fn confirm_pending_filelist_use_walker(&mut self) {
-        let Some(pending) = self.shell.features
+        let Some(pending) = self
+            .shell
+            .features
             .filelist
             .pending_use_walker_confirmation
             .take()
@@ -336,13 +360,22 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn cancel_pending_filelist_overwrite(&mut self) {
-        if self.shell.features.filelist.pending_confirmation.take().is_some() {
+        if self
+            .shell
+            .features
+            .filelist
+            .pending_confirmation
+            .take()
+            .is_some()
+        {
             self.set_notice("Create File List canceled");
         }
     }
 
     pub(super) fn cancel_pending_filelist_ancestor_confirmation(&mut self) {
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_ancestor_confirmation
             .take()
@@ -353,7 +386,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn cancel_pending_filelist_use_walker(&mut self) {
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_use_walker_confirmation
             .take()
@@ -366,11 +401,15 @@ impl FlistWalkerApp {
     pub(super) fn can_cancel_create_filelist(&self) -> bool {
         self.shell.features.filelist.pending_after_index.is_some()
             || self.shell.features.filelist.pending_confirmation.is_some()
-            || self.shell.features
+            || self
+                .shell
+                .features
                 .filelist
                 .pending_ancestor_confirmation
                 .is_some()
-            || self.shell.features
+            || self
+                .shell
+                .features
                 .filelist
                 .pending_use_walker_confirmation
                 .is_some()
@@ -382,7 +421,9 @@ impl FlistWalkerApp {
             self.cancel_pending_filelist_overwrite();
             return;
         }
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_ancestor_confirmation
             .is_some()
@@ -390,7 +431,9 @@ impl FlistWalkerApp {
             self.cancel_pending_filelist_ancestor_confirmation();
             return;
         }
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_use_walker_confirmation
             .is_some()
@@ -398,7 +441,14 @@ impl FlistWalkerApp {
             self.cancel_pending_filelist_use_walker();
             return;
         }
-        if self.shell.features.filelist.pending_after_index.take().is_some() {
+        if self
+            .shell
+            .features
+            .filelist
+            .pending_after_index
+            .take()
+            .is_some()
+        {
             self.set_notice("Create File List canceled");
             return;
         }
@@ -418,7 +468,9 @@ impl FlistWalkerApp {
             self.set_notice("Confirm overwrite or cancel first");
             return;
         }
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_ancestor_confirmation
             .is_some()
@@ -426,7 +478,9 @@ impl FlistWalkerApp {
             self.set_notice("Confirm ancestor FileList update choice or cancel first");
             return;
         }
-        if self.shell.features
+        if self
+            .shell
+            .features
             .filelist
             .pending_use_walker_confirmation
             .is_some()
@@ -513,7 +567,9 @@ impl FlistWalkerApp {
                     path,
                     count,
                 } => {
-                    let Some((context, commands)) = self.shell.features
+                    let Some((context, commands)) = self
+                        .shell
+                        .features
                         .filelist
                         .settle_response_context_commands(request_id, &root, &current_root)
                     else {
@@ -527,7 +583,9 @@ impl FlistWalkerApp {
                     root,
                     error,
                 } => {
-                    let Some((context, commands)) = self.shell.features
+                    let Some((context, commands)) = self
+                        .shell
+                        .features
                         .filelist
                         .settle_response_context_commands(request_id, &root, &current_root)
                     else {
@@ -537,7 +595,9 @@ impl FlistWalkerApp {
                     self.handle_filelist_failed_response(context, error);
                 }
                 FileListResponse::Canceled { request_id, root } => {
-                    let Some((context, commands)) = self.shell.features
+                    let Some((context, commands)) = self
+                        .shell
+                        .features
                         .filelist
                         .settle_response_context_commands(request_id, &root, &current_root)
                     else {

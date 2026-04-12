@@ -720,8 +720,7 @@ mod tests {
         )
         .expect("full ranked search");
         let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
-        let expected =
-            materialize_scored_entries(&path_refs, full.into_iter().take(7).collect());
+        let expected = materialize_scored_entries(&path_refs, full.into_iter().take(7).collect());
 
         assert_eq!(limited, expected);
     }
