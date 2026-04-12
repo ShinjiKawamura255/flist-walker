@@ -19,6 +19,7 @@
 - CLI 実行で出力契約を確認。
 - App test module policy:
 - app-level regression は owner/command seam ごとに module を分けて保守する。update は `rust/src/app/tests/update_commands.rs`、session restore は `rust/src/app/tests/session_restore.rs`、tab/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を主対象にし、`app_core.rs` へ unrelated fixture regression を増やし続けない。
+- routing / cleanup の確認は `rust/src/app/response_flow.rs` と `rust/src/app/result_reducer.rs` を owner seam として扱い、background response の stale discard と tab close cleanup を `session_tabs.rs` / `index_pipeline/filelist_lifecycle.rs` へ寄せる。
 - `FeatureStateBundle` / `TabSessionState` のような state bundle 導入後も、bundle 単位の ownership を直接確認したい回帰は既存 owner test module に寄せ、bundle 配置だけを検証するための横断 fixture を増やさない。
 - stale response discard、cancel cleanup、pending/inflight 解放の契約は `update_commands.rs` と `index_pipeline/*` を優先対象にし、`app_core.rs` へ cross-cutting でない lifecycle regression を戻さない。
 - filelist response の current/previous/stale-requested-root 分岐は `rust/src/app/tests/index_pipeline/filelist_lifecycle.rs` を owner test とし、request cleanup と post-settle routing を同じ module で固定する。
@@ -129,6 +130,7 @@
 | TC-101 | unit | update request / install transitions emit trace commands for supportability and retain request_id correlation | SP-014 |
 | TC-102 | unit | Create File List の stale requested root completion は cleanup だけを行い、`use_filelist` 復帰や notice 更新を行わない | SP-001, SP-010 |
 | TC-105 | unit | root dropdown selection は popup を閉じて選択 root を適用し、後続の root cleanup flow を開始できる | SP-010 |
+| TC-106 | unit | background response routing は active tab を巻き戻さず、tab close 時は request routing cleanup だけを行う | SP-010 |
 | TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と sidecar 文書（README / LICENSE / THIRD_PARTY_NOTICES）と `SHA256SUMS` を選択できる | SP-014 |
 | TC-075 | unit | staged binary と sidecar 文書は `SHA256SUMS.sig` の署名検証と `SHA256SUMS` の checksum 検証を通過した場合のみ自己更新へ進む | SP-014 |
 | TC-076 | unit | Windows の自己更新は補助 updater 経由で target EXE 置換コマンドを生成し、実行中 EXE の直接上書きを避ける | SP-014 |
@@ -160,7 +162,7 @@
 | Change Type | Typical Targets | Required Validation | Optional / Follow-up |
 | --- | --- | --- | --- |
 | VM-001 Docs only | `docs/*.md`, `AGENTS.md`, release note text only | affected doc diff review, `rg` で ID/参照整合を確認 | Rust 実装に触れない限り `cargo test` は不要 |
-| VM-002 App/UI orchestration | `rust/src/app/mod.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/tabs/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験。検索結果描画や入力応答性を変えた場合は、非空 query で検索窓の左右移動・Backspace・結果スクロールの体感遅延を手動確認。タブ描画変更時は light/dark theme で active full-fill / inactive 下辺装飾 / 右クリック色変更を手動確認。window trace の observable output を変えた場合は TC-100 の focused smoke を追加実施する |
+| VM-002 App/UI orchestration | `rust/src/app/mod.rs`, `rust/src/app/*.rs` の state/render/input/session/update/filelist/tab_state/tabs/bootstrap/cache 変更 | `cd rust && cargo test` | dialog / focus / tab 操作を変えた場合は GUI 手動試験。検索結果描画や入力応答性を変えた場合は、非空 query で検索窓の左右移動・Backspace・結果スクロールの体感遅延を手動確認。タブ描画変更時は light/dark theme で active full-fill / inactive 下辺装飾 / 右クリック色変更を手動確認。routing / lifecycle を触った場合は `session_tabs.rs` と `index_pipeline/filelist_lifecycle.rs` の owner regression を追加確認する。window trace の observable output を変えた場合は TC-100 の focused smoke を追加実施する |
 | VM-003 Indexing path | `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/mod.rs`, `rust/src/app/pipeline.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験。worker/index trace の observable output を変えた場合は TC-100 の focused smoke を追加実施する |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |

@@ -12,7 +12,7 @@
 - Child Plan(s): none
 - Scope Label: routing-and-lifecycle-consolidation
 - Related Tickets/Issues: none
-- Review Status: 未レビュー
+- Review Status: レビュー済み
 - Review Notes:
   - 実現性レビュー: feasible.
   - The slice can build on the existing owner modules and response flow seams already documented in the architecture.
@@ -114,6 +114,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12 Planned.
+- 2026-04-12 Reviewed and implemented response cleanup consolidation; TESTPLAN validation rows updated.
 
 ## 12. Communication Plan
 - Return to the closure slice when the routing and lifecycle story is stable enough to validate the goal.

@@ -1,5 +1,24 @@
 use super::*;
 
+fn clear_tab_result_selection(tab: &mut AppTabState) {
+    tab.result_state.current_row = None;
+    tab.result_state.preview.clear();
+    tab.pending_preview_request_id = None;
+    tab.preview_in_progress = false;
+}
+
+fn clamp_tab_result_selection(tab: &mut AppTabState) {
+    if tab.result_state.results.is_empty() {
+        clear_tab_result_selection(tab);
+        return;
+    }
+    let max_index = tab.result_state.results.len().saturating_sub(1);
+    tab.result_state.current_row = tab
+        .result_state
+        .current_row
+        .map(|row: usize| row.min(max_index));
+}
+
 pub(super) fn apply_results_with_selection_policy(
     app: &mut FlistWalkerApp,
     results: Vec<(PathBuf, f64)>,
@@ -58,18 +77,7 @@ pub(super) fn apply_background_search_response(
     tab.result_state.result_sort_mode = ResultSortMode::Score;
     tab.result_state.pending_sort_request_id = None;
     tab.result_state.sort_in_progress = false;
-    if tab.result_state.results.is_empty() {
-        tab.result_state.current_row = None;
-        tab.result_state.preview.clear();
-        tab.pending_preview_request_id = None;
-        tab.preview_in_progress = false;
-    } else {
-        let max_index = tab.result_state.results.len().saturating_sub(1);
-        tab.result_state.current_row = tab
-            .result_state
-            .current_row
-            .map(|row: usize| row.min(max_index));
-    }
+    clamp_tab_result_selection(tab);
     FlistWalkerApp::compact_inactive_tab_state(tab);
 }
 
