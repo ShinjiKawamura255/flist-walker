@@ -79,7 +79,8 @@
   - `[docs/CHANGE-PLAN-20260412-roadmap-architecture-idealization.md](docs/CHANGE-PLAN-20260412-roadmap-architecture-idealization.md)`
   - `[docs/CHANGE-PLAN-20260412-slice-a-core-boundary.md](docs/CHANGE-PLAN-20260412-slice-a-core-boundary.md)`
   - `[docs/CHANGE-PLAN-20260412-slice-b-shell-decomposition.md](docs/CHANGE-PLAN-20260412-slice-b-shell-decomposition.md)`
-  - `[docs/CHANGE-PLAN-20260412-slice-c-closure.md](docs/CHANGE-PLAN-20260412-slice-c-closure.md)`
+  - `[docs/CHANGE-PLAN-20260412-slice-c-routing-lifecycle.md](docs/CHANGE-PLAN-20260412-slice-c-routing-lifecycle.md)`
+  - `[docs/CHANGE-PLAN-20260412-slice-d-closure.md](docs/CHANGE-PLAN-20260412-slice-d-closure.md)`
 - roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
 - phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として成果を確認すること。
 - 実装順は計画書に従い、scope / order / risk が変わる場合は先に計画書を更新すること。

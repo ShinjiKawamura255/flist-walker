@@ -12,7 +12,8 @@
 - Child Plan(s):
   - [docs/CHANGE-PLAN-20260412-slice-a-core-boundary.md](./CHANGE-PLAN-20260412-slice-a-core-boundary.md)
   - [docs/CHANGE-PLAN-20260412-slice-b-shell-decomposition.md](./CHANGE-PLAN-20260412-slice-b-shell-decomposition.md)
-  - [docs/CHANGE-PLAN-20260412-slice-c-closure.md](./CHANGE-PLAN-20260412-slice-c-closure.md)
+  - [docs/CHANGE-PLAN-20260412-slice-c-routing-lifecycle.md](./CHANGE-PLAN-20260412-slice-c-routing-lifecycle.md)
+  - [docs/CHANGE-PLAN-20260412-slice-d-closure.md](./CHANGE-PLAN-20260412-slice-d-closure.md)
 - Scope Label: architecture-idealization
 - Related Tickets/Issues: none
 - Review Status: レビュー中
@@ -83,11 +84,17 @@
    - Verification: app unit tests, tab/session tests, pipeline tests, snapshot/restore tests.
    - Entry condition: slice A が review 済みで、shell 側から参照してよい core API が固定されている。
    - Exit condition: tab/session projection と command/reducer boundary が一致し、coordinator 直下の責務が entrypoint/dispatch のみに絞られている。
-3. Slice C: Closure slice
-   - Files/modules/components: `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`
+3. Slice C: Routing and lifecycle cleanup
+   - Files/modules/components: `app/search_coordinator.rs`, `app/index_coordinator.rs`, `app/worker_bus.rs`, `app/preview_flow.rs`, `app/result_flow.rs`, `app/tabs.rs`, `app/input.rs`, `app/worker_runtime.rs`
+   - Expected result: request routing ownership is unified, polling entrypoints follow one pattern, and `tabs.rs` is reduced to lifecycle/state transition behavior.
+   - Verification: background response routing tests, queue/inflight tests, tab close/tab switch regression tests.
+   - Entry condition: slice B review has identified the remaining routing/lifecycle split and the implementation boundary is frozen.
+   - Exit condition: routing helpers are not split by request type, tab close cleanup uses one owner path, and `tabs.rs` no longer owns non-lifecycle UI/state behavior.
+4. Slice D: Closure slice
+   - Files/modules/components: `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`, `docs/REQUIREMENTS.md`, `docs/SPEC.md`
    - Expected result: 理想形が実装・文書・テストで一致しているかを確認し、roadmap を閉じるか継続 slice を定義する。
    - Verification: full validation matrix, targeted perf regression checks, closure review notes.
-   - Entry condition: slice A と slice B の実装・検証が完了し、残る論点が goal validation に限定されている。
+   - Entry condition: slice A, slice B, and slice C の実装・検証が完了し、残る論点が goal validation に限定されている。
    - Exit condition: roadmap の goal 達成/未達が明文化され、継続要否が記録されている。
 
 ## 7. Detailed Task Breakdown
@@ -95,6 +102,7 @@
 - [ ] app shell を boot / routing / reducer / render / persistence に分解する。
 - [ ] tab snapshot の canonical projection を一本化する。
 - [ ] command/event/reducer の責務を切り分け、応答の巻き戻りを防ぐ。
+- [ ] request routing と tab lifecycle の責務を owner ごとに分離する。
 - [ ] closure slice で理想形と実装・文書・テストの整合を確認する。
 
 ## 8. Validation Plan
@@ -129,7 +137,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
   - `docs/CHANGE-PLAN-20260412-roadmap-architecture-idealization.md`
   - `docs/CHANGE-PLAN-20260412-slice-a-core-boundary.md`
   - `docs/CHANGE-PLAN-20260412-slice-b-shell-decomposition.md`
-  - `docs/CHANGE-PLAN-20260412-slice-c-closure.md`
+  - `docs/CHANGE-PLAN-20260412-slice-c-routing-lifecycle.md`
+  - `docs/CHANGE-PLAN-20260412-slice-d-closure.md`
 - Follow the roadmap `Execution Mode` and `Execution Mode Policy`.
 - Phase execution is delegated to subagents by default; the main agent acts as orchestrator and reviewer.
 - Execute the work in the documented order unless the plan is updated first.
@@ -145,6 +154,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-12  Slice B progressed: B2 canonical tab/state projection helpers landed, verified by `cargo test`.
 - 2026-04-12  Slice B progressed: B3 reducer boundary consolidation landed, verified by `cargo test`.
 - 2026-04-12  Slice B progressed: B4 request routing cleanup landed, verified by `cargo test`.
+- 2026-04-12  Closure review found routing/lifecycle ownership still split; a new implementation slice was appended before the closure validation step.
 
 ## 12. Communication Plan
 - Return to user when:
