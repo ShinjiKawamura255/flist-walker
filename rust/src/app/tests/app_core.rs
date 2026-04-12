@@ -969,7 +969,7 @@ fn clipboard_text_normalizes_extended_and_unc_paths() {
 
 #[test]
 #[cfg(target_os = "windows")]
-fn copy_selected_paths_notice_normalizes_extended_prefix() {
+fn regression_copy_selected_paths_notice_normalizes_extended_prefix() {
     let root = test_root("copy-path-notice-normalize");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -979,7 +979,10 @@ fn copy_selected_paths_notice_normalizes_extended_prefix() {
 
     app.copy_selected_paths(&ctx);
 
+    // The Windows regression guard must read the live runtime notice, not the old shell field.
     assert!(app
+        .shell
+        .runtime
         .notice
         .contains(r"Copied path: C:\Users\tester\file.txt"));
     assert!(!app.shell.runtime.notice.contains(r"\\?\"));

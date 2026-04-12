@@ -148,12 +148,17 @@
 | TC-095 | unit | `SHA256SUMS.sig` は改ざんされた manifest を検証失敗にする | SP-014 |
 | TC-099 | manual | structural refactoring 後も GUI の主要操作が連続利用に耐える | SP-010 |
 | TC-100 | manual | diagnostics trace smoke: `RUST_LOG` と `FLISTWALKER_WINDOW_TRACE` の責務分離を維持し、対象 flow が canonical event family と相関 field を出す | SP-010, SP-014 |
+| TC-101 | unit | Windows regression: `copy_selected_paths` の notice 正規化は `app.shell.runtime.notice` を更新し、旧 shell 直参照の残骸を検出する | SP-010 |
 
 ## Regression Guard
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
 - 期待動作: current row はユーザ操作なしで別の行へ移動せず、保持できる場合は同じ行番号を維持し、縮小した場合のみ末尾へ丸める。未選択状態は自動選択に変換しない。
 - 非対象範囲: 手動の Arrow キー移動、Sort 切替、Root 変更による既存 selection 破棄。
 - 関連テストID: TC-068.
+- 発生条件: `copy_selected_paths` の Windows-only テストで、`FlistWalkerApp` の旧 `notice` 直参照が残る。
+- 期待動作: notice は live runtime の `app.shell.runtime.notice` を参照し、`\\?\` 付きの extended prefix を正規化した結果だけを検証する。
+- 非対象範囲: copy パス実装そのものの出力形式変更、Windows 以外の OS の path normalization。
+- 関連テストID: TC-101.
 
 ## Runner and commands
 - Runner: `cargo test`
