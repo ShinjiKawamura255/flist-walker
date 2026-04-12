@@ -51,11 +51,11 @@
   - Mitigation: full validation matrix を必須にする。
 
 ## 6. Execution Strategy
-1. Phase C1: goal validation and evidence collection
+1. Phase D1: goal validation and evidence collection
    - Files/modules/components: architecture/design/testplan docs, relevant app/search/indexer touch points
    - Expected result: 理想形の達成基準が満たされたかを証拠付きで確認できる。
    - Verification: full validation matrix, targeted perf/regression checks, doc consistency review.
-2. Phase C2: close-or-continue decision
+2. Phase D2: close-or-continue decision
    - Files/modules/components: roadmap and related slice docs
    - Expected result: roadmap を完了として閉じるか、追加 slice を定義して継続するかが決まる。
    - Verification: recorded closure notes and explicit next-step decision.

@@ -84,4 +84,5 @@
 - roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
 - phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として成果を確認すること。
 - 実装順は計画書に従い、scope / order / risk が変わる場合は先に計画書を更新すること。
+- roadmap は closure slice の D2 まで完了するまで open のまま維持し、goal validation と close-or-continue decision を記録してから閉じること。
 - 完了後はこの一時セクションを削除すること。

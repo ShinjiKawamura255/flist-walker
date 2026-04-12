@@ -12,7 +12,7 @@
 - Child Plan(s): none
 - Scope Label: shell-decomposition
 - Related Tickets/Issues: none
-- Review Status: レビュー中
+- Review Status: レビュー済み
 - Review Notes:
   - 初回レビューでは phase gating を明確にすべきという指摘があった。
   - この slice は thin shell を実現する中核であり、state projection と orchestration の境界を固定する。
@@ -91,7 +91,7 @@
    - Expected result: request routing, in-flight bookkeeping, and tab lifecycle transitions are clear and isolated.
    - Verification: background response routing tests and queue/inflight tests.
    - Entry condition: B3 までで reducer/command boundary が整理され、routing cleanup の対象が確定している。
-   - Exit condition: request routing と tab lifecycle の責務が owner ごとに分離され、`tabs.rs` は lifecycle management に限定されている。
+   - Exit condition: request routing ownership is centralized enough that the remaining lifecycle cleanup is isolated for the next slice, and `tabs.rs` no longer owns the bulk of routing state.
 
 ## 7. Detailed Task Breakdown
 - [ ] entrypoint / owner boundary を明確化する。
@@ -139,7 +139,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-12  B2 implemented: canonical tab/state projection helpers were centralized in `tab_state.rs` and validated with `cargo test`.
 - 2026-04-12  slice B review flagged scope/phase mismatch and missing B1 entry gate; plan updated before implementation.
 - 2026-04-12  B3 implemented: response handling was consolidated into reducer boundaries and validated with `cargo test`.
-- 2026-04-12  B4 implemented: action/sort request routing was moved out of `tabs.rs` into the worker bus owner boundary and validated with `cargo test`.
+- 2026-04-12  B4 implemented: action/sort request routing was moved out of `tabs.rs` into the worker bus owner boundary and validated with `cargo test`; remaining lifecycle split was deferred into slice C during closure review.
 
 ## 12. Communication Plan
 - Return to user when the slice is reviewed and ready for implementation, or when a blocking issue requires plan update.
