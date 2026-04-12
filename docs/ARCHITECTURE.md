@@ -38,6 +38,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - status line、notice/status helper、frame/update glue、root/path compare の coordinator helper を担当する。
 - [app/shell_support.rs](../rust/src/app/shell_support.rs)
   - process shutdown、egui font setup、window trace、root visibility/cache helper など shell-local helper policy を担当する。
+- [app/response_flow.rs](../rust/src/app/response_flow.rs)
+  - background response polling / routing helper を担当する。
+- [app/root_browser.rs](../rust/src/app/root_browser.rs)
+  - root selector dialog state と root change lifecycle を担当する。
 - [actions.rs](../rust/src/actions.rs)
   - open / execute の OS 差分吸収と testable seam を担当する。
 - [updater.rs](../rust/src/updater.rs)
@@ -73,7 +77,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
     - owner: state 永続化は [session.rs](../rust/src/app/session.rs)、worker join/shutdown は [worker_runtime.rs](../rust/src/app/worker_runtime.rs)。
   - `tab routing`
     - 残置: active tab index と owner API 呼び分け。
-    - owner: tab snapshot / switch / move / close / background response apply は [tabs.rs](../rust/src/app/tabs.rs)。
+    - owner: tab snapshot / switch / move / close / activation refresh は [tabs.rs](../rust/src/app/tabs.rs)、background response polling / apply は [response_flow.rs](../rust/src/app/response_flow.rs)、root selector lifecycle は [root_browser.rs](../rust/src/app/root_browser.rs)。
   - `filelist/update dialog dispatch`
     - 残置: dialog command の top-level dispatch と status/notice 連携。
     - owner: FileList flow は [filelist.rs](../rust/src/app/filelist.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
@@ -86,7 +90,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [session.rs](../rust/src/app/session.rs)
   - saved roots、UI state 永続化、window geometry restore、shutdown/persist owner。
 - [tabs.rs](../rust/src/app/tabs.rs)
-  - tab lifecycle、snapshot capture/apply、background tab 向け search/index response apply、activation 時の restore/refresh 入口、tab routing owner を担当する。live 側の tab/session orchestration は `state.rs` の `TabSessionState` を介して保持する。
+  - tab lifecycle、snapshot capture/apply、activation 時の restore/refresh 入口、tab routing owner を担当する。background tab 向け search/index response apply は `response_flow.rs` へ委譲し、live 側の tab/session orchestration は `state.rs` の `TabSessionState` を介して保持する。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
   - index queue、index response poll、dispatcher を担当し、active path は `PipelineOwner`、background path は `tabs.rs` の background-flow helper 群へ橋渡しする thin coordinator として振る舞う。
 - [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)
@@ -105,6 +109,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - worker shutdown signal と join timeout 管理を担当する。
 - [worker_support.rs](../rust/src/app/worker_support.rs)
   - worker routing の共通 helper と action target helper を集約する。
+- [response_flow.rs](../rust/src/app/response_flow.rs)
+  - preview/action/sort を中心に worker response の polling と routing を集約する。
+- [root_browser.rs](../rust/src/app/root_browser.rs)
+  - root selector dialog の state と root change cleanup を担当する。
 - [ui_state.rs](../rust/src/app/ui_state.rs)
   - runtime UI focus、scroll、preview panel、tab drag などの一時状態を保持する。
 - [query_state.rs](../rust/src/app/query_state.rs)

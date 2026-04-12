@@ -29,7 +29,7 @@
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
-- 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs`、`app/result_reducer.rs`、`app/result_flow.rs`、`app/preview_flow.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
+- 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist.rs`、`app/update.rs`、`app/render.rs`、`app/input.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs`、`app/result_reducer.rs`、`app/result_flow.rs`、`app/preview_flow.rs`、`app/response_flow.rs`、`app/root_browser.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
 - 役割補足: `app/mod.rs` の fixed point は `startup/bootstrap`、`frame update cycle`、`shutdown/persist`、`tab routing`、`filelist/update dialog dispatch`、`trace helper` の 6 区分を top-level で束ねることに限定し、各区分の state transition と policy 判定は owner module 側へ寄せる。process shutdown、window trace、egui font setup、root visibility/cache helper などの shell-local helper policy は `app/shell_support.rs` へ移した。
 - 役割補足: `FlistWalkerApp` の field inventory は、`app-global shared state`、`active-tab-local state`、`persisted/background tab state`、`feature dialog/update state` の 4 束で追跡し、以後の state decomposition はこの分類を崩さない。
 - 役割補足: `FlistWalkerApp` は `AppShellState` を最上位の ownership boundary とし、その内側に `AppRuntimeState`、`TabSessionState`、`FeatureStateBundle`、`RuntimeUiState`、`CacheStateBundle`、worker/state coordinators をまとめる。shell は `Deref` で runtime bundle を見せ、既存の coordinator 呼び出しを壊さずに outer shell を一枚かぶせる。
@@ -39,7 +39,7 @@
 - 役割補足: `shell_support.rs` は process shutdown、egui font setup、window trace、root visibility/cache helper などの shell-local helper policy を集約し、`app/mod.rs` から helper surface を外す。
 - 役割補足: `frame update cycle` では `app/mod.rs` が egui frame ごとの orchestration と repaint 判断だけを持ち、index/search/poll の進行管理は `app/pipeline.rs`、active result refresh は `app/pipeline_owner.rs`、render command 生成は `app/render.rs` が担当する。
 - 役割補足: `shutdown/persist` では `app/mod.rs` が eframe callback から shutdown seam を呼ぶだけに留め、UI state 永続化は `app/session.rs`、worker stop/join は `app/worker_runtime.rs` が担当する。
-- 役割補足: `tab routing` では `app/mod.rs` が active tab と request routing の top-level context を持ち、tab switch/reorder/close、background response apply、restore/refresh は `app/tabs.rs` が owner を持つ。
+- 役割補足: `tab routing` では `app/mod.rs` が active tab と request routing の top-level context を持ち、tab switch/reorder/close と restore/refresh は `app/tabs.rs`、background response polling / apply は `app/response_flow.rs`、root selector lifecycle は `app/root_browser.rs` が owner を持つ。
 - 役割補足: `filelist/update dialog dispatch` では `app/mod.rs` が dialog command dispatch と notice/status line 連携を束ね、FileList state transition は `app/filelist.rs`、update state transition は `app/update.rs` が担当する。
 - 役割補足: `trace helper` では `app/mod.rs` が opt-in window trace の入口だけを保持し、worker trace は `app/workers.rs` と `app/worker_protocol.rs`、session/window 永続化まわりの補助 trace は `app/session.rs` など各 owner helper へ分離する。
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
@@ -61,6 +61,8 @@
 - 役割補足: `app/worker_protocol.rs` は search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を worker 実装や bus wiring から独立して保守できるようにする。
 - 役割補足: `app/worker_runtime.rs` は worker shutdown signal と join timeout の管理だけを持ち、個別 worker 実装から runtime orchestration を分離する。
 - 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation に専念し、bounded storage と scope/eviction を局所化する。preview/highlight/routing の orchestration は `app/preview_flow.rs` へ、sort の orchestration は `app/result_flow.rs` へ、実際の response apply と snapshot refresh は `app/result_reducer.rs` へ分離する。
+- 役割補足: `app/response_flow.rs` は preview/action/sort を中心に worker response の polling と routing を集約し、background tab 応答も owner ごとに dispatch できるようにする。
+- 役割補足: `app/root_browser.rs` は root selector dialog の state と root change cleanup を担当し、root 変更時の一時 UI を tab/session state から分離する。
 - 役割補足: `app/worker_support.rs` は worker routing の共通 helper と action target helper を担当し、`workers.rs` から reusable helper を切り離す。
 - 役割補足: search domain は `search/mod.rs` を public API と query compile の入口に保ちつつ、prefix cache は `search/cache.rs`、execution mode と parallel tuning は `search/config.rs`、candidate collect は `search/execute.rs`、ranking/materialization は `search/rank.rs` へ分割して保守する。
 - 役割補足: indexer domain は `indexer/mod.rs` を build orchestration と nested FileList override の入口に保ちつつ、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。

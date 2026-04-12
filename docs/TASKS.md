@@ -15,6 +15,7 @@
   - 2026-04-12 に Slice C で continue を判断し、残る shell-policy/helper extraction を Slice D として追加した。
   - 2026-04-12 に Slice D を完了し、`shell_support.rs` へ shell/runtime helper policy を移して `mod.rs` を薄くしたうえで `cd rust && cargo test` を通した。
   - 2026-04-12 に Slice E で closure judgment を完了し、roadmap を閉じて temporary plan machinery を撤去した。
+  - 2026-04-12 に architecture-idealization roadmap を closure し、core boundary / shell decomposition / routing cleanup を恒久 docs へ移したうえで temporary rule と change-plan 文書を撤去した。
   - 2026-04-11 に app architecture boundary cleanup の single plan を追加し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-11 に plan review を完了し、`path_key` を `path_utils.rs` へ移し、`result_flow.rs` へ result orchestration を分離したうえで `cargo test` を通した。
   - 2026-04-11 に app architecture boundary cleanup を完了し、temporary rule と change plan を撤去した。
@@ -43,6 +44,22 @@
   - 2026-04-09 に app architecture improvement roadmap を close し、`AGENTS.md` の temporary rule と関連 change-plan 文書群を撤去する状態へ移行した。
 
 ## Completed Programs
+
+### Program G: Architecture Idealization Roadmap
+- Status: DONE on 2026-04-12
+- Goal: core boundary stabilization、shell decomposition、routing/lifecycle cleanup、closure validation を段階的に実施し、理想形を削らずに閉じる。
+- Outcome:
+  - `search` / `indexer` / `query` / `ui_model` / `path_utils` の core boundary を固定し、presentation/helper 依存を整理した。
+  - `app/` shell は bootstrap、tab/session state、response routing、root browser lifecycle の owner 群へ分解した。
+  - `cargo test` を通し、last-mile の routing/lifecycle cleanup まで既存回帰を発生させずに収束した。
+  - `ARCHITECTURE.md` / `DESIGN.md` / `TASKS.md` を恒久化し、change-plan 文書群と temporary rule を撤去した。
+
+| Slice | Status | Completed |
+| --- | --- | --- |
+| Slice A: Core Boundary and Contract Stabilization | DONE | 2026-04-12 |
+| Slice B: Shell Decomposition and State Ownership | DONE | 2026-04-12 |
+| Slice C: Routing and Lifecycle Cleanup | DONE | 2026-04-12 |
+| Slice D: Closure Validation and Decision | DONE | 2026-04-12 |
 
 ### Program F: App Architecture Improvement Roadmap
 - Status: DONE on 2026-04-09
