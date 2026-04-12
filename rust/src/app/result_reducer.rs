@@ -10,23 +10,22 @@ pub(super) fn apply_results_with_selection_policy(
         current_row.map(|row| row.min(results_len.saturating_sub(1)))
     }
 
-    let selected_path = preserve_selected_path
-        .then(|| {
-            app.current_row
-                .and_then(|row| app.results.get(row).map(|(path, _)| path.clone()))
-        })
-        .flatten();
-    let previous_row = app.current_row;
-    app.results = results;
-    if app.results.is_empty() {
-        app.current_row = None;
-        app.preview.clear();
+    let selected_path = preserve_selected_path.then(|| {
+        app.runtime
+            .current_row
+            .and_then(|row| app.runtime.results.get(row).map(|(path, _)| path.clone()))
+    }).flatten();
+    let previous_row = app.runtime.current_row;
+    app.runtime.results = results;
+    if app.runtime.results.is_empty() {
+        app.runtime.current_row = None;
+        app.runtime.preview.clear();
         app.worker_bus.preview.in_progress = false;
         app.worker_bus.preview.pending_request_id = None;
     } else {
-        let previous_row = clamp_row(previous_row, app.results.len());
-        app.current_row = selected_path
-            .and_then(|selected| app.results.iter().position(|(path, _)| *path == selected))
+        let previous_row = clamp_row(previous_row, app.runtime.results.len());
+        app.runtime.current_row = selected_path
+            .and_then(|selected| app.runtime.results.iter().position(|(path, _)| *path == selected))
             .or(previous_row);
         app.request_preview_for_current();
         if !keep_scroll_position {
@@ -89,14 +88,14 @@ pub(super) fn apply_active_search_response(
     }
     app.replace_results_snapshot(response.results.clone(), false);
     if app.indexing.search_rerun_pending
-        && !app.query_state.query.trim().is_empty()
+        && !app.runtime.query_state.query.trim().is_empty()
         && app.indexing.in_progress
         && app.should_refresh_incremental_search()
     {
         app.indexing.search_rerun_pending = false;
         app.indexing.search_resume_pending = false;
-        app.entries = Arc::new(app.indexing.incremental_filtered_entries.clone());
-        app.indexing.last_search_snapshot_len = app.entries.len();
+        app.runtime.entries = Arc::new(app.indexing.incremental_filtered_entries.clone());
+        app.indexing.last_search_snapshot_len = app.runtime.entries.len();
         app.indexing.last_incremental_results_refresh = Instant::now();
         app.enqueue_search_request();
     }
@@ -110,22 +109,22 @@ pub(super) fn replace_results_snapshot(
 ) {
     app.worker_bus.sort.pending_request_id = None;
     app.worker_bus.sort.in_progress = false;
-    app.result_sort_mode = ResultSortMode::Score;
-    app.base_results = results.clone();
+    app.runtime.result_sort_mode = ResultSortMode::Score;
+    app.runtime.base_results = results.clone();
     // Regression guard: search refreshes must keep the cursor on the same row number.
     // Following the previous path here makes the highlight jump when the query changes.
     apply_results_with_selection_policy(app, results, keep_scroll_position, false);
 }
 
 pub(super) fn invalidate_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
-    let had_non_score_sort = app.result_sort_mode != ResultSortMode::Score;
+    let had_non_score_sort = app.runtime.result_sort_mode != ResultSortMode::Score;
     app.worker_bus.sort.pending_request_id = None;
     app.worker_bus.sort.in_progress = false;
-    app.result_sort_mode = ResultSortMode::Score;
-    if had_non_score_sort && !app.base_results.is_empty() && app.results != app.base_results {
+    app.runtime.result_sort_mode = ResultSortMode::Score;
+    if had_non_score_sort && !app.runtime.base_results.is_empty() && app.runtime.results != app.runtime.base_results {
         apply_results_with_selection_policy(
             app,
-            app.base_results.clone(),
+            app.runtime.base_results.clone(),
             keep_scroll_position,
             true,
         );
@@ -159,14 +158,14 @@ fn request_sort_metadata(app: &mut FlistWalkerApp, mode: ResultSortMode, missing
 }
 
 pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
-    if app.base_results.is_empty() {
+    if app.runtime.base_results.is_empty() {
         app.worker_bus.sort.pending_request_id = None;
         app.worker_bus.sort.in_progress = false;
         app.refresh_status_line();
         return;
     }
-    if !app.result_sort_mode.uses_metadata() {
-        let sorted = app.build_sorted_results(app.result_sort_mode);
+    if !app.runtime.result_sort_mode.uses_metadata() {
+        let sorted = app.build_sorted_results(app.runtime.result_sort_mode);
         app.worker_bus.sort.pending_request_id = None;
         app.worker_bus.sort.in_progress = false;
         apply_results_with_selection_policy(app, sorted, keep_scroll_position, false);
@@ -174,24 +173,25 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
     }
 
     let missing_paths = app
+        .runtime
         .base_results
         .iter()
         .map(|(path, _)| path.clone())
         .filter(|path| !app.cache.sort_metadata.contains(path))
         .collect::<Vec<_>>();
     if missing_paths.is_empty() {
-        let sorted = app.build_sorted_results(app.result_sort_mode);
+        let sorted = app.build_sorted_results(app.runtime.result_sort_mode);
         app.worker_bus.sort.pending_request_id = None;
         app.worker_bus.sort.in_progress = false;
         apply_results_with_selection_policy(app, sorted, keep_scroll_position, false);
         return;
     }
 
-    request_sort_metadata(app, app.result_sort_mode, missing_paths);
+    request_sort_metadata(app, app.runtime.result_sort_mode, missing_paths);
 }
 
 pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMode) {
-    app.result_sort_mode = mode;
+    app.runtime.result_sort_mode = mode;
     apply_result_sort(app, false);
 }
 
@@ -232,10 +232,10 @@ pub(super) fn apply_active_preview_response(
     app.worker_bus.preview.pending_request_id = None;
     app.worker_bus.preview.in_progress = false;
     app.cache_preview(response.path.clone(), response.preview.clone());
-    if let Some(row) = app.current_row {
-        if let Some((current_path, _)) = app.results.get(row) {
+    if let Some(row) = app.runtime.current_row {
+        if let Some((current_path, _)) = app.runtime.results.get(row) {
             if *current_path == response.path {
-                app.preview = response.preview.clone();
+                app.runtime.preview = response.preview.clone();
             }
         }
     }
@@ -291,7 +291,7 @@ pub(super) fn apply_active_sort_response(
     app.take_sort_request_tab(response.request_id);
     app.worker_bus.sort.pending_request_id = None;
     app.worker_bus.sort.in_progress = false;
-    if response.mode == app.result_sort_mode {
+    if response.mode == app.runtime.result_sort_mode {
         apply_result_sort(app, false);
     } else {
         app.refresh_status_line();

@@ -61,8 +61,8 @@ impl FlistWalkerApp {
                     include_files,
                     include_dirs,
                 }) => {
-                    self.include_files = include_files;
-                    self.include_dirs = include_dirs;
+                    self.runtime.include_files = include_files;
+                    self.runtime.include_dirs = include_dirs;
                 }
                 FileListCommand::App(FileListAppCommand::RequestIndexRefresh) => {
                     self.request_index_refresh();
@@ -83,7 +83,7 @@ impl FlistWalkerApp {
                         tab.use_filelist = use_filelist;
                     }
                     if tab_index == self.tabs.active_tab {
-                        self.use_filelist = use_filelist;
+                        self.runtime.use_filelist = use_filelist;
                     }
                 }
             }
@@ -92,7 +92,7 @@ impl FlistWalkerApp {
 
     fn cancel_stale_pending_filelist_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
-        let current_root_key = path_key(&self.root);
+        let current_root_key = path_key(&self.runtime.root);
         let should_cancel = self
             .features
             .filelist
@@ -104,7 +104,7 @@ impl FlistWalkerApp {
 
     fn cancel_stale_pending_filelist_ancestor_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
-        let current_root_key = path_key(&self.root);
+        let current_root_key = path_key(&self.runtime.root);
         let should_cancel = self
             .features
             .filelist
@@ -118,7 +118,7 @@ impl FlistWalkerApp {
 
     fn cancel_stale_pending_filelist_use_walker_confirmation(&mut self) {
         let current_tab_id = self.current_tab_id().unwrap_or_default();
-        let current_root_key = path_key(&self.root);
+        let current_root_key = path_key(&self.runtime.root);
         let should_cancel = self
             .features
             .filelist
@@ -188,7 +188,7 @@ impl FlistWalkerApp {
             FileListResponseScope::CurrentRoot => {
                 self.set_notice(format!("Created {}: {} entries", path.display(), count));
                 if let Some(tab_index) = target_tab_index {
-                    if tab_index == self.tabs.active_tab && self.use_filelist {
+                    if tab_index == self.tabs.active_tab && self.runtime.use_filelist {
                         self.dispatch_filelist_commands(vec![FileListCommand::App(
                             FileListAppCommand::RequestIndexRefresh,
                         )]);
@@ -228,7 +228,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
-        self.all_entries
+        self.runtime.all_entries
             .iter()
             .filter(|entry| self.is_entry_visible_for_current_filter(entry))
             .map(|entry| entry.path.clone())
@@ -332,9 +332,9 @@ impl FlistWalkerApp {
             tab_id: pending.source_tab_id,
             root: pending.root,
         });
-        if !self.include_files || !self.include_dirs {
-            self.include_files = true;
-            self.include_dirs = true;
+        if !self.runtime.include_files || !self.runtime.include_dirs {
+            self.runtime.include_files = true;
+            self.runtime.include_dirs = true;
         }
         self.request_create_filelist_walker_refresh();
         self.set_notice("Preparing background Walker index for Create File List");
@@ -455,28 +455,28 @@ impl FlistWalkerApp {
             self.features.filelist.pending_use_walker_confirmation =
                 Some(PendingFileListUseWalkerConfirmation {
                     source_tab_id: tab_id,
-                    root: self.root.clone(),
+                    root: self.runtime.root.clone(),
                 });
             self.set_notice("Confirmation required: Create File List needs Walker indexing");
             return;
         }
 
         let mut needs_reindex = false;
-        if !self.include_files || !self.include_dirs {
-            self.include_files = true;
-            self.include_dirs = true;
+        if !self.runtime.include_files || !self.runtime.include_dirs {
+            self.runtime.include_files = true;
+            self.runtime.include_dirs = true;
             needs_reindex = true;
         }
-        if !matches!(self.index.source, IndexSource::Walker) {
+        if !matches!(self.runtime.index.source, IndexSource::Walker) {
             needs_reindex = true;
         }
         if self.indexing.in_progress {
             self.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
                 tab_id,
-                root: self.root.clone(),
+                root: self.runtime.root.clone(),
             });
             if needs_reindex {
-                if self.use_filelist {
+                if self.runtime.use_filelist {
                     self.request_create_filelist_walker_refresh();
                     self.set_notice(
                         "Preparing background Walker index with files/folders enabled before Create File List",
@@ -496,9 +496,9 @@ impl FlistWalkerApp {
         if needs_reindex {
             self.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
                 tab_id,
-                root: self.root.clone(),
+                root: self.runtime.root.clone(),
             });
-            if self.use_filelist {
+            if self.runtime.use_filelist {
                 self.request_create_filelist_walker_refresh();
                 self.set_notice(
                     "Preparing background Walker index with files/folders enabled before Create File List",
@@ -513,11 +513,11 @@ impl FlistWalkerApp {
         }
 
         let entries = self.filelist_entries_snapshot();
-        self.request_filelist_creation(tab_id, self.root.clone(), entries);
+        self.request_filelist_creation(tab_id, self.runtime.root.clone(), entries);
     }
 
     pub(super) fn poll_filelist_response(&mut self) {
-        let current_root = self.root.clone();
+        let current_root = self.runtime.root.clone();
         while let Ok(response) = self.worker_bus.filelist.rx.try_recv() {
             match response {
                 FileListResponse::Finished {

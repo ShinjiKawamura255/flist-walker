@@ -26,7 +26,7 @@ fn filelist_failed_updates_state_and_notice() {
     assert_eq!(app.features.filelist.pending_request_id, None);
     assert_eq!(app.features.filelist.pending_request_tab_id, None);
     assert!(!app.features.filelist.in_progress);
-    assert!(app.notice.contains("Create File List failed: disk full"));
+    assert!(app.runtime.notice.contains("Create File List failed: disk full"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -56,7 +56,7 @@ fn filelist_canceled_updates_state_and_notice() {
     assert!(app.features.filelist.pending_cancel.is_none());
     assert!(!app.features.filelist.in_progress);
     assert!(!app.features.filelist.cancel_requested);
-    assert!(app.notice.contains("Create File List canceled"));
+    assert!(app.runtime.notice.contains("Create File List canceled"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -75,8 +75,8 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     app.features.filelist.pending_request_tab_id = app.current_tab_id();
     app.features.filelist.pending_root = Some(root_old.clone());
     app.features.filelist.in_progress = true;
-    app.use_filelist = true;
-    app.root = root_new.clone();
+    app.runtime.use_filelist = true;
+    app.runtime.root = root_new.clone();
 
     filelist_tx
         .send(FileListResponse::Finished {
@@ -91,7 +91,7 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
 
     assert!(index_rx.try_recv().is_err());
     assert!(!app.features.filelist.in_progress);
-    assert!(app.notice.contains("previous root"));
+    assert!(app.runtime.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
 }
@@ -109,7 +109,7 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
     app.features.filelist.pending_request_tab_id = app.current_tab_id();
     app.features.filelist.pending_root = Some(root_old.clone());
     app.features.filelist.in_progress = true;
-    app.root = root_new;
+    app.runtime.root = root_new;
 
     tx.send(FileListResponse::Failed {
         request_id: 52,
@@ -122,7 +122,7 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
 
     assert_eq!(app.features.filelist.pending_request_id, None);
     assert!(!app.features.filelist.in_progress);
-    assert!(app.notice.contains("previous root"));
+    assert!(app.runtime.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
 }
 
@@ -139,7 +139,7 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
     app.features.filelist.pending_request_tab_id = app.current_tab_id();
     app.features.filelist.pending_root = Some(root_requested.clone());
     app.features.filelist.in_progress = true;
-    app.use_filelist = false;
+    app.runtime.use_filelist = false;
 
     filelist_tx
         .send(FileListResponse::Finished {
@@ -154,8 +154,8 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
 
     assert_eq!(app.features.filelist.pending_request_id, None);
     assert!(!app.features.filelist.in_progress);
-    assert!(!app.use_filelist);
-    assert!(app.notice.is_empty());
+    assert!(!app.runtime.use_filelist);
+    assert!(app.runtime.notice.is_empty());
     let _ = fs::remove_dir_all(&root_requested);
     let _ = fs::remove_dir_all(&root_response);
 }
@@ -167,9 +167,9 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.indexing.rx = rx;
-    app.entries = Arc::new(Vec::new());
-    app.all_entries = Arc::new(Vec::new());
-    app.index.entries.clear();
+    app.runtime.entries = Arc::new(Vec::new());
+    app.runtime.all_entries = Arc::new(Vec::new());
+    app.runtime.index.entries.clear();
     app.indexing.incremental_filtered_entries.clear();
     app.indexing.search_resume_pending = false;
     app.indexing.last_search_snapshot_len = 0;
@@ -192,7 +192,7 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
 
     app.poll_index_response();
 
-    assert!(app.entries.is_empty());
+    assert!(app.runtime.entries.is_empty());
     assert_eq!(
         app.indexing.incremental_filtered_entries,
         vec![file_entry(path)]
@@ -208,9 +208,9 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.indexing.rx = rx;
-    app.entries = Arc::new(Vec::new());
-    app.all_entries = Arc::new(Vec::new());
-    app.index.entries.clear();
+    app.runtime.entries = Arc::new(Vec::new());
+    app.runtime.all_entries = Arc::new(Vec::new());
+    app.runtime.index.entries.clear();
     app.indexing.incremental_filtered_entries.clear();
     app.indexing.search_resume_pending = false;
     app.indexing.last_search_snapshot_len = 0;
@@ -236,18 +236,18 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     for _ in 0..64 {
         app.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
         app.poll_index_response();
-        if app.entries.len() >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
+        if app.runtime.entries.len() >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX {
             break;
         }
     }
 
     assert_eq!(
-        app.entries.len(),
+        app.runtime.entries.len(),
         FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
     );
     assert_eq!(
         app.indexing.incremental_filtered_entries.len(),
-        app.entries.len()
+        app.runtime.entries.len()
     );
     let _ = fs::remove_dir_all(&root);
 }
@@ -287,7 +287,7 @@ fn non_empty_query_batch_delta_updates_snapshot_even_without_search_refresh() {
     app.poll_index_response();
     app.poll_index_response();
 
-    assert!(app.entries.is_empty());
+    assert!(app.runtime.entries.is_empty());
     assert_eq!(app.indexing.incremental_filtered_entries.len(), 2);
     assert_eq!(app.indexing.incremental_filtered_entries[0], path_a);
     assert_eq!(app.indexing.incremental_filtered_entries[1], path_b);
@@ -322,9 +322,9 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
 
     app.poll_index_response();
 
-    assert_eq!(app.entries.len(), 1);
-    assert_eq!(app.results.len(), 1);
-    assert_eq!(app.entries[0], path);
+    assert_eq!(app.runtime.entries.len(), 1);
+    assert_eq!(app.runtime.results.len(), 1);
+    assert_eq!(app.runtime.entries[0], path);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -334,18 +334,18 @@ fn status_line_prefers_current_index_count_while_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.indexing.in_progress = true;
-    app.all_entries = Arc::new(
+    app.runtime.all_entries = Arc::new(
         (0..10)
             .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
             .collect::<Vec<_>>(),
     );
-    app.index.entries = (0..3)
+    app.runtime.index.entries = (0..3)
         .map(|i| unknown_entry(root.join(format!("new-{i}.txt"))))
         .collect::<Vec<_>>();
 
     app.refresh_status_line();
 
-    assert_eq!(entries_count_from_status(&app.status_line), 3);
+    assert_eq!(entries_count_from_status(&app.runtime.status_line), 3);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -359,17 +359,17 @@ fn request_index_refresh_keeps_existing_entries_visible_until_new_results_arrive
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.entries = Arc::new(vec![unknown_entry(path.clone())]);
-    app.results = vec![(path.clone(), 0.0)];
-    app.current_row = Some(0);
-    app.preview = "keep".to_string();
+    app.runtime.entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.runtime.results = vec![(path.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
+    app.runtime.preview = "keep".to_string();
 
     app.request_index_refresh();
 
-    assert_eq!(app.entries.len(), 1);
-    assert_eq!(app.results.len(), 1);
-    assert_eq!(app.current_row, Some(0));
-    assert_eq!(app.preview, "keep");
+    assert_eq!(app.runtime.entries.len(), 1);
+    assert_eq!(app.runtime.results.len(), 1);
+    assert_eq!(app.runtime.current_row, Some(0));
+    assert_eq!(app.runtime.preview, "keep");
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -383,7 +383,7 @@ fn incremental_empty_query_update_preserves_scroll_position_flag() {
     app.indexing.pending_request_id = Some(41);
     app.indexing.in_progress = true;
     app.ui.scroll_to_current = false;
-    app.current_row = Some(0);
+    app.runtime.current_row = Some(0);
 
     let path = root.join("main.rs");
     tx.send(IndexResponse::Batch {
@@ -411,15 +411,15 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.indexing.in_progress = true;
-    app.index.entries = vec![file_entry(file.clone()), dir_entry(dir.clone())];
+    app.runtime.index.entries = vec![file_entry(file.clone()), dir_entry(dir.clone())];
     app.set_entry_kind(&file, EntryKind::file());
     app.set_entry_kind(&dir, EntryKind::dir());
-    app.include_files = false;
-    app.include_dirs = true;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
 
     app.apply_entry_filters(true);
 
-    assert_eq!(app.entries.as_ref(), &vec![dir.clone()]);
+    assert_eq!(app.runtime.entries.as_ref(), &vec![dir.clone()]);
     assert_eq!(
         app.indexing.incremental_filtered_entries,
         vec![dir_entry(dir)]
@@ -438,13 +438,13 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.indexing.in_progress = true;
-    app.index.entries = vec![file_entry(file.clone())];
+    app.runtime.index.entries = vec![file_entry(file.clone())];
     app.set_entry_kind(&file, EntryKind::file());
-    app.include_files = false;
-    app.include_dirs = true;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
 
     app.apply_entry_filters(true);
-    assert!(app.entries.is_empty());
+    assert!(app.runtime.entries.is_empty());
     assert!(app.indexing.incremental_filtered_entries.is_empty());
 
     let (tx, rx) = mpsc::channel::<IndexResponse>();
@@ -462,7 +462,7 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
 
     app.poll_index_response();
 
-    assert_eq!(app.entries.as_ref(), &vec![dir]);
-    assert_eq!(app.results.len(), 1);
+    assert_eq!(app.runtime.entries.as_ref(), &vec![dir]);
+    assert_eq!(app.runtime.results.len(), 1);
     let _ = fs::remove_dir_all(&root);
 }

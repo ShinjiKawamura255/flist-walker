@@ -15,7 +15,7 @@ fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
     let root = test_root("ctrl-h-single");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query_state.query = "abcd".to_string();
+    app.runtime.query_state.query = "abcd".to_string();
     let mut cursor = 4usize;
     let mut anchor = 4usize;
 
@@ -23,7 +23,7 @@ fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
 
     assert!(text_changed);
     assert!(cursor_changed);
-    assert_eq!(app.query_state.query, "abc");
+    assert_eq!(app.runtime.query_state.query, "abc");
     assert_eq!(cursor, 3);
     assert_eq!(anchor, 3);
     let _ = fs::remove_dir_all(&root);
@@ -35,7 +35,7 @@ fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     // Simulate that TextEdit already handled one Backspace and this frame query is already updated.
-    app.query_state.query = "abc".to_string();
+    app.runtime.query_state.query = "abc".to_string();
     let mut cursor = 3usize;
     let mut anchor = 3usize;
 
@@ -43,7 +43,7 @@ fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
 
     assert!(!text_changed);
     assert!(!cursor_changed);
-    assert_eq!(app.query_state.query, "abc");
+    assert_eq!(app.runtime.query_state.query, "abc");
     assert_eq!(cursor, 3);
     assert_eq!(anchor, 3);
     let _ = fs::remove_dir_all(&root);
@@ -54,16 +54,16 @@ fn move_page_moves_by_fixed_rows_and_clamps() {
     let root = test_root("move-page");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = (0..30)
+    app.runtime.results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.current_row = Some(0);
+    app.runtime.current_row = Some(0);
 
     app.move_page(1);
-    assert_eq!(app.current_row, Some(10));
+    assert_eq!(app.runtime.current_row, Some(10));
 
     app.move_page(-1);
-    assert_eq!(app.current_row, Some(0));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -72,12 +72,12 @@ fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
     let root = test_root("shortcut-ctrl-np-query-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![
+    app.runtime.results = vec![
         (root.join("a.txt"), 0.0),
         (root.join("b.txt"), 0.0),
         (root.join("c.txt"), 0.0),
     ];
-    app.current_row = Some(0);
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -90,7 +90,7 @@ fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
             modifiers: emacs_shortcut_modifiers(false),
         }],
     );
-    assert_eq!(app.current_row, Some(1));
+    assert_eq!(app.runtime.current_row, Some(1));
 
     run_shortcuts_frame(
         &mut app,
@@ -103,7 +103,7 @@ fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
             modifiers: emacs_shortcut_modifiers(false),
         }],
     );
-    assert_eq!(app.current_row, Some(0));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -114,10 +114,10 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.entries = Arc::new(vec![unknown_entry(selected.clone())]);
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
-    app.pinned_paths.insert(selected);
+    app.runtime.entries = Arc::new(vec![unknown_entry(selected.clone())]);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
+    app.runtime.pinned_paths.insert(selected);
 
     run_shortcuts_frame(
         &mut app,
@@ -131,9 +131,9 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
         }],
     );
 
-    assert!(app.query_state.query.is_empty());
-    assert!(app.pinned_paths.is_empty());
-    assert_eq!(app.results.len(), 1);
+    assert!(app.runtime.query_state.query.is_empty());
+    assert!(app.runtime.pinned_paths.is_empty());
+    assert_eq!(app.runtime.results.len(), 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -144,10 +144,10 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.entries = Arc::new(vec![unknown_entry(selected.clone())]);
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
-    app.pinned_paths.insert(selected);
+    app.runtime.entries = Arc::new(vec![unknown_entry(selected.clone())]);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
+    app.runtime.pinned_paths.insert(selected);
 
     run_shortcuts_frame(
         &mut app,
@@ -161,9 +161,9 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
         }],
     );
 
-    assert!(app.query_state.query.is_empty());
-    assert!(app.pinned_paths.is_empty());
-    assert_eq!(app.results.len(), 1);
+    assert!(app.runtime.query_state.query.is_empty());
+    assert!(app.runtime.pinned_paths.is_empty());
+    assert_eq!(app.runtime.results.len(), 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -193,8 +193,8 @@ fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
 
     assert!(app.is_root_dropdown_open(&ctx));
     assert_eq!(app.ui.root_dropdown_highlight, Some(0));
-    assert!(!app.query_state.history_search_active);
-    assert_eq!(app.query_state.query, "draft");
+    assert!(!app.runtime.query_state.history_search_active);
+    assert_eq!(app.runtime.query_state.query, "draft");
 
     let _ = ctx.end_pass();
     let _ = fs::remove_dir_all(&root);
@@ -271,7 +271,7 @@ fn root_dropdown_ctrl_g_closes_without_clearing_query() {
     app.handle_shortcuts(&ctx);
 
     assert!(!app.is_root_dropdown_open(&ctx));
-    assert_eq!(app.query_state.query, "draft");
+    assert_eq!(app.runtime.query_state.query, "draft");
     let _ = ctx.end_pass();
     let _ = fs::remove_dir_all(&root);
 }
@@ -306,7 +306,7 @@ fn root_dropdown_ctrl_j_and_ctrl_m_accept_selection() {
         app.handle_shortcuts(&ctx);
 
         assert!(!app.is_root_dropdown_open(&ctx));
-        assert_eq!(app.root, second);
+        assert_eq!(app.runtime.root, second);
         let _ = ctx.end_pass();
         let _ = fs::remove_dir_all(&root);
     }
@@ -317,10 +317,10 @@ fn history_search_enter_accepts_selected_query() {
     let root = test_root("history-search-enter");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-    app.query_state.query_history =
+    app.runtime.query_state.query_history =
         VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
     app.start_history_search();
-    app.query_state.history_search_query = "be".to_string();
+    app.runtime.query_state.history_search_query = "be".to_string();
     app.refresh_history_search_results();
 
     run_shortcuts_frame(
@@ -335,9 +335,9 @@ fn history_search_enter_accepts_selected_query() {
         }],
     );
 
-    assert!(!app.query_state.history_search_active);
-    assert_eq!(app.query_state.query, "beta");
-    assert_eq!(app.notice, "Loaded query from history");
+    assert!(!app.runtime.query_state.history_search_active);
+    assert_eq!(app.runtime.query_state.query, "beta");
+    assert_eq!(app.runtime.notice, "Loaded query from history");
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -350,10 +350,10 @@ fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
         let root = test_root(name);
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-        app.query_state.query_history =
+        app.runtime.query_state.query_history =
             VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
         app.start_history_search();
-        app.query_state.history_search_query = "ga".to_string();
+        app.runtime.query_state.history_search_query = "ga".to_string();
         app.refresh_history_search_results();
 
         run_shortcuts_frame(
@@ -368,8 +368,8 @@ fn history_search_ctrl_j_and_ctrl_m_accept_selected_query() {
             }],
         );
 
-        assert!(!app.query_state.history_search_active);
-        assert_eq!(app.query_state.query, "gamma");
+        assert!(!app.runtime.query_state.history_search_active);
+        assert_eq!(app.runtime.query_state.query, "gamma");
         let _ = fs::remove_dir_all(&root);
     }
 }
@@ -401,17 +401,17 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
         let root = test_root(name);
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
-        app.query_state.query_history =
+        app.runtime.query_state.query_history =
             VecDeque::from(["alpha".to_string(), "beta".to_string(), "gamma".to_string()]);
         app.start_history_search();
-        app.query_state.history_search_query = "ga".to_string();
+        app.runtime.query_state.history_search_query = "ga".to_string();
         app.refresh_history_search_results();
 
         run_shortcuts_frame(&mut app, true, vec![event]);
 
-        assert!(!app.query_state.history_search_active);
-        assert_eq!(app.query_state.query, "draft");
-        assert_eq!(app.notice, "Canceled history search");
+        assert!(!app.runtime.query_state.history_search_active);
+        assert_eq!(app.runtime.query_state.query, "draft");
+        assert_eq!(app.runtime.notice, "Canceled history search");
         let _ = fs::remove_dir_all(&root);
     }
 }
@@ -423,8 +423,8 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -439,7 +439,7 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
     );
 
     assert!(!app.ui.pending_copy_shortcut);
-    assert!(app.notice.contains(&format!(
+    assert!(app.runtime.notice.contains(&format!(
         "Copied path: {}",
         normalize_path_for_display(&selected)
     )));
@@ -467,7 +467,7 @@ fn ctrl_o_browses_and_changes_root() {
         }],
     );
 
-    assert_eq!(app.root, new_root);
+    assert_eq!(app.runtime.root, new_root);
     assert_eq!(app.tabs.len(), 1);
     assert_eq!(app.tabs.active_tab, 0);
     let _ = fs::remove_dir_all(&root);
@@ -497,7 +497,7 @@ fn ctrl_shift_o_browses_in_new_tab() {
 
     assert_eq!(app.tabs.len(), 2);
     assert_eq!(app.tabs.active_tab, 1);
-    assert_eq!(app.root, new_root);
+    assert_eq!(app.runtime.root, new_root);
     assert_eq!(app.tabs[0].id, original_tab_id);
     assert_eq!(app.tabs[0].root, root);
     assert_eq!(app.tabs[1].root, new_root);
@@ -509,10 +509,10 @@ fn home_and_end_move_selection_when_query_not_focused() {
     let root = test_root("shortcut-home-end-no-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = (0..5)
+    app.runtime.results = (0..5)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.current_row = Some(2);
+    app.runtime.current_row = Some(2);
 
     run_shortcuts_frame(
         &mut app,
@@ -525,7 +525,7 @@ fn home_and_end_move_selection_when_query_not_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert_eq!(app.current_row, Some(0));
+    assert_eq!(app.runtime.current_row, Some(0));
 
     run_shortcuts_frame(
         &mut app,
@@ -538,7 +538,7 @@ fn home_and_end_move_selection_when_query_not_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert_eq!(app.current_row, Some(4));
+    assert_eq!(app.runtime.current_row, Some(4));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -547,10 +547,10 @@ fn page_up_down_move_selection_when_query_not_focused() {
     let root = test_root("shortcut-page-no-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = (0..30)
+    app.runtime.results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.current_row = Some(15);
+    app.runtime.current_row = Some(15);
 
     run_shortcuts_frame(
         &mut app,
@@ -563,7 +563,7 @@ fn page_up_down_move_selection_when_query_not_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert_eq!(app.current_row, Some(5));
+    assert_eq!(app.runtime.current_row, Some(5));
 
     run_shortcuts_frame(
         &mut app,
@@ -576,7 +576,7 @@ fn page_up_down_move_selection_when_query_not_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert_eq!(app.current_row, Some(15));
+    assert_eq!(app.runtime.current_row, Some(15));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -587,8 +587,8 @@ fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -601,8 +601,8 @@ fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert!(app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
 
     run_shortcuts_frame(
         &mut app,
@@ -615,8 +615,8 @@ fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert!(!app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(!app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -627,8 +627,8 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -641,8 +641,8 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert!(app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
 
     run_shortcuts_frame(
         &mut app,
@@ -655,8 +655,8 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert!(!app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(!app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -667,8 +667,8 @@ fn regression_tab_shortcut_clears_focus_traversal_target() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
     let ctx = egui::Context::default();
     let dummy_focus = egui::Id::new("dummy-focus");
     ctx.memory_mut(|m| m.request_focus(dummy_focus));
@@ -688,8 +688,8 @@ fn regression_tab_shortcut_clears_focus_traversal_target() {
     let focused_after = ctx.memory(|m| m.focused());
     let _ = ctx.end_pass();
 
-    assert!(app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
     assert!(focused_after.is_none());
     let _ = fs::remove_dir_all(&root);
 }
@@ -701,8 +701,8 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
     let ctx = egui::Context::default();
     ctx.memory_mut(|m| m.request_focus(app.ui.query_input_id));
 
@@ -721,7 +721,7 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
     let query_still_focused = ctx.memory(|m| m.has_focus(app.ui.query_input_id));
     let _ = ctx.end_pass();
 
-    assert!(app.pinned_paths.contains(&selected));
+    assert!(app.runtime.pinned_paths.contains(&selected));
     assert!(query_still_focused);
     let _ = fs::remove_dir_all(&root);
 }
@@ -731,12 +731,12 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
     let root = test_root("regression-arrow-query-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![
+    app.runtime.results = vec![
         (root.join("a.txt"), 0.0),
         (root.join("b.txt"), 0.0),
         (root.join("c.txt"), 0.0),
     ];
-    app.current_row = Some(0);
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -749,7 +749,7 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert_eq!(app.current_row, Some(1));
+    assert_eq!(app.runtime.current_row, Some(1));
 
     run_shortcuts_frame(
         &mut app,
@@ -762,7 +762,7 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert_eq!(app.current_row, Some(0));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -773,8 +773,8 @@ fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -787,8 +787,8 @@ fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
             modifiers: emacs_shortcut_modifiers(false),
         }],
     );
-    assert!(app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
 
     run_shortcuts_frame(
         &mut app,
@@ -801,8 +801,8 @@ fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
             modifiers: emacs_shortcut_modifiers(false),
         }],
     );
-    assert!(!app.pinned_paths.contains(&selected));
-    assert_eq!(app.current_row, Some(0));
+    assert!(!app.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -823,8 +823,8 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
         fs::set_permissions(&selected, perms).expect("set permissions");
     }
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -837,9 +837,9 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
             modifiers: emacs_shortcut_modifiers(false),
         }],
     );
-    assert!(is_action_notice(&app.notice));
+    assert!(is_action_notice(&app.runtime.notice));
 
-    app.notice.clear();
+    app.runtime.notice.clear();
     run_shortcuts_frame(
         &mut app,
         true,
@@ -851,7 +851,7 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
             modifiers: emacs_shortcut_modifiers(false),
         }],
     );
-    assert!(is_action_notice(&app.notice));
+    assert!(is_action_notice(&app.runtime.notice));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -872,8 +872,8 @@ fn regression_enter_executes_regardless_of_query_focus() {
         fs::set_permissions(&selected, perms).expect("set permissions");
     }
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.results = vec![(selected, 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected, 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -886,9 +886,9 @@ fn regression_enter_executes_regardless_of_query_focus() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert!(is_action_notice(&app.notice));
+    assert!(is_action_notice(&app.runtime.notice));
 
-    app.notice.clear();
+    app.runtime.notice.clear();
     run_shortcuts_frame(
         &mut app,
         false,
@@ -900,7 +900,7 @@ fn regression_enter_executes_regardless_of_query_focus() {
             modifiers: egui::Modifiers::NONE,
         }],
     );
-    assert!(is_action_notice(&app.notice));
+    assert!(is_action_notice(&app.runtime.notice));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -916,8 +916,8 @@ fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.worker_bus.action.tx = action_tx_req;
     app.worker_bus.action.rx = action_rx_res;
-    app.results = vec![(selected_file.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected_file.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -968,8 +968,8 @@ fn deferred_copy_shortcut_copies_selected_path_even_with_query_text() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query text".to_string());
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
     app.ui.pending_copy_shortcut = true;
     let ctx = egui::Context::default();
 
@@ -977,7 +977,7 @@ fn deferred_copy_shortcut_copies_selected_path_even_with_query_text() {
 
     assert!(!app.ui.pending_copy_shortcut);
     assert!(app.ui.focus_query_requested);
-    assert!(app.notice.contains(&format!(
+    assert!(app.runtime.notice.contains(&format!(
         "Copied path: {}",
         normalize_path_for_display(&selected)
     )));

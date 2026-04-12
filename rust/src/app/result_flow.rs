@@ -104,7 +104,7 @@ impl FlistWalkerApp {
     /// 現在の base result snapshot から表示用の整列結果を生成する。
     pub(super) fn build_sorted_results(&self, mode: ResultSortMode) -> Vec<(PathBuf, f64)> {
         Self::build_sorted_results_from(
-            &self.base_results,
+            &self.runtime.base_results,
             mode,
             self.cache.sort_metadata.get_map(),
         )

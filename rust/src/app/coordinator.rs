@@ -154,22 +154,22 @@ impl FlistWalkerApp {
     /// 現在の進行状況と notice から status line を再構築する。
     pub(super) fn refresh_status_line(&mut self) {
         let indexed_count = if self.indexing.in_progress {
-            if self.index.entries.is_empty() {
-                self.all_entries.len()
+            if self.runtime.index.entries.is_empty() {
+                self.runtime.all_entries.len()
             } else {
-                self.index.entries.len()
+                self.runtime.index.entries.len()
             }
         } else {
-            self.all_entries.len()
+            self.runtime.all_entries.len()
         };
         let memory = self.memory_usage_text();
-        self.status_line = build_status_line(StatusLineContext {
+        self.runtime.status_line = build_status_line(StatusLineContext {
             active_tab: self.tabs.active_tab,
             tab_count: self.tabs.len(),
             indexed_count,
-            results_len: self.results.len(),
-            limit: self.limit,
-            pinned_paths_len: self.pinned_paths.len(),
+            results_len: self.runtime.results.len(),
+            limit: self.runtime.limit,
+            pinned_paths_len: self.runtime.pinned_paths.len(),
             search_in_progress: self.search.in_progress(),
             indexing_in_progress: self.indexing.in_progress,
             action_in_progress: self.worker_bus.action.in_progress,
@@ -177,10 +177,10 @@ impl FlistWalkerApp {
             filelist_cancel_requested: self.features.filelist.cancel_requested,
             update_in_progress: self.features.update.in_progress,
             sort_in_progress: self.worker_bus.sort.in_progress,
-            history_search_active: self.query_state.history_search_active,
-            history_search_results_len: self.query_state.history_search_results.len(),
-            query_history_len: self.query_state.query_history.len(),
-            notice: &self.notice,
+            history_search_active: self.runtime.query_state.history_search_active,
+            history_search_results_len: self.runtime.query_state.history_search_results.len(),
+            query_history_len: self.runtime.query_state.query_history.len(),
+            notice: &self.runtime.notice,
             memory_text: memory,
         });
     }
@@ -200,13 +200,13 @@ impl FlistWalkerApp {
 
     /// notice を更新し status line と同期する。
     pub(super) fn set_notice(&mut self, notice: impl Into<String>) {
-        self.notice = notice.into();
+        self.runtime.notice = notice.into();
         self.refresh_status_line();
     }
 
     /// notice を消去し status line を再計算する。
     pub(super) fn clear_notice(&mut self) {
-        self.notice.clear();
+        self.runtime.notice.clear();
         self.refresh_status_line();
     }
 
@@ -230,7 +230,7 @@ impl FlistWalkerApp {
 
     /// 現在の index source を status 向け文言へ整形する。
     pub(super) fn source_text(&self) -> String {
-        match &self.index.source {
+        match &self.runtime.index.source {
             IndexSource::FileList(path) => format!(
                 "Source: FileList ({})",
                 path.file_name()

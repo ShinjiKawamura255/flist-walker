@@ -17,7 +17,7 @@ fn top_action_labels_show_history_actions_while_history_search_is_active() {
     let root = test_root("render-history-actions");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.query_state.history_search_active = true;
+    app.runtime.query_state.history_search_active = true;
 
     assert_eq!(
         app.top_action_labels(),
@@ -61,7 +61,7 @@ fn dispatch_render_commands_consumes_top_action_queue() {
     let root = test_root("render-command-top-action");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.pinned_paths.insert(root.join("keep.txt"));
+    app.runtime.pinned_paths.insert(root.join("keep.txt"));
     let ctx = egui::Context::default();
 
     app.queue_render_command(RenderCommand::TopAction(
@@ -69,7 +69,7 @@ fn dispatch_render_commands_consumes_top_action_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.pinned_paths.is_empty());
+    assert!(app.runtime.pinned_paths.is_empty());
     assert!(app.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
@@ -94,7 +94,7 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     app.dispatch_render_commands(&ctx);
 
     assert!(app.features.filelist.pending_confirmation.is_none());
-    assert_eq!(app.notice, "Create File List canceled");
+    assert_eq!(app.runtime.notice, "Create File List canceled");
     assert!(app.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
@@ -144,7 +144,7 @@ fn dispatch_render_commands_consumes_tab_bar_move_queue() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     app.create_new_tab();
-    let active_root = app.root.clone();
+    let active_root = app.runtime.root.clone();
     let middle_root = app.tabs[1].root.clone();
     let last_root = app.tabs[2].root.clone();
     let ctx = egui::Context::default();

@@ -146,7 +146,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn top_action_labels(&self) -> Vec<&'static str> {
-        if self.query_state.history_search_active {
+        if self.runtime.query_state.history_search_active {
             return vec!["Apply History", "Cancel History Search"];
         }
 
@@ -216,7 +216,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
-        if self.query_state.history_search_active {
+        if self.runtime.query_state.history_search_active {
             self.ui.preview_resize_in_progress = false;
             self.render_history_search_results(ui);
             self.ui.scroll_to_current = false;
@@ -246,7 +246,7 @@ impl FlistWalkerApp {
                                 .show(ui, |ui| {
                                     ui.add_sized(
                                         egui::vec2(preview_width, preview_height),
-                                        egui::TextEdit::multiline(&mut self.preview)
+                                        egui::TextEdit::multiline(&mut self.runtime.preview)
                                             .interactive(false)
                                             .font(egui::TextStyle::Monospace)
                                             .desired_width(f32::INFINITY)
@@ -295,7 +295,7 @@ impl FlistWalkerApp {
                 egui::vec2(row_width, row_height),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
-                    let mut selected = self.result_sort_mode;
+                    let mut selected = self.runtime.result_sort_mode;
                     egui::ComboBox::from_id_salt("results-sort-selector")
                         .width(Self::RESULT_SORT_SELECTOR_WIDTH)
                         .selected_text(selected.label())
@@ -314,7 +314,7 @@ impl FlistWalkerApp {
                             }
                         });
                     ui.label("Sorted by");
-                    if selected != self.result_sort_mode {
+                    if selected != self.runtime.result_sort_mode {
                         self.set_result_sort_mode(selected);
                     }
                 },
@@ -334,12 +334,12 @@ impl FlistWalkerApp {
                 let row_width = ui.available_width().max(0.0);
                 let row_height = Self::result_row_height(ui);
 
-                for i in 0..self.results.len() {
-                    let Some((path, _score)) = self.results.get(i) else {
+                for i in 0..self.runtime.results.len() {
+                    let Some((path, _score)) = self.runtime.results.get(i) else {
                         continue;
                     };
                     let path = path.clone();
-                    let is_current = self.current_row == Some(i);
+                    let is_current = self.runtime.current_row == Some(i);
                     let (rect, response) = ui.allocate_exact_size(
                         egui::vec2(row_width, row_height),
                         egui::Sense::click(),
@@ -358,12 +358,12 @@ impl FlistWalkerApp {
                     }
                 }
                 if let Some(i) = clicked_row {
-                    self.current_row = Some(i);
+                    self.runtime.current_row = Some(i);
                     self.request_preview_for_current();
                     self.refresh_status_line();
                 }
                 if let Some(i) = execute_row {
-                    self.current_row = Some(i);
+                    self.runtime.current_row = Some(i);
                     let open_parent_for_files = ui.input(|i| i.modifiers.shift);
                     self.execute_selected_for_activation(open_parent_for_files);
                 }
@@ -392,9 +392,9 @@ impl FlistWalkerApp {
         is_current: bool,
         prefer_relative: bool,
     ) {
-        let is_pinned = self.pinned_paths.contains(path);
+        let is_pinned = self.runtime.pinned_paths.contains(path);
         let kind = self.find_entry_kind(path);
-        let display = display_path_with_mode(path, &self.root, prefer_relative);
+        let display = display_path_with_mode(path, &self.runtime.root, prefer_relative);
         let positions = self.highlight_positions_for_path_cached(path, prefer_relative);
         let job = self.build_result_row_job(
             ui,
@@ -489,8 +489,8 @@ impl FlistWalkerApp {
         ui.heading("History Results");
         ui.label(format!(
             "{} items in history, {} matches",
-            self.query_state.query_history.len(),
-            self.query_state.history_search_results.len()
+            self.runtime.query_state.query_history.len(),
+            self.runtime.query_state.history_search_results.len()
         ));
         egui::ScrollArea::vertical()
             .drag_to_scroll(false)
@@ -499,8 +499,8 @@ impl FlistWalkerApp {
                 let mut clicked_row: Option<usize> = None;
                 let mut accept_row: Option<usize> = None;
 
-                for (index, entry) in self.query_state.history_search_results.iter().enumerate() {
-                    let is_current = self.query_state.history_search_current == Some(index);
+                for (index, entry) in self.runtime.query_state.history_search_results.iter().enumerate() {
+                    let is_current = self.runtime.query_state.history_search_current == Some(index);
                     let prefix = if is_current { "▶" } else { "·" };
                     let text = format!("{prefix} {entry}");
                     let selected_bg = if ui.visuals().dark_mode {
@@ -534,10 +534,10 @@ impl FlistWalkerApp {
                 }
 
                 if let Some(index) = clicked_row {
-                    self.query_state.history_search_current = Some(index);
+                    self.runtime.query_state.history_search_current = Some(index);
                 }
                 if let Some(index) = accept_row {
-                    self.query_state.history_search_current = Some(index);
+                    self.runtime.query_state.history_search_current = Some(index);
                     self.accept_history_search();
                 }
             });
@@ -1004,33 +1004,33 @@ impl FlistWalkerApp {
 
             ui.horizontal(|ui| {
                 let use_filelist_changed = ui
-                    .checkbox(&mut self.use_filelist, "Use FileList")
+                    .checkbox(&mut self.runtime.use_filelist, "Use FileList")
                     .changed();
-                if ui.checkbox(&mut self.use_regex, "Regex").changed() {
+                if ui.checkbox(&mut self.runtime.use_regex, "Regex").changed() {
                     self.invalidate_result_sort(true);
                     self.update_results();
                 }
-                if ui.checkbox(&mut self.ignore_case, "Ignore Case").changed() {
+                if ui.checkbox(&mut self.runtime.ignore_case, "Ignore Case").changed() {
                     self.invalidate_result_sort(true);
                     self.update_results();
                 }
                 let (files_changed, dirs_changed) = if self.use_filelist_requires_locked_filters() {
                     let mut forced_changed = false;
-                    if !self.include_files || !self.include_dirs {
-                        self.include_files = true;
-                        self.include_dirs = true;
+                    if !self.runtime.include_files || !self.runtime.include_dirs {
+                        self.runtime.include_files = true;
+                        self.runtime.include_dirs = true;
                         forced_changed = true;
                     }
-                    ui.add_enabled(false, egui::Checkbox::new(&mut self.include_files, "Files"));
+                    ui.add_enabled(false, egui::Checkbox::new(&mut self.runtime.include_files, "Files"));
                     ui.add_enabled(
                         false,
-                        egui::Checkbox::new(&mut self.include_dirs, "Folders"),
+                        egui::Checkbox::new(&mut self.runtime.include_dirs, "Folders"),
                     );
                     (forced_changed, forced_changed)
                 } else {
                     (
-                        ui.checkbox(&mut self.include_files, "Files").changed(),
-                        ui.checkbox(&mut self.include_dirs, "Folders").changed(),
+                        ui.checkbox(&mut self.runtime.include_files, "Files").changed(),
+                        ui.checkbox(&mut self.runtime.include_dirs, "Folders").changed(),
                     )
                 };
                 if ui.checkbox(&mut self.ui.show_preview, "Preview").changed() {
@@ -1049,19 +1049,19 @@ impl FlistWalkerApp {
                 );
             });
 
-            if self.query_state.history_search_active {
+            if self.runtime.query_state.history_search_active {
                 ui.label(
                     egui::RichText::new("History Search")
                         .strong()
                         .color(ui.visuals().strong_text_color()),
                 );
             }
-            let editing_history_search = self.query_state.history_search_active;
+            let editing_history_search = self.runtime.query_state.history_search_active;
             let query_input_id = self.ui.query_input_id;
             let mut output = egui::TextEdit::singleline(if editing_history_search {
-                &mut self.query_state.history_search_query
+                &mut self.runtime.query_state.history_search_query
             } else {
-                &mut self.query_state.query
+                &mut self.runtime.query_state.query
             })
                 .id(query_input_id)
                 .lock_focus(true)
@@ -1101,7 +1101,7 @@ impl FlistWalkerApp {
                     self.mark_query_edited();
                     if output.response.has_focus() {
                         let end = query_cursor_after_fallback
-                            .unwrap_or_else(|| Self::char_count(&self.query_state.query));
+                            .unwrap_or_else(|| Self::char_count(&self.runtime.query_state.query));
                         output
                             .state
                             .cursor
@@ -1117,9 +1117,9 @@ impl FlistWalkerApp {
                     self.update_results();
                 }
                 if output.response.changed() {
-                    let normalized = Self::normalize_singleline_input(&mut self.query_state.query);
+                    let normalized = Self::normalize_singleline_input(&mut self.runtime.query_state.query);
                     if normalized && output.response.has_focus() {
-                        let end = Self::char_count(&self.query_state.query);
+                        let end = Self::char_count(&self.runtime.query_state.query);
                         output
                             .state
                             .cursor
@@ -1133,18 +1133,18 @@ impl FlistWalkerApp {
                         "query_text_changed",
                         &format!(
                             "chars={} has_half_space={} has_full_space={}",
-                            self.query_state.query.chars().count(),
-                            self.query_state.query.contains(' '),
-                            self.query_state.query.contains('\u{3000}')
+                            self.runtime.query_state.query.chars().count(),
+                            self.runtime.query_state.query.contains(' '),
+                            self.runtime.query_state.query.contains('\u{3000}')
                         ),
                     );
                     self.update_results();
                 }
             } else if output.response.changed() {
-                if Self::normalize_singleline_input(&mut self.query_state.history_search_query)
+                if Self::normalize_singleline_input(&mut self.runtime.query_state.history_search_query)
                     && output.response.has_focus()
                 {
-                    let end = Self::char_count(&self.query_state.history_search_query);
+                    let end = Self::char_count(&self.runtime.query_state.history_search_query);
                     output
                         .state
                         .cursor
@@ -1218,7 +1218,7 @@ impl FlistWalkerApp {
                         egui::Layout::left_to_right(egui::Align::Center),
                         |ui| {
                             ui.set_width(status_width);
-                            ui.add(egui::Label::new(&self.status_line).truncate());
+                            ui.add(egui::Label::new(&self.runtime.status_line).truncate());
                         },
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

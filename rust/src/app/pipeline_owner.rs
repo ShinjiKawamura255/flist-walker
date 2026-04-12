@@ -66,13 +66,14 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn update_results(&mut self) {
-        if self.app.query_state.query.trim().is_empty() {
+        if self.app.runtime.query_state.query.trim().is_empty() {
             self.app.search.clear_active_request_state();
             let results = self
                 .app
+                .runtime
                 .entries
                 .iter()
-                .take(self.app.limit)
+                .take(self.app.runtime.limit)
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
@@ -92,19 +93,19 @@ impl<'a> PipelineOwner<'a> {
         }
 
         let source_is_all_entries =
-            !self.app.indexing.in_progress || self.app.index.entries.is_empty();
+            !self.app.indexing.in_progress || self.app.runtime.index.entries.is_empty();
         let base = if !source_is_all_entries {
-            &self.app.index.entries
+            &self.app.runtime.index.entries
         } else {
-            self.app.all_entries.as_ref()
+            self.app.runtime.all_entries.as_ref()
         };
-        if source_is_all_entries && self.app.include_files && self.app.include_dirs {
-            self.app.entries = Arc::clone(&self.app.all_entries);
+        if source_is_all_entries && self.app.runtime.include_files && self.app.runtime.include_dirs {
+            self.app.runtime.entries = Arc::clone(&self.app.runtime.all_entries);
         } else {
-            self.app.entries = Arc::new(self.filtered_entries(base));
+            self.app.runtime.entries = Arc::new(self.filtered_entries(base));
         }
         if self.app.indexing.in_progress {
-            let entries = Arc::clone(&self.app.entries);
+            let entries = Arc::clone(&self.app.runtime.entries);
             let source_entries = entries.as_ref().to_vec();
             Self::overwrite_entries_vec(
                 &mut self.app.indexing.incremental_filtered_entries,
@@ -113,16 +114,17 @@ impl<'a> PipelineOwner<'a> {
         } else {
             self.app.indexing.incremental_filtered_entries.clear();
         }
-        self.app.indexing.last_search_snapshot_len = self.app.entries.len();
+        self.app.indexing.last_search_snapshot_len = self.app.runtime.entries.len();
         self.app.indexing.search_rerun_pending = false;
 
-        if self.app.query_state.query.trim().is_empty() {
+        if self.app.runtime.query_state.query.trim().is_empty() {
             self.app.search.clear_active_request_state();
             let results = self
                 .app
+                .runtime
                 .entries
                 .iter()
-                .take(self.app.limit)
+                .take(self.app.runtime.limit)
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
@@ -138,9 +140,10 @@ impl<'a> PipelineOwner<'a> {
         self.app.search.clear_active_request_state();
         let results = self
             .app
+            .runtime
             .entries
             .iter()
-            .take(self.app.limit)
+            .take(self.app.runtime.limit)
             .cloned()
             .map(|entry| (entry.path, 0.0))
             .collect();
@@ -148,7 +151,7 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn maybe_refresh_incremental_search(&mut self) {
-        if self.app.query_state.query.trim().is_empty() {
+        if self.app.runtime.query_state.query.trim().is_empty() {
             return;
         }
 
@@ -158,7 +161,7 @@ impl<'a> PipelineOwner<'a> {
                 return;
             }
             self.sync_entries_from_incremental();
-            self.app.indexing.last_search_snapshot_len = self.app.entries.len();
+            self.app.indexing.last_search_snapshot_len = self.app.runtime.entries.len();
             self.app.indexing.last_incremental_results_refresh = Instant::now();
             self.update_results();
             self.app.indexing.search_resume_pending = false;
@@ -200,12 +203,12 @@ impl<'a> PipelineOwner<'a> {
     fn build_active_search_request(&self, request_id: u64) -> SearchRequest {
         SearchRequest {
             request_id,
-            query: self.app.query_state.query.clone(),
-            entries: Arc::clone(&self.app.entries),
-            limit: self.app.limit,
-            use_regex: self.app.use_regex,
-            ignore_case: self.app.ignore_case,
-            root: self.app.root.clone(),
+            query: self.app.runtime.query_state.query.clone(),
+            entries: Arc::clone(&self.app.runtime.entries),
+            limit: self.app.runtime.limit,
+            use_regex: self.app.runtime.use_regex,
+            ignore_case: self.app.runtime.ignore_case,
+            root: self.app.runtime.root.clone(),
             prefer_relative: self.app.prefer_relative_display(),
         }
     }
@@ -221,11 +224,11 @@ impl<'a> PipelineOwner<'a> {
     fn sync_entries_from_incremental(&mut self) {
         let incremental = self.app.indexing.incremental_filtered_entries.clone();
         let incremental_entries = incremental.clone();
-        Self::overwrite_entries_arc(&mut self.app.entries, &incremental_entries);
+        Self::overwrite_entries_arc(&mut self.app.runtime.entries, &incremental_entries);
     }
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {
-        let limit = self.app.limit;
+        let limit = self.app.runtime.limit;
         let (request_id, req) = {
             let shell = &mut self.app.shell;
             let (tabs, search) = (&mut shell.tabs, &mut shell.search);

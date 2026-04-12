@@ -88,7 +88,7 @@ fn set_as_default_is_disabled_while_restore_tabs_env_is_enabled() {
     app.set_current_root_as_default_with(true);
 
     assert!(app.features.root_browser.default_root.is_none());
-    assert!(app.notice.contains("Set as default is disabled"));
+    assert!(app.runtime.notice.contains("Set as default is disabled"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -213,8 +213,8 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
 
     assert_eq!(app.tabs.len(), 2);
     assert_eq!(app.tabs.active_tab, 1);
-    assert_eq!(app.root, root_b);
-    assert_eq!(app.query_state.query, "beta");
+    assert_eq!(app.runtime.root, root_b);
+    assert_eq!(app.runtime.query_state.query, "beta");
     assert_eq!(app.tabs[1].tab_accent, Some(TabAccentColor::Crimson));
     assert!(!app.tabs.pending_restore_refresh);
     assert!(app.tabs[0].pending_restore_refresh);
@@ -252,7 +252,7 @@ fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
         0,
     );
 
-    assert_eq!(app.current_row, Some(0));
+    assert_eq!(app.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -412,7 +412,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     app.poll_index_response();
 
     assert_eq!(app.tabs.active_tab, 1);
-    assert_eq!(app.root, root_b);
+    assert_eq!(app.runtime.root, root_b);
     assert!(app.tabs[0].pending_restore_refresh);
     assert_eq!(app.tabs[0].result_state.preview, "preview-body");
     assert_eq!(app.tabs[0].index_state.entries.len(), 1);
@@ -426,12 +426,12 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     assert_eq!(refresh_req.root, root_a);
     assert!(index_req_rx.try_recv().is_err());
     assert_eq!(app.tabs.active_tab, 0);
-    assert_eq!(app.root, root_a);
+    assert_eq!(app.runtime.root, root_a);
     assert!(!app.tabs.pending_restore_refresh);
     assert!(!app.tabs[0].pending_restore_refresh);
-    assert_eq!(app.preview, "preview-body");
-    assert_eq!(app.results.len(), 1);
-    assert_eq!(app.results[0].0, indexed_file);
+    assert_eq!(app.runtime.preview, "preview-body");
+    assert_eq!(app.runtime.results.len(), 1);
+    assert_eq!(app.runtime.results[0].0, indexed_file);
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);

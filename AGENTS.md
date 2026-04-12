@@ -72,3 +72,15 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- `architecture-score-80` の作業では、開始前に次の計画書を上から順に読むこと。
+  - [docs/CHANGE-PLAN-20260412-roadmap-architecture-score-uplift.md](docs/CHANGE-PLAN-20260412-roadmap-architecture-score-uplift.md)
+  - [docs/CHANGE-PLAN-20260412-slice-a-shell-boundary-hardening.md](docs/CHANGE-PLAN-20260412-slice-a-shell-boundary-hardening.md)
+  - [docs/CHANGE-PLAN-20260412-slice-b-routing-and-lifecycle-consolidation.md](docs/CHANGE-PLAN-20260412-slice-b-routing-and-lifecycle-consolidation.md)
+  - [docs/CHANGE-PLAN-20260412-slice-c-closure-validation.md](docs/CHANGE-PLAN-20260412-slice-c-closure-validation.md)
+- roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
+- 実装開始後は slice 単位で進め、`closure slice` を完了するまで roadmap を閉じないこと。
+- phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として確認すること。
+- 実装順は計画書に従い、scope / order / risk が変わる場合は先に計画を更新すること。
+- 完了後はこの一時セクションを削除すること。

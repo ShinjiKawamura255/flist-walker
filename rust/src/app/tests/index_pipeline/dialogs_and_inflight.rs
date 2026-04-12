@@ -7,16 +7,16 @@ fn request_index_refresh_reenables_files_when_both_filters_are_off() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.include_files = false;
-    app.include_dirs = false;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = false;
 
     app.request_index_refresh();
 
     let req = rx.try_recv().expect("index request should be sent");
     assert!(req.include_files);
     assert!(!req.include_dirs);
-    assert!(app.include_files);
-    assert!(!app.include_dirs);
+    assert!(app.runtime.include_files);
+    assert!(!app.runtime.include_dirs);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -27,9 +27,9 @@ fn request_index_refresh_uses_latest_toggle_state() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.use_filelist = false;
-    app.include_files = false;
-    app.include_dirs = true;
+    app.runtime.use_filelist = false;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
 
     app.request_index_refresh();
 
@@ -91,9 +91,9 @@ fn files_toggle_change_requests_reindex() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.use_filelist = false;
-    app.include_files = false;
-    app.include_dirs = true;
+    app.runtime.use_filelist = false;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
 
     app.maybe_reindex_from_filter_toggles(false, true, false);
 
@@ -110,15 +110,15 @@ fn use_filelist_forces_type_filters_to_both_enabled() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.use_filelist = true;
-    app.include_files = false;
-    app.include_dirs = true;
+    app.runtime.use_filelist = true;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
 
     app.maybe_reindex_from_filter_toggles(true, false, false);
 
     let req = rx.try_recv().expect("index request should be sent");
-    assert!(app.include_files);
-    assert!(app.include_dirs);
+    assert!(app.runtime.include_files);
+    assert!(app.runtime.include_dirs);
     assert!(req.use_filelist);
     assert!(req.include_files);
     assert!(req.include_dirs);
@@ -132,10 +132,10 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<IndexRequest>();
     app.indexing.tx = tx;
-    app.use_filelist = true;
-    app.index.source = IndexSource::Walker;
-    app.include_files = false;
-    app.include_dirs = true;
+    app.runtime.use_filelist = true;
+    app.runtime.index.source = IndexSource::Walker;
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
 
     app.maybe_reindex_from_filter_toggles(true, false, false);
 
@@ -143,8 +143,8 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     assert!(req.use_filelist);
     assert!(!req.include_files);
     assert!(req.include_dirs);
-    assert!(!app.include_files);
-    assert!(app.include_dirs);
+    assert!(!app.runtime.include_files);
+    assert!(app.runtime.include_dirs);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -155,8 +155,8 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.worker_bus.filelist.tx = filelist_tx;
-    app.use_filelist = true;
-    app.index.source = IndexSource::Walker;
+    app.runtime.use_filelist = true;
+    app.runtime.index.source = IndexSource::Walker;
     app.indexing.in_progress = false;
 
     app.create_filelist();
@@ -178,8 +178,8 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
     let root = test_root("dialog-arrow-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
-    app.current_row = Some(1);
+    app.runtime.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
+    app.runtime.current_row = Some(1);
     app.features.filelist.pending_ancestor_confirmation =
         Some(PendingFileListAncestorConfirmation {
             tab_id: app.current_tab_id().expect("tab id"),
@@ -199,7 +199,7 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
         }],
     );
 
-    assert_eq!(app.current_row, Some(1));
+    assert_eq!(app.runtime.current_row, Some(1));
     assert_eq!(
         app.features.filelist.active_dialog,
         Some(FileListDialogKind::Ancestor)
@@ -262,8 +262,8 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     let root = test_root("dialog-enter-confirm");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.results = vec![(root.join("a.txt"), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.results = vec![(root.join("a.txt"), 0.0)];
+    app.runtime.current_row = Some(0);
     app.features.filelist.pending_use_walker_confirmation =
         Some(PendingFileListUseWalkerConfirmation {
             source_tab_id: app.current_tab_id().expect("tab id"),
@@ -288,7 +288,7 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
         .filelist
         .pending_use_walker_confirmation
         .is_none());
-    assert!(app.notice.contains("Preparing background Walker index"));
+    assert!(app.runtime.notice.contains("Preparing background Walker index"));
     let _ = fs::remove_dir_all(&root);
 }
 

@@ -3,13 +3,13 @@ use super::*;
 impl FlistWalkerApp {
     /// pinned selection 優先で action 対象 path を列挙する。
     fn selected_paths(&self) -> Vec<PathBuf> {
-        if !self.pinned_paths.is_empty() {
-            let mut out: Vec<PathBuf> = self.pinned_paths.iter().cloned().collect();
+        if !self.runtime.pinned_paths.is_empty() {
+            let mut out: Vec<PathBuf> = self.runtime.pinned_paths.iter().cloned().collect();
             out.sort();
             return out;
         }
-        self.current_row
-            .and_then(|row| self.results.get(row).map(|(p, _)| vec![p.clone()]))
+        self.runtime.current_row
+            .and_then(|row| self.runtime.results.get(row).map(|(p, _)| vec![p.clone()]))
             .unwrap_or_default()
     }
 
@@ -101,7 +101,7 @@ impl FlistWalkerApp {
 
     /// pinned selection を全解除する。
     pub(super) fn clear_pinned(&mut self) {
-        self.pinned_paths.clear();
+        self.runtime.pinned_paths.clear();
         self.set_notice("Cleared pinned selections");
     }
 
@@ -113,12 +113,12 @@ impl FlistWalkerApp {
     /// 結果一覧内の current row を相対移動する。
     pub(super) fn move_row(&mut self, delta: isize) {
         self.commit_query_history_if_needed(true);
-        if self.results.is_empty() {
+        if self.runtime.results.is_empty() {
             return;
         }
-        let row = self.current_row.unwrap_or(0) as isize;
-        let next = (row + delta).clamp(0, self.results.len() as isize - 1) as usize;
-        self.current_row = Some(next);
+        let row = self.runtime.current_row.unwrap_or(0) as isize;
+        let next = (row + delta).clamp(0, self.runtime.results.len() as isize - 1) as usize;
+        self.runtime.current_row = Some(next);
         self.ui.scroll_to_current = true;
         self.request_preview_for_current();
         self.refresh_status_line();
@@ -126,13 +126,13 @@ impl FlistWalkerApp {
 
     /// current row を pinned selection に追加または解除する。
     pub(super) fn toggle_pin_current(&mut self) {
-        if let Some(row) = self.current_row {
-            if let Some((path, _)) = self.results.get(row) {
+        if let Some(row) = self.runtime.current_row {
+            if let Some((path, _)) = self.runtime.results.get(row) {
                 let path = path.clone();
-                if self.pinned_paths.contains(&path) {
-                    self.pinned_paths.remove(&path);
+                if self.runtime.pinned_paths.contains(&path) {
+                    self.runtime.pinned_paths.remove(&path);
                 } else {
-                    self.pinned_paths.insert(path);
+                    self.runtime.pinned_paths.insert(path);
                 }
                 self.refresh_status_line();
             }
@@ -142,10 +142,10 @@ impl FlistWalkerApp {
     /// 先頭行へ移動し preview を更新する。
     pub(super) fn move_to_first_row(&mut self) {
         self.commit_query_history_if_needed(true);
-        if self.results.is_empty() {
+        if self.runtime.results.is_empty() {
             return;
         }
-        self.current_row = Some(0);
+        self.runtime.current_row = Some(0);
         self.ui.scroll_to_current = true;
         self.request_preview_for_current();
         self.refresh_status_line();
@@ -154,10 +154,10 @@ impl FlistWalkerApp {
     /// 末尾行へ移動し preview を更新する。
     pub(super) fn move_to_last_row(&mut self) {
         self.commit_query_history_if_needed(true);
-        if self.results.is_empty() {
+        if self.runtime.results.is_empty() {
             return;
         }
-        self.current_row = Some(self.results.len().saturating_sub(1));
+        self.runtime.current_row = Some(self.runtime.results.len().saturating_sub(1));
         self.ui.scroll_to_current = true;
         self.request_preview_for_current();
         self.refresh_status_line();
@@ -165,14 +165,14 @@ impl FlistWalkerApp {
 
     /// query と選択状態を初期化し一覧表示へ戻す。
     pub(super) fn clear_query_and_selection(&mut self) {
-        self.query_state.query.clear();
+        self.runtime.query_state.query.clear();
         self.reset_query_history_navigation();
         self.reset_history_search_state();
-        self.query_state.query_history_dirty_since = None;
-        self.pinned_paths.clear();
+        self.runtime.query_state.query_history_dirty_since = None;
+        self.runtime.pinned_paths.clear();
         // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
-        self.current_row = Some(0);
-        self.preview.clear();
+        self.runtime.current_row = Some(0);
+        self.runtime.preview.clear();
         self.update_results();
         self.ui.focus_query_requested = true;
         self.set_notice("Cleared selection and query");
@@ -289,7 +289,7 @@ impl FlistWalkerApp {
         }
 
         if let Some((start, end)) = Self::selection_range(*cursor, *anchor) {
-            Self::remove_char_range(&mut self.query_state.query, start, end);
+            Self::remove_char_range(&mut self.runtime.query_state.query, start, end);
             *cursor = start;
             *anchor = start;
             return (true, true);
@@ -297,7 +297,7 @@ impl FlistWalkerApp {
 
         if *cursor > 0 {
             let start = *cursor - 1;
-            Self::remove_char_range(&mut self.query_state.query, start, *cursor);
+            Self::remove_char_range(&mut self.runtime.query_state.query, start, *cursor);
             *cursor = start;
             *anchor = start;
             return (true, true);
@@ -326,7 +326,7 @@ impl FlistWalkerApp {
 
         let mut text_changed = false;
         let mut cursor_changed = false;
-        let char_len = Self::char_count(&self.query_state.query);
+        let char_len = Self::char_count(&self.runtime.query_state.query);
         let ccursor =
             output.state.cursor.char_range().unwrap_or_else(|| {
                 egui::text::CCursorRange::one(egui::text::CCursor::new(char_len))
@@ -339,7 +339,7 @@ impl FlistWalkerApp {
             anchor = 0;
             cursor_changed = true;
         } else if pressed(egui::Key::E) {
-            let end = Self::char_count(&self.query_state.query);
+            let end = Self::char_count(&self.runtime.query_state.query);
             cursor = end;
             anchor = end;
             cursor_changed = true;
@@ -351,7 +351,7 @@ impl FlistWalkerApp {
                 cursor_changed = true;
             }
         } else if pressed(egui::Key::F) {
-            let end = Self::char_count(&self.query_state.query);
+            let end = Self::char_count(&self.runtime.query_state.query);
             let next = (cursor + 1).min(end);
             if next != cursor {
                 cursor = next;
@@ -365,29 +365,29 @@ impl FlistWalkerApp {
             cursor_changed |= moved;
         } else if pressed(egui::Key::D) {
             if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                Self::remove_char_range(&mut self.query_state.query, start, end);
+                Self::remove_char_range(&mut self.runtime.query_state.query, start, end);
                 cursor = start;
                 anchor = start;
                 text_changed = true;
                 cursor_changed = true;
             } else {
-                let end = Self::char_count(&self.query_state.query);
+                let end = Self::char_count(&self.runtime.query_state.query);
                 if cursor < end {
-                    Self::remove_char_range(&mut self.query_state.query, cursor, cursor + 1);
+                    Self::remove_char_range(&mut self.runtime.query_state.query, cursor, cursor + 1);
                     text_changed = true;
                     cursor_changed = true;
                 }
             }
         } else if pressed(egui::Key::W) {
             if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                self.query_state.kill_buffer =
-                    Self::remove_char_range(&mut self.query_state.query, start, end);
+                self.runtime.query_state.kill_buffer =
+                    Self::remove_char_range(&mut self.runtime.query_state.query, start, end);
                 cursor = start;
                 anchor = start;
                 text_changed = true;
                 cursor_changed = true;
             } else if cursor > 0 {
-                let chars: Vec<char> = self.query_state.query.chars().collect();
+                let chars: Vec<char> = self.runtime.query_state.query.chars().collect();
                 let mut start = cursor;
                 while start > 0 && chars[start - 1].is_whitespace() {
                     start -= 1;
@@ -396,8 +396,8 @@ impl FlistWalkerApp {
                     start -= 1;
                 }
                 if start < cursor {
-                    self.query_state.kill_buffer =
-                        Self::remove_char_range(&mut self.query_state.query, start, cursor);
+                    self.runtime.query_state.kill_buffer =
+                        Self::remove_char_range(&mut self.runtime.query_state.query, start, cursor);
                     cursor = start;
                     anchor = start;
                     text_changed = true;
@@ -405,29 +405,29 @@ impl FlistWalkerApp {
                 }
             }
         } else if pressed(egui::Key::K) {
-            let end = Self::char_count(&self.query_state.query);
+            let end = Self::char_count(&self.runtime.query_state.query);
             if cursor < end {
-                self.query_state.kill_buffer =
-                    Self::remove_char_range(&mut self.query_state.query, cursor, end);
+                self.runtime.query_state.kill_buffer =
+                    Self::remove_char_range(&mut self.runtime.query_state.query, cursor, end);
                 anchor = cursor;
                 text_changed = true;
                 cursor_changed = true;
             }
         } else if pressed(egui::Key::Y) {
-            if !self.query_state.kill_buffer.is_empty() {
-                let kill_buffer = self.query_state.kill_buffer.clone();
+            if !self.runtime.query_state.kill_buffer.is_empty() {
+                let kill_buffer = self.runtime.query_state.kill_buffer.clone();
                 if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                    Self::remove_char_range(&mut self.query_state.query, start, end);
+                    Self::remove_char_range(&mut self.runtime.query_state.query, start, end);
                     cursor = start;
                 }
-                Self::insert_at_char(&mut self.query_state.query, cursor, &kill_buffer);
+                Self::insert_at_char(&mut self.runtime.query_state.query, cursor, &kill_buffer);
                 cursor += Self::char_count(&kill_buffer);
                 anchor = cursor;
                 text_changed = true;
                 cursor_changed = true;
             }
         } else if pressed(egui::Key::U) && cursor > 0 {
-            Self::remove_char_range(&mut self.query_state.query, 0, cursor);
+            Self::remove_char_range(&mut self.runtime.query_state.query, 0, cursor);
             cursor = 0;
             anchor = 0;
             text_changed = true;
@@ -749,7 +749,7 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self.query_state.history_search_active {
+        if self.runtime.query_state.history_search_active {
             if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
                 self.move_history_search_selection(1);
             }
@@ -880,16 +880,16 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn reset_query_history_navigation(&mut self) {
-        self.query_state.query_history_cursor = None;
-        self.query_state.query_history_draft = None;
+        self.runtime.query_state.query_history_cursor = None;
+        self.runtime.query_state.query_history_draft = None;
     }
 
     pub(super) fn reset_history_search_state(&mut self) {
-        self.query_state.history_search_active = false;
-        self.query_state.history_search_query.clear();
-        self.query_state.history_search_original_query.clear();
-        self.query_state.history_search_results.clear();
-        self.query_state.history_search_current = None;
+        self.runtime.query_state.history_search_active = false;
+        self.runtime.query_state.history_search_query.clear();
+        self.runtime.query_state.history_search_original_query.clear();
+        self.runtime.query_state.history_search_results.clear();
+        self.runtime.query_state.history_search_current = None;
     }
 
     fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Option<i64> {
@@ -910,16 +910,16 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn refresh_history_search_results(&mut self) {
-        if !self.query_state.history_search_active {
-            self.query_state.history_search_results.clear();
-            self.query_state.history_search_current = None;
+        if !self.runtime.query_state.history_search_active {
+            self.runtime.query_state.history_search_results.clear();
+            self.runtime.query_state.history_search_current = None;
             self.refresh_status_line();
             return;
         }
 
-        let query = self.query_state.history_search_query.trim();
+        let query = self.runtime.query_state.history_search_query.trim();
         let mut scored = self
-            .query_state
+            .runtime.query_state
             .query_history
             .iter()
             .rev()
@@ -930,28 +930,28 @@ impl FlistWalkerApp {
             })
             .collect::<Vec<_>>();
         scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.2.cmp(&b.2)));
-        self.query_state.history_search_results =
+        self.runtime.query_state.history_search_results =
             scored.into_iter().map(|(entry, _, _)| entry).collect();
-        self.query_state.history_search_current =
-            (!self.query_state.history_search_results.is_empty()).then_some(0);
+        self.runtime.query_state.history_search_current =
+            (!self.runtime.query_state.history_search_results.is_empty()).then_some(0);
         self.refresh_status_line();
     }
 
     pub(super) fn start_history_search(&mut self) {
         self.commit_query_history_if_needed(true);
-        self.query_state.history_search_active = true;
-        self.query_state.history_search_query.clear();
-        self.query_state.history_search_original_query = self.query_state.query.clone();
+        self.runtime.query_state.history_search_active = true;
+        self.runtime.query_state.history_search_query.clear();
+        self.runtime.query_state.history_search_original_query = self.runtime.query_state.query.clone();
         self.refresh_history_search_results();
         self.ui.focus_query_requested = true;
         self.ui.unfocus_query_requested = false;
     }
 
     pub(super) fn cancel_history_search(&mut self) {
-        if !self.query_state.history_search_active {
+        if !self.runtime.query_state.history_search_active {
             return;
         }
-        self.query_state.query = self.query_state.history_search_original_query.clone();
+        self.runtime.query_state.query = self.runtime.query_state.history_search_original_query.clone();
         self.reset_history_search_state();
         self.update_results();
         self.ui.focus_query_requested = true;
@@ -959,18 +959,18 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn accept_history_search(&mut self) {
-        if !self.query_state.history_search_active {
+        if !self.runtime.query_state.history_search_active {
             return;
         }
-        let Some(index) = self.query_state.history_search_current else {
+        let Some(index) = self.runtime.query_state.history_search_current else {
             return;
         };
-        let Some(selected) = self.query_state.history_search_results.get(index).cloned() else {
+        let Some(selected) = self.runtime.query_state.history_search_results.get(index).cloned() else {
             return;
         };
-        self.query_state.query = selected;
+        self.runtime.query_state.query = selected;
         self.reset_query_history_navigation();
-        self.query_state.query_history_dirty_since = None;
+        self.runtime.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.update_results();
         self.ui.focus_query_requested = true;
@@ -978,22 +978,22 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn move_history_search_selection(&mut self, delta: isize) {
-        if !self.query_state.history_search_active
-            || self.query_state.history_search_results.is_empty()
+        if !self.runtime.query_state.history_search_active
+            || self.runtime.query_state.history_search_results.is_empty()
         {
             return;
         }
-        let current = self.query_state.history_search_current.unwrap_or(0) as isize;
+        let current = self.runtime.query_state.history_search_current.unwrap_or(0) as isize;
         let next = (current + delta).clamp(
             0,
-            self.query_state.history_search_results.len() as isize - 1,
+            self.runtime.query_state.history_search_results.len() as isize - 1,
         );
-        self.query_state.history_search_current = Some(next as usize);
+        self.runtime.query_state.history_search_current = Some(next as usize);
     }
 
     pub(super) fn mark_query_edited(&mut self) {
         self.reset_query_history_navigation();
-        self.query_state.query_history_dirty_since = Some(Instant::now());
+        self.runtime.query_state.query_history_dirty_since = Some(Instant::now());
         self.invalidate_result_sort(true);
     }
 
@@ -1012,7 +1012,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn sync_shared_query_history_to_tabs(&mut self) {
-        let history = self.query_state.query_history.clone();
+        let history = self.runtime.query_state.query_history.clone();
         for tab in &mut self.tabs {
             tab.query_state.query_history = history.clone();
         }
@@ -1023,19 +1023,19 @@ impl FlistWalkerApp {
             return;
         }
         let should_commit = self
-            .query_state
+            .runtime.query_state
             .query_history_dirty_since
             .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
-        if !should_commit || self.query_state.query_history_cursor.is_some() {
+        if !should_commit || self.runtime.query_state.query_history_cursor.is_some() {
             return;
         }
-        let before_len = self.query_state.query_history.len();
-        let query = self.query_state.query.clone();
-        Self::push_query_history(&mut self.query_state.query_history, &query);
-        self.query_state.query_history_dirty_since = None;
-        if self.query_state.query_history.len() != before_len
+        let before_len = self.runtime.query_state.query_history.len();
+        let query = self.runtime.query_state.query.clone();
+        Self::push_query_history(&mut self.runtime.query_state.query_history, &query);
+        self.runtime.query_state.query_history_dirty_since = None;
+        if self.runtime.query_state.query_history.len() != before_len
             || self
-                .query_state
+                .runtime.query_state
                 .query_history
                 .back()
                 .is_some_and(|entry| entry == query.trim())
@@ -1063,12 +1063,12 @@ impl FlistWalkerApp {
         let mut cursor_changed = false;
         let initial_cursor = cursor_range
             .map(|range| range.primary.index)
-            .unwrap_or_else(|| Self::char_count(&self.query_state.query));
+            .unwrap_or_else(|| Self::char_count(&self.runtime.query_state.query));
         let initial_anchor = cursor_range
             .map(|range| range.secondary.index)
             .unwrap_or(initial_cursor);
-        let mut cursor = initial_cursor.min(Self::char_count(&self.query_state.query));
-        let mut anchor = initial_anchor.min(Self::char_count(&self.query_state.query));
+        let mut cursor = initial_cursor.min(Self::char_count(&self.runtime.query_state.query));
+        let mut anchor = initial_anchor.min(Self::char_count(&self.runtime.query_state.query));
 
         for event in events {
             match event {
@@ -1157,10 +1157,10 @@ impl FlistWalkerApp {
         if let Some(commit_text) = composition_commit_text {
             if query_focused && !text_changed_by_widget {
                 if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                    Self::remove_char_range(&mut self.query_state.query, start, end);
+                    Self::remove_char_range(&mut self.runtime.query_state.query, start, end);
                     cursor = start;
                 }
-                Self::insert_at_char(&mut self.query_state.query, cursor, &commit_text);
+                Self::insert_at_char(&mut self.runtime.query_state.query, cursor, &commit_text);
                 cursor += Self::char_count(&commit_text);
                 anchor = cursor;
                 changed = true;
@@ -1170,7 +1170,7 @@ impl FlistWalkerApp {
                     &format!(
                         "chars={} query_chars_after={}",
                         commit_text.chars().count(),
-                        self.query_state.query.chars().count()
+                        self.runtime.query_state.query.chars().count()
                     ),
                 );
             }
@@ -1179,7 +1179,7 @@ impl FlistWalkerApp {
                 "ime_composition_commit_widget_owned",
                 &format!(
                     "query_chars_after={}",
-                    self.query_state.query.chars().count()
+                    self.runtime.query_state.query.chars().count()
                 ),
             );
         }
@@ -1187,11 +1187,11 @@ impl FlistWalkerApp {
         if query_focused && !saw_text_space && !saw_composition_update {
             if let Some(space) = fallback_space {
                 if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                    Self::remove_char_range(&mut self.query_state.query, start, end);
+                    Self::remove_char_range(&mut self.runtime.query_state.query, start, end);
                     cursor = start;
                 }
                 // Keep IME fallback insertion at the caret instead of forcing tail append.
-                Self::insert_at_char(&mut self.query_state.query, cursor, &space.to_string());
+                Self::insert_at_char(&mut self.runtime.query_state.query, cursor, &space.to_string());
                 cursor += 1;
                 changed = true;
                 cursor_changed = true;

@@ -5,7 +5,7 @@ use crate::path_utils::path_key;
 impl FlistWalkerApp {
     /// ダイアログで選んだ root を現在 tab に適用する。
     pub(super) fn browse_for_root(&mut self) {
-        let dialog_root = normalize_windows_path_buf(self.root.clone());
+        let dialog_root = normalize_windows_path_buf(self.runtime.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => self.apply_root_change(dir),
             Ok(None) => {}
@@ -15,7 +15,7 @@ impl FlistWalkerApp {
 
     /// ダイアログで選んだ root を新規 tab として開く。
     pub(super) fn browse_for_root_in_new_tab(&mut self) {
-        let dialog_root = normalize_windows_path_buf(self.root.clone());
+        let dialog_root = normalize_windows_path_buf(self.runtime.root.clone());
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => {
                 self.create_new_tab();
@@ -53,7 +53,7 @@ impl FlistWalkerApp {
     }
 
     fn current_root_dropdown_index(&self) -> Option<usize> {
-        let current_key = path_key(&self.root);
+        let current_key = path_key(&self.runtime.root);
         self.features
             .root_browser
             .saved_roots

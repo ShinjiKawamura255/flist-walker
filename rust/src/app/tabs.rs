@@ -106,7 +106,7 @@ impl FlistWalkerApp {
         tab_index: usize,
         msg: IndexResponse,
     ) -> BackgroundIndexResponseEffect {
-        let limit = self.limit;
+        let limit = self.runtime.limit;
         let shell = &mut self.shell;
         let (tabs, indexing, features) = (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
         let mut effect = BackgroundIndexResponseEffect {
@@ -286,18 +286,18 @@ impl FlistWalkerApp {
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
         let normalized = normalize_windows_path_buf(new_root);
-        if path_key(&normalized) == path_key(&self.root) {
+        if path_key(&normalized) == path_key(&self.runtime.root) {
             return;
         }
 
-        self.root = normalized;
+        self.runtime.root = normalized;
         self.reset_query_history_navigation();
-        self.query_state.query_history_dirty_since = None;
+        self.runtime.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         // Avoid launching/copying stale selections from the previous root.
-        self.pinned_paths.clear();
-        self.current_row = None;
-        self.preview.clear();
+        self.runtime.pinned_paths.clear();
+        self.runtime.current_row = None;
+        self.runtime.preview.clear();
         self.worker_bus.preview.in_progress = false;
         self.worker_bus.preview.pending_request_id = None;
         self.clear_root_scoped_entry_state();
@@ -361,7 +361,7 @@ impl FlistWalkerApp {
             self.ui.focus_query_requested = true;
             self.ui.unfocus_query_requested = false;
             self.trigger_pending_restore_refresh();
-            self.notice = "Restored tab session".to_string();
+            self.runtime.notice = "Restored tab session".to_string();
             self.refresh_status_line();
         }
     }
@@ -387,7 +387,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn shrink_checkpoint_buffers(&mut self) {
-        Self::shrink_vec_if_sparse(&mut self.index.entries);
+        Self::shrink_vec_if_sparse(&mut self.runtime.index.entries);
         Self::shrink_vec_if_sparse(&mut self.indexing.incremental_filtered_entries);
         Self::shrink_deque_if_sparse(&mut self.indexing.pending_entries);
         Self::shrink_deque_if_sparse(&mut self.indexing.pending_kind_paths);
@@ -431,12 +431,13 @@ impl FlistWalkerApp {
             tab.result_state.results_compacted = false;
         }
 
-        if self.base_results.is_empty() {
-            if self.query_state.query.trim().is_empty() {
+        if self.runtime.base_results.is_empty() {
+            if self.runtime.query_state.query.trim().is_empty() {
                 let results = self
+                    .runtime
                     .entries
                     .iter()
-                    .take(self.limit)
+                    .take(self.runtime.limit)
                     .cloned()
                     .map(|entry| (entry.path, 0.0))
                     .collect();
@@ -447,8 +448,8 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self.result_sort_mode == ResultSortMode::Score {
-            self.apply_results_with_selection_policy(self.base_results.clone(), true, false);
+        if self.runtime.result_sort_mode == ResultSortMode::Score {
+            self.apply_results_with_selection_policy(self.runtime.base_results.clone(), true, false);
         } else {
             self.apply_result_sort(true);
         }
@@ -461,7 +462,7 @@ impl FlistWalkerApp {
     pub(super) fn apply_tab_state(&mut self, tab: &AppTabState) {
         tab.apply_shell(self);
         self.reset_query_history_navigation();
-        self.query_state.query_history_dirty_since = None;
+        self.runtime.query_state.query_history_dirty_since = None;
         self.reset_history_search_state();
         self.rebuild_entry_kind_cache();
         self.refresh_status_line();
@@ -517,7 +518,7 @@ impl FlistWalkerApp {
         tab.tab_accent = None;
         tab.use_filelist = true;
         tab.query_state.query.clear();
-        tab.query_state.query_history = self.query_state.query_history.clone();
+        tab.query_state.query_history = self.runtime.query_state.query_history.clone();
         tab.query_state.query_history_cursor = None;
         tab.query_state.query_history_draft = None;
         tab.query_state.query_history_dirty_since = None;
@@ -528,9 +529,10 @@ impl FlistWalkerApp {
         tab.query_state.history_search_current = None;
         tab.pending_restore_refresh = false;
         tab.result_state.base_results = self
+            .runtime
             .entries
             .iter()
-            .take(self.limit)
+            .take(self.runtime.limit)
             .cloned()
             .map(|entry| (entry.path, 0.0))
             .collect();

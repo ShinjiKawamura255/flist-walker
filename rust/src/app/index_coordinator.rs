@@ -174,7 +174,7 @@ impl IndexCoordinator {
 impl FlistWalkerApp {
     /// kind 未確定 entry の遅延解決が必要な filter 状態かを返す。
     pub(super) fn kind_resolution_needed_for_filters(&self) -> bool {
-        !self.include_files || !self.include_dirs
+        !self.runtime.include_files || !self.runtime.include_dirs
     }
 
     /// kind 解決キューと epoch を初期化し直す。
@@ -191,14 +191,14 @@ impl FlistWalkerApp {
         if !self.kind_resolution_needed_for_filters() {
             return;
         }
-        let source: Vec<PathBuf> = if self.indexing.in_progress && !self.index.entries.is_empty() {
-            self.index
+        let source: Vec<PathBuf> = if self.indexing.in_progress && !self.runtime.index.entries.is_empty() {
+            self.runtime.index
                 .entries
                 .iter()
                 .map(|entry| entry.path.clone())
                 .collect()
         } else {
-            self.all_entries
+            self.runtime.all_entries
                 .iter()
                 .map(|entry| entry.path.clone())
                 .collect()
@@ -208,8 +208,8 @@ impl FlistWalkerApp {
 
     /// walker 完了後の全 entry から kind 未解決 path を拾う。
     pub(super) fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
-        for i in 0..self.all_entries.len() {
-            let path = &self.all_entries[i].path;
+        for i in 0..self.runtime.all_entries.len() {
+            let path = &self.runtime.all_entries[i].path;
             if self.find_entry_kind(path).is_none()
                 && !self.indexing.pending_kind_paths_set.contains(path)
                 && !self.indexing.in_flight_kind_paths.contains(path)
@@ -278,8 +278,8 @@ impl FlistWalkerApp {
             }
             self.indexing.in_flight_kind_paths.remove(&response.path);
             if let Some(kind) = response.kind {
-                if self.current_row.is_some_and(|row| {
-                    self.results
+                if self.runtime.current_row.is_some_and(|row| {
+                    self.runtime.results
                         .get(row)
                         .is_some_and(|(path, _)| *path == response.path)
                 }) {
@@ -301,7 +301,7 @@ impl FlistWalkerApp {
         self.indexing.kind_resolution_in_progress = !self.indexing.pending_kind_paths.is_empty()
             || !self.indexing.in_flight_kind_paths.is_empty();
 
-        if resolved_any && (!self.include_files || !self.include_dirs) {
+        if resolved_any && (!self.runtime.include_files || !self.runtime.include_dirs) {
             self.apply_entry_filters(true);
         }
         if resolved_current_row && self.ui.show_preview {

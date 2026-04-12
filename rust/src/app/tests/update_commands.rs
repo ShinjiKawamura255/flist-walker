@@ -147,7 +147,7 @@ fn failed_update_response_sets_notice_without_closing_app() {
 
     app.poll_update_response();
 
-    assert_eq!(app.notice, "Update check failed: offline");
+    assert_eq!(app.runtime.notice, "Update check failed: offline");
     assert_eq!(app.features.update.pending_request_id, None);
     assert!(!app.features.update.in_progress);
     assert!(!app.features.update.close_requested_for_install);
@@ -179,7 +179,7 @@ fn apply_started_update_response_requests_app_close() {
 
     assert!(app.features.update.close_requested_for_install);
     assert!(app.features.update.prompt.is_none());
-    assert_eq!(app.notice, "Restarting to apply update 0.13.1...");
+    assert_eq!(app.runtime.notice, "Restarting to apply update 0.13.1...");
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -192,7 +192,7 @@ fn update_check_failure_opens_failure_dialog() {
     app.worker_bus.update.rx = rx;
     app.features.update.pending_request_id = Some(1);
     app.features.update.in_progress = true;
-    app.notice = "Existing notice".to_string();
+    app.runtime.notice = "Existing notice".to_string();
 
     tx.send(UpdateResponse::CheckFailed {
         request_id: 1,
@@ -202,7 +202,7 @@ fn update_check_failure_opens_failure_dialog() {
 
     app.poll_update_response();
 
-    assert_eq!(app.notice, "Existing notice");
+    assert_eq!(app.runtime.notice, "Existing notice");
     assert_eq!(
         app.features
             .update
@@ -480,6 +480,6 @@ fn failed_update_response_reenables_update_prompt_actions() {
             .expect("update prompt")
             .install_started
     );
-    assert_eq!(app.notice, "Update failed: offline");
+    assert_eq!(app.runtime.notice, "Update failed: offline");
     let _ = fs::remove_dir_all(&root);
 }

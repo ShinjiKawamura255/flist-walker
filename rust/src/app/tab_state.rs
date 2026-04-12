@@ -77,9 +77,9 @@ pub(crate) struct AppTabState {
 impl TabIndexState {
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            index: shell.index.clone(),
-            all_entries: Arc::clone(&shell.all_entries),
-            entries: Arc::clone(&shell.entries),
+            index: shell.runtime.index.clone(),
+            all_entries: Arc::clone(&shell.runtime.all_entries),
+            entries: Arc::clone(&shell.runtime.entries),
             pending_index_request_id: shell.indexing.pending_request_id,
             index_in_progress: shell.indexing.in_progress,
             pending_index_entries: shell.indexing.pending_entries.clone(),
@@ -98,9 +98,9 @@ impl TabIndexState {
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.index = self.index.clone();
-        shell.all_entries = Arc::clone(&self.all_entries);
-        shell.entries = Arc::clone(&self.entries);
+        shell.runtime.index = self.index.clone();
+        shell.runtime.all_entries = Arc::clone(&self.all_entries);
+        shell.runtime.entries = Arc::clone(&self.entries);
         shell.indexing.pending_request_id = self.pending_index_request_id;
         shell.indexing.in_progress = self.index_in_progress;
         shell.indexing.pending_entries = self.pending_index_entries.clone();
@@ -121,58 +121,58 @@ impl TabIndexState {
 impl TabQueryState {
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            query: shell.query_state.query.clone(),
-            query_history: shell.query_state.query_history.clone(),
-            query_history_cursor: shell.query_state.query_history_cursor,
-            query_history_draft: shell.query_state.query_history_draft.clone(),
-            query_history_dirty_since: shell.query_state.query_history_dirty_since,
-            history_search_active: shell.query_state.history_search_active,
-            history_search_query: shell.query_state.history_search_query.clone(),
-            history_search_original_query: shell.query_state.history_search_original_query.clone(),
-            history_search_results: shell.query_state.history_search_results.clone(),
-            history_search_current: shell.query_state.history_search_current,
+            query: shell.runtime.query_state.query.clone(),
+            query_history: shell.runtime.query_state.query_history.clone(),
+            query_history_cursor: shell.runtime.query_state.query_history_cursor,
+            query_history_draft: shell.runtime.query_state.query_history_draft.clone(),
+            query_history_dirty_since: shell.runtime.query_state.query_history_dirty_since,
+            history_search_active: shell.runtime.query_state.history_search_active,
+            history_search_query: shell.runtime.query_state.history_search_query.clone(),
+            history_search_original_query: shell.runtime.query_state.history_search_original_query.clone(),
+            history_search_results: shell.runtime.query_state.history_search_results.clone(),
+            history_search_current: shell.runtime.query_state.history_search_current,
         }
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.query_state.query = self.query.clone();
-        shell.query_state.query_history = self.query_history.clone();
-        shell.query_state.query_history_cursor = self.query_history_cursor;
-        shell.query_state.query_history_draft = self.query_history_draft.clone();
-        shell.query_state.query_history_dirty_since = self.query_history_dirty_since;
-        shell.query_state.history_search_active = self.history_search_active;
-        shell.query_state.history_search_query = self.history_search_query.clone();
-        shell.query_state.history_search_original_query =
+        shell.runtime.query_state.query = self.query.clone();
+        shell.runtime.query_state.query_history = self.query_history.clone();
+        shell.runtime.query_state.query_history_cursor = self.query_history_cursor;
+        shell.runtime.query_state.query_history_draft = self.query_history_draft.clone();
+        shell.runtime.query_state.query_history_dirty_since = self.query_history_dirty_since;
+        shell.runtime.query_state.history_search_active = self.history_search_active;
+        shell.runtime.query_state.history_search_query = self.history_search_query.clone();
+        shell.runtime.query_state.history_search_original_query =
             self.history_search_original_query.clone();
-        shell.query_state.history_search_results = self.history_search_results.clone();
-        shell.query_state.history_search_current = self.history_search_current;
+        shell.runtime.query_state.history_search_results = self.history_search_results.clone();
+        shell.runtime.query_state.history_search_current = self.history_search_current;
     }
 }
 
 impl TabResultState {
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            base_results: shell.base_results.clone(),
-            results: shell.results.clone(),
-            result_sort_mode: shell.result_sort_mode,
+            base_results: shell.runtime.base_results.clone(),
+            results: shell.runtime.results.clone(),
+            result_sort_mode: shell.runtime.result_sort_mode,
             pending_sort_request_id: shell.worker_bus.sort.pending_request_id,
             sort_in_progress: shell.worker_bus.sort.in_progress,
-            pinned_paths: shell.pinned_paths.clone(),
-            current_row: shell.current_row,
-            preview: shell.preview.clone(),
+            pinned_paths: shell.runtime.pinned_paths.clone(),
+            current_row: shell.runtime.current_row,
+            preview: shell.runtime.preview.clone(),
             results_compacted: false,
         }
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.base_results = self.base_results.clone();
-        shell.results = self.results.clone();
-        shell.result_sort_mode = self.result_sort_mode;
+        shell.runtime.base_results = self.base_results.clone();
+        shell.runtime.results = self.results.clone();
+        shell.runtime.result_sort_mode = self.result_sort_mode;
         shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
         shell.worker_bus.sort.in_progress = self.sort_in_progress;
-        shell.pinned_paths = self.pinned_paths.clone();
-        shell.current_row = self.current_row;
-        shell.preview = self.preview.clone();
+        shell.runtime.pinned_paths = self.pinned_paths.clone();
+        shell.runtime.current_row = self.current_row;
+        shell.runtime.preview = self.preview.clone();
     }
 }
 
@@ -180,21 +180,21 @@ impl AppTabState {
     pub(super) fn from_shell(shell: &FlistWalkerApp, id: u64) -> Self {
         Self {
             id,
-            root: shell.root.clone(),
+            root: shell.runtime.root.clone(),
             tab_accent: shell
                 .tabs
                 .get(shell.tabs.active_tab)
                 .and_then(|tab| tab.tab_accent),
-            use_filelist: shell.use_filelist,
-            use_regex: shell.use_regex,
-            ignore_case: shell.ignore_case,
-            include_files: shell.include_files,
-            include_dirs: shell.include_dirs,
+            use_filelist: shell.runtime.use_filelist,
+            use_regex: shell.runtime.use_regex,
+            ignore_case: shell.runtime.ignore_case,
+            include_files: shell.runtime.include_files,
+            include_dirs: shell.runtime.include_dirs,
             index_state: TabIndexState::from_shell(shell),
             query_state: TabQueryState::from_shell(shell),
             pending_restore_refresh: shell.tabs.pending_restore_refresh,
             result_state: TabResultState::from_shell(shell),
-            notice: shell.notice.clone(),
+            notice: shell.runtime.notice.clone(),
             pending_request_id: shell.search.pending_request_id(),
             pending_preview_request_id: shell.worker_bus.preview.pending_request_id,
             pending_action_request_id: shell.worker_bus.action.pending_request_id,
@@ -240,8 +240,8 @@ impl AppTabState {
                 search_rerun_pending: false,
             },
             query_state: TabQueryState {
-                query: saved.query.clone(),
-                query_history: shell.query_state.query_history.clone(),
+            query: saved.query.clone(),
+            query_history: shell.runtime.query_state.query_history.clone(),
                 query_history_cursor: None,
                 query_history_draft: None,
                 query_history_dirty_since: None,
@@ -277,17 +277,17 @@ impl AppTabState {
     }
 
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.root = self.root.clone();
-        shell.use_filelist = self.use_filelist;
-        shell.use_regex = self.use_regex;
-        shell.ignore_case = self.ignore_case;
-        shell.include_files = self.include_files;
-        shell.include_dirs = self.include_dirs;
+        shell.runtime.root = self.root.clone();
+        shell.runtime.use_filelist = self.use_filelist;
+        shell.runtime.use_regex = self.use_regex;
+        shell.runtime.ignore_case = self.ignore_case;
+        shell.runtime.include_files = self.include_files;
+        shell.runtime.include_dirs = self.include_dirs;
         self.index_state.apply_shell(shell);
         self.query_state.apply_shell(shell);
         shell.tabs.pending_restore_refresh = self.pending_restore_refresh;
         self.result_state.apply_shell(shell);
-        shell.notice = self.notice.clone();
+        shell.runtime.notice = self.notice.clone();
         shell.search.set_pending_request_id(self.pending_request_id);
         shell.worker_bus.preview.pending_request_id = self.pending_preview_request_id;
         shell.worker_bus.action.pending_request_id = self.pending_action_request_id;

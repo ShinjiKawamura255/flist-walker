@@ -15,10 +15,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn ensure_highlight_cache_scope(&mut self, prefer_relative: bool) {
-        let query = self.query_state.query.clone();
-        let root = self.root.clone();
-        let use_regex = self.use_regex;
-        let ignore_case = self.ignore_case;
+        let query = self.runtime.query_state.query.clone();
+        let root = self.runtime.root.clone();
+        let use_regex = self.runtime.use_regex;
+        let ignore_case = self.runtime.ignore_case;
         if self
             .cache
             .highlight
@@ -55,15 +55,15 @@ impl FlistWalkerApp {
         static EMPTY: OnceLock<Arc<Vec<u16>>> = OnceLock::new();
 
         self.ensure_highlight_cache_scope(prefer_relative);
-        if self.query_state.query.trim().is_empty() {
+        if self.runtime.query_state.query.trim().is_empty() {
             return Arc::clone(EMPTY.get_or_init(|| Arc::new(Vec::new())));
         }
 
         let key = HighlightCacheKey {
             path: path.to_path_buf(),
             prefer_relative,
-            use_regex: self.use_regex,
-            ignore_case: self.ignore_case,
+            use_regex: self.runtime.use_regex,
+            ignore_case: self.runtime.ignore_case,
         };
 
         if let Some(positions) = self.cache.highlight.get(&key) {
@@ -72,11 +72,11 @@ impl FlistWalkerApp {
 
         let positions = Self::compact_highlight_positions(match_positions_for_path(
             path,
-            &self.root,
-            &self.query_state.query,
+            &self.runtime.root,
+            &self.runtime.query_state.query,
             prefer_relative,
-            self.use_regex,
-            self.ignore_case,
+            self.runtime.use_regex,
+            self.runtime.ignore_case,
         ));
         self.cache_highlight_positions_for_key(key.clone(), positions);
         self.cache
@@ -93,23 +93,23 @@ impl FlistWalkerApp {
     }
 
     fn current_result_kind(&self) -> Option<EntryKind> {
-        let row = self.current_row?;
-        let (path, _) = self.results.get(row)?;
+        let row = self.runtime.current_row?;
+        let (path, _) = self.runtime.results.get(row)?;
         self.find_entry_kind(path)
     }
 
     pub(super) fn request_preview_for_current(&mut self) {
         if !self.ui.show_preview {
-            self.preview.clear();
+            self.runtime.preview.clear();
             self.worker_bus.preview.in_progress = false;
             self.worker_bus.preview.pending_request_id = None;
             return;
         }
 
-        if let Some(row) = self.current_row {
-            if let Some((path, _)) = self.results.get(row) {
+        if let Some(row) = self.runtime.current_row {
+            if let Some((path, _)) = self.runtime.results.get(row) {
                 if let Some(cached) = self.cache.preview.get(path) {
-                    self.preview = cached.to_string();
+                    self.runtime.preview = cached.to_string();
                     self.worker_bus.preview.in_progress = false;
                     self.worker_bus.preview.pending_request_id = None;
                     return;
@@ -117,7 +117,7 @@ impl FlistWalkerApp {
                 let path = path.clone();
 
                 let Some(kind) = self.current_result_kind() else {
-                    self.preview = "Resolving entry type...".to_string();
+                    self.runtime.preview = "Resolving entry type...".to_string();
                     self.queue_kind_resolution(path);
                     self.pump_kind_resolution_requests();
                     self.worker_bus.preview.in_progress = false;
@@ -128,12 +128,12 @@ impl FlistWalkerApp {
                 if should_skip_preview(&path, is_dir) {
                     let preview = build_preview_text_with_kind(&path, is_dir);
                     self.cache_preview(path.clone(), preview.clone());
-                    self.preview = preview;
+                    self.runtime.preview = preview;
                     self.worker_bus.preview.in_progress = false;
                     self.worker_bus.preview.pending_request_id = None;
                     return;
                 }
-                self.preview = "Loading preview...".to_string();
+                self.runtime.preview = "Loading preview...".to_string();
                 let request_id = self.worker_bus.preview.next_request_id;
                 self.worker_bus.preview.next_request_id =
                     self.worker_bus.preview.next_request_id.saturating_add(1);
@@ -148,12 +148,12 @@ impl FlistWalkerApp {
                 if self.worker_bus.preview.tx.send(req).is_err() {
                     self.worker_bus.preview.in_progress = false;
                     self.worker_bus.preview.pending_request_id = None;
-                    self.preview = "<preview unavailable>".to_string();
+                    self.runtime.preview = "<preview unavailable>".to_string();
                 }
                 return;
             }
         }
-        self.preview.clear();
+        self.runtime.preview.clear();
         self.worker_bus.preview.in_progress = false;
         self.worker_bus.preview.pending_request_id = None;
     }

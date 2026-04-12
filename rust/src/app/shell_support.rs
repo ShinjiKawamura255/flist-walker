@@ -158,39 +158,39 @@ impl FlistWalkerApp {
     pub(super) fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
         paths
             .iter()
-            .find(|path| !path_is_within_root(&self.root, path))
+            .find(|path| !path_is_within_root(&self.runtime.root, path))
             .cloned()
     }
 
     pub(super) fn root_display_text(&self) -> String {
-        normalize_windows_path_buf(self.root.clone())
+        normalize_windows_path_buf(self.runtime.root.clone())
             .to_string_lossy()
             .to_string()
     }
 
     pub(super) fn clear_root_scoped_entry_state(&mut self) {
-        self.index.entries.clear();
-        self.index.entries.shrink_to_fit();
-        self.index.source = IndexSource::None;
-        self.all_entries = Arc::new(Vec::new());
-        self.entries = Arc::new(Vec::new());
+        self.runtime.index.entries.clear();
+        self.runtime.index.entries.shrink_to_fit();
+        self.runtime.index.source = IndexSource::None;
+        self.runtime.all_entries = Arc::new(Vec::new());
+        self.runtime.entries = Arc::new(Vec::new());
         self.cache.entry_kind.clear();
-        self.base_results.clear();
-        self.base_results.shrink_to_fit();
-        self.results.clear();
-        self.results.shrink_to_fit();
+        self.runtime.base_results.clear();
+        self.runtime.base_results.shrink_to_fit();
+        self.runtime.results.clear();
+        self.runtime.results.shrink_to_fit();
         self.indexing.incremental_filtered_entries.clear();
         self.indexing.incremental_filtered_entries.shrink_to_fit();
         self.worker_bus.sort.pending_request_id = None;
         self.worker_bus.sort.in_progress = false;
-        self.result_sort_mode = ResultSortMode::Score;
+        self.runtime.result_sort_mode = ResultSortMode::Score;
         self.clear_sort_metadata_cache();
         self.indexing.last_search_snapshot_len = 0;
     }
 
     pub(super) fn prefer_relative_display(&self) -> bool {
         matches!(
-            self.index.source,
+            self.runtime.index.source,
             IndexSource::Walker | IndexSource::FileList(_)
         )
     }
@@ -200,7 +200,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn use_filelist_requires_locked_filters(&self) -> bool {
-        self.use_filelist && !matches!(self.index.source, IndexSource::Walker)
+        self.runtime.use_filelist && !matches!(self.runtime.index.source, IndexSource::Walker)
     }
 
     pub(super) fn is_entry_visible_for_flags(entry: &Entry, include_files: bool, include_dirs: bool) -> bool {
@@ -211,16 +211,16 @@ impl FlistWalkerApp {
         let kind = self.find_entry_kind(entry.path()).or(entry.kind);
         match kind {
             Some(kind) => {
-                (kind.is_dir && self.include_dirs) || (!kind.is_dir && self.include_files)
+                (kind.is_dir && self.runtime.include_dirs) || (!kind.is_dir && self.runtime.include_files)
             }
-            None => self.include_files && self.include_dirs,
+            None => self.runtime.include_files && self.runtime.include_dirs,
         }
     }
 
     pub(super) fn rebuild_entry_kind_cache(&mut self) {
-        let all_entries = Arc::clone(&self.all_entries);
-        let index_entries = self.index.entries.clone();
-        let entries = Arc::clone(&self.entries);
+        let all_entries = Arc::clone(&self.runtime.all_entries);
+        let index_entries = self.runtime.index.entries.clone();
+        let entries = Arc::clone(&self.runtime.entries);
         self.cache.entry_kind.rebuild_from_sources(&[
             all_entries.as_ref(),
             &index_entries,

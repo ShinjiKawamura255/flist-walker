@@ -327,9 +327,10 @@ impl FlistWalkerApp {
 
     pub(super) fn add_current_root_to_saved(&mut self) {
         let root = self
+            .runtime
             .root
             .canonicalize()
-            .unwrap_or_else(|_| self.root.clone());
+            .unwrap_or_else(|_| self.runtime.root.clone());
         let root = normalize_windows_path_buf(root);
         let key = path_key(&root);
         if self
@@ -361,9 +362,10 @@ impl FlistWalkerApp {
             return;
         }
         let root = self
+            .runtime
             .root
             .canonicalize()
-            .unwrap_or_else(|_| self.root.clone());
+            .unwrap_or_else(|_| self.runtime.root.clone());
         let root = normalize_windows_path_buf(root);
         self.features.root_browser.default_root = Some(root.clone());
         self.mark_ui_state_dirty();
@@ -380,7 +382,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn remove_current_root_from_saved(&mut self) {
-        let key = path_key(&self.root);
+        let key = path_key(&self.runtime.root);
         let before = self.features.root_browser.saved_roots.len();
         self.features
             .root_browser
@@ -433,10 +435,10 @@ impl FlistWalkerApp {
                 .root_browser
                 .default_root
                 .clone()
-                .or_else(|| Some(self.root.clone()))
-                .unwrap_or_else(|| self.root.clone())
+                .or_else(|| Some(self.runtime.root.clone()))
+                .unwrap_or_else(|| self.runtime.root.clone())
         } else {
-            self.root.clone()
+            self.runtime.root.clone()
         };
         let state = UiState {
             last_root: Some(
@@ -457,7 +459,7 @@ impl FlistWalkerApp {
             query_history: if history_persist_disabled {
                 Vec::new()
             } else {
-                self.query_state.query_history.iter().cloned().collect()
+                self.runtime.query_state.query_history.iter().cloned().collect()
             },
             results_panel_width: None,
             tabs: self.saved_tabs_for_ui_state(),

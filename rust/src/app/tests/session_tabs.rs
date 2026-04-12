@@ -48,8 +48,8 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
 
     assert_eq!(app.tabs.len(), 2);
     assert_eq!(app.tabs.active_tab, 1);
-    assert!(app.query_state.query.is_empty());
-    assert!(app.use_filelist);
+    assert!(app.runtime.query_state.query.is_empty());
+    assert!(app.runtime.use_filelist);
     assert_eq!(app.tabs[1].tab_accent, None);
     assert!(app.ui.focus_query_requested);
     assert!(!app.ui.unfocus_query_requested);
@@ -159,7 +159,7 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
         }],
     );
     assert_eq!(app.tabs.len(), 1);
-    assert!(app.notice.contains("Cannot close the last tab"));
+    assert!(app.runtime.notice.contains("Cannot close the last tab"));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -264,15 +264,15 @@ fn switching_tabs_restores_root_per_tab() {
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
 
     app.create_new_tab();
-    app.root = root_b.clone();
+    app.runtime.root = root_b.clone();
     app.sync_active_tab_state();
     assert_eq!(app.tabs.active_tab, 1);
 
     app.switch_to_tab_index(0);
-    assert_eq!(app.root, root_a);
+    assert_eq!(app.runtime.root, root_a);
 
     app.switch_to_tab_index(1);
-    assert_eq!(app.root, root_b);
+    assert_eq!(app.runtime.root, root_b);
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -288,30 +288,30 @@ fn switching_tabs_restores_entries_and_filters_per_tab() {
     fs::write(&b, "b").expect("write b");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
-    app.all_entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
-    app.include_files = true;
-    app.include_dirs = true;
+    app.runtime.entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
+    app.runtime.all_entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
+    app.runtime.include_files = true;
+    app.runtime.include_dirs = true;
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    app.entries = Arc::new(vec![unknown_entry(a.clone())]);
-    app.all_entries = Arc::new(vec![unknown_entry(a.clone())]);
-    app.include_files = true;
-    app.include_dirs = false;
+    app.runtime.entries = Arc::new(vec![unknown_entry(a.clone())]);
+    app.runtime.all_entries = Arc::new(vec![unknown_entry(a.clone())]);
+    app.runtime.include_files = true;
+    app.runtime.include_dirs = false;
     app.sync_active_tab_state();
 
     app.switch_to_tab_index(0);
-    assert_eq!(app.entries.len(), 2);
-    assert_eq!(app.all_entries.len(), 2);
-    assert!(app.include_files);
-    assert!(app.include_dirs);
+    assert_eq!(app.runtime.entries.len(), 2);
+    assert_eq!(app.runtime.all_entries.len(), 2);
+    assert!(app.runtime.include_files);
+    assert!(app.runtime.include_dirs);
 
     app.switch_to_tab_index(1);
-    assert_eq!(app.entries.len(), 1);
-    assert_eq!(app.all_entries.len(), 1);
-    assert!(app.include_files);
-    assert!(!app.include_dirs);
+    assert_eq!(app.runtime.entries.len(), 1);
+    assert_eq!(app.runtime.all_entries.len(), 1);
+    assert!(app.runtime.include_files);
+    assert!(!app.runtime.include_dirs);
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -334,7 +334,7 @@ fn root_dropdown_selection_closes_popup_and_applies_selected_root() {
     app.apply_root_dropdown_selection(&ctx);
 
     assert!(!app.is_root_dropdown_open(&ctx));
-    assert_eq!(app.root, root_b);
+    assert_eq!(app.runtime.root, root_b);
     assert_eq!(app.ui.root_dropdown_highlight, Some(1));
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -351,17 +351,17 @@ fn move_tab_reorders_tabs_and_preserves_active_tab_identity() {
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
 
     app.create_new_tab();
-    app.root = root_b.clone();
+    app.runtime.root = root_b.clone();
     app.sync_active_tab_state();
     app.create_new_tab();
-    app.root = root_c.clone();
+    app.runtime.root = root_c.clone();
     app.sync_active_tab_state();
     assert_eq!(app.tabs.active_tab, 2);
 
     app.move_tab(2, 0);
 
     assert_eq!(app.tabs.active_tab, 0);
-    assert_eq!(app.root, root_c);
+    assert_eq!(app.runtime.root, root_c);
     assert_eq!(app.tabs[0].root, root_c);
     assert_eq!(app.tabs[1].root, root_a);
     assert_eq!(app.tabs[2].root, root_b);
@@ -382,19 +382,19 @@ fn move_tab_updates_active_index_when_other_tab_crosses_it() {
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
 
     app.create_new_tab();
-    app.root = root_b.clone();
+    app.runtime.root = root_b.clone();
     app.sync_active_tab_state();
     app.create_new_tab();
-    app.root = root_c.clone();
+    app.runtime.root = root_c.clone();
     app.sync_active_tab_state();
     app.switch_to_tab_index(1);
-    assert_eq!(app.root, root_b);
+    assert_eq!(app.runtime.root, root_b);
     assert_eq!(app.tabs.active_tab, 1);
 
     app.move_tab(0, 2);
 
     assert_eq!(app.tabs.active_tab, 0);
-    assert_eq!(app.root, root_b);
+    assert_eq!(app.runtime.root, root_b);
     assert_eq!(app.tabs[0].root, root_b);
     assert_eq!(app.tabs[1].root, root_c);
     assert_eq!(app.tabs[2].root, root_a);
@@ -436,40 +436,40 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     fs::create_dir_all(&root_c).expect("create root c");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, "alpha".to_string());
 
-    app.include_dirs = false;
-    app.preview = "preview-a".to_string();
+    app.runtime.include_dirs = false;
+    app.runtime.preview = "preview-a".to_string();
     app.ui.focus_query_requested = true;
     app.ui.unfocus_query_requested = false;
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    app.root = root_b.clone();
-    app.query_state.query = "beta".to_string();
-    app.include_files = false;
-    app.include_dirs = true;
-    app.preview = "preview-b".to_string();
+    app.runtime.root = root_b.clone();
+    app.runtime.query_state.query = "beta".to_string();
+    app.runtime.include_files = false;
+    app.runtime.include_dirs = true;
+    app.runtime.preview = "preview-b".to_string();
     app.ui.focus_query_requested = false;
     app.ui.unfocus_query_requested = true;
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    app.root = root_c.clone();
-    app.query_state.query = "gamma".to_string();
-    app.include_files = true;
-    app.include_dirs = true;
-    app.preview = "preview-c".to_string();
+    app.runtime.root = root_c.clone();
+    app.runtime.query_state.query = "gamma".to_string();
+    app.runtime.include_files = true;
+    app.runtime.include_dirs = true;
+    app.runtime.preview = "preview-c".to_string();
     app.ui.focus_query_requested = true;
     app.ui.unfocus_query_requested = false;
     app.sync_active_tab_state();
 
     app.switch_to_tab_index(1);
-    assert_eq!(app.root, root_b);
-    assert_eq!(app.query_state.query, "beta");
-    let expected_active_root = app.root.clone();
-    let expected_active_query = app.query_state.query.clone();
-    let expected_active_preview = app.preview.clone();
-    let expected_active_include_files = app.include_files;
-    let expected_active_include_dirs = app.include_dirs;
+    assert_eq!(app.runtime.root, root_b);
+    assert_eq!(app.runtime.query_state.query, "beta");
+    let expected_active_root = app.runtime.root.clone();
+    let expected_active_query = app.runtime.query_state.query.clone();
+    let expected_active_preview = app.runtime.preview.clone();
+    let expected_active_include_files = app.runtime.include_files;
+    let expected_active_include_dirs = app.runtime.include_dirs;
     let expected_active_focus = app.ui.focus_query_requested;
     let expected_active_unfocus = app.ui.unfocus_query_requested;
     let expected_tab_b = app.tabs[1].clone();
@@ -479,11 +479,11 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     app.move_tab(0, 2);
 
     assert_eq!(app.tabs.active_tab, 0);
-    assert_eq!(app.root, expected_active_root);
-    assert_eq!(app.query_state.query, expected_active_query);
-    assert_eq!(app.preview, expected_active_preview);
-    assert_eq!(app.include_files, expected_active_include_files);
-    assert_eq!(app.include_dirs, expected_active_include_dirs);
+    assert_eq!(app.runtime.root, expected_active_root);
+    assert_eq!(app.runtime.query_state.query, expected_active_query);
+    assert_eq!(app.runtime.preview, expected_active_preview);
+    assert_eq!(app.runtime.include_files, expected_active_include_files);
+    assert_eq!(app.runtime.include_dirs, expected_active_include_dirs);
     assert_eq!(app.ui.focus_query_requested, expected_active_focus);
     assert_eq!(app.ui.unfocus_query_requested, expected_active_unfocus);
 
@@ -612,9 +612,9 @@ fn background_tab_search_and_preview_responses_are_retained() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "picked".to_string());
     app.indexing.in_progress = false;
     app.indexing.pending_request_id = None;
-    app.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.results = vec![(selected.clone(), 0.0)];
-    app.current_row = Some(0);
+    app.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.runtime.results = vec![(selected.clone(), 0.0)];
+    app.runtime.current_row = Some(0);
     app.set_entry_kind(&selected, EntryKind::file());
 
     let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
@@ -710,14 +710,14 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
-    app.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
-    app.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.runtime.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.runtime.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
 
     app.create_new_tab();
     assert_eq!(app.tabs.active_tab, 1);
-    app.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
-    app.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.runtime.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.runtime.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
 
     index_res_tx
@@ -739,12 +739,12 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 
     app.poll_index_response();
 
-    assert_eq!(app.entries.len(), 1);
-    assert_eq!(app.entries[0], active_file);
+    assert_eq!(app.runtime.entries.len(), 1);
+    assert_eq!(app.runtime.entries[0], active_file);
 
     app.switch_to_tab_index(0);
-    assert_eq!(app.entries.len(), 1);
-    assert_eq!(app.entries[0], indexed_file);
+    assert_eq!(app.runtime.entries.len(), 1);
+    assert_eq!(app.runtime.entries[0], indexed_file);
     assert!(!app.indexing.in_progress);
 
     let _ = fs::remove_dir_all(&root);
@@ -769,24 +769,24 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.search.tx = search_tx_req;
     app.search.rx = search_rx_res;
 
-    app.entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.results = vec![(active_file.clone(), 0.0)];
-    app.base_results = app.results.clone();
-    app.current_row = Some(0);
+    app.runtime.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.runtime.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.runtime.results = vec![(active_file.clone(), 0.0)];
+    app.runtime.base_results = app.runtime.results.clone();
+    app.runtime.current_row = Some(0);
     app.sync_active_tab_state();
 
     app.create_new_tab();
     assert_eq!(app.tabs.active_tab, 1);
-    app.entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.results = vec![(active_file.clone(), 0.0)];
-    app.base_results = app.results.clone();
-    app.current_row = Some(0);
+    app.runtime.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.runtime.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.runtime.results = vec![(active_file.clone(), 0.0)];
+    app.runtime.base_results = app.runtime.results.clone();
+    app.runtime.current_row = Some(0);
     app.sync_active_tab_state();
 
     app.switch_to_tab_index(0);
-    app.query_state.query = "background".to_string();
+    app.runtime.query_state.query = "background".to_string();
     app.sync_active_tab_state();
     app.switch_to_tab_index(1);
 
@@ -806,9 +806,9 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.tabs[0].pending_request_id = Some(89);
     app.tabs[0].search_in_progress = true;
 
-    let active_results = app.results.clone();
-    let active_base_results = app.base_results.clone();
-    let active_current_row = app.current_row;
+    let active_results = app.runtime.results.clone();
+    let active_base_results = app.runtime.base_results.clone();
+    let active_current_row = app.runtime.current_row;
 
     search_tx_res
         .send(SearchResponse {
@@ -837,9 +837,9 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.poll_search_response();
     app.poll_index_response();
 
-    assert_eq!(app.results, active_results);
-    assert_eq!(app.base_results, active_base_results);
-    assert_eq!(app.current_row, active_current_row);
+    assert_eq!(app.runtime.results, active_results);
+    assert_eq!(app.runtime.base_results, active_base_results);
+    assert_eq!(app.runtime.current_row, active_current_row);
     assert_eq!(app.tabs[0].result_state.base_results.len(), 1);
     assert_eq!(app.tabs[0].result_state.base_results[0].0, background_file);
     assert_eq!(app.tabs[0].index_state.entries.len(), 1);

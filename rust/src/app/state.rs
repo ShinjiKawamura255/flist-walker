@@ -790,20 +790,6 @@ pub struct AppShellState {
     pub(super) worker_runtime: Option<WorkerRuntime>,
 }
 
-impl std::ops::Deref for AppShellState {
-    type Target = AppRuntimeState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.runtime
-    }
-}
-
-impl std::ops::DerefMut for AppShellState {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.runtime
-    }
-}
-
 pub(super) struct RootBrowserState {
     #[cfg(test)]
     pub(super) browse_dialog_result: Option<Result<Option<PathBuf>, String>>,

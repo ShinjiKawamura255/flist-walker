@@ -15,7 +15,7 @@ impl FlistWalkerApp {
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == current_tab_id && path_key(&pending.root) != path_key(&self.root)
+                pending.tab_id == current_tab_id && path_key(&pending.root) != path_key(&self.runtime.root)
             })
         {
             self.features.filelist.pending_after_index = None;
@@ -24,8 +24,8 @@ impl FlistWalkerApp {
     }
 
     fn reset_active_index_refresh_state(&mut self, reset_kind_resolution: bool) {
-        self.index.entries.clear();
-        self.index.source = IndexSource::None;
+        self.runtime.index.entries.clear();
+        self.runtime.index.source = IndexSource::None;
         self.clear_preview_cache();
         self.clear_highlight_cache();
         self.cache.entry_kind.clear();
@@ -54,7 +54,7 @@ impl FlistWalkerApp {
         reset_kind_resolution: bool,
         mark_inflight: bool,
     ) {
-        let query_non_empty = !self.query_state.query.trim().is_empty();
+        let query_non_empty = !self.runtime.query_state.query.trim().is_empty();
         if mark_inflight {
             self.indexing.begin_active_refresh_with_inflight(
                 request_id,
@@ -87,10 +87,10 @@ impl FlistWalkerApp {
         let req = IndexRequest {
             request_id,
             tab_id: tab_id.unwrap_or_default(),
-            root: self.root.clone(),
-            use_filelist: self.use_filelist,
-            include_files: self.include_files,
-            include_dirs: self.include_dirs,
+            root: self.runtime.root.clone(),
+            use_filelist: self.runtime.use_filelist,
+            include_files: self.runtime.include_files,
+            include_dirs: self.runtime.include_dirs,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -107,10 +107,10 @@ impl FlistWalkerApp {
         let req = IndexRequest {
             request_id,
             tab_id: tab_id.unwrap_or_default(),
-            root: self.root.clone(),
+            root: self.runtime.root.clone(),
             use_filelist: false,
-            include_files: self.include_files,
-            include_dirs: self.include_dirs,
+            include_files: self.runtime.include_files,
+            include_dirs: self.runtime.include_dirs,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -189,10 +189,10 @@ impl FlistWalkerApp {
         let mut reindex = use_filelist_changed;
         reindex |= files_changed || dirs_changed;
         if self.use_filelist_requires_locked_filters()
-            && (!self.include_files || !self.include_dirs)
+            && (!self.runtime.include_files || !self.runtime.include_dirs)
         {
-            self.include_files = true;
-            self.include_dirs = true;
+            self.runtime.include_files = true;
+            self.runtime.include_dirs = true;
             reindex = true;
         }
         reindex |= self.ensure_entry_filters();
@@ -412,7 +412,7 @@ impl FlistWalkerApp {
                     if !is_active_request {
                         continue;
                     }
-                    self.index.source = source;
+                    self.runtime.index.source = source;
                     self.refresh_status_line();
                 }
                 IndexResponse::Batch {
@@ -434,7 +434,7 @@ impl FlistWalkerApp {
                     }
                     self.indexing.pending_entries.clear();
                     self.indexing.pending_entries_request_id = None;
-                    self.index.entries.clear();
+                    self.runtime.index.entries.clear();
                     self.indexing.incremental_filtered_entries.clear();
                     self.queue_index_batch(request_id, entries);
                     has_index_progress = true;
@@ -445,14 +445,14 @@ impl FlistWalkerApp {
                         continue;
                     }
                     self.drain_queued_index_entries(request_id, usize::MAX);
-                    self.index.source = source;
-                    self.all_entries = Arc::new(std::mem::take(&mut self.index.entries));
-                    self.indexing.last_search_snapshot_len = self.all_entries.len();
+                    self.runtime.index.source = source;
+                    self.runtime.all_entries = Arc::new(std::mem::take(&mut self.runtime.index.entries));
+                    self.indexing.last_search_snapshot_len = self.runtime.all_entries.len();
                     self.indexing.incremental_filtered_entries.clear();
                     self.indexing.settle_active_terminal_state();
                     self.apply_entry_filters(true);
                     self.rebuild_entry_kind_cache();
-                    if matches!(self.index.source, IndexSource::Walker) {
+                    if matches!(self.runtime.index.source, IndexSource::Walker) {
                         self.queue_unknown_kind_paths_for_completed_walker_entries();
                     } else {
                         self.reset_kind_resolution_state();
@@ -466,10 +466,10 @@ impl FlistWalkerApp {
                         .as_ref()
                         .is_some_and(|pending| {
                             pending.tab_id == current_tab_id
-                                && path_key(&pending.root) == path_key(&self.root)
+                                && path_key(&pending.root) == path_key(&self.runtime.root)
                         })
                     {
-                        let root = self.root.clone();
+                        let root = self.runtime.root.clone();
                         let entries = self.filelist_entries_snapshot();
                         self.features.filelist.pending_after_index = None;
                         self.request_filelist_creation(current_tab_id, root, entries);
@@ -538,7 +538,7 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self.query_state.query.trim().is_empty() {
+        if self.runtime.query_state.query.trim().is_empty() {
             self.apply_incremental_empty_query_results();
         } else {
             self.maybe_refresh_incremental_search();
@@ -547,8 +547,8 @@ impl FlistWalkerApp {
     }
 
     fn ensure_entry_filters(&mut self) -> bool {
-        if !self.include_files && !self.include_dirs {
-            self.include_files = true;
+        if !self.runtime.include_files && !self.runtime.include_dirs {
+            self.runtime.include_files = true;
             return true;
         }
         false
@@ -601,7 +601,7 @@ impl FlistWalkerApp {
                 .incremental_filtered_entries
                 .push(entry.clone());
         }
-        self.index.entries.push(entry);
+        self.runtime.index.entries.push(entry);
     }
 
     fn drain_queued_index_entries(&mut self, request_id: u64, max_entries: usize) -> bool {

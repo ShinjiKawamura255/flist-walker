@@ -2,10 +2,12 @@
 
 ## Status Snapshot
 - Updated: 2026-04-12
-- Current active engineering roadmap: none
-- Current active engineering change plan: none
+- Current active engineering roadmap: architecture score uplift roadmap (2026-04-12)
+- Current active engineering change plan: docs/CHANGE-PLAN-20260412-roadmap-architecture-score-uplift.md
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-12 に architecture score uplift roadmap と slice A/B/C の change-plan 文書を作成し、`AGENTS.md` に temporary rule を追記した。
+  - 2026-04-12 の外部レビューで、現在の architecture は 60〜65 点相当と評価され、`Deref` 連鎖、direct mutation、state duplication、imperative UI refresh が主な未解消点として指摘された。
   - 2026-04-12 に app-shell/use-case decoupling roadmap と initial slice A を作成し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-12 に Slice A を実装し、`AppShellState` で app shell を包み、`cd rust && cargo test` を通した。次の slice を起こす前に roadmap 側へ結果を反映した。
   - 2026-04-12 に Slice B を実装し、result/preview/sort response handling を reducer boundary へ移したうえで `cd rust && cargo test` を再実行した。
