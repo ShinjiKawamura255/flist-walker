@@ -143,6 +143,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-12  Slice A completed: core boundary extraction and contract tightening landed, verified by `cargo test`.
 - 2026-04-12  Slice B started: B1 shell entrypoint and bootstrap boundary extraction landed, verified by `cargo test`.
 - 2026-04-12  Slice B progressed: B2 canonical tab/state projection helpers landed, verified by `cargo test`.
+- 2026-04-12  Slice B progressed: B3 reducer boundary consolidation landed, verified by `cargo test`.
+- 2026-04-12  Slice B progressed: B4 request routing cleanup landed, verified by `cargo test`.
 
 ## 12. Communication Plan
 - Return to user when:

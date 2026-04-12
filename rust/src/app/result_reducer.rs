@@ -74,6 +74,35 @@ pub(super) fn apply_background_search_response(
     FlistWalkerApp::compact_inactive_tab_state(tab);
 }
 
+pub(super) fn apply_active_search_response(
+    app: &mut FlistWalkerApp,
+    response: &SearchResponse,
+) -> bool {
+    if Some(response.request_id) != app.search.pending_request_id() {
+        return false;
+    }
+    app.search.clear_active_request_state();
+    if let Some(error) = &response.error {
+        app.set_notice(format!("Search failed: {error}"));
+    } else {
+        app.clear_notice();
+    }
+    app.replace_results_snapshot(response.results.clone(), false);
+    if app.indexing.search_rerun_pending
+        && !app.query_state.query.trim().is_empty()
+        && app.indexing.in_progress
+        && app.should_refresh_incremental_search()
+    {
+        app.indexing.search_rerun_pending = false;
+        app.indexing.search_resume_pending = false;
+        app.entries = Arc::new(app.indexing.incremental_filtered_entries.clone());
+        app.indexing.last_search_snapshot_len = app.entries.len();
+        app.indexing.last_incremental_results_refresh = Instant::now();
+        app.enqueue_search_request();
+    }
+    true
+}
+
 pub(super) fn replace_results_snapshot(
     app: &mut FlistWalkerApp,
     results: Vec<(PathBuf, f64)>,
@@ -190,6 +219,27 @@ pub(super) fn apply_background_preview_response(app: &mut FlistWalkerApp, respon
             tab.result_state.preview = response.preview;
         }
     }
+}
+
+pub(super) fn apply_active_preview_response(
+    app: &mut FlistWalkerApp,
+    response: &PreviewResponse,
+) -> bool {
+    if Some(response.request_id) != app.worker_bus.preview.pending_request_id {
+        return false;
+    }
+    app.take_preview_request_tab(response.request_id);
+    app.worker_bus.preview.pending_request_id = None;
+    app.worker_bus.preview.in_progress = false;
+    app.cache_preview(response.path.clone(), response.preview.clone());
+    if let Some(row) = app.current_row {
+        if let Some((current_path, _)) = app.results.get(row) {
+            if *current_path == response.path {
+                app.preview = response.preview.clone();
+            }
+        }
+    }
+    true
 }
 
 pub(super) fn apply_background_sort_response(app: &mut FlistWalkerApp, response: SortMetadataResponse) {

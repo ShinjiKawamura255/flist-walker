@@ -138,6 +138,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-12  B1 implemented: bootstrap/launch entrypoints were moved behind the bootstrap owner boundary and validated with `cargo test`.
 - 2026-04-12  B2 implemented: canonical tab/state projection helpers were centralized in `tab_state.rs` and validated with `cargo test`.
 - 2026-04-12  slice B review flagged scope/phase mismatch and missing B1 entry gate; plan updated before implementation.
+- 2026-04-12  B3 implemented: response handling was consolidated into reducer boundaries and validated with `cargo test`.
+- 2026-04-12  B4 implemented: action/sort request routing was moved out of `tabs.rs` into the worker bus owner boundary and validated with `cargo test`.
 
 ## 12. Communication Plan
 - Return to user when the slice is reviewed and ready for implementation, or when a blocking issue requires plan update.

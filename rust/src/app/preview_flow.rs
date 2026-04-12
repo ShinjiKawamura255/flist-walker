@@ -36,18 +36,7 @@ impl FlistWalkerApp {
 
     pub(super) fn poll_preview_response(&mut self) {
         while let Ok(response) = self.worker_bus.preview.rx.try_recv() {
-            if Some(response.request_id) == self.worker_bus.preview.pending_request_id {
-                self.take_preview_request_tab(response.request_id);
-                self.worker_bus.preview.pending_request_id = None;
-                self.worker_bus.preview.in_progress = false;
-                self.cache_preview(response.path.clone(), response.preview.clone());
-                if let Some(row) = self.current_row {
-                    if let Some((current_path, _)) = self.results.get(row) {
-                        if *current_path == response.path {
-                            self.preview = response.preview;
-                        }
-                    }
-                }
+            if result_reducer::apply_active_preview_response(self, &response) {
                 continue;
             }
             self.apply_background_preview_response(response);

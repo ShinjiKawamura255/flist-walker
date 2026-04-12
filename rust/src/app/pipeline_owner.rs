@@ -30,40 +30,12 @@ impl<'a> PipelineOwner<'a> {
         keep_scroll_position: bool,
         preserve_selected_path: bool,
     ) {
-        fn clamp_row(current_row: Option<usize>, results_len: usize) -> Option<usize> {
-            current_row.map(|row| row.min(results_len.saturating_sub(1)))
-        }
-
-        let selected_path = preserve_selected_path
-            .then(|| {
-                self.app
-                    .current_row
-                    .and_then(|row| self.app.results.get(row).map(|(path, _)| path.clone()))
-            })
-            .flatten();
-        let previous_row = self.app.current_row;
-        self.app.results = results;
-        if self.app.results.is_empty() {
-            self.app.current_row = None;
-            self.app.preview.clear();
-            self.app.worker_bus.preview.in_progress = false;
-            self.app.worker_bus.preview.pending_request_id = None;
-        } else {
-            let previous_row = clamp_row(previous_row, self.app.results.len());
-            self.app.current_row = selected_path
-                .and_then(|selected| {
-                    self.app
-                        .results
-                        .iter()
-                        .position(|(path, _)| *path == selected)
-                })
-                .or(previous_row);
-            self.app.request_preview_for_current();
-            if !keep_scroll_position {
-                self.app.ui.scroll_to_current = true;
-            }
-        }
-        self.app.refresh_status_line();
+        result_reducer::apply_results_with_selection_policy(
+            self.app,
+            results,
+            keep_scroll_position,
+            preserve_selected_path,
+        );
     }
 
     pub(super) fn enqueue_search_request(&mut self) {
@@ -82,7 +54,9 @@ impl<'a> PipelineOwner<'a> {
     pub(super) fn poll_search_response(&mut self) {
         while let Ok(response) = self.app.search.rx.try_recv() {
             match self.app.search.route_response(response.request_id) {
-                SearchResponseRoute::Active => self.handle_active_search_response(response),
+                SearchResponseRoute::Active => {
+                    result_reducer::apply_active_search_response(self.app, &response);
+                }
                 SearchResponseRoute::Background(tab_id) => {
                     self.app.apply_background_search_response(tab_id, response);
                 }
@@ -236,27 +210,6 @@ impl<'a> PipelineOwner<'a> {
         }
     }
 
-    fn handle_active_search_response(&mut self, response: SearchResponse) {
-        self.app.search.clear_active_request_state();
-        if let Some(error) = response.error {
-            self.app.set_notice(format!("Search failed: {error}"));
-        } else {
-            self.app.clear_notice();
-        }
-        self.app.replace_results_snapshot(response.results, false);
-        if self.app.indexing.search_rerun_pending
-            && !self.app.query_state.query.trim().is_empty()
-            && self.app.indexing.in_progress
-            && self.app.should_refresh_incremental_search()
-        {
-            self.app.indexing.search_rerun_pending = false;
-            self.app.indexing.search_resume_pending = false;
-            self.sync_entries_from_incremental();
-            self.app.indexing.last_search_snapshot_len = self.app.entries.len();
-            self.app.indexing.last_incremental_results_refresh = Instant::now();
-            self.update_results();
-        }
-    }
     fn filtered_entries(&self, source: &[Entry]) -> Vec<Entry> {
         source
             .iter()
