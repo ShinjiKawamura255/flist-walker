@@ -29,6 +29,10 @@
 ## 3. Scope
 ### In Scope
 - `rust/src/app/mod.rs`
+- `rust/src/app/bootstrap.rs`
+- `rust/src/app/session.rs`
+- `rust/src/app/render.rs`
+- `rust/src/app/input.rs`
 - `rust/src/app/state.rs`
 - `rust/src/app/tab_state.rs`
 - `rust/src/app/tabs.rs`
@@ -68,15 +72,16 @@
    - Files/modules/components: `app/mod.rs`, `app/bootstrap.rs`, `app/session.rs`, `app/render.rs`, `app/input.rs`
    - Expected result: coordinator entrypoints become thin dispatchers with explicit owner calls.
    - Verification: app startup/shutdown/session tests.
+   - Entry condition: slice A is complete, baseline `cargo test` is green, and the owner map for shell entrypoints is frozen.
    - Exit condition: boot/dispatch/persistence の入口と owner 境界が一覧化され、mod.rs に残す責務が明確になる。
 2. Phase B2: canonical tab/state projection
-   - Files/modules/components: `state.rs`, `tab_state.rs`, `tabs.rs`
+   - Files/modules/components: `state.rs`, `tab_state.rs`, `tabs.rs`, `ui_state.rs`, `query_state.rs`
    - Expected result: there is one authoritative projection path between live shell state and persisted tab state.
    - Verification: snapshot/restore/tab switch/reorder tests.
    - Entry condition: B1 で残留責務が整理され、投影対象 state が固定されている。
    - Exit condition: live state と persisted snapshot の projection が単一経路になっている。
 3. Phase B3: reducer and command boundary consolidation
-   - Files/modules/components: `result_reducer.rs`, `result_flow.rs`, `preview_flow.rs`, `pipeline_owner.rs`, `filelist.rs`, `update.rs`
+   - Files/modules/components: `pipeline.rs`, `result_reducer.rs`, `result_flow.rs`, `preview_flow.rs`, `pipeline_owner.rs`, `filelist.rs`, `update.rs`
    - Expected result: response handling is centralized, predictable, and less coupled to `FlistWalkerApp`.
    - Verification: response lifecycle tests and targeted command boundary tests.
    - Entry condition: B2 の projection が固定され、response apply の対象 owner がぶれない。
@@ -86,7 +91,7 @@
    - Expected result: request routing, in-flight bookkeeping, and tab lifecycle transitions are clear and isolated.
    - Verification: background response routing tests and queue/inflight tests.
    - Entry condition: B3 までで reducer/command boundary が整理され、routing cleanup の対象が確定している。
-   - Exit condition: request routing と tab lifecycle の責務が owner ごとに分離されている。
+   - Exit condition: request routing と tab lifecycle の責務が owner ごとに分離され、`tabs.rs` は lifecycle management に限定されている。
 
 ## 7. Detailed Task Breakdown
 - [ ] entrypoint / owner boundary を明確化する。
@@ -130,6 +135,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12  Planned.
+- 2026-04-12  B1 implemented: bootstrap/launch entrypoints were moved behind the bootstrap owner boundary and validated with `cargo test`.
+- 2026-04-12  slice B review flagged scope/phase mismatch and missing B1 entry gate; plan updated before implementation.
 
 ## 12. Communication Plan
 - Return to user when the slice is reviewed and ready for implementation, or when a blocking issue requires plan update.

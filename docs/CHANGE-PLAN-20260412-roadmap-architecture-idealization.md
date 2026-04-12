@@ -141,6 +141,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-12  Planned.
 - 2026-04-12  Slice A completed: core boundary extraction and contract tightening landed, verified by `cargo test`.
+- 2026-04-12  Slice B started: B1 shell entrypoint and bootstrap boundary extraction landed, verified by `cargo test`.
 
 ## 12. Communication Plan
 - Return to user when:
