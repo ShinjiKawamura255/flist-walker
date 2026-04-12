@@ -12,6 +12,7 @@
   - 2026-04-12 に Slice A を実装し、`AppShellState` で app shell を包み、`cd rust && cargo test` を通した。次の slice を起こす前に roadmap 側へ結果を反映した。
   - 2026-04-12 に Slice B を実装し、result/preview/sort response handling を reducer boundary へ移したうえで `cd rust && cargo test` を再実行した。
   - 2026-04-12 に Slice B を完了し、result/preview/sort response handling を reducer boundary へ移した。
+  - 2026-04-12 に Slice C で closure validation を実施し、`cargo test` を再実行したうえで roadmap は未閉鎖と判断した。残課題は `FlistWalkerApp` の透明な shell 露出、`status_line` の命令的更新、そして direct mutation / derived UI state の整理である。
   - 2026-04-12 に app-shell/use-case decoupling roadmap を close し、temporary rule を撤去して change-plan 文書群を削除した。
   - 2026-04-12 に app-shell/use-case decoupling roadmap を復元し、継続判断用 Slice C を追加して plan-driven-changes の再開点へ戻した。
   - 2026-04-12 に Slice C で continue を判断し、残る shell-policy/helper extraction を Slice D として追加した。
