@@ -90,7 +90,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [session.rs](../rust/src/app/session.rs)
   - saved roots、UI state 永続化、window geometry restore、shutdown/persist owner。
 - [tabs.rs](../rust/src/app/tabs.rs)
-  - tab lifecycle、snapshot capture/apply、activation 時の restore/refresh 入口、tab routing owner を担当する。background tab 向け search/index response apply は `response_flow.rs` へ委譲し、live 側の tab/session orchestration は `state.rs` の `TabSessionState` を介して保持する。
+  - tab lifecycle、snapshot capture/apply、activation 時の restore/refresh 入口、tab routing owner を担当する。background tab 向け search/index response apply は `response_flow.rs` へ委譲し、live 側の tab/session orchestration は `state.rs` の `TabSessionState` を介して保持する。`TabSessionState` は明示的な collection API と active tab / tab id / pending restore / request routing の owner API を持ち、Vec 全体への暗黙透過はしない。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
   - index queue、index response poll、dispatcher を担当し、active path は `PipelineOwner`、background path は `tabs.rs` の background-flow helper 群へ橋渡しする thin coordinator として振る舞う。
 - [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)
@@ -136,7 +136,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [state.rs](../rust/src/app/state.rs)
   - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` を束ねる `FeatureStateBundle`、live tab/session registry を束ねる `TabSessionState`、cache/request routing など bundle inventory の受け皿として扱う。`AppRuntimeState` は `FlistWalkerApp` の app-global / active-result live state を束ねる runtime bundle として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
-  - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。
+  - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。
 - [workers.rs](../rust/src/app/workers.rs)
   - search/preview/action/sort/update/filelist/kind worker の spawn 実装を担当する。
 

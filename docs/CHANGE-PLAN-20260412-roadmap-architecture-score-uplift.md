@@ -15,19 +15,22 @@
   - [docs/CHANGE-PLAN-20260412-slice-c-closure-validation.md](docs/CHANGE-PLAN-20260412-slice-c-closure-validation.md)
 - Scope Label: architecture-score-80
 - Related Tickets/Issues: none
-- Review Status: 未レビュー
+- Review Status: レビュー済み
 - Review Notes:
   - 実現性レビュー: feasible.
   - Current architecture already exposes owner seams, split modules, and validation gates, so the remaining work is primarily boundary tightening and closure validation.
   - No external dependency or release blocker is required for this roadmap.
-  - External architecture review feedback received on 2026-04-12: the current score is estimated at 60-65, with main gaps in `Deref`-based transparency leaks, direct mutation / side-effect mixing, state duplication across runtime vs persisted tab state, and imperative UI-derived updates.
-  - Open question: the "80点" target is qualitative, so slice C must decide closure by concrete indicators instead of intuition.
+  - External architecture review feedback received on 2026-04-12: the current score is estimated at 73/100, with main gaps in shell transparency, direct mutation / side-effect mixing, state duplication across runtime vs persisted tab state, and imperative UI-derived updates.
+  - This roadmap supersedes the earlier app-state-ownership consolidation sequence and is the current execution baseline for `architecture-score-80`.
+  - Open question: the "80点" target is qualitative, so Slice C must decide closure by concrete indicators instead of intuition.
+  - Roadmap review on 2026-04-13: feasible and complete enough to proceed; no scope or ordering change required before Slice A.
 
 ## 1. Background
 - The current architecture has already moved far beyond a monolith, but the remaining score gap is concentrated in shell ownership, request-routing clarity, and closure discipline.
 - `app/mod.rs` still acts as a broad coordinator across multiple feature areas, and several ownership boundaries are documented but not yet fully converged in implementation and validation.
 - The project already has strong docs and test scaffolding, so the next score increase should come from making the remaining seams explicit instead of adding new features.
 - A recent architecture review identified the remaining debt more sharply: the module split is real, but `Deref` chains and direct field mutation still make the structure behave like a disguised God Object.
+- This roadmap is the active plan for closing the remaining gap to 80+ and should be treated as the authoritative execution baseline for the current workstream.
 - The highest-value improvement is therefore not another file split, but a stricter one-way data flow: explicit access to state, explicit message handling, and more derived UI data.
 
 ## 2. Goal
@@ -137,6 +140,9 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12 Planned.
+- 2026-04-13 Refreshed as the active execution baseline and aligned with the current `architecture-score-80` temporary rule.
+- 2026-04-13 Slice A implementation began with shell boundary hardening around `TabSessionState`.
+- 2026-04-13 Slice A was further tightened with explicit owner API for active tab, tab id, pending restore refresh, and request routing, and the Rust test suite stayed green.
 
 ## 12. Communication Plan
 - Return to user when:

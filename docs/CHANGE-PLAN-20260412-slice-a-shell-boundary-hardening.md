@@ -12,12 +12,13 @@
 - Child Plan(s): none
 - Scope Label: shell-boundary-hardening
 - Related Tickets/Issues: none
-- Review Status: 未レビュー
+- Review Status: レビュー済み
 - Review Notes:
   - 実現性レビュー: feasible.
   - The slice stays within already documented shell/state modules, so the implementation path is clear.
   - No unresolved cross-repository dependency exists.
   - External review feedback emphasizes `Deref` transparency leaks as the main remaining shell-boundary issue.
+  - Slice review on 2026-04-13: feasible; the boundary hardening work is appropriately scoped and does not require a plan rewrite before implementation.
 
 ## 1. Background
 - The top-level shell already delegates many concerns, but it still needs a cleaner fixed point so the remaining coordination surface is easy to defend.
@@ -105,6 +106,9 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-12 Planned.
+- 2026-04-13 Reviewed and approved for implementation.
+- 2026-04-13 Implemented slice-backed `TabSessionState` API and updated shell boundary docs.
+- 2026-04-13 Further tightened `TabSessionState` owner API around active tab, tab id, pending restore refresh, and request routing; validation remains green.
 
 ## 12. Communication Plan
 - Return to the roadmap review step when the shell boundary is stable enough to start routing consolidation.

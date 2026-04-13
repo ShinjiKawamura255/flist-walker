@@ -75,11 +75,14 @@
 
 ## Temporary Change Plan Rule
 - `architecture-score-80` の作業では、開始前に次の計画書を上から順に読むこと。
-  - [docs/CHANGE-PLAN-20260412-roadmap-app-state-ownership-consolidation.md](docs/CHANGE-PLAN-20260412-roadmap-app-state-ownership-consolidation.md)
-  - [docs/CHANGE-PLAN-20260412-slice-a-state-ownership-and-event-routing.md](docs/CHANGE-PLAN-20260412-slice-a-state-ownership-and-event-routing.md)
-  - [docs/CHANGE-PLAN-20260412-slice-b-closure-validation.md](docs/CHANGE-PLAN-20260412-slice-b-closure-validation.md)
+  - [docs/CHANGE-PLAN-20260412-roadmap-architecture-score-uplift.md](docs/CHANGE-PLAN-20260412-roadmap-architecture-score-uplift.md)
+  - [docs/CHANGE-PLAN-20260412-slice-a-shell-boundary-hardening.md](docs/CHANGE-PLAN-20260412-slice-a-shell-boundary-hardening.md)
+  - [docs/CHANGE-PLAN-20260412-slice-b-routing-and-lifecycle-consolidation.md](docs/CHANGE-PLAN-20260412-slice-b-routing-and-lifecycle-consolidation.md)
+  - [docs/CHANGE-PLAN-20260412-slice-c-closure-validation.md](docs/CHANGE-PLAN-20260412-slice-c-closure-validation.md)
 - roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
-- 実装開始後は Slice A で state ownership と event routing を収束させ、`closure slice` を完了するまで roadmap を閉じないこと。
+- roadmap に `Execution Mode: autonomous` がある場合、問題がない限り roadmap 完遂まで slice 作成、review、phase 実行を自律継続し、goal 未達なら roadmap 更新後の追加 slice も同じ方針で継続すること。終端では `closure slice` を実施してから閉じること。
 - phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として確認すること。
+- コミットは phase 完了ごとに機械的に作らず、独立した検証/rollback 単位になった時点で作成すること。
 - 実装順は計画書に従い、scope / order / risk が変わる場合は先に計画を更新すること。
+- 逸脱した場合は計画書を先に更新すること。
 - 完了後はこの一時セクションを削除すること。

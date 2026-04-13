@@ -858,9 +858,9 @@ impl RequestTabRoutingState {
 pub(crate) struct TabSessionState {
     tabs: Vec<AppTabState>,
     pub(super) active_tab: usize,
-    pub(super) next_tab_id: u64,
+    next_tab_id: u64,
     pub(super) pending_restore_refresh_tabs: HashSet<u64>,
-    pub(super) request_tab_routing: RequestTabRoutingState,
+    request_tab_routing: RequestTabRoutingState,
 }
 
 impl Default for TabSessionState {
@@ -875,8 +875,124 @@ impl Default for TabSessionState {
     }
 }
 
+impl TabSessionState {
+    pub(super) fn replace_all(&mut self, tabs: Vec<AppTabState>) {
+        self.tabs = tabs;
+    }
+
+    pub(super) fn active_tab_index(&self) -> usize {
+        self.active_tab
+    }
+
+    pub(super) fn set_active_tab_index(&mut self, active_tab: usize) {
+        self.active_tab = active_tab;
+    }
+
+    pub(super) fn take_next_tab_id(&mut self) -> u64 {
+        let id = self.next_tab_id;
+        self.next_tab_id = self.next_tab_id.saturating_add(1);
+        id
+    }
+
+    pub(super) fn len(&self) -> usize {
+        self.tabs.len()
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn is_empty(&self) -> bool {
+        self.tabs.is_empty()
+    }
+
+    pub(super) fn get(&self, index: usize) -> Option<&AppTabState> {
+        self.tabs.get(index)
+    }
+
+    pub(super) fn get_mut(&mut self, index: usize) -> Option<&mut AppTabState> {
+        self.tabs.get_mut(index)
+    }
+
+    pub(super) fn push(&mut self, tab: AppTabState) {
+        self.tabs.push(tab);
+    }
+
+    pub(super) fn insert(&mut self, index: usize, tab: AppTabState) {
+        self.tabs.insert(index, tab);
+    }
+
+    pub(super) fn remove(&mut self, index: usize) -> AppTabState {
+        self.tabs.remove(index)
+    }
+
+    pub(super) fn iter(&self) -> std::slice::Iter<'_, AppTabState> {
+        self.tabs.iter()
+    }
+
+    pub(super) fn iter_mut(&mut self) -> std::slice::IterMut<'_, AppTabState> {
+        self.tabs.iter_mut()
+    }
+
+    pub(super) fn mark_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
+        self.pending_restore_refresh_tabs.insert(tab_id);
+    }
+
+    pub(super) fn clear_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
+        self.pending_restore_refresh_tabs.remove(&tab_id);
+    }
+
+    pub(super) fn clear_pending_restore_refresh_tabs(&mut self) {
+        self.pending_restore_refresh_tabs.clear();
+    }
+
+    pub(super) fn take_pending_restore_refresh_for_tab(&mut self, tab_id: u64) -> bool {
+        self.pending_restore_refresh_tabs.remove(&tab_id)
+    }
+
+    pub(super) fn bind_preview_request(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tab_routing.bind_preview(request_id, tab_id);
+    }
+
+    pub(super) fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.take_preview(request_id)
+    }
+
+    #[cfg(test)]
+    pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.preview.get(&request_id).copied()
+    }
+
+    pub(super) fn bind_action_request(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tab_routing.bind_action(request_id, tab_id);
+    }
+
+    pub(super) fn take_action_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.take_action(request_id)
+    }
+
+    #[cfg(test)]
+    pub(super) fn action_request_tab(&self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.action.get(&request_id).copied()
+    }
+
+    pub(super) fn bind_sort_request(&mut self, request_id: u64, tab_id: u64) {
+        self.request_tab_routing.bind_sort(request_id, tab_id);
+    }
+
+    pub(super) fn take_sort_request_tab(&mut self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.take_sort(request_id)
+    }
+
+    #[cfg(test)]
+    pub(super) fn sort_request_tab(&self, request_id: u64) -> Option<u64> {
+        self.request_tab_routing.sort.get(&request_id).copied()
+    }
+
+    pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) {
+        self.request_tab_routing.clear_for_tab(tab_id);
+    }
+}
+
 impl Deref for TabSessionState {
-    type Target = Vec<AppTabState>;
+    type Target = [AppTabState];
 
     fn deref(&self) -> &Self::Target {
         &self.tabs
@@ -894,7 +1010,7 @@ impl<'a> IntoIterator for &'a TabSessionState {
     type IntoIter = std::slice::Iter<'a, AppTabState>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.tabs.iter()
+        self.iter()
     }
 }
 
@@ -903,6 +1019,6 @@ impl<'a> IntoIterator for &'a mut TabSessionState {
     type IntoIter = std::slice::IterMut<'a, AppTabState>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.tabs.iter_mut()
+        self.iter_mut()
     }
 }

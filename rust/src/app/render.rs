@@ -562,7 +562,7 @@ impl FlistWalkerApp {
             for i in 0..self.shell.tabs.len() {
                 let is_drag_source = drag_state.is_some_and(|state| state.source_index == i);
                 let is_drop_target = drag_state.is_some_and(|state| state.hover_index == i);
-                let is_active = self.shell.tabs.active_tab == i;
+                let is_active = self.shell.tabs.active_tab_index() == i;
                 let tab_accent: Option<TabAccentColor> =
                     self.shell.tabs.get(i).and_then(|tab| tab.tab_accent);
                 let accent_palette =

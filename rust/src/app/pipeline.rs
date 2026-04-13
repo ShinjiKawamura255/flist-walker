@@ -164,7 +164,7 @@ impl FlistWalkerApp {
             indexing.inflight_requests.clear();
             indexing.request_tabs.clear();
 
-            indexing.clear_active_request_state(&mut tabs.pending_restore_refresh_tabs);
+            indexing.clear_active_request_state(tabs);
 
             for tab in tabs {
                 if affected_tab_ids.contains(&tab.id)

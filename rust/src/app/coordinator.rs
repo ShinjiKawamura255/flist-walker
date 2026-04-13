@@ -163,7 +163,7 @@ impl FlistWalkerApp {
         };
         let memory = self.memory_usage_text();
         let status_line = build_status_line(StatusLineContext {
-            active_tab: self.shell.tabs.active_tab,
+            active_tab: self.shell.tabs.active_tab_index(),
             tab_count: self.shell.tabs.len(),
             indexed_count,
             results_len: self.shell.runtime.results.len(),
@@ -252,23 +252,25 @@ impl FlistWalkerApp {
 
     pub(super) fn clear_pending_restore_refresh(&mut self) {
         if let Some(tab_id) = self.current_tab_id() {
-            self.shell.tabs.pending_restore_refresh_tabs.remove(&tab_id);
+            self.shell.tabs.clear_pending_restore_refresh_for_tab(tab_id);
         }
     }
 
     pub(super) fn mark_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
-        self.shell.tabs.pending_restore_refresh_tabs.insert(tab_id);
+        self.shell.tabs.mark_pending_restore_refresh_for_tab(tab_id);
     }
 
     pub(super) fn clear_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
-        self.shell.tabs.pending_restore_refresh_tabs.remove(&tab_id);
+        self.shell.tabs.clear_pending_restore_refresh_for_tab(tab_id);
     }
 
     pub(super) fn take_pending_restore_refresh_for_active_tab(&mut self) -> bool {
         let Some(tab_id) = self.current_tab_id() else {
             return false;
         };
-        self.shell.tabs.pending_restore_refresh_tabs.remove(&tab_id)
+        self.shell
+            .tabs
+            .take_pending_restore_refresh_for_tab(tab_id)
     }
 
     /// action worker 実行中の進捗ラベルを返す。

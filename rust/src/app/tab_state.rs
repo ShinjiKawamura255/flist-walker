@@ -193,7 +193,7 @@ impl AppTabState {
             tab_accent: shell
                 .shell
                 .tabs
-                .get(shell.shell.tabs.active_tab)
+                .get(shell.shell.tabs.active_tab_index())
                 .and_then(|tab| tab.tab_accent),
             use_filelist: shell.shell.runtime.use_filelist,
             use_regex: shell.shell.runtime.use_regex,

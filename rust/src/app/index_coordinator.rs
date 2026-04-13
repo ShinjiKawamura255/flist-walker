@@ -141,10 +141,10 @@ impl IndexCoordinator {
 
     pub(super) fn clear_active_request_state(
         &mut self,
-        pending_restore_refresh_tabs: &mut std::collections::HashSet<u64>,
+        tabs: &mut TabSessionState,
     ) {
         self.settle_active_terminal_state();
-        pending_restore_refresh_tabs.clear();
+        tabs.clear_pending_restore_refresh_tabs();
     }
 
     pub(super) fn response_request_id(response: &IndexResponse) -> u64 {
