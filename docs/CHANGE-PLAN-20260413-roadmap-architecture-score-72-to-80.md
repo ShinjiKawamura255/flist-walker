@@ -22,13 +22,13 @@
   - The goal is to remove the remaining architectural debt without turning the roadmap into an open-ended polish project.
 
 ## 1. Background
-- God Object decomposition succeeded, but the resulting architecture still has structural rough edges: explicit ownership boundaries are incomplete, several modules are still too dense, and testability remains constrained by the current control-flow shape.
+- God Object decomposition succeeded, but the resulting architecture still has structural rough edges: explicit ownership boundaries are incomplete, the Tab-Shell 二重所有 pattern still exists, several modules are still too dense, and testability remains constrained by the current control-flow shape.
 - The review indicates that the remaining work is not a single bug fix. It is a set of follow-up refactors that need to be ordered so the highest-risk ownership problems are solved first.
 - The project already has strong docs and regression coverage, so the fastest path to an 80+ architecture score is to remove the half-finished structural patterns rather than add new features.
 
 ## 2. Goal
 - Raise the architecture from 72/100 to a defensible 80+ by finishing the state-ownership boundary work and removing the remaining structural smells that still make the code harder to reason about.
-- Make the remaining architecture easier to extend by reducing boilerplate around worker APIs, render/input module density, and implicit imports.
+- Make the remaining architecture easier to extend by resolving the Tab-Shell 二重所有 gap, reducing boilerplate around worker APIs, render/input module density, and eliminating `use super::*;` pollution and other implicit imports.
 - Keep the final decision evidence-based so the closure slice can justify either roadmap completion or a concrete follow-up roadmap.
 
 ## 3. Scope
@@ -80,13 +80,13 @@
   - Mitigation: keep each slice tied to a concrete architectural question and let the closure slice decide whether the result is sufficient.
 
 ## 6. Execution Strategy
-1. Slice A: State ownership and `Deref` removal.
+1. Slice A: State ownership, Tab-Shell 二重所有, and `Deref` removal.
    - Files/modules/components: `app/state.rs`, `app/tab_state.rs`, `app/tabs.rs`, `app/filelist.rs`, `app/update.rs`, `app/pipeline.rs`, `app/pipeline_owner.rs`, `app/response_flow.rs`, `app/result_reducer.rs`, `app/result_flow.rs`, `app/coordinator.rs`, `app/tests/*`.
-   - Expected result: the remaining ownership hazards are made explicit, `Deref/DerefMut` no longer expose manager internals as transparent state, and tab/shell ownership no longer depends on accidental field access.
+   - Expected result: the remaining ownership hazards are made explicit, the Tab-Shell 二重所有 split is collapsed into an explicit owner model where possible, `Deref/DerefMut` no longer expose manager internals as transparent state, and tab/shell ownership no longer depends on accidental field access.
    - Verification: `cargo test`, targeted ownership/regression tests, and docs diff review for the boundary model.
 2. Slice B: Module hygiene, testability, and extensibility cleanup.
    - Files/modules/components: `app/render.rs`, `app/input.rs`, `app/worker_bus.rs`, `app/workers.rs`, `app/result_reducer.rs`, `app/pipeline_owner.rs`, `app/coordinator.rs`, `app/update.rs`, `app/filelist.rs`, `app/tests/*`, `docs/TESTPLAN.md`.
-   - Expected result: oversized modules are split into clearer subunits, worker bus boilerplate is reduced through shared lifecycle helpers, explicit imports replace broad wildcard dependency leakage, clone-heavy paths are trimmed, and the remaining UI/control-flow seams become testable.
+   - Expected result: oversized modules are split into clearer subunits, worker bus boilerplate is reduced through shared lifecycle helpers, `use super::*;` pollution is replaced with explicit imports, clone-heavy paths are trimmed, and the remaining UI/control-flow seams become testable.
    - Verification: `cargo test`, focused unit/regression tests for input/render control flow, and docs/test-plan alignment review.
 3. Slice C: Closure validation and decision.
    - Files/modules/components: `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`, `docs/TASKS.md`, `AGENTS.md`, and the completed slice outcomes.
@@ -95,7 +95,8 @@
 
 ## 7. Detailed Task Breakdown
 - [ ] Remove the remaining transparent state exposure and ownership ambiguity.
-- [ ] Split the densest modules and remove wildcard-import / boilerplate leakage.
+- [ ] Collapse the Tab-Shell 二重所有 gap where it still adds sync risk.
+- [ ] Split the densest modules and remove `use super::*;` / boilerplate leakage.
 - [ ] Improve testability, worker API shape, and the remaining observability/perf rough edges.
 - [ ] Run closure validation and decide whether the architecture score target is reached.
 
@@ -109,6 +110,7 @@
 - Regression focus:
   - tab-shell ownership
   - `Deref/DerefMut` exposure
+  - `use super::*;` pollution
   - render/input command seams
   - worker lifecycle helpers
   - clone-heavy data flow

@@ -20,10 +20,12 @@
 ## 1. Background
 - The biggest ownership problem is separate from the biggest readability and extensibility problem.
 - After ownership boundaries are explicit, the remaining issue is the amount of ceremony and hidden coupling that still makes the modules harder to evolve.
+- `use super::*;` is one of the most visible forms of that hidden coupling, and it needs to be treated as a structural problem rather than a style nit.
 
 ## 2. Goal
 - Make the densest modules more navigable and easier to test.
 - Reduce boilerplate and hidden dependency leakage so the worker and UI seams are more maintainable.
+- Replace `use super::*;` dependency leakage with explicit imports in the touched modules.
 - Address the remaining clone-heavy and observability rough edges that still reduce the architecture score.
 
 ## 3. Scope
@@ -66,7 +68,7 @@
 2. Remove wildcard-import and boilerplate leakage.
    - Replace broad `use super::*` patterns in touched modules with explicit imports.
    - Introduce small shared helpers or traits where worker bus boilerplate is repeated.
-   - Success condition: dependencies are visible in the module source and worker lifecycle boilerplate is reduced.
+   - Success condition: dependencies are visible in the module source, `use super::*;` pollution is materially reduced, and worker lifecycle boilerplate is reduced.
 3. Address the remaining data-flow / observability rough edges.
    - Trim clone-heavy intermediate paths where they are clearly avoidable.
    - Centralize theme constants and tuning values that are currently scattered.
@@ -78,7 +80,7 @@
 
 ## 7. Detailed Task Breakdown
 - [ ] Split the densest render/input paths into smaller, testable seams.
-- [ ] Remove wildcard import leakage from the touched modules.
+- [ ] Remove `use super::*;` leakage from the touched modules.
 - [ ] Reduce worker bus boilerplate and clone-heavy data paths.
 - [ ] Improve the remaining observability / tuning / theme-constant rough edges.
 - [ ] Re-run validation and record the lasting testability implications.
@@ -91,6 +93,7 @@
 - Regression focus:
   - command collection
   - shortcut and dialog control flow
+  - explicit imports instead of wildcard leakage
   - worker lifecycle helper behavior
   - clone-heavy paths
   - observability/error-path consistency

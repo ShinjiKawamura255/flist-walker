@@ -18,12 +18,13 @@
   - The goal is to remove the unbounded internal state exposure rather than merely hide it behind more helper calls.
 
 ## 1. Background
-- The project has already removed the most obvious God Object shape, but `Deref/DerefMut` and mirrored tab/shell ownership still make the remaining structure too permeable.
+- The project has already removed the most obvious God Object shape, but `Deref/DerefMut` and the Tab-Shell 二重所有 pattern still make the remaining structure too permeable.
 - The current state-management shape makes it too easy to reach across boundaries directly, which weakens the architectural value of the module split.
 
 ## 2. Goal
 - Make the remaining ownership boundaries explicit enough that internal state is not exposed by default.
 - Reduce the tab/shell duplicate ownership surface so the code is easier to reason about and harder to mutate accidentally.
+- Make the Tab-Shell 二重所有 gap visible and then eliminate or clearly bound it rather than leaving it as an implicit sync convention.
 
 ## 3. Scope
 ### In Scope
@@ -54,6 +55,9 @@
 - Risk: removing `Deref` may reveal more sites that depended on transparent state access.
   - Impact: the slice could expand unexpectedly.
   - Mitigation: keep the API surface small and update only the callers that are directly part of the ownership boundary.
+- Risk: collapsing the Tab-Shell 二重所有 surface could expose more state duplication than initially expected.
+  - Impact: the slice could reveal further sync hotspots in tab restore and routing.
+  - Mitigation: keep the live/snapshot distinction only where it is concretely needed and document any remaining split.
 - Risk: collapsing duplicate ownership could make restore/snapshot logic more brittle if it is done mechanically.
   - Impact: sync bugs could be introduced.
   - Mitigation: preserve the live/snapshot distinction only where it is genuinely needed for restore or routing.
@@ -65,6 +69,7 @@
    - Success condition: callers no longer mutate manager internals through transparent deref access.
 2. Tighten the tab/shell ownership boundary.
    - Reduce the remaining mirrored fields or make the sync path explicit enough to reason about.
+   - Make the Tab-Shell 二重所有 pattern explicit in the code and then shrink it where the split is not actually buying isolation.
    - Keep tab/session and runtime ownership clear for active tab transitions, restore, and response routing.
    - Success condition: the state owner is obvious at each transition point.
 3. Validate and align tests/docs.
@@ -75,6 +80,7 @@
 ## 7. Detailed Task Breakdown
 - [ ] Remove `Deref/DerefMut` from the state/manager wrappers that expose internals too broadly.
 - [ ] Clarify the remaining live vs snapshot ownership boundaries.
+- [ ] Resolve or explicitly bound the Tab-Shell 二重所有 gap.
 - [ ] Re-run validation and record any lasting ownership decisions.
 
 ## 8. Validation Plan
@@ -85,6 +91,7 @@
 - Regression focus:
   - transparent state exposure
   - tab-shell sync
+  - Tab-Shell 二重所有
   - response routing after ownership changes
 
 ## 9. Rollback Plan
