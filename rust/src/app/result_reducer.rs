@@ -3,8 +3,7 @@ use super::*;
 fn clear_tab_result_selection(tab: &mut AppTabState) {
     tab.result_state.current_row = None;
     tab.result_state.preview.clear();
-    tab.pending_preview_request_id = None;
-    tab.preview_in_progress = false;
+    tab.clear_preview_request_state();
 }
 
 fn clamp_tab_result_selection(tab: &mut AppTabState) {
@@ -45,8 +44,7 @@ pub(super) fn apply_results_with_selection_policy(
     if app.shell.runtime.results.is_empty() {
         app.set_current_row(None);
         app.shell.runtime.preview.clear();
-        app.shell.worker_bus.preview.in_progress = false;
-        app.shell.worker_bus.preview.pending_request_id = None;
+        app.shell.worker_bus.preview.clear_request();
     } else {
         let previous_row = clamp_row(previous_row, app.shell.runtime.results.len());
         app.set_current_row(
@@ -79,8 +77,7 @@ pub(super) fn apply_background_search_response(
     let Some(tab) = app.shell.tabs.get_mut(tab_index) else {
         return;
     };
-    tab.pending_request_id = None;
-    tab.search_in_progress = false;
+    tab.clear_search_request_state();
     tab.notice = response
         .error
         .map(|error| format!("Search failed: {error}"))
@@ -89,8 +86,7 @@ pub(super) fn apply_background_search_response(
     tab.result_state.results = response.results;
     tab.result_state.results_compacted = false;
     tab.result_state.result_sort_mode = ResultSortMode::Score;
-    tab.result_state.pending_sort_request_id = None;
-    tab.result_state.sort_in_progress = false;
+    tab.result_state.clear_sort_request_state();
     clamp_tab_result_selection(tab);
     FlistWalkerApp::compact_inactive_tab_state(tab);
 }
@@ -130,8 +126,7 @@ pub(super) fn replace_results_snapshot(
     results: Vec<(PathBuf, f64)>,
     keep_scroll_position: bool,
 ) {
-    app.shell.worker_bus.sort.pending_request_id = None;
-    app.shell.worker_bus.sort.in_progress = false;
+    app.shell.worker_bus.sort.clear_request();
     app.shell.runtime.result_sort_mode = ResultSortMode::Score;
     app.shell.runtime.base_results = results.clone();
     // Regression guard: search refreshes must keep the cursor on the same row number.
@@ -141,8 +136,7 @@ pub(super) fn replace_results_snapshot(
 
 pub(super) fn invalidate_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
     let had_non_score_sort = app.shell.runtime.result_sort_mode != ResultSortMode::Score;
-    app.shell.worker_bus.sort.pending_request_id = None;
-    app.shell.worker_bus.sort.in_progress = false;
+    app.shell.worker_bus.sort.clear_request();
     app.shell.runtime.result_sort_mode = ResultSortMode::Score;
     if had_non_score_sort
         && !app.shell.runtime.base_results.is_empty()
@@ -164,11 +158,7 @@ fn request_sort_metadata(
     mode: ResultSortMode,
     missing_paths: Vec<PathBuf>,
 ) {
-    let request_id = app.shell.worker_bus.sort.next_request_id;
-    app.shell.worker_bus.sort.next_request_id =
-        app.shell.worker_bus.sort.next_request_id.saturating_add(1);
-    app.shell.worker_bus.sort.pending_request_id = Some(request_id);
-    app.shell.worker_bus.sort.in_progress = true;
+    let request_id = app.shell.worker_bus.sort.begin_request();
     app.bind_sort_request_to_current_tab(request_id);
     app.refresh_status_line();
     if app
@@ -183,23 +173,20 @@ fn request_sort_metadata(
         })
         .is_err()
     {
-        app.shell.worker_bus.sort.pending_request_id = None;
-        app.shell.worker_bus.sort.in_progress = false;
+        app.shell.worker_bus.sort.clear_request();
         app.set_notice("Sort worker is unavailable");
     }
 }
 
 pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
     if app.shell.runtime.base_results.is_empty() {
-        app.shell.worker_bus.sort.pending_request_id = None;
-        app.shell.worker_bus.sort.in_progress = false;
+        app.shell.worker_bus.sort.clear_request();
         app.refresh_status_line();
         return;
     }
     if !app.shell.runtime.result_sort_mode.uses_metadata() {
         let sorted = app.build_sorted_results(app.shell.runtime.result_sort_mode);
-        app.shell.worker_bus.sort.pending_request_id = None;
-        app.shell.worker_bus.sort.in_progress = false;
+        app.shell.worker_bus.sort.clear_request();
         apply_results_with_selection_policy(app, sorted, keep_scroll_position, false);
         return;
     }
@@ -214,8 +201,7 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
         .collect::<Vec<_>>();
     if missing_paths.is_empty() {
         let sorted = app.build_sorted_results(app.shell.runtime.result_sort_mode);
-        app.shell.worker_bus.sort.pending_request_id = None;
-        app.shell.worker_bus.sort.in_progress = false;
+        app.shell.worker_bus.sort.clear_request();
         apply_results_with_selection_policy(app, sorted, keep_scroll_position, false);
         return;
     }
@@ -240,8 +226,7 @@ pub(super) fn apply_background_preview_response(
     };
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
-        tab.pending_preview_request_id = None;
-        tab.preview_in_progress = false;
+        tab.clear_preview_request_state();
         let current_path = if tab.result_state.results_compacted {
             tab.result_state
                 .current_row
@@ -265,8 +250,7 @@ pub(super) fn apply_active_preview_response(
         return false;
     }
     app.take_preview_request_tab(response.request_id);
-    app.shell.worker_bus.preview.pending_request_id = None;
-    app.shell.worker_bus.preview.in_progress = false;
+    app.shell.worker_bus.preview.clear_request();
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(row) = app.shell.runtime.current_row {
         if let Some((current_path, _)) = app.shell.runtime.results.get(row) {
@@ -295,8 +279,7 @@ pub(super) fn apply_background_sort_response(
     if Some(response.request_id) != tab.result_state.pending_sort_request_id {
         return;
     }
-    tab.result_state.pending_sort_request_id = None;
-    tab.result_state.sort_in_progress = false;
+    tab.result_state.clear_sort_request_state();
     if response.mode == tab.result_state.result_sort_mode {
         tab.result_state.results = FlistWalkerApp::build_sorted_results_from(
             &tab.result_state.base_results,
@@ -307,8 +290,7 @@ pub(super) fn apply_background_sort_response(
         if tab.result_state.results.is_empty() {
             tab.result_state.current_row = None;
             tab.result_state.preview.clear();
-            tab.pending_preview_request_id = None;
-            tab.preview_in_progress = false;
+            tab.clear_preview_request_state();
         } else {
             let max_index = tab.result_state.results.len().saturating_sub(1);
             tab.result_state.current_row = tab
@@ -328,8 +310,7 @@ pub(super) fn apply_active_sort_response(
         return false;
     }
     app.take_sort_request_tab(response.request_id);
-    app.shell.worker_bus.sort.pending_request_id = None;
-    app.shell.worker_bus.sort.in_progress = false;
+    app.shell.worker_bus.sort.clear_request();
     if response.mode == app.shell.runtime.result_sort_mode {
         apply_result_sort(app, false);
     } else {

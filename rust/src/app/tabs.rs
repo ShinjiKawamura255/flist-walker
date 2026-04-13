@@ -14,12 +14,7 @@ impl FlistWalkerApp {
         self.apply_root_change_direct(new_root);
     }
     fn settle_background_tab_index_failure(tab: &mut AppTabState, notice: Option<String>) {
-        tab.index_state.pending_index_request_id = None;
-        tab.index_state.index_in_progress = false;
-        tab.index_state.pending_index_entries.clear();
-        tab.index_state.pending_index_entries_request_id = None;
-        tab.index_state.search_resume_pending = false;
-        tab.index_state.search_rerun_pending = false;
+        tab.index_state.clear_index_request_state();
         if let Some(notice) = notice {
             tab.notice = notice;
         } else if tab.notice.is_empty() {
@@ -183,12 +178,7 @@ impl FlistWalkerApp {
                         .collect();
                     tab.index_state.entries = Arc::new(filtered);
                 }
-                tab.index_state.pending_index_request_id = None;
-                tab.index_state.index_in_progress = false;
-                tab.index_state.pending_index_entries.clear();
-                tab.index_state.pending_index_entries_request_id = None;
-                tab.index_state.search_resume_pending = false;
-                tab.index_state.search_rerun_pending = false;
+                tab.index_state.clear_index_request_state();
                 tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
                 tab.index_state.last_incremental_results_refresh = Instant::now();
                 if matches!(tab.index_state.index.source, IndexSource::Walker) {
@@ -205,14 +195,9 @@ impl FlistWalkerApp {
                                 .push_back(entry.path.clone());
                         }
                     }
-                    tab.index_state.kind_resolution_in_progress =
-                        !tab.index_state.pending_kind_paths.is_empty()
-                            || !tab.index_state.in_flight_kind_paths.is_empty();
+                    tab.index_state.refresh_kind_resolution_progress();
                 } else {
-                    tab.index_state.pending_kind_paths.clear();
-                    tab.index_state.pending_kind_paths_set.clear();
-                    tab.index_state.in_flight_kind_paths.clear();
-                    tab.index_state.kind_resolution_in_progress = false;
+                    tab.index_state.clear_kind_resolution_state();
                 }
                 let pending_after_index_matches = features
                     .filelist
@@ -246,8 +231,7 @@ impl FlistWalkerApp {
                     if tab.result_state.results.is_empty() {
                         tab.result_state.current_row = None;
                         tab.result_state.preview.clear();
-                        tab.pending_preview_request_id = None;
-                        tab.preview_in_progress = false;
+                        tab.clear_preview_request_state();
                     } else {
                         let max_index = tab.result_state.results.len().saturating_sub(1);
                         tab.result_state.current_row =
@@ -302,8 +286,7 @@ impl FlistWalkerApp {
         self.shell.runtime.pinned_paths.clear();
         self.set_current_row(None);
         self.shell.runtime.preview.clear();
-        self.shell.worker_bus.preview.in_progress = false;
-        self.shell.worker_bus.preview.pending_request_id = None;
+        self.shell.worker_bus.preview.clear_request();
         self.clear_root_scoped_entry_state();
         self.sync_active_tab_state();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
@@ -560,27 +543,19 @@ impl FlistWalkerApp {
             .map(|entry| (entry.path, 0.0))
             .collect();
         tab.result_state.result_sort_mode = ResultSortMode::Score;
-        tab.result_state.pending_sort_request_id = None;
-        tab.result_state.sort_in_progress = false;
+        tab.result_state.clear_sort_request_state();
         tab.result_state.pinned_paths.clear();
         tab.result_state.current_row = None;
         tab.result_state.preview.clear();
         tab.result_state.results_compacted = false;
         tab.notice = "Opened new tab".to_string();
-        tab.pending_request_id = None;
-        tab.pending_preview_request_id = None;
-        tab.pending_action_request_id = None;
-        tab.index_state.pending_index_request_id = None;
-        tab.search_in_progress = false;
-        tab.index_state.index_in_progress = false;
-        tab.preview_in_progress = false;
-        tab.action_in_progress = false;
+        tab.clear_search_request_state();
+        tab.clear_preview_request_state();
+        tab.clear_action_request_state();
+        tab.index_state.clear_index_request_state();
         tab.index_state.pending_index_entries.clear();
         tab.index_state.pending_index_entries_request_id = None;
-        tab.index_state.pending_kind_paths.clear();
-        tab.index_state.pending_kind_paths_set.clear();
-        tab.index_state.in_flight_kind_paths.clear();
-        tab.index_state.kind_resolution_in_progress = false;
+        tab.index_state.clear_kind_resolution_state();
         tab.index_state.kind_resolution_epoch = 1;
         tab.index_state.incremental_filtered_entries.clear();
         tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();

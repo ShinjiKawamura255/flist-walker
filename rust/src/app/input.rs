@@ -43,8 +43,7 @@ impl FlistWalkerApp {
             return;
         }
         if let Some(blocked) = self.first_action_path_outside_root(&paths) {
-            self.shell.worker_bus.action.pending_request_id = None;
-            self.shell.worker_bus.action.in_progress = false;
+            self.shell.worker_bus.action.clear_request();
             self.set_notice(format!(
                 "Action blocked: path is outside current root: {}",
                 normalize_path_for_display(&blocked)
@@ -52,15 +51,7 @@ impl FlistWalkerApp {
             return;
         }
 
-        let request_id = self.shell.worker_bus.action.next_request_id;
-        self.shell.worker_bus.action.next_request_id = self
-            .shell
-            .worker_bus
-            .action
-            .next_request_id
-            .saturating_add(1);
-        self.shell.worker_bus.action.pending_request_id = Some(request_id);
-        self.shell.worker_bus.action.in_progress = true;
+        let request_id = self.shell.worker_bus.action.begin_request();
         self.bind_action_request_to_current_tab(request_id);
 
         if paths.len() == 1 {
@@ -87,8 +78,7 @@ impl FlistWalkerApp {
             open_parent_for_files,
         };
         if self.shell.worker_bus.action.tx.send(req).is_err() {
-            self.shell.worker_bus.action.pending_request_id = None;
-            self.shell.worker_bus.action.in_progress = false;
+            self.shell.worker_bus.action.clear_request();
             self.set_notice("Action worker is unavailable");
         }
     }

@@ -6,9 +6,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_preview_request_to_current_tab(&mut self, request_id: u64) {
-        if let Some(tab_id) = self.current_tab_id() {
-            self.bind_preview_request_to_tab(request_id, tab_id);
-        }
+        let active_tab = self.shell.tabs.active_tab_index();
+        let Some(tab_id) = self.shell.tabs.get_mut(active_tab).map(|tab| {
+            tab.begin_preview_request(request_id);
+            tab.id
+        }) else {
+            return;
+        };
+        self.bind_preview_request_to_tab(request_id, tab_id);
     }
 
     pub(super) fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
@@ -29,9 +34,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_action_request_to_current_tab(&mut self, request_id: u64) {
-        if let Some(tab_id) = self.current_tab_id() {
-            self.bind_action_request_to_tab(request_id, tab_id);
-        }
+        let active_tab = self.shell.tabs.active_tab_index();
+        let Some(tab_id) = self.shell.tabs.get_mut(active_tab).map(|tab| {
+            tab.begin_action_request(request_id);
+            tab.id
+        }) else {
+            return;
+        };
+        self.bind_action_request_to_tab(request_id, tab_id);
     }
 
     pub(super) fn take_action_request_tab(&mut self, request_id: u64) -> Option<u64> {
@@ -43,9 +53,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_sort_request_to_current_tab(&mut self, request_id: u64) {
-        if let Some(tab_id) = self.current_tab_id() {
-            self.bind_sort_request_to_tab(request_id, tab_id);
-        }
+        let active_tab = self.shell.tabs.active_tab_index();
+        let Some(tab_id) = self.shell.tabs.get_mut(active_tab).map(|tab| {
+            tab.result_state.begin_sort_request(request_id);
+            tab.id
+        }) else {
+            return;
+        };
+        self.bind_sort_request_to_tab(request_id, tab_id);
     }
 
     pub(super) fn take_sort_request_tab(&mut self, request_id: u64) -> Option<u64> {

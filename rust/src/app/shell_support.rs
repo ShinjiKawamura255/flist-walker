@@ -184,8 +184,7 @@ impl FlistWalkerApp {
             .indexing
             .incremental_filtered_entries
             .shrink_to_fit();
-        self.shell.worker_bus.sort.pending_request_id = None;
-        self.shell.worker_bus.sort.in_progress = false;
+        self.shell.worker_bus.sort.clear_request();
         self.shell.runtime.result_sort_mode = ResultSortMode::Score;
         self.clear_sort_metadata_cache();
         self.shell.indexing.last_search_snapshot_len = 0;

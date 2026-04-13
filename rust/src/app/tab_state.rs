@@ -70,6 +70,32 @@ pub(crate) struct AppTabState {
 }
 
 impl TabIndexState {
+    pub(super) fn begin_index_request(&mut self, request_id: u64) {
+        self.pending_index_request_id = Some(request_id);
+        self.index_in_progress = true;
+    }
+
+    pub(super) fn clear_index_request_state(&mut self) {
+        self.pending_index_request_id = None;
+        self.index_in_progress = false;
+        self.pending_index_entries.clear();
+        self.pending_index_entries_request_id = None;
+        self.search_resume_pending = false;
+        self.search_rerun_pending = false;
+    }
+
+    pub(super) fn clear_kind_resolution_state(&mut self) {
+        self.pending_kind_paths.clear();
+        self.pending_kind_paths_set.clear();
+        self.in_flight_kind_paths.clear();
+        self.kind_resolution_in_progress = false;
+    }
+
+    pub(super) fn refresh_kind_resolution_progress(&mut self) {
+        self.kind_resolution_in_progress =
+            !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
+    }
+
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
             index: shell.shell.runtime.index.clone(),
@@ -159,6 +185,16 @@ impl TabQueryState {
 }
 
 impl TabResultState {
+    pub(super) fn begin_sort_request(&mut self, request_id: u64) {
+        self.pending_sort_request_id = Some(request_id);
+        self.sort_in_progress = true;
+    }
+
+    pub(super) fn clear_sort_request_state(&mut self) {
+        self.pending_sort_request_id = None;
+        self.sort_in_progress = false;
+    }
+
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
             base_results: shell.shell.runtime.base_results.clone(),
@@ -186,6 +222,36 @@ impl TabResultState {
 }
 
 impl AppTabState {
+    pub(super) fn begin_search_request(&mut self, request_id: u64) {
+        self.pending_request_id = Some(request_id);
+        self.search_in_progress = true;
+    }
+
+    pub(super) fn clear_search_request_state(&mut self) {
+        self.pending_request_id = None;
+        self.search_in_progress = false;
+    }
+
+    pub(super) fn begin_preview_request(&mut self, request_id: u64) {
+        self.pending_preview_request_id = Some(request_id);
+        self.preview_in_progress = true;
+    }
+
+    pub(super) fn clear_preview_request_state(&mut self) {
+        self.pending_preview_request_id = None;
+        self.preview_in_progress = false;
+    }
+
+    pub(super) fn begin_action_request(&mut self, request_id: u64) {
+        self.pending_action_request_id = Some(request_id);
+        self.action_in_progress = true;
+    }
+
+    pub(super) fn clear_action_request_state(&mut self) {
+        self.pending_action_request_id = None;
+        self.action_in_progress = false;
+    }
+
     pub(super) fn from_shell(shell: &FlistWalkerApp, id: u64) -> Self {
         Self {
             id,

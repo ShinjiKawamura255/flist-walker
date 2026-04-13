@@ -45,8 +45,7 @@ impl SearchCoordinator {
 
     pub(super) fn begin_tab_request(&mut self, tab: &mut AppTabState) -> u64 {
         let request_id = self.allocate_request_id();
-        tab.pending_request_id = Some(request_id);
-        tab.search_in_progress = true;
+        tab.begin_search_request(request_id);
         self.bind_request_tab(request_id, tab.id);
         request_id
     }

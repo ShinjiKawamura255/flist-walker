@@ -19,7 +19,7 @@
 - CLI 実行で出力契約を確認。
 - App test module policy:
 - app-level regression は owner/command seam ごとに module を分けて保守する。update は `rust/src/app/tests/update_commands.rs`、session restore は `rust/src/app/tests/session_restore.rs`、tab/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を主対象にし、`app_core.rs` へ unrelated fixture regression を増やし続けない。
-- routing / cleanup の確認は `rust/src/app/response_flow.rs`、`rust/src/app/result_reducer.rs`、`rust/src/app/index_coordinator.rs`、`rust/src/app/pipeline.rs` を owner seam として扱い、background response の stale discard と tab close cleanup を `session_tabs.rs` / `index_pipeline/filelist_lifecycle.rs` へ寄せる。
+- routing / cleanup の確認は `rust/src/app/response_flow.rs`、`rust/src/app/result_reducer.rs`、`rust/src/app/index_coordinator.rs`、`rust/src/app/pipeline.rs`、`rust/src/app/tab_state.rs`、`rust/src/app/worker_bus.rs` を owner seam として扱い、background response の stale discard と tab close cleanup を `session_tabs.rs` / `index_pipeline/filelist_lifecycle.rs` へ寄せる。
 - `FeatureStateBundle` / `TabSessionState` のような state bundle 導入後も、bundle 単位の ownership を直接確認したい回帰は既存 owner test module に寄せ、bundle 配置だけを検証するための横断 fixture を増やさない。
 - stale response discard、cancel cleanup、pending/inflight 解放の契約は `update_commands.rs` と `index_pipeline/*` を優先対象にし、`app_core.rs` へ cross-cutting でない lifecycle regression を戻さない。
 - filelist response の current/previous/stale-requested-root 分岐は `rust/src/app/tests/index_pipeline/filelist_lifecycle.rs` を owner test とし、request cleanup と post-settle routing を同じ module で固定する。

@@ -143,7 +143,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-13 Refreshed as the active execution baseline and aligned with the current `architecture-score-80` temporary rule.
 - 2026-04-13 Slice A implementation began with shell boundary hardening around `TabSessionState`.
 - 2026-04-13 Slice A was further tightened with explicit owner API for active tab, tab id, pending restore refresh, and request routing, and the Rust test suite stayed green.
-- 2026-04-13 Slice B routing consolidation started by moving index response routing into `IndexCoordinator::route_response` and trimming direct request-tab inspection in `pipeline.rs`.
+- 2026-04-13 Slice B routing consolidation started by moving index response routing into `IndexCoordinator::route_response`, trimming direct request-tab inspection in `pipeline.rs`, and consolidating worker lifecycle helpers for preview/action/sort/index flows.
 
 ## 12. Communication Plan
 - Return to user when:
