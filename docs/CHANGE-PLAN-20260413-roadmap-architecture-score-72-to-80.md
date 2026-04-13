@@ -140,6 +140,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-13 `cd rust && cargo test` completed successfully after the Slice A ownership refactor.
 - 2026-04-13 Slice B completed the render/input free-function split, explicit import hygiene on the touched surface, worker lifecycle helper extraction, filelist dialog None-guard tightening, history sync explicit iteration, and a bounded clone cleanup.
 - 2026-04-13 `cd rust && cargo test` completed successfully after the Slice B cleanup.
+- 2026-04-14 Slice C closure validation kept the roadmap open: `cargo test` is green, but Tab-Shell 二重所有, `Deref/DerefMut`, and wildcard-import hygiene remain material enough to warrant a follow-up pass.
 
 ## 12. Communication Plan
 - Return to the user with the slice status after each implementation slice, and return with the close/continue decision after the closure slice.
