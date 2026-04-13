@@ -1,7 +1,7 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-12
+- Updated: 2026-04-13
 - Current active engineering roadmap: none
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
@@ -13,6 +13,7 @@
   - 2026-04-12 に state sync finalization roadmap を closure し、残る overlap は設計上の live/snapshot split として許容可能と判断した。
   - 2026-04-12 に shell boundary closure roadmap を完了し、`FlistWalkerApp` の透明な shell 露出を除去したうえで `status_line` を render-time derived data として扱うように切り替え、`cd rust && cargo test` を通した。
   - 2026-04-12 に architecture score uplift roadmap と slice A/B/C の change-plan 文書を作成し、`AGENTS.md` に temporary rule を追記した。
+  - 2026-04-13 に architecture score uplift roadmap を closure し、Slice A/B で shell boundary と routing/lifecycle ownership を締めたうえで `cargo test` を通し、temporary rule と change-plan 文書を撤去した。
   - 2026-04-12 の外部レビューで、現在の architecture は 60〜65 点相当と評価され、`Deref` 連鎖、direct mutation、state duplication、imperative UI refresh が主な未解消点として指摘された。
   - 2026-04-12 に app-shell/use-case decoupling roadmap と initial slice A を作成し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-12 に Slice A を実装し、`AppShellState` で app shell を包み、`cd rust && cargo test` を通した。次の slice を起こす前に roadmap 側へ結果を反映した。
