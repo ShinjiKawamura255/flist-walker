@@ -6,11 +6,11 @@
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
-  - 2026-04-12 に app state ownership consolidation roadmap を新規作成し、runtime/tab snapshot の二重管理と event-routing の direct mutation を整理する方針へ切り替えた。
-  - 2026-04-12 に app state ownership consolidation roadmap の closure validation を行い、残課題がまだ material だと判断したため state sync finalization roadmap へ再計画した。
-  - 2026-04-12 に state sync finalization roadmap を新規作成し、残る live/snapshot ownership overlap をさらに削る次の pass へ切り替えた。
-  - 2026-04-12 に state sync finalization Slice A を実装し、`query_history_dirty_since` を runtime-only に寄せ、`pending_restore_refresh_tabs` で tab restore pending を管理するようにしたうえで `cargo test` を通した。
-  - 2026-04-12 に state sync finalization roadmap を closure し、残る overlap は設計上の live/snapshot split として許容可能と判断した。
+  - 2026-04-12 に旧 state ownership consolidation program を起点に、runtime/tab snapshot の二重管理と event-routing の direct mutation を整理する方針へ切り替えた。
+  - 2026-04-12 に旧 state ownership consolidation program の closure validation を行い、残課題がまだ material だと判断したため後続の state sync finalization program へ再計画した。
+  - 2026-04-12 に state sync finalization program を新規作成し、残る live/snapshot ownership overlap をさらに削る次の pass へ切り替えた。
+  - 2026-04-12 に state sync finalization の実装 slice を完了し、`query_history_dirty_since` を runtime-only に寄せ、`pending_restore_refresh_tabs` で tab restore pending を管理するようにしたうえで `cargo test` を通した。
+  - 2026-04-12 に state sync finalization program を closure し、残る overlap は設計上の live/snapshot split として許容可能と判断した。
   - 2026-04-12 に shell boundary closure roadmap を完了し、`FlistWalkerApp` の透明な shell 露出を除去したうえで `status_line` を render-time derived data として扱うように切り替え、`cd rust && cargo test` を通した。
   - 2026-04-12 に architecture score uplift roadmap と slice A/B/C の change-plan 文書を作成し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-13 に architecture score uplift roadmap を closure し、Slice A/B で shell boundary と routing/lifecycle ownership を締めたうえで `cargo test` を通し、temporary rule と change-plan 文書を撤去した。
@@ -19,7 +19,7 @@
   - 2026-04-12 に Slice A を実装し、`AppShellState` で app shell を包み、`cd rust && cargo test` を通した。次の slice を起こす前に roadmap 側へ結果を反映した。
   - 2026-04-12 に Slice B を実装し、result/preview/sort response handling を reducer boundary へ移したうえで `cd rust && cargo test` を再実行した。
   - 2026-04-12 に Slice B を完了し、result/preview/sort response handling を reducer boundary へ移した。
-  - 2026-04-12 に Slice C で closure validation を実施し、`cargo test` を再実行したうえで roadmap は未閉鎖と判断した。残課題は `FlistWalkerApp` の透明な shell 露出、`status_line` の命令的更新、そして direct mutation / derived UI state の整理である。
+  - 2026-04-12 に前段の closure validation を実施し、`cargo test` を再実行したうえで roadmap は未閉鎖と判断した。残課題は `FlistWalkerApp` の透明な shell 露出、`status_line` の命令的更新、そして direct mutation / derived UI state の整理である。
   - 2026-04-12 に shell boundary closure roadmap を新規作成し、残課題を `Deref` 廃止と `status_line` の派生化に絞った。
   - 2026-04-12 に app-shell/use-case decoupling roadmap を close し、temporary rule を撤去して change-plan 文書群を削除した。
   - 2026-04-12 に app-shell/use-case decoupling roadmap を復元し、継続判断用 Slice C を追加して plan-driven-changes の再開点へ戻した。
