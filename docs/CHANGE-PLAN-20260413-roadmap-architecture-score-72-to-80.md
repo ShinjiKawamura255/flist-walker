@@ -86,8 +86,8 @@
    - Expected result: `TabSessionState` becomes the explicit owner boundary for tab transitions, the Tab-Shell 二重所有 gap is narrowed to transition-only snapshot helpers instead of transparent state access, and tab/shell ownership no longer depends on accidental field access.
    - Verification: `cargo test`, targeted ownership/regression tests, and docs diff review for the boundary model.
 2. Slice B: Module hygiene, testability, and extensibility cleanup.
-   - Files/modules/components: `app/render.rs`, `app/input.rs`, `app/worker_bus.rs`, `app/workers.rs`, `app/result_reducer.rs`, `app/pipeline_owner.rs`, `app/coordinator.rs`, `app/update.rs`, `app/filelist.rs`, `app/tests/*`, `docs/TESTPLAN.md`.
-   - Expected result: oversized modules are split into clearer subunits, worker bus boilerplate is reduced through shared lifecycle helpers, `use super::*;` pollution is replaced with explicit imports, clone-heavy paths are trimmed, and the remaining UI/control-flow seams become testable.
+   - Files/modules/components: `app/mod.rs`, `app/render.rs`, `app/input.rs`, `app/worker_bus.rs`, `app/workers.rs`, `app/result_reducer.rs`, `app/pipeline_owner.rs`, `app/coordinator.rs`, `app/update.rs`, `app/filelist.rs`, `app/tests/*`, `docs/TESTPLAN.md`.
+   - Expected result: `render.rs` and `input.rs` delegate the densest command/control-flow clusters to smaller free-function submodules, worker bus boilerplate is reduced through shared lifecycle helpers, `use super::*;` pollution is removed from the touched app modules and `app/mod.rs`, and one or two clearly bounded clone/observability hotspots are narrowed enough to support closure.
    - Verification: `cargo test`, focused unit/regression tests for input/render control flow, and docs/test-plan alignment review.
 3. Slice C: Closure validation and decision.
    - Files/modules/components: `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/TESTPLAN.md`, `docs/TASKS.md`, `AGENTS.md`, and the completed slice outcomes.
@@ -138,6 +138,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-13 Planned.
 - 2026-04-13 Reviewed and narrowed Slice A to a tab-session owner boundary, then executed the ownership cleanup and regression validation.
 - 2026-04-13 `cd rust && cargo test` completed successfully after the Slice A ownership refactor.
+- 2026-04-13 Slice B completed the render/input free-function split, explicit import hygiene on the touched surface, worker lifecycle helper extraction, filelist dialog None-guard tightening, history sync explicit iteration, and a bounded clone cleanup.
+- 2026-04-13 `cd rust && cargo test` completed successfully after the Slice B cleanup.
 
 ## 12. Communication Plan
 - Return to the user with the slice status after each implementation slice, and return with the close/continue decision after the closure slice.

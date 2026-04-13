@@ -3,6 +3,7 @@ use super::worker_protocol::{
     KindResolveResponse, PreviewRequest, PreviewResponse, SortMetadataRequest,
     SortMetadataResponse, UpdateRequest, UpdateResponse,
 };
+use super::worker_bus_lifecycle;
 use std::sync::mpsc::{Receiver, Sender};
 
 pub(super) struct PreviewWorkerBus {
@@ -14,22 +15,16 @@ pub(super) struct PreviewWorkerBus {
 }
 
 impl PreviewWorkerBus {
-    pub(super) fn allocate_request_id(&mut self) -> u64 {
-        let request_id = self.next_request_id;
-        self.next_request_id = self.next_request_id.saturating_add(1);
-        request_id
-    }
-
     pub(super) fn begin_request(&mut self) -> u64 {
-        let request_id = self.allocate_request_id();
-        self.pending_request_id = Some(request_id);
-        self.in_progress = true;
-        request_id
+        worker_bus_lifecycle::begin_request(
+            &mut self.next_request_id,
+            &mut self.pending_request_id,
+            &mut self.in_progress,
+        )
     }
 
     pub(super) fn clear_request(&mut self) {
-        self.pending_request_id = None;
-        self.in_progress = false;
+        worker_bus_lifecycle::clear_request(&mut self.pending_request_id, &mut self.in_progress);
     }
 }
 
@@ -42,22 +37,16 @@ pub(super) struct ActionWorkerBus {
 }
 
 impl ActionWorkerBus {
-    pub(super) fn allocate_request_id(&mut self) -> u64 {
-        let request_id = self.next_request_id;
-        self.next_request_id = self.next_request_id.saturating_add(1);
-        request_id
-    }
-
     pub(super) fn begin_request(&mut self) -> u64 {
-        let request_id = self.allocate_request_id();
-        self.pending_request_id = Some(request_id);
-        self.in_progress = true;
-        request_id
+        worker_bus_lifecycle::begin_request(
+            &mut self.next_request_id,
+            &mut self.pending_request_id,
+            &mut self.in_progress,
+        )
     }
 
     pub(super) fn clear_request(&mut self) {
-        self.pending_request_id = None;
-        self.in_progress = false;
+        worker_bus_lifecycle::clear_request(&mut self.pending_request_id, &mut self.in_progress);
     }
 }
 
@@ -70,22 +59,16 @@ pub(super) struct SortWorkerBus {
 }
 
 impl SortWorkerBus {
-    pub(super) fn allocate_request_id(&mut self) -> u64 {
-        let request_id = self.next_request_id;
-        self.next_request_id = self.next_request_id.saturating_add(1);
-        request_id
-    }
-
     pub(super) fn begin_request(&mut self) -> u64 {
-        let request_id = self.allocate_request_id();
-        self.pending_request_id = Some(request_id);
-        self.in_progress = true;
-        request_id
+        worker_bus_lifecycle::begin_request(
+            &mut self.next_request_id,
+            &mut self.pending_request_id,
+            &mut self.in_progress,
+        )
     }
 
     pub(super) fn clear_request(&mut self) {
-        self.pending_request_id = None;
-        self.in_progress = false;
+        worker_bus_lifecycle::clear_request(&mut self.pending_request_id, &mut self.in_progress);
     }
 }
 

@@ -228,8 +228,7 @@ impl<'a> PipelineOwner<'a> {
     }
 
     fn sync_entries_from_incremental(&mut self) {
-        let incremental = self.app.shell.indexing.incremental_filtered_entries.clone();
-        let incremental_entries = incremental.clone();
+        let incremental_entries = self.app.shell.indexing.incremental_filtered_entries.clone();
         Self::overwrite_entries_arc(&mut self.app.shell.runtime.entries, &incremental_entries);
     }
 

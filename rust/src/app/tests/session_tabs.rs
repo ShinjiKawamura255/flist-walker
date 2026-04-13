@@ -579,14 +579,24 @@ fn tab_drag_below_threshold_does_not_reorder_on_release() {
         dragging: false,
     };
 
-    let dragging =
-        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(13.0, 12.0)), true);
+    let dragging = super::render_tabs::update_tab_drag_state(
+        &mut app,
+        &mut state,
+        &tab_rects,
+        Some(egui::pos2(13.0, 12.0)),
+        true,
+    );
     assert_eq!(dragging, None);
     assert!(!state.dragging);
     assert_eq!(app.shell.ui.tab_drag_state, Some(state));
 
-    let released =
-        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(13.0, 12.0)), false);
+    let released = super::render_tabs::update_tab_drag_state(
+        &mut app,
+        &mut state,
+        &tab_rects,
+        Some(egui::pos2(13.0, 12.0)),
+        false,
+    );
     assert_eq!(released, None);
     assert_eq!(app.shell.ui.tab_drag_state, None);
     let _ = fs::remove_dir_all(&root);
@@ -609,15 +619,25 @@ fn tab_drag_above_threshold_reorders_on_release() {
         dragging: false,
     };
 
-    let dragging =
-        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(140.0, 12.0)), true);
+    let dragging = super::render_tabs::update_tab_drag_state(
+        &mut app,
+        &mut state,
+        &tab_rects,
+        Some(egui::pos2(140.0, 12.0)),
+        true,
+    );
     assert_eq!(dragging, None);
     assert!(state.dragging);
     assert_eq!(state.hover_index, 1);
     assert_eq!(app.shell.ui.tab_drag_state, Some(state));
 
-    let released =
-        app.update_tab_drag_state(&mut state, &tab_rects, Some(egui::pos2(140.0, 12.0)), false);
+    let released = super::render_tabs::update_tab_drag_state(
+        &mut app,
+        &mut state,
+        &tab_rects,
+        Some(egui::pos2(140.0, 12.0)),
+        false,
+    );
     assert_eq!(released, Some((0, 1)));
     assert_eq!(app.shell.ui.tab_drag_state, None);
     let _ = fs::remove_dir_all(&root);

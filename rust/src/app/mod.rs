@@ -13,23 +13,13 @@ use crate::updater::{
     UpdateCandidate, UpdateSupport,
 };
 use eframe::egui;
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
 use std::collections::{HashMap, HashSet, VecDeque};
-#[allow(unused_imports)]
 use std::fs;
-#[allow(unused_imports)]
-use std::fs::OpenOptions;
-#[allow(unused_imports)]
-use std::io::Write;
 use std::path::{Path, PathBuf};
-#[allow(unused_imports)]
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
-#[allow(unused_imports)]
 use std::sync::{Arc, Mutex, OnceLock};
-#[allow(unused_imports)]
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
 mod bootstrap;
 mod cache;
@@ -38,11 +28,14 @@ mod filelist;
 mod index_coordinator;
 mod index_worker;
 mod input;
+mod input_dialogs;
+mod input_history;
 mod pipeline;
 mod pipeline_owner;
 mod preview_flow;
 mod query_state;
 mod render;
+mod render_tabs;
 mod response_flow;
 mod result_flow;
 mod result_reducer;
@@ -55,6 +48,7 @@ mod tabs;
 mod ui_state;
 mod update;
 mod worker_bus;
+mod worker_bus_lifecycle;
 mod worker_protocol;
 mod worker_runtime;
 mod worker_support;

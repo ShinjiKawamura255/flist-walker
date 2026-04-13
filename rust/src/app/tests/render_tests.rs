@@ -186,10 +186,7 @@ fn result_row_text_pos_is_left_aligned_and_vertically_centered() {
 
 #[test]
 fn tab_drop_index_returns_none_for_empty_tabs() {
-    assert_eq!(
-        FlistWalkerApp::tab_drop_index(&[], egui::pos2(10.0, 10.0)),
-        None
-    );
+    assert_eq!(super::render_tabs::tab_drop_index(&[], egui::pos2(10.0, 10.0)), None);
 }
 
 #[test]
@@ -200,7 +197,7 @@ fn tab_drop_index_chooses_first_tab_before_first_center() {
     ];
 
     assert_eq!(
-        FlistWalkerApp::tab_drop_index(&rects, egui::pos2(20.0, 12.0)),
+        super::render_tabs::tab_drop_index(&rects, egui::pos2(20.0, 12.0)),
         Some(0)
     );
 }
@@ -214,7 +211,7 @@ fn tab_drop_index_chooses_middle_tab_when_pointer_is_between_centers() {
     ];
 
     assert_eq!(
-        FlistWalkerApp::tab_drop_index(&rects, egui::pos2(170.0, 12.0)),
+        super::render_tabs::tab_drop_index(&rects, egui::pos2(170.0, 12.0)),
         Some(2)
     );
 }
@@ -227,7 +224,7 @@ fn tab_drop_index_returns_last_tab_after_all_centers() {
     ];
 
     assert_eq!(
-        FlistWalkerApp::tab_drop_index(&rects, egui::pos2(260.0, 12.0)),
+        super::render_tabs::tab_drop_index(&rects, egui::pos2(260.0, 12.0)),
         Some(1)
     );
 }

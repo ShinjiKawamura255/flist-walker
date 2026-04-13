@@ -1,4 +1,9 @@
-use super::*;
+use super::{
+    input_dialogs, input_history, normalize_path_for_display, ActionRequest, FileListDialogKind,
+    FlistWalkerApp,
+};
+use eframe::egui;
+use std::path::PathBuf;
 
 impl FlistWalkerApp {
     /// pinned selection 優先で action 対象 path を列挙する。
@@ -548,138 +553,19 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn current_filelist_dialog_kind(&self) -> Option<FileListDialogKind> {
-        let current_tab_id = self.current_tab_id().unwrap_or_default();
-        if self
-            .shell
-            .features
-            .filelist
-            .pending_confirmation
-            .as_ref()
-            .is_some_and(|pending| pending.tab_id == current_tab_id)
-        {
-            return Some(FileListDialogKind::Overwrite);
-        }
-        if self
-            .shell
-            .features
-            .filelist
-            .pending_ancestor_confirmation
-            .as_ref()
-            .is_some_and(|pending| pending.tab_id == current_tab_id)
-        {
-            return Some(FileListDialogKind::Ancestor);
-        }
-        if self
-            .shell
-            .features
-            .filelist
-            .pending_use_walker_confirmation
-            .as_ref()
-            .is_some_and(|pending| pending.source_tab_id == current_tab_id)
-        {
-            return Some(FileListDialogKind::UseWalker);
-        }
-        None
-    }
-
-    fn filelist_dialog_button_count(kind: FileListDialogKind) -> usize {
-        match kind {
-            FileListDialogKind::Overwrite => 2,
-            FileListDialogKind::Ancestor => 3,
-            FileListDialogKind::UseWalker => 2,
-        }
+        input_dialogs::current_filelist_dialog_kind(self)
     }
 
     pub(super) fn sync_filelist_dialog_selection(&mut self, kind: FileListDialogKind) {
-        let button_count = Self::filelist_dialog_button_count(kind);
-        if self.shell.features.filelist.active_dialog != Some(kind) {
-            self.shell.features.filelist.active_dialog = Some(kind);
-            self.shell.features.filelist.active_dialog_button = 0;
-            return;
-        }
-        self.shell.features.filelist.active_dialog_button %= button_count;
+        input_dialogs::sync_filelist_dialog_selection(self, kind);
     }
 
     pub(super) fn clear_filelist_dialog_selection(&mut self) {
-        self.shell.features.filelist.active_dialog = None;
-        self.shell.features.filelist.active_dialog_button = 0;
-    }
-
-    fn activate_selected_filelist_dialog_button(&mut self) {
-        match (
-            self.shell.features.filelist.active_dialog,
-            self.shell.features.filelist.active_dialog_button,
-        ) {
-            (Some(FileListDialogKind::Overwrite), 0) => self.confirm_pending_filelist_overwrite(),
-            (Some(FileListDialogKind::Overwrite), _) => self.cancel_pending_filelist_overwrite(),
-            (Some(FileListDialogKind::Ancestor), 0) => {
-                self.confirm_pending_filelist_ancestor_propagation()
-            }
-            (Some(FileListDialogKind::Ancestor), 1) => {
-                self.skip_pending_filelist_ancestor_propagation()
-            }
-            (Some(FileListDialogKind::Ancestor), _) => {
-                self.cancel_pending_filelist_ancestor_confirmation()
-            }
-            (Some(FileListDialogKind::UseWalker), 0) => self.confirm_pending_filelist_use_walker(),
-            (Some(FileListDialogKind::UseWalker), _) => self.cancel_pending_filelist_use_walker(),
-            (None, _) => {}
-        }
-    }
-
-    fn cancel_active_filelist_dialog(&mut self) {
-        match self.shell.features.filelist.active_dialog {
-            Some(FileListDialogKind::Overwrite) => self.cancel_pending_filelist_overwrite(),
-            Some(FileListDialogKind::Ancestor) => {
-                self.cancel_pending_filelist_ancestor_confirmation()
-            }
-            Some(FileListDialogKind::UseWalker) => self.cancel_pending_filelist_use_walker(),
-            None => {}
-        }
-    }
-
-    fn move_filelist_dialog_selection(&mut self, delta: isize) {
-        let Some(kind) = self.shell.features.filelist.active_dialog else {
-            return;
-        };
-        let count = Self::filelist_dialog_button_count(kind) as isize;
-        let current = self.shell.features.filelist.active_dialog_button as isize;
-        self.shell.features.filelist.active_dialog_button =
-            (current + delta).rem_euclid(count) as usize;
+        input_dialogs::clear_filelist_dialog_selection(self);
     }
 
     fn handle_filelist_dialog_shortcuts(&mut self, ctx: &egui::Context) -> bool {
-        let Some(kind) = self.current_filelist_dialog_kind() else {
-            self.clear_filelist_dialog_selection();
-            return false;
-        };
-        self.sync_filelist_dialog_selection(kind);
-
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
-            self.cancel_active_filelist_dialog();
-            return true;
-        }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab))
-        {
-            self.move_filelist_dialog_selection(-1);
-            return true;
-        }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab))
-        {
-            self.move_filelist_dialog_selection(1);
-            return true;
-        }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
-        {
-            self.activate_selected_filelist_dialog_button();
-            return true;
-        }
-        true
+        input_dialogs::handle_filelist_dialog_shortcuts(self, ctx)
     }
 
     pub(super) fn handle_shortcuts_with_focus(&mut self, ctx: &egui::Context, query_focused: bool) {
@@ -917,202 +803,32 @@ impl FlistWalkerApp {
         self.shell.runtime.query_state.history_search_current = None;
     }
 
-    fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Option<i64> {
-        if query.trim().is_empty() {
-            return Some(recency_rank as i64);
-        }
-
-        let matcher = SkimMatcherV2::default();
-        matcher.fuzzy_match(candidate, query).or_else(|| {
-            let query_lower = query.to_ascii_lowercase();
-            let candidate_lower = candidate.to_ascii_lowercase();
-            if candidate_lower.contains(&query_lower) {
-                Some((query_lower.len() as i64) * 100 + recency_rank as i64)
-            } else {
-                None
-            }
-        })
-    }
-
     pub(super) fn refresh_history_search_results(&mut self) {
-        if !self.shell.runtime.query_state.history_search_active {
-            self.shell
-                .runtime
-                .query_state
-                .history_search_results
-                .clear();
-            self.shell.runtime.query_state.history_search_current = None;
-            self.refresh_status_line();
-            return;
-        }
-
-        let query = self.shell.runtime.query_state.history_search_query.trim();
-        let mut scored = self
-            .shell
-            .runtime
-            .query_state
-            .query_history
-            .iter()
-            .rev()
-            .enumerate()
-            .filter_map(|(idx, entry)| {
-                Self::history_search_score(query, entry, Self::QUERY_HISTORY_MAX - idx)
-                    .map(|score| (entry.clone(), score, idx))
-            })
-            .collect::<Vec<_>>();
-        scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.2.cmp(&b.2)));
-        self.shell.runtime.query_state.history_search_results =
-            scored.into_iter().map(|(entry, _, _)| entry).collect();
-        self.shell.runtime.query_state.history_search_current = (!self
-            .shell
-            .runtime
-            .query_state
-            .history_search_results
-            .is_empty())
-        .then_some(0);
-        self.refresh_status_line();
+        input_history::refresh_history_search_results(self);
     }
 
     pub(super) fn start_history_search(&mut self) {
-        self.commit_query_history_if_needed(true);
-        self.shell.runtime.query_state.history_search_active = true;
-        self.shell.runtime.query_state.history_search_query.clear();
-        self.shell.runtime.query_state.history_search_original_query =
-            self.shell.runtime.query_state.query.clone();
-        self.refresh_history_search_results();
-        self.request_focus_query();
-        self.clear_unfocus_query_request();
+        input_history::start_history_search(self);
     }
 
     pub(super) fn cancel_history_search(&mut self) {
-        if !self.shell.runtime.query_state.history_search_active {
-            return;
-        }
-        self.shell.runtime.query_state.query = self
-            .shell
-            .runtime
-            .query_state
-            .history_search_original_query
-            .clone();
-        self.reset_history_search_state();
-        self.update_results();
-        self.request_focus_query();
-        self.set_notice("Canceled history search");
+        input_history::cancel_history_search(self);
     }
 
     pub(super) fn accept_history_search(&mut self) {
-        if !self.shell.runtime.query_state.history_search_active {
-            return;
-        }
-        let Some(index) = self.shell.runtime.query_state.history_search_current else {
-            return;
-        };
-        let Some(selected) = self
-            .shell
-            .runtime
-            .query_state
-            .history_search_results
-            .get(index)
-            .cloned()
-        else {
-            return;
-        };
-        self.shell.runtime.query_state.query = selected;
-        self.reset_query_history_navigation();
-        self.set_query_history_dirty_since(None);
-        self.reset_history_search_state();
-        self.update_results();
-        self.request_focus_query();
-        self.set_notice("Loaded query from history");
+        input_history::accept_history_search(self);
     }
 
     pub(super) fn move_history_search_selection(&mut self, delta: isize) {
-        if !self.shell.runtime.query_state.history_search_active
-            || self
-                .shell
-                .runtime
-                .query_state
-                .history_search_results
-                .is_empty()
-        {
-            return;
-        }
-        let current = self
-            .shell
-            .runtime
-            .query_state
-            .history_search_current
-            .unwrap_or(0) as isize;
-        let next = (current + delta).clamp(
-            0,
-            self.shell.runtime.query_state.history_search_results.len() as isize - 1,
-        );
-        self.shell.runtime.query_state.history_search_current = Some(next as usize);
+        input_history::move_history_search_selection(self, delta);
     }
 
     pub(super) fn mark_query_edited(&mut self) {
-        self.reset_query_history_navigation();
-        self.set_query_history_dirty_since(Some(Instant::now()));
-        self.invalidate_result_sort(true);
-    }
-
-    pub(super) fn push_query_history(history: &mut VecDeque<String>, query: &str) {
-        let trimmed = query.trim();
-        if trimmed.is_empty() {
-            return;
-        }
-        if history.back().is_some_and(|entry| entry == trimmed) {
-            return;
-        }
-        history.push_back(trimmed.to_string());
-        while history.len() > Self::QUERY_HISTORY_MAX {
-            history.pop_front();
-        }
-    }
-
-    pub(super) fn sync_shared_query_history_to_tabs(&mut self) {
-        let history = self.shell.runtime.query_state.query_history.clone();
-        for tab in &mut self.shell.tabs {
-            tab.query_state.query_history = history.clone();
-        }
+        input_history::mark_query_edited(self);
     }
 
     pub(super) fn commit_query_history_if_needed(&mut self, force: bool) {
-        if self.shell.ui.ime_composition_active {
-            return;
-        }
-        let should_commit = self
-            .shell
-            .runtime
-            .query_state
-            .query_history_dirty_since
-            .is_some_and(|since| force || since.elapsed() >= Self::QUERY_HISTORY_IDLE_DELAY);
-        if !should_commit
-            || self
-                .shell
-                .runtime
-                .query_state
-                .query_history_cursor
-                .is_some()
-        {
-            return;
-        }
-        let before_len = self.shell.runtime.query_state.query_history.len();
-        let query = self.shell.runtime.query_state.query.clone();
-        Self::push_query_history(&mut self.shell.runtime.query_state.query_history, &query);
-        self.set_query_history_dirty_since(None);
-        if self.shell.runtime.query_state.query_history.len() != before_len
-            || self
-                .shell
-                .runtime
-                .query_state
-                .query_history
-                .back()
-                .is_some_and(|entry| entry == query.trim())
-        {
-            self.sync_shared_query_history_to_tabs();
-            self.mark_ui_state_dirty();
-        }
+        input_history::commit_query_history_if_needed(self, force);
     }
 
     pub(super) fn process_query_input_events(
