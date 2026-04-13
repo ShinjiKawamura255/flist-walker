@@ -480,7 +480,7 @@ fn ctrl_shift_o_browses_in_new_tab() {
     fs::create_dir_all(&root).expect("create dir");
     fs::create_dir_all(&new_root).expect("create new root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let original_tab_id = app.shell.tabs[0].id;
+    let original_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
     app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(new_root.clone())));
 
     run_shortcuts_frame(
@@ -498,9 +498,9 @@ fn ctrl_shift_o_browses_in_new_tab() {
     assert_eq!(app.shell.tabs.len(), 2);
     assert_eq!(app.shell.tabs.active_tab, 1);
     assert_eq!(app.shell.runtime.root, new_root);
-    assert_eq!(app.shell.tabs[0].id, original_tab_id);
-    assert_eq!(app.shell.tabs[0].root, root);
-    assert_eq!(app.shell.tabs[1].root, new_root);
+    assert_eq!(app.shell.tabs.get(0).expect("tab 0").id, original_tab_id);
+    assert_eq!(app.shell.tabs.get(0).expect("tab 0").root, root);
+    assert_eq!(app.shell.tabs.get(1).expect("tab 1").root, new_root);
     let _ = fs::remove_dir_all(&root);
 }
 

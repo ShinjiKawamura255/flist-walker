@@ -144,10 +144,7 @@ impl IndexCoordinator {
         self.pending_entries_request_id = None;
     }
 
-    pub(super) fn clear_active_request_state(
-        &mut self,
-        tabs: &mut TabSessionState,
-    ) {
+    pub(super) fn clear_active_request_state(&mut self, tabs: &mut TabSessionState) {
         self.settle_active_terminal_state();
         tabs.clear_pending_restore_refresh_tabs();
     }

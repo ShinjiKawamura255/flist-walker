@@ -15,10 +15,11 @@
   - [docs/CHANGE-PLAN-20260413-slice-c-closure-validation.md](docs/CHANGE-PLAN-20260413-slice-c-closure-validation.md)
 - Scope Label: architecture-score-72-to-80
 - Related Tickets/Issues: none
-- Review Status: 未レビュー
+- Review Status: レビュー済み
 - Review Notes:
   - The external review on 2026-04-13 gives the current architecture a 72/100 score and identifies the remaining debt as structural half-finishedness rather than one more monolithic split.
   - The roadmap is intentionally split so that the highest-risk ownership issue is handled before broad hygiene and testability cleanup.
+  - The Slice A review tightened the target shape to a tab-session owner boundary with transition-only snapshot helpers, so the plan is now specific enough to execute without widening scope into render/input.
   - The goal is to remove the remaining architectural debt without turning the roadmap into an open-ended polish project.
 
 ## 1. Background
@@ -28,7 +29,7 @@
 
 ## 2. Goal
 - Raise the architecture from 72/100 to a defensible 80+ by finishing the state-ownership boundary work and removing the remaining structural smells that still make the code harder to reason about.
-- Make the remaining architecture easier to extend by resolving the Tab-Shell 二重所有 gap, reducing boilerplate around worker APIs, render/input module density, and eliminating `use super::*;` pollution and other implicit imports.
+- Make the remaining architecture easier to extend by resolving the Tab-Shell 二重所有 gap at the tab-session owner boundary, reducing boilerplate around worker APIs, render/input module density, and eliminating `use super::*;` pollution and other implicit imports.
 - Keep the final decision evidence-based so the closure slice can justify either roadmap completion or a concrete follow-up roadmap.
 
 ## 3. Scope
@@ -81,8 +82,8 @@
 
 ## 6. Execution Strategy
 1. Slice A: State ownership, Tab-Shell 二重所有, and `Deref` removal.
-   - Files/modules/components: `app/state.rs`, `app/tab_state.rs`, `app/tabs.rs`, `app/filelist.rs`, `app/update.rs`, `app/pipeline.rs`, `app/pipeline_owner.rs`, `app/response_flow.rs`, `app/result_reducer.rs`, `app/result_flow.rs`, `app/coordinator.rs`, `app/tests/*`.
-   - Expected result: the remaining ownership hazards are made explicit, the Tab-Shell 二重所有 split is collapsed into an explicit owner model where possible, `Deref/DerefMut` no longer expose manager internals as transparent state, and tab/shell ownership no longer depends on accidental field access.
+   - Files/modules/components: `app/state.rs`, `app/tab_state.rs`, `app/tabs.rs`, `app/pipeline.rs`, `app/pipeline_owner.rs`, `app/response_flow.rs`, `app/result_reducer.rs`, `app/result_flow.rs`, `app/coordinator.rs`, `app/tests/*`.
+   - Expected result: `TabSessionState` becomes the explicit owner boundary for tab transitions, the Tab-Shell 二重所有 gap is narrowed to transition-only snapshot helpers instead of transparent state access, and tab/shell ownership no longer depends on accidental field access.
    - Verification: `cargo test`, targeted ownership/regression tests, and docs diff review for the boundary model.
 2. Slice B: Module hygiene, testability, and extensibility cleanup.
    - Files/modules/components: `app/render.rs`, `app/input.rs`, `app/worker_bus.rs`, `app/workers.rs`, `app/result_reducer.rs`, `app/pipeline_owner.rs`, `app/coordinator.rs`, `app/update.rs`, `app/filelist.rs`, `app/tests/*`, `docs/TESTPLAN.md`.
@@ -94,8 +95,8 @@
    - Verification: `cargo test`, docs review, and an explicit close/continue decision.
 
 ## 7. Detailed Task Breakdown
-- [ ] Remove the remaining transparent state exposure and ownership ambiguity.
-- [ ] Collapse the Tab-Shell 二重所有 gap where it still adds sync risk.
+- [ ] Remove the remaining transparent tab-session exposure and ownership ambiguity.
+- [ ] Collapse the Tab-Shell 二重所有 gap where it still adds sync risk, while keeping snapshot helpers transition-only.
 - [ ] Split the densest modules and remove `use super::*;` / boilerplate leakage.
 - [ ] Improve testability, worker API shape, and the remaining observability/perf rough edges.
 - [ ] Run closure validation and decide whether the architecture score target is reached.
@@ -135,6 +136,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 
 ## 11. Progress Log
 - 2026-04-13 Planned.
+- 2026-04-13 Reviewed and narrowed Slice A to a tab-session owner boundary, then executed the ownership cleanup and regression validation.
+- 2026-04-13 `cd rust && cargo test` completed successfully after the Slice A ownership refactor.
 
 ## 12. Communication Plan
 - Return to the user with the slice status after each implementation slice, and return with the close/continue decision after the closure slice.

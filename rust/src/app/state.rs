@@ -991,20 +991,6 @@ impl TabSessionState {
     }
 }
 
-impl Deref for TabSessionState {
-    type Target = [AppTabState];
-
-    fn deref(&self) -> &Self::Target {
-        &self.tabs
-    }
-}
-
-impl DerefMut for TabSessionState {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.tabs
-    }
-}
-
 impl<'a> IntoIterator for &'a TabSessionState {
     type Item = &'a AppTabState;
     type IntoIter = std::slice::Iter<'a, AppTabState>;

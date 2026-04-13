@@ -423,7 +423,9 @@ impl FlistWalkerApp {
                     continue;
                 }
                 IndexResponseRoute::Stale => {
-                    self.shell.indexing.cleanup_stale_terminal_response(request_id);
+                    self.shell
+                        .indexing
+                        .cleanup_stale_terminal_response(request_id);
                     continue;
                 }
                 IndexResponseRoute::Active => {}

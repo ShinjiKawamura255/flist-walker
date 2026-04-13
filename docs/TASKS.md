@@ -6,6 +6,7 @@
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-13 に Slice A の review を受けて到達形を tab-session owner boundary に絞り込み、`TabSessionState` の透明 slice exposure を外したうえで regression validation を通した。
   - 2026-04-13 に architecture score 72/100 の follow-up roadmap を新規作成し、Tab-Shell 二重所有 / `Deref` / `use super::*;` 汚染 / module hygiene / testability / observability / perf cleanup を別 slice で解消する方針へ切り替えた。
   - 2026-04-12 に旧 state ownership consolidation program を起点に、runtime/tab snapshot の二重管理と event-routing の direct mutation を整理する方針へ切り替えた。
   - 2026-04-12 に旧 state ownership consolidation program の closure validation を行い、残課題がまだ material だと判断したため後続の state sync finalization program へ再計画した。

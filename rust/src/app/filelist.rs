@@ -192,7 +192,8 @@ impl FlistWalkerApp {
             FileListResponseScope::CurrentRoot => {
                 self.set_notice(format!("Created {}: {} entries", path.display(), count));
                 if let Some(tab_index) = target_tab_index {
-                    if tab_index == self.shell.tabs.active_tab_index() && self.shell.runtime.use_filelist
+                    if tab_index == self.shell.tabs.active_tab_index()
+                        && self.shell.runtime.use_filelist
                     {
                         self.dispatch_filelist_commands(vec![FileListCommand::App(
                             FileListAppCommand::RequestIndexRefresh,

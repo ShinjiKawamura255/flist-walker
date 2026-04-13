@@ -50,7 +50,7 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
     assert_eq!(app.shell.tabs.active_tab, 1);
     assert!(app.shell.runtime.query_state.query.is_empty());
     assert!(app.shell.runtime.use_filelist);
-    assert_eq!(app.shell.tabs[1].tab_accent, None);
+    assert_eq!(app.shell.tabs.get(1).expect("tab 1").tab_accent, None);
     assert!(app.shell.ui.focus_query_requested);
     assert!(!app.shell.ui.unfocus_query_requested);
     let _ = fs::remove_dir_all(&root);
@@ -65,7 +65,7 @@ fn save_ui_state_persists_tab_accent() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.tabs[0].tab_accent = Some(TabAccentColor::Magenta);
+    app.shell.tabs.get_mut(0).expect("tab 0").tab_accent = Some(TabAccentColor::Magenta);
     app.save_ui_state_to_path(&ui_state_path);
 
     let saved = FlistWalkerApp::load_ui_state_from_path(&ui_state_path);
@@ -367,9 +367,9 @@ fn move_tab_reorders_tabs_and_preserves_active_tab_identity() {
 
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_c);
-    assert_eq!(app.shell.tabs[0].root, root_c);
-    assert_eq!(app.shell.tabs[1].root, root_a);
-    assert_eq!(app.shell.tabs[2].root, root_b);
+    assert_eq!(app.shell.tabs.get(0).expect("tab 0").root, root_c);
+    assert_eq!(app.shell.tabs.get(1).expect("tab 1").root, root_a);
+    assert_eq!(app.shell.tabs.get(2).expect("tab 2").root, root_b);
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -400,9 +400,9 @@ fn move_tab_updates_active_index_when_other_tab_crosses_it() {
 
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_b);
-    assert_eq!(app.shell.tabs[0].root, root_b);
-    assert_eq!(app.shell.tabs[1].root, root_c);
-    assert_eq!(app.shell.tabs[2].root, root_a);
+    assert_eq!(app.shell.tabs.get(0).expect("tab 0").root, root_b);
+    assert_eq!(app.shell.tabs.get(1).expect("tab 1").root, root_c);
+    assert_eq!(app.shell.tabs.get(2).expect("tab 2").root, root_a);
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -477,9 +477,9 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     let expected_active_include_dirs = app.shell.runtime.include_dirs;
     let expected_active_focus = app.shell.ui.focus_query_requested;
     let expected_active_unfocus = app.shell.ui.unfocus_query_requested;
-    let expected_tab_b = app.shell.tabs[1].clone();
-    let expected_tab_c = app.shell.tabs[2].clone();
-    let expected_tab_a = app.shell.tabs[0].clone();
+    let expected_tab_b = app.shell.tabs.get(1).expect("tab 1").clone();
+    let expected_tab_c = app.shell.tabs.get(2).expect("tab 2").clone();
+    let expected_tab_a = app.shell.tabs.get(0).expect("tab 0").clone();
 
     app.move_tab(0, 2);
 
@@ -498,31 +498,40 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
         expected_active_unfocus
     );
 
-    assert_eq!(app.shell.tabs[0].root, expected_tab_b.root);
     assert_eq!(
-        app.shell.tabs[0].query_state.query,
+        app.shell.tabs.get(0).expect("tab 0").root,
+        expected_tab_b.root
+    );
+    assert_eq!(
+        app.shell.tabs.get(0).expect("tab 0").query_state.query,
         expected_tab_b.query_state.query
     );
     assert_eq!(
-        app.shell.tabs[0].result_state.preview,
+        app.shell.tabs.get(0).expect("tab 0").result_state.preview,
         expected_tab_b.result_state.preview
     );
-    assert_eq!(app.shell.tabs[1].root, expected_tab_c.root);
     assert_eq!(
-        app.shell.tabs[1].query_state.query,
+        app.shell.tabs.get(1).expect("tab 1").root,
+        expected_tab_c.root
+    );
+    assert_eq!(
+        app.shell.tabs.get(1).expect("tab 1").query_state.query,
         expected_tab_c.query_state.query
     );
     assert_eq!(
-        app.shell.tabs[1].result_state.preview,
+        app.shell.tabs.get(1).expect("tab 1").result_state.preview,
         expected_tab_c.result_state.preview
     );
-    assert_eq!(app.shell.tabs[2].root, expected_tab_a.root);
     assert_eq!(
-        app.shell.tabs[2].query_state.query,
+        app.shell.tabs.get(2).expect("tab 2").root,
+        expected_tab_a.root
+    );
+    assert_eq!(
+        app.shell.tabs.get(2).expect("tab 2").query_state.query,
         expected_tab_a.query_state.query
     );
     assert_eq!(
-        app.shell.tabs[2].result_state.preview,
+        app.shell.tabs.get(2).expect("tab 2").result_state.preview,
         expected_tab_a.result_state.preview
     );
 
@@ -638,7 +647,7 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .search
         .pending_request_id()
         .expect("search request id");
-    let first_tab_id = app.shell.tabs[0].id;
+    let first_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
 
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
     let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
@@ -807,7 +816,7 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.sync_active_tab_state();
     app.switch_to_tab_index(1);
 
-    let background_tab_id = app.shell.tabs[0].id;
+    let background_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
     let background_index_request = IndexRequest {
         request_id: 88,
         tab_id: background_tab_id,
@@ -820,11 +829,21 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         .indexing
         .request_tabs
         .insert(88, background_tab_id);
-    app.shell.tabs[0].index_state.pending_index_request_id = Some(88);
-    app.shell.tabs[0].index_state.index_in_progress = true;
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .pending_index_request_id = Some(88);
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .index_in_progress = true;
     app.shell.search.bind_request_tab(89, background_tab_id);
-    app.shell.tabs[0].pending_request_id = Some(89);
-    app.shell.tabs[0].search_in_progress = true;
+    app.shell.tabs.get_mut(0).expect("tab 0").pending_request_id = Some(89);
+    app.shell.tabs.get_mut(0).expect("tab 0").search_in_progress = true;
 
     let active_results = app.shell.runtime.results.clone();
     let active_base_results = app.shell.runtime.base_results.clone();
@@ -860,13 +879,40 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     assert_eq!(app.shell.runtime.results, active_results);
     assert_eq!(app.shell.runtime.base_results, active_base_results);
     assert_eq!(app.shell.runtime.current_row, active_current_row);
-    assert_eq!(app.shell.tabs[0].result_state.base_results.len(), 1);
     assert_eq!(
-        app.shell.tabs[0].result_state.base_results[0].0,
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .base_results
+            .len(),
+        1
+    );
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .base_results[0]
+            .0,
         background_file
     );
-    assert_eq!(app.shell.tabs[0].index_state.entries.len(), 1);
-    assert_eq!(app.shell.tabs[0].index_state.entries[0], background_file);
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .index_state
+            .entries
+            .len(),
+        1
+    );
+    assert_eq!(
+        app.shell.tabs.get(0).expect("tab 0").index_state.entries[0],
+        background_file
+    );
     assert!(index_req_rx.try_recv().is_err());
 
     let _ = fs::remove_dir_all(&root);

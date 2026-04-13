@@ -145,8 +145,8 @@ fn dispatch_render_commands_consumes_tab_bar_move_queue() {
     app.create_new_tab();
     app.create_new_tab();
     let active_root = app.shell.runtime.root.clone();
-    let middle_root = app.shell.tabs[1].root.clone();
-    let last_root = app.shell.tabs[2].root.clone();
+    let middle_root = app.shell.tabs.get(1).expect("tab 1").root.clone();
+    let last_root = app.shell.tabs.get(2).expect("tab 2").root.clone();
     let ctx = egui::Context::default();
 
     app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::MoveTab {
@@ -155,9 +155,9 @@ fn dispatch_render_commands_consumes_tab_bar_move_queue() {
     }));
     app.dispatch_render_commands(&ctx);
 
-    assert_eq!(app.shell.tabs[0].root, active_root);
-    assert_eq!(app.shell.tabs[1].root, middle_root);
-    assert_eq!(app.shell.tabs[2].root, last_root);
+    assert_eq!(app.shell.tabs.get(0).expect("tab 0").root, active_root);
+    assert_eq!(app.shell.tabs.get(1).expect("tab 1").root, middle_root);
+    assert_eq!(app.shell.tabs.get(2).expect("tab 2").root, last_root);
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);

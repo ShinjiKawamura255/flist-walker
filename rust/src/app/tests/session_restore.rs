@@ -220,17 +220,20 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     assert_eq!(app.shell.tabs.active_tab, 1);
     assert_eq!(app.shell.runtime.root, root_b);
     assert_eq!(app.shell.runtime.query_state.query, "beta");
-    assert_eq!(app.shell.tabs[1].tab_accent, Some(TabAccentColor::Crimson));
+    assert_eq!(
+        app.shell.tabs.get(1).expect("tab 1").tab_accent,
+        Some(TabAccentColor::Crimson)
+    );
     assert!(app
         .shell
         .tabs
         .pending_restore_refresh_tabs
-        .contains(&app.shell.tabs[0].id));
+        .contains(&app.shell.tabs.get(0).expect("tab 0").id));
     assert!(!app
         .shell
         .tabs
         .pending_restore_refresh_tabs
-        .contains(&app.shell.tabs[1].id));
+        .contains(&app.shell.tabs.get(1).expect("tab 1").id));
 
     let req = rx.try_recv().expect("active tab refresh");
     assert_eq!(req.root, root_b);
@@ -363,7 +366,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     );
     let _ = index_req_rx.try_recv().expect("initial active refresh");
 
-    let background_tab_id = app.shell.tabs[0].id;
+    let background_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
 
     let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
     let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
@@ -386,8 +389,18 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
         .indexing
         .request_tabs
         .insert(background_index_request_id, background_tab_id);
-    app.shell.tabs[0].index_state.pending_index_request_id = Some(background_index_request_id);
-    app.shell.tabs[0].index_state.index_in_progress = true;
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .pending_index_request_id = Some(background_index_request_id);
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .index_in_progress = true;
 
     search_tx_res
         .send(SearchResponse {
@@ -426,9 +439,24 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
 
     assert_eq!(app.shell.tabs.active_tab, 1);
     assert_eq!(app.shell.runtime.root, root_b);
-    assert_eq!(app.shell.tabs[0].result_state.preview, "preview-body");
-    assert_eq!(app.shell.tabs[0].index_state.entries.len(), 1);
-    assert_eq!(app.shell.tabs[0].index_state.entries[0], indexed_file);
+    assert_eq!(
+        app.shell.tabs.get(0).expect("tab 0").result_state.preview,
+        "preview-body"
+    );
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .index_state
+            .entries
+            .len(),
+        1
+    );
+    assert_eq!(
+        app.shell.tabs.get(0).expect("tab 0").index_state.entries[0],
+        indexed_file
+    );
 
     app.switch_to_tab_index(0);
 

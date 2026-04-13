@@ -323,9 +323,9 @@ fn preempt_background_when_active_index_is_queued() {
     app.create_new_tab();
     app.create_new_tab();
 
-    let active_tab_id = app.shell.tabs[2].id;
-    let bg_tab_a = app.shell.tabs[0].id;
-    let bg_tab_b = app.shell.tabs[1].id;
+    let active_tab_id = app.shell.tabs.get(2).expect("tab 2").id;
+    let bg_tab_a = app.shell.tabs.get(0).expect("tab 0").id;
+    let bg_tab_b = app.shell.tabs.get(1).expect("tab 1").id;
     app.shell.tabs.active_tab = 2;
 
     app.shell.indexing.inflight_requests.insert(100);

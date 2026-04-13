@@ -55,7 +55,12 @@ impl FlistWalkerApp {
     }
 
     fn reapply_active_tab_state(&mut self) {
-        if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab_index()).cloned() {
+        if let Some(tab) = self
+            .shell
+            .tabs
+            .get(self.shell.tabs.active_tab_index())
+            .cloned()
+        {
             self.apply_tab_state(&tab);
         }
     }
@@ -320,7 +325,9 @@ impl FlistWalkerApp {
 
     pub(super) fn initialize_tabs(&mut self) {
         let id = self.shell.tabs.take_next_tab_id();
-        self.shell.tabs.replace_all(vec![self.capture_active_tab_state(id)]);
+        self.shell
+            .tabs
+            .replace_all(vec![self.capture_active_tab_state(id)]);
         self.shell.tabs.set_active_tab_index(0);
     }
 
@@ -348,7 +355,12 @@ impl FlistWalkerApp {
         self.shell
             .tabs
             .set_active_tab_index(active_tab.min(self.shell.tabs.len().saturating_sub(1)));
-        if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab_index()).cloned() {
+        if let Some(tab) = self
+            .shell
+            .tabs
+            .get(self.shell.tabs.active_tab_index())
+            .cloned()
+        {
             self.apply_tab_state(&tab);
             self.request_scroll_to_current();
             self.request_focus_query();
@@ -492,8 +504,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn switch_to_tab_index(&mut self, next_index: usize) {
-        if next_index >= self.shell.tabs.len() || next_index == self.shell.tabs.active_tab_index()
-        {
+        if next_index >= self.shell.tabs.len() || next_index == self.shell.tabs.active_tab_index() {
             return;
         }
         self.deactivate_active_tab_for_transition();
@@ -595,7 +606,12 @@ impl FlistWalkerApp {
                 .tabs
                 .set_active_tab_index(self.shell.tabs.len().saturating_sub(1));
         }
-        if let Some(tab) = self.shell.tabs.get(self.shell.tabs.active_tab_index()).cloned() {
+        if let Some(tab) = self
+            .shell
+            .tabs
+            .get(self.shell.tabs.active_tab_index())
+            .cloned()
+        {
             self.activate_tab_after_transition(&tab, false, false, false);
         }
     }

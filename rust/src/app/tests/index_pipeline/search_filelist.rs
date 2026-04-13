@@ -502,7 +502,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     app.shell
         .tabs
         .pending_restore_refresh_tabs
-        .insert(app.shell.tabs[0].id);
+        .insert(app.shell.tabs.get(0).expect("tab 0").id);
 
     let (_, rx) = mpsc::channel::<IndexRequest>();
     let (closed_tx, _) = mpsc::channel::<IndexRequest>();
@@ -555,12 +555,23 @@ fn root_change_clears_stale_selection_state() {
     assert!(app.shell.runtime.entries.is_empty());
     assert!(app.shell.runtime.results.is_empty());
     let active_tab = app.shell.tabs.active_tab;
-    assert_eq!(app.shell.tabs[active_tab].root, root_new);
-    assert!(app.shell.tabs[active_tab]
+    assert_eq!(app.shell.tabs.get(active_tab).expect("tab").root, root_new);
+    assert!(app
+        .shell
+        .tabs
+        .get(active_tab)
+        .expect("tab")
         .index_state
         .all_entries
         .is_empty());
-    assert!(app.shell.tabs[active_tab].index_state.entries.is_empty());
+    assert!(app
+        .shell
+        .tabs
+        .get(active_tab)
+        .expect("tab")
+        .index_state
+        .entries
+        .is_empty());
     let req = rx.try_recv().expect("index request should be sent");
     assert_eq!(req.root, app.shell.runtime.root);
     let _ = fs::remove_dir_all(&root_old);
@@ -699,7 +710,7 @@ fn filelist_finished_enables_use_filelist_for_creator_tab() {
     app.create_new_tab();
     app.shell.runtime.use_filelist = false;
     app.sync_active_tab_state();
-    let creator_tab_id = app.shell.tabs[0].id;
+    let creator_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = rx;
     app.shell.features.filelist.pending_request_id = Some(101);

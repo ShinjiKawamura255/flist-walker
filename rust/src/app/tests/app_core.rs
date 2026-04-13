@@ -337,8 +337,16 @@ fn stale_action_completion_is_ignored_by_request_id() {
     app.bind_action_request_to_tab(1, tab_id);
     app.bind_action_request_to_tab(2, tab_id);
     let active_tab = app.shell.tabs.active_tab;
-    app.shell.tabs[active_tab].pending_action_request_id = Some(2);
-    app.shell.tabs[active_tab].action_in_progress = true;
+    app.shell
+        .tabs
+        .get_mut(active_tab)
+        .expect("active tab")
+        .pending_action_request_id = Some(2);
+    app.shell
+        .tabs
+        .get_mut(active_tab)
+        .expect("active tab")
+        .action_in_progress = true;
 
     tx.send(ActionResponse {
         request_id: 1,
@@ -791,8 +799,8 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     app.create_new_tab();
     assert_eq!(app.shell.tabs.len(), 2);
 
-    let removed_tab_id = app.shell.tabs[0].id;
-    let survivor_tab_id = app.shell.tabs[1].id;
+    let removed_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
+    let survivor_tab_id = app.shell.tabs.get(1).expect("tab 1").id;
     let path = root.join("item.txt");
     fs::write(&path, "x").expect("write file");
 
@@ -861,7 +869,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     app.close_tab_index(0);
 
     assert_eq!(app.shell.tabs.len(), 1);
-    assert_eq!(app.shell.tabs[0].id, survivor_tab_id);
+    assert_eq!(app.shell.tabs.get(0).expect("tab 0").id, survivor_tab_id);
     assert!(app.shell.features.filelist.pending_after_index.is_none());
     assert!(app.shell.features.filelist.pending_confirmation.is_none());
     assert!(app
@@ -930,10 +938,40 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     app.create_new_tab();
 
     assert_eq!(app.shell.tabs.len(), 2);
-    assert!(app.shell.tabs[0].result_state.results_compacted);
-    assert!(app.shell.tabs[0].result_state.results.is_empty());
-    assert_eq!(app.shell.tabs[0].result_state.base_results.len(), 2);
-    assert!(app.shell.tabs[0].result_state.preview.is_empty());
+    assert!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .results_compacted
+    );
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("tab 0")
+        .result_state
+        .results
+        .is_empty());
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .base_results
+            .len(),
+        2
+    );
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("tab 0")
+        .result_state
+        .preview
+        .is_empty());
 
     app.switch_to_tab_index(0);
 
@@ -941,7 +979,14 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
     assert_eq!(app.shell.runtime.results[0].0, first);
     assert_eq!(app.shell.runtime.results[1].0, second);
     assert_eq!(app.shell.runtime.current_row, Some(1));
-    assert!(!app.shell.tabs[0].result_state.results_compacted);
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .results_compacted
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
