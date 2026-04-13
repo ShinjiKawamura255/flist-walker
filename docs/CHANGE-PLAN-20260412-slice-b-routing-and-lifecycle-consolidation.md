@@ -115,6 +115,7 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-12 Planned.
 - 2026-04-12 Reviewed and implemented response cleanup consolidation; TESTPLAN validation rows updated.
+- 2026-04-13 Implemented index response routing via `IndexCoordinator::route_response` and reduced `pipeline.rs` direct request-tab inspection; validation remained green.
 
 ## 12. Communication Plan
 - Return to the closure slice when the routing and lifecycle story is stable enough to validate the goal.

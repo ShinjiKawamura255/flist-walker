@@ -1,5 +1,11 @@
 use super::*;
 
+pub(super) enum IndexResponseRoute {
+    Active,
+    Background(u64),
+    Stale,
+}
+
 pub(super) struct IndexCoordinator {
     pub(super) tx: Sender<IndexRequest>,
     pub(super) rx: Receiver<IndexResponse>,
@@ -147,6 +153,16 @@ impl IndexCoordinator {
         tabs.clear_pending_restore_refresh_tabs();
     }
 
+    pub(super) fn route_response(&mut self, request_id: u64) -> IndexResponseRoute {
+        if Some(request_id) == self.pending_request_id {
+            return IndexResponseRoute::Active;
+        }
+        match self.request_tabs.get(&request_id).copied() {
+            Some(tab_id) => IndexResponseRoute::Background(tab_id),
+            None => IndexResponseRoute::Stale,
+        }
+    }
+
     pub(super) fn response_request_id(response: &IndexResponse) -> u64 {
         match response {
             IndexResponse::Started { request_id, .. }
@@ -157,10 +173,6 @@ impl IndexCoordinator {
             | IndexResponse::Canceled { request_id }
             | IndexResponse::Truncated { request_id, .. } => *request_id,
         }
-    }
-
-    pub(super) fn is_active_request(&self, request_id: u64) -> bool {
-        Some(request_id) == self.pending_request_id
     }
 
     pub(super) fn complete_active_request(&mut self, request_id: u64) {

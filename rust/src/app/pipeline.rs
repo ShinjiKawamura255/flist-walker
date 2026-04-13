@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
 
@@ -407,10 +408,8 @@ impl FlistWalkerApp {
         let mut finished_current_request = false;
         while let Ok(msg) = self.shell.indexing.rx.try_recv() {
             let request_id = IndexCoordinator::response_request_id(&msg);
-            let target_tab_id = self.shell.indexing.request_tabs.get(&request_id).copied();
-            let current_tab_id = self.current_tab_id();
-            if let Some(tab_id) = target_tab_id {
-                if Some(tab_id) != current_tab_id {
+            match self.shell.indexing.route_response(request_id) {
+                IndexResponseRoute::Background(tab_id) => {
                     if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
                         self.handle_background_index_response(tab_index, msg);
                     } else {
@@ -423,15 +422,15 @@ impl FlistWalkerApp {
                     }
                     continue;
                 }
+                IndexResponseRoute::Stale => {
+                    self.shell.indexing.cleanup_stale_terminal_response(request_id);
+                    continue;
+                }
+                IndexResponseRoute::Active => {}
             }
-
-            let is_active_request = self.shell.indexing.is_active_request(request_id);
 
             match msg {
                 IndexResponse::Started { source, .. } => {
-                    if !is_active_request {
-                        continue;
-                    }
                     self.shell.runtime.index.source = source;
                     self.refresh_status_line();
                 }
@@ -439,9 +438,6 @@ impl FlistWalkerApp {
                     request_id,
                     entries,
                 } => {
-                    if !is_active_request {
-                        continue;
-                    }
                     self.queue_index_batch(request_id, entries);
                     has_index_progress = true;
                 }
@@ -449,9 +445,6 @@ impl FlistWalkerApp {
                     request_id,
                     entries,
                 } => {
-                    if !is_active_request {
-                        continue;
-                    }
                     self.shell.indexing.pending_entries.clear();
                     self.shell.indexing.pending_entries_request_id = None;
                     self.shell.runtime.index.entries.clear();
@@ -460,12 +453,6 @@ impl FlistWalkerApp {
                     has_index_progress = true;
                 }
                 IndexResponse::Finished { request_id, source } => {
-                    if !is_active_request {
-                        self.shell
-                            .indexing
-                            .cleanup_stale_terminal_response(request_id);
-                        continue;
-                    }
                     self.drain_queued_index_entries(request_id, usize::MAX);
                     self.shell.runtime.index.source = source;
                     self.shell.runtime.all_entries =
@@ -505,34 +492,20 @@ impl FlistWalkerApp {
                     break;
                 }
                 IndexResponse::Failed { request_id, error } => {
-                    if !is_active_request {
-                        self.shell
-                            .indexing
-                            .cleanup_stale_terminal_response(request_id);
-                        continue;
-                    }
                     self.shell.features.filelist.pending_after_index = None;
                     self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
                     self.shell.indexing.complete_active_request(request_id);
                 }
                 IndexResponse::Canceled { request_id } => {
-                    if is_active_request {
-                        self.shrink_checkpoint_buffers();
-                        self.shell.indexing.complete_active_request(request_id);
-                    } else {
-                        self.shell
-                            .indexing
-                            .cleanup_stale_terminal_response(request_id);
-                    }
+                    self.shrink_checkpoint_buffers();
+                    self.shell.indexing.complete_active_request(request_id);
                 }
                 IndexResponse::Truncated { limit, .. } => {
-                    if is_active_request {
-                        self.set_notice(format!(
-                            "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
-                            limit
-                        ));
-                    }
+                    self.set_notice(format!(
+                        "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
+                        limit
+                    ));
                 }
             }
 
