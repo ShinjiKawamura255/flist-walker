@@ -6,6 +6,15 @@
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-17 に Slice G の boundary tightening を完了し、`FileListManager` / `UpdateManager` の透過露出をやめて `workflow` / `state` 明示境界へ統一した。`cargo test --quiet` は無警告で green、closure scoring は 92/100 となり roadmap を close した。
+  - 2026-04-17 に architecture score 78 評価を受け、90 点到達に向けた不完全な ad-hoc roadmap を `plan-driven-execution` 準拠の execution plan 群へ再構成した。上位 plan は `docs/EXECUTION-PLAN-20260417-roadmap-architecture-score-90.md`、active slice は `docs/EXECUTION-PLAN-20260417-slice-a-coordinator-surface-reduction.md`、終端は `docs/EXECUTION-PLAN-20260417-slice-f-architecture-score-closure.md` とし、roadmap は `Execution Mode: autonomous`、closure は別 subagent の 100 点満点評価で 90/100 以上を条件に close する形へ更新し、`AGENTS.md` に temporary rule を追記した。
+  - 2026-04-17 に Slice A の実装を開始し、`FlistWalkerApp` の定数群を `rust/src/app/config.rs` へ外出しして `mod.rs` を coordinator entrypoint 寄りに縮小した。`cargo test` は green、`cargo test --quiet` は成功したが、既存の unused import 警告は baseline として残っている。
+  - 2026-04-17 に Slice A の warning cleanup を完了し、`cargo test --quiet` を無警告で通したうえで `cargo test` も再確認した。Slice B を active change plan に切り替えた。
+  - 2026-04-17 に Slice B の owner relocation を進め、`FileListManager` と `UpdateManager` の command/state lifecycle を `filelist.rs` / `update.rs` へ戻して `state.rs` を shared boundary 寄りに薄くした。`cargo test --quiet` を再確認し、次の active change plan を Slice C に切り替えた。
+  - 2026-04-17 に Slice C の presentation boundary cleanup を開始し、`ui_model.rs` から `choose_action` 参照を外して preview text の生成を display concern に寄せた。`cargo test --quiet` は引き続き green。
+  - 2026-04-17 に Slice D の worker concern separation を完了し、worker spawn/use-case 実装を `worker_tasks.rs` に退避して `workers.rs` を registry shim にした。`cargo test --quiet` を再確認し、次の active change plan を Slice E に切り替えた。
+  - 2026-04-17 に Slice E の enforcement through tests を完了し、`ui_model` preview text の display-only guard を追加して `ARCHITECTURE.md` / `TESTPLAN.md` を同期した。`cargo test --quiet` を再確認し、次の active change plan を Slice F に切り替えた。
+  - 2026-04-17 に Slice F の closure scoring が 86/100 となり continue 判定を受けたため、`Deref` boundary と worker_tasks docs sync を締める Slice G を追加し、次の active change plan を Slice G に切り替えた。
   - 2026-04-17 に `DerefMut` 除去と tab-state contract test を完了し、`cargo test` を通した。Slice C の closure validation では `Closed: Slice A の ownership boundary 完了, Slice B の import hygiene 完了, cargo test green` / `Deferred: none` / `Blocked: none` と判定し、follow-up roadmap を閉じた。
   - 2026-04-14 に architecture score 80 follow-up roadmap を再編し、Tab-Shell 二重所有 / `DerefMut` / `use super::*;` 汚染 / local clone hot path / closure validation を別 slice で機械的に閉じる方針へ切り替えた。
   - 2026-04-14 に Slice A の review を受け、`DerefMut` 除去と tab-state contract test の方向で GO を得た。

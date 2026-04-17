@@ -494,12 +494,14 @@ impl FlistWalkerApp {
                 .shell
                 .features
                 .update
+                .state
                 .skipped_target_version
                 .clone(),
             suppress_update_check_failure_dialog: self
                 .shell
                 .features
                 .update
+                .state
                 .suppress_check_failure_dialog,
         };
         if let Ok(text) = serde_json::to_string_pretty(&state) {

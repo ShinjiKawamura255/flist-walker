@@ -1,9 +1,12 @@
+#![allow(unused_imports)]
+
 pub(super) use crate::app::coordinator::path_is_within_root;
 pub(super) use crate::app::index_coordinator::IndexResponseRoute;
 pub(super) use crate::app::session::UiState;
 pub(super) use crate::app::state::{
     BackgroundIndexState, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
     PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, SortMetadata,
+    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
 };
 pub(super) use crate::app::worker_protocol::{
     KindResolveRequest, KindResolveResponse, UpdateRequestKind,
@@ -16,8 +19,7 @@ pub(super) use crate::app::{
     ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState, SavedWindowGeometry,
     SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState, SortMetadataRequest,
     SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState, TabSessionState,
-    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateRequest, UpdateResponse,
-    UpdateState, WorkerBus, WorkerRuntime,
+    UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
 };
 pub(super) use crate::app::{clear_process_shutdown_request, process_shutdown_requested};
 pub(super) use crate::app::{request_process_shutdown, render_tabs, spawn_kind_resolver_worker};

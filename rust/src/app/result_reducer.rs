@@ -1,6 +1,6 @@
 use super::{
     AppTabState, FlistWalkerApp, PreviewResponse, ResultSortMode, SearchResponse,
-    SortMetadata, SortMetadataRequest, SortMetadataResponse,
+    SortMetadataRequest, SortMetadataResponse,
 };
 use std::path::PathBuf;
 use std::sync::Arc;

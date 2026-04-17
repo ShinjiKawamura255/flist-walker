@@ -150,7 +150,7 @@ impl FlistWalkerApp {
             return vec!["Apply History", "Cancel History Search"];
         }
 
-        let create_label = if self.shell.features.filelist.in_progress {
+        let create_label = if self.shell.features.filelist.workflow.in_progress {
             "Create File List (Running...)"
         } else {
             "Create File List"
@@ -192,8 +192,8 @@ impl FlistWalkerApp {
             || self.shell.worker_bus.action.in_progress
             || self.shell.worker_bus.sort.in_progress
             || self.shell.indexing.kind_resolution_in_progress
-            || self.shell.features.filelist.in_progress
-            || self.shell.features.update.in_progress
+            || self.shell.features.filelist.workflow.in_progress
+            || self.shell.features.update.state.in_progress
             || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
@@ -862,14 +862,14 @@ impl FlistWalkerApp {
                         ui.separator();
                     }
                     if self.can_cancel_create_filelist() {
-                        let cancel_label = if self.shell.features.filelist.cancel_requested {
+                        let cancel_label = if self.shell.features.filelist.workflow.cancel_requested {
                             "Canceling FileList..."
                         } else {
                             "Cancel Create File List"
                         };
                         if ui
                             .add_enabled(
-                                !self.shell.features.filelist.cancel_requested,
+                                !self.shell.features.filelist.workflow.cancel_requested,
                                 egui::Button::new(cancel_label),
                             )
                             .clicked()
@@ -906,7 +906,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .pending_confirmation
+            .workflow.pending_confirmation
             .as_ref()
             .filter(|pending| pending.tab_id == current_tab_id)
             .map(|pending| pending.existing_path.clone())
@@ -926,7 +926,7 @@ impl FlistWalkerApp {
                             .dialog_button(
                                 ui,
                                 "Overwrite",
-                                self.shell.features.filelist.active_dialog_button == 0,
+                                self.shell.features.filelist.workflow.active_dialog_button == 0,
                             )
                             .clicked()
                         {
@@ -936,7 +936,7 @@ impl FlistWalkerApp {
                             .dialog_button(
                                 ui,
                                 "Cancel",
-                                self.shell.features.filelist.active_dialog_button == 1,
+                                self.shell.features.filelist.workflow.active_dialog_button == 1,
                             )
                             .clicked()
                         {
@@ -962,7 +962,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .pending_ancestor_confirmation
+            .workflow.pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
         {
@@ -981,7 +981,7 @@ impl FlistWalkerApp {
                                 .dialog_button(
                                     ui,
                                     "Continue",
-                                    self.shell.features.filelist.active_dialog_button == 0,
+                                    self.shell.features.filelist.workflow.active_dialog_button == 0,
                                 )
                                 .clicked()
                             {
@@ -991,7 +991,7 @@ impl FlistWalkerApp {
                                 .dialog_button(
                                     ui,
                                     "Current Root Only",
-                                    self.shell.features.filelist.active_dialog_button == 1,
+                                    self.shell.features.filelist.workflow.active_dialog_button == 1,
                                 )
                                 .clicked()
                             {
@@ -1001,7 +1001,7 @@ impl FlistWalkerApp {
                                 .dialog_button(
                                     ui,
                                     "Cancel",
-                                    self.shell.features.filelist.active_dialog_button == 2,
+                                    self.shell.features.filelist.workflow.active_dialog_button == 2,
                                 )
                                 .clicked()
                             {
@@ -1030,7 +1030,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .pending_use_walker_confirmation
+            .workflow.pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
         {
@@ -1048,7 +1048,7 @@ impl FlistWalkerApp {
                             .dialog_button(
                                 ui,
                                 "Continue",
-                                self.shell.features.filelist.active_dialog_button == 0,
+                                self.shell.features.filelist.workflow.active_dialog_button == 0,
                             )
                             .clicked()
                         {
@@ -1058,7 +1058,7 @@ impl FlistWalkerApp {
                             .dialog_button(
                                 ui,
                                 "Cancel",
-                                self.shell.features.filelist.active_dialog_button == 1,
+                                self.shell.features.filelist.workflow.active_dialog_button == 1,
                             )
                             .clicked()
                         {
@@ -1082,7 +1082,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_update_dialog(&mut self, ctx: &egui::Context) {
-        if let Some(prompt) = self.shell.features.update.prompt.as_ref().cloned() {
+        if let Some(prompt) = self.shell.features.update.state.prompt.as_ref().cloned() {
             let mut confirm = false;
             let mut later = false;
             let mut skip_until_next_version = prompt.skip_until_next_version;
@@ -1164,7 +1164,7 @@ impl FlistWalkerApp {
             }
         }
 
-        if let Some(failure) = self.shell.features.update.check_failure.as_ref().cloned() {
+        if let Some(failure) = self.shell.features.update.state.check_failure.as_ref().cloned() {
             let mut close = false;
             let mut suppress_future_errors = failure.suppress_future_errors;
             egui::Window::new("Update Check Failed")

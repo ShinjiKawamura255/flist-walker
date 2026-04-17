@@ -17,7 +17,7 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
         .shell
         .features
         .filelist
-        .pending_confirmation
+        .workflow.pending_confirmation
         .as_ref()
         .is_some_and(|pending| pending.tab_id == current_tab_id)
     {
@@ -27,7 +27,7 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
         .shell
         .features
         .filelist
-        .pending_ancestor_confirmation
+        .workflow.pending_ancestor_confirmation
         .as_ref()
         .is_some_and(|pending| pending.tab_id == current_tab_id)
     {
@@ -37,7 +37,7 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
         .shell
         .features
         .filelist
-        .pending_use_walker_confirmation
+        .workflow.pending_use_walker_confirmation
         .as_ref()
         .is_some_and(|pending| pending.source_tab_id == current_tab_id)
     {
@@ -63,8 +63,8 @@ pub(super) fn clear_filelist_dialog_selection(app: &mut FlistWalkerApp) {
 
 pub(super) fn activate_selected_filelist_dialog_button(app: &mut FlistWalkerApp) {
     match (
-        app.shell.features.filelist.active_dialog,
-        app.shell.features.filelist.active_dialog_button,
+        app.shell.features.filelist.workflow.active_dialog,
+        app.shell.features.filelist.workflow.active_dialog_button,
     ) {
         (Some(FileListDialogKind::Overwrite), 0) => app.confirm_pending_filelist_overwrite(),
         (Some(FileListDialogKind::Overwrite), _) => app.cancel_pending_filelist_overwrite(),
@@ -84,7 +84,7 @@ pub(super) fn activate_selected_filelist_dialog_button(app: &mut FlistWalkerApp)
 }
 
 pub(super) fn cancel_active_filelist_dialog(app: &mut FlistWalkerApp) {
-    match app.shell.features.filelist.active_dialog {
+    match app.shell.features.filelist.workflow.active_dialog {
         Some(FileListDialogKind::Overwrite) => app.cancel_pending_filelist_overwrite(),
         Some(FileListDialogKind::Ancestor) => app.cancel_pending_filelist_ancestor_confirmation(),
         Some(FileListDialogKind::UseWalker) => app.cancel_pending_filelist_use_walker(),

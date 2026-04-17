@@ -1,27 +1,18 @@
 use crate::entry::{Entry, EntryDisplayKind, EntryKind};
-use crate::fs_atomic::write_text_atomic;
-use crate::indexer::{
-    find_filelist_in_first_level, has_ancestor_filelists, IndexBuildResult, IndexSource,
-};
+use crate::indexer::{IndexBuildResult, IndexSource};
 use crate::path_utils::normalize_windows_path_buf;
-use crate::ui_model::{
-    build_preview_text_with_kind, display_path_with_mode, match_positions_for_path,
-    normalize_path_for_display, should_skip_preview,
-};
+use crate::ui_model::{display_path_with_mode, match_positions_for_path, normalize_path_for_display};
 use crate::updater::{
     forced_update_check_failure_message, self_update_disabled, should_skip_update_prompt,
-    UpdateCandidate, UpdateSupport,
+    UpdateSupport,
 };
 use eframe::egui;
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex, OnceLock};
-use std::time::{Duration, Instant, SystemTime};
 
 mod bootstrap;
+mod config;
 mod cache;
 mod coordinator;
 mod filelist;
@@ -47,6 +38,7 @@ mod tab_state;
 mod tabs;
 mod ui_state;
 mod update;
+mod worker_tasks;
 mod worker_bus;
 mod worker_bus_lifecycle;
 mod worker_protocol;
@@ -67,8 +59,7 @@ use state::{
     FileListDialogKind, FileListManager, HighlightCacheKey, PendingFileListAfterIndex,
     PendingFileListAncestorConfirmation, PendingFileListConfirmation,
     PendingFileListUseWalkerConfirmation, ResultSortMode, RootBrowserState, SortMetadata,
-    TabAccentPalette, TabDragState, TabSessionState, UpdateCheckFailureState, UpdateManager,
-    UpdatePromptState, UpdateState,
+    TabAccentPalette, TabDragState, TabSessionState,
 };
 use tab_state::AppTabState;
 use ui_state::RuntimeUiState;
@@ -76,8 +67,6 @@ use worker_bus::{
     ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,
     UpdateWorkerBus, WorkerBus,
 };
-#[cfg(test)]
-use worker_protocol::KindResolveResponse;
 use worker_protocol::{
     ActionRequest, ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest,
     IndexResponse, KindResolveRequest, PreviewRequest, PreviewResponse, SearchRequest,
@@ -180,38 +169,6 @@ pub struct FlistWalkerApp {
 }
 
 impl FlistWalkerApp {
-    const PREVIEW_CACHE_MAX_BYTES: usize = 32 * 1024 * 1024;
-    const HIGHLIGHT_CACHE_MAX: usize = 256;
-    const SORT_METADATA_CACHE_MAX: usize = 4096;
-    const TAB_DRAG_START_DISTANCE: f32 = 6.0;
-    const QUERY_HISTORY_MAX: usize = 100;
-    const QUERY_HISTORY_IDLE_DELAY: Duration = Duration::from_millis(400);
-    const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
-    const INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX: Duration = Duration::from_millis(1500);
-    const INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX: usize = 2048;
-    const PAGE_MOVE_ROWS: isize = 10;
-    const DEFAULT_PREVIEW_PANEL_WIDTH: f32 = 440.0;
-    const MIN_RESULTS_PANEL_WIDTH: f32 = 220.0;
-    const MIN_PREVIEW_PANEL_WIDTH: f32 = 220.0;
-    const ROOT_SELECTOR_POPUP_ID: &'static str = "root-selector-popup";
-    const INDEX_MAX_CONCURRENT: usize = 2;
-    const INDEX_MAX_QUEUE: usize = 4;
-    const UI_STATE_SAVE_INTERVAL: Duration = Duration::from_millis(500);
-    const WINDOW_GEOMETRY_SETTLE_INTERVAL: Duration = Duration::from_millis(350);
-    const MEMORY_SAMPLE_INTERVAL: Duration = Duration::from_millis(1000);
-    // Regression guard: app close should not stall on background workers once
-    // shutdown has been requested and all request senders have been dropped.
-    const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
-    const SHRINK_MIN_CAPACITY: usize = 4096;
-    const SEARCH_HINTS_TOOLTIP: &'static str = "\
-Search hints:
-- トークンは AND 条件（例: main py）
-- abc|foo|bar : OR 条件（スペースなしの | で連結）
-- 'term : 完全一致トークン（例: 'main.py）
-- !term : 除外トークン（例: main !test）
-- ^term : 先頭一致を優先（例: ^src）
-- term$ : 末尾一致を優先（例: .rs$）";
-
     /// 既定の launch 設定でアプリを初期化する。
     pub fn new(root: PathBuf, limit: usize, query: String) -> Self {
         Self::build_new(root, limit, query)

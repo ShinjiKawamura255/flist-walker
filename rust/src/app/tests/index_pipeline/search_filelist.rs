@@ -170,7 +170,7 @@ fn create_filelist_waits_while_indexing() {
         app.shell
             .features
             .filelist
-            .pending_after_index
+            .workflow.pending_after_index
             .as_ref()
             .map(|pending| pending.root.clone()),
         Some(root.clone())
@@ -248,7 +248,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
         .shell
         .features
         .filelist
-        .pending_use_walker_confirmation
+        .workflow.pending_use_walker_confirmation
         .is_some());
     assert_eq!(app.shell.tabs.len(), 1);
 
@@ -263,7 +263,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
         .shell
         .features
         .filelist
-        .pending_after_index
+        .workflow.pending_after_index
         .as_ref()
         .expect("deferred filelist pending");
     let current_tab_id = app.current_tab_id().expect("current tab id");
@@ -329,7 +329,7 @@ fn deferred_filelist_starts_after_index_finished() {
         .shell
         .features
         .filelist
-        .pending_ancestor_confirmation
+        .workflow.pending_ancestor_confirmation
         .is_some()
     {
         app.skip_pending_filelist_ancestor_propagation();
@@ -626,7 +626,7 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
         .shell
         .features
         .filelist
-        .pending_ancestor_confirmation
+        .workflow.pending_ancestor_confirmation
         .is_none());
     assert!(app.shell.runtime.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
@@ -656,7 +656,7 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
         .shell
         .features
         .filelist
-        .pending_use_walker_confirmation
+        .workflow.pending_use_walker_confirmation
         .is_none());
     assert!(app.shell.runtime.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
@@ -865,7 +865,7 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
         .shell
         .features
         .filelist
-        .pending_ancestor_confirmation
+        .workflow.pending_ancestor_confirmation
         .is_some());
     assert!(app.shell.features.filelist.workflow.pending_request_id.is_none());
     assert!(!app.shell.features.filelist.workflow.in_progress);

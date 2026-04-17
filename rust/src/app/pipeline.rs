@@ -1,13 +1,12 @@
 use super::{
     AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, PipelineOwner, ResultSortMode, SearchResponse,
-    SortMetadataResponse, TabSessionState, result_reducer,
+    IndexSource, PipelineOwner,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
-use std::collections::{HashSet, VecDeque};
-use std::path::{Path, PathBuf};
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -22,6 +21,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
@@ -484,6 +484,7 @@ impl FlistWalkerApp {
                         .shell
                         .features
                         .filelist
+                        .workflow
                         .pending_after_index
                         .as_ref()
                         .is_some_and(|pending| {

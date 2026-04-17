@@ -489,6 +489,7 @@ fn failed_update_response_reenables_update_prompt_actions() {
         !app.shell
             .features
             .update
+            .state
             .prompt
             .as_ref()
             .expect("update prompt")

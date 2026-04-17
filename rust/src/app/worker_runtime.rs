@@ -163,7 +163,7 @@ impl FlistWalkerApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return true;
         }
-        if self.shell.features.update.close_requested_for_install {
+        if self.shell.features.update.state.close_requested_for_install {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return true;
         }

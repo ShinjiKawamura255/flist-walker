@@ -127,6 +127,7 @@
 | TC-071 | unit | 大規模候補でも partial top-N の結果が full ranking の先頭と一致する | SP-003, SP-007 |
 | TC-072 | unit | 並列検索の収集結果は逐次検索と同じ ranking を返す | SP-003, SP-007 |
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |
+| TC-107 | unit | `ui_model` の preview text は action policy を埋め込まず、実行可否は `actions.rs` 側の責務に留める | SP-004, SP-010 |
 | TC-100 | unit | self-update candidate 解決は release asset 選択と support classification を分離し、manual-only fallback を契約として保持する | SP-014 |
 | TC-101 | unit | update request / install transitions emit trace commands for supportability and retain request_id correlation | SP-014 |
 | TC-102 | unit | Create File List の stale requested root completion は cleanup だけを行い、`use_filelist` 復帰や notice 更新を行わない | SP-001, SP-010 |
@@ -174,6 +175,7 @@
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
 - 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
 - app architecture のような構造改善後も、恒久的な検証基準は VM-001 / VM-002 / VM-003 を直接適用する。temporary slice 固有の validation rule はこの文書へ持ち込まない。
+- `ui_model.rs` は display/highlight/preview concern に限定し、action decision は `actions.rs` 側の unit test と `TC-107` で固定する。
 - Commands:
 - `cd rust`
 - `source ~/.cargo/env`

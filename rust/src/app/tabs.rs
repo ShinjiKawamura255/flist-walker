@@ -1,12 +1,10 @@
 use super::{
-    AppTabState, Entry, EntryDisplayKind, EntryKind, FlistWalkerApp, IndexBuildResult, IndexEntry,
-    IndexResponse, IndexSource, ResultSortMode, SavedTabState, SearchResponse, SortMetadata,
-    SortMetadataResponse, TabAccentColor, TabSessionState, UpdateResponse, result_reducer,
+    AppTabState, Entry, FlistWalkerApp, IndexResponse, IndexSource, ResultSortMode,
+    SavedTabState, SearchResponse, TabAccentColor, result_reducer,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
-use eframe::egui;
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -215,6 +213,7 @@ impl FlistWalkerApp {
                 }
                 let pending_after_index_matches = features
                     .filelist
+                    .workflow
                     .pending_after_index
                     .as_ref()
                     .is_some_and(|pending| {

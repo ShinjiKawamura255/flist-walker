@@ -172,7 +172,7 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
         .shell
         .features
         .filelist
-        .pending_use_walker_confirmation
+        .workflow.pending_use_walker_confirmation
         .is_none());
     let req = filelist_rx
         .try_recv()
@@ -261,7 +261,7 @@ fn dialog_space_confirms_selected_dialog_action() {
         .shell
         .features
         .filelist
-        .pending_ancestor_confirmation
+        .workflow.pending_ancestor_confirmation
         .is_none());
     let _ = fs::remove_dir_all(&root);
 }
@@ -296,7 +296,7 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
         .shell
         .features
         .filelist
-        .pending_use_walker_confirmation
+        .workflow.pending_use_walker_confirmation
         .is_none());
     assert!(app
         .shell

@@ -1,4 +1,3 @@
-use crate::actions::choose_action;
 use crate::path_utils::{
     display_path_with_mode as display_display_path_with_mode,
     normalize_path_for_display as normalize_display_path,
@@ -281,15 +280,10 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
     }
 
     if should_skip_preview(path, is_dir) {
-        return format!(
-            "File: {}\nAction: {:?}\n\n<on-demand file: preview skipped>",
-            normalized_path,
-            choose_action(path)
-        );
+        return format!("File: {}\n\n<on-demand file: preview skipped>", normalized_path);
     }
 
-    let action = format!("{:?}", choose_action(path));
-    let head = format!("File: {}\nAction: {}\n", normalized_path, action);
+    let head = format!("File: {}\n", normalized_path);
 
     match read_preview_lines(path, PREVIEW_MAX_LINES, PREVIEW_MAX_BYTES) {
         Ok(preview) => {
@@ -931,16 +925,38 @@ mod tests {
     }
 
     #[test]
-    fn build_preview_text_for_file_contains_action_and_content() {
+    fn build_preview_text_for_file_contains_content_without_action_policy() {
         let root = test_root("preview-file");
         fs::create_dir_all(&root).expect("create dir");
-        let file = root.join("notes.txt");
-        fs::write(&file, "line1\nline2\n").expect("write file");
 
-        let preview = build_preview_text(&file);
-        assert!(preview.contains("File:"));
-        assert!(preview.contains("Action:"));
-        assert!(preview.contains("line1"));
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let file = root.join("run.sh");
+            fs::write(&file, "#!/bin/sh\necho hi\n").expect("write file");
+            let mut perms = fs::metadata(&file).expect("metadata").permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&file, perms).expect("set permissions");
+
+            let preview = build_preview_text(&file);
+            assert!(preview.contains("File:"));
+            assert!(preview.contains("hi"));
+            assert!(!preview.contains("Action:"));
+            assert!(!preview.contains("Execute"));
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            let file = root.join("tool.exe");
+            fs::write(&file, "bin").expect("write file");
+
+            let preview = build_preview_text(&file);
+            assert!(preview.contains("File:"));
+            assert!(!preview.contains("Action:"));
+            assert!(!preview.contains("Execute"));
+        }
+
         let _ = fs::remove_dir_all(&root);
     }
 

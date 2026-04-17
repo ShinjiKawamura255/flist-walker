@@ -1,6 +1,6 @@
 use super::{normalize_windows_path_buf, FlistWalkerApp};
 use crate::indexer::IndexSource;
-use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display, should_skip_preview};
+use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
 use memory_stats::memory_stats;
 use std::path::{Path, PathBuf};
@@ -177,9 +177,9 @@ impl FlistWalkerApp {
             search_in_progress: self.shell.search.in_progress(),
             indexing_in_progress: self.shell.indexing.in_progress,
             action_in_progress: self.shell.worker_bus.action.in_progress,
-            filelist_in_progress: self.shell.features.filelist.in_progress,
-            filelist_cancel_requested: self.shell.features.filelist.cancel_requested,
-            update_in_progress: self.shell.features.update.in_progress,
+            filelist_in_progress: self.shell.features.filelist.workflow.in_progress,
+            filelist_cancel_requested: self.shell.features.filelist.workflow.cancel_requested,
+            update_in_progress: self.shell.features.update.state.in_progress,
             sort_in_progress: self.shell.worker_bus.sort.in_progress,
             history_search_active: self.shell.runtime.query_state.history_search_active,
             history_search_results_len: self.shell.runtime.query_state.history_search_results.len(),

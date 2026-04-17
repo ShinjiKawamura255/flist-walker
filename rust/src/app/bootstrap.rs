@@ -7,8 +7,9 @@ use super::{
     IndexSource, KindWorkerBus, LaunchSettings, PreviewCacheState, PreviewWorkerBus, QueryState,
     Receiver, ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState, SearchCoordinator,
     SearchRequest, SearchResponse, Sender, SortMetadataCacheState, SortWorkerBus, TabSessionState,
-    UpdateManager, UpdateState, UpdateWorkerBus, WorkerBus, WorkerRuntime,
+    UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
+use crate::app::state::{UpdateManager, UpdateState};
 use crate::path_utils::normalize_windows_path_buf;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;

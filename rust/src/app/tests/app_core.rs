@@ -876,13 +876,13 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         .shell
         .features
         .filelist
-        .pending_ancestor_confirmation
+        .workflow.pending_ancestor_confirmation
         .is_none());
     assert!(app
         .shell
         .features
         .filelist
-        .pending_use_walker_confirmation
+        .workflow.pending_use_walker_confirmation
         .is_none());
     assert_eq!(app.shell.indexing.request_tabs.get(&11), None);
     assert_eq!(

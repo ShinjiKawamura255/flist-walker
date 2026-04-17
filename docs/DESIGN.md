@@ -41,11 +41,11 @@
 - 役割補足: `shutdown/persist` では `app/mod.rs` が eframe callback から shutdown seam を呼ぶだけに留め、UI state 永続化は `app/session.rs`、worker stop/join は `app/worker_runtime.rs` が担当する。
 - 役割補足: `tab routing` では `app/mod.rs` が active tab と request routing の top-level context を持ち、tab switch/reorder/close と restore/refresh は `app/tabs.rs`、background response polling / apply は `app/response_flow.rs`、root selector lifecycle は `app/root_browser.rs` が owner を持つ。
 - 役割補足: `filelist/update dialog dispatch` では `app/mod.rs` が dialog command dispatch と notice/status line 連携を束ね、FileList state transition は `app/filelist.rs`、update state transition は `app/update.rs` が担当する。
-- 役割補足: `trace helper` では `app/mod.rs` が opt-in window trace の入口だけを保持し、worker trace は `app/workers.rs` と `app/worker_protocol.rs`、session/window 永続化まわりの補助 trace は `app/session.rs` など各 owner helper へ分離する。
+- 役割補足: `trace helper` では `app/mod.rs` が opt-in window trace の入口だけを保持し、worker trace は `app/workers.rs` の registry shim、`app/worker_tasks.rs` の実装 body、`app/worker_protocol.rs`、session/window 永続化まわりの補助 trace は `app/session.rs` など各 owner helper へ分離する。
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
 - 役割補足: feature 単位の live state は `app/state.rs` の `FeatureStateBundle` (`root_browser`, `filelist`, `update`) に寄せ、`FlistWalkerApp` 直下から dialog/update/root browser field を外す。tab/session registry は `TabSessionState`、feature dialog/update は `FeatureStateBundle` として ownership を分離する。
-  - `FileListManager` / `UpdateManager` は内部 bundle を `DerefMut` で露出せず、`workflow` / `state` を明示参照する前提で扱う。
+  - `FileListManager` / `UpdateManager` は内部 bundle を透明に露出せず、`workflow` / `state` を明示参照する前提で扱う。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と background tab 向け search/index response consume helper、activation 時の restore/refresh 入口を担当する。live 側の tab/session registry（`tabs`, `active_tab`, `next_tab_id`, `pending_restore_refresh`, request routing）は `app/state.rs` の `TabSessionState` に束ねる。`TabSessionState` は Vec そのものを公開せず、明示的な collection API と active tab / tab id / routing / restore helpers を通じてのみ更新する。
 - 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。
@@ -58,18 +58,18 @@
 - 役割補足: `app/search_coordinator.rs` は search request_id 採番、active/background tab routing、stale response route 判定を担当し、active search の apply / rerun は `app/pipeline_owner.rs`、background search 応答の保持は `app/tabs.rs` が担当する。
 - 役割補足: `app/filelist.rs` は overwrite/ancestor/use-walker/deferred-after-index の pending state、cancel flag 伝播、`Finished` / `Failed` / `Canceled` 応答後の cleanup と follow-up dispatch を owner として扱う。`app/state.rs` の `FileListManager` は request_id と requested root を相関して `CurrentRoot` / `PreviousRoot` / `StaleRequestedRoot` を分類し、`poll_filelist_response()` が stale requested root を無視したまま reducer 的に post-settle command を dispatch できるようにする。
 - 役割補足: `app/update.rs` は startup check / install request の dispatch を担当し、request_id-correlated response apply、stale 応答吸収、prompt/failure/install_started 遷移の cleanup は `app/state.rs` の `UpdateManager` command surface と合わせて owner 境界を保つ。
-- 役割補足: `app/index_worker.rs` は FileList / Walker streaming、kind classification、index worker 実装を担当し、`app/workers.rs` から indexing concern を切り離す。
+- 役割補足: `app/index_worker.rs` は FileList / Walker streaming、kind classification、index worker 実装を担当し、`app/workers.rs` の registry shim から indexing concern を切り離す。worker body は `app/worker_tasks.rs` に集約する。
 - 役割補足: `app/worker_protocol.rs` は search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を worker 実装や bus wiring から独立して保守できるようにする。
 - 役割補足: `app/worker_runtime.rs` は worker shutdown signal と join timeout の管理だけを持ち、個別 worker 実装から runtime orchestration を分離する。
 - 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation に専念し、bounded storage と scope/eviction を局所化する。preview/highlight/routing の orchestration は `app/preview_flow.rs` へ、sort の orchestration は `app/result_flow.rs` へ、実際の response apply と snapshot refresh は `app/result_reducer.rs` へ分離する。
 - 役割補足: `app/response_flow.rs` は preview/action/sort を中心に worker response の polling と routing を集約し、background tab 応答も owner ごとに dispatch できるようにする。
 - 役割補足: `app/root_browser.rs` は root selector dialog の state と root change cleanup を担当し、root 変更時の一時 UI を tab/session state から分離する。
-- 役割補足: `app/worker_support.rs` は worker routing の共通 helper と action target helper を担当し、`workers.rs` から reusable helper を切り離す。
+- 役割補足: `app/worker_support.rs` は worker routing の共通 helper と action target helper を担当し、`workers.rs` の registry shim から reusable helper を切り離す。
 - 役割補足: search domain は `search/mod.rs` を public API と query compile の入口に保ちつつ、prefix cache は `search/cache.rs`、execution mode と parallel tuning は `search/config.rs`、candidate collect は `search/execute.rs`、ranking/materialization は `search/rank.rs` へ分割して保守する。
 - 役割補足: indexer domain は `indexer/mod.rs` を build orchestration と nested FileList override の入口に保ちつつ、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。
 - 役割補足: 環境変数は `user-facing` (`FLISTWALKER_RESTORE_TABS`, `FLISTWALKER_DISABLE_HISTORY_PERSIST`)、`dev/test override` (`FLISTWALKER_SEARCH_*`, `FLISTWALKER_WALKER_*`, `FLISTWALKER_WINDOW_TRACE*`, update 手動試験 override)、`build/release` (`FLISTWALKER_UPDATE_*_HEX`, `FLISTWALKER_WINDOWS_*`, `FLISTWALKER_MACOS_SIGN_IDENTITY`) に分類し、公開 docs には user-facing だけを既定導線として載せる。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
-- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
+- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。
@@ -81,11 +81,11 @@
 
 - DES-013 Result Sort Controller
 - 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
-- 実装: `rust/src/app/mod.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`
+- 実装: `rust/src/app/mod.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`
 
 - DES-014 Self Update Coordinator
 - 役割: GitHub Releases の最新 version 確認、対象 asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) の選択、`SHA256SUMS.sig` と `SHA256SUMS` の検証、Windows/Linux 向け staged update と再起動を制御する。
-- 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/state.rs`
+- 実装: `rust/src/updater.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/state.rs`
 - 役割補足: `check_for_update()` は release fetch と candidate 解決を分け、candidate 解決側では release asset 選択と support classification を helper 化して contract を小さく保つ。
 - 役割補足: update request / apply / failure の主要遷移は `AppendWindowTrace` と worker-side `tracing` の両方で残し、worker trace は `flow=update` / `event=*` / `request_id=*` を canonical field として support 時の request_id correlation を取りやすくする。
 - 役割補足: request/response trace の details には request_id を必ず含め、update_check_failed や update_failed は error 内容も併記して support 時の切り分けをしやすくする。
@@ -95,7 +95,7 @@
 
 - DES-015 Diagnostics and Supportability Contract
 - 役割: worker-side `tracing` と opt-in window trace の責務を分け、support/debug 用の canonical event family を維持する。
-- 実装: `rust/src/app/workers.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/mod.rs`, `rust/src/app/session.rs`, `rust/src/app/input.rs`, `rust/src/main.rs`
+- 実装: `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/mod.rs`, `rust/src/app/session.rs`, `rust/src/app/input.rs`, `rust/src/main.rs`
 - 役割補足: worker-side async flow は `flow` / `event` / `request_id` を中心に記録し、request-scoped でない flow は `epoch` や `source_kind` など最小の補助 field だけを追加する。
 - 役割補足: search / preview / filelist / action / sort metadata / update は started/finished/failed/receiver_closed 系の event family に寄せ、index は `flow=index` と `source_kind` で filelist/walker/none を切り分ける。
 - 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。

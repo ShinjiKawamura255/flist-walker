@@ -31,7 +31,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [search/rank.rs](../rust/src/search/rank.rs)
   - ranking、result materialization、visible-result filter を担当する。
 - [ui_model.rs](../rust/src/ui_model.rs)
-  - highlight 判定、preview 文面、表示パス整形を担当する。
+  - highlight 判定、preview 文面、表示パス整形を担当する。action decision policy は持たず、表示専用 helper に限定する。
 - [path_utils.rs](../rust/src/path_utils.rs)
   - Windows path normalization と path identity helper を担当する。
 - [app/coordinator.rs](../rust/src/app/coordinator.rs)
@@ -43,7 +43,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [app/root_browser.rs](../rust/src/app/root_browser.rs)
   - root selector dialog state と root change lifecycle を担当する。
 - [actions.rs](../rust/src/actions.rs)
-  - open / execute の OS 差分吸収と testable seam を担当する。
+  - open / execute の OS 差分吸収、action decision policy、testable seam を担当する。
 - [updater.rs](../rust/src/updater.rs)
   - self-update 判定、asset 選択、staged update を担当する。
 - [update_security.rs](../rust/src/update_security.rs)
@@ -83,7 +83,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
     - owner: FileList flow は [filelist.rs](../rust/src/app/filelist.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
   - `trace helper`
     - 残置: opt-in 診断の入口と egui lifecycle に紐づく top-level trace 発火。
-    - owner: worker protocol tracing は [workers.rs](../rust/src/app/workers.rs) と [worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
+    - owner: worker protocol tracing は [workers.rs](../rust/src/app/workers.rs) の registry shim、[worker_tasks.rs](../rust/src/app/worker_tasks.rs) の worker body、[worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
 
 - [bootstrap.rs](../rust/src/app/bootstrap.rs)
   - worker 起動と launch seed 構築。
@@ -135,12 +135,14 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
   - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` を束ねる `FeatureStateBundle`、live tab/session registry を束ねる `TabSessionState`、cache/request routing など bundle inventory の受け皿として扱う。`AppRuntimeState` は `FlistWalkerApp` の app-global / active-result live state を束ねる runtime bundle として扱う。
-  - `FileListManager` と `UpdateManager` は `DerefMut` で state を透過露出せず、`workflow` / `state` を明示的に触る boundary として扱う。
+  - `FileListManager` と `UpdateManager` は内部 bundle を透明に露出せず、`workflow` / `state` を明示的に触る boundary として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。
   - `rust/src/app/tests/session_tabs.rs` の contract test は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout をフルリテラルで固定し、field drift を compile-time で検出する。
 - [workers.rs](../rust/src/app/workers.rs)
-  - search/preview/action/sort/update/filelist/kind worker の spawn 実装を担当する。
+  - search/preview/action/sort/update/filelist/kind worker の registry shim を担当する。
+- [worker_tasks.rs](../rust/src/app/worker_tasks.rs)
+  - worker spawn/use-case の実体を担当する。
 
 ## App Test Boundaries
 - `rust/src/app/tests/update_commands.rs`
