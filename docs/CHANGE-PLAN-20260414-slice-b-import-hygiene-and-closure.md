@@ -91,12 +91,13 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 ## 11. Progress Log
 - 2026-04-14 Planned.
 - 2026-04-14 Reviewed GO.
+- 2026-04-17 Implemented import-hygiene cleanup and validated with `cd rust && cargo test` (367 passed, 0 failed, 3 ignored).
 
 ## 12. Completion Checklist
-- [ ] Planned document created before implementation
-- [ ] Temporary `AGENTS.md` rule added
-- [ ] Work executed according to the plan or the plan updated first
-- [ ] Verification completed
-- [ ] Lasting notes moved into durable docs as needed
+- [x] Planned document created before implementation
+- [x] Temporary `AGENTS.md` rule added
+- [x] Work executed according to the plan or the plan updated first
+- [x] Verification completed
+- [x] Lasting notes moved into durable docs as needed
 - [ ] Temporary `AGENTS.md` rule removed after completion
 - [ ] Follow-up roadmap and superseded roadmap documents deleted after completion

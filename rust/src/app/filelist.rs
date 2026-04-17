@@ -1,6 +1,13 @@
-use super::*;
+use super::{
+    FileListRequest, FileListResponse, FlistWalkerApp, IndexSource, PendingFileListAfterIndex,
+    PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    PendingFileListUseWalkerConfirmation,
+};
 use crate::app::state::{FileListResponseContext, FileListResponseScope};
+use crate::indexer::{find_filelist_in_first_level, has_ancestor_filelists};
 use crate::path_utils::path_key;
+use std::sync::atomic::Ordering;
+use std::path::{Path, PathBuf};
 
 // FileList reducer command surface. FileListManager owns the workflow state,
 // and this module bridges those commands back into FlistWalkerApp.

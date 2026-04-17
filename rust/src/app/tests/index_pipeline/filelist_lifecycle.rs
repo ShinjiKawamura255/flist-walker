@@ -1,6 +1,5 @@
 use super::*;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 
 #[test]
 fn filelist_failed_updates_state_and_notice() {

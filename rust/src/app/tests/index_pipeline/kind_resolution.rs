@@ -1,5 +1,4 @@
 use super::*;
-use std::sync::Arc;
 
 #[test]
 fn unknown_kind_entries_remain_visible_when_both_filters_enabled() {

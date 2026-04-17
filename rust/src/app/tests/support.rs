@@ -1,7 +1,7 @@
-use super::*;
+use super::{egui, FlistWalkerApp, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub(super) fn test_root(name: &str) -> PathBuf {
+pub(crate) fn test_root(name: &str) -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock")
@@ -9,7 +9,7 @@ pub(super) fn test_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("fff-rs-app-{name}-{nonce}"))
 }
 
-pub(super) fn entries_count_from_status(status_line: &str) -> usize {
+pub(crate) fn entries_count_from_status(status_line: &str) -> usize {
     status_line
         .split("Entries: ")
         .nth(1)
@@ -18,7 +18,7 @@ pub(super) fn entries_count_from_status(status_line: &str) -> usize {
         .unwrap_or(0)
 }
 
-pub(super) fn run_shortcuts_frame(
+pub(crate) fn run_shortcuts_frame(
     app: &mut FlistWalkerApp,
     query_focused: bool,
     events: Vec<egui::Event>,
@@ -49,7 +49,7 @@ pub(super) fn run_shortcuts_frame(
     let _ = ctx.end_pass();
 }
 
-pub(super) fn gui_shortcut_modifiers(shift: bool) -> egui::Modifiers {
+pub(crate) fn gui_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     #[cfg(target_os = "macos")]
     {
         egui::Modifiers {
@@ -68,7 +68,7 @@ pub(super) fn gui_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     }
 }
 
-pub(super) fn tab_switch_shortcut_modifiers(shift: bool) -> egui::Modifiers {
+pub(crate) fn tab_switch_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     egui::Modifiers {
         ctrl: true,
         shift,
@@ -76,7 +76,7 @@ pub(super) fn tab_switch_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     }
 }
 
-pub(super) fn emacs_shortcut_modifiers(shift: bool) -> egui::Modifiers {
+pub(crate) fn emacs_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     egui::Modifiers {
         ctrl: true,
         shift,
@@ -84,15 +84,15 @@ pub(super) fn emacs_shortcut_modifiers(shift: bool) -> egui::Modifiers {
     }
 }
 
-pub(super) fn is_action_notice(text: &str) -> bool {
+pub(crate) fn is_action_notice(text: &str) -> bool {
     text.starts_with("Action: ") || text.starts_with("Action failed:")
 }
 
-pub(super) fn commit_query_history_for_test(app: &mut FlistWalkerApp) {
+pub(crate) fn commit_query_history_for_test(app: &mut FlistWalkerApp) {
     app.commit_query_history_if_needed(true);
 }
 
-pub(super) fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
+pub(crate) fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
     app.shell.indexing.pending_request_id = None;
     app.shell.indexing.in_progress = false;
     app.shell.indexing.request_tabs.clear();

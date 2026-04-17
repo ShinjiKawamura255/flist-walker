@@ -1,11 +1,16 @@
-use super::*;
+use super::{
+    egui, Entry, EntryKind, FlistWalkerApp, IndexSource, PathBuf, ResultSortMode,
+    path_is_within_root,
+};
 use crate::path_utils::normalize_windows_path_buf;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
 

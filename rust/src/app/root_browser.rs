@@ -1,6 +1,8 @@
-use super::*;
+use super::FlistWalkerApp;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
+use eframe::egui;
+use std::path::{Path, PathBuf};
 
 impl FlistWalkerApp {
     /// ダイアログで選んだ root を現在 tab に適用する。

@@ -1,22 +1,56 @@
-use super::*;
-use crate::entry::Entry;
-use std::fs;
-use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
+pub(super) use crate::app::coordinator::path_is_within_root;
+pub(super) use crate::app::index_coordinator::IndexResponseRoute;
+pub(super) use crate::app::session::UiState;
+pub(super) use crate::app::state::{
+    BackgroundIndexState, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, SortMetadata,
+};
+pub(super) use crate::app::worker_protocol::{
+    KindResolveRequest, KindResolveResponse, UpdateRequestKind,
+};
+pub(super) use crate::app::{
+    egui, ActionRequest, ActionResponse, AppRuntimeState, AppShellState, CacheStateBundle, EntryKind,
+    FlistWalkerApp, FileListDialogKind, FileListManager, FileListRequest, FileListResponse,
+    HighlightCacheKey, HighlightCacheState, IndexBuildResult, IndexEntry, IndexRequest, IndexResponse,
+    IndexSource, LaunchSettings, PreviewRequest, PreviewResponse, QueryState,
+    ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState, SavedWindowGeometry,
+    SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState, SortMetadataRequest,
+    SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState, TabSessionState,
+    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateRequest, UpdateResponse,
+    UpdateState, WorkerBus, WorkerRuntime,
+};
+pub(super) use crate::app::{clear_process_shutdown_request, process_shutdown_requested};
+pub(super) use crate::app::{request_process_shutdown, render_tabs, spawn_kind_resolver_worker};
+pub(super) use crate::entry::Entry;
+pub(super) use crate::path_utils::{normalize_windows_path_buf, path_key};
+pub(super) use crate::search::{SearchEntriesSnapshotKey, SearchPrefixCache};
+pub(super) use crate::ui_model::normalize_path_for_display;
+pub(super) use crate::updater::{UpdateCandidate, UpdateSupport};
+pub(super) use std::collections::{HashMap, HashSet, VecDeque};
+pub(super) use std::fs;
+pub(super) use std::path::{Path, PathBuf};
+pub(super) use std::sync::atomic::{AtomicBool, Ordering};
+pub(super) use std::sync::mpsc;
+pub(super) use std::sync::Arc;
+pub(super) use std::thread;
+pub(super) use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod support;
-use support::*;
+pub(super) use support::{
+    commit_query_history_for_test, entries_count_from_status, emacs_shortcut_modifiers,
+    gui_shortcut_modifiers, is_action_notice, reset_index_request_state_for_test,
+    run_shortcuts_frame, tab_switch_shortcut_modifiers, test_root,
+};
 
-fn unknown_entry(path: PathBuf) -> Entry {
+pub(super) fn unknown_entry(path: PathBuf) -> Entry {
     Entry::unknown(path)
 }
 
-fn file_entry(path: PathBuf) -> Entry {
+pub(super) fn file_entry(path: PathBuf) -> Entry {
     Entry::file(path)
 }
 
-fn dir_entry(path: PathBuf) -> Entry {
+pub(super) fn dir_entry(path: PathBuf) -> Entry {
     Entry::dir(path)
 }
 

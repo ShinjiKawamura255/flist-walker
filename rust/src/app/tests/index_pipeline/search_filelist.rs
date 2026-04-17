@@ -1,6 +1,5 @@
 use super::*;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 #[test]
 fn search_error_updates_notice() {
