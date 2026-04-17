@@ -1,4 +1,5 @@
-use super::*;
+use std::collections::VecDeque;
+use std::time::Instant;
 
 #[derive(Clone, Debug)]
 pub(super) struct QueryState {

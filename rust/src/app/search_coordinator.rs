@@ -1,4 +1,6 @@
-use super::*;
+use super::{AppTabState, SearchRequest, SearchResponse};
+use std::collections::HashMap;
+use std::sync::mpsc::{Receiver, Sender};
 
 pub(super) enum SearchResponseRoute {
     Active,

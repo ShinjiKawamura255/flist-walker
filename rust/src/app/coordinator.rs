@@ -1,5 +1,10 @@
-use super::*;
+use super::{normalize_windows_path_buf, FlistWalkerApp};
+use crate::indexer::IndexSource;
+use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display, should_skip_preview};
+use eframe::egui;
 use memory_stats::memory_stats;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub(super) struct StatusLineContext<'a> {
@@ -299,7 +304,7 @@ impl FlistWalkerApp {
             IndexSource::FileList(path) => format!(
                 "Source: FileList ({})",
                 path.file_name()
-                    .and_then(|s| s.to_str())
+                    .and_then(|s: &std::ffi::OsStr| s.to_str())
                     .unwrap_or("FileList.txt")
             ),
             IndexSource::Walker => "Source: Walker".to_string(),

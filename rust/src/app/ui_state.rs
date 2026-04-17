@@ -1,4 +1,6 @@
-use super::*;
+use super::{SavedWindowGeometry, TabDragState};
+use eframe::egui;
+use std::time::Instant;
 
 pub(super) struct RuntimeUiState {
     pub(super) pending_copy_shortcut: bool,

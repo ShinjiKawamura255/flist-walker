@@ -1,5 +1,10 @@
 use super::*;
 use crate::path_utils::normalize_windows_path_buf;
+use std::collections::{HashMap, VecDeque};
+use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
 type WorkerBootstrapParts = (
     Sender<SearchRequest>,

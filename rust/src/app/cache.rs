@@ -1,5 +1,9 @@
-use super::*;
+use super::{EntryKind, HighlightCacheKey, SortMetadata};
+use crate::entry::Entry;
 use crate::path_utils::path_key;
+use std::collections::{HashMap, VecDeque};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 #[derive(Default)]
 pub(super) struct PreviewCacheState {

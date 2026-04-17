@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    self_update_disabled, FlistWalkerApp, UpdateRequest, UpdateRequestKind,
+};
+use eframe::egui;
 
 // Update reducer command surface. Update-specific state transitions live in
 // UpdateManager; this module bridges those commands back into FlistWalkerApp.

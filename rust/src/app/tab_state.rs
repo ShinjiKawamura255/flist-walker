@@ -1,4 +1,11 @@
-use super::*;
+use super::{normalize_windows_path_buf, FlistWalkerApp, ResultSortMode, SavedTabState, TabAccentColor};
+use crate::entry::Entry;
+use crate::indexer::{IndexBuildResult, IndexSource};
+use crate::app::worker_protocol::IndexEntry;
+use std::collections::{HashSet, VecDeque};
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
 
 #[derive(Clone, Debug)]
 pub(super) struct TabQueryState {

@@ -4,7 +4,12 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::*;
+use super::{
+    ActionRequest, FileListRequest, FlistWalkerApp, IndexRequest, KindResolveRequest,
+    PreviewRequest, SearchRequest, SortMetadataRequest, UpdateRequest,
+};
+use crate::app::process_shutdown_requested;
+use eframe::egui;
 
 pub(super) struct WorkerRuntime {
     shutdown: Arc<AtomicBool>,

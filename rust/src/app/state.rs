@@ -1,12 +1,31 @@
-use super::*;
-use crate::app::cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
-use crate::path_utils::path_key;
+use crate::app::cache::{
+    EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState,
+};
+use crate::app::tab_state::AppTabState;
+use crate::app::index_coordinator::IndexCoordinator;
+use crate::app::query_state::QueryState;
+use crate::app::search_coordinator::SearchCoordinator;
+use crate::app::session::SavedTabState;
+use crate::app::ui_state::RuntimeUiState;
+use crate::app::worker_bus::WorkerBus;
+use crate::app::worker_runtime::WorkerRuntime;
+use crate::app::FlistWalkerApp;
+use crate::entry::Entry;
+use crate::fs_atomic::write_text_atomic;
+use crate::indexer::{IndexBuildResult, IndexSource};
+use crate::path_utils::{normalize_windows_path_buf, path_key};
+use crate::updater::{
+    forced_update_check_failure_message, self_update_disabled, should_skip_update_prompt,
+    UpdateCandidate, UpdateSupport,
+};
 use eframe::egui;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::Deref;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
-use std::time::SystemTime;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex, OnceLock};
+use std::time::{Duration, Instant, SystemTime};
 
 #[derive(Default)]
 pub(super) struct BackgroundIndexState {

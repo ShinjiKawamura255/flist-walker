@@ -1,4 +1,9 @@
-use super::*;
+use super::{match_positions_for_path, EntryKind, FlistWalkerApp, HighlightCacheKey};
+use crate::app::PreviewRequest;
+use crate::ui_model::{build_preview_text_with_kind, should_skip_preview};
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, OnceLock};
 impl FlistWalkerApp {
     pub(super) fn clear_preview_cache(&mut self) {
         self.shell.cache.preview.clear();

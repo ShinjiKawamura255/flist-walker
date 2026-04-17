@@ -1,5 +1,8 @@
-use super::*;
+use super::{result_reducer, AppTabState, Entry, FlistWalkerApp, SearchRequest};
 use crate::app::search_coordinator::SearchResponseRoute;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
 
 pub(super) struct PipelineOwner<'a> {
     app: &'a mut FlistWalkerApp,
