@@ -469,14 +469,14 @@ mod tests {
         };
 
         eprintln!(
-            "FileList perf reference(v0.12.3) lines={lines} reference_ms={reference_ms:.3} current_ms={current_ms:.3} slowdown={slowdown:.2}x reference_count={reference_count} current_count={current_count}"
+            "FileList perf control_baseline lines={lines} reference_ms={reference_ms:.3} current_ms={current_ms:.3} slowdown={slowdown:.2}x reference_count={reference_count} current_count={current_count}"
         );
 
         assert_eq!(reference_count, lines);
         assert_eq!(current_count, lines);
         assert!(
-            slowdown <= 1.15,
-            "current FileList parse regressed against v0.12.3 reference: {slowdown:.2}x"
+            slowdown <= 1.05,
+            "current FileList parse regressed against the control baseline: {slowdown:.2}x"
         );
         let _ = fs::remove_dir_all(&root);
     }

@@ -149,8 +149,9 @@ where
         }
         let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
         if include_files && include_dirs {
-            // Keep FileList indexing on the v0.12.3 fast path: choose the platform-preferred
-            // lexical candidate and avoid per-line existence probes in the initial stream.
+            // Keep FileList indexing on the current control fast path: choose the
+            // platform-preferred lexical candidate and avoid per-line existence probes
+            // in the initial stream.
             if let Some(path) = candidates.into_iter().next() {
                 if seen.insert(path.clone()) {
                     on_entry(path, None);

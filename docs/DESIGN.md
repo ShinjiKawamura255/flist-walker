@@ -141,7 +141,7 @@
 - tab 保存状態は query/history、index 状態、result/selection を別 struct で保持し、tab 切替や復元時に必要な束だけ同期する。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
-- FileList の `\` / `/` 混在は候補生成順でプラットフォーム優先の字句選択へ寄せ、初期ストリームで `exists()` / `try_exists()` を各行へ追加しない。v0.12.3 相当のスループットを基準として維持する。
+- FileList の `\` / `/` 混在は候補生成順でプラットフォーム優先の字句選択へ寄せ、初期ストリームで `exists()` / `try_exists()` を各行へ追加しない。現行 control baseline 相当のスループットを基準として維持する。
 - 非 Windows の dual-filter fast path では、Windows/WSL で生成された `\` 区切り FileList の実用性を優先して slash 正規化候補を先に流す。literal `\` を含む POSIX filename の厳密判定は初期ストリームでは扱わず、曖昧性解消のための per-line probe も入れない。
 - Walker 解析は `jwalk` が返す `file_type` を通常ファイル/ディレクトリの即時分類に使い、リンクや Windows shortcut のような追加確認が必要な項目だけを後続の kind resolver へ遅延させる。初期 `Finished` は後処理完了を待たないが、`Finished`/`Truncated` 後は unknown kind を自動で kind resolver キューへ積み、バックグラウンドで収束させる。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。

@@ -818,13 +818,13 @@ mod tests {
         };
 
         eprintln!(
-            "Walker perf eager_metadata_ms={eager_ms:.3} fast_classify_ms={fast_ms:.3} speedup={speedup:.2}x eager_count={eager_count} fast_count={fast_count}"
+            "Walker perf control_baseline eager_metadata_ms={eager_ms:.3} fast_classify_ms={fast_ms:.3} speedup={speedup:.2}x eager_count={eager_count} fast_count={fast_count}"
         );
 
         assert_eq!(eager_count, fast_count);
         assert!(
-            speedup >= 1.20,
-            "walker fast classification did not beat eager metadata enough: {speedup:.2}x"
+            speedup >= 1.30,
+            "walker fast classification did not beat the control baseline enough: {speedup:.2}x"
         );
         let _ = std::fs::remove_dir_all(&root);
     }
