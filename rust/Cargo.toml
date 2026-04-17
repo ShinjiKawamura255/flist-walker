@@ -31,7 +31,7 @@ semver = "1.0"
 sha2 = "0.10"
 tracing = { version = "0.1.41", features = ["release_max_level_info"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
-ureq = { version = "2.10", default-features = true }
+ureq = { version = "2.10", default-features = false, features = ["gzip", "native-tls"] }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["std", "rand_core"] }
 rand_core = { version = "0.6", features = ["getrandom"] }
 
