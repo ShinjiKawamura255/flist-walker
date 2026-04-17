@@ -896,20 +896,19 @@ impl FlistWalkerApp {
                     self.shell.ui.ime_composition_active = false;
                     Self::append_window_trace("ime_composition_disabled", "active=false");
                 }
-                egui::Event::Text(text) => {
-                    if text.contains(' ') || text.contains('\u{3000}') {
-                        saw_text_space = true;
-                        Self::append_window_trace(
-                            "ime_text_space_seen",
-                            &format!(
-                                "has_half={} has_full={} chars={}",
-                                text.contains(' '),
-                                text.contains('\u{3000}'),
-                                text.chars().count()
-                            ),
-                        );
-                    }
+                egui::Event::Text(text) if text.contains(' ') || text.contains('\u{3000}') => {
+                    saw_text_space = true;
+                    Self::append_window_trace(
+                        "ime_text_space_seen",
+                        &format!(
+                            "has_half={} has_full={} chars={}",
+                            text.contains(' '),
+                            text.contains('\u{3000}'),
+                            text.chars().count()
+                        ),
+                    );
                 }
+                egui::Event::Text(_) => {}
                 egui::Event::Key {
                     key: egui::Key::Space,
                     pressed: true,

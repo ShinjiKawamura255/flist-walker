@@ -10,9 +10,7 @@ fn filelist_dialog_button_count(kind: FileListDialogKind) -> usize {
 }
 
 pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileListDialogKind> {
-    let Some(current_tab_id) = app.current_tab_id() else {
-        return None;
-    };
+    let current_tab_id = app.current_tab_id()?;
     if app
         .shell
         .features
