@@ -2,7 +2,7 @@ use super::*;
 use crate::app::cache::{HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
 use crate::path_utils::path_key;
 use eframe::egui;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -196,7 +196,7 @@ pub(super) struct FileListResponseContext {
 
 #[derive(Default)]
 pub(super) struct FileListManager {
-    workflow: FileListWorkflowState,
+    pub(super) workflow: FileListWorkflowState,
 }
 
 impl FileListManager {
@@ -430,12 +430,6 @@ impl Deref for FileListManager {
     }
 }
 
-impl DerefMut for FileListManager {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.workflow
-    }
-}
-
 pub(super) struct UpdateState {
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
@@ -464,7 +458,7 @@ impl Default for UpdateState {
 
 #[derive(Default)]
 pub(super) struct UpdateManager {
-    state: UpdateState,
+    pub(super) state: UpdateState,
 }
 
 impl UpdateManager {
@@ -740,12 +734,6 @@ impl Deref for UpdateManager {
 
     fn deref(&self) -> &Self::Target {
         &self.state
-    }
-}
-
-impl DerefMut for UpdateManager {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.state
     }
 }
 

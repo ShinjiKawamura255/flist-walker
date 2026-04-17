@@ -21,7 +21,7 @@ impl FlistWalkerApp {
                     && path_key(&pending.root) != path_key(&self.shell.runtime.root)
             })
         {
-            self.shell.features.filelist.pending_after_index = None;
+            self.shell.features.filelist.workflow.pending_after_index = None;
             self.set_notice("Deferred Create File List canceled because root changed");
         }
     }
@@ -159,7 +159,7 @@ impl FlistWalkerApp {
                 (&mut shell.tabs, &mut shell.indexing, &mut shell.features);
             let affected_tab_ids: HashSet<u64> = indexing.request_tabs.values().copied().collect();
 
-            features.filelist.pending_after_index = None;
+            features.filelist.workflow.pending_after_index = None;
             indexing.pending_queue.clear();
             indexing.background_states.clear();
             indexing.inflight_requests.clear();
@@ -485,7 +485,7 @@ impl FlistWalkerApp {
                     {
                         let root = self.shell.runtime.root.clone();
                         let entries = self.filelist_entries_snapshot();
-                        self.shell.features.filelist.pending_after_index = None;
+                        self.shell.features.filelist.workflow.pending_after_index = None;
                         self.request_filelist_creation(current_tab_id, root, entries);
                     }
                     self.shrink_checkpoint_buffers();
@@ -494,7 +494,7 @@ impl FlistWalkerApp {
                     break;
                 }
                 IndexResponse::Failed { request_id, error } => {
-                    self.shell.features.filelist.pending_after_index = None;
+                    self.shell.features.filelist.workflow.pending_after_index = None;
                     self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
                     self.shell.indexing.complete_active_request(request_id);

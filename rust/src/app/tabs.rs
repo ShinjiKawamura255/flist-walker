@@ -221,7 +221,7 @@ impl FlistWalkerApp {
                             .map(|entry| entry.path.clone())
                             .collect(),
                     ));
-                    features.filelist.pending_after_index = None;
+                    features.filelist.workflow.pending_after_index = None;
                 }
 
                 if tab.query_state.query.trim().is_empty() {

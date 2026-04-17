@@ -9,10 +9,10 @@ fn filelist_failed_updates_state_and_notice() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = rx;
-    app.shell.features.filelist.pending_request_id = Some(13);
-    app.shell.features.filelist.pending_request_tab_id = app.current_tab_id();
-    app.shell.features.filelist.pending_root = Some(root.clone());
-    app.shell.features.filelist.in_progress = true;
+    app.shell.features.filelist.workflow.pending_request_id = Some(13);
+    app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
+    app.shell.features.filelist.workflow.pending_root = Some(root.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
 
     tx.send(FileListResponse::Failed {
         request_id: 13,
@@ -23,9 +23,9 @@ fn filelist_failed_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.pending_request_id, None);
-    assert_eq!(app.shell.features.filelist.pending_request_tab_id, None);
-    assert!(!app.shell.features.filelist.in_progress);
+    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
+    assert_eq!(app.shell.features.filelist.workflow.pending_request_tab_id, None);
+    assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(app
         .shell
         .runtime
@@ -41,12 +41,12 @@ fn filelist_canceled_updates_state_and_notice() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = rx;
-    app.shell.features.filelist.pending_request_id = Some(14);
-    app.shell.features.filelist.pending_request_tab_id = app.current_tab_id();
-    app.shell.features.filelist.pending_root = Some(root.clone());
-    app.shell.features.filelist.pending_cancel = Some(Arc::new(AtomicBool::new(true)));
-    app.shell.features.filelist.in_progress = true;
-    app.shell.features.filelist.cancel_requested = true;
+    app.shell.features.filelist.workflow.pending_request_id = Some(14);
+    app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
+    app.shell.features.filelist.workflow.pending_root = Some(root.clone());
+    app.shell.features.filelist.workflow.pending_cancel = Some(Arc::new(AtomicBool::new(true)));
+    app.shell.features.filelist.workflow.in_progress = true;
+    app.shell.features.filelist.workflow.cancel_requested = true;
 
     tx.send(FileListResponse::Canceled {
         request_id: 14,
@@ -56,10 +56,10 @@ fn filelist_canceled_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.pending_request_id, None);
-    assert!(app.shell.features.filelist.pending_cancel.is_none());
-    assert!(!app.shell.features.filelist.in_progress);
-    assert!(!app.shell.features.filelist.cancel_requested);
+    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
+    assert!(app.shell.features.filelist.workflow.pending_cancel.is_none());
+    assert!(!app.shell.features.filelist.workflow.in_progress);
+    assert!(!app.shell.features.filelist.workflow.cancel_requested);
     assert!(app
         .shell
         .runtime
@@ -79,10 +79,10 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     app.shell.worker_bus.filelist.rx = filelist_rx;
     let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     app.shell.indexing.tx = _index_tx;
-    app.shell.features.filelist.pending_request_id = Some(51);
-    app.shell.features.filelist.pending_request_tab_id = app.current_tab_id();
-    app.shell.features.filelist.pending_root = Some(root_old.clone());
-    app.shell.features.filelist.in_progress = true;
+    app.shell.features.filelist.workflow.pending_request_id = Some(51);
+    app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
+    app.shell.features.filelist.workflow.pending_root = Some(root_old.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.root = root_new.clone();
 
@@ -98,7 +98,7 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     app.poll_filelist_response();
 
     assert!(index_rx.try_recv().is_err());
-    assert!(!app.shell.features.filelist.in_progress);
+    assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(app.shell.runtime.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
@@ -113,10 +113,10 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = rx;
-    app.shell.features.filelist.pending_request_id = Some(52);
-    app.shell.features.filelist.pending_request_tab_id = app.current_tab_id();
-    app.shell.features.filelist.pending_root = Some(root_old.clone());
-    app.shell.features.filelist.in_progress = true;
+    app.shell.features.filelist.workflow.pending_request_id = Some(52);
+    app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
+    app.shell.features.filelist.workflow.pending_root = Some(root_old.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
     app.shell.runtime.root = root_new;
 
     tx.send(FileListResponse::Failed {
@@ -128,8 +128,8 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.pending_request_id, None);
-    assert!(!app.shell.features.filelist.in_progress);
+    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
+    assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(app.shell.runtime.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
 }
@@ -143,10 +143,10 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
     let mut app = FlistWalkerApp::new(root_response.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = filelist_rx;
-    app.shell.features.filelist.pending_request_id = Some(53);
-    app.shell.features.filelist.pending_request_tab_id = app.current_tab_id();
-    app.shell.features.filelist.pending_root = Some(root_requested.clone());
-    app.shell.features.filelist.in_progress = true;
+    app.shell.features.filelist.workflow.pending_request_id = Some(53);
+    app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
+    app.shell.features.filelist.workflow.pending_root = Some(root_requested.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
     app.shell.runtime.use_filelist = false;
 
     filelist_tx
@@ -160,8 +160,8 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.pending_request_id, None);
-    assert!(!app.shell.features.filelist.in_progress);
+    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
+    assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(!app.shell.runtime.use_filelist);
     assert!(app.shell.runtime.notice.is_empty());
     let _ = fs::remove_dir_all(&root_requested);

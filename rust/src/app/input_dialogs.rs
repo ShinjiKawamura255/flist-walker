@@ -48,17 +48,17 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
 
 pub(super) fn sync_filelist_dialog_selection(app: &mut FlistWalkerApp, kind: FileListDialogKind) {
     let button_count = filelist_dialog_button_count(kind);
-    if app.shell.features.filelist.active_dialog != Some(kind) {
-        app.shell.features.filelist.active_dialog = Some(kind);
-        app.shell.features.filelist.active_dialog_button = 0;
+    if app.shell.features.filelist.workflow.active_dialog != Some(kind) {
+        app.shell.features.filelist.workflow.active_dialog = Some(kind);
+        app.shell.features.filelist.workflow.active_dialog_button = 0;
         return;
     }
-    app.shell.features.filelist.active_dialog_button %= button_count;
+    app.shell.features.filelist.workflow.active_dialog_button %= button_count;
 }
 
 pub(super) fn clear_filelist_dialog_selection(app: &mut FlistWalkerApp) {
-    app.shell.features.filelist.active_dialog = None;
-    app.shell.features.filelist.active_dialog_button = 0;
+    app.shell.features.filelist.workflow.active_dialog = None;
+    app.shell.features.filelist.workflow.active_dialog_button = 0;
 }
 
 pub(super) fn activate_selected_filelist_dialog_button(app: &mut FlistWalkerApp) {
@@ -93,12 +93,13 @@ pub(super) fn cancel_active_filelist_dialog(app: &mut FlistWalkerApp) {
 }
 
 pub(super) fn move_filelist_dialog_selection(app: &mut FlistWalkerApp, delta: isize) {
-    let Some(kind) = app.shell.features.filelist.active_dialog else {
+    let Some(kind) = app.shell.features.filelist.workflow.active_dialog else {
         return;
     };
     let count = filelist_dialog_button_count(kind) as isize;
-    let current = app.shell.features.filelist.active_dialog_button as isize;
-    app.shell.features.filelist.active_dialog_button = (current + delta).rem_euclid(count) as usize;
+    let current = app.shell.features.filelist.workflow.active_dialog_button as isize;
+    app.shell.features.filelist.workflow.active_dialog_button =
+        (current + delta).rem_euclid(count) as usize;
 }
 
 pub(super) fn handle_filelist_dialog_shortcuts(

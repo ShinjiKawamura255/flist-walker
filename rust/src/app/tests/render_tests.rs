@@ -50,7 +50,7 @@ fn top_action_labels_show_running_create_label_when_filelist_is_in_progress() {
     let root = test_root("render-running-actions");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.features.filelist.in_progress = true;
+    app.shell.features.filelist.workflow.in_progress = true;
 
     assert_eq!(app.top_action_labels()[3], "Create File List (Running...)");
     let _ = fs::remove_dir_all(&root);
@@ -80,7 +80,8 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let tab_id = app.current_tab_id().expect("active tab id");
-    app.shell.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
+    app.shell.features.filelist.workflow.pending_confirmation =
+        Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
         entries: vec![root.join("entry.txt")],
@@ -93,7 +94,7 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.shell.features.filelist.pending_confirmation.is_none());
+    assert!(app.shell.features.filelist.workflow.pending_confirmation.is_none());
     assert_eq!(app.shell.runtime.notice, "Create File List canceled");
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
@@ -104,7 +105,7 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
     let root = test_root("render-command-update-dialog");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.features.update.check_failure = Some(UpdateCheckFailureState {
+    app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
         error: "network timeout".to_string(),
         suppress_future_errors: false,
     });
@@ -115,7 +116,7 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.shell.features.update.check_failure.is_none());
+    assert!(app.shell.features.update.state.check_failure.is_none());
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }

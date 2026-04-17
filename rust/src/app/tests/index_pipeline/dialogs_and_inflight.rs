@@ -188,7 +188,7 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
     app.shell.runtime.current_row = Some(1);
-    app.shell.features.filelist.pending_ancestor_confirmation =
+    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
         Some(PendingFileListAncestorConfirmation {
             tab_id: app.current_tab_id().expect("tab id"),
             root: root.clone(),
@@ -209,10 +209,10 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
 
     assert_eq!(app.shell.runtime.current_row, Some(1));
     assert_eq!(
-        app.shell.features.filelist.active_dialog,
+        app.shell.features.filelist.workflow.active_dialog,
         Some(FileListDialogKind::Ancestor)
     );
-    assert_eq!(app.shell.features.filelist.active_dialog_button, 1);
+    assert_eq!(app.shell.features.filelist.workflow.active_dialog_button, 1);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -223,7 +223,7 @@ fn dialog_space_confirms_selected_dialog_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
-    app.shell.features.filelist.pending_ancestor_confirmation =
+    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
         Some(PendingFileListAncestorConfirmation {
             tab_id: app.current_tab_id().expect("tab id"),
             root: root.clone(),
@@ -273,7 +273,7 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.results = vec![(root.join("a.txt"), 0.0)];
     app.shell.runtime.current_row = Some(0);
-    app.shell.features.filelist.pending_use_walker_confirmation =
+    app.shell.features.filelist.workflow.pending_use_walker_confirmation =
         Some(PendingFileListUseWalkerConfirmation {
             source_tab_id: app.current_tab_id().expect("tab id"),
             root: root.clone(),

@@ -55,7 +55,7 @@ impl FlistWalkerApp {
                     }
                 }
                 FileListCommand::App(FileListAppCommand::SetPendingAfterIndex(pending)) => {
-                    self.shell.features.filelist.pending_after_index = pending;
+                    self.shell.features.filelist.workflow.pending_after_index = pending;
                 }
                 FileListCommand::App(FileListAppCommand::SetIncludeFilesAndDirs {
                     include_files,
@@ -266,12 +266,14 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
     ) {
         if let Some(existing_path) = find_filelist_in_first_level(&root) {
-            self.shell.features.filelist.pending_confirmation = Some(PendingFileListConfirmation {
+            self.shell.features.filelist.workflow.pending_confirmation = Some(
+                PendingFileListConfirmation {
                 tab_id,
                 root,
                 entries,
                 existing_path: existing_path.clone(),
-            });
+            },
+            );
             self.set_notice(format!(
                 "{} already exists. Choose overwrite or cancel.",
                 existing_path.display()
@@ -288,12 +290,13 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
     ) {
         if has_ancestor_filelists(&root) {
-            self.shell.features.filelist.pending_ancestor_confirmation =
-                Some(PendingFileListAncestorConfirmation {
+            self.shell.features.filelist.workflow.pending_ancestor_confirmation = Some(
+                PendingFileListAncestorConfirmation {
                     tab_id,
                     root,
                     entries,
-                });
+                },
+            );
             self.set_notice(
                 "Create File List will also update parent FileList entries. Continue or choose current root only.",
             );
@@ -303,7 +306,13 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn confirm_pending_filelist_overwrite(&mut self) {
-        let Some(pending) = self.shell.features.filelist.pending_confirmation.take() else {
+        let Some(pending) = self
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_confirmation
+            .take() else {
             return;
         };
         self.request_filelist_creation_after_overwrite_check(
@@ -318,6 +327,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_ancestor_confirmation
             .take()
         else {
@@ -331,6 +341,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_ancestor_confirmation
             .take()
         else {
@@ -344,15 +355,17 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_use_walker_confirmation
             .take()
         else {
             return;
         };
-        self.shell.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
-            tab_id: pending.source_tab_id,
-            root: pending.root,
-        });
+        self.shell.features.filelist.workflow.pending_after_index =
+            Some(PendingFileListAfterIndex {
+                tab_id: pending.source_tab_id,
+                root: pending.root,
+            });
         if !self.shell.runtime.include_files || !self.shell.runtime.include_dirs {
             self.shell.runtime.include_files = true;
             self.shell.runtime.include_dirs = true;
@@ -366,6 +379,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_confirmation
             .take()
             .is_some()
@@ -379,6 +393,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_ancestor_confirmation
             .take()
             .is_some()
@@ -392,6 +407,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_use_walker_confirmation
             .take()
             .is_some()
@@ -401,8 +417,8 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn can_cancel_create_filelist(&self) -> bool {
-        self.shell.features.filelist.pending_after_index.is_some()
-            || self.shell.features.filelist.pending_confirmation.is_some()
+        self.shell.features.filelist.workflow.pending_after_index.is_some()
+            || self.shell.features.filelist.workflow.pending_confirmation.is_some()
             || self
                 .shell
                 .features
@@ -415,11 +431,11 @@ impl FlistWalkerApp {
                 .filelist
                 .pending_use_walker_confirmation
                 .is_some()
-            || self.shell.features.filelist.in_progress
+            || self.shell.features.filelist.workflow.in_progress
     }
 
     pub(super) fn cancel_create_filelist(&mut self) {
-        if self.shell.features.filelist.pending_confirmation.is_some() {
+        if self.shell.features.filelist.workflow.pending_confirmation.is_some() {
             self.cancel_pending_filelist_overwrite();
             return;
         }
@@ -447,6 +463,7 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
+            .workflow
             .pending_after_index
             .take()
             .is_some()
@@ -462,11 +479,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn create_filelist(&mut self) {
-        if self.shell.features.filelist.in_progress {
+        if self.shell.features.filelist.workflow.in_progress {
             self.set_notice("Create File List is already running");
             return;
         }
-        if self.shell.features.filelist.pending_confirmation.is_some() {
+        if self.shell.features.filelist.workflow.pending_confirmation.is_some() {
             self.set_notice("Confirm overwrite or cancel first");
             return;
         }
@@ -495,7 +512,7 @@ impl FlistWalkerApp {
             return;
         };
         if self.use_filelist_requires_locked_filters() {
-            self.shell.features.filelist.pending_use_walker_confirmation =
+            self.shell.features.filelist.workflow.pending_use_walker_confirmation =
                 Some(PendingFileListUseWalkerConfirmation {
                     source_tab_id: tab_id,
                     root: self.shell.runtime.root.clone(),
@@ -514,10 +531,11 @@ impl FlistWalkerApp {
             needs_reindex = true;
         }
         if self.shell.indexing.in_progress {
-            self.shell.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
-                tab_id,
-                root: self.shell.runtime.root.clone(),
-            });
+            self.shell.features.filelist.workflow.pending_after_index =
+                Some(PendingFileListAfterIndex {
+                    tab_id,
+                    root: self.shell.runtime.root.clone(),
+                });
             if needs_reindex {
                 if self.shell.runtime.use_filelist {
                     self.request_create_filelist_walker_refresh();
@@ -537,10 +555,11 @@ impl FlistWalkerApp {
         }
 
         if needs_reindex {
-            self.shell.features.filelist.pending_after_index = Some(PendingFileListAfterIndex {
-                tab_id,
-                root: self.shell.runtime.root.clone(),
-            });
+            self.shell.features.filelist.workflow.pending_after_index =
+                Some(PendingFileListAfterIndex {
+                    tab_id,
+                    root: self.shell.runtime.root.clone(),
+                });
             if self.shell.runtime.use_filelist {
                 self.request_create_filelist_walker_refresh();
                 self.set_notice(

@@ -1,15 +1,16 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-13
-- Current active engineering roadmap: [docs/CHANGE-PLAN-20260413-roadmap-architecture-score-72-to-80.md](docs/CHANGE-PLAN-20260413-roadmap-architecture-score-72-to-80.md)
-- Current active engineering change plan: none
+- Updated: 2026-04-17
+- Current active engineering roadmap: [docs/CHANGE-PLAN-20260414-roadmap-architecture-score-80-follow-up.md](docs/CHANGE-PLAN-20260414-roadmap-architecture-score-80-follow-up.md)
+- Current active engineering change plan: [docs/CHANGE-PLAN-20260414-slice-b-import-hygiene-and-closure.md](docs/CHANGE-PLAN-20260414-slice-b-import-hygiene-and-closure.md)
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
-  - 2026-04-13 に Slice A の review を受けて到達形を tab-session owner boundary に絞り込み、`TabSessionState` の透明 slice exposure を外したうえで regression validation を通した。
-  - 2026-04-14 に Slice C の closure validation を行い、`cargo test` は green のままだが、Tab-Shell 二重所有 / `Deref/DerefMut` / wildcard-import hygiene がまだ material だと判断して roadmap を継続扱いにした。
-  - 2026-04-13 に Slice B を実装し、`render.rs` / `input.rs` を free-function helper seam に分割し、`use super::*;` の汚染と worker lifecycle / clone hot path の残件を狭めたうえで `cd rust && cargo test` を通した。
-  - 2026-04-13 に architecture score 72/100 の follow-up roadmap を新規作成し、Tab-Shell 二重所有 / `Deref` / `use super::*;` 汚染 / module hygiene / testability / observability / perf cleanup を別 slice で解消する方針へ切り替えた。
+  - 2026-04-17 に `DerefMut` 除去と tab-state contract test を完了し、`cargo test` を通した。import hygiene の cleanup は Slice B で継続する。
+  - 2026-04-14 に architecture score 80 follow-up roadmap を再編し、Tab-Shell 二重所有 / `DerefMut` / `use super::*;` 汚染 / local clone hot path / closure validation を別 slice で機械的に閉じる方針へ切り替えた。
+  - 2026-04-14 に Slice A の review を受け、`DerefMut` 除去と tab-state contract test の方向で GO を得た。
+  - 2026-04-14 に Slice B の review を受け、import hygiene と局所 cleanup の方向で GO を得た。
+  - 2026-04-14 に Slice C の review を受け、close/continue の fixed rubric と `Closed` / `Deferred` / `Blocked` 記録フォーマットの方向で GO を得た。
   - 2026-04-12 に旧 state ownership consolidation program を起点に、runtime/tab snapshot の二重管理と event-routing の direct mutation を整理する方針へ切り替えた。
   - 2026-04-12 に旧 state ownership consolidation program の closure validation を行い、残課題がまだ material だと判断したため後続の state sync finalization program へ再計画した。
   - 2026-04-12 に state sync finalization program を新規作成し、残る live/snapshot ownership overlap をさらに削る次の pass へ切り替えた。

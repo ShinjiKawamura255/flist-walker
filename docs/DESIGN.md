@@ -45,6 +45,7 @@
 - 役割補足: `app/session.rs` は UI state 永続化、saved roots、tab/session restore、window geometry の stabilize と restore を担当し、起動/終了まわりの永続化契約を一箇所へ集約する。
 - 役割補足: `app/state.rs` は filelist/update dialog 状態、sort metadata、entry kind、tab drag など GUI 横断で共有される state 型を集約し、`FlistWalkerApp` 本体から型定義のノイズを外す。
 - 役割補足: feature 単位の live state は `app/state.rs` の `FeatureStateBundle` (`root_browser`, `filelist`, `update`) に寄せ、`FlistWalkerApp` 直下から dialog/update/root browser field を外す。tab/session registry は `TabSessionState`、feature dialog/update は `FeatureStateBundle` として ownership を分離する。
+  - `FileListManager` / `UpdateManager` は内部 bundle を `DerefMut` で露出せず、`workflow` / `state` を明示参照する前提で扱う。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と background tab 向け search/index response consume helper、activation 時の restore/refresh 入口を担当する。live 側の tab/session registry（`tabs`, `active_tab`, `next_tab_id`, `pending_restore_refresh`, request routing）は `app/state.rs` の `TabSessionState` に束ねる。`TabSessionState` は Vec そのものを公開せず、明示的な collection API と active tab / tab id / routing / restore helpers を通じてのみ更新する。
 - 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。
@@ -216,6 +217,7 @@
 - query 解釈は `rust/src/query.rs` へ集約し、search と UI highlight で同じ token 分解・正規化を再利用する。
 - OS 依存処理は抽象境界を薄くして単体テスト可能性を維持。
 - app regression tests は monolithic な `FlistWalkerApp` fixture へ集約し続けず、owner/command seam ごとに module を分ける。update lifecycle は `rust/src/app/tests/update_commands.rs`、session restore/startup root は `rust/src/app/tests/session_restore.rs`、tab interaction/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を基準に保守する。
+  - `session_tabs.rs` には `tab_state_contract_round_trip_pins_field_layout` を置き、tab snapshot field の増減を compile-time で検出する。
 
 - DES-011 Window/IME Stability (Windows)
 - マルチディスプレイ跨ぎ時の一時的な巨大ウィンドウサイズを永続化しないよう、保存前に monitor 幅/高さでジオメトリをクランプする。

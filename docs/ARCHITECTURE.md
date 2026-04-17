@@ -135,8 +135,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
   - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` を束ねる `FeatureStateBundle`、live tab/session registry を束ねる `TabSessionState`、cache/request routing など bundle inventory の受け皿として扱う。`AppRuntimeState` は `FlistWalkerApp` の app-global / active-result live state を束ねる runtime bundle として扱う。
+  - `FileListManager` と `UpdateManager` は `DerefMut` で state を透過露出せず、`workflow` / `state` を明示的に触る boundary として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。
+  - `rust/src/app/tests/session_tabs.rs` の contract test は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout をフルリテラルで固定し、field drift を compile-time で検出する。
 - [workers.rs](../rust/src/app/workers.rs)
   - search/preview/action/sort/update/filelist/kind worker の spawn 実装を担当する。
 
