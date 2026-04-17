@@ -2,11 +2,11 @@
 
 ## Status Snapshot
 - Updated: 2026-04-17
-- Current active engineering roadmap: [docs/CHANGE-PLAN-20260414-roadmap-architecture-score-80-follow-up.md](docs/CHANGE-PLAN-20260414-roadmap-architecture-score-80-follow-up.md)
-- Current active engineering change plan: [docs/CHANGE-PLAN-20260414-slice-b-import-hygiene-and-closure.md](docs/CHANGE-PLAN-20260414-slice-b-import-hygiene-and-closure.md)
+- Current active engineering roadmap: none
+- Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
-  - 2026-04-17 に `DerefMut` 除去と tab-state contract test を完了し、`cargo test` を通した。import hygiene の cleanup は Slice B で完了し、`cargo test` も green になった。
+  - 2026-04-17 に `DerefMut` 除去と tab-state contract test を完了し、`cargo test` を通した。Slice C の closure validation では `Closed: Slice A の ownership boundary 完了, Slice B の import hygiene 完了, cargo test green` / `Deferred: none` / `Blocked: none` と判定し、follow-up roadmap を閉じた。
   - 2026-04-14 に architecture score 80 follow-up roadmap を再編し、Tab-Shell 二重所有 / `DerefMut` / `use super::*;` 汚染 / local clone hot path / closure validation を別 slice で機械的に閉じる方針へ切り替えた。
   - 2026-04-14 に Slice A の review を受け、`DerefMut` 除去と tab-state contract test の方向で GO を得た。
   - 2026-04-14 に Slice B の review を受け、import hygiene と局所 cleanup の方向で GO を得た。

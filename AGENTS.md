@@ -72,19 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- `architecture-score-80-follow-up` の作業では、開始前に次の計画書を上から順に読むこと。
-  - [docs/CHANGE-PLAN-20260414-roadmap-architecture-score-80-follow-up.md](docs/CHANGE-PLAN-20260414-roadmap-architecture-score-80-follow-up.md)
-  - [docs/CHANGE-PLAN-20260414-slice-a-ownership-finalization.md](docs/CHANGE-PLAN-20260414-slice-a-ownership-finalization.md)
-  - [docs/CHANGE-PLAN-20260414-slice-b-import-hygiene-and-closure.md](docs/CHANGE-PLAN-20260414-slice-b-import-hygiene-and-closure.md)
-  - [docs/CHANGE-PLAN-20260414-slice-c-closure-validation.md](docs/CHANGE-PLAN-20260414-slice-c-closure-validation.md)
-- roadmap の `Execution Mode` と `Execution Mode Policy` に従うこと。
-- Slice A は `DerefMut` 除去と tab-state contract test に限定し、Tab-Shell data-model rewrite へ広げないこと。
-- Slice B は import hygiene と既知の局所 cleanup に限定し、抽象化パスへ広げないこと。
-- Slice C は fixed rubric に従って close/continue を判定し、`Closed` / `Deferred` / `Blocked` の形式で結果を記録すること。
-- phase 実行は原則 subagent に委譲し、main agent は orchestrator 兼 reviewer として確認すること。
-- コミットは phase 完了ごとに機械的に作らず、独立した検証/rollback 単位になった時点で作成すること。
-- 実装順は計画書に従い、scope / order / risk が変わる場合は先に計画を更新すること。
-- 逸脱した場合は計画書を先に更新すること。
-- 完了後はこの一時セクションを削除し、follow-up roadmap と slice 文書も削除すること。
