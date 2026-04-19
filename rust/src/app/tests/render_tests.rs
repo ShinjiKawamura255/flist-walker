@@ -5,6 +5,8 @@ use crate::app::render::{
 };
 use crate::app::render_theme;
 use crate::entry::EntryDisplayKind;
+use crate::updater::UpdateCandidate;
+use serde_json::json;
 
 #[test]
 fn filelist_use_walker_dialog_lines_are_stable() {
@@ -226,6 +228,109 @@ fn render_theme_highlight_color_preserves_rgb_contract() {
         render_theme::highlight_text_color(),
         egui::Color32::from_rgb(245, 158, 11)
     );
+}
+
+#[test]
+fn gui_surface_snapshot_for_idle_app_is_stable() {
+    let root = test_root("render-snapshot-idle");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.status_line = "idle status".to_string();
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot,
+        json!({
+            "history_search_active": false,
+            "show_preview": true,
+            "preview_panel_width": 440,
+            "top_actions": [
+                "Open / Execute",
+                "Copy Path(s)",
+                "Clear Selected",
+                "Create File List",
+                "Refresh Index"
+            ],
+            "status_line": "idle status",
+            "filelist_dialogs": [],
+            "update_dialogs": [],
+        })
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn gui_surface_snapshot_for_dialog_state_is_stable() {
+    let root = test_root("render-snapshot-dialogs");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.status_line = "dialog status".to_string();
+
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
+        tab_id,
+        root: root.clone(),
+        entries: vec![root.join("entry.txt")],
+        existing_path: root.join("FileList.txt"),
+    });
+    app.shell.features.update.state.prompt = Some(UpdatePromptState {
+        candidate: UpdateCandidate {
+            current_version: "0.16.1".to_string(),
+            target_version: "0.16.2".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "flistwalker".to_string(),
+            asset_url: "https://example.invalid/bin".to_string(),
+            readme_asset_name: "README.txt".to_string(),
+            readme_asset_url: "https://example.invalid/readme".to_string(),
+            license_asset_name: "LICENSE.txt".to_string(),
+            license_asset_url: "https://example.invalid/license".to_string(),
+            notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
+            notices_asset_url: "https://example.invalid/notices".to_string(),
+            checksum_url: "https://example.invalid/sums".to_string(),
+            checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
+            support: UpdateSupport::Auto,
+        },
+        skip_until_next_version: false,
+        install_started: false,
+    });
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot,
+        json!({
+            "history_search_active": false,
+            "show_preview": true,
+            "preview_panel_width": 440,
+            "top_actions": [
+                "Open / Execute",
+                "Copy Path(s)",
+                "Clear Selected",
+                "Create File List",
+                "Refresh Index"
+            ],
+            "status_line": "dialog status",
+            "filelist_dialogs": [
+                {
+                    "title": "Overwrite FileList?",
+                    "lines": [
+                        format!("{} already exists. Overwrite it?", root.join("FileList.txt").display())
+                    ],
+                    "buttons": ["Overwrite", "Cancel"]
+                }
+            ],
+            "update_dialogs": [
+                {
+                    "title": "Update Available",
+                    "lines": [
+                        "FlistWalker 0.16.2 is available. Current version is 0.16.1.",
+                        "Download the new release, replace the current binary, and restart?"
+                    ],
+                    "buttons": ["Download and Restart", "Later"]
+                }
+            ]
+        })
+    );
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]

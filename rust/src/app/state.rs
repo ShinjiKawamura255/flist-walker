@@ -288,6 +288,12 @@ pub(super) struct RootBrowserState {
     pub(super) default_root: Option<PathBuf>,
 }
 
+impl RootBrowserState {
+    pub(super) fn saved_roots(&self) -> &[PathBuf] {
+        &self.saved_roots
+    }
+}
+
 pub(crate) struct FeatureStateBundle {
     pub(super) root_browser: RootBrowserState,
     pub(super) filelist: FileListManager,

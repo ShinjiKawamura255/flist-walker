@@ -1,6 +1,7 @@
 use super::{
-    display_path_with_mode, render_tabs, render_theme, EntryDisplayKind, EntryKind, FileListDialogKind,
-    FlistWalkerApp, ResultSortMode, TabAccentColor, UpdateSupport,
+    display_path_with_mode, render_dialogs, render_panels, render_snapshot, render_tabs,
+    render_theme, EntryDisplayKind, EntryKind, FileListDialogKind, FlistWalkerApp, ResultSortMode,
+    TabAccentColor, UpdateSupport,
 };
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -74,6 +75,7 @@ impl FlistWalkerApp {
     pub(super) const TAB_ACTIVE_BORDER_WIDTH: f32 = 2.0;
     pub(super) const TAB_INACTIVE_BORDER_WIDTH: f32 = 1.0;
 
+    #[allow(dead_code)]
     fn paint_root_selector_button(
         ui: &egui::Ui,
         rect: egui::Rect,
@@ -133,7 +135,7 @@ impl FlistWalkerApp {
         ]
     }
 
-    fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
+    pub(super) fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
         let mut button = egui::Button::new(label);
         if selected {
             button = button.fill(render_theme::selected_fill(ui.visuals().dark_mode));
@@ -160,7 +162,7 @@ impl FlistWalkerApp {
         ]
     }
 
-    fn top_action_command(label: &str) -> Option<RenderTopActionCommand> {
+    pub(super) fn top_action_command(label: &str) -> Option<RenderTopActionCommand> {
         match label {
             "Apply History" => Some(RenderTopActionCommand::ApplyHistory),
             "Cancel History Search" => Some(RenderTopActionCommand::CancelHistorySearch),
@@ -202,10 +204,10 @@ impl FlistWalkerApp {
         // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
         self.handle_shortcuts(ctx);
 
-        self.render_top_panel(ctx);
-        self.render_status_panel(ctx);
-        self.render_filelist_dialogs(ctx);
-        self.render_update_dialog(ctx);
+        render_panels::render_top_panel(self, ctx);
+        render_panels::render_status_panel(self, ctx);
+        render_dialogs::render_filelist_dialogs(self, ctx);
+        render_dialogs::render_update_dialog(self, ctx);
         self.render_central_panel(ctx);
         self.dispatch_render_commands(ctx);
         self.maybe_save_ui_state(false);
@@ -550,6 +552,7 @@ impl FlistWalkerApp {
         render_tabs::render_tab_bar(self, ui);
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_top_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("top").show(ctx, |ui| {
             self.render_tab_bar(ui);
@@ -832,6 +835,7 @@ impl FlistWalkerApp {
         });
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_status_panel(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::bottom("status")
             .resizable(false)
@@ -892,6 +896,7 @@ impl FlistWalkerApp {
             });
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_filelist_dialogs(&mut self, ctx: &egui::Context) {
         let mut overwrite = false;
         let mut cancel_overwrite = false;
@@ -1075,6 +1080,7 @@ impl FlistWalkerApp {
         }
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_update_dialog(&mut self, ctx: &egui::Context) {
         if let Some(prompt) = self.shell.features.update.state.prompt.as_ref().cloned() {
             let mut confirm = false;
@@ -1202,9 +1208,12 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn render_central_panel(&mut self, ctx: &egui::Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.render_results_and_preview(ui);
-        });
+        render_panels::render_central_panel(self, ctx);
+    }
+
+    #[allow(dead_code)]
+    pub(super) fn gui_surface_snapshot(&self) -> render_snapshot::GuiSurfaceSnapshot {
+        render_snapshot::gui_surface_snapshot(self)
     }
 
     #[allow(dead_code)]
