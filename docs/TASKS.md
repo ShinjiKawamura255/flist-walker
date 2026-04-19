@@ -2,7 +2,7 @@
 
 ## Status Snapshot
 - Updated: 2026-04-19
-- Current active engineering roadmap: `docs/EXECUTION-PLAN-20260419-roadmap-quality-maturity-uplift.md`
+- Current active engineering roadmap: none
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
@@ -12,6 +12,7 @@
   - 2026-04-19 に Slice B を実装し、`render_theme.rs` に selected fill / entry kind color / highlight color を集約した。`render_tests.rs` で RGB 契約を固定し、`cargo test` は green。
   - 2026-04-19 に Slice C を `query-history-boundary` として開始し、`QueryState` の history-search owner methods と `input_history.rs` の deep chain 削減に限定して実装した。`input_history.rs` の history-search lifecycle は owner methods 経由になり、`cargo test` と `cargo clippy --all-targets -- -D warnings` は green。
   - 2026-04-19 に Slice D を `supportability-without-telemetry` として開始し、GitHub Issue template と `docs/SUPPORT.md` によるユーザー起点の報告導線を追加した。既定 telemetry / crash upload / analytics は導入せず、公開向け文書へ内部 update override 変数を追加していないことを `rg` で確認し、Issue template YAML は Ruby Psych で parse 済み。
+  - 2026-04-19 に `quality-maturity-uplift` roadmap を closure した。推定スコアは 72/100 から 75/100 前後までの改善に留まり、80 点到達には render panel/dialog 分割と GUI snapshot 追加、より広い state field privacy、macOS notarization / installer 等の運用成熟度改善が残る。Closed: coverage gate、render theme test boundary、query history owner methods、support issue templates。Deferred: 大規模 render 分割、GUI snapshot、installer/notarization、automatic crash reporting なしの log bundle helper。
   - 2026-04-17 に Slice G の boundary tightening を完了し、`FileListManager` / `UpdateManager` の透過露出をやめて `workflow` / `state` 明示境界へ統一した。`cargo test --quiet` は無警告で green、closure scoring は 92/100 となり roadmap を close した。
   - 2026-04-17 に architecture score 78 評価を受け、90 点到達に向けた不完全な ad-hoc roadmap を `plan-driven-execution` 準拠の execution plan 群へ再構成した。上位 plan は `docs/EXECUTION-PLAN-20260417-roadmap-architecture-score-90.md`、active slice は `docs/EXECUTION-PLAN-20260417-slice-a-coordinator-surface-reduction.md`、終端は `docs/EXECUTION-PLAN-20260417-slice-f-architecture-score-closure.md` とし、roadmap は `Execution Mode: autonomous`、closure は別 subagent の 100 点満点評価で 90/100 以上を条件に close する形へ更新し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-17 に Slice A の実装を開始し、`FlistWalkerApp` の定数群を `rust/src/app/config.rs` へ外出しして `mod.rs` を coordinator entrypoint 寄りに縮小した。`cargo test` は green、`cargo test --quiet` は成功したが、既存の unused import 警告は baseline として残っている。
@@ -75,6 +76,24 @@
   - 2026-04-09 に app architecture improvement roadmap を close し、`AGENTS.md` の temporary rule と関連 change-plan 文書群を撤去する状態へ移行した。
 
 ## Completed Programs
+
+### Program H: Quality and Maturity Uplift Roadmap
+- Status: DONE on 2026-04-19
+- Goal: 外部の多角的評価（総合 72/100）で低かった coverage gate、render magic number、deep state chain、supportability 導線を小さな slice で改善する。
+- Outcome:
+  - CI coverage gate は line coverage 70% 未満を落とす初期 baseline とし、`docs/TESTPLAN.md` に TC-108 / VM-006 を追加した。
+  - `render_theme.rs` を追加し、selection / kind / highlight color の RGB 契約を render tests で固定した。
+  - `QueryState` に history-search owner methods を追加し、`input_history.rs` の lifecycle mutation を owner 境界へ寄せた。
+  - GitHub Issue template と `docs/SUPPORT.md` を追加し、既定 telemetry / crash upload / analytics なしでユーザー起点の報告導線を整備した。
+  - Closure scoring は推定 75/100 前後。80 点到達には後続 roadmap が必要だが、この roadmap は独立 rollback 単位で完了したため close した。
+
+| Slice | Status | Completed |
+| --- | --- | --- |
+| Slice A: Quality Baseline Gates | DONE | 2026-04-19 |
+| Slice B: Render Theme Boundary | DONE | 2026-04-19 |
+| Slice C: Query History Boundary | DONE | 2026-04-19 |
+| Slice D: Supportability Without Telemetry | DONE | 2026-04-19 |
+| Slice E: Closure Review | DONE | 2026-04-19 |
 
 ### Program G: Architecture Idealization Roadmap
 - Status: DONE on 2026-04-12
