@@ -27,6 +27,7 @@ mod preview_flow;
 mod query_state;
 mod render;
 mod render_tabs;
+mod render_theme;
 mod response_flow;
 mod result_flow;
 mod result_reducer;

@@ -15,6 +15,7 @@
 - Parent Plan: none
 - Child Plan(s):
   - docs/EXECUTION-PLAN-20260419-slice-a-quality-baseline-gates.md
+  - docs/EXECUTION-PLAN-20260419-slice-b-render-theme-boundary.md
 - Scope Label: quality-maturity-uplift
 - Related Tickets/Issues: external multi-axis evaluation dated 2026-04-18
 - Review Status: reviewed
@@ -136,6 +137,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-19 Planned initial roadmap from external multi-axis evaluation.
 - 2026-04-19 Slice A started. Coverage baseline was measured at 70.29% line coverage and the initial CI gate was set to `--fail-under-lines 70`.
 - 2026-04-19 Slice A validation passed with `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`.
+- 2026-04-19 Slice B planned as a narrow render theme boundary extraction before larger panel/dialog movement.
+- 2026-04-19 Slice B completed: `render_theme.rs` now owns repeated selection/kind/highlight colors, RGB contracts are covered by render tests, and `cargo test` passed.
 
 ## 12. Communication Plan
 - Return to user when:

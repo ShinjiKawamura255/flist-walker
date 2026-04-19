@@ -1,5 +1,5 @@
 use super::{
-    display_path_with_mode, render_tabs, EntryDisplayKind, EntryKind, FileListDialogKind,
+    display_path_with_mode, render_tabs, render_theme, EntryDisplayKind, EntryKind, FileListDialogKind,
     FlistWalkerApp, ResultSortMode, TabAccentColor, UpdateSupport,
 };
 use eframe::egui;
@@ -136,11 +136,7 @@ impl FlistWalkerApp {
     fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
         let mut button = egui::Button::new(label);
         if selected {
-            button = button.fill(if ui.visuals().dark_mode {
-                egui::Color32::from_rgb(48, 53, 62)
-            } else {
-                egui::Color32::from_rgb(228, 232, 238)
-            });
+            button = button.fill(render_theme::selected_fill(ui.visuals().dark_mode));
         }
         ui.add(button)
     }
@@ -405,11 +401,7 @@ impl FlistWalkerApp {
             is_pinned,
             kind,
         );
-        let selected_bg = if ui.visuals().dark_mode {
-            egui::Color32::from_rgb(48, 53, 62)
-        } else {
-            egui::Color32::from_rgb(228, 232, 238)
-        };
+        let selected_bg = render_theme::selected_fill(ui.visuals().dark_mode);
         if is_current {
             ui.painter().rect_filled(
                 rect,
@@ -453,9 +445,15 @@ impl FlistWalkerApp {
             },
         );
         let (kind_label, kind_color) = match kind.map(|k| k.display) {
-            Some(EntryDisplayKind::Dir) => ("DIR ", egui::Color32::from_rgb(52, 211, 153)),
-            Some(EntryDisplayKind::File) => ("FILE", egui::Color32::from_rgb(96, 165, 250)),
-            Some(EntryDisplayKind::Link) => ("LINK", egui::Color32::from_rgb(250, 204, 21)),
+            Some(display_kind @ EntryDisplayKind::Dir) => {
+                ("DIR ", render_theme::entry_kind_color(display_kind))
+            }
+            Some(display_kind @ EntryDisplayKind::File) => {
+                ("FILE", render_theme::entry_kind_color(display_kind))
+            }
+            Some(display_kind @ EntryDisplayKind::Link) => {
+                ("LINK", render_theme::entry_kind_color(display_kind))
+            }
             None => ("....", ui.visuals().weak_text_color()),
         };
         job.append(
@@ -470,7 +468,7 @@ impl FlistWalkerApp {
 
         for (idx, ch) in display.chars().enumerate() {
             let color = if Self::is_highlighted_position(positions, idx) {
-                egui::Color32::from_rgb(245, 158, 11)
+                render_theme::highlight_text_color()
             } else {
                 ui.visuals().text_color()
             };
@@ -512,11 +510,7 @@ impl FlistWalkerApp {
                         self.shell.runtime.query_state.history_search_current == Some(index);
                     let prefix = if is_current { "▶" } else { "·" };
                     let text = format!("{prefix} {entry}");
-                    let selected_bg = if ui.visuals().dark_mode {
-                        egui::Color32::from_rgb(48, 53, 62)
-                    } else {
-                        egui::Color32::from_rgb(228, 232, 238)
-                    };
+                    let selected_bg = render_theme::selected_fill(ui.visuals().dark_mode);
                     let fill = if is_current {
                         selected_bg
                     } else {

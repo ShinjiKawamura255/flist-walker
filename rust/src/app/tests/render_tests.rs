@@ -3,6 +3,8 @@ use crate::app::render::{
     RenderCommand, RenderFileListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
     RenderUpdateDialogCommand,
 };
+use crate::app::render_theme;
+use crate::entry::EntryDisplayKind;
 
 #[test]
 fn filelist_use_walker_dialog_lines_are_stable() {
@@ -80,8 +82,7 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let tab_id = app.current_tab_id().expect("active tab id");
-    app.shell.features.filelist.workflow.pending_confirmation =
-        Some(PendingFileListConfirmation {
+    app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
         entries: vec![root.join("entry.txt")],
@@ -94,7 +95,13 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     ));
     app.dispatch_render_commands(&ctx);
 
-    assert!(app.shell.features.filelist.workflow.pending_confirmation.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_confirmation
+        .is_none());
     assert_eq!(app.shell.runtime.notice, "Create File List canceled");
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
@@ -186,8 +193,47 @@ fn result_row_text_pos_is_left_aligned_and_vertically_centered() {
 }
 
 #[test]
+fn render_theme_selected_fill_preserves_light_and_dark_rgb_contract() {
+    assert_eq!(
+        render_theme::selected_fill(true),
+        egui::Color32::from_rgb(48, 53, 62)
+    );
+    assert_eq!(
+        render_theme::selected_fill(false),
+        egui::Color32::from_rgb(228, 232, 238)
+    );
+}
+
+#[test]
+fn render_theme_entry_kind_colors_preserve_rgb_contract() {
+    assert_eq!(
+        render_theme::entry_kind_color(EntryDisplayKind::Dir),
+        egui::Color32::from_rgb(52, 211, 153)
+    );
+    assert_eq!(
+        render_theme::entry_kind_color(EntryDisplayKind::File),
+        egui::Color32::from_rgb(96, 165, 250)
+    );
+    assert_eq!(
+        render_theme::entry_kind_color(EntryDisplayKind::Link),
+        egui::Color32::from_rgb(250, 204, 21)
+    );
+}
+
+#[test]
+fn render_theme_highlight_color_preserves_rgb_contract() {
+    assert_eq!(
+        render_theme::highlight_text_color(),
+        egui::Color32::from_rgb(245, 158, 11)
+    );
+}
+
+#[test]
 fn tab_drop_index_returns_none_for_empty_tabs() {
-    assert_eq!(super::render_tabs::tab_drop_index(&[], egui::pos2(10.0, 10.0)), None);
+    assert_eq!(
+        super::render_tabs::tab_drop_index(&[], egui::pos2(10.0, 10.0)),
+        None
+    );
 }
 
 #[test]

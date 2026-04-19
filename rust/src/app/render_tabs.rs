@@ -1,6 +1,6 @@
 use super::{
     render::{RenderCommand, RenderTabBarCommand},
-    FlistWalkerApp, TabAccentColor, TabAccentPalette, TabDragState,
+    render_theme, FlistWalkerApp, TabAccentColor, TabAccentPalette, TabDragState,
 };
 use eframe::egui;
 
@@ -17,11 +17,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let is_active = app.shell.tabs.active_tab_index() == i;
             let tab_accent: Option<TabAccentColor> = app.shell.tabs.get(i).and_then(|tab| tab.tab_accent);
             let accent_palette = tab_accent.map(|accent| accent.palette(ui.visuals().dark_mode));
-            let active_fill = if ui.visuals().dark_mode {
-                egui::Color32::from_rgb(48, 53, 62)
-            } else {
-                egui::Color32::from_rgb(228, 232, 238)
-            };
+            let active_fill = render_theme::selected_fill(ui.visuals().dark_mode);
             let drag_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.35);
             let drop_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.18);
             let frame_fill = if is_drag_source {
