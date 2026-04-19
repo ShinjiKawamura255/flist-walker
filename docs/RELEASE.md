@@ -58,13 +58,13 @@
 
 ## zip に含めるもの
 - `flistwalker.exe`
-- `README.txt`（最小実行手順）
+- `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順）
 - `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.txt`
 
 ## tar.gz に含めるもの
 - `flistwalker`
-- `README.txt`（最小実行手順）
+- `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順）
 - `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.txt`
 
@@ -148,7 +148,7 @@
 2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
 3. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
-5. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` で署名する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
+5. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内を続ける。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` で署名する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
 6. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
 7. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
 8. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。

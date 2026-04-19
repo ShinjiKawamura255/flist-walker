@@ -1,24 +1,29 @@
 # FlistWalker
 
-`fzf --walker` 相当の体験で、ファイル/フォルダを高速にファジー検索し、実行またはオープンできる Rust ツールです。
+FlistWalker is a Rust GUI/CLI tool that provides an `fzf --walker`-style experience for fast fuzzy searching of files and folders, then opening or executing the selected result.
 
-- 表示名: `FlistWalker`
-- GitHub リポジトリ名: `flist-walker`
-- 実行コマンド: `flistwalker`（Windows 成果物は `FlistWalker.exe`）
+- Display name: `FlistWalker`
+- GitHub repository: `flist-walker`
+- CLI binary name: `flistwalker` (`FlistWalker.exe` on Windows release assets)
 
-## 主要機能
+Language docs:
 
-- マルチタブ
-- `FileList.txt` / `filelist.txt` 優先読み込み（ルート直下のみ）
-- File / Folder の高速インデックスと検索
-- 検索演算子: `'`（完全一致）, `!`（除外）, `^`（先頭）, `$`（末尾）
-- 結果ハイライト、非一致非表示、ピン留め複数選択
-- プレビュー（オンデマンドファイルは自動スキップ）
-- Root の保存、既定 root 設定
-- 検索履歴（全タブ共通）
-- `Create File List` で現在Rootから `FileList.txt` を生成
+- Japanese: [README-ja.md](README-ja.md)
+- Support: [docs/SUPPORT.md](docs/SUPPORT.md)
 
-## クイックスタート（GUI）
+## Features
+
+- Multi-tab workspace
+- FileList priority loading from the repository root only: `FileList.txt` / `filelist.txt`
+- Fast file and folder indexing plus search
+- FZF-compatible query operators: exact match (`'`), exclusion (`!`), prefix (`^`), suffix (`$`)
+- Highlighted matches, hide-non-matches mode, and pinned multi-selection
+- Preview panel with on-demand file skipping
+- Saved roots and default root support
+- Shared search history across tabs
+- `Create File List` generation from the current root
+
+## Quick Start
 
 ```bash
 cd rust
@@ -26,127 +31,104 @@ source ~/.cargo/env
 cargo run -- --root ..
 ```
 
-1. 検索窓に入力して候補を絞り込み
-2. `Enter` で開く/実行
-3. `Shift+Enter` で選択項目の格納フォルダを開く（同じフォルダは1回だけ開く）
-4. `Tab` / `Shift+Tab` でピン留め複数選択
-5. `Ctrl+Shift+C` で選択パスをコピー（macOS は `Cmd+Shift+C`）
-6. `Ctrl+R` で検索履歴をファジー検索し、`Enter` / `Ctrl+J` / `Ctrl+M` で検索欄へ展開
+1. Type in the search box to narrow candidates.
+2. Press `Enter` to open or execute the selected item.
+3. Press `Shift+Enter` to open the containing folder; identical folders are opened only once.
+4. Press `Tab` / `Shift+Tab` to toggle pinned multi-selection.
+5. Press `Ctrl+Shift+C` to copy the selected path (`Cmd+Shift+C` on macOS).
+6. Press `Ctrl+R` to fuzzy-search query history, then `Enter` / `Ctrl+J` / `Ctrl+M` to load it into the search box.
 
-### 主なショートカット
+### Main Shortcuts
 
-- `Up` / `Down` または `Ctrl+P` / `Ctrl+N`: 現在行を移動
-- `Ctrl+V` / `Alt+V`: ページ移動
-- `Enter` / `Ctrl+J` / `Ctrl+M`: 開く / 実行
-- `Shift+Enter`: 格納フォルダを開く
-- `Tab` / `Shift+Tab` / `Ctrl+I`: 現在行のピン留め切り替え
-- `Ctrl+Shift+C`: 選択パスをコピー
-- `Esc` / `Ctrl+G`: query とピン留めをクリア
-- `Ctrl+L`: 検索欄の focus 切り替え
-- `Ctrl+T`: 新規タブ
-- `Ctrl+W`: 現在タブを閉じる
-- `Ctrl+Tab` / `Ctrl+Shift+Tab`: タブ切り替え
-- タブのドラッグ&ドロップ: タブの並び替え
+- `Up` / `Down` or `Ctrl+P` / `Ctrl+N`: move the current row
+- `Ctrl+V` / `Alt+V`: page navigation
+- `Enter` / `Ctrl+J` / `Ctrl+M`: open or execute
+- `Shift+Enter`: open the containing folder
+- `Tab` / `Shift+Tab` / `Ctrl+I`: toggle pin on the current row
+- `Ctrl+Shift+C`: copy selected paths
+- `Esc` / `Ctrl+G`: clear query and pinned items
+- `Ctrl+L`: focus the search box
+- `Ctrl+T`: new tab
+- `Ctrl+W`: close the current tab
+- `Ctrl+Tab` / `Ctrl+Shift+Tab`: switch tabs
+- Drag and drop a tab to reorder tabs
 
-## ショートカット差分（Windows/Linux と macOS）
+## Shortcut Differences on macOS
 
-macOS では次の「主要ショートカット」を `Ctrl` から `Cmd` に切り替えています。
+On macOS, the following primary shortcuts are mapped from `Ctrl` to `Cmd`:
 
 - `Ctrl+T` / `Ctrl+W`
 - `Ctrl+L`
 - `Ctrl+Shift+C`
 
-タブ切り替えだけはブラウザなどと同様に、macOS でも `Ctrl+Tab` / `Ctrl+Shift+Tab` を使います。
+Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
-### 入力履歴
+## Query History
 
-- 検索履歴は全タブ共通で最大100件まで保持され、通常終了時の UI state へ永続化されます。
-- 永続化先はホーム直下の平文ファイルです。検索語やパスに機微情報を含める運用では注意してください。
-- `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` を設定すると、検索履歴の読み込みと保存を無効化できます。
-- `Ctrl+R` で履歴検索モードに入り、同じ検索欄で履歴をファジー検索できます。
-- 履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして元の query に戻れます。
-- 履歴は打鍵ごとには保存されず、入力が少し止まった時点、または結果移動を始めた時点で確定します。
-- IME の未確定文字列は履歴に保存されず、確定後の検索語だけが残ります。
+- Search history is shared across tabs and persisted up to 100 entries.
+- History is saved to a plain-text file under the home directory. Avoid putting sensitive data in search terms or paths.
+- Set `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` to disable history load and save.
+- Press `Ctrl+R` to enter history search mode and fuzzy-search the same query box.
+- While in history search, `Enter` / `Ctrl+J` / `Ctrl+M` loads the selected history entry into the search box, and `Esc` / `Ctrl+G` cancels and restores the previous query.
+- History is not written on every keystroke. It is committed after a short idle period or when result navigation starts.
+- Intermediate IME composition text is not stored; only committed query text is kept.
 
-### セッション復元（opt-in）
+## Session Restore
 
-- `FLISTWALKER_RESTORE_TABS=1` を設定すると、終了時のタブ状態を次回起動時に復元できます。
-- 復元対象は `root`、`query`、`Use FileList`、`Regex`、`Files`、`Folders`、active tab です。
-- 起動時負荷を抑えるため、起動直後に再インデックスするのは active tab のみで、他のタブは最初に開いた時点で遅延 reindex します。
-- `--root` や起動時 query を明示した場合は復元よりそちらを優先します。
-- この機能が有効な間は、起動 root がタブ復元で決まるため `Set as default` は無効化されます。
+- Set `FLISTWALKER_RESTORE_TABS=1` to restore the previous tab state on the next launch.
+- Restored fields include `root`, `query`, `Use FileList`, `Regex`, `Files`, `Folders`, and the active tab.
+- If you explicitly pass `--root` or a startup query, those values take precedence over restore.
+- When this feature is enabled, `Set as default` is disabled because the startup root is determined by tab restore.
 
-Windows PowerShell でユーザー環境変数として永続設定:
+Windows PowerShell, persistent user environment variable:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", "1", "User")
 ```
 
-Windows PowerShell でユーザー環境変数を削除:
-
-```powershell
-[Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", $null, "User")
-```
-
-Windows PowerShell の現在セッションだけ有効化:
+Windows PowerShell, current session only:
 
 ```powershell
 $env:FLISTWALKER_RESTORE_TABS = "1"
 ```
 
-Windows PowerShell の現在セッションだけ削除:
-
-```powershell
-Remove-Item Env:FLISTWALKER_RESTORE_TABS
-```
-
-検索履歴永続化を無効化する例:
-
-```powershell
-$env:FLISTWALKER_DISABLE_HISTORY_PERSIST = "1"
-```
-
-```bash
-export FLISTWALKER_DISABLE_HISTORY_PERSIST=1
-```
-
-Windows CMD の現在セッションだけ有効化:
+Windows CMD, current session only:
 
 ```cmd
 set FLISTWALKER_RESTORE_TABS=1
 ```
 
-macOS の現在セッションだけ有効化:
+macOS, current session only:
 
 ```bash
 export FLISTWALKER_RESTORE_TABS=1
 ```
 
-macOS で永続設定（zsh）:
+macOS, persistent zsh setting:
 
 ```bash
 echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.zshrc
 ```
 
-Linux の現在セッションだけ有効化:
+Linux, current session only:
 
 ```bash
 export FLISTWALKER_RESTORE_TABS=1
 ```
 
-Linux で永続設定（bash）:
+Linux, persistent bash setting:
 
 ```bash
 echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 ```
 
-### 環境変数の公開区分
+## Public Environment Variables
 
-- user-facing として案内するのは `FLISTWALKER_RESTORE_TABS=1` と `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のみです。
-- search 並列度、walker cap、window trace、update feed override などの環境変数は開発・手動試験専用です。公開向け設定としては扱いません。
-- signing / release build 用の環境変数は `docs/RELEASE.md` の build/release 用セクションだけで扱います。
+- The only user-facing environment variables are `FLISTWALKER_RESTORE_TABS=1` and `FLISTWALKER_DISABLE_HISTORY_PERSIST=1`.
+- Search parallelism, walker cap, window tracing, and update-feed override variables are for development and manual testing only. They are not public configuration.
+- Signing and release build variables are documented only in [docs/RELEASE.md](docs/RELEASE.md).
 
-## Rust 実装
+## Rust App
 
 ```bash
 cd rust
@@ -154,7 +136,7 @@ source ~/.cargo/env
 cargo run -- --root ..
 ```
 
-CLI モード:
+CLI mode:
 
 ```bash
 cd rust
@@ -162,37 +144,37 @@ source ~/.cargo/env
 cargo run -- --cli "main" --root .. --limit 1000
 ```
 
-CLI では:
+In CLI mode:
 
-- query 未指定時は候補一覧を `limit` 件まで表示します。
-- query 指定時はスコア付きで結果を表示します。
-- `--limit` は内部で 1000 件に丸めず、そのまま上限件数として扱います。
-- 現状の CLI は GUI と違って `Regex` 切り替えを持たず、通常検索のみです。
+- If no query is provided, the tool prints up to `limit` candidates.
+- If a query is provided, results are shown with scores.
+- `--limit` is treated as a real upper bound, not rounded down to 1000.
+- The current CLI does not have a `Regex` toggle like the GUI; it performs normal search only.
 
-## 挙動
+## Behavior
 
-- `FileList.txt` または `filelist.txt` がルート直下にある場合はそれを優先して読み込みます。
-- ルート直下の `FileList.txt` / `filelist.txt` に含まれる配下の `FileList.txt` / `filelist.txt` も必要に応じて展開します。
-- リストがない場合は walker で再帰走査します。
-- ファイル選択時は実行または既定アプリでオープン、フォルダ選択時はファイルマネージャでオープンします。
-- `Create File List` は必要に応じて Walker ベースの新規タブへ切り替えて生成します。
+- If `FileList.txt` or `filelist.txt` exists at the repository root, it is loaded first.
+- Nested `FileList.txt` / `filelist.txt` entries under the root FileList are expanded as needed.
+- If no list exists, the app falls back to recursive walker-based scanning.
+- Selecting a file opens or executes it via the default app; selecting a folder opens it in the file manager.
+- `Create File List` creates a new walker-based tab when needed and writes a fresh `FileList.txt`.
 
-### オプションチェックボックス
+### Option Checkboxes
 
-- `Use FileList`: ONで `FileList.txt` / `filelist.txt` を優先利用
-- `Files`: ファイル表示のON/OFF
-- `Folders`: フォルダ表示のON/OFF
-- `Regex`: 正規表現検索を有効化
-- `Preview`: プレビューペインの表示切り替え
+- `Use FileList`: prefer `FileList.txt` / `filelist.txt`
+- `Files`: toggle file visibility
+- `Folders`: toggle folder visibility
+- `Regex`: enable regular-expression search
+- `Preview`: show or hide the preview pane
 
-### Root 操作
+### Root Actions
 
-- `Browse...`: Root を変更
-- `Set as default`: 次回起動時の既定 root を保存
-- `Add to list`: 現在 root を保存済みリストへ追加
-- `Remove from list`: 現在 root を保存済みリストから削除
+- `Browse...`: change root
+- `Set as default`: save the current root for the next launch
+- `Add to list`: add the current root to the saved roots list
+- `Remove from list`: remove the current root from the saved roots list
 
-## テスト
+## Testing
 
 ```bash
 cd rust
@@ -200,21 +182,22 @@ source ~/.cargo/env
 cargo test
 ```
 
-## サポート / 不具合報告
+## Support and Bug Reports
 
-不具合報告や機能要望は GitHub Issues のテンプレートを利用してください。報告前に [docs/SUPPORT.md](docs/SUPPORT.md) を確認し、ユーザー名、プロジェクト名、フルパス、トークンなどの機微情報は必ず伏せてください。
+Use the GitHub Issues templates for bug reports and feature requests. Before filing an issue, read [docs/SUPPORT.md](docs/SUPPORT.md) and redact usernames, project names, full paths, tokens, and other sensitive data.
 
-## Windows 向けビルド
+## Windows Build
 
-WSL / Linux シェルから:
+From WSL or a Linux shell:
 
 ```bash
 ./scripts/build-rust-win.sh
 ```
 
-このスクリプトは WSL / Linux 側だけで `x86_64-pc-windows-gnu` をビルドします。
-Explorer アイコン埋め込みも WSL 側で行うため、PowerShell や Windows 側 Rust は不要です。
-必要なツール:
+This builds `x86_64-pc-windows-gnu` entirely from WSL/Linux.
+Explorer icon embedding is also handled on the WSL side, so PowerShell and Windows-side Rust are not required.
+
+Required tools:
 
 - `x86_64-w64-mingw32-gcc`
 - `x86_64-w64-mingw32-g++`
@@ -223,110 +206,46 @@ Explorer アイコン埋め込みも WSL 側で行うため、PowerShell や Win
 - `x86_64-w64-mingw32-windres`
 - `x86_64-w64-mingw32-strip`
 
-Ubuntu / Debian 系では `sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64` で揃います。
+On Ubuntu / Debian:
 
-release profile では `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, `strip = "symbols"` を適用し、さらにビルド後に `x86_64-w64-mingw32-strip` を実行して Windows GNU バイナリサイズを抑えます。
+```bash
+sudo apt install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+```
 
-クリーンビルド:
+The release profile applies `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, and `strip = "symbols"`, then runs `x86_64-w64-mingw32-strip` after the build to keep the Windows GNU binary small.
+
+Clean build:
 
 ```bash
 ./scripts/build-rust-win-clean.sh
 ```
 
-旧 `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` は退役済みで、WSL/Linux 側ビルドへ誘導するエラーを返します。
+The old `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` scripts have been retired and now return an error that points to the WSL/Linux build flow.
 
-成果物:
+Artifacts:
 
 `rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe`
 
-## macOS 向けビルド
+## macOS Build
 
-通常ビルド:
+Normal build:
 
 ```bash
 ./scripts/build-rust-macos.sh
 ```
 
-クリーンビルド:
+Clean build:
 
 ```bash
 ./scripts/build-rust-macos-clean.sh
 ```
 
-成果物（ホストターゲット）:
+Artifact:
 
 `rust/target/release/flistwalker`
 
-## ライセンスと配布 notices
+## License and Release Notices
 
-本体ライセンスは MIT です。詳細は `LICENSE` を参照してください。
-
-依存 crate には `MPL-2.0`、`BSD-3-Clause`、`OFL-1.1`、`LicenseRef-UFL-1.0`、
-`Unicode-3.0` を含むものがあります。現行の配布物では notice 欠落を避けるため、
-release archive に `LICENSE.txt` と `THIRD_PARTY_NOTICES.txt` を同梱し、
-standalone バイナリ向けにも sidecar notice ファイルを生成します。
-
-依存ライセンス上の注意点と source location は [THIRD_PARTY_NOTICES.txt](/mnt/d/work/flistwalker/THIRD_PARTY_NOTICES.txt) にまとめています。
-
-## リリースアセット生成
-
-`exe単体 + zip` のアセットは次で生成できます。
-
-```bash
-./scripts/prepare-release.sh v0.1.1
-```
-
-```bash
-./scripts/prepare-release-macos.sh v0.1.1
-```
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\prepare-release.ps1 -Version v0.1.1
-```
-
-詳細は `docs/RELEASE.md` を参照してください。
-
-生成物（例: `v0.2.1`）:
-- `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.exe`
-- `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.zip`
-- `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.LICENSE.txt`
-- `dist/v0.2.1/FlistWalker-0.2.1-windows-x86_64.THIRD_PARTY_NOTICES.txt`
-- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64`
-- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.app`
-- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64-app.zip`
-- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.tar.gz`
-- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.LICENSE.txt`
-- `dist/v0.2.1/FlistWalker-0.2.1-macos-arm64.THIRD_PARTY_NOTICES.txt`
-- `dist/v0.2.1/SHA256SUMS`
-
-注:
-- ZIP内の実行ファイル名は `flistwalker.exe` です（単体配布exe名とは別）。
-
-## macOS 署名と notarization
-
-1. まず通常アセットを生成:
-
-```bash
-./scripts/prepare-release-macos.sh v0.8.0
-```
-
-2. notarytool プロフィールを作成（初回のみ）:
-
-```bash
-xcrun notarytool store-credentials flistwalker-notary --apple-id "<APPLE_ID>" --team-id "<TEAM_ID>" --password "<APP_SPECIFIC_PASSWORD>"
-```
-
-3. Developer ID 署名 + notarization + staple:
-
-```bash
-export FLISTWALKER_MACOS_SIGN_IDENTITY="Developer ID Application: Example Corp (TEAMID1234)"
-./scripts/sign-notarize-macos.sh v0.8.0 arm64 flistwalker-notary
-```
-
-## プロトタイプ資産
-
-旧プロトタイプは `prototype/python/` に移設済みです。
-
-## License
-
-MIT License（`LICENSE` を参照）
+- `LICENSE`
+- `THIRD_PARTY_NOTICES.txt`
+- Release packaging rules: [docs/RELEASE.md](docs/RELEASE.md)

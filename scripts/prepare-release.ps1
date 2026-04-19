@@ -52,59 +52,75 @@ Run:
 - PowerShell: .\$ZipExeName
 - CMD: $ZipExeName
 
-Basic usage:
-- 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
-- Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
-- Root は左上の Browse... から切り替え可能です。
+English:
+- Type in the search box to narrow files and folders.
+- Press Enter to open or execute. Press Shift+Enter to open the containing folder. Press Tab to pin rows. Press Ctrl+Shift+C to copy selected paths.
+- Use Browse... to switch the root.
 
 Search hints:
-- トークンは AND 条件（例: main py）
-- abc|foo|bar : OR 条件（スペースなしの | で連結）
-- 'term : 完全一致トークン（例: 'main.py）
-- !term : 除外トークン（例: main !test）
-- ^term : 先頭一致を優先（例: ^src）
-- term$ : 末尾一致を優先（例: .rs$）
-- Regex チェックON時は正規表現検索
+- Tokens are ANDed by default, for example main py
+- abc|foo|bar means OR
+- exact match uses a leading apostrophe, for example 'main.py
+- !term excludes a token, for example main !test
+- ^term prefers prefix matches, for example ^src
+- suffix match uses a trailing $, for example .rs$
+- Turn on Regex to use regular-expression search
 
 Keyboard shortcuts:
-- Up/Down or Ctrl+P/Ctrl+N: move current row
+- Up/Down or Ctrl+P/Ctrl+N: move the current row
 - Ctrl+V / Alt+V: page down / page up
-- Enter (or Ctrl+J/Ctrl+M): open/execute selected item(s)
-- Shift+Enter: open containing folder(s) for selected item(s), deduplicated by directory
-- Tab / Shift+Tab: toggle pin on current row
+- Enter or Ctrl+J/Ctrl+M: open or execute selected item(s)
+- Shift+Enter: open the containing folder(s) for selected item(s), deduplicated by directory
+- Tab / Shift+Tab: toggle pin on the current row
 - Ctrl+Shift+C: copy selected path(s)
 - Ctrl+R: fuzzy-search query history and load the selected entry
 - Esc / Ctrl+G: clear query and pinned selection, or cancel history search
-- Ctrl+L: focus query input
+- Ctrl+L: focus the query input
 
 Query history:
 - Search history is shared across tabs and persisted up to 100 entries.
 - History is committed after a short idle period or when result navigation starts.
-- IME intermediate composition text is not stored; only committed query text is saved.
+- Intermediate IME composition text is not stored; only committed query text is saved.
 
 Tab restore (opt-in):
-- FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
-- 復元対象は root / query / Use FileList / Regex / Files / Folders / active tab です。
-- --root や起動時 query を明示した場合は復元よりそちらを優先します。
-- この機能が有効な間は、起動 root がタブ復元で決まるため `Set as default` は無効化されます。
+- Set FLISTWALKER_RESTORE_TABS=1 to restore the previous tab state on the next launch.
+- Restored fields include root, query, Use FileList, Regex, Files, Folders, and the active tab.
+- If you explicitly pass --root or a startup query, those values take precedence.
+- When this feature is enabled, Set as default is disabled because the startup root is determined by tab restore.
 
 How to enable FLISTWALKER_RESTORE_TABS:
 - Windows (PowerShell, persist per-user): [Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", "1", "User")
 - Windows (PowerShell, current session): `$env:FLISTWALKER_RESTORE_TABS = "1"`
-- Windows (CMD, current session): `set FLISTWALKER_RESTORE_TABS=1`
-- macOS (zsh/bash, current session): `export FLISTWALKER_RESTORE_TABS=1`
-- macOS (zsh persist): `echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.zshrc`
-- Linux (bash, current session): `export FLISTWALKER_RESTORE_TABS=1`
-- Linux (bash persist): `echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc`
+- Windows (CMD, current session): set FLISTWALKER_RESTORE_TABS=1
+- macOS (zsh/bash, current session): export FLISTWALKER_RESTORE_TABS=1
+- macOS (zsh persist): echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.zshrc
+- Linux (bash, current session): export FLISTWALKER_RESTORE_TABS=1
+- Linux (bash persist): echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 Index options:
-- Use FileList: ルート直下の FileList.txt / filelist.txt を優先使用
-- Files / Folders: 表示フィルタ（再インデックスなしで即時反映）
-- Refresh Index: 現在Rootで再インデックス
+- Use FileList: prefer FileList.txt / filelist.txt at the repository root
+- Files / Folders: toggle visibility without reindexing
+- Refresh Index: reindex the current root
 
 Walker tuning (Environment variables):
-- FLISTWALKER_WALKER_MAX_ENTRIES: Walkerの最大走査件数（既定: 500000）
-- FLISTWALKER_WALKER_THREADS: Walkerの並列スレッド数（既定: 2、1でシリアル）
+- FLISTWALKER_WALKER_MAX_ENTRIES: walker maximum entry count (default: 500000)
+- FLISTWALKER_WALKER_THREADS: walker parallel thread count (default: 2, 1 means serial)
+
+日本語:
+- 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
+- Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
+- Root は左上の Browse... から切り替え可能です。
+- トークンは AND 条件（例: main py）
+- abc|foo|bar : OR 条件（スペースなしの | で連結）
+- 完全一致トークンは先頭に ' を付ける（例: 'main.py）
+- !term : 除外トークン（例: main !test）
+- ^term : 先頭一致を優先（例: ^src）
+- 末尾一致は末尾に $ を付ける（例: .rs$）
+- Regex チェックON時は正規表現検索
+- 検索履歴は全タブ共通で最大100件まで保持され、短い待機後または結果移動開始時に確定します。
+- FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
+- Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。
+- Refresh Index は現在Rootで再インデックスします。
 "@ | Set-Content -LiteralPath $ReadmeSidePath -Encoding UTF8
     Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $OutDir $LicenseSideName) -Force
     Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $OutDir $NoticesSideName) -Force
@@ -116,7 +132,7 @@ Walker tuning (Environment variables):
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
-    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmePath, (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
+    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmeSidePath, (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
