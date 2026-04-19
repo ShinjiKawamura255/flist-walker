@@ -60,7 +60,7 @@ impl FlistWalkerApp {
         self.shell
             .features
             .root_browser
-            .saved_roots
+            .saved_roots()
             .iter()
             .position(|path| path_key(path) == current_key)
     }
@@ -71,23 +71,23 @@ impl FlistWalkerApp {
             .shell
             .features
             .root_browser
-            .saved_roots
+            .saved_roots()
             .len()
             .checked_sub(1);
-        self.shell.ui.root_dropdown_highlight =
-            match (self.shell.ui.root_dropdown_highlight, max_index) {
+        let next = match (self.shell.ui.root_dropdown_highlight(), max_index) {
                 (_, None) => None,
                 (Some(index), Some(max)) => Some(index.min(max)),
                 (None, Some(_)) => self.current_root_dropdown_index().or(Some(0usize)),
             };
+        self.shell.ui.set_root_dropdown_highlight(next);
     }
 
     /// root dropdown を開き、入力 focus を切り替える。
     pub(super) fn open_root_dropdown(&mut self, ctx: &egui::Context) {
         self.sync_root_dropdown_highlight();
         ctx.memory_mut(|mem| mem.open_popup(Self::root_selector_popup_id()));
-        self.shell.ui.focus_query_requested = false;
-        self.shell.ui.unfocus_query_requested = true;
+        self.clear_focus_query_request();
+        self.request_unfocus_query();
     }
 
     /// root dropdown を閉じる。
@@ -101,30 +101,30 @@ impl FlistWalkerApp {
             .shell
             .features
             .root_browser
-            .saved_roots
+            .saved_roots()
             .len()
             .checked_sub(1)
         else {
-            self.shell.ui.root_dropdown_highlight = None;
+            self.shell.ui.set_root_dropdown_highlight(None);
             return;
         };
         let current = self
             .shell
             .ui
-            .root_dropdown_highlight
+            .root_dropdown_highlight()
             .or_else(|| self.current_root_dropdown_index())
             .unwrap_or(0) as isize;
         let next = (current + delta).clamp(0, max_index as isize) as usize;
-        self.shell.ui.root_dropdown_highlight = Some(next);
+        self.shell.ui.set_root_dropdown_highlight(Some(next));
     }
 
     /// dropdown で確定した root を現在 tab に反映する。
     pub(super) fn apply_root_dropdown_selection(&mut self, ctx: &egui::Context) {
-        let selected = self.shell.ui.root_dropdown_highlight.and_then(|index| {
+        let selected = self.shell.ui.root_dropdown_highlight().and_then(|index| {
             self.shell
                 .features
                 .root_browser
-                .saved_roots
+                .saved_roots()
                 .get(index)
                 .cloned()
         });

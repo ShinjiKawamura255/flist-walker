@@ -65,10 +65,10 @@ pub(super) enum RenderCommand {
 }
 
 impl FlistWalkerApp {
-    const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
-    const RESULT_ROW_H_MARGIN: f32 = 3.0;
-    const RESULT_ROW_V_MARGIN: f32 = 2.0;
-    const RESULT_ROW_ROUNDING: f32 = 3.0;
+    pub(super) const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
+    pub(super) const RESULT_ROW_H_MARGIN: f32 = 3.0;
+    pub(super) const RESULT_ROW_V_MARGIN: f32 = 2.0;
+    pub(super) const RESULT_ROW_ROUNDING: f32 = 3.0;
     pub(super) const TAB_ROUNDING: f32 = 4.0;
     pub(super) const TAB_ACCENT_GLOW_HEIGHT: f32 = 8.0;
     pub(super) const TAB_ACCENT_LINE_HEIGHT: f32 = 3.0;
@@ -213,6 +213,7 @@ impl FlistWalkerApp {
         self.maybe_save_ui_state(false);
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_results_and_preview(&mut self, ui: &mut egui::Ui) {
         if self.shell.runtime.query_state.history_search_active {
             self.shell.ui.preview_resize_in_progress = false;
@@ -285,6 +286,7 @@ impl FlistWalkerApp {
         !preview_resize_in_progress
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_results_list(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.heading("Results");
@@ -369,6 +371,7 @@ impl FlistWalkerApp {
             });
     }
 
+    #[allow(dead_code)]
     fn result_row_height(ui: &egui::Ui) -> f32 {
         ui.text_style_height(&egui::TextStyle::Body) + (Self::RESULT_ROW_V_MARGIN * 2.0)
     }
@@ -383,6 +386,7 @@ impl FlistWalkerApp {
         )
     }
 
+    #[allow(dead_code)]
     fn render_result_row(
         &mut self,
         ui: &mut egui::Ui,
@@ -422,6 +426,7 @@ impl FlistWalkerApp {
             .galley(text_pos, galley, ui.visuals().text_color());
     }
 
+    #[allow(dead_code)]
     fn build_result_row_job(
         &self,
         ui: &egui::Ui,
@@ -486,6 +491,7 @@ impl FlistWalkerApp {
         job
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_history_search_results(&mut self, ui: &mut egui::Ui) {
         ui.heading("History Results");
         ui.label(format!(
@@ -548,6 +554,7 @@ impl FlistWalkerApp {
             });
     }
 
+    #[allow(dead_code)]
     pub(super) fn render_tab_bar(&mut self, ui: &mut egui::Ui) {
         render_tabs::render_tab_bar(self, ui);
     }
