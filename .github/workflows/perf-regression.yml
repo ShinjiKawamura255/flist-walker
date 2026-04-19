@@ -28,7 +28,7 @@ jobs:
           workspaces: rust
 
       - name: Run heavy FileList perf regression test
-        run: cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture
+        run: cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture
 
       - name: Run heavy walker perf regression test
         run: cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture

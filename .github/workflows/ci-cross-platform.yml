@@ -71,7 +71,7 @@ jobs:
       - name: Run lightweight perf gate
         if: ${{ matrix.label == 'linux-native' }}
         working-directory: rust
-        run: cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture
+        run: cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture
 
       - name: Build release
         working-directory: ${{ matrix.workdir }}

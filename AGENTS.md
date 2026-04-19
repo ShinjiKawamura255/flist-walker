@@ -60,7 +60,7 @@
 - 検証は `docs/TESTPLAN.md` の Validation Matrix に従って選択する。
 - Rust 実装を変更した場合は最低限 `cargo test` を実行してから完了報告する。docs-only 変更は matrix 上の docs 手順で代替してよい。
 - `rust/src/indexer.rs`、`rust/src/app/workers.rs`、`rust/src/app/mod.rs` のインデクシング経路を変更した場合は、Validation Matrix の VM-003 に従い、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
-- `cargo test perf_regression_filelist_stream_matches_v0123_reference_budget --lib -- --ignored --nocapture`
+- `cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture`
 - `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`
 - 上記 perf テストは、FileList / Walker の初期インデクシング速度が基準実装より悪化していないことを確認する目的で使う。
 - `rust/Cargo.toml` / `rust/Cargo.lock` / GitHub Actions / release script など依存関係や配布物に含まれる OSS 構成を変更した場合は、同一変更で `THIRD_PARTY_NOTICES.txt`、必要な `LICENSE` 同梱導線、関連 docs を更新し、`docs/OSS_COMPLIANCE.md` のチェックを実施してから完了報告する。
