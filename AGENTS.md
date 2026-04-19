@@ -78,6 +78,7 @@
   - `docs/EXECUTION-PLAN-20260419-roadmap-quality-maturity-uplift.md`
   - `docs/EXECUTION-PLAN-20260419-slice-a-quality-baseline-gates.md`
   - `docs/EXECUTION-PLAN-20260419-slice-b-render-theme-boundary.md`
+  - `docs/EXECUTION-PLAN-20260419-slice-c-query-history-boundary.md`
 - Follow the plan's `Execution Profile`, `Planning Depth`, `Review Pattern`, and `Review Requiredness`.
 - The roadmap uses `Execution Mode: standard`; complete and review each slice before starting the next one.
 - Do not close the roadmap until the closure slice has recorded the goal-validation result.

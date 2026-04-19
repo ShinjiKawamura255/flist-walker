@@ -652,7 +652,12 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self.shell.runtime.query_state.history_search_active {
+        if self
+            .shell
+            .runtime
+            .query_state
+            .is_history_search_active()
+        {
             if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
                 self.move_history_search_selection(1);
             }
@@ -783,24 +788,17 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn reset_query_history_navigation(&mut self) {
-        self.shell.runtime.query_state.query_history_cursor = None;
-        self.shell.runtime.query_state.query_history_draft = None;
+        self.shell
+            .runtime
+            .query_state
+            .reset_query_history_navigation();
     }
 
     pub(super) fn reset_history_search_state(&mut self) {
-        self.shell.runtime.query_state.history_search_active = false;
-        self.shell.runtime.query_state.history_search_query.clear();
         self.shell
             .runtime
             .query_state
-            .history_search_original_query
-            .clear();
-        self.shell
-            .runtime
-            .query_state
-            .history_search_results
-            .clear();
-        self.shell.runtime.query_state.history_search_current = None;
+            .reset_history_search();
     }
 
     pub(super) fn refresh_history_search_results(&mut self) {

@@ -22,114 +22,81 @@ fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Op
 }
 
 pub(super) fn refresh_history_search_results(app: &mut FlistWalkerApp) {
-    if !app.shell.runtime.query_state.history_search_active {
-        app.shell
-            .runtime
-            .query_state
-            .history_search_results
-            .clear();
-        app.shell.runtime.query_state.history_search_current = None;
+    if !app
+        .shell
+        .runtime
+        .query_state
+        .is_history_search_active()
+    {
+        app.shell.runtime.query_state.clear_history_search_results();
         app.refresh_status_line();
         return;
     }
 
-    let query = app.shell.runtime.query_state.history_search_query.trim();
-    let mut scored = app
-        .shell
-        .runtime
-        .query_state
-        .query_history
-        .iter()
-        .rev()
-        .enumerate()
-        .filter_map(|(idx, entry)| {
-            history_search_score(query, entry, FlistWalkerApp::QUERY_HISTORY_MAX - idx)
-                .map(|score| (entry.clone(), score, idx))
-        })
-        .collect::<Vec<_>>();
+    let mut scored = {
+        let query_state = &app.shell.runtime.query_state;
+        let query = query_state.history_search_query().trim();
+        query_state
+            .query_history()
+            .iter()
+            .rev()
+            .enumerate()
+            .filter_map(|(idx, entry)| {
+                history_search_score(query, entry, FlistWalkerApp::QUERY_HISTORY_MAX - idx)
+                    .map(|score| (entry.clone(), score, idx))
+            })
+            .collect::<Vec<_>>()
+    };
     scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.2.cmp(&b.2)));
-    app.shell.runtime.query_state.history_search_results =
-        scored.into_iter().map(|(entry, _, _)| entry).collect();
-    app.shell.runtime.query_state.history_search_current = (!app
-        .shell
+    app.shell
         .runtime
         .query_state
-        .history_search_results
-        .is_empty())
-    .then_some(0);
+        .replace_history_search_results(scored.into_iter().map(|(entry, _, _)| entry).collect());
     app.refresh_status_line();
 }
 
 pub(super) fn start_history_search(app: &mut FlistWalkerApp) {
     app.commit_query_history_if_needed(true);
-    app.shell.runtime.query_state.history_search_active = true;
-    app.shell.runtime.query_state.history_search_query.clear();
-    app.shell.runtime.query_state.history_search_original_query =
-        app.shell.runtime.query_state.query.clone();
+    app.shell.runtime.query_state.begin_history_search();
     refresh_history_search_results(app);
     app.request_focus_query();
     app.clear_unfocus_query_request();
 }
 
 pub(super) fn cancel_history_search(app: &mut FlistWalkerApp) {
-    if !app.shell.runtime.query_state.history_search_active {
-        return;
-    }
-    app.shell.runtime.query_state.query = app
+    if !app
         .shell
         .runtime
         .query_state
-        .history_search_original_query
-        .clone();
-    app.reset_history_search_state();
+        .restore_original_history_search_query()
+    {
+        return;
+    }
     app.update_results();
     app.request_focus_query();
     app.set_notice("Canceled history search");
 }
 
 pub(super) fn accept_history_search(app: &mut FlistWalkerApp) {
-    if !app.shell.runtime.query_state.history_search_active {
-        return;
-    }
-    let Some(index) = app.shell.runtime.query_state.history_search_current else {
-        return;
-    };
-    let Some(selected) = app
+    if app
         .shell
         .runtime
         .query_state
-        .history_search_results
-        .get(index)
-        .cloned()
-    else {
+        .accept_history_search_selection()
+        .is_none()
+    {
         return;
     };
-    app.shell.runtime.query_state.query = selected;
-    app.reset_query_history_navigation();
-    app.set_query_history_dirty_since(None);
-    app.reset_history_search_state();
     app.update_results();
     app.request_focus_query();
     app.set_notice("Loaded query from history");
 }
 
 pub(super) fn move_history_search_selection(app: &mut FlistWalkerApp, delta: isize) {
-    if !app.shell.runtime.query_state.history_search_active
-        || app
-            .shell
-            .runtime
-            .query_state
-            .history_search_results
-            .is_empty()
-    {
-        return;
-    }
-    let current = app.shell.runtime.query_state.history_search_current.unwrap_or(0) as isize;
-    let next = (current + delta).clamp(
-        0,
-        app.shell.runtime.query_state.history_search_results.len() as isize - 1,
-    );
-    app.shell.runtime.query_state.history_search_current = Some(next as usize);
+    app.shell
+        .runtime
+        .query_state
+        .move_history_search_selection(delta);
 }
 
 pub(super) fn mark_query_edited(app: &mut FlistWalkerApp) {

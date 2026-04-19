@@ -16,6 +16,7 @@
 - Child Plan(s):
   - docs/EXECUTION-PLAN-20260419-slice-a-quality-baseline-gates.md
   - docs/EXECUTION-PLAN-20260419-slice-b-render-theme-boundary.md
+  - docs/EXECUTION-PLAN-20260419-slice-c-query-history-boundary.md
 - Scope Label: quality-maturity-uplift
 - Related Tickets/Issues: external multi-axis evaluation dated 2026-04-18
 - Review Status: reviewed
@@ -85,7 +86,7 @@ The final slice is reserved as a closure slice for scoring, residual-risk review
 3. Slice C: App Boundary Tightening
    - Files/modules/components: `rust/src/app/state.rs`, `tab_state.rs`, owner modules that still require deep chains.
    - Expected result: reduce direct deep field access in one high-churn flow by introducing owner methods or narrower state views.
-   - Verification: owner-aligned app tests plus `cd rust && cargo test`.
+   - Verification: owner-aligned app tests plus `cargo test`.
 4. Slice D: Supportability Without Telemetry
    - Files/modules/components: `.github/ISSUE_TEMPLATE/*`, docs, optional CLI/log helper if scoped.
    - Expected result: users can report failures with useful logs and environment data without automatic upload.
@@ -99,9 +100,10 @@ The final slice is reserved as a closure slice for scoring, residual-risk review
 - [x] Review and approve Slice A before implementation.
 - [x] Measure current coverage behavior and define the initial gate.
 - [x] Implement Slice A and update validation docs.
-- [ ] Create/review Slice B based on the measured render-risk inventory.
-- [ ] Execute Slice B with tests before larger movement.
-- [ ] Create/review Slice C only after render risks are bounded.
+- [x] Create/review Slice B based on the measured render-risk inventory.
+- [x] Execute Slice B with tests before larger movement.
+- [x] Create/review Slice C only after render risks are bounded.
+- [x] Execute Slice C against a narrow query-history state boundary.
 - [ ] Execute supportability work without default telemetry.
 - [ ] Run closure scoring and record the next decision.
 
@@ -139,6 +141,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-19 Slice A validation passed with `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`.
 - 2026-04-19 Slice B planned as a narrow render theme boundary extraction before larger panel/dialog movement.
 - 2026-04-19 Slice B completed: `render_theme.rs` now owns repeated selection/kind/highlight colors, RGB contracts are covered by render tests, and `cargo test` passed.
+- 2026-04-19 Slice C planned as a narrow query history boundary tightening pass. The slice avoids indexing, worker routing, render layout, and session schema changes.
+- 2026-04-19 Slice C completed: `QueryState` now owns history-search transitions used by `input_history.rs`; `cargo test` and `cargo clippy --all-targets -- -D warnings` passed.
 
 ## 12. Communication Plan
 - Return to user when:
