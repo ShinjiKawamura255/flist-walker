@@ -3,6 +3,7 @@ use crate::app::render::{
     RenderCommand, RenderFileListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
     RenderUpdateDialogCommand,
 };
+use crate::app::{render_dialogs, render_panels};
 use crate::app::render_theme;
 use crate::entry::EntryDisplayKind;
 use crate::updater::UpdateCandidate;
@@ -330,6 +331,78 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             ]
         })
     );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn render_panels_and_dialogs_execute_in_headless_frame() {
+    let root = test_root("render-headless-frame");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::write(root.join("FileList.txt"), "existing").expect("write filelist");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.query_state.query = "abc".to_string();
+    app.shell.runtime.query_state.history_search_active = true;
+    app.shell.runtime.query_state.history_search_query = "history".to_string();
+    app.shell.runtime.query_state.history_search_results = vec!["history".to_string()];
+    app.shell.runtime.status_line = "headless status".to_string();
+    app.shell.runtime.results = vec![(root.join("entry.txt"), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.preview = "preview".to_string();
+    app.shell.ui.set_show_preview(true);
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
+        tab_id,
+        root: root.clone(),
+        entries: vec![root.join("entry.txt")],
+        existing_path: root.join("FileList.txt"),
+    });
+    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
+        Some(PendingFileListAncestorConfirmation {
+            tab_id,
+            root: root.clone(),
+            entries: vec![root.join("entry.txt")],
+        });
+    app.shell.features.filelist.workflow.pending_use_walker_confirmation =
+        Some(PendingFileListUseWalkerConfirmation {
+            source_tab_id: tab_id,
+            root: root.clone(),
+        });
+    app.shell.features.update.state.prompt = Some(UpdatePromptState {
+        candidate: UpdateCandidate {
+            current_version: "0.16.1".to_string(),
+            target_version: "0.16.2".to_string(),
+            release_url: "https://example.invalid/release".to_string(),
+            asset_name: "flistwalker".to_string(),
+            asset_url: "https://example.invalid/bin".to_string(),
+            readme_asset_name: "README.txt".to_string(),
+            readme_asset_url: "https://example.invalid/readme".to_string(),
+            license_asset_name: "LICENSE.txt".to_string(),
+            license_asset_url: "https://example.invalid/license".to_string(),
+            notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
+            notices_asset_url: "https://example.invalid/notices".to_string(),
+            checksum_url: "https://example.invalid/sums".to_string(),
+            checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
+            support: UpdateSupport::Auto,
+        },
+        skip_until_next_version: false,
+        install_started: false,
+    });
+    app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
+        error: "network timeout".to_string(),
+        suppress_future_errors: false,
+    });
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput::default());
+    render_panels::render_top_panel(&mut app, &ctx);
+    render_panels::render_status_panel(&mut app, &ctx);
+    render_panels::render_central_panel(&mut app, &ctx);
+    render_dialogs::render_filelist_dialogs(&mut app, &ctx);
+    render_dialogs::render_update_dialog(&mut app, &ctx);
+    let _ = ctx.end_pass();
+
+    assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
 
