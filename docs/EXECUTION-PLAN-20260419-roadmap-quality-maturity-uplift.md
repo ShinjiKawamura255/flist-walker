@@ -17,6 +17,7 @@
   - docs/EXECUTION-PLAN-20260419-slice-a-quality-baseline-gates.md
   - docs/EXECUTION-PLAN-20260419-slice-b-render-theme-boundary.md
   - docs/EXECUTION-PLAN-20260419-slice-c-query-history-boundary.md
+  - docs/EXECUTION-PLAN-20260419-slice-d-supportability-without-telemetry.md
 - Scope Label: quality-maturity-uplift
 - Related Tickets/Issues: external multi-axis evaluation dated 2026-04-18
 - Review Status: reviewed
@@ -104,7 +105,7 @@ The final slice is reserved as a closure slice for scoring, residual-risk review
 - [x] Execute Slice B with tests before larger movement.
 - [x] Create/review Slice C only after render risks are bounded.
 - [x] Execute Slice C against a narrow query-history state boundary.
-- [ ] Execute supportability work without default telemetry.
+- [x] Execute supportability work without default telemetry.
 - [ ] Run closure scoring and record the next decision.
 
 ## 8. Validation Plan
@@ -143,6 +144,8 @@ Add a temporary section to the project `AGENTS.md` with content equivalent to:
 - 2026-04-19 Slice B completed: `render_theme.rs` now owns repeated selection/kind/highlight colors, RGB contracts are covered by render tests, and `cargo test` passed.
 - 2026-04-19 Slice C planned as a narrow query history boundary tightening pass. The slice avoids indexing, worker routing, render layout, and session schema changes.
 - 2026-04-19 Slice C completed: `QueryState` now owns history-search transitions used by `input_history.rs`; `cargo test` and `cargo clippy --all-targets -- -D warnings` passed.
+- 2026-04-19 Slice D planned as user-initiated GitHub issue templates plus support guidance, explicitly excluding telemetry and automatic crash/log upload.
+- 2026-04-19 Slice D completed: GitHub issue templates, `docs/SUPPORT.md`, README support link, and TESTPLAN supportability validation were added. YAML parse and forbidden internal update override checks passed for the new public support surfaces.
 
 ## 12. Communication Plan
 - Return to user when:

@@ -200,6 +200,10 @@ source ~/.cargo/env
 cargo test
 ```
 
+## サポート / 不具合報告
+
+不具合報告や機能要望は GitHub Issues のテンプレートを利用してください。報告前に [docs/SUPPORT.md](docs/SUPPORT.md) を確認し、ユーザー名、プロジェクト名、フルパス、トークンなどの機微情報は必ず伏せてください。
+
 ## Windows 向けビルド
 
 WSL / Linux シェルから:

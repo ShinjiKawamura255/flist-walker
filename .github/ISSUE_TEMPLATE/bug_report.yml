@@ -1,0 +1,105 @@
+name: Bug report
+description: Report a reproducible FlistWalker problem.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please redact private user names, project names, and full paths before posting publicly.
+        FlistWalker does not automatically upload crash reports, logs, or usage data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+      placeholder: FlistWalker freezes when...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest steps that reproduce the issue.
+      placeholder: |
+        1. Start FlistWalker with root ...
+        2. Type ...
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include exact error text when available.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: FlistWalker version
+      description: Use the release tag or the output of `flistwalker --version` / `FlistWalker.exe --version`.
+      placeholder: v0.16.1
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os_details
+    attributes:
+      label: OS details
+      description: Include version/build when relevant.
+      placeholder: Windows 11 23H2, Ubuntu 24.04, macOS 15
+  - type: dropdown
+    id: launch_mode
+    attributes:
+      label: Launch mode
+      options:
+        - GUI release binary
+        - GUI from cargo
+        - CLI release binary
+        - CLI from cargo
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: root_context
+    attributes:
+      label: Root and FileList context
+      description: Describe root size and whether `FileList.txt` / `filelist.txt` is used. Redact private paths.
+      placeholder: Local SSD root with about 120k files, root-level FileList.txt present.
+  - type: textarea
+    id: query_context
+    attributes:
+      label: Query / action context
+      description: Include the query, sort/filter state, and action if relevant. Redact sensitive names.
+  - type: textarea
+    id: terminal_output
+    attributes:
+      label: Terminal output or screenshots
+      description: Paste only the minimal output needed to understand the failure. Redact private paths and secrets.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I redacted private user names, full paths, project names, tokens, and secrets.
+          required: true

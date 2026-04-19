@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a FlistWalker improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow
+      description: What workflow is hard today?
+      placeholder: I often need to...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the behavior you want, not just the implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - GUI
+        - CLI
+        - Search/query syntax
+        - FileList/indexing
+        - Release/install/update
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives tried
+      description: What workaround do you use today?
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints or compatibility notes
+      description: Mention platform, performance, privacy, or backwards-compatibility constraints if known.
