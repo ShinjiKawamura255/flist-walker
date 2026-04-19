@@ -1,11 +1,13 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-17
-- Current active engineering roadmap: none
-- Current active engineering change plan: none
+- Updated: 2026-04-19
+- Current active engineering roadmap: `docs/EXECUTION-PLAN-20260419-roadmap-quality-maturity-uplift.md`
+- Current active engineering change plan: `docs/EXECUTION-PLAN-20260419-slice-a-quality-baseline-gates.md`
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-19 に外部の多角的評価（総合 72/100、低評価: 運用成熟度 40、保守性・拡張性 62、コード品質 68、GUI テスト不足）を受け、`quality-maturity-uplift` roadmap を作成した。初手は `coverage gate` / GUI render validation strategy / supportability without telemetry を扱う Slice A とし、大規模な `render.rs` 分割や app boundary tightening は測定可能な gate を入れてから進める方針にした。
+  - 2026-04-19 に Slice A の coverage baseline を測定し、line coverage 70.29%（LH=9870 / LF=14042）を確認した。CI の coverage command は `--fail-under-lines 70` を付け、現状を通しつつ 70% 未満への退行を落とす gate とした。
   - 2026-04-17 に Slice G の boundary tightening を完了し、`FileListManager` / `UpdateManager` の透過露出をやめて `workflow` / `state` 明示境界へ統一した。`cargo test --quiet` は無警告で green、closure scoring は 92/100 となり roadmap を close した。
   - 2026-04-17 に architecture score 78 評価を受け、90 点到達に向けた不完全な ad-hoc roadmap を `plan-driven-execution` 準拠の execution plan 群へ再構成した。上位 plan は `docs/EXECUTION-PLAN-20260417-roadmap-architecture-score-90.md`、active slice は `docs/EXECUTION-PLAN-20260417-slice-a-coordinator-surface-reduction.md`、終端は `docs/EXECUTION-PLAN-20260417-slice-f-architecture-score-closure.md` とし、roadmap は `Execution Mode: autonomous`、closure は別 subagent の 100 点満点評価で 90/100 以上を条件に close する形へ更新し、`AGENTS.md` に temporary rule を追記した。
   - 2026-04-17 に Slice A の実装を開始し、`FlistWalkerApp` の定数群を `rust/src/app/config.rs` へ外出しして `mod.rs` を coordinator entrypoint 寄りに縮小した。`cargo test` は green、`cargo test --quiet` は成功したが、既存の unused import 警告は baseline として残っている。

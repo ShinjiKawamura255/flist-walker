@@ -30,6 +30,7 @@
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` として分離する。
+- Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70` を実行し、line coverage 70% 未満への低下を失敗扱いにする。初期 baseline は 2026-04-19 測定で 70.29%（LH=9870 / LF=14042）。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
 - Sec: Windows の一般 `.ps1` は既定で直接実行せず、既定アプリでオープンする。
@@ -128,6 +129,7 @@
 | TC-072 | unit | 並列検索の収集結果は逐次検索と同じ ranking を返す | SP-003, SP-007 |
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |
 | TC-107 | unit | `ui_model` の preview text は action policy を埋め込まず、実行可否は `actions.rs` 側の責務に留める | SP-004, SP-010 |
+| TC-108 | ci | `cargo llvm-cov` の line coverage gate は 70% 未満への退行を CI で失敗させ、`lcov.info` artifact を継続生成する | SP-012 |
 | TC-100 | unit | self-update candidate 解決は release asset 選択と support classification を分離し、manual-only fallback を契約として保持する | SP-014 |
 | TC-101 | unit | update request / install transitions emit trace commands for supportability and retain request_id correlation | SP-014 |
 | TC-102 | unit | Create File List の stale requested root completion は cleanup だけを行い、`use_filelist` 復帰や notice 更新を行わない | SP-001, SP-010 |
@@ -173,6 +175,7 @@
 | VM-003 Indexing path | `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/mod.rs`, `rust/src/app/pipeline.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験。worker/index trace の observable output を変えた場合は TC-100 の focused smoke を追加実施する |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
+| VM-006 CI coverage gate / GUI validation docs | `.github/workflows/ci-cross-platform.yml` の coverage command、`docs/TESTPLAN.md` の coverage/render validation 方針 | `cd rust && cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`; workflow diff review | Rust 実装に触れない場合 `cargo test` は coverage run に含まれるため別実行不要。coverage threshold を上げる場合は baseline を再測定し、`TESTPLAN.md` へ測定値を更新する |
 - 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
 - app architecture のような構造改善後も、恒久的な検証基準は VM-001 / VM-002 / VM-003 を直接適用する。temporary slice 固有の validation rule はこの文書へ持ち込まない。
 - `ui_model.rs` は display/highlight/preview concern に限定し、action decision は `actions.rs` 側の unit test と `TC-107` で固定する。
@@ -181,6 +184,7 @@
 - `source ~/.cargo/env`
 - `cargo test`
 - `cargo audit`
+- coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`
 - heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または schedule
 - lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を監視する
 - GUI 手動試験: `cargo run -- --root .. --limit 1000`
