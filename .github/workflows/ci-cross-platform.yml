@@ -133,7 +133,7 @@ jobs:
         run: cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70
 
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: rust-coverage-lcov
           path: rust/target/llvm-cov/lcov.info

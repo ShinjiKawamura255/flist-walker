@@ -4,25 +4,47 @@
 
 ## [Unreleased]
 ### Added
-- 
+-
 
 ### Changed
-- 
+-
 
 ### Fixed
-- 
+-
 
 ### Breaking
-- 
+-
 
 ### Deprecated
-- 
+-
 
 ### Security
-- 
+-
 
 ### Known issues
-- 
+-
+
+## [0.17.0] - 2026-04-22
+### Added
+-
+
+### Changed
+- GitHub Actions の Clippy and Coverage job で `actions/upload-artifact` を Node 24 対応版へ更新し、Node.js 20 非推奨警告を解消した。
+
+### Fixed
+-
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+-
 
 ## [0.16.1] - 2026-04-06
 ### Fixed
