@@ -128,6 +128,12 @@ Search hints:
 - suffix match uses a trailing $, for example .rs$
 - Turn on Regex to use regular-expression search
 
+Ignore list:
+- Put flistwalker.ignore.txt in the same folder as the executable.
+- Blank lines and lines starting with # are ignored.
+- Each token is treated like a search exclusion, so old and ~ behave like !old !~
+- The Ignore List checkbox controls whether these rules apply. It is on by default.
+
 Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move the current row
 - Ctrl+V / Alt+V: page down / page up
@@ -178,6 +184,12 @@ Walker tuning (Environment variables):
 - ^term : 先頭一致を優先（例: ^src）
 - 末尾一致は末尾に $ を付ける（例: .rs$）
 - Regex チェックON時は正規表現検索
+
+Ignore List:
+- flistwalker.ignore.txt を実行ファイルと同じフォルダに置きます。
+- 空行と # で始まる行は無視されます。
+- 各トークンは検索の除外条件として扱われるため、old や ~ は !old !~ と同じ挙動になります。
+- Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
 - 検索履歴は全タブ共通で最大100件まで保持され、短い待機後または結果移動開始時に確定します。
 - FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。

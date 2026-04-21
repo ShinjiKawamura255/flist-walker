@@ -58,13 +58,13 @@
 
 ## zip に含めるもの
 - `flistwalker.exe`
-- `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順）
+- `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順。ignore list の置き場所・書式・既定有効の説明を含める）
 - `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.txt`
 
 ## tar.gz に含めるもの
 - `flistwalker`
-- `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順）
+- `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順。ignore list の置き場所・書式・既定有効の説明を含める）
 - `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.txt`
 

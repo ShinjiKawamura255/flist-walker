@@ -22,6 +22,7 @@ Language docs:
 - Saved roots and default root support
 - Shared search history across tabs
 - `Create File List` generation from the current root
+- Ignore list support via `flistwalker.ignore.txt` next to the executable
 
 ## Quick Start
 
@@ -166,6 +167,15 @@ In CLI mode:
 - `Folders`: toggle folder visibility
 - `Regex`: enable regular-expression search
 - `Preview`: show or hide the preview pane
+- `Ignore List`: enable or disable executable-relative ignore rules. It is on by default.
+
+### Ignore List
+
+- Put `flistwalker.ignore.txt` in the same folder as `flistwalker` or `FlistWalker.exe`.
+- One rule per line is the simplest form. Blank lines and lines starting with `#` are ignored.
+- Each token is applied like a search exclusion. For example, `old` and `~` behave like typing `!old !~`.
+- You can also place multiple terms on one line, separated by spaces.
+- The `Ignore List` checkbox controls whether these rules are applied. It is enabled by default.
 
 ### Root Actions
 

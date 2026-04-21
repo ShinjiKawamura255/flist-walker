@@ -19,6 +19,7 @@
 - Root の保存、既定 root 設定
 - 検索履歴（全タブ共通）
 - `Create File List` で現在Rootから `FileList.txt` を生成
+- 実行ファイル横の `flistwalker.ignore.txt` による Ignore List
 
 ## クイックスタート（GUI）
 
@@ -163,6 +164,15 @@ CLI では:
 - `Folders`: フォルダ表示のON/OFF
 - `Regex`: 正規表現検索を有効化
 - `Preview`: プレビューペインの表示切り替え
+- `Ignore List`: 実行ファイル横の ignore ルールを有効化/無効化する。既定は ON。
+
+### Ignore List
+
+- `flistwalker.ignore.txt` を `flistwalker` / `FlistWalker.exe` と同じフォルダに置きます。
+- 1 行 1 ルールが基本です。空行と `#` で始まる行は無視されます。
+- 各トークンは検索の除外条件として扱われます。例えば `old` や `~` は `!old !~` と同じ挙動になります。
+- 1 行に複数トークンをスペース区切りで書くこともできます。
+- `Ignore List` チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
 
 ### Root 操作
 
