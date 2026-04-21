@@ -29,7 +29,7 @@
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
-- Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` として分離する。
+- Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` として分離する。
 - Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70` を実行し、line coverage 70% 未満への低下を失敗扱いにする。初期 baseline は 2026-04-19 測定で 70.29%（LH=9870 / LF=14042）。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
@@ -106,7 +106,7 @@
 | TC-087 | unit | Create File List の保留状態は status panel または確認ダイアログ経由でキャンセルできる | SP-001, SP-010 |
 | TC-088 | unit | Create File List 実行中のキャンセル要求は cancel flag を立て、`Canceled` 応答で状態と notice を解放する | SP-001, SP-010 |
 | TC-089 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
-| TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、line-only fast path が metadata-probe baseline を十分に上回ることを維持する | SP-001, SP-007 |
+| TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、line-only fast path が metadata-probe baseline を十分に上回ることを維持する（CI 下限 1.20x） | SP-001, SP-007 |
 | TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決に対して現行 control baseline で 1.30x 以上の速度差を維持し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
@@ -191,7 +191,7 @@
 - `cargo audit`
 - coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`
 - heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または schedule
-- lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を監視する
+- lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を 1.20x 下限で監視する
 - GUI 手動試験: `cargo run -- --root .. --limit 1000`
 - GUI 手動試験: `cargo run -- --root .. --limit 1000` で新版検知ダイアログと更新承認導線を確認
 - GUI 手動試験:
