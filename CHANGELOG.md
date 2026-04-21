@@ -26,25 +26,28 @@
 
 ## [0.17.0] - 2026-04-22
 ### Added
--
+- 実行ファイルと同じフォルダに置く `flistwalker.ignore.txt` による検索除外リストを追加し、既定で有効化した。
+- 起動時に環境変数から runtime config を seed して `~/.flistwalker_config.json` を自動生成するようにした。
 
 ### Changed
-- GitHub Actions の Clippy and Coverage job で `actions/upload-artifact` を Node 24 対応版へ更新し、Node.js 20 非推奨警告を解消した。
+- runtime config の公開文書を一般ユーザ向けに整理し、高度な設定項目は案内しないようにした。
+- Windows GNU ビルドでの更新確認に `rustls` を使うよう戻し、TLS backend 未設定エラーを回避した。
+- Linux の軽量 perf gate を hosted runner のばらつきに合わせて緩和した。
+- GitHub Actions の Clippy and Coverage job で `actions/upload-artifact` を Node 24 対応版へ更新した。
 
 ### Fixed
--
+- Release 用 README の生成と macOS release packaging の文面崩れを修正した。
+- Clippy が嫌う runtime config の初期化パターンを整理した。
 
 ### Breaking
--
 
 ### Deprecated
--
 
 ### Security
--
+- 更新アセットは署名付き `SHA256SUMS.sig` と checksum 照合で検証する。
 
 ### Known issues
--
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.16.1] - 2026-04-06
 ### Fixed
