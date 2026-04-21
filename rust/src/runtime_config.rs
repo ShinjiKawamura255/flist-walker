@@ -72,27 +72,27 @@ impl Default for RuntimeConfig {
 
 impl RuntimeConfig {
     pub fn from_current_env() -> Self {
-        let mut config = Self::default();
-        config.search_parallel_threshold = env_usize(SEARCH_PARALLEL_THRESHOLD_ENV)
-            .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT);
-        config.search_threads = env_usize(SEARCH_THREADS_ENV).unwrap_or_else(default_search_threads);
-        config.walker_max_entries =
-            env_usize(WALKER_MAX_ENTRIES_ENV).unwrap_or(WALKER_MAX_ENTRIES_DEFAULT);
-        config.walker_threads = env_usize(WALKER_THREADS_ENV).unwrap_or(WALKER_THREADS_DEFAULT);
-        config.window_trace_enabled = env_bool(WINDOW_TRACE_ENV);
-        config.window_trace_verbose = env_bool(WINDOW_TRACE_VERBOSE_ENV);
-        config.window_trace_path = env_string(WINDOW_TRACE_PATH_ENV)
-            .unwrap_or_else(default_window_trace_path);
-        config.history_persist_disabled = env_bool(HISTORY_PERSIST_ENV);
-        config.restore_tabs_enabled = env_bool(RESTORE_TABS_ENV);
-        config.update_feed_url = env_string(UPDATE_FEED_URL_ENV)
-            .unwrap_or_else(|| DEFAULT_UPDATE_FEED_URL.to_string());
-        config.update_allow_same_version = env_bool(UPDATE_ALLOW_SAME_VERSION_ENV);
-        config.update_allow_downgrade = env_bool(UPDATE_ALLOW_DOWNGRADE_ENV);
-        config.disable_self_update = env_bool(DISABLE_SELF_UPDATE_ENV);
-        config.force_update_check_failure = env_string(FORCE_UPDATE_CHECK_FAILURE_ENV)
-            .unwrap_or_default();
-        config
+        Self {
+            search_parallel_threshold: env_usize(SEARCH_PARALLEL_THRESHOLD_ENV)
+                .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT),
+            search_threads: env_usize(SEARCH_THREADS_ENV).unwrap_or_else(default_search_threads),
+            walker_max_entries: env_usize(WALKER_MAX_ENTRIES_ENV)
+                .unwrap_or(WALKER_MAX_ENTRIES_DEFAULT),
+            walker_threads: env_usize(WALKER_THREADS_ENV).unwrap_or(WALKER_THREADS_DEFAULT),
+            window_trace_enabled: env_bool(WINDOW_TRACE_ENV),
+            window_trace_verbose: env_bool(WINDOW_TRACE_VERBOSE_ENV),
+            window_trace_path: env_string(WINDOW_TRACE_PATH_ENV)
+                .unwrap_or_else(default_window_trace_path),
+            history_persist_disabled: env_bool(HISTORY_PERSIST_ENV),
+            restore_tabs_enabled: env_bool(RESTORE_TABS_ENV),
+            update_feed_url: env_string(UPDATE_FEED_URL_ENV)
+                .unwrap_or_else(|| DEFAULT_UPDATE_FEED_URL.to_string()),
+            update_allow_same_version: env_bool(UPDATE_ALLOW_SAME_VERSION_ENV),
+            update_allow_downgrade: env_bool(UPDATE_ALLOW_DOWNGRADE_ENV),
+            disable_self_update: env_bool(DISABLE_SELF_UPDATE_ENV),
+            force_update_check_failure: env_string(FORCE_UPDATE_CHECK_FAILURE_ENV)
+                .unwrap_or_default(),
+        }
     }
 
     pub fn apply_to_process_env(&self) {
@@ -180,8 +180,7 @@ fn default_search_threads() -> usize {
     std::thread::available_parallelism()
         .map(|value| value.get())
         .unwrap_or(1)
-        .min(32)
-        .max(1)
+        .clamp(1, 32)
 }
 
 fn default_window_trace_path() -> String {
