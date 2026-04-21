@@ -140,7 +140,7 @@ Runtime config:
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
 - The file is JSON and can be edited directly.
 - Only the commonly useful toggles are documented here. Advanced keys are intentionally undocumented.
-- `walker_max_entries` is also documented here because it affects large-root scans.
+- walker_max_entries is also documented here because it affects large-root scans.
 
 Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move the current row
