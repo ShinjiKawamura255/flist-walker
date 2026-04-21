@@ -97,7 +97,9 @@ Runtime config:
 - Runtime settings are stored in ~/.flistwalker_config.json in your home directory.
 - On first launch, if the file is missing, FlistWalker creates it from the current FLISTWALKER_* environment values.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
-- The file covers search parallelism, walker limits, window trace settings, query history persistence, tab restore, and update policy.
+- The file is JSON and can be edited directly.
+- Only the commonly useful toggles are documented here. Advanced keys are intentionally undocumented.
+- `walker_max_entries` is also documented here because it affects large-root scans.
 
 Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move the current row
@@ -161,7 +163,7 @@ Runtime config:
 - runtime settings は home directory の ~/.flistwalker_config.json に保存されます。
 - 初回起動でファイルが無い場合は、現在の FLISTWALKER_* 環境変数を seed にして自動生成します。
 - 一度ファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
-- このファイルには search parallelism、walker limit、window trace、query history persistence、tab restore、update policy が入ります。
+ - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
 - 検索履歴は全タブ共通で最大100件まで保持され、短い待機後または結果移動開始時に確定します。
 - FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。

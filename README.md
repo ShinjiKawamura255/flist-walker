@@ -87,7 +87,22 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - Runtime settings are stored in `~/.flistwalker_config.json` in your home directory.
 - On first launch, if the file is missing, FlistWalker creates it from the current `FLISTWALKER_*` environment values.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
-- The file covers search parallelism, walker limits, window trace settings, query history persistence, tab restore, and update policy.
+- Only the commonly useful toggles are documented here. Advanced keys are intentionally undocumented.
+- The file is plain JSON, so you can edit it directly.
+- If you delete the file, the next launch will recreate it from the current environment values.
+- `walker_max_entries` is also exposed here because it affects large-root scans.
+
+Example:
+
+```json
+{
+  "walker_max_entries": 500000,
+  "history_persist_disabled": false,
+  "restore_tabs_enabled": false
+}
+```
+
+- Keep values that should behave like booleans as `true` / `false`.
 
 Windows PowerShell, persistent user environment variable:
 

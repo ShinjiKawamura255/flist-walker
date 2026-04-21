@@ -126,7 +126,22 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 - runtime settings は home directory の `~/.flistwalker_config.json` に保存されます。
 - 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
 - いったんファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
-- このファイルには search parallelism、walker limit、window trace、query history persistence、tab restore、update policy が入ります。
+- このファイルは JSON なので直接編集できます。
+- ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
+- ファイルを削除すると、次回起動時に現在の環境変数を seed にして再生成されます。
+- `walker_max_entries` は大きい root で効くので、ここでは公開しています。
+
+例:
+
+```json
+{
+  "walker_max_entries": 500000,
+  "history_persist_disabled": false,
+  "restore_tabs_enabled": false
+}
+```
+
+- boolean 系の値は `true` / `false` で書きます。
 
 ### 環境変数の公開区分
 
