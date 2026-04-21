@@ -1,0 +1,24 @@
+# FlistWalker ignore list sample
+#
+# Copy this file to flistwalker.ignore.txt and place it in the same folder as
+# flistwalker (or FlistWalker.exe).
+#
+# Blank lines and lines starting with # are ignored.
+# Each token behaves like an exclusion in search syntax, so these entries
+# act like typing !old !~ !backup, and so on.
+
+# Common temporary or backup names
+old
+~
+backup
+tmp
+dist
+
+# Common generated directories
+node_modules
+target
+build
+out
+
+# You can also put multiple tokens on one line.
+# old ~ backup

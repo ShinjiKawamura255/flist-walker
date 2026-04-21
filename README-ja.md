@@ -173,6 +173,7 @@ CLI では:
 - 各トークンは検索の除外条件として扱われます。例えば `old` や `~` は `!old !~` と同じ挙動になります。
 - 1 行に複数トークンをスペース区切りで書くこともできます。
 - `Ignore List` チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
+- サンプルは [flistwalker.ignore.txt.example](flistwalker.ignore.txt.example) を参照してください。
 
 ### Root 操作
 

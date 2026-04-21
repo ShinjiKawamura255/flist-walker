@@ -176,6 +176,7 @@ In CLI mode:
 - Each token is applied like a search exclusion. For example, `old` and `~` behave like typing `!old !~`.
 - You can also place multiple terms on one line, separated by spaces.
 - The `Ignore List` checkbox controls whether these rules are applied. It is enabled by default.
+- A sample file is available at [flistwalker.ignore.txt.example](flistwalker.ignore.txt.example).
 
 ### Root Actions
 
