@@ -101,18 +101,18 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_BIN}" "${OUT_DIR}/${BIN_NAME}"
 chmod +x "${OUT_DIR}/${BIN_NAME}"
-cat > "${OUT_DIR}/${README_SIDE_NAME}" <<README
-FlistWalker ${VERSION}
+cat > "${OUT_DIR}/${README_SIDE_NAME}" <<'README'
+FlistWalker __VERSION__
 
 Contents:
-- ${TAR_BIN_NAME}
+- __TAR_BIN_NAME__
 - README.txt
 - LICENSE.txt
 - THIRD_PARTY_NOTICES.txt
 
 Run:
-- chmod +x ./${TAR_BIN_NAME}
-- ./${TAR_BIN_NAME}
+- chmod +x ./__TAR_BIN_NAME__
+- ./__TAR_BIN_NAME__
 
 English:
 - Type in the search box to narrow files and folders.
@@ -209,6 +209,10 @@ Runtime config:
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。
 - Refresh Index は現在Rootで再インデックスします。
 README
+sed -i '' \
+  -e "s#__VERSION__#${VERSION}#g" \
+  -e "s#__TAR_BIN_NAME__#${TAR_BIN_NAME}#g" \
+  "${OUT_DIR}/${README_SIDE_NAME}"
 cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
 cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
 
