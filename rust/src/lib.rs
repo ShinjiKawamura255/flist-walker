@@ -5,6 +5,7 @@ pub mod fs_atomic;
 pub mod ignore_list;
 pub mod indexer;
 pub mod path_utils;
+pub mod runtime_config;
 pub mod query;
 pub mod search;
 pub mod ui_model;

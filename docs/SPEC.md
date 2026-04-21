@@ -220,6 +220,23 @@
 - ignore list ファイルが存在しない、読み取りできない、または空でも正常終了する。
 - 1 つのルールが他のルールにマッチしなくても、残りのルールは継続して評価する。
 
+## SP-016 Runtime Config Bootstrap
+### Requirements
+- MUST: ツールは home ディレクトリの `~/.flistwalker_config.json` を runtime config file として扱わなければならない。
+- MUST: runtime config file が存在しない場合、ツールは起動時に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。
+- MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
+- MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、update policy を含めなければならない。
+- MUST: runtime config file の読み込みや自動生成に失敗しても、ツールは通常起動を継続しなければならない。
+- SHOULD: runtime config file の読み込み失敗や自動生成失敗は、利用者または診断ログへ警告として出力する。
+
+### Preconditions / Postconditions
+- Preconditions: home ディレクトリが解決できる、または解決できない場合は config file を生成しない。
+- Postconditions: runtime config file が存在する場合、その設定は起動時に process env へ反映されたうえで既存の env 読み取り経路へ伝播する。
+
+### Edge / Error
+- runtime config file が破損していても、ツールは安全に default / current env へフォールバックできる。
+- seed-only 挙動のため、runtime config file が作成済みの場合は後から環境変数を変えても runtime settings は変化しない。
+
 ## SP-013 検索結果ソート
 ### Requirements
 - MUST: ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。

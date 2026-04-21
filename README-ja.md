@@ -20,6 +20,7 @@
 - 検索履歴（全タブ共通）
 - `Create File List` で現在Rootから `FileList.txt` を生成
 - 実行ファイル横の `flistwalker.ignore.txt` による Ignore List
+- `~/.flistwalker_config.json` による runtime config
 
 ## クイックスタート（GUI）
 
@@ -120,10 +121,16 @@ Linux で永続設定（bash）:
 echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 ```
 
+### runtime config
+
+- runtime settings は home directory の `~/.flistwalker_config.json` に保存されます。
+- 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
+- いったんファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
+- このファイルには search parallelism、walker limit、window trace、query history persistence、tab restore、update policy が入ります。
+
 ### 環境変数の公開区分
 
-- user-facing として案内するのは `FLISTWALKER_RESTORE_TABS=1` と `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のみです。
-- search 並列度、walker cap、window trace、update feed override などの環境変数は開発・手動試験専用です。公開向け設定としては扱いません。
+- runtime settings は `~/.flistwalker_config.json` に集約され、同名 env は seed 用です。
 - signing / release build 用の環境変数は `docs/RELEASE.md` の build/release 用セクションだけで扱います。
 
 ## Rust 実装

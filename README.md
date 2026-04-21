@@ -23,6 +23,7 @@ Language docs:
 - Shared search history across tabs
 - `Create File List` generation from the current root
 - Ignore list support via `flistwalker.ignore.txt` next to the executable
+- Runtime config file support via `~/.flistwalker_config.json`
 
 ## Quick Start
 
@@ -81,6 +82,13 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - If you explicitly pass `--root` or a startup query, those values take precedence over restore.
 - When this feature is enabled, `Set as default` is disabled because the startup root is determined by tab restore.
 
+## Runtime Configuration
+
+- Runtime settings are stored in `~/.flistwalker_config.json` in your home directory.
+- On first launch, if the file is missing, FlistWalker creates it from the current `FLISTWALKER_*` environment values.
+- Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
+- The file covers search parallelism, walker limits, window trace settings, query history persistence, tab restore, and update policy.
+
 Windows PowerShell, persistent user environment variable:
 
 ```powershell
@@ -125,8 +133,8 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 ## Public Environment Variables
 
-- The only user-facing environment variables are `FLISTWALKER_RESTORE_TABS=1` and `FLISTWALKER_DISABLE_HISTORY_PERSIST=1`.
-- Search parallelism, walker cap, window tracing, and update-feed override variables are for development and manual testing only. They are not public configuration.
+- Runtime settings are now config-file driven through `~/.flistwalker_config.json`.
+- The matching `FLISTWALKER_*` variables are only used to seed the config file when it does not exist yet.
 - Signing and release build variables are documented only in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Rust App

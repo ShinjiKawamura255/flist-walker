@@ -67,9 +67,10 @@
 - 役割補足: `app/worker_support.rs` は worker routing の共通 helper と action target helper を担当し、`workers.rs` の registry shim から reusable helper を切り離す。
 - 役割補足: search domain は `search/mod.rs` を public API と query compile の入口に保ちつつ、prefix cache は `search/cache.rs`、execution mode と parallel tuning は `search/config.rs`、candidate collect は `search/execute.rs`、ranking/materialization は `search/rank.rs` へ分割して保守する。
 - 役割補足: indexer domain は `indexer/mod.rs` を build orchestration と nested FileList override の入口に保ちつつ、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。
-- 役割補足: 環境変数は `user-facing` (`FLISTWALKER_RESTORE_TABS`, `FLISTWALKER_DISABLE_HISTORY_PERSIST`)、`dev/test override` (`FLISTWALKER_SEARCH_*`, `FLISTWALKER_WALKER_*`, `FLISTWALKER_WINDOW_TRACE*`, update 手動試験 override)、`build/release` (`FLISTWALKER_UPDATE_*_HEX`, `FLISTWALKER_WINDOWS_*`, `FLISTWALKER_MACOS_SIGN_IDENTITY`) に分類し、公開 docs には user-facing だけを既定導線として載せる。
+- 役割補足: runtime settings は home ディレクトリの `~/.flistwalker_config.json` に集約し、`FLISTWALKER_*` は初回 seed としてのみ使う。build/release と dev/test override は従来どおり env のまま保持し、公開 docs には config file の場所と seed-only 挙動を明記する。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
+- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/runtime_config.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。
@@ -106,6 +107,12 @@
 - 実装: `rust/src/ignore_list.rs`, `rust/src/query.rs`, `rust/src/app/session.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/main.rs`
 - 役割補足: ignore list の各ルールは query の `!` 除外と同じ比較関数で評価し、既定では GUI の `Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
 - 役割補足: ignore list ファイルの読込失敗や未存在は空ルールとして扱い、検索/GUI/CLI の通常操作を止めない。
+
+- DES-017 Runtime Config Bootstrap
+- 役割: home ディレクトリの `~/.flistwalker_config.json` を runtime settings の source of truth として扱い、起動初回のみ current env を seed に自動生成する。
+- 実装: `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/updater.rs`
+- 役割補足: runtime config file が存在する場合は読み込み結果を process env に反映して既存の env 駆動経路へ伝播し、存在しない場合だけ current env を取り込んでファイルを生成する。
+- 役割補足: build-time 公開鍵や release signing secret は runtime config file に含めず、既存の build / release / dev-test secret 経路に残す。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
@@ -287,3 +294,4 @@
 - DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081 (SP-014)
 - DES-015 -> TC-100 (SP-010, SP-014)
 - DES-016 -> TC-110 (SP-015)
+- DES-017 -> TC-111 (SP-016)

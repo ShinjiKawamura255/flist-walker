@@ -55,6 +55,7 @@
 - FR-023: ツールは macOS では新しい version を検知しても自動置換を試みず、手動更新が必要であることを示さなければならない。
 - FR-024: ツールは更新ダイアログに、現在提示中の target version を次の version が出るまで再表示しない選択肢を提供し、その抑止状態を起動間で保持しなければならない。
 - FR-025: ツールは GUI/CLI で、実行中 binary と同じフォルダにある ignore list ファイルを候補除外ルールとして適用でき、GUI では有効/無効を切り替えるチェックボックスを提供しなければならない。既定では有効でなければならない。
+- FR-026: ツールは起動時に home ディレクトリの runtime config file を読み込み、存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 
 ### Non-functional (NFR)
 - NFR-001: 10万件候補での検索処理は 100ms 未満を目標（SHOULD）とする。
@@ -96,6 +97,7 @@
 - AC-022: macOS では更新検知時に自動更新非対応が案内され、誤って自己置換しない。
 - AC-023: 利用者が更新ダイアログで「次のバージョンが出るまで表示しない」を選ぶと、その target version は次回起動以降も再表示されず、より新しい version が見つかった場合のみ再びダイアログが表示される。
 - AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の除外として検索候補から外れ、GUI の Ignore List チェックボックスで有効/無効を切り替えられる。
+- AC-025: runtime config file が存在しない初回起動では、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 
 ## Risks
 - R-001: OS ごとのオープン/実行差異により挙動不一致が発生する。軽減策: 実行/オープン分岐を抽象化しテストで検証する。
@@ -107,6 +109,7 @@
 - R-007: GitHub API 一時障害やネットワーク不通で起動時更新確認が失敗する。軽減策: 非同期確認として失敗を notice に閉じ込め、検索機能は継続する。
 - R-008: 実行中バイナリの置換に失敗すると更新後再起動できない。軽減策: Windows は別 updater、Linux は一時スクリプト経由で置換し、署名済み checksum manifest と整合する staged binary のみ使用する。
 - R-009: ignore list の解釈が query とずれると、検索結果と UI 表示が不一致になる。軽減策: 除外判定は query の `!` と同じ比較ルールに寄せ、既定有効/切替状態を session に保持する。
+- R-010: runtime config file の自動生成や seed-only 挙動が不明瞭だと、環境変数での一時的な変更が効かず、起動時設定の期待が外れる。軽減策: 初回生成と既存ファイル優先を README / release README / SPEC に明記し、起動時に file が source of truth であることを固定する。
 
 ## Traceability (excerpt)
 - FR-001 -> SP-001 -> DES-001 -> TC-001
@@ -134,6 +137,7 @@
 - FR-023 -> SP-014 -> DES-014, DES-007 -> TC-077
 - FR-024 -> SP-014 -> DES-014 -> TC-081
 - FR-025 -> SP-003, SP-010 -> DES-016 -> TC-110
+- FR-026 -> SP-016 -> DES-017 -> TC-111
 - NFR-001 -> SP-007 -> DES-006 -> TC-007
 - NFR-002 -> SP-008 -> DES-007 -> TC-008
 - NFR-003 -> SP-009 -> DES-008 -> TC-009

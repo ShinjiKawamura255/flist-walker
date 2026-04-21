@@ -12,6 +12,7 @@ use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWal
 use flist_walker::ignore_list::load_ignore_terms_from_current_exe;
 use flist_walker::indexer::build_index;
 use flist_walker::query::path_matches_ignore_terms;
+use flist_walker::runtime_config::initialize_runtime_config;
 use flist_walker::search::search_entries_with_scope;
 use resvg::{tiny_skia, usvg};
 
@@ -201,6 +202,7 @@ fn main() -> Result<()> {
         request_process_shutdown();
     })
     .context("failed to install signal handler")?;
+    let _runtime_config = initialize_runtime_config();
 
     let args = Args::parse();
     if args.cli {

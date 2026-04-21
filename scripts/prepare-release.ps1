@@ -72,6 +72,12 @@ Ignore list:
 - Each token is treated like a search exclusion, so old and ~ behave like !old !~
 - The Ignore List checkbox controls whether these rules apply. It is on by default.
 
+Runtime config:
+- Runtime settings are stored in ~/.flistwalker_config.json in your home directory.
+- On first launch, if the file is missing, FlistWalker creates it from the current FLISTWALKER_* environment values.
+- Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
+- The file covers search parallelism, walker limits, window trace settings, query history persistence, tab restore, and update policy.
+
 Keyboard shortcuts:
 - Up/Down or Ctrl+P/Ctrl+N: move the current row
 - Ctrl+V / Alt+V: page down / page up
@@ -129,6 +135,12 @@ Ignore List:
 - 空行と # で始まる行は無視されます。
 - 各トークンは検索の除外条件として扱われるため、old や ~ は !old !~ と同じ挙動になります。
 - Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
+
+Runtime config:
+- runtime settings は home directory の ~/.flistwalker_config.json に保存されます。
+- 初回起動でファイルが無い場合は、現在の FLISTWALKER_* 環境変数を seed にして自動生成します。
+- 一度ファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
+- このファイルには search parallelism、walker limit、window trace、query history persistence、tab restore、update policy が入ります。
 - 検索履歴は全タブ共通で最大100件まで保持され、短い待機後または結果移動開始時に確定します。
 - FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。
