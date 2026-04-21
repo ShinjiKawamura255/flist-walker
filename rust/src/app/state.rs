@@ -1,10 +1,10 @@
 use crate::app::cache::{
     EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState,
 };
-use crate::app::tab_state::AppTabState;
 use crate::app::index_coordinator::IndexCoordinator;
 use crate::app::query_state::QueryState;
 use crate::app::search_coordinator::SearchCoordinator;
+use crate::app::tab_state::AppTabState;
 use crate::app::ui_state::RuntimeUiState;
 use crate::app::worker_bus::WorkerBus;
 use crate::app::worker_runtime::WorkerRuntime;
@@ -254,6 +254,7 @@ pub struct AppRuntimeState {
     pub(super) use_filelist: bool,
     pub(super) use_regex: bool,
     pub(super) ignore_case: bool,
+    pub(super) ignore_list_terms: Arc<Vec<String>>,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) index: IndexBuildResult,

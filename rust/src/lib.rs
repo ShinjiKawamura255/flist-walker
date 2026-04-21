@@ -2,6 +2,7 @@ pub mod actions;
 pub mod app;
 pub mod entry;
 pub mod fs_atomic;
+pub mod ignore_list;
 pub mod indexer;
 pub mod path_utils;
 pub mod query;

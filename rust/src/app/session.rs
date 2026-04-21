@@ -1,6 +1,6 @@
 use super::FlistWalkerApp;
-use crate::path_utils::{normalize_windows_path_buf, path_key};
 use crate::fs_atomic::write_text_atomic;
+use crate::path_utils::{normalize_windows_path_buf, path_key};
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -30,11 +30,13 @@ pub(super) struct SavedWindowGeometry {
     pub(super) monitor_height: Option<f32>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct UiState {
     pub(super) last_root: Option<String>,
     pub(super) default_root: Option<String>,
     pub(super) show_preview: Option<bool>,
+    #[serde(default = "default_ignore_list_enabled")]
+    pub(super) ignore_list_enabled: bool,
     pub(super) preview_panel_width: Option<f32>,
     #[serde(default)]
     pub(super) query_history: Vec<String>,
@@ -50,11 +52,31 @@ pub(super) struct UiState {
     pub(super) suppress_update_check_failure_dialog: bool,
 }
 
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            last_root: None,
+            default_root: None,
+            show_preview: None,
+            ignore_list_enabled: true,
+            preview_panel_width: None,
+            query_history: Vec::new(),
+            results_panel_width: None,
+            tabs: Vec::new(),
+            active_tab: None,
+            window: None,
+            skipped_update_target_version: None,
+            suppress_update_check_failure_dialog: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(super) struct LaunchSettings {
     pub(super) last_root: Option<PathBuf>,
     pub(super) default_root: Option<PathBuf>,
     pub(super) show_preview: bool,
+    pub(super) ignore_list_enabled: bool,
     pub(super) preview_panel_width: f32,
     pub(super) query_history: Vec<String>,
     pub(super) restore_tabs: Vec<SavedTabState>,
@@ -80,6 +102,10 @@ pub(super) struct SavedTabState {
 }
 
 fn default_ignore_case() -> bool {
+    true
+}
+
+fn default_ignore_list_enabled() -> bool {
     true
 }
 
@@ -171,6 +197,7 @@ impl FlistWalkerApp {
             last_root,
             default_root,
             show_preview,
+            ignore_list_enabled: ui_state.ignore_list_enabled,
             preview_panel_width,
             query_history: if history_persist_disabled {
                 Vec::new()
@@ -474,6 +501,7 @@ impl FlistWalkerApp {
                 .as_ref()
                 .map(|p| p.to_string_lossy().to_string()),
             show_preview: Some(self.shell.ui.show_preview),
+            ignore_list_enabled: self.shell.ui.ignore_list_enabled,
             preview_panel_width: Some(self.shell.ui.preview_panel_width),
             query_history: if history_persist_disabled {
                 Vec::new()

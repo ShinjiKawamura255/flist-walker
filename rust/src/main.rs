@@ -9,7 +9,9 @@ use std::path::{Path, PathBuf};
 use tracing_subscriber::EnvFilter;
 
 use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
+use flist_walker::ignore_list::load_ignore_terms_from_current_exe;
 use flist_walker::indexer::build_index;
+use flist_walker::query::path_matches_ignore_terms;
 use flist_walker::search::search_entries_with_scope;
 use resvg::{tiny_skia, usvg};
 
@@ -50,7 +52,11 @@ fn configure_windows_dpi_mode() {}
 
 fn run_cli(args: &Args) -> Result<()> {
     let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
-    let entries = build_index(&root, true, true, true)?;
+    let ignore_terms = load_ignore_terms_from_current_exe();
+    let entries = build_index(&root, true, true, true)?
+        .into_iter()
+        .filter(|path| !path_matches_ignore_terms(path, &root, &ignore_terms, true, true))
+        .collect::<Vec<_>>();
     let query = args.query.trim();
     if query.is_empty() {
         for path in entries.iter().take(args.limit) {

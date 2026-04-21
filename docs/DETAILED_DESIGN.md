@@ -47,6 +47,7 @@ Process note: this document was created and revised through the repository plan 
 | Candidate model | [entry.rs](../rust/src/entry.rs) | Canonical `Entry`, `EntryKind`, and file/dir/link display kind. |
 | Indexing | [indexer/mod.rs](../rust/src/indexer/mod.rs), [indexer/filelist_reader.rs](../rust/src/indexer/filelist_reader.rs), [indexer/walker.rs](../rust/src/indexer/walker.rs), [indexer/filelist_writer.rs](../rust/src/indexer/filelist_writer.rs), [app/index_worker.rs](../rust/src/app/index_worker.rs) | FileList detection/streaming, nested FileList override, walker collection, FileList generation/ancestor propagation, GUI streaming batches. |
 | Search | [query.rs](../rust/src/query.rs), [search/mod.rs](../rust/src/search/mod.rs), [search/cache.rs](../rust/src/search/cache.rs), [search/execute.rs](../rust/src/search/execute.rs), [search/rank.rs](../rust/src/search/rank.rs) | fzf-like query parsing, regex/plain token routing, ranking, prefix cache, sequential/parallel execution. |
+| Ignore list | [ignore_list.rs](../rust/src/ignore_list.rs), [query.rs](../rust/src/query.rs), [app/bootstrap.rs](../rust/src/app/bootstrap.rs), [app/session.rs](../rust/src/app/session.rs), [app/ui_state.rs](../rust/src/app/ui_state.rs), [app/shell_support.rs](../rust/src/app/shell_support.rs), [app/render.rs](../rust/src/app/render.rs), [app/render_panels.rs](../rust/src/app/render_panels.rs), [main.rs](../rust/src/main.rs) | exe-relative ignore file loading, persisted toggle state, and candidate exclusion. |
 | GUI shell | [app/mod.rs](../rust/src/app/mod.rs), [app/state.rs](../rust/src/app/state.rs), [app/bootstrap.rs](../rust/src/app/bootstrap.rs), [app/session.rs](../rust/src/app/session.rs) | eframe app, shell bundles, startup/restore/persist/shutdown orchestration. |
 | GUI flow owners | [app/pipeline.rs](../rust/src/app/pipeline.rs), [app/pipeline_owner.rs](../rust/src/app/pipeline_owner.rs), [app/tabs.rs](../rust/src/app/tabs.rs), [app/response_flow.rs](../rust/src/app/response_flow.rs), [app/result_reducer.rs](../rust/src/app/result_reducer.rs) | Index/search polling, active/background tab routing, result state transitions. |
 | Rendering/input | [app/render.rs](../rust/src/app/render.rs), [app/render_panels.rs](../rust/src/app/render_panels.rs), [app/render_tabs.rs](../rust/src/app/render_tabs.rs), [app/input.rs](../rust/src/app/input.rs), [app/query_state.rs](../rust/src/app/query_state.rs) | UI panels, commands from UI events, shortcuts, query/history editing. |
@@ -251,6 +252,7 @@ Design facts:
 - Exact, exclude, anchored, OR alternative, literal bonus, and exact bonus terms are compiled into `CompiledQuery`.
 - The execution path chooses sequential or parallel collection based on candidate count and environment-tuned thresholds.
 - Prefix cache is used when a new query extends the previous query over the same snapshot.
+- Ignore list filtering is a separate global candidate filter sourced from the executable directory; it uses the same `!`-style exclusion comparison as query exclude tokens, but is toggled via a persisted GUI checkbox before search dispatch and empty-query result rendering.
 
 Failure modes:
 

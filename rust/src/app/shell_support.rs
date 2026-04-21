@@ -1,6 +1,6 @@
 use super::{
-    egui, Entry, EntryKind, FlistWalkerApp, IndexSource, PathBuf, ResultSortMode,
-    path_is_within_root,
+    egui, path_is_within_root, Entry, EntryKind, FlistWalkerApp, IndexSource, PathBuf,
+    ResultSortMode,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use std::fs;
@@ -8,8 +8,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
 use std::sync::Arc;
+use std::sync::OnceLock;
 #[cfg(test)]
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -222,6 +222,17 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
+        if self.shell.ui.ignore_list_enabled
+            && crate::query::path_matches_ignore_terms(
+                entry.path(),
+                &self.shell.runtime.root,
+                self.shell.runtime.ignore_list_terms.as_slice(),
+                self.prefer_relative_display(),
+                self.shell.runtime.ignore_case,
+            )
+        {
+            return false;
+        }
         let kind = self.find_entry_kind(entry.path()).or(entry.kind);
         match kind {
             Some(kind) => {

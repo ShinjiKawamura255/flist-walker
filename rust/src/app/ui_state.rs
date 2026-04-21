@@ -10,6 +10,7 @@ pub(super) struct RuntimeUiState {
     pub(super) focus_query_requested: bool,
     pub(super) unfocus_query_requested: bool,
     pub(super) show_preview: bool,
+    pub(super) ignore_list_enabled: bool,
     pub(super) preview_panel_width: f32,
     pub(super) window_geometry: Option<SavedWindowGeometry>,
     pub(super) pending_window_geometry: Option<SavedWindowGeometry>,
@@ -27,7 +28,11 @@ pub(super) struct RuntimeUiState {
 
 #[allow(dead_code)]
 impl RuntimeUiState {
-    pub(super) fn new(show_preview: bool, preview_panel_width: f32) -> Self {
+    pub(super) fn new(
+        show_preview: bool,
+        ignore_list_enabled: bool,
+        preview_panel_width: f32,
+    ) -> Self {
         Self {
             pending_copy_shortcut: false,
             root_dropdown_highlight: None,
@@ -49,6 +54,7 @@ impl RuntimeUiState {
             query_input_id: egui::Id::new("query-input"),
             tab_drag_state: None,
             pending_render_commands: Vec::new(),
+            ignore_list_enabled,
         }
     }
 
@@ -58,6 +64,14 @@ impl RuntimeUiState {
 
     pub(super) fn set_show_preview(&mut self, show_preview: bool) {
         self.show_preview = show_preview;
+    }
+
+    pub(super) fn ignore_list_enabled(&self) -> bool {
+        self.ignore_list_enabled
+    }
+
+    pub(super) fn set_ignore_list_enabled(&mut self, value: bool) {
+        self.ignore_list_enabled = value;
     }
 
     pub(super) fn preview_panel_width(&self) -> f32 {
@@ -124,9 +138,7 @@ impl RuntimeUiState {
         &mut self.pending_render_commands
     }
 
-    pub(super) fn take_pending_render_commands(
-        &mut self,
-    ) -> Vec<super::render::RenderCommand> {
+    pub(super) fn take_pending_render_commands(&mut self) -> Vec<super::render::RenderCommand> {
         std::mem::take(&mut self.pending_render_commands)
     }
 }

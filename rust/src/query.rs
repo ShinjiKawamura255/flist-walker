@@ -249,11 +249,44 @@ pub fn has_visible_match(
     true
 }
 
+pub fn path_matches_ignore_terms(
+    path: &Path,
+    root: &Path,
+    ignore_terms: &[String],
+    prefer_relative: bool,
+    ignore_case: bool,
+) -> bool {
+    if ignore_terms.is_empty() {
+        return false;
+    }
+
+    let display = display_path_with_mode(path, root, prefer_relative);
+    let normalized_path = normalize_windows_path(path);
+    let filename = normalized_path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+
+    for term in ignore_terms {
+        for candidate in include_alternatives(term) {
+            if candidate_matches_text(filename, candidate, ignore_case)
+                || candidate_matches_text(&display, candidate, ignore_case)
+            {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_include_alternative, parse_query, split_anchor, token_uses_regex_syntax, QuerySpec,
+        parse_include_alternative, parse_query, path_matches_ignore_terms, split_anchor,
+        token_uses_regex_syntax, QuerySpec,
     };
+    use std::path::PathBuf;
 
     #[test]
     fn parse_query_preserves_existing_token_buckets() {
@@ -304,5 +337,18 @@ mod tests {
         assert!(token_uses_regex_syntax("ma.*py"));
         assert!(token_uses_regex_syntax("foo[0-9]+"));
         assert!(token_uses_regex_syntax(r"foo\.bar"));
+    }
+
+    #[test]
+    fn ignore_terms_match_same_paths_as_excludes() {
+        let root = PathBuf::from("/tmp/root");
+        let ignored = PathBuf::from("/tmp/root/build/old-cache.txt");
+        let kept = PathBuf::from("/tmp/root/build/new-cache.txt");
+        let terms = vec!["old".to_string(), "~".to_string()];
+
+        assert!(path_matches_ignore_terms(
+            &ignored, &root, &terms, true, true
+        ));
+        assert!(!path_matches_ignore_terms(&kept, &root, &terms, true, true));
     }
 }

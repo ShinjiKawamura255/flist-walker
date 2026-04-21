@@ -69,7 +69,7 @@
 - 役割補足: indexer domain は `indexer/mod.rs` を build orchestration と nested FileList override の入口に保ちつつ、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。
 - 役割補足: 環境変数は `user-facing` (`FLISTWALKER_RESTORE_TABS`, `FLISTWALKER_DISABLE_HISTORY_PERSIST`)、`dev/test override` (`FLISTWALKER_SEARCH_*`, `FLISTWALKER_WALKER_*`, `FLISTWALKER_WINDOW_TRACE*`, update 手動試験 override)、`build/release` (`FLISTWALKER_UPDATE_*_HEX`, `FLISTWALKER_WINDOWS_*`, `FLISTWALKER_MACOS_SIGN_IDENTITY`) に分類し、公開 docs には user-facing だけを既定導線として載せる。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
-- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
+- 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-010 GUI Test Artifacts
 - 役割: GUI 回帰手順と結果を管理する。
@@ -100,6 +100,12 @@
 - 役割補足: search / preview / filelist / action / sort metadata / update は started/finished/failed/receiver_closed 系の event family に寄せ、index は `flow=index` と `source_kind` で filelist/walker/none を切り分ける。
 - 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。
 - 役割補足: diagnostics 強化で request routing や response acceptance を変えない。hot UI path へ重い同期 I/O や新しい汎用 logging framework を導入しない。
+
+- DES-016 Ignore List Filter
+- 役割: 実行中 binary と同じフォルダにある ignore list を読み取り、検索候補と空クエリ表示から除外する。
+- 実装: `rust/src/ignore_list.rs`, `rust/src/query.rs`, `rust/src/app/session.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/main.rs`
+- 役割補足: ignore list の各ルールは query の `!` 除外と同じ比較関数で評価し、既定では GUI の `Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
+- 役割補足: ignore list ファイルの読込失敗や未存在は空ルールとして扱い、検索/GUI/CLI の通常操作を止めない。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
@@ -280,3 +286,4 @@
 - DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)
 - DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081 (SP-014)
 - DES-015 -> TC-100 (SP-010, SP-014)
+- DES-016 -> TC-110 (SP-015)

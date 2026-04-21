@@ -91,6 +91,41 @@ fn persist_ui_state_now_saves_preview_visibility_immediately() {
 }
 
 #[test]
+fn persist_ui_state_now_saves_ignore_list_enabled() {
+    let root = test_root("persist-ignore-list-enabled");
+    let ui_state_dir = test_root("persist-ignore-list-enabled-ui");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.set_ignore_list_enabled(false);
+    app.mark_ui_state_dirty();
+    app.persist_ui_state_to_path_now(&ui_state_path);
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
+    assert!(!launch.ignore_list_enabled);
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn load_launch_settings_defaults_ignore_list_enabled_when_field_missing() {
+    let ui_state_dir = test_root("load-ignore-list-enabled-default");
+    let ui_state_path = ui_state_dir.join(".flistwalker_ui_state.json");
+    fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
+    fs::write(&ui_state_path, "{}").expect("write minimal ui state");
+
+    let launch = FlistWalkerApp::load_launch_settings_from_path(&ui_state_path);
+    assert!(launch.ignore_list_enabled);
+
+    let _ = fs::remove_file(&ui_state_path);
+    let _ = fs::remove_dir_all(&ui_state_dir);
+}
+
+#[test]
 fn persist_ui_state_now_saves_skipped_update_version() {
     let root = test_root("persist-skipped-update-version");
     let ui_state_dir = test_root("persist-skipped-update-version-ui");
@@ -123,7 +158,11 @@ fn persist_ui_state_now_saves_update_check_failure_suppression() {
     fs::create_dir_all(&ui_state_dir).expect("create ui state dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.features.update.state.suppress_check_failure_dialog = true;
+    app.shell
+        .features
+        .update
+        .state
+        .suppress_check_failure_dialog = true;
     app.mark_ui_state_dirty();
     app.persist_ui_state_to_path_now(&ui_state_path);
 
@@ -814,17 +853,23 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         entries: vec![path.clone()],
         existing_path: root.join("FileList.txt"),
     });
-    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
-        Some(PendingFileListAncestorConfirmation {
-            tab_id: removed_tab_id,
-            root: root.clone(),
-            entries: vec![path.clone()],
-        });
-    app.shell.features.filelist.workflow.pending_use_walker_confirmation =
-        Some(PendingFileListUseWalkerConfirmation {
-            source_tab_id: removed_tab_id,
-            root: root.clone(),
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id: removed_tab_id,
+        root: root.clone(),
+        entries: vec![path.clone()],
+    });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
+        source_tab_id: removed_tab_id,
+        root: root.clone(),
+    });
 
     app.shell.indexing.request_tabs.insert(11, removed_tab_id);
     app.shell.indexing.request_tabs.insert(12, survivor_tab_id);
@@ -870,19 +915,33 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
 
     assert_eq!(app.shell.tabs.len(), 1);
     assert_eq!(app.shell.tabs.get(0).expect("tab 0").id, survivor_tab_id);
-    assert!(app.shell.features.filelist.workflow.pending_after_index.is_none());
-    assert!(app.shell.features.filelist.workflow.pending_confirmation.is_none());
     assert!(app
         .shell
         .features
         .filelist
-        .workflow.pending_ancestor_confirmation
+        .workflow
+        .pending_after_index
         .is_none());
     assert!(app
         .shell
         .features
         .filelist
-        .workflow.pending_use_walker_confirmation
+        .workflow
+        .pending_confirmation
+        .is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation
+        .is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_use_walker_confirmation
         .is_none());
     assert_eq!(app.shell.indexing.request_tabs.get(&11), None);
     assert_eq!(

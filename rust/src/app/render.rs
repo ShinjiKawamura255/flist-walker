@@ -3,9 +3,9 @@ use super::{
     render_theme, EntryDisplayKind, EntryKind, FileListDialogKind, FlistWalkerApp, ResultSortMode,
     TabAccentColor, UpdateSupport,
 };
+use crate::path_utils::normalize_windows_path_buf;
 use eframe::egui;
 use std::path::{Path, PathBuf};
-use crate::path_utils::normalize_windows_path_buf;
 
 // Render command surface. Render.rs stays focused on drawing and input
 // collection while FlistWalkerApp dispatches the resulting commands.
@@ -135,7 +135,12 @@ impl FlistWalkerApp {
         ]
     }
 
-    pub(super) fn dialog_button(&self, ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Response {
+    pub(super) fn dialog_button(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        selected: bool,
+    ) -> egui::Response {
         let mut button = egui::Button::new(label);
         if selected {
             button = button.fill(render_theme::selected_fill(ui.visuals().dark_mode));
@@ -686,6 +691,17 @@ impl FlistWalkerApp {
                     self.invalidate_result_sort(true);
                     self.update_results();
                 }
+                if ui
+                    .checkbox(
+                        &mut self.shell.ui.ignore_list_enabled,
+                        "Ignore List",
+                    )
+                    .changed()
+                {
+                    self.apply_entry_filters(false);
+                    self.mark_ui_state_dirty();
+                    self.persist_ui_state_now();
+                }
                 let (files_changed, dirs_changed) = if self.use_filelist_requires_locked_filters() {
                     let mut forced_changed = false;
                     if !self.shell.runtime.include_files || !self.shell.runtime.include_dirs {
@@ -867,7 +883,8 @@ impl FlistWalkerApp {
                         ui.separator();
                     }
                     if self.can_cancel_create_filelist() {
-                        let cancel_label = if self.shell.features.filelist.workflow.cancel_requested {
+                        let cancel_label = if self.shell.features.filelist.workflow.cancel_requested
+                        {
                             "Canceling FileList..."
                         } else {
                             "Cancel Create File List"
@@ -912,7 +929,8 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .workflow.pending_confirmation
+            .workflow
+            .pending_confirmation
             .as_ref()
             .filter(|pending| pending.tab_id == current_tab_id)
             .map(|pending| pending.existing_path.clone())
@@ -968,7 +986,8 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .workflow.pending_ancestor_confirmation
+            .workflow
+            .pending_ancestor_confirmation
             .as_ref()
             .is_some_and(|pending| pending.tab_id == current_tab_id)
         {
@@ -1036,7 +1055,8 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .workflow.pending_use_walker_confirmation
+            .workflow
+            .pending_use_walker_confirmation
             .as_ref()
             .is_some_and(|pending| pending.source_tab_id == current_tab_id)
         {
@@ -1171,7 +1191,15 @@ impl FlistWalkerApp {
             }
         }
 
-        if let Some(failure) = self.shell.features.update.state.check_failure.as_ref().cloned() {
+        if let Some(failure) = self
+            .shell
+            .features
+            .update
+            .state
+            .check_failure
+            .as_ref()
+            .cloned()
+        {
             let mut close = false;
             let mut suppress_future_errors = failure.suppress_future_errors;
             egui::Window::new("Update Check Failed")

@@ -1,4 +1,6 @@
-use super::{render_tabs, render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode};
+use super::{
+    render_tabs, render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode,
+};
 use crate::path_utils::normalize_windows_path_buf;
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -51,7 +53,8 @@ fn paint_root_selector_button(
         egui::TextStyle::Button,
     );
     let text_pos = egui::Align2::LEFT_CENTER.align_size_within_rect(galley.size(), text_rect);
-    ui.painter().galley(text_pos.min, galley, visuals.text_color());
+    ui.painter()
+        .galley(text_pos.min, galley, visuals.text_color());
 }
 
 pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
@@ -180,6 +183,14 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             {
                 app.invalidate_result_sort(true);
                 app.update_results();
+            }
+            if ui
+                .checkbox(&mut app.shell.ui.ignore_list_enabled, "Ignore List")
+                .changed()
+            {
+                app.apply_entry_filters(false);
+                app.mark_ui_state_dirty();
+                app.persist_ui_state_now();
             }
             let (files_changed, dirs_changed) = if app.use_filelist_requires_locked_filters() {
                 let mut forced_changed = false;
@@ -509,7 +520,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             },
         );
     });
-    let scroll_enabled = FlistWalkerApp::results_scroll_enabled(app.shell.ui.preview_resize_in_progress());
+    let scroll_enabled =
+        FlistWalkerApp::results_scroll_enabled(app.shell.ui.preview_resize_in_progress());
     egui::ScrollArea::both()
         .enable_scrolling(scroll_enabled)
         .drag_to_scroll(false)
@@ -529,10 +541,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 };
                 let path = path.clone();
                 let is_current = app.shell.runtime.current_row == Some(i);
-                let (rect, response) = ui.allocate_exact_size(
-                    egui::vec2(row_width, row_height),
-                    egui::Sense::click(),
-                );
+                let (rect, response) =
+                    ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
                 if is_current && app.shell.ui.scroll_to_current() {
                     ui.scroll_to_rect(rect, None);
                 }
@@ -581,7 +591,8 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
                 .iter()
                 .enumerate()
             {
-                let is_current = app.shell.runtime.query_state.history_search_current == Some(index);
+                let is_current =
+                    app.shell.runtime.query_state.history_search_current == Some(index);
                 let prefix = if is_current { "▶" } else { "·" };
                 let text = format!("{prefix} {entry}");
                 let selected_bg = render_theme::selected_fill(ui.visuals().dark_mode);
@@ -632,7 +643,14 @@ fn render_result_row(
     let kind = app.find_entry_kind(path);
     let display = super::display_path_with_mode(path, &app.shell.runtime.root, prefer_relative);
     let positions = app.highlight_positions_for_path_cached(path, prefer_relative);
-    let job = build_result_row_job(ui, &display, positions.as_slice(), is_current, is_pinned, kind);
+    let job = build_result_row_job(
+        ui,
+        &display,
+        positions.as_slice(),
+        is_current,
+        is_pinned,
+        kind,
+    );
     let selected_bg = render_theme::selected_fill(ui.visuals().dark_mode);
     if is_current {
         ui.painter().rect_filled(

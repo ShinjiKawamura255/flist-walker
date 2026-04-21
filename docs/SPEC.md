@@ -202,6 +202,24 @@
 - Preconditions: GUI モードで起動しインデックス構築可能。
 - Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
 
+## SP-015 Ignore List フィルタ
+### Requirements
+- MUST: 実行中 binary と同じフォルダにある `flistwalker.ignore.txt` を ignore list ファイルとして読み取れる。
+- MUST: ignore list ファイルは 1 行 1 ルールを基本とし、空行と `#` コメント行を無視しなければならない。
+- MUST: ignore list の各ルールは、検索クエリの `!` 除外と同じ比較ルールで候補を除外しなければならない。
+- MUST: GUI は `Ignore List` チェックボックスを提供し、既定で有効にしなければならない。
+- MUST: チェックボックス有効時は、ignore list に一致する候補を検索結果と空クエリ表示から除外しなければならない。
+- MUST: チェックボックス無効時は、ignore list の除外を適用してはならない。
+- SHOULD: CLI モードでも同じ ignore list ファイルを適用できる。
+
+### Preconditions / Postconditions
+- Preconditions: 実行中 binary のフォルダに ignore list ファイルが存在する、または空/未存在である。
+- Postconditions: ignore list に一致する候補は、既定有効時に一覧から除外される。
+
+### Edge / Error
+- ignore list ファイルが存在しない、読み取りできない、または空でも正常終了する。
+- 1 つのルールが他のルールにマッチしなくても、残りのルールは継続して評価する。
+
 ## SP-013 検索結果ソート
 ### Requirements
 - MUST: ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。

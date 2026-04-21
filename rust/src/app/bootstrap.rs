@@ -10,6 +10,7 @@ use super::{
     UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
+use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
@@ -34,7 +35,9 @@ type LaunchSeedParts = (
     Vec<PathBuf>,
     Option<PathBuf>,
     bool,
+    bool,
     f32,
+    Arc<Vec<String>>,
     UpdateState,
 );
 
@@ -56,7 +59,9 @@ pub(super) struct AppLaunchSeed {
     saved_roots: Vec<PathBuf>,
     default_root: Option<PathBuf>,
     show_preview: bool,
+    ignore_list_enabled: bool,
     preview_panel_width: f32,
+    ignore_list_terms: Arc<Vec<String>>,
     update_state: UpdateState,
 }
 
@@ -84,7 +89,9 @@ impl AppLaunchSeed {
             self.saved_roots,
             self.default_root,
             self.show_preview,
+            self.ignore_list_enabled,
             self.preview_panel_width,
+            self.ignore_list_terms,
             self.update_state,
         )
     }
@@ -94,6 +101,7 @@ impl FlistWalkerApp {
     pub(super) fn build_new(root: PathBuf, limit: usize, query: String) -> Self {
         let launch = LaunchSettings {
             show_preview: true,
+            ignore_list_enabled: true,
             preview_panel_width: Self::DEFAULT_PREVIEW_PANEL_WIDTH,
             ..LaunchSettings::default()
         };
@@ -230,9 +238,11 @@ impl FlistWalkerApp {
             saved_roots: Self::load_saved_roots(),
             default_root: launch.default_root.clone(),
             show_preview: launch.show_preview,
+            ignore_list_enabled: launch.ignore_list_enabled,
             preview_panel_width: launch
                 .preview_panel_width
                 .max(Self::MIN_PREVIEW_PANEL_WIDTH),
+            ignore_list_terms: Arc::new(load_ignore_terms_from_current_exe()),
             update_state: UpdateState {
                 skipped_target_version: launch.skipped_update_target_version.clone(),
                 suppress_check_failure_dialog: launch.suppress_update_check_failure_dialog,
@@ -265,7 +275,9 @@ impl FlistWalkerApp {
             saved_roots,
             default_root,
             show_preview,
+            ignore_list_enabled,
             preview_panel_width,
+            ignore_list_terms,
             update_state,
         ) = Self::launch_seed(root, limit, query, &launch).into_parts();
         let mut app = Self {
@@ -277,6 +289,7 @@ impl FlistWalkerApp {
                     use_filelist: true,
                     use_regex: false,
                     ignore_case: true,
+                    ignore_list_terms,
                     include_files: true,
                     include_dirs: true,
                     index: IndexBuildResult {
@@ -297,7 +310,7 @@ impl FlistWalkerApp {
                 search: SearchCoordinator::new(search_tx, search_rx),
                 worker_bus,
                 indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
-                ui: RuntimeUiState::new(show_preview, preview_panel_width),
+                ui: RuntimeUiState::new(show_preview, ignore_list_enabled, preview_panel_width),
                 cache: CacheStateBundle {
                     preview: PreviewCacheState::default(),
                     highlight: HighlightCacheState::with_scope_ignore_case(true),
