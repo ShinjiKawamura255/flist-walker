@@ -281,6 +281,7 @@ fn remove_file_best_effort(path: &Path) -> std::io::Result<()> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(err) => {
+            #[cfg(windows)]
             if let Ok(metadata) = fs::metadata(path) {
                 let mut permissions = metadata.permissions();
                 if permissions.readonly() {
