@@ -24,6 +24,31 @@
 ### Known issues
 -
 
+## [0.17.1] - 2026-04-23
+### Added
+- Windows では runtime config / UI state / saved roots / window trace を実行ファイルと同じフォルダへ保存し、旧 home 配置からの自動移行も行うようにした。
+- release asset に `flistwalker.ignore.txt.example` のサンプルを追加し、self-update 時も同梱するようにした。
+
+### Changed
+- `Ignore List` チェックボックスを `Use Ignore List` に改め、公開文書もこれに合わせて整理した。
+- runtime config の自動生成は、環境変数で実際に設定されている項目だけを書き込み、未設定の項目は省略するようにした。
+
+### Fixed
+- runtime config の自動生成で、`0` / `false` のような明示的な env 設定を落とさないようにした。
+- `Files` / `Folders` の高速経路でも ignore list を確実に適用するようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+-
+
 ## [0.17.0] - 2026-04-22
 ### Added
 - 実行ファイルと同じフォルダに置く `flistwalker.ignore.txt` による検索除外リストを追加し、既定で有効化した。
@@ -1073,7 +1098,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.17.1...HEAD
+[0.17.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.1
+[0.17.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.0
 [0.12.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.2
 [0.12.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.1
 [0.12.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.0
