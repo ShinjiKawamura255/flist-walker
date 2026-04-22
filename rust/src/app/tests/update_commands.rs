@@ -16,6 +16,10 @@ fn test_update_candidate(target_version: &str) -> UpdateCandidate {
             "FlistWalker-{target_version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
         ),
         notices_asset_url: "https://example.invalid/notices".to_string(),
+        ignore_sample_asset_name: Some(format!(
+            "FlistWalker-{target_version}-linux-x86_64.ignore.txt.example"
+        )),
+        ignore_sample_asset_url: Some("https://example.invalid/ignore-sample".to_string()),
         checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
         checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
         support: UpdateSupport::Auto,
@@ -238,7 +242,11 @@ fn suppressed_update_check_failure_does_not_open_dialog() {
     app.shell.worker_bus.update.rx = rx;
     app.shell.features.update.state.pending_request_id = Some(1);
     app.shell.features.update.state.in_progress = true;
-    app.shell.features.update.state.suppress_check_failure_dialog = true;
+    app.shell
+        .features
+        .update
+        .state
+        .suppress_check_failure_dialog = true;
 
     tx.send(UpdateResponse::CheckFailed {
         request_id: 1,
@@ -266,7 +274,11 @@ fn forced_update_check_failure_bypasses_suppression_flag() {
     app.shell.worker_bus.update.rx = rx;
     app.shell.features.update.state.pending_request_id = Some(1);
     app.shell.features.update.state.in_progress = true;
-    app.shell.features.update.state.suppress_check_failure_dialog = true;
+    app.shell
+        .features
+        .update
+        .state
+        .suppress_check_failure_dialog = true;
     unsafe {
         std::env::set_var("FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE", "1");
     }

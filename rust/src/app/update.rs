@@ -1,9 +1,7 @@
 use super::{
     self_update_disabled, FlistWalkerApp, UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
-use crate::app::state::{
-    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
-};
+use crate::app::state::{UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState};
 use eframe::egui;
 use std::path::PathBuf;
 
@@ -42,10 +40,7 @@ impl UpdateManager {
         Self { state }
     }
 
-    pub(super) fn request_startup_check_commands(
-        &mut self,
-        disabled: bool,
-    ) -> Vec<UpdateCommand> {
+    pub(super) fn request_startup_check_commands(&mut self, disabled: bool) -> Vec<UpdateCommand> {
         if disabled {
             self.clear_for_disabled_update();
             return Vec::new();
@@ -163,7 +158,10 @@ impl UpdateManager {
         ]
     }
 
-    pub(super) fn handle_response_commands(&mut self, response: UpdateResponse) -> Vec<UpdateCommand> {
+    pub(super) fn handle_response_commands(
+        &mut self,
+        response: UpdateResponse,
+    ) -> Vec<UpdateCommand> {
         match response {
             UpdateResponse::UpToDate { request_id } => {
                 if !self.settle_response(request_id) {
@@ -232,9 +230,7 @@ impl UpdateManager {
                     UpdateCommand::App(UpdateAppCommand::RequestViewportClose),
                     UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                         event: "update_apply_started",
-                        details: format!(
-                            "request_id={request_id} target_version={target_version}"
-                        ),
+                        details: format!("request_id={request_id} target_version={target_version}"),
                     }),
                 ]
             }
