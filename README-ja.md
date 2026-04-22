@@ -125,6 +125,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 - runtime settings は Windows では実行ファイルと同じフォルダ、Linux/macOS では `~/.flistwalker_config.json` とその関連ファイルに保存されます。
 - 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
+- 初回生成時は、実際に環境変数で設定されている値だけを書き込み、未設定の項目は省略されます。未設定項目は読み込み時に既定値へフォールバックします。
 - いったんファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
 - この Windows / home の保存先ルールは UI state、saved roots、window trace にも適用されます。
 - 旧バージョンの Windows 版から更新した場合は、新しいファイルがまだ無いときに限って、ホーム直下の旧ファイルを実行ファイル横へ自動移行します。

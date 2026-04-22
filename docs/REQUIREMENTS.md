@@ -55,7 +55,7 @@
 - FR-023: ツールは macOS では新しい version を検知しても自動置換を試みず、手動更新が必要であることを示さなければならない。
 - FR-024: ツールは更新ダイアログに、現在提示中の target version を次の version が出るまで再表示しない選択肢を提供し、その抑止状態を起動間で保持しなければならない。
 - FR-025: ツールは GUI/CLI で、実行中 binary と同じフォルダにある ignore list ファイルを候補除外ルールとして適用でき、GUI では有効/無効を切り替えるチェックボックスを提供しなければならない。既定では有効でなければならない。
-- FR-026: ツールは起動時に runtime config file を読み込み、Windows では実行ファイルと同じフォルダ、Linux/macOS では home ディレクトリを保存先として使わなければならない。これは UI state、saved roots、window trace などの永続化ファイルにも適用しなければならない。Windows の旧バージョンで home ディレクトリに保存されていた同名ファイルが存在する場合、新しい保存先に同名ファイルが存在しなければ自動移行しなければならない。runtime config file が存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
+- FR-026: ツールは起動時に runtime config file を読み込み、Windows では実行ファイルと同じフォルダ、Linux/macOS では home ディレクトリを保存先として使わなければならない。これは UI state、saved roots、window trace などの永続化ファイルにも適用しなければならない。Windows の旧バージョンで home ディレクトリに保存されていた同名ファイルが存在する場合、新しい保存先に同名ファイルが存在しなければ自動移行しなければならない。runtime config file が存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。自動生成時は、実際に設定された値だけを書き込み、未設定の項目は省略しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - FR-027: ツールは release asset に ignore list サンプルを同梱し、自己更新後に実行中 binary と同じフォルダへ ignore list ファイルが存在しない場合は sample を自動配置しなければならない。
 
 ### Non-functional (NFR)
@@ -98,7 +98,7 @@
 - AC-022: macOS では更新検知時に自動更新非対応が案内され、誤って自己置換しない。
 - AC-023: 利用者が更新ダイアログで「次のバージョンが出るまで表示しない」を選ぶと、その target version は次回起動以降も再表示されず、より新しい version が見つかった場合のみ再びダイアログが表示される。
 - AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
-- AC-025: runtime config file が存在しない初回起動では、Windows では実行ファイルと同じフォルダ、Linux/macOS では home directory に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
+- AC-025: runtime config file が存在しない初回起動では、Windows では実行ファイルと同じフォルダ、Linux/macOS では home directory に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、未設定項目を含まず、設定済み項目だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では実行ファイルと同じフォルダに、Linux/macOS では home directory に保存される。
 - AC-028: Windows の旧バージョンで home directory にあった runtime config / UI state / saved roots / window trace は、新しい保存先に同名ファイルが無い場合に自動移行される。
 - AC-026: release asset には `*.ignore.txt.example` が同梱され、自己更新後に `flistwalker.ignore.txt` が存在しない場合は sample が `flistwalker.ignore.txt.example` として実行バイナリの隣へ配置される。

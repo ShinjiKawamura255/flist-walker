@@ -33,19 +33,33 @@ const FORCE_UPDATE_CHECK_FAILURE_ENV: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAI
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RuntimeConfig {
+    #[serde(skip_serializing_if = "is_default_search_parallel_threshold")]
     pub search_parallel_threshold: usize,
+    #[serde(skip_serializing_if = "is_default_search_threads")]
     pub search_threads: usize,
+    #[serde(skip_serializing_if = "is_default_walker_max_entries")]
     pub walker_max_entries: usize,
+    #[serde(skip_serializing_if = "is_default_walker_threads")]
     pub walker_threads: usize,
+    #[serde(skip_serializing_if = "is_false")]
     pub window_trace_enabled: bool,
+    #[serde(skip_serializing_if = "is_false")]
     pub window_trace_verbose: bool,
+    #[serde(skip_serializing_if = "is_default_window_trace_path")]
     pub window_trace_path: String,
+    #[serde(skip_serializing_if = "is_false")]
     pub history_persist_disabled: bool,
+    #[serde(skip_serializing_if = "is_false")]
     pub restore_tabs_enabled: bool,
+    #[serde(skip_serializing_if = "is_default_update_feed_url")]
     pub update_feed_url: String,
+    #[serde(skip_serializing_if = "is_false")]
     pub update_allow_same_version: bool,
+    #[serde(skip_serializing_if = "is_false")]
     pub update_allow_downgrade: bool,
+    #[serde(skip_serializing_if = "is_false")]
     pub disable_self_update: bool,
+    #[serde(skip_serializing_if = "is_default_force_update_check_failure")]
     pub force_update_check_failure: String,
 }
 
@@ -361,6 +375,38 @@ fn set_env_bool(name: &str, value: bool) {
     env::set_var(name, if value { "1" } else { "0" });
 }
 
+fn is_default_search_parallel_threshold(value: &usize) -> bool {
+    *value == SEARCH_PARALLEL_THRESHOLD_DEFAULT
+}
+
+fn is_default_search_threads(value: &usize) -> bool {
+    *value == default_search_threads()
+}
+
+fn is_default_walker_max_entries(value: &usize) -> bool {
+    *value == WALKER_MAX_ENTRIES_DEFAULT
+}
+
+fn is_default_walker_threads(value: &usize) -> bool {
+    *value == WALKER_THREADS_DEFAULT
+}
+
+fn is_default_window_trace_path(value: &String) -> bool {
+    *value == default_window_trace_path()
+}
+
+fn is_default_update_feed_url(value: &String) -> bool {
+    value == DEFAULT_UPDATE_FEED_URL
+}
+
+fn is_default_force_update_check_failure(value: &String) -> bool {
+    value.is_empty()
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 #[cfg(windows)]
 fn current_exe_dir() -> Option<PathBuf> {
     env::current_exe()
@@ -462,10 +508,37 @@ mod tests {
         assert_eq!(env::var(RESTORE_TABS_ENV).expect("env set"), "1");
         assert_eq!(env::var(WALKER_MAX_ENTRIES_ENV).expect("env set"), "222");
         let text = fs::read_to_string(&path).expect("read config");
-        let saved: RuntimeConfig = serde_json::from_str(&text).expect("parse config");
-        assert_eq!(saved.search_parallel_threshold, 111);
-        assert!(saved.restore_tabs_enabled);
-        assert_eq!(saved.walker_max_entries, 222);
+        let saved_json: serde_json::Value = serde_json::from_str(&text).expect("parse config");
+        let saved = saved_json.as_object().expect("object config");
+        assert_eq!(
+            saved
+                .get("search_parallel_threshold")
+                .and_then(|value| value.as_u64()),
+            Some(111)
+        );
+        assert_eq!(
+            saved
+                .get("walker_max_entries")
+                .and_then(|value| value.as_u64()),
+            Some(222)
+        );
+        assert_eq!(
+            saved
+                .get("restore_tabs_enabled")
+                .and_then(|value| value.as_bool()),
+            Some(true)
+        );
+        assert!(!saved.contains_key("search_threads"));
+        assert!(!saved.contains_key("walker_threads"));
+        assert!(!saved.contains_key("window_trace_enabled"));
+        assert!(!saved.contains_key("window_trace_verbose"));
+        assert!(!saved.contains_key("window_trace_path"));
+        assert!(!saved.contains_key("history_persist_disabled"));
+        assert!(!saved.contains_key("update_feed_url"));
+        assert!(!saved.contains_key("update_allow_same_version"));
+        assert!(!saved.contains_key("update_allow_downgrade"));
+        assert!(!saved.contains_key("disable_self_update"));
+        assert!(!saved.contains_key("force_update_check_failure"));
 
         let _ = fs::remove_dir_all(&home);
     }

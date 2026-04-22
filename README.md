@@ -86,6 +86,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
 - On Windows, runtime settings files are stored beside the executable. On Linux/macOS, they are stored under the home directory in `~/.flistwalker_config.json`.
 - The runtime config file is created from the current `FLISTWALKER_*` environment values on first launch if it does not exist yet.
+- Only values that are actually set by environment variables are written on first launch; unset options are omitted and fall back to built-in defaults when loaded.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
 - The same Windows-vs-home placement also applies to UI state, saved roots, and window trace files.
 - If you upgrade from an older Windows build, the first launch will automatically move legacy home-directory files into the new executable-side location when the new files do not already exist.
