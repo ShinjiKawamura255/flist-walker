@@ -8,9 +8,9 @@ use crate::app::state::{
 };
 use crate::indexer::{find_filelist_in_first_level, has_ancestor_filelists};
 use crate::path_utils::path_key;
-use std::sync::atomic::Ordering;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 // FileList reducer command surface. FileListManager owns the workflow state,
@@ -489,14 +489,13 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
     ) {
         if let Some(existing_path) = find_filelist_in_first_level(&root) {
-            self.shell.features.filelist.workflow.pending_confirmation = Some(
-                PendingFileListConfirmation {
-                tab_id,
-                root,
-                entries,
-                existing_path: existing_path.clone(),
-            },
-            );
+            self.shell.features.filelist.workflow.pending_confirmation =
+                Some(PendingFileListConfirmation {
+                    tab_id,
+                    root,
+                    entries,
+                    existing_path: existing_path.clone(),
+                });
             self.set_notice(format!(
                 "{} already exists. Choose overwrite or cancel.",
                 existing_path.display()
@@ -513,13 +512,15 @@ impl FlistWalkerApp {
         entries: Vec<PathBuf>,
     ) {
         if has_ancestor_filelists(&root) {
-            self.shell.features.filelist.workflow.pending_ancestor_confirmation = Some(
-                PendingFileListAncestorConfirmation {
-                    tab_id,
-                    root,
-                    entries,
-                },
-            );
+            self.shell
+                .features
+                .filelist
+                .workflow
+                .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+                tab_id,
+                root,
+                entries,
+            });
             self.set_notice(
                 "Create File List will also update parent FileList entries. Continue or choose current root only.",
             );
@@ -535,7 +536,8 @@ impl FlistWalkerApp {
             .filelist
             .workflow
             .pending_confirmation
-            .take() else {
+            .take()
+        else {
             return;
         };
         self.request_filelist_creation_after_overwrite_check(
@@ -640,25 +642,45 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn can_cancel_create_filelist(&self) -> bool {
-        self.shell.features.filelist.workflow.pending_after_index.is_some()
-            || self.shell.features.filelist.workflow.pending_confirmation.is_some()
+        self.shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .is_some()
             || self
                 .shell
                 .features
                 .filelist
-                .workflow.pending_ancestor_confirmation
+                .workflow
+                .pending_confirmation
                 .is_some()
             || self
                 .shell
                 .features
                 .filelist
-                .workflow.pending_use_walker_confirmation
+                .workflow
+                .pending_ancestor_confirmation
+                .is_some()
+            || self
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_use_walker_confirmation
                 .is_some()
             || self.shell.features.filelist.workflow.in_progress
     }
 
     pub(super) fn cancel_create_filelist(&mut self) {
-        if self.shell.features.filelist.workflow.pending_confirmation.is_some() {
+        if self
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_confirmation
+            .is_some()
+        {
             self.cancel_pending_filelist_overwrite();
             return;
         }
@@ -666,7 +688,8 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .workflow.pending_ancestor_confirmation
+            .workflow
+            .pending_ancestor_confirmation
             .is_some()
         {
             self.cancel_pending_filelist_ancestor_confirmation();
@@ -676,7 +699,8 @@ impl FlistWalkerApp {
             .shell
             .features
             .filelist
-            .workflow.pending_use_walker_confirmation
+            .workflow
+            .pending_use_walker_confirmation
             .is_some()
         {
             self.cancel_pending_filelist_use_walker();
@@ -706,7 +730,14 @@ impl FlistWalkerApp {
             self.set_notice("Create File List is already running");
             return;
         }
-        if self.shell.features.filelist.workflow.pending_confirmation.is_some() {
+        if self
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_confirmation
+            .is_some()
+        {
             self.set_notice("Confirm overwrite or cancel first");
             return;
         }
@@ -737,11 +768,14 @@ impl FlistWalkerApp {
             return;
         };
         if self.use_filelist_requires_locked_filters() {
-            self.shell.features.filelist.workflow.pending_use_walker_confirmation =
-                Some(PendingFileListUseWalkerConfirmation {
-                    source_tab_id: tab_id,
-                    root: self.shell.runtime.root.clone(),
-                });
+            self.shell
+                .features
+                .filelist
+                .workflow
+                .pending_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
+                source_tab_id: tab_id,
+                root: self.shell.runtime.root.clone(),
+            });
             self.set_notice("Confirmation required: Create File List needs Walker indexing");
             return;
         }

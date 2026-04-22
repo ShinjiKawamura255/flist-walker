@@ -1,6 +1,6 @@
 use super::{
-    AppTabState, Entry, FlistWalkerApp, IndexResponse, IndexSource, ResultSortMode,
-    SavedTabState, SearchResponse, TabAccentColor, result_reducer,
+    result_reducer, AppTabState, Entry, FlistWalkerApp, IndexResponse, IndexSource, ResultSortMode,
+    SavedTabState, SearchResponse, TabAccentColor,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;

@@ -1,4 +1,6 @@
-use super::{result_reducer, FlistWalkerApp, PreviewResponse, SortMetadataResponse, ActionResponse};
+use super::{
+    result_reducer, ActionResponse, FlistWalkerApp, PreviewResponse, SortMetadataResponse,
+};
 
 impl FlistWalkerApp {
     pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {

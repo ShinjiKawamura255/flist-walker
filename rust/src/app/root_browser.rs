@@ -75,10 +75,10 @@ impl FlistWalkerApp {
             .len()
             .checked_sub(1);
         let next = match (self.shell.ui.root_dropdown_highlight(), max_index) {
-                (_, None) => None,
-                (Some(index), Some(max)) => Some(index.min(max)),
-                (None, Some(_)) => self.current_root_dropdown_index().or(Some(0usize)),
-            };
+            (_, None) => None,
+            (Some(index), Some(max)) => Some(index.min(max)),
+            (None, Some(_)) => self.current_root_dropdown_index().or(Some(0usize)),
+        };
         self.shell.ui.set_root_dropdown_highlight(next);
     }
 

@@ -15,7 +15,8 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
         .shell
         .features
         .filelist
-        .workflow.pending_confirmation
+        .workflow
+        .pending_confirmation
         .as_ref()
         .is_some_and(|pending| pending.tab_id == current_tab_id)
     {
@@ -25,7 +26,8 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
         .shell
         .features
         .filelist
-        .workflow.pending_ancestor_confirmation
+        .workflow
+        .pending_ancestor_confirmation
         .as_ref()
         .is_some_and(|pending| pending.tab_id == current_tab_id)
     {
@@ -35,7 +37,8 @@ pub(super) fn current_filelist_dialog_kind(app: &FlistWalkerApp) -> Option<FileL
         .shell
         .features
         .filelist
-        .workflow.pending_use_walker_confirmation
+        .workflow
+        .pending_use_walker_confirmation
         .as_ref()
         .is_some_and(|pending| pending.source_tab_id == current_tab_id)
     {
@@ -69,9 +72,7 @@ pub(super) fn activate_selected_filelist_dialog_button(app: &mut FlistWalkerApp)
         (Some(FileListDialogKind::Ancestor), 0) => {
             app.confirm_pending_filelist_ancestor_propagation()
         }
-        (Some(FileListDialogKind::Ancestor), 1) => {
-            app.skip_pending_filelist_ancestor_propagation()
-        }
+        (Some(FileListDialogKind::Ancestor), 1) => app.skip_pending_filelist_ancestor_propagation(),
         (Some(FileListDialogKind::Ancestor), _) => {
             app.cancel_pending_filelist_ancestor_confirmation()
         }

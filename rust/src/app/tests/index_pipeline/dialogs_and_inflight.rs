@@ -172,7 +172,8 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
         .shell
         .features
         .filelist
-        .workflow.pending_use_walker_confirmation
+        .workflow
+        .pending_use_walker_confirmation
         .is_none());
     let req = filelist_rx
         .try_recv()
@@ -188,12 +189,15 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
     app.shell.runtime.current_row = Some(1);
-    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
-        Some(PendingFileListAncestorConfirmation {
-            tab_id: app.current_tab_id().expect("tab id"),
-            root: root.clone(),
-            entries: vec![root.join("a.txt")],
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+        entries: vec![root.join("a.txt")],
+    });
 
     run_shortcuts_frame(
         &mut app,
@@ -223,12 +227,15 @@ fn dialog_space_confirms_selected_dialog_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
-    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
-        Some(PendingFileListAncestorConfirmation {
-            tab_id: app.current_tab_id().expect("tab id"),
-            root: root.clone(),
-            entries: vec![root.join("a.txt")],
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+        entries: vec![root.join("a.txt")],
+    });
 
     run_shortcuts_frame(
         &mut app,
@@ -261,7 +268,8 @@ fn dialog_space_confirms_selected_dialog_action() {
         .shell
         .features
         .filelist
-        .workflow.pending_ancestor_confirmation
+        .workflow
+        .pending_ancestor_confirmation
         .is_none());
     let _ = fs::remove_dir_all(&root);
 }
@@ -273,11 +281,14 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.results = vec![(root.join("a.txt"), 0.0)];
     app.shell.runtime.current_row = Some(0);
-    app.shell.features.filelist.workflow.pending_use_walker_confirmation =
-        Some(PendingFileListUseWalkerConfirmation {
-            source_tab_id: app.current_tab_id().expect("tab id"),
-            root: root.clone(),
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
+        source_tab_id: app.current_tab_id().expect("tab id"),
+        root: root.clone(),
+    });
 
     run_shortcuts_frame(
         &mut app,
@@ -296,7 +307,8 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
         .shell
         .features
         .filelist
-        .workflow.pending_use_walker_confirmation
+        .workflow
+        .pending_use_walker_confirmation
         .is_none());
     assert!(app
         .shell

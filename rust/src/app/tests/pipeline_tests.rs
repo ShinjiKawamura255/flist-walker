@@ -89,3 +89,68 @@ fn should_refresh_incremental_search_is_true_for_large_delta_after_interval() {
     assert!(app.should_refresh_incremental_search());
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn regression_ignore_list_is_applied_when_files_and_folders_are_both_enabled() {
+    let root = test_root("ignore-list-fast-path-regression");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let kept = root.join("keep.txt");
+    let ignored_old = root.join("old-cache.txt");
+    let ignored_tilde = root.join("backup~.txt");
+
+    app.shell.runtime.all_entries = Arc::new(vec![
+        file_entry(ignored_old.clone()),
+        file_entry(ignored_tilde.clone()),
+        file_entry(kept.clone()),
+    ]);
+    app.shell.runtime.index.entries.clear();
+    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["old".to_string(), "~".to_string()]);
+
+    app.apply_entry_filters(false);
+
+    assert_eq!(
+        app.shell.runtime.entries.as_ref(),
+        &[file_entry(kept.clone())]
+    );
+    assert_eq!(app.shell.runtime.results, vec![(kept, 0.0)]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_ignore_list_toggle_off_keeps_all_entries_visible() {
+    let root = test_root("ignore-list-toggle-off-regression");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let kept = root.join("keep.txt");
+    let ignored_old = root.join("old-cache.txt");
+
+    app.shell.runtime.all_entries = Arc::new(vec![
+        file_entry(ignored_old.clone()),
+        file_entry(kept.clone()),
+    ]);
+    app.shell.runtime.index.entries.clear();
+    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.ignore_list_enabled = false;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["old".to_string()]);
+
+    app.apply_entry_filters(false);
+
+    assert_eq!(
+        app.shell.runtime.entries.as_ref(),
+        &[file_entry(ignored_old.clone()), file_entry(kept.clone())]
+    );
+    assert_eq!(
+        app.shell.runtime.results,
+        vec![(ignored_old, 0.0), (kept, 0.0)]
+    );
+    let _ = fs::remove_dir_all(&root);
+}

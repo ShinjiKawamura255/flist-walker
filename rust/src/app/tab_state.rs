@@ -1,7 +1,9 @@
-use super::{normalize_windows_path_buf, FlistWalkerApp, ResultSortMode, SavedTabState, TabAccentColor};
+use super::{
+    normalize_windows_path_buf, FlistWalkerApp, ResultSortMode, SavedTabState, TabAccentColor,
+};
+use crate::app::worker_protocol::IndexEntry;
 use crate::entry::Entry;
 use crate::indexer::{IndexBuildResult, IndexSource};
-use crate::app::worker_protocol::IndexEntry;
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -22,8 +22,14 @@ fn filelist_failed_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_tab_id, None);
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_id,
+        None
+    );
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_tab_id,
+        None
+    );
     assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(app
         .shell
@@ -55,8 +61,17 @@ fn filelist_canceled_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
-    assert!(app.shell.features.filelist.workflow.pending_cancel.is_none());
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_id,
+        None
+    );
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_cancel
+        .is_none());
     assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(!app.shell.features.filelist.workflow.cancel_requested);
     assert!(app
@@ -127,7 +142,10 @@ fn filelist_failed_for_previous_root_reports_without_rewinding_state() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_id,
+        None
+    );
     assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(app.shell.runtime.notice.contains("previous root"));
     let _ = fs::remove_dir_all(&root_old);
@@ -159,7 +177,10 @@ fn filelist_finished_for_stale_requested_root_is_ignored() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_id,
+        None
+    );
     assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(!app.shell.runtime.use_filelist);
     assert!(app.shell.runtime.notice.is_empty());

@@ -170,12 +170,19 @@ fn create_filelist_waits_while_indexing() {
         app.shell
             .features
             .filelist
-            .workflow.pending_after_index
+            .workflow
+            .pending_after_index
             .as_ref()
             .map(|pending| pending.root.clone()),
         Some(root.clone())
     );
-    assert!(app.shell.features.filelist.workflow.pending_request_id.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_request_id
+        .is_none());
     assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(index_rx.try_recv().is_err());
     assert!(app
@@ -205,7 +212,13 @@ fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
     assert_eq!(req.root, root);
     assert!(req.include_files);
     assert!(req.include_dirs);
-    assert!(app.shell.features.filelist.workflow.pending_after_index.is_some());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_some());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -230,7 +243,13 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
     assert!(!req.use_filelist);
     assert!(req.include_files);
     assert!(req.include_dirs);
-    assert!(app.shell.features.filelist.workflow.pending_after_index.is_some());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_some());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -248,7 +267,8 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
         .shell
         .features
         .filelist
-        .workflow.pending_use_walker_confirmation
+        .workflow
+        .pending_use_walker_confirmation
         .is_some());
     assert_eq!(app.shell.tabs.len(), 1);
 
@@ -263,7 +283,8 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
         .shell
         .features
         .filelist
-        .workflow.pending_after_index
+        .workflow
+        .pending_after_index
         .as_ref()
         .expect("deferred filelist pending");
     let current_tab_id = app.current_tab_id().expect("current tab id");
@@ -329,7 +350,8 @@ fn deferred_filelist_starts_after_index_finished() {
         .shell
         .features
         .filelist
-        .workflow.pending_ancestor_confirmation
+        .workflow
+        .pending_ancestor_confirmation
         .is_some()
     {
         app.skip_pending_filelist_ancestor_propagation();
@@ -341,7 +363,13 @@ fn deferred_filelist_starts_after_index_finished() {
     assert_eq!(req.tab_id, tab_id);
     assert_eq!(req.root, root);
     assert_eq!(req.entries, vec![path]);
-    assert!(app.shell.features.filelist.workflow.pending_after_index.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_none());
     assert!(app.shell.features.filelist.workflow.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
@@ -364,7 +392,13 @@ fn deferred_filelist_is_canceled_when_root_changes() {
 
     app.request_index_refresh();
 
-    assert!(app.shell.features.filelist.workflow.pending_after_index.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_none());
     assert!(app
         .shell
         .runtime
@@ -597,7 +631,13 @@ fn root_change_cancels_pending_filelist_overwrite_confirmation() {
 
     app.apply_root_change(root_new.clone());
 
-    assert!(app.shell.features.filelist.workflow.pending_confirmation.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_confirmation
+        .is_none());
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
 }
@@ -613,12 +653,15 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
     app.shell.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
-    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
-        Some(PendingFileListAncestorConfirmation {
-            tab_id,
-            root: root_old.clone(),
-            entries: vec![root_old.join("a.txt")],
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id,
+        root: root_old.clone(),
+        entries: vec![root_old.join("a.txt")],
+    });
 
     app.apply_root_change(root_new.clone());
 
@@ -626,7 +669,8 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
         .shell
         .features
         .filelist
-        .workflow.pending_ancestor_confirmation
+        .workflow
+        .pending_ancestor_confirmation
         .is_none());
     assert!(app.shell.runtime.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
@@ -644,11 +688,14 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
     let (tx, _rx) = mpsc::channel::<IndexRequest>();
     app.shell.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
-    app.shell.features.filelist.workflow.pending_use_walker_confirmation =
-        Some(PendingFileListUseWalkerConfirmation {
-            source_tab_id: tab_id,
-            root: root_old.clone(),
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
+        source_tab_id: tab_id,
+        root: root_old.clone(),
+    });
 
     app.apply_root_change(root_new.clone());
 
@@ -656,7 +703,8 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
         .shell
         .features
         .filelist
-        .workflow.pending_use_walker_confirmation
+        .workflow
+        .pending_use_walker_confirmation
         .is_none());
     assert!(app.shell.runtime.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
@@ -687,8 +735,14 @@ fn filelist_finished_updates_state_and_notice() {
 
     app.poll_filelist_response();
 
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_id, None);
-    assert_eq!(app.shell.features.filelist.workflow.pending_request_tab_id, None);
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_id,
+        None
+    );
+    assert_eq!(
+        app.shell.features.filelist.workflow.pending_request_tab_id,
+        None
+    );
     assert!(!app.shell.features.filelist.workflow.in_progress);
     assert!(app.shell.runtime.use_filelist);
     assert!(app.shell.runtime.notice.contains("Created"));
@@ -755,9 +809,21 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
 
     app.create_filelist();
 
-    assert!(app.shell.features.filelist.workflow.pending_confirmation.is_some());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_confirmation
+        .is_some());
     assert!(!app.shell.features.filelist.workflow.in_progress);
-    assert!(app.shell.features.filelist.workflow.pending_request_id.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_request_id
+        .is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -787,7 +853,13 @@ fn confirm_pending_overwrite_starts_filelist_creation() {
     assert_eq!(req.root, root);
     assert_eq!(req.entries, entries);
     assert!(app.shell.features.filelist.workflow.in_progress);
-    assert!(app.shell.features.filelist.workflow.pending_confirmation.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_confirmation
+        .is_none());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -803,7 +875,13 @@ fn cancel_create_filelist_clears_pending_after_index() {
 
     app.cancel_create_filelist();
 
-    assert!(app.shell.features.filelist.workflow.pending_after_index.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_none());
     assert!(app
         .shell
         .runtime
@@ -865,9 +943,16 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
         .shell
         .features
         .filelist
-        .workflow.pending_ancestor_confirmation
+        .workflow
+        .pending_ancestor_confirmation
         .is_some());
-    assert!(app.shell.features.filelist.workflow.pending_request_id.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_request_id
+        .is_none());
     assert!(!app.shell.features.filelist.workflow.in_progress);
     let _ = fs::remove_dir_all(&top);
 }

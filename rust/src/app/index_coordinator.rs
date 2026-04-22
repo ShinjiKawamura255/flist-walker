@@ -3,8 +3,8 @@ use super::{
     IndexSource, KindResolveRequest, TabSessionState,
 };
 use crate::entry::{Entry, EntryKind};
-use std::path::PathBuf;
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;

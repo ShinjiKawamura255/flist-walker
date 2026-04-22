@@ -11,18 +11,18 @@ pub(super) use crate::app::state::{
 pub(super) use crate::app::worker_protocol::{
     KindResolveRequest, KindResolveResponse, UpdateRequestKind,
 };
-pub(super) use crate::app::{
-    egui, ActionRequest, ActionResponse, AppRuntimeState, AppShellState, CacheStateBundle, EntryKind,
-    FlistWalkerApp, FileListDialogKind, FileListManager, FileListRequest, FileListResponse,
-    HighlightCacheKey, HighlightCacheState, IndexBuildResult, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, LaunchSettings, PreviewRequest, PreviewResponse, QueryState,
-    ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState, SavedWindowGeometry,
-    SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState, SortMetadataRequest,
-    SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState, TabSessionState,
-    UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
-};
 pub(super) use crate::app::{clear_process_shutdown_request, process_shutdown_requested};
-pub(super) use crate::app::{request_process_shutdown, render_tabs, spawn_kind_resolver_worker};
+pub(super) use crate::app::{
+    egui, ActionRequest, ActionResponse, AppRuntimeState, AppShellState, CacheStateBundle,
+    EntryKind, FileListDialogKind, FileListManager, FileListRequest, FileListResponse,
+    FlistWalkerApp, HighlightCacheKey, HighlightCacheState, IndexBuildResult, IndexEntry,
+    IndexRequest, IndexResponse, IndexSource, LaunchSettings, PreviewRequest, PreviewResponse,
+    QueryState, ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState,
+    SavedWindowGeometry, SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState,
+    SortMetadataRequest, SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState,
+    TabSessionState, UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
+};
+pub(super) use crate::app::{render_tabs, request_process_shutdown, spawn_kind_resolver_worker};
 pub(super) use crate::entry::Entry;
 pub(super) use crate::path_utils::{normalize_windows_path_buf, path_key};
 pub(super) use crate::search::{SearchEntriesSnapshotKey, SearchPrefixCache};
@@ -39,7 +39,7 @@ pub(super) use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 mod support;
 pub(super) use support::{
-    commit_query_history_for_test, entries_count_from_status, emacs_shortcut_modifiers,
+    commit_query_history_for_test, emacs_shortcut_modifiers, entries_count_from_status,
     gui_shortcut_modifiers, is_action_notice, reset_index_request_state_for_test,
     run_shortcuts_frame, tab_switch_shortcut_modifiers, test_root,
 };
