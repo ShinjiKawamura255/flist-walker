@@ -33,34 +33,52 @@ const FORCE_UPDATE_CHECK_FAILURE_ENV: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAI
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RuntimeConfig {
-    #[serde(skip_serializing_if = "is_default_search_parallel_threshold")]
     pub search_parallel_threshold: usize,
-    #[serde(skip_serializing_if = "is_default_search_threads")]
     pub search_threads: usize,
-    #[serde(skip_serializing_if = "is_default_walker_max_entries")]
     pub walker_max_entries: usize,
-    #[serde(skip_serializing_if = "is_default_walker_threads")]
     pub walker_threads: usize,
-    #[serde(skip_serializing_if = "is_false")]
     pub window_trace_enabled: bool,
-    #[serde(skip_serializing_if = "is_false")]
     pub window_trace_verbose: bool,
-    #[serde(skip_serializing_if = "is_default_window_trace_path")]
     pub window_trace_path: String,
-    #[serde(skip_serializing_if = "is_false")]
     pub history_persist_disabled: bool,
-    #[serde(skip_serializing_if = "is_false")]
     pub restore_tabs_enabled: bool,
-    #[serde(skip_serializing_if = "is_default_update_feed_url")]
     pub update_feed_url: String,
-    #[serde(skip_serializing_if = "is_false")]
     pub update_allow_same_version: bool,
-    #[serde(skip_serializing_if = "is_false")]
     pub update_allow_downgrade: bool,
-    #[serde(skip_serializing_if = "is_false")]
     pub disable_self_update: bool,
-    #[serde(skip_serializing_if = "is_default_force_update_check_failure")]
     pub force_update_check_failure: String,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+struct RuntimeConfigSeed {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    search_parallel_threshold: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    search_threads: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    walker_max_entries: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    walker_threads: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    window_trace_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    window_trace_verbose: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    window_trace_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    history_persist_disabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    restore_tabs_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    update_feed_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    update_allow_same_version: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    update_allow_downgrade: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    disable_self_update: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    force_update_check_failure: Option<String>,
 }
 
 impl Default for RuntimeConfig {
@@ -86,27 +104,7 @@ impl Default for RuntimeConfig {
 
 impl RuntimeConfig {
     pub fn from_current_env() -> Self {
-        Self {
-            search_parallel_threshold: env_usize(SEARCH_PARALLEL_THRESHOLD_ENV)
-                .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT),
-            search_threads: env_usize(SEARCH_THREADS_ENV).unwrap_or_else(default_search_threads),
-            walker_max_entries: env_usize(WALKER_MAX_ENTRIES_ENV)
-                .unwrap_or(WALKER_MAX_ENTRIES_DEFAULT),
-            walker_threads: env_usize(WALKER_THREADS_ENV).unwrap_or(WALKER_THREADS_DEFAULT),
-            window_trace_enabled: env_bool(WINDOW_TRACE_ENV),
-            window_trace_verbose: env_bool(WINDOW_TRACE_VERBOSE_ENV),
-            window_trace_path: env_string(WINDOW_TRACE_PATH_ENV)
-                .unwrap_or_else(default_window_trace_path),
-            history_persist_disabled: env_bool(HISTORY_PERSIST_ENV),
-            restore_tabs_enabled: env_bool(RESTORE_TABS_ENV),
-            update_feed_url: env_string(UPDATE_FEED_URL_ENV)
-                .unwrap_or_else(|| DEFAULT_UPDATE_FEED_URL.to_string()),
-            update_allow_same_version: env_bool(UPDATE_ALLOW_SAME_VERSION_ENV),
-            update_allow_downgrade: env_bool(UPDATE_ALLOW_DOWNGRADE_ENV),
-            disable_self_update: env_bool(DISABLE_SELF_UPDATE_ENV),
-            force_update_check_failure: env_string(FORCE_UPDATE_CHECK_FAILURE_ENV)
-                .unwrap_or_default(),
-        }
+        Self::seed_from_current_env().0
     }
 
     pub fn apply_to_process_env(&self) {
@@ -145,7 +143,7 @@ impl RuntimeConfig {
 
     fn load_or_seed_at(path: Option<PathBuf>) -> Self {
         let Some(path) = path else {
-            let config = Self::from_current_env();
+            let (config, _) = Self::seed_from_current_env();
             config.apply_to_process_env();
             return config;
         };
@@ -161,9 +159,9 @@ impl RuntimeConfig {
             return config;
         }
 
-        let config = Self::from_current_env();
+        let (config, seed) = Self::seed_from_current_env();
         if !path.exists() {
-            if let Err(err) = save_runtime_config_to_path(&path, &config) {
+            if let Err(err) = save_seeded_runtime_config_to_path(&path, &seed) {
                 warn!(
                     "failed to create runtime config at {}: {}",
                     path.display(),
@@ -307,6 +305,12 @@ pub fn save_runtime_config_to_path(path: &Path, config: &RuntimeConfig) -> Resul
     write_text_atomic(path, &text).context("failed to write runtime config")
 }
 
+fn save_seeded_runtime_config_to_path(path: &Path, seed: &RuntimeConfigSeed) -> Result<()> {
+    let text =
+        serde_json::to_string_pretty(seed).context("failed to serialize runtime config seed")?;
+    write_text_atomic(path, &text).context("failed to write runtime config")
+}
+
 fn try_load_or_migrate_runtime_config(
     current_path: &Path,
     legacy_path: Option<&Path>,
@@ -341,30 +345,38 @@ fn default_window_trace_path() -> String {
         .unwrap_or_default()
 }
 
-fn env_bool(name: &str) -> bool {
-    env::var(name)
-        .ok()
-        .map(|value| {
+fn env_bool_with_presence(name: &str) -> (bool, bool) {
+    match env::var(name) {
+        Ok(value) => (
+            true,
             matches!(
                 value.trim().to_ascii_lowercase().as_str(),
                 "1" | "true" | "yes" | "on"
-            )
-        })
-        .unwrap_or(false)
+            ),
+        ),
+        Err(_) => (false, false),
+    }
 }
 
-fn env_usize(name: &str) -> Option<usize> {
-    env::var(name)
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .filter(|value| *value > 0)
+fn env_usize_with_presence(name: &str) -> (bool, Option<usize>) {
+    match env::var(name) {
+        Ok(value) => (true, value.parse::<usize>().ok().filter(|value| *value > 0)),
+        Err(_) => (false, None),
+    }
 }
 
-fn env_string(name: &str) -> Option<String> {
-    env::var(name)
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
+fn env_string_with_presence(name: &str) -> (bool, Option<String>) {
+    match env::var(name) {
+        Ok(value) => {
+            let trimmed = value.trim().to_string();
+            if trimmed.is_empty() {
+                (true, None)
+            } else {
+                (true, Some(trimmed))
+            }
+        }
+        Err(_) => (false, None),
+    }
 }
 
 fn set_env_value(name: &str, value: String) {
@@ -375,36 +387,82 @@ fn set_env_bool(name: &str, value: bool) {
     env::set_var(name, if value { "1" } else { "0" });
 }
 
-fn is_default_search_parallel_threshold(value: &usize) -> bool {
-    *value == SEARCH_PARALLEL_THRESHOLD_DEFAULT
-}
+impl RuntimeConfig {
+    fn seed_from_current_env() -> (Self, RuntimeConfigSeed) {
+        let (_, search_parallel_threshold) = env_usize_with_presence(SEARCH_PARALLEL_THRESHOLD_ENV);
+        let (_, search_threads) = env_usize_with_presence(SEARCH_THREADS_ENV);
+        let (_, walker_max_entries) = env_usize_with_presence(WALKER_MAX_ENTRIES_ENV);
+        let (_, walker_threads) = env_usize_with_presence(WALKER_THREADS_ENV);
+        let (window_trace_enabled_set, window_trace_enabled) =
+            env_bool_with_presence(WINDOW_TRACE_ENV);
+        let (window_trace_verbose_set, window_trace_verbose) =
+            env_bool_with_presence(WINDOW_TRACE_VERBOSE_ENV);
+        let (_, window_trace_path) = env_string_with_presence(WINDOW_TRACE_PATH_ENV);
+        let (history_persist_disabled_set, history_persist_disabled) =
+            env_bool_with_presence(HISTORY_PERSIST_ENV);
+        let (restore_tabs_enabled_set, restore_tabs_enabled) =
+            env_bool_with_presence(RESTORE_TABS_ENV);
+        let (_, update_feed_url) = env_string_with_presence(UPDATE_FEED_URL_ENV);
+        let (update_allow_same_version_set, update_allow_same_version) =
+            env_bool_with_presence(UPDATE_ALLOW_SAME_VERSION_ENV);
+        let (update_allow_downgrade_set, update_allow_downgrade) =
+            env_bool_with_presence(UPDATE_ALLOW_DOWNGRADE_ENV);
+        let (disable_self_update_set, disable_self_update) =
+            env_bool_with_presence(DISABLE_SELF_UPDATE_ENV);
+        let (_, force_update_check_failure) =
+            env_string_with_presence(FORCE_UPDATE_CHECK_FAILURE_ENV);
 
-fn is_default_search_threads(value: &usize) -> bool {
-    *value == default_search_threads()
-}
+        let config = Self {
+            search_parallel_threshold: search_parallel_threshold
+                .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT),
+            search_threads: search_threads.unwrap_or_else(default_search_threads),
+            walker_max_entries: walker_max_entries.unwrap_or(WALKER_MAX_ENTRIES_DEFAULT),
+            walker_threads: walker_threads.unwrap_or(WALKER_THREADS_DEFAULT),
+            window_trace_enabled,
+            window_trace_verbose,
+            window_trace_path: window_trace_path
+                .as_ref()
+                .cloned()
+                .unwrap_or_else(default_window_trace_path),
+            history_persist_disabled,
+            restore_tabs_enabled,
+            update_feed_url: update_feed_url
+                .as_ref()
+                .cloned()
+                .unwrap_or_else(|| DEFAULT_UPDATE_FEED_URL.to_string()),
+            update_allow_same_version,
+            update_allow_downgrade,
+            disable_self_update,
+            force_update_check_failure: force_update_check_failure
+                .as_ref()
+                .cloned()
+                .unwrap_or_default(),
+        };
 
-fn is_default_walker_max_entries(value: &usize) -> bool {
-    *value == WALKER_MAX_ENTRIES_DEFAULT
-}
+        let seed = RuntimeConfigSeed {
+            search_parallel_threshold: search_parallel_threshold
+                .map(|_| config.search_parallel_threshold),
+            search_threads: search_threads.map(|_| config.search_threads),
+            walker_max_entries: walker_max_entries.map(|_| config.walker_max_entries),
+            walker_threads: walker_threads.map(|_| config.walker_threads),
+            window_trace_enabled: window_trace_enabled_set.then_some(config.window_trace_enabled),
+            window_trace_verbose: window_trace_verbose_set.then_some(config.window_trace_verbose),
+            window_trace_path: window_trace_path.map(|_| config.window_trace_path.clone()),
+            history_persist_disabled: history_persist_disabled_set
+                .then_some(config.history_persist_disabled),
+            restore_tabs_enabled: restore_tabs_enabled_set.then_some(config.restore_tabs_enabled),
+            update_feed_url: update_feed_url.map(|_| config.update_feed_url.clone()),
+            update_allow_same_version: update_allow_same_version_set
+                .then_some(config.update_allow_same_version),
+            update_allow_downgrade: update_allow_downgrade_set
+                .then_some(config.update_allow_downgrade),
+            disable_self_update: disable_self_update_set.then_some(config.disable_self_update),
+            force_update_check_failure: force_update_check_failure
+                .map(|_| config.force_update_check_failure.clone()),
+        };
 
-fn is_default_walker_threads(value: &usize) -> bool {
-    *value == WALKER_THREADS_DEFAULT
-}
-
-fn is_default_window_trace_path(value: &String) -> bool {
-    *value == default_window_trace_path()
-}
-
-fn is_default_update_feed_url(value: &String) -> bool {
-    value == DEFAULT_UPDATE_FEED_URL
-}
-
-fn is_default_force_update_check_failure(value: &String) -> bool {
-    value.is_empty()
-}
-
-fn is_false(value: &bool) -> bool {
-    !*value
+        (config, seed)
+    }
 }
 
 #[cfg(windows)]
@@ -484,15 +542,35 @@ mod tests {
             "HOME",
             "USERPROFILE",
             SEARCH_PARALLEL_THRESHOLD_ENV,
+            SEARCH_THREADS_ENV,
             RESTORE_TABS_ENV,
             WALKER_MAX_ENTRIES_ENV,
+            WALKER_THREADS_ENV,
             WINDOW_TRACE_PATH_ENV,
+            WINDOW_TRACE_ENV,
+            WINDOW_TRACE_VERBOSE_ENV,
+            HISTORY_PERSIST_ENV,
+            UPDATE_FEED_URL_ENV,
+            UPDATE_ALLOW_SAME_VERSION_ENV,
+            UPDATE_ALLOW_DOWNGRADE_ENV,
+            DISABLE_SELF_UPDATE_ENV,
+            FORCE_UPDATE_CHECK_FAILURE_ENV,
         ]);
         env::set_var("HOME", &home);
         env::set_var("USERPROFILE", &home);
         env::set_var(SEARCH_PARALLEL_THRESHOLD_ENV, "111");
+        env::remove_var(SEARCH_THREADS_ENV);
         env::set_var(RESTORE_TABS_ENV, "1");
         env::set_var(WALKER_MAX_ENTRIES_ENV, "222");
+        env::remove_var(WALKER_THREADS_ENV);
+        env::remove_var(WINDOW_TRACE_ENV);
+        env::remove_var(WINDOW_TRACE_VERBOSE_ENV);
+        env::remove_var(HISTORY_PERSIST_ENV);
+        env::remove_var(UPDATE_FEED_URL_ENV);
+        env::remove_var(UPDATE_ALLOW_SAME_VERSION_ENV);
+        env::remove_var(UPDATE_ALLOW_DOWNGRADE_ENV);
+        env::remove_var(DISABLE_SELF_UPDATE_ENV);
+        env::remove_var(FORCE_UPDATE_CHECK_FAILURE_ENV);
 
         let path = runtime_config_file_path_in(&home);
         let config = RuntimeConfig::load_or_seed_at(Some(path.clone()));
@@ -516,6 +594,7 @@ mod tests {
                 .and_then(|value| value.as_u64()),
             Some(111)
         );
+        assert!(!saved.contains_key("search_threads"));
         assert_eq!(
             saved
                 .get("walker_max_entries")
@@ -539,6 +618,68 @@ mod tests {
         assert!(!saved.contains_key("update_allow_downgrade"));
         assert!(!saved.contains_key("disable_self_update"));
         assert!(!saved.contains_key("force_update_check_failure"));
+
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn seeds_keep_explicit_default_env_values_in_generated_config() {
+        let _guard = locked_env();
+        let home = test_home("seed-defaults");
+        fs::create_dir_all(&home).expect("create home");
+        let _restore = EnvRestore::capture(&[
+            "HOME",
+            "USERPROFILE",
+            SEARCH_PARALLEL_THRESHOLD_ENV,
+            SEARCH_THREADS_ENV,
+            WINDOW_TRACE_ENV,
+            RESTORE_TABS_ENV,
+            UPDATE_FEED_URL_ENV,
+        ]);
+        env::set_var("HOME", &home);
+        env::set_var("USERPROFILE", &home);
+        env::set_var(
+            SEARCH_PARALLEL_THRESHOLD_ENV,
+            SEARCH_PARALLEL_THRESHOLD_DEFAULT.to_string(),
+        );
+        env::set_var(SEARCH_THREADS_ENV, default_search_threads().to_string());
+        env::set_var(WINDOW_TRACE_ENV, "0");
+        env::set_var(RESTORE_TABS_ENV, "false");
+        env::set_var(UPDATE_FEED_URL_ENV, DEFAULT_UPDATE_FEED_URL);
+
+        let path = runtime_config_file_path_in(&home);
+        let _config = RuntimeConfig::load_or_seed_at(Some(path.clone()));
+        let text = fs::read_to_string(&path).expect("read config");
+        let saved_json: serde_json::Value = serde_json::from_str(&text).expect("parse config");
+        let saved = saved_json.as_object().expect("object config");
+        assert_eq!(
+            saved
+                .get("search_parallel_threshold")
+                .and_then(|value| value.as_u64()),
+            Some(SEARCH_PARALLEL_THRESHOLD_DEFAULT as u64)
+        );
+        assert_eq!(
+            saved.get("search_threads").and_then(|value| value.as_u64()),
+            Some(default_search_threads() as u64)
+        );
+        assert_eq!(
+            saved
+                .get("window_trace_enabled")
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            saved
+                .get("restore_tabs_enabled")
+                .and_then(|value| value.as_bool()),
+            Some(false)
+        );
+        assert_eq!(
+            saved
+                .get("update_feed_url")
+                .and_then(|value| value.as_str()),
+            Some(DEFAULT_UPDATE_FEED_URL)
+        );
 
         let _ = fs::remove_dir_all(&home);
     }
