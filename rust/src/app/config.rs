@@ -8,8 +8,7 @@ impl FlistWalkerApp {
     pub(super) const TAB_DRAG_START_DISTANCE: f32 = 6.0;
     pub(super) const QUERY_HISTORY_MAX: usize = 100;
     pub(super) const QUERY_HISTORY_IDLE_DELAY: Duration = Duration::from_millis(400);
-    pub(super) const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration =
-        Duration::from_millis(300);
+    pub(super) const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     pub(super) const INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX: Duration =
         Duration::from_millis(1500);
     pub(super) const INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX: usize = 2048;

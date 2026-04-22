@@ -29,10 +29,20 @@ fn preview_width_px(width: f32) -> u32 {
 #[allow(dead_code)]
 pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
     let mut filelist_dialogs = Vec::new();
-    if let Some(pending) = app.shell.features.filelist.workflow.pending_confirmation.as_ref() {
+    if let Some(pending) = app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_confirmation
+        .as_ref()
+    {
         filelist_dialogs.push(DialogSnapshot {
             title: "Overwrite FileList?".to_string(),
-            lines: vec![format!("{} already exists. Overwrite it?", pending.existing_path.display())],
+            lines: vec![format!(
+                "{} already exists. Overwrite it?",
+                pending.existing_path.display()
+            )],
             buttons: vec!["Overwrite".to_string(), "Cancel".to_string()],
         });
     }
@@ -84,7 +94,8 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                         "FlistWalker {} is available. Current version is {}.",
                         prompt.candidate.target_version, prompt.candidate.current_version
                     ),
-                    "Download the new release, replace the current binary, and restart?".to_string(),
+                    "Download the new release, replace the current binary, and restart?"
+                        .to_string(),
                 ],
                 vec!["Download and Restart".to_string(), "Later".to_string()],
             ),

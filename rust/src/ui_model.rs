@@ -280,7 +280,10 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
     }
 
     if should_skip_preview(path, is_dir) {
-        return format!("File: {}\n\n<on-demand file: preview skipped>", normalized_path);
+        return format!(
+            "File: {}\n\n<on-demand file: preview skipped>",
+            normalized_path
+        );
     }
 
     let head = format!("File: {}\n", normalized_path);

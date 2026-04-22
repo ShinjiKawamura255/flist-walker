@@ -184,9 +184,10 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
-            if ui
-                .checkbox(&mut app.shell.ui.ignore_list_enabled, "Ignore List")
-                .changed()
+            let ignore_list_response = ui
+                .checkbox(&mut app.shell.ui.ignore_list_enabled, "Use Ignore List")
+                .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
+            if ignore_list_response.changed()
             {
                 app.apply_entry_filters(false);
                 app.mark_ui_state_dirty();

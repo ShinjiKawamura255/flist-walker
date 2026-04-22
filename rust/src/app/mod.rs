@@ -1,7 +1,9 @@
 use crate::entry::{Entry, EntryDisplayKind, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
 use crate::path_utils::normalize_windows_path_buf;
-use crate::ui_model::{display_path_with_mode, match_positions_for_path, normalize_path_for_display};
+use crate::ui_model::{
+    display_path_with_mode, match_positions_for_path, normalize_path_for_display,
+};
 use crate::updater::{
     forced_update_check_failure_message, self_update_disabled, should_skip_update_prompt,
     UpdateSupport,
@@ -12,8 +14,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
 mod bootstrap;
-mod config;
 mod cache;
+mod config;
 mod coordinator;
 mod filelist;
 mod index_coordinator;
@@ -42,12 +44,12 @@ mod tab_state;
 mod tabs;
 mod ui_state;
 mod update;
-mod worker_tasks;
 mod worker_bus;
 mod worker_bus_lifecycle;
 mod worker_protocol;
 mod worker_runtime;
 mod worker_support;
+mod worker_tasks;
 mod workers;
 
 use cache::{EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState};

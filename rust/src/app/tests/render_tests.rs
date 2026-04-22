@@ -3,8 +3,8 @@ use crate::app::render::{
     RenderCommand, RenderFileListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
     RenderUpdateDialogCommand,
 };
-use crate::app::{render_dialogs, render_panels};
 use crate::app::render_theme;
+use crate::app::{render_dialogs, render_panels};
 use crate::entry::EntryDisplayKind;
 use crate::updater::UpdateCandidate;
 use serde_json::json;
@@ -287,6 +287,8 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             license_asset_url: "https://example.invalid/license".to_string(),
             notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
             notices_asset_url: "https://example.invalid/notices".to_string(),
+            ignore_sample_asset_name: Some("flistwalker.ignore.txt.example".to_string()),
+            ignore_sample_asset_url: Some("https://example.invalid/ignore-sample".to_string()),
             checksum_url: "https://example.invalid/sums".to_string(),
             checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
             support: UpdateSupport::Auto,
@@ -357,17 +359,23 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
         entries: vec![root.join("entry.txt")],
         existing_path: root.join("FileList.txt"),
     });
-    app.shell.features.filelist.workflow.pending_ancestor_confirmation =
-        Some(PendingFileListAncestorConfirmation {
-            tab_id,
-            root: root.clone(),
-            entries: vec![root.join("entry.txt")],
-        });
-    app.shell.features.filelist.workflow.pending_use_walker_confirmation =
-        Some(PendingFileListUseWalkerConfirmation {
-            source_tab_id: tab_id,
-            root: root.clone(),
-        });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id,
+        root: root.clone(),
+        entries: vec![root.join("entry.txt")],
+    });
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_use_walker_confirmation = Some(PendingFileListUseWalkerConfirmation {
+        source_tab_id: tab_id,
+        root: root.clone(),
+    });
     app.shell.features.update.state.prompt = Some(UpdatePromptState {
         candidate: UpdateCandidate {
             current_version: "0.16.1".to_string(),
@@ -381,6 +389,8 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
             license_asset_url: "https://example.invalid/license".to_string(),
             notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
             notices_asset_url: "https://example.invalid/notices".to_string(),
+            ignore_sample_asset_name: Some("flistwalker.ignore.txt.example".to_string()),
+            ignore_sample_asset_url: Some("https://example.invalid/ignore-sample".to_string()),
             checksum_url: "https://example.invalid/sums".to_string(),
             checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
             support: UpdateSupport::Auto,

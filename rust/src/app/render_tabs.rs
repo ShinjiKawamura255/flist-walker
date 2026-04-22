@@ -15,7 +15,8 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let is_drag_source = drag_state.is_some_and(|state| state.source_index == i);
             let is_drop_target = drag_state.is_some_and(|state| state.hover_index == i);
             let is_active = app.shell.tabs.active_tab_index() == i;
-            let tab_accent: Option<TabAccentColor> = app.shell.tabs.get(i).and_then(|tab| tab.tab_accent);
+            let tab_accent: Option<TabAccentColor> =
+                app.shell.tabs.get(i).and_then(|tab| tab.tab_accent);
             let accent_palette = tab_accent.map(|accent| accent.palette(ui.visuals().dark_mode));
             let active_fill = render_theme::selected_fill(ui.visuals().dark_mode);
             let drag_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.35);
@@ -89,17 +90,19 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     let close_response = ui
                         .add_enabled(
                             app.shell.tabs.len() > 1,
-                            egui::Button::new(egui::RichText::new("×").color(
-                                accent_palette
-                                    .map(|palette| {
-                                        if is_active {
-                                            palette.foreground
-                                        } else {
-                                            palette.border
-                                        }
-                                    })
-                                    .unwrap_or_else(|| ui.visuals().text_color()),
-                            ))
+                            egui::Button::new(
+                                egui::RichText::new("×").color(
+                                    accent_palette
+                                        .map(|palette| {
+                                            if is_active {
+                                                palette.foreground
+                                            } else {
+                                                palette.border
+                                            }
+                                        })
+                                        .unwrap_or_else(|| ui.visuals().text_color()),
+                                ),
+                            )
                             .small()
                             .frame(false),
                         )
@@ -178,7 +181,10 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         }
         if ui
             .button("+")
-            .on_hover_text(format!("New tab ({}+T)", FlistWalkerApp::primary_shortcut_label()))
+            .on_hover_text(format!(
+                "New tab ({}+T)",
+                FlistWalkerApp::primary_shortcut_label()
+            ))
             .clicked()
         {
             app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab));
@@ -256,7 +262,9 @@ pub(super) fn render_tab_accent_menu(
     ui.set_min_width(220.0);
     ui.label("Tab Color");
     if ui.button("Clear").clicked() {
-        app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::ClearTabAccent(index)));
+        app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::ClearTabAccent(
+            index,
+        )));
         ui.close_menu();
         return;
     }
@@ -268,7 +276,11 @@ pub(super) fn render_tab_accent_menu(
                 egui::Button::new(egui::RichText::new(accent.label()).color(palette.foreground))
                     .fill(palette.background)
                     .stroke(egui::Stroke::new(
-                        if current_accent == Some(accent) { 2.0 } else { 1.0 },
+                        if current_accent == Some(accent) {
+                            2.0
+                        } else {
+                            1.0
+                        },
                         palette.border,
                     ))
                     .rounding(egui::Rounding::same(6.0));
@@ -276,10 +288,9 @@ pub(super) fn render_tab_accent_menu(
                 button = button.min_size(egui::vec2(86.0, 24.0));
             }
             if ui.add(button).clicked() {
-                app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::SetTabAccent {
-                    index,
-                    accent,
-                }));
+                app.queue_render_command(RenderCommand::TabBar(
+                    RenderTabBarCommand::SetTabAccent { index, accent },
+                ));
                 ui.close_menu();
             }
         }

@@ -84,8 +84,11 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "seed".to_string());
     let active_tab = app.shell.tabs.active_tab;
-    app.shell.tabs.get_mut(active_tab).expect("active tab").tab_accent =
-        Some(TabAccentColor::Emerald);
+    app.shell
+        .tabs
+        .get_mut(active_tab)
+        .expect("active tab")
+        .tab_accent = Some(TabAccentColor::Emerald);
 
     let index_state = TabIndexState {
         index: IndexBuildResult {
@@ -162,7 +165,10 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     assert_eq!(app.shell.runtime.include_files, snapshot.include_files);
     assert_eq!(app.shell.runtime.include_dirs, snapshot.include_dirs);
     assert_eq!(app.shell.runtime.notice, snapshot.notice);
-    assert_eq!(app.shell.search.pending_request_id(), snapshot.pending_request_id);
+    assert_eq!(
+        app.shell.search.pending_request_id(),
+        snapshot.pending_request_id
+    );
     assert_eq!(
         app.shell.worker_bus.preview.pending_request_id,
         snapshot.pending_preview_request_id
@@ -172,8 +178,14 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         snapshot.pending_action_request_id
     );
     assert_eq!(app.shell.search.in_progress(), snapshot.search_in_progress);
-    assert_eq!(app.shell.worker_bus.preview.in_progress, snapshot.preview_in_progress);
-    assert_eq!(app.shell.worker_bus.action.in_progress, snapshot.action_in_progress);
+    assert_eq!(
+        app.shell.worker_bus.preview.in_progress,
+        snapshot.preview_in_progress
+    );
+    assert_eq!(
+        app.shell.worker_bus.action.in_progress,
+        snapshot.action_in_progress
+    );
 
     assert_eq!(restored.id, snapshot.id);
     assert_eq!(restored.root, snapshot.root);
@@ -195,12 +207,18 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         restored.index_state.pending_index_entries_request_id,
         snapshot.index_state.pending_index_entries_request_id
     );
-    assert_eq!(restored.index_state.kind_resolution_epoch, snapshot.index_state.kind_resolution_epoch);
+    assert_eq!(
+        restored.index_state.kind_resolution_epoch,
+        snapshot.index_state.kind_resolution_epoch
+    );
     assert_eq!(
         restored.index_state.kind_resolution_in_progress,
         snapshot.index_state.kind_resolution_in_progress
     );
-    assert_eq!(restored.index_state.last_search_snapshot_len, snapshot.index_state.last_search_snapshot_len);
+    assert_eq!(
+        restored.index_state.last_search_snapshot_len,
+        snapshot.index_state.last_search_snapshot_len
+    );
     assert_eq!(
         restored.index_state.search_resume_pending,
         snapshot.index_state.search_resume_pending
@@ -250,7 +268,10 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         restored.result_state.sort_in_progress,
         snapshot.result_state.sort_in_progress
     );
-    assert_eq!(restored.result_state.current_row, snapshot.result_state.current_row);
+    assert_eq!(
+        restored.result_state.current_row,
+        snapshot.result_state.current_row
+    );
     assert_eq!(restored.result_state.preview, snapshot.result_state.preview);
     assert_eq!(restored.notice, snapshot.notice);
     assert_eq!(restored.pending_request_id, snapshot.pending_request_id);

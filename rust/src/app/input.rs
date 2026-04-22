@@ -652,12 +652,7 @@ impl FlistWalkerApp {
             return;
         }
 
-        if self
-            .shell
-            .runtime
-            .query_state
-            .is_history_search_active()
-        {
+        if self.shell.runtime.query_state.is_history_search_active() {
             if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
                 self.move_history_search_selection(1);
             }
@@ -795,10 +790,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn reset_history_search_state(&mut self) {
-        self.shell
-            .runtime
-            .query_state
-            .reset_history_search();
+        self.shell.runtime.query_state.reset_history_search();
     }
 
     pub(super) fn refresh_history_search_results(&mut self) {

@@ -1,4 +1,4 @@
-use super::{FlistWalkerApp, FileListDialogKind, UpdateSupport};
+use super::{FileListDialogKind, FlistWalkerApp, UpdateSupport};
 use eframe::egui;
 
 pub(super) fn render_filelist_dialogs(app: &mut FlistWalkerApp, ctx: &egui::Context) {
@@ -267,7 +267,15 @@ pub(super) fn render_update_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context
         }
     }
 
-    if let Some(failure) = app.shell.features.update.state.check_failure.as_ref().cloned() {
+    if let Some(failure) = app
+        .shell
+        .features
+        .update
+        .state
+        .check_failure
+        .as_ref()
+        .cloned()
+    {
         let mut close = false;
         let mut suppress_future_errors = failure.suppress_future_errors;
         egui::Window::new("Update Check Failed")

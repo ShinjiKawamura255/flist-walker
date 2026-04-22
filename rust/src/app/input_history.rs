@@ -22,12 +22,7 @@ fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Op
 }
 
 pub(super) fn refresh_history_search_results(app: &mut FlistWalkerApp) {
-    if !app
-        .shell
-        .runtime
-        .query_state
-        .is_history_search_active()
-    {
+    if !app.shell.runtime.query_state.is_history_search_active() {
         app.shell.runtime.query_state.clear_history_search_results();
         app.refresh_status_line();
         return;

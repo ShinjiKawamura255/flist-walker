@@ -691,12 +691,13 @@ impl FlistWalkerApp {
                     self.invalidate_result_sort(true);
                     self.update_results();
                 }
-                if ui
+                let ignore_list_response = ui
                     .checkbox(
                         &mut self.shell.ui.ignore_list_enabled,
-                        "Ignore List",
+                        "Use Ignore List",
                     )
-                    .changed()
+                    .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
+                if ignore_list_response.changed()
                 {
                     self.apply_entry_filters(false);
                     self.mark_ui_state_dirty();

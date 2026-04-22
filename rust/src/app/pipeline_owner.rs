@@ -103,13 +103,18 @@ impl<'a> PipelineOwner<'a> {
         } else {
             self.app.shell.runtime.all_entries.as_ref()
         };
-        if source_is_all_entries
-            && self.app.shell.runtime.include_files
-            && self.app.shell.runtime.include_dirs
-        {
+        let needs_filtering = !self.app.shell.runtime.include_files
+            || !self.app.shell.runtime.include_dirs
+            || self.ignore_list_filter_active();
+        // Keep the zero-copy path only when no per-entry filter needs evaluation.
+        // Ignore List must stay in the filtered path even when files/folders are both enabled,
+        // otherwise the default all-entries snapshot leaks ignored paths back into the UI.
+        if needs_filtering {
+            self.app.shell.runtime.entries = Arc::new(self.filtered_entries(base));
+        } else if source_is_all_entries {
             self.app.shell.runtime.entries = Arc::clone(&self.app.shell.runtime.all_entries);
         } else {
-            self.app.shell.runtime.entries = Arc::new(self.filtered_entries(base));
+            self.app.shell.runtime.entries = Arc::new(base.clone());
         }
         if self.app.shell.indexing.in_progress {
             let entries = Arc::clone(&self.app.shell.runtime.entries);
@@ -228,6 +233,11 @@ impl<'a> PipelineOwner<'a> {
             .filter(|entry| self.app.is_entry_visible_for_current_filter(entry))
             .cloned()
             .collect()
+    }
+
+    fn ignore_list_filter_active(&self) -> bool {
+        self.app.shell.ui.ignore_list_enabled
+            && !self.app.shell.runtime.ignore_list_terms.is_empty()
     }
 
     fn sync_entries_from_incremental(&mut self) {
