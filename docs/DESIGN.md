@@ -67,7 +67,7 @@
 - 役割補足: `app/worker_support.rs` は worker routing の共通 helper と action target helper を担当し、`workers.rs` の registry shim から reusable helper を切り離す。
 - 役割補足: search domain は `search/mod.rs` を public API と query compile の入口に保ちつつ、prefix cache は `search/cache.rs`、execution mode と parallel tuning は `search/config.rs`、candidate collect は `search/execute.rs`、ranking/materialization は `search/rank.rs` へ分割して保守する。
 - 役割補足: indexer domain は `indexer/mod.rs` を build orchestration と nested FileList override の入口に保ちつつ、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。
-- 役割補足: runtime settings は home ディレクトリの `~/.flistwalker_config.json` に集約し、`FLISTWALKER_*` は初回 seed としてのみ使う。build/release と dev/test override は従来どおり env のまま保持し、公開 docs には config file の場所と seed-only 挙動を明記する。
+- 役割補足: runtime settings は Windows では実行ファイル横、Linux/macOS では home ディレクトリへ集約し、`FLISTWALKER_*` は初回 seed としてのみ使う。build/release と dev/test override は従来どおり env のまま保持し、公開 docs には config file の場所と seed-only 挙動を明記する。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/runtime_config.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
@@ -105,21 +105,28 @@
 - DES-016 Ignore List Filter
 - 役割: 実行中 binary と同じフォルダにある ignore list を読み取り、検索候補と空クエリ表示から除外する。
 - 実装: `rust/src/ignore_list.rs`, `rust/src/query.rs`, `rust/src/app/session.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/main.rs`
-- 役割補足: ignore list の各ルールは query の `!` 除外と同じ比較関数で評価し、既定では GUI の `Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
+- 役割補足: ignore list の各ルールは query の `!` 除外と同じ比較関数で評価し、既定では GUI の `Use Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
 - 役割補足: ignore list ファイルの読込失敗や未存在は空ルールとして扱い、検索/GUI/CLI の通常操作を止めない。
 
 - DES-017 Runtime Config Bootstrap
-- 役割: home ディレクトリの `~/.flistwalker_config.json` を runtime settings の source of truth として扱い、起動初回のみ current env を seed に自動生成する。
+- 役割: Windows では実行ファイルと同じフォルダ、Linux/macOS では home ディレクトリを runtime settings の保存先として扱い、起動初回のみ current env を seed に自動生成する。
 - 実装: `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/updater.rs`
-- 役割補足: runtime config file が存在する場合は読み込み結果を process env に反映して既存の env 駆動経路へ伝播し、存在しない場合だけ current env を取り込んでファイルを生成する。
+- 役割補足: runtime config file が存在する場合は読み込み結果を process env に反映して既存の env 駆動経路へ伝播し、存在しない場合だけ current env を取り込んでファイルを生成する。UI state、saved roots、window trace も同じ base directory 解決規則へ揃える。
+- 役割補足: Windows の旧 home-directory 配置ファイルは、新しい保存先が未作成のときだけ初回起動で移行し、既存の新配置ファイルを上書きしない。
 - 役割補足: build-time 公開鍵や release signing secret は runtime config file に含めず、既存の build / release / dev-test secret 経路に残す。
+
+- DES-018 Release Sample Ignore List
+- 役割: release asset と self-update helper が ignore list サンプルを同梱・配置し、初回利用時の導線を提供する。
+- 実装: `scripts/prepare-release.sh`, `scripts/prepare-release-linux.sh`, `scripts/prepare-release.ps1`, `scripts/prepare-release-macos.sh`, `rust/src/updater.rs`, `docs/RELEASE.md`
+- 役割補足: release packager は `*.ignore.txt.example` を sidecar asset と archive 内に含め、self-update helper は実行バイナリ隣に ignore list がない場合のみ sample を配置する。
+- 役割補足: 既存 `flistwalker.ignore.txt` を上書きせず、sample 配置失敗は本体更新を妨げない。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
 - Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
-- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) と `SHA256SUMS.sig` / `SHA256SUMS` を取得 -> 署名検証 -> checksum 検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体と sidecar 文書を同一ディレクトリへ配置して再起動。
+- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`, `*.ignore.txt.example`) と `SHA256SUMS.sig` / `SHA256SUMS` を取得 -> 署名検証 -> checksum 検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体と sidecar 文書を同一ディレクトリへ配置して再起動。
   `FLISTWALKER_DISABLE_SELF_UPDATE=1`、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合は update flow を起動せず、通常起動のみ行う。
 
 ## Data model
@@ -295,3 +302,4 @@
 - DES-015 -> TC-100 (SP-010, SP-014)
 - DES-016 -> TC-110 (SP-015)
 - DES-017 -> TC-111 (SP-016)
+- DES-018 -> TC-113, TC-114 (SP-017)

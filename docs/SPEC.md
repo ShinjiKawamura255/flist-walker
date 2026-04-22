@@ -207,7 +207,7 @@
 - MUST: 実行中 binary と同じフォルダにある `flistwalker.ignore.txt` を ignore list ファイルとして読み取れる。
 - MUST: ignore list ファイルは 1 行 1 ルールを基本とし、空行と `#` コメント行を無視しなければならない。
 - MUST: ignore list の各ルールは、検索クエリの `!` 除外と同じ比較ルールで候補を除外しなければならない。
-- MUST: GUI は `Ignore List` チェックボックスを提供し、既定で有効にしなければならない。
+- MUST: GUI は `Use Ignore List` チェックボックスを提供し、既定で有効にしなければならない。
 - MUST: チェックボックス有効時は、ignore list に一致する候補を検索結果と空クエリ表示から除外しなければならない。
 - MUST: チェックボックス無効時は、ignore list の除外を適用してはならない。
 - SHOULD: CLI モードでも同じ ignore list ファイルを適用できる。
@@ -220,9 +220,17 @@
 - ignore list ファイルが存在しない、読み取りできない、または空でも正常終了する。
 - 1 つのルールが他のルールにマッチしなくても、残りのルールは継続して評価する。
 
+### Regression Guard
+- 発生条件: `Use Ignore List` が有効で、`Files` / `Folders` が両方有効な既定状態のまま `all_entries` の高速経路を通ると、ignore 判定が省略されて `old` や `~` を含む候補が結果へ戻る。
+- 期待動作: ignore list は空クエリ表示と検索結果の両方で維持され、`Files` / `Folders` 両有効でも除外候補は表示されない。
+- 非対象範囲: `Use Ignore List` を無効化した場合の候補除外。
+- 関連テストID: TC-110, TC-112.
+
 ## SP-016 Runtime Config Bootstrap
 ### Requirements
-- MUST: ツールは home ディレクトリの `~/.flistwalker_config.json` を runtime config file として扱わなければならない。
+- MUST: ツールは runtime config file と関連する永続化ファイルを、Windows では実行ファイルと同じフォルダ、Linux/macOS では home ディレクトリへ保存しなければならない。
+- MUST: runtime config file は Windows では実行ファイルと同じフォルダ、Linux/macOS では `~/.flistwalker_config.json` を使わなければならない。
+- MUST: Windows の旧バージョンで home directory に残っている同名ファイルは、新しい保存先に同名ファイルが存在しない場合に限り、新しい保存先へ移行しなければならない。
 - MUST: runtime config file が存在しない場合、ツールは起動時に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、update policy を含めなければならない。
@@ -236,6 +244,22 @@
 ### Edge / Error
 - runtime config file が破損していても、ツールは安全に default / current env へフォールバックできる。
 - seed-only 挙動のため、runtime config file が作成済みの場合は後から環境変数を変えても runtime settings は変化しない。
+- Windows の実行ファイル横にある UI state / saved roots / window trace の各ファイルは、同じ保存先ルールで扱う。
+
+## SP-017 Release Sample Ignore List
+### Requirements
+- MUST: release scripts は各 platform の release asset bundle に `*.ignore.txt.example` を同梱しなければならない。
+- MUST: self-update は release asset bundle に sample ignore list が含まれている場合、実行中 binary と同じフォルダに `flistwalker.ignore.txt` が存在しないときだけ sample を `flistwalker.ignore.txt.example` として配置しなければならない。
+- MUST: 既存の `flistwalker.ignore.txt` が存在する場合、sample 配置は既存 ignore list を上書きしてはならない。
+- SHOULD: sample ignore list のダウンロードや配置に失敗しても、本体更新が成功しているなら update flow を中断してはならない。
+
+### Preconditions / Postconditions
+- Preconditions: self-update candidate に sample ignore list asset が含まれている、または release bundle に sample file が含まれている。
+- Postconditions: sample は利用者が見つけやすい場所に配置され、既存 ignore list は保持される。
+
+### Edge / Error
+- sample asset が存在しない release でも、通常の self-update は継続可能でなければならない。
+- 実行中 binary の隣に ignore list が既にある場合は sample を配置しない。
 
 ## SP-013 検索結果ソート
 ### Requirements

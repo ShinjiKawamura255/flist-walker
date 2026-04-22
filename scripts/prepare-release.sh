@@ -17,6 +17,7 @@ Notes:
     - FlistWalker-<version>-windows-x86_64.README.txt
     - FlistWalker-<version>-windows-x86_64.LICENSE.txt
     - FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt
+    - FlistWalker-<version>-windows-x86_64.ignore.txt.example
     - SHA256SUMS
     - SHA256SUMS.sig (when FLISTWALKER_UPDATE_SIGNING_KEY_HEX is set)
 USAGE
@@ -41,8 +42,10 @@ ZIP_EXE_NAME="flistwalker.exe"
 README_SIDE_NAME="${ASSET_BASENAME}.README.txt"
 LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
 NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
+IGNORE_SAMPLE_SIDE_NAME="${ASSET_BASENAME}.ignore.txt.example"
 ROOT_LICENSE="${REPO_DIR}/LICENSE"
 ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
+ROOT_IGNORE_SAMPLE="${REPO_DIR}/flistwalker.ignore.txt.example"
 
 if [[ ! -f "${SOURCE_EXE}" ]]; then
   echo "EXE が見つかりません: ${SOURCE_EXE}" >&2
@@ -53,6 +56,10 @@ if [[ ! -f "${ROOT_LICENSE}" || ! -f "${ROOT_NOTICES}" ]]; then
   echo "LICENSE / THIRD_PARTY_NOTICES.txt が見つかりません。" >&2
   exit 1
 fi
+if [[ ! -f "${ROOT_IGNORE_SAMPLE}" ]]; then
+  echo "flistwalker.ignore.txt.example が見つかりません。" >&2
+  exit 1
+fi
 
 mkdir -p "${OUT_DIR}"
 WORK_DIR="$(mktemp -d)"
@@ -60,6 +67,7 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_EXE}" "${OUT_DIR}/${EXE_NAME}"
 cp -f "${SOURCE_EXE}" "${WORK_DIR}/${ZIP_EXE_NAME}"
+cp -f "${ROOT_IGNORE_SAMPLE}" "${OUT_DIR}/${IGNORE_SAMPLE_SIDE_NAME}"
 cat > "${OUT_DIR}/${README_SIDE_NAME}" <<README
 FlistWalker ${VERSION}
 
@@ -91,10 +99,12 @@ Ignore list:
 - Put flistwalker.ignore.txt in the same folder as the executable.
 - Blank lines and lines starting with # are ignored.
 - Each token is treated like a search exclusion, so old and ~ behave like !old !~.
-- The Ignore List checkbox controls whether these rules apply. It is on by default.
+- The Use Ignore List checkbox controls whether these rules apply. It is on by default.
+- A sample ignore list is included as flistwalker.ignore.txt.example.
 
 Runtime config:
-- Runtime settings are stored in ~/.flistwalker_config.json in your home directory.
+- Runtime settings are stored beside the executable on Windows, and in ~/.flistwalker_config.json on Linux/macOS.
+- If you upgrade from an older Windows build, the first launch will automatically move legacy home-directory files into the new executable-side location when the new files do not already exist.
 - On first launch, if the file is missing, FlistWalker creates it from the current FLISTWALKER_* environment values.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
 - The file is JSON and can be edited directly.
@@ -157,10 +167,11 @@ Ignore List:
 - flistwalker.ignore.txt を実行ファイルと同じフォルダに置きます。
 - 空行と # で始まる行は無視されます。
 - 各トークンは検索の除外条件として扱われるため、old や ~ は !old !~ と同じ挙動になります。
-- Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
+- Use Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
+- サンプルの ignore list は flistwalker.ignore.txt.example として同梱しています。
 
 Runtime config:
-- runtime settings は home directory の ~/.flistwalker_config.json に保存されます。
+- runtime settings は Windows では実行ファイルと同じフォルダ、Linux/macOS では home directory の ~/.flistwalker_config.json に保存されます。
 - 初回起動でファイルが無い場合は、現在の FLISTWALKER_* 環境変数を seed にして自動生成します。
 - 一度ファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
  - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
@@ -174,21 +185,22 @@ cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
 cp -f "${OUT_DIR}/${README_SIDE_NAME}" "${WORK_DIR}/README.txt"
 cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
 cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
+cp -f "${ROOT_IGNORE_SAMPLE}" "${WORK_DIR}/flistwalker.ignore.txt.example"
 
 (
   cd "${WORK_DIR}"
-  zip -q -9 "${OUT_DIR}/${ZIP_NAME}" "${ZIP_EXE_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt
+  zip -q -9 "${OUT_DIR}/${ZIP_NAME}" "${ZIP_EXE_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt flistwalker.ignore.txt.example
 )
 
 if command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    sha256sum "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" "${IGNORE_SAMPLE_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" "${IGNORE_SAMPLE_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "sha256sum/shasum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -206,6 +218,7 @@ echo "- ${ZIP_NAME}"
 echo "- ${README_SIDE_NAME}"
 echo "- ${LICENSE_SIDE_NAME}"
 echo "- ${NOTICES_SIDE_NAME}"
+echo "- ${IGNORE_SAMPLE_SIDE_NAME}"
 echo "- SHA256SUMS"
 if [[ -n "${FLISTWALKER_UPDATE_SIGNING_KEY_HEX:-}" ]]; then
   echo "- SHA256SUMS.sig"

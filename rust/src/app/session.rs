@@ -1,6 +1,7 @@
 use super::FlistWalkerApp;
 use crate::fs_atomic::write_text_atomic;
 use crate::path_utils::{normalize_windows_path_buf, path_key};
+use crate::runtime_config::{legacy_settings_base_dir, migrate_file_if_needed, settings_base_dir};
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -118,26 +119,19 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn ui_state_file_path() -> Option<PathBuf> {
-        #[cfg(windows)]
-        {
-            if let Some(base) = std::env::var_os("USERPROFILE") {
-                return Some(PathBuf::from(base).join(".flistwalker_ui_state.json"));
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            if let Some(base) = std::env::var_os("HOME") {
-                return Some(PathBuf::from(base).join(".flistwalker_ui_state.json"));
-            }
-        }
-        None
+        settings_base_dir().map(|base| Self::ui_state_file_path_in(&base))
+    }
+
+    fn ui_state_file_path_in(base: &Path) -> PathBuf {
+        base.join(".flistwalker_ui_state.json")
     }
 
     pub(super) fn load_ui_state() -> UiState {
         let Some(path) = Self::ui_state_file_path() else {
             return UiState::default();
         };
-        Self::read_ui_state_from_path(&path)
+        let source_path = Self::migrate_or_legacy_ui_state_path(&path);
+        Self::read_ui_state_from_path(&source_path)
     }
 
     fn read_ui_state_from_path(path: &Path) -> UiState {
@@ -297,25 +291,18 @@ impl FlistWalkerApp {
     }
 
     fn saved_roots_file_path() -> Option<PathBuf> {
-        #[cfg(windows)]
-        {
-            if let Some(base) = std::env::var_os("USERPROFILE") {
-                return Some(PathBuf::from(base).join(".flistwalker_roots.txt"));
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            if let Some(base) = std::env::var_os("HOME") {
-                return Some(PathBuf::from(base).join(".flistwalker_roots.txt"));
-            }
-        }
-        None
+        settings_base_dir().map(|base| Self::saved_roots_file_path_in(&base))
+    }
+
+    fn saved_roots_file_path_in(base: &Path) -> PathBuf {
+        base.join(".flistwalker_roots.txt")
     }
 
     pub(super) fn load_saved_roots() -> Vec<PathBuf> {
         let Some(file) = Self::saved_roots_file_path() else {
             return Vec::new();
         };
+        let file = Self::migrate_or_legacy_saved_roots_path(&file);
         let Ok(text) = fs::read_to_string(file) else {
             return Vec::new();
         };
@@ -357,6 +344,33 @@ impl FlistWalkerApp {
             format!("{text}\n")
         };
         let _ = write_text_atomic(&file, &text_to_write);
+    }
+
+    fn migrate_or_legacy_ui_state_path(current_path: &Path) -> PathBuf {
+        let legacy_path = legacy_settings_base_dir().map(|base| Self::ui_state_file_path_in(&base));
+        Self::migrate_or_legacy_path(current_path, legacy_path.as_deref())
+    }
+
+    fn migrate_or_legacy_saved_roots_path(current_path: &Path) -> PathBuf {
+        let legacy_path =
+            legacy_settings_base_dir().map(|base| Self::saved_roots_file_path_in(&base));
+        Self::migrate_or_legacy_path(current_path, legacy_path.as_deref())
+    }
+
+    fn migrate_or_legacy_path(current_path: &Path, legacy_path: Option<&Path>) -> PathBuf {
+        let Some(legacy_path) = legacy_path else {
+            return current_path.to_path_buf();
+        };
+        if current_path.exists() {
+            return current_path.to_path_buf();
+        }
+        if migrate_file_if_needed(current_path, legacy_path) {
+            return current_path.to_path_buf();
+        }
+        if legacy_path.exists() {
+            return legacy_path.to_path_buf();
+        }
+        current_path.to_path_buf()
     }
 
     pub(super) fn add_current_root_to_saved(&mut self) {
@@ -694,5 +708,88 @@ impl FlistWalkerApp {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn ui_state_file_path_in_joins_base_directory() {
+        let base = PathBuf::from("/tmp/flistwalker-settings");
+        assert_eq!(
+            FlistWalkerApp::ui_state_file_path_in(&base),
+            base.join(".flistwalker_ui_state.json")
+        );
+    }
+
+    #[test]
+    fn saved_roots_file_path_in_joins_base_directory() {
+        let base = PathBuf::from("/tmp/flistwalker-settings");
+        assert_eq!(
+            FlistWalkerApp::saved_roots_file_path_in(&base),
+            base.join(".flistwalker_roots.txt")
+        );
+    }
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        env::temp_dir().join(format!("flistwalker-session-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn migrate_or_legacy_ui_state_path_prefers_current_and_moves_legacy_when_missing() {
+        let base = temp_dir("ui-state");
+        let legacy_base = base.join("legacy");
+        let current_base = base.join("current");
+        fs::create_dir_all(&legacy_base).expect("create legacy");
+        fs::create_dir_all(&current_base).expect("create current");
+        let current_path = FlistWalkerApp::ui_state_file_path_in(&current_base);
+        let legacy_path = FlistWalkerApp::ui_state_file_path_in(&legacy_base);
+        fs::write(&legacy_path, "{\"ignore_list_enabled\":false}").expect("write legacy");
+
+        let resolved = FlistWalkerApp::migrate_or_legacy_ui_state_path(&current_path);
+        #[cfg(windows)]
+        {
+            assert_eq!(resolved, current_path);
+            assert!(current_path.exists());
+            assert!(!legacy_path.exists());
+        }
+
+        #[cfg(not(windows))]
+        {
+            assert_eq!(resolved, current_path);
+            assert!(!current_path.exists());
+            assert!(legacy_path.exists());
+        }
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn migrate_or_legacy_saved_roots_path_leaves_existing_current_file_untouched() {
+        let base = temp_dir("saved-roots");
+        let legacy_base = base.join("legacy");
+        let current_base = base.join("current");
+        fs::create_dir_all(&legacy_base).expect("create legacy");
+        fs::create_dir_all(&current_base).expect("create current");
+        let current_path = FlistWalkerApp::saved_roots_file_path_in(&current_base);
+        let legacy_path = FlistWalkerApp::saved_roots_file_path_in(&legacy_base);
+        fs::write(&legacy_path, "legacy-root").expect("write legacy");
+        fs::write(&current_path, "current-root").expect("write current");
+
+        let resolved = FlistWalkerApp::migrate_or_legacy_saved_roots_path(&current_path);
+        assert_eq!(resolved, current_path);
+        assert!(current_path.exists());
+        assert!(legacy_path.exists());
+
+        let _ = fs::remove_dir_all(&base);
     }
 }

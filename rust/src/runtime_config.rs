@@ -109,7 +109,10 @@ impl RuntimeConfig {
         set_env_bool(HISTORY_PERSIST_ENV, self.history_persist_disabled);
         set_env_bool(RESTORE_TABS_ENV, self.restore_tabs_enabled);
         set_env_value(UPDATE_FEED_URL_ENV, self.update_feed_url.clone());
-        set_env_bool(UPDATE_ALLOW_SAME_VERSION_ENV, self.update_allow_same_version);
+        set_env_bool(
+            UPDATE_ALLOW_SAME_VERSION_ENV,
+            self.update_allow_same_version,
+        );
         set_env_bool(UPDATE_ALLOW_DOWNGRADE_ENV, self.update_allow_downgrade);
         set_env_bool(DISABLE_SELF_UPDATE_ENV, self.disable_self_update);
         if self.force_update_check_failure.trim().is_empty() {
@@ -123,13 +126,23 @@ impl RuntimeConfig {
     }
 
     pub fn load_or_seed() -> Self {
-        let Some(path) = runtime_config_file_path() else {
+        Self::load_or_seed_at(runtime_config_file_path())
+    }
+
+    fn load_or_seed_at(path: Option<PathBuf>) -> Self {
+        let Some(path) = path else {
             let config = Self::from_current_env();
             config.apply_to_process_env();
             return config;
         };
 
+        let legacy_path = legacy_runtime_config_file_path(&path);
         if let Some(config) = load_runtime_config_from_path(&path) {
+            config.apply_to_process_env();
+            return config;
+        }
+
+        if let Some(config) = try_load_or_migrate_runtime_config(&path, legacy_path.as_deref()) {
             config.apply_to_process_env();
             return config;
         }
@@ -159,11 +172,114 @@ impl RuntimeConfig {
 }
 
 pub fn runtime_config_file_path() -> Option<PathBuf> {
-    home_dir().map(|base| base.join(RUNTIME_CONFIG_FILE_NAME))
+    settings_base_dir().map(|base| runtime_config_file_path_in(&base))
 }
 
 pub fn initialize_runtime_config() -> RuntimeConfig {
     RuntimeConfig::load_or_seed()
+}
+
+pub fn settings_base_dir() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        if let Some(base) = current_exe_dir() {
+            return Some(base);
+        }
+    }
+    home_dir()
+}
+
+pub fn legacy_settings_base_dir() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        home_dir()
+    }
+
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
+pub fn runtime_config_file_path_in(base: &Path) -> PathBuf {
+    base.join(RUNTIME_CONFIG_FILE_NAME)
+}
+
+pub fn legacy_runtime_config_file_path(current_path: &Path) -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        let legacy_base = home_dir()?;
+        let legacy_path = runtime_config_file_path_in(&legacy_base);
+        if legacy_path == current_path {
+            return None;
+        }
+        Some(legacy_path)
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = current_path;
+        None
+    }
+}
+
+pub(crate) fn migrate_file_if_needed(current_path: &Path, legacy_path: &Path) -> bool {
+    if current_path.exists() || !legacy_path.exists() {
+        return false;
+    }
+    if let Some(parent) = current_path.parent() {
+        if let Err(err) = fs::create_dir_all(parent) {
+            warn!(
+                "failed to prepare destination directory for {}: {}",
+                current_path.display(),
+                err
+            );
+            return false;
+        }
+    }
+    match fs::rename(legacy_path, current_path) {
+        Ok(_) => true,
+        Err(rename_err) => match fs::copy(legacy_path, current_path) {
+            Ok(_) => {
+                if let Err(remove_err) = remove_file_best_effort(legacy_path) {
+                    warn!(
+                        "copied legacy file from {} to {}, but failed to remove original: {}",
+                        legacy_path.display(),
+                        current_path.display(),
+                        remove_err
+                    );
+                }
+                true
+            }
+            Err(copy_err) => {
+                warn!(
+                    "failed to migrate legacy file from {} to {}: rename error: {}; copy error: {}",
+                    legacy_path.display(),
+                    current_path.display(),
+                    rename_err,
+                    copy_err
+                );
+                false
+            }
+        },
+    }
+}
+
+fn remove_file_best_effort(path: &Path) -> std::io::Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            if let Ok(metadata) = fs::metadata(path) {
+                let mut permissions = metadata.permissions();
+                if permissions.readonly() {
+                    permissions.set_readonly(false);
+                    let _ = fs::set_permissions(path, permissions);
+                    return fs::remove_file(path);
+                }
+            }
+            Err(err)
+        }
+    }
 }
 
 pub fn load_runtime_config_from_path(path: &Path) -> Option<RuntimeConfig> {
@@ -172,8 +288,26 @@ pub fn load_runtime_config_from_path(path: &Path) -> Option<RuntimeConfig> {
 }
 
 pub fn save_runtime_config_to_path(path: &Path, config: &RuntimeConfig) -> Result<()> {
-    let text = serde_json::to_string_pretty(config).context("failed to serialize runtime config")?;
+    let text =
+        serde_json::to_string_pretty(config).context("failed to serialize runtime config")?;
     write_text_atomic(path, &text).context("failed to write runtime config")
+}
+
+fn try_load_or_migrate_runtime_config(
+    current_path: &Path,
+    legacy_path: Option<&Path>,
+) -> Option<RuntimeConfig> {
+    let legacy_path = legacy_path?;
+    if current_path.exists() {
+        return None;
+    }
+    if migrate_file_if_needed(current_path, legacy_path) {
+        return load_runtime_config_from_path(current_path);
+    }
+    if legacy_path.exists() {
+        return load_runtime_config_from_path(legacy_path);
+    }
+    None
 }
 
 fn default_search_threads() -> usize {
@@ -184,8 +318,12 @@ fn default_search_threads() -> usize {
 }
 
 fn default_window_trace_path() -> String {
-    home_dir()
-        .map(|base| base.join(WINDOW_TRACE_LOG_NAME).to_string_lossy().to_string())
+    settings_base_dir()
+        .map(|base| {
+            base.join(WINDOW_TRACE_LOG_NAME)
+                .to_string_lossy()
+                .to_string()
+        })
         .unwrap_or_default()
 }
 
@@ -221,6 +359,13 @@ fn set_env_value(name: &str, value: String) {
 
 fn set_env_bool(name: &str, value: bool) {
     env::set_var(name, if value { "1" } else { "0" });
+}
+
+#[cfg(windows)]
+fn current_exe_dir() -> Option<PathBuf> {
+    env::current_exe()
+        .ok()
+        .and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
 fn home_dir() -> Option<PathBuf> {
@@ -295,6 +440,7 @@ mod tests {
             SEARCH_PARALLEL_THRESHOLD_ENV,
             RESTORE_TABS_ENV,
             WALKER_MAX_ENTRIES_ENV,
+            WINDOW_TRACE_PATH_ENV,
         ]);
         env::set_var("HOME", &home);
         env::set_var("USERPROFILE", &home);
@@ -302,8 +448,8 @@ mod tests {
         env::set_var(RESTORE_TABS_ENV, "1");
         env::set_var(WALKER_MAX_ENTRIES_ENV, "222");
 
-        let config = RuntimeConfig::load_or_seed();
-        let path = home.join(RUNTIME_CONFIG_FILE_NAME);
+        let path = runtime_config_file_path_in(&home);
+        let config = RuntimeConfig::load_or_seed_at(Some(path.clone()));
 
         assert!(path.exists());
         assert_eq!(config.search_parallel_threshold, 111);
@@ -334,6 +480,7 @@ mod tests {
             "USERPROFILE",
             SEARCH_PARALLEL_THRESHOLD_ENV,
             RESTORE_TABS_ENV,
+            WINDOW_TRACE_PATH_ENV,
         ]);
         env::set_var("HOME", &home);
         env::set_var("USERPROFILE", &home);
@@ -345,15 +492,44 @@ mod tests {
             restore_tabs_enabled: false,
             ..RuntimeConfig::default()
         };
-        config
-            .save_to_path(&home.join(RUNTIME_CONFIG_FILE_NAME))
-            .expect("save config");
+        let path = runtime_config_file_path_in(&home);
+        config.save_to_path(&path).expect("save config");
 
-        let loaded = RuntimeConfig::load_or_seed();
+        let loaded = RuntimeConfig::load_or_seed_at(Some(path));
         assert_eq!(loaded.search_parallel_threshold, 7);
         assert!(!loaded.restore_tabs_enabled);
-        assert_eq!(env::var(SEARCH_PARALLEL_THRESHOLD_ENV).expect("env set"), "7");
+        assert_eq!(
+            env::var(SEARCH_PARALLEL_THRESHOLD_ENV).expect("env set"),
+            "7"
+        );
         assert_eq!(env::var(RESTORE_TABS_ENV).expect("env set"), "0");
+
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn settings_base_dir_prefers_current_exe_on_windows_or_home_elsewhere() {
+        let _guard = locked_env();
+        let home = test_home("base-dir");
+        fs::create_dir_all(&home).expect("create home");
+        let _restore = EnvRestore::capture(&["HOME", "USERPROFILE"]);
+        env::set_var("HOME", &home);
+        env::set_var("USERPROFILE", &home);
+
+        #[cfg(windows)]
+        {
+            let expected = env::current_exe()
+                .expect("current exe")
+                .parent()
+                .expect("exe dir")
+                .to_path_buf();
+            assert_eq!(settings_base_dir().as_deref(), Some(expected.as_path()));
+        }
+
+        #[cfg(not(windows))]
+        {
+            assert_eq!(settings_base_dir(), Some(home.clone()));
+        }
 
         let _ = fs::remove_dir_all(&home);
     }
@@ -367,10 +543,56 @@ mod tests {
         fs::write(&path, "{}").expect("write config");
 
         let loaded = load_runtime_config_from_path(&path).expect("load config");
-        assert_eq!(loaded.search_parallel_threshold, SEARCH_PARALLEL_THRESHOLD_DEFAULT);
+        assert_eq!(
+            loaded.search_parallel_threshold,
+            SEARCH_PARALLEL_THRESHOLD_DEFAULT
+        );
         assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
         assert_eq!(loaded.walker_threads, WALKER_THREADS_DEFAULT);
 
         let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn migrate_file_if_needed_moves_legacy_file_into_current_location() {
+        let _guard = locked_env();
+        let base = test_home("migrate");
+        let legacy_base = base.join("legacy");
+        let current_base = base.join("current");
+        fs::create_dir_all(&legacy_base).expect("create legacy dir");
+        fs::create_dir_all(&current_base).expect("create current dir");
+        let legacy_path = runtime_config_file_path_in(&legacy_base);
+        let current_path = runtime_config_file_path_in(&current_base);
+        fs::write(&legacy_path, "{\"walker_threads\":7}").expect("write legacy config");
+
+        assert!(migrate_file_if_needed(&current_path, &legacy_path));
+        assert!(current_path.exists());
+        assert!(!legacy_path.exists());
+        let loaded = load_runtime_config_from_path(&current_path).expect("load migrated config");
+        assert_eq!(loaded.walker_threads, 7);
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn migrate_file_if_needed_does_not_overwrite_existing_current_file() {
+        let _guard = locked_env();
+        let base = test_home("migrate-existing");
+        let legacy_base = base.join("legacy");
+        let current_base = base.join("current");
+        fs::create_dir_all(&legacy_base).expect("create legacy dir");
+        fs::create_dir_all(&current_base).expect("create current dir");
+        let legacy_path = runtime_config_file_path_in(&legacy_base);
+        let current_path = runtime_config_file_path_in(&current_base);
+        fs::write(&legacy_path, "{\"walker_threads\":7}").expect("write legacy config");
+        fs::write(&current_path, "{\"walker_threads\":9}").expect("write current config");
+
+        assert!(!migrate_file_if_needed(&current_path, &legacy_path));
+        assert!(current_path.exists());
+        assert!(legacy_path.exists());
+        let loaded = load_runtime_config_from_path(&current_path).expect("load current config");
+        assert_eq!(loaded.walker_threads, 9);
+
+        let _ = fs::remove_dir_all(&base);
     }
 }

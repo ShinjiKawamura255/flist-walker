@@ -3,6 +3,7 @@ use super::{
     ResultSortMode,
 };
 use crate::path_utils::normalize_windows_path_buf;
+use crate::runtime_config::{legacy_settings_base_dir, migrate_file_if_needed, settings_base_dir};
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -116,19 +117,35 @@ impl FlistWalkerApp {
                 return Some(path);
             }
         }
-        #[cfg(windows)]
-        {
-            if let Some(base) = std::env::var_os("USERPROFILE") {
-                return Some(PathBuf::from(base).join(".flistwalker_window_trace.log"));
-            }
+        let current = settings_base_dir().map(|base| Self::window_trace_path_in(&base))?;
+        let legacy = legacy_settings_base_dir().map(|base| Self::window_trace_path_in(&base));
+        Some(Self::migrate_or_legacy_window_trace_path(
+            current,
+            legacy.as_deref(),
+        ))
+    }
+
+    fn window_trace_path_in(base: &Path) -> PathBuf {
+        base.join(".flistwalker_window_trace.log")
+    }
+
+    fn migrate_or_legacy_window_trace_path(
+        current_path: PathBuf,
+        legacy_path: Option<&Path>,
+    ) -> PathBuf {
+        let Some(legacy_path) = legacy_path else {
+            return current_path;
+        };
+        if current_path.exists() {
+            return current_path;
         }
-        #[cfg(not(windows))]
-        {
-            if let Some(base) = std::env::var_os("HOME") {
-                return Some(PathBuf::from(base).join(".flistwalker_window_trace.log"));
-            }
+        if migrate_file_if_needed(&current_path, legacy_path) {
+            return current_path;
         }
-        None
+        if legacy_path.exists() {
+            return legacy_path.to_path_buf();
+        }
+        current_path
     }
 
     pub(super) fn append_window_trace(event: &str, details: &str) {
@@ -281,5 +298,52 @@ impl FlistWalkerApp {
     #[cfg(test)]
     pub(super) fn worker_join_timeout() -> Duration {
         Self::WORKER_JOIN_TIMEOUT
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        env::temp_dir().join(format!("flistwalker-shell-{name}-{nonce}"))
+    }
+
+    #[test]
+    fn window_trace_path_in_joins_base_directory() {
+        let base = PathBuf::from("/tmp/flistwalker-settings");
+        assert_eq!(
+            FlistWalkerApp::window_trace_path_in(&base),
+            base.join(".flistwalker_window_trace.log")
+        );
+    }
+
+    #[test]
+    fn migrate_or_legacy_window_trace_path_moves_legacy_when_current_missing() {
+        let base = temp_dir("trace");
+        let legacy_base = base.join("legacy");
+        let current_base = base.join("current");
+        fs::create_dir_all(&legacy_base).expect("create legacy");
+        fs::create_dir_all(&current_base).expect("create current");
+        let current_path = FlistWalkerApp::window_trace_path_in(&current_base);
+        let legacy_path = FlistWalkerApp::window_trace_path_in(&legacy_base);
+        fs::write(&legacy_path, "legacy-trace").expect("write legacy");
+
+        let resolved = FlistWalkerApp::migrate_or_legacy_window_trace_path(
+            current_path.clone(),
+            Some(&legacy_path),
+        );
+        assert_eq!(resolved, current_path);
+        assert!(current_path.exists());
+        assert!(!legacy_path.exists());
+
+        let _ = fs::remove_dir_all(&base);
     }
 }

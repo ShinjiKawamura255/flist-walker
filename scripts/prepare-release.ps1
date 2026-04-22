@@ -18,9 +18,11 @@ $ZipExeName = "flistwalker.exe"
 $ReadmeSideName = "$AssetBaseName.README.txt"
 $LicenseSideName = "$AssetBaseName.LICENSE.txt"
 $NoticesSideName = "$AssetBaseName.THIRD_PARTY_NOTICES.txt"
+$IgnoreSampleSideName = "$AssetBaseName.ignore.txt.example"
 $OutDir = Join-Path $RepoDir "dist\$Version"
 $RootLicense = Join-Path $RepoDir 'LICENSE'
 $RootNotices = Join-Path $RepoDir 'THIRD_PARTY_NOTICES.txt'
+$RootIgnoreSample = Join-Path $RepoDir 'flistwalker.ignore.txt.example'
 
 if (-not (Test-Path -LiteralPath $SourceExe)) {
     Write-Error "EXE not found: $SourceExe`nRun scripts/build-rust-win.sh first."
@@ -28,6 +30,10 @@ if (-not (Test-Path -LiteralPath $SourceExe)) {
 }
 if (-not (Test-Path -LiteralPath $RootLicense) -or -not (Test-Path -LiteralPath $RootNotices)) {
     Write-Error "LICENSE / THIRD_PARTY_NOTICES.txt not found."
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $RootIgnoreSample)) {
+    Write-Error "flistwalker.ignore.txt.example not found."
     exit 1
 }
 
@@ -38,6 +44,7 @@ New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
 try {
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $OutDir $ExeName) -Force
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ZipExeName) -Force
+    Copy-Item -LiteralPath $RootIgnoreSample -Destination (Join-Path $OutDir $IgnoreSampleSideName) -Force
     $ReadmeSidePath = Join-Path $OutDir $ReadmeSideName
     @"
 FlistWalker $Version
@@ -70,10 +77,12 @@ Ignore list:
 - Put flistwalker.ignore.txt in the same folder as the executable.
 - Blank lines and lines starting with # are ignored.
 - Each token is treated like a search exclusion, so old and ~ behave like !old !~
-- The Ignore List checkbox controls whether these rules apply. It is on by default.
+- The Use Ignore List checkbox controls whether these rules apply. It is on by default.
+- A sample ignore list is included as flistwalker.ignore.txt.example.
 
 Runtime config:
-- Runtime settings are stored in ~/.flistwalker_config.json in your home directory.
+- Runtime settings are stored beside the executable on Windows, and in ~/.flistwalker_config.json on Linux/macOS.
+- If you upgrade from an older Windows build, the first launch will automatically move legacy home-directory files into the new executable-side location when the new files do not already exist.
 - On first launch, if the file is missing, FlistWalker creates it from the current FLISTWALKER_* environment values.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
 - The file is JSON and can be edited directly.
@@ -136,10 +145,11 @@ Ignore List:
 - flistwalker.ignore.txt を実行ファイルと同じフォルダに置きます。
 - 空行と # で始まる行は無視されます。
 - 各トークンは検索の除外条件として扱われるため、old や ~ は !old !~ と同じ挙動になります。
-- Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
+- Use Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
+- サンプルの ignore list は flistwalker.ignore.txt.example として同梱しています。
 
 Runtime config:
-- runtime settings は home directory の ~/.flistwalker_config.json に保存されます。
+- runtime settings は Windows では実行ファイルと同じフォルダ、Linux/macOS では home directory の ~/.flistwalker_config.json に保存されます。
 - 初回起動でファイルが無い場合は、現在の FLISTWALKER_* 環境変数を seed にして自動生成します。
 - 一度ファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
  - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
@@ -153,18 +163,20 @@ Runtime config:
     Copy-Item -LiteralPath $ReadmeSidePath -Destination (Join-Path $WorkDir 'README.txt') -Force
     Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $WorkDir 'LICENSE.txt') -Force
     Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -Force
+    Copy-Item -LiteralPath $RootIgnoreSample -Destination (Join-Path $WorkDir 'flistwalker.ignore.txt.example') -Force
 
     $ZipPath = Join-Path $OutDir $ZipName
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
-    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmeSidePath, (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
+    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmeSidePath, (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt'), (Join-Path $WorkDir 'flistwalker.ignore.txt.example') -DestinationPath $ZipPath -CompressionLevel Optimal
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
     $ReadmeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ReadmeSidePath).Hash.ToLowerInvariant()
     $LicenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $LicenseSideName)).Hash.ToLowerInvariant()
     $NoticesHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $NoticesSideName)).Hash.ToLowerInvariant()
+    $IgnoreSampleHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $IgnoreSampleSideName)).Hash.ToLowerInvariant()
     $SumsPath = Join-Path $OutDir 'SHA256SUMS'
 
     @(
@@ -173,6 +185,7 @@ Runtime config:
         "$ReadmeHash  $ReadmeSideName"
         "$LicenseHash  $LicenseSideName"
         "$NoticesHash  $NoticesSideName"
+        "$IgnoreSampleHash  $IgnoreSampleSideName"
     ) | Set-Content -LiteralPath $SumsPath -Encoding ASCII
 
     if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
@@ -196,6 +209,7 @@ Write-Host "- $ZipName"
 Write-Host "- $ReadmeSideName"
 Write-Host "- $LicenseSideName"
 Write-Host "- $NoticesSideName"
+Write-Host "- $IgnoreSampleSideName"
 Write-Host "- SHA256SUMS"
 if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
     Write-Host "- SHA256SUMS.sig"

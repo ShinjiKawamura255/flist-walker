@@ -23,7 +23,7 @@ Language docs:
 - Shared search history across tabs
 - `Create File List` generation from the current root
 - Ignore list support via `flistwalker.ignore.txt` next to the executable
-- Runtime config file support via `~/.flistwalker_config.json`
+- Runtime config and session file support beside the executable on Windows, or via `~/.flistwalker_config.json` on Linux/macOS
 
 ## Quick Start
 
@@ -68,7 +68,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 ## Query History
 
 - Search history is shared across tabs and persisted up to 100 entries.
-- History is saved to a plain-text file under the home directory. Avoid putting sensitive data in search terms or paths.
+- History is saved to a plain-text file beside the executable on Windows, or under the home directory on Linux/macOS. Avoid putting sensitive data in search terms or paths.
 - Set `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` to disable history load and save.
 - Press `Ctrl+R` to enter history search mode and fuzzy-search the same query box.
 - While in history search, `Enter` / `Ctrl+J` / `Ctrl+M` loads the selected history entry into the search box, and `Esc` / `Ctrl+G` cancels and restores the previous query.
@@ -84,9 +84,11 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
 ## Runtime Configuration
 
-- Runtime settings are stored in `~/.flistwalker_config.json` in your home directory.
-- On first launch, if the file is missing, FlistWalker creates it from the current `FLISTWALKER_*` environment values.
+- On Windows, runtime settings files are stored beside the executable. On Linux/macOS, they are stored under the home directory in `~/.flistwalker_config.json`.
+- The runtime config file is created from the current `FLISTWALKER_*` environment values on first launch if it does not exist yet.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
+- The same Windows-vs-home placement also applies to UI state, saved roots, and window trace files.
+- If you upgrade from an older Windows build, the first launch will automatically move legacy home-directory files into the new executable-side location when the new files do not already exist.
 - Only the commonly useful toggles are documented here. Advanced keys are intentionally undocumented.
 - The file is plain JSON, so you can edit it directly.
 - If you delete the file, the next launch will recreate it from the current environment values.
@@ -148,7 +150,8 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 ## Public Environment Variables
 
-- Runtime settings are now config-file driven through `~/.flistwalker_config.json`.
+- Runtime settings are now config-file driven through the platform-appropriate settings files.
+- On Windows, those settings files live beside the executable; on Linux/macOS, they live under `~/.flistwalker_config.json` and related home-directory files.
 - The matching `FLISTWALKER_*` variables are only used to seed the config file when it does not exist yet.
 - Signing and release build variables are documented only in [docs/RELEASE.md](docs/RELEASE.md).
 
@@ -190,7 +193,7 @@ In CLI mode:
 - `Folders`: toggle folder visibility
 - `Regex`: enable regular-expression search
 - `Preview`: show or hide the preview pane
-- `Ignore List`: enable or disable executable-relative ignore rules. It is on by default.
+- `Use Ignore List`: enable or disable executable-relative ignore rules. It is on by default.
 
 ### Ignore List
 
@@ -198,7 +201,7 @@ In CLI mode:
 - One rule per line is the simplest form. Blank lines and lines starting with `#` are ignored.
 - Each token is applied like a search exclusion. For example, `old` and `~` behave like typing `!old !~`.
 - You can also place multiple terms on one line, separated by spaces.
-- The `Ignore List` checkbox controls whether these rules are applied. It is enabled by default.
+- The `Use Ignore List` checkbox controls whether these rules are applied. It is enabled by default.
 - A sample file is available at [flistwalker.ignore.txt.example](flistwalker.ignore.txt.example).
 
 ### Root Actions
