@@ -139,7 +139,8 @@ The central design rule is that `FlistWalkerApp` remains an orchestration shell.
 flowchart TB
   subgraph Runtime[User machine]
     Binary[flistwalker binary]
-    UiState[~/.flistwalker_ui_state.json]
+    SettingsDir[platform-specific settings dir]
+    UiState[.flistwalker_ui_state.json]
     Root[Search root]
     FileList[FileList.txt / filelist.txt]
     OsShell[OS file manager / default app]
@@ -150,6 +151,7 @@ flowchart TB
     Sums[SHA256SUMS]
     Sig[SHA256SUMS.sig]
   end
+  Binary --> SettingsDir
   Binary --> UiState
   Binary --> Root
   Root --> FileList

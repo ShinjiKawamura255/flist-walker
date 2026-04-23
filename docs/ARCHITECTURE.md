@@ -176,7 +176,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 request_id によって最新応答だけを反映し、古い応答による UI 巻き戻りを防ぐ。
 
 ## Main Data Flow
-1. launch settings と root を決定する。
+1. launch settings と root を決定する。runtime settings と session state は current settings base directory から読み込み、旧保存先が残っている場合は新保存先が空のときだけ移行する。
 2. index request を発行する。
 3. index response から `all_entries` / `entries` を更新する。
 4. query が空なら一覧表示、非空なら search request を発行する。

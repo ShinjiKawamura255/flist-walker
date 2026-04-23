@@ -228,9 +228,9 @@
 
 ## SP-016 Runtime Config Bootstrap
 ### Requirements
-- MUST: ツールは runtime config file と関連する永続化ファイルを、Windows では実行ファイルと同じフォルダ、Linux/macOS では home ディレクトリへ保存しなければならない。
-- MUST: runtime config file は Windows では実行ファイルと同じフォルダ、Linux/macOS では `~/.flistwalker_config.json` を使わなければならない。
-- MUST: Windows の旧バージョンで home directory に残っている同名ファイルは、新しい保存先に同名ファイルが存在しない場合に限り、新しい保存先へ移行しなければならない。
+- MUST: ツールは runtime config file と関連する永続化ファイルを、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` へ保存しなければならない。
+- MUST: runtime config file は Windows では `%LocalAppData%\flistwalker\.flistwalker_config.json`、Linux/macOS では `~/.flistwalker/.flistwalker_config.json` を使わなければならない。
+- MUST: Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しない場合に限り、新しい保存先へ移行しなければならない。
 - MUST: runtime config file が存在しない場合、ツールは起動時に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、update policy を含めなければならない。
@@ -238,13 +238,13 @@
 - SHOULD: runtime config file の読み込み失敗や自動生成失敗は、利用者または診断ログへ警告として出力する。
 
 ### Preconditions / Postconditions
-- Preconditions: home ディレクトリが解決できる、または解決できない場合は config file を生成しない。
+- Preconditions: current settings base directory が解決できる、または解決できない場合は config file を生成しない。
 - Postconditions: runtime config file が存在する場合、その設定は起動時に process env へ反映されたうえで既存の env 読み取り経路へ伝播する。
 
 ### Edge / Error
 - runtime config file が破損していても、ツールは安全に default / current env へフォールバックできる。
 - seed-only 挙動のため、runtime config file が作成済みの場合は後から環境変数を変えても runtime settings は変化しない。
-- Windows の実行ファイル横にある UI state / saved roots / window trace の各ファイルは、同じ保存先ルールで扱う。
+- Windows の `%LocalAppData%\flistwalker\`、Linux/macOS の `~/.flistwalker/` にある UI state / saved roots / window trace の各ファイルは、同じ保存先ルールで扱う。
 
 ## SP-017 Release Sample Ignore List
 ### Requirements

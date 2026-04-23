@@ -24,7 +24,7 @@
 - `FeatureStateBundle` / `TabSessionState` のような state bundle 導入後も、bundle 単位の ownership を直接確認したい回帰は既存 owner test module に寄せ、bundle 配置だけを検証するための横断 fixture を増やさない。
 - stale response discard、cancel cleanup、pending/inflight 解放の契約は `update_commands.rs` と `index_pipeline/*` を優先対象にし、`app_core.rs` へ cross-cutting でない lifecycle regression を戻さない。
 - filelist response の current/previous/stale-requested-root 分岐は `rust/src/app/tests/index_pipeline/filelist_lifecycle.rs` を owner test とし、request cleanup と post-settle routing を同じ module で固定する。
-- runtime settings は Windows では実行ファイル横、Linux/macOS では `~/.flistwalker_config.json` と関連する session file に集約し、`FLISTWALKER_*` は初回 seed としてのみ扱う。環境変数は validation 上 `dev/test override`、`build/release` に分けて扱う。`README.md` では config file の場所と seed-only 挙動を明記し、dev/test override は `TESTPLAN.md` と実装近傍 test に閉じる。
+- runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` と関連する session file に集約し、`FLISTWALKER_*` は初回 seed としてのみ扱う。環境変数は validation 上 `dev/test override`、`build/release` に分けて扱う。`README.md` では config file の場所と seed-only 挙動を明記し、dev/test override は `TESTPLAN.md` と実装近傍 test に閉じる。
 - GUI Manual:
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を手順化して検証。
 - Perf/Sec:
@@ -127,9 +127,9 @@
 | TC-070 | unit | 回帰: 起動直後と検索キャンセル後は候補がある場合に 1 行目が既定選択になる | SP-010 |
 | TC-110 | unit | ignore list ファイルの候補は既定有効で除外され、GUI の `Use Ignore List` チェックボックスで有効/無効を切り替えられる | SP-015 |
 | TC-112 | unit | 回帰: `Files` / `Folders` 両方有効の高速経路でも ignore list は省略されず、`old` / `~` を含む候補が結果へ戻らない | SP-015 |
-| TC-111 | unit | runtime config file が無い初回起動では current env を seed にした `~/.flistwalker_config.json` が自動生成され、既存 file がある場合は env 変更より file 内容が優先される | SP-016 |
-| TC-115 | unit | Windows では runtime config / UI state / saved roots / window trace の保存先が実行ファイル横になり、Linux/macOS では home directory に戻る | SP-016 |
-| TC-116 | unit | Windows の旧 home directory 配置ファイルは、新保存先に同名 file が無い場合だけ移行され、既存の新配置 file を上書きしない | SP-016 |
+| TC-111 | unit | runtime config file が無い初回起動では current env を seed にした `~/.flistwalker/.flistwalker_config.json` が自動生成され、既存 file がある場合は env 変更より file 内容が優先される | SP-016 |
+| TC-115 | unit | Windows では runtime config / UI state / saved roots / window trace の保存先が `%LocalAppData%\flistwalker\` になり、Linux/macOS では `~/.flistwalker/` に戻る | SP-016 |
+| TC-116 | unit | Windows の旧 exe-side / home-directory 配置ファイル、Linux/macOS の旧 home-directory 直下ファイルは、新保存先に同名 file が無い場合だけ移行され、既存の新配置 file を上書きしない | SP-016 |
 | TC-071 | unit | 大規模候補でも partial top-N の結果が full ranking の先頭と一致する | SP-003, SP-007 |
 | TC-072 | unit | 並列検索の収集結果は逐次検索と同じ ranking を返す | SP-003, SP-007 |
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |

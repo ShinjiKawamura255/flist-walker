@@ -3,7 +3,7 @@ use super::{
     ResultSortMode,
 };
 use crate::path_utils::normalize_windows_path_buf;
-use crate::runtime_config::{legacy_settings_base_dir, migrate_file_if_needed, settings_base_dir};
+use crate::runtime_config::{legacy_settings_base_dirs, migrate_file_if_needed, settings_base_dir};
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -113,15 +113,18 @@ impl FlistWalkerApp {
     pub(super) fn window_trace_path() -> Option<PathBuf> {
         if let Some(path) = std::env::var_os("FLISTWALKER_WINDOW_TRACE_PATH") {
             let path = PathBuf::from(path);
-            if !path.as_os_str().is_empty() {
+        if !path.as_os_str().is_empty() {
                 return Some(path);
             }
         }
         let current = settings_base_dir().map(|base| Self::window_trace_path_in(&base))?;
-        let legacy = legacy_settings_base_dir().map(|base| Self::window_trace_path_in(&base));
+        let legacy = legacy_settings_base_dirs()
+            .into_iter()
+            .map(|base| Self::window_trace_path_in(&base))
+            .collect::<Vec<_>>();
         Some(Self::migrate_or_legacy_window_trace_path(
             current,
-            legacy.as_deref(),
+            &legacy,
         ))
     }
 
@@ -131,19 +134,20 @@ impl FlistWalkerApp {
 
     fn migrate_or_legacy_window_trace_path(
         current_path: PathBuf,
-        legacy_path: Option<&Path>,
+        legacy_paths: &[PathBuf],
     ) -> PathBuf {
-        let Some(legacy_path) = legacy_path else {
-            return current_path;
-        };
         if current_path.exists() {
             return current_path;
         }
-        if migrate_file_if_needed(&current_path, legacy_path) {
-            return current_path;
+        for legacy_path in legacy_paths {
+            if migrate_file_if_needed(&current_path, legacy_path) {
+                return current_path;
+            }
         }
-        if legacy_path.exists() {
-            return legacy_path.to_path_buf();
+        for legacy_path in legacy_paths {
+            if legacy_path.exists() {
+                return legacy_path.to_path_buf();
+            }
         }
         current_path
     }
@@ -338,7 +342,7 @@ mod tests {
 
         let resolved = FlistWalkerApp::migrate_or_legacy_window_trace_path(
             current_path.clone(),
-            Some(&legacy_path),
+            &[legacy_path.clone()],
         );
         assert_eq!(resolved, current_path);
         assert!(current_path.exists());

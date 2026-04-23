@@ -10,6 +10,10 @@ pub const RUNTIME_CONFIG_FILE_NAME: &str = ".flistwalker_config.json";
 pub const DEFAULT_UPDATE_FEED_URL: &str =
     "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest";
 
+#[cfg(windows)]
+const WINDOWS_SETTINGS_DIR_NAME: &str = "flistwalker";
+#[cfg(not(windows))]
+const UNIX_SETTINGS_DIR_NAME: &str = ".flistwalker";
 const SEARCH_PARALLEL_THRESHOLD_DEFAULT: usize = 25_000;
 const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
 const WALKER_THREADS_DEFAULT: usize = 2;
@@ -148,13 +152,13 @@ impl RuntimeConfig {
             return config;
         };
 
-        let legacy_path = legacy_runtime_config_file_path(&path);
+        let legacy_paths = legacy_runtime_config_file_paths(&path);
         if let Some(config) = load_runtime_config_from_path(&path) {
             config.apply_to_process_env();
             return config;
         }
 
-        if let Some(config) = try_load_or_migrate_runtime_config(&path, legacy_path.as_deref()) {
+        if let Some(config) = try_load_or_migrate_runtime_config(&path, &legacy_paths) {
             config.apply_to_process_env();
             return config;
         }
@@ -194,22 +198,33 @@ pub fn initialize_runtime_config() -> RuntimeConfig {
 pub fn settings_base_dir() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        if let Some(base) = current_exe_dir() {
-            return Some(base);
-        }
-    }
-    home_dir()
-}
-
-pub fn legacy_settings_base_dir() -> Option<PathBuf> {
-    #[cfg(windows)]
-    {
-        home_dir()
+        return local_app_data_dir().map(|base| base.join(WINDOWS_SETTINGS_DIR_NAME));
     }
 
     #[cfg(not(windows))]
     {
-        None
+        return home_dir().map(|base| base.join(UNIX_SETTINGS_DIR_NAME));
+    }
+}
+
+pub fn legacy_settings_base_dirs() -> Vec<PathBuf> {
+    #[cfg(windows)]
+    {
+        let mut dirs = Vec::new();
+        if let Some(base) = current_exe_dir() {
+            dirs.push(base);
+        }
+        if let Some(base) = home_dir() {
+            if dirs.iter().all(|existing| existing != &base) {
+                dirs.push(base);
+            }
+        }
+        dirs
+    }
+
+    #[cfg(not(windows))]
+    {
+        home_dir().into_iter().collect()
     }
 }
 
@@ -217,22 +232,12 @@ pub fn runtime_config_file_path_in(base: &Path) -> PathBuf {
     base.join(RUNTIME_CONFIG_FILE_NAME)
 }
 
-pub fn legacy_runtime_config_file_path(current_path: &Path) -> Option<PathBuf> {
-    #[cfg(windows)]
-    {
-        let legacy_base = home_dir()?;
-        let legacy_path = runtime_config_file_path_in(&legacy_base);
-        if legacy_path == current_path {
-            return None;
-        }
-        Some(legacy_path)
-    }
-
-    #[cfg(not(windows))]
-    {
-        let _ = current_path;
-        None
-    }
+pub fn legacy_runtime_config_file_paths(current_path: &Path) -> Vec<PathBuf> {
+    legacy_settings_base_dirs()
+        .into_iter()
+        .map(|base| runtime_config_file_path_in(&base))
+        .filter(|path| path != current_path)
+        .collect()
 }
 
 pub(crate) fn migrate_file_if_needed(current_path: &Path, legacy_path: &Path) -> bool {
@@ -314,17 +319,20 @@ fn save_seeded_runtime_config_to_path(path: &Path, seed: &RuntimeConfigSeed) -> 
 
 fn try_load_or_migrate_runtime_config(
     current_path: &Path,
-    legacy_path: Option<&Path>,
+    legacy_paths: &[PathBuf],
 ) -> Option<RuntimeConfig> {
-    let legacy_path = legacy_path?;
     if current_path.exists() {
         return None;
     }
-    if migrate_file_if_needed(current_path, legacy_path) {
-        return load_runtime_config_from_path(current_path);
+    for legacy_path in legacy_paths {
+        if migrate_file_if_needed(current_path, legacy_path) {
+            return load_runtime_config_from_path(current_path);
+        }
     }
-    if legacy_path.exists() {
-        return load_runtime_config_from_path(legacy_path);
+    for legacy_path in legacy_paths {
+        if legacy_path.exists() {
+            return load_runtime_config_from_path(legacy_path);
+        }
     }
     None
 }
@@ -471,6 +479,13 @@ fn current_exe_dir() -> Option<PathBuf> {
     env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(Path::to_path_buf))
+}
+
+#[cfg(windows)]
+fn local_app_data_dir() -> Option<PathBuf> {
+    env::var_os("LOCALAPPDATA")
+        .or_else(|| env::var_os("APPDATA"))
+        .map(PathBuf::from)
 }
 
 fn home_dir() -> Option<PathBuf> {
@@ -723,28 +738,45 @@ mod tests {
     }
 
     #[test]
-    fn settings_base_dir_prefers_current_exe_on_windows_or_home_elsewhere() {
+    fn settings_base_dir_uses_platform_specific_settings_directory() {
         let _guard = locked_env();
         let home = test_home("base-dir");
         fs::create_dir_all(&home).expect("create home");
-        let _restore = EnvRestore::capture(&["HOME", "USERPROFILE"]);
+        let _restore = EnvRestore::capture(&["HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA"]);
         env::set_var("HOME", &home);
         env::set_var("USERPROFILE", &home);
+        env::set_var("LOCALAPPDATA", &home);
+        env::set_var("APPDATA", &home);
 
         #[cfg(windows)]
         {
-            let expected = env::current_exe()
-                .expect("current exe")
-                .parent()
-                .expect("exe dir")
-                .to_path_buf();
+            let expected = home.join(WINDOWS_SETTINGS_DIR_NAME);
             assert_eq!(settings_base_dir().as_deref(), Some(expected.as_path()));
         }
 
         #[cfg(not(windows))]
         {
-            assert_eq!(settings_base_dir(), Some(home.clone()));
+            assert_eq!(settings_base_dir(), Some(home.join(UNIX_SETTINGS_DIR_NAME)));
         }
+
+        let _ = fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn legacy_settings_base_dirs_include_home_directory_for_transition_migration() {
+        let _guard = locked_env();
+        let home = test_home("legacy-base-dirs");
+        fs::create_dir_all(&home).expect("create home");
+        let _restore = EnvRestore::capture(&["HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA"]);
+        env::set_var("HOME", &home);
+        env::set_var("USERPROFILE", &home);
+        env::set_var("LOCALAPPDATA", &home);
+        env::set_var("APPDATA", &home);
+
+        let legacy_paths = legacy_runtime_config_file_paths(&runtime_config_file_path_in(
+            &home.join(UNIX_SETTINGS_DIR_NAME),
+        ));
+        assert!(legacy_paths.iter().any(|path| path == &runtime_config_file_path_in(&home)));
 
         let _ = fs::remove_dir_all(&home);
     }

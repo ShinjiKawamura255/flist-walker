@@ -1,7 +1,7 @@
 use super::FlistWalkerApp;
 use crate::fs_atomic::write_text_atomic;
 use crate::path_utils::{normalize_windows_path_buf, path_key};
-use crate::runtime_config::{legacy_settings_base_dir, migrate_file_if_needed, settings_base_dir};
+use crate::runtime_config::{legacy_settings_base_dirs, migrate_file_if_needed, settings_base_dir};
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -347,28 +347,34 @@ impl FlistWalkerApp {
     }
 
     fn migrate_or_legacy_ui_state_path(current_path: &Path) -> PathBuf {
-        let legacy_path = legacy_settings_base_dir().map(|base| Self::ui_state_file_path_in(&base));
-        Self::migrate_or_legacy_path(current_path, legacy_path.as_deref())
+        let legacy_paths = legacy_settings_base_dirs()
+            .into_iter()
+            .map(|base| Self::ui_state_file_path_in(&base))
+            .collect::<Vec<_>>();
+        Self::migrate_or_legacy_path(current_path, &legacy_paths)
     }
 
     fn migrate_or_legacy_saved_roots_path(current_path: &Path) -> PathBuf {
-        let legacy_path =
-            legacy_settings_base_dir().map(|base| Self::saved_roots_file_path_in(&base));
-        Self::migrate_or_legacy_path(current_path, legacy_path.as_deref())
+        let legacy_paths = legacy_settings_base_dirs()
+            .into_iter()
+            .map(|base| Self::saved_roots_file_path_in(&base))
+            .collect::<Vec<_>>();
+        Self::migrate_or_legacy_path(current_path, &legacy_paths)
     }
 
-    fn migrate_or_legacy_path(current_path: &Path, legacy_path: Option<&Path>) -> PathBuf {
-        let Some(legacy_path) = legacy_path else {
-            return current_path.to_path_buf();
-        };
+    fn migrate_or_legacy_path(current_path: &Path, legacy_paths: &[PathBuf]) -> PathBuf {
         if current_path.exists() {
             return current_path.to_path_buf();
         }
-        if migrate_file_if_needed(current_path, legacy_path) {
-            return current_path.to_path_buf();
+        for legacy_path in legacy_paths {
+            if migrate_file_if_needed(current_path, legacy_path) {
+                return current_path.to_path_buf();
+            }
         }
-        if legacy_path.exists() {
-            return legacy_path.to_path_buf();
+        for legacy_path in legacy_paths {
+            if legacy_path.exists() {
+                return legacy_path.to_path_buf();
+            }
         }
         current_path.to_path_buf()
     }
@@ -755,7 +761,7 @@ mod tests {
         let legacy_path = FlistWalkerApp::ui_state_file_path_in(&legacy_base);
         fs::write(&legacy_path, "{\"ignore_list_enabled\":false}").expect("write legacy");
 
-        let resolved = FlistWalkerApp::migrate_or_legacy_path(&current_path, Some(&legacy_path));
+        let resolved = FlistWalkerApp::migrate_or_legacy_path(&current_path, &[legacy_path.clone()]);
         assert_eq!(resolved, current_path);
         assert!(current_path.exists());
         assert!(!legacy_path.exists());
@@ -779,6 +785,30 @@ mod tests {
         assert_eq!(resolved, current_path);
         assert!(current_path.exists());
         assert!(legacy_path.exists());
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn migrate_or_legacy_path_skips_missing_legacy_and_uses_next_one() {
+        let base = temp_dir("migration-priority");
+        let current_base = base.join("current");
+        let missing_legacy_base = base.join("missing-legacy");
+        let legacy_base = base.join("legacy");
+        fs::create_dir_all(&current_base).expect("create current");
+        fs::create_dir_all(&legacy_base).expect("create legacy");
+        let current_path = FlistWalkerApp::ui_state_file_path_in(&current_base);
+        let missing_legacy_path = FlistWalkerApp::ui_state_file_path_in(&missing_legacy_base);
+        let legacy_path = FlistWalkerApp::ui_state_file_path_in(&legacy_base);
+        fs::write(&legacy_path, "{\"ignore_list_enabled\":false}").expect("write legacy");
+
+        let resolved = FlistWalkerApp::migrate_or_legacy_path(
+            &current_path,
+            &[missing_legacy_path, legacy_path.clone()],
+        );
+        assert_eq!(resolved, current_path);
+        assert!(current_path.exists());
+        assert!(!legacy_path.exists());
 
         let _ = fs::remove_dir_all(&base);
     }
