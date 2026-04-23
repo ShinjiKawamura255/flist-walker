@@ -199,6 +199,8 @@ CLI では:
 - 1 行に複数トークンをスペース区切りで書くこともできます。
 - `Use Ignore List` チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
 - サンプルは [flistwalker.ignore.txt.example](flistwalker.ignore.txt.example) を参照してください。
+- サンプルが無い場合は、起動時に実行ファイル横へ自動生成します。
+- そのファイルを実際の Ignore List として使う場合は、`flistwalker.ignore.txt` にリネームしてください。
 
 ### Root 操作
 

@@ -204,6 +204,8 @@ In CLI mode:
 - You can also place multiple terms on one line, separated by spaces.
 - The `Use Ignore List` checkbox controls whether these rules are applied. It is enabled by default.
 - A sample file is available at [flistwalker.ignore.txt.example](flistwalker.ignore.txt.example).
+- If the sample is missing, FlistWalker recreates it beside the executable at startup.
+- Rename `flistwalker.ignore.txt.example` to `flistwalker.ignore.txt` if you want it to act as the live ignore list.
 
 ### Root Actions
 

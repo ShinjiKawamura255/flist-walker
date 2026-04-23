@@ -6,10 +6,11 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::path::{Path, PathBuf};
+use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
 use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
-use flist_walker::ignore_list::load_ignore_terms_from_current_exe;
+use flist_walker::ignore_list::{ensure_ignore_list_sample, load_ignore_terms_from_current_exe};
 use flist_walker::indexer::build_index;
 use flist_walker::query::path_matches_ignore_terms;
 use flist_walker::runtime_config::initialize_runtime_config;
@@ -205,6 +206,9 @@ fn main() -> Result<()> {
     let _runtime_config = initialize_runtime_config();
 
     let args = Args::parse();
+    if let Err(err) = ensure_ignore_list_sample() {
+        warn!("failed to materialize ignore list sample: {}", err);
+    }
     if args.cli {
         run_cli(&args)
     } else {

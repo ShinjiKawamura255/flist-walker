@@ -20,7 +20,6 @@ Notes:
     - FlistWalker-<version>-macos-<arch>.README.txt
     - FlistWalker-<version>-macos-<arch>.LICENSE.txt
     - FlistWalker-<version>-macos-<arch>.THIRD_PARTY_NOTICES.txt
-    - FlistWalker-<version>-macos-<arch>.ignore.txt.example
     - SHA256SUMS
     - SHA256SUMS.sig (when FLISTWALKER_UPDATE_SIGNING_KEY_HEX is set)
 USAGE
@@ -67,14 +66,12 @@ TAR_BIN_NAME="flistwalker"
 README_SIDE_NAME="${ASSET_BASENAME}.README.txt"
 LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
 NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
-IGNORE_SAMPLE_SIDE_NAME="${ASSET_BASENAME}.ignore.txt.example"
 APP_EXECUTABLE_NAME="FlistWalker"
 APP_ICON_NAME="FlistWalker.icns"
 APP_BUNDLE_ID="com.flistwalker.app"
 ICON_SVG="${REPO_DIR}/rust/assets/flistwalker-icon.svg"
 ROOT_LICENSE="${REPO_DIR}/LICENSE"
 ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
-ROOT_IGNORE_SAMPLE="${REPO_DIR}/flistwalker.ignore.txt.example"
 
 if [[ ! -f "${SOURCE_BIN}" ]]; then
   echo "バイナリが見つかりません: ${SOURCE_BIN}" >&2
@@ -87,10 +84,6 @@ if [[ ! -f "${ICON_SVG}" ]]; then
 fi
 if [[ ! -f "${ROOT_LICENSE}" || ! -f "${ROOT_NOTICES}" ]]; then
   echo "LICENSE / THIRD_PARTY_NOTICES.txt が見つかりません。" >&2
-  exit 1
-fi
-if [[ ! -f "${ROOT_IGNORE_SAMPLE}" ]]; then
-  echo "flistwalker.ignore.txt.example が見つかりません。" >&2
   exit 1
 fi
 if ! command -v iconutil >/dev/null 2>&1; then
@@ -140,7 +133,8 @@ Ignore list:
 - Blank lines and lines starting with # are ignored.
 - Each token is treated like a search exclusion, so old and ~ behave like !old !~
 - The Use Ignore List checkbox controls whether these rules apply. It is on by default.
-- A sample ignore list is included as flistwalker.ignore.txt.example.
+- If flistwalker.ignore.txt.example is missing, FlistWalker recreates it beside the executable at startup.
+- Rename flistwalker.ignore.txt.example to flistwalker.ignore.txt if you want it to act as the live ignore list.
 
 Runtime config:
 - Runtime settings are stored in ~/.flistwalker_config.json in your home directory.
@@ -206,7 +200,8 @@ Ignore List:
 - 空行と # で始まる行は無視されます。
 - 各トークンは検索の除外条件として扱われるため、old や ~ は !old !~ と同じ挙動になります。
 - Use Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
-- サンプルの ignore list は flistwalker.ignore.txt.example として同梱しています。
+- サンプルが無い場合は、起動時に実行ファイル横へ自動生成されます。
+- `flistwalker.ignore.txt.example` を実際の Ignore List として使う場合は、`flistwalker.ignore.txt` にリネームしてください。
 
 Runtime config:
 - runtime settings は home directory の ~/.flistwalker_config.json に保存されます。
@@ -224,7 +219,6 @@ sed -i '' \
   "${OUT_DIR}/${README_SIDE_NAME}"
 cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
 cp -f "${ROOT_NOTICES}" "${OUT_DIR}/${NOTICES_SIDE_NAME}"
-cp -f "${ROOT_IGNORE_SAMPLE}" "${OUT_DIR}/${IGNORE_SAMPLE_SIDE_NAME}"
 
 APP_DIR="${WORK_DIR}/${APP_NAME}"
 APP_CONTENTS="${APP_DIR}/Contents"
@@ -235,7 +229,6 @@ cp -f "${SOURCE_BIN}" "${APP_MACOS_DIR}/${APP_EXECUTABLE_NAME}"
 chmod +x "${APP_MACOS_DIR}/${APP_EXECUTABLE_NAME}"
 cp -f "${ROOT_LICENSE}" "${APP_RESOURCES_DIR}/LICENSE.txt"
 cp -f "${ROOT_NOTICES}" "${APP_RESOURCES_DIR}/THIRD_PARTY_NOTICES.txt"
-cp -f "${ROOT_IGNORE_SAMPLE}" "${APP_MACOS_DIR}/flistwalker.ignore.txt.example"
 
 ICONSET_DIR="${WORK_DIR}/flistwalker.iconset"
 mkdir -p "${ICONSET_DIR}"
@@ -295,22 +288,21 @@ chmod +x "${WORK_DIR}/${TAR_BIN_NAME}"
 cp -f "${OUT_DIR}/${README_SIDE_NAME}" "${WORK_DIR}/README.txt"
 cp -f "${ROOT_LICENSE}" "${WORK_DIR}/LICENSE.txt"
 cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
-cp -f "${ROOT_IGNORE_SAMPLE}" "${WORK_DIR}/flistwalker.ignore.txt.example"
 
 (
   cd "${WORK_DIR}"
-  tar -czf "${OUT_DIR}/${TAR_NAME}" "${TAR_BIN_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt flistwalker.ignore.txt.example
+  tar -czf "${OUT_DIR}/${TAR_NAME}" "${TAR_BIN_NAME}" README.txt LICENSE.txt THIRD_PARTY_NOTICES.txt
 )
 
 if command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" "${IGNORE_SAMPLE_SIDE_NAME}" > SHA256SUMS
+    shasum -a 256 "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" "${IGNORE_SAMPLE_SIDE_NAME}" > SHA256SUMS
+    sha256sum "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "shasum/sha256sum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -330,7 +322,6 @@ echo "- ${TAR_NAME}"
 echo "- ${README_SIDE_NAME}"
 echo "- ${LICENSE_SIDE_NAME}"
 echo "- ${NOTICES_SIDE_NAME}"
-echo "- ${IGNORE_SAMPLE_SIDE_NAME}"
 echo "- SHA256SUMS"
 if [[ -n "${FLISTWALKER_UPDATE_SIGNING_KEY_HEX:-}" ]]; then
   echo "- SHA256SUMS.sig"

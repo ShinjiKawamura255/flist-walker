@@ -118,15 +118,15 @@
 - DES-018 Release Sample Ignore List
 - 役割: release asset と self-update helper が ignore list サンプルを同梱・配置し、初回利用時の導線を提供する。
 - 実装: `scripts/prepare-release.sh`, `scripts/prepare-release-linux.sh`, `scripts/prepare-release.ps1`, `scripts/prepare-release-macos.sh`, `rust/src/updater.rs`, `docs/RELEASE.md`
-- 役割補足: release packager は `*.ignore.txt.example` を sidecar asset と archive 内に含め、self-update helper は実行バイナリ隣に ignore list がない場合のみ sample を配置する。
-- 役割補足: 既存 `flistwalker.ignore.txt` を上書きせず、sample 配置失敗は本体更新を妨げない。
+- 役割補足: ignore list sample は binary に埋め込まれ、起動時に `flistwalker.ignore.txt.example` が無ければ local 実体として生成される。
+- 役割補足: 既存 `flistwalker.ignore.txt` を上書きせず、sample 生成失敗は本体起動や自己更新を妨げない。
 
 ## Main flows
 - Flow-001: 起動 -> （FileList 優先モード有効時）FileList 検出 -> 読み込み -> 検索 -> 選択 -> アクション。
 - Flow-002: 起動 -> FileList なし -> walker 走査 -> 検索 -> 選択 -> アクション。
 - Flow-003: アクション失敗 -> エラー整形 -> 表示 -> 非ゼロ終了（CLI）/エラー通知（GUI）。
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
-- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`, `*.ignore.txt.example`) と `SHA256SUMS.sig` / `SHA256SUMS` を取得 -> 署名検証 -> checksum 検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体と sidecar 文書を同一ディレクトリへ配置して再起動。
+- Flow-005: GUI 起動 -> update worker が GitHub Releases を確認 -> 新版あり -> 利用者承認 -> asset と sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`) と `SHA256SUMS.sig` / `SHA256SUMS` を取得 -> 署名検証 -> checksum 検証 -> 補助 updater 起動 -> 本体終了 -> 置換後に新版本体と sidecar 文書を同一ディレクトリへ配置して再起動。ignore list sample は別途起動時初期化で補完する。
   `FLISTWALKER_DISABLE_SELF_UPDATE=1`、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合は update flow を起動せず、通常起動のみ行う。
 
 ## Data model

@@ -1,5 +1,8 @@
 # FlistWalker ignore list sample
 #
+# Rename this file to flistwalker.ignore.txt if you want FlistWalker to use it
+# as the active ignore list.
+#
 # Copy this file to flistwalker.ignore.txt and place it in the same folder as
 # flistwalker (or FlistWalker.exe).
 #

@@ -141,13 +141,13 @@
 | TC-102 | unit | Create File List の stale requested root completion は cleanup だけを行い、`use_filelist` 復帰や notice 更新を行わない | SP-001, SP-010 |
 | TC-105 | unit | root dropdown selection は popup を閉じて選択 root を適用し、後続の root cleanup flow を開始できる | SP-010 |
 | TC-106 | unit | background response routing は active tab を巻き戻さず、tab close 時は request routing cleanup だけを行う | SP-010 |
-| TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と sidecar 文書（README / LICENSE / THIRD_PARTY_NOTICES / ignore sample）と `SHA256SUMS` を選択できる | SP-014, SP-017 |
+| TC-074 | unit | GitHub Releases の latest 応答から現在 platform の更新 asset と sidecar 文書（README / LICENSE / THIRD_PARTY_NOTICES）と `SHA256SUMS` を選択できる | SP-014, SP-017 |
 | TC-075 | unit | staged binary と sidecar 文書は `SHA256SUMS.sig` の署名検証と `SHA256SUMS` の checksum 検証を通過した場合のみ自己更新へ進む | SP-014 |
 | TC-076 | unit | Windows の自己更新は補助 updater 経由で target EXE 置換コマンドを生成し、実行中 EXE の直接上書きを避ける | SP-014 |
 | TC-077 | unit | macOS は新版検知時も自動置換へ進まず、手動更新案内に留める | SP-014 |
 | TC-078 | unit | 更新確認/ダウンロード失敗は notice に反映されても GUI 操作を継続できる | SP-014 |
-| TC-113 | unit | release packager は ignore sample を sidecar asset と archive 内へ含め、release README へ sample 同梱の案内を出す | SP-017 |
-| TC-114 | unit | self-update helper は local ignore list が未存在のときだけ sample を隣接配置し、既存 ignore list を上書きしない | SP-017 |
+| TC-113 | unit | 起動時初期化は embedded ignore sample を `flistwalker.ignore.txt.example` として生成し、既存ファイルを上書きしない | SP-017 |
+| TC-114 | unit | embedded ignore sample の説明文には `flistwalker.ignore.txt` へリネームして live ignore list として使う案内が含まれる | SP-017 |
 | TC-079 | manual+unit | 手動試験 override により同一 version でも更新ダイアログを表示できる | SP-014 |
 | TC-080 | manual+unit | 手動試験 override により downgrade 候補でも更新ダイアログを表示できる | SP-014 |
 | TC-081 | unit | 更新ダイアログで抑止した target version は起動間で保持され、より新しい version が出るまで再表示されない | SP-014 |

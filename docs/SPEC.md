@@ -248,18 +248,18 @@
 
 ## SP-017 Release Sample Ignore List
 ### Requirements
-- MUST: release scripts は各 platform の release asset bundle に `*.ignore.txt.example` を同梱しなければならない。
-- MUST: self-update は release asset bundle に sample ignore list が含まれている場合、実行中 binary と同じフォルダに `flistwalker.ignore.txt` が存在しないときだけ sample を `flistwalker.ignore.txt.example` として配置しなければならない。
+- MUST: ツールは ignore list sample を埋め込み、起動時に `flistwalker.ignore.txt.example` が実行中 binary と同じフォルダに存在しない場合は sample を自動生成しなければならない。
+- MUST: sample は `flistwalker.ignore.txt` にリネームして live ignore list として使えることを利用者へ明示しなければならない。
 - MUST: 既存の `flistwalker.ignore.txt` が存在する場合、sample 配置は既存 ignore list を上書きしてはならない。
-- SHOULD: sample ignore list のダウンロードや配置に失敗しても、本体更新が成功しているなら update flow を中断してはならない。
+- SHOULD: sample の生成に失敗しても、本体起動や自己更新は継続できなければならない。
 
 ### Preconditions / Postconditions
-- Preconditions: self-update candidate に sample ignore list asset が含まれている、または release bundle に sample file が含まれている。
+- Preconditions: 実行中 binary の所在が判定できる。
 - Postconditions: sample は利用者が見つけやすい場所に配置され、既存 ignore list は保持される。
 
 ### Edge / Error
-- sample asset が存在しない release でも、通常の self-update は継続可能でなければならない。
-- 実行中 binary の隣に ignore list が既にある場合は sample を配置しない。
+- sample が既に存在する場合は上書きしない。
+- 実行中 binary の隣に ignore list が既にある場合は sample の生成だけを行い、live ignore list を作成しない。
 
 ## SP-013 検索結果ソート
 ### Requirements

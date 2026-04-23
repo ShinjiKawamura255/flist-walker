@@ -54,7 +54,6 @@ struct PlatformReleaseTarget {
     readme_asset_name: String,
     license_asset_name: String,
     notices_asset_name: String,
-    ignore_sample_asset_name: Option<String>,
     support: UpdateSupport,
 }
 
@@ -64,7 +63,6 @@ struct UpdateReleaseAssets {
     readme_asset: GitHubAsset,
     license_asset: GitHubAsset,
     notices_asset: GitHubAsset,
-    ignore_sample_asset: Option<GitHubAsset>,
     checksum: GitHubAsset,
     checksum_signature: GitHubAsset,
 }
@@ -161,14 +159,8 @@ fn resolve_update_candidate_from_release(
         license_asset_url: assets.license_asset.browser_download_url,
         notices_asset_name: assets.notices_asset.name,
         notices_asset_url: assets.notices_asset.browser_download_url,
-        ignore_sample_asset_name: assets
-            .ignore_sample_asset
-            .as_ref()
-            .map(|asset| asset.name.clone()),
-        ignore_sample_asset_url: assets
-            .ignore_sample_asset
-            .as_ref()
-            .map(|asset| asset.browser_download_url.clone()),
+        ignore_sample_asset_name: None,
+        ignore_sample_asset_url: None,
         checksum_url: assets.checksum.browser_download_url,
         checksum_signature_url: assets.checksum_signature.browser_download_url,
         support,
@@ -184,16 +176,6 @@ fn select_release_assets(
         readme_asset: release_asset_by_name(release, &platform_target.readme_asset_name)?,
         license_asset: release_asset_by_name(release, &platform_target.license_asset_name)?,
         notices_asset: release_asset_by_name(release, &platform_target.notices_asset_name)?,
-        ignore_sample_asset: platform_target
-            .ignore_sample_asset_name
-            .as_deref()
-            .and_then(|name| {
-                release
-                    .assets
-                    .iter()
-                    .find(|asset| asset.name == name)
-                    .cloned()
-            }),
         checksum: release_asset_by_name(release, "SHA256SUMS")?,
         checksum_signature: release_asset_by_name(release, CHECKSUM_SIGNATURE_NAME)?,
     })
@@ -387,9 +369,6 @@ fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTa
             notices_asset_name: format!(
                 "FlistWalker-{version}-windows-x86_64.THIRD_PARTY_NOTICES.txt"
             ),
-            ignore_sample_asset_name: Some(format!(
-                "FlistWalker-{version}-windows-x86_64.ignore.txt.example"
-            )),
             support: UpdateSupport::Auto,
         }));
     }
@@ -402,9 +381,6 @@ fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTa
             notices_asset_name: format!(
                 "FlistWalker-{version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
             ),
-            ignore_sample_asset_name: Some(format!(
-                "FlistWalker-{version}-linux-x86_64.ignore.txt.example"
-            )),
             support: UpdateSupport::Auto,
         }));
     }
@@ -420,9 +396,6 @@ fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTa
             readme_asset_name: format!("FlistWalker-{version}-{suffix}.README.txt"),
             license_asset_name: format!("FlistWalker-{version}-{suffix}.LICENSE.txt"),
             notices_asset_name: format!("FlistWalker-{version}-{suffix}.THIRD_PARTY_NOTICES.txt"),
-            ignore_sample_asset_name: Some(format!(
-                "FlistWalker-{version}-{suffix}.ignore.txt.example"
-            )),
             support: UpdateSupport::ManualOnly {
                 message: "macOS の自動更新は未対応です。GitHub Releases から手動更新してください。"
                     .to_string(),
@@ -1047,13 +1020,6 @@ mod tests {
         assert_eq!(assets.readme_asset.name, target.readme_asset_name);
         assert_eq!(assets.license_asset.name, target.license_asset_name);
         assert_eq!(assets.notices_asset.name, target.notices_asset_name);
-        assert_eq!(
-            assets
-                .ignore_sample_asset
-                .as_ref()
-                .map(|asset| asset.name.as_str()),
-            target.ignore_sample_asset_name.as_deref()
-        );
         assert_eq!(assets.checksum.name, "SHA256SUMS");
         assert_eq!(assets.checksum_signature.name, CHECKSUM_SIGNATURE_NAME);
     }
@@ -1160,10 +1126,6 @@ mod tests {
         assert!(target
             .notices_asset_name
             .ends_with(".THIRD_PARTY_NOTICES.txt"));
-        assert!(target
-            .ignore_sample_asset_name
-            .as_deref()
-            .is_some_and(|name| name.ends_with(".ignore.txt.example")));
     }
 
     #[test]

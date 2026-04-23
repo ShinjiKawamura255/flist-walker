@@ -56,7 +56,7 @@
 - FR-024: ツールは更新ダイアログに、現在提示中の target version を次の version が出るまで再表示しない選択肢を提供し、その抑止状態を起動間で保持しなければならない。
 - FR-025: ツールは GUI/CLI で、実行中 binary と同じフォルダにある ignore list ファイルを候補除外ルールとして適用でき、GUI では有効/無効を切り替えるチェックボックスを提供しなければならない。既定では有効でなければならない。
 - FR-026: ツールは起動時に runtime config file を読み込み、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を保存先として使わなければならない。これは UI state、saved roots、window trace などの永続化ファイルにも適用しなければならない。Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しなければ自動移行しなければならない。runtime config file が存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。自動生成時は、実際に設定された値だけを書き込み、未設定の項目は省略しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
-- FR-027: ツールは release asset に ignore list サンプルを同梱し、自己更新後に実行中 binary と同じフォルダへ ignore list ファイルが存在しない場合は sample を自動配置しなければならない。
+- FR-027: ツールは ignore list サンプルを埋め込み、起動時に実行中 binary と同じフォルダへ `flistwalker.ignore.txt.example` が存在しない場合は sample を自動生成しなければならない。sample は `flistwalker.ignore.txt` へリネームして live ignore list として使えることを利用者へ示さなければならない。
 
 ### Non-functional (NFR)
 - NFR-001: 10万件候補での検索処理は 100ms 未満を目標（SHOULD）とする。
@@ -101,7 +101,7 @@
 - AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、未設定項目を含まず、設定済み項目だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では `%LocalAppData%\flistwalker\` に、Linux/macOS では `~/.flistwalker/` に保存される。
 - AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。
-- AC-026: release asset には `*.ignore.txt.example` が同梱され、自己更新後に `flistwalker.ignore.txt` が存在しない場合は sample が `flistwalker.ignore.txt.example` として実行バイナリの隣へ配置される。
+- AC-026: `flistwalker.ignore.txt.example` が存在しない状態で起動しても、ツールは sample を実行バイナリの隣へ自動生成し、`flistwalker.ignore.txt` へのリネーム案内を提供する。
 
 ## Risks
 - R-001: OS ごとのオープン/実行差異により挙動不一致が発生する。軽減策: 実行/オープン分岐を抽象化しテストで検証する。
@@ -114,7 +114,7 @@
 - R-008: 実行中バイナリの置換に失敗すると更新後再起動できない。軽減策: Windows は別 updater、Linux は一時スクリプト経由で置換し、署名済み checksum manifest と整合する staged binary のみ使用する。
 - R-009: ignore list の解釈が query とずれると、検索結果と UI 表示が不一致になる。軽減策: 除外判定は query の `!` と同じ比較ルールに寄せ、既定有効/切替状態を session に保持する。
 - R-010: runtime config file の自動生成や seed-only 挙動が不明瞭だと、環境変数での一時的な変更が効かず、起動時設定の期待が外れる。軽減策: 初回生成と既存ファイル優先、Windows での `%LocalAppData%\flistwalker\` と Linux/macOS の `~/.flistwalker/` を README / release README / SPEC に明記し、起動時に file が source of truth であることを固定する。UI state、saved roots、window trace も同じ保存先ルールに揃える。旧保存先からの移行は transition period に限って維持し、後続版で削除できるようにする。
-- R-011: release bundle に sample ignore list を含めないと、初回利用者が ignore list の配置例を見つけにくくなる。軽減策: release asset と self-update の両方に sample を含め、既存 ignore list を上書きしない。
+- R-011: sample ignore list を release asset にのみ依存させると、自己更新時や特殊な配布形態で sample が欠落しうる。軽減策: sample を埋め込み、起動時に local 実体を自動生成し、既存 ignore list は上書きしない。
 
 ## Traceability (excerpt)
 - FR-001 -> SP-001 -> DES-001 -> TC-001

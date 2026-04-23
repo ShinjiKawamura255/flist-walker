@@ -13,14 +13,12 @@
 - `FlistWalker-<version>-linux-x86_64.README.txt`
 - `FlistWalker-<version>-linux-x86_64.LICENSE.txt`
 - `FlistWalker-<version>-linux-x86_64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-<version>-linux-x86_64.ignore.txt.example`
 - Windows x86_64:
 - `FlistWalker-<version>-windows-x86_64.exe`
 - `FlistWalker-<version>-windows-x86_64.zip`
 - `FlistWalker-<version>-windows-x86_64.README.txt`
 - `FlistWalker-<version>-windows-x86_64.LICENSE.txt`
 - `FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-<version>-windows-x86_64.ignore.txt.example`
 - macOS arm64:
 - `FlistWalker-<version>-macos-arm64`
 - `FlistWalker-<version>-macos-arm64-app.zip`
@@ -28,9 +26,6 @@
 - `FlistWalker-<version>-macos-arm64.README.txt`
 - `FlistWalker-<version>-macos-arm64.LICENSE.txt`
 - `FlistWalker-<version>-macos-arm64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-<version>-macos-arm64.ignore.txt.example`
-- `FlistWalker-<version>-macos-arm64-app.zip` には `flistwalker.ignore.txt.example` を同梱する
-- `FlistWalker-<version>-macos-arm64.tar.gz` には `flistwalker.ignore.txt.example` を同梱する
 - macOS x86_64:
 - `FlistWalker-<version>-macos-x86_64`
 - `FlistWalker-<version>-macos-x86_64-app.zip`
@@ -38,9 +33,6 @@
 - `FlistWalker-<version>-macos-x86_64.README.txt`
 - `FlistWalker-<version>-macos-x86_64.LICENSE.txt`
 - `FlistWalker-<version>-macos-x86_64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-<version>-macos-x86_64.ignore.txt.example`
-- `FlistWalker-<version>-macos-x86_64-app.zip` には `flistwalker.ignore.txt.example` を同梱する
-- `FlistWalker-<version>-macos-x86_64.tar.gz` には `flistwalker.ignore.txt.example` を同梱する
 - `SHA256SUMS`
 - `SHA256SUMS.sig`
 
@@ -50,45 +42,35 @@
 - `FlistWalker-0.2.0-linux-x86_64.README.txt`
 - `FlistWalker-0.2.0-linux-x86_64.LICENSE.txt`
 - `FlistWalker-0.2.0-linux-x86_64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-0.2.0-linux-x86_64.ignore.txt.example`
 - `FlistWalker-0.2.0-windows-x86_64.exe`
 - `FlistWalker-0.2.0-windows-x86_64.zip`
 - `FlistWalker-0.2.0-windows-x86_64.README.txt`
 - `FlistWalker-0.2.0-windows-x86_64.LICENSE.txt`
 - `FlistWalker-0.2.0-windows-x86_64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-0.2.0-windows-x86_64.ignore.txt.example`
 - `FlistWalker-0.2.0-macos-arm64`
 - `FlistWalker-0.2.0-macos-arm64-app.zip`
 - `FlistWalker-0.2.0-macos-arm64.tar.gz`
 - `FlistWalker-0.2.0-macos-arm64.README.txt`
 - `FlistWalker-0.2.0-macos-arm64.LICENSE.txt`
 - `FlistWalker-0.2.0-macos-arm64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-0.2.0-macos-arm64.ignore.txt.example`
-- `FlistWalker-0.2.0-macos-arm64-app.zip` には `flistwalker.ignore.txt.example` を同梱する
-- `FlistWalker-0.2.0-macos-arm64.tar.gz` には `flistwalker.ignore.txt.example` を同梱する
 - `FlistWalker-0.2.0-macos-x86_64`
 - `FlistWalker-0.2.0-macos-x86_64-app.zip`
 - `FlistWalker-0.2.0-macos-x86_64.tar.gz`
 - `FlistWalker-0.2.0-macos-x86_64.README.txt`
 - `FlistWalker-0.2.0-macos-x86_64.LICENSE.txt`
 - `FlistWalker-0.2.0-macos-x86_64.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-0.2.0-macos-x86_64.ignore.txt.example`
-- `FlistWalker-0.2.0-macos-x86_64-app.zip` には `flistwalker.ignore.txt.example` を同梱する
-- `FlistWalker-0.2.0-macos-x86_64.tar.gz` には `flistwalker.ignore.txt.example` を同梱する
 - `SHA256SUMS`
 - `SHA256SUMS.sig`
 
 ## zip に含めるもの
 - `flistwalker.exe`
 - `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順。ignore list と runtime settings files の場所・seed-only 挙動の説明を含める）
-- `flistwalker.ignore.txt.example`
 - `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.txt`
 
 ## tar.gz に含めるもの
 - `flistwalker`
 - `README.txt`（英語を先頭に、後半に日本語を置いた最小実行手順。ignore list と runtime settings files の場所・seed-only 挙動の説明を含める）
-- `flistwalker.ignore.txt.example`
 - `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.txt`
 
@@ -105,7 +87,6 @@
 - `FlistWalker-*-linux-*.README.txt`
 - `FlistWalker-*-linux-*.LICENSE.txt`
 - `FlistWalker-*-linux-*.THIRD_PARTY_NOTICES.txt`
-- `FlistWalker-*-linux-*.ignore.txt.example`
 - `SHA256SUMS`
 - `SHA256SUMS.sig`（`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` を設定して生成した場合）
 
@@ -135,7 +116,6 @@
 - `*.README.txt`
 - `*.LICENSE.txt`
 - `*.THIRD_PARTY_NOTICES.txt`
-- `*.ignore.txt.example`
 - `SHA256SUMS`
 - `SHA256SUMS.sig`（`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` を設定して生成した場合）
 
