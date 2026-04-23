@@ -24,6 +24,31 @@
 ### Known issues
 -
 
+## [0.17.2] - 2026-04-24
+### Added
+-
+
+### Changed
+- Windows の runtime config / UI state / saved roots / window trace を `%LocalAppData%\\flistwalker\\` へ移し、Linux/macOS は `~/.flistwalker/` に統一した。
+- `flistwalker.ignore.txt.example` をバイナリへ埋め込み、sample は起動時にローカル生成するようにした。
+- self-update と release packaging から sample asset 依存を外し、配布物を `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` に整理した。
+
+### Fixed
+- 旧 settings 配置から新しい settings 置き場への移行と、ignore sample の初回導線を両立できるようにした。
+- updater の asset 契約から不要になった sample 系の互換コードを削除した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+-
+
 ## [0.17.1] - 2026-04-23
 ### Added
 - Windows では runtime config / UI state / saved roots / window trace を実行ファイルと同じフォルダへ保存し、旧 home 配置からの自動移行も行うようにした。
@@ -1098,7 +1123,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.17.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.17.2...HEAD
+[0.17.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.2
 [0.17.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.1
 [0.17.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.0
 [0.12.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.2
