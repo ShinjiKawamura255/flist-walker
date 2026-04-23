@@ -16,10 +16,6 @@ fn test_update_candidate(target_version: &str) -> UpdateCandidate {
             "FlistWalker-{target_version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
         ),
         notices_asset_url: "https://example.invalid/notices".to_string(),
-        ignore_sample_asset_name: Some(format!(
-            "FlistWalker-{target_version}-linux-x86_64.ignore.txt.example"
-        )),
-        ignore_sample_asset_url: Some("https://example.invalid/ignore-sample".to_string()),
         checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
         checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
         support: UpdateSupport::Auto,

@@ -581,6 +581,7 @@ mod tests {
         env::remove_var(WALKER_THREADS_ENV);
         env::remove_var(WINDOW_TRACE_ENV);
         env::remove_var(WINDOW_TRACE_VERBOSE_ENV);
+        env::remove_var(WINDOW_TRACE_PATH_ENV);
         env::remove_var(HISTORY_PERSIST_ENV);
         env::remove_var(UPDATE_FEED_URL_ENV);
         env::remove_var(UPDATE_ALLOW_SAME_VERSION_ENV);
@@ -648,6 +649,7 @@ mod tests {
             "USERPROFILE",
             SEARCH_PARALLEL_THRESHOLD_ENV,
             SEARCH_THREADS_ENV,
+            WINDOW_TRACE_PATH_ENV,
             WINDOW_TRACE_ENV,
             RESTORE_TABS_ENV,
             UPDATE_FEED_URL_ENV,
@@ -660,6 +662,7 @@ mod tests {
         );
         env::set_var(SEARCH_THREADS_ENV, default_search_threads().to_string());
         env::set_var(WINDOW_TRACE_ENV, "0");
+        env::remove_var(WINDOW_TRACE_PATH_ENV);
         env::set_var(RESTORE_TABS_ENV, "false");
         env::set_var(UPDATE_FEED_URL_ENV, DEFAULT_UPDATE_FEED_URL);
 

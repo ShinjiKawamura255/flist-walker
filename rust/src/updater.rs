@@ -41,8 +41,6 @@ pub struct UpdateCandidate {
     pub license_asset_url: String,
     pub notices_asset_name: String,
     pub notices_asset_url: String,
-    pub ignore_sample_asset_name: Option<String>,
-    pub ignore_sample_asset_url: Option<String>,
     pub checksum_url: String,
     pub checksum_signature_url: String,
     pub support: UpdateSupport,
@@ -159,8 +157,6 @@ fn resolve_update_candidate_from_release(
         license_asset_url: assets.license_asset.browser_download_url,
         notices_asset_name: assets.notices_asset.name,
         notices_asset_url: assets.notices_asset.browser_download_url,
-        ignore_sample_asset_name: None,
-        ignore_sample_asset_url: None,
         checksum_url: assets.checksum.browser_download_url,
         checksum_signature_url: assets.checksum_signature.browser_download_url,
         support,
@@ -218,22 +214,12 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
     let staged_readme_path = temp_dir.join(&candidate.readme_asset_name);
     let staged_license_path = temp_dir.join(&candidate.license_asset_name);
     let staged_notices_path = temp_dir.join(&candidate.notices_asset_name);
-    let staged_ignore_sample_path = candidate
-        .ignore_sample_asset_name
-        .as_ref()
-        .map(|name| temp_dir.join(name));
     let checksum_path = temp_dir.join("SHA256SUMS");
     let signature_path = temp_dir.join(CHECKSUM_SIGNATURE_NAME);
     download_to_path(&candidate.asset_url, &staged_path)?;
     download_to_path(&candidate.readme_asset_url, &staged_readme_path)?;
     download_to_path(&candidate.license_asset_url, &staged_license_path)?;
     download_to_path(&candidate.notices_asset_url, &staged_notices_path)?;
-    if let (Some(url), Some(path)) = (
-        &candidate.ignore_sample_asset_url,
-        &staged_ignore_sample_path,
-    ) {
-        download_to_path(url, path)?;
-    }
     download_to_path(&candidate.checksum_url, &checksum_path)?;
     download_to_path(&candidate.checksum_signature_url, &signature_path)?;
     verify_checksum_manifest_signature(&checksum_path, &signature_path)?;
@@ -253,16 +239,6 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
         &checksum_path,
         &candidate.notices_asset_name,
     )?;
-    if let (Some(staged_ignore_sample_path), Some(ignore_sample_asset_name)) = (
-        staged_ignore_sample_path.as_deref(),
-        candidate.ignore_sample_asset_name.as_deref(),
-    ) {
-        verify_download(
-            staged_ignore_sample_path,
-            &checksum_path,
-            ignore_sample_asset_name,
-        )?;
-    }
 
     #[cfg(all(unix, not(target_os = "macos")))]
     {
@@ -280,7 +256,6 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
         &staged_readme_path,
         &staged_license_path,
         &staged_notices_path,
-        staged_ignore_sample_path.as_deref(),
         &temp_dir,
     )
 }
@@ -500,7 +475,6 @@ fn spawn_update_helper(
     staged_readme_path: &Path,
     staged_license_path: &Path,
     staged_notices_path: &Path,
-    staged_ignore_sample_path: Option<&Path>,
     temp_dir: &Path,
 ) -> Result<()> {
     #[cfg(target_os = "windows")]
@@ -511,7 +485,6 @@ fn spawn_update_helper(
             staged_readme_path,
             staged_license_path,
             staged_notices_path,
-            staged_ignore_sample_path,
             temp_dir,
         );
     }
@@ -523,7 +496,6 @@ fn spawn_update_helper(
             staged_readme_path,
             staged_license_path,
             staged_notices_path,
-            staged_ignore_sample_path,
             temp_dir,
         )
     }
@@ -535,7 +507,6 @@ fn spawn_update_helper(
             staged_readme_path,
             staged_license_path,
             staged_notices_path,
-            staged_ignore_sample_path,
             temp_dir,
         );
         bail!("macOS auto-update is unsupported");
@@ -549,7 +520,6 @@ fn spawn_windows_update_helper(
     staged_readme_path: &Path,
     staged_license_path: &Path,
     staged_notices_path: &Path,
-    staged_ignore_sample_path: Option<&Path>,
     temp_dir: &Path,
 ) -> Result<()> {
     let script_path = temp_dir.join("apply-update.ps1");
@@ -559,23 +529,15 @@ param(
     [string]$StagedPath,
 [string]$ReadmePath,
 [string]$LicensePath,
-[string]$NoticesPath,
-[string]$IgnoreSamplePath
+[string]$NoticesPath
 )
 $targetDir = Split-Path -Parent $TargetPath
-$ignoreTarget = Join-Path $targetDir 'flistwalker.ignore.txt'
-$ignoreSampleTarget = Join-Path $targetDir 'flistwalker.ignore.txt.example'
 $readmeTarget = Join-Path $targetDir 'README.txt'
 $licenseTarget = Join-Path $targetDir 'LICENSE.txt'
 $noticesTarget = Join-Path $targetDir 'THIRD_PARTY_NOTICES.txt'
 for ($i = 0; $i -lt 100; $i++) {
     try {
         Copy-Item -LiteralPath $StagedPath -Destination $TargetPath -Force
-        if (-not (Test-Path -LiteralPath $ignoreTarget) -and $IgnoreSamplePath) {
-            if (Test-Path -LiteralPath $IgnoreSamplePath) {
-                Copy-Item -LiteralPath $IgnoreSamplePath -Destination $ignoreSampleTarget -Force
-            }
-        }
         if (Test-Path -LiteralPath $ReadmePath) {
             Copy-Item -LiteralPath $ReadmePath -Destination $readmeTarget -Force
             Remove-Item -LiteralPath $ReadmePath -Force -ErrorAction SilentlyContinue
@@ -615,11 +577,6 @@ exit 1
         .arg(staged_readme_path)
         .arg(staged_license_path)
         .arg(staged_notices_path);
-    command.arg(
-        staged_ignore_sample_path
-            .map(|path| path.to_string_lossy().into_owned())
-            .unwrap_or_default(),
-    );
     command.creation_flags(CREATE_NO_WINDOW);
     command
         .spawn()
@@ -634,7 +591,6 @@ fn spawn_linux_update_helper(
     staged_readme_path: &Path,
     staged_license_path: &Path,
     staged_notices_path: &Path,
-    staged_ignore_sample_path: Option<&Path>,
     temp_dir: &Path,
 ) -> Result<()> {
     let script_path = temp_dir.join("apply-update.sh");
@@ -645,18 +601,13 @@ staged="$2"
 readme_src="$3"
 license_src="$4"
 notices_src="$5"
-ignore_sample_src="$6"
 target_dir=$(dirname "$target")
 ignore_target="$target_dir/flistwalker.ignore.txt"
-ignore_sample_target="$target_dir/flistwalker.ignore.txt.example"
 readme_target="$target_dir/README.txt"
 license_target="$target_dir/LICENSE.txt"
 notices_target="$target_dir/THIRD_PARTY_NOTICES.txt"
 for _ in $(seq 1 100); do
   if cp "$staged" "$target" 2>/dev/null; then
-    if [ ! -e "$ignore_target" ] && [ -n "$ignore_sample_src" ] && [ -f "$ignore_sample_src" ]; then
-      cp "$ignore_sample_src" "$ignore_sample_target" 2>/dev/null || true
-    fi
     if [ -f "$readme_src" ]; then
       cp "$readme_src" "$readme_target" 2>/dev/null || true
       rm -f "$readme_src"
@@ -693,11 +644,6 @@ exit 1
         .arg(staged_readme_path)
         .arg(staged_license_path)
         .arg(staged_notices_path)
-        .arg(
-            staged_ignore_sample_path
-                .map(|path| path.to_string_lossy().into_owned())
-                .unwrap_or_default(),
-        )
         .spawn()
         .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
     Ok(())
@@ -893,11 +839,6 @@ mod tests {
                     browser_download_url: "https://example.invalid/windows-notices".to_string(),
                 },
                 GitHubAsset {
-                    name: "FlistWalker-0.13.1-windows-x86_64.ignore.txt.example".to_string(),
-                    browser_download_url: "https://example.invalid/windows-ignore-sample"
-                        .to_string(),
-                },
-                GitHubAsset {
                     name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
                     browser_download_url: "https://example.invalid/linux-bin".to_string(),
                 },
@@ -912,10 +853,6 @@ mod tests {
                 GitHubAsset {
                     name: "FlistWalker-0.13.1-linux-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
                     browser_download_url: "https://example.invalid/linux-notices".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-linux-x86_64.ignore.txt.example".to_string(),
-                    browser_download_url: "https://example.invalid/linux-ignore-sample".to_string(),
                 },
                 GitHubAsset {
                     name: "FlistWalker-0.13.1-macos-x86_64".to_string(),
@@ -934,11 +871,6 @@ mod tests {
                     browser_download_url: "https://example.invalid/macos-x64-notices".to_string(),
                 },
                 GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-x86_64.ignore.txt.example".to_string(),
-                    browser_download_url: "https://example.invalid/macos-x64-ignore-sample"
-                        .to_string(),
-                },
-                GitHubAsset {
                     name: "FlistWalker-0.13.1-macos-arm64".to_string(),
                     browser_download_url: "https://example.invalid/macos-arm-bin".to_string(),
                 },
@@ -953,11 +885,6 @@ mod tests {
                 GitHubAsset {
                     name: "FlistWalker-0.13.1-macos-arm64.THIRD_PARTY_NOTICES.txt".to_string(),
                     browser_download_url: "https://example.invalid/macos-arm-notices".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-arm64.ignore.txt.example".to_string(),
-                    browser_download_url: "https://example.invalid/macos-arm-ignore-sample"
-                        .to_string(),
                 },
                 GitHubAsset {
                     name: "SHA256SUMS".to_string(),
