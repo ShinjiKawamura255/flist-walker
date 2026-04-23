@@ -761,7 +761,8 @@ mod tests {
         let legacy_path = FlistWalkerApp::ui_state_file_path_in(&legacy_base);
         fs::write(&legacy_path, "{\"ignore_list_enabled\":false}").expect("write legacy");
 
-        let resolved = FlistWalkerApp::migrate_or_legacy_path(&current_path, &[legacy_path.clone()]);
+        let resolved =
+            FlistWalkerApp::migrate_or_legacy_path(&current_path, std::slice::from_ref(&legacy_path));
         assert_eq!(resolved, current_path);
         assert!(current_path.exists());
         assert!(!legacy_path.exists());

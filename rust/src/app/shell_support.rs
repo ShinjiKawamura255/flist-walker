@@ -342,7 +342,7 @@ mod tests {
 
         let resolved = FlistWalkerApp::migrate_or_legacy_window_trace_path(
             current_path.clone(),
-            &[legacy_path.clone()],
+            std::slice::from_ref(&legacy_path),
         );
         assert_eq!(resolved, current_path);
         assert!(current_path.exists());

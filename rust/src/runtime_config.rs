@@ -198,12 +198,12 @@ pub fn initialize_runtime_config() -> RuntimeConfig {
 pub fn settings_base_dir() -> Option<PathBuf> {
     #[cfg(windows)]
     {
-        return local_app_data_dir().map(|base| base.join(WINDOWS_SETTINGS_DIR_NAME));
+        local_app_data_dir().map(|base| base.join(WINDOWS_SETTINGS_DIR_NAME))
     }
 
     #[cfg(not(windows))]
     {
-        return home_dir().map(|base| base.join(UNIX_SETTINGS_DIR_NAME));
+        home_dir().map(|base| base.join(UNIX_SETTINGS_DIR_NAME))
     }
 }
 
@@ -776,8 +776,12 @@ mod tests {
         env::set_var("LOCALAPPDATA", &home);
         env::set_var("APPDATA", &home);
 
+        #[cfg(windows)]
+        let legacy_base = home.join(WINDOWS_SETTINGS_DIR_NAME);
+        #[cfg(not(windows))]
+        let legacy_base = home.join(UNIX_SETTINGS_DIR_NAME);
         let legacy_paths = legacy_runtime_config_file_paths(&runtime_config_file_path_in(
-            &home.join(UNIX_SETTINGS_DIR_NAME),
+            &legacy_base,
         ));
         assert!(legacy_paths.iter().any(|path| path == &runtime_config_file_path_in(&home)));
 
