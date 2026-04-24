@@ -782,13 +782,13 @@ This document is descriptive, not a new normative specification. It maps to the 
 | FileList priority and creation | SP-001, DES-001, DES-007 | Sections 6.3, 6.4, 6.11, 7.4, 8.2, 8.3, 9 | TC-001, TC-019, TC-030, TC-047, TC-052, TC-084, TC-088, TC-102 |
 | Walker indexing | SP-002, DES-002, DES-006 | Sections 6.3, 6.4, 8.2 | TC-002, TC-083 |
 | Search and highlight | SP-003, DES-003 | Sections 6.5, 8.1 | TC-003, TC-071, TC-072, TC-092, TC-093 |
-| Action execution | SP-004, SP-005, DES-004 | Sections 6.12, 8.4, 10 | TC-004, TC-004A, TC-050, TC-094 |
+| Action execution | SP-004, SP-005, DES-004 | Sections 6.12, 8.4, 10 | TC-004, TC-004A, TC-050, TC-118 |
 | CLI contract | SP-006, DES-005 | Sections 6.1, 8.1 | TC-006, TC-006A |
 | GUI operation and responsiveness | SP-010, SP-013, DES-009, DES-013 | Sections 6.6 through 6.10, 7.4, 8.1, 9 | TC-010, TC-057 through TC-064, TC-068 through TC-070, TC-104 |
 | GUI regression plan and Window/IME stability | SP-011, DES-010, DES-011 | Sections 6.8, 6.9, 10, 11 | TC-011, TC-020, TC-099 |
 | CI / Release security hygiene | SP-012, DES-012 | Sections 10, 11 | TC-056, TC-090, TC-108 |
-| Self-update | SP-014, DES-014 | Sections 6.13, 8.5, 10 | TC-074 through TC-081, TC-095 through TC-100 |
-| Diagnostics and supportability | SP-010, SP-014, DES-015 | Sections 6.9, 10, 11 | TC-100, TC-109 |
+| Self-update | SP-014, DES-014 | Sections 6.13, 8.5, 10 | TC-074 through TC-081, TC-086, TC-096 through TC-098, TC-100, TC-117, TC-119 |
+| Diagnostics and supportability | SP-010, SP-014, DES-015 | Sections 6.9, 10, 11 | TC-109, TC-120 |
 | Non-functional performance/reliability/testability | SP-007, SP-008, SP-009, DES-006, DES-007, DES-008 | Sections 9, 10, 11, 12 | VM-002 through VM-006 and related perf/security cases |
 
 [[↑ Back to Top]](#top)

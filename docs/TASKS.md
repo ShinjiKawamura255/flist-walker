@@ -1,11 +1,13 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-19
-- Current active engineering roadmap: none
-- Current active engineering change plan: none
+- Updated: 2026-04-25
+- Current active engineering roadmap: `docs/EXECUTION-PLAN-20260425-roadmap-quality-hardening-90.md` (reviewed)
+- Current active engineering change plan: `docs/EXECUTION-PLAN-20260425-slice-a-traceability-and-plan-foundation.md` (completed; next Slice B not created)
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
+  - 2026-04-25 に総合評価 84/100 の残課題（TESTPLAN の TC ID 重複、self-update staging hardening、巨大 module 分割、GUI validation、cargo audit warning）を解消する `quality-hardening-90` roadmap を作成した。roadmap / Slice A は specialist review と convergence review を完了し、`Review Status: レビュー済み`。Slice A 実装前に `AGENTS.md` へ Temporary Change Plan Rule を追加する。
+  - 2026-04-25 に Slice A を完了した。`docs/TESTPLAN.md` の重複 `TC-093` / `TC-094` / `TC-095` / `TC-100` / `TC-101` のうち後続の別意味行を `TC-117` から `TC-121` へ再割当し、`REQUIREMENTS.md` / `DESIGN.md` / `DETAILED_DESIGN.md` / `TESTPLAN.md` の対応参照を意味ごとに更新した。重複検出コマンドは空出力、変更範囲は docs と `AGENTS.md` の一時ルールのみ。
   - 2026-04-19 に外部の多角的評価（総合 72/100、低評価: 運用成熟度 40、保守性・拡張性 62、コード品質 68、GUI テスト不足）を受け、`quality-maturity-uplift` roadmap を作成した。初手は `coverage gate` / GUI render validation strategy / supportability without telemetry を扱う Slice A とし、大規模な `render.rs` 分割や app boundary tightening は測定可能な gate を入れてから進める方針にした。
   - 2026-04-19 に Slice A の coverage baseline を測定し、line coverage 70.29%（LH=9870 / LF=14042）を確認した。CI の coverage command は `--fail-under-lines 70` を付け、現状を通しつつ 70% 未満への退行を落とす gate とした。
   - 2026-04-19 に Slice A を `319e187` でコミットし、次の active slice を `render-theme-boundary` に切り替えた。Slice B は `render.rs` / `render_tabs.rs` の repeated color literals を小さな theme helper に寄せ、テストで RGB 契約を固定する。

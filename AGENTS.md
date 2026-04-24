@@ -72,3 +72,16 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
+
+## Temporary Change Plan Rule
+- For `quality-hardening-90`, read the relevant change plan document(s) before starting implementation.
+- Read order:
+- `docs/EXECUTION-PLAN-20260425-roadmap-quality-hardening-90.md`
+- The currently active slice plan, starting with `docs/EXECUTION-PLAN-20260425-slice-a-traceability-and-plan-foundation.md`.
+- Follow the plan's `Execution Profile: safety-critical`, `Planning Depth: roadmap+slice`, `Review Pattern: specialist-subagents`, and `Review Requiredness: required-before-and-after-revision`.
+- This roadmap uses `Execution Mode: standard`; after each slice, update the roadmap and confirm the next active slice before continuing.
+- Until Slice B is complete and validated, do not create release tags, publish releases, or make unrelated self-update behavior changes.
+- Do not close the roadmap until the closure slice has recorded goal validation and close/continue decision.
+- Execute work in documented order unless the roadmap is updated first.
+- If scope, order, security posture, release behavior, or validation risk changes, update the plan before continuing.
+- Remove this section from `AGENTS.md` after the roadmap is complete.
