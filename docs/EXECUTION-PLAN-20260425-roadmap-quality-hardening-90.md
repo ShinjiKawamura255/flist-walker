@@ -15,8 +15,8 @@
 - Parent Plan: none
 - Child Plan(s):
   - `docs/EXECUTION-PLAN-20260425-slice-a-traceability-and-plan-foundation.md` (completed 2026-04-25)
-  - Slice B plan to be created after Slice A review: update self-update temporary-file hardening
-  - Slice C plan to be created after Slice B: updater boundary decomposition
+  - `docs/EXECUTION-PLAN-20260425-slice-b-self-update-staging-hardening.md` (completed 2026-04-25)
+  - Slice C plan to be created next: updater boundary decomposition
   - Slice D plan to be created after Slice C: render boundary decomposition
   - Slice E plan to be created after Slice D: search/indexer boundary decomposition
   - Slice F plan to be created after Slice E: GUI validation uplift
@@ -139,7 +139,7 @@ Observable success conditions:
 ## 7. Detailed Task Breakdown
 - [x] Create and review Slice A.
 - [x] Resolve duplicate `TC-*` IDs and update trace references.
-- [ ] Create, review, and implement Slice B security hardening.
+- [x] Create, review, and implement Slice B security hardening.
 - [ ] Create, review, and implement Slice C updater decomposition.
 - [ ] Create, review, and implement Slice D render decomposition.
 - [ ] Create, review, and implement Slice E search/indexer decomposition.
@@ -170,7 +170,7 @@ Observable success conditions:
 - Each slice should be an independent rollback unit.
 - Slice A can be reverted as docs-only if ID remapping causes confusion.
 - Slices B/C must keep update behavior isolated; revert code and matching tests/docs together.
-- Slice B must define update-specific rollback before implementation: behavior on partially created staging files, existing binary preservation, Windows/Linux apply failure, and user-visible failure messages must fail safe.
+- Slice B must define update-specific rollback before implementation for pre-helper staging failures: partially created staging files, existing binary preservation before helper spawn, and user-visible failure messages must fail safe. Post-helper Windows/Linux apply failure rollback is deferred to Slice C unless Slice B changes helper apply behavior.
 - Slices D/E should avoid mixed behavior changes and movement-only changes in the same commit when possible.
 - Slice F CI changes must be revertible without changing application behavior.
 - Slice G dependency changes must include Cargo lockfile, notices, and docs in the same rollback unit.
@@ -196,6 +196,8 @@ Add this only after roadmap and active slice initial review, required revisions,
 ## 11. Progress Log
 - 2026-04-25 Planned from project assessment result 84/100.
 - 2026-04-25 Slice A completed: duplicate `TC-*` table-row IDs were removed, trace references were updated by meaning, and docs-only validation passed.
+- 2026-04-25 Slice B plan created for self-update staging hardening.
+- 2026-04-25 Slice B completed: self-update staging now uses 128-bit random exclusive temp directories with bounded retries, Unix private permissions, no-overwrite staged asset/helper creation, deterministic collision tests, and existing-file refusal tests. Validation passed with `cargo test --locked`, `cargo clippy --all-targets -- -D warnings`, and `cargo audit`. The existing allowed `paste` unmaintained warning remains accepted temporarily and is deferred to Slice G dependency/audit follow-up.
 
 ## 12. Communication Plan
 - Return to user when:
