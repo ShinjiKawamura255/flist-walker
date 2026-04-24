@@ -69,6 +69,7 @@ impl FlistWalkerApp {
             .cloned()
         {
             self.apply_tab_state(&tab);
+            self.ensure_results_cursor_visible();
         }
     }
 
@@ -91,10 +92,10 @@ impl FlistWalkerApp {
         trigger_restore_refresh: bool,
     ) {
         self.apply_tab_state(tab);
-        self.request_scroll_to_current();
         if restore_results {
             self.restore_results_from_compacted_tab();
         }
+        self.ensure_results_cursor_visible();
         if request_focus {
             self.request_focus_query();
             self.clear_unfocus_query_request();
@@ -370,7 +371,7 @@ impl FlistWalkerApp {
             .cloned()
         {
             self.apply_tab_state(&tab);
-            self.request_scroll_to_current();
+            self.ensure_results_cursor_visible();
             self.request_focus_query();
             self.clear_unfocus_query_request();
             self.trigger_pending_restore_refresh();

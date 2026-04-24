@@ -67,6 +67,7 @@
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
 | TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` / `Esc` で query clear + filter reset が実行される | SP-010 |
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除のみ実行し current row を維持する | SP-010 |
+| TC-023A | unit | tab 切替や `Esc` 系の reset 後も、結果がある場合は visible な current row が復元される | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 | TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、種別解決後に FILE/DIR/LINK 表示とフィルタ状態を反映する | SP-001, SP-010, SP-007 |
 | TC-026 | unit | 回帰: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で current row が移動する | SP-010 |
@@ -99,7 +100,7 @@
 | TC-049 | unit | FileList に root 外パスが含まれても候補表示時の追加フィルタを行わず、インデクシング経路の挙動を維持する | SP-007 |
 | TC-050 | unit | root 外パスは結果一覧に存在しても execute/open 直前で拒否される | SP-004 |
 | TC-051 | unit | UNC root 配下のパスは execute/open 直前の root 判定で許可される | SP-004 |
-| TC-052 | unit | Create File List で祖先 FileList 追記がありうる場合は確認ダイアログを要求する | SP-001, SP-010 |
+| TC-052 | unit | Create File List で祖先 FileList への追記が実際に発生しうる場合は確認ダイアログを要求する | SP-001, SP-010 |
 | TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
 | TC-084 | unit | Source が FileList のタブで Create File List を確認すると、新規タブを開かずに同一タブの裏で Walker indexing を実行する | SP-001, SP-010 |
 | TC-085 | unit | FileList source の Create File List 完了時、元タブが background 化していてもその元タブを再インデックスし、完了前に元タブ root が変わっていた場合は再インデックスしない | SP-001, SP-010 |

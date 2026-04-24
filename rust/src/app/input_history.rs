@@ -68,6 +68,7 @@ pub(super) fn cancel_history_search(app: &mut FlistWalkerApp) {
         return;
     }
     app.update_results();
+    app.ensure_results_cursor_visible();
     app.request_focus_query();
     app.set_notice("Canceled history search");
 }
@@ -83,6 +84,7 @@ pub(super) fn accept_history_search(app: &mut FlistWalkerApp) {
         return;
     };
     app.update_results();
+    app.ensure_results_cursor_visible();
     app.request_focus_query();
     app.set_notice("Loaded query from history");
 }

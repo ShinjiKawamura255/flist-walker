@@ -6,7 +6,7 @@ use super::{
 use crate::app::state::{
     FileListManager, FileListRequestContext, FileListResponseContext, FileListResponseScope,
 };
-use crate::indexer::{find_filelist_in_first_level, has_ancestor_filelists};
+use crate::indexer::{ancestor_filelist_propagation_needed, find_filelist_in_first_level};
 use crate::path_utils::path_key;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
@@ -511,7 +511,7 @@ impl FlistWalkerApp {
         root: PathBuf,
         entries: Vec<PathBuf>,
     ) {
-        if has_ancestor_filelists(&root) {
+        if ancestor_filelist_propagation_needed(&root) {
             self.shell
                 .features
                 .filelist

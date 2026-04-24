@@ -192,6 +192,21 @@ fn child_filelist_reference_keys(parent_dir: &Path, child_filelist: &Path) -> Ha
     keys
 }
 
+fn parent_filelist_contains_child_reference(
+    parent_filelist: &Path,
+    child_filelist: &Path,
+) -> std::io::Result<bool> {
+    let Some(parent_dir) = parent_filelist.parent() else {
+        return Ok(false);
+    };
+    let child_keys = child_filelist_reference_keys(parent_dir, child_filelist);
+    let content = fs::read_to_string(parent_filelist)?;
+    Ok(content
+        .lines()
+        .filter_map(normalize_filelist_entry_for_text_compare)
+        .any(|line| child_keys.contains(&line)))
+}
+
 fn restore_file_mtime(
     path: &Path,
     modified: SystemTime,
@@ -222,12 +237,7 @@ fn append_child_filelist_to_parent_filelist_if_missing(
     let modified = metadata.modified()?;
     let accessed = metadata.accessed().ok();
     let mut content = fs::read_to_string(parent_filelist)?;
-    let child_keys = child_filelist_reference_keys(parent_dir, child_filelist);
-    if content
-        .lines()
-        .filter_map(normalize_filelist_entry_for_text_compare)
-        .any(|line| child_keys.contains(&line))
-    {
+    if parent_filelist_contains_child_reference(parent_filelist, child_filelist)? {
         return Ok(());
     }
     if !content.is_empty() && !content.ends_with('\n') {
@@ -305,6 +315,29 @@ pub fn has_ancestor_filelists(root: &Path) -> bool {
         }
     });
     found
+}
+
+pub fn ancestor_filelist_propagation_needed(root: &Path) -> bool {
+    let child_filelist = root.join("FileList.txt");
+    let mut needs_confirmation = false;
+    visit_ancestor_directories(root, |ancestor_dir| {
+        let parent_filelists = match find_all_filelists_in_directory(ancestor_dir) {
+            Ok(parent_filelists) => parent_filelists,
+            Err(_) => return false,
+        };
+        for parent_filelist in parent_filelists {
+            match parent_filelist_contains_child_reference(&parent_filelist, &child_filelist) {
+                Ok(true) => {}
+                Ok(false) => {
+                    needs_confirmation = true;
+                    return false;
+                }
+                Err(_) => return false,
+            }
+        }
+        true
+    });
+    needs_confirmation
 }
 
 pub fn write_filelist(

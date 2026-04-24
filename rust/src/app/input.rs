@@ -181,6 +181,7 @@ impl FlistWalkerApp {
         self.set_current_row(Some(0));
         self.shell.runtime.preview.clear();
         self.update_results();
+        self.ensure_results_cursor_visible();
         self.request_focus_query();
         self.set_notice("Cleared selection and query");
     }

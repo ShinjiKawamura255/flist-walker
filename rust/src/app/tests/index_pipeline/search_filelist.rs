@@ -990,6 +990,45 @@ fn denying_ancestor_propagation_still_creates_root_filelist() {
 }
 
 #[test]
+fn create_filelist_skips_ancestor_confirmation_when_child_reference_is_already_present() {
+    let top = test_root("filelist-ancestor-skip-confirm");
+    let root = top.join("child");
+    fs::create_dir_all(&root).expect("create child");
+    fs::write(
+        top.join("FileList.txt"),
+        format!("./child{}FileList.txt\n", std::path::MAIN_SEPARATOR),
+    )
+    .expect("write parent filelist");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
+    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
+
+    app.create_filelist();
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation
+        .is_none());
+    let req = filelist_rx
+        .try_recv()
+        .expect("filelist request should be sent without ancestor prompt");
+    assert_eq!(req.root, root);
+    assert!(!req.propagate_to_ancestors);
+    let _ = fs::remove_dir_all(&top);
+}
+
+#[test]
 fn filelist_finished_triggers_reindex_when_enabled() {
     let root = test_root("filelist-reindex");
     fs::create_dir_all(&root).expect("create dir");

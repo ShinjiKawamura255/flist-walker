@@ -15,8 +15,8 @@ pub use filelist_reader::{
     find_filelist_in_first_level, parse_filelist, parse_filelist_stream,
 };
 pub use filelist_writer::{
-    build_filelist_text, build_filelist_text_cancellable, has_ancestor_filelists, write_filelist,
-    write_filelist_cancellable,
+    ancestor_filelist_propagation_needed, build_filelist_text, build_filelist_text_cancellable,
+    has_ancestor_filelists, write_filelist, write_filelist_cancellable,
 };
 pub use walker::{walk_dirs, walk_entries, walk_files};
 
@@ -671,6 +671,22 @@ mod tests {
         let parsed_parent =
             parse_filelist(&parent_filelist, &parent, true, true).expect("parse parent filelist");
         assert!(contains_path(&parsed_parent, &child_filelist));
+        let _ = fs::remove_dir_all(&top);
+    }
+
+    #[test]
+    fn ancestor_filelist_propagation_needed_skips_already_referenced_child() {
+        let top = test_root("ancestor-propagation-needed-skip");
+        let parent = top.join("parent");
+        let root = parent.join("child");
+        fs::create_dir_all(&root).expect("create child root");
+        fs::write(
+            parent.join("FileList.txt"),
+            format!("./child{}FileList.txt\n", std::path::MAIN_SEPARATOR),
+        )
+        .expect("write parent filelist");
+
+        assert!(!ancestor_filelist_propagation_needed(&root));
         let _ = fs::remove_dir_all(&top);
     }
 

@@ -113,7 +113,7 @@ impl FlistWalkerApp {
     pub(super) fn window_trace_path() -> Option<PathBuf> {
         if let Some(path) = std::env::var_os("FLISTWALKER_WINDOW_TRACE_PATH") {
             let path = PathBuf::from(path);
-        if !path.as_os_str().is_empty() {
+            if !path.as_os_str().is_empty() {
                 return Some(path);
             }
         }

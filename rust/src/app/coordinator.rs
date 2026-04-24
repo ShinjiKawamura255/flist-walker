@@ -231,6 +231,18 @@ impl FlistWalkerApp {
         self.shell.ui.scroll_to_current = true;
     }
 
+    pub(super) fn ensure_results_cursor_visible(&mut self) {
+        if self.shell.runtime.results.is_empty() {
+            return;
+        }
+        if self.shell.runtime.current_row.is_none() {
+            self.shell.runtime.current_row = Some(0);
+        }
+        if self.shell.runtime.current_row.is_some() {
+            self.request_scroll_to_current();
+        }
+    }
+
     pub(super) fn clear_scroll_to_current(&mut self) {
         self.shell.ui.scroll_to_current = false;
     }

@@ -1050,6 +1050,36 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
 }
 
 #[test]
+fn tab_activation_restores_visible_cursor_when_selection_is_missing() {
+    let root = test_root("tab-activation-restore-cursor");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("first.txt");
+    let second = root.join("second.txt");
+    fs::write(&first, "a").expect("write first");
+    fs::write(&second, "b").expect("write second");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = false;
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![
+        unknown_entry(first.clone()),
+        unknown_entry(second.clone()),
+    ]);
+    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = None;
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert!(app.shell.ui.scroll_to_current);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn app_defaults_use_filelist_on() {
     let root = test_root("default-use-filelist-on");
     fs::create_dir_all(&root).expect("create dir");
