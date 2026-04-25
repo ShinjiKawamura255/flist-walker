@@ -138,9 +138,13 @@ No new rule. This slice removes the existing Temporary Change Plan Rule only aft
 - 2026-04-26 Dependency/audit follow-up:
   - The accepted transitive `paste` dependency debt was resolved by updating the GUI stack to `eframe 0.34.1`.
   - `cargo audit` is now clean, and `rust/Cargo.lock` no longer contains `paste` or `metal`.
-  - The remaining active residual risk is GUI visual smoke not run.
+  - At this point, the remaining active residual risk was GUI visual smoke not run.
+- 2026-04-26 GUI visual smoke follow-up:
+  - User manually confirmed the WSL2/WSLg GUI smoke run for `GSM-001` through `GSM-010` with no observed blocking issue.
+  - `docs/GUI-TESTREPORT.md` records PASS for the development build at commit `e723690`.
+  - Remaining GUI validation work is release-candidate platform coverage on Windows 11 and macOS per `docs/GUI-TESTPLAN.md`, not an active closure residual.
 - 2026-04-26 Closure score: 90/100. The project reaches the roadmap target because the original five gaps are either fixed or explicitly owned by a repeatable gate/cadence, and current validation passes. The residuals prevent a higher score.
-- 2026-04-26 Close decision: close `quality-hardening-90`; no additional slice is required in this roadmap. Future work should treat GUI framework upgrade and human GUI smoke execution as normal release-readiness work, not blockers for this roadmap closure.
+- 2026-04-26 Close decision: close `quality-hardening-90`; no additional slice is required in this roadmap. Future work should treat Windows/macOS release-candidate GUI smoke as normal release-readiness work, not blockers for this roadmap closure.
 - 2026-04-26 Removed `AGENTS.md` Temporary Change Plan Rule after close decision.
 
 ## 12. Communication Plan

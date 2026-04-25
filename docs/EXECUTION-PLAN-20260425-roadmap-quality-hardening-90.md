@@ -211,6 +211,7 @@ Add this only after roadmap and active slice initial review, required revisions,
 - 2026-04-26 Slice H closure plan created.
 - 2026-04-26 Slice H completed: current validation passed with `cargo test --locked`, clippy `-D warnings`, coverage `--fail-under-lines 70`, `cargo audit`, and `git diff --check`. Closure score is 90/100. Close decision: close `quality-hardening-90`; original residual risks were independent specialist review unavailability for late slices, GUI smoke gate not visually executed during closure, and accepted transitive `paste` unmaintained warning.
 - 2026-04-26 Post-closure specialist review completed for the late slices. Security/release/operability review found no blockers and confirmed the accepted `paste` warning posture is documented; testing/validation review found no product/test blockers and required only documentation updates to close the late-review residual.
+- 2026-04-26 Post-closure GUI manual visual smoke was user-confirmed on WSL2/WSLg for `GSM-001` through `GSM-010`; `docs/GUI-TESTREPORT.md` now records PASS for the development build at commit `e723690`.
 
 ## 12. Communication Plan
 - Return to user when:
@@ -243,10 +244,11 @@ Add this only after roadmap and active slice initial review, required revisions,
   - repeatable GUI validation gate
   - dependency/audit accepted-risk posture
 - Residual risks:
-  - GUI smoke gate was created and fixture-validated but not visually executed during closure
+  - Windows 11 and macOS GUI smoke remain release-candidate responsibilities per `docs/GUI-TESTPLAN.md`; the post-closure smoke evidence covers the WSL2/WSLg development path only
 - Resolved post-closure process debt:
   - late-slice specialist review originally used main-agent fallback due subagent quota exhaustion; post-closure validation and security/release/operability specialist reviews found no blockers and closed this residual
   - `RUSTSEC-2024-0436` / `paste` accepted transitive dependency debt was resolved by updating the GUI stack to `eframe 0.34.1`; `cargo audit` is now clean and `Cargo.lock` no longer contains `paste` or `metal`
+  - GUI manual visual smoke was executed post-closure on WSL2/WSLg and recorded as PASS in `docs/GUI-TESTREPORT.md`
 - Follow-up outside this roadmap:
   - run `docs/GUI-TESTPLAN.md` before the next release candidate and fill `docs/GUI-TESTREPORT.md` or generated local evidence
   - revisit `eframe` / `egui` / `wgpu` upgrade when planning GUI framework maintenance
