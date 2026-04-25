@@ -1,7 +1,7 @@
 # TASKS
 
 ## Status Snapshot
-- Updated: 2026-04-25
+- Updated: 2026-04-26
 - Current active engineering roadmap: none
 - Current active engineering change plan: none
 - App architecture change-plan program: DONE on 2026-04-09
@@ -21,6 +21,7 @@
   - 2026-04-26 に `quality-hardening-90` roadmap を closure した。current validation は `cargo test --locked`、`cargo clippy --all-targets -- -D warnings`、coverage gate、`cargo audit`、`git diff --check` が green。Closure score は 90/100、close decision は close。Temporary Change Plan Rule は `AGENTS.md` から撤去済み。post-closure specialist review により late-slice specialist review の quota fallback は解消済み。original closure 時点の残リスクは GUI smoke gate 未実行と accepted transitive `paste` warning。
   - 2026-04-26 に `paste-audit-resolution` を進め、`eframe` を `0.29.1` から `0.34.1` へ更新した。これにより `metal` / `paste` は `Cargo.lock` から削除され、`cargo audit` は警告なしになった。API 追従は `eframe::App::ui`、clipboard output、popup close、egui margin/corner radius/font data などの機械的互換修正に限定した。
   - 2026-04-26 に post-closure GUI manual visual smoke を WSL2/WSLg 環境でユーザ確認し、`docs/GUI-TESTREPORT.md` に `GSM-001` から `GSM-010` の PASS を記録した。Windows 11 / macOS の GUI smoke は release candidate 時の通常ゲートとして継続する。
+  - 2026-04-26 に `quality-hardening-90` / `paste-audit-resolution` の完了済み `EXECUTION-PLAN` 群を削除した。恒久的な結果は `docs/TASKS.md`、`docs/OSS_COMPLIANCE.md`、`docs/GUI-TESTPLAN.md`、`docs/GUI-TESTREPORT.md`、SDD 文書、コミット履歴に残す。
   - 2026-04-19 に外部の多角的評価（総合 72/100、低評価: 運用成熟度 40、保守性・拡張性 62、コード品質 68、GUI テスト不足）を受け、`quality-maturity-uplift` roadmap を作成した。初手は `coverage gate` / GUI render validation strategy / supportability without telemetry を扱う Slice A とし、大規模な `render.rs` 分割や app boundary tightening は測定可能な gate を入れてから進める方針にした。
   - 2026-04-19 に Slice A の coverage baseline を測定し、line coverage 70.29%（LH=9870 / LF=14042）を確認した。CI の coverage command は `--fail-under-lines 70` を付け、現状を通しつつ 70% 未満への退行を落とす gate とした。
   - 2026-04-19 に Slice A を `319e187` でコミットし、次の active slice を `render-theme-boundary` に切り替えた。Slice B は `render.rs` / `render_tabs.rs` の repeated color literals を小さな theme helper に寄せ、テストで RGB 契約を固定する。
