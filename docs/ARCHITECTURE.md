@@ -44,8 +44,9 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - root selector dialog state と root change lifecycle を担当する。
 - [actions.rs](../rust/src/actions.rs)
   - open / execute の OS 差分吸収、action decision policy、testable seam を担当する。
-- [updater.rs](../rust/src/updater.rs)
-  - self-update 判定、asset 選択、staged update を担当する。
+- [updater.rs](../rust/src/updater.rs), [updater/](../rust/src/updater/)
+  - self-update の公開 facade、release/candidate 解決、staging/download、manifest 検証、platform apply helper を担当する。
+  - `apply` は検証済み bundle のみを受け取り、staged file/helper script creation は no-overwrite primitive を経由する。
 - [update_security.rs](../rust/src/update_security.rs)
   - update manifest 署名検証を担当する。
 - [fs_atomic.rs](../rust/src/fs_atomic.rs)

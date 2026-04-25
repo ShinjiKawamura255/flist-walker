@@ -381,7 +381,7 @@ Important rules:
 
 ### 6.13 Self-update
 
-Responsibility: [updater.rs](../rust/src/updater.rs), [update_security.rs](../rust/src/update_security.rs), [app/update.rs](../rust/src/app/update.rs), and update worker code handle update discovery and application.
+Responsibility: [updater.rs](../rust/src/updater.rs), [updater/](../rust/src/updater/), [update_security.rs](../rust/src/update_security.rs), [app/update.rs](../rust/src/app/update.rs), and update worker code handle update discovery and application.
 
 Flow:
 
@@ -390,6 +390,7 @@ Flow:
 - Select platform asset, README, LICENSE, THIRD_PARTY_NOTICES, `SHA256SUMS`, and `SHA256SUMS.sig`.
 - Verify detached signature before trusting checksums.
 - Verify staged asset checksum.
+- Build a private verified bundle only after signature/checksum verification and pass that bundle to the platform apply helper.
 - Windows/Linux can auto-apply; macOS remains manual-only.
 
 Operational guardrails:

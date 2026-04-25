@@ -1,28 +1,14 @@
-use crate::update_security::{self, CHECKSUM_SIGNATURE_NAME};
-use anyhow::{anyhow, bail, Context, Result};
-use rand_core::{OsRng, RngCore};
-use semver::Version;
-use serde::Deserialize;
-use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, Read};
-#[cfg(all(unix, not(target_os = "macos")))]
-use std::os::unix::fs::PermissionsExt;
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+use crate::update_security::CHECKSUM_SIGNATURE_NAME;
+use anyhow::{bail, Result};
 use std::path::{Path, PathBuf};
-#[cfg(any(target_os = "windows", all(unix, not(target_os = "macos"))))]
-use std::process::Command;
 
-const RELEASES_LATEST_URL: &str =
-    "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest";
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+mod apply;
+mod manifest;
+mod release;
+mod staging;
+
 const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 const FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
-const UPDATE_TEMP_DIR_RANDOM_BYTES: usize = 16;
-const UPDATE_TEMP_DIR_MAX_ATTEMPTS: usize = 32;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpdateSupport {
@@ -46,38 +32,6 @@ pub struct UpdateCandidate {
     pub checksum_url: String,
     pub checksum_signature_url: String,
     pub support: UpdateSupport,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct PlatformReleaseTarget {
-    asset_name: String,
-    readme_asset_name: String,
-    license_asset_name: String,
-    notices_asset_name: String,
-    support: UpdateSupport,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct UpdateReleaseAssets {
-    asset: GitHubAsset,
-    readme_asset: GitHubAsset,
-    license_asset: GitHubAsset,
-    notices_asset: GitHubAsset,
-    checksum: GitHubAsset,
-    checksum_signature: GitHubAsset,
-}
-
-#[derive(Debug, Deserialize)]
-struct GitHubRelease {
-    tag_name: String,
-    html_url: String,
-    assets: Vec<GitHubAsset>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
-struct GitHubAsset {
-    name: String,
-    browser_download_url: String,
 }
 
 pub fn current_version_string() -> String {
@@ -127,76 +81,9 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
     if let Some(message) = forced_update_check_failure_message() {
         bail!("{message}");
     }
-    let current_version = parse_version(env!("CARGO_PKG_VERSION"))?;
-    let release = fetch_latest_release()?;
-    resolve_update_candidate_from_release(&current_version, &release)
-}
-
-fn resolve_update_candidate_from_release(
-    current_version: &Version,
-    release: &GitHubRelease,
-) -> Result<Option<UpdateCandidate>> {
-    let target_version = parse_version(&release.tag_name)?;
-    if !should_offer_update(current_version, &target_version) {
-        return Ok(None);
-    }
-
-    let Some(platform_target) = current_platform_target(&target_version)? else {
-        return Ok(None);
-    };
-    let assets = select_release_assets(release, &platform_target)?;
-    let support = effective_update_support(platform_target.support);
-
-    Ok(Some(UpdateCandidate {
-        current_version: current_version.to_string(),
-        target_version: target_version.to_string(),
-        release_url: release.html_url.clone(),
-        asset_name: assets.asset.name,
-        asset_url: assets.asset.browser_download_url,
-        readme_asset_name: assets.readme_asset.name,
-        readme_asset_url: assets.readme_asset.browser_download_url,
-        license_asset_name: assets.license_asset.name,
-        license_asset_url: assets.license_asset.browser_download_url,
-        notices_asset_name: assets.notices_asset.name,
-        notices_asset_url: assets.notices_asset.browser_download_url,
-        checksum_url: assets.checksum.browser_download_url,
-        checksum_signature_url: assets.checksum_signature.browser_download_url,
-        support,
-    }))
-}
-
-fn select_release_assets(
-    release: &GitHubRelease,
-    platform_target: &PlatformReleaseTarget,
-) -> Result<UpdateReleaseAssets> {
-    Ok(UpdateReleaseAssets {
-        asset: release_asset_by_name(release, &platform_target.asset_name)?,
-        readme_asset: release_asset_by_name(release, &platform_target.readme_asset_name)?,
-        license_asset: release_asset_by_name(release, &platform_target.license_asset_name)?,
-        notices_asset: release_asset_by_name(release, &platform_target.notices_asset_name)?,
-        checksum: release_asset_by_name(release, "SHA256SUMS")?,
-        checksum_signature: release_asset_by_name(release, CHECKSUM_SIGNATURE_NAME)?,
-    })
-}
-
-fn effective_update_support(platform_support: UpdateSupport) -> UpdateSupport {
-    if platform_support == UpdateSupport::Auto && !update_security::has_embedded_public_key() {
-        return UpdateSupport::ManualOnly {
-            message:
-                "このビルドには更新署名公開鍵が埋め込まれていないため、自動更新は利用できません。GitHub Releases から手動更新してください。"
-                    .to_string(),
-        };
-    }
-    platform_support
-}
-
-fn release_asset_by_name(release: &GitHubRelease, name: &str) -> Result<GitHubAsset> {
-    release
-        .assets
-        .iter()
-        .find(|asset| asset.name == name)
-        .cloned()
-        .with_context(|| format!("release asset missing: {name}"))
+    let current_version = release::parse_version(env!("CARGO_PKG_VERSION"))?;
+    let latest_release = release::fetch_latest_release()?;
+    release::resolve_update_candidate_from_release(&current_version, &latest_release)
 }
 
 pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path) -> Result<()> {
@@ -211,119 +98,16 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
         UpdateSupport::ManualOnly { message } => bail!("{message}"),
     }
 
-    let temp_dir = unique_update_temp_dir()?;
-    let staged_path = temp_dir.join(&candidate.asset_name);
-    let staged_readme_path = temp_dir.join(&candidate.readme_asset_name);
-    let staged_license_path = temp_dir.join(&candidate.license_asset_name);
-    let staged_notices_path = temp_dir.join(&candidate.notices_asset_name);
-    let checksum_path = temp_dir.join("SHA256SUMS");
-    let signature_path = temp_dir.join(CHECKSUM_SIGNATURE_NAME);
-    download_to_path(&candidate.asset_url, &staged_path)?;
-    download_to_path(&candidate.readme_asset_url, &staged_readme_path)?;
-    download_to_path(&candidate.license_asset_url, &staged_license_path)?;
-    download_to_path(&candidate.notices_asset_url, &staged_notices_path)?;
-    download_to_path(&candidate.checksum_url, &checksum_path)?;
-    download_to_path(&candidate.checksum_signature_url, &signature_path)?;
-    verify_checksum_manifest_signature(&checksum_path, &signature_path)?;
-    verify_download(&staged_path, &checksum_path, &candidate.asset_name)?;
-    verify_download(
-        &staged_readme_path,
-        &checksum_path,
-        &candidate.readme_asset_name,
-    )?;
-    verify_download(
-        &staged_license_path,
-        &checksum_path,
-        &candidate.license_asset_name,
-    )?;
-    verify_download(
-        &staged_notices_path,
-        &checksum_path,
-        &candidate.notices_asset_name,
-    )?;
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        let mut perms = fs::metadata(&staged_path)
-            .with_context(|| format!("failed to read metadata {}", staged_path.display()))?
-            .permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(&staged_path, perms)
-            .with_context(|| format!("failed to chmod {}", staged_path.display()))?;
-    }
-
-    spawn_update_helper(
-        current_exe,
-        &staged_path,
-        &staged_readme_path,
-        &staged_license_path,
-        &staged_notices_path,
-        &temp_dir,
-    )
-}
-
-fn fetch_latest_release() -> Result<GitHubRelease> {
-    let response = ureq::get(&release_feed_url())
-        .set(
-            "User-Agent",
-            &format!("flistwalker/{}", current_version_string()),
-        )
-        .set("Accept", "application/vnd.github+json")
-        .call()
-        .map_err(|err| anyhow!("failed to query latest release: {err}"))?;
-    let body = response
-        .into_string()
-        .map_err(|err| anyhow!("failed to read latest release response: {err}"))?;
-    serde_json::from_str(&body).context("failed to parse latest release response")
-}
-
-fn parse_version(text: &str) -> Result<Version> {
-    Version::parse(text.trim_start_matches('v'))
-        .with_context(|| format!("invalid semver version: {text}"))
+    let staged = staging::stage_update_assets(candidate)?;
+    let verified = verify_staged_update(candidate, staged)?;
+    apply::spawn_update_helper(current_exe, &verified)
 }
 
 pub fn should_skip_update_prompt(target_version: &str, skipped_version: Option<&str>) -> bool {
-    let Some(skipped_version) = skipped_version.filter(|value| !value.trim().is_empty()) else {
-        return false;
-    };
-    let Ok(target) = parse_version(target_version) else {
-        return false;
-    };
-    let Ok(skipped) = parse_version(skipped_version) else {
-        return false;
-    };
-    target <= skipped
+    release::should_skip_update_prompt(target_version, skipped_version)
 }
 
-fn release_feed_url() -> String {
-    std::env::var("FLISTWALKER_UPDATE_FEED_URL")
-        .ok()
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| RELEASES_LATEST_URL.to_string())
-}
-
-fn should_offer_update(current_version: &Version, target_version: &Version) -> bool {
-    if target_version > current_version {
-        return true;
-    }
-    if target_version == current_version && update_allow_same_version() {
-        return true;
-    }
-    if target_version < current_version && update_allow_downgrade() {
-        return true;
-    }
-    false
-}
-
-fn update_allow_same_version() -> bool {
-    env_flag("FLISTWALKER_UPDATE_ALLOW_SAME_VERSION")
-}
-
-fn update_allow_downgrade() -> bool {
-    env_flag("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE")
-}
-
-fn env_flag(name: &str) -> bool {
+pub(super) fn env_flag(name: &str) -> bool {
     std::env::var(name)
         .ok()
         .map(|value| {
@@ -335,446 +119,84 @@ fn env_flag(name: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTarget>> {
-    let version = version.to_string();
-    #[cfg(target_os = "windows")]
-    {
-        return Ok(Some(PlatformReleaseTarget {
-            asset_name: format!("FlistWalker-{version}-windows-x86_64.exe"),
-            readme_asset_name: format!("FlistWalker-{version}-windows-x86_64.README.txt"),
-            license_asset_name: format!("FlistWalker-{version}-windows-x86_64.LICENSE.txt"),
-            notices_asset_name: format!(
-                "FlistWalker-{version}-windows-x86_64.THIRD_PARTY_NOTICES.txt"
-            ),
-            support: UpdateSupport::Auto,
-        }));
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        return Ok(Some(PlatformReleaseTarget {
-            asset_name: format!("FlistWalker-{version}-linux-x86_64"),
-            readme_asset_name: format!("FlistWalker-{version}-linux-x86_64.README.txt"),
-            license_asset_name: format!("FlistWalker-{version}-linux-x86_64.LICENSE.txt"),
-            notices_asset_name: format!(
-                "FlistWalker-{version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
-            ),
-            support: UpdateSupport::Auto,
-        }));
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let suffix = if cfg!(target_arch = "aarch64") {
-            "macos-arm64"
-        } else {
-            "macos-x86_64"
-        };
-        return Ok(Some(PlatformReleaseTarget {
-            asset_name: format!("FlistWalker-{version}-{suffix}"),
-            readme_asset_name: format!("FlistWalker-{version}-{suffix}.README.txt"),
-            license_asset_name: format!("FlistWalker-{version}-{suffix}.LICENSE.txt"),
-            notices_asset_name: format!("FlistWalker-{version}-{suffix}.THIRD_PARTY_NOTICES.txt"),
-            support: UpdateSupport::ManualOnly {
-                message: "macOS の自動更新は未対応です。GitHub Releases から手動更新してください。"
-                    .to_string(),
-            },
-        }));
-    }
-    #[allow(unreachable_code)]
-    Ok(None)
+pub(super) struct StagedUpdatePaths {
+    pub(super) staged_path: PathBuf,
+    pub(super) staged_readme_path: PathBuf,
+    pub(super) staged_license_path: PathBuf,
+    pub(super) staged_notices_path: PathBuf,
+    pub(super) checksum_path: PathBuf,
+    pub(super) signature_path: PathBuf,
+    pub(super) temp_dir: PathBuf,
 }
 
-fn unique_update_temp_dir() -> Result<PathBuf> {
-    let mut rng = OsRng;
-    unique_update_temp_dir_in(&std::env::temp_dir(), || {
-        let mut bytes = [0u8; UPDATE_TEMP_DIR_RANDOM_BYTES];
-        rng.fill_bytes(&mut bytes);
-        bytes
-    })
-}
-
-fn unique_update_temp_dir_in(
-    base_dir: &Path,
-    mut random_bytes: impl FnMut() -> [u8; UPDATE_TEMP_DIR_RANDOM_BYTES],
-) -> Result<PathBuf> {
-    for _ in 0..UPDATE_TEMP_DIR_MAX_ATTEMPTS {
-        let suffix = hex_bytes(&random_bytes());
-        let dir = base_dir.join(format!("flistwalker-update-{suffix}"));
-        match fs::create_dir(&dir) {
-            Ok(()) => {
-                set_private_dir_permissions(&dir)?;
-                return Ok(dir);
-            }
-            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(err) => {
-                return Err(err).with_context(|| format!("failed to create {}", dir.display()));
-            }
-        }
-    }
-    bail!(
-        "failed to create unique update temp directory after {} attempts",
-        UPDATE_TEMP_DIR_MAX_ATTEMPTS
-    )
-}
-
-#[cfg(all(unix, not(target_os = "macos")))]
-fn set_private_dir_permissions(path: &Path) -> Result<()> {
-    let mut perms = fs::metadata(path)
-        .with_context(|| format!("failed to read metadata {}", path.display()))?
-        .permissions();
-    perms.set_mode(0o700);
-    fs::set_permissions(path, perms).with_context(|| format!("failed to chmod {}", path.display()))
-}
-
-#[cfg(not(all(unix, not(target_os = "macos"))))]
-fn set_private_dir_permissions(_path: &Path) -> Result<()> {
-    Ok(())
-}
-
-fn hex_bytes(bytes: &[u8]) -> String {
-    let mut out = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        use std::fmt::Write as _;
-        let _ = write!(&mut out, "{byte:02x}");
-    }
-    out
-}
-
-fn open_new_staged_file(path: &Path) -> Result<File> {
-    OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .with_context(|| format!("failed to create new staged file {}", path.display()))
-}
-
-fn write_new_staged_file(path: &Path, contents: &str) -> Result<()> {
-    use std::io::Write as _;
-    let mut file = open_new_staged_file(path)?;
-    file.write_all(contents.as_bytes())
-        .with_context(|| format!("failed to write {}", path.display()))
-}
-
-fn download_to_path(url: &str, out: &Path) -> Result<()> {
-    let response = ureq::get(url)
-        .set(
-            "User-Agent",
-            &format!("flistwalker/{}", current_version_string()),
-        )
-        .call()
-        .map_err(|err| anyhow!("failed to download {url}: {err}"))?;
-    let mut reader = response.into_reader();
-    let mut file = open_new_staged_file(out)?;
-    std::io::copy(&mut reader, &mut file)
-        .with_context(|| format!("failed to write {}", out.display()))?;
-    Ok(())
-}
-
-fn verify_checksum_manifest_signature(checksum_file: &Path, signature_file: &Path) -> Result<()> {
-    let message = fs::read(checksum_file)
-        .with_context(|| format!("failed to read {}", checksum_file.display()))?;
-    let signature = fs::read(signature_file)
-        .with_context(|| format!("failed to read {}", signature_file.display()))?;
-    update_security::verify_embedded_signature(&message, &signature)
-        .context("failed to verify update checksum signature")
-}
-
-fn verify_download(downloaded_file: &Path, checksum_file: &Path, asset_name: &str) -> Result<()> {
-    let checksums = parse_sha256sums_file(checksum_file)?;
-    let expected = checksums
-        .get(asset_name)
-        .with_context(|| format!("missing checksum for {asset_name}"))?;
-    let actual = sha256_file(downloaded_file)?;
-    if &actual != expected {
-        bail!("checksum mismatch for {asset_name}: expected {expected}, got {actual}");
-    }
-    Ok(())
-}
-
-fn parse_sha256sums_file(path: &Path) -> Result<HashMap<String, String>> {
-    let file =
-        fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
-    let mut out = HashMap::new();
-    for line in BufReader::new(file).lines() {
-        let line = line.with_context(|| format!("failed to read {}", path.display()))?;
-        if let Some((hash, name)) = parse_checksum_line(&line) {
-            out.insert(name.to_string(), hash.to_string());
-        }
-    }
-    Ok(out)
-}
-
-fn parse_checksum_line(line: &str) -> Option<(&str, &str)> {
-    let trimmed = line.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    let mut parts = trimmed.split_whitespace();
-    let hash = parts.next()?;
-    let name = parts.last().or_else(|| trimmed.split("  ").nth(1))?;
-    Some((hash, name.trim_start_matches('*')))
-}
-
-fn sha256_file(path: &Path) -> Result<String> {
-    let mut file =
-        fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
-    let mut hasher = Sha256::new();
-    let mut buf = [0u8; 8192];
-    loop {
-        let read = file
-            .read(&mut buf)
-            .with_context(|| format!("failed to read {}", path.display()))?;
-        if read == 0 {
-            break;
-        }
-        hasher.update(&buf[..read]);
-    }
-    Ok(format!("{:x}", hasher.finalize()))
-}
-
-fn spawn_update_helper(
-    current_exe: &Path,
-    staged_path: &Path,
-    staged_readme_path: &Path,
-    staged_license_path: &Path,
-    staged_notices_path: &Path,
-    temp_dir: &Path,
-) -> Result<()> {
-    #[cfg(target_os = "windows")]
-    {
-        return spawn_windows_update_helper(
-            current_exe,
-            staged_path,
-            staged_readme_path,
-            staged_license_path,
-            staged_notices_path,
+impl StagedUpdatePaths {
+    fn new(temp_dir: PathBuf, candidate: &UpdateCandidate) -> Self {
+        Self {
+            staged_path: temp_dir.join(&candidate.asset_name),
+            staged_readme_path: temp_dir.join(&candidate.readme_asset_name),
+            staged_license_path: temp_dir.join(&candidate.license_asset_name),
+            staged_notices_path: temp_dir.join(&candidate.notices_asset_name),
+            checksum_path: temp_dir.join("SHA256SUMS"),
+            signature_path: temp_dir.join(CHECKSUM_SIGNATURE_NAME),
             temp_dir,
-        );
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        spawn_linux_update_helper(
-            current_exe,
-            staged_path,
-            staged_readme_path,
-            staged_license_path,
-            staged_notices_path,
-            temp_dir,
-        )
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let _ = (
-            current_exe,
-            staged_path,
-            staged_readme_path,
-            staged_license_path,
-            staged_notices_path,
-            temp_dir,
-        );
-        bail!("macOS auto-update is unsupported");
+        }
     }
 }
 
-#[cfg(target_os = "windows")]
-fn spawn_windows_update_helper(
-    current_exe: &Path,
-    staged_path: &Path,
-    staged_readme_path: &Path,
-    staged_license_path: &Path,
-    staged_notices_path: &Path,
-    temp_dir: &Path,
-) -> Result<()> {
-    let script_path = temp_dir.join("apply-update.ps1");
-    let script = r#"
-param(
-    [string]$TargetPath,
-    [string]$StagedPath,
-[string]$ReadmePath,
-[string]$LicensePath,
-[string]$NoticesPath
-)
-$targetDir = Split-Path -Parent $TargetPath
-$readmeTarget = Join-Path $targetDir 'README.txt'
-$licenseTarget = Join-Path $targetDir 'LICENSE.txt'
-$noticesTarget = Join-Path $targetDir 'THIRD_PARTY_NOTICES.txt'
-for ($i = 0; $i -lt 100; $i++) {
-    try {
-        Copy-Item -LiteralPath $StagedPath -Destination $TargetPath -Force
-        if (Test-Path -LiteralPath $ReadmePath) {
-            Copy-Item -LiteralPath $ReadmePath -Destination $readmeTarget -Force
-            Remove-Item -LiteralPath $ReadmePath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $LicensePath) {
-            Copy-Item -LiteralPath $LicensePath -Destination $licenseTarget -Force
-            Remove-Item -LiteralPath $LicensePath -Force -ErrorAction SilentlyContinue
-        }
-        if (Test-Path -LiteralPath $NoticesPath) {
-            Copy-Item -LiteralPath $NoticesPath -Destination $noticesTarget -Force
-            Remove-Item -LiteralPath $NoticesPath -Force -ErrorAction SilentlyContinue
-        }
-        Remove-Item -LiteralPath $StagedPath -Force -ErrorAction SilentlyContinue
-        Start-Process -FilePath $TargetPath -WorkingDirectory $targetDir
-        exit 0
-    } catch {
-        Start-Sleep -Milliseconds 200
-    }
-}
-exit 1
-"#;
-    write_new_staged_file(&script_path, script)?;
-    let mut command = Command::new("powershell.exe");
-    command
-        .args([
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-WindowStyle",
-            "Hidden",
-            "-File",
-        ])
-        .arg(&script_path)
-        .arg(current_exe)
-        .arg(staged_path)
-        .arg(staged_readme_path)
-        .arg(staged_license_path)
-        .arg(staged_notices_path);
-    command.creation_flags(CREATE_NO_WINDOW);
-    command
-        .spawn()
-        .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
-    Ok(())
+pub(super) struct VerifiedUpdateBundle {
+    pub(super) staged_path: PathBuf,
+    pub(super) staged_readme_path: PathBuf,
+    pub(super) staged_license_path: PathBuf,
+    pub(super) staged_notices_path: PathBuf,
+    pub(super) temp_dir: PathBuf,
 }
 
-#[cfg(all(unix, not(target_os = "macos")))]
-fn spawn_linux_update_helper(
-    current_exe: &Path,
-    staged_path: &Path,
-    staged_readme_path: &Path,
-    staged_license_path: &Path,
-    staged_notices_path: &Path,
-    temp_dir: &Path,
-) -> Result<()> {
-    let script_path = temp_dir.join("apply-update.sh");
-    let script = r#"#!/bin/sh
-set -eu
-target="$1"
-staged="$2"
-readme_src="$3"
-license_src="$4"
-notices_src="$5"
-target_dir=$(dirname "$target")
-ignore_target="$target_dir/flistwalker.ignore.txt"
-readme_target="$target_dir/README.txt"
-license_target="$target_dir/LICENSE.txt"
-notices_target="$target_dir/THIRD_PARTY_NOTICES.txt"
-for _ in $(seq 1 100); do
-  if cp "$staged" "$target" 2>/dev/null; then
-    if [ -f "$readme_src" ]; then
-      cp "$readme_src" "$readme_target" 2>/dev/null || true
-      rm -f "$readme_src"
-    fi
-    if [ -f "$license_src" ]; then
-      cp "$license_src" "$license_target" 2>/dev/null || true
-      rm -f "$license_src"
-    fi
-    if [ -f "$notices_src" ]; then
-      cp "$notices_src" "$notices_target" 2>/dev/null || true
-      rm -f "$notices_src"
-    fi
-    chmod 755 "$target" || true
-    rm -f "$staged"
-    cd "$target_dir"
-    exec "$target"
-  fi
-  sleep 0.2
-done
-exit 1
-"#;
-    write_new_staged_file(&script_path, script)?;
-    let mut perms = fs::metadata(&script_path)
-        .with_context(|| format!("failed to read metadata {}", script_path.display()))?
-        .permissions();
-    perms.set_mode(0o700);
-    fs::set_permissions(&script_path, perms)
-        .with_context(|| format!("failed to chmod {}", script_path.display()))?;
-    Command::new("sh")
-        .arg(&script_path)
-        .arg(current_exe)
-        .arg(staged_path)
-        .arg(staged_readme_path)
-        .arg(staged_license_path)
-        .arg(staged_notices_path)
-        .spawn()
-        .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
-    Ok(())
+impl VerifiedUpdateBundle {
+    fn new(staged: StagedUpdatePaths) -> Self {
+        Self {
+            staged_path: staged.staged_path,
+            staged_readme_path: staged.staged_readme_path,
+            staged_license_path: staged.staged_license_path,
+            staged_notices_path: staged.staged_notices_path,
+            temp_dir: staged.temp_dir,
+        }
+    }
+}
+
+fn verify_staged_update(
+    candidate: &UpdateCandidate,
+    staged: StagedUpdatePaths,
+) -> Result<VerifiedUpdateBundle> {
+    manifest::verify_checksum_manifest_signature(&staged.checksum_path, &staged.signature_path)?;
+    manifest::verify_download(
+        &staged.staged_path,
+        &staged.checksum_path,
+        &candidate.asset_name,
+    )?;
+    manifest::verify_download(
+        &staged.staged_readme_path,
+        &staged.checksum_path,
+        &candidate.readme_asset_name,
+    )?;
+    manifest::verify_download(
+        &staged.staged_license_path,
+        &staged.checksum_path,
+        &candidate.license_asset_name,
+    )?;
+    manifest::verify_download(
+        &staged.staged_notices_path,
+        &staged.checksum_path,
+        &candidate.notices_asset_name,
+    )?;
+    staging::make_staged_binary_executable(&staged.staged_path)?;
+    Ok(VerifiedUpdateBundle::new(staged))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::update_security;
+    use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
-
-    const TEST_SIGNING_KEY_HEX: &str =
-        "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
-    const TEST_PUBLIC_KEY_HEX: &str =
-        "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664";
-
-    #[test]
-    fn parse_checksum_line_supports_sha256sum_format() {
-        let (hash, name) =
-            parse_checksum_line("abc123  FlistWalker-0.12.3-linux-x86_64").expect("checksum");
-        assert_eq!(hash, "abc123");
-        assert_eq!(name, "FlistWalker-0.12.3-linux-x86_64");
-    }
-
-    #[test]
-    fn parse_version_accepts_tag_prefix() {
-        let version = parse_version("v0.12.3").expect("version");
-        assert_eq!(version, Version::new(0, 12, 3));
-    }
-
-    #[test]
-    fn should_offer_update_supports_same_version_override() {
-        let _env_lock = crate::env_var_test_lock()
-            .lock()
-            .expect("env var test lock");
-        assert!(!should_offer_update(
-            &Version::new(0, 12, 3),
-            &Version::new(0, 12, 3)
-        ));
-        unsafe {
-            std::env::set_var("FLISTWALKER_UPDATE_ALLOW_SAME_VERSION", "1");
-        }
-        assert!(should_offer_update(
-            &Version::new(0, 12, 3),
-            &Version::new(0, 12, 3)
-        ));
-        unsafe {
-            std::env::remove_var("FLISTWALKER_UPDATE_ALLOW_SAME_VERSION");
-        }
-    }
-
-    #[test]
-    fn should_offer_update_supports_downgrade_override() {
-        let _env_lock = crate::env_var_test_lock()
-            .lock()
-            .expect("env var test lock");
-        assert!(!should_offer_update(
-            &Version::new(0, 12, 3),
-            &Version::new(0, 12, 2)
-        ));
-        unsafe {
-            std::env::set_var("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE", "1");
-        }
-        assert!(should_offer_update(
-            &Version::new(0, 12, 3),
-            &Version::new(0, 12, 2)
-        ));
-        unsafe {
-            std::env::remove_var("FLISTWALKER_UPDATE_ALLOW_DOWNGRADE");
-        }
-    }
 
     #[test]
     fn self_update_disabled_flag_is_honored() {
@@ -868,366 +290,5 @@ mod tests {
         assert!(!self_update_disabled_for_exe_path(Some(&exe)));
 
         let _ = fs::remove_dir_all(&root);
-    }
-
-    #[test]
-    fn should_skip_update_prompt_blocks_same_or_older_target_versions() {
-        assert!(should_skip_update_prompt("0.12.3", Some("0.12.3")));
-        assert!(should_skip_update_prompt("0.12.2", Some("0.12.3")));
-        assert!(!should_skip_update_prompt("0.12.4", Some("0.12.3")));
-        assert!(!should_skip_update_prompt("0.12.4", None));
-    }
-
-    fn test_release(tag_name: &str) -> GitHubRelease {
-        GitHubRelease {
-            tag_name: tag_name.to_string(),
-            html_url: "https://example.invalid/release".to_string(),
-            assets: vec![
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-windows-x86_64.exe".to_string(),
-                    browser_download_url: "https://example.invalid/windows-exe".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-windows-x86_64.README.txt".to_string(),
-                    browser_download_url: "https://example.invalid/windows-readme".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-windows-x86_64.LICENSE.txt".to_string(),
-                    browser_download_url: "https://example.invalid/windows-license".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-windows-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
-                    browser_download_url: "https://example.invalid/windows-notices".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-linux-x86_64".to_string(),
-                    browser_download_url: "https://example.invalid/linux-bin".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-linux-x86_64.README.txt".to_string(),
-                    browser_download_url: "https://example.invalid/linux-readme".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-linux-x86_64.LICENSE.txt".to_string(),
-                    browser_download_url: "https://example.invalid/linux-license".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-linux-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
-                    browser_download_url: "https://example.invalid/linux-notices".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-x86_64".to_string(),
-                    browser_download_url: "https://example.invalid/macos-x64-bin".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-x86_64.README.txt".to_string(),
-                    browser_download_url: "https://example.invalid/macos-x64-readme".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-x86_64.LICENSE.txt".to_string(),
-                    browser_download_url: "https://example.invalid/macos-x64-license".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-x86_64.THIRD_PARTY_NOTICES.txt".to_string(),
-                    browser_download_url: "https://example.invalid/macos-x64-notices".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-arm64".to_string(),
-                    browser_download_url: "https://example.invalid/macos-arm-bin".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-arm64.README.txt".to_string(),
-                    browser_download_url: "https://example.invalid/macos-arm-readme".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-arm64.LICENSE.txt".to_string(),
-                    browser_download_url: "https://example.invalid/macos-arm-license".to_string(),
-                },
-                GitHubAsset {
-                    name: "FlistWalker-0.13.1-macos-arm64.THIRD_PARTY_NOTICES.txt".to_string(),
-                    browser_download_url: "https://example.invalid/macos-arm-notices".to_string(),
-                },
-                GitHubAsset {
-                    name: "SHA256SUMS".to_string(),
-                    browser_download_url: "https://example.invalid/SHA256SUMS".to_string(),
-                },
-                GitHubAsset {
-                    name: CHECKSUM_SIGNATURE_NAME.to_string(),
-                    browser_download_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
-                },
-            ],
-        }
-    }
-
-    #[test]
-    fn resolve_update_candidate_from_release_builds_candidate_from_assets() {
-        let release = test_release("v0.13.1");
-        let target = current_platform_target(&Version::new(0, 13, 1))
-            .expect("platform target")
-            .expect("target");
-        let candidate = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
-            .expect("candidate resolution")
-            .expect("update candidate");
-
-        assert_eq!(candidate.current_version, "0.13.0");
-        assert_eq!(candidate.target_version, "0.13.1");
-        assert_eq!(candidate.release_url, "https://example.invalid/release");
-        assert_eq!(candidate.asset_name, target.asset_name);
-        assert_eq!(
-            candidate.checksum_signature_url,
-            "https://example.invalid/SHA256SUMS.sig"
-        );
-
-        if update_security::has_embedded_public_key() {
-            #[cfg(target_os = "macos")]
-            assert!(matches!(
-                candidate.support,
-                UpdateSupport::ManualOnly { .. }
-            ));
-
-            #[cfg(not(target_os = "macos"))]
-            assert_eq!(candidate.support, UpdateSupport::Auto);
-        } else {
-            assert!(matches!(
-                candidate.support,
-                UpdateSupport::ManualOnly { .. }
-            ));
-        }
-    }
-
-    #[test]
-    fn select_release_assets_collects_expected_assets() {
-        let release = test_release("v0.13.1");
-        let target = current_platform_target(&Version::new(0, 13, 1))
-            .expect("platform target")
-            .expect("target");
-
-        let assets = select_release_assets(&release, &target).expect("release assets");
-
-        assert_eq!(assets.asset.name, target.asset_name);
-        assert_eq!(assets.readme_asset.name, target.readme_asset_name);
-        assert_eq!(assets.license_asset.name, target.license_asset_name);
-        assert_eq!(assets.notices_asset.name, target.notices_asset_name);
-        assert_eq!(assets.checksum.name, "SHA256SUMS");
-        assert_eq!(assets.checksum_signature.name, CHECKSUM_SIGNATURE_NAME);
-    }
-
-    #[test]
-    fn effective_update_support_respects_embedded_public_key_availability() {
-        let support = effective_update_support(UpdateSupport::Auto);
-
-        if update_security::has_embedded_public_key() {
-            assert_eq!(support, UpdateSupport::Auto);
-        } else {
-            assert!(matches!(support, UpdateSupport::ManualOnly { .. }));
-        }
-    }
-
-    #[test]
-    fn resolve_update_candidate_from_release_skips_non_newer_versions() {
-        let release = test_release("v0.13.0");
-        let candidate = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
-            .expect("candidate resolution");
-
-        assert!(candidate.is_none());
-    }
-
-    #[test]
-    fn checksum_verification_detects_match() {
-        let dir = unique_update_temp_dir().expect("temp dir");
-        let file_path = dir.join("sample.bin");
-        let sums_path = dir.join("SHA256SUMS");
-        fs::write(&file_path, b"hello").expect("write sample");
-        fs::write(
-            &sums_path,
-            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  sample.bin\n",
-        )
-        .expect("write sums");
-
-        verify_download(&file_path, &sums_path, "sample.bin").expect("checksum match");
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn unique_update_temp_dir_in_retries_collisions_and_never_reuses_existing_dir() {
-        let base = unique_update_temp_dir().expect("base temp dir");
-        let first = [0x11; UPDATE_TEMP_DIR_RANDOM_BYTES];
-        let second = [0x22; UPDATE_TEMP_DIR_RANDOM_BYTES];
-        let first_path = base.join(format!("flistwalker-update-{}", hex_bytes(&first)));
-        let second_path = base.join(format!("flistwalker-update-{}", hex_bytes(&second)));
-        fs::create_dir(&first_path).expect("precreate collision dir");
-        let mut attempts = [first, second].into_iter();
-
-        let actual = unique_update_temp_dir_in(&base, || attempts.next().expect("random bytes"))
-            .expect("create after collision");
-
-        assert_eq!(actual, second_path);
-        assert!(first_path.is_dir(), "existing collision dir must remain");
-        assert!(second_path.is_dir(), "second attempt should create dir");
-
-        #[cfg(all(unix, not(target_os = "macos")))]
-        {
-            let mode = fs::metadata(&second_path)
-                .expect("metadata")
-                .permissions()
-                .mode()
-                & 0o777;
-            assert_eq!(mode, 0o700);
-        }
-
-        let _ = fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn unique_update_temp_dir_in_fails_after_repeated_collisions() {
-        let base = unique_update_temp_dir().expect("base temp dir");
-        let repeated = [0x33; UPDATE_TEMP_DIR_RANDOM_BYTES];
-        let collision_path = base.join(format!("flistwalker-update-{}", hex_bytes(&repeated)));
-        fs::create_dir(&collision_path).expect("precreate collision dir");
-
-        let err = unique_update_temp_dir_in(&base, || repeated)
-            .expect_err("repeated collisions should fail");
-
-        assert!(
-            err.to_string().contains("after 32 attempts"),
-            "unexpected error: {err}"
-        );
-
-        let _ = fs::remove_dir_all(&base);
-    }
-
-    #[test]
-    fn open_new_staged_file_refuses_existing_file() {
-        let dir = unique_update_temp_dir().expect("temp dir");
-        let path = dir.join("existing.bin");
-        fs::write(&path, b"existing").expect("write existing file");
-
-        let err = open_new_staged_file(&path).expect_err("existing file must not be overwritten");
-
-        assert!(
-            err.to_string().contains("failed to create new staged file"),
-            "unexpected error: {err}"
-        );
-        assert_eq!(fs::read(&path).expect("read existing"), b"existing");
-
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn write_new_staged_file_refuses_existing_file() {
-        let dir = unique_update_temp_dir().expect("temp dir");
-        let path = dir.join("apply-update.sh");
-        fs::write(&path, "existing").expect("write existing script");
-
-        let err = write_new_staged_file(&path, "replacement")
-            .expect_err("existing helper script must not be overwritten");
-
-        assert!(
-            err.to_string().contains("failed to create new staged file"),
-            "unexpected error: {err}"
-        );
-        assert_eq!(
-            fs::read_to_string(&path).expect("read existing"),
-            "existing"
-        );
-
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn checksum_verification_detects_sidecar_match() {
-        let dir = unique_update_temp_dir().expect("temp dir");
-        let file_path = dir.join("sample.LICENSE.txt");
-        let sums_path = dir.join("SHA256SUMS");
-        fs::write(&file_path, b"license text").expect("write sample");
-        let hash = sha256_file(&file_path).expect("hash");
-        fs::write(&sums_path, format!("{hash}  sample.LICENSE.txt\n")).expect("write sums");
-
-        verify_download(&file_path, &sums_path, "sample.LICENSE.txt").expect("checksum match");
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn checksum_manifest_signature_verification_detects_match() {
-        let dir = unique_update_temp_dir().expect("temp dir");
-        let sums_path = dir.join("SHA256SUMS");
-        let signature_path = dir.join(CHECKSUM_SIGNATURE_NAME);
-        let message =
-            b"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  sample.bin\n";
-        let signature = update_security::sign_message(message, TEST_SIGNING_KEY_HEX).expect("sign");
-        fs::write(&sums_path, message).expect("write sums");
-        fs::write(&signature_path, signature).expect("write signature");
-
-        let message = fs::read(&sums_path).expect("read sums");
-        let signature = fs::read(&signature_path).expect("read signature");
-        update_security::verify_signature(&message, &signature, TEST_PUBLIC_KEY_HEX)
-            .expect("signature should verify");
-
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn checksum_manifest_signature_verification_rejects_tampering() {
-        let dir = unique_update_temp_dir().expect("temp dir");
-        let sums_path = dir.join("SHA256SUMS");
-        let signature_path = dir.join(CHECKSUM_SIGNATURE_NAME);
-        let signed_message =
-            b"2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  sample.bin\n";
-        let tampered_message =
-            b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sample.bin\n";
-        let signature =
-            update_security::sign_message(signed_message, TEST_SIGNING_KEY_HEX).expect("sign");
-        fs::write(&sums_path, tampered_message).expect("write sums");
-        fs::write(&signature_path, signature).expect("write signature");
-
-        let message = fs::read(&sums_path).expect("read sums");
-        let signature = fs::read(&signature_path).expect("read signature");
-        let result = update_security::verify_signature(&message, &signature, TEST_PUBLIC_KEY_HEX);
-        assert!(result.is_err(), "tampered manifest must fail verification");
-
-        let _ = fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn current_platform_target_matches_release_asset_pattern() {
-        let target = current_platform_target(&Version::new(0, 12, 3))
-            .expect("platform")
-            .expect("target");
-        assert!(target.asset_name.starts_with("FlistWalker-0.12.3-"));
-        assert_ne!(target.asset_name, "SHA256SUMS");
-        assert!(target.readme_asset_name.ends_with(".README.txt"));
-        assert!(target.license_asset_name.ends_with(".LICENSE.txt"));
-        assert!(target
-            .notices_asset_name
-            .ends_with(".THIRD_PARTY_NOTICES.txt"));
-    }
-
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn windows_support_is_auto() {
-        let target = current_platform_target(&Version::new(0, 12, 3))
-            .expect("platform")
-            .expect("target");
-        assert_eq!(target.support, UpdateSupport::Auto);
-        assert!(target.asset_name.ends_with(".exe"));
-    }
-
-    #[test]
-    #[cfg(all(unix, not(target_os = "macos")))]
-    fn linux_support_is_auto() {
-        let target = current_platform_target(&Version::new(0, 12, 3))
-            .expect("platform")
-            .expect("target");
-        assert_eq!(target.support, UpdateSupport::Auto);
-        assert!(target.asset_name.contains("-linux-"));
-    }
-
-    #[test]
-    #[cfg(target_os = "macos")]
-    fn macos_support_is_manual_only() {
-        let target = current_platform_target(&Version::new(0, 12, 3))
-            .expect("platform")
-            .expect("target");
-        assert!(matches!(target.support, UpdateSupport::ManualOnly { .. }));
     }
 }
