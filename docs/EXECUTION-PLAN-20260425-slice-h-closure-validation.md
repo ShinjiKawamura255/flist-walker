@@ -19,7 +19,9 @@
 - Review Status: レビュー済み
 - Review Notes:
   - 2026-04-26 initial closure plan created after Slice G commit `68b844b`.
-  - Specialist subagent review remains unavailable due quota exhaustion. Main-agent fallback closure review is used only because this slice records validation and removes temporary process state; residual process risk is recorded in the closure decision.
+  - Specialist subagent review was unavailable during original closure due quota exhaustion. Main-agent fallback closure review was used because this slice recorded validation and removed temporary process state; the process risk was recorded in the original closure decision.
+  - 2026-04-26 post-closure specialist review completed after subagent capacity recovered. Security/release/operability review found no blockers and confirmed the `RUSTSEC-2024-0436` / `paste` posture is documented as accepted transitive debt with owner/cadence/triggers/evidence. Testing/validation review found no product/test blockers and identified only documentation updates needed to close the late-review residual.
+  - The late-slice specialist-review residual is now closed by post-closure review evidence. Remaining residuals are GUI visual smoke not run and accepted transitive `paste` dependency debt.
 
 ## 1. Background
 The roadmap started from a candid 84/100 assessment and targeted a defensible 90/100 class by addressing traceability, self-update staging security, large module decomposition, GUI validation, and audit warning posture.
@@ -61,7 +63,7 @@ Close the roadmap only if the evidence supports closure:
 - Closure must not hide unresolved risks.
 - Closure may cite validations from earlier committed slices if they are still relevant, but must run current core gates again where practical.
 - If score remains below 90/100 or a security stop condition remains open, do not remove the Temporary Change Plan Rule; record a continue decision instead.
-- Independent specialist review is unavailable in this session due quota exhaustion; this lowers confidence and must be reflected in residual risks.
+- Independent specialist review was unavailable during original closure due quota exhaustion. Post-closure specialist review evidence is now recorded, so the historical timing gap is closed as process debt rather than an active residual risk.
 
 ## 5. Current Risks
 - Risk: Full validation is expensive.
@@ -125,10 +127,14 @@ No new rule. This slice removes the existing Temporary Change Plan Rule only aft
   - GUI validation: Slice F added deterministic fixture generation and `GSM-001` through `GSM-010` manual gate with owner/frequency/evidence/flake policy.
   - Audit posture: Slice G documented the remaining allowed transitive warning with owner, release-candidate review cadence, and re-evaluation triggers.
   - Performance: Slice E recorded search 100k perf at `29ms` versus `44ms` baseline and VM-003 FileList/walker perf guards remained faster than baselines.
-- 2026-04-26 Residual risks:
+- 2026-04-26 Residual risks at original closure:
   - Independent specialist subagent reviews for Slices F/G/H were unavailable due quota exhaustion; fallback main-agent reviews are recorded in those plans.
   - GUI validation gate is now repeatable and fixture-backed, but closure did not perform a human visual smoke run.
   - `RUSTSEC-2024-0436` remains an accepted transitive unmaintained warning rather than removed dependency debt.
+- 2026-04-26 Post-closure specialist review:
+  - Security/release/operability specialist review: no blockers to closing the late-review gap; `paste` remains accepted transitive debt, not a review-process blocker.
+  - Testing/validation specialist review: no product/test blockers to closing the late-review gap; documentation needed to move the late-review item from residual risk to resolved process debt.
+  - Result: late-slice specialist review unavailability is resolved by independent post-closure review evidence. The remaining active residual risks are GUI visual smoke not run and accepted transitive `paste` dependency debt.
 - 2026-04-26 Closure score: 90/100. The project reaches the roadmap target because the original five gaps are either fixed or explicitly owned by a repeatable gate/cadence, and current validation passes. The residuals prevent a higher score.
 - 2026-04-26 Close decision: close `quality-hardening-90`; no additional slice is required in this roadmap. Future work should treat GUI framework upgrade and human GUI smoke execution as normal release-readiness work, not blockers for this roadmap closure.
 - 2026-04-26 Removed `AGENTS.md` Temporary Change Plan Rule after close decision.

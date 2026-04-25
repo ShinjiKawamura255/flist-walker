@@ -205,11 +205,12 @@ Add this only after roadmap and active slice initial review, required revisions,
 - 2026-04-25 Slice E plan created for search/indexer boundary decomposition.
 - 2026-04-25 Slice E completed: search private matching/evaluation ownership moved to `search/match_eval.rs`, nested FileList hierarchy override ownership moved to `indexer/filelist_hierarchy.rs`, and the public `search` / `indexer` facades remained stable. Validation passed with full test/clippy/coverage gates, search/indexer targeted tests, boundary checks, touched-file `rustfmt --check`, `git diff --check`, search 100k perf (`29ms`, baseline `44ms`), and VM-003 perf guards. `cargo audit` passed with the existing allowed transitive `paste` unmaintained warning still deferred to Slice G.
 - 2026-04-25 Slice F plan created for GUI validation uplift.
-- 2026-04-26 Slice F completed: added a deterministic GUI smoke fixture script, dedicated `docs/GUI-TESTPLAN.md` and `docs/GUI-TESTREPORT.md`, stable `GSM-001` through `GSM-010` manual gate IDs, evidence location under ignored `rust/target/gui-smoke/`, and TESTPLAN links from `TC-010`, `TC-011`, `TC-099`, `VM-002`, and `VM-006`. Validation passed with shell syntax check, fixture generation, reference checks, and `git diff --check`. Independent specialist review could not be completed due subagent quota exhaustion; fallback main-agent review is recorded in the slice plan.
+- 2026-04-26 Slice F completed: added a deterministic GUI smoke fixture script, dedicated `docs/GUI-TESTPLAN.md` and `docs/GUI-TESTREPORT.md`, stable `GSM-001` through `GSM-010` manual gate IDs, evidence location under ignored `rust/target/gui-smoke/`, and TESTPLAN links from `TC-010`, `TC-011`, `TC-099`, `VM-002`, and `VM-006`. Validation passed with shell syntax check, fixture generation, reference checks, and `git diff --check`. Independent specialist review could not be completed during the original slice due subagent quota exhaustion; fallback main-agent review is recorded in the slice plan, and post-closure validation/security specialist review later found no blockers.
 - 2026-04-26 Slice G plan created for dependency/audit and supply-chain follow-up.
 - 2026-04-26 Slice G completed: `cargo audit` still reports the known allowed transitive `RUSTSEC-2024-0436` / `paste 1.0.15` unmaintained warning through the GUI stack, while `cargo tree -i paste` and `cargo tree --target all -i paste` print no active dependency path. The project now records this as accepted transitive risk in `docs/OSS_COMPLIANCE.md` with owner, release-candidate review cadence, re-evaluation triggers, and required evidence. No dependency, lockfile, audit-policy, or release behavior changes were made.
 - 2026-04-26 Slice H closure plan created.
-- 2026-04-26 Slice H completed: current validation passed with `cargo test --locked`, clippy `-D warnings`, coverage `--fail-under-lines 70`, `cargo audit`, and `git diff --check`. Closure score is 90/100. Close decision: close `quality-hardening-90`; residual risks are documented as independent specialist review unavailability for late slices, GUI smoke gate not visually executed during closure, and accepted transitive `paste` unmaintained warning.
+- 2026-04-26 Slice H completed: current validation passed with `cargo test --locked`, clippy `-D warnings`, coverage `--fail-under-lines 70`, `cargo audit`, and `git diff --check`. Closure score is 90/100. Close decision: close `quality-hardening-90`; original residual risks were independent specialist review unavailability for late slices, GUI smoke gate not visually executed during closure, and accepted transitive `paste` unmaintained warning.
+- 2026-04-26 Post-closure specialist review completed for the late slices. Security/release/operability review found no blockers and confirmed the accepted `paste` warning posture is documented; testing/validation review found no product/test blockers and required only documentation updates to close the late-review residual.
 
 ## 12. Communication Plan
 - Return to user when:
@@ -242,9 +243,10 @@ Add this only after roadmap and active slice initial review, required revisions,
   - repeatable GUI validation gate
   - dependency/audit accepted-risk posture
 - Residual risks:
-  - late-slice specialist review used main-agent fallback due subagent quota exhaustion
   - GUI smoke gate was created and fixture-validated but not visually executed during closure
   - `RUSTSEC-2024-0436` remains accepted transitive dependency debt until a future GUI stack upgrade or audit posture change
+- Resolved post-closure process debt:
+  - late-slice specialist review originally used main-agent fallback due subagent quota exhaustion; post-closure validation and security/release/operability specialist reviews found no blockers and closed this residual
 - Follow-up outside this roadmap:
   - run `docs/GUI-TESTPLAN.md` before the next release candidate and fill `docs/GUI-TESTREPORT.md` or generated local evidence
   - revisit `eframe` / `egui` / `wgpu` upgrade when planning GUI framework maintenance

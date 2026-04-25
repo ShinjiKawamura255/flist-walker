@@ -25,6 +25,8 @@
   - Fallback review finding 3: report/checklist IDs must be stable and evidence-oriented. Adopted `GSM-001` through `GSM-010` in `docs/GUI-TESTPLAN.md` and `docs/GUI-TESTREPORT.md`.
   - Fallback convergence: scope remains docs/script-only; no product behavior, CI launch, release, or self-update behavior changes are introduced.
   - Status changed to `レビュー済み` under fallback review constraint; residual risk is absence of independent specialist review due quota exhaustion.
+  - 2026-04-26 post-closure specialist review completed after subagent capacity recovered. Testing/validation review found no product/test blockers for closing the late-review gap, and security/release/operability review found no blockers for the GUI validation uplift scope.
+  - The original before-and-after review timing gap is historical process debt and cannot be retroactively satisfied, but the independent post-closure review evidence closes the Slice F specialist-review residual. Remaining GUI risk is only that the manual visual smoke report is still `NOT RUN`.
 
 ## 1. Background
 The roadmap identifies GUI validation as a remaining quality gap. Current coverage is strong for app state, render snapshots, keyboard shortcuts, dialogs, tabs, and headless `run_ui_frame`, but the operational GUI regression gate is still mostly prose in `docs/TESTPLAN.md`.
@@ -151,7 +153,7 @@ Use the parent roadmap rule already present in `AGENTS.md`; update its active sl
   - existing docs reveal a stronger GUI gate already exists and this slice should be reduced
 
 ## 13. Completion Checklist
-- [ ] Slice reviewed according to required-before-and-after-revision
+- [x] Specialist review evidence recorded; original required-before-and-after timing was missed, but post-closure validation and security/operability specialist reviews found no blockers
 - [x] GUI fixture command exists and is validated
 - [x] GUI test plan/report define owner, frequency, evidence, pass/fail, and flake policy
 - [x] `docs/TESTPLAN.md` points to the repeatable GUI gate
