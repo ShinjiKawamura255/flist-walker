@@ -37,7 +37,7 @@ pub fn configure_egui_fonts(ctx: &egui::Context) {
         let font_name = "cjk_ui".to_string();
         fonts
             .font_data
-            .insert(font_name.clone(), egui::FontData::from_owned(font_bytes));
+            .insert(font_name.clone(), egui::FontData::from_owned(font_bytes).into());
         if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
             family.insert(0, font_name.clone());
         }

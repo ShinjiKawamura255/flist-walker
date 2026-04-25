@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use super::{
     render_tabs, render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode,
 };
@@ -17,12 +19,13 @@ fn paint_root_selector_button(
     } else {
         ui.style().interact(response)
     };
-    let rounding = ui.visuals().widgets.inactive.rounding;
+    let rounding = ui.visuals().widgets.inactive.corner_radius;
     ui.painter().rect(
         rect.expand(visuals.expansion),
         rounding,
         visuals.bg_fill,
         visuals.bg_stroke,
+        egui::StrokeKind::Inside,
     );
 
     let inner_rect = rect.shrink2(ui.spacing().button_padding);
@@ -97,12 +100,12 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     }
                     let popup_id = FlistWalkerApp::root_selector_popup_id();
                     let below = egui::AboveOrBelow::Below;
-                    egui::popup::popup_above_or_below_widget(
+                    egui::popup_above_or_below_widget(
                         ui,
                         popup_id,
                         &response,
                         below,
-                        egui::popup::PopupCloseBehavior::CloseOnClickOutside,
+                        egui::PopupCloseBehavior::CloseOnClickOutside,
                         |ui: &mut egui::Ui| {
                             ui.set_min_width(field_width);
                             for (index, path) in app
@@ -253,7 +256,7 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 "Type to fuzzy-search files/folders..."
             })
             .show(ui);
-        let _ = output.response.clone().on_hover_ui_at_pointer(|ui| {
+        let _ = egui::Response::clone(&output.response).on_hover_ui_at_pointer(|ui| {
             if editing_history_search {
                 ui.label("Ctrl+R で履歴検索を開始。Enter / Ctrl+J / Ctrl+M で確定、Esc / Ctrl+G でキャンセル。");
             } else {
@@ -362,16 +365,15 @@ pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ctx: &egui::Context)
             ui.horizontal(|ui| {
                 let version_text = format!("v{}", env!("CARGO_PKG_VERSION"));
                 let version_font = egui::TextStyle::Body.resolve(ui.style());
-                let version_width = ui.fonts(|fonts| {
-                    fonts
-                        .layout_no_wrap(
-                            version_text.clone(),
-                            version_font.clone(),
-                            ui.visuals().text_color(),
-                        )
+                let version_width = ui
+                    .painter()
+                    .layout_no_wrap(
+                        version_text.clone(),
+                        version_font.clone(),
+                        ui.visuals().text_color(),
+                    )
                         .size()
-                        .x
-                });
+                        .x;
                 if let Some(label) = app.action_progress_label() {
                     ui.add(egui::Spinner::new().size(14.0));
                     ui.label(label);
@@ -442,7 +444,7 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                 egui::Layout::top_down(egui::Align::Min),
                 |ui| {
                     let frame_fill = ui.visuals().extreme_bg_color;
-                    egui::Frame::none().fill(frame_fill).show(ui, |ui| {
+                    egui::Frame::NONE.fill(frame_fill).show(ui, |ui| {
                         ui.set_min_size(egui::vec2(preview_width, preview_height));
                         egui::ScrollArea::both()
                             .auto_shrink([false, false])
@@ -602,10 +604,10 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
                 } else {
                     egui::Color32::TRANSPARENT
                 };
-                let row = egui::Frame::none()
+                let row = egui::Frame::NONE
                     .fill(fill)
-                    .inner_margin(egui::Margin::symmetric(3.0, 2.0))
-                    .rounding(egui::Rounding::same(3.0))
+                    .inner_margin(egui::Margin::symmetric(3, 2))
+                    .corner_radius(egui::CornerRadius::same(3))
                     .show(ui, |ui| {
                         ui.add(
                             egui::Label::new(egui::RichText::new(text).monospace())
@@ -656,7 +658,7 @@ fn render_result_row(
     if is_current {
         ui.painter().rect_filled(
             rect,
-            egui::Rounding::same(FlistWalkerApp::RESULT_ROW_ROUNDING),
+            egui::CornerRadius::same(FlistWalkerApp::RESULT_ROW_ROUNDING as u8),
             selected_bg,
         );
     }

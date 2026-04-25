@@ -72,10 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- For `paste-audit-resolution`, read `docs/EXECUTION-PLAN-20260426-plan-paste-audit-resolution.md` before implementation.
-- Follow the plan's `Execution Profile: light`, `Planning Depth: single-plan`, `Review Pattern: solo-main`, and `Review Requiredness: optional`.
-- Do not create release tags, publish releases, or make unrelated self-update behavior changes.
-- If the GUI dependency update requires broad behavior rewrites, stop and record the blocker instead of forcing the update.
-- Remove this section from `AGENTS.md` after the plan is complete.

@@ -95,7 +95,7 @@ impl FlistWalkerApp {
             return;
         }
         let text = Self::clipboard_paths_text(&paths);
-        ctx.output_mut(|o| o.copied_text = text);
+        ctx.copy_text(text);
         if paths.len() == 1 {
             self.set_notice(format!(
                 "Copied path: {}",

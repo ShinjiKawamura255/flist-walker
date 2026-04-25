@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use super::{
     render::{RenderCommand, RenderTabBarCommand},
     render_theme, FlistWalkerApp, TabAccentColor, TabAccentPalette, TabDragState,
@@ -58,11 +60,11 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         .gamma_multiply(if is_active { 1.0 } else { 0.82 }),
                 )
             };
-            let tab_response = egui::Frame::none()
+            let tab_response = egui::Frame::NONE
                 .fill(frame_fill)
                 .stroke(frame_stroke)
-                .rounding(egui::Rounding::same(FlistWalkerApp::TAB_ROUNDING))
-                .inner_margin(egui::Margin::symmetric(6.0, 2.0))
+                .corner_radius(egui::CornerRadius::same(FlistWalkerApp::TAB_ROUNDING as u8))
+                .inner_margin(egui::Margin::symmetric(6, 2))
                 .show(ui, |ui| {
                     let title = app
                         .shell
@@ -241,14 +243,14 @@ pub(super) fn paint_tab_accent_decoration(
     );
     ui.painter().rect_filled(
         glow_rect,
-        egui::Rounding::same(FlistWalkerApp::TAB_ACCENT_LINE_HEIGHT),
+        egui::CornerRadius::same(FlistWalkerApp::TAB_ACCENT_LINE_HEIGHT as u8),
         palette
             .background
             .gamma_multiply(if ui.visuals().dark_mode { 0.72 } else { 0.62 }),
     );
     ui.painter().rect_filled(
         line_rect,
-        egui::Rounding::same(FlistWalkerApp::TAB_ACCENT_LINE_HEIGHT),
+        egui::CornerRadius::same(FlistWalkerApp::TAB_ACCENT_LINE_HEIGHT as u8),
         palette.border,
     );
 }
@@ -283,7 +285,7 @@ pub(super) fn render_tab_accent_menu(
                         },
                         palette.border,
                     ))
-                    .rounding(egui::Rounding::same(6.0));
+                    .corner_radius(egui::CornerRadius::same(6));
             if current_accent == Some(accent) {
                 button = button.min_size(egui::vec2(86.0, 24.0));
             }

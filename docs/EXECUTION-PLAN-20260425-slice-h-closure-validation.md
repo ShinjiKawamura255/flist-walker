@@ -21,7 +21,7 @@
   - 2026-04-26 initial closure plan created after Slice G commit `68b844b`.
   - Specialist subagent review was unavailable during original closure due quota exhaustion. Main-agent fallback closure review was used because this slice recorded validation and removed temporary process state; the process risk was recorded in the original closure decision.
   - 2026-04-26 post-closure specialist review completed after subagent capacity recovered. Security/release/operability review found no blockers and confirmed the `RUSTSEC-2024-0436` / `paste` posture is documented as accepted transitive debt with owner/cadence/triggers/evidence. Testing/validation review found no product/test blockers and identified only documentation updates needed to close the late-review residual.
-  - The late-slice specialist-review residual is now closed by post-closure review evidence. Remaining residuals are GUI visual smoke not run and accepted transitive `paste` dependency debt.
+  - The late-slice specialist-review residual is now closed by post-closure review evidence. At that point, remaining residuals were GUI visual smoke not run and accepted transitive `paste` dependency debt.
 
 ## 1. Background
 The roadmap started from a candid 84/100 assessment and targeted a defensible 90/100 class by addressing traceability, self-update staging security, large module decomposition, GUI validation, and audit warning posture.
@@ -134,7 +134,11 @@ No new rule. This slice removes the existing Temporary Change Plan Rule only aft
 - 2026-04-26 Post-closure specialist review:
   - Security/release/operability specialist review: no blockers to closing the late-review gap; `paste` remains accepted transitive debt, not a review-process blocker.
   - Testing/validation specialist review: no product/test blockers to closing the late-review gap; documentation needed to move the late-review item from residual risk to resolved process debt.
-  - Result: late-slice specialist review unavailability is resolved by independent post-closure review evidence. The remaining active residual risks are GUI visual smoke not run and accepted transitive `paste` dependency debt.
+  - Result: late-slice specialist review unavailability is resolved by independent post-closure review evidence.
+- 2026-04-26 Dependency/audit follow-up:
+  - The accepted transitive `paste` dependency debt was resolved by updating the GUI stack to `eframe 0.34.1`.
+  - `cargo audit` is now clean, and `rust/Cargo.lock` no longer contains `paste` or `metal`.
+  - The remaining active residual risk is GUI visual smoke not run.
 - 2026-04-26 Closure score: 90/100. The project reaches the roadmap target because the original five gaps are either fixed or explicitly owned by a repeatable gate/cadence, and current validation passes. The residuals prevent a higher score.
 - 2026-04-26 Close decision: close `quality-hardening-90`; no additional slice is required in this roadmap. Future work should treat GUI framework upgrade and human GUI smoke execution as normal release-readiness work, not blockers for this roadmap closure.
 - 2026-04-26 Removed `AGENTS.md` Temporary Change Plan Rule after close decision.

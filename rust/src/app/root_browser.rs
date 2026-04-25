@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use super::FlistWalkerApp;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
@@ -92,7 +94,7 @@ impl FlistWalkerApp {
 
     /// root dropdown を閉じる。
     pub(super) fn close_root_dropdown(&mut self, ctx: &egui::Context) {
-        ctx.memory_mut(|mem| mem.close_popup());
+        ctx.memory_mut(|mem| mem.close_popup(Self::root_selector_popup_id()));
     }
 
     /// root dropdown 内の候補選択を上下へ移動する。

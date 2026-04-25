@@ -49,22 +49,16 @@
 - self-update 後も配置先ディレクトリに `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が残る必要がある。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
-## Accepted transitive audit warnings
+## Resolved audit warnings
 
 ### RUSTSEC-2024-0436: `paste 1.0.15` unmaintained
-- Status: accepted transitive warning.
-- Current `cargo audit` behavior: exits successfully and reports `warning: 1 allowed warning found`.
-- Observed path from `cargo audit`: `paste 1.0.15 -> metal 0.29.0 -> wgpu-hal 22.0.0 -> wgpu-core/wgpu -> egui-wgpu 0.29.1 -> eframe 0.29.1 -> flist-walker`.
-- Additional check: `cargo tree --target all -i paste` prints no reachable package in the active feature graph, so this is treated as a lockfile/audit warning rather than a direct application dependency.
-- Reason for acceptance: the crate is a transitive GUI stack dependency, the advisory is unmaintained status rather than a reported vulnerability, and removing it would likely require an `eframe` / `egui` / `wgpu` upgrade with GUI behavior risk.
-- Owner: release operator or dependency-update owner.
-- Review cadence: re-check on every release candidate and during any planned GUI framework upgrade.
-- Re-evaluation triggers:
-  - `cargo audit` changes from allowed warning to vulnerability/failure.
-  - upstream `eframe` / `egui` / `wgpu` release removes the `paste` path without a major migration burden.
-  - this project starts using `wgpu`/`metal` APIs directly.
-  - release target/platform support changes increase exposure to the affected transitive path.
-- Required evidence when revisited:
+- Status: resolved on 2026-04-26.
+- Resolution: upgraded the GUI stack from `eframe 0.29.1` to `eframe 0.34.1`, which updated `egui` / `wgpu` and removed the locked `metal -> paste` path.
+- Previous observed path from `cargo audit`: `paste 1.0.15 -> metal 0.29.0 -> wgpu-hal 22.0.0 -> wgpu-core/wgpu -> egui-wgpu 0.29.1 -> eframe 0.29.1 -> flist-walker`.
+- Current `cargo audit` behavior: exits successfully with no warning output.
+- Current lockfile check: `rust/Cargo.lock` no longer contains `paste` or `metal` package entries.
+- Compatibility note: `eframe 0.34.1` requires Rust `1.92`; repository CI and local development use Rust stable, and the local validation toolchain was `rustc 1.93.1`.
+- Required evidence for future regressions:
   - `cd rust && cargo audit`
-  - `cd rust && cargo tree --target all -i paste`
-  - if dependencies change, `cd rust && cargo test --locked`, `cd rust && cargo clippy --all-targets -- -D warnings`, notice/license review, and release asset sidecar review.
+  - verify `rust/Cargo.lock` does not reintroduce `paste` / `metal`
+  - if GUI dependencies change again, run `cd rust && cargo test --locked`, `cd rust && cargo clippy --all-targets -- -D warnings`, notice/license review, and release asset sidecar review.

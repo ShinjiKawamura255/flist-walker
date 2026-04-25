@@ -244,9 +244,9 @@ Add this only after roadmap and active slice initial review, required revisions,
   - dependency/audit accepted-risk posture
 - Residual risks:
   - GUI smoke gate was created and fixture-validated but not visually executed during closure
-  - `RUSTSEC-2024-0436` remains accepted transitive dependency debt until a future GUI stack upgrade or audit posture change
 - Resolved post-closure process debt:
   - late-slice specialist review originally used main-agent fallback due subagent quota exhaustion; post-closure validation and security/release/operability specialist reviews found no blockers and closed this residual
+  - `RUSTSEC-2024-0436` / `paste` accepted transitive dependency debt was resolved by updating the GUI stack to `eframe 0.34.1`; `cargo audit` is now clean and `Cargo.lock` no longer contains `paste` or `metal`
 - Follow-up outside this roadmap:
   - run `docs/GUI-TESTPLAN.md` before the next release candidate and fill `docs/GUI-TESTREPORT.md` or generated local evidence
   - revisit `eframe` / `egui` / `wgpu` upgrade when planning GUI framework maintenance

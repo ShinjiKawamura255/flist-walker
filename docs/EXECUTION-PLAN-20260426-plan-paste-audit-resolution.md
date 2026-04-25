@@ -17,6 +17,8 @@
   - Current `cargo audit` reports allowed warning `RUSTSEC-2024-0436` for `paste 1.0.15` through the locked `eframe 0.29.1` GUI stack.
   - `cargo tree -i paste` and `cargo tree --target all -i paste` print no active dependency path, so the warning is lockfile/audit debt rather than a direct application dependency.
   - `cargo search eframe` shows latest `eframe 0.34.1`; `cargo info eframe@0.34.1` reports Rust requirement `1.92`. The local stable toolchain is `rustc 1.93.1`.
+  - 2026-04-26 implementation updated `eframe` to `0.34.1`; `cargo update` removed `metal 0.29.0` and `paste 1.0.15` from `Cargo.lock`.
+  - Mechanical API follow-up was limited to `eframe::App::ui`, clipboard output, popup close/id path, font data storage, and egui margin/corner-radius/stroke API changes.
 
 ## 1. Background
 The `quality-hardening-90` closure left one security-hygiene residual: `RUSTSEC-2024-0436` / `paste 1.0.15` is accepted transitive dependency debt. The project should attempt to remove it if the upstream GUI stack can be updated without broad product changes.
@@ -65,10 +67,22 @@ Resolve the accepted `paste` audit warning if feasible by updating the GUI stack
 - If validation fails before commit, revert local dependency/code/doc changes and record the blocker in this plan.
 
 ## 7. Completion Checklist
-- [ ] Dependency update attempted
-- [ ] `paste` warning removed or infeasibility recorded
-- [ ] Required validation passed or blocker recorded
-- [ ] OSS compliance docs/notices updated if needed
-- [ ] `AGENTS.md` temporary rule removed
-- [ ] Change committed
+- [x] Dependency update attempted
+- [x] `paste` warning removed or infeasibility recorded
+- [x] Required validation passed or blocker recorded
+- [x] OSS compliance docs/notices updated if needed
+- [x] `AGENTS.md` temporary rule removed
+- [x] Change committed
 
+## 8. Progress Log
+- 2026-04-26 Updated `eframe` from `0.29.1` to `0.34.1`.
+- 2026-04-26 `cargo update -p eframe --precise 0.34.1` removed `metal 0.29.0` and `paste 1.0.15` from `Cargo.lock`.
+- 2026-04-26 `cargo check --locked` initially failed on mechanical egui/eframe API changes; those were fixed without redesigning GUI behavior.
+- 2026-04-26 Validation passed so far:
+  - `cd rust && cargo check --locked`
+  - `cd rust && cargo test --locked`
+  - `cd rust && cargo clippy --all-targets -- -D warnings`
+  - `cd rust && cargo audit`
+- 2026-04-26 `cd rust && cargo tree --target all -i paste` exits non-zero because `paste` is no longer present in the graph. The absence was verified by checking that `rust/Cargo.lock` contains no `paste` or `metal` package entries.
+- 2026-04-26 Removed the temporary `AGENTS.md` rule after validation.
+- 2026-04-26 Ready to commit as one rollback unit.
