@@ -3,7 +3,7 @@
 ## Status Snapshot
 - Updated: 2026-04-25
 - Current active engineering roadmap: `docs/EXECUTION-PLAN-20260425-roadmap-quality-hardening-90.md` (reviewed)
-- Current active engineering change plan: `docs/EXECUTION-PLAN-20260425-slice-f-gui-validation-uplift.md` (completed; next slice pending)
+- Current active engineering change plan: `docs/EXECUTION-PLAN-20260425-slice-g-dependency-audit-follow-up.md` (completed; closure slice pending)
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
   - 2026-04-25 に総合評価 84/100 の残課題（TESTPLAN の TC ID 重複、self-update staging hardening、巨大 module 分割、GUI validation、cargo audit warning）を解消する `quality-hardening-90` roadmap を作成した。roadmap / Slice A は specialist review と convergence review を完了し、`Review Status: レビュー済み`。Slice A 実装前に `AGENTS.md` へ Temporary Change Plan Rule を追加する。
@@ -15,6 +15,8 @@
   - 2026-04-25 に Slice E を完了した。`search/match_eval.rs` が private query matching/evaluation を担当し、`indexer/filelist_hierarchy.rs` が nested FileList hierarchy override を担当する構造へ切り出した。public facade API は `search/mod.rs` / `indexer/mod.rs` に維持した。`cargo test --locked`、`cargo clippy --all-targets -- -D warnings`、coverage gate、search/indexer targeted tests、boundary checks、search 100k perf、VM-003 perf guards、`cargo audit`、`git diff --check` は green。`cargo audit` の既存 allowed transitive `paste` warning は Slice G へ継続 defer。
   - 2026-04-25 に Slice F `gui-validation-uplift` の計画書を作成した。GUI を CI で無理に起動するのではなく、deterministic fixture、manual smoke checklist、evidence path、owner/frequency、flake policy を持つ repeatable gate へ引き上げる。
   - 2026-04-26 に Slice F を完了した。`scripts/gui-smoke-fixture.sh`、`docs/GUI-TESTPLAN.md`、`docs/GUI-TESTREPORT.md` を追加し、`GSM-001` から `GSM-010` の GUI manual gate、ignored evidence path `rust/target/gui-smoke/`、owner/frequency/pass-fail/flake policy を定義した。`docs/TESTPLAN.md` の `TC-010` / `TC-011` / `TC-099` / `VM-002` / `VM-006` を新 gate へ接続した。subagent quota exhaustion により独立 specialist review は未取得だが、fallback main-agent review を slice plan に記録した。
+  - 2026-04-26 に Slice G `dependency-audit-follow-up` の計画書を作成した。既存 `cargo audit` allowed warning `RUSTSEC-2024-0436` / `paste` について、依存経路を再確認し、解消できない場合は accepted transitive risk として cadence / owner / trigger を明文化する。
+  - 2026-04-26 に Slice G を完了した。`cargo audit` は既存の allowed transitive warning `RUSTSEC-2024-0436` / `paste 1.0.15` を引き続き報告するが、`cargo tree -i paste` と `cargo tree --target all -i paste` は active graph の到達経路を出さない。GUI stack major upgrade はこの slice では行わず、`docs/OSS_COMPLIANCE.md` に accepted transitive risk として owner、release-candidate review cadence、再評価 trigger、必要 evidence を明記した。
   - 2026-04-19 に外部の多角的評価（総合 72/100、低評価: 運用成熟度 40、保守性・拡張性 62、コード品質 68、GUI テスト不足）を受け、`quality-maturity-uplift` roadmap を作成した。初手は `coverage gate` / GUI render validation strategy / supportability without telemetry を扱う Slice A とし、大規模な `render.rs` 分割や app boundary tightening は測定可能な gate を入れてから進める方針にした。
   - 2026-04-19 に Slice A の coverage baseline を測定し、line coverage 70.29%（LH=9870 / LF=14042）を確認した。CI の coverage command は `--fail-under-lines 70` を付け、現状を通しつつ 70% 未満への退行を落とす gate とした。
   - 2026-04-19 に Slice A を `319e187` でコミットし、次の active slice を `render-theme-boundary` に切り替えた。Slice B は `render.rs` / `render_tabs.rs` の repeated color literals を小さな theme helper に寄せ、テストで RGB 契約を固定する。

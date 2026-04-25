@@ -36,6 +36,7 @@
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
 - Sec: Windows の一般 `.ps1` は既定で直接実行せず、既定アプリでオープンする。
 - Sec: 自己更新は `SHA256SUMS.sig` の署名検証と checksum 検証を通過した asset のみを staged binary として採用する。
+- Sec: `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に owner、review cadence、re-evaluation trigger を明記し、release candidate ごとに再確認する。
 
 ## Test cases
 | TC ID | Level | Purpose | Related SP |
@@ -113,6 +114,7 @@
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
+| TC-056A | docs+security | `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に依存経路、受容理由、owner、review cadence、再評価 trigger を記録する | SP-012 |
 | TC-057 | unit | `Score` / `Name` / `Modified` / `Created` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
 | TC-058 | unit | query 変更や結果更新時にソートを破棄し、インデクシング経路へ属性取得を追加しない | SP-013 |
 | TC-059 | unit | 日付ソートの未キャッシュ path は別 worker へ要求し、古い応答は request_id で破棄する | SP-013 |
@@ -196,6 +198,7 @@
 - `source ~/.cargo/env`
 - `cargo test`
 - `cargo audit`
+- audit warning posture: `docs/OSS_COMPLIANCE.md` の accepted transitive warning を確認し、release candidate ごとに `cd rust && cargo audit` を再実行する
 - coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`
 - heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または schedule
 - lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を 1.20x 下限で監視する
