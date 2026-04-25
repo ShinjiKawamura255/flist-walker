@@ -49,7 +49,7 @@
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、tab snapshot capture/apply、tab switch/move/close、新規 tab 作成に加え、action/sort request routing の owner API と background tab 向け search/index response consume helper、activation 時の restore/refresh 入口を担当する。live 側の tab/session registry（`tabs`, `active_tab`, `next_tab_id`, `pending_restore_refresh`, request routing）は `app/state.rs` の `TabSessionState` に束ねる。`TabSessionState` は Vec そのものを公開せず、明示的な collection API と active tab / tab id / routing / restore helpers を通じてのみ更新する。
 - 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。
-- 役割補足: `app/render.rs` は top action / FileList dialog / update dialog / tab bar interaction から `RenderCommand` を queue し、描画後に `dispatch_render_commands()` で state transition を消化する。root selector と query/history input は描画側の direct mutation を維持する。
+- 役割補足: `app/render.rs` は `run_ui_frame()`、`RenderCommand`、`dispatch_render_commands()`、小さな facade wrapper を保持する。panel/dialog/results/tab の実描画は `app/render_panels.rs`、`app/render_dialogs.rs`、`app/render_tabs.rs`、`app/render_snapshot.rs`、`app/render_theme.rs` が担当し、top action / FileList dialog / update dialog / tab bar interaction からの state transition は描画後 dispatcher で一段遅らせて実行する。
 - 役割補足: `app/mod.rs` の frame/update/exit orchestration は `poll_runtime_events()`, `run_update_cycle()`, `schedule_frame_repaint()`, `request_viewport_close_if_needed()`, `persist_state_and_shutdown()` といった helper seam を経由し、`update()` / `on_exit()` / `Drop` の open-coded sequence を最小化する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
@@ -93,7 +93,7 @@
 - 役割補足: update request / apply / failure の主要遷移は `AppendWindowTrace` と worker-side `tracing` の両方で残し、worker trace は `flow=update` / `event=*` / `request_id=*` を canonical field として support 時の request_id correlation を取りやすくする。
 - 役割補足: request/response trace の details には request_id を必ず含め、update_check_failed や update_failed は error 内容も併記して support 時の切り分けをしやすくする。
 - 役割補足: `UpdateState` と update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移は `app/update.rs` の manager 境界へ集約する。
-- 役割補足: `render.rs` は update dialog の描画と入力取得だけを担当し、永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
+- 役割補足: `render_dialogs.rs` は update dialog の描画と入力取得を担当し、`render.rs` は `RenderUpdateDialogCommand` の queue/dispatch 境界を保持する。永続化 (`session.rs`) と app close orchestration (`app/mod.rs`) は `FlistWalkerApp` 側に残したまま `UpdateAppCommand` で橋渡しする。
 - 役割補足: top action button、FileList dialog、update dialog、tab bar reorder/close/switch は `RenderCommand` 境界を経由して owner helper (`filelist.rs`, `update.rs`, `tabs.rs`) へ渡す。描画コードは click/drag/dialog input の収集に寄せ、state transition は描画後 dispatcher で一段遅らせて実行する。
 
 - DES-015 Diagnostics and Supportability Contract

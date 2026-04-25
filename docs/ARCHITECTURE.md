@@ -127,7 +127,9 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [preview_flow.rs](../rust/src/app/preview_flow.rs)
   - preview request/response、highlight lookup、preview routing の orchestration を担当しつつ、response apply は reducer boundary を呼ぶ。
 - [render.rs](../rust/src/app/render.rs)
-  - panel/dialog/results 描画と frame 後段の render command 生成。
+  - `RenderCommand` / frame orchestration / facade wrapper を担当し、frame 後段で render command を dispatch する。
+- [render_panels.rs](../rust/src/app/render_panels.rs), [render_dialogs.rs](../rust/src/app/render_dialogs.rs), [render_tabs.rs](../rust/src/app/render_tabs.rs), [render_snapshot.rs](../rust/src/app/render_snapshot.rs), [render_theme.rs](../rust/src/app/render_theme.rs)
+  - panel/dialog/results/tab/snapshot/theme の描画責務を担当し、`render.rs` から直接委譲される。
 - [input.rs](../rust/src/app/input.rs)
   - shortcut、IME、history search。
 - [filelist.rs](../rust/src/app/filelist.rs)

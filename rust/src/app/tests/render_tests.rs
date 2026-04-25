@@ -413,6 +413,30 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
 }
 
 #[test]
+fn run_ui_frame_executes_render_facade_in_headless_frame() {
+    let root = test_root("render-run-ui-frame");
+    fs::create_dir_all(&root).expect("create dir");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.query_state.query = "entry".to_string();
+    app.shell.runtime.status_line = "facade status".to_string();
+    app.shell.runtime.results = vec![(root.join("entry.txt"), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.preview = "preview".to_string();
+    app.shell.ui.set_show_preview(true);
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput::default());
+    app.run_ui_frame(&ctx);
+    let _ = ctx.end_pass();
+
+    assert!(app.shell.ui.pending_render_commands.is_empty());
+    assert_eq!(app.shell.runtime.results.len(), 1);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tab_drop_index_returns_none_for_empty_tabs() {
     assert_eq!(
         super::render_tabs::tab_drop_index(&[], egui::pos2(10.0, 10.0)),

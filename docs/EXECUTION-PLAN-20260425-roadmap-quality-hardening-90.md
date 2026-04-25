@@ -17,7 +17,7 @@
   - `docs/EXECUTION-PLAN-20260425-slice-a-traceability-and-plan-foundation.md` (completed 2026-04-25)
   - `docs/EXECUTION-PLAN-20260425-slice-b-self-update-staging-hardening.md` (completed 2026-04-25)
   - `docs/EXECUTION-PLAN-20260425-slice-c-updater-boundary-decomposition.md` (completed 2026-04-25)
-  - Slice D plan to be created next: render boundary decomposition
+  - `docs/EXECUTION-PLAN-20260425-slice-d-render-boundary-decomposition.md` (completed 2026-04-25)
   - Slice E plan to be created after Slice D: search/indexer boundary decomposition
   - Slice F plan to be created after Slice E: GUI validation uplift
   - Slice G plan to be created after Slice F: dependency/audit and supply-chain follow-up
@@ -141,7 +141,7 @@ Observable success conditions:
 - [x] Resolve duplicate `TC-*` IDs and update trace references.
 - [x] Create, review, and implement Slice B security hardening.
 - [x] Create, review, and implement Slice C updater decomposition.
-- [ ] Create, review, and implement Slice D render decomposition.
+- [x] Create, review, and implement Slice D render decomposition.
 - [ ] Create, review, and implement Slice E search/indexer decomposition.
 - [ ] Create, review, and implement Slice F GUI validation uplift.
 - [ ] Create, review, and implement Slice G dependency/audit follow-up.
@@ -200,6 +200,8 @@ Add this only after roadmap and active slice initial review, required revisions,
 - 2026-04-25 Slice B completed: self-update staging now uses 128-bit random exclusive temp directories with bounded retries, Unix private permissions, no-overwrite staged asset/helper creation, deterministic collision tests, and existing-file refusal tests. Validation passed with `cargo test --locked`, `cargo clippy --all-targets -- -D warnings`, and `cargo audit`. The existing allowed `paste` unmaintained warning remains accepted temporarily and is deferred to Slice G dependency/audit follow-up.
 - 2026-04-25 Slice C plan created for updater boundary decomposition.
 - 2026-04-25 Slice C completed: updater responsibilities were split behind the `crate::updater` facade into private release/staging/manifest/apply modules, with `VerifiedUpdateBundle` guarding apply spawn, no-overwrite helper script creation preserved, and updater boundary docs updated. Validation passed with `cargo test --locked`, `cargo clippy --all-targets -- -D warnings`, `cargo check --locked --target x86_64-pc-windows-gnu`, targeted updater/update command tests, and `git diff --check`.
+- 2026-04-25 Slice D plan created for render boundary decomposition.
+- 2026-04-25 Slice D completed: `render.rs` was reduced to the render command/facade/frame orchestration surface, stale duplicate panel/dialog/result-list implementations were deleted, active drawing ownership remained in `render_panels.rs` / `render_dialogs.rs` / `render_tabs.rs` / `render_snapshot.rs` / `render_theme.rs`, and `run_ui_frame` headless coverage was added. Validation passed with `cargo test --locked`, `cargo clippy --all-targets -- -D warnings`, render targeted tests, call-graph negative/positive checks, touched-file `rustfmt --check`, and `git diff --check`. Repository-wide `cargo fmt -- --check` remains blocked by the existing baseline in `app/session.rs`, `app/shell_support.rs`, and `runtime_config.rs`.
 
 ## 12. Communication Plan
 - Return to user when:
