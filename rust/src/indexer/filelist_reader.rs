@@ -5,7 +5,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
-use super::{apply_nested_filelist_overrides, filelist_modified_time};
+use super::filelist_hierarchy::apply_nested_filelist_overrides;
+use super::filelist_writer::filelist_modified_time;
 
 pub fn find_filelist(root: &Path) -> Option<PathBuf> {
     let upper = root.join("FileList.txt");

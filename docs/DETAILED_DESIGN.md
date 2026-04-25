@@ -45,8 +45,8 @@ Process note: this document was created and revised through the repository plan 
 | --- | --- | --- |
 | Entrypoint | [main.rs](../rust/src/main.rs), [lib.rs](../rust/src/lib.rs) | Parse CLI args, select CLI/GUI mode, configure tracing/window/icon, expose library modules. |
 | Candidate model | [entry.rs](../rust/src/entry.rs) | Canonical `Entry`, `EntryKind`, and file/dir/link display kind. |
-| Indexing | [indexer/mod.rs](../rust/src/indexer/mod.rs), [indexer/filelist_reader.rs](../rust/src/indexer/filelist_reader.rs), [indexer/walker.rs](../rust/src/indexer/walker.rs), [indexer/filelist_writer.rs](../rust/src/indexer/filelist_writer.rs), [app/index_worker.rs](../rust/src/app/index_worker.rs) | FileList detection/streaming, nested FileList override, walker collection, FileList generation/ancestor propagation, GUI streaming batches. |
-| Search | [query.rs](../rust/src/query.rs), [search/mod.rs](../rust/src/search/mod.rs), [search/cache.rs](../rust/src/search/cache.rs), [search/execute.rs](../rust/src/search/execute.rs), [search/rank.rs](../rust/src/search/rank.rs) | fzf-like query parsing, regex/plain token routing, ranking, prefix cache, sequential/parallel execution. |
+| Indexing | [indexer/mod.rs](../rust/src/indexer/mod.rs), [indexer/filelist_reader.rs](../rust/src/indexer/filelist_reader.rs), [indexer/filelist_hierarchy.rs](../rust/src/indexer/filelist_hierarchy.rs), [indexer/walker.rs](../rust/src/indexer/walker.rs), [indexer/filelist_writer.rs](../rust/src/indexer/filelist_writer.rs), [app/index_worker.rs](../rust/src/app/index_worker.rs) | Index facade, FileList detection/streaming, nested FileList override, walker collection, FileList generation/ancestor propagation, GUI streaming batches. |
+| Search | [query.rs](../rust/src/query.rs), [search/mod.rs](../rust/src/search/mod.rs), [search/match_eval.rs](../rust/src/search/match_eval.rs), [search/cache.rs](../rust/src/search/cache.rs), [search/execute.rs](../rust/src/search/execute.rs), [search/rank.rs](../rust/src/search/rank.rs) | fzf-like query parsing, public search facade, regex/plain matching/evaluation, ranking, prefix cache, sequential/parallel execution. |
 | Ignore list | [ignore_list.rs](../rust/src/ignore_list.rs), [query.rs](../rust/src/query.rs), [app/bootstrap.rs](../rust/src/app/bootstrap.rs), [app/session.rs](../rust/src/app/session.rs), [app/ui_state.rs](../rust/src/app/ui_state.rs), [app/shell_support.rs](../rust/src/app/shell_support.rs), [app/render.rs](../rust/src/app/render.rs), [app/render_panels.rs](../rust/src/app/render_panels.rs), [main.rs](../rust/src/main.rs) | exe-relative ignore file loading, persisted toggle state, and candidate exclusion. |
 | GUI shell | [app/mod.rs](../rust/src/app/mod.rs), [app/state.rs](../rust/src/app/state.rs), [app/bootstrap.rs](../rust/src/app/bootstrap.rs), [app/session.rs](../rust/src/app/session.rs) | eframe app, shell bundles, startup/restore/persist/shutdown orchestration. |
 | GUI flow owners | [app/pipeline.rs](../rust/src/app/pipeline.rs), [app/pipeline_owner.rs](../rust/src/app/pipeline_owner.rs), [app/tabs.rs](../rust/src/app/tabs.rs), [app/response_flow.rs](../rust/src/app/response_flow.rs), [app/result_reducer.rs](../rust/src/app/result_reducer.rs) | Index/search polling, active/background tab routing, result state transitions. |
@@ -203,7 +203,7 @@ Rationale: separating path identity from kind resolution allows large FileList/w
 
 ### 6.3 Indexing Domain
 
-Responsibility: [indexer/mod.rs](../rust/src/indexer/mod.rs) exposes synchronous index APIs and coordinates FileList-vs-walker selection.
+Responsibility: [indexer/mod.rs](../rust/src/indexer/mod.rs) exposes synchronous index APIs and coordinates FileList-vs-walker selection. Nested FileList hierarchy override ownership lives in [indexer/filelist_hierarchy.rs](../rust/src/indexer/filelist_hierarchy.rs).
 
 Public interfaces:
 
@@ -240,7 +240,7 @@ Rationale: GUI indexing is latency-sensitive. Streaming batches and request supe
 
 ### 6.5 Search Domain
 
-Responsibility: [query.rs](../rust/src/query.rs) parses user query syntax, while [search/mod.rs](../rust/src/search/mod.rs) compiles and evaluates it.
+Responsibility: [query.rs](../rust/src/query.rs) parses user query syntax, [search/mod.rs](../rust/src/search/mod.rs) exposes the public search facade, and [search/match_eval.rs](../rust/src/search/match_eval.rs) compiles/evaluates private query matchers.
 
 Public APIs include:
 

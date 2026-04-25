@@ -1,6 +1,7 @@
 use super::{
     config::{search_parallel_chunk_size, with_search_thread_pool},
-    evaluate_candidate, CompiledQuery, SearchCandidateScore, SearchContext, SearchScoredMatches,
+    match_eval::{evaluate_candidate, CompiledQuery, SearchContext},
+    SearchCandidateScore, SearchScoredMatches,
 };
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rayon::prelude::*;

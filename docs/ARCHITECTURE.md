@@ -11,9 +11,11 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [entry.rs](../rust/src/entry.rs)
   - `Entry` / `EntryKind` を定義し、index/search/app 間の候補表現を統一する。
 - [indexer/mod.rs](../rust/src/indexer/mod.rs)
-  - index build orchestration と nested FileList override を担当する。
+  - public indexer facade、`IndexSource` / `IndexBuildResult`、index build orchestration を担当する。
 - [indexer/filelist_reader.rs](../rust/src/indexer/filelist_reader.rs)
   - FileList 検出、stream parse、hierarchy 読み込みを担当する。
+- [indexer/filelist_hierarchy.rs](../rust/src/indexer/filelist_hierarchy.rs)
+  - nested FileList override の queue/discovery、mtime precedence、subtree replacement を担当する。
 - [indexer/filelist_writer.rs](../rust/src/indexer/filelist_writer.rs)
   - FileList text 生成、書き出し、ancestor 伝播、write 補助を担当する。
 - [indexer/walker.rs](../rust/src/indexer/walker.rs)
@@ -21,7 +23,9 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [query.rs](../rust/src/query.rs)
   - fzf 互換 query tokenization と演算子解釈を担当する。
 - [search/mod.rs](../rust/src/search/mod.rs)
-  - query compile と public search API の入口を担当する。
+  - public search facade と high-level search orchestration の入口を担当する。
+- [search/match_eval.rs](../rust/src/search/match_eval.rs)
+  - query compile、literal/regex match、searchable entry materialization、candidate score evaluation を担当する。
 - [search/cache.rs](../rust/src/search/cache.rs)
   - prefix cache と snapshot key を担当する。
 - [search/config.rs](../rust/src/search/config.rs)

@@ -77,7 +77,7 @@
 - For `quality-hardening-90`, read the relevant change plan document(s) before starting implementation.
 - Read order:
 - `docs/EXECUTION-PLAN-20260425-roadmap-quality-hardening-90.md`
-- The currently active slice plan, starting with `docs/EXECUTION-PLAN-20260425-slice-a-traceability-and-plan-foundation.md`.
+- The currently active slice plan: `docs/EXECUTION-PLAN-20260425-slice-e-search-indexer-boundary-decomposition.md`.
 - Follow the plan's `Execution Profile: safety-critical`, `Planning Depth: roadmap+slice`, `Review Pattern: specialist-subagents`, and `Review Requiredness: required-before-and-after-revision`.
 - This roadmap uses `Execution Mode: standard`; after each slice, update the roadmap and confirm the next active slice before continuing.
 - Until Slice B is complete and validated, do not create release tags, publish releases, or make unrelated self-update behavior changes.
