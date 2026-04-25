@@ -19,7 +19,7 @@
   - `docs/EXECUTION-PLAN-20260425-slice-c-updater-boundary-decomposition.md` (completed 2026-04-25)
   - `docs/EXECUTION-PLAN-20260425-slice-d-render-boundary-decomposition.md` (completed 2026-04-25)
   - `docs/EXECUTION-PLAN-20260425-slice-e-search-indexer-boundary-decomposition.md` (completed 2026-04-25)
-  - Slice F plan to be created after Slice E: GUI validation uplift
+  - `docs/EXECUTION-PLAN-20260425-slice-f-gui-validation-uplift.md` (completed 2026-04-26)
   - Slice G plan to be created after Slice F: dependency/audit and supply-chain follow-up
   - Slice H plan to be created last: closure validation
 - Scope Label: quality-hardening-90
@@ -143,7 +143,7 @@ Observable success conditions:
 - [x] Create, review, and implement Slice C updater decomposition.
 - [x] Create, review, and implement Slice D render decomposition.
 - [x] Create, review, and implement Slice E search/indexer decomposition.
-- [ ] Create, review, and implement Slice F GUI validation uplift.
+- [x] Create, review, and implement Slice F GUI validation uplift.
 - [ ] Create, review, and implement Slice G dependency/audit follow-up.
 - [ ] Run Slice H closure scoring and decide close/continue.
 
@@ -204,6 +204,8 @@ Add this only after roadmap and active slice initial review, required revisions,
 - 2026-04-25 Slice D completed: `render.rs` was reduced to the render command/facade/frame orchestration surface, stale duplicate panel/dialog/result-list implementations were deleted, active drawing ownership remained in `render_panels.rs` / `render_dialogs.rs` / `render_tabs.rs` / `render_snapshot.rs` / `render_theme.rs`, and `run_ui_frame` headless coverage was added. Validation passed with `cargo test --locked`, `cargo clippy --all-targets -- -D warnings`, render targeted tests, call-graph negative/positive checks, touched-file `rustfmt --check`, and `git diff --check`. Repository-wide `cargo fmt -- --check` remains blocked by the existing baseline in `app/session.rs`, `app/shell_support.rs`, and `runtime_config.rs`.
 - 2026-04-25 Slice E plan created for search/indexer boundary decomposition.
 - 2026-04-25 Slice E completed: search private matching/evaluation ownership moved to `search/match_eval.rs`, nested FileList hierarchy override ownership moved to `indexer/filelist_hierarchy.rs`, and the public `search` / `indexer` facades remained stable. Validation passed with full test/clippy/coverage gates, search/indexer targeted tests, boundary checks, touched-file `rustfmt --check`, `git diff --check`, search 100k perf (`29ms`, baseline `44ms`), and VM-003 perf guards. `cargo audit` passed with the existing allowed transitive `paste` unmaintained warning still deferred to Slice G.
+- 2026-04-25 Slice F plan created for GUI validation uplift.
+- 2026-04-26 Slice F completed: added a deterministic GUI smoke fixture script, dedicated `docs/GUI-TESTPLAN.md` and `docs/GUI-TESTREPORT.md`, stable `GSM-001` through `GSM-010` manual gate IDs, evidence location under ignored `rust/target/gui-smoke/`, and TESTPLAN links from `TC-010`, `TC-011`, `TC-099`, `VM-002`, and `VM-006`. Validation passed with shell syntax check, fixture generation, reference checks, and `git diff --check`. Independent specialist review could not be completed due subagent quota exhaustion; fallback main-agent review is recorded in the slice plan.
 
 ## 12. Communication Plan
 - Return to user when:
