@@ -30,7 +30,7 @@ Language docs:
 ```bash
 cd rust
 source ~/.cargo/env
-cargo run -- --root ..
+cargo run --bin flistwalker -- --root ..
 ```
 
 1. Type in the search box to narrow candidates.
@@ -161,7 +161,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 ```bash
 cd rust
 source ~/.cargo/env
-cargo run -- --root ..
+cargo run --bin flistwalker -- --root ..
 ```
 
 CLI mode:

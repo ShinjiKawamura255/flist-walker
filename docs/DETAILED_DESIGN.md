@@ -679,7 +679,7 @@ If update support is manual-only, the GUI can present the release URL without la
 | Operation | Design |
 | --- | --- |
 | Build | `cargo` from [rust](../rust), with Windows GNU helper scripts under [scripts](../scripts). |
-| GUI run | `cargo run -- --root .. --limit 1000`. |
+| GUI run | `cargo run --bin flistwalker -- --root .. --limit 1000`. |
 | CLI run | `cargo run -- --cli "query" --root .. --limit 1000`. |
 | Release | Release assets and sidecar notices are managed by scripts and GitHub Actions described in [RELEASE.md](./RELEASE.md). |
 | Diagnostics | Worker tracing uses `RUST_LOG`; GUI/window trace uses `FLISTWALKER_WINDOW_TRACE=1` and optional path override. |

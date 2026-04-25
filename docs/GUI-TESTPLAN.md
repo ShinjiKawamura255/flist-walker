@@ -13,7 +13,7 @@
   - after structural refactoring that touches GUI-adjacent app orchestration
 - Evidence location: `rust/target/gui-smoke/evidence/`.
 - Fixture command: `scripts/gui-smoke-fixture.sh`.
-- Launch command after fixture creation: `cd rust && cargo run -- --root target/gui-smoke/root --limit 1000`.
+- Launch command after fixture creation: `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`.
 
 ## Environment Matrix
 | Environment | Required When | Notes |

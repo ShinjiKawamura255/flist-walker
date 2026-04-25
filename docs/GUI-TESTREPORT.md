@@ -10,7 +10,7 @@
 - Fixture command: `scripts/gui-smoke-fixture.sh`
 - Fixture root: `rust/target/gui-smoke/root`
 - Evidence dir: `rust/target/gui-smoke/evidence/`
-- Launch command: `cd rust && cargo run -- --root target/gui-smoke/root --limit 1000`
+- Launch command: `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`
 - Overall: NOT RUN
 
 ## Results

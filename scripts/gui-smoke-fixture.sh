@@ -86,7 +86,7 @@ cat >"$evidence_dir/GUI-TESTREPORT.local.md" <<EOF
 - OS/display:
 - Fixture root: \`$root_dir\`
 - Evidence dir: \`$evidence_dir\`
-- Command: \`cd "$repo_root/rust" && cargo run -- --root "$root_dir" --limit 1000\`
+- Command: \`cd "$repo_root/rust" && cargo run --bin flistwalker -- --root "$root_dir" --limit 1000\`
 
 ## Results
 | ID | Status | Notes | Evidence |
@@ -117,7 +117,7 @@ Executable-local ignore list for cargo run: $debug_dir/flistwalker.ignore.txt
 
 Run:
   cd "$repo_root/rust"
-  cargo run -- --root "$root_dir" --limit 1000
+  cargo run --bin flistwalker -- --root "$root_dir" --limit 1000
 
 Record results in:
   $evidence_dir/GUI-TESTREPORT.local.md

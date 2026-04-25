@@ -202,8 +202,8 @@
 - coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`
 - heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または schedule
 - lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を 1.20x 下限で監視する
-- GUI 手動試験: `scripts/gui-smoke-fixture.sh` 後に `cd rust && cargo run -- --root target/gui-smoke/root --limit 1000`
-- GUI 手動試験: `cargo run -- --root .. --limit 1000` で新版検知ダイアログと更新承認導線を確認
+- GUI 手動試験: `scripts/gui-smoke-fixture.sh` 後に `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`
+- GUI 手動試験: `cargo run --bin flistwalker -- --root .. --limit 1000` で新版検知ダイアログと更新承認導線を確認
 - GUI 手動試験:
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-self-update-test.ps1 -Mode SameVersion`
   Windows sandbox で同一 version の feed でも更新ダイアログ表示を確認する。helper は `SHA256SUMS.sig` を同時生成する。
@@ -238,19 +238,19 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 6. startup check failure dialog 確認:
 ローカル feed を無効 URL に向ける、または `api.github.com` 到達不能環境を再現し、`Update Check Failed` ダイアログに原因が表示されることを確認する。`Don't show this again for update check errors` をチェックした場合は次回起動で同種ダイアログが出ないことも確認する。
 7. startup check failure dialog 強制表示:
-`FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE=1 cargo run -- --root .. --limit 1000` で起動し、ネットワーク状態に関係なく `Update Check Failed` ダイアログが表示されることを確認する。必要なら `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE=\"debug message\"` で表示文言を固定する。
+`FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE=1 cargo run --bin flistwalker -- --root .. --limit 1000` で起動し、ネットワーク状態に関係なく `Update Check Failed` ダイアログが表示されることを確認する。必要なら `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE=\"debug message\"` で表示文言を固定する。
 
 ## Diagnostics Trace Smoke Test
 1. worker-side trace:
 `RUST_LOG=flist_walker::app::index_worker=info cargo test index_worker_trace_smoke_emits_canonical_fields --lib -- --nocapture` を実行し、Started/Finished 応答が通ることに加えて、出力ログに `flow=index`、`event=started|finished|completed`、`request_id=`、`source_kind=walker` が含まれることを確認する。
 2. window trace:
-window/session/input/update の observable output を変更した場合だけ、`FLISTWALKER_WINDOW_TRACE=1 FLISTWALKER_WINDOW_TRACE_PATH=<temp-path> cargo run -- --root .. --limit 1000` または対象 GUI 操作に相当する手順を実施し、変更対象 family の event が trace file に出ることを確認する。window trace に変更がない場合は `not needed` と記録する。
+window/session/input/update の observable output を変更した場合だけ、`FLISTWALKER_WINDOW_TRACE=1 FLISTWALKER_WINDOW_TRACE_PATH=<temp-path> cargo run --bin flistwalker -- --root .. --limit 1000` または対象 GUI 操作に相当する手順を実施し、変更対象 family の event が trace file に出ることを確認する。window trace に変更がない場合は `not needed` と記録する。
 
 ## Structural Refactoring GUI Smoke Test
 Phase 9 の structural refactoring 完了判定では、この手順を別環境で 1 回通せば GUI smoke 合格とみなす。
 
 1. 起動と初期表示
-`cargo run -- --root .. --limit 1000` で起動し、一覧が表示されること。候補がある場合は 1 行目が選択され、入力欄へすぐ打鍵できることを確認する。
+`cargo run --bin flistwalker -- --root .. --limit 1000` で起動し、一覧が表示されること。候補がある場合は 1 行目が選択され、入力欄へすぐ打鍵できることを確認する。
 2. 検索入力と応答性
 非空 query を数文字入力し、`Backspace`、左右矢印、`ArrowUp` / `ArrowDown` を混ぜても UI が固まらないことを確認する。`'`, `!`, `^`, `$`, `|` を含む query を少なくとも 1 回ずつ試す。
 3. プレビュー追従
