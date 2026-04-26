@@ -24,6 +24,31 @@
 ### Known issues
 -
 
+## [0.17.3] - 2026-04-26
+### Added
+- GUI visual smoke validation gate と fixture script を追加し、release 前の視覚確認結果を記録できるようにした。
+
+### Changed
+- `eframe` / `egui` を `0.34.1` 系へ更新し、paste audit warning に対応した。
+- search / indexer / updater / render の境界を分割し、検索評価、FileList 階層処理、self-update release/staging 処理の責務を整理した。
+
+### Fixed
+- `!` 除外と ignore list の一致を fuzzy fallback なしの literal / anchor 判定に揃え、想定外の候補除外を防いだ。
+- self-update staging の一時ファイル・一時ディレクトリ作成を堅牢化し、既存パスの再利用を拒否するようにした。
+- 検索結果更新時のカーソル表示維持と、不要な FileList prompt 表示を修正した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.17.2] - 2026-04-24
 ### Added
 -
