@@ -7,6 +7,9 @@ on:
       - "codex/**"
   pull_request:
 
+env:
+  CARGO_INCREMENTAL: 0
+
 jobs:
   rust-test-build:
     name: Rust Test and Build (${{ matrix.label }})
@@ -52,9 +55,18 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Cache cargo artifacts
-        uses: Swatinem/rust-cache@v2.9.1
+        uses: actions/cache@v5
         with:
-          workspaces: rust
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: cargo-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ matrix.label }}-
+            cargo-${{ runner.os }}-
 
       - name: Install mingw-w64
         if: ${{ matrix.target }}
@@ -116,9 +128,18 @@ jobs:
           components: clippy, llvm-tools-preview
 
       - name: Cache cargo artifacts
-        uses: Swatinem/rust-cache@v2.9.1
+        uses: actions/cache@v5
         with:
-          workspaces: rust
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: cargo-${{ runner.os }}-lint-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-lint-
+            cargo-${{ runner.os }}-
 
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov --locked

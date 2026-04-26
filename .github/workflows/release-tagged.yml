@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_INCREMENTAL: 0
+
 jobs:
   release-preflight:
     name: Release Preflight (${{ matrix.label }})
@@ -34,9 +37,18 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo artifacts
-        uses: Swatinem/rust-cache@v2.9.1
+        uses: actions/cache@v5
         with:
-          workspaces: rust
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: cargo-${{ runner.os }}-release-preflight-${{ matrix.label }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-release-preflight-${{ matrix.label }}-
+            cargo-${{ runner.os }}-
 
       - name: Run tests
         working-directory: ${{ matrix.workdir }}
@@ -141,9 +153,18 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Cache cargo artifacts
-        uses: Swatinem/rust-cache@v2.9.1
+        uses: actions/cache@v5
         with:
-          workspaces: rust
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            rust/target
+          key: cargo-${{ runner.os }}-release-build-${{ matrix.label }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-release-build-${{ matrix.label }}-
+            cargo-${{ runner.os }}-
 
       - name: Install mingw-w64
         if: ${{ matrix.label == 'windows-x86_64' }}
