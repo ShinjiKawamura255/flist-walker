@@ -269,8 +269,8 @@ pub fn path_matches_ignore_terms(
 
     for term in ignore_terms {
         for candidate in include_alternatives(term) {
-            if candidate_matches_text(filename, candidate, ignore_case)
-                || candidate_matches_text(&display, candidate, ignore_case)
+            if exact_candidate_matches_text(filename, candidate, ignore_case)
+                || exact_candidate_matches_text(&display, candidate, ignore_case)
             {
                 return true;
             }
@@ -340,15 +340,35 @@ mod tests {
     }
 
     #[test]
-    fn ignore_terms_match_same_paths_as_excludes() {
+    fn ignore_terms_use_literal_exclusion_matching_without_fuzzy_fallback() {
         let root = PathBuf::from("/tmp/root");
         let ignored = PathBuf::from("/tmp/root/build/old-cache.txt");
+        let fuzzy_only = PathBuf::from("/tmp/root/build/o-l-d-cache.txt");
         let kept = PathBuf::from("/tmp/root/build/new-cache.txt");
         let terms = vec!["old".to_string(), "~".to_string()];
 
         assert!(path_matches_ignore_terms(
             &ignored, &root, &terms, true, true
         ));
+        assert!(!path_matches_ignore_terms(
+            &fuzzy_only,
+            &root,
+            &terms,
+            true,
+            true
+        ));
         assert!(!path_matches_ignore_terms(&kept, &root, &terms, true, true));
+    }
+
+    #[test]
+    fn ignore_terms_respect_ignore_case_flag() {
+        let root = PathBuf::from("/tmp/root");
+        let upper = PathBuf::from("/tmp/root/build/Old-cache.txt");
+        let terms = vec!["old".to_string()];
+
+        assert!(path_matches_ignore_terms(&upper, &root, &terms, true, true));
+        assert!(!path_matches_ignore_terms(
+            &upper, &root, &terms, true, false
+        ));
     }
 }

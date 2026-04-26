@@ -452,6 +452,25 @@ mod tests {
     }
 
     #[test]
+    fn exclusion_token_does_not_fuzzy_match() {
+        let entries = vec![
+            PathBuf::from("/tmp/src/main.py"),
+            PathBuf::from("/tmp/src/m-a-i-n.py"),
+            PathBuf::from("/tmp/src/readme.md"),
+        ];
+
+        let excluded = search_entries("!main", &entries, 10, false, true);
+        let names: Vec<&str> = excluded
+            .iter()
+            .filter_map(|(p, _)| p.file_name().and_then(|s| s.to_str()))
+            .collect();
+
+        assert!(!names.contains(&"main.py"));
+        assert!(names.contains(&"m-a-i-n.py"));
+        assert!(names.contains(&"readme.md"));
+    }
+
+    #[test]
     fn lone_operator_tokens_are_ignored() {
         let entries = vec![
             PathBuf::from("/tmp/src/main.py"),

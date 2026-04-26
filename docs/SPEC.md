@@ -206,7 +206,8 @@
 ### Requirements
 - MUST: 実行中 binary と同じフォルダにある `flistwalker.ignore.txt` を ignore list ファイルとして読み取れる。
 - MUST: ignore list ファイルは 1 行 1 ルールを基本とし、空行と `#` コメント行を無視しなければならない。
-- MUST: ignore list の各ルールは、検索クエリの `!` 除外と同じ比較ルールで候補を除外しなければならない。
+- MUST: 検索クエリの `!` 除外は fuzzy fallback を使わず、literal substring / `^` 先頭 / `$` 末尾の一致で候補を除外しなければならない。
+- MUST: ignore list の各ルールは、検索クエリの `!` 除外と同じ非 fuzzy の比較ルールで候補を除外しなければならない。
 - MUST: GUI は `Use Ignore List` チェックボックスを提供し、既定で有効にしなければならない。
 - MUST: チェックボックス有効時は、ignore list に一致する候補を検索結果と空クエリ表示から除外しなければならない。
 - MUST: チェックボックス無効時は、ignore list の除外を適用してはならない。
@@ -222,7 +223,7 @@
 
 ### Regression Guard
 - 発生条件: `Use Ignore List` が有効で、`Files` / `Folders` が両方有効な既定状態のまま `all_entries` の高速経路を通ると、ignore 判定が省略されて `old` や `~` を含む候補が結果へ戻る。
-- 期待動作: ignore list は空クエリ表示と検索結果の両方で維持され、`Files` / `Folders` 両有効でも除外候補は表示されない。
+- 期待動作: ignore list は空クエリ表示と検索結果の両方で維持され、`Files` / `Folders` 両有効でも literal に一致する除外候補は表示されない。fuzzy でだけ一致する候補は除外しない。
 - 非対象範囲: `Use Ignore List` を無効化した場合の候補除外。
 - 関連テストID: TC-110, TC-112.
 

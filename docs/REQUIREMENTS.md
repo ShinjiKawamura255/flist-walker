@@ -97,7 +97,7 @@
 - AC-021: Windows では実行中 EXE の自己上書きではなく、一時 updater 経由で更新が適用される。
 - AC-022: macOS では更新検知時に自動更新非対応が案内され、誤って自己置換しない。
 - AC-023: 利用者が更新ダイアログで「次のバージョンが出るまで表示しない」を選ぶと、その target version は次回起動以降も再表示されず、より新しい version が見つかった場合のみ再びダイアログが表示される。
-- AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
+- AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の非 fuzzy 除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
 - AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、未設定項目を含まず、設定済み項目だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では `%LocalAppData%\flistwalker\` に、Linux/macOS では `~/.flistwalker/` に保存される。
 - AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。
@@ -112,7 +112,7 @@
 - R-006: 日付ソートのために全候補へ `metadata()` を導入すると index/search の体感が悪化する。軽減策: 結果スナップショット限定の遅延解決と上限付きキャッシュを採用する。
 - R-007: GitHub API 一時障害やネットワーク不通で起動時更新確認が失敗する。軽減策: 非同期確認として失敗を notice に閉じ込め、検索機能は継続する。
 - R-008: 実行中バイナリの置換に失敗すると更新後再起動できない。軽減策: Windows は別 updater、Linux は一時スクリプト経由で置換し、署名済み checksum manifest と整合する staged binary のみ使用する。
-- R-009: ignore list の解釈が query とずれると、検索結果と UI 表示が不一致になる。軽減策: 除外判定は query の `!` と同じ比較ルールに寄せ、既定有効/切替状態を session に保持する。
+- R-009: ignore list の解釈が query とずれると、検索結果と UI 表示が不一致になる。軽減策: 除外判定は query の `!` と同じ非 fuzzy の比較ルールに寄せ、既定有効/切替状態を session に保持する。
 - R-010: runtime config file の自動生成や seed-only 挙動が不明瞭だと、環境変数での一時的な変更が効かず、起動時設定の期待が外れる。軽減策: 初回生成と既存ファイル優先、Windows での `%LocalAppData%\flistwalker\` と Linux/macOS の `~/.flistwalker/` を README / release README / SPEC に明記し、起動時に file が source of truth であることを固定する。UI state、saved roots、window trace も同じ保存先ルールに揃える。旧保存先からの移行は transition period に限って維持し、後続版で削除できるようにする。
 - R-011: sample ignore list を release asset にのみ依存させると、自己更新時や特殊な配布形態で sample が欠落しうる。軽減策: sample を埋め込み、起動時に local 実体を自動生成し、既存 ignore list は上書きしない。
 

@@ -200,7 +200,7 @@ In CLI mode:
 
 - Put `flistwalker.ignore.txt` in the same folder as `flistwalker` or `FlistWalker.exe`.
 - One rule per line is the simplest form. Blank lines and lines starting with `#` are ignored.
-- Each token is applied like a search exclusion. For example, `old` and `~` behave like typing `!old !~`.
+- Each token is applied like a literal search exclusion, without fuzzy matching. For example, `old` and `~` behave like typing `!old !~`.
 - You can also place multiple terms on one line, separated by spaces.
 - The `Use Ignore List` checkbox controls whether these rules are applied. It is enabled by default.
 - A sample file is available at [flistwalker.ignore.txt.example](flistwalker.ignore.txt.example).

@@ -130,7 +130,8 @@
 | TC-069 | unit | 回帰: `Ignore Case` は既定で有効で、無効化時は検索結果とハイライトが case-sensitive になる | SP-010 |
 | TC-070 | unit | 回帰: 起動直後と検索キャンセル後は候補がある場合に 1 行目が既定選択になる | SP-010 |
 | TC-110 | unit | ignore list ファイルの候補は既定有効で除外され、GUI の `Use Ignore List` チェックボックスで有効/無効を切り替えられる | SP-015 |
-| TC-112 | unit | 回帰: `Files` / `Folders` 両方有効の高速経路でも ignore list は省略されず、`old` / `~` を含む候補が結果へ戻らない | SP-015 |
+| TC-112 | unit | 回帰: `Files` / `Folders` 両方有効の高速経路でも ignore list は省略されず、`old` / `~` を literal に含む候補が結果へ戻らない | SP-015 |
+| TC-117 | unit | `!` 除外と ignore list は fuzzy fallback を使わず、literal / anchor 一致だけで除外し、`Ignore Case` の有効/無効に従う | SP-015 |
 | TC-111 | unit | runtime config file が無い初回起動では current env を seed にした `~/.flistwalker/.flistwalker_config.json` が自動生成され、既存 file がある場合は env 変更より file 内容が優先される | SP-016 |
 | TC-115 | unit | Windows では runtime config / UI state / saved roots / window trace の保存先が `%LocalAppData%\flistwalker\` になり、Linux/macOS では `~/.flistwalker/` に戻る | SP-016 |
 | TC-116 | unit | Windows の旧 exe-side / home-directory 配置ファイル、Linux/macOS の旧 home-directory 直下ファイルは、新保存先に同名 file が無い場合だけ移行され、既存の新配置 file を上書きしない | SP-016 |

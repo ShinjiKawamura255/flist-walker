@@ -7,8 +7,8 @@
 # flistwalker (or FlistWalker.exe).
 #
 # Blank lines and lines starting with # are ignored.
-# Each token behaves like an exclusion in search syntax, so these entries
-# act like typing !old !~ !backup, and so on.
+# Each token behaves like a literal exclusion in search syntax, so these
+# entries act like typing !old !~ !backup, and so on. Fuzzy matching is not used.
 
 # Common temporary or backup names
 old

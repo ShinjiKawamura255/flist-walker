@@ -107,7 +107,7 @@
 - DES-016 Ignore List Filter
 - 役割: 実行中 binary と同じフォルダにある ignore list を読み取り、検索候補と空クエリ表示から除外する。
 - 実装: `rust/src/ignore_list.rs`, `rust/src/query.rs`, `rust/src/app/session.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/main.rs`
-- 役割補足: ignore list の各ルールは query の `!` 除外と同じ比較関数で評価し、既定では GUI の `Use Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
+- 役割補足: ignore list の各ルールは query の `!` 除外と同じ非 fuzzy の literal / anchor 比較で評価し、既定では GUI の `Use Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
 - 役割補足: ignore list ファイルの読込失敗や未存在は空ルールとして扱い、検索/GUI/CLI の通常操作を止めない。
 
 - DES-017 Runtime Config Bootstrap
