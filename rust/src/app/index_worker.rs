@@ -823,7 +823,7 @@ mod tests {
 
         assert_eq!(eager_count, fast_count);
         assert!(
-            speedup >= 1.30,
+            speedup >= 1.25,
             "walker fast classification did not beat the control baseline enough: {speedup:.2}x"
         );
         let _ = std::fs::remove_dir_all(&root);

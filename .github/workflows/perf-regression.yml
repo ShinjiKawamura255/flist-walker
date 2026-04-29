@@ -1,10 +1,10 @@
-# Heavy perf regression suite. The lightweight PR gate lives in CI Cross Platform.
-name: Heavy Perf Regression
+# Heavy weekly perf regression suite. The lightweight PR gate lives in CI Cross Platform.
+name: Heavy Weekly Perf Regression
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 18 * * *"
+    - cron: "0 18 * * 1"
 
 env:
   CARGO_INCREMENTAL: 0
