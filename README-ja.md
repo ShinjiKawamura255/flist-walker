@@ -217,11 +217,47 @@ source ~/.cargo/env
 cargo test
 ```
 
+Windows PowerShell では、配布用 Windows build と同じ GNU target 系を日常開発の第一候補にします:
+
+```powershell
+.\scripts\dev-check-windows.ps1
+```
+
+このスクリプトは `rustup`、`rustc`、`cargo`、`x86_64-pc-windows-gnu` target、
+mingw-w64 tools を確認し、`rust/` で `cargo test --target x86_64-pc-windows-gnu`
+を実行します。format check や clippy も確認したい場合は `-IncludeFmt` や
+`-IncludeClippy` を指定します。GNU toolchain が未導入の環境で一時的に確認する場合だけ
+`-Toolchain msvc` を使います。
+
+初回だけ以下を準備します:
+
+```powershell
+rustup target add x86_64-pc-windows-gnu
+```
+
+MSYS2 を `C:\msys64` へインストールし、MSYS2 shell から MINGW64 GCC package を入れます:
+
+```bash
+pacman -S mingw-w64-x86_64-gcc
+```
+
+`scripts/dev-check-windows.ps1` は `C:\msys64\mingw64\bin` が存在する場合、現在のチェック用 PATH に自動追加します。
+
 ## サポート / 不具合報告
 
 不具合報告や機能要望は GitHub Issues のテンプレートを利用してください。報告前に [docs/SUPPORT.md](docs/SUPPORT.md) を確認し、ユーザー名、プロジェクト名、フルパス、トークンなどの機微情報は必ず伏せてください。
 
 ## Windows 向けビルド
+
+Windows 上の日常開発は、配布用 Windows 成果物との差分を減らすため GNU target を優先します:
+
+```powershell
+cd rust
+cargo test --target x86_64-pc-windows-gnu
+cargo build --target x86_64-pc-windows-gnu
+```
+
+MSVC host target は GNU toolchain が未導入の環境での一時的な確認や Windows UI smoke には使えますが、release-equivalent build ではありません。
 
 WSL / Linux シェルから:
 

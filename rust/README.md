@@ -19,6 +19,37 @@ cd ..
 ./scripts/build-rust-macos-clean.sh
 ```
 
+## Develop (Windows host)
+
+Windows では配布用 Windows build と同じ GNU target 系を日常開発の第一候補にします:
+
+```powershell
+cd ..
+.\scripts\dev-check-windows.ps1
+```
+
+個別に実行する場合:
+
+```powershell
+cargo test --target x86_64-pc-windows-gnu
+cargo build --target x86_64-pc-windows-gnu
+cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings
+```
+
+GNU toolchain が未導入の環境で一時的に確認する場合だけ `..\scripts\dev-check-windows.ps1 -Toolchain msvc` を使います。配布用の Windows release asset は、下記の WSL/Linux GNU cross-build を使います。
+
+初回 setup:
+
+```powershell
+rustup target add x86_64-pc-windows-gnu
+```
+
+MSYS2 を `C:\msys64` へインストールし、MSYS2 shell から MINGW64 GCC package を入れます:
+
+```bash
+pacman -S mingw-w64-x86_64-gcc
+```
+
 ## Build (Windows EXE with Explorer icon)
 
 WSL/Linux 側だけで `x86_64-pc-windows-gnu` をビルド:

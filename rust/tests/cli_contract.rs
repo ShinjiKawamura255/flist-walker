@@ -18,9 +18,22 @@ fn bin_path() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_flistwalker"))
 }
 
+fn cli_command(name: &str) -> Command {
+    let settings_root = test_root(&format!("{name}-settings"));
+    fs::create_dir_all(&settings_root).expect("create settings root");
+    let mut command = Command::new(bin_path());
+    command
+        .env_remove("RUST_LOG")
+        .env("HOME", &settings_root)
+        .env("USERPROFILE", &settings_root)
+        .env("LOCALAPPDATA", &settings_root)
+        .env("APPDATA", &settings_root);
+    command
+}
+
 #[test]
 fn cli_prints_version_with_long_flag() {
-    let output = Command::new(bin_path())
+    let output = cli_command("version-long")
         .arg("--version")
         .output()
         .expect("run cli");
@@ -35,7 +48,7 @@ fn cli_prints_version_with_long_flag() {
 
 #[test]
 fn cli_prints_version_with_short_flag() {
-    let output = Command::new(bin_path())
+    let output = cli_command("version-short")
         .arg("-V")
         .output()
         .expect("run cli");
@@ -55,7 +68,7 @@ fn cli_outputs_at_most_limit_lines_for_empty_query() {
     fs::write(root.join("a.txt"), "a").expect("write a");
     fs::write(root.join("b.txt"), "b").expect("write b");
 
-    let output = Command::new(bin_path())
+    let output = cli_command("limit")
         .args([
             "--cli",
             "--root",
@@ -90,7 +103,7 @@ fn cli_does_not_cap_limit_to_1000() {
         expected.push(path);
     }
 
-    let output = Command::new(bin_path())
+    let output = cli_command("limit-over-1000")
         .args([
             "--cli",
             "--root",
@@ -115,7 +128,7 @@ fn cli_does_not_cap_limit_to_1000() {
 #[test]
 fn cli_returns_non_zero_when_root_does_not_exist() {
     let missing = test_root("missing");
-    let output = Command::new(bin_path())
+    let output = cli_command("missing")
         .args([
             "--cli",
             "--root",
@@ -138,7 +151,7 @@ fn cli_formats_scored_output_for_query() {
     fs::write(root.join("main.rs"), "fn main() {}").expect("write main");
     fs::write(root.join("readme.md"), "readme").expect("write readme");
 
-    let output = Command::new(bin_path())
+    let output = cli_command("scored-output")
         .args([
             "--cli",
             "main",
@@ -169,7 +182,7 @@ fn cli_returns_empty_stdout_when_no_matches() {
     fs::create_dir_all(&root).expect("create root");
     fs::write(root.join("main.rs"), "fn main() {}").expect("write main");
 
-    let output = Command::new(bin_path())
+    let output = cli_command("no-match")
         .args([
             "--cli",
             "zzzzzz",
@@ -196,7 +209,7 @@ fn cli_interprets_filelist_paths_for_current_platform() {
     fs::write(&file, "x").expect("write file");
     fs::write(root.join("FileList.txt"), "nested\\item.txt\n").expect("write filelist");
 
-    let output = Command::new(bin_path())
+    let output = cli_command("filelist-platform-interpretation")
         .args([
             "--cli",
             "--root",
@@ -223,7 +236,7 @@ fn cli_returns_non_zero_when_root_is_file() {
     let file_root = root.join("not_a_dir.txt");
     fs::write(&file_root, "x").expect("write file");
 
-    let output = Command::new(bin_path())
+    let output = cli_command("root-is-file")
         .args([
             "--cli",
             "--root",

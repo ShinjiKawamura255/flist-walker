@@ -3,6 +3,7 @@ name = "flist-walker"
 version = "0.17.3"
 edition = "2021"
 license = "MIT"
+default-run = "flistwalker"
 
 [lib]
 name = "flist_walker"
@@ -11,6 +12,21 @@ path = "src/lib.rs"
 [[bin]]
 name = "flistwalker"
 path = "src/main.rs"
+
+[[bin]]
+name = "generate_update_keypair"
+path = "src/bin/generate_update_keypair.rs"
+test = false
+
+[[bin]]
+name = "render_svg_png"
+path = "src/bin/render_svg_png.rs"
+test = false
+
+[[bin]]
+name = "sign_update_manifest"
+path = "src/bin/sign_update_manifest.rs"
+test = false
 
 [dependencies]
 anyhow = "1.0"

@@ -7,6 +7,17 @@ use resvg::{tiny_skia, usvg};
 
 mod windows_resource_build;
 
+const WINDOWS_AS_INVOKER_MANIFEST: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>"#;
+
 fn render_svg_icon_rgba(size: u32) -> Option<Vec<u8>> {
     let svg = include_bytes!("assets/flistwalker-icon.svg");
     let tree = usvg::Tree::from_data(svg, &usvg::Options::default()).ok()?;
@@ -74,6 +85,7 @@ fn main() {
         if let (Some(windres), Some(ar)) = (windres, ar) {
             let mut res = winres::WindowsResource::new();
             res.set_icon(ico_path.to_str().expect("ico path utf-8"));
+            res.set_manifest(WINDOWS_AS_INVOKER_MANIFEST);
             res.set_windres_path(windres.to_str().expect("windres path utf-8"));
             res.set_ar_path(ar.to_str().expect("ar path utf-8"));
             res.compile()
@@ -106,6 +118,7 @@ fn main() {
     if host.contains("windows") || rc_path.is_some() {
         let mut res = winres::WindowsResource::new();
         res.set_icon(ico_path.to_str().expect("ico path utf-8"));
+        res.set_manifest(WINDOWS_AS_INVOKER_MANIFEST);
         res.compile()
             .expect("failed to embed Windows icon resource");
     } else {

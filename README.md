@@ -222,11 +222,53 @@ source ~/.cargo/env
 cargo test
 ```
 
+On Windows PowerShell, day-to-day development should use the same GNU target
+family as the distributed Windows build:
+
+```powershell
+.\scripts\dev-check-windows.ps1
+```
+
+The script verifies `rustup`, `rustc`, `cargo`, the `x86_64-pc-windows-gnu`
+Rust target, and the mingw-w64 tools, then runs `cargo test --target
+x86_64-pc-windows-gnu` from `rust/`. Add `-IncludeFmt` or `-IncludeClippy`
+when you want the optional formatting or clippy checks too. Use
+`-Toolchain msvc` only as a local fallback when the GNU toolchain is not
+installed yet.
+
+Required one-time setup:
+
+```powershell
+rustup target add x86_64-pc-windows-gnu
+```
+
+Install MSYS2 to `C:\msys64`, then install the MINGW64 GCC package from an
+MSYS2 shell:
+
+```bash
+pacman -S mingw-w64-x86_64-gcc
+```
+
+`scripts/dev-check-windows.ps1` automatically adds `C:\msys64\mingw64\bin` for
+the current check when it exists.
+
 ## Support and Bug Reports
 
 Use the GitHub Issues templates for bug reports and feature requests. Before filing an issue, read [docs/SUPPORT.md](docs/SUPPORT.md) and redact usernames, project names, full paths, tokens, and other sensitive data.
 
 ## Windows Build
+
+For normal development on Windows, prefer the GNU target flow above so local
+checks match the distributed Windows artifact:
+
+```powershell
+cd rust
+cargo test --target x86_64-pc-windows-gnu
+cargo build --target x86_64-pc-windows-gnu
+```
+
+The MSVC host target is still useful as a fallback for quick Windows UI smoke
+checks, but it is not the release-equivalent build.
 
 From WSL or a Linux shell:
 
