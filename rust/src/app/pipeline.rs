@@ -474,7 +474,10 @@ impl FlistWalkerApp {
                     self.apply_entry_filters(true);
                     self.rebuild_entry_kind_cache();
                     if matches!(self.shell.runtime.index.source, IndexSource::Walker) {
-                        self.queue_unknown_kind_paths_for_completed_walker_entries();
+                        // Regression guard: keep Walker kind resolution bounded to what is
+                        // actually visible. Resolving the entire tree eagerly can keep the
+                        // process hot on huge on-demand roots even after search/index settles.
+                        self.queue_unknown_kind_paths_for_visible_results();
                     } else {
                         self.reset_kind_resolution_state();
                     }

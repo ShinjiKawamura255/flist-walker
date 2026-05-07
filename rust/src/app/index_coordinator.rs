@@ -231,19 +231,16 @@ impl FlistWalkerApp {
         self.queue_unknown_kind_paths(&source);
     }
 
-    /// walker 完了後の全 entry から kind 未解決 path を拾う。
-    pub(super) fn queue_unknown_kind_paths_for_completed_walker_entries(&mut self) {
-        for i in 0..self.shell.runtime.all_entries.len() {
-            let path = &self.shell.runtime.all_entries[i].path;
-            if self.find_entry_kind(path).is_none()
-                && !self.shell.indexing.pending_kind_paths_set.contains(path)
-                && !self.shell.indexing.in_flight_kind_paths.contains(path)
-            {
-                let p = path.clone();
-                self.shell.indexing.pending_kind_paths_set.insert(p.clone());
-                self.shell.indexing.pending_kind_paths.push_back(p);
-            }
-        }
+    /// walker 完了後の表示中結果だけから kind 未解決 path を拾う。
+    pub(super) fn queue_unknown_kind_paths_for_visible_results(&mut self) {
+        let visible_paths = self
+            .shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>();
+        self.queue_unknown_kind_paths(&visible_paths);
     }
 
     /// 指定 path 群から kind 未解決のものだけを queue へ積む。

@@ -79,23 +79,28 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
     .expect("send index finished");
 
     app.poll_index_response();
+    app.pump_kind_resolution_requests();
 
     assert!(!app.shell.indexing.in_progress);
     assert_eq!(app.shell.runtime.entries.as_ref(), &vec![path.clone()]);
     assert_eq!(app.shell.runtime.all_entries.as_ref(), &vec![path.clone()]);
     assert!(app.find_entry_kind(&path).is_none());
-    assert!(app.shell.indexing.pending_kind_paths.is_empty());
+    assert!(app.shell.indexing.kind_resolution_in_progress);
+    assert!(app.shell.indexing.in_flight_kind_paths.contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
 #[test]
-fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
-    let root = test_root("walker-finished-queues-unknown-kind");
+fn walker_finished_queues_unknown_kind_resolution_for_visible_results_only_regression() {
+    let root = test_root("walker-finished-queues-visible-results-only-regression");
     fs::create_dir_all(&root).expect("create dir");
-    let path = root.join("app.lnk");
-    fs::write(&path, "shortcut").expect("write file");
+    let first = root.join("app.lnk");
+    let second = root.join("bg.lnk");
+    fs::write(&first, "shortcut").expect("write first file");
+    fs::write(&second, "shortcut").expect("write second file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.limit = 1;
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
     app.shell.indexing.rx = rx;
@@ -110,11 +115,18 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
 
     tx.send(IndexResponse::Batch {
         request_id: req_id,
-        entries: vec![IndexEntry {
-            path: path.clone(),
-            kind: EntryKind::file(),
-            kind_known: false,
-        }],
+        entries: vec![
+            IndexEntry {
+                path: first.clone(),
+                kind: EntryKind::file(),
+                kind_known: false,
+            },
+            IndexEntry {
+                path: second.clone(),
+                kind: EntryKind::file(),
+                kind_known: false,
+            },
+        ],
     })
     .expect("send index batch");
     tx.send(IndexResponse::Finished {
@@ -128,10 +140,12 @@ fn walker_finished_queues_unknown_kind_resolution_when_both_filters_enabled() {
 
     let req = kind_rx
         .try_recv()
-        .expect("kind resolve request should be queued");
-    assert_eq!(req.path, path.clone());
+        .expect("visible kind resolve request should be queued");
+    assert_eq!(req.path, first.clone());
+    assert!(kind_rx.try_recv().is_err());
     assert!(app.shell.indexing.kind_resolution_in_progress);
-    assert!(app.shell.indexing.in_flight_kind_paths.contains(&path));
+    assert!(app.shell.indexing.in_flight_kind_paths.contains(&first));
+    assert!(!app.shell.indexing.in_flight_kind_paths.contains(&second));
     let _ = fs::remove_dir_all(&root);
 }
 

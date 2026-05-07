@@ -111,6 +111,7 @@
 | TC-089 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、line-only fast path が metadata-probe baseline を十分に上回ることを維持する（CI 下限 1.20x） | SP-001, SP-007 |
 | TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決に対して現行 control baseline で 1.25x 以上の速度差を維持し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
+| TC-122 | unit | 回帰: Walker 完了後の kind 解決は表示中結果に限定し、巨大な on-demand root で全件 metadata 解決を継続しない | SP-007 |
 | TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
@@ -176,6 +177,10 @@
 - 期待動作: notice は live runtime の `app.shell.runtime.notice` を参照し、`\\?\` 付きの extended prefix を正規化した結果だけを検証する。
 - 非対象範囲: copy パス実装そのものの出力形式変更、Windows 以外の OS の path normalization。
 - 関連テストID: TC-121.
+- 発生条件: Walker 完了後に visible な結果が少数しかないのに、全件 kind 解決が走って巨大な on-demand root を走査し続ける。
+- 期待動作: kind 解決は visible results に限定し、検索/index が停止済みの idle 状態では全件 metadata 解決を継続しない。
+- 非対象範囲: Files / Folders の単一フィルタ時に必要な kind 解決、preview 要求に伴う単発の kind 解決。
+- 関連テストID: TC-122.
 
 ## Runner and commands
 - Runner: `cargo test`
