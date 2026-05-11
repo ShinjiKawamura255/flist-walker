@@ -3,6 +3,7 @@ use super::{
     match_eval::{evaluate_candidate, CompiledQuery, SearchContext},
     SearchCandidateScore, SearchScoredMatches,
 };
+use crate::entry::Entry;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rayon::prelude::*;
 use std::path::Path;
@@ -43,6 +44,35 @@ pub(super) fn collect_sequential(
             .enumerate()
             .filter_map(|(index, path)| {
                 evaluate_candidate(path, index, index, compiled, ctx, &matcher)
+            })
+            .collect(),
+    };
+    SearchScoredMatches { scored }
+}
+
+pub(super) fn collect_entries_sequential(
+    entries: &[Entry],
+    compiled: &CompiledQuery,
+    ctx: SearchContext<'_>,
+    candidate_indices: Option<&[usize]>,
+) -> SearchScoredMatches {
+    let matcher = SkimMatcherV2::default();
+    let scored = match candidate_indices {
+        Some(indices) => indices
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(ordinal, index)| {
+                entries.get(index).and_then(|entry| {
+                    evaluate_candidate(entry.path(), index, ordinal, compiled, ctx, &matcher)
+                })
+            })
+            .collect(),
+        None => entries
+            .iter()
+            .enumerate()
+            .filter_map(|(index, entry)| {
+                evaluate_candidate(entry.path(), index, index, compiled, ctx, &matcher)
             })
             .collect(),
     };
@@ -97,6 +127,74 @@ pub(super) fn collect_parallel(
                     |(matcher, mut scored), index| {
                         if let Some(item) = evaluate_candidate(
                             entries[index],
+                            index,
+                            index,
+                            compiled,
+                            ctx,
+                            &matcher,
+                        ) {
+                            scored.push(item);
+                        }
+                        (matcher, scored)
+                    },
+                )
+                .map(|(_, scored)| SearchChunkResult { scored })
+                .reduce(SearchChunkResult::default, merge_chunk_results)
+                .scored
+        }
+    });
+
+    SearchScoredMatches { scored }
+}
+
+pub(super) fn collect_entries_parallel(
+    entries: &[Entry],
+    compiled: &CompiledQuery,
+    ctx: SearchContext<'_>,
+    candidate_indices: Option<&[usize]>,
+) -> SearchScoredMatches {
+    let candidate_count = candidate_indices.map_or(entries.len(), |items| items.len());
+    let chunk_size = search_parallel_chunk_size(candidate_count);
+
+    let scored = with_search_thread_pool(|| match candidate_indices {
+        Some(indices) => {
+            indices
+                .par_chunks(chunk_size)
+                .enumerate()
+                .map(|(chunk_idx, chunk)| {
+                    let matcher = SkimMatcherV2::default();
+                    let base_ordinal = chunk_idx.saturating_mul(chunk_size);
+                    let scored = chunk
+                        .iter()
+                        .copied()
+                        .enumerate()
+                        .filter_map(|(offset, index)| {
+                            entries.get(index).and_then(|entry| {
+                                evaluate_candidate(
+                                    entry.path(),
+                                    index,
+                                    base_ordinal + offset,
+                                    compiled,
+                                    ctx,
+                                    &matcher,
+                                )
+                            })
+                        })
+                        .collect();
+                    SearchChunkResult { scored }
+                })
+                .reduce(SearchChunkResult::default, merge_chunk_results)
+                .scored
+        }
+        None => {
+            (0..entries.len())
+                .into_par_iter()
+                .with_min_len(chunk_size)
+                .fold(
+                    || (SkimMatcherV2::default(), Vec::<SearchCandidateScore>::new()),
+                    |(matcher, mut scored), index| {
+                        if let Some(item) = evaluate_candidate(
+                            entries[index].path(),
                             index,
                             index,
                             compiled,

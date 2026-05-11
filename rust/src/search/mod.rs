@@ -12,7 +12,9 @@ use tracing::{debug, warn};
 
 pub(crate) use cache::{SearchEntriesSnapshotKey, SearchPrefixCache};
 use config::{resolve_execution_mode, SearchExecutionMode};
-use execute::{collect_parallel, collect_sequential};
+use execute::{
+    collect_entries_parallel, collect_entries_sequential, collect_parallel, collect_sequential,
+};
 use match_eval::{compile_query, SearchContext};
 pub(crate) use rank::filter_search_results;
 use rank::{
@@ -49,19 +51,15 @@ pub(crate) fn rank_search_results(
     prefix_cache: &mut SearchPrefixCache,
 ) -> (Vec<(PathBuf, f64)>, Option<String>) {
     let query_trimmed = query.trim().to_string();
-    let path_refs = entries
-        .iter()
-        .map(|entry| entry.path.as_path())
-        .collect::<Vec<_>>();
     let snapshot = SearchEntriesSnapshotKey::from_entries(entries);
     let cached_candidates = if use_regex {
         None
     } else {
         prefix_cache.lookup_candidates(snapshot, &query_trimmed)
     };
-    let scored_matches = match try_collect_search_matches(
+    let scored_matches = match try_collect_entry_matches(
         query,
-        &path_refs,
+        entries,
         use_regex,
         ignore_case,
         Some(root),
@@ -94,6 +92,29 @@ pub(crate) fn rank_search_results(
     )
 }
 
+fn try_collect_entry_matches(
+    query: &str,
+    entries: &[Entry],
+    use_regex: bool,
+    ignore_case: bool,
+    root: Option<&Path>,
+    prefer_relative: bool,
+    candidate_indices: Option<&[usize]>,
+) -> Result<SearchScoredMatches, String> {
+    try_collect_entry_matches_with_mode(
+        query,
+        entries,
+        SearchCollectOptions {
+            use_regex,
+            ignore_case,
+            root,
+            prefer_relative,
+            candidate_indices,
+            mode: SearchExecutionMode::Auto,
+        },
+    )
+}
+
 pub(crate) fn try_collect_search_matches(
     query: &str,
     entries: &[&Path],
@@ -115,6 +136,37 @@ pub(crate) fn try_collect_search_matches(
             mode: SearchExecutionMode::Auto,
         },
     )
+}
+
+fn try_collect_entry_matches_with_mode(
+    query: &str,
+    entries: &[Entry],
+    options: SearchCollectOptions<'_>,
+) -> Result<SearchScoredMatches, String> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(SearchScoredMatches::default());
+    }
+
+    let compiled = compile_query(query, options.use_regex, options.ignore_case)?;
+    let ctx = SearchContext {
+        root: options.root,
+        prefer_relative: options.prefer_relative,
+        ignore_case: options.ignore_case,
+    };
+    let candidate_count = options
+        .candidate_indices
+        .map_or(entries.len(), |items| items.len());
+    let execution = resolve_execution_mode(options.mode, candidate_count);
+    Ok(match execution {
+        SearchExecutionMode::Sequential => {
+            collect_entries_sequential(entries, &compiled, ctx, options.candidate_indices)
+        }
+        SearchExecutionMode::Parallel => {
+            collect_entries_parallel(entries, &compiled, ctx, options.candidate_indices)
+        }
+        SearchExecutionMode::Auto => unreachable!(),
+    })
 }
 
 #[derive(Clone, Copy)]
