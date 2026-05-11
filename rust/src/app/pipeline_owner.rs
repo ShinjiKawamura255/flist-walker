@@ -118,10 +118,9 @@ impl<'a> PipelineOwner<'a> {
         }
         if self.app.shell.indexing.in_progress {
             let entries = Arc::clone(&self.app.shell.runtime.entries);
-            let source_entries = entries.as_ref().to_vec();
             Self::overwrite_entries_vec(
                 &mut self.app.shell.indexing.incremental_filtered_entries,
-                &source_entries,
+                entries.as_ref(),
             );
         } else {
             self.app.shell.indexing.incremental_filtered_entries.clear();
