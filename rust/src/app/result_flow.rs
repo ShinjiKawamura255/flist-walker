@@ -3,6 +3,14 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+struct SortableResult {
+    original_index: usize,
+    entry: (PathBuf, f64),
+    name_key: String,
+    path_key: String,
+    timestamp: Option<SystemTime>,
+}
+
 impl FlistWalkerApp {
     /// root 単位で破棄すべき sort metadata cache をまとめて消す。
     pub(super) fn clear_sort_metadata_cache(&mut self) {
@@ -53,18 +61,33 @@ impl FlistWalkerApp {
         mode: ResultSortMode,
         cache: &HashMap<PathBuf, SortMetadata>,
     ) -> Vec<(PathBuf, f64)> {
-        let mut items = base_results.iter().cloned().enumerate().collect::<Vec<_>>();
+        let mut items = base_results
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(original_index, entry)| {
+                let timestamp = Self::sort_timestamp_for_path(cache, &entry.0, mode);
+                let name_key = Self::path_name_key(&entry.0);
+                let path_key = normalized_compare_key(&entry.0);
+                SortableResult {
+                    original_index,
+                    entry,
+                    name_key,
+                    path_key,
+                    timestamp,
+                }
+            })
+            .collect::<Vec<_>>();
         match mode {
             ResultSortMode::Score => return base_results.to_vec(),
             ResultSortMode::NameAsc | ResultSortMode::NameDesc => {
                 let desc = matches!(mode, ResultSortMode::NameDesc);
-                items.sort_by(|(idx_a, (path_a, _)), (idx_b, (path_b, _))| {
-                    let cmp = Self::path_name_key(path_a)
-                        .cmp(&Self::path_name_key(path_b))
-                        .then_with(|| {
-                            normalized_compare_key(path_a).cmp(&normalized_compare_key(path_b))
-                        })
-                        .then_with(|| idx_a.cmp(idx_b));
+                items.sort_by(|a, b| {
+                    let cmp = a
+                        .name_key
+                        .cmp(&b.name_key)
+                        .then_with(|| a.path_key.cmp(&b.path_key))
+                        .then_with(|| a.original_index.cmp(&b.original_index));
                     if desc {
                         cmp.reverse()
                     } else {
@@ -80,10 +103,8 @@ impl FlistWalkerApp {
                     mode,
                     ResultSortMode::ModifiedDesc | ResultSortMode::CreatedDesc
                 );
-                items.sort_by(|(idx_a, (path_a, _)), (idx_b, (path_b, _))| {
-                    let time_a = Self::sort_timestamp_for_path(cache, path_a, mode);
-                    let time_b = Self::sort_timestamp_for_path(cache, path_b, mode);
-                    match (time_a, time_b) {
+                items.sort_by(|a, b| {
+                    match (a.timestamp, b.timestamp) {
                         (Some(a), Some(b)) => {
                             if desc {
                                 b.cmp(&a)
@@ -95,15 +116,13 @@ impl FlistWalkerApp {
                         (None, Some(_)) => std::cmp::Ordering::Greater,
                         (None, None) => std::cmp::Ordering::Equal,
                     }
-                    .then_with(|| Self::path_name_key(path_a).cmp(&Self::path_name_key(path_b)))
-                    .then_with(|| {
-                        normalized_compare_key(path_a).cmp(&normalized_compare_key(path_b))
-                    })
-                    .then_with(|| idx_a.cmp(idx_b))
+                    .then_with(|| a.name_key.cmp(&b.name_key))
+                    .then_with(|| a.path_key.cmp(&b.path_key))
+                    .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
         }
-        items.into_iter().map(|(_, entry)| entry).collect()
+        items.into_iter().map(|item| item.entry).collect()
     }
 
     /// 現在の base result snapshot から表示用の整列結果を生成する。
