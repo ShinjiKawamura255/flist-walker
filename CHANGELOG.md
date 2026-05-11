@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.17.4] - 2026-05-11
+### Added
+-
+
+### Changed
+- 検索、ソート、インデックス filter 同期の一時 allocation / clone を削減し、大規模候補での CPU・メモリ効率を改善した。
+- Windows GNU 開発セットアップ手順を追加し、WSL/Linux からの Windows 向けビルド導線を確認しやすくした。
+- CI の cache / coverage artifact / cargo tool reinstall / perf regression cadence を調整し、GitHub Actions 上の安定性を改善した。
+
+### Fixed
+- Walker の kind resolution churn を抑え、表示中結果に必要な種別解決へ絞ることで、大規模 root での不要な metadata 処理を減らした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.17.3] - 2026-04-26
 ### Added
 - GUI visual smoke validation gate と fixture script を追加し、release 前の視覚確認結果を記録できるようにした。
