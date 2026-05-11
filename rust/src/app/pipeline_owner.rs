@@ -58,7 +58,7 @@ impl<'a> PipelineOwner<'a> {
         while let Ok(response) = self.app.shell.search.rx.try_recv() {
             match self.app.shell.search.route_response(response.request_id) {
                 SearchResponseRoute::Active => {
-                    result_reducer::apply_active_search_response(self.app, &response);
+                    result_reducer::apply_active_search_response(self.app, response);
                 }
                 SearchResponseRoute::Background(tab_id) => {
                     self.app.apply_background_search_response(tab_id, response);

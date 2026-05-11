@@ -99,18 +99,18 @@ pub(super) fn apply_background_search_response(
 
 pub(super) fn apply_active_search_response(
     app: &mut FlistWalkerApp,
-    response: &SearchResponse,
+    response: SearchResponse,
 ) -> bool {
     if Some(response.request_id) != app.shell.search.pending_request_id() {
         return false;
     }
     app.shell.search.clear_active_request_state();
-    if let Some(error) = &response.error {
+    if let Some(error) = response.error {
         app.set_notice(format!("Search failed: {error}"));
     } else {
         app.clear_notice();
     }
-    app.replace_results_snapshot(response.results.clone(), false);
+    app.replace_results_snapshot(response.results, false);
     if app.shell.indexing.search_rerun_pending
         && !app.shell.runtime.query_state.query.trim().is_empty()
         && app.shell.indexing.in_progress
