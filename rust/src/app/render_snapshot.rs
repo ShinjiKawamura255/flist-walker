@@ -12,6 +12,20 @@ pub(super) struct DialogSnapshot {
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(super) struct GuiSurfaceSnapshot {
+    pub(super) root: String,
+    pub(super) query: String,
+    pub(super) use_filelist: bool,
+    pub(super) use_regex: bool,
+    pub(super) ignore_case: bool,
+    pub(super) ignore_list_enabled: bool,
+    pub(super) include_files: bool,
+    pub(super) include_dirs: bool,
+    pub(super) result_sort_mode: String,
+    pub(super) result_count: usize,
+    pub(super) current_result: Option<String>,
+    pub(super) pinned_count: usize,
+    pub(super) tab_count: usize,
+    pub(super) active_tab: usize,
     pub(super) history_search_active: bool,
     pub(super) show_preview: bool,
     pub(super) preview_panel_width: u32,
@@ -132,6 +146,25 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
     }
 
     GuiSurfaceSnapshot {
+        root: app.shell.runtime.root.display().to_string(),
+        query: app.shell.runtime.query_state.query.clone(),
+        use_filelist: app.shell.runtime.use_filelist,
+        use_regex: app.shell.runtime.use_regex,
+        ignore_case: app.shell.runtime.ignore_case,
+        ignore_list_enabled: app.shell.ui.ignore_list_enabled(),
+        include_files: app.shell.runtime.include_files,
+        include_dirs: app.shell.runtime.include_dirs,
+        result_sort_mode: app.shell.runtime.result_sort_mode.label().to_string(),
+        result_count: app.shell.runtime.results.len(),
+        current_result: app
+            .shell
+            .runtime
+            .current_row
+            .and_then(|row| app.shell.runtime.results.get(row))
+            .map(|(path, _)| path.display().to_string()),
+        pinned_count: app.shell.runtime.pinned_paths.len(),
+        tab_count: app.shell.tabs.len(),
+        active_tab: app.shell.tabs.active_tab_index(),
         history_search_active: app.shell.runtime.query_state.history_search_active,
         show_preview: app.shell.ui.show_preview(),
         preview_panel_width: preview_width_px(app.shell.ui.preview_panel_width()),

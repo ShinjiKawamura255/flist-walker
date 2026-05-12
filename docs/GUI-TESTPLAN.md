@@ -14,6 +14,9 @@
 - Evidence location: `rust/target/gui-smoke/evidence/`.
 - Fixture command: `scripts/gui-smoke-fixture.sh`.
 - Launch command after fixture creation: `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`.
+- Headful automation smoke:
+  - Linux/macOS/WSLg: `scripts/gui-headful-smoke.sh --duration 10`
+  - Windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 10`
 
 ## Environment Matrix
 | Environment | Required When | Notes |
@@ -50,7 +53,11 @@
 
 ## Automation Boundary
 - Automated unit/headless coverage remains in Rust tests for render snapshots, `run_ui_frame`, shortcuts, tabs, dialogs, update commands, and index pipeline state.
-- This plan is the manual operational gate. It does not require GUI launch in CI until a deterministic native GUI harness exists.
+- The headless GUI surface snapshot MUST cover the visible app contract that can be asserted without opening a native window: active root, query text, filter toggles, ignore-list toggle, result sort mode, result count/current row target, pinned selection count, tab count/active tab, preview visibility/width, top actions, status line, and FileList/update dialog labels/buttons.
+- When adding GUI controls whose state is visible without native platform interaction, add or update a headless snapshot assertion before relying on manual `GSM-*` smoke coverage.
+- Headful automation is a release/nightly smoke gate only. It launches the native GUI against the standard fixture, treats early process exit as FAIL, writes `GUI-HEADFUL-SMOKE.local.md`, and then stops the process after the configured duration.
+- The headful smoke does not replace `GSM-*` manual checks because it does not assert typed search, visual highlight quality, platform open behavior, IME, or window movement.
+- Pull-request CI does not require native GUI launch unless a deterministic platform harness is explicitly added later.
 - CI continues to own `cargo test`, clippy, coverage, audit, and performance gates.
 
 ## Risks

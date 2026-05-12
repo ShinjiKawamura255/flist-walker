@@ -242,6 +242,20 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
     assert_eq!(
         snapshot,
         json!({
+            "root": root.display().to_string(),
+            "query": "",
+            "use_filelist": true,
+            "use_regex": false,
+            "ignore_case": true,
+            "ignore_list_enabled": true,
+            "include_files": true,
+            "include_dirs": true,
+            "result_sort_mode": "Score",
+            "result_count": 0,
+            "current_result": null,
+            "pinned_count": 0,
+            "tab_count": 1,
+            "active_tab": 0,
             "history_search_active": false,
             "show_preview": true,
             "preview_panel_width": 440,
@@ -257,6 +271,50 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             "update_dialogs": [],
         })
     );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
+    let root = test_root("render-snapshot-rich-state");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("docs").join("alpha.txt");
+    let other = root.join("beta.txt");
+    fs::create_dir_all(selected.parent().expect("selected parent")).expect("create docs");
+    fs::write(&selected, "alpha").expect("write selected");
+    fs::write(&other, "beta").expect("write other");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.runtime.query_state.query = "alpha".to_string();
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.use_regex = true;
+    app.shell.runtime.ignore_case = false;
+    app.shell.ui.set_ignore_list_enabled(false);
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.results = vec![(selected.clone(), 9.0), (other, 3.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.pinned_paths.insert(selected.clone());
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(snapshot["root"], json!(root.display().to_string()));
+    assert_eq!(snapshot["query"], json!("alpha"));
+    assert_eq!(snapshot["use_filelist"], json!(false));
+    assert_eq!(snapshot["use_regex"], json!(true));
+    assert_eq!(snapshot["ignore_case"], json!(false));
+    assert_eq!(snapshot["ignore_list_enabled"], json!(false));
+    assert_eq!(snapshot["include_files"], json!(true));
+    assert_eq!(snapshot["include_dirs"], json!(false));
+    assert_eq!(snapshot["result_sort_mode"], json!("Name (A-Z)"));
+    assert_eq!(snapshot["result_count"], json!(2));
+    assert_eq!(
+        snapshot["current_result"],
+        json!(selected.display().to_string())
+    );
+    assert_eq!(snapshot["pinned_count"], json!(1));
+    assert_eq!(snapshot["tab_count"], json!(2));
+    assert_eq!(snapshot["active_tab"], json!(1));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -299,6 +357,20 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
     assert_eq!(
         snapshot,
         json!({
+            "root": root.display().to_string(),
+            "query": "",
+            "use_filelist": true,
+            "use_regex": false,
+            "ignore_case": true,
+            "ignore_list_enabled": true,
+            "include_files": true,
+            "include_dirs": true,
+            "result_sort_mode": "Score",
+            "result_count": 0,
+            "current_result": null,
+            "pinned_count": 0,
+            "tab_count": 1,
+            "active_tab": 0,
             "history_search_active": false,
             "show_preview": true,
             "preview_panel_width": 440,
