@@ -1,0 +1,345 @@
+use super::*;
+use crate::search::{SearchEntriesSnapshotKey, SearchPrefixCache};
+
+#[test]
+fn preview_cache_is_bounded() {
+    let root = test_root("preview-cache-bounded");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    let chunk = "x".repeat(1024 * 1024);
+    let count = 40usize;
+    for i in 0..count {
+        let path = root.join(format!("file-{i}.txt"));
+        app.cache_preview(path, chunk.clone());
+    }
+
+    assert!(app.shell.cache.preview.total_bytes() <= FlistWalkerApp::PREVIEW_CACHE_MAX_BYTES);
+    assert!(app.shell.cache.preview.order_len() > 0);
+    assert_eq!(
+        app.shell.cache.preview.len(),
+        app.shell.cache.preview.order_len()
+    );
+    let evicted = root.join("file-0.txt");
+    assert!(!app.shell.cache.preview.contains(&evicted));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn result_sort_name_can_be_applied_and_score_can_be_restored() {
+    let root = test_root("result-sort-name-score");
+    fs::create_dir_all(&root).expect("create dir");
+    let alpha = root.join("alpha.txt");
+    let beta = root.join("beta.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "a".to_string());
+    let base = vec![(beta.clone(), 10.0), (alpha.clone(), 9.0)];
+
+    app.replace_results_snapshot(base.clone(), false);
+    app.shell.runtime.current_row = Some(0);
+    app.set_result_sort_mode(ResultSortMode::NameAsc);
+
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![alpha.clone(), beta.clone()]
+    );
+
+    app.set_result_sort_mode(ResultSortMode::Score);
+
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::Score);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert_eq!(app.shell.runtime.results, base);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression() {
+    let root = test_root("search-refresh-clamp-row");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.current_row = Some(100);
+    app.shell.runtime.preview = "stale".to_string();
+
+    let results = vec![
+        (root.join("first.txt"), 1.0),
+        (root.join("second.txt"), 1.0),
+        (root.join("third.txt"), 1.0),
+    ];
+
+    app.replace_results_snapshot(results, false);
+
+    assert_eq!(app.shell.runtime.current_row, Some(2));
+    assert!(app.shell.runtime.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regression() {
+    let root = test_root("search-refresh-keep-none");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.current_row = None;
+    app.shell.runtime.preview = "stale".to_string();
+
+    let results = vec![
+        (root.join("first.txt"), 1.0),
+        (root.join("second.txt"), 1.0),
+    ];
+
+    app.replace_results_snapshot(results, false);
+
+    assert_eq!(app.shell.runtime.current_row, None);
+    assert!(app.shell.runtime.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn clear_query_and_selection_restores_first_row_regression() {
+    let root = test_root("clear-query-row-reset");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.query_state.query = "abc".to_string();
+    app.shell.runtime.current_row = Some(2);
+    app.shell.runtime.preview = "stale".to_string();
+    app.shell.runtime.entries = Arc::new(vec![
+        unknown_entry(root.join("first.txt")),
+        unknown_entry(root.join("second.txt")),
+        unknown_entry(root.join("third.txt")),
+    ]);
+    app.shell.runtime.results = vec![
+        (root.join("first.txt"), 1.0),
+        (root.join("second.txt"), 1.0),
+        (root.join("third.txt"), 1.0),
+    ];
+
+    app.clear_query_and_selection();
+
+    assert!(app.shell.runtime.query_state.query.is_empty());
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert!(app.shell.runtime.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn query_edit_invalidates_result_sort_and_cancels_pending_request() {
+    let root = test_root("result-sort-reset-on-query-edit");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
+
+    app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
+    app.shell.worker_bus.sort.in_progress = true;
+    app.shell.worker_bus.sort.pending_request_id = Some(42);
+
+    app.mark_query_edited();
+
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::Score);
+    assert!(!app.shell.worker_bus.sort.in_progress);
+    assert!(app.shell.worker_bus.sort.pending_request_id.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn created_sort_places_missing_timestamps_last() {
+    let root = test_root("result-sort-created-none-last");
+    fs::create_dir_all(&root).expect("create dir");
+    let has_created = root.join("has-created.txt");
+    let missing_created = root.join("missing-created.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "a".to_string());
+    let base = vec![(missing_created.clone(), 10.0), (has_created.clone(), 9.0)];
+
+    app.replace_results_snapshot(base, false);
+    app.cache_sort_metadata(
+        missing_created.clone(),
+        SortMetadata {
+            modified: None,
+            created: None,
+        },
+    );
+    app.cache_sort_metadata(
+        has_created.clone(),
+        SortMetadata {
+            modified: None,
+            created: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(5)),
+        },
+    );
+
+    app.set_result_sort_mode(ResultSortMode::CreatedDesc);
+
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![has_created, missing_created]
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn sort_metadata_cache_is_bounded() {
+    let root = test_root("result-sort-cache-bounded");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    for i in 0..(FlistWalkerApp::SORT_METADATA_CACHE_MAX + 8) {
+        app.cache_sort_metadata(
+            root.join(format!("entry-{i}.txt")),
+            SortMetadata {
+                modified: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(i as u64)),
+                created: None,
+            },
+        );
+    }
+
+    assert!(app.shell.cache.sort_metadata.len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(app.shell.cache.sort_metadata.order_len() <= FlistWalkerApp::SORT_METADATA_CACHE_MAX);
+    assert!(!app
+        .shell
+        .cache
+        .sort_metadata
+        .contains_public(&root.join("entry-0.txt")));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn search_prefix_cache_accepts_only_plain_single_token_queries() {
+    assert!(!SearchPrefixCache::is_cacheable_query("ab"));
+    assert!(SearchPrefixCache::is_cacheable_query("abc"));
+    assert!(!SearchPrefixCache::is_cacheable_query("abc def"));
+    assert!(!SearchPrefixCache::is_cacheable_query("abc|def"));
+    assert!(!SearchPrefixCache::is_cacheable_query("'abc"));
+    assert!(!SearchPrefixCache::is_cacheable_query("!abc"));
+    assert!(!SearchPrefixCache::is_cacheable_query("^abc"));
+    assert!(!SearchPrefixCache::is_cacheable_query("abc$"));
+    assert!(SearchPrefixCache::is_safe_prefix_extension("abc", "abcd"));
+    assert!(!SearchPrefixCache::is_safe_prefix_extension("abc", "ab"));
+}
+
+#[test]
+fn search_prefix_cache_prefers_longest_prefix_and_evicts_old_entries() {
+    let snapshot = SearchEntriesSnapshotKey { ptr: 1, len: 100 };
+    let mut cache = SearchPrefixCache::default();
+    cache.maybe_store(snapshot, "abc", vec![0, 1, 2, 3]);
+    cache.maybe_store(snapshot, "abcd", vec![1, 3]);
+
+    let candidates = cache
+        .lookup_candidates(snapshot, "abcde")
+        .expect("cached candidates");
+    assert_eq!(candidates.as_ref(), &vec![1, 3]);
+
+    for idx in 0..(SearchPrefixCache::MAX_ENTRIES + 4) {
+        cache.maybe_store(snapshot, &format!("q{:03}", idx), vec![idx]);
+    }
+    assert!(cache.entries.len() <= SearchPrefixCache::MAX_ENTRIES);
+    assert!(cache.total_bytes <= SearchPrefixCache::MAX_BYTES);
+}
+
+#[test]
+fn search_prefix_cache_skips_oversized_match_sets() {
+    let snapshot = SearchEntriesSnapshotKey {
+        ptr: 2,
+        len: 1_000_000,
+    };
+    let mut cache = SearchPrefixCache::default();
+    let oversized = (0..=SearchPrefixCache::MAX_MATCHED_INDICES).collect::<Vec<_>>();
+
+    cache.maybe_store(snapshot, "oversized", oversized);
+
+    assert!(cache.lookup_candidates(snapshot, "oversizedx").is_none());
+    assert_eq!(cache.total_bytes, 0);
+}
+
+#[test]
+fn request_preview_is_skipped_when_preview_is_hidden() {
+    let root = test_root("preview-hidden");
+    fs::create_dir_all(&root).expect("create dir");
+    let file = root.join("a.txt");
+    fs::write(&file, "content").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.results = vec![(file.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.set_entry_kind(&file, EntryKind::file());
+    app.shell.runtime.preview = "stale preview".to_string();
+    app.shell.worker_bus.preview.pending_request_id = Some(99);
+    app.shell.worker_bus.preview.in_progress = true;
+
+    app.request_preview_for_current();
+
+    assert!(app.shell.runtime.preview.is_empty());
+    assert!(!app.shell.worker_bus.preview.in_progress);
+    assert!(app.shell.worker_bus.preview.pending_request_id.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
+    let root = test_root("preview-hidden-keeps-kind-queue");
+    fs::create_dir_all(&root).expect("create dir");
+    let file = root.join("a.lnk");
+    fs::write(&file, "shortcut").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.results = vec![(file.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell
+        .indexing
+        .pending_kind_paths
+        .push_back(file.clone());
+    app.shell
+        .indexing
+        .pending_kind_paths_set
+        .insert(file.clone());
+    app.shell.indexing.kind_resolution_in_progress = true;
+
+    app.request_preview_for_current();
+
+    assert!(app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|p| *p == file));
+    assert!(app.shell.indexing.pending_kind_paths_set.contains(&file));
+    assert!(app.shell.indexing.kind_resolution_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn entry_kind_cache_survives_tab_state_roundtrip_and_preserves_precedence() {
+    let root = test_root("entry-kind-cache-roundtrip");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("shared.txt");
+    fs::write(&path, "content").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.shell.runtime.all_entries =
+        Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
+    app.shell.runtime.index.entries = vec![Entry::new(path.clone(), Some(EntryKind::dir()))];
+    app.shell.runtime.entries =
+        Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
+    app.rebuild_entry_kind_cache();
+
+    assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
+
+    let tab_id = app.current_tab_id().expect("active tab id");
+    let snapshot = app.capture_active_tab_state(tab_id);
+    app.shell.cache.entry_kind.clear();
+    app.apply_tab_state(&snapshot);
+
+    assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
+    let _ = fs::remove_dir_all(&root);
+}

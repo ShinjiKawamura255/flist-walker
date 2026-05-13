@@ -56,13 +56,23 @@ pub(super) fn dir_entry(path: PathBuf) -> Entry {
     Entry::dir(path)
 }
 
+mod action_commands;
 mod app_core;
+mod cache_tests;
 mod index_pipeline;
 mod pipeline_tests;
 mod query_history;
 mod render_tests;
 mod session_restore;
-mod session_tabs;
-mod shortcuts;
+mod shortcut_action;
+mod shortcut_navigation;
+mod shortcut_pin_focus;
+mod shortcut_root_history;
+mod shutdown;
+mod tab_background_responses;
+mod tab_contract;
+mod tab_drag;
+mod tab_lifecycle;
+mod tab_result_cache;
 mod update_commands;
 mod window_ime;

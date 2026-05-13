@@ -16,6 +16,9 @@
    - Use `docs/GUI-TESTPLAN.md` and record release-candidate or GUI-adjacent smoke results in `docs/GUI-TESTREPORT.md` or `rust/target/gui-smoke/evidence/GUI-TESTREPORT.local.md`.
 4. Treat `docs/TASKS.md` as history, not the main entrypoint.
    - Start from this file, then read `ARCHITECTURE.md`, `TESTPLAN.md`, or `TASKS.md` only as needed.
+5. Reduce large Rust files in slices.
+   - Use `docs/LARGE_RUST_FILE_REDUCTION_PLAN.md`; Slice A split oversized app test modules on 2026-05-14.
+   - Remaining oversized production priorities start with `ui_model.rs`, `app/input.rs`, and `app/filelist.rs`.
 
 ## Daily Validation
 ```bash
@@ -37,3 +40,4 @@ Use the validation matrix in `docs/TESTPLAN.md` for narrower or additional check
 ## History
 - Detailed roadmap closures and previous evaluation notes live in `docs/TASKS.md`.
 - Durable architecture and regression guards live in `docs/ARCHITECTURE.md`.
+- The planned path for reducing oversized Rust files lives in `docs/LARGE_RUST_FILE_REDUCTION_PLAN.md`.
