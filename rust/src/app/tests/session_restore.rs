@@ -5,9 +5,10 @@ fn canonical_or_self(path: &Path) -> PathBuf {
 }
 
 #[test]
-fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
+fn sanitize_saved_tabs_keeps_missing_roots_lazy_and_clamps_active_tab() {
     let root = test_root("saved-tabs-sanitize");
     fs::create_dir_all(&root).expect("create root");
+    let missing_root = root.join("missing");
     let tabs = vec![
         SavedTabState {
             root: root.to_string_lossy().to_string(),
@@ -21,7 +22,7 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
             tab_accent: Some(TabAccentColor::Teal),
         },
         SavedTabState {
-            root: root.join("missing").to_string_lossy().to_string(),
+            root: missing_root.to_string_lossy().to_string(),
             use_filelist: false,
             use_regex: true,
             ignore_case: true,
@@ -35,10 +36,11 @@ fn sanitize_saved_tabs_filters_missing_roots_and_clamps_active_tab() {
 
     let (sanitized, active) =
         FlistWalkerApp::sanitize_saved_tabs(&tabs, Some(99)).expect("sanitized tabs");
-    assert_eq!(sanitized.len(), 1);
-    assert_eq!(active, 0);
+    assert_eq!(sanitized.len(), 2);
+    assert_eq!(active, 1);
     assert_eq!(sanitized[0].query, "ok");
     assert_eq!(sanitized[0].tab_accent, Some(TabAccentColor::Teal));
+    assert_eq!(PathBuf::from(&sanitized[1].root), missing_root);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -76,6 +78,33 @@ fn choose_startup_root_prefers_default_root_when_restore_tabs_is_disabled() {
     );
 
     assert_eq!(chosen, default_root);
+}
+
+#[test]
+fn choose_startup_root_keeps_missing_saved_roots_lazy() {
+    let fallback_root = PathBuf::from("/fallback");
+    let missing_last_root = PathBuf::from("/missing-last");
+    let missing_default_root = PathBuf::from("/missing-default");
+
+    let restored_with_default = FlistWalkerApp::choose_startup_root(
+        fallback_root.clone(),
+        false,
+        false,
+        None,
+        Some(missing_last_root.clone()),
+        Some(missing_default_root.clone()),
+    );
+    let restored_with_tabs = FlistWalkerApp::choose_startup_root(
+        fallback_root,
+        false,
+        true,
+        None,
+        Some(missing_last_root.clone()),
+        Some(missing_default_root),
+    );
+
+    assert_eq!(restored_with_default, PathBuf::from("/missing-default"));
+    assert_eq!(restored_with_tabs, missing_last_root);
 }
 
 #[test]

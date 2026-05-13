@@ -325,6 +325,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn run_update_cycle(&mut self, ctx: &egui::Context) -> bool {
+        self.maybe_apply_pending_cjk_font(ctx);
         self.poll_runtime_events();
         if self.request_viewport_close_if_needed(ctx) {
             return false;

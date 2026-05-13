@@ -6,6 +6,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
@@ -76,11 +77,15 @@ fn run_cli(args: &Args) -> Result<()> {
 }
 
 fn run_gui(args: &Args) -> Result<()> {
+    let startup_start = Instant::now();
+    trace_startup_phase(startup_start, "run_gui_enter");
     configure_windows_dpi_mode();
     let root_explicit = args.root.is_some();
     let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
+    trace_startup_phase(startup_start, "root_resolved");
     let mut native_options = eframe::NativeOptions::default();
     let startup_geometry = FlistWalkerApp::startup_window_geometry();
+    trace_startup_phase(startup_start, "startup_geometry_loaded");
     FlistWalkerApp::trace_window_event(
         "run_gui_start",
         &format!("root={} limit={}", root.display(), args.limit),
@@ -96,21 +101,22 @@ fn run_gui(args: &Args) -> Result<()> {
     } else {
         FlistWalkerApp::trace_window_event("run_gui_no_startup_size", "using_default_size");
     }
-    native_options.viewport = build_root_viewport(startup_geometry, load_app_icon());
+    let icon = load_app_icon();
+    trace_startup_phase(startup_start, "icon_prepared");
+    native_options.viewport = build_root_viewport(startup_geometry, icon);
     let query = args.query.clone();
     let limit = args.limit;
 
+    trace_startup_phase(startup_start, "run_native_before");
     eframe::run_native(
         APP_TITLE,
         native_options,
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
-            Ok(Box::new(FlistWalkerApp::from_launch(
-                root,
-                limit,
-                query,
-                root_explicit,
-            )))
+            trace_startup_phase(startup_start, "fonts_configured");
+            let app = FlistWalkerApp::from_launch(root, limit, query, root_explicit);
+            trace_startup_phase(startup_start, "app_created");
+            Ok(Box::new(app))
         }),
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
@@ -152,6 +158,17 @@ fn load_app_icon() -> Option<eframe::egui::IconData> {
         width: target_px,
         height: target_px,
     })
+}
+
+fn trace_startup_phase(start: Instant, phase: &str) {
+    FlistWalkerApp::trace_window_event(
+        "startup_phase",
+        &format!(
+            "phase={} elapsed_ms={:.3}",
+            phase,
+            start.elapsed().as_secs_f64() * 1000.0
+        ),
+    );
 }
 
 fn premultiplied_to_unmultiplied_rgba(src: &[u8]) -> Vec<u8> {

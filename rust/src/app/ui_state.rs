@@ -24,6 +24,7 @@ pub(super) struct RuntimeUiState {
     pub(super) query_input_id: egui::Id,
     pub(super) tab_drag_state: Option<TabDragState>,
     pub(super) pending_render_commands: Vec<super::render::RenderCommand>,
+    pub(super) cjk_font_applied: bool,
 }
 
 #[allow(dead_code)]
@@ -55,6 +56,7 @@ impl RuntimeUiState {
             tab_drag_state: None,
             pending_render_commands: Vec::new(),
             ignore_list_enabled,
+            cjk_font_applied: false,
         }
     }
 

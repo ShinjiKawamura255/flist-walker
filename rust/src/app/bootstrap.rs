@@ -116,18 +116,8 @@ impl FlistWalkerApp {
     ) -> Self {
         let launch = Self::load_launch_settings();
         let restore_tabs_enabled = Self::restore_tabs_enabled();
-        let saved_last_root = launch
-            .last_root
-            .as_ref()
-            .and_then(|p| p.canonicalize().ok())
-            .map(normalize_windows_path_buf)
-            .filter(|p| p.is_dir());
-        let saved_default = launch
-            .default_root
-            .as_ref()
-            .and_then(|p| p.canonicalize().ok())
-            .map(normalize_windows_path_buf)
-            .filter(|p| p.is_dir());
+        let saved_last_root = launch.last_root.clone().map(normalize_windows_path_buf);
+        let saved_default = launch.default_root.clone().map(normalize_windows_path_buf);
         let restore_session = if restore_tabs_enabled && !root_explicit && query.trim().is_empty() {
             Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
         } else {

@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::shell_support::load_cjk_font_bytes;
 
 #[test]
 fn window_geometry_from_rects_prefers_inner_size() {
@@ -71,6 +72,45 @@ fn apply_stable_window_geometry_force_commits_pending() {
     assert_eq!(geom.width, 900.0);
     assert_eq!(geom.height, 700.0);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn cached_cjk_font_can_apply_to_multiple_app_instances() {
+    FlistWalkerApp::set_cjk_font_ready_for_test(vec![0; 4]);
+    let root_a = test_root("cjk-font-app-a");
+    let root_b = test_root("cjk-font-app-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+
+    let ctx_a = egui::Context::default();
+    let ctx_b = egui::Context::default();
+    let mut app_a = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    let mut app_b = FlistWalkerApp::new(root_b.clone(), 50, String::new());
+
+    app_a.maybe_apply_pending_cjk_font(&ctx_a);
+    app_b.maybe_apply_pending_cjk_font(&ctx_b);
+
+    assert!(app_a.shell.ui.cjk_font_applied);
+    assert!(app_b.shell.ui.cjk_font_applied);
+
+    FlistWalkerApp::reset_cjk_font_state_for_test();
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
+#[ignore]
+fn measure_cjk_font_load_headless() {
+    let started = std::time::Instant::now();
+    let loaded = load_cjk_font_bytes();
+    let elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+    match loaded {
+        Some(bytes) => println!(
+            "cjk_font_load_headless elapsed_ms={elapsed_ms:.3} bytes={}",
+            bytes.len()
+        ),
+        None => println!("cjk_font_load_headless elapsed_ms={elapsed_ms:.3} unavailable"),
+    }
 }
 
 #[test]

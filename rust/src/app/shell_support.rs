@@ -9,11 +9,11 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::sync::OnceLock;
+use std::sync::{Arc, Mutex};
 #[cfg(test)]
 use std::time::Duration;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
 
@@ -31,25 +31,131 @@ pub(crate) fn clear_process_shutdown_request() {
 }
 
 pub fn configure_egui_fonts(ctx: &egui::Context) {
-    let mut fonts = egui::FontDefinitions::default();
+    ctx.set_fonts(egui::FontDefinitions::default());
+    begin_async_cjk_font_load(ctx);
+}
 
-    if let Some(font_bytes) = load_cjk_font_bytes() {
-        let font_name = "cjk_ui".to_string();
-        fonts
-            .font_data
-            .insert(font_name.clone(), egui::FontData::from_owned(font_bytes).into());
-        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
-            family.insert(0, font_name.clone());
-        }
-        if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
-            family.push(font_name);
+fn font_definitions_with_cjk(font_bytes: Vec<u8>) -> egui::FontDefinitions {
+    let mut fonts = egui::FontDefinitions::default();
+    let font_name = "cjk_ui".to_string();
+    fonts.font_data.insert(
+        font_name.clone(),
+        egui::FontData::from_owned(font_bytes).into(),
+    );
+    if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+        family.insert(0, font_name.clone());
+    }
+    if let Some(family) = fonts.families.get_mut(&egui::FontFamily::Monospace) {
+        family.push(font_name);
+    }
+    fonts
+}
+
+enum CjkFontLoadState {
+    Idle,
+    Loading,
+    Ready {
+        bytes: Vec<u8>,
+        load_elapsed_ms: f64,
+    },
+    Unavailable,
+}
+
+fn cjk_font_load_state() -> &'static Mutex<CjkFontLoadState> {
+    static STATE: OnceLock<Mutex<CjkFontLoadState>> = OnceLock::new();
+    STATE.get_or_init(|| Mutex::new(CjkFontLoadState::Idle))
+}
+
+fn begin_async_cjk_font_load(ctx: &egui::Context) {
+    {
+        let Ok(mut guard) = cjk_font_load_state().lock() else {
+            return;
+        };
+        match *guard {
+            CjkFontLoadState::Idle => {
+                *guard = CjkFontLoadState::Loading;
+            }
+            CjkFontLoadState::Ready { ref bytes, .. } => {
+                ctx.set_fonts(font_definitions_with_cjk(bytes.clone()));
+                return;
+            }
+            CjkFontLoadState::Loading | CjkFontLoadState::Unavailable => return,
         }
     }
 
-    ctx.set_fonts(fonts);
+    let ctx = ctx.clone();
+    std::thread::spawn(move || {
+        let load_start = Instant::now();
+        let loaded = load_cjk_font_bytes();
+        let load_elapsed_ms = load_start.elapsed().as_secs_f64() * 1000.0;
+        if let Ok(mut guard) = cjk_font_load_state().lock() {
+            *guard = match loaded {
+                Some(bytes) => {
+                    FlistWalkerApp::trace_window_event(
+                        "startup_phase",
+                        &format!(
+                            "phase=cjk_font_loaded elapsed_ms={:.3} bytes={}",
+                            load_elapsed_ms,
+                            bytes.len()
+                        ),
+                    );
+                    CjkFontLoadState::Ready {
+                        bytes,
+                        load_elapsed_ms,
+                    }
+                }
+                None => CjkFontLoadState::Unavailable,
+            };
+        }
+        ctx.request_repaint();
+    });
 }
 
-fn load_cjk_font_bytes() -> Option<Vec<u8>> {
+impl FlistWalkerApp {
+    pub(super) fn maybe_apply_pending_cjk_font(&mut self, ctx: &egui::Context) {
+        if self.shell.ui.cjk_font_applied {
+            return;
+        }
+        let Ok(guard) = cjk_font_load_state().lock() else {
+            return;
+        };
+        let CjkFontLoadState::Ready {
+            bytes,
+            load_elapsed_ms,
+        } = &*guard
+        else {
+            return;
+        };
+        ctx.set_fonts(font_definitions_with_cjk(bytes.clone()));
+        self.shell.ui.cjk_font_applied = true;
+        Self::trace_window_event(
+            "startup_phase",
+            &format!("phase=cjk_font_applied font_load_ms={load_elapsed_ms:.3}"),
+        );
+        ctx.request_repaint();
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_cjk_font_ready_for_test(bytes: Vec<u8>) {
+        if let Ok(mut guard) = cjk_font_load_state().lock() {
+            *guard = CjkFontLoadState::Ready {
+                bytes,
+                load_elapsed_ms: 0.0,
+            };
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn reset_cjk_font_state_for_test() {
+        if let Ok(mut guard) = cjk_font_load_state().lock() {
+            if !matches!(*guard, CjkFontLoadState::Loading) {
+                *guard = CjkFontLoadState::Idle;
+            }
+        }
+    }
+}
+
+pub(super) fn load_cjk_font_bytes() -> Option<Vec<u8>> {
     let mut candidates: Vec<&str> = Vec::new();
 
     #[cfg(windows)]
@@ -122,10 +228,7 @@ impl FlistWalkerApp {
             .into_iter()
             .map(|base| Self::window_trace_path_in(&base))
             .collect::<Vec<_>>();
-        Some(Self::migrate_or_legacy_window_trace_path(
-            current,
-            &legacy,
-        ))
+        Some(Self::migrate_or_legacy_window_trace_path(current, &legacy))
     }
 
     fn window_trace_path_in(base: &Path) -> PathBuf {

@@ -91,7 +91,7 @@
 | TC-043 | unit | 履歴検索中の `Esc` / `Ctrl+G` は開始前 query を復元してキャンセルする | SP-010 |
 | TC-044 | unit | `Ctrl+Shift+R` は履歴検索を開始しない | SP-010 |
 | TC-045 | unit | query 履歴は 100 件上限を維持し、保存状態へ永続化される | SP-010 |
-| TC-039 | unit | 保存済みタブ状態の復元候補は無効 root を除外し、active tab index をクランプする | SP-010 |
+| TC-039 | unit | 保存済み `last_root` / `default_root` / tab root は root 存在確認を起動後へ遅延し、active tab index をクランプする | SP-010 |
 | TC-040 | unit | タブ復元時は active tab の root/query/filter を復元し、起動直後の index は active tab だけ開始する | SP-010 |
 | TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |
 | TC-046 | unit | `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
