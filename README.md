@@ -10,6 +10,7 @@ Language docs:
 
 - Japanese: [README-ja.md](README-ja.md)
 - Support: [docs/SUPPORT.md](docs/SUPPORT.md)
+- Project status for maintainers: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
 ## Features
 

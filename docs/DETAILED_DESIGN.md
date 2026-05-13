@@ -733,7 +733,7 @@ Recommended validation for changes that use this document:
 | VM-003 | Index/FileList/walker | `cd rust && cargo test` plus the two ignored perf tests from AGENTS.md when indexing paths change | Large-root GUI smoke and trace smoke if observable worker trace changes. |
 | VM-004 | Search/query/highlight/sort contract | `cd rust && cargo test` | Manual query checks for `'`, `!`, `^`, `$`, and `|` when user-visible behavior changes. |
 | VM-005 | CLI/build/release/updater | `cd rust && cargo test` | Release docs review, platform asset review, manual update tests as needed. |
-| VM-006 | CI coverage gate / GUI validation docs | `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70` | Re-measure and update baseline when raising threshold. |
+| VM-006 | CI coverage gate / GUI validation docs | `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` | Re-measure and update baseline when raising threshold. |
 | VM-007 | Supportability docs/templates | affected doc/template diff review and redaction/telemetry wording check | No Rust tests unless support code changes. |
 
 Manual-heavy checks remain documented in [TESTPLAN.md](./TESTPLAN.md), including structural GUI smoke, diagnostics trace smoke, and self-update sidecar tests. Release/security changes should also consider `cargo audit`, release sidecar completeness, and notarization notes.

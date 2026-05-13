@@ -28,12 +28,13 @@
 - GUI Manual:
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を `docs/GUI-TESTPLAN.md` の `GSM-*` 手順で検証する。
 - GUI smoke fixture は `scripts/gui-smoke-fixture.sh` で作成し、証跡は `rust/target/gui-smoke/evidence/` または `docs/GUI-TESTREPORT.md` に記録する。
+- release candidate または VM-002 対象の GUI-adjacent 変更では、該当 `GSM-*` の PASS / FAIL / SKIPPED と証跡パスを必ず記録する。単なる「手元で見た」だけでは gate 完了扱いにしない。
 - GUI Headful Smoke:
 - release candidate / nightly では `scripts/gui-headful-smoke.sh` または `scripts/gui-headful-smoke.ps1` で native window 起動の早期クラッシュを検出し、`rust/target/gui-smoke/evidence/GUI-HEADFUL-SMOKE.local.md` に記録する。通常 PR の required gate にはしない。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` として分離し、walker 側の現行 control baseline は 1.25x を下限とする。
-- Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70` を実行し、line coverage 70% 未満への低下を失敗扱いにする。初期 baseline は 2026-04-19 測定で 70.29%（LH=9870 / LF=14042）。
+- Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` を実行し、line coverage 75% 未満への低下を失敗扱いにする。2026-05-14 の fresh baseline は 79.08%（LH=12604 / LF=15938）。中期目標は 80% とする。enforced threshold を上げる変更では、同一変更内で fresh baseline、失敗時の不足領域、追加した owner-seam test を記録する。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
 - Sec: Windows の一般 `.ps1` は既定で直接実行せず、既定アプリでオープンする。
@@ -142,7 +143,7 @@
 | TC-072 | unit | 並列検索の収集結果は逐次検索と同じ ranking を返す | SP-003, SP-007 |
 | TC-073 | unit | 非アクティブタブの結果キャッシュ compact 後も、再表示時に current row と結果一覧を復元できる | SP-010 |
 | TC-107 | unit | `ui_model` の preview text は action policy を埋め込まず、実行可否は `actions.rs` 側の責務に留める | SP-004, SP-010 |
-| TC-108 | ci | `cargo llvm-cov` の line coverage gate は 70% 未満への退行を CI で失敗させ、`lcov.info` artifact を継続生成する | SP-012 |
+| TC-108 | ci | `cargo llvm-cov` の line coverage gate は 75% 未満への退行を CI で失敗させ、`lcov.info` artifact を継続生成する | SP-012 |
 | TC-109 | docs | GitHub Issue template と `docs/SUPPORT.md` は、version / OS / launch mode / reproduction / redaction を求めつつ、既定 telemetry や自動 crash upload を導入しない supportability 導線を固定する | SP-010, SP-012 |
 | TC-100 | unit | self-update candidate 解決は release asset 選択と support classification を分離し、manual-only fallback を契約として保持する | SP-014 |
 | TC-101 | unit | update request / install transitions emit trace commands for supportability and retain request_id correlation | SP-014 |
@@ -196,7 +197,7 @@
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/match_eval.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `rust/src/updater/*.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test`; updater platform apply/helper を触った場合は `cd rust && cargo check --locked --target x86_64-pc-windows-gnu` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
 | VM-008 Runtime config bootstrap | `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/session.rs`, `rust/src/updater.rs` | `cd rust && cargo test` | 初回起動で config file が生成されること、既存 file が env より優先されること、seed-only 挙動を manual smoke で確認する |
-| VM-006 CI coverage gate / GUI validation docs | `.github/workflows/ci-cross-platform.yml` の coverage command、`docs/TESTPLAN.md` の coverage/render validation 方針、`docs/GUI-TESTPLAN.md`、`docs/GUI-TESTREPORT.md`、`scripts/gui-smoke-fixture.sh`、`scripts/gui-headful-smoke.*` | `cd rust && cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`; workflow diff review。GUI docs/script だけの変更では `bash -n scripts/gui-smoke-fixture.sh`、`bash -n scripts/gui-headful-smoke.sh`、PowerShell parser で `scripts/gui-headful-smoke.ps1` を確認、`scripts/gui-smoke-fixture.sh`、`rg -n "GUI-TESTPLAN|GUI-TESTREPORT|GUI-HEADFUL-SMOKE|gui-smoke-fixture|gui-headful-smoke|GSM-" docs/TESTPLAN.md docs/GUI-TESTPLAN.md docs/GUI-TESTREPORT.md scripts/gui-headful-smoke.sh scripts/gui-headful-smoke.ps1` を required validation とする | Rust 実装に触れない場合 `cargo test` は coverage run に含まれるため別実行不要。coverage threshold を上げる場合は baseline を再測定し、`TESTPLAN.md` へ測定値を更新する。Headful GUI launch は release/nightly smoke とし、通常 PR の CI 必須にしない |
+| VM-006 CI coverage gate / GUI validation docs | `.github/workflows/ci-cross-platform.yml` の coverage command、`docs/TESTPLAN.md` の coverage/render validation 方針、`docs/GUI-TESTPLAN.md`、`docs/GUI-TESTREPORT.md`、`scripts/gui-smoke-fixture.sh`、`scripts/gui-headful-smoke.*` | `cd rust && cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`; workflow diff review。GUI docs/script だけの変更では `bash -n scripts/gui-smoke-fixture.sh`、`bash -n scripts/gui-headful-smoke.sh`、PowerShell parser で `scripts/gui-headful-smoke.ps1` を確認、`scripts/gui-smoke-fixture.sh`、`rg -n "GUI-TESTPLAN|GUI-TESTREPORT|GUI-HEADFUL-SMOKE|gui-smoke-fixture|gui-headful-smoke|GSM-" docs/TESTPLAN.md docs/GUI-TESTPLAN.md docs/GUI-TESTREPORT.md scripts/gui-headful-smoke.sh scripts/gui-headful-smoke.ps1` を required validation とする | Rust 実装に触れない場合 `cargo test` は coverage run に含まれるため別実行不要。coverage threshold を 80% へ上げる場合は fresh baseline を再測定し、`TESTPLAN.md` と `CURRENT_STATUS.md` へ測定値、追加 test、残る不足領域を更新する。Headful GUI launch は release/nightly smoke とし、通常 PR の CI 必須にしない |
 | VM-007 Supportability docs/templates | `.github/ISSUE_TEMPLATE/*`, `docs/SUPPORT.md`, README support links | affected doc/template diff review; `rg` で redaction / telemetry wording and forbidden internal update override names を確認 | Rust 実装に触れない限り `cargo test` は不要 |
 - 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
 - app architecture のような構造改善後も、恒久的な検証基準は VM-001 / VM-002 / VM-003 を直接適用する。temporary slice 固有の validation rule はこの文書へ持ち込まない。
@@ -207,7 +208,8 @@
 - `cargo test`
 - `cargo audit`
 - audit warning posture: `docs/OSS_COMPLIANCE.md` の accepted transitive warning を確認し、release candidate ごとに `cd rust && cargo audit` を再実行する
-- coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 70`
+- coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`
+- coverage uplift target: 80% は release 直前の義務ではなく中期品質目標として扱う。80% へ上げる前に app/GUI owner seam の不足領域を追加 test で補強し、fresh baseline を再測定する。
 - heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または weekly schedule
 - lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を 1.20x 下限で監視する
 - GUI 手動試験: `scripts/gui-smoke-fixture.sh` 後に `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`

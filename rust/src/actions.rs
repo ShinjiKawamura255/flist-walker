@@ -66,29 +66,29 @@ fn shell_open(path: &Path) -> std::io::Result<()> {
 
 pub fn choose_action(path: &Path) -> Action {
     if path.is_dir() {
-        return Action::Open;
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-            let ext = ext.to_ascii_lowercase();
-            if ["exe", "com", "bat", "cmd"].contains(&ext.as_str()) {
-                return Action::Execute;
-            }
-        }
-        return Action::Open;
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Ok(metadata) = path.metadata() {
-            if metadata.permissions().mode() & 0o111 != 0 {
-                return Action::Execute;
-            }
-        }
         Action::Open
+    } else {
+        #[cfg(target_os = "windows")]
+        {
+            if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                let ext = ext.to_ascii_lowercase();
+                if ["exe", "com", "bat", "cmd"].contains(&ext.as_str()) {
+                    return Action::Execute;
+                }
+            }
+            Action::Open
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = path.metadata() {
+                if metadata.permissions().mode() & 0o111 != 0 {
+                    return Action::Execute;
+                }
+            }
+            Action::Open
+        }
     }
 }
 
@@ -141,14 +141,14 @@ pub fn open_with_default(path: &Path) -> Result<()> {
         shell_open(path).with_context(|| {
             format!("failed to open {}", normalize_action_path_for_display(path))
         })?;
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "macos")]
     {
         Command::new("open").arg(path).spawn().with_context(|| {
             format!("failed to open {}", normalize_action_path_for_display(path))
         })?;
-        return Ok(());
+        Ok(())
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {

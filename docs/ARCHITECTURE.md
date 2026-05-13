@@ -201,6 +201,7 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
   - 原子的ファイル書き込み。
 
 ## Related Docs
+- [CURRENT_STATUS.md](./CURRENT_STATUS.md)
 - [REQUIREMENTS.md](./REQUIREMENTS.md)
 - [SPEC.md](./SPEC.md)
 - [DESIGN.md](./DESIGN.md)
@@ -209,6 +210,8 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 - [TASKS.md](./TASKS.md)
 
 ## Document Roles
+- `CURRENT_STATUS.md`
+  - 現在の品質姿勢、直近の保守優先度、日常 validation の入口を保持する。新しい作業では最初に読む短い entrypoint として扱う。
 - `REQUIREMENTS.md` / `SPEC.md`
   - プロダクト契約と振る舞いの規範面を保持する。
 - `ARCHITECTURE.md` / `DESIGN.md`
@@ -218,7 +221,7 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 - `RELEASE.md`
   - release 運用と配布手順を保持する。
 - `TASKS.md`
-  - change program の履歴、closure record、恒久的に残す進捗サマリを保持する。
+  - change program の履歴、closure record、恒久的に残す進捗サマリを保持する。通常の作業開始時は `CURRENT_STATUS.md` を入口にし、詳細な経緯が必要な場合だけ参照する。
 
 ## Regression Guards
 

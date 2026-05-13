@@ -282,6 +282,7 @@ pub(crate) fn migrate_file_if_needed(current_path: &Path, legacy_path: &Path) ->
     }
 }
 
+#[allow(clippy::permissions_set_readonly_false)]
 fn remove_file_best_effort(path: &Path) -> std::io::Result<()> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
@@ -780,10 +781,11 @@ mod tests {
         let legacy_base = home.join(WINDOWS_SETTINGS_DIR_NAME);
         #[cfg(not(windows))]
         let legacy_base = home.join(UNIX_SETTINGS_DIR_NAME);
-        let legacy_paths = legacy_runtime_config_file_paths(&runtime_config_file_path_in(
-            &legacy_base,
-        ));
-        assert!(legacy_paths.iter().any(|path| path == &runtime_config_file_path_in(&home)));
+        let legacy_paths =
+            legacy_runtime_config_file_paths(&runtime_config_file_path_in(&legacy_base));
+        assert!(legacy_paths
+            .iter()
+            .any(|path| path == &runtime_config_file_path_in(&home)));
 
         let _ = fs::remove_dir_all(&home);
     }

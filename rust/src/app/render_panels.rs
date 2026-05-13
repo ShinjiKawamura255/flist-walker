@@ -372,8 +372,8 @@ pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ctx: &egui::Context)
                         version_font.clone(),
                         ui.visuals().text_color(),
                     )
-                        .size()
-                        .x;
+                    .size()
+                    .x;
                 if let Some(label) = app.action_progress_label() {
                     ui.add(egui::Spinner::new().size(14.0));
                     ui.label(label);

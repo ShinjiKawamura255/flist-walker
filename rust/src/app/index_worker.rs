@@ -44,10 +44,9 @@ fn walker_parallelism() -> Parallelism {
 fn is_windows_shortcut(path: &Path) -> bool {
     #[cfg(windows)]
     {
-        return path
-            .extension()
+        path.extension()
             .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("lnk"));
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("lnk"))
     }
 
     #[cfg(not(windows))]

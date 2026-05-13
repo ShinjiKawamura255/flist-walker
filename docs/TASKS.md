@@ -1,5 +1,8 @@
 # TASKS
 
+## Current Entry Point
+- Start new maintenance work from [CURRENT_STATUS.md](./CURRENT_STATUS.md). This file is retained as durable history for completed programs, closure records, and previous evaluation context.
+
 ## Status Snapshot
 - Updated: 2026-04-26
 - Current active engineering roadmap: none

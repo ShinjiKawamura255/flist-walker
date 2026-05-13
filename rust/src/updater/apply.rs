@@ -16,7 +16,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 pub(super) fn spawn_update_helper(current_exe: &Path, bundle: &VerifiedUpdateBundle) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
-        return spawn_windows_update_helper(current_exe, bundle);
+        spawn_windows_update_helper(current_exe, bundle)
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {

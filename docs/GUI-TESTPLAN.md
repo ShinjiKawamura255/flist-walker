@@ -12,6 +12,7 @@
   - after changes covered by VM-002 that affect render, dialog, focus, tab, search result, preview, or FileList GUI flows
   - after structural refactoring that touches GUI-adjacent app orchestration
 - Evidence location: `rust/target/gui-smoke/evidence/`.
+- Evidence rule: release-candidate and VM-002 GUI-adjacent checks must record a dated report with environment, required `GSM-*` status, and evidence paths. Chat-only confirmation is acceptable only for exploratory development smoke and must not be used as release-candidate evidence.
 - Fixture command: `scripts/gui-smoke-fixture.sh`.
 - Launch command after fixture creation: `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`.
 - Headful automation smoke:
@@ -35,6 +36,7 @@
 - PASS: every required `GSM-*` case for the environment is PASS or explicitly SKIPPED with an accepted reason.
 - FAIL: any product behavior mismatch, UI freeze, stale dialog, wrong action target, broken selection, or missing evidence for a required case.
 - SKIPPED: allowed only for environment-specific cases that cannot apply to the current OS, and the reason must be recorded.
+- NOT RUN: allowed only outside release-candidate gates, or for explicitly out-of-scope flows. The report must state why the case was not run and what automated coverage, if any, partially covers it.
 - Flake policy: manual GUI smoke may be retried once for clear environment/display instability. A repeated failure is product or test-plan debt and must be tracked before release.
 
 ## Test Cases
@@ -55,6 +57,7 @@
 - Automated unit/headless coverage remains in Rust tests for render snapshots, `run_ui_frame`, shortcuts, tabs, dialogs, update commands, and index pipeline state.
 - The headless GUI surface snapshot MUST cover the visible app contract that can be asserted without opening a native window: active root, query text, filter toggles, ignore-list toggle, result sort mode, result count/current row target, pinned selection count, tab count/active tab, preview visibility/width, top actions, status line, and FileList/update dialog labels/buttons.
 - When adding GUI controls whose state is visible without native platform interaction, add or update a headless snapshot assertion before relying on manual `GSM-*` smoke coverage.
+- When adding GUI controls that require native platform interaction, update the relevant `GSM-*` case and the report template before accepting manual-only coverage.
 - Headful automation is a release/nightly smoke gate only. It launches the native GUI against the standard fixture, treats early process exit as FAIL, writes `GUI-HEADFUL-SMOKE.local.md`, and then stops the process after the configured duration.
 - The headful smoke does not replace `GSM-*` manual checks because it does not assert typed search, visual highlight quality, platform open behavior, IME, or window movement.
 - Pull-request CI does not require native GUI launch unless a deterministic platform harness is explicitly added later.
@@ -62,6 +65,6 @@
 
 ## Risks
 - Manual evidence can be skipped under time pressure.
-  - Mitigation: release candidates require `docs/GUI-TESTREPORT.md` or a generated local report to be filled with evidence paths.
+  - Mitigation: release candidates require `docs/GUI-TESTREPORT.md` or a generated local report to be filled with environment, `GSM-*` status, and evidence paths before publish.
 - Environment-specific behavior may be under-tested on non-release changes.
   - Mitigation: Windows/macOS are required for release candidates and platform-specific UI/input changes.

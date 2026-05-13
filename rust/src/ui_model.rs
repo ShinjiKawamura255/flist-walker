@@ -423,9 +423,9 @@ fn is_on_demand_file(path: &Path) -> bool {
             return should_skip_preview_from_attr_tag(info.file_attributes, Some(info.reparse_tag));
         }
 
-        return std::fs::metadata(path)
+        std::fs::metadata(path)
             .map(|m| should_skip_preview_from_attr_tag(metadata_file_attributes(&m), None))
-            .unwrap_or(false);
+            .unwrap_or(false)
     }
     #[cfg(not(windows))]
     {
@@ -644,7 +644,10 @@ fn cf_get_placeholder_state_from_attribute_tag(file_attributes: u32, reparse_tag
             }
 
             let proc = unsafe {
-                GetProcAddress(module, b"CfGetPlaceholderStateFromAttributeTag\0".as_ptr())
+                GetProcAddress(
+                    module,
+                    c"CfGetPlaceholderStateFromAttributeTag".as_ptr().cast(),
+                )
             };
             if proc.is_null() {
                 None

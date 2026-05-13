@@ -28,7 +28,7 @@ pub fn normalize_windows_path(path: &Path) -> PathBuf {
     #[cfg(windows)]
     {
         let raw = path.to_string_lossy();
-        return PathBuf::from(strip_windows_extended_prefix(&raw));
+        PathBuf::from(strip_windows_extended_prefix(&raw))
     }
     #[cfg(not(windows))]
     {
@@ -62,7 +62,7 @@ pub fn normalize_path_for_display(path: &Path) -> String {
 pub fn normalize_windows_shell_path(path: &Path) -> PathBuf {
     #[cfg(windows)]
     {
-        return normalize_windows_path(path);
+        normalize_windows_path(path)
     }
     #[cfg(not(windows))]
     {
