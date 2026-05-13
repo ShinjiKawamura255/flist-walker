@@ -18,7 +18,8 @@
    - Start from this file, then read `ARCHITECTURE.md`, `TESTPLAN.md`, or `TASKS.md` only as needed.
 5. Reduce large Rust files in slices.
    - Use `docs/LARGE_RUST_FILE_REDUCTION_PLAN.md`; Slice A split oversized app test modules on 2026-05-14.
-   - Remaining oversized production priorities start with `ui_model.rs`, `app/input.rs`, and `app/filelist.rs`.
+   - Slice B split `ui_model.rs` into display/highlight/preview/on-demand modules on 2026-05-14.
+   - Remaining oversized production priorities start with `app/input.rs`, `app/filelist.rs`, and `indexer/mod.rs`.
 
 ## Daily Validation
 ```bash

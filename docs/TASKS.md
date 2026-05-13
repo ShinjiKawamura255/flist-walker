@@ -2,7 +2,7 @@
 
 ## Current Entry Point
 - Start new maintenance work from [CURRENT_STATUS.md](./CURRENT_STATUS.md). This file is retained as durable history for completed programs, closure records, and previous evaluation context.
-- Large Rust file reduction is tracked in [LARGE_RUST_FILE_REDUCTION_PLAN.md](./LARGE_RUST_FILE_REDUCTION_PLAN.md). Slice A is complete; no implementation slice is active yet.
+- Large Rust file reduction is tracked in [LARGE_RUST_FILE_REDUCTION_PLAN.md](./LARGE_RUST_FILE_REDUCTION_PLAN.md). Slices A and B are complete; no implementation slice is active yet.
 
 ## Status Snapshot
 - Updated: 2026-04-26
@@ -11,6 +11,7 @@
 - App architecture change-plan program: DONE on 2026-04-09
 - Notes:
   - 2026-05-14 に `large-rust-file-reduction` Slice A を完了した。`app_core.rs` / `session_tabs.rs` / `index_pipeline/search_filelist.rs` / `shortcuts.rs` の oversized app tests を責務別 module へ分割し、app test module は最大 504 行まで縮小した。`cargo test --locked`、`cargo clippy --all-targets -- -D warnings`、coverage gate `--fail-under-lines 75` は green。production 側の残る 800 行超ファイルは `ui_model.rs`、`app/input.rs`、`app/filelist.rs`、`indexer/mod.rs` が次候補。
+  - 2026-05-14 に `large-rust-file-reduction` Slice B を完了した。`ui_model.rs` を `ui_model/mod.rs` facade、`display.rs`、`highlight.rs`、`preview.rs`、`on_demand.rs` に分割し、既存の `crate::ui_model::*` public API を維持した。最大 file は `highlight.rs` 383 行。`cargo test --locked ui_model`、`cargo test --locked`、`cargo clippy --all-targets -- -D warnings`、coverage gate `--fail-under-lines 75` は green。
   - 2026-04-25 に総合評価 84/100 の残課題（TESTPLAN の TC ID 重複、self-update staging hardening、巨大 module 分割、GUI validation、cargo audit warning）を解消する `quality-hardening-90` roadmap を作成した。roadmap / Slice A は specialist review と convergence review を完了し、`Review Status: レビュー済み`。Slice A 実装前に `AGENTS.md` へ Temporary Change Plan Rule を追加する。
   - 2026-04-25 に Slice A を完了した。`docs/TESTPLAN.md` の重複 `TC-093` / `TC-094` / `TC-095` / `TC-100` / `TC-101` のうち後続の別意味行を `TC-117` から `TC-121` へ再割当し、`REQUIREMENTS.md` / `DESIGN.md` / `DETAILED_DESIGN.md` / `TESTPLAN.md` の対応参照を意味ごとに更新した。重複検出コマンドは空出力、変更範囲は docs と `AGENTS.md` の一時ルールのみ。
   - 2026-04-25 に Slice B `self-update-staging-hardening` を完了した。self-update staging directory は 128-bit random suffix + exclusive `create_dir` + bounded retry になり、Unix では `0o700` を設定する。downloaded asset / sidecar / helper script は `create_new` で既存 file を上書きしない。`cargo test --locked`、`cargo clippy --all-targets -- -D warnings`、`cargo audit` は green。既存の `paste` unmaintained warning は allowed transitive warning としてこの slice では一時受容し、Slice G の dependency/audit follow-up へ残す。
