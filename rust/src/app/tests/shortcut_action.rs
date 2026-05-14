@@ -31,6 +31,53 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
 }
 
 #[test]
+fn regression_ctrl_shift_c_copy_event_copies_selected_path_even_when_query_is_focused() {
+    let root = test_root("regression-copy-event-query-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("picked.txt");
+    fs::write(&selected, "x").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+
+    run_shortcuts_frame_with_modifiers(
+        &mut app,
+        true,
+        gui_shortcut_modifiers(true),
+        vec![egui::Event::Copy],
+    );
+
+    assert!(!app.shell.ui.pending_copy_shortcut);
+    assert!(app.shell.runtime.notice.contains(&format!(
+        "Copied path: {}",
+        normalize_path_for_display(&selected)
+    )));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn copy_event_without_shift_does_not_trigger_path_copy_shortcut() {
+    let root = test_root("copy-event-without-shift");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("picked.txt");
+    fs::write(&selected, "x").expect("write file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+
+    run_shortcuts_frame_with_modifiers(
+        &mut app,
+        true,
+        gui_shortcut_modifiers(false),
+        vec![egui::Event::Copy],
+    );
+
+    assert!(!app.shell.ui.pending_copy_shortcut);
+    assert!(app.shell.runtime.notice.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn ctrl_o_browses_and_changes_root() {
     let root = test_root("shortcut-ctrl-o");
     let new_root = root.join("new-root");

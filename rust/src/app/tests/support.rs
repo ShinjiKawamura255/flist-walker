@@ -23,18 +23,30 @@ pub(crate) fn run_shortcuts_frame(
     query_focused: bool,
     events: Vec<egui::Event>,
 ) {
-    let mut modifiers = egui::Modifiers::NONE;
-    for event in &events {
-        if let egui::Event::Key {
-            pressed: true,
-            modifiers: event_modifiers,
-            ..
-        } = event
-        {
-            modifiers = *event_modifiers;
-            break;
-        }
-    }
+    let modifiers = events
+        .iter()
+        .find_map(|event| {
+            if let egui::Event::Key {
+                pressed: true,
+                modifiers: event_modifiers,
+                ..
+            } = event
+            {
+                Some(*event_modifiers)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(egui::Modifiers::NONE);
+    run_shortcuts_frame_with_modifiers(app, query_focused, modifiers, events);
+}
+
+pub(crate) fn run_shortcuts_frame_with_modifiers(
+    app: &mut FlistWalkerApp,
+    query_focused: bool,
+    modifiers: egui::Modifiers,
+    events: Vec<egui::Event>,
+) {
     let ctx = egui::Context::default();
     ctx.begin_pass(egui::RawInput {
         modifiers,

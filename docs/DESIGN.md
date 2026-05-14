@@ -205,7 +205,7 @@
 - 利用者が祖先追記を拒否した場合、root 直下の FileList 作成は成功扱いのまま維持し、祖先追記経路だけをスキップする。
 - Source が FileList のアクティブタブで Create File List を要求した場合は、新規タブを作らずに同一タブへ `use_filelist = false` の一時 index request を発行する。完了後はその Walker snapshot で FileList を作成し、FileList 作成完了応答で同一タブを通常の FileList 再インデックスへ戻す。
 - FileList 作成完了時の再インデックス対象は request に紐づく tab_id/root で判定し、元タブが background 化していてもその tab へ再インデックス request を投げる。完了時点で元タブの root が変わっていた場合は旧 root 応答として notice のみ更新し、tab 状態は戻さない。
-- `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。
+- `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。`egui-winit` が clipboard chord を `Event::Copy` に正規化して `Key::C` を出さない場合も、Shift 付き primary modifier のときだけ選択パスコピーへ流す。
 - Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。
 - プレビューデコーダは拡張子を見ず、先頭 64KiB を対象に UTF-8、BOM 付き UTF-16、その後に主要レガシー文字コードを順に試す。候補ごとに decode error と制御文字比率を評価し、妥当なテキストだけを preview に採用する。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。

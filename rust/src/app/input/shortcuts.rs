@@ -54,6 +54,28 @@ impl FlistWalkerApp {
         }
     }
 
+    fn consume_copy_event_shortcut(ctx: &egui::Context) -> bool {
+        let modifiers = ctx.input(|i| i.modifiers);
+        #[cfg(target_os = "macos")]
+        let primary_pressed = modifiers.mac_cmd || modifiers.command;
+        #[cfg(not(target_os = "macos"))]
+        let primary_pressed = modifiers.ctrl || modifiers.command;
+
+        if !primary_pressed || !modifiers.shift {
+            return false;
+        }
+
+        ctx.input_mut(|i| {
+            let mut consumed = false;
+            i.events.retain(|event| {
+                let is_copy_event = matches!(event, egui::Event::Copy);
+                consumed |= is_copy_event;
+                !is_copy_event
+            });
+            consumed
+        })
+    }
+
     pub(in crate::app) fn consume_tab_switch_shortcut(
         ctx: &egui::Context,
         key: egui::Key,
@@ -229,9 +251,11 @@ impl FlistWalkerApp {
                 ctx.memory_mut(|m| m.request_focus(self.shell.ui.query_input_id));
             }
         }
-        if Self::consume_gui_shortcut(ctx, egui::Key::C, true) {
-            // Keep this deferred until after TextEdit processing so query-focus copy
-            // cannot overwrite the intended "copy selected path(s)" shortcut result.
+        if Self::consume_gui_shortcut(ctx, egui::Key::C, true)
+            || Self::consume_copy_event_shortcut(ctx)
+        {
+            // Regression guard: egui-winit may translate Ctrl/Cmd+Shift+C into
+            // Event::Copy before widgets see Key::C; keep both paths as path-copy.
             self.shell.ui.pending_copy_shortcut = true;
         }
         if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)

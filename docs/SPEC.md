@@ -165,7 +165,7 @@
 - MUST: 本文プレビューは拡張子で制限せず、UTF-8、BOM 付き UTF-16、および主要 OS で一般的なレガシー文字コードを順に解釈して、テキストとして安全に復号できた内容を表示する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR/LINK 表示を後追い更新できる。
 - MUST: `Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
-- MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。
+- MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。GUI backend がこの chord を `Event::Copy` として通知し、`Key::C` が来ない場合も同じ選択パスコピーとして扱う。
 - MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。
 - MUST: query 履歴はセッション復元ファイルへ永続化し、後方互換を保ったまま復元できる。
 - MUST: `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき、query 履歴は読み込み・保存の両方を行わない。
@@ -202,6 +202,12 @@
 ### Preconditions / Postconditions
 - Preconditions: GUI モードで起動しインデックス構築可能。
 - Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
+
+### Regression Guard
+- 発生条件: GUI backend が `Ctrl+Shift+C` / `Cmd+Shift+C` を通常の `Key::C` ではなく `Event::Copy` に変換し、検索窓フォーカス中に TextEdit 側のコピー経路だけが動く。
+- 期待動作: Shift 付き primary copy chord は選択中または PIN 済み path のコピーを優先し、Shift なしの通常コピーは path copy shortcut として扱わない。
+- 非対象範囲: TextEdit 内の通常 `Ctrl+C` / `Cmd+C` による query text コピー。
+- 関連テストID: TC-018.
 
 ## SP-015 Ignore List フィルタ
 ### Requirements

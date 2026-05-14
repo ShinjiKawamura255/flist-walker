@@ -66,7 +66,7 @@
 | TC-016 | unit | Root 変更時に旧 Root 由来の選択状態（current/pinned/preview）がクリアされる | SP-010 |
 | TC-017 | unit | Root 変更時に旧 Root 向け FileList 上書き確認が破棄される | SP-010 |
 | TC-103 | unit | Root 変更時に旧 Root 向け FileList の祖先追記確認と Walker 利用確認が破棄される | SP-001, SP-010 |
-| TC-018 | unit | `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は検索窓フォーカス時でも結果パスを優先コピーする | SP-010 |
+| TC-018 | unit | `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は、backend が `Key::C` または `Event::Copy` のどちらで通知しても検索窓フォーカス時に結果パスを優先コピーする | SP-010 |
 | TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
 | TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
@@ -180,6 +180,10 @@
 - 期待動作: notice は live runtime の `app.shell.runtime.notice` を参照し、`\\?\` 付きの extended prefix を正規化した結果だけを検証する。
 - 非対象範囲: copy パス実装そのものの出力形式変更、Windows 以外の OS の path normalization。
 - 関連テストID: TC-121.
+- 発生条件: `egui-winit` が `Ctrl+Shift+C` / `Cmd+Shift+C` を `Event::Copy` に変換し、`Key::C` の shortcut test だけでは path copy 経路が検知できない。
+- 期待動作: Shift 付き primary copy event は選択中または PIN 済み path をコピーし、Shift なしの通常 copy event は path copy shortcut として扱わない。
+- 非対象範囲: TextEdit 内の通常 query text copy、Copy Path(s) ボタン経由の直接実行。
+- 関連テストID: TC-018.
 - 発生条件: Walker 完了後に visible な結果が少数しかないのに、全件 kind 解決が走って巨大な on-demand root を走査し続ける。
 - 期待動作: kind 解決は visible results に限定し、検索/index が停止済みの idle 状態では全件 metadata 解決を継続しない。
 - 非対象範囲: Files / Folders の単一フィルタ時に必要な kind 解決、preview 要求に伴う単発の kind 解決。
