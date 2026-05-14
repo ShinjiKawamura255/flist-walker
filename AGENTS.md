@@ -72,14 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- Active plan: `docs/EXECUTION-PLAN-large-rust-file-reduction-completion.md`
-- Scope: Complete the remaining large Rust file reduction slices in `docs/LARGE_RUST_FILE_REDUCTION_PLAN.md`.
-- Guardrails:
-- Prefer mechanical moves that preserve public APIs, test names, and behavior.
-- Keep commits at slice boundaries when practical.
-- Run the slice-specific gates plus full `cargo test --locked`, clippy, coverage, and whitespace checks before final closeout.
-- Run VM-003 perf guards when touching indexer or index worker ownership.
-- Run a final sub-agent review before the final commit or after the final implementation commit if no more code edits are needed.
-- Remove this temporary rule and the active execution plan before the final closeout commit.
