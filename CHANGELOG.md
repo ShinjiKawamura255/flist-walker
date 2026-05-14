@@ -24,6 +24,28 @@
 ### Known issues
 -
 
+## [0.17.5] - 2026-05-14
+### Added
+-
+
+### Changed
+-
+
+### Fixed
+- 検索窓フォーカス中の `Ctrl+Shift+C` / `Cmd+Shift+C` が backend で `Event::Copy` に正規化される場合でも、選択中または PIN 済み path をコピーできるようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.17.4] - 2026-05-11
 ### Added
 -
