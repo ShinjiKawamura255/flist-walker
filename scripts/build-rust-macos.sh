@@ -22,6 +22,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_DIR}/rust"
 
+if [[ -f "${HOME}/.cargo/env" ]]; then
+  # GitHub-hosted macOS runners can install Rust without carrying Cargo's bin dir
+  # into later shell steps, so make this script self-sufficient before probing.
+  # shellcheck source=/dev/null
+  source "${HOME}/.cargo/env"
+fi
+export PATH="${HOME}/.cargo/bin:${PATH}"
+
 if ! command -v cargo >/dev/null 2>&1; then
   echo "cargo が見つかりません。Rust toolchain をインストールしてください。" >&2
   exit 1
