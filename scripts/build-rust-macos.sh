@@ -30,7 +30,11 @@ if [[ -f "${HOME}/.cargo/env" ]]; then
 fi
 export PATH="${HOME}/.cargo/bin:${PATH}"
 
-if ! command -v cargo >/dev/null 2>&1; then
+if command -v rustup >/dev/null 2>&1; then
+  CARGO_CMD=(rustup run stable cargo)
+elif command -v cargo >/dev/null 2>&1; then
+  CARGO_CMD=(cargo)
+else
   echo "cargo が見つかりません。Rust toolchain をインストールしてください。" >&2
   exit 1
 fi
@@ -43,7 +47,7 @@ fi
 echo "==> Build macOS binary"
 (
   cd "${RUST_DIR}"
-  cargo "${BUILD_ARGS[@]}"
+  "${CARGO_CMD[@]}" "${BUILD_ARGS[@]}"
 )
 
 if [[ -n "${TARGET}" ]]; then

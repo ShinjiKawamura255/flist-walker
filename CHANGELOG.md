@@ -29,7 +29,7 @@
 -
 
 ### Changed
-- macOS release build script が Cargo の PATH 初期化を自前で補完し、GitHub-hosted macOS runner の PATH 差異で release asset build が失敗しないようにした。
+- macOS release build script と release workflow cache を調整し、GitHub-hosted macOS runner の Cargo shim / PATH 差異で release asset build が失敗しないようにした。
 
 ### Fixed
 - 検索窓フォーカス中の `Ctrl+Shift+C` / `Cmd+Shift+C` が backend で `Event::Copy` に正規化される場合でも、選択中または PIN 済み path をコピーできるようにした。
