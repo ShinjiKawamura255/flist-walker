@@ -47,7 +47,7 @@
 - 
 
 ## Security
-- query history は既定で平文永続化される。必要なら `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` を案内する。
+- query history は既定で平文永続化される。必要なら runtime config の `history_persist_disabled=true` を案内する。
 - 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
 - 当面の暫定運用として、macOS 配布物は未 notarized のまま publish する場合があり、その場合は本 release の `Known issues` または `Security` に明記する。
 

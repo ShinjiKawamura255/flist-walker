@@ -213,13 +213,13 @@
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
-- `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
+- runtime config の `history_persist_disabled` が有効なときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
 - 結果ソート状態はタブ単位で保持するが、query 変更や結果スナップショット更新時には `Score` へ戻し、保留中の sort request_id を無効化する。
 - 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` を選択可能にする。
 - `Created` 属性は取得失敗を正常系として扱い、notice ではなく並び順の末尾送りだけで吸収する。
-- タブ復元は `FLISTWALKER_RESTORE_TABS=1` のときだけ有効化し、永続化対象は `root/query/use_filelist/use_regex/include_files/include_dirs/tab_accent/active_tab` に限定する。
-- 起動時の優先順位は `--root` 明示 > 復元タブ（env 有効時） > 最後に使っていた root > `Set as default` > 通常 root とし、バージョン更新やバイナリ差し替えでも最後の root を維持する。
-- `FLISTWALKER_RESTORE_TABS=1` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。
+- タブ復元は runtime config の `restore_tabs_enabled` が有効なときだけ有効化し、永続化対象は `root/query/use_filelist/use_regex/include_files/include_dirs/tab_accent/active_tab` に限定する。
+- 起動時の優先順位は `--root` 明示 > 復元タブ（runtime config 有効時） > 最後に使っていた root > `Set as default` > 通常 root とし、バージョン更新やバイナリ差し替えでも最後の root を維持する。
+- runtime config の `restore_tabs_enabled` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。tooltip / notice は runtime config の Restore tabs 設定を指し、seed-only の環境変数名を利用者向け排他理由として表示しない。
 - タブ復元時は active tab だけ即時 `request_index_refresh()` を行い、background tab は `pending_restore_refresh` を保持して初回 `switch_to_tab_index()` 時に lazy refresh する。
 - background tab の search/index 応答は active tab の結果スナップショットへ直接触れず、tab-local state へ適用してから activation 時の restore 経路で前面へ戻す。
 - タブ並び替えは `render_tab_bar` がドラッグ開始/ホバー/ドロップを扱い、実際の `Vec<AppTabState>` 更新は `move_tab(from, to)` に集約する。

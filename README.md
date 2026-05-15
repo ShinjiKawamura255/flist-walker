@@ -70,7 +70,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
 - Search history is shared across tabs and persisted up to 100 entries.
 - History is saved in the session file under `%LocalAppData%\flistwalker\` on Windows, or under `~/.flistwalker/` on Linux/macOS. Avoid putting sensitive data in search terms or paths.
-- Set `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` to disable history load and save.
+- Set `history_persist_disabled` to `true` in the runtime config file to disable history load and save.
 - Press `Ctrl+R` to enter history search mode and fuzzy-search the same query box.
 - While in history search, `Enter` / `Ctrl+J` / `Ctrl+M` loads the selected history entry into the search box, and `Esc` / `Ctrl+G` cancels and restores the previous query.
 - History is not written on every keystroke. It is committed after a short idle period or when result navigation starts.
@@ -78,7 +78,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
 ## Session Restore
 
-- Set `FLISTWALKER_RESTORE_TABS=1` to restore the previous tab state on the next launch.
+- Set `restore_tabs_enabled` to `true` in the runtime config file to restore the previous tab state on the next launch.
 - Restored fields include `root`, `query`, `Use FileList`, `Regex`, `Files`, `Folders`, and the active tab.
 - If you explicitly pass `--root` or a startup query, those values take precedence over restore.
 - When this feature is enabled, `Set as default` is disabled because the startup root is determined by tab restore.
@@ -108,46 +108,12 @@ Example:
 
 - Keep values that should behave like booleans as `true` / `false`.
 
-Windows PowerShell, persistent user environment variable:
+To enable session restore, set the runtime config value directly:
 
-```powershell
-[Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", "1", "User")
-```
-
-Windows PowerShell, current session only:
-
-```powershell
-$env:FLISTWALKER_RESTORE_TABS = "1"
-```
-
-Windows CMD, current session only:
-
-```cmd
-set FLISTWALKER_RESTORE_TABS=1
-```
-
-macOS, current session only:
-
-```bash
-export FLISTWALKER_RESTORE_TABS=1
-```
-
-macOS, persistent zsh setting:
-
-```bash
-echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.zshrc
-```
-
-Linux, current session only:
-
-```bash
-export FLISTWALKER_RESTORE_TABS=1
-```
-
-Linux, persistent bash setting:
-
-```bash
-echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
+```json
+{
+  "restore_tabs_enabled": true
+}
 ```
 
 ## Public Environment Variables

@@ -145,7 +145,7 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             let set_default_clicked = set_default_response.clicked();
             if !set_default_enabled {
                 set_default_response.on_disabled_hover_text(
-                    "Disabled while FLISTWALKER_RESTORE_TABS is enabled",
+                    FlistWalkerApp::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_TOOLTIP,
                 );
             }
             if set_default_enabled && set_default_clicked {

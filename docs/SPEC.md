@@ -168,7 +168,7 @@
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。GUI backend がこの chord を `Event::Copy` として通知し、`Key::C` が来ない場合も同じ選択パスコピーとして扱う。
 - MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。
 - MUST: query 履歴はセッション復元ファイルへ永続化し、後方互換を保ったまま復元できる。
-- MUST: `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき、query 履歴は読み込み・保存の両方を行わない。
+- MUST: runtime config の `history_persist_disabled` が有効なとき、query 履歴は読み込み・保存の両方を行わない。
 - MUST: `Ctrl+R` で履歴検索モードを開始し、同じ検索欄で query history をファジー検索できる。
 - MUST: 履歴検索モード中は履歴検索中であることがわかる表記を行い、結果一覧は履歴候補一覧へ切り替える。
 - MUST: 履歴検索モード中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして開始前 query へ戻す。
@@ -185,14 +185,14 @@
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認、祖先追記確認、Walker 利用確認、deferred-after-index を破棄する。
 - MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
-- SHOULD: `FLISTWALKER_RESTORE_TABS=1` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
+- SHOULD: runtime config の `restore_tabs_enabled` が `true` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
 - SHOULD: 保存済み `last_root` / `default_root` / tab root は native window 初期表示前に存在確認しない。存在しない root は初回 index refresh の失敗/空結果として UI 上で扱い、切断済みドライブや遅いパスで window 表示を遅延させない。
 - SHOULD: タブは任意の accent color を持てる。
 - MUST: 非 active tab に accent color が設定されている場合、タブ下部にその色の装飾を表示する。
 - MUST: active tab に accent color が設定されている場合、タブ全面をその色で装飾する。
 - MUST: タブ accent color は保存対象のタブ状態に含め、タブ復元時に保持する。
 - MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
-- MUST: `FLISTWALKER_RESTORE_TABS=1` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
+- MUST: runtime config の `restore_tabs_enabled` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
 - MUST: タブバーはドラッグアンドドロップで並び替え可能でなければならず、ドロップ先は既存タブ領域内に限定する。
 - MUST: タブ並び替え時は active tab を index ではなく同一タブ実体として維持し、root/query/filter/進行中状態を他タブへ取り違えてはならない。

@@ -83,7 +83,7 @@
 - AC-007: root 外パスは結果一覧に表示されても実行/オープンされず、利用者へブロック理由が通知される。
 - AC-008: UNC root 配下の候補は root 外判定に誤って拒否されない。
 - AC-009: Create File List 実行時、祖先 FileList 更新がありうる場合は確認ダイアログが表示され、拒否時は root 直下の FileList だけが更新される。
-- AC-010: `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` 時は query history を読み書きしない。
+- AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。
 - AC-011: CI は Linux/macOS/Windows でテストを実行し、依存脆弱性検査を通過する。
 - AC-012: GUI の結果ペインから `Score` / `Name` / `Modified` / `Created` を選択できる。
 - AC-013: `Name` ソートは即時に並び替わり、`Modified` / `Created` ソートは UI を固めずに完了する。

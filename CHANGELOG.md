@@ -7,7 +7,8 @@
 -
 
 ### Changed
--
+- `Set as default` がタブ復元中に無効化される場合の tooltip / notice を、環境変数名ではなく runtime config の Restore tabs 設定を指す表現へ更新した。
+- リリース同梱 README と公開文書の runtime config 案内を最新の保存先・`restore_tabs_enabled` / `history_persist_disabled` / walker tuning keys に合わせた。
 
 ### Fixed
 -

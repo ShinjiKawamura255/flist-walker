@@ -111,6 +111,11 @@ fn default_ignore_list_enabled() -> bool {
 }
 
 impl FlistWalkerApp {
+    pub(super) const SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE: &'static str =
+        "Set as default is disabled because Restore tabs is enabled in runtime config";
+    pub(super) const SET_DEFAULT_DISABLED_BY_RESTORE_TABS_TOOLTIP: &'static str =
+        "Disabled while Restore tabs is enabled in runtime config";
+
     pub(super) fn persist_state_and_shutdown(&mut self, phase: &str) {
         self.apply_stable_window_geometry(true);
         self.shell.ui.ui_state_dirty = true;
@@ -419,7 +424,7 @@ impl FlistWalkerApp {
 
     pub(super) fn set_current_root_as_default_with(&mut self, restore_tabs_enabled: bool) {
         if !Self::can_set_current_root_as_default_with(restore_tabs_enabled) {
-            self.set_notice("Set as default is disabled while FLISTWALKER_RESTORE_TABS is enabled");
+            self.set_notice(Self::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE);
             return;
         }
         let root = self

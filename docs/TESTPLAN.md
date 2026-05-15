@@ -95,7 +95,7 @@
 | TC-039 | unit | 保存済み `last_root` / `default_root` / tab root は root 存在確認を起動後へ遅延し、active tab index をクランプする | SP-010 |
 | TC-040 | unit | タブ復元時は active tab の root/query/filter を復元し、起動直後の index は active tab だけ開始する | SP-010 |
 | TC-041 | unit | 復元された background tab は初回 activate 時にだけ lazy refresh を開始する | SP-010 |
-| TC-046 | unit | `FLISTWALKER_RESTORE_TABS=1` の間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
+| TC-046 | unit | runtime config の `restore_tabs_enabled` が有効な間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
 | TC-064 | unit | タブのドラッグ移動は並び順のみを更新し、active tab の実体と保存順を維持する | SP-010 |
 | TC-104 | unit | render command 経由の tab close / reorder は active tab identity と queue cleanup を壊さない | SP-010 |
 | TC-094 | unit | タブ accent color は保存・復元時に維持される | SP-010 |
@@ -115,7 +115,7 @@
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、line-only fast path が metadata-probe baseline を十分に上回ることを維持する（CI 下限 1.20x） | SP-001, SP-007 |
 | TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決に対して現行 control baseline で 1.25x 以上の速度差を維持し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
 | TC-122 | unit | 回帰: Walker 完了後の kind 解決は表示中結果に限定し、巨大な on-demand root で全件 metadata 解決を継続しない | SP-007 |
-| TC-054 | unit | `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` のとき query history を保存も復元も行わない | SP-010 |
+| TC-054 | unit | runtime config の `history_persist_disabled` が有効なとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
 | TC-056A | docs+security | `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に依存経路、受容理由、owner、review cadence、再評価 trigger を記録する | SP-012 |

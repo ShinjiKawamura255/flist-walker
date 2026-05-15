@@ -294,8 +294,8 @@ Persisted state includes:
 
 Rules:
 
-- `FLISTWALKER_RESTORE_TABS=1` gates tab restore.
-- `FLISTWALKER_DISABLE_HISTORY_PERSIST=1` disables query history load/save.
+- Runtime config `restore_tabs_enabled=true` gates tab restore.
+- Runtime config `history_persist_disabled=true` disables query history load/save.
 - Restored background tabs are refreshed lazily.
 - Request routing maps bind preview/action/sort request IDs to tab IDs and are cleared when tabs close.
 - Tab drag/reorder preserves active tab identity by tab ID, not by stale vector index.
@@ -672,7 +672,7 @@ If update support is manual-only, the GUI can present the release URL without la
 - FileList may display root-external entries, but GUI action execution validates current-root containment before launching.
 - Self-update verifies `SHA256SUMS.sig` before trusting `SHA256SUMS`, then verifies staged file checksums.
 - Update override environment variables are development/manual-test only and must not be documented in public user help.
-- Query history is stored locally in plain text and can be disabled with `FLISTWALKER_DISABLE_HISTORY_PERSIST=1`.
+- Query history is stored locally in plain text and can be disabled with runtime config `history_persist_disabled=true`.
 
 ### Operations
 

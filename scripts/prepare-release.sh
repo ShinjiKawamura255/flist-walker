@@ -96,8 +96,8 @@ Ignore list:
 - Rename flistwalker.ignore.txt.example to flistwalker.ignore.txt if you want it to act as the live ignore list.
 
 Runtime config:
-- Runtime settings are stored beside the executable on Windows, and in ~/.flistwalker_config.json on Linux/macOS.
-- If you upgrade from an older Windows build, the first launch will automatically move legacy home-directory files into the new executable-side location when the new files do not already exist.
+- Runtime settings are stored in %LocalAppData%\flistwalker\.flistwalker_config.json on Windows, and in ~/.flistwalker/.flistwalker_config.json on Linux/macOS.
+- If you upgrade from an older build, the first launch will automatically move legacy runtime settings files into the new platform-specific location when the new files do not already exist.
 - On first launch, if the file is missing, FlistWalker creates it from the current FLISTWALKER_* environment values.
 - Once the file exists, it becomes the source of truth for runtime settings and the matching environment variables are only an initial seed.
 - The file is JSON and can be edited directly.
@@ -119,30 +119,26 @@ Query history:
 - Search history is shared across tabs and persisted up to 100 entries.
 - History is committed after a short idle period or when result navigation starts.
 - Intermediate IME composition text is not stored; only committed query text is saved.
+- Set history_persist_disabled to true in the runtime config file to disable history load and save.
 
 Tab restore (opt-in):
-- Set FLISTWALKER_RESTORE_TABS=1 to restore the previous tab state on the next launch.
+- Set restore_tabs_enabled to true in the runtime config file to restore the previous tab state on the next launch.
 - Restored fields include root, query, Use FileList, Regex, Files, Folders, and the active tab.
 - If you explicitly pass --root or a startup query, those values take precedence.
 - When this feature is enabled, Set as default is disabled because the startup root is determined by tab restore.
 
-How to enable FLISTWALKER_RESTORE_TABS:
-- Windows (PowerShell, persist per-user): [Environment]::SetEnvironmentVariable("FLISTWALKER_RESTORE_TABS", "1", "User")
-- Windows (PowerShell, current session): \$env:FLISTWALKER_RESTORE_TABS = "1"
-- Windows (CMD, current session): set FLISTWALKER_RESTORE_TABS=1
-- macOS (zsh/bash, current session): export FLISTWALKER_RESTORE_TABS=1
-- macOS (zsh persist): echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.zshrc
-- Linux (bash, current session): export FLISTWALKER_RESTORE_TABS=1
-- Linux (bash persist): echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
+Common runtime config keys:
+- restore_tabs_enabled: true restores tabs on the next launch.
+- history_persist_disabled: true disables query history load and save.
+- walker_max_entries: walker maximum entry count (default: 500000).
+- walker_threads: walker parallel thread count (default: 2, 1 means serial).
 
 Index options:
 - Use FileList: prefer FileList.txt / filelist.txt at the repository root
 - Files / Folders: toggle visibility without reindexing
 - Refresh Index: reindex the current root
 
-Walker tuning (Environment variables):
-- FLISTWALKER_WALKER_MAX_ENTRIES: walker maximum entry count (default: 500000)
-- FLISTWALKER_WALKER_THREADS: walker parallel thread count (default: 2, 1 means serial)
+Walker tuning is controlled by the runtime config keys above after the config file exists.
 
 日本語:
 - 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
@@ -165,12 +161,14 @@ Ignore List:
 - `flistwalker.ignore.txt.example` を実際の Ignore List として使う場合は、`flistwalker.ignore.txt` にリネームしてください。
 
 Runtime config:
-- runtime settings は Windows では実行ファイルと同じフォルダ、Linux/macOS では home directory の ~/.flistwalker_config.json に保存されます。
+- runtime settings は Windows では %LocalAppData%\flistwalker\.flistwalker_config.json、Linux/macOS では ~/.flistwalker/.flistwalker_config.json に保存されます。
 - 初回起動でファイルが無い場合は、現在の FLISTWALKER_* 環境変数を seed にして自動生成します。
 - 一度ファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
  - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
 - 検索履歴は全タブ共通で最大100件まで保持され、短い待機後または結果移動開始時に確定します。
-- FLISTWALKER_RESTORE_TABS=1 を設定すると、終了時のタブ状態を次回起動時に復元できます。
+- runtime config の restore_tabs_enabled を true にすると、終了時のタブ状態を次回起動時に復元できます。
+- runtime config の history_persist_disabled を true にすると、検索履歴の読み書きを無効化できます。
+- walker_max_entries / walker_threads は runtime config で調整できます。
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。
 - Refresh Index は現在Rootで再インデックスします。
 README

@@ -108,7 +108,7 @@ fn choose_startup_root_keeps_missing_saved_roots_lazy() {
 }
 
 #[test]
-fn set_as_default_is_disabled_while_restore_tabs_env_is_enabled() {
+fn set_as_default_is_disabled_while_restore_tabs_config_is_enabled() {
     let root = test_root("set-default-disabled-by-restore-tabs");
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -117,16 +117,15 @@ fn set_as_default_is_disabled_while_restore_tabs_env_is_enabled() {
     app.set_current_root_as_default_with(true);
 
     assert!(app.shell.features.root_browser.default_root.is_none());
-    assert!(app
-        .shell
-        .runtime
-        .notice
-        .contains("Set as default is disabled"));
+    assert_eq!(
+        app.shell.runtime.notice,
+        FlistWalkerApp::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
 #[test]
-fn set_as_default_is_enabled_when_restore_tabs_env_is_disabled() {
+fn set_as_default_is_enabled_when_restore_tabs_config_is_disabled() {
     let root = test_root("set-default-enabled-without-restore-tabs");
     fs::create_dir_all(&root).expect("create root");
 
