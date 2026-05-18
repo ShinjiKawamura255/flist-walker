@@ -127,6 +127,7 @@ fn seeds_and_writes_config_when_missing() {
     assert!(!saved.contains_key("update_allow_downgrade"));
     assert!(!saved.contains_key("disable_self_update"));
     assert!(!saved.contains_key("force_update_check_failure"));
+    assert!(!saved.contains_key("developer"));
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -295,6 +296,32 @@ fn load_runtime_config_from_path_handles_missing_field_defaults() {
     );
     assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
     assert_eq!(loaded.walker_threads, WALKER_THREADS_DEFAULT);
+    assert_eq!(loaded.developer, DeveloperRuntimeConfig::default());
+
+    let _ = fs::remove_dir_all(&home);
+}
+
+#[test]
+fn developer_config_loads_but_is_not_seeded() {
+    let _guard = locked_env();
+    let home = test_home("developer-config");
+    fs::create_dir_all(&home).expect("create home");
+    let path = home.join(RUNTIME_CONFIG_FILE_NAME);
+    fs::write(
+        &path,
+        r#"{
+  "developer": {
+    "walker_backend": "adaptive",
+    "walker_metrics": true
+  }
+}"#,
+    )
+    .expect("write config");
+
+    let loaded = load_runtime_config_from_path(&path).expect("load config");
+
+    assert_eq!(loaded.developer.walker_backend, "adaptive");
+    assert!(loaded.developer.walker_metrics);
 
     let _ = fs::remove_dir_all(&home);
 }

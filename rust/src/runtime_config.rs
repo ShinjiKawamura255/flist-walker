@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 use tracing::warn;
 
 pub const RUNTIME_CONFIG_FILE_NAME: &str = ".flistwalker_config.json";
@@ -51,6 +52,21 @@ pub struct RuntimeConfig {
     pub update_allow_downgrade: bool,
     pub disable_self_update: bool,
     pub force_update_check_failure: String,
+    #[serde(skip_serializing_if = "DeveloperRuntimeConfig::is_default")]
+    pub developer: DeveloperRuntimeConfig,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DeveloperRuntimeConfig {
+    pub walker_backend: String,
+    pub walker_metrics: bool,
+}
+
+impl DeveloperRuntimeConfig {
+    fn is_default(&self) -> bool {
+        self == &Self::default()
+    }
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -85,6 +101,24 @@ struct RuntimeConfigSeed {
     force_update_check_failure: Option<String>,
 }
 
+fn process_runtime_config() -> &'static Mutex<RuntimeConfig> {
+    static CONFIG: OnceLock<Mutex<RuntimeConfig>> = OnceLock::new();
+    CONFIG.get_or_init(|| Mutex::new(RuntimeConfig::default()))
+}
+
+pub fn current_runtime_config() -> RuntimeConfig {
+    process_runtime_config()
+        .lock()
+        .map(|config| config.clone())
+        .unwrap_or_else(|_| RuntimeConfig::from_current_env())
+}
+
+pub fn set_process_runtime_config(config: RuntimeConfig) {
+    if let Ok(mut current) = process_runtime_config().lock() {
+        *current = config;
+    }
+}
+
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
@@ -102,6 +136,7 @@ impl Default for RuntimeConfig {
             update_allow_downgrade: false,
             disable_self_update: false,
             force_update_check_failure: String::new(),
+            developer: DeveloperRuntimeConfig::default(),
         }
     }
 }
@@ -139,6 +174,7 @@ impl RuntimeConfig {
                 self.force_update_check_failure.clone(),
             );
         }
+        set_process_runtime_config(self.clone());
     }
 
     pub fn load_or_seed() -> Self {
@@ -447,6 +483,7 @@ impl RuntimeConfig {
                 .as_ref()
                 .cloned()
                 .unwrap_or_default(),
+            developer: DeveloperRuntimeConfig::default(),
         };
 
         let seed = RuntimeConfigSeed {

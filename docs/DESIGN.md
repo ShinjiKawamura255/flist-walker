@@ -166,6 +166,8 @@
 - FileList の `\` / `/` 混在は候補生成順でプラットフォーム優先の字句選択へ寄せ、初期ストリームで `exists()` / `try_exists()` を各行へ追加しない。line-only fast path を metadata-probe baseline より優先し、そのスループットを維持する。
 - 非 Windows の dual-filter fast path では、Windows/WSL で生成された `\` 区切り FileList の実用性を優先して slash 正規化候補を先に流す。literal `\` を含む POSIX filename の厳密判定は初期ストリームでは扱わず、曖昧性解消のための per-line probe も入れない。
 - Walker 解析は `jwalk` が返す `file_type` を通常ファイル/ディレクトリの即時分類に使い、リンクや Windows shortcut のような追加確認が必要な項目だけを後続の kind resolver へ遅延させる。初期 `Finished` は後処理完了を待たないが、`Finished`/`Truncated` 後は unknown kind を自動で kind resolver キューへ積み、バックグラウンドで収束させる。
+- Walker backend は既定で `jwalk` を使う。手動追記された runtime config の `developer.walker_backend = "adaptive"` の場合だけ、GUI index worker は adaptive backend を使い、read_dir latency に応じて同時 read_dir 数を `1..walker_threads` の範囲で調整できる。
+- `developer.walker_metrics = true` の場合だけ、GUI index worker は Walker request の terminal point で summary metrics を 1 件出力する。per-entry/per-directory log は出さず、Indexing 完了・キャンセル・失敗後に継続ロギングしない。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
 - 階層 FileList 展開で子 FileList を解析する経路も `should_cancel` を伝播し、supersede 時に中断できるようにする。
 - include_files/include_dirs が両方有効な FileList 解析では、初期ロード時の `metadata` 依存を避けて候補パスの投入を優先し、FILE/DIR/LINK 表示種別は別ワーカーで遅延解決する。

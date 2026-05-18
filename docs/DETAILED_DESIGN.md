@@ -234,6 +234,8 @@ Important behaviors:
 - Emits `ReplaceAll` when nested FileList overrides require replacing a subtree.
 - Uses `latest_request_ids` by tab to cancel superseded index work.
 - Uses walker `file_type` for fast file/dir classification and defers symlink/shortcut metadata when possible.
+- Keeps jwalk as the default walker backend. A manually added `developer.walker_backend = "adaptive"` runtime config value can opt the GUI index worker into the experimental adaptive backend for developer evaluation.
+- When manually added `developer.walker_metrics = true` is present, emits one bounded walker metrics summary at the indexing request terminal point. The metrics path intentionally avoids per-entry and per-directory logs.
 - Caps walker results with `WALKER_MAX_ENTRIES_DEFAULT` and reports `Truncated`.
 
 Rationale: GUI indexing is latency-sensitive. Streaming batches and request supersede prevent stale or long-running indexing from blocking user interaction.
@@ -656,6 +658,7 @@ If update support is manual-only, the GUI can present the release URL without la
 - Stale response rejection: active request IDs and tab routing maps gate response application.
 - Incremental indexing: FileList and walker produce batches rather than one large final vector.
 - Deferred metadata: unknown file kind and date metadata are resolved outside initial index/render hot paths.
+- Developer-only adaptive walker evaluation: experimental backend and metrics settings are read from the manual `developer` runtime config section, are not written into auto-generated seed config, and are not public user help.
 - Bounded caches: preview/highlight/sort metadata caches avoid unbounded long-session growth.
 - Graceful degradation: self-update becomes manual-only when platform/key support is insufficient.
 - Root cleanup: root switches explicitly discard old-root selection and confirmation state before new indexing begins.

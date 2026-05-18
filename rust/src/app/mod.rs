@@ -13,6 +13,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
+mod adaptive_walker;
 mod bootstrap;
 mod cache;
 mod config;

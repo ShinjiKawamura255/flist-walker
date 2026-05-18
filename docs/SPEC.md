@@ -41,6 +41,8 @@
 - MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
 - MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。リンク種別などの詳細判定は完了後または必要時の後処理へ遅延できる。
 - MUST: Walker で遅延させた種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。
+- SHOULD: developer-only config で adaptive walker backend が明示された場合のみ、Walker は read_dir 遅延に応じて同時 read_dir 数を下げられる実験 backend を使用できる。既定 backend は jwalk のままとする。
+- SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
 - SHOULD: 循環リンクを避ける。
 - SHOULD: 空クエリ時は新規バッチを即時に一覧へ反映し、非空クエリ時は UI 負荷を抑えるため間引き更新する。
 
@@ -242,6 +244,7 @@
 - MUST: runtime config file が存在しない場合、ツールは起動時に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、update policy を含めなければならない。
+- SHOULD: runtime config file は手動追記された `developer` セクションを読み取れる。ただし `developer` セクションは自動生成 config seed に含めてはならず、公開 README や通常ヘルプで案内してはならない。
 - MUST: runtime config file の読み込みや自動生成に失敗しても、ツールは通常起動を継続しなければならない。
 - SHOULD: runtime config file の読み込み失敗や自動生成失敗は、利用者または診断ログへ警告として出力する。
 

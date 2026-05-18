@@ -1,4 +1,5 @@
 use super::*;
+use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing_subscriber::EnvFilter;
 
@@ -62,8 +63,81 @@ fn classify_walker_entry_defers_windows_shortcut_when_both_filters_enabled() {
 }
 
 #[test]
+fn walker_runtime_settings_use_adaptive_only_from_developer_config() {
+    let config = RuntimeConfig {
+        walker_threads: 4,
+        walker_max_entries: 123,
+        developer: DeveloperRuntimeConfig {
+            walker_backend: "adaptive".to_string(),
+            walker_metrics: true,
+        },
+        ..RuntimeConfig::default()
+    };
+
+    let settings = walker_runtime_settings(&config);
+
+    assert_eq!(settings.backend, WalkerBackend::Adaptive);
+    assert_eq!(settings.threads, 4);
+    assert_eq!(settings.max_entries, 123);
+    assert!(settings.metrics_enabled);
+}
+
+#[test]
+fn adaptive_walker_emits_entries_and_records_control_metrics() {
+    let root = test_root("adaptive-basic");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("dir")).expect("create dir");
+    std::fs::write(root.join("dir").join("main.rs"), "fn main() {}").expect("write file");
+
+    let mut paths = Vec::new();
+    let metrics = walk_adaptive(
+        &root,
+        2,
+        |entry| {
+            paths.push(entry.path);
+            true
+        },
+        || false,
+    );
+
+    assert!(paths.iter().any(|path| path.ends_with("dir")));
+    assert!(paths.iter().any(|path| path.ends_with("main.rs")));
+    assert!(metrics.dirs_read >= 1);
+    assert!(metrics.max_inflight_read_dirs >= 1);
+    assert!(metrics.adaptive_limit_final >= 1);
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_can_stop_from_consumer_callback() {
+    let root = test_root("adaptive-stop");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..100usize {
+        std::fs::write(root.join(format!("file-{i}.txt")), "x").expect("write file");
+    }
+
+    let mut count = 0usize;
+    let _metrics = walk_adaptive(
+        &root,
+        2,
+        |_entry| {
+            count = count.saturating_add(1);
+            count < 3
+        },
+        || false,
+    );
+
+    assert!(count <= 4);
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn index_worker_trace_smoke_emits_canonical_fields() {
     init_test_tracing();
+    set_process_runtime_config(RuntimeConfig::default());
     let root = test_root("trace-smoke");
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).expect("create dir");
@@ -109,6 +183,77 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
     for handle in handles {
         handle.join().expect("join index worker");
     }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+#[ignore = "perf measurement; run explicitly"]
+fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
+    let root = test_root("perf-adaptive-compare");
+    let _ = std::fs::remove_dir_all(&root);
+    let dataset = root.join("dataset");
+    std::fs::create_dir_all(&dataset).expect("create dataset");
+    for i in 0..10_000usize {
+        let dir = dataset.join(format!("dir-{i}"));
+        std::fs::create_dir_all(&dir).expect("create dir");
+        std::fs::write(dir.join("main.rs"), "fn main() {}").expect("write file");
+    }
+
+    let jwalk_start = Instant::now();
+    let mut jwalk_count = 0usize;
+    for entry in WalkDir::new(&root)
+        .parallelism(Parallelism::RayonNewPool(2))
+        .skip_hidden(false)
+        .follow_links(false)
+        .min_depth(1)
+        .into_iter()
+        .flatten()
+    {
+        if classify_walker_entry(&entry.path(), entry.file_type(), true, true).is_some() {
+            jwalk_count = jwalk_count.saturating_add(1);
+        }
+    }
+    let jwalk_elapsed = jwalk_start.elapsed();
+
+    let adaptive_start = Instant::now();
+    let mut adaptive_count = 0usize;
+    let adaptive_metrics = walk_adaptive(
+        &root,
+        2,
+        |entry| {
+            if classify_walker_entry(&entry.path, entry.file_type, true, true).is_some() {
+                adaptive_count = adaptive_count.saturating_add(1);
+            }
+            true
+        },
+        || false,
+    );
+    let adaptive_elapsed = adaptive_start.elapsed();
+
+    eprintln!(
+        "Walker backend comparison jwalk_ms={:.3} adaptive_ms={:.3} jwalk_count={} adaptive_count={} adaptive_dirs_read={} adaptive_errors={} adaptive_max_inflight={} adaptive_throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_read_dir_avg_us={} adaptive_read_dir_max_us={}",
+        jwalk_elapsed.as_secs_f64() * 1000.0,
+        adaptive_elapsed.as_secs_f64() * 1000.0,
+        jwalk_count,
+        adaptive_count,
+        adaptive_metrics.dirs_read,
+        adaptive_metrics.read_dir_errors,
+        adaptive_metrics.max_inflight_read_dirs,
+        adaptive_metrics.throttle_events,
+        adaptive_metrics.adaptive_limit_min,
+        adaptive_metrics.adaptive_limit_max,
+        adaptive_metrics.adaptive_limit_final,
+        if adaptive_metrics.dirs_read == 0 {
+            0
+        } else {
+            adaptive_metrics.read_dir_total_us / adaptive_metrics.dirs_read as u128
+        },
+        adaptive_metrics.read_dir_max_us,
+    );
+
+    assert_eq!(jwalk_count, adaptive_count);
+    assert!(adaptive_metrics.max_inflight_read_dirs <= 2);
+
     let _ = std::fs::remove_dir_all(&root);
 }
 

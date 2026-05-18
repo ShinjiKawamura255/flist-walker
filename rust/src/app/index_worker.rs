@@ -1,9 +1,11 @@
+use super::adaptive_walker::{walk_adaptive, AdaptiveWalkerEntry, AdaptiveWalkerMetrics};
 use super::worker_protocol::{IndexEntry, IndexRequest, IndexResponse};
 use crate::entry::EntryKind;
 use crate::indexer::{
     apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
     IndexSource,
 };
+use crate::runtime_config::{current_runtime_config, RuntimeConfig};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::HashMap;
 use std::fs::FileType;
@@ -15,25 +17,43 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
-const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
-const WALKER_THREADS_DEFAULT: usize = 2;
 const WALKER_THREADS_MAX: usize = 8;
 
-fn walker_max_entries() -> usize {
-    std::env::var("FLISTWALKER_WALKER_MAX_ENTRIES")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(WALKER_MAX_ENTRIES_DEFAULT)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WalkerBackend {
+    Jwalk,
+    Adaptive,
 }
 
-fn walker_parallelism() -> Parallelism {
-    let threads = std::env::var("FLISTWALKER_WALKER_THREADS")
-        .ok()
-        .and_then(|v| v.parse::<usize>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(WALKER_THREADS_DEFAULT)
-        .min(WALKER_THREADS_MAX);
+#[derive(Debug)]
+struct WalkerRuntimeSettings {
+    max_entries: usize,
+    threads: usize,
+    backend: WalkerBackend,
+    metrics_enabled: bool,
+}
+
+fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
+    let backend = if config
+        .developer
+        .walker_backend
+        .trim()
+        .eq_ignore_ascii_case("adaptive")
+    {
+        WalkerBackend::Adaptive
+    } else {
+        WalkerBackend::Jwalk
+    };
+
+    WalkerRuntimeSettings {
+        max_entries: config.walker_max_entries.max(1),
+        threads: config.walker_threads.max(1).min(WALKER_THREADS_MAX),
+        backend,
+        metrics_enabled: config.developer.walker_metrics,
+    }
+}
+
+fn walker_parallelism(threads: usize) -> Parallelism {
     if threads <= 1 {
         Parallelism::Serial
     } else {
@@ -136,6 +156,129 @@ fn flush_batch(
             entries,
         })
         .is_ok()
+}
+
+#[derive(Debug)]
+struct WalkerMetrics {
+    backend: WalkerBackend,
+    started_at: Instant,
+    entries_emitted: usize,
+    batches_sent: usize,
+    dirs_read: usize,
+    read_dir_errors: usize,
+    max_inflight_read_dirs: usize,
+    throttle_events: usize,
+    adaptive_limit_min: usize,
+    adaptive_limit_max: usize,
+    adaptive_limit_final: usize,
+    read_dir_total_us: u128,
+    read_dir_max_us: u128,
+}
+
+impl WalkerMetrics {
+    fn new(backend: WalkerBackend, threads: usize) -> Self {
+        Self {
+            backend,
+            started_at: Instant::now(),
+            entries_emitted: 0,
+            batches_sent: 0,
+            dirs_read: 0,
+            read_dir_errors: 0,
+            max_inflight_read_dirs: if matches!(backend, WalkerBackend::Jwalk) {
+                threads
+            } else {
+                0
+            },
+            throttle_events: 0,
+            adaptive_limit_min: if matches!(backend, WalkerBackend::Jwalk) {
+                threads
+            } else {
+                0
+            },
+            adaptive_limit_max: if matches!(backend, WalkerBackend::Jwalk) {
+                threads
+            } else {
+                0
+            },
+            adaptive_limit_final: if matches!(backend, WalkerBackend::Jwalk) {
+                threads
+            } else {
+                0
+            },
+            read_dir_total_us: 0,
+            read_dir_max_us: 0,
+        }
+    }
+
+    fn record_batch(&mut self) {
+        self.batches_sent = self.batches_sent.saturating_add(1);
+    }
+
+    fn record_adaptive(&mut self, metrics: AdaptiveWalkerMetrics) {
+        self.dirs_read = metrics.dirs_read;
+        self.read_dir_errors = metrics.read_dir_errors;
+        self.max_inflight_read_dirs = metrics.max_inflight_read_dirs;
+        self.throttle_events = metrics.throttle_events;
+        self.adaptive_limit_min = metrics.adaptive_limit_min;
+        self.adaptive_limit_max = metrics.adaptive_limit_max;
+        self.adaptive_limit_final = metrics.adaptive_limit_final;
+        self.read_dir_total_us = metrics.read_dir_total_us;
+        self.read_dir_max_us = metrics.read_dir_max_us;
+    }
+
+    fn read_dir_avg_us(&self) -> u128 {
+        if self.dirs_read == 0 {
+            0
+        } else {
+            self.read_dir_total_us / self.dirs_read as u128
+        }
+    }
+}
+
+fn walker_backend_label(backend: WalkerBackend) -> &'static str {
+    match backend {
+        WalkerBackend::Jwalk => "jwalk",
+        WalkerBackend::Adaptive => "adaptive",
+    }
+}
+
+fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str) {
+    info!(
+        flow = "index",
+        source_kind = "walker",
+        event = "metrics",
+        request_id = req.request_id,
+        tab_id = req.tab_id,
+        backend = walker_backend_label(metrics.backend),
+        outcome,
+        elapsed_ms = metrics.started_at.elapsed().as_millis(),
+        entries_emitted = metrics.entries_emitted,
+        batches_sent = metrics.batches_sent,
+        dirs_read = metrics.dirs_read,
+        read_dir_errors = metrics.read_dir_errors,
+        max_inflight_read_dirs = metrics.max_inflight_read_dirs,
+        throttle_events = metrics.throttle_events,
+        adaptive_limit_min = metrics.adaptive_limit_min,
+        adaptive_limit_max = metrics.adaptive_limit_max,
+        adaptive_limit_final = metrics.adaptive_limit_final,
+        read_dir_avg_us = metrics.read_dir_avg_us(),
+        read_dir_max_us = metrics.read_dir_max_us,
+        "walker metrics summary"
+    );
+}
+
+fn flush_walker_batch(
+    tx_res: &Sender<IndexResponse>,
+    request_id: u64,
+    buffer: &mut Vec<IndexEntry>,
+    metrics: &mut WalkerMetrics,
+) -> bool {
+    let had_entries = !buffer.is_empty();
+    let ok = flush_batch(tx_res, request_id, buffer);
+    if ok && had_entries {
+        metrics.record_batch();
+    }
+    ok
 }
 
 fn is_nested_filelist_candidate(path: &Path, root_filelist: &Path, root: &Path) -> bool {
@@ -384,43 +527,39 @@ fn stream_walker_index(
     let mut last_flush = Instant::now();
     let mut cancel_check_budget = 0usize;
     let mut emitted_entries = 0usize;
-    let max_entries = walker_max_entries();
+    let settings = walker_runtime_settings(&current_runtime_config());
+    let max_entries = settings.max_entries;
     let mut truncated = false;
-    for entry in WalkDir::new(root)
-        .parallelism(walker_parallelism())
-        .skip_hidden(false)
-        .follow_links(false)
-        .min_depth(1)
-        .into_iter()
-        .flatten()
-    {
+    let mut metrics = WalkerMetrics::new(settings.backend, settings.threads);
+    let should_cancel = || {
+        if shutdown.load(Ordering::Relaxed) {
+            return true;
+        }
+        latest_request_ids
+            .lock()
+            .ok()
+            .and_then(|m| m.get(&req.tab_id).copied())
+            != Some(req.request_id)
+    };
+    let mut stream_err: Option<String> = None;
+
+    let mut handle_entry = |path: PathBuf, file_type: FileType| -> bool {
         cancel_check_budget = cancel_check_budget.saturating_add(1);
         if cancel_check_budget >= 64 {
             cancel_check_budget = 0;
-            if shutdown.load(Ordering::Relaxed) {
-                return Err("superseded".to_string());
-            }
-            if latest_request_ids
-                .lock()
-                .ok()
-                .and_then(|m| m.get(&req.tab_id).copied())
-                != Some(req.request_id)
-            {
-                return Err("superseded".to_string());
+            if should_cancel() {
+                stream_err = Some("superseded".to_string());
+                return false;
             }
         }
-        let path = entry.path().to_path_buf();
-        let Some((kind, kind_known)) = classify_walker_entry(
-            &path,
-            entry.file_type(),
-            req.include_files,
-            req.include_dirs,
-        ) else {
-            continue;
+        let Some((kind, kind_known)) =
+            classify_walker_entry(&path, file_type, req.include_files, req.include_dirs)
+        else {
+            return true;
         };
         if emitted_entries >= max_entries {
             truncated = true;
-            break;
+            return false;
         }
         buffer.push(IndexEntry {
             path,
@@ -428,15 +567,64 @@ fn stream_walker_index(
             kind_known,
         });
         emitted_entries = emitted_entries.saturating_add(1);
+        metrics.entries_emitted = emitted_entries;
         if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
-            if !flush_batch(tx_res, req.request_id, &mut buffer) {
-                return Err("index receiver closed".to_string());
+            if !flush_walker_batch(tx_res, req.request_id, &mut buffer, &mut metrics) {
+                stream_err = Some("index receiver closed".to_string());
+                return false;
             }
             last_flush = Instant::now();
         }
+        true
+    };
+
+    match settings.backend {
+        WalkerBackend::Jwalk => {
+            for entry in WalkDir::new(root)
+                .parallelism(walker_parallelism(settings.threads))
+                .skip_hidden(false)
+                .follow_links(false)
+                .min_depth(1)
+                .into_iter()
+                .flatten()
+            {
+                if !handle_entry(entry.path().to_path_buf(), entry.file_type()) {
+                    break;
+                }
+            }
+        }
+        WalkerBackend::Adaptive => {
+            let should_cancel_for_walk = || {
+                if shutdown.load(Ordering::Relaxed) {
+                    return true;
+                }
+                latest_request_ids
+                    .lock()
+                    .ok()
+                    .and_then(|m| m.get(&req.tab_id).copied())
+                    != Some(req.request_id)
+            };
+            let adaptive_metrics = walk_adaptive(
+                root,
+                settings.threads,
+                |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
+                should_cancel_for_walk,
+            );
+            metrics.record_adaptive(adaptive_metrics);
+        }
     }
 
-    if !flush_batch(tx_res, req.request_id, &mut buffer) {
+    if let Some(err) = stream_err {
+        if settings.metrics_enabled {
+            log_walker_metrics(req, &metrics, &err);
+        }
+        return Err(err);
+    }
+
+    if !flush_walker_batch(tx_res, req.request_id, &mut buffer, &mut metrics) {
+        if settings.metrics_enabled {
+            log_walker_metrics(req, &metrics, "receiver_closed");
+        }
         return Err("index receiver closed".to_string());
     }
     if truncated
@@ -454,7 +642,17 @@ fn stream_walker_index(
             request_id = req.request_id,
             "worker response receiver closed during truncation notice"
         );
+        if settings.metrics_enabled {
+            log_walker_metrics(req, &metrics, "receiver_closed");
+        }
         return Err("index receiver closed".to_string());
+    }
+    if settings.metrics_enabled {
+        log_walker_metrics(
+            req,
+            &metrics,
+            if truncated { "truncated" } else { "finished" },
+        );
     }
     info!(
         flow = "index",
