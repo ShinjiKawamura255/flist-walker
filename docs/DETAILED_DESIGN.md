@@ -236,6 +236,7 @@ Important behaviors:
 - Uses walker `file_type` for fast file/dir classification and defers symlink/shortcut metadata when possible.
 - Keeps jwalk as the default walker backend. A manually added `developer.walker_backend = "adaptive"` runtime config value can opt the GUI index worker into the experimental adaptive backend for developer evaluation.
 - Adaptive walker can separately configure its initial and maximum concurrent read-dir limits via manual `developer.walker_adaptive_initial_limit` and `developer.walker_adaptive_max_limit` values. When omitted, it starts at at most 2 and uses `walker_threads` as the maximum.
+- Adaptive walker skips Windows compatibility junctions that combine Hidden, System, and ReparsePoint attributes, and does not recurse through other reparse-point directories. This keeps Explorer-hidden legacy folders such as Documents/My Music out of adaptive Walker results.
 - When manually added `developer.walker_metrics = true` is present, emits one bounded walker metrics summary at the indexing request terminal point. The metrics path intentionally avoids per-entry and per-directory logs. If `developer.walker_metrics_log_path` is also set, the same summary is appended to that file so release GUI builds can be measured without stderr capture.
 - Caps walker results with `WALKER_MAX_ENTRIES_DEFAULT` and reports `Truncated`.
 

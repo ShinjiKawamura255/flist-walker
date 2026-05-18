@@ -7,6 +7,9 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
+
 const FAST_READ_DIR: Duration = Duration::from_millis(5);
 const SLOW_READ_DIR: Duration = Duration::from_millis(50);
 const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(50);
@@ -196,8 +199,12 @@ fn worker_loop(shared: Arc<Shared>, tx: Sender<AdaptiveWalkerEntry>) {
                             .fetch_add(1, Ordering::Relaxed);
                         continue;
                     };
+                    let policy = adaptive_entry_policy(&child, &file_type);
+                    if policy.skip {
+                        continue;
+                    }
                     let path = child.path();
-                    if file_type.is_dir() {
+                    if file_type.is_dir() && policy.recurse {
                         child_dirs.push(path.clone());
                     }
                     if tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
@@ -226,6 +233,55 @@ fn worker_loop(shared: Arc<Shared>, tx: Sender<AdaptiveWalkerEntry>) {
         } else {
             return;
         }
+    }
+}
+
+struct AdaptiveEntryPolicy {
+    skip: bool,
+    recurse: bool,
+}
+
+fn adaptive_entry_policy(entry: &fs::DirEntry, file_type: &fs::FileType) -> AdaptiveEntryPolicy {
+    if !file_type.is_symlink() {
+        return AdaptiveEntryPolicy {
+            skip: false,
+            recurse: true,
+        };
+    }
+
+    adaptive_entry_policy_from_attrs(windows_reparse_file_attributes(entry))
+}
+
+#[cfg(windows)]
+fn windows_reparse_file_attributes(entry: &fs::DirEntry) -> Option<u32> {
+    fs::symlink_metadata(entry.path())
+        .ok()
+        .map(|metadata| metadata.file_attributes())
+}
+
+#[cfg(not(windows))]
+fn windows_reparse_file_attributes(_entry: &fs::DirEntry) -> Option<u32> {
+    None
+}
+
+fn adaptive_entry_policy_from_attrs(windows_attrs: Option<u32>) -> AdaptiveEntryPolicy {
+    const FILE_ATTRIBUTE_HIDDEN: u32 = 0x0000_0002;
+    const FILE_ATTRIBUTE_SYSTEM: u32 = 0x0000_0004;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+
+    let Some(attrs) = windows_attrs else {
+        return AdaptiveEntryPolicy {
+            skip: false,
+            recurse: true,
+        };
+    };
+    let is_reparse = attrs & FILE_ATTRIBUTE_REPARSE_POINT != 0;
+    let is_hidden_system = attrs & (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM)
+        == (FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+
+    AdaptiveEntryPolicy {
+        skip: is_reparse && is_hidden_system,
+        recurse: !is_reparse,
     }
 }
 
@@ -286,4 +342,41 @@ pub(super) fn walk_adaptive(
     shared
         .metrics
         .snapshot(shared.limit.load(Ordering::Relaxed).max(1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_hidden_system_reparse_points_are_skipped() {
+        const FILE_ATTRIBUTE_HIDDEN: u32 = 0x0000_0002;
+        const FILE_ATTRIBUTE_SYSTEM: u32 = 0x0000_0004;
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+
+        let policy = adaptive_entry_policy_from_attrs(Some(
+            FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_REPARSE_POINT,
+        ));
+
+        assert!(policy.skip);
+        assert!(!policy.recurse);
+    }
+
+    #[test]
+    fn visible_reparse_points_are_emitted_but_not_recursed() {
+        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0000_0400;
+
+        let policy = adaptive_entry_policy_from_attrs(Some(FILE_ATTRIBUTE_REPARSE_POINT));
+
+        assert!(!policy.skip);
+        assert!(!policy.recurse);
+    }
+
+    #[test]
+    fn regular_entries_are_emitted_and_recursed() {
+        let policy = adaptive_entry_policy_from_attrs(None);
+
+        assert!(!policy.skip);
+        assert!(policy.recurse);
+    }
 }

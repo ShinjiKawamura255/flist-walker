@@ -244,6 +244,47 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
 }
 
 #[test]
+fn adaptive_walker_matches_jwalk_count_on_basic_tree() {
+    let root = test_root("adaptive-jwalk-count");
+    let _ = std::fs::remove_dir_all(&root);
+    let dataset = root.join("dataset");
+    std::fs::create_dir_all(dataset.join("a")).expect("create a");
+    std::fs::create_dir_all(dataset.join("b")).expect("create b");
+    std::fs::write(dataset.join("a").join("main.rs"), "fn main() {}").expect("write main");
+    std::fs::write(dataset.join("b").join("lib.rs"), "pub fn lib() {}").expect("write lib");
+
+    let jwalk_count = WalkDir::new(&root)
+        .parallelism(Parallelism::Serial)
+        .skip_hidden(false)
+        .follow_links(false)
+        .min_depth(1)
+        .into_iter()
+        .flatten()
+        .filter(|entry| {
+            classify_walker_entry(&entry.path(), entry.file_type(), true, true).is_some()
+        })
+        .count();
+
+    let mut adaptive_count = 0usize;
+    let _metrics = walk_adaptive(
+        &root,
+        2,
+        2,
+        |entry| {
+            if classify_walker_entry(&entry.path, entry.file_type, true, true).is_some() {
+                adaptive_count = adaptive_count.saturating_add(1);
+            }
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(adaptive_count, jwalk_count);
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 #[ignore = "perf measurement; run explicitly"]
 fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
     let root = test_root("perf-adaptive-compare");

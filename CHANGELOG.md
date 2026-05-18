@@ -7,8 +7,7 @@
 -
 
 ### Changed
-- `Set as default` がタブ復元中に無効化される場合の tooltip / notice を、環境変数名ではなく runtime config の Restore tabs 設定を指す表現へ更新した。
-- リリース同梱 README と公開文書の runtime config 案内を最新の保存先・`restore_tabs_enabled` / `history_persist_disabled` / walker tuning keys に合わせた。
+-
 
 ### Fixed
 -
@@ -24,6 +23,30 @@
 
 ### Known issues
 -
+
+## [0.17.6] - 2026-05-19
+### Added
+-
+
+### Changed
+- `Set as default` がタブ復元中に無効化される場合の tooltip / notice を、環境変数名ではなく runtime config の Restore tabs 設定を指す表現へ更新した。
+- リリース同梱 README と公開文書の runtime config 案内を最新の保存先・`restore_tabs_enabled` / `history_persist_disabled` / walker tuning keys に合わせた。
+- developer-only adaptive walker backend の計測と worker 上限調整を追加し、jwalk と比較しながら opt-in で評価できるようにした。
+
+### Fixed
+- adaptive walker backend で Windows の Explorer 互換 junction（例: `Documents\My Music` / `My Pictures` / `My Videos`）が候補化される問題を修正した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.17.5] - 2026-05-14
 ### Added
