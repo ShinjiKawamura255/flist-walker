@@ -42,7 +42,9 @@
 - MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。リンク種別などの詳細判定は完了後または必要時の後処理へ遅延できる。
 - MUST: Walker で遅延させた種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。
 - SHOULD: developer-only config で adaptive walker backend が明示された場合のみ、Walker は read_dir 遅延に応じて同時 read_dir 数を下げられる実験 backend を使用できる。既定 backend は jwalk のままとする。
+- SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は初期値を最大 2、上限を `walker_threads` とする。
 - SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
+- SHOULD: developer-only metrics の `walker_metrics_log_path` が手動指定された場合、Walker は release GUI build でも console/stderr に依存せず、同じ bounded summary を指定ファイルへ追記できる。
 - SHOULD: 循環リンクを避ける。
 - SHOULD: 空クエリ時は新規バッチを即時に一覧へ反映し、非空クエリ時は UI 負荷を抑えるため間引き更新する。
 

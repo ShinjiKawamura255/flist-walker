@@ -312,7 +312,10 @@ fn developer_config_loads_but_is_not_seeded() {
         r#"{
   "developer": {
     "walker_backend": "adaptive",
-    "walker_metrics": true
+    "walker_metrics": true,
+    "walker_metrics_log_path": "D:/tmp/flistwalker-walker-metrics.log",
+    "walker_adaptive_initial_limit": 4,
+    "walker_adaptive_max_limit": 8
   }
 }"#,
     )
@@ -322,6 +325,12 @@ fn developer_config_loads_but_is_not_seeded() {
 
     assert_eq!(loaded.developer.walker_backend, "adaptive");
     assert!(loaded.developer.walker_metrics);
+    assert_eq!(
+        loaded.developer.walker_metrics_log_path,
+        "D:/tmp/flistwalker-walker-metrics.log"
+    );
+    assert_eq!(loaded.developer.walker_adaptive_initial_limit, Some(4));
+    assert_eq!(loaded.developer.walker_adaptive_max_limit, Some(8));
 
     let _ = fs::remove_dir_all(&home);
 }

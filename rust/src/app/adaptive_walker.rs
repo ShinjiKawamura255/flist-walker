@@ -232,11 +232,12 @@ fn worker_loop(shared: Arc<Shared>, tx: Sender<AdaptiveWalkerEntry>) {
 pub(super) fn walk_adaptive(
     root: &Path,
     max_workers: usize,
+    initial_limit: usize,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
     let max_workers = max_workers.max(1);
-    let initial_limit = max_workers.min(2).max(1);
+    let initial_limit = initial_limit.clamp(1, max_workers);
     let shared = Arc::new(Shared {
         state: Mutex::new(SharedState {
             queue: VecDeque::from([root.to_path_buf()]),

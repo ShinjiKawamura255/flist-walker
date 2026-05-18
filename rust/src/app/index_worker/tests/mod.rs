@@ -70,6 +70,9 @@ fn walker_runtime_settings_use_adaptive_only_from_developer_config() {
         developer: DeveloperRuntimeConfig {
             walker_backend: "adaptive".to_string(),
             walker_metrics: true,
+            walker_metrics_log_path: "metrics.log".to_string(),
+            walker_adaptive_initial_limit: Some(4),
+            walker_adaptive_max_limit: Some(6),
         },
         ..RuntimeConfig::default()
     };
@@ -78,8 +81,60 @@ fn walker_runtime_settings_use_adaptive_only_from_developer_config() {
 
     assert_eq!(settings.backend, WalkerBackend::Adaptive);
     assert_eq!(settings.threads, 4);
+    assert_eq!(settings.adaptive_initial_limit, 4);
+    assert_eq!(settings.adaptive_max_limit, 6);
+    assert_eq!(settings.metrics_log_path, "metrics.log");
     assert_eq!(settings.max_entries, 123);
     assert!(settings.metrics_enabled);
+}
+
+#[test]
+fn walker_metrics_summary_can_be_written_to_file() {
+    let root = test_root("metrics-log");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    let log_path = root.join("walker-metrics.log");
+    let req = IndexRequest {
+        request_id: 7,
+        tab_id: 3,
+        root: root.clone(),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+    };
+    let mut metrics = WalkerMetrics::new(WalkerBackend::Adaptive, 2);
+    metrics.entries_emitted = 11;
+    metrics.batches_sent = 2;
+    metrics.dirs_read = 5;
+
+    let summary = walker_metrics_summary(&req, &metrics, "finished");
+    write_walker_metrics_summary(&summary, &log_path.to_string_lossy());
+
+    let text = std::fs::read_to_string(&log_path).expect("read metrics log");
+    assert!(text.contains("event=metrics"));
+    assert!(text.contains("backend=adaptive"));
+    assert!(text.contains("entries_emitted=11"));
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn walker_runtime_settings_clamp_adaptive_limits() {
+    let config = RuntimeConfig {
+        walker_threads: 3,
+        developer: DeveloperRuntimeConfig {
+            walker_backend: "adaptive".to_string(),
+            walker_adaptive_initial_limit: Some(9),
+            walker_adaptive_max_limit: Some(99),
+            ..DeveloperRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    };
+
+    let settings = walker_runtime_settings(&config);
+
+    assert_eq!(settings.adaptive_max_limit, WALKER_THREADS_MAX);
+    assert_eq!(settings.adaptive_initial_limit, WALKER_THREADS_MAX);
 }
 
 #[test]
@@ -92,6 +147,7 @@ fn adaptive_walker_emits_entries_and_records_control_metrics() {
     let mut paths = Vec::new();
     let metrics = walk_adaptive(
         &root,
+        2,
         2,
         |entry| {
             paths.push(entry.path);
@@ -121,6 +177,7 @@ fn adaptive_walker_can_stop_from_consumer_callback() {
     let mut count = 0usize;
     let _metrics = walk_adaptive(
         &root,
+        2,
         2,
         |_entry| {
             count = count.saturating_add(1);
@@ -219,6 +276,7 @@ fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
     let mut adaptive_count = 0usize;
     let adaptive_metrics = walk_adaptive(
         &root,
+        2,
         2,
         |entry| {
             if classify_walker_entry(&entry.path, entry.file_type, true, true).is_some() {

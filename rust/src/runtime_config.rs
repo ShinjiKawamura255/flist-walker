@@ -61,6 +61,9 @@ pub struct RuntimeConfig {
 pub struct DeveloperRuntimeConfig {
     pub walker_backend: String,
     pub walker_metrics: bool,
+    pub walker_metrics_log_path: String,
+    pub walker_adaptive_initial_limit: Option<usize>,
+    pub walker_adaptive_max_limit: Option<usize>,
 }
 
 impl DeveloperRuntimeConfig {

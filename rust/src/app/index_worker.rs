@@ -9,6 +9,8 @@ use crate::runtime_config::{current_runtime_config, RuntimeConfig};
 use jwalk::{Parallelism, WalkDir};
 use std::collections::HashMap;
 use std::fs::FileType;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -29,8 +31,11 @@ enum WalkerBackend {
 struct WalkerRuntimeSettings {
     max_entries: usize,
     threads: usize,
+    adaptive_initial_limit: usize,
+    adaptive_max_limit: usize,
     backend: WalkerBackend,
     metrics_enabled: bool,
+    metrics_log_path: String,
 }
 
 fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
@@ -45,11 +50,28 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
         WalkerBackend::Jwalk
     };
 
+    let threads = config.walker_threads.max(1).min(WALKER_THREADS_MAX);
+    let adaptive_max_limit = config
+        .developer
+        .walker_adaptive_max_limit
+        .unwrap_or(threads)
+        .max(1)
+        .min(WALKER_THREADS_MAX);
+    let adaptive_initial_limit = config
+        .developer
+        .walker_adaptive_initial_limit
+        .unwrap_or(adaptive_max_limit.min(2))
+        .max(1)
+        .min(adaptive_max_limit);
+
     WalkerRuntimeSettings {
         max_entries: config.walker_max_entries.max(1),
-        threads: config.walker_threads.max(1).min(WALKER_THREADS_MAX),
+        threads,
+        adaptive_initial_limit,
+        adaptive_max_limit,
         backend,
         metrics_enabled: config.developer.walker_metrics,
+        metrics_log_path: config.developer.walker_metrics_log_path.clone(),
     }
 }
 
@@ -242,7 +264,8 @@ fn walker_backend_label(backend: WalkerBackend) -> &'static str {
     }
 }
 
-fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str) {
+fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str, path: &str) {
+    let summary = walker_metrics_summary(req, metrics, outcome);
     info!(
         flow = "index",
         source_kind = "walker",
@@ -265,6 +288,39 @@ fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str
         read_dir_max_us = metrics.read_dir_max_us,
         "walker metrics summary"
     );
+    write_walker_metrics_summary(&summary, path);
+}
+
+fn walker_metrics_summary(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str) -> String {
+    format!(
+        "flow=index source_kind=walker event=metrics request_id={} tab_id={} backend={} outcome={} elapsed_ms={} entries_emitted={} batches_sent={} dirs_read={} read_dir_errors={} max_inflight_read_dirs={} throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} read_dir_avg_us={} read_dir_max_us={}",
+        req.request_id,
+        req.tab_id,
+        walker_backend_label(metrics.backend),
+        outcome,
+        metrics.started_at.elapsed().as_millis(),
+        metrics.entries_emitted,
+        metrics.batches_sent,
+        metrics.dirs_read,
+        metrics.read_dir_errors,
+        metrics.max_inflight_read_dirs,
+        metrics.throttle_events,
+        metrics.adaptive_limit_min,
+        metrics.adaptive_limit_max,
+        metrics.adaptive_limit_final,
+        metrics.read_dir_avg_us(),
+        metrics.read_dir_max_us
+    )
+}
+
+fn write_walker_metrics_summary(summary: &str, path: &str) {
+    let path = path.trim();
+    if path.is_empty() {
+        return;
+    }
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{summary}");
+    }
 }
 
 fn flush_walker_batch(
@@ -606,7 +662,8 @@ fn stream_walker_index(
             };
             let adaptive_metrics = walk_adaptive(
                 root,
-                settings.threads,
+                settings.adaptive_max_limit,
+                settings.adaptive_initial_limit,
                 |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
                 should_cancel_for_walk,
             );
@@ -616,14 +673,14 @@ fn stream_walker_index(
 
     if let Some(err) = stream_err {
         if settings.metrics_enabled {
-            log_walker_metrics(req, &metrics, &err);
+            log_walker_metrics(req, &metrics, &err, &settings.metrics_log_path);
         }
         return Err(err);
     }
 
     if !flush_walker_batch(tx_res, req.request_id, &mut buffer, &mut metrics) {
         if settings.metrics_enabled {
-            log_walker_metrics(req, &metrics, "receiver_closed");
+            log_walker_metrics(req, &metrics, "receiver_closed", &settings.metrics_log_path);
         }
         return Err("index receiver closed".to_string());
     }
@@ -643,7 +700,7 @@ fn stream_walker_index(
             "worker response receiver closed during truncation notice"
         );
         if settings.metrics_enabled {
-            log_walker_metrics(req, &metrics, "receiver_closed");
+            log_walker_metrics(req, &metrics, "receiver_closed", &settings.metrics_log_path);
         }
         return Err("index receiver closed".to_string());
     }
@@ -652,6 +709,7 @@ fn stream_walker_index(
             req,
             &metrics,
             if truncated { "truncated" } else { "finished" },
+            &settings.metrics_log_path,
         );
     }
     info!(
