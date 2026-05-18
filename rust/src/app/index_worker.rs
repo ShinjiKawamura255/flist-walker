@@ -50,13 +50,12 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
         WalkerBackend::Jwalk
     };
 
-    let threads = config.walker_threads.max(1).min(WALKER_THREADS_MAX);
+    let threads = config.walker_threads.clamp(1, WALKER_THREADS_MAX);
     let adaptive_max_limit = config
         .developer
         .walker_adaptive_max_limit
         .unwrap_or(threads)
-        .max(1)
-        .min(WALKER_THREADS_MAX);
+        .clamp(1, WALKER_THREADS_MAX);
     let adaptive_initial_limit = config
         .developer
         .walker_adaptive_initial_limit
