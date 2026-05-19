@@ -63,16 +63,16 @@ fn classify_walker_entry_defers_windows_shortcut_when_both_filters_enabled() {
 }
 
 #[test]
-fn walker_runtime_settings_use_adaptive_only_from_developer_config() {
+fn walker_runtime_settings_use_adaptive_by_default() {
     let config = RuntimeConfig {
         walker_threads: 4,
         walker_max_entries: 123,
         developer: DeveloperRuntimeConfig {
-            walker_backend: "adaptive".to_string(),
             walker_metrics: true,
             walker_metrics_log_path: "metrics.log".to_string(),
-            walker_adaptive_initial_limit: Some(4),
-            walker_adaptive_max_limit: Some(6),
+            walker_adaptive_initial_limit: None,
+            walker_adaptive_max_limit: None,
+            ..DeveloperRuntimeConfig::default()
         },
         ..RuntimeConfig::default()
     };
@@ -81,11 +81,28 @@ fn walker_runtime_settings_use_adaptive_only_from_developer_config() {
 
     assert_eq!(settings.backend, WalkerBackend::Adaptive);
     assert_eq!(settings.threads, 4);
-    assert_eq!(settings.adaptive_initial_limit, 4);
-    assert_eq!(settings.adaptive_max_limit, 6);
+    assert_eq!(settings.adaptive_initial_limit, 2);
+    assert_eq!(settings.adaptive_max_limit, 4);
     assert_eq!(settings.metrics_log_path, "metrics.log");
     assert_eq!(settings.max_entries, 123);
     assert!(settings.metrics_enabled);
+}
+
+#[test]
+fn walker_runtime_settings_can_fallback_to_jwalk_from_developer_config() {
+    let config = RuntimeConfig {
+        walker_threads: 4,
+        developer: DeveloperRuntimeConfig {
+            walker_backend: "jwalk".to_string(),
+            ..DeveloperRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    };
+
+    let settings = walker_runtime_settings(&config);
+
+    assert_eq!(settings.backend, WalkerBackend::Jwalk);
+    assert_eq!(settings.threads, 4);
 }
 
 #[test]
@@ -135,6 +152,23 @@ fn walker_runtime_settings_clamp_adaptive_limits() {
 
     assert_eq!(settings.adaptive_max_limit, WALKER_THREADS_MAX);
     assert_eq!(settings.adaptive_initial_limit, WALKER_THREADS_MAX);
+}
+
+#[test]
+fn walker_runtime_settings_default_adaptive_initial_limit_is_half_of_max() {
+    let config = RuntimeConfig {
+        walker_threads: 8,
+        developer: DeveloperRuntimeConfig {
+            walker_adaptive_max_limit: Some(8),
+            ..DeveloperRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    };
+
+    let settings = walker_runtime_settings(&config);
+
+    assert_eq!(settings.adaptive_max_limit, 8);
+    assert_eq!(settings.adaptive_initial_limit, 4);
 }
 
 #[test]
@@ -202,9 +236,13 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
 
     let shutdown = Arc::new(AtomicBool::new(false));
     let latest_request_ids = Arc::new(Mutex::new(HashMap::new()));
-    let (tx_req, rx_res, handles) = spawn_index_worker(shutdown.clone(), latest_request_ids);
     let request_id = 41u64;
     let tab_id = 7u64;
+    latest_request_ids
+        .lock()
+        .expect("latest ids lock")
+        .insert(tab_id, request_id);
+    let (tx_req, rx_res, handles) = spawn_index_worker(shutdown.clone(), latest_request_ids);
     tx_req
         .send(IndexRequest {
             request_id,

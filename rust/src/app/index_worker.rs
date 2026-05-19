@@ -43,11 +43,11 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
         .developer
         .walker_backend
         .trim()
-        .eq_ignore_ascii_case("adaptive")
+        .eq_ignore_ascii_case("jwalk")
     {
-        WalkerBackend::Adaptive
-    } else {
         WalkerBackend::Jwalk
+    } else {
+        WalkerBackend::Adaptive
     };
 
     let threads = config.walker_threads.clamp(1, WALKER_THREADS_MAX);
@@ -59,7 +59,7 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
     let adaptive_initial_limit = config
         .developer
         .walker_adaptive_initial_limit
-        .unwrap_or(adaptive_max_limit.min(2))
+        .unwrap_or_else(|| default_adaptive_initial_limit(adaptive_max_limit))
         .max(1)
         .min(adaptive_max_limit);
 
@@ -72,6 +72,10 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
         metrics_enabled: config.developer.walker_metrics,
         metrics_log_path: config.developer.walker_metrics_log_path.clone(),
     }
+}
+
+fn default_adaptive_initial_limit(max_limit: usize) -> usize {
+    max_limit.div_ceil(2).max(1)
 }
 
 fn walker_parallelism(threads: usize) -> Parallelism {

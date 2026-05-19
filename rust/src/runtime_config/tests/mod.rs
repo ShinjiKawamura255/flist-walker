@@ -295,7 +295,7 @@ fn load_runtime_config_from_path_handles_missing_field_defaults() {
         SEARCH_PARALLEL_THRESHOLD_DEFAULT
     );
     assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
-    assert_eq!(loaded.walker_threads, WALKER_THREADS_DEFAULT);
+    assert_eq!(loaded.walker_threads, default_walker_threads());
     assert_eq!(loaded.developer, DeveloperRuntimeConfig::default());
 
     let _ = fs::remove_dir_all(&home);

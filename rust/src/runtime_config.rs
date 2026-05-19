@@ -17,7 +17,7 @@ const WINDOWS_SETTINGS_DIR_NAME: &str = "flistwalker";
 const UNIX_SETTINGS_DIR_NAME: &str = ".flistwalker";
 const SEARCH_PARALLEL_THRESHOLD_DEFAULT: usize = 25_000;
 const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
-const WALKER_THREADS_DEFAULT: usize = 2;
+const WALKER_THREADS_MAX_DEFAULT: usize = 8;
 const WINDOW_TRACE_LOG_NAME: &str = ".flistwalker_window_trace.log";
 
 const SEARCH_PARALLEL_THRESHOLD_ENV: &str = "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD";
@@ -128,7 +128,7 @@ impl Default for RuntimeConfig {
             search_parallel_threshold: SEARCH_PARALLEL_THRESHOLD_DEFAULT,
             search_threads: default_search_threads(),
             walker_max_entries: WALKER_MAX_ENTRIES_DEFAULT,
-            walker_threads: WALKER_THREADS_DEFAULT,
+            walker_threads: default_walker_threads(),
             window_trace_enabled: false,
             window_trace_verbose: false,
             window_trace_path: default_window_trace_path(),
@@ -384,6 +384,14 @@ fn default_search_threads() -> usize {
         .clamp(1, 32)
 }
 
+fn default_walker_threads() -> usize {
+    let half_logical = std::thread::available_parallelism()
+        .map(|value| value.get() / 2)
+        .unwrap_or(1)
+        .max(1);
+    half_logical.min(WALKER_THREADS_MAX_DEFAULT)
+}
+
 fn default_window_trace_path() -> String {
     settings_base_dir()
         .map(|base| {
@@ -466,7 +474,7 @@ impl RuntimeConfig {
                 .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT),
             search_threads: search_threads.unwrap_or_else(default_search_threads),
             walker_max_entries: walker_max_entries.unwrap_or(WALKER_MAX_ENTRIES_DEFAULT),
-            walker_threads: walker_threads.unwrap_or(WALKER_THREADS_DEFAULT),
+            walker_threads: walker_threads.unwrap_or_else(default_walker_threads),
             window_trace_enabled,
             window_trace_verbose,
             window_trace_path: window_trace_path

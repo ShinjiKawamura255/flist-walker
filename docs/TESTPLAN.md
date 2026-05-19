@@ -114,8 +114,8 @@
 | TC-089 | unit | Create File List の cancel 済み request は root 直下の既存 `FileList.txt` を置換しない | SP-001 |
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、line-only fast path が metadata-probe baseline を十分に上回ることを維持する（CI 下限 1.20x） | SP-001, SP-007 |
 | TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決に対して現行 control baseline で 1.25x 以上の速度差を維持し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
-| TC-124 | unit+perf | developer-only adaptive walker は opt-in 時だけ jwalk と置き換わり、同一 dataset で候補件数を一致させつつ elapsed time と read_dir 制御指標を診断出力できる。Windows の Hidden+System+ReparsePoint 互換 junction は候補化しない | SP-002, SP-007, SP-016 |
-| TC-125 | unit | `developer` runtime config は手動追記時だけ読み込まれ、自動生成 config seed には出力されない。adaptive walker の initial/max limit は未指定時の既定と明示値の clamp を検証し、metrics summary を指定ファイルへ追記できる | SP-002, SP-016 |
+| TC-124 | unit+perf | adaptive walker は既定 backend として jwalk と同一 dataset の候補件数を一致させつつ elapsed time と read_dir 制御指標を診断出力できる。developer-only `walker_backend = "jwalk"` で jwalk へ戻せる。Windows の Hidden+System+ReparsePoint 互換 junction は候補化しない | SP-002, SP-007, SP-016 |
+| TC-125 | unit | `developer` runtime config は手動追記時だけ読み込まれ、自動生成 config seed には出力されない。`walker_threads` の未指定既定値、adaptive walker の initial/max limit 未指定時の既定と明示値の clamp を検証し、metrics summary を指定ファイルへ追記できる | SP-002, SP-016 |
 | TC-122 | unit | 回帰: Walker 完了後の kind 解決は表示中結果に限定し、巨大な on-demand root で全件 metadata 解決を継続しない | SP-007 |
 | TC-054 | unit | runtime config の `history_persist_disabled` が有効なとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |

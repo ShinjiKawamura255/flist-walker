@@ -41,8 +41,9 @@
 - MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
 - MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。リンク種別などの詳細判定は完了後または必要時の後処理へ遅延できる。
 - MUST: Walker で遅延させた種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。
-- SHOULD: developer-only config で adaptive walker backend が明示された場合のみ、Walker は read_dir 遅延に応じて同時 read_dir 数を下げられる実験 backend を使用できる。既定 backend は jwalk のままとする。
-- SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は初期値を最大 2、上限を `walker_threads` とする。
+- MUST: Walker backend は adaptive を既定とし、developer-only config の `walker_backend = "jwalk"` が明示された場合のみ jwalk backend へ戻せること。
+- SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は最大値を `walker_threads`、初期値を最大値の半分（端数切り上げ、最低 1）とする。
+- SHOULD: `walker_threads` 未指定時の既定値は `min(8, 論理コア数 / 2)`（最低 1）とし、明示値も実行時に安全な範囲へ clamp する。
 - MUST: adaptive walker backend は Windows の Explorer で通常非表示となる互換用 junction（Hidden + System + ReparsePoint）を候補化してはならない。また、reparse point directory はリンク自体を候補化できても、リンク先へ再帰してはならない。
 - SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
 - SHOULD: developer-only metrics の `walker_metrics_log_path` が手動指定された場合、Walker は release GUI build でも console/stderr に依存せず、同じ bounded summary を指定ファイルへ追記できる。
