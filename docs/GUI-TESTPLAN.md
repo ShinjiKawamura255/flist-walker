@@ -12,7 +12,7 @@
   - after changes covered by VM-002 that affect render, dialog, focus, tab, search result, preview, or FileList GUI flows
   - after structural refactoring that touches GUI-adjacent app orchestration
 - Evidence location: `rust/target/gui-smoke/evidence/`.
-- Evidence rule: release-candidate and VM-002 GUI-adjacent checks must record a dated report with environment, required `GSM-*` status, and evidence paths. Chat-only confirmation is acceptable only for exploratory development smoke and must not be used as release-candidate evidence.
+- Evidence rule: release-candidate and VM-002 GUI-adjacent checks must record a dated report with environment, required `GSM-*` status, and evidence paths. Use `docs/GUI-TESTREPORT.template.md` when a manual report needs a checked-in template. Chat-only confirmation is acceptable only for exploratory development smoke and must not be used as release-candidate evidence.
 - Fixture command: `scripts/gui-smoke-fixture.sh`.
 - Launch command after fixture creation: `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`.
 - Headful automation smoke:
@@ -65,6 +65,6 @@
 
 ## Risks
 - Manual evidence can be skipped under time pressure.
-  - Mitigation: release candidates require `docs/GUI-TESTREPORT.md` or a generated local report to be filled with environment, `GSM-*` status, and evidence paths before publish.
+  - Mitigation: release candidates require a generated local report or a report based on `docs/GUI-TESTREPORT.template.md` to be filled with environment, `GSM-*` status, and evidence paths before publish.
 - Environment-specific behavior may be under-tested on non-release changes.
   - Mitigation: Windows/macOS are required for release candidates and platform-specific UI/input changes.

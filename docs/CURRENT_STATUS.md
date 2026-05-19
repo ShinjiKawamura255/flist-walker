@@ -13,14 +13,12 @@
    - Current enforced gate is 75%; the 2026-05-14 fresh baseline is 79.08% line coverage.
    - Next target is 80% after app/GUI owner seams receive more tests.
 3. Keep GUI evidence concrete.
-   - Use `docs/GUI-TESTPLAN.md` and record release-candidate or GUI-adjacent smoke results in `docs/GUI-TESTREPORT.md` or `rust/target/gui-smoke/evidence/GUI-TESTREPORT.local.md`.
+   - Use `docs/GUI-TESTPLAN.md` and record release-candidate or GUI-adjacent smoke results under `rust/target/gui-smoke/evidence/`; use `docs/GUI-TESTREPORT.template.md` for manual report structure.
 4. Treat `docs/TASKS.md` as history, not the main entrypoint.
    - Start from this file, then read `ARCHITECTURE.md`, `TESTPLAN.md`, or `TASKS.md` only as needed.
-5. Reduce large Rust files in slices.
-   - Use `docs/LARGE_RUST_FILE_REDUCTION_PLAN.md`; Slice A split oversized app test modules on 2026-05-14.
-   - Slice B split `ui_model.rs` into display/highlight/preview/on-demand modules on 2026-05-14.
-   - Slice C split `app/input.rs` into interaction-family modules on 2026-05-14.
-   - Remaining oversized production priorities start with `app/filelist.rs`, `indexer/mod.rs`, and `search/mod.rs`.
+5. Keep large-file reductions from regressing.
+   - The first reduction wave completed on 2026-05-14: oversized app tests, `ui_model.rs`, `app/input.rs`, `indexer/mod.rs`, `search/mod.rs`, `app/filelist.rs`, `runtime_config.rs`, `app/session.rs`, and `app/index_worker.rs` were split by owner.
+   - No top-level Rust production file remained above 800 lines at closure; use `docs/TASKS.md` for the historical closure record.
 
 ## Daily Validation
 ```bash
@@ -35,11 +33,11 @@ Use the validation matrix in `docs/TESTPLAN.md` for narrower or additional check
 ## Release-Candidate Validation Pointers
 - Cross-platform CI and release workflow: `.github/workflows/ci-cross-platform.yml`, `.github/workflows/release-tagged.yml`
 - GUI smoke: `docs/GUI-TESTPLAN.md`
-- GUI report: `docs/GUI-TESTREPORT.md`
+- GUI report template: `docs/GUI-TESTREPORT.template.md`
 - Release process: `docs/RELEASE.md`
 - OSS and audit posture: `docs/OSS_COMPLIANCE.md`
 
 ## History
 - Detailed roadmap closures and previous evaluation notes live in `docs/TASKS.md`.
 - Durable architecture and regression guards live in `docs/ARCHITECTURE.md`.
-- The planned path for reducing oversized Rust files lives in `docs/LARGE_RUST_FILE_REDUCTION_PLAN.md`.
+- Large Rust file reduction closure details live in `docs/TASKS.md`.

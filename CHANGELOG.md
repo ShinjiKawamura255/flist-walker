@@ -13,6 +13,7 @@
 - 低コア環境向けに、adaptive walker の worker 上限が 1 の場合は thread pool を作らず serial fast path で走査するようにした。
 - adaptive walker の transitional tuning knobs は削除候補であることを docs に明記し、通常運用を `walker_threads` 中心に寄せた。
 - release 前チェックに Rust warning / clippy warning / release build log warning が残っていないことを追加した。
+- release 前の docs 整理として、古い eframe upgrade note と完了済み large-file reduction plan を削除し、GUI smoke 実績ファイルを report template に置き換えた。
 
 ### Fixed
 - adaptive walker のキャンセルが走査側で先に検知された場合でも、index worker が `Finished` ではなく `Canceled` として扱うようにした。
