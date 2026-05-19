@@ -4,6 +4,28 @@
 
 ## [Unreleased]
 ### Added
+-
+
+### Changed
+-
+
+### Fixed
+-
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+-
+
+## [0.18.0] - 2026-05-20
+### Added
 - adaptive walker の比較 perf test を GitHub Actions の perf regression workflow に追加し、jwalk との件数・速度比較を CI で継続確認できるようにした。
 - リリースノート作成 skill に、前タグから対象タグ/HEAD までの git range を本文ソースにする手順を明記した。
 
@@ -30,7 +52,7 @@
 -
 
 ### Known issues
--
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.17.6] - 2026-05-19
 ### Added
@@ -1226,7 +1248,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.17.6...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.0
 [0.17.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.6
 [0.17.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.5
 [0.17.4]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.4
