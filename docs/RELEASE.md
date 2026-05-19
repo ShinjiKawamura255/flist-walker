@@ -151,7 +151,7 @@
 
 ## GitHub Actions 自動リリース
 1. `vX.Y.Z` 形式の新規 tag を push する。
-2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
+2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked`、Linux の `cargo clippy --all-targets -- -D warnings`、`cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
 3. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
 5. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内を続ける。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` で署名する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
@@ -166,6 +166,7 @@
 - `THIRD_PARTY_NOTICES.txt` が現在の `Cargo.toml` / `Cargo.lock` の direct dependency と license families を反映していること。自己更新系依存（例: `ed25519-dalek`, `rand_core`, `sha2`, `ureq`, `semver`）の追加・更新時は同一変更で見直すこと。
 - 自動更新を有効にする配布ビルドでは、`FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` が build 時に設定されていること。
 - `SHA256SUMS.sig` を生成する release 作業では、`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` が package / draft release 作成時に設定されていること。
+- release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
 - notarization 環境が未整備な当面の間は、macOS を publish 対象に含める場合でも notarization 完了を必須条件にしない。その代わり release note に未 notarized である旨を記載すること。

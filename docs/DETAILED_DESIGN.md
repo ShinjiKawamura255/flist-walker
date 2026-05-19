@@ -235,7 +235,7 @@ Important behaviors:
 - Uses `latest_request_ids` by tab to cancel superseded index work.
 - Uses walker `file_type` for fast file/dir classification and defers symlink/shortcut metadata when possible.
 - Uses adaptive as the default walker backend. A manually added `developer.walker_backend = "jwalk"` runtime config value can temporarily return the GUI index worker to the jwalk backend.
-- Adaptive walker can separately configure its initial and maximum concurrent read-dir limits via manual `developer.walker_adaptive_initial_limit` and `developer.walker_adaptive_max_limit` values. When omitted, the maximum uses `walker_threads` and the initial limit uses half of that maximum, rounded up. When `walker_threads` is omitted, it defaults to the smaller of 8 or half of the logical CPU count, with a minimum of 1.
+- Adaptive walker can separately configure its initial and maximum concurrent read-dir limits via manual `developer.walker_adaptive_initial_limit` and `developer.walker_adaptive_max_limit` values. The maximum is clamped to `walker_threads`, so a single-thread runtime keeps the serial fast path even when the transitional max override is present. When omitted, the maximum uses `walker_threads` and the initial limit uses half of that maximum, rounded up. When `walker_threads` is omitted, it defaults to the smaller of 8 or half of the logical CPU count, with a minimum of 1.
 - When `walker_threads` clamps to 1, the adaptive backend uses a serial fast path rather than the channel / condvar / worker-pool path. This keeps the adaptive default cheap on 1-vCPU and 2-vCPU VM-style environments.
 - `developer.walker_adaptive_initial_limit` and `developer.walker_adaptive_max_limit` are transitional tuning / rollback knobs and removal candidates after the adaptive default has proven stable. Keep normal operation centered on `walker_threads` plus adaptive defaults, rather than expanding these fields as public configuration.
 - Adaptive walker skips Windows compatibility junctions that combine Hidden, System, and ReparsePoint attributes, and does not recurse through other reparse-point directories. This keeps Explorer-hidden legacy folders such as Documents/My Music out of adaptive Walker results.
@@ -737,7 +737,7 @@ Recommended validation for changes that use this document:
 | --- | --- | --- | --- |
 | VM-001 | Docs only | affected doc diff review and `rg` reference checks | Rust tests are unnecessary unless Rust files change. |
 | VM-002 | App/UI orchestration | `cd rust && cargo test` | GUI smoke for dialog/focus/tab/render/input changes. |
-| VM-003 | Index/FileList/walker | `cd rust && cargo test` plus the two ignored perf tests from AGENTS.md when indexing paths change | Large-root GUI smoke and trace smoke if observable worker trace changes. |
+| VM-003 | Index/FileList/walker | `cd rust && cargo test` plus the three ignored perf tests from AGENTS.md / TESTPLAN when indexing paths change | Large-root GUI smoke and trace smoke if observable worker trace changes. |
 | VM-004 | Search/query/highlight/sort contract | `cd rust && cargo test` | Manual query checks for `'`, `!`, `^`, `$`, and `|` when user-visible behavior changes. |
 | VM-005 | CLI/build/release/updater | `cd rust && cargo test` | Release docs review, platform asset review, manual update tests as needed. |
 | VM-006 | CI coverage gate / GUI validation docs | `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` | Re-measure and update baseline when raising threshold. |

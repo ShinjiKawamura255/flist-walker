@@ -4,13 +4,20 @@
 
 ## [Unreleased]
 ### Added
--
+- adaptive walker の比較 perf test を GitHub Actions の perf regression workflow に追加し、jwalk との件数・速度比較を CI で継続確認できるようにした。
+- リリースノート作成 skill に、前タグから対象タグ/HEAD までの git range を本文ソースにする手順を明記した。
 
 ### Changed
--
+- Walker backend の既定を adaptive walker に変更した。暫定 rollback として developer config の `walker_backend = "jwalk"` で jwalk に戻せる。
+- `walker_threads` 未指定時の既定値を論理コア数に応じて最大 8、最低 1 にし、adaptive walker の初期 read_dir 上限は最大値の半分から開始するようにした。
+- 低コア環境向けに、adaptive walker の worker 上限が 1 の場合は thread pool を作らず serial fast path で走査するようにした。
+- adaptive walker の transitional tuning knobs は削除候補であることを docs に明記し、通常運用を `walker_threads` 中心に寄せた。
+- release 前チェックに Rust warning / clippy warning / release build log warning が残っていないことを追加した。
 
 ### Fixed
--
+- adaptive walker のキャンセルが走査側で先に検知された場合でも、index worker が `Finished` ではなく `Canceled` として扱うようにした。
+- adaptive walker の developer max override が `walker_threads` を迂回しないよう、最大同時 read_dir 数を `walker_threads` 以下に clamp した。
+- adaptive walker の producer queue に backpressure を入れ、高 fanout root で consumer 停止後に entry queue が膨らみ続けないようにした。
 
 ### Breaking
 -
@@ -1226,6 +1233,16 @@
 [0.17.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.2
 [0.17.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.1
 [0.17.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.0
+[0.16.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.16.1
+[0.16.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.16.0
+[0.15.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.15.0
+[0.14.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.14.0
+[0.13.4]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.13.4
+[0.13.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.13.3
+[0.13.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.13.2
+[0.13.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.13.1
+[0.13.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.13.0
+[0.12.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.3
 [0.12.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.2
 [0.12.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.1
 [0.12.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.12.0

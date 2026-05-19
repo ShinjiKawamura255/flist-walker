@@ -150,8 +150,28 @@ fn walker_runtime_settings_clamp_adaptive_limits() {
 
     let settings = walker_runtime_settings(&config);
 
-    assert_eq!(settings.adaptive_max_limit, WALKER_THREADS_MAX);
-    assert_eq!(settings.adaptive_initial_limit, WALKER_THREADS_MAX);
+    assert_eq!(settings.adaptive_max_limit, 3);
+    assert_eq!(settings.adaptive_initial_limit, 3);
+}
+
+#[test]
+fn walker_runtime_settings_clamp_adaptive_limits_to_single_thread() {
+    let config = RuntimeConfig {
+        walker_threads: 1,
+        developer: DeveloperRuntimeConfig {
+            walker_backend: "adaptive".to_string(),
+            walker_adaptive_initial_limit: Some(8),
+            walker_adaptive_max_limit: Some(8),
+            ..DeveloperRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    };
+
+    let settings = walker_runtime_settings(&config);
+
+    assert_eq!(settings.threads, 1);
+    assert_eq!(settings.adaptive_max_limit, 1);
+    assert_eq!(settings.adaptive_initial_limit, 1);
 }
 
 #[test]
@@ -222,6 +242,40 @@ fn adaptive_walker_can_stop_from_consumer_callback() {
 
     assert!(count <= 4);
 
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
+    set_process_runtime_config(RuntimeConfig {
+        walker_threads: 1,
+        developer: DeveloperRuntimeConfig {
+            walker_backend: "adaptive".to_string(),
+            ..DeveloperRuntimeConfig::default()
+        },
+        ..RuntimeConfig::default()
+    });
+    let root = test_root("adaptive-canceled-before-entry");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    std::fs::write(root.join("main.rs"), "fn main() {}").expect("write file");
+
+    let (tx_res, _rx_res) = mpsc::channel();
+    let req = IndexRequest {
+        request_id: 10,
+        tab_id: 3,
+        root: root.clone(),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+    };
+    let shutdown = AtomicBool::new(false);
+    let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id + 1)]));
+
+    let result = stream_walker_index(&tx_res, &req, &root, &shutdown, &latest_request_ids);
+
+    assert_eq!(result, Err("superseded".to_string()));
+    set_process_runtime_config(RuntimeConfig::default());
     let _ = std::fs::remove_dir_all(&root);
 }
 

@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::mpsc::{self, RecvTimeoutError, Sender};
+use std::sync::mpsc::{self, RecvTimeoutError, SyncSender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -141,7 +141,7 @@ fn adjust_limit(shared: &Shared, elapsed: Duration) {
     }
 }
 
-fn worker_loop(shared: Arc<Shared>, tx: Sender<AdaptiveWalkerEntry>) {
+fn worker_loop(shared: Arc<Shared>, tx: SyncSender<AdaptiveWalkerEntry>) {
     loop {
         let dir = {
             let mut state = match shared.state.lock() {
@@ -308,7 +308,8 @@ pub(super) fn walk_adaptive(
         max_workers,
         metrics: AdaptiveAtomicMetrics::new(initial_limit),
     });
-    let (tx, rx) = mpsc::channel();
+    let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
+    let (tx, rx) = mpsc::sync_channel(entry_queue_capacity);
     let mut handles = Vec::new();
     for _ in 0..max_workers {
         let worker_shared = Arc::clone(&shared);
@@ -339,6 +340,7 @@ pub(super) fn walk_adaptive(
 
     shared.stop.store(true, Ordering::Relaxed);
     shared.cv.notify_all();
+    drop(rx);
     for handle in handles {
         let _ = handle.join();
     }

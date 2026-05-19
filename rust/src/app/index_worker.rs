@@ -55,7 +55,7 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
         .developer
         .walker_adaptive_max_limit
         .unwrap_or(threads)
-        .clamp(1, WALKER_THREADS_MAX);
+        .clamp(1, threads);
     let adaptive_initial_limit = config
         .developer
         .walker_adaptive_initial_limit
@@ -672,6 +672,10 @@ fn stream_walker_index(
             );
             metrics.record_adaptive(adaptive_metrics);
         }
+    }
+
+    if stream_err.is_none() && should_cancel() {
+        stream_err = Some("superseded".to_string());
     }
 
     if let Some(err) = stream_err {
