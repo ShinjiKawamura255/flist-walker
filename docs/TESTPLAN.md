@@ -33,7 +33,7 @@
 - release candidate / nightly では `scripts/gui-headful-smoke.sh` または `scripts/gui-headful-smoke.ps1` で native window 起動の早期クラッシュを検出し、`rust/target/gui-smoke/evidence/GUI-HEADFUL-SMOKE.local.md` に記録する。通常 PR の required gate にはしない。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
-- Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` として分離し、walker 側の現行 control baseline は 1.25x を下限とする。
+- Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` と `perf_adaptive_walker_compares_with_jwalk_on_local_dataset` として分離し、walker 側の現行 control baseline は 1.25x を下限としつつ、adaptive と jwalk の件数一致・実行時間・read_dir 制御指標も継続計測する。
 - Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` を実行し、line coverage 75% 未満への低下を失敗扱いにする。2026-05-14 の fresh baseline は 79.08%（LH=12604 / LF=15938）。中期目標は 80% とする。enforced threshold を上げる変更では、同一変更内で fresh baseline、失敗時の不足領域、追加した owner-seam test を記録する。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。
@@ -216,7 +216,7 @@
 - audit warning posture: `docs/OSS_COMPLIANCE.md` の accepted transitive warning を確認し、release candidate ごとに `cd rust && cargo audit` を再実行する
 - coverage gate: `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`
 - coverage uplift target: 80% は release 直前の義務ではなく中期品質目標として扱う。80% へ上げる前に app/GUI owner seam の不足領域を追加 test で補強し、fresh baseline を再測定する。
-- heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または weekly schedule
+- heavy perf regression workflow: `.github/workflows/perf-regression.yml` の manual dispatch または weekly schedule で `perf_filelist_stream_is_faster_than_metadata_probe_baseline`、`perf_walker_classification_is_faster_than_eager_metadata_resolution`、`perf_adaptive_walker_compares_with_jwalk_on_local_dataset` を実行する
 - lightweight PR perf gate: `.github/workflows/ci-cross-platform.yml` の linux-native job で `perf_filelist_stream_is_faster_than_metadata_probe_baseline` を実行し、line-only fast path の優位を 1.20x 下限で監視する
 - GUI 手動試験: `scripts/gui-smoke-fixture.sh` 後に `cd rust && cargo run --bin flistwalker -- --root target/gui-smoke/root --limit 1000`
 - GUI headful smoke: `scripts/gui-headful-smoke.sh --duration 10` または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 10`
