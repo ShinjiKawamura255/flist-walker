@@ -293,6 +293,9 @@ pub(super) fn walk_adaptive(
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
     let max_workers = max_workers.max(1);
+    if max_workers == 1 {
+        return walk_adaptive_serial(root, on_entry, should_stop);
+    }
     let initial_limit = initial_limit.clamp(1, max_workers);
     let shared = Arc::new(Shared {
         state: Mutex::new(SharedState {
@@ -344,9 +347,83 @@ pub(super) fn walk_adaptive(
         .snapshot(shared.limit.load(Ordering::Relaxed).max(1))
 }
 
+fn walk_adaptive_serial(
+    root: &Path,
+    mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    let mut metrics = AdaptiveWalkerMetrics {
+        adaptive_limit_min: 1,
+        adaptive_limit_max: 1,
+        adaptive_limit_final: 1,
+        ..AdaptiveWalkerMetrics::default()
+    };
+    let mut queue = VecDeque::from([root.to_path_buf()]);
+
+    while let Some(dir) = queue.pop_front() {
+        if should_stop() {
+            break;
+        }
+        metrics.max_inflight_read_dirs = metrics.max_inflight_read_dirs.max(1);
+        let started = Instant::now();
+        let mut stop = false;
+        match fs::read_dir(&dir) {
+            Ok(read_dir) => {
+                for child in read_dir {
+                    if should_stop() {
+                        stop = true;
+                        break;
+                    }
+                    let Ok(child) = child else {
+                        metrics.read_dir_errors = metrics.read_dir_errors.saturating_add(1);
+                        continue;
+                    };
+                    let Ok(file_type) = child.file_type() else {
+                        metrics.read_dir_errors = metrics.read_dir_errors.saturating_add(1);
+                        continue;
+                    };
+                    let policy = adaptive_entry_policy(&child, &file_type);
+                    if policy.skip {
+                        continue;
+                    }
+                    let path = child.path();
+                    if file_type.is_dir() && policy.recurse {
+                        queue.push_back(path.clone());
+                    }
+                    if !on_entry(AdaptiveWalkerEntry { path, file_type }) {
+                        stop = true;
+                        break;
+                    }
+                }
+            }
+            Err(_) => {
+                metrics.read_dir_errors = metrics.read_dir_errors.saturating_add(1);
+            }
+        }
+        let elapsed_us = started.elapsed().as_micros();
+        metrics.dirs_read = metrics.dirs_read.saturating_add(1);
+        metrics.read_dir_total_us = metrics.read_dir_total_us.saturating_add(elapsed_us);
+        metrics.read_dir_max_us = metrics.read_dir_max_us.max(elapsed_us);
+        if stop {
+            break;
+        }
+    }
+
+    metrics
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_root(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("flistwalker-adaptive-walker-{name}-{nonce}"))
+    }
 
     #[test]
     fn windows_hidden_system_reparse_points_are_skipped() {
@@ -378,5 +455,36 @@ mod tests {
 
         assert!(!policy.skip);
         assert!(policy.recurse);
+    }
+
+    #[test]
+    fn single_worker_uses_serial_path_and_records_metrics() {
+        let root = test_root("serial");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("dir")).expect("create dir");
+        fs::write(root.join("dir").join("main.rs"), "fn main() {}").expect("write file");
+
+        let mut paths = Vec::new();
+        let metrics = walk_adaptive(
+            &root,
+            1,
+            1,
+            |entry| {
+                paths.push(entry.path);
+                true
+            },
+            || false,
+        );
+
+        assert!(paths.iter().any(|path| path.ends_with("dir")));
+        assert!(paths.iter().any(|path| path.ends_with("main.rs")));
+        assert!(metrics.dirs_read >= 1);
+        assert_eq!(metrics.max_inflight_read_dirs, 1);
+        assert_eq!(metrics.throttle_events, 0);
+        assert_eq!(metrics.adaptive_limit_min, 1);
+        assert_eq!(metrics.adaptive_limit_max, 1);
+        assert_eq!(metrics.adaptive_limit_final, 1);
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

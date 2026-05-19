@@ -168,6 +168,7 @@
 - Walker 解析は `jwalk` が返す `file_type` を通常ファイル/ディレクトリの即時分類に使い、リンクや Windows shortcut のような追加確認が必要な項目だけを後続の kind resolver へ遅延させる。初期 `Finished` は後処理完了を待たないが、`Finished`/`Truncated` 後は unknown kind を自動で kind resolver キューへ積み、バックグラウンドで収束させる。
 - Walker backend は既定で adaptive を使う。手動追記された runtime config の `developer.walker_backend = "jwalk"` の場合だけ、GUI index worker は jwalk backend へ戻せる。adaptive backend は read_dir latency に応じて同時 read_dir 数を `1..walker_threads` の範囲で調整できる。
 - `walker_threads` 未指定時の既定値は `min(8, 論理コア数 / 2)`（最低 1）とする。adaptive backend では、`developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` で初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は最大値を `walker_threads`、初期値を最大値の半分（端数切り上げ、最低 1）とする。
+- `walker_threads` が 1 へ clamp された場合、adaptive backend は serial fast path を使い、channel / condvar / worker pool の制御 overhead を避ける。これにより 1 vCPU / 2 vCPU VM でも adaptive 既定のまま低コア時の余分な並行制御を抑える。
 - `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` は暫定 tuning / rollback 用の削除候補として残す。通常運用では `walker_threads` と adaptive 既定値に集約し、安定確認後はこれらの個別指定を削除できる状態を保つ。
 - adaptive backend は Windows 互換用の `Hidden + System + ReparsePoint` junction を候補から除外する。その他の reparse point directory は候補として残してもリンク先へは再帰せず、`follow_links(false)` 相当の Walker 境界を保つ。
 - `developer.walker_metrics = true` の場合だけ、GUI index worker は Walker request の terminal point で summary metrics を 1 件出力する。per-entry/per-directory log は出さず、Indexing 完了・キャンセル・失敗後に継続ロギングしない。
