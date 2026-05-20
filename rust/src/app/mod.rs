@@ -91,6 +91,12 @@ pub(crate) use shell_support::clear_process_shutdown_request;
 pub(crate) use shell_support::process_shutdown_requested;
 pub use shell_support::{configure_egui_fonts, request_process_shutdown};
 
+fn walker_truncated_notice(limit: usize) -> String {
+    format!(
+        "Walker capped at {limit} entries (set walker_max_entries in the config file to adjust)"
+    )
+}
+
 impl TabAccentColor {
     pub(super) const ALL: [Self; 8] = [
         Self::Teal,

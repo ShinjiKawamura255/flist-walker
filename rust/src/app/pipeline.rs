@@ -1,6 +1,6 @@
 use super::{
-    AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, PipelineOwner,
+    walker_truncated_notice, AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry,
+    IndexRequest, IndexResponse, IndexSource, PipelineOwner,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::tabs::BackgroundIndexResponseEffect;
@@ -516,10 +516,7 @@ impl FlistWalkerApp {
                     self.shell.indexing.complete_active_request(request_id);
                 }
                 IndexResponse::Truncated { limit, .. } => {
-                    self.set_notice(format!(
-                        "Walker capped at {} entries (set FLISTWALKER_WALKER_MAX_ENTRIES to adjust)",
-                        limit
-                    ));
+                    self.set_notice(walker_truncated_notice(limit));
                 }
             }
 

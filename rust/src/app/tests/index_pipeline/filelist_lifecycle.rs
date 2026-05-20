@@ -230,6 +230,36 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
 }
 
 #[test]
+fn walker_truncated_notice_points_to_config_file_setting() {
+    let root = test_root("walker-truncated-config-notice");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(91);
+    app.shell.indexing.in_progress = true;
+
+    tx.send(IndexResponse::Truncated {
+        request_id: 91,
+        limit: 500_000,
+    })
+    .expect("send truncated response");
+
+    app.poll_index_response();
+
+    assert_eq!(
+        app.shell.runtime.notice,
+        "Walker capped at 500000 entries (set walker_max_entries in the config file to adjust)"
+    );
+    assert!(!app
+        .shell
+        .runtime
+        .notice
+        .contains("FLISTWALKER_WALKER_MAX_ENTRIES"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     let root = test_root("incremental-large-delta");
     fs::create_dir_all(&root).expect("create dir");

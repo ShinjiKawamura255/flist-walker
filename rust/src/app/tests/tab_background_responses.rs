@@ -294,3 +294,45 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
 
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn background_walker_truncated_notice_points_to_config_file_setting() {
+    let root = test_root("background-walker-truncated-config-notice");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (_index_req_tx, _index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_res_rx;
+
+    app.create_new_tab();
+    assert_eq!(app.shell.tabs.active_tab, 1);
+    let background_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(92, background_tab_id);
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .pending_index_request_id = Some(92);
+
+    index_res_tx
+        .send(IndexResponse::Truncated {
+            request_id: 92,
+            limit: 500_000,
+        })
+        .expect("send background truncated response");
+
+    app.poll_index_response();
+
+    let notice = &app.shell.tabs.get(0).expect("tab 0").notice;
+    assert_eq!(
+        notice,
+        "Walker capped at 500000 entries (set walker_max_entries in the config file to adjust)"
+    );
+    assert!(!notice.contains("FLISTWALKER_WALKER_MAX_ENTRIES"));
+
+    let _ = fs::remove_dir_all(&root);
+}
