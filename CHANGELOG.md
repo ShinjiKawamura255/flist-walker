@@ -7,7 +7,7 @@
 -
 
 ### Changed
-- Walker backend を adaptive のみに整理し、jwalk fallback と `walker_threads` runtime config option を削除した。既存 config に残る `walker_threads` / `developer.walker_backend` は読み込み時に削除される。
+-
 
 ### Fixed
 -
@@ -23,6 +23,30 @@
 
 ### Known issues
 -
+
+## [0.18.1] - 2026-05-20
+### Added
+-
+
+### Changed
+- Walker backend を adaptive のみに整理し、jwalk fallback と `walker_threads` runtime config option を削除した。既存 config に残る `walker_threads` / `developer.walker_backend` は読み込み時に削除される。
+- runtime config が未作成または既存 config に一般向け項目が欠けている場合、`walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` を既定値で補完するようにした。
+- Walker の上限到達 notice を、環境変数ではなく runtime config の `walker_max_entries` を案内する文言へ更新した。
+
+### Fixed
+- Indexing 中の status line `Entries` が、UI 反映済み entry と受信済み pending entry の合算を表示するようにした。
+
+### Breaking
+- `jwalk` fallback と `walker_threads` runtime config option を削除した。
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.18.0] - 2026-05-20
 ### Added
@@ -1248,7 +1272,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.1
 [0.18.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.0
 [0.17.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.6
 [0.17.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.5
