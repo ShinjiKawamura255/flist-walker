@@ -158,10 +158,17 @@ pub(super) fn path_is_within_root(root: &Path, path: &Path) -> bool {
 impl FlistWalkerApp {
     pub(super) fn status_line_text(&mut self) -> String {
         let indexed_count = if self.shell.indexing.in_progress {
-            if self.shell.runtime.index.entries.is_empty() {
+            let active_indexed_count = self
+                .shell
+                .runtime
+                .index
+                .entries
+                .len()
+                .saturating_add(self.shell.indexing.pending_entries.len());
+            if active_indexed_count == 0 {
                 self.shell.runtime.all_entries.len()
             } else {
-                self.shell.runtime.index.entries.len()
+                active_indexed_count
             }
         } else {
             self.shell.runtime.all_entries.len()

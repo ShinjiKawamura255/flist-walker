@@ -411,6 +411,34 @@ fn status_line_prefers_current_index_count_while_indexing() {
 }
 
 #[test]
+fn status_line_counts_pending_index_entries_while_indexing() {
+    let root = test_root("status-line-pending-index-count");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = true;
+    app.shell.runtime.all_entries = Arc::new(
+        (0..10)
+            .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
+            .collect::<Vec<_>>(),
+    );
+    app.shell.runtime.index.entries = (0..3)
+        .map(|i| unknown_entry(root.join(format!("new-{i}.txt"))))
+        .collect::<Vec<_>>();
+    app.shell.indexing.pending_entries = (0..4)
+        .map(|i| IndexEntry {
+            path: root.join(format!("pending-{i}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect::<VecDeque<_>>();
+
+    app.refresh_status_line();
+
+    assert_eq!(entries_count_from_status(&app.shell.runtime.status_line), 7);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn request_index_refresh_keeps_existing_entries_visible_until_new_results_arrive() {
     let root = test_root("refresh-keeps-visible");
     fs::create_dir_all(&root).expect("create dir");
