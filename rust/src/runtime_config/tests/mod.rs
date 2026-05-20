@@ -114,18 +114,90 @@ fn seeds_and_writes_config_when_missing() {
             .and_then(|value| value.as_bool()),
         Some(true)
     );
+    assert_eq!(
+        saved
+            .get("history_persist_disabled")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
     assert!(!saved.contains_key("search_threads"));
     assert!(!saved.contains_key("walker_threads"));
     assert!(!saved.contains_key("window_trace_enabled"));
     assert!(!saved.contains_key("window_trace_verbose"));
     assert!(!saved.contains_key("window_trace_path"));
-    assert!(!saved.contains_key("history_persist_disabled"));
     assert!(!saved.contains_key("update_feed_url"));
     assert!(!saved.contains_key("update_allow_same_version"));
     assert!(!saved.contains_key("update_allow_downgrade"));
     assert!(!saved.contains_key("disable_self_update"));
     assert!(!saved.contains_key("force_update_check_failure"));
     assert!(!saved.contains_key("developer"));
+
+    let _ = fs::remove_dir_all(&home);
+}
+
+#[test]
+fn seeds_default_user_config_values_when_missing() {
+    let _guard = locked_env();
+    let home = test_home("seed-user-defaults");
+    fs::create_dir_all(&home).expect("create home");
+    let _restore = EnvRestore::capture(&[
+        "HOME",
+        "USERPROFILE",
+        SEARCH_PARALLEL_THRESHOLD_ENV,
+        SEARCH_THREADS_ENV,
+        WALKER_MAX_ENTRIES_ENV,
+        WINDOW_TRACE_PATH_ENV,
+        WINDOW_TRACE_ENV,
+        WINDOW_TRACE_VERBOSE_ENV,
+        HISTORY_PERSIST_ENV,
+        RESTORE_TABS_ENV,
+        UPDATE_FEED_URL_ENV,
+        UPDATE_ALLOW_SAME_VERSION_ENV,
+        UPDATE_ALLOW_DOWNGRADE_ENV,
+        DISABLE_SELF_UPDATE_ENV,
+        FORCE_UPDATE_CHECK_FAILURE_ENV,
+    ]);
+    env::set_var("HOME", &home);
+    env::set_var("USERPROFILE", &home);
+    env::remove_var(SEARCH_PARALLEL_THRESHOLD_ENV);
+    env::remove_var(SEARCH_THREADS_ENV);
+    env::remove_var(WALKER_MAX_ENTRIES_ENV);
+    env::remove_var(WINDOW_TRACE_ENV);
+    env::remove_var(WINDOW_TRACE_VERBOSE_ENV);
+    env::remove_var(WINDOW_TRACE_PATH_ENV);
+    env::remove_var(HISTORY_PERSIST_ENV);
+    env::remove_var(RESTORE_TABS_ENV);
+    env::remove_var(UPDATE_FEED_URL_ENV);
+    env::remove_var(UPDATE_ALLOW_SAME_VERSION_ENV);
+    env::remove_var(UPDATE_ALLOW_DOWNGRADE_ENV);
+    env::remove_var(DISABLE_SELF_UPDATE_ENV);
+    env::remove_var(FORCE_UPDATE_CHECK_FAILURE_ENV);
+
+    let path = runtime_config_file_path_in(&home);
+    let _config = RuntimeConfig::load_or_seed_at(Some(path.clone()));
+
+    let text = fs::read_to_string(&path).expect("read config");
+    let saved_json: serde_json::Value = serde_json::from_str(&text).expect("parse config");
+    let saved = saved_json.as_object().expect("object config");
+    assert_eq!(
+        saved
+            .get("walker_max_entries")
+            .and_then(|value| value.as_u64()),
+        Some(WALKER_MAX_ENTRIES_DEFAULT as u64)
+    );
+    assert_eq!(
+        saved
+            .get("history_persist_disabled")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        saved
+            .get("restore_tabs_enabled")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(saved.len(), 3);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -294,6 +366,45 @@ fn load_runtime_config_from_path_handles_missing_field_defaults() {
     );
     assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
     assert_eq!(loaded.developer, DeveloperRuntimeConfig::default());
+
+    let _ = fs::remove_dir_all(&home);
+}
+
+#[test]
+fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
+    let _guard = locked_env();
+    let home = test_home("backfill-user-defaults");
+    fs::create_dir_all(&home).expect("create home");
+    let path = home.join(RUNTIME_CONFIG_FILE_NAME);
+    fs::write(&path, "{}").expect("write config");
+
+    let loaded = load_runtime_config_from_path(&path).expect("load config");
+
+    assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
+    assert!(!loaded.history_persist_disabled);
+    assert!(!loaded.restore_tabs_enabled);
+    let text = fs::read_to_string(&path).expect("read backfilled config");
+    let saved_json: serde_json::Value = serde_json::from_str(&text).expect("parse config");
+    let saved = saved_json.as_object().expect("object config");
+    assert_eq!(
+        saved
+            .get("walker_max_entries")
+            .and_then(|value| value.as_u64()),
+        Some(WALKER_MAX_ENTRIES_DEFAULT as u64)
+    );
+    assert_eq!(
+        saved
+            .get("history_persist_disabled")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        saved
+            .get("restore_tabs_enabled")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(saved.len(), 3);
 
     let _ = fs::remove_dir_all(&home);
 }

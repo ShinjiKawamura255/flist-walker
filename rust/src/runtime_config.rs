@@ -335,7 +335,7 @@ fn remove_file_best_effort(path: &Path) -> std::io::Result<()> {
 pub fn load_runtime_config_from_path(path: &Path) -> Option<RuntimeConfig> {
     let text = fs::read_to_string(path).ok()?;
     let config = serde_json::from_str::<RuntimeConfig>(&text).ok()?;
-    remove_deprecated_runtime_config_keys(path, &text);
+    normalize_runtime_config_file(path, &text, &config);
     Some(config)
 }
 
@@ -440,10 +440,8 @@ impl RuntimeConfig {
         let (window_trace_verbose_set, window_trace_verbose) =
             env_bool_with_presence(WINDOW_TRACE_VERBOSE_ENV);
         let (_, window_trace_path) = env_string_with_presence(WINDOW_TRACE_PATH_ENV);
-        let (history_persist_disabled_set, history_persist_disabled) =
-            env_bool_with_presence(HISTORY_PERSIST_ENV);
-        let (restore_tabs_enabled_set, restore_tabs_enabled) =
-            env_bool_with_presence(RESTORE_TABS_ENV);
+        let (_, history_persist_disabled) = env_bool_with_presence(HISTORY_PERSIST_ENV);
+        let (_, restore_tabs_enabled) = env_bool_with_presence(RESTORE_TABS_ENV);
         let (_, update_feed_url) = env_string_with_presence(UPDATE_FEED_URL_ENV);
         let (update_allow_same_version_set, update_allow_same_version) =
             env_bool_with_presence(UPDATE_ALLOW_SAME_VERSION_ENV);
@@ -485,13 +483,12 @@ impl RuntimeConfig {
             search_parallel_threshold: search_parallel_threshold
                 .map(|_| config.search_parallel_threshold),
             search_threads: search_threads.map(|_| config.search_threads),
-            walker_max_entries: walker_max_entries.map(|_| config.walker_max_entries),
+            walker_max_entries: Some(config.walker_max_entries),
             window_trace_enabled: window_trace_enabled_set.then_some(config.window_trace_enabled),
             window_trace_verbose: window_trace_verbose_set.then_some(config.window_trace_verbose),
             window_trace_path: window_trace_path.map(|_| config.window_trace_path.clone()),
-            history_persist_disabled: history_persist_disabled_set
-                .then_some(config.history_persist_disabled),
-            restore_tabs_enabled: restore_tabs_enabled_set.then_some(config.restore_tabs_enabled),
+            history_persist_disabled: Some(config.history_persist_disabled),
+            restore_tabs_enabled: Some(config.restore_tabs_enabled),
             update_feed_url: update_feed_url.map(|_| config.update_feed_url.clone()),
             update_allow_same_version: update_allow_same_version_set
                 .then_some(config.update_allow_same_version),
@@ -506,7 +503,7 @@ impl RuntimeConfig {
     }
 }
 
-fn remove_deprecated_runtime_config_keys(path: &Path, text: &str) {
+fn normalize_runtime_config_file(path: &Path, text: &str, config: &RuntimeConfig) {
     let Ok(mut value) = serde_json::from_str::<serde_json::Value>(text) else {
         return;
     };
@@ -515,6 +512,21 @@ fn remove_deprecated_runtime_config_keys(path: &Path, text: &str) {
     };
 
     let mut changed = root.remove("walker_threads").is_some();
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "walker_max_entries",
+        serde_json::json!(config.walker_max_entries),
+    );
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "history_persist_disabled",
+        serde_json::json!(config.history_persist_disabled),
+    );
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "restore_tabs_enabled",
+        serde_json::json!(config.restore_tabs_enabled),
+    );
     if let Some(developer) = root
         .get_mut("developer")
         .and_then(|value| value.as_object_mut())
@@ -531,12 +543,24 @@ fn remove_deprecated_runtime_config_keys(path: &Path, text: &str) {
         };
         if let Err(err) = write_text_atomic(path, &cleaned) {
             warn!(
-                "failed to remove deprecated runtime config keys from {}: {}",
+                "failed to normalize runtime config at {}: {}",
                 path.display(),
                 err
             );
         }
     }
+}
+
+fn insert_missing_runtime_config_value(
+    root: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    value: serde_json::Value,
+) -> bool {
+    if root.contains_key(key) {
+        return false;
+    }
+    root.insert(key.to_string(), value);
+    true
 }
 
 #[cfg(windows)]

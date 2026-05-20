@@ -71,7 +71,6 @@ fn walker_runtime_settings_use_adaptive_by_default() {
             walker_metrics_log_path: "metrics.log".to_string(),
             walker_adaptive_initial_limit: Some(3),
             walker_adaptive_max_limit: Some(6),
-            ..DeveloperRuntimeConfig::default()
         },
         ..RuntimeConfig::default()
     };
