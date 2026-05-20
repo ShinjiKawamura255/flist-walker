@@ -41,11 +41,11 @@
 - MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
 - MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。リンク種別などの詳細判定は完了後または必要時の後処理へ遅延できる。
 - MUST: Walker で遅延させた種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。
-- MUST: Walker backend は adaptive を既定とし、developer-only config の `walker_backend = "jwalk"` が明示された場合のみ jwalk backend へ戻せること。
-- SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は最大値を `walker_threads`、初期値を最大値の半分（端数切り上げ、最低 1）とする。
-- SHOULD: `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` は adaptive 既定化後の暫定 tuning / rollback 用項目として扱い、安定確認後の削除候補であることを維持する。公開向け設定として拡張してはならない。
-- SHOULD: `walker_threads` 未指定時の既定値は `min(8, 論理コア数 / 2)`（最低 1）とし、明示値も実行時に安全な範囲へ clamp する。
-- SHOULD: adaptive walker backend は `walker_threads` が 1 へ clamp された低コア環境では、channel / condvar / 複数 worker を使わない serial fast path で走査できること。
+- MUST: Walker backend は adaptive のみを使用し、jwalk backend への runtime config 切替口を持ってはならない。
+- SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は最大値を論理コア数ベースの既定値、初期値を最大値の半分（端数切り上げ、最低 1）とする。
+- SHOULD: `walker_threads` と `walker_backend` が既存 runtime config file に残っている場合、読み込み時に削除して以後の起動へ持ち越してはならない。
+- SHOULD: `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張してはならない。
+- SHOULD: adaptive walker backend は最大 worker 数が 1 の場合、channel / condvar / 複数 worker を使わない serial fast path で走査できること。
 - MUST: adaptive walker backend は Windows の Explorer で通常非表示となる互換用 junction（Hidden + System + ReparsePoint）を候補化してはならない。また、reparse point directory はリンク自体を候補化できても、リンク先へ再帰してはならない。
 - SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
 - SHOULD: developer-only metrics の `walker_metrics_log_path` が手動指定された場合、Walker は release GUI build でも console/stderr に依存せず、同じ bounded summary を指定ファイルへ追記できる。

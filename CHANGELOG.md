@@ -7,7 +7,7 @@
 -
 
 ### Changed
--
+- Walker backend を adaptive のみに整理し、jwalk fallback と `walker_threads` runtime config option を削除した。既存 config に残る `walker_threads` / `developer.walker_backend` は読み込み時に削除される。
 
 ### Fixed
 -

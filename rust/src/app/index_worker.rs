@@ -6,7 +6,6 @@ use crate::indexer::{
     IndexSource,
 };
 use crate::runtime_config::{current_runtime_config, RuntimeConfig};
-use jwalk::{Parallelism, WalkDir};
 use std::collections::HashMap;
 use std::fs::FileType;
 use std::fs::OpenOptions;
@@ -19,18 +18,16 @@ use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
-const WALKER_THREADS_MAX: usize = 8;
+const ADAPTIVE_WALKER_MAX_LIMIT_CAP: usize = 64;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum WalkerBackend {
-    Jwalk,
     Adaptive,
 }
 
 #[derive(Debug)]
 struct WalkerRuntimeSettings {
     max_entries: usize,
-    threads: usize,
     adaptive_initial_limit: usize,
     adaptive_max_limit: usize,
     backend: WalkerBackend,
@@ -39,23 +36,11 @@ struct WalkerRuntimeSettings {
 }
 
 fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
-    let backend = if config
-        .developer
-        .walker_backend
-        .trim()
-        .eq_ignore_ascii_case("jwalk")
-    {
-        WalkerBackend::Jwalk
-    } else {
-        WalkerBackend::Adaptive
-    };
-
-    let threads = config.walker_threads.clamp(1, WALKER_THREADS_MAX);
     let adaptive_max_limit = config
         .developer
         .walker_adaptive_max_limit
-        .unwrap_or(threads)
-        .clamp(1, threads);
+        .unwrap_or_else(default_adaptive_max_limit)
+        .max(1);
     let adaptive_initial_limit = config
         .developer
         .walker_adaptive_initial_limit
@@ -65,25 +50,23 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
 
     WalkerRuntimeSettings {
         max_entries: config.walker_max_entries.max(1),
-        threads,
         adaptive_initial_limit,
         adaptive_max_limit,
-        backend,
+        backend: WalkerBackend::Adaptive,
         metrics_enabled: config.developer.walker_metrics,
         metrics_log_path: config.developer.walker_metrics_log_path.clone(),
     }
 }
 
-fn default_adaptive_initial_limit(max_limit: usize) -> usize {
-    max_limit.div_ceil(2).max(1)
+fn default_adaptive_max_limit() -> usize {
+    std::thread::available_parallelism()
+        .map(|value| value.get())
+        .unwrap_or(1)
+        .clamp(1, ADAPTIVE_WALKER_MAX_LIMIT_CAP)
 }
 
-fn walker_parallelism(threads: usize) -> Parallelism {
-    if threads <= 1 {
-        Parallelism::Serial
-    } else {
-        Parallelism::RayonNewPool(threads)
-    }
+fn default_adaptive_initial_limit(max_limit: usize) -> usize {
+    max_limit.div_ceil(2).max(1)
 }
 
 fn is_windows_shortcut(path: &Path) -> bool {
@@ -201,7 +184,7 @@ struct WalkerMetrics {
 }
 
 impl WalkerMetrics {
-    fn new(backend: WalkerBackend, threads: usize) -> Self {
+    fn new(backend: WalkerBackend) -> Self {
         Self {
             backend,
             started_at: Instant::now(),
@@ -209,27 +192,11 @@ impl WalkerMetrics {
             batches_sent: 0,
             dirs_read: 0,
             read_dir_errors: 0,
-            max_inflight_read_dirs: if matches!(backend, WalkerBackend::Jwalk) {
-                threads
-            } else {
-                0
-            },
+            max_inflight_read_dirs: 0,
             throttle_events: 0,
-            adaptive_limit_min: if matches!(backend, WalkerBackend::Jwalk) {
-                threads
-            } else {
-                0
-            },
-            adaptive_limit_max: if matches!(backend, WalkerBackend::Jwalk) {
-                threads
-            } else {
-                0
-            },
-            adaptive_limit_final: if matches!(backend, WalkerBackend::Jwalk) {
-                threads
-            } else {
-                0
-            },
+            adaptive_limit_min: 0,
+            adaptive_limit_max: 0,
+            adaptive_limit_final: 0,
             read_dir_total_us: 0,
             read_dir_max_us: 0,
         }
@@ -262,7 +229,6 @@ impl WalkerMetrics {
 
 fn walker_backend_label(backend: WalkerBackend) -> &'static str {
     match backend {
-        WalkerBackend::Jwalk => "jwalk",
         WalkerBackend::Adaptive => "adaptive",
     }
 }
@@ -589,7 +555,7 @@ fn stream_walker_index(
     let settings = walker_runtime_settings(&current_runtime_config());
     let max_entries = settings.max_entries;
     let mut truncated = false;
-    let mut metrics = WalkerMetrics::new(settings.backend, settings.threads);
+    let mut metrics = WalkerMetrics::new(settings.backend);
     let should_cancel = || {
         if shutdown.load(Ordering::Relaxed) {
             return true;
@@ -637,42 +603,24 @@ fn stream_walker_index(
         true
     };
 
-    match settings.backend {
-        WalkerBackend::Jwalk => {
-            for entry in WalkDir::new(root)
-                .parallelism(walker_parallelism(settings.threads))
-                .skip_hidden(false)
-                .follow_links(false)
-                .min_depth(1)
-                .into_iter()
-                .flatten()
-            {
-                if !handle_entry(entry.path().to_path_buf(), entry.file_type()) {
-                    break;
-                }
-            }
+    let should_cancel_for_walk = || {
+        if shutdown.load(Ordering::Relaxed) {
+            return true;
         }
-        WalkerBackend::Adaptive => {
-            let should_cancel_for_walk = || {
-                if shutdown.load(Ordering::Relaxed) {
-                    return true;
-                }
-                latest_request_ids
-                    .lock()
-                    .ok()
-                    .and_then(|m| m.get(&req.tab_id).copied())
-                    != Some(req.request_id)
-            };
-            let adaptive_metrics = walk_adaptive(
-                root,
-                settings.adaptive_max_limit,
-                settings.adaptive_initial_limit,
-                |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
-                should_cancel_for_walk,
-            );
-            metrics.record_adaptive(adaptive_metrics);
-        }
-    }
+        latest_request_ids
+            .lock()
+            .ok()
+            .and_then(|m| m.get(&req.tab_id).copied())
+            != Some(req.request_id)
+    };
+    let adaptive_metrics = walk_adaptive(
+        root,
+        settings.adaptive_max_limit,
+        settings.adaptive_initial_limit,
+        |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
+        should_cancel_for_walk,
+    );
+    metrics.record_adaptive(adaptive_metrics);
 
     if stream_err.is_none() && should_cancel() {
         stream_err = Some("superseded".to_string());

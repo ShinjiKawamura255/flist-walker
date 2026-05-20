@@ -53,7 +53,6 @@ fn seeds_and_writes_config_when_missing() {
         SEARCH_THREADS_ENV,
         RESTORE_TABS_ENV,
         WALKER_MAX_ENTRIES_ENV,
-        WALKER_THREADS_ENV,
         WINDOW_TRACE_PATH_ENV,
         WINDOW_TRACE_ENV,
         WINDOW_TRACE_VERBOSE_ENV,
@@ -70,7 +69,6 @@ fn seeds_and_writes_config_when_missing() {
     env::remove_var(SEARCH_THREADS_ENV);
     env::set_var(RESTORE_TABS_ENV, "1");
     env::set_var(WALKER_MAX_ENTRIES_ENV, "222");
-    env::remove_var(WALKER_THREADS_ENV);
     env::remove_var(WINDOW_TRACE_ENV);
     env::remove_var(WINDOW_TRACE_VERBOSE_ENV);
     env::remove_var(WINDOW_TRACE_PATH_ENV);
@@ -295,7 +293,6 @@ fn load_runtime_config_from_path_handles_missing_field_defaults() {
         SEARCH_PARALLEL_THRESHOLD_DEFAULT
     );
     assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
-    assert_eq!(loaded.walker_threads, default_walker_threads());
     assert_eq!(loaded.developer, DeveloperRuntimeConfig::default());
 
     let _ = fs::remove_dir_all(&home);
@@ -311,7 +308,6 @@ fn developer_config_loads_but_is_not_seeded() {
         &path,
         r#"{
   "developer": {
-    "walker_backend": "adaptive",
     "walker_metrics": true,
     "walker_metrics_log_path": "D:/tmp/flistwalker-walker-metrics.log",
     "walker_adaptive_initial_limit": 4,
@@ -323,7 +319,6 @@ fn developer_config_loads_but_is_not_seeded() {
 
     let loaded = load_runtime_config_from_path(&path).expect("load config");
 
-    assert_eq!(loaded.developer.walker_backend, "adaptive");
     assert!(loaded.developer.walker_metrics);
     assert_eq!(
         loaded.developer.walker_metrics_log_path,
@@ -351,7 +346,9 @@ fn migrate_file_if_needed_moves_legacy_file_into_current_location() {
     assert!(current_path.exists());
     assert!(!legacy_path.exists());
     let loaded = load_runtime_config_from_path(&current_path).expect("load migrated config");
-    assert_eq!(loaded.walker_threads, 7);
+    assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
+    let migrated_text = fs::read_to_string(&current_path).expect("read migrated config");
+    assert!(!migrated_text.contains("walker_threads"));
 
     let _ = fs::remove_dir_all(&base);
 }
@@ -373,7 +370,40 @@ fn migrate_file_if_needed_does_not_overwrite_existing_current_file() {
     assert!(current_path.exists());
     assert!(legacy_path.exists());
     let loaded = load_runtime_config_from_path(&current_path).expect("load current config");
-    assert_eq!(loaded.walker_threads, 9);
+    assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
+    let current_text = fs::read_to_string(&current_path).expect("read current config");
+    assert!(!current_text.contains("walker_threads"));
 
     let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn load_runtime_config_removes_deprecated_walker_options_from_existing_file() {
+    let _guard = locked_env();
+    let home = test_home("deprecated-walker-options");
+    fs::create_dir_all(&home).expect("create home");
+    let path = home.join(RUNTIME_CONFIG_FILE_NAME);
+    fs::write(
+        &path,
+        r#"{
+  "walker_threads": 7,
+  "walker_max_entries": 321,
+  "developer": {
+    "walker_backend": "jwalk",
+    "walker_metrics": true
+  }
+}"#,
+    )
+    .expect("write config");
+
+    let loaded = load_runtime_config_from_path(&path).expect("load config");
+
+    assert_eq!(loaded.walker_max_entries, 321);
+    assert!(loaded.developer.walker_metrics);
+    let text = fs::read_to_string(&path).expect("read cleaned config");
+    assert!(!text.contains("walker_threads"));
+    assert!(!text.contains("walker_backend"));
+    assert!(text.contains("walker_metrics"));
+
+    let _ = fs::remove_dir_all(&home);
 }

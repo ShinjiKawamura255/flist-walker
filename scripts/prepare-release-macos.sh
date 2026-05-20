@@ -170,7 +170,6 @@ Common runtime config keys:
 - restore_tabs_enabled: true restores tabs on the next launch.
 - history_persist_disabled: true disables query history load and save.
 - walker_max_entries: walker maximum entry count (default: 500000).
-- walker_threads: walker parallel thread count (default: 2, 1 means serial).
 
 Index options:
 - Use FileList: prefer FileList.txt / filelist.txt at the repository root
@@ -207,7 +206,7 @@ Runtime config:
 - 検索履歴は全タブ共通で最大100件まで保持され、短い待機後または結果移動開始時に確定します。
 - runtime config の restore_tabs_enabled を true にすると、終了時のタブ状態を次回起動時に復元できます。
 - runtime config の history_persist_disabled を true にすると、検索履歴の読み書きを無効化できます。
-- walker_max_entries / walker_threads は runtime config で調整できます。
+- walker_max_entries は runtime config で調整できます。
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。
 - Refresh Index は現在Rootで再インデックスします。
 README

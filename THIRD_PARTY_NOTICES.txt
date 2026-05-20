@@ -63,7 +63,7 @@ following license families:
 - MIT OR Apache-2.0: anyhow, clap, ctrlc, eframe, memory-stats, rand_core,
   rayon, regex, semver, serde, serde_json, sha2, tracing,
   tracing-subscriber, ureq
-- MIT: fuzzy-matcher, ico, jwalk, native-dialog, winres
+- MIT: fuzzy-matcher, ico, native-dialog, winres
 - BSD-3-Clause: ed25519-dalek
 - MPL-2.0: resvg
 

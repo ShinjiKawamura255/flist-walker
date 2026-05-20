@@ -45,5 +45,5 @@ jobs:
       - name: Run heavy walker perf regression test
         run: cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture
 
-      - name: Run adaptive walker comparison perf test
-        run: cargo test perf_adaptive_walker_compares_with_jwalk_on_local_dataset --lib -- --ignored --nocapture
+      - name: Run adaptive walker metrics perf test
+        run: cargo test perf_adaptive_walker_reports_local_dataset_metrics --lib -- --ignored --nocapture

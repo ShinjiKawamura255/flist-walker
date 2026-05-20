@@ -107,7 +107,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [index_worker.rs](../rust/src/app/index_worker.rs)
   - FileList / Walker streaming、kind classification、index worker thread 実装を担当する。
 - [adaptive_walker.rs](../rust/src/app/adaptive_walker.rs)
-  - 既定の adaptive Walker backend、低コア時の serial fast path、read_dir 制御指標の収集を担当する。暫定 rollback として developer config から jwalk backend へ戻せる。
+  - 既定かつ唯一の adaptive Walker backend、single-worker serial fast path、read_dir 制御指標の収集を担当する。
 - [worker_protocol.rs](../rust/src/app/worker_protocol.rs)
   - search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を実装モジュールから分離する。
 - [worker_bus.rs](../rust/src/app/worker_bus.rs)
@@ -231,6 +231,6 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 
 - Scenario: 50万件のエントリを持つ Walker インデクシングの途中で、UI が `KindResolverWorker` から解決済みのメタデータ（`EntryKind`）バッチを 512 個受け取る。このとき `apply_entry_kind_updates` 内で `Arc::make_mut(&mut self.entries)` などを呼び出すと、検索スレッドが別のスナップショットをホールドしているため毎フレーム50万要素の巨大な `Arc<Vec<Entry>>` クローン（数百万回の `PathBuf` アロケーション）が発生し、UI が完全にフリーズする。
 - Expected Behavior: UI は巨大リストに対する O(N) のクローンをせず、`self.cache.entry_kind` へ解決された Kind を安全に書き込み、それを参照することでメタデータ解決の恩恵（アイコン表示やフィルタ反映）を O(1) で得る。
-- Non-goals: `WalkDir` 自身の遅延解決以外の部分（メタデータ取得そのものの OS I/O 遅延）は Background スレッドに閉じるため本件の責務ではない。
+- Non-goals: Walker 自身の遅延解決以外の部分（メタデータ取得そのものの OS I/O 遅延）は Background スレッドに閉じるため本件の責務ではない。
 - Related Tests: `poll_kind_response_does_not_clone_arc_shared_entries_regression` (in `kind_resolution.rs`)
 - Notes for Future Changes: `app.entries` および他のエントリリスト(`all_entries`, `incremental_filtered_entries`, `index.entries`) に対して、チャンク処理中のループ内で一括更新を目的に `mut` 参照を要求・上書きしてはいけない。常に Cache (辞書) を更新し、描画やフィルタリング時は Cache を `Entry` より優先して参照すること。

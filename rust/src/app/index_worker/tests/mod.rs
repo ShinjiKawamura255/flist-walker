@@ -65,13 +65,12 @@ fn classify_walker_entry_defers_windows_shortcut_when_both_filters_enabled() {
 #[test]
 fn walker_runtime_settings_use_adaptive_by_default() {
     let config = RuntimeConfig {
-        walker_threads: 4,
         walker_max_entries: 123,
         developer: DeveloperRuntimeConfig {
             walker_metrics: true,
             walker_metrics_log_path: "metrics.log".to_string(),
-            walker_adaptive_initial_limit: None,
-            walker_adaptive_max_limit: None,
+            walker_adaptive_initial_limit: Some(3),
+            walker_adaptive_max_limit: Some(6),
             ..DeveloperRuntimeConfig::default()
         },
         ..RuntimeConfig::default()
@@ -80,29 +79,22 @@ fn walker_runtime_settings_use_adaptive_by_default() {
     let settings = walker_runtime_settings(&config);
 
     assert_eq!(settings.backend, WalkerBackend::Adaptive);
-    assert_eq!(settings.threads, 4);
-    assert_eq!(settings.adaptive_initial_limit, 2);
-    assert_eq!(settings.adaptive_max_limit, 4);
+    assert_eq!(settings.adaptive_initial_limit, 3);
+    assert_eq!(settings.adaptive_max_limit, 6);
     assert_eq!(settings.metrics_log_path, "metrics.log");
     assert_eq!(settings.max_entries, 123);
     assert!(settings.metrics_enabled);
 }
 
 #[test]
-fn walker_runtime_settings_can_fallback_to_jwalk_from_developer_config() {
+fn walker_runtime_settings_always_uses_adaptive_backend() {
     let config = RuntimeConfig {
-        walker_threads: 4,
-        developer: DeveloperRuntimeConfig {
-            walker_backend: "jwalk".to_string(),
-            ..DeveloperRuntimeConfig::default()
-        },
         ..RuntimeConfig::default()
     };
 
     let settings = walker_runtime_settings(&config);
 
-    assert_eq!(settings.backend, WalkerBackend::Jwalk);
-    assert_eq!(settings.threads, 4);
+    assert_eq!(settings.backend, WalkerBackend::Adaptive);
 }
 
 #[test]
@@ -119,7 +111,7 @@ fn walker_metrics_summary_can_be_written_to_file() {
         include_files: true,
         include_dirs: true,
     };
-    let mut metrics = WalkerMetrics::new(WalkerBackend::Adaptive, 2);
+    let mut metrics = WalkerMetrics::new(WalkerBackend::Adaptive);
     metrics.entries_emitted = 11;
     metrics.batches_sent = 2;
     metrics.dirs_read = 5;
@@ -136,11 +128,9 @@ fn walker_metrics_summary_can_be_written_to_file() {
 }
 
 #[test]
-fn walker_runtime_settings_clamp_adaptive_limits() {
+fn walker_runtime_settings_uses_explicit_adaptive_limits_without_walker_threads_clamp() {
     let config = RuntimeConfig {
-        walker_threads: 3,
         developer: DeveloperRuntimeConfig {
-            walker_backend: "adaptive".to_string(),
             walker_adaptive_initial_limit: Some(9),
             walker_adaptive_max_limit: Some(99),
             ..DeveloperRuntimeConfig::default()
@@ -150,18 +140,16 @@ fn walker_runtime_settings_clamp_adaptive_limits() {
 
     let settings = walker_runtime_settings(&config);
 
-    assert_eq!(settings.adaptive_max_limit, 3);
-    assert_eq!(settings.adaptive_initial_limit, 3);
+    assert_eq!(settings.adaptive_max_limit, 99);
+    assert_eq!(settings.adaptive_initial_limit, 9);
 }
 
 #[test]
 fn walker_runtime_settings_clamp_adaptive_limits_to_single_thread() {
     let config = RuntimeConfig {
-        walker_threads: 1,
         developer: DeveloperRuntimeConfig {
-            walker_backend: "adaptive".to_string(),
             walker_adaptive_initial_limit: Some(8),
-            walker_adaptive_max_limit: Some(8),
+            walker_adaptive_max_limit: Some(1),
             ..DeveloperRuntimeConfig::default()
         },
         ..RuntimeConfig::default()
@@ -169,7 +157,6 @@ fn walker_runtime_settings_clamp_adaptive_limits_to_single_thread() {
 
     let settings = walker_runtime_settings(&config);
 
-    assert_eq!(settings.threads, 1);
     assert_eq!(settings.adaptive_max_limit, 1);
     assert_eq!(settings.adaptive_initial_limit, 1);
 }
@@ -177,7 +164,6 @@ fn walker_runtime_settings_clamp_adaptive_limits_to_single_thread() {
 #[test]
 fn walker_runtime_settings_default_adaptive_initial_limit_is_half_of_max() {
     let config = RuntimeConfig {
-        walker_threads: 8,
         developer: DeveloperRuntimeConfig {
             walker_adaptive_max_limit: Some(8),
             ..DeveloperRuntimeConfig::default()
@@ -248,9 +234,9 @@ fn adaptive_walker_can_stop_from_consumer_callback() {
 #[test]
 fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
     set_process_runtime_config(RuntimeConfig {
-        walker_threads: 1,
         developer: DeveloperRuntimeConfig {
-            walker_backend: "adaptive".to_string(),
+            walker_adaptive_initial_limit: Some(1),
+            walker_adaptive_max_limit: Some(1),
             ..DeveloperRuntimeConfig::default()
         },
         ..RuntimeConfig::default()
@@ -336,8 +322,8 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
 }
 
 #[test]
-fn adaptive_walker_matches_jwalk_count_on_basic_tree() {
-    let root = test_root("adaptive-jwalk-count");
+fn adaptive_walker_matches_std_read_dir_count_on_basic_tree() {
+    let root = test_root("adaptive-std-count");
     let _ = std::fs::remove_dir_all(&root);
     let dataset = root.join("dataset");
     std::fs::create_dir_all(dataset.join("a")).expect("create a");
@@ -345,17 +331,7 @@ fn adaptive_walker_matches_jwalk_count_on_basic_tree() {
     std::fs::write(dataset.join("a").join("main.rs"), "fn main() {}").expect("write main");
     std::fs::write(dataset.join("b").join("lib.rs"), "pub fn lib() {}").expect("write lib");
 
-    let jwalk_count = WalkDir::new(&root)
-        .parallelism(Parallelism::Serial)
-        .skip_hidden(false)
-        .follow_links(false)
-        .min_depth(1)
-        .into_iter()
-        .flatten()
-        .filter(|entry| {
-            classify_walker_entry(&entry.path(), entry.file_type(), true, true).is_some()
-        })
-        .count();
+    let std_count = count_std_walker_entries(&root);
 
     let mut adaptive_count = 0usize;
     let _metrics = walk_adaptive(
@@ -371,14 +347,14 @@ fn adaptive_walker_matches_jwalk_count_on_basic_tree() {
         || false,
     );
 
-    assert_eq!(adaptive_count, jwalk_count);
+    assert_eq!(adaptive_count, std_count);
 
     let _ = std::fs::remove_dir_all(&root);
 }
 
 #[test]
 #[ignore = "perf measurement; run explicitly"]
-fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
+fn perf_adaptive_walker_reports_local_dataset_metrics() {
     let root = test_root("perf-adaptive-compare");
     let _ = std::fs::remove_dir_all(&root);
     let dataset = root.join("dataset");
@@ -389,21 +365,9 @@ fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
         std::fs::write(dir.join("main.rs"), "fn main() {}").expect("write file");
     }
 
-    let jwalk_start = Instant::now();
-    let mut jwalk_count = 0usize;
-    for entry in WalkDir::new(&root)
-        .parallelism(Parallelism::RayonNewPool(2))
-        .skip_hidden(false)
-        .follow_links(false)
-        .min_depth(1)
-        .into_iter()
-        .flatten()
-    {
-        if classify_walker_entry(&entry.path(), entry.file_type(), true, true).is_some() {
-            jwalk_count = jwalk_count.saturating_add(1);
-        }
-    }
-    let jwalk_elapsed = jwalk_start.elapsed();
+    let std_start = Instant::now();
+    let std_count = count_std_walker_entries(&root);
+    let std_elapsed = std_start.elapsed();
 
     let adaptive_start = Instant::now();
     let mut adaptive_count = 0usize;
@@ -422,10 +386,10 @@ fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
     let adaptive_elapsed = adaptive_start.elapsed();
 
     eprintln!(
-        "Walker backend comparison jwalk_ms={:.3} adaptive_ms={:.3} jwalk_count={} adaptive_count={} adaptive_dirs_read={} adaptive_errors={} adaptive_max_inflight={} adaptive_throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_read_dir_avg_us={} adaptive_read_dir_max_us={}",
-        jwalk_elapsed.as_secs_f64() * 1000.0,
+        "Walker backend comparison std_read_dir_ms={:.3} adaptive_ms={:.3} std_count={} adaptive_count={} adaptive_dirs_read={} adaptive_errors={} adaptive_max_inflight={} adaptive_throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_read_dir_avg_us={} adaptive_read_dir_max_us={}",
+        std_elapsed.as_secs_f64() * 1000.0,
         adaptive_elapsed.as_secs_f64() * 1000.0,
-        jwalk_count,
+        std_count,
         adaptive_count,
         adaptive_metrics.dirs_read,
         adaptive_metrics.read_dir_errors,
@@ -442,7 +406,7 @@ fn perf_adaptive_walker_compares_with_jwalk_on_local_dataset() {
         adaptive_metrics.read_dir_max_us,
     );
 
-    assert_eq!(jwalk_count, adaptive_count);
+    assert_eq!(std_count, adaptive_count);
     assert!(adaptive_metrics.max_inflight_read_dirs <= 2);
 
     let _ = std::fs::remove_dir_all(&root);
@@ -469,35 +433,11 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
 
     for _ in 0..iterations {
         let eager_start = Instant::now();
-        eager_count = 0;
-        for entry in WalkDir::new(&root)
-            .parallelism(Parallelism::Serial)
-            .skip_hidden(false)
-            .follow_links(false)
-            .min_depth(1)
-            .into_iter()
-            .flatten()
-        {
-            if resolve_entry_kind(&entry.path()).is_some() {
-                eager_count = eager_count.saturating_add(1);
-            }
-        }
+        eager_count = count_eager_metadata_entries(&root);
         eager_best = eager_best.min(eager_start.elapsed());
 
         let fast_start = Instant::now();
-        fast_count = 0;
-        for entry in WalkDir::new(&root)
-            .parallelism(Parallelism::Serial)
-            .skip_hidden(false)
-            .follow_links(false)
-            .min_depth(1)
-            .into_iter()
-            .flatten()
-        {
-            if classify_walker_entry(&entry.path(), entry.file_type(), true, true).is_some() {
-                fast_count = fast_count.saturating_add(1);
-            }
-        }
+        fast_count = count_std_walker_entries(&root);
         fast_best = fast_best.min(fast_start.elapsed());
     }
 
@@ -519,4 +459,40 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
         "walker fast classification did not beat the control baseline enough: {speedup:.2}x"
     );
     let _ = std::fs::remove_dir_all(&root);
+}
+
+fn count_std_walker_entries(root: &Path) -> usize {
+    let mut count = 0usize;
+    visit_std_walker_entries(root, &mut |path, file_type| {
+        if classify_walker_entry(path, file_type, true, true).is_some() {
+            count = count.saturating_add(1);
+        }
+    });
+    count
+}
+
+fn count_eager_metadata_entries(root: &Path) -> usize {
+    let mut count = 0usize;
+    visit_std_walker_entries(root, &mut |path, _file_type| {
+        if resolve_entry_kind(path).is_some() {
+            count = count.saturating_add(1);
+        }
+    });
+    count
+}
+
+fn visit_std_walker_entries(root: &Path, on_entry: &mut impl FnMut(&Path, FileType)) {
+    let Ok(read_dir) = std::fs::read_dir(root) else {
+        return;
+    };
+    for child in read_dir.flatten() {
+        let Ok(file_type) = child.file_type() else {
+            continue;
+        };
+        let path = child.path();
+        on_entry(&path, file_type);
+        if file_type.is_dir() && !file_type.is_symlink() {
+            visit_std_walker_entries(&path, on_entry);
+        }
+    }
 }

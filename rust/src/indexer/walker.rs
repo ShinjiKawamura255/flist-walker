@@ -1,24 +1,31 @@
-use jwalk::WalkDir;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
+    walk_into(root, &mut files, &mut dirs);
+    (files, dirs)
+}
 
-    for entry in WalkDir::new(root)
-        .follow_links(false)
-        .min_depth(1)
-        .into_iter()
-        .flatten()
-    {
-        let path = entry.path().to_path_buf();
-        if entry.file_type().is_dir() {
-            dirs.push(path);
+fn walk_into(root: &Path, files: &mut Vec<PathBuf>, dirs: &mut Vec<PathBuf>) {
+    let Ok(read_dir) = fs::read_dir(root) else {
+        return;
+    };
+    for child in read_dir.flatten() {
+        let Ok(file_type) = child.file_type() else {
+            continue;
+        };
+        let path = child.path();
+        if file_type.is_dir() {
+            dirs.push(path.clone());
+            if !file_type.is_symlink() {
+                walk_into(&path, files, dirs);
+            }
         } else {
             files.push(path);
         }
     }
-    (files, dirs)
 }
 
 pub fn walk_files(root: &Path) -> Vec<PathBuf> {

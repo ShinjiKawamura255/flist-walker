@@ -17,13 +17,11 @@ const WINDOWS_SETTINGS_DIR_NAME: &str = "flistwalker";
 const UNIX_SETTINGS_DIR_NAME: &str = ".flistwalker";
 const SEARCH_PARALLEL_THRESHOLD_DEFAULT: usize = 25_000;
 const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
-const WALKER_THREADS_MAX_DEFAULT: usize = 8;
 const WINDOW_TRACE_LOG_NAME: &str = ".flistwalker_window_trace.log";
 
 const SEARCH_PARALLEL_THRESHOLD_ENV: &str = "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD";
 const SEARCH_THREADS_ENV: &str = "FLISTWALKER_SEARCH_THREADS";
 const WALKER_MAX_ENTRIES_ENV: &str = "FLISTWALKER_WALKER_MAX_ENTRIES";
-const WALKER_THREADS_ENV: &str = "FLISTWALKER_WALKER_THREADS";
 const WINDOW_TRACE_ENV: &str = "FLISTWALKER_WINDOW_TRACE";
 const WINDOW_TRACE_VERBOSE_ENV: &str = "FLISTWALKER_WINDOW_TRACE_VERBOSE";
 const WINDOW_TRACE_PATH_ENV: &str = "FLISTWALKER_WINDOW_TRACE_PATH";
@@ -41,7 +39,6 @@ pub struct RuntimeConfig {
     pub search_parallel_threshold: usize,
     pub search_threads: usize,
     pub walker_max_entries: usize,
-    pub walker_threads: usize,
     pub window_trace_enabled: bool,
     pub window_trace_verbose: bool,
     pub window_trace_path: String,
@@ -59,7 +56,6 @@ pub struct RuntimeConfig {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DeveloperRuntimeConfig {
-    pub walker_backend: String,
     pub walker_metrics: bool,
     pub walker_metrics_log_path: String,
     pub walker_adaptive_initial_limit: Option<usize>,
@@ -80,8 +76,6 @@ struct RuntimeConfigSeed {
     search_threads: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     walker_max_entries: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    walker_threads: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     window_trace_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -128,7 +122,6 @@ impl Default for RuntimeConfig {
             search_parallel_threshold: SEARCH_PARALLEL_THRESHOLD_DEFAULT,
             search_threads: default_search_threads(),
             walker_max_entries: WALKER_MAX_ENTRIES_DEFAULT,
-            walker_threads: default_walker_threads(),
             window_trace_enabled: false,
             window_trace_verbose: false,
             window_trace_path: default_window_trace_path(),
@@ -156,7 +149,6 @@ impl RuntimeConfig {
         );
         set_env_value(SEARCH_THREADS_ENV, self.search_threads.to_string());
         set_env_value(WALKER_MAX_ENTRIES_ENV, self.walker_max_entries.to_string());
-        set_env_value(WALKER_THREADS_ENV, self.walker_threads.to_string());
         set_env_bool(WINDOW_TRACE_ENV, self.window_trace_enabled);
         set_env_bool(WINDOW_TRACE_VERBOSE_ENV, self.window_trace_verbose);
         set_env_value(WINDOW_TRACE_PATH_ENV, self.window_trace_path.clone());
@@ -342,7 +334,9 @@ fn remove_file_best_effort(path: &Path) -> std::io::Result<()> {
 
 pub fn load_runtime_config_from_path(path: &Path) -> Option<RuntimeConfig> {
     let text = fs::read_to_string(path).ok()?;
-    serde_json::from_str::<RuntimeConfig>(&text).ok()
+    let config = serde_json::from_str::<RuntimeConfig>(&text).ok()?;
+    remove_deprecated_runtime_config_keys(path, &text);
+    Some(config)
 }
 
 pub fn save_runtime_config_to_path(path: &Path, config: &RuntimeConfig) -> Result<()> {
@@ -382,14 +376,6 @@ fn default_search_threads() -> usize {
         .map(|value| value.get())
         .unwrap_or(1)
         .clamp(1, 32)
-}
-
-fn default_walker_threads() -> usize {
-    let half_logical = std::thread::available_parallelism()
-        .map(|value| value.get() / 2)
-        .unwrap_or(1)
-        .max(1);
-    half_logical.min(WALKER_THREADS_MAX_DEFAULT)
 }
 
 fn default_window_trace_path() -> String {
@@ -449,7 +435,6 @@ impl RuntimeConfig {
         let (_, search_parallel_threshold) = env_usize_with_presence(SEARCH_PARALLEL_THRESHOLD_ENV);
         let (_, search_threads) = env_usize_with_presence(SEARCH_THREADS_ENV);
         let (_, walker_max_entries) = env_usize_with_presence(WALKER_MAX_ENTRIES_ENV);
-        let (_, walker_threads) = env_usize_with_presence(WALKER_THREADS_ENV);
         let (window_trace_enabled_set, window_trace_enabled) =
             env_bool_with_presence(WINDOW_TRACE_ENV);
         let (window_trace_verbose_set, window_trace_verbose) =
@@ -474,7 +459,6 @@ impl RuntimeConfig {
                 .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT),
             search_threads: search_threads.unwrap_or_else(default_search_threads),
             walker_max_entries: walker_max_entries.unwrap_or(WALKER_MAX_ENTRIES_DEFAULT),
-            walker_threads: walker_threads.unwrap_or_else(default_walker_threads),
             window_trace_enabled,
             window_trace_verbose,
             window_trace_path: window_trace_path
@@ -502,7 +486,6 @@ impl RuntimeConfig {
                 .map(|_| config.search_parallel_threshold),
             search_threads: search_threads.map(|_| config.search_threads),
             walker_max_entries: walker_max_entries.map(|_| config.walker_max_entries),
-            walker_threads: walker_threads.map(|_| config.walker_threads),
             window_trace_enabled: window_trace_enabled_set.then_some(config.window_trace_enabled),
             window_trace_verbose: window_trace_verbose_set.then_some(config.window_trace_verbose),
             window_trace_path: window_trace_path.map(|_| config.window_trace_path.clone()),
@@ -520,6 +503,39 @@ impl RuntimeConfig {
         };
 
         (config, seed)
+    }
+}
+
+fn remove_deprecated_runtime_config_keys(path: &Path, text: &str) {
+    let Ok(mut value) = serde_json::from_str::<serde_json::Value>(text) else {
+        return;
+    };
+    let Some(root) = value.as_object_mut() else {
+        return;
+    };
+
+    let mut changed = root.remove("walker_threads").is_some();
+    if let Some(developer) = root
+        .get_mut("developer")
+        .and_then(|value| value.as_object_mut())
+    {
+        changed |= developer.remove("walker_backend").is_some();
+        if developer.is_empty() {
+            root.remove("developer");
+        }
+    }
+
+    if changed {
+        let Ok(cleaned) = serde_json::to_string_pretty(&value) else {
+            return;
+        };
+        if let Err(err) = write_text_atomic(path, &cleaned) {
+            warn!(
+                "failed to remove deprecated runtime config keys from {}: {}",
+                path.display(),
+                err
+            );
+        }
     }
 }
 
