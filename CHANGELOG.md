@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.18.2] - 2026-05-21
+### Added
+-
+
+### Changed
+- FileList の読み込みを再利用バッファと大きめの read buffer で高速化し、line-only fast path のオーバーヘッドを下げた。
+- FileList indexing で nested FileList が早期に見つかった場合は初回 stream の結果を再利用し、root FileList の二度読みを避けるようにした。
+- FileList indexing の batch 境界を調整し、worker から UI へ流す batch overhead を下げた。
+
+### Fixed
+- FileList indexing の batch 境界を 1024 件に固定する回帰テストを追加した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.1] - 2026-05-20
 ### Added
 -
