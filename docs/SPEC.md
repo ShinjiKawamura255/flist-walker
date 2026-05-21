@@ -44,7 +44,7 @@
 - MUST: Walker backend は adaptive のみを使用し、jwalk backend への runtime config 切替口を持ってはならない。
 - SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時の最大値は論理コア数の半分（端数切り上げ、最低 1、既定上限 8）とし、初期値は最大値の半分（端数切り上げ、最低 1）とする。
 - SHOULD: adaptive walker backend の自動調整は、単発の read_dir 遅延ではなく、短いサンプル窓の throughput を比較して行う。窓内の完了件数 / 経過時間が前窓から有意に改善した場合だけ limit を 1 段増やし、悪化した場合だけ 1 段減らし、誤差帯では維持する。
-- SHOULD: Walker の summary metrics は `adaptive_limit_final` に加えて `adaptive_limit_avg` と `adaptive_limit_change_count` を出力し、再測定時に平均的な並列度と揺れ幅を確認できるようにしなければならない。
+- SHOULD: Walker の summary metrics は `adaptive_limit_final` に加えて `adaptive_limit_avg` と `adaptive_limit_change_count` を出力し、再測定時に平均的な並列度と揺れ幅を確認できるようにしなければならない。`adaptive_limit_avg` は実ワーク中の時間加重平均を主対象としつつ、終了時の停止・join 尾を少量含みうることを明示しなければならない。
 - SHOULD: `walker_threads` と `walker_backend` が既存 runtime config file に残っている場合、読み込み時に削除して以後の起動へ持ち越してはならない。
 - SHOULD: `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張してはならない。
 - SHOULD: adaptive walker backend は最大 worker 数が 1 の場合、channel / condvar / 複数 worker を使わない serial fast path で走査できること。

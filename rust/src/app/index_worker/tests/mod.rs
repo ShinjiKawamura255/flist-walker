@@ -115,6 +115,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     metrics.entries_emitted = 11;
     metrics.batches_sent = 2;
     metrics.dirs_read = 5;
+    metrics.adaptive_limit_change_count = 7;
+    metrics.adaptive_limit_avg = 2.25;
 
     let summary = walker_metrics_summary(&req, &metrics, "finished");
     write_walker_metrics_summary(&summary, &log_path.to_string_lossy());
@@ -123,8 +125,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     assert!(text.contains("event=metrics"));
     assert!(text.contains("backend=adaptive"));
     assert!(text.contains("entries_emitted=11"));
-    assert!(text.contains("adaptive_limit_avg="));
-    assert!(text.contains("adaptive_limit_change_count="));
+    assert!(text.contains("adaptive_limit_avg=2.250"));
+    assert!(text.contains("adaptive_limit_change_count=7"));
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -183,7 +185,10 @@ fn walker_runtime_settings_default_adaptive_initial_limit_is_half_of_max() {
 fn default_adaptive_max_limit_caps_at_eight_and_uses_half_logical_cores() {
     assert_eq!(default_adaptive_max_limit_from_logical_cores(1), 1);
     assert_eq!(default_adaptive_max_limit_from_logical_cores(2), 1);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(3), 2);
     assert_eq!(default_adaptive_max_limit_from_logical_cores(4), 2);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(5), 3);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(15), 8);
     assert_eq!(default_adaptive_max_limit_from_logical_cores(16), 8);
     assert_eq!(default_adaptive_max_limit_from_logical_cores(64), 8);
 }
@@ -221,6 +226,9 @@ fn adaptive_walker_emits_entries_and_records_control_metrics() {
     assert!(metrics.dirs_read >= 1);
     assert!(metrics.max_inflight_read_dirs >= 1);
     assert!(metrics.adaptive_limit_final >= 1);
+    assert!(metrics.adaptive_limit_avg >= 1.0);
+    assert!(metrics.adaptive_limit_avg <= metrics.adaptive_limit_max as f64);
+    assert!(metrics.adaptive_limit_change_count <= metrics.dirs_read);
 
     let _ = std::fs::remove_dir_all(&root);
 }
