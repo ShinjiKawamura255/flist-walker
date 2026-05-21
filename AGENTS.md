@@ -67,7 +67,7 @@
 - `FLISTWALKER_UPDATE_FEED_URL` / `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION` / `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE` は開発・手動試験専用とし、`README.md`、`docs/RELEASE.md`、`.github/release-template.md`、GitHub Release 本文、CLI/GUI のユーザ向けヘルプなど配布物や公開向け文書へ記載してはならない。
 - release asset 名、対象 OS、GitHub Release 導線を変更した場合は `docs/RELEASE.md`、`.github/release-template.md`、`AGENTS.md` を同一変更で更新する。
 - `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れがあれば tag 作成前に修正する。
-- リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` の記法に従う。
+- リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` を必ず使い、その手順に従って前回 tag から対象 tag までの差分を一次情報にする。本文は手書きの記憶や直近数件の commit だけで作らず、`git log --oneline <前回tag>..<対象tag>` と `git diff --stat <前回tag>..<対象tag>` を確認してから要約する。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
 ## 7. トレース（抜粋）
