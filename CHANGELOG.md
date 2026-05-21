@@ -32,9 +32,11 @@
 - FileList の読み込みを再利用バッファと大きめの read buffer で高速化し、line-only fast path のオーバーヘッドを下げた。
 - FileList indexing で nested FileList が早期に見つかった場合は初回 stream の結果を再利用し、root FileList の二度読みを避けるようにした。
 - FileList indexing の batch 境界を調整し、worker から UI へ流す batch overhead を下げた。
+- adaptive walker の既定値を docs と揃え、チューニング計測とレビュー反映を通じて worker 上限とキャンセル挙動を再調整した。
 
 ### Fixed
 - FileList indexing の batch 境界を 1024 件に固定する回帰テストを追加した。
+- adaptive walker の review gaps を反映し、backpressure とキャンセル周辺の挙動を安定化した。
 
 ### Breaking
 -
