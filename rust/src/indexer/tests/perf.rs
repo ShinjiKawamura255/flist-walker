@@ -33,6 +33,34 @@ fn parse_filelist_stream_metadata_probe_count(filelist_path: &Path, root: &Path)
     Ok(count)
 }
 
+fn parse_filelist_stream_allocating_lines_count(
+    filelist_path: &Path,
+    root: &Path,
+) -> Result<usize> {
+    let file = File::open(filelist_path)
+        .with_context(|| format!("failed to read {}", filelist_path.display()))?;
+    let reader = BufReader::new(file);
+    let filelist_base = filelist_path.parent().unwrap_or(root);
+    let mut seen = HashSet::new();
+    let mut count = 0usize;
+
+    for line_result in reader.lines() {
+        let raw =
+            line_result.with_context(|| format!("failed to read {}", filelist_path.display()))?;
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
+        if let Some(path) = candidates.into_iter().next() {
+            if seen.insert(path) {
+                count = count.saturating_add(1);
+            }
+        }
+    }
+    Ok(count)
+}
+
 #[test]
 #[ignore = "perf measurement; run explicitly"]
 fn perf_filelist_stream_is_faster_than_metadata_probe_baseline() {
@@ -98,6 +126,70 @@ fn perf_filelist_stream_is_faster_than_metadata_probe_baseline() {
     assert!(
         speedup >= 1.20,
         "line-only FileList parse did not beat the metadata-probe control baseline enough: {speedup:.2}x"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+#[ignore = "perf measurement; run explicitly"]
+fn perf_filelist_stream_reuses_line_buffer() {
+    let root = test_root("perf-filelist-reuse-line-buffer");
+    fs::create_dir_all(&root).expect("create dir");
+    let filelist = root.join("FileList.txt");
+    let lines = 100_000usize;
+    let mut text = String::with_capacity(lines * 32);
+    for i in 0..lines {
+        text.push_str("dataset/");
+        text.push_str(&i.to_string());
+        text.push_str("/entry.txt\n");
+    }
+    fs::write(&filelist, text).expect("write synthetic filelist");
+
+    let iterations = 5usize;
+    let mut allocating_best = Duration::MAX;
+    let mut current_best = Duration::MAX;
+    let mut allocating_count = 0usize;
+    let mut current_count = 0usize;
+
+    for _ in 0..iterations {
+        let allocating_start = Instant::now();
+        allocating_count = parse_filelist_stream_allocating_lines_count(&filelist, &root)
+            .expect("allocating lines parse");
+        allocating_best = allocating_best.min(allocating_start.elapsed());
+
+        let current_start = Instant::now();
+        current_count = 0usize;
+        parse_filelist_stream(
+            &filelist,
+            &root,
+            true,
+            true,
+            || false,
+            |_path, _is_dir| {
+                current_count = current_count.saturating_add(1);
+            },
+        )
+        .expect("current parse");
+        current_best = current_best.min(current_start.elapsed());
+    }
+
+    let allocating_ms = allocating_best.as_secs_f64() * 1000.0;
+    let current_ms = current_best.as_secs_f64() * 1000.0;
+    let speedup = if current_ms > 0.0 {
+        allocating_ms / current_ms
+    } else {
+        f64::INFINITY
+    };
+
+    eprintln!(
+        "FileList line buffer perf lines={lines} allocating_lines_ms={allocating_ms:.3} current_ms={current_ms:.3} speedup={speedup:.2}x allocating_count={allocating_count} current_count={current_count}"
+    );
+
+    assert_eq!(allocating_count, lines);
+    assert_eq!(current_count, lines);
+    assert!(
+        speedup >= 1.02,
+        "reused line buffer did not beat allocating lines baseline enough: {speedup:.2}x"
     );
     let _ = fs::remove_dir_all(&root);
 }

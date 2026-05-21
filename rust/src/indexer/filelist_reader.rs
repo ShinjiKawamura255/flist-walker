@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use super::filelist_hierarchy::apply_nested_filelist_overrides;
 use super::filelist_writer::filelist_modified_time;
 
+const FILELIST_READ_BUFFER_BYTES: usize = 1024 * 1024;
+
 pub fn find_filelist(root: &Path) -> Option<PathBuf> {
     let upper = root.join("FileList.txt");
     if upper.is_file() {
@@ -135,15 +137,21 @@ where
 {
     let file = File::open(filelist_path)
         .with_context(|| format!("failed to read {}", filelist_path.display()))?;
-    let reader = BufReader::new(file);
+    let mut reader = BufReader::with_capacity(FILELIST_READ_BUFFER_BYTES, file);
+    let mut raw = String::new();
     let mut seen = HashSet::new();
     let filelist_base = filelist_path.parent().unwrap_or(root);
-    for line_result in reader.lines() {
+    loop {
         if should_cancel() {
             anyhow::bail!("superseded");
         }
-        let raw =
-            line_result.with_context(|| format!("failed to read {}", filelist_path.display()))?;
+        raw.clear();
+        let bytes_read = reader
+            .read_line(&mut raw)
+            .with_context(|| format!("failed to read {}", filelist_path.display()))?;
+        if bytes_read == 0 {
+            break;
+        }
         let line = raw.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
@@ -191,33 +199,47 @@ pub(crate) fn resolve_filelist_entry_candidates(
     root: &Path,
 ) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
-    let mut seen = HashSet::new();
-    let raws = preferred_filelist_raw_candidates(strip_wrapping_quotes(line));
+    let raw = strip_wrapping_quotes(line);
+    if !raw.contains('\\') {
+        if raw.is_empty() {
+            return candidates;
+        }
+        let p = Path::new(raw);
+        if p.is_absolute() {
+            push_unique_candidate(&mut candidates, p.to_path_buf());
+            return candidates;
+        }
 
+        push_unique_candidate(&mut candidates, filelist_base.join(p));
+        if filelist_base != root {
+            push_unique_candidate(&mut candidates, root.join(p));
+        }
+        return candidates;
+    }
+
+    let raws = preferred_filelist_raw_candidates(raw);
     for raw in raws {
         if raw.is_empty() {
             continue;
         }
         let p = PathBuf::from(&raw);
         if p.is_absolute() {
-            push_unique_candidate(&mut candidates, &mut seen, p.clone());
+            push_unique_candidate(&mut candidates, p.clone());
         } else if looks_like_windows_absolute_path(&raw) {
             #[cfg(windows)]
             {
-                push_unique_candidate(&mut candidates, &mut seen, PathBuf::from(&raw));
+                push_unique_candidate(&mut candidates, PathBuf::from(&raw));
             }
             #[cfg(not(windows))]
             {
                 if let Some(wsl) = windows_path_to_wsl(&raw) {
-                    push_unique_candidate(&mut candidates, &mut seen, wsl);
+                    push_unique_candidate(&mut candidates, wsl);
                 }
             }
-        }
-
-        if !looks_like_windows_absolute_path(&raw) {
-            push_unique_candidate(&mut candidates, &mut seen, filelist_base.join(&p));
+        } else {
+            push_unique_candidate(&mut candidates, filelist_base.join(&p));
             if filelist_base != root {
-                push_unique_candidate(&mut candidates, &mut seen, root.join(&p));
+                push_unique_candidate(&mut candidates, root.join(&p));
             }
         }
     }
@@ -248,12 +270,8 @@ fn preferred_filelist_raw_candidates(raw: &str) -> Vec<String> {
     }
 }
 
-fn push_unique_candidate(
-    candidates: &mut Vec<PathBuf>,
-    seen: &mut HashSet<PathBuf>,
-    candidate: PathBuf,
-) {
-    if seen.insert(candidate.clone()) {
+fn push_unique_candidate(candidates: &mut Vec<PathBuf>, candidate: PathBuf) {
+    if !candidates.iter().any(|existing| existing == &candidate) {
         candidates.push(candidate);
     }
 }
