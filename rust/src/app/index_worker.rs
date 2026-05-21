@@ -20,6 +20,9 @@ use tracing::{info, warn};
 
 const ADAPTIVE_WALKER_MAX_LIMIT_CAP: usize = 64;
 const ADAPTIVE_WALKER_MAX_LIMIT_DEFAULT_CAP: usize = 8;
+const FILELIST_BATCH_SIZE: usize = 1024;
+const WALKER_BATCH_SIZE: usize = 256;
+const INDEX_BATCH_FLUSH_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum WalkerBackend {
@@ -399,6 +402,8 @@ fn stream_filelist_index(
     }
 
     let mut buffer: Vec<IndexEntry> = Vec::new();
+    let mut streamed_entries_for_nested: Option<Vec<PathBuf>> = None;
+    let mut can_reuse_streamed_entries_for_nested = true;
     let mut last_flush = Instant::now();
     let mut stream_err: Option<String> = None;
     let mut has_nested_filelist_candidate = false;
@@ -425,6 +430,13 @@ fn stream_filelist_index(
                 && is_nested_filelist_candidate(&path, &filelist, root)
             {
                 has_nested_filelist_candidate = true;
+                if can_reuse_streamed_entries_for_nested {
+                    streamed_entries_for_nested =
+                        Some(buffer.iter().map(|entry| entry.path.clone()).collect());
+                }
+            }
+            if let Some(entries) = streamed_entries_for_nested.as_mut() {
+                entries.push(path.clone());
             }
             buffer.push(IndexEntry {
                 path,
@@ -437,7 +449,12 @@ fn stream_filelist_index(
                 }),
                 kind_known: is_dir.is_some(),
             });
-            if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
+            if buffer.len() >= FILELIST_BATCH_SIZE
+                || last_flush.elapsed() >= INDEX_BATCH_FLUSH_INTERVAL
+            {
+                if !has_nested_filelist_candidate {
+                    can_reuse_streamed_entries_for_nested = false;
+                }
                 if !flush_batch(tx_res, req.request_id, &mut buffer) {
                     stream_err = Some("index receiver closed".to_string());
                     return;
@@ -459,22 +476,26 @@ fn stream_filelist_index(
         return Ok(source);
     }
 
-    let mut final_entries = collect_filelist_entries_with_cancel(
-        &filelist,
-        root,
-        req.include_files,
-        req.include_dirs,
-        || {
-            if shutdown.load(Ordering::Relaxed) {
-                return true;
-            }
-            latest_request_ids
-                .lock()
-                .ok()
-                .and_then(|m| m.get(&req.tab_id).copied())
-                != Some(req.request_id)
-        },
-    )?;
+    let mut final_entries = if let Some(entries) = streamed_entries_for_nested {
+        entries
+    } else {
+        collect_filelist_entries_with_cancel(
+            &filelist,
+            root,
+            req.include_files,
+            req.include_dirs,
+            || {
+                if shutdown.load(Ordering::Relaxed) {
+                    return true;
+                }
+                latest_request_ids
+                    .lock()
+                    .ok()
+                    .and_then(|m| m.get(&req.tab_id).copied())
+                    != Some(req.request_id)
+            },
+        )?
+    };
     let replaced = apply_filelist_hierarchy_overrides(
         &filelist,
         root,
@@ -612,7 +633,7 @@ fn stream_walker_index(
         });
         emitted_entries = emitted_entries.saturating_add(1);
         metrics.entries_emitted = emitted_entries;
-        if buffer.len() >= 256 || last_flush.elapsed() >= Duration::from_millis(100) {
+        if buffer.len() >= WALKER_BATCH_SIZE || last_flush.elapsed() >= INDEX_BATCH_FLUSH_INTERVAL {
             if !flush_walker_batch(tx_res, req.request_id, &mut buffer, &mut metrics) {
                 stream_err = Some("index receiver closed".to_string());
                 return false;

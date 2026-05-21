@@ -294,6 +294,119 @@ fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
 }
 
 #[test]
+fn filelist_stream_uses_larger_batches() {
+    let root = test_root("filelist-large-batch");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    let filelist = root.join("FileList.txt");
+    let text = (0..1025usize)
+        .map(|i| format!("entry-{i}.txt\n"))
+        .collect::<String>();
+    std::fs::write(&filelist, text).expect("write filelist");
+
+    let (tx_res, rx_res) = mpsc::channel();
+    let req = IndexRequest {
+        request_id: 22,
+        tab_id: 5,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+    };
+    let shutdown = AtomicBool::new(false);
+    let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
+
+    let result = stream_filelist_index(
+        &tx_res,
+        &req,
+        &root,
+        filelist,
+        &shutdown,
+        &latest_request_ids,
+    );
+
+    assert!(matches!(result, Ok(IndexSource::FileList(_))));
+    let responses = rx_res.try_iter().collect::<Vec<_>>();
+    assert!(matches!(
+        responses.first(),
+        Some(IndexResponse::Started {
+            request_id: 22,
+            source: IndexSource::FileList(_),
+        })
+    ));
+    let batches = responses
+        .iter()
+        .filter_map(|response| match response {
+            IndexResponse::Batch { entries, .. } => Some(entries.len()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(batches, vec![1024, 1]);
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_stream_applies_nested_override_after_initial_batches() {
+    let root = test_root("filelist-nested-replace");
+    let _ = std::fs::remove_dir_all(&root);
+    let child = root.join("child");
+    std::fs::create_dir_all(&child).expect("create child");
+    std::fs::write(root.join("keep.txt"), "x").expect("write keep");
+    std::fs::write(child.join("old.txt"), "x").expect("write old");
+    std::fs::write(child.join("new.txt"), "x").expect("write new");
+    let root_filelist = root.join("FileList.txt");
+    std::fs::write(
+        &root_filelist,
+        "keep.txt\nchild\nchild/old.txt\nchild/filelist.txt\n",
+    )
+    .expect("write root filelist");
+    std::thread::sleep(Duration::from_millis(1100));
+    std::fs::write(child.join("filelist.txt"), "new.txt\n").expect("write child filelist");
+
+    let (tx_res, rx_res) = mpsc::channel();
+    let req = IndexRequest {
+        request_id: 23,
+        tab_id: 5,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+    };
+    let shutdown = AtomicBool::new(false);
+    let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
+
+    let result = stream_filelist_index(
+        &tx_res,
+        &req,
+        &root,
+        root_filelist,
+        &shutdown,
+        &latest_request_ids,
+    );
+
+    assert!(matches!(result, Ok(IndexSource::FileList(_))));
+    let responses = rx_res.try_iter().collect::<Vec<_>>();
+    let replaced = responses
+        .iter()
+        .find_map(|response| match response {
+            IndexResponse::ReplaceAll { entries, .. } => Some(entries),
+            _ => None,
+        })
+        .expect("replace all response");
+    let replaced_paths = replaced
+        .iter()
+        .map(|entry| entry.path.clone())
+        .collect::<Vec<_>>();
+    assert!(replaced_paths.contains(&root.join("keep.txt")));
+    assert!(replaced_paths.contains(&child.join("new.txt")));
+    assert!(!replaced_paths.contains(&child.join("old.txt")));
+    assert!(!replaced_paths.contains(&child));
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn index_worker_trace_smoke_emits_canonical_fields() {
     init_test_tracing();
     set_process_runtime_config(RuntimeConfig::default());
