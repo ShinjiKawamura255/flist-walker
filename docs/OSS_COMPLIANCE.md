@@ -21,10 +21,16 @@
 1. 追加・更新した依存を洗い出す。
    - `git diff -- rust/Cargo.toml rust/Cargo.lock`
    - 依存増減だけでなく feature 変更も対象にする。
+   - release 対象ごとの resolve graph を確認する。
+     - `cd rust && cargo metadata --locked --format-version 1 --filter-platform x86_64-pc-windows-gnu`
+     - `cd rust && cargo metadata --locked --format-version 1 --filter-platform x86_64-unknown-linux-gnu`
+     - `cd rust && cargo metadata --locked --format-version 1 --filter-platform x86_64-apple-darwin`
+     - `cd rust && cargo metadata --locked --format-version 1 --filter-platform aarch64-apple-darwin`
 2. 追加依存の license / notice 要否を確認する。
    - crates.io / upstream repository / license file を見て、再配布条件と notice 要件を確認する。
    - copyleft や追加条件付き license は、そのまま採用せず影響を整理する。
    - 観測性・診断用依存（例: `tracing`, `tracing-subscriber`）も対象外にしない。
+   - `THIRD_PARTY_NOTICES.txt` に残っている crate が現行 resolve graph から消えていないかも確認する。
 3. `THIRD_PARTY_NOTICES.txt` を更新する。
    - direct dependency と配布上重要な transitive dependency の変化を反映する。
    - release / self-update / sidecar 導線で配る内容と矛盾させない。
