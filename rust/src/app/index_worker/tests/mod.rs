@@ -177,6 +177,15 @@ fn walker_runtime_settings_default_adaptive_initial_limit_is_half_of_max() {
 }
 
 #[test]
+fn default_adaptive_max_limit_caps_at_eight_and_uses_half_logical_cores() {
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(1), 1);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(2), 1);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(4), 2);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(16), 8);
+    assert_eq!(default_adaptive_max_limit_from_logical_cores(64), 8);
+}
+
+#[test]
 fn adaptive_walker_emits_entries_and_records_control_metrics() {
     let root = test_root("adaptive-basic");
     let _ = std::fs::remove_dir_all(&root);

@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
 const ADAPTIVE_WALKER_MAX_LIMIT_CAP: usize = 64;
+const ADAPTIVE_WALKER_MAX_LIMIT_DEFAULT_CAP: usize = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum WalkerBackend {
@@ -59,9 +60,17 @@ fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
 }
 
 fn default_adaptive_max_limit() -> usize {
-    std::thread::available_parallelism()
+    let logical_cores = std::thread::available_parallelism()
         .map(|value| value.get())
-        .unwrap_or(1)
+        .unwrap_or(1);
+    default_adaptive_max_limit_from_logical_cores(logical_cores)
+}
+
+fn default_adaptive_max_limit_from_logical_cores(logical_cores: usize) -> usize {
+    logical_cores
+        .max(1)
+        .div_ceil(2)
+        .min(ADAPTIVE_WALKER_MAX_LIMIT_DEFAULT_CAP)
         .clamp(1, ADAPTIVE_WALKER_MAX_LIMIT_CAP)
 }
 

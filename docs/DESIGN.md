@@ -167,7 +167,7 @@
 - 非 Windows の dual-filter fast path では、Windows/WSL で生成された `\` 区切り FileList の実用性を優先して slash 正規化候補を先に流す。literal `\` を含む POSIX filename の厳密判定は初期ストリームでは扱わず、曖昧性解消のための per-line probe も入れない。
 - Walker 解析は adaptive walker が `read_dir` から得た `file_type` を通常ファイル/ディレクトリの即時分類に使い、リンクや Windows shortcut のような追加確認が必要な項目だけを後続の kind resolver へ遅延させる。初期 `Finished` は後処理完了を待たないが、`Finished`/`Truncated` 後は unknown kind を自動で kind resolver キューへ積み、バックグラウンドで収束させる。
 - Walker backend は adaptive のみを使う。jwalk fallback と runtime config の `developer.walker_backend` 切替口は廃止し、既存 config に残る `walker_backend` は読み込み時に削除する。
-- adaptive backend では、developer-only の `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` で初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時は最大値を論理コア数ベースの既定値、初期値を最大値の半分（端数切り上げ、最低 1）とする。既存 config に残る `walker_threads` は読み込み時に削除し、adaptive の最大 worker 数へは反映しない。
+- adaptive backend では、developer-only の `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` で初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時の最大値は論理コア数の半分（端数切り上げ、最低 1、既定上限 8）とし、初期値は最大値の半分（端数切り上げ、最低 1）とする。既存 config に残る `walker_threads` は読み込み時に削除し、adaptive の最大 worker 数へは反映しない。
 - adaptive worker 上限が 1 の場合、adaptive backend は serial fast path を使い、channel / condvar / worker pool の制御 overhead を避ける。
 - `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張しない。
 - adaptive backend は Windows 互換用の `Hidden + System + ReparsePoint` junction を候補から除外する。その他の reparse point directory は候補として残してもリンク先へは再帰せず、`follow_links(false)` 相当の Walker 境界を保つ。
