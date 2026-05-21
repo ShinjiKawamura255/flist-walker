@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 
-const FAST_READ_DIR: Duration = Duration::from_millis(5);
-const SLOW_READ_DIR: Duration = Duration::from_millis(50);
 const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(50);
+const CONTROL_SAMPLE_SIZE: usize = 64;
+const CONTROL_SAMPLE_STABILITY_PCT: u64 = 5;
 
 pub(super) struct AdaptiveWalkerEntry {
     pub(super) path: PathBuf,
@@ -28,6 +28,8 @@ pub(super) struct AdaptiveWalkerMetrics {
     pub(super) adaptive_limit_min: usize,
     pub(super) adaptive_limit_max: usize,
     pub(super) adaptive_limit_final: usize,
+    pub(super) adaptive_limit_change_count: usize,
+    pub(super) adaptive_limit_avg: f64,
     pub(super) read_dir_total_us: u128,
     pub(super) read_dir_max_us: u128,
 }
@@ -43,7 +45,30 @@ struct Shared {
     stop: AtomicBool,
     limit: AtomicUsize,
     max_workers: usize,
+    sample_size: usize,
+    control: Mutex<LimitControlState>,
     metrics: AdaptiveAtomicMetrics,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct LimitThroughputSample {
+    completed: usize,
+    elapsed_us: u128,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct AdaptiveControlSnapshot {
+    change_count: usize,
+    average_limit: f64,
+}
+
+#[derive(Debug)]
+struct LimitControlState {
+    window_started_at: Instant,
+    previous_sample: Option<LimitThroughputSample>,
+    weighted_limit_us: u128,
+    elapsed_us: u128,
+    change_count: usize,
 }
 
 #[derive(Default)]
@@ -54,6 +79,7 @@ struct AdaptiveAtomicMetrics {
     throttle_events: AtomicUsize,
     adaptive_limit_min: AtomicUsize,
     adaptive_limit_max: AtomicUsize,
+    limit_sample_count: AtomicUsize,
     read_dir_total_us: AtomicU64,
     read_dir_max_us: AtomicU64,
 }
@@ -72,6 +98,11 @@ impl AdaptiveAtomicMetrics {
         fetch_max(&self.adaptive_limit_max, limit);
     }
 
+    fn record_limit_sample(&self, sample_size: usize) -> bool {
+        let sample_index = self.limit_sample_count.fetch_add(1, Ordering::Relaxed) + 1;
+        sample_index.is_multiple_of(sample_size)
+    }
+
     fn record_read_dir(&self, elapsed: Duration) {
         self.dirs_read.fetch_add(1, Ordering::Relaxed);
         let elapsed_us = elapsed.as_micros().min(u64::MAX as u128) as u64;
@@ -80,7 +111,11 @@ impl AdaptiveAtomicMetrics {
         fetch_max_u64(&self.read_dir_max_us, elapsed_us);
     }
 
-    fn snapshot(&self, final_limit: usize) -> AdaptiveWalkerMetrics {
+    fn snapshot(
+        &self,
+        final_limit: usize,
+        control_snapshot: AdaptiveControlSnapshot,
+    ) -> AdaptiveWalkerMetrics {
         AdaptiveWalkerMetrics {
             dirs_read: self.dirs_read.load(Ordering::Relaxed),
             read_dir_errors: self.read_dir_errors.load(Ordering::Relaxed),
@@ -89,6 +124,8 @@ impl AdaptiveAtomicMetrics {
             adaptive_limit_min: self.adaptive_limit_min.load(Ordering::Relaxed),
             adaptive_limit_max: self.adaptive_limit_max.load(Ordering::Relaxed),
             adaptive_limit_final: final_limit,
+            adaptive_limit_change_count: control_snapshot.change_count,
+            adaptive_limit_avg: control_snapshot.average_limit,
             read_dir_total_us: self.read_dir_total_us.load(Ordering::Relaxed) as u128,
             read_dir_max_us: self.read_dir_max_us.load(Ordering::Relaxed) as u128,
         }
@@ -125,19 +162,110 @@ fn fetch_max_u64(target: &AtomicU64, value: u64) {
     }
 }
 
-fn adjust_limit(shared: &Shared, elapsed: Duration) {
-    let current = shared.limit.load(Ordering::Relaxed);
-    let next = if elapsed >= SLOW_READ_DIR {
-        current.saturating_sub(1).max(1)
-    } else if elapsed <= FAST_READ_DIR {
-        current.saturating_add(1).min(shared.max_workers)
-    } else {
-        current
+fn adjust_limit(shared: &Shared) {
+    if !shared.metrics.record_limit_sample(shared.sample_size) {
+        return;
+    }
+
+    let sample_count = shared.metrics.limit_sample_count.swap(0, Ordering::Relaxed);
+    if sample_count == 0 {
+        return;
+    }
+
+    let now = Instant::now();
+    let mut control = match shared.control.lock() {
+        Ok(control) => control,
+        Err(_) => return,
     };
+    let current_limit = shared.limit.load(Ordering::Relaxed).max(1);
+    let elapsed_us = control.record_segment(current_limit, now);
+    let current_sample = LimitThroughputSample {
+        completed: sample_count,
+        elapsed_us,
+    };
+
+    let Some(previous_sample) = control.previous_sample.replace(current_sample) else {
+        return;
+    };
+
+    let current = shared.limit.load(Ordering::Relaxed);
+    let next = next_limit_from_throughput(
+        current,
+        shared.max_workers,
+        current_sample.completed,
+        current_sample.elapsed_us,
+        previous_sample.completed,
+        previous_sample.elapsed_us,
+    );
     if next != current {
         shared.limit.store(next, Ordering::Relaxed);
         shared.metrics.record_limit(next);
+        control.change_count = control.change_count.saturating_add(1);
         shared.cv.notify_all();
+    }
+}
+
+impl LimitControlState {
+    fn record_segment(&mut self, current_limit: usize, now: Instant) -> u128 {
+        let elapsed_us = self.window_started_at.elapsed().as_micros().max(1);
+        self.weighted_limit_us = self
+            .weighted_limit_us
+            .saturating_add((current_limit as u128).saturating_mul(elapsed_us));
+        self.elapsed_us = self.elapsed_us.saturating_add(elapsed_us);
+        self.window_started_at = now;
+        elapsed_us
+    }
+
+    fn snapshot(&mut self, current_limit: usize) -> AdaptiveControlSnapshot {
+        self.record_segment(current_limit, Instant::now());
+        let average_limit = if self.elapsed_us == 0 {
+            current_limit.max(1) as f64
+        } else {
+            self.weighted_limit_us as f64 / self.elapsed_us as f64
+        };
+        AdaptiveControlSnapshot {
+            change_count: self.change_count,
+            average_limit,
+        }
+    }
+}
+
+impl Default for LimitControlState {
+    fn default() -> Self {
+        Self {
+            window_started_at: Instant::now(),
+            previous_sample: None,
+            weighted_limit_us: 0,
+            elapsed_us: 0,
+            change_count: 0,
+        }
+    }
+}
+
+pub(super) fn next_limit_from_throughput(
+    current: usize,
+    max_workers: usize,
+    current_completed: usize,
+    current_elapsed_us: u128,
+    previous_completed: usize,
+    previous_elapsed_us: u128,
+) -> usize {
+    if current == 0 || max_workers == 0 {
+        return current.max(1).min(max_workers.max(1));
+    }
+
+    let current_rate = (current_completed as u128).saturating_mul(previous_elapsed_us);
+    let previous_rate = (previous_completed as u128).saturating_mul(current_elapsed_us);
+    let improvement = previous_rate.saturating_mul(100 + CONTROL_SAMPLE_STABILITY_PCT as u128);
+    let regression = previous_rate.saturating_mul(100 - CONTROL_SAMPLE_STABILITY_PCT as u128);
+    let scaled_current = current_rate.saturating_mul(100);
+
+    if scaled_current >= improvement {
+        current.saturating_add(1).min(max_workers)
+    } else if scaled_current <= regression {
+        current.saturating_sub(1).max(1)
+    } else {
+        current
     }
 }
 
@@ -222,7 +350,7 @@ fn worker_loop(shared: Arc<Shared>, tx: SyncSender<AdaptiveWalkerEntry>) {
         }
         let elapsed = started.elapsed();
         shared.metrics.record_read_dir(elapsed);
-        adjust_limit(&shared, elapsed);
+        adjust_limit(&shared);
 
         if let Ok(mut state) = shared.state.lock() {
             if !shared.stop.load(Ordering::Relaxed) {
@@ -306,6 +434,14 @@ pub(super) fn walk_adaptive(
         stop: AtomicBool::new(false),
         limit: AtomicUsize::new(initial_limit),
         max_workers,
+        sample_size: CONTROL_SAMPLE_SIZE,
+        control: Mutex::new(LimitControlState {
+            window_started_at: Instant::now(),
+            previous_sample: None,
+            weighted_limit_us: 0,
+            elapsed_us: 0,
+            change_count: 0,
+        }),
         metrics: AdaptiveAtomicMetrics::new(initial_limit),
     });
     let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
@@ -344,9 +480,15 @@ pub(super) fn walk_adaptive(
     for handle in handles {
         let _ = handle.join();
     }
-    shared
-        .metrics
-        .snapshot(shared.limit.load(Ordering::Relaxed).max(1))
+    let final_limit = shared.limit.load(Ordering::Relaxed).max(1);
+    let control_snapshot = match shared.control.lock() {
+        Ok(mut control) => control.snapshot(final_limit),
+        Err(_) => AdaptiveControlSnapshot {
+            change_count: 0,
+            average_limit: final_limit as f64,
+        },
+    };
+    shared.metrics.snapshot(final_limit, control_snapshot)
 }
 
 fn walk_adaptive_serial(
@@ -358,6 +500,8 @@ fn walk_adaptive_serial(
         adaptive_limit_min: 1,
         adaptive_limit_max: 1,
         adaptive_limit_final: 1,
+        adaptive_limit_change_count: 0,
+        adaptive_limit_avg: 1.0,
         ..AdaptiveWalkerMetrics::default()
     };
     let mut queue = VecDeque::from([root.to_path_buf()]);
@@ -486,6 +630,8 @@ mod tests {
         assert_eq!(metrics.adaptive_limit_min, 1);
         assert_eq!(metrics.adaptive_limit_max, 1);
         assert_eq!(metrics.adaptive_limit_final, 1);
+        assert_eq!(metrics.adaptive_limit_change_count, 0);
+        assert_eq!(metrics.adaptive_limit_avg, 1.0);
 
         let _ = fs::remove_dir_all(&root);
     }

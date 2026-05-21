@@ -188,6 +188,8 @@ struct WalkerMetrics {
     adaptive_limit_min: usize,
     adaptive_limit_max: usize,
     adaptive_limit_final: usize,
+    adaptive_limit_change_count: usize,
+    adaptive_limit_avg: f64,
     read_dir_total_us: u128,
     read_dir_max_us: u128,
 }
@@ -206,6 +208,8 @@ impl WalkerMetrics {
             adaptive_limit_min: 0,
             adaptive_limit_max: 0,
             adaptive_limit_final: 0,
+            adaptive_limit_change_count: 0,
+            adaptive_limit_avg: 0.0,
             read_dir_total_us: 0,
             read_dir_max_us: 0,
         }
@@ -223,6 +227,8 @@ impl WalkerMetrics {
         self.adaptive_limit_min = metrics.adaptive_limit_min;
         self.adaptive_limit_max = metrics.adaptive_limit_max;
         self.adaptive_limit_final = metrics.adaptive_limit_final;
+        self.adaptive_limit_change_count = metrics.adaptive_limit_change_count;
+        self.adaptive_limit_avg = metrics.adaptive_limit_avg;
         self.read_dir_total_us = metrics.read_dir_total_us;
         self.read_dir_max_us = metrics.read_dir_max_us;
     }
@@ -262,6 +268,8 @@ fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str
         adaptive_limit_min = metrics.adaptive_limit_min,
         adaptive_limit_max = metrics.adaptive_limit_max,
         adaptive_limit_final = metrics.adaptive_limit_final,
+        adaptive_limit_change_count = metrics.adaptive_limit_change_count,
+        adaptive_limit_avg = metrics.adaptive_limit_avg,
         read_dir_avg_us = metrics.read_dir_avg_us(),
         read_dir_max_us = metrics.read_dir_max_us,
         "walker metrics summary"
@@ -271,7 +279,7 @@ fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str
 
 fn walker_metrics_summary(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str) -> String {
     format!(
-        "flow=index source_kind=walker event=metrics request_id={} tab_id={} backend={} outcome={} elapsed_ms={} entries_emitted={} batches_sent={} dirs_read={} read_dir_errors={} max_inflight_read_dirs={} throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} read_dir_avg_us={} read_dir_max_us={}",
+        "flow=index source_kind=walker event=metrics request_id={} tab_id={} backend={} outcome={} elapsed_ms={} entries_emitted={} batches_sent={} dirs_read={} read_dir_errors={} max_inflight_read_dirs={} throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_limit_change_count={} adaptive_limit_avg={:.3} read_dir_avg_us={} read_dir_max_us={}",
         req.request_id,
         req.tab_id,
         walker_backend_label(metrics.backend),
@@ -286,6 +294,8 @@ fn walker_metrics_summary(req: &IndexRequest, metrics: &WalkerMetrics, outcome: 
         metrics.adaptive_limit_min,
         metrics.adaptive_limit_max,
         metrics.adaptive_limit_final,
+        metrics.adaptive_limit_change_count,
+        metrics.adaptive_limit_avg,
         metrics.read_dir_avg_us(),
         metrics.read_dir_max_us
     )

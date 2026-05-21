@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::adaptive_walker::next_limit_from_throughput;
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing_subscriber::EnvFilter;
@@ -122,6 +123,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     assert!(text.contains("event=metrics"));
     assert!(text.contains("backend=adaptive"));
     assert!(text.contains("entries_emitted=11"));
+    assert!(text.contains("adaptive_limit_avg="));
+    assert!(text.contains("adaptive_limit_change_count="));
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -183,6 +186,15 @@ fn default_adaptive_max_limit_caps_at_eight_and_uses_half_logical_cores() {
     assert_eq!(default_adaptive_max_limit_from_logical_cores(4), 2);
     assert_eq!(default_adaptive_max_limit_from_logical_cores(16), 8);
     assert_eq!(default_adaptive_max_limit_from_logical_cores(64), 8);
+}
+
+#[test]
+fn next_limit_from_throughput_moves_only_on_meaningful_change() {
+    assert_eq!(next_limit_from_throughput(4, 8, 64, 90, 64, 100), 5);
+    assert_eq!(next_limit_from_throughput(4, 8, 64, 110, 64, 100), 3);
+    assert_eq!(next_limit_from_throughput(4, 8, 64, 98, 64, 100), 4);
+    assert_eq!(next_limit_from_throughput(8, 8, 64, 90, 64, 100), 8);
+    assert_eq!(next_limit_from_throughput(1, 8, 64, 110, 64, 100), 1);
 }
 
 #[test]
@@ -394,7 +406,7 @@ fn perf_adaptive_walker_reports_local_dataset_metrics() {
     let adaptive_elapsed = adaptive_start.elapsed();
 
     eprintln!(
-        "Walker backend comparison std_read_dir_ms={:.3} adaptive_ms={:.3} std_count={} adaptive_count={} adaptive_dirs_read={} adaptive_errors={} adaptive_max_inflight={} adaptive_throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_read_dir_avg_us={} adaptive_read_dir_max_us={}",
+        "Walker backend comparison std_read_dir_ms={:.3} adaptive_ms={:.3} std_count={} adaptive_count={} adaptive_dirs_read={} adaptive_errors={} adaptive_max_inflight={} adaptive_throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_limit_change_count={} adaptive_limit_avg={:.3} adaptive_read_dir_avg_us={} adaptive_read_dir_max_us={}",
         std_elapsed.as_secs_f64() * 1000.0,
         adaptive_elapsed.as_secs_f64() * 1000.0,
         std_count,
@@ -406,6 +418,8 @@ fn perf_adaptive_walker_reports_local_dataset_metrics() {
         adaptive_metrics.adaptive_limit_min,
         adaptive_metrics.adaptive_limit_max,
         adaptive_metrics.adaptive_limit_final,
+        adaptive_metrics.adaptive_limit_change_count,
+        adaptive_metrics.adaptive_limit_avg,
         if adaptive_metrics.dirs_read == 0 {
             0
         } else {
