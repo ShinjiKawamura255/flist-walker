@@ -62,10 +62,17 @@ struct AdaptiveControlSnapshot {
     average_limit: f64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum LimitDirection {
+    Increase,
+    Decrease,
+}
+
 #[derive(Debug)]
 struct LimitControlState {
     window_started_at: Instant,
     previous_sample: Option<LimitThroughputSample>,
+    last_direction: Option<LimitDirection>,
     weighted_limit_us: u128,
     elapsed_us: u128,
     change_count: usize,
@@ -189,14 +196,16 @@ fn adjust_limit(shared: &Shared) {
     };
 
     let current = shared.limit.load(Ordering::Relaxed);
-    let next = next_limit_from_throughput(
+    let (next, next_direction) = next_limit_from_throughput(
         current,
         shared.max_workers,
+        control.last_direction,
         current_sample.completed,
         current_sample.elapsed_us,
         previous_sample.completed,
         previous_sample.elapsed_us,
     );
+    control.last_direction = next_direction;
     if next != current {
         shared.limit.store(next, Ordering::Relaxed);
         shared.metrics.record_limit(next);
@@ -235,6 +244,7 @@ impl Default for LimitControlState {
         Self {
             window_started_at: Instant::now(),
             previous_sample: None,
+            last_direction: None,
             weighted_limit_us: 0,
             elapsed_us: 0,
             change_count: 0,
@@ -245,13 +255,15 @@ impl Default for LimitControlState {
 pub(super) fn next_limit_from_throughput(
     current: usize,
     max_workers: usize,
+    last_direction: Option<LimitDirection>,
     current_completed: usize,
     current_elapsed_us: u128,
     previous_completed: usize,
     previous_elapsed_us: u128,
-) -> usize {
+) -> (usize, Option<LimitDirection>) {
     if current == 0 || max_workers == 0 {
-        return current.max(1).min(max_workers.max(1));
+        let next = current.max(1).min(max_workers.max(1));
+        return (next, None);
     }
 
     let current_rate = (current_completed as u128).saturating_mul(previous_elapsed_us);
@@ -260,12 +272,28 @@ pub(super) fn next_limit_from_throughput(
     let regression = previous_rate.saturating_mul(100 - CONTROL_SAMPLE_STABILITY_PCT as u128);
     let scaled_current = current_rate.saturating_mul(100);
 
-    if scaled_current >= improvement {
-        current.saturating_add(1).min(max_workers)
+    let direction = if scaled_current >= improvement {
+        last_direction.unwrap_or(LimitDirection::Increase)
     } else if scaled_current <= regression {
-        current.saturating_sub(1).max(1)
+        match last_direction {
+            Some(LimitDirection::Increase) => LimitDirection::Decrease,
+            Some(LimitDirection::Decrease) => LimitDirection::Increase,
+            None => LimitDirection::Decrease,
+        }
+    } else if let Some(direction) = last_direction {
+        direction
     } else {
-        current
+        return (current, None);
+    };
+
+    let next = match direction {
+        LimitDirection::Increase => current.saturating_add(1).min(max_workers),
+        LimitDirection::Decrease => current.saturating_sub(1).max(1),
+    };
+    if next == current {
+        (current, None)
+    } else {
+        (next, Some(direction))
     }
 }
 
@@ -438,6 +466,7 @@ pub(super) fn walk_adaptive(
         control: Mutex::new(LimitControlState {
             window_started_at: Instant::now(),
             previous_sample: None,
+            last_direction: None,
             weighted_limit_us: 0,
             elapsed_us: 0,
             change_count: 0,

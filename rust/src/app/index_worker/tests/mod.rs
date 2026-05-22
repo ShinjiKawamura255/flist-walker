@@ -1,5 +1,5 @@
 use super::*;
-use crate::app::adaptive_walker::next_limit_from_throughput;
+use crate::app::adaptive_walker::{next_limit_from_throughput, LimitDirection};
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing_subscriber::EnvFilter;
@@ -195,11 +195,50 @@ fn default_adaptive_max_limit_caps_at_eight_and_uses_half_logical_cores() {
 
 #[test]
 fn next_limit_from_throughput_moves_only_on_meaningful_change() {
-    assert_eq!(next_limit_from_throughput(4, 8, 64, 90, 64, 100), 5);
-    assert_eq!(next_limit_from_throughput(4, 8, 64, 110, 64, 100), 3);
-    assert_eq!(next_limit_from_throughput(4, 8, 64, 98, 64, 100), 4);
-    assert_eq!(next_limit_from_throughput(8, 8, 64, 90, 64, 100), 8);
-    assert_eq!(next_limit_from_throughput(1, 8, 64, 110, 64, 100), 1);
+    assert_eq!(
+        next_limit_from_throughput(4, 8, None, 64, 90, 64, 100),
+        (5, Some(LimitDirection::Increase))
+    );
+    assert_eq!(
+        next_limit_from_throughput(4, 8, None, 64, 110, 64, 100),
+        (3, Some(LimitDirection::Decrease))
+    );
+    assert_eq!(
+        next_limit_from_throughput(4, 8, None, 64, 98, 64, 100),
+        (4, None)
+    );
+    assert_eq!(
+        next_limit_from_throughput(8, 8, None, 64, 90, 64, 100),
+        (8, None)
+    );
+    assert_eq!(
+        next_limit_from_throughput(1, 8, None, 64, 110, 64, 100),
+        (1, None)
+    );
+}
+
+#[test]
+fn next_limit_from_throughput_follows_successful_probe_direction() {
+    assert_eq!(
+        next_limit_from_throughput(3, 8, Some(LimitDirection::Decrease), 64, 90, 64, 100),
+        (2, Some(LimitDirection::Decrease))
+    );
+    assert_eq!(
+        next_limit_from_throughput(5, 8, Some(LimitDirection::Increase), 64, 98, 64, 100),
+        (6, Some(LimitDirection::Increase))
+    );
+}
+
+#[test]
+fn next_limit_from_throughput_reverses_failed_probe_direction() {
+    assert_eq!(
+        next_limit_from_throughput(5, 8, Some(LimitDirection::Increase), 64, 110, 64, 100),
+        (4, Some(LimitDirection::Decrease))
+    );
+    assert_eq!(
+        next_limit_from_throughput(3, 8, Some(LimitDirection::Decrease), 64, 110, 64, 100),
+        (4, Some(LimitDirection::Increase))
+    );
 }
 
 #[test]

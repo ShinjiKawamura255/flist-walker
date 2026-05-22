@@ -168,7 +168,7 @@
 - Walker 解析は adaptive walker が `read_dir` から得た `file_type` を通常ファイル/ディレクトリの即時分類に使い、リンクや Windows shortcut のような追加確認が必要な項目だけを後続の kind resolver へ遅延させる。初期 `Finished` は後処理完了を待たないが、`Finished`/`Truncated` 後は unknown kind を自動で kind resolver キューへ積み、バックグラウンドで収束させる。
 - Walker backend は adaptive のみを使う。jwalk fallback と runtime config の `developer.walker_backend` 切替口は廃止し、既存 config に残る `walker_backend` は読み込み時に削除する。
 - adaptive backend では、developer-only の `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` で初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時の最大値は論理コア数の半分（端数切り上げ、最低 1、既定上限 8）とし、初期値は最大値の半分（端数切り上げ、最低 1）とする。既存 config に残る `walker_threads` は読み込み時に削除し、adaptive の最大 worker 数へは反映しない。
-- adaptive backend の limit 調整は、短いサンプル窓の throughput を前回サンプルと比較して行う。窓内の完了件数 / 経過時間が改善した場合だけ limit を 1 段増やし、悪化した場合だけ 1 段減らし、微小変動では維持する。これにより per-entry の即時ヒューリスティックよりも上限張り付きと揺れを抑える。
+- adaptive backend の limit 調整は、短いサンプル窓の throughput を前回サンプルと比較し、直前の探索方向（increase/decrease）を保持して行う。方向未確定時は改善で増加、悪化で減少、微小変動で維持する。方向確定後は改善または微小変動で同方向へ進み、悪化で方向を反転する。これにより、低速 I/O で減らした結果の改善を次窓で増加へ誤反転することを避け、高速 I/O では小さな改善幅でも上限まで探索できる。
 - Walker metrics summary は `adaptive_limit_final` に加えて `adaptive_limit_avg` と `adaptive_limit_change_count` を含む。これにより最後の値だけでなく、走行全体の平均並列度と変化回数を比較できる。`adaptive_limit_avg` は停止・join の尾を少し含みうる時間加重平均として扱う。
 - adaptive worker 上限が 1 の場合、adaptive backend は serial fast path を使い、channel / condvar / worker pool の制御 overhead を避ける。
 - `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張しない。
