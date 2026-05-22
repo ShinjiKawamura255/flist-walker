@@ -24,6 +24,29 @@
 ### Known issues
 -
 
+## [0.18.3] - 2026-05-22
+### Added
+-
+
+### Changed
+- リリースノート作成手順を強化し、前回 tag から対象 tag/HEAD までの git range を一次情報として使うことを明確化した。
+
+### Fixed
+- adaptive walker の limit 制御が低速 I/O 環境で過剰に worker 数を増やしうる問題を修正した。
+- adaptive walker が高速 I/O 環境で改善余地のある増加探索を早めに止めうる問題を修正し、境界到達時も探索方向を保持するようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.2] - 2026-05-21
 ### Added
 -
@@ -1298,7 +1321,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.3...HEAD
+[0.18.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.3
+[0.18.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.2
 [0.18.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.1
 [0.18.0]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.0
 [0.17.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.17.6
