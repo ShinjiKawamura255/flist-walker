@@ -291,7 +291,7 @@ pub(super) fn next_limit_from_throughput(
         LimitDirection::Decrease => current.saturating_sub(1).max(1),
     };
     if next == current {
-        (current, None)
+        (current, last_direction.map(|_| direction))
     } else {
         (next, Some(direction))
     }

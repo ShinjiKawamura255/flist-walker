@@ -242,6 +242,18 @@ fn next_limit_from_throughput_reverses_failed_probe_direction() {
 }
 
 #[test]
+fn next_limit_from_throughput_preserves_direction_at_bounds() {
+    assert_eq!(
+        next_limit_from_throughput(8, 8, Some(LimitDirection::Increase), 64, 90, 64, 100),
+        (8, Some(LimitDirection::Increase))
+    );
+    assert_eq!(
+        next_limit_from_throughput(1, 8, Some(LimitDirection::Decrease), 64, 90, 64, 100),
+        (1, Some(LimitDirection::Decrease))
+    );
+}
+
+#[test]
 fn adaptive_walker_emits_entries_and_records_control_metrics() {
     let root = test_root("adaptive-basic");
     let _ = std::fs::remove_dir_all(&root);
