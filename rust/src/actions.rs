@@ -135,6 +135,61 @@ pub fn execute_or_open(path: &Path) -> Result<()> {
     execute_or_open_with(path, spawn_executable, open_with_default)
 }
 
+fn open_text_editor(path: &Path) -> std::io::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("notepad.exe").arg(path).spawn().map(|_| ())
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open").arg("-t").arg(path).spawn().map(|_| ())
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        for editor_var in ["VISUAL", "EDITOR"] {
+            if let Some(editor) = std::env::var_os(editor_var).filter(|value| !value.is_empty()) {
+                return Command::new(editor).arg(path).spawn().map(|_| ());
+            }
+        }
+        for editor in [
+            "sensible-editor",
+            "gedit",
+            "kate",
+            "mousepad",
+            "xed",
+            "leafpad",
+        ] {
+            if Command::new(editor).arg(path).spawn().is_ok() {
+                return Ok(());
+            }
+        }
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "no fallback text editor found",
+        ))
+    }
+}
+
+fn open_text_file_with_handlers(
+    path: &Path,
+    open_default: impl FnOnce(&Path) -> Result<()>,
+    open_editor: impl FnOnce(&Path) -> std::io::Result<()>,
+) -> Result<()> {
+    match open_default(path) {
+        Ok(()) => Ok(()),
+        Err(default_err) => open_editor(path).with_context(|| {
+            format!(
+                "failed to open {} with the default app or fallback text editor; default app error: {default_err}",
+                normalize_action_path_for_display(path)
+            )
+        }),
+    }
+}
+
+pub fn open_text_file_with_default_or_editor(path: &Path) -> Result<()> {
+    open_text_file_with_handlers(path, open_with_default, open_text_editor)
+}
+
 pub fn open_with_default(path: &Path) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
@@ -371,6 +426,52 @@ mod tests {
             assert!(result.is_ok());
             assert!(open_called.get());
         }
+    }
+
+    #[test]
+    fn open_text_file_uses_default_app_first() {
+        let path = std::env::temp_dir().join("fff-rs-actions-config-open");
+        let default_called = Cell::new(false);
+        let editor_called = Cell::new(false);
+
+        open_text_file_with_handlers(
+            &path,
+            |_| {
+                default_called.set(true);
+                Ok(())
+            },
+            |_| {
+                editor_called.set(true);
+                Ok(())
+            },
+        )
+        .expect("open config");
+
+        assert!(default_called.get());
+        assert!(!editor_called.get());
+    }
+
+    #[test]
+    fn open_text_file_falls_back_to_text_editor() {
+        let path = std::env::temp_dir().join("fff-rs-actions-config-open-fallback");
+        let default_called = Cell::new(false);
+        let editor_called = Cell::new(false);
+
+        open_text_file_with_handlers(
+            &path,
+            |_| {
+                default_called.set(true);
+                Err(anyhow::anyhow!("no association"))
+            },
+            |_| {
+                editor_called.set(true);
+                Ok(())
+            },
+        )
+        .expect("open config with fallback");
+
+        assert!(default_called.get());
+        assert!(editor_called.get());
     }
 
     #[test]

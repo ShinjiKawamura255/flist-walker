@@ -115,6 +115,7 @@
 - 実装: `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/updater.rs`
 - 役割補足: runtime config file が存在する場合は読み込み結果を process env に反映して既存の env 駆動経路へ伝播し、存在しない場合だけ current env を取り込んでファイルを生成する。UI state、saved roots、window trace も同じ base directory 解決規則へ揃える。
 - 役割補足: Windows の旧 exe-side / home-directory 配置ファイルと Linux/macOS の旧 home-root 配置ファイルは、新しい保存先が未作成のときだけ初回起動で移行し、既存の新配置ファイルを上書きしない。transition migration は v0.20.0 までの一時対応として扱う。
+- 役割補足: GUI の設定ボタンは render command 経由で `shell_support` の config open 処理を呼び、`runtime_config_file_path` を生成済みにしたうえで `actions` の既定アプリ open を試す。既定アプリが失敗した場合は、Windows では `notepad.exe`、macOS では `open -t`、Linux では `VISUAL` / `EDITOR` または一般的な GUI editor へフォールバックする。
 - 役割補足: build-time 公開鍵や release signing secret は runtime config file に含めず、既存の build / release / dev-test secret 経路に残す。
 
 - DES-018 Release Sample Ignore List
@@ -313,4 +314,5 @@
 - DES-015 -> TC-120 (SP-010, SP-014)
 - DES-016 -> TC-110 (SP-015)
 - DES-017 -> TC-111 (SP-016)
+- DES-017 -> TC-127 (SP-016)
 - DES-018 -> TC-113, TC-114 (SP-017)

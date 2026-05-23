@@ -192,6 +192,15 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab));
             return;
         }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let row_height = ui.spacing().interact_size.y;
+            let settings_response = ui
+                .add_sized([row_height, row_height], egui::Button::new("⚙"))
+                .on_hover_text("Open runtime config file");
+            if settings_response.clicked() {
+                app.queue_render_command(RenderCommand::OpenRuntimeConfig);
+            }
+        });
         if let Some(index) = close_tab {
             app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CloseTab(index)));
             return;

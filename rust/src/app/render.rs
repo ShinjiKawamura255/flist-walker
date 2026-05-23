@@ -56,6 +56,7 @@ pub(super) enum RenderTabBarCommand {
 #[derive(Clone, Copy)]
 pub(super) enum RenderCommand {
     TopAction(RenderTopActionCommand),
+    OpenRuntimeConfig,
     FileListDialog(RenderFileListDialogCommand),
     UpdateDialog(RenderUpdateDialogCommand),
     TabBar(RenderTabBarCommand),
@@ -199,6 +200,9 @@ impl FlistWalkerApp {
         let commands = std::mem::take(&mut self.shell.ui.pending_render_commands);
         for command in commands {
             match command {
+                RenderCommand::OpenRuntimeConfig => {
+                    self.open_runtime_config_file();
+                }
                 RenderCommand::TopAction(RenderTopActionCommand::ApplyHistory) => {
                     self.accept_history_search();
                 }

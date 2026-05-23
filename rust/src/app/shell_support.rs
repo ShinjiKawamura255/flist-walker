@@ -2,8 +2,13 @@ use super::{
     egui, path_is_within_root, Entry, EntryKind, FlistWalkerApp, IndexSource, PathBuf,
     ResultSortMode,
 };
+use crate::actions::open_text_file_with_default_or_editor;
 use crate::path_utils::normalize_windows_path_buf;
-use crate::runtime_config::{legacy_settings_base_dirs, migrate_file_if_needed, settings_base_dir};
+use crate::runtime_config::{
+    legacy_settings_base_dirs, migrate_file_if_needed, runtime_config_file_path, settings_base_dir,
+    RuntimeConfig,
+};
+use anyhow::{Context, Result};
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -286,6 +291,31 @@ impl FlistWalkerApp {
             .unwrap_or(false)
     }
 
+    pub(super) fn open_runtime_config_file(&mut self) {
+        match Self::open_runtime_config_file_with(open_text_file_with_default_or_editor) {
+            Ok(path) => self.set_notice(format!(
+                "Config file opened: {}",
+                normalize_windows_path_buf(path).to_string_lossy()
+            )),
+            Err(err) => self.set_notice(format!("Config file open failed: {err}")),
+        }
+    }
+
+    fn open_runtime_config_file_with(opener: impl FnOnce(&Path) -> Result<()>) -> Result<PathBuf> {
+        let path = Self::ensure_runtime_config_file()?;
+        opener(&path)?;
+        Ok(path)
+    }
+
+    fn ensure_runtime_config_file() -> Result<PathBuf> {
+        let config = RuntimeConfig::load_or_seed();
+        let path = runtime_config_file_path().context("runtime config path is unavailable")?;
+        if !path.exists() {
+            config.save_to_path(&path)?;
+        }
+        Ok(path)
+    }
+
     pub(super) fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
         paths
             .iter()
@@ -452,5 +482,55 @@ mod tests {
         assert!(!legacy_path.exists());
 
         let _ = fs::remove_dir_all(&base);
+    }
+
+    #[test]
+    fn open_runtime_config_file_uses_resolved_config_path() {
+        let settings_root = temp_dir("config-open");
+        let previous_home = env::var_os("HOME");
+        let previous_userprofile = env::var_os("USERPROFILE");
+        let previous_localappdata = env::var_os("LOCALAPPDATA");
+        let previous_appdata = env::var_os("APPDATA");
+        env::set_var("HOME", &settings_root);
+        env::set_var("USERPROFILE", &settings_root);
+        env::set_var("LOCALAPPDATA", &settings_root);
+        env::set_var("APPDATA", &settings_root);
+
+        let mut opened_path = None;
+        let result = FlistWalkerApp::open_runtime_config_file_with(|path| {
+            opened_path = Some(path.to_path_buf());
+            Ok(())
+        });
+
+        if let Some(value) = previous_home {
+            env::set_var("HOME", value);
+        } else {
+            env::remove_var("HOME");
+        }
+        if let Some(value) = previous_userprofile {
+            env::set_var("USERPROFILE", value);
+        } else {
+            env::remove_var("USERPROFILE");
+        }
+        if let Some(value) = previous_localappdata {
+            env::set_var("LOCALAPPDATA", value);
+        } else {
+            env::remove_var("LOCALAPPDATA");
+        }
+        if let Some(value) = previous_appdata {
+            env::set_var("APPDATA", value);
+        } else {
+            env::remove_var("APPDATA");
+        }
+
+        let opened_path = opened_path.expect("opened path");
+        result.expect("open runtime config");
+        assert!(opened_path.exists());
+        assert_eq!(
+            opened_path.file_name().and_then(|name| name.to_str()),
+            Some(crate::runtime_config::RUNTIME_CONFIG_FILE_NAME)
+        );
+
+        let _ = fs::remove_dir_all(&settings_root);
     }
 }
