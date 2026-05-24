@@ -46,6 +46,72 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
 }
 
 #[test]
+fn active_kind_queue_walks_entries_without_duplicate_requests() {
+    let root = test_root("active-kind-queue-no-duplicates");
+    fs::create_dir_all(&root).expect("create dir");
+    let known = root.join("known.txt");
+    let queued = root.join("queued.lnk");
+    let pending = root.join("pending.lnk");
+    let inflight = root.join("inflight.lnk");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
+    app.shell.indexing.in_progress = true;
+    app.shell.runtime.index.entries = vec![
+        file_entry(known.clone()),
+        unknown_entry(queued.clone()),
+        unknown_entry(pending.clone()),
+        unknown_entry(inflight.clone()),
+    ];
+    app.shell
+        .indexing
+        .pending_kind_paths_set
+        .insert(pending.clone());
+    app.shell
+        .indexing
+        .pending_kind_paths
+        .push_back(pending.clone());
+    app.shell
+        .indexing
+        .in_flight_kind_paths
+        .insert(inflight.clone());
+
+    app.queue_unknown_kind_paths_for_active_entries();
+
+    let queued_count = app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .filter(|path| **path == queued)
+        .count();
+    let pending_count = app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .filter(|path| **path == pending)
+        .count();
+    assert_eq!(queued_count, 1);
+    assert_eq!(pending_count, 1);
+    assert!(!app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|path| *path == known));
+    assert!(!app
+        .shell
+        .indexing
+        .pending_kind_paths
+        .iter()
+        .any(|path| *path == inflight));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
     let root = test_root("walker-unknown-kind-finish-visible");
     fs::create_dir_all(&root).expect("create dir");

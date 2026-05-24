@@ -214,24 +214,27 @@ impl FlistWalkerApp {
         if !self.kind_resolution_needed_for_filters() {
             return;
         }
-        let source: Vec<PathBuf> =
-            if self.shell.indexing.in_progress && !self.shell.runtime.index.entries.is_empty() {
-                self.shell
-                    .runtime
-                    .index
-                    .entries
-                    .iter()
-                    .map(|entry| entry.path.clone())
-                    .collect()
-            } else {
-                self.shell
-                    .runtime
-                    .all_entries
-                    .iter()
-                    .map(|entry| entry.path.clone())
-                    .collect()
-            };
-        self.queue_unknown_kind_paths(&source);
+        let use_live_index =
+            self.shell.indexing.in_progress && !self.shell.runtime.index.entries.is_empty();
+        let cache = &self.shell.cache.entry_kind;
+        let indexing = &mut self.shell.indexing;
+        let source = if use_live_index {
+            self.shell.runtime.index.entries.as_slice()
+        } else {
+            self.shell.runtime.all_entries.as_ref()
+        };
+        for entry in source {
+            if entry.kind.is_some()
+                || cache.get(entry.path()).is_some()
+                || indexing.pending_kind_paths_set.contains(entry.path())
+                || indexing.in_flight_kind_paths.contains(entry.path())
+            {
+                continue;
+            }
+            let path = entry.path.clone();
+            indexing.pending_kind_paths_set.insert(path.clone());
+            indexing.pending_kind_paths.push_back(path);
+        }
     }
 
     /// walker 完了後の表示中結果だけから kind 未解決 path を拾う。

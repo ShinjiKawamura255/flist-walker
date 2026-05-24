@@ -195,7 +195,9 @@
 - MUST: `Finished` 応答後の内部後処理 drain は、探索中の表示更新より小さい件数上限を用い、完了速度より入力応答性を優先しなければならない。
 - MUST: Walker が上限打ち切り（`Truncated`）に到達した場合でも、GUI は終端直前の大きな batch backlog を過小な固定件数で長時間 drain し続けてはならない。frame budget を応答性の上限として維持しつつ、`Indexing...` の終端尾を短く保てる件数を 1 frame 内で吸収しなければならない。
 - MUST: indexing 中の空クエリ・フィルタなし表示では、表示更新のたびに全候補の表示用スナップショットを複製してはならない。表示に必要な上位件数だけを更新し、全件 snapshot は terminal state で確定させなければならない。
+- MUST: active indexing 中に空クエリ・フィルタなし状態へ戻す場合、表示更新のために蓄積済み index entries を `runtime.entries` へ全件 clone してはならない。
 - MUST: indexing 中にフィルタ適用済みの増分 snapshot を保持している場合、`Finished` 後の terminal state 確定はその snapshot を再利用し、全候補を UI thread で再フィルタしてはならない。
+- MUST: kind filter 用の unknown path queue 構築は、対象 entry 全件の `PathBuf` 中間配列を UI thread 上で作ってはならない。entry 自体または cache で kind が既知の path と、既存 queue / in-flight の path を除外しながら直接 queue へ積まなければならない。
 - MUST: Walker の `Finished` 応答を受信した後、GUI は残り entry drain や terminal snapshot 確定を内部後処理として継続してよいが、status line の `Indexing...` 表示は停止しなければならない。
 - MUST: terminal 後処理の完了時に、大規模 indexing で使用した pending entry queue の容量解放を UI thread 上で同期的に実行してはならない。
 - MUST: notice の更新/消去や通常の status line 再計算は、OS メモリ使用量の同期サンプリングを伴ってはならない。メモリ表示更新は専用の定期サンプリング経路で行わなければならない。

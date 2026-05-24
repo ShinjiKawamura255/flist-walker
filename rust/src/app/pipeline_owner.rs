@@ -106,6 +106,25 @@ impl<'a> PipelineOwner<'a> {
         let needs_filtering = !self.app.shell.runtime.include_files
             || !self.app.shell.runtime.include_dirs
             || self.ignore_list_filter_active();
+        if self.app.shell.indexing.in_progress
+            && !source_is_all_entries
+            && !needs_filtering
+            && self.app.shell.runtime.query_state.query.trim().is_empty()
+        {
+            self.app.shell.indexing.incremental_filtered_entries.clear();
+            self.app.shell.indexing.last_search_snapshot_len = base.len();
+            self.app.shell.indexing.search_rerun_pending = false;
+            self.app.shell.search.clear_active_request_state();
+            let results = base
+                .iter()
+                .take(self.app.shell.runtime.limit)
+                .cloned()
+                .map(|entry| (entry.path, 0.0))
+                .collect();
+            self.app
+                .replace_results_snapshot(results, keep_scroll_position);
+            return;
+        }
         // Keep the zero-copy path only when no per-entry filter needs evaluation.
         // Ignore List must stay in the filtered path even when files/folders are both enabled,
         // otherwise the default all-entries snapshot leaks ignored paths back into the UI.

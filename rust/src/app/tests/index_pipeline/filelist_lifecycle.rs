@@ -557,6 +557,32 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
 }
 
 #[test]
+fn active_indexing_empty_query_without_filters_does_not_clone_full_entries_snapshot() {
+    let root = test_root("active-index-no-filter-no-clone");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, String::new());
+    app.shell.indexing.in_progress = true;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.ignore_list_enabled = false;
+    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.index.entries = (0..5)
+        .map(|idx| file_entry(root.join(format!("file-{idx}.txt"))))
+        .collect();
+
+    app.apply_entry_filters(true);
+
+    assert!(app.shell.runtime.entries.is_empty());
+    assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
+    assert_eq!(app.shell.indexing.last_search_snapshot_len, 5);
+    assert_eq!(app.shell.runtime.results.len(), 2);
+    assert_eq!(app.shell.runtime.results[0].0, root.join("file-0.txt"));
+    assert_eq!(app.shell.runtime.results[1].0, root.join("file-1.txt"));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn finished_index_response_drains_pending_entries_over_multiple_frames() {
     let root = test_root("finished-drain-budget");
     fs::create_dir_all(&root).expect("create root");

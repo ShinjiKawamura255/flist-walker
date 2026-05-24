@@ -165,8 +165,9 @@
 - tab 保存状態は query/history、index 状態、result/selection を別 struct で保持し、tab 切替や復元時に必要な束だけ同期する。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - Active indexing の terminal drain は wall-clock frame budget を主な応答性ガードとする。探索中は表示更新の tail 短縮のため大きめの件数上限を許容し、`Finished` 後の内部後処理では小さい件数上限に切り替えて入力応答性を優先する。
-- 空クエリかつ FILE/DIR/Ignore List のフィルタが不要な active indexing では、表示結果を `runtime.index.entries` の先頭 `limit` 件から直接作り、`runtime.entries` / `incremental_filtered_entries` の全件複製を terminal state まで遅延する。
+- 空クエリかつ FILE/DIR/Ignore List のフィルタが不要な active indexing では、表示結果を `runtime.index.entries` の先頭 `limit` 件から直接作り、`runtime.entries` / `incremental_filtered_entries` の全件複製を terminal state まで遅延する。フィルタ切替で同じ状態へ戻った場合も、表示更新のためだけに `runtime.entries` へ全件 clone しない。
 - FILE/DIR/Ignore List のフィルタが必要な active indexing では、ingest 時に更新している `incremental_filtered_entries` を terminal state の `runtime.entries` へ移し、`Finished` 後に `all_entries` 全体を再走査しない。
+- kind filter 用の unknown path queue は、対象 entries を走査しながら entry 自体の kind / entry kind cache / pending set / in-flight set を直接参照して積む。全 path の中間 `Vec<PathBuf>` は作らず、queue へ入れる path だけ clone する。
 - `Finished` 受信後に pending entries が残る場合、`pending_finish` を内部後処理 marker として保持し、status line の indexing 表示は解除する。repaint は `pending_finish` でも継続要求し、drain / terminal snapshot 確定 / request cleanup は後続 frame で完了させる。
 - Active indexing の terminal cleanup は `pending_entries.clear()` に留め、直前まで大きかった queue の `shrink_to_fit()` を同じ UI frame で呼ばない。容量解放より入力応答性を優先し、必要な小規模 checkpoint shrink は失敗/キャンセルなど別経路に限定する。
 - Status line 更新は cached memory text を使う通常経路と、`schedule_frame_repaint` から呼ぶ明示的な memory sampling 経路に分ける。notice clear / terminal cleanup / navigation のような頻繁な UI 状態更新では OS メモリ取得を同期実行しない。
@@ -319,6 +320,8 @@
 - DES-009 -> TC-133 (SP-010)
 - DES-009 -> TC-134 (SP-010)
 - DES-009 -> TC-135 (SP-010)
+- DES-009 -> TC-136 (SP-010)
+- DES-009 -> TC-137 (SP-010)
 - DES-009 -> TC-068 (SP-010)
 - DES-009 -> TC-069 (SP-010)
 - DES-010 -> TC-011 (SP-011)
