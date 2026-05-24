@@ -24,6 +24,33 @@
 ### Known issues
 -
 
+## [0.18.4] - 2026-05-24
+### Added
+- GUI のタブ行右端に設定ボタンを追加し、runtime config を既定のアプリケーションまたはフォールバックのテキストエディタで開けるようにした。
+
+### Changed
+- capped walker の `Finished` 受信後は `Indexing...` を先に解除し、残り entry drain と terminal cleanup を内部後処理として継続するようにした。
+- active indexing 中の空クエリ・フィルタなし表示で、表示更新のために index entries 全件を `runtime.entries` へ clone しないようにした。
+- kind filter 用の unknown path queue 構築で、全 path の中間 `Vec<PathBuf>` を作らず、必要な path だけを直接 queue へ積むようにした。
+
+### Fixed
+- 500,000 entries で capped walker が終端した後、`Walker capped...` notice が消える直前に UI が固まる問題を修正した。
+- capped walker の後処理で大きな pending entry queue を UI thread 上で同期 shrink していた問題を修正した。
+- notice / status line 更新時に OS メモリ使用量を同期サンプリングして UI 操作が重くなりうる問題を修正した。
+- `Finished` 後の terminal state 確定で、Ignore List などのフィルタ対象全件を UI thread で再走査していた問題を修正した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+-
+
 ## [0.18.3] - 2026-05-22
 ### Added
 -
@@ -1321,7 +1348,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.3...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.4...HEAD
+[0.18.4]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.4
 [0.18.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.3
 [0.18.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.2
 [0.18.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.1
