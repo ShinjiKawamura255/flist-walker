@@ -130,7 +130,7 @@ impl FlistWalkerApp {
     pub(super) fn schedule_frame_repaint(&mut self, ctx: &egui::Context) {
         let memory_elapsed = self.shell.ui.last_memory_sample.elapsed();
         if memory_elapsed >= Self::MEMORY_SAMPLE_INTERVAL {
-            self.refresh_status_line();
+            self.refresh_status_line_with_memory_sample();
         } else {
             ctx.request_repaint_after(Self::MEMORY_SAMPLE_INTERVAL - memory_elapsed);
         }

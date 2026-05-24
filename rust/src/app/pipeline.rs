@@ -410,10 +410,10 @@ impl FlistWalkerApp {
         const MAX_MESSAGES_PER_FRAME: usize = 64;
         const FRAME_BUDGET: Duration = Duration::from_millis(4);
         // Large capped roots can leave hundreds of thousands of entries queued at
-        // the terminal point. Keep the wall-clock budget as the responsiveness
-        // guard, but allow enough entries per frame to avoid a long "Indexing..."
-        // tail after the walker has already stopped.
+        // the terminal point. While the worker is still indexing, allow larger
+        // chunks; after Finished, prioritize input responsiveness over tail speed.
         const MAX_INDEX_ENTRIES_PER_FRAME: usize = 32_768;
+        const MAX_POST_FINISH_INDEX_ENTRIES_PER_FRAME: usize = 2_048;
 
         let frame_start = Instant::now();
         let mut processed = 0usize;
@@ -499,11 +499,16 @@ impl FlistWalkerApp {
             let consumed = if remaining_budget.is_zero() {
                 self.drain_queued_index_entries(request_id, 32)
             } else {
+                let max_entries = if self.shell.indexing.pending_finish.is_some() {
+                    MAX_POST_FINISH_INDEX_ENTRIES_PER_FRAME
+                } else {
+                    MAX_INDEX_ENTRIES_PER_FRAME
+                };
                 self.drain_queued_index_entries_with_budget(
                     request_id,
                     Instant::now(),
                     remaining_budget,
-                    MAX_INDEX_ENTRIES_PER_FRAME,
+                    max_entries,
                 )
             };
             has_index_progress |= consumed;
@@ -671,10 +676,35 @@ impl FlistWalkerApp {
             || !self.shell.runtime.include_dirs
             || (self.shell.ui.ignore_list_enabled
                 && !self.shell.runtime.ignore_list_terms.is_empty());
+        let has_incremental_filter_snapshot = needs_filtering
+            && (!self.shell.indexing.incremental_filtered_entries.is_empty()
+                || !self.shell.runtime.index.entries.is_empty());
         self.shell.indexing.settle_active_terminal_state();
         if needs_filtering {
-            self.apply_entry_filters(true);
-            self.rebuild_entry_kind_cache();
+            if has_incremental_filter_snapshot {
+                self.shell.runtime.entries = Arc::new(std::mem::take(
+                    &mut self.shell.indexing.incremental_filtered_entries,
+                ));
+                self.shell.indexing.last_search_snapshot_len = self.shell.runtime.entries.len();
+                self.shell.indexing.search_rerun_pending = false;
+                if self.shell.runtime.query_state.query.trim().is_empty() {
+                    self.shell.search.clear_active_request_state();
+                    let results = self
+                        .shell
+                        .runtime
+                        .entries
+                        .iter()
+                        .take(self.shell.runtime.limit)
+                        .cloned()
+                        .map(|entry| (entry.path, 0.0))
+                        .collect();
+                    self.replace_results_snapshot(results, true);
+                } else {
+                    self.update_results();
+                }
+            } else {
+                self.apply_entry_filters(true);
+            }
         } else {
             self.shell.runtime.entries = Arc::clone(&self.shell.runtime.all_entries);
             self.shell.indexing.incremental_filtered_entries.clear();

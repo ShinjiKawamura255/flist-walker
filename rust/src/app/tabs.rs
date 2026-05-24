@@ -620,6 +620,7 @@ impl FlistWalkerApp {
         {
             self.activate_tab_after_transition(&tab, false, false, false);
         }
+        self.refresh_status_line_with_memory_sample();
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {

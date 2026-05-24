@@ -157,6 +157,10 @@ pub(super) fn path_is_within_root(root: &Path, path: &Path) -> bool {
 
 impl FlistWalkerApp {
     pub(super) fn status_line_text(&mut self) -> String {
+        self.status_line_text_with_memory_sample(false)
+    }
+
+    fn status_line_text_with_memory_sample(&mut self, sample_memory: bool) -> String {
         let indexed_count =
             if self.shell.indexing.in_progress || self.shell.indexing.pending_finish.is_some() {
                 let active_indexed_count = self
@@ -174,7 +178,7 @@ impl FlistWalkerApp {
             } else {
                 self.shell.runtime.all_entries.len()
             };
-        let memory = self.memory_usage_text();
+        let memory = self.memory_usage_text(sample_memory);
         let status_line = build_status_line(StatusLineContext {
             active_tab: self.shell.tabs.active_tab_index(),
             tab_count: self.shell.tabs.len(),
@@ -204,11 +208,13 @@ impl FlistWalkerApp {
         self.shell.runtime.status_line = self.status_line_text();
     }
 
+    pub(super) fn refresh_status_line_with_memory_sample(&mut self) {
+        self.shell.runtime.status_line = self.status_line_text_with_memory_sample(true);
+    }
+
     /// 定期的にメモリ使用量をサンプリングし表示文字列へ変換する。
-    fn memory_usage_text(&mut self) -> Option<String> {
-        if self.shell.ui.memory_usage_bytes.is_none()
-            || self.shell.ui.last_memory_sample.elapsed() >= Self::MEMORY_SAMPLE_INTERVAL
-        {
+    fn memory_usage_text(&mut self, sample_memory: bool) -> Option<String> {
+        if sample_memory {
             self.shell.ui.last_memory_sample = Instant::now();
             self.shell.ui.memory_usage_bytes =
                 memory_stats().map(|stats| stats.physical_mem as u64);
