@@ -724,7 +724,6 @@ impl FlistWalkerApp {
             self.shell.features.filelist.workflow.pending_after_index = None;
             self.request_filelist_creation(current_tab_id, root, entries);
         }
-        self.shrink_checkpoint_buffers();
         self.shell.indexing.complete_active_request(request_id);
     }
 

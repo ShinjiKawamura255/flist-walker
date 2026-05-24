@@ -195,6 +195,7 @@
 - MUST: Walker が上限打ち切り（`Truncated`）に到達した場合でも、GUI は終端直前の大きな batch backlog を過小な固定件数で長時間 drain し続けてはならない。frame budget を応答性の上限として維持しつつ、`Indexing...` の終端尾を短く保てる件数を 1 frame 内で吸収しなければならない。
 - MUST: indexing 中の空クエリ・フィルタなし表示では、表示更新のたびに全候補の表示用スナップショットを複製してはならない。表示に必要な上位件数だけを更新し、全件 snapshot は terminal state で確定させなければならない。
 - MUST: Walker の `Finished` 応答を受信した後、GUI は残り entry drain や terminal snapshot 確定を内部後処理として継続してよいが、status line の `Indexing...` 表示は停止しなければならない。
+- MUST: terminal 後処理の完了時に、大規模 indexing で使用した pending entry queue の容量解放を UI thread 上で同期的に実行してはならない。
 - MUST: Root 変更時は旧 Root 由来の選択状態（current row / pinned / preview）を破棄し、誤操作を防止する。
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認、祖先追記確認、Walker 利用確認、deferred-after-index を破棄する。
 - MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。

@@ -627,6 +627,46 @@ fn pending_finished_index_finalizes_after_budgeted_drain_completes() {
 }
 
 #[test]
+fn pending_finished_index_finalization_does_not_shrink_drained_queue_regression() {
+    let root = test_root("finished-no-shrink-drained-queue");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(305);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.pending_entries_request_id = Some(305);
+    app.shell.indexing.pending_entries.reserve(20_000);
+    app.shell.indexing.pending_entries = (0..600)
+        .map(|index| IndexEntry {
+            path: root.join(format!("file-{index}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect();
+    app.shell.indexing.pending_entries.reserve(20_000);
+    let capacity_before = app.shell.indexing.pending_entries.capacity();
+    tx.send(IndexResponse::Finished {
+        request_id: 305,
+        source: IndexSource::Walker,
+    })
+    .expect("send finished");
+
+    for _ in 0..8 {
+        app.poll_index_response();
+        if app.shell.indexing.pending_finish.is_none() {
+            break;
+        }
+    }
+
+    assert!(capacity_before >= 20_000);
+    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.pending_entries.capacity() >= capacity_before);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn capped_walker_finished_drains_large_backlog_without_long_tail_regression() {
     let root = test_root("capped-finished-large-backlog");
     fs::create_dir_all(&root).expect("create root");

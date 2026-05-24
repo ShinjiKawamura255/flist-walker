@@ -167,6 +167,7 @@
 - Active indexing の terminal drain は wall-clock frame budget を主な応答性ガードとし、固定件数上限は大規模 root の `Truncated` 直後に `Indexing...` が長時間残らない値へ調整する。
 - 空クエリかつ FILE/DIR/Ignore List のフィルタが不要な active indexing では、表示結果を `runtime.index.entries` の先頭 `limit` 件から直接作り、`runtime.entries` / `incremental_filtered_entries` の全件複製を terminal state まで遅延する。
 - `Finished` 受信後に pending entries が残る場合、`pending_finish` を内部後処理 marker として保持し、status line の indexing 表示は解除する。repaint は `pending_finish` でも継続要求し、drain / terminal snapshot 確定 / request cleanup は後続 frame で完了させる。
+- Active indexing の terminal cleanup は `pending_entries.clear()` に留め、直前まで大きかった queue の `shrink_to_fit()` を同じ UI frame で呼ばない。容量解放より入力応答性を優先し、必要な小規模 checkpoint shrink は失敗/キャンセルなど別経路に限定する。
 - FileList 解析はストリーミングで処理し、`Started` を先行通知した後にバッチ反映する。大規模 FileList でも `Source: None` 固定を避け、新しい request_id で中断可能にする。
 - FileList の `\` / `/` 混在は候補生成順でプラットフォーム優先の字句選択へ寄せ、初期ストリームで `exists()` / `try_exists()` を各行へ追加しない。line-only fast path を metadata-probe baseline より優先し、そのスループットを維持する。
 - 非 Windows の dual-filter fast path では、Windows/WSL で生成された `\` 区切り FileList の実用性を優先して slash 正規化候補を先に流す。literal `\` を含む POSIX filename の厳密判定は初期ストリームでは扱わず、曖昧性解消のための per-line probe も入れない。
@@ -312,6 +313,7 @@
 - DES-009 -> TC-129 (SP-010)
 - DES-009 -> TC-130 (SP-010)
 - DES-009 -> TC-131 (SP-010)
+- DES-009 -> TC-132 (SP-010)
 - DES-009 -> TC-068 (SP-010)
 - DES-009 -> TC-069 (SP-010)
 - DES-010 -> TC-011 (SP-011)
