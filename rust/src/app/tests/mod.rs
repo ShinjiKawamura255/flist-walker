@@ -4,9 +4,10 @@ pub(super) use crate::app::coordinator::path_is_within_root;
 pub(super) use crate::app::index_coordinator::IndexResponseRoute;
 pub(super) use crate::app::session::UiState;
 pub(super) use crate::app::state::{
-    BackgroundIndexState, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, SortMetadata,
-    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
+    BackgroundIndexState, PendingActiveIndexFinish, PendingFileListAfterIndex,
+    PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    PendingFileListUseWalkerConfirmation, SortMetadata, UpdateCheckFailureState, UpdateManager,
+    UpdatePromptState, UpdateState,
 };
 pub(super) use crate::app::worker_protocol::{
     KindResolveRequest, KindResolveResponse, UpdateRequestKind,

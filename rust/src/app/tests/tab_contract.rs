@@ -72,6 +72,10 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         index_in_progress: true,
         pending_index_entries: VecDeque::new(),
         pending_index_entries_request_id: Some(12),
+        pending_index_finish: Some(PendingActiveIndexFinish {
+            request_id: 11,
+            source: IndexSource::Walker,
+        }),
         pending_kind_paths: VecDeque::from(vec![root.join("kind.txt")]),
         pending_kind_paths_set: HashSet::from([root.join("kind.txt")]),
         in_flight_kind_paths: HashSet::from([root.join("kind-in-flight.txt")]),
@@ -177,6 +181,18 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     assert_eq!(
         restored.index_state.pending_index_entries_request_id,
         snapshot.index_state.pending_index_entries_request_id
+    );
+    assert_eq!(
+        restored
+            .index_state
+            .pending_index_finish
+            .as_ref()
+            .map(|finish| finish.request_id),
+        snapshot
+            .index_state
+            .pending_index_finish
+            .as_ref()
+            .map(|finish| finish.request_id)
     );
     assert_eq!(
         restored.index_state.kind_resolution_epoch,

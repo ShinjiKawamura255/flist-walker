@@ -124,6 +124,12 @@ pub(super) struct PendingFileListUseWalkerConfirmation {
 }
 
 #[derive(Clone, Debug)]
+pub(super) struct PendingActiveIndexFinish {
+    pub(super) request_id: u64,
+    pub(super) source: IndexSource,
+}
+
+#[derive(Clone, Debug)]
 pub(super) struct UpdatePromptState {
     pub(super) candidate: UpdateCandidate,
     pub(super) skip_until_next_version: bool,

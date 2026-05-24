@@ -706,6 +706,7 @@ impl FlistWalkerApp {
                 || tab.preview_in_progress
                 || tab.action_in_progress
                 || tab.index_state.index_in_progress
+                || tab.index_state.pending_index_finish.is_some()
                 || tab.result_state.sort_in_progress
         })
     }

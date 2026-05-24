@@ -63,8 +63,8 @@ use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
     AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, FeatureStateBundle,
-    FileListDialogKind, FileListManager, HighlightCacheKey, PendingFileListAfterIndex,
-    PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    FileListDialogKind, FileListManager, HighlightCacheKey, PendingActiveIndexFinish,
+    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
     PendingFileListUseWalkerConfirmation, ResultSortMode, RootBrowserState, SortMetadata,
     TabAccentPalette, TabDragState, TabSessionState,
 };

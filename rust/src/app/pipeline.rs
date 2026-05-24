@@ -1,6 +1,6 @@
 use super::{
     walker_truncated_notice, AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry,
-    IndexRequest, IndexResponse, IndexSource, PipelineOwner,
+    IndexRequest, IndexResponse, IndexSource, PendingActiveIndexFinish, PipelineOwner,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::tabs::BackgroundIndexResponseEffect;
@@ -43,6 +43,7 @@ impl FlistWalkerApp {
         self.shell.indexing.incremental_filtered_entries.clear();
         self.shell.indexing.pending_entries.clear();
         self.shell.indexing.pending_entries_request_id = None;
+        self.shell.indexing.pending_finish = None;
         if reset_kind_resolution {
             self.reset_kind_resolution_state();
         } else {
@@ -406,9 +407,13 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_index_response(&mut self) {
-        const MAX_MESSAGES_PER_FRAME: usize = 12;
+        const MAX_MESSAGES_PER_FRAME: usize = 64;
         const FRAME_BUDGET: Duration = Duration::from_millis(4);
-        const MAX_INDEX_ENTRIES_PER_FRAME: usize = 256;
+        // Large capped roots can leave hundreds of thousands of entries queued at
+        // the terminal point. Keep the wall-clock budget as the responsiveness
+        // guard, but allow enough entries per frame to avoid a long "Indexing..."
+        // tail after the walker has already stopped.
+        const MAX_INDEX_ENTRIES_PER_FRAME: usize = 32_768;
 
         let frame_start = Instant::now();
         let mut processed = 0usize;
@@ -463,46 +468,9 @@ impl FlistWalkerApp {
                     has_index_progress = true;
                 }
                 IndexResponse::Finished { request_id, source } => {
-                    self.drain_queued_index_entries(request_id, usize::MAX);
-                    self.shell.runtime.index.source = source;
-                    self.shell.runtime.all_entries =
-                        Arc::new(std::mem::take(&mut self.shell.runtime.index.entries));
-                    self.shell.indexing.last_search_snapshot_len =
-                        self.shell.runtime.all_entries.len();
-                    self.shell.indexing.incremental_filtered_entries.clear();
-                    self.shell.indexing.settle_active_terminal_state();
-                    self.apply_entry_filters(true);
-                    self.rebuild_entry_kind_cache();
-                    if matches!(self.shell.runtime.index.source, IndexSource::Walker) {
-                        // Regression guard: keep Walker kind resolution bounded to what is
-                        // actually visible. Resolving the entire tree eagerly can keep the
-                        // process hot on huge on-demand roots even after search/index settles.
-                        self.queue_unknown_kind_paths_for_visible_results();
-                    } else {
-                        self.reset_kind_resolution_state();
-                    }
-                    self.clear_notice();
-                    let current_tab_id = self.current_tab_id().unwrap_or_default();
-                    if self
-                        .shell
-                        .features
-                        .filelist
-                        .workflow
-                        .pending_after_index
-                        .as_ref()
-                        .is_some_and(|pending| {
-                            pending.tab_id == current_tab_id
-                                && path_key(&pending.root) == path_key(&self.shell.runtime.root)
-                        })
-                    {
-                        let root = self.shell.runtime.root.clone();
-                        let entries = self.filelist_entries_snapshot();
-                        self.shell.features.filelist.workflow.pending_after_index = None;
-                        self.request_filelist_creation(current_tab_id, root, entries);
-                    }
-                    self.shrink_checkpoint_buffers();
-                    self.shell.indexing.complete_active_request(request_id);
-                    finished_current_request = true;
+                    self.shell.indexing.pending_finish =
+                        Some(PendingActiveIndexFinish { request_id, source });
+                    self.shell.indexing.in_progress = false;
                     break;
                 }
                 IndexResponse::Failed { request_id, error } => {
@@ -526,11 +494,6 @@ impl FlistWalkerApp {
             }
         }
 
-        if finished_current_request {
-            self.dispatch_index_queue();
-            return;
-        }
-
         if let Some(request_id) = self.shell.indexing.pending_request_id {
             let remaining_budget = FRAME_BUDGET.saturating_sub(frame_start.elapsed());
             let consumed = if remaining_budget.is_zero() {
@@ -544,6 +507,20 @@ impl FlistWalkerApp {
                 )
             };
             has_index_progress |= consumed;
+        }
+
+        if !finished_current_request {
+            finished_current_request = self.try_finish_active_index_after_pending_drain();
+        }
+
+        if finished_current_request {
+            self.dispatch_index_queue();
+            return;
+        }
+
+        if self.shell.indexing.pending_finish.is_some() {
+            self.dispatch_index_queue();
+            return;
         }
 
         if !has_index_progress {
@@ -609,7 +586,9 @@ impl FlistWalkerApp {
         if entry.kind.is_none() && self.kind_resolution_needed_for_filters() {
             self.queue_kind_resolution(entry.path.clone());
         }
-        if self.is_entry_visible_for_current_filter(&entry) {
+        if self.should_track_incremental_filtered_entries()
+            && self.is_entry_visible_for_current_filter(&entry)
+        {
             self.shell
                 .indexing
                 .incremental_filtered_entries
@@ -658,6 +637,95 @@ impl FlistWalkerApp {
             self.shell.indexing.pending_entries_request_id = None;
         }
         processed > 0
+    }
+
+    fn should_track_incremental_filtered_entries(&self) -> bool {
+        !self.shell.runtime.query_state.query.trim().is_empty()
+            || !self.shell.runtime.include_files
+            || !self.shell.runtime.include_dirs
+            || (self.shell.ui.ignore_list_enabled
+                && !self.shell.runtime.ignore_list_terms.is_empty())
+    }
+
+    fn try_finish_active_index_after_pending_drain(&mut self) -> bool {
+        let Some(pending_finish) = self.shell.indexing.pending_finish.clone() else {
+            return false;
+        };
+        if self.shell.indexing.pending_entries_request_id == Some(pending_finish.request_id)
+            && !self.shell.indexing.pending_entries.is_empty()
+        {
+            return false;
+        }
+        self.shell.indexing.pending_finish = None;
+        self.finish_active_index_request(pending_finish);
+        true
+    }
+
+    fn finish_active_index_request(&mut self, pending_finish: PendingActiveIndexFinish) {
+        let request_id = pending_finish.request_id;
+        self.shell.runtime.index.source = pending_finish.source;
+        self.shell.runtime.all_entries =
+            Arc::new(std::mem::take(&mut self.shell.runtime.index.entries));
+
+        let needs_filtering = !self.shell.runtime.include_files
+            || !self.shell.runtime.include_dirs
+            || (self.shell.ui.ignore_list_enabled
+                && !self.shell.runtime.ignore_list_terms.is_empty());
+        self.shell.indexing.settle_active_terminal_state();
+        if needs_filtering {
+            self.apply_entry_filters(true);
+            self.rebuild_entry_kind_cache();
+        } else {
+            self.shell.runtime.entries = Arc::clone(&self.shell.runtime.all_entries);
+            self.shell.indexing.incremental_filtered_entries.clear();
+            self.shell.indexing.last_search_snapshot_len = self.shell.runtime.entries.len();
+            self.shell.indexing.search_rerun_pending = false;
+            if self.shell.runtime.query_state.query.trim().is_empty() {
+                self.shell.search.clear_active_request_state();
+                let results = self
+                    .shell
+                    .runtime
+                    .entries
+                    .iter()
+                    .take(self.shell.runtime.limit)
+                    .cloned()
+                    .map(|entry| (entry.path, 0.0))
+                    .collect();
+                self.replace_results_snapshot(results, true);
+            } else {
+                self.update_results();
+            }
+        }
+
+        if matches!(self.shell.runtime.index.source, IndexSource::Walker) {
+            // Regression guard: keep Walker kind resolution bounded to what is
+            // actually visible. Resolving the entire tree eagerly can keep the
+            // process hot on huge on-demand roots even after search/index settles.
+            self.queue_unknown_kind_paths_for_visible_results();
+        } else {
+            self.reset_kind_resolution_state();
+        }
+        self.clear_notice();
+        let current_tab_id = self.current_tab_id().unwrap_or_default();
+        if self
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.tab_id == current_tab_id
+                    && path_key(&pending.root) == path_key(&self.shell.runtime.root)
+            })
+        {
+            let root = self.shell.runtime.root.clone();
+            let entries = self.filelist_entries_snapshot();
+            self.shell.features.filelist.workflow.pending_after_index = None;
+            self.request_filelist_creation(current_tab_id, root, entries);
+        }
+        self.shrink_checkpoint_buffers();
+        self.shell.indexing.complete_active_request(request_id);
     }
 
     fn apply_incremental_empty_query_results(&mut self) {

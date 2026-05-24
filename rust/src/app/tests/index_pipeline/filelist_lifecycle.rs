@@ -555,3 +555,149 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
     assert_eq!(app.shell.runtime.results.len(), 1);
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn finished_index_response_drains_pending_entries_over_multiple_frames() {
+    let root = test_root("finished-drain-budget");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(301);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.pending_entries_request_id = Some(301);
+    app.shell.indexing.pending_entries = (0..50_000)
+        .map(|index| IndexEntry {
+            path: root.join(format!("file-{index}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect();
+
+    tx.send(IndexResponse::Finished {
+        request_id: 301,
+        source: IndexSource::Walker,
+    })
+    .expect("send finished");
+
+    app.poll_index_response();
+
+    assert!(!app.shell.indexing.in_progress);
+    assert!(app.shell.indexing.pending_finish.is_some());
+    assert!(app.shell.indexing.pending_entries.len() < 50_000);
+    assert!(!app.shell.indexing.pending_entries.is_empty());
+    assert!(!app.status_line_text().contains("Indexing..."));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn pending_finished_index_finalizes_after_budgeted_drain_completes() {
+    let root = test_root("finished-drain-complete");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(302);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.pending_entries_request_id = Some(302);
+    app.shell.indexing.pending_entries = (0..600)
+        .map(|index| IndexEntry {
+            path: root.join(format!("file-{index}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect();
+    tx.send(IndexResponse::Finished {
+        request_id: 302,
+        source: IndexSource::Walker,
+    })
+    .expect("send finished");
+
+    for _ in 0..8 {
+        app.poll_index_response();
+    }
+
+    assert!(!app.shell.indexing.in_progress);
+    assert!(app.shell.indexing.pending_finish.is_none());
+    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert_eq!(app.shell.runtime.all_entries.len(), 600);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn capped_walker_finished_drains_large_backlog_without_long_tail_regression() {
+    let root = test_root("capped-finished-large-backlog");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(303);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.pending_entries_request_id = Some(303);
+    app.shell.indexing.pending_entries = (0..5_000)
+        .map(|index| IndexEntry {
+            path: root.join(format!("file-{index}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect();
+    tx.send(IndexResponse::Truncated {
+        request_id: 303,
+        limit: 500_000,
+    })
+    .expect("send truncated");
+    tx.send(IndexResponse::Finished {
+        request_id: 303,
+        source: IndexSource::Walker,
+    })
+    .expect("send finished");
+
+    for _ in 0..8 {
+        app.poll_index_response();
+        if app.shell.indexing.pending_finish.is_none() {
+            break;
+        }
+    }
+
+    assert!(!app.shell.indexing.in_progress);
+    assert!(app.shell.indexing.pending_finish.is_none());
+    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert_eq!(app.shell.runtime.all_entries.len(), 5_000);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn empty_query_unfiltered_indexing_does_not_duplicate_incremental_snapshot() {
+    let root = test_root("empty-query-no-incremental-dup");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(304);
+    app.shell.indexing.in_progress = true;
+    let entries = (0..2_000)
+        .map(|index| IndexEntry {
+            path: root.join(format!("file-{index}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect();
+    tx.send(IndexResponse::Batch {
+        request_id: 304,
+        entries,
+    })
+    .expect("send batch");
+
+    app.poll_index_response();
+
+    assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
+    assert!(app.shell.runtime.entries.is_empty());
+    assert!(app.shell.runtime.index.entries.len() >= 50);
+    assert!(app.shell.runtime.index.entries.len() < 2_000);
+    assert_eq!(app.shell.runtime.results.len(), 50);
+
+    let _ = fs::remove_dir_all(&root);
+}

@@ -148,6 +148,23 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn apply_incremental_empty_query_results(&mut self) {
+        let needs_filtering = !self.app.shell.runtime.include_files
+            || !self.app.shell.runtime.include_dirs
+            || self.ignore_list_filter_active();
+        if self.app.shell.indexing.in_progress && !needs_filtering {
+            self.app.shell.search.clear_active_request_state();
+            let source = self.app.shell.runtime.index.entries.as_slice();
+            let results = source
+                .iter()
+                .take(self.app.shell.runtime.limit)
+                .cloned()
+                .map(|entry| (entry.path, 0.0))
+                .collect();
+            self.app.shell.indexing.last_search_snapshot_len = source.len();
+            self.app.shell.indexing.last_incremental_results_refresh = Instant::now();
+            self.app.replace_results_snapshot(results, true);
+            return;
+        }
         self.sync_entries_from_incremental();
         self.app.shell.search.clear_active_request_state();
         let results = self

@@ -157,22 +157,23 @@ pub(super) fn path_is_within_root(root: &Path, path: &Path) -> bool {
 
 impl FlistWalkerApp {
     pub(super) fn status_line_text(&mut self) -> String {
-        let indexed_count = if self.shell.indexing.in_progress {
-            let active_indexed_count = self
-                .shell
-                .runtime
-                .index
-                .entries
-                .len()
-                .saturating_add(self.shell.indexing.pending_entries.len());
-            if active_indexed_count == 0 {
-                self.shell.runtime.all_entries.len()
+        let indexed_count =
+            if self.shell.indexing.in_progress || self.shell.indexing.pending_finish.is_some() {
+                let active_indexed_count = self
+                    .shell
+                    .runtime
+                    .index
+                    .entries
+                    .len()
+                    .saturating_add(self.shell.indexing.pending_entries.len());
+                if active_indexed_count == 0 {
+                    self.shell.runtime.all_entries.len()
+                } else {
+                    active_indexed_count
+                }
             } else {
-                active_indexed_count
-            }
-        } else {
-            self.shell.runtime.all_entries.len()
-        };
+                self.shell.runtime.all_entries.len()
+            };
         let memory = self.memory_usage_text();
         let status_line = build_status_line(StatusLineContext {
             active_tab: self.shell.tabs.active_tab_index(),

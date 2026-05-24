@@ -1,6 +1,6 @@
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, KindResolveRequest, TabSessionState,
+    IndexSource, KindResolveRequest, PendingActiveIndexFinish, TabSessionState,
 };
 use crate::entry::{Entry, EntryKind};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -27,6 +27,7 @@ pub(super) struct IndexCoordinator {
     pub(super) incremental_filtered_entries: Vec<Entry>,
     pub(super) pending_entries: VecDeque<IndexEntry>,
     pub(super) pending_entries_request_id: Option<u64>,
+    pub(super) pending_finish: Option<PendingActiveIndexFinish>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
     pub(super) pending_kind_paths_set: HashSet<PathBuf>,
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
@@ -58,6 +59,7 @@ impl IndexCoordinator {
             incremental_filtered_entries: Vec::new(),
             pending_entries: VecDeque::new(),
             pending_entries_request_id: None,
+            pending_finish: None,
             pending_kind_paths: VecDeque::new(),
             pending_kind_paths_set: HashSet::new(),
             in_flight_kind_paths: HashSet::new(),
@@ -151,6 +153,7 @@ impl IndexCoordinator {
         self.search_rerun_pending = false;
         self.pending_entries.clear();
         self.pending_entries_request_id = None;
+        self.pending_finish = None;
     }
 
     pub(super) fn clear_active_request_state(&mut self, tabs: &mut TabSessionState) {

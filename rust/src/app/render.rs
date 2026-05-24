@@ -136,6 +136,7 @@ impl FlistWalkerApp {
         }
         if self.shell.search.in_progress()
             || self.shell.indexing.in_progress
+            || self.shell.indexing.pending_finish.is_some()
             || self.shell.worker_bus.preview.in_progress
             || self.shell.worker_bus.action.in_progress
             || self.shell.worker_bus.sort.in_progress

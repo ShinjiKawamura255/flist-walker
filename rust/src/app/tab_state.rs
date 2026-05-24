@@ -1,5 +1,6 @@
 use super::{
-    normalize_windows_path_buf, FlistWalkerApp, ResultSortMode, SavedTabState, TabAccentColor,
+    normalize_windows_path_buf, FlistWalkerApp, PendingActiveIndexFinish, ResultSortMode,
+    SavedTabState, TabAccentColor,
 };
 use crate::app::worker_protocol::IndexEntry;
 use crate::entry::Entry;
@@ -31,6 +32,7 @@ pub(super) struct TabIndexState {
     pub(super) index_in_progress: bool,
     pub(super) pending_index_entries: VecDeque<IndexEntry>,
     pub(super) pending_index_entries_request_id: Option<u64>,
+    pub(super) pending_index_finish: Option<PendingActiveIndexFinish>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
     pub(super) pending_kind_paths_set: HashSet<PathBuf>,
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
@@ -89,6 +91,7 @@ impl TabIndexState {
         self.index_in_progress = false;
         self.pending_index_entries.clear();
         self.pending_index_entries_request_id = None;
+        self.pending_index_finish = None;
         self.search_resume_pending = false;
         self.search_rerun_pending = false;
     }
@@ -114,6 +117,7 @@ impl TabIndexState {
             index_in_progress: shell.shell.indexing.in_progress,
             pending_index_entries: shell.shell.indexing.pending_entries.clone(),
             pending_index_entries_request_id: shell.shell.indexing.pending_entries_request_id,
+            pending_index_finish: shell.shell.indexing.pending_finish.clone(),
             pending_kind_paths: shell.shell.indexing.pending_kind_paths.clone(),
             pending_kind_paths_set: shell.shell.indexing.pending_kind_paths_set.clone(),
             in_flight_kind_paths: shell.shell.indexing.in_flight_kind_paths.clone(),
@@ -135,6 +139,7 @@ impl TabIndexState {
         shell.shell.indexing.in_progress = self.index_in_progress;
         shell.shell.indexing.pending_entries = self.pending_index_entries.clone();
         shell.shell.indexing.pending_entries_request_id = self.pending_index_entries_request_id;
+        shell.shell.indexing.pending_finish = self.pending_index_finish.clone();
         shell.shell.indexing.pending_kind_paths = self.pending_kind_paths.clone();
         shell.shell.indexing.pending_kind_paths_set = self.pending_kind_paths_set.clone();
         shell.shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths.clone();
@@ -309,6 +314,7 @@ impl AppTabState {
                 index_in_progress: false,
                 pending_index_entries: VecDeque::new(),
                 pending_index_entries_request_id: None,
+                pending_index_finish: None,
                 pending_kind_paths: VecDeque::new(),
                 pending_kind_paths_set: HashSet::new(),
                 in_flight_kind_paths: HashSet::new(),

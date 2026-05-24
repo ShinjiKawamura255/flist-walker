@@ -142,7 +142,7 @@ impl FlistWalkerApp {
         if !matches!(self.shell.runtime.index.source, IndexSource::Walker) {
             needs_reindex = true;
         }
-        if self.shell.indexing.in_progress {
+        if self.shell.indexing.in_progress || self.shell.indexing.pending_finish.is_some() {
             self.shell.features.filelist.workflow.pending_after_index =
                 Some(PendingFileListAfterIndex {
                     tab_id,
