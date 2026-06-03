@@ -76,7 +76,10 @@ impl FlistWalkerApp {
         })
     }
 
-    fn consume_ctrl_v_page_down_shortcut(ctx: &egui::Context) -> bool {
+    fn consume_ctrl_v_page_down_shortcut(&self, ctx: &egui::Context) -> bool {
+        if !self.shell.runtime.emacs_keybindings_enabled {
+            return false;
+        }
         let ctrl_v_mods = egui::Modifiers {
             ctrl: true,
             ..Default::default()
@@ -115,10 +118,14 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn consume_emacs_shortcut(
+        &self,
         ctx: &egui::Context,
         key: egui::Key,
         shift: bool,
     ) -> bool {
+        if !self.shell.runtime.emacs_keybindings_enabled {
+            return false;
+        }
         let mods = egui::Modifiers {
             ctrl: true,
             shift,
@@ -156,26 +163,26 @@ impl FlistWalkerApp {
             return;
         }
         if self.is_root_dropdown_open(ctx) {
-            if Self::consume_emacs_shortcut(ctx, egui::Key::N, false)
+            if self.consume_emacs_shortcut(ctx, egui::Key::N, false)
                 || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
             {
                 self.move_root_dropdown_selection(1);
                 return;
             }
-            if Self::consume_emacs_shortcut(ctx, egui::Key::P, false)
+            if self.consume_emacs_shortcut(ctx, egui::Key::P, false)
                 || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
             {
                 self.move_root_dropdown_selection(-1);
                 return;
             }
-            if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
-                || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
+            if self.consume_emacs_shortcut(ctx, egui::Key::J, false)
+                || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
                 || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
             {
                 self.apply_root_dropdown_selection(ctx);
                 return;
             }
-            if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
+            if self.consume_emacs_shortcut(ctx, egui::Key::G, false)
                 || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
             {
                 self.close_root_dropdown(ctx);
@@ -235,13 +242,13 @@ impl FlistWalkerApp {
         }
 
         if self.shell.runtime.query_state.is_history_search_active() {
-            if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
+            if self.consume_emacs_shortcut(ctx, egui::Key::N, false) {
                 self.move_history_search_selection(1);
             }
-            if Self::consume_emacs_shortcut(ctx, egui::Key::P, false) {
+            if self.consume_emacs_shortcut(ctx, egui::Key::P, false) {
                 self.move_history_search_selection(-1);
             }
-            if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
+            if self.consume_emacs_shortcut(ctx, egui::Key::G, false)
                 || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
             {
                 self.cancel_history_search();
@@ -252,8 +259,8 @@ impl FlistWalkerApp {
             if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
                 self.move_history_search_selection(-1);
             }
-            if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
-                || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
+            if self.consume_emacs_shortcut(ctx, egui::Key::J, false)
+                || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
                 || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
             {
                 self.accept_history_search();
@@ -264,13 +271,13 @@ impl FlistWalkerApp {
             return;
         }
 
-        if Self::consume_emacs_shortcut(ctx, egui::Key::N, false) {
+        if self.consume_emacs_shortcut(ctx, egui::Key::N, false) {
             self.move_row(1);
         }
-        if Self::consume_emacs_shortcut(ctx, egui::Key::P, false) {
+        if self.consume_emacs_shortcut(ctx, egui::Key::P, false) {
             self.move_row(-1);
         }
-        if Self::consume_emacs_shortcut(ctx, egui::Key::R, false) {
+        if self.consume_emacs_shortcut(ctx, egui::Key::R, false) {
             self.start_history_search();
             if query_focused {
                 ctx.memory_mut(|m| m.request_focus(self.shell.ui.query_input_id));
@@ -283,7 +290,7 @@ impl FlistWalkerApp {
             // Event::Copy before widgets see Key::C; keep both paths as path-copy.
             self.shell.ui.pending_copy_shortcut = true;
         }
-        if Self::consume_emacs_shortcut(ctx, egui::Key::G, false)
+        if self.consume_emacs_shortcut(ctx, egui::Key::G, false)
             || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
         {
             self.clear_query_and_selection();
@@ -308,7 +315,7 @@ impl FlistWalkerApp {
                 ctx.memory_mut(|m| m.stop_text_input());
             }
         }
-        if Self::consume_emacs_shortcut(ctx, egui::Key::I, false) {
+        if self.consume_emacs_shortcut(ctx, egui::Key::I, false) {
             self.toggle_pin_current();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
@@ -317,8 +324,8 @@ impl FlistWalkerApp {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
             self.move_row(-1);
         }
-        if Self::consume_emacs_shortcut(ctx, egui::Key::J, false)
-            || Self::consume_emacs_shortcut(ctx, egui::Key::M, false)
+        if self.consume_emacs_shortcut(ctx, egui::Key::J, false)
+            || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
         {
             self.execute_selected();
         }
@@ -349,10 +356,12 @@ impl FlistWalkerApp {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::PageDown)) {
             self.move_page(1);
         }
-        if Self::consume_ctrl_v_page_down_shortcut(ctx) {
+        if self.consume_ctrl_v_page_down_shortcut(ctx) {
             self.move_page(1);
         }
-        if ctx.input(|i| i.modifiers.alt && i.key_pressed(egui::Key::V)) {
+        if self.shell.runtime.emacs_keybindings_enabled
+            && ctx.input(|i| i.modifiers.alt && i.key_pressed(egui::Key::V))
+        {
             self.move_page(-1);
         }
     }

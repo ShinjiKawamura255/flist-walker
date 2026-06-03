@@ -185,6 +185,59 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
 }
 
 #[test]
+fn ctrl_j_and_ctrl_m_do_not_execute_when_emacs_keybindings_are_disabled() {
+    let root = test_root("shortcut-ctrl-jm-disabled");
+    fs::create_dir_all(&root).expect("create dir");
+    #[cfg(target_os = "windows")]
+    let selected = root.join("picked.exe");
+    #[cfg(not(target_os = "windows"))]
+    let selected = root.join("picked.sh");
+    fs::write(&selected, "echo test").expect("write file");
+    #[cfg(not(target_os = "windows"))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&selected).expect("metadata").permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&selected, perms).expect("set permissions");
+    }
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+    app.shell.runtime.emacs_keybindings_enabled = false;
+    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::J,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+    );
+    assert!(action_rx_req.try_recv().is_err());
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::M,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+    );
+    assert!(action_rx_req.try_recv().is_err());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn regression_enter_executes_regardless_of_query_focus() {
     let root = test_root("regression-enter-query-focus");
     fs::create_dir_all(&root).expect("create dir");

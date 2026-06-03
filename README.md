@@ -95,6 +95,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - The file is plain JSON, so you can edit it directly.
 - If you delete the file, the next launch will recreate it from the current environment values.
 - `walker_max_entries` is also exposed here because it affects large-root scans.
+- Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and query-box editing chords. It is enabled by default.
 
 Example:
 
@@ -102,7 +103,8 @@ Example:
 {
   "walker_max_entries": 500000,
   "history_persist_disabled": false,
-  "restore_tabs_enabled": false
+  "restore_tabs_enabled": false,
+  "emacs_keybindings_enabled": true
 }
 ```
 

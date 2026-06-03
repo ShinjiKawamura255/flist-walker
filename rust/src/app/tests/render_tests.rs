@@ -485,6 +485,42 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
 }
 
 #[test]
+fn disabled_emacs_keybindings_prevent_textedit_ctrl_k_from_editing_query() {
+    let root = test_root("render-disabled-ctrl-k");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.emacs_keybindings_enabled = false;
+    app.shell.runtime.query_state.query = "alpha beta".to_string();
+    let ctx = egui::Context::default();
+
+    ctx.begin_pass(egui::RawInput {
+        modifiers: egui::Modifiers {
+            ctrl: true,
+            command: true,
+            ..Default::default()
+        },
+        events: vec![egui::Event::Key {
+            key: egui::Key::K,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                ctrl: true,
+                command: true,
+                ..Default::default()
+            },
+        }],
+        ..Default::default()
+    });
+    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+    render_panels::render_top_panel(&mut app, &ctx);
+    let _ = ctx.end_pass();
+
+    assert_eq!(app.shell.runtime.query_state.query, "alpha beta");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn run_ui_frame_executes_render_facade_in_headless_frame() {
     let root = test_root("render-run-ui-frame");
     fs::create_dir_all(&root).expect("create dir");

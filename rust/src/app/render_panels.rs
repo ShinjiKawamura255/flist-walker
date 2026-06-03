@@ -242,6 +242,10 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         }
         let editing_history_search = app.shell.runtime.query_state.history_search_active;
         let query_input_id = app.shell.ui.query_input_id();
+        let query_focused_before_text_edit = ctx.memory(|m| m.has_focus(query_input_id));
+        if !editing_history_search {
+            app.consume_disabled_emacs_query_edit_shortcuts(ctx, query_focused_before_text_edit);
+        }
         let mut output = egui::TextEdit::singleline(if editing_history_search {
             &mut app.shell.runtime.query_state.history_search_query
         } else {

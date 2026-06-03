@@ -55,7 +55,7 @@
 - FR-023: ツールは macOS では新しい version を検知しても自動置換を試みず、手動更新が必要であることを示さなければならない。
 - FR-024: ツールは更新ダイアログに、現在提示中の target version を次の version が出るまで再表示しない選択肢を提供し、その抑止状態を起動間で保持しなければならない。
 - FR-025: ツールは GUI/CLI で、実行中 binary と同じフォルダにある ignore list ファイルを候補除外ルールとして適用でき、GUI では有効/無効を切り替えるチェックボックスを提供しなければならない。既定では有効でなければならない。
-- FR-026: ツールは起動時に runtime config file を読み込み、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を保存先として使わなければならない。これは UI state、saved roots、window trace などの永続化ファイルにも適用しなければならない。Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しなければ自動移行しなければならない。runtime config file が存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。自動生成時は、実際に設定された値だけを書き込み、未設定の項目は省略しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
+- FR-026: ツールは起動時に runtime config file を読み込み、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を保存先として使わなければならない。これは UI state、saved roots、window trace などの永続化ファイルにも適用しなければならない。Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しなければ自動移行しなければならない。runtime config file が存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。自動生成時は、一般利用者向けの既定項目を含め、環境変数で明示された詳細項目だけを追加しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - FR-027: ツールは ignore list サンプルを埋め込み、起動時に実行中 binary と同じフォルダへ `flistwalker.ignore.txt.example` が存在しない場合は sample を自動生成しなければならない。sample は `flistwalker.ignore.txt` へリネームして live ignore list として使えることを利用者へ示さなければならない。
 - FR-028: ツールは GUI から runtime config file を開く導線を提供し、既定アプリケーションで開けない場合は OS の標準的なテキストエディタ相当へフォールバックしなければならない。
 - FR-029: ツールは保存済みウィンドウ位置が現在の表示範囲外にある場合、GUI 起動時に表示範囲内へ補正しなければならない。
@@ -87,6 +87,7 @@
 - AC-008: UNC root 配下の候補は root 外判定に誤って拒否されない。
 - AC-009: Create File List 実行時、祖先 FileList 更新がありうる場合は確認ダイアログが表示され、拒否時は root 直下の FileList だけが更新される。
 - AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。
+- AC-010A: runtime config の `emacs_keybindings_enabled` が `false` のときは Emacs 風ショートカットをアプリ操作として消費せず、`true` または未指定時は既存どおり有効にする。
 - AC-011: CI は Linux/macOS/Windows でテストを実行し、依存脆弱性検査を通過する。
 - AC-012: GUI の結果ペインから `Score` / `Name` / `Modified` / `Created` を選択できる。
 - AC-013: `Name` ソートは即時に並び替わり、`Modified` / `Created` ソートは UI を固めずに完了する。
@@ -101,7 +102,7 @@
 - AC-022: macOS では更新検知時に自動更新非対応が案内され、誤って自己置換しない。
 - AC-023: 利用者が更新ダイアログで「次のバージョンが出るまで表示しない」を選ぶと、その target version は次回起動以降も再表示されず、より新しい version が見つかった場合のみ再びダイアログが表示される。
 - AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の非 fuzzy 除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
-- AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、未設定項目を含まず、設定済み項目だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
+- AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、一般利用者向けの `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` を既定値で保持し、詳細項目は設定済み環境変数だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では `%LocalAppData%\flistwalker\` に、Linux/macOS では `~/.flistwalker/` に保存される。
 - AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。
 - AC-026: `flistwalker.ignore.txt.example` が存在しない状態で起動しても、ツールは sample を実行バイナリの隣へ自動生成し、`flistwalker.ignore.txt` へのリネーム案内を提供する。
@@ -130,6 +131,7 @@
 - FR-005 -> SP-005 -> DES-004 -> TC-005
 - FR-006 -> SP-006 -> DES-005 -> TC-006
 - FR-007 -> SP-010 -> DES-009 -> TC-010
+- FR-007 -> SP-010, SP-016 -> DES-009, DES-017 -> TC-141, TC-142, TC-143
 - FR-008 -> SP-007 -> DES-006 -> TC-049
 - FR-009 -> SP-004 -> DES-004 -> TC-050
 - FR-010 -> SP-001, SP-010 -> DES-007, DES-009 -> TC-052

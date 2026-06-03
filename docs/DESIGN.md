@@ -68,7 +68,7 @@
 - 役割補足: search domain は `search/mod.rs` を public API と high-level orchestration の入口に保ちつつ、query compile / literal/regex match / searchable entry materialization / candidate score evaluation は `search/match_eval.rs`、prefix cache は `search/cache.rs`、execution mode と parallel tuning は `search/config.rs`、candidate collect は `search/execute.rs`、ranking/materialization は `search/rank.rs` へ分割して保守する。
 - 役割補足: indexer domain は `indexer/mod.rs` を public API、型、FileList-vs-walker build orchestration の入口に保ちつつ、nested FileList override は `indexer/filelist_hierarchy.rs`、FileList read は `indexer/filelist_reader.rs`、walker は `indexer/walker.rs`、FileList write/ancestor propagation は `indexer/filelist_writer.rs` へ分割して保守する。
 - 役割補足: active indexing の terminal response は `PendingActiveIndexFinish` として保留でき、未反映 `pending_entries` を frame budget 内で吸収し終えてから finalization する。既定の files+folders 両有効では、終端時に全件 filter / kind cache rebuild を再実行せず、incremental ingestion 済みの state を source of truth へ昇格する。
-- 役割補足: runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` へ集約し、`FLISTWALKER_*` は初回 seed としてのみ使う。初回 seed には一般利用者向けの `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled` を既定値で含め、既存 config に欠けている場合も読み込み時に同じ項目を補完する。build/release と dev/test override は従来どおり env のまま保持し、公開 docs には config file の場所と seed-only 挙動を明記する。
+- 役割補足: runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` へ集約し、`FLISTWALKER_*` は初回 seed としてのみ使う。初回 seed には一般利用者向けの `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled`、`emacs_keybindings_enabled` を既定値で含め、既存 config に欠けている場合も読み込み時に同じ項目を補完する。build/release と dev/test override は従来どおり env のまま保持し、公開 docs には config file の場所と seed-only 挙動を明記する。
 - 役割補足: candidate は `entry.rs` の `Entry { path, kind }` で app/index/search worker 境界をまたいで表現し、app 側の kind side-channel を持たない。
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/coordinator.rs`, `rust/src/app/filelist.rs`, `rust/src/app/update.rs`, `rust/src/app/render.rs`, `rust/src/app/input.rs`, `rust/src/app/session.rs`, `rust/src/app/state.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/cache.rs`, `rust/src/app/result_reducer.rs`, `rust/src/app/result_flow.rs`, `rust/src/app/preview_flow.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_runtime.rs`, `rust/src/app/worker_support.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/search_coordinator.rs`, `rust/src/app/index_coordinator.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/workers.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/entry.rs`, `rust/src/ui_model.rs`, `rust/src/query.rs`, `rust/src/runtime_config.rs`, `rust/src/search/mod.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ignore_list.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
@@ -228,6 +228,7 @@
 - プレビューデコーダは拡張子を見ず、先頭 64KiB を対象に UTF-8、BOM 付き UTF-16、その後に主要レガシー文字コードを順に試す。候補ごとに decode error と制御文字比率を評価し、妥当なテキストだけを preview に採用する。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。
 - query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
+- Emacs 風 keybindings は runtime config の `emacs_keybindings_enabled` で制御する。既定は `true` で既存操作を維持し、`false` のときは `consume_emacs_shortcut` と検索欄編集の Emacs 風処理を入口で無効化する。
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
@@ -247,6 +248,7 @@
 - タブ close ボタンは固定サイズの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
+- `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作は維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は `SHA256SUMS.sig` を埋め込み公開鍵で検証してから `SHA256SUMS` を信頼し、staged binary の checksum 検証へ進む。検証失敗時は既存バイナリと UI セッションを維持する。
 - Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden` で非表示起動し、`Copy-Item -LiteralPath` ベースで本体と `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を配置する。
@@ -326,6 +328,7 @@
 - DES-009 -> TC-137 (SP-010)
 - DES-009 -> TC-138 (SP-010)
 - DES-009 -> TC-139 (SP-010)
+- DES-009 -> TC-141, TC-142, TC-143 (SP-010, SP-016)
 - DES-009 -> TC-068 (SP-010)
 - DES-009 -> TC-069 (SP-010)
 - DES-010 -> TC-011 (SP-011)
@@ -337,4 +340,5 @@
 - DES-016 -> TC-110, TC-112, TC-117 (SP-015)
 - DES-017 -> TC-111 (SP-016)
 - DES-017 -> TC-127 (SP-016)
+- DES-017 -> TC-141, TC-142, TC-143 (SP-010, SP-016)
 - DES-018 -> TC-113, TC-114 (SP-017)

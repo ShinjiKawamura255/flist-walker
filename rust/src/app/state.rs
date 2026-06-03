@@ -271,6 +271,7 @@ pub struct AppRuntimeState {
     pub(super) result_sort_mode: ResultSortMode,
     pub(super) pinned_paths: HashSet<PathBuf>,
     pub(super) current_row: Option<usize>,
+    pub(super) emacs_keybindings_enabled: bool,
     pub(super) preview: String,
     pub(super) notice: String,
     pub(super) status_line: String,

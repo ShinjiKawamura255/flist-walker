@@ -12,6 +12,7 @@ use super::{
 use crate::app::state::{UpdateManager, UpdateState};
 use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
+use crate::runtime_config::current_runtime_config;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -270,6 +271,7 @@ impl FlistWalkerApp {
             ignore_list_terms,
             update_state,
         ) = Self::launch_seed(root, limit, query, &launch).into_parts();
+        let emacs_keybindings_enabled = current_runtime_config().emacs_keybindings_enabled;
         let mut app = Self {
             shell: AppShellState {
                 runtime: AppRuntimeState {
@@ -293,6 +295,7 @@ impl FlistWalkerApp {
                     result_sort_mode: ResultSortMode::Score,
                     pinned_paths: HashSet::new(),
                     current_row: Some(0),
+                    emacs_keybindings_enabled,
                     preview: String::new(),
                     notice: String::new(),
                     status_line: "Initializing...".to_string(),

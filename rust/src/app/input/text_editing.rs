@@ -135,6 +135,9 @@ impl FlistWalkerApp {
         ctx: &egui::Context,
         output: &mut egui::text_edit::TextEditOutput,
     ) -> bool {
+        if !self.shell.runtime.emacs_keybindings_enabled {
+            return false;
+        }
         if self.shell.ui.ime_composition_active {
             return false;
         }
@@ -282,5 +285,40 @@ impl FlistWalkerApp {
         }
 
         text_changed
+    }
+
+    pub(in crate::app) fn consume_disabled_emacs_query_edit_shortcuts(
+        &self,
+        ctx: &egui::Context,
+        query_focused: bool,
+    ) {
+        if self.shell.runtime.emacs_keybindings_enabled || !query_focused {
+            return;
+        }
+
+        let keys = [
+            egui::Key::A,
+            egui::Key::E,
+            egui::Key::B,
+            egui::Key::F,
+            egui::Key::H,
+            egui::Key::D,
+            egui::Key::W,
+            egui::Key::K,
+            egui::Key::Y,
+            egui::Key::U,
+        ];
+        for key in keys {
+            let ctrl_mods = egui::Modifiers {
+                ctrl: true,
+                ..Default::default()
+            };
+            let command_mods = egui::Modifiers {
+                command: true,
+                ..Default::default()
+            };
+            let _ = ctx.input_mut(|i| i.consume_key(ctrl_mods, key));
+            let _ = ctx.input_mut(|i| i.consume_key(command_mods, key));
+        }
     }
 }

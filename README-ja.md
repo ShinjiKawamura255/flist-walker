@@ -126,7 +126,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 - runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` とその関連ファイルに保存されます。
 - 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
-- 初回生成時は、実際に環境変数で設定されている値だけを書き込み、未設定の項目は省略されます。未設定項目は読み込み時に既定値へフォールバックします。
+- 初回生成時は、一般利用者向けの既定項目を書き込み、詳細項目は実際に環境変数で設定されている値だけを書き込みます。
 - いったんファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
 - この Windows / home の保存先ルールは UI state、saved roots、window trace にも適用されます。
 - 旧バージョンから更新した場合は、新しいファイルがまだ無いときに限って、実行ファイル横や home 直下の旧ファイルを新しい platform-specific 保存先へ自動移行します。
@@ -134,6 +134,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
 - ファイルを削除すると、次回起動時に現在の環境変数を seed にして再生成されます。
 - `walker_max_entries` は大きい root で効くので、ここでは公開しています。
+- `emacs_keybindings_enabled` を `false` にすると、`Ctrl+N`、`Ctrl+P`、`Ctrl+V`、`Alt+V`、`Ctrl+J`、`Ctrl+M`、検索欄編集用 chord などの Emacs 風操作を無効化できます。既定は有効です。
 
 例:
 
@@ -141,7 +142,8 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 {
   "walker_max_entries": 500000,
   "history_persist_disabled": false,
-  "restore_tabs_enabled": false
+  "restore_tabs_enabled": false,
+  "emacs_keybindings_enabled": true
 }
 ```
 
