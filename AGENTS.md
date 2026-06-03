@@ -44,7 +44,7 @@
 - release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。
 - 配布アーカイブと standalone バイナリ向け sidecar asset には `LICENSE` / `THIRD_PARTY_NOTICES` を同梱し、依存ライセンス notice の欠落を防ぐ。
 - macOS の `.app` bundle は notarization 用に `dist/` へ生成してよいが、GitHub Release へ添付する asset には含めない。
-- release/tag 作業に入る前に、`skills/flistwalker-release-preflight/` を使って `rust/Cargo.toml` / `rust/Cargo.lock` / `CHANGELOG.md` / tag 名の version 整合を確認し、必要な更新を先に完了させる。
+- release/tag/publish 作業に入る前に、`skills/flistwalker-release-preflight/` を release readiness gate として使い、version 整合だけでなく docs 追従、Validation Matrix、OSS notice、release asset 名、GUI 証跡、CI/release build warning を確認し、必要な更新を先に完了させる。
 
 ## 5. 実装ガードレール
 - FileList 検出仕様（大文字/小文字、優先順、探索範囲）を変更する場合は `indexer` テストを先に更新する。
@@ -66,7 +66,7 @@
 - `rust/Cargo.toml` / `rust/Cargo.lock` / GitHub Actions / release script など依存関係や配布物に含まれる OSS 構成を変更した場合は、同一変更で `THIRD_PARTY_NOTICES.txt`、必要な `LICENSE` 同梱導線、関連 docs を更新し、`docs/OSS_COMPLIANCE.md` のチェックを実施してから完了報告する。
 - `FLISTWALKER_UPDATE_FEED_URL` / `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION` / `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE` は開発・手動試験専用とし、`README.md`、`docs/RELEASE.md`、`.github/release-template.md`、GitHub Release 本文、CLI/GUI のユーザ向けヘルプなど配布物や公開向け文書へ記載してはならない。
 - release asset 名、対象 OS、GitHub Release 導線を変更した場合は `docs/RELEASE.md`、`.github/release-template.md`、`AGENTS.md` を同一変更で更新する。
-- `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れがあれば tag 作成前に修正する。
+- `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れ、docs 追従漏れ、公開向け文書への開発・手動試験用 env 名混入、asset / sidecar / OSS notice 不整合があれば tag 作成前に修正する。
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` を必ず使い、その手順に従って前回 tag から対象 tag までの差分を一次情報にする。本文は手書きの記憶や直近数件の commit だけで作らず、`git log --oneline <前回tag>..<対象tag>` と `git diff --stat <前回tag>..<対象tag>` を確認してから要約する。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
