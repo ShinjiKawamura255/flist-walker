@@ -76,6 +76,31 @@ impl FlistWalkerApp {
         })
     }
 
+    fn consume_ctrl_v_page_down_shortcut(ctx: &egui::Context) -> bool {
+        let ctrl_v_mods = egui::Modifiers {
+            ctrl: true,
+            ..Default::default()
+        };
+        if ctx.input_mut(|i| i.consume_key(ctrl_v_mods, egui::Key::V)) {
+            return true;
+        }
+
+        let modifiers = ctx.input(|i| i.modifiers);
+        if !modifiers.ctrl || modifiers.alt || modifiers.shift {
+            return false;
+        }
+
+        ctx.input_mut(|i| {
+            let mut consumed = false;
+            i.events.retain(|event| {
+                let is_paste_event = matches!(event, egui::Event::Paste(_));
+                consumed |= is_paste_event;
+                !is_paste_event
+            });
+            consumed
+        })
+    }
+
     pub(in crate::app) fn consume_tab_switch_shortcut(
         ctx: &egui::Context,
         key: egui::Key,
@@ -324,7 +349,7 @@ impl FlistWalkerApp {
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::PageDown)) {
             self.move_page(1);
         }
-        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::V)) {
+        if Self::consume_ctrl_v_page_down_shortcut(ctx) {
             self.move_page(1);
         }
         if ctx.input(|i| i.modifiers.alt && i.key_pressed(egui::Key::V)) {

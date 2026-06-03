@@ -244,6 +244,82 @@ fn page_up_down_move_selection_when_query_not_focused() {
 }
 
 #[test]
+fn ctrl_v_and_alt_v_page_move_when_query_not_focused() {
+    let root = test_root("shortcut-emacs-page-no-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = (0..30)
+        .map(|i| (root.join(format!("f{i}.txt")), 0.0))
+        .collect();
+    app.shell.runtime.current_row = Some(15);
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::V,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                ctrl: true,
+                ..Default::default()
+            },
+        }],
+    );
+    assert_eq!(app.shell.runtime.current_row, Some(25));
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::V,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                alt: true,
+                ..Default::default()
+            },
+        }],
+    );
+    assert_eq!(app.shell.runtime.current_row, Some(15));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ctrl_v_paste_event_pages_down_only_when_query_not_focused() {
+    let root = test_root("shortcut-ctrl-v-paste-event");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = (0..30)
+        .map(|i| (root.join(format!("f{i}.txt")), 0.0))
+        .collect();
+    app.shell.runtime.current_row = Some(15);
+    let ctrl_mods = egui::Modifiers {
+        ctrl: true,
+        ..Default::default()
+    };
+
+    run_shortcuts_frame_with_modifiers(
+        &mut app,
+        false,
+        ctrl_mods,
+        vec![egui::Event::Paste("clipboard".to_string())],
+    );
+    assert_eq!(app.shell.runtime.current_row, Some(25));
+
+    run_shortcuts_frame_with_modifiers(
+        &mut app,
+        true,
+        ctrl_mods,
+        vec![egui::Event::Paste("clipboard".to_string())],
+    );
+    assert_eq!(app.shell.runtime.current_row, Some(25));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn regression_arrow_keys_move_selection_even_when_query_focused() {
     let root = test_root("regression-arrow-query-focus");
     fs::create_dir_all(&root).expect("create dir");
