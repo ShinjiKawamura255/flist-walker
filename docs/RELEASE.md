@@ -179,7 +179,7 @@
   - `FLISTWALKER_WINDOWS_WINDRES`
   - `FLISTWALKER_WINDOWS_AR`
   - `FLISTWALKER_MACOS_SIGN_IDENTITY`
-- dev/test override (`FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE`, `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE`, `FLISTWALKER_DISABLE_SELF_UPDATE`) は release 手順の前提条件として扱わず、手動試験と内部検証に限定する。
+- 開発・手動試験用の update override 環境変数は release 手順の前提条件として扱わず、内部検証に限定する。公開向け release note や配布物の利用案内には記載しない。
 
 ## Signing Key Provisioning
 - 初回導入または鍵ローテーション時は `cd rust && cargo run --quiet --bin generate_update_keypair` で `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` と `FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` を生成する。
