@@ -24,6 +24,29 @@
 ### Known issues
 -
 
+## [0.18.5] - 2026-06-03
+### Added
+-
+
+### Changed
+- タブ close ボタンの hover 表示を、タブ色と同系色の背景・細い枠線・カーソル表示へ変更し、close 領域とタブ本体の押下領域を判別しやすくした。
+- SDD 文書の trace ID を整理し、重複していた `TC-117` を解消して self-update 無効化のテストIDを `TC-140` に分離した。
+
+### Fixed
+- 保存済み window 位置が現在のマルチディスプレイ表示範囲外にある場合、起動時に表示範囲内へ補正するようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.4] - 2026-05-24
 ### Added
 - GUI のタブ行右端に設定ボタンを追加し、runtime config を既定のアプリケーションまたはフォールバックのテキストエディタで開けるようにした。
@@ -1348,7 +1371,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.4...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.5...HEAD
+[0.18.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.5
 [0.18.4]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.4
 [0.18.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.3
 [0.18.2]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.2
