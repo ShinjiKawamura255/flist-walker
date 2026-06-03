@@ -31,7 +31,7 @@ fn normalize_restore_geometry_preserves_virtual_desktop_position() {
         monitor_height: Some(1080.0),
     };
 
-    let restored = FlistWalkerApp::normalize_restore_geometry(saved);
+    let restored = FlistWalkerApp::normalize_restore_geometry_for_display_bounds(saved, None);
 
     assert_eq!(restored.x, -1600.0);
     assert_eq!(restored.y, 120.0);
@@ -39,6 +39,50 @@ fn normalize_restore_geometry_preserves_virtual_desktop_position() {
     assert_eq!(restored.height, 700.0);
     assert_eq!(restored.monitor_width, Some(1920.0));
     assert_eq!(restored.monitor_height, Some(1080.0));
+}
+
+#[test]
+fn normalize_restore_geometry_clamps_position_into_current_display_bounds() {
+    let saved = SavedWindowGeometry {
+        x: 3400.0,
+        y: 1800.0,
+        width: 900.0,
+        height: 700.0,
+        monitor_width: Some(2560.0),
+        monitor_height: Some(1440.0),
+    };
+    let display_bounds =
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(1920.0, 1080.0));
+
+    let restored =
+        FlistWalkerApp::normalize_restore_geometry_for_display_bounds(saved, Some(display_bounds));
+
+    assert_eq!(restored.x, 1020.0);
+    assert_eq!(restored.y, 380.0);
+    assert_eq!(restored.width, 900.0);
+    assert_eq!(restored.height, 700.0);
+}
+
+#[test]
+fn normalize_restore_geometry_keeps_negative_position_inside_current_display_bounds() {
+    let saved = SavedWindowGeometry {
+        x: -1600.0,
+        y: 120.0,
+        width: 900.0,
+        height: 700.0,
+        monitor_width: Some(1920.0),
+        monitor_height: Some(1080.0),
+    };
+    let display_bounds =
+        egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(3840.0, 1080.0));
+
+    let restored =
+        FlistWalkerApp::normalize_restore_geometry_for_display_bounds(saved, Some(display_bounds));
+
+    assert_eq!(restored.x, -1600.0);
+    assert_eq!(restored.y, 120.0);
+    assert_eq!(restored.width, 900.0);
+    assert_eq!(restored.height, 700.0);
 }
 
 #[test]

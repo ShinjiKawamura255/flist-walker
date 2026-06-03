@@ -58,6 +58,7 @@
 - FR-026: ツールは起動時に runtime config file を読み込み、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を保存先として使わなければならない。これは UI state、saved roots、window trace などの永続化ファイルにも適用しなければならない。Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しなければ自動移行しなければならない。runtime config file が存在しない場合は現在の `FLISTWALKER_*` 環境変数を seed にして自動生成しなければならない。自動生成時は、実際に設定された値だけを書き込み、未設定の項目は省略しなければならない。runtime config file が存在する場合は、その内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - FR-027: ツールは ignore list サンプルを埋め込み、起動時に実行中 binary と同じフォルダへ `flistwalker.ignore.txt.example` が存在しない場合は sample を自動生成しなければならない。sample は `flistwalker.ignore.txt` へリネームして live ignore list として使えることを利用者へ示さなければならない。
 - FR-028: ツールは GUI から runtime config file を開く導線を提供し、既定アプリケーションで開けない場合は OS の標準的なテキストエディタ相当へフォールバックしなければならない。
+- FR-029: ツールは保存済みウィンドウ位置が現在の表示範囲外にある場合、GUI 起動時に表示範囲内へ補正しなければならない。
 
 ### Non-functional (NFR)
 - NFR-001: 10万件候補での検索処理は 100ms 未満を目標（SHOULD）とする。
@@ -104,6 +105,7 @@
 - AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。
 - AC-026: `flistwalker.ignore.txt.example` が存在しない状態で起動しても、ツールは sample を実行バイナリの隣へ自動生成し、`flistwalker.ignore.txt` へのリネーム案内を提供する。
 - AC-029: GUI の設定ボタンを押すと runtime config file が生成済みの状態で開かれ、既定アプリケーションが失敗した場合はテキストエディタ相当のフォールバックが試行される。
+- AC-030: 保存済みウィンドウ位置が現在の仮想ディスプレイ矩形外にある状態で GUI を起動しても、初期ウィンドウは現在の表示範囲内に配置される。現在の仮想ディスプレイ内の負座標配置は維持される。
 
 ## Risks
 - R-001: OS ごとのオープン/実行差異により挙動不一致が発生する。軽減策: 実行/オープン分岐を抽象化しテストで検証する。
@@ -147,6 +149,7 @@
 - FR-026 -> SP-016 -> DES-017 -> TC-111, TC-115
 - FR-027 -> SP-017 -> DES-018 -> TC-113, TC-114
 - FR-028 -> SP-016 -> DES-017 -> TC-127
+- FR-029 -> SP-010 -> DES-009 -> TC-128
 - NFR-001 -> SP-007 -> DES-006 -> TC-007
 - NFR-002 -> SP-008 -> DES-007 -> TC-008
 - NFR-003 -> SP-009 -> DES-008 -> TC-009

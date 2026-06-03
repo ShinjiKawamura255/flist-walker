@@ -84,7 +84,8 @@ fn run_gui(args: &Args) -> Result<()> {
     let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
     trace_startup_phase(startup_start, "root_resolved");
     let mut native_options = eframe::NativeOptions::default();
-    let startup_geometry = FlistWalkerApp::startup_window_geometry();
+    let startup_geometry =
+        FlistWalkerApp::startup_window_geometry_with_display_bounds(current_display_bounds());
     trace_startup_phase(startup_start, "startup_geometry_loaded");
     FlistWalkerApp::trace_window_event(
         "run_gui_start",
@@ -121,6 +122,54 @@ fn run_gui(args: &Args) -> Result<()> {
     )
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn current_display_bounds() -> Option<eframe::egui::Rect> {
+    const SM_XVIRTUALSCREEN: i32 = 76;
+    const SM_YVIRTUALSCREEN: i32 = 77;
+    const SM_CXVIRTUALSCREEN: i32 = 78;
+    const SM_CYVIRTUALSCREEN: i32 = 79;
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetSystemMetrics(nIndex: i32) -> i32;
+    }
+    // SAFETY: GetSystemMetrics is read-only and does not require initialized window state.
+    let (x, y, width, height) = unsafe {
+        (
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        )
+    };
+    if width <= 0 || height <= 0 {
+        FlistWalkerApp::trace_window_event(
+            "current_display_bounds_unavailable",
+            &format!("x={x} y={y} width={width} height={height}"),
+        );
+        return None;
+    }
+    let bounds = eframe::egui::Rect::from_min_size(
+        eframe::egui::pos2(x as f32, y as f32),
+        eframe::egui::vec2(width as f32, height as f32),
+    );
+    FlistWalkerApp::trace_window_event(
+        "current_display_bounds",
+        &format!(
+            "x={:.1} y={:.1} width={:.1} height={:.1}",
+            bounds.min.x,
+            bounds.min.y,
+            bounds.width(),
+            bounds.height()
+        ),
+    );
+    Some(bounds)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn current_display_bounds() -> Option<eframe::egui::Rect> {
+    None
 }
 
 fn build_root_viewport(

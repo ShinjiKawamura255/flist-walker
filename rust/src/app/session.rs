@@ -277,9 +277,15 @@ impl FlistWalkerApp {
     }
 
     pub fn startup_window_geometry() -> Option<(egui::Pos2, egui::Vec2)> {
+        Self::startup_window_geometry_with_display_bounds(None)
+    }
+
+    pub fn startup_window_geometry_with_display_bounds(
+        display_bounds: Option<egui::Rect>,
+    ) -> Option<(egui::Pos2, egui::Vec2)> {
         let state = Self::load_ui_state();
         let saved = state.window?;
-        let normalized = Self::normalize_restore_geometry(saved);
+        let normalized = Self::normalize_restore_geometry_for_display_bounds(saved, display_bounds);
         Self::append_window_trace(
             "startup_window_geometry",
             &format!("normalized={:?}", normalized),
@@ -635,7 +641,10 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn normalize_restore_geometry(saved: SavedWindowGeometry) -> SavedWindowGeometry {
+    pub(super) fn normalize_restore_geometry_for_display_bounds(
+        saved: SavedWindowGeometry,
+        display_bounds: Option<egui::Rect>,
+    ) -> SavedWindowGeometry {
         let mut width = saved.width.max(640.0);
         let mut height = saved.height.max(400.0);
         if let Some(mw) = saved.monitor_width {
@@ -644,9 +653,26 @@ impl FlistWalkerApp {
         if let Some(mh) = saved.monitor_height {
             height = height.min(mh.max(400.0));
         }
+        if let Some(bounds) =
+            display_bounds.filter(|bounds| bounds.width() > 0.0 && bounds.height() > 0.0)
+        {
+            width = width.min(bounds.width().max(640.0));
+            height = height.min(bounds.height().max(400.0));
+        }
+        let (x, y) = display_bounds
+            .filter(|bounds| bounds.width() > 0.0 && bounds.height() > 0.0)
+            .map(|bounds| {
+                let max_x = (bounds.max.x - width).max(bounds.min.x);
+                let max_y = (bounds.max.y - height).max(bounds.min.y);
+                (
+                    saved.x.clamp(bounds.min.x, max_x),
+                    saved.y.clamp(bounds.min.y, max_y),
+                )
+            })
+            .unwrap_or((saved.x, saved.y));
         SavedWindowGeometry {
-            x: saved.x,
-            y: saved.y,
+            x,
+            y,
             width,
             height,
             monitor_width: saved.monitor_width,
