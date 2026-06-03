@@ -6,6 +6,13 @@ use super::{
 };
 use eframe::egui;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct TabCloseButtonVisuals {
+    pub(super) fill: egui::Color32,
+    pub(super) stroke: egui::Stroke,
+    pub(super) text: egui::Color32,
+}
+
 pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         let mut switch_to: Option<usize> = None;
@@ -89,26 +96,13 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         .frame(false)
                         .sense(egui::Sense::click_and_drag()),
                     );
-                    let close_response = ui
-                        .add_enabled(
-                            app.shell.tabs.len() > 1,
-                            egui::Button::new(
-                                egui::RichText::new("×").color(
-                                    accent_palette
-                                        .map(|palette| {
-                                            if is_active {
-                                                palette.foreground
-                                            } else {
-                                                palette.border
-                                            }
-                                        })
-                                        .unwrap_or_else(|| ui.visuals().text_color()),
-                                ),
-                            )
-                            .small()
-                            .frame(false),
-                        )
-                        .on_hover_text("Close tab");
+                    let close_response = render_tab_close_button(
+                        ui,
+                        app.shell.tabs.len() > 1,
+                        is_active,
+                        accent_palette,
+                    )
+                    .on_hover_text("Close tab");
 
                     if title_response.drag_started() {
                         drag_state = Some(TabDragState {
@@ -216,6 +210,109 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::SwitchToTab(idx)));
         }
     });
+}
+
+pub(super) fn tab_close_button_visuals(
+    dark_mode: bool,
+    enabled: bool,
+    hovered: bool,
+    is_active: bool,
+    accent_palette: Option<TabAccentPalette>,
+    fallback_text: egui::Color32,
+) -> TabCloseButtonVisuals {
+    let base_text = accent_palette
+        .map(|palette| {
+            if is_active {
+                palette.foreground
+            } else {
+                palette.border
+            }
+        })
+        .unwrap_or(fallback_text);
+    if !enabled {
+        return TabCloseButtonVisuals {
+            fill: egui::Color32::TRANSPARENT,
+            stroke: egui::Stroke::NONE,
+            text: base_text.gamma_multiply(0.36),
+        };
+    }
+    if hovered {
+        let palette = accent_palette.unwrap_or_else(|| TabAccentPalette::clear_outline(dark_mode));
+        let fill = if accent_palette.is_some() {
+            palette
+                .background
+                .gamma_multiply(if dark_mode { 1.35 } else { 0.98 })
+        } else {
+            palette
+                .background
+                .gamma_multiply(if dark_mode { 1.12 } else { 1.0 })
+        };
+        let stroke_color = if accent_palette.is_some() {
+            palette
+                .border
+                .gamma_multiply(if is_active { 1.0 } else { 0.86 })
+        } else {
+            palette.border.gamma_multiply(0.82)
+        };
+        return TabCloseButtonVisuals {
+            fill,
+            stroke: egui::Stroke::new(0.65, stroke_color),
+            text: palette.foreground,
+        };
+    }
+    TabCloseButtonVisuals {
+        fill: egui::Color32::TRANSPARENT,
+        stroke: egui::Stroke::NONE,
+        text: base_text,
+    }
+}
+
+fn render_tab_close_button(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    is_active: bool,
+    accent_palette: Option<TabAccentPalette>,
+) -> egui::Response {
+    let size = egui::vec2(22.0, 22.0);
+    let sense = if enabled {
+        egui::Sense::click()
+    } else {
+        egui::Sense::hover()
+    };
+    let (rect, response) = ui.allocate_exact_size(size, sense);
+    let hovered = response.hovered();
+    let visuals = tab_close_button_visuals(
+        ui.visuals().dark_mode,
+        enabled,
+        hovered,
+        is_active,
+        accent_palette,
+        ui.visuals().text_color(),
+    );
+
+    if hovered && enabled {
+        ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::PointingHand);
+    }
+    ui.painter().rect_filled(
+        rect,
+        egui::CornerRadius::same(FlistWalkerApp::TAB_ROUNDING as u8),
+        visuals.fill,
+    );
+    ui.painter().rect_stroke(
+        rect,
+        egui::CornerRadius::same(FlistWalkerApp::TAB_ROUNDING as u8),
+        visuals.stroke,
+        egui::StrokeKind::Inside,
+    );
+    ui.painter().text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        "×",
+        egui::TextStyle::Button.resolve(ui.style()),
+        visuals.text,
+    );
+
+    response
 }
 
 pub(super) fn paint_tab_accent_decoration(

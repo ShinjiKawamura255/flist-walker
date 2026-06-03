@@ -555,3 +555,46 @@ fn tab_drop_index_returns_last_tab_after_all_centers() {
         Some(1)
     );
 }
+
+#[test]
+fn tab_close_button_hover_visuals_make_close_hit_area_visible() {
+    let fallback = egui::Color32::from_rgb(220, 220, 220);
+    let palette = TabAccentColor::Teal.palette(false);
+
+    let idle = super::render_tabs::tab_close_button_visuals(
+        false,
+        true,
+        false,
+        true,
+        Some(palette),
+        fallback,
+    );
+    assert_eq!(idle.fill, egui::Color32::TRANSPARENT);
+    assert_eq!(idle.stroke, egui::Stroke::NONE);
+
+    let hovered = super::render_tabs::tab_close_button_visuals(
+        false,
+        true,
+        true,
+        true,
+        Some(palette),
+        fallback,
+    );
+    assert_ne!(hovered.fill, egui::Color32::TRANSPARENT);
+    assert!(hovered.stroke.width > 0.0);
+    assert!(hovered.stroke.width < 0.8);
+    assert_eq!(hovered.stroke.color, palette.border);
+    assert_eq!(hovered.text, palette.foreground);
+
+    let disabled = super::render_tabs::tab_close_button_visuals(
+        false,
+        false,
+        true,
+        true,
+        Some(palette),
+        fallback,
+    );
+    assert_eq!(disabled.fill, egui::Color32::TRANSPARENT);
+    assert_eq!(disabled.stroke, egui::Stroke::NONE);
+    assert!(disabled.text.r() < palette.foreground.r());
+}

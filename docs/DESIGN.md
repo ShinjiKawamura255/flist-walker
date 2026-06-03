@@ -244,6 +244,7 @@
 - `move_tab` は並び替え前に `sync_active_tab_state()` を実行し、active tab の `tab.id` を基準に移動後 index を再解決することで UI 状態の取り違えを防ぐ。
 - タブ accent は `DropSendTo` の Slot Color palette を参照し、light/dark theme ごとに background/border/foreground を切り替える。
 - `render_tab_bar` は active tab の accent を full-fill、inactive tab の accent を下辺の glow/line 装飾として描画し、右クリックメニューから accent の設定/解除を行う。
+- タブ close ボタンは固定サイズの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
@@ -323,6 +324,8 @@
 - DES-009 -> TC-135 (SP-010)
 - DES-009 -> TC-136 (SP-010)
 - DES-009 -> TC-137 (SP-010)
+- DES-009 -> TC-138 (SP-010)
+- DES-009 -> TC-139 (SP-010)
 - DES-009 -> TC-068 (SP-010)
 - DES-009 -> TC-069 (SP-010)
 - DES-010 -> TC-011 (SP-011)
