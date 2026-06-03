@@ -270,13 +270,13 @@
 - IME 関連の分岐は `FLISTWALKER_WINDOW_TRACE=1` で追跡し、`FLISTWALKER_WINDOW_TRACE_PATH` で出力先を明示指定できる。
 - デバッグ用トレースは既定無効（`FLISTWALKER_WINDOW_TRACE=1` のときのみ有効）とし、通常運用への影響を避ける。
 
-- DES-012 CI / Release Hygiene
+- CI / Release Hygiene details
 - 通常 CI matrix に Linux を追加し、release 対象 OS と同じ観点で `cargo test --locked` を継続実行する。
 - 依存脆弱性は `cargo audit` を CI で必須実行し、既知 CVE の流入を早期検知する。
 - `x86_64-pc-windows-gnu` では `windres` が生成する `resource.o` を `flistwalker` バイナリへ直接リンクし、ライブラリターゲットだけに閉じた resource link で Explorer アイコンが欠落しないようにする。
 - macOS notarization は現段階では手動ゲートとして維持し、draft release 作成後に docs / template で確認手順を明示する。
 
-- DES-014 Self Update Coordinator
+- Self Update Coordinator details
 - GitHub Releases API の latest endpoint から `tag_name` / asset 名 / `browser_download_url` を取得し、現在 version と比較する。
 - asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary、対応する `*.README.txt` / `*.LICENSE.txt` / `*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS` / `SHA256SUMS.sig` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
@@ -332,9 +332,9 @@
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)
 - DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)
-- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081 (SP-014)
+- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081, TC-140 (SP-014)
 - DES-015 -> TC-120 (SP-010, SP-014)
-- DES-016 -> TC-110 (SP-015)
+- DES-016 -> TC-110, TC-112, TC-117 (SP-015)
 - DES-017 -> TC-111 (SP-016)
 - DES-017 -> TC-127 (SP-016)
 - DES-018 -> TC-113, TC-114 (SP-017)

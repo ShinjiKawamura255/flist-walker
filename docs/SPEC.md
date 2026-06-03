@@ -254,7 +254,7 @@
 - 発生条件: `Use Ignore List` が有効で、`Files` / `Folders` が両方有効な既定状態のまま `all_entries` の高速経路を通ると、ignore 判定が省略されて `old` や `~` を含む候補が結果へ戻る。
 - 期待動作: ignore list は空クエリ表示と検索結果の両方で維持され、`Files` / `Folders` 両有効でも literal に一致する除外候補は表示されない。fuzzy でだけ一致する候補は除外しない。
 - 非対象範囲: `Use Ignore List` を無効化した場合の候補除外。
-- 関連テストID: TC-110, TC-112.
+- 関連テストID: TC-110, TC-112, TC-117.
 
 ## SP-016 Runtime Config Bootstrap
 ### Requirements
