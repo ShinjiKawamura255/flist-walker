@@ -17,6 +17,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::thread;
+#[cfg(test)]
+use std::time::Duration;
 use tracing::{info, warn};
 
 fn trace_worker_started(flow: &'static str, request_id: u64) {
@@ -311,44 +313,48 @@ pub(super) fn spawn_action_worker(
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
-            trace_worker_started("action", req.request_id);
-
-            let targets = action_targets_for_request(&req.paths, req.open_parent_for_files);
-            let mut failure: Option<String> = None;
-            for target in &targets {
-                if let Err(err) = run_action_target(target) {
-                    failure = Some(format!("Action failed: {}", err));
-                    break;
-                }
-            }
-
-            let notice = if let Some(failed) = failure {
-                failed
-            } else {
-                action_notice_for_targets(&targets)
-            };
-            info!(
-                flow = "action",
-                event = "finished",
-                request_id = req.request_id,
-                target_count = targets.len(),
-                "worker request finished"
-            );
-
-            if tx_res
-                .send(ActionResponse {
-                    request_id: req.request_id,
-                    notice,
-                })
-                .is_err()
-            {
-                trace_worker_receiver_closed("action", req.request_id);
-                break;
-            }
+            let tx_res = tx_res.clone();
+            thread::spawn(move || run_action_request(req, tx_res));
         }
     });
 
     (tx_req, rx_res, handle)
+}
+
+fn run_action_request(req: ActionRequest, tx_res: Sender<ActionResponse>) {
+    trace_worker_started("action", req.request_id);
+
+    let targets = action_targets_for_request(&req.paths, req.open_parent_for_files);
+    let mut failure: Option<String> = None;
+    for target in &targets {
+        if let Err(err) = run_action_target(target) {
+            failure = Some(format!("Action failed: {}", err));
+            break;
+        }
+    }
+
+    let notice = if let Some(failed) = failure {
+        failed
+    } else {
+        action_notice_for_targets(&targets)
+    };
+    info!(
+        flow = "action",
+        event = "finished",
+        request_id = req.request_id,
+        target_count = targets.len(),
+        "worker request finished"
+    );
+
+    if tx_res
+        .send(ActionResponse {
+            request_id: req.request_id,
+            notice,
+        })
+        .is_err()
+    {
+        trace_worker_receiver_closed("action", req.request_id);
+    }
 }
 
 #[cfg(not(test))]
@@ -357,9 +363,16 @@ fn run_action_target(path: &Path) -> anyhow::Result<()> {
 }
 
 #[cfg(test)]
-fn run_action_target(_path: &Path) -> anyhow::Result<()> {
+fn run_action_target(path: &Path) -> anyhow::Result<()> {
     // GUI shortcut / action worker tests only need request/notice behavior.
     // Avoid spawning xdg-open/open during test runs so stderr stays clean.
+    if path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.contains("block-action-target"))
+    {
+        thread::sleep(Duration::from_secs(2));
+    }
     Ok(())
 }
 

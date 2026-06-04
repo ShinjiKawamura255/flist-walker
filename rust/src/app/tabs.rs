@@ -618,7 +618,7 @@ impl FlistWalkerApp {
             .get(self.shell.tabs.active_tab_index())
             .cloned()
         {
-            self.activate_tab_after_transition(&tab, false, false, false);
+            self.activate_tab_after_transition(&tab, true, false, true);
         }
         self.refresh_status_line_with_memory_sample();
     }

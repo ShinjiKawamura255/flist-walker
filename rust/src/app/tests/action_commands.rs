@@ -4,6 +4,7 @@ use crate::app::worker_support::action_notice_for_targets;
 use crate::app::worker_support::{
     action_target_path_for_open_in_folder, action_targets_for_request,
 };
+use crate::app::workers::spawn_action_worker;
 
 #[test]
 fn execute_selected_enqueues_action_request_without_sync_io() {
@@ -134,6 +135,41 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
     assert_eq!(req.paths, vec![child]);
     assert!(app.shell.worker_bus.action.pending_request_id.is_some());
     assert!(app.shell.worker_bus.action.in_progress);
+}
+
+#[test]
+fn action_worker_allows_later_open_request_while_previous_request_is_blocked() {
+    let root = test_root("action-worker-multiple-open");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("block-action-target.txt");
+    let second = root.join("second.txt");
+    fs::write(&first, "first").expect("write first");
+    fs::write(&second, "second").expect("write second");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let (tx, rx, handle) = spawn_action_worker(Arc::clone(&shutdown));
+
+    tx.send(ActionRequest {
+        request_id: 1,
+        paths: vec![first.clone()],
+        open_parent_for_files: false,
+    })
+    .expect("send first action");
+    tx.send(ActionRequest {
+        request_id: 2,
+        paths: vec![second.clone()],
+        open_parent_for_files: false,
+    })
+    .expect("send second action");
+
+    let response = rx
+        .recv_timeout(Duration::from_millis(500))
+        .expect("later action should complete while first action is blocked");
+    assert_eq!(response.request_id, 2);
+
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    handle.join().expect("join action worker");
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]
