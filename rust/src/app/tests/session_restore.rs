@@ -558,3 +558,65 @@ fn close_tab_triggers_pending_restore_refresh_for_survivor() {
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
 }
+
+#[test]
+fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
+    let root_a = test_root("closed-startup-restored-tab-a");
+    let root_b = test_root("closed-startup-restored-tab-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (_index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = index_req_tx;
+    app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
+
+    app.initialize_tabs_from_saved(
+        vec![
+            SavedTabState {
+                root: root_a.to_string_lossy().to_string(),
+                use_filelist: true,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                query: "alpha".to_string(),
+                query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Olive),
+            },
+            SavedTabState {
+                root: root_b.to_string_lossy().to_string(),
+                use_filelist: true,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                query: "beta".to_string(),
+                query_history: Vec::new(),
+                tab_accent: Some(TabAccentColor::Indigo),
+            },
+        ],
+        1,
+    );
+    let _ = index_req_rx.try_recv().expect("initial active refresh");
+
+    app.close_tab_index(0);
+    assert_eq!(app.shell.tabs.len(), 1);
+    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+
+    app.restore_recently_closed_tab();
+
+    assert_eq!(app.shell.tabs.len(), 2);
+    assert_eq!(app.shell.tabs.active_tab, 0);
+    assert_eq!(app.shell.runtime.root, root_a);
+    let refresh_req = index_req_rx
+        .try_recv()
+        .expect("restored closed startup tab refresh");
+    assert_eq!(refresh_req.root, root_a);
+    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}

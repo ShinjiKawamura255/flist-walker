@@ -360,10 +360,17 @@ impl RequestTabRoutingState {
     }
 }
 
+pub(super) struct ClosedTabState {
+    pub(super) tab: AppTabState,
+    pub(super) original_index: usize,
+    pub(super) restore_refresh_pending: bool,
+}
+
 pub(crate) struct TabSessionState {
     tabs: Vec<AppTabState>,
     pub(super) active_tab: usize,
     next_tab_id: u64,
+    closed_tabs: Vec<ClosedTabState>,
     pub(super) pending_restore_refresh_tabs: HashSet<u64>,
     request_tab_routing: RequestTabRoutingState,
 }
@@ -374,6 +381,7 @@ impl Default for TabSessionState {
             tabs: Vec::new(),
             active_tab: 0,
             next_tab_id: 1,
+            closed_tabs: Vec::new(),
             pending_restore_refresh_tabs: HashSet::new(),
             request_tab_routing: RequestTabRoutingState::default(),
         }
@@ -381,6 +389,8 @@ impl Default for TabSessionState {
 }
 
 impl TabSessionState {
+    const CLOSED_TAB_RESTORE_LIMIT: usize = 25;
+
     pub(super) fn replace_all(&mut self, tabs: Vec<AppTabState>) {
         self.tabs = tabs;
     }
@@ -426,6 +436,28 @@ impl TabSessionState {
 
     pub(super) fn remove(&mut self, index: usize) -> AppTabState {
         self.tabs.remove(index)
+    }
+
+    pub(super) fn push_closed_tab(&mut self, closed_tab: ClosedTabState) {
+        if self.closed_tabs.len() >= Self::CLOSED_TAB_RESTORE_LIMIT {
+            self.closed_tabs.remove(0);
+        }
+        self.closed_tabs.push(closed_tab);
+    }
+
+    pub(super) fn pop_closed_tab(&mut self) -> Option<ClosedTabState> {
+        self.closed_tabs.pop()
+    }
+
+    #[cfg(test)]
+    pub(super) fn last_closed_tab_results_compacted(&self) -> Option<bool> {
+        self.closed_tabs
+            .last()
+            .map(|closed| closed.tab.result_state.results_compacted)
+    }
+
+    pub(super) fn has_pending_restore_refresh_for_tab(&self, tab_id: u64) -> bool {
+        self.pending_restore_refresh_tabs.contains(&tab_id)
     }
 
     pub(super) fn iter(&self) -> std::slice::Iter<'_, AppTabState> {

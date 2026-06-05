@@ -190,6 +190,10 @@ impl FlistWalkerApp {
             }
         }
 
+        if Self::consume_gui_shortcut(ctx, egui::Key::T, true) {
+            self.restore_recently_closed_tab();
+            return;
+        }
         if Self::consume_gui_shortcut(ctx, egui::Key::T, false) {
             self.create_new_tab();
             return;

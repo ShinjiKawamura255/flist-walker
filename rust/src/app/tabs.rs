@@ -1,6 +1,6 @@
 use super::{
-    result_reducer, walker_truncated_notice, AppTabState, Entry, FlistWalkerApp, IndexResponse,
-    IndexSource, ResultSortMode, SavedTabState, SearchResponse, TabAccentColor,
+    result_reducer, walker_truncated_notice, AppTabState, ClosedTabState, Entry, FlistWalkerApp,
+    IndexResponse, IndexSource, ResultSortMode, SavedTabState, SearchResponse, TabAccentColor,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
@@ -591,6 +591,18 @@ impl FlistWalkerApp {
         self.close_tab_index(self.shell.tabs.active_tab_index());
     }
 
+    fn prepare_closed_tab_for_restore(tab: &mut AppTabState, id: u64) {
+        tab.id = id;
+        tab.clear_search_request_state();
+        tab.clear_preview_request_state();
+        tab.clear_action_request_state();
+        tab.index_state.clear_index_request_state();
+        tab.index_state.clear_kind_resolution_state();
+        tab.result_state.clear_sort_request_state();
+        tab.index_state.kind_resolution_epoch = tab.index_state.kind_resolution_epoch.max(1);
+        tab.notice = "Restored closed tab".to_string();
+    }
+
     pub(super) fn close_tab_index(&mut self, index: usize) {
         if self.shell.tabs.len() <= 1 || index >= self.shell.tabs.len() {
             if self.shell.tabs.len() <= 1 {
@@ -600,8 +612,18 @@ impl FlistWalkerApp {
         }
         self.clear_tab_drag_state();
         self.sync_active_tab_state();
-        let removed = self.shell.tabs.remove(index);
+        let mut removed = self.shell.tabs.remove(index);
+        let restore_refresh_pending = self
+            .shell
+            .tabs
+            .has_pending_restore_refresh_for_tab(removed.id);
         self.clear_closed_tab_state(removed.id);
+        Self::compact_inactive_tab_state(&mut removed);
+        self.shell.tabs.push_closed_tab(ClosedTabState {
+            tab: removed,
+            original_index: index,
+            restore_refresh_pending,
+        });
         if index < self.shell.tabs.active_tab_index() {
             self.shell
                 .tabs
@@ -621,6 +643,24 @@ impl FlistWalkerApp {
             self.activate_tab_after_transition(&tab, true, false, true);
         }
         self.refresh_status_line_with_memory_sample();
+    }
+
+    pub(super) fn restore_recently_closed_tab(&mut self) {
+        let Some(closed_tab) = self.shell.tabs.pop_closed_tab() else {
+            self.set_notice("No closed tab to restore");
+            return;
+        };
+        let mut tab = closed_tab.tab;
+        self.deactivate_active_tab_for_transition();
+        let id = self.shell.tabs.take_next_tab_id();
+        Self::prepare_closed_tab_for_restore(&mut tab, id);
+        if closed_tab.restore_refresh_pending {
+            self.mark_pending_restore_refresh_for_tab(id);
+        }
+        let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
+        self.shell.tabs.insert(restore_index, tab.clone());
+        self.shell.tabs.set_active_tab_index(restore_index);
+        self.activate_tab_after_transition(&tab, true, true, true);
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {

@@ -62,11 +62,11 @@ use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, FeatureStateBundle,
-    FileListDialogKind, FileListManager, HighlightCacheKey, PendingActiveIndexFinish,
-    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
-    PendingFileListUseWalkerConfirmation, ResultSortMode, RootBrowserState, SortMetadata,
-    TabAccentPalette, TabDragState, TabSessionState,
+    AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, ClosedTabState,
+    FeatureStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
+    PendingActiveIndexFinish, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, ResultSortMode,
+    RootBrowserState, SortMetadata, TabAccentPalette, TabDragState, TabSessionState,
 };
 use tab_state::AppTabState;
 use ui_state::RuntimeUiState;
