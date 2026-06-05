@@ -34,7 +34,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - sequential / parallel collect と candidate evaluation の execution path を担当する。
 - [search/rank.rs](../rust/src/search/rank.rs)
   - ranking、result materialization、visible-result filter を担当する。
-- [ui_model.rs](../rust/src/ui_model.rs)
+- [ui_model.rs](../rust/src/ui_model/mod.rs)
   - highlight 判定、preview 文面、表示パス整形を担当する。action decision policy は持たず、表示専用 helper に限定する。
 - [path_utils.rs](../rust/src/path_utils.rs)
   - Windows path normalization と path identity helper を担当する。
@@ -85,7 +85,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
     - owner: tab snapshot / switch / move / close / activation refresh は [tabs.rs](../rust/src/app/tabs.rs)、background response polling / apply は [response_flow.rs](../rust/src/app/response_flow.rs)、root selector lifecycle は [root_browser.rs](../rust/src/app/root_browser.rs)。
   - `filelist/update dialog dispatch`
     - 残置: dialog command の top-level dispatch と status/notice 連携。
-    - owner: FileList flow は [filelist.rs](../rust/src/app/filelist.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
+    - owner: FileList flow は [filelist.rs](../rust/src/app/filelist/mod.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
   - `trace helper`
     - 残置: opt-in 診断の入口と egui lifecycle に紐づく top-level trace 発火。
     - owner: worker protocol tracing は [workers.rs](../rust/src/app/workers.rs) の registry shim、[worker_tasks.rs](../rust/src/app/worker_tasks.rs) の worker body、[worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
@@ -136,9 +136,9 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - `RenderCommand` / frame orchestration / facade wrapper を担当し、frame 後段で render command を dispatch する。
 - [render_panels.rs](../rust/src/app/render_panels.rs), [render_dialogs.rs](../rust/src/app/render_dialogs.rs), [render_tabs.rs](../rust/src/app/render_tabs.rs), [render_snapshot.rs](../rust/src/app/render_snapshot.rs), [render_theme.rs](../rust/src/app/render_theme.rs)
   - panel/dialog/results/tab/snapshot/theme の描画責務を担当し、`render.rs` から直接委譲される。
-- [input.rs](../rust/src/app/input.rs)
+- [input.rs](../rust/src/app/input/mod.rs)
   - shortcut、IME、history search。
-- [filelist.rs](../rust/src/app/filelist.rs)
+- [filelist.rs](../rust/src/app/filelist/mod.rs)
   - FileList 作成フローと filelist dialog dispatch owner。
 - [update.rs](../rust/src/app/update.rs)
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
@@ -197,7 +197,7 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 
 - [path_utils.rs](../rust/src/path_utils.rs)
   - Windows パス正規化、path identity、display/shell 変換。
-- [ui_model.rs](../rust/src/ui_model.rs)
+- [ui_model.rs](../rust/src/ui_model/mod.rs)
   - preview/highlight 計算。
 - [fs_atomic.rs](../rust/src/fs_atomic.rs)
   - 原子的ファイル書き込み。
