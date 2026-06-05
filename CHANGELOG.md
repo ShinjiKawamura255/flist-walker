@@ -24,6 +24,31 @@
 ### Known issues
 -
 
+## [0.18.6] - 2026-06-05
+### Added
+-
+
+### Changed
+- runtime config の emacs keybinding toggle を README / SDD 文書へ追記し、設定 UI と既定 config 生成から参照できるようにした。
+- release preflight gate を強化し、version・docs・Validation Matrix・OSS notice・asset 名・GUI 証跡・CI/release build warning の確認手順を明確化した。
+- 公開向け release 文書から開発・手動試験専用 update override env 名を除去した。
+
+### Fixed
+- クエリ入力欄がフォーカスされていない状態でも `Ctrl+V` が Page Down として動作するようにした。
+- タブ更新後の action request が blocked 状態に残り、選択項目の実行やオープンが進まない問題を修正した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.5] - 2026-06-03
 ### Added
 -
