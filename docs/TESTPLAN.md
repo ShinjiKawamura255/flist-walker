@@ -7,8 +7,11 @@ This file is the entry point for FlistWalker test planning. Detailed test strate
 | --- | --- |
 | [Test Strategy and Levels](testplan/strategy-levels.md) | Scope, priority, unit/integration/manual/perf/sec levels |
 | [Test Cases](testplan/test-cases.md) | TC ID table and related SP mapping |
-| [Validation Matrix and Runner Commands](testplan/validation-matrix.md) | Regression guards before the runner section, Validation Matrix, commands |
+| [Validation Matrix and Runner Commands](testplan/validation-matrix.md) | Regression guards, change-type checklist, Validation Matrix, commands |
 | [Manual Regression and Traceability](testplan/manual-regression-traceability.md) | Environment, manual self-update, diagnostics trace smoke, structural GUI smoke, later regression guards, traceability excerpt |
+
+## Change-Type Checklist
+Use the checklist in [Validation Matrix and Runner Commands](testplan/validation-matrix.md#change-type-checklist) before choosing commands. It maps common change intents such as docs-only edits, search contract changes, GUI orchestration, indexing, runtime config, release/update work, and supportability docs to the required docs, tests, and follow-up checks.
 
 ## Validation Matrix
 - Full matrix: [Validation Matrix and Runner Commands](testplan/validation-matrix.md)

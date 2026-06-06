@@ -203,6 +203,7 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
   - 原子的ファイル書き込み。
 
 ## Related Docs
+- [ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md)
 - [CURRENT_STATUS.md](./CURRENT_STATUS.md)
 - [REQUIREMENTS.md](./REQUIREMENTS.md)
 - [SPEC.md](./SPEC.md)
@@ -214,6 +215,8 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 ## Document Roles
 - `CURRENT_STATUS.md`
   - 現在の品質姿勢、直近の保守優先度、日常 validation の入口を保持する。新しい作業では最初に読む短い entrypoint として扱う。
+- `ARCHITECTURE_OVERVIEW.md`
+  - 初見の Agent / 開発者が短時間で product shape、runtime flow、ownership map、変更種別ごとの入口を把握するための短い地図を保持する。
 - `REQUIREMENTS.md` / `SPEC.md`
   - プロダクト契約と振る舞いの規範面を保持する。
 - `ARCHITECTURE.md` / `DESIGN.md`

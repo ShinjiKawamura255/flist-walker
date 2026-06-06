@@ -18,6 +18,63 @@
 - 非対象範囲: Files / Folders の単一フィルタ時に必要な kind 解決、preview 要求に伴う単発の kind 解決。
 - 関連テストID: TC-122.
 
+## Change-Type Checklist
+Use this checklist before selecting runner commands. The VM table below remains the normative validation matrix; this section is an operator-friendly entrypoint for common change intents.
+
+### Docs-only or SDD/TDD Document Updates
+- Apply: VM-001.
+- Check that the touched docs keep `FR/NFR/CON -> SP -> DES -> TC` references intact when IDs are mentioned.
+- Review the affected diff for obsolete assumptions, duplicated instructions, and local Markdown links.
+- Run focused `rg` checks for renamed headings, IDs, and file references.
+- Do not run `cargo test` when the diff is limited to docs and `AGENTS.md`; confirm that with `git diff --stat`.
+
+### Search or Query Contract Changes
+- Apply: VM-004.
+- Update SPEC/DESIGN/TESTPLAN together when operator behavior, ranking, matching, highlight, case sensitivity, or compatibility changes.
+- Add or update failing tests first for query operators such as `'`, `!`, `^`, `$`, and `|`.
+- Verify CLI and GUI-facing behavior stay aligned.
+- Add focused GUI checks when highlight, visible result filtering, or user-facing result ordering changes.
+
+### GUI Orchestration, Rendering, Input, Tabs, or Session Changes
+- Apply: VM-002.
+- Keep heavy I/O and long computation out of the egui frame path.
+- Preserve request routing, stale response handling, tab/background response ownership, and selection behavior.
+- Add focused tests under `rust/src/app/tests/` that match the owner module touched.
+- Run GUI smoke evidence when rendering, focus, tabs, dialogs, result drawing, or responsiveness changes.
+
+### Indexing, FileList, Walker, or Kind Resolution Changes
+- Apply: VM-003.
+- Update indexer tests before changing FileList detection, precedence, root lookup, nested FileList handling, or walker classification.
+- Preserve incremental ingestion and avoid full-list synchronous metadata resolution in idle UI paths.
+- Run the VM-003 ignored perf tests when index/filelist/walker paths are touched.
+- Add large-root manual GUI checks when the change can affect responsiveness or throughput.
+
+### Runtime Config, Settings, or Startup Bootstrap Changes
+- Apply: VM-008.
+- Keep runtime config seed-only behavior and migration rules aligned across code and public docs.
+- Do not mention development-only update override environment variables in public-facing docs or help.
+- Verify first-run config creation, existing-config precedence, and startup/session path behavior.
+- Update release/config docs when user-facing settings locations or defaults change.
+
+### CLI, Build, Release, Updater, or OSS Packaging Changes
+- Apply: VM-005.
+- Run the project-local release preflight skill before tag/release/publish work.
+- Update `docs/RELEASE.md`, `.github/release-template.md`, OSS notices, and asset sidecar handling together when packaging changes.
+- Check release asset names, target OS coverage, update manifest/security behavior, and workflow warning gates.
+- Keep macOS notarization status wording in release notes while the temporary non-notarized publish posture remains active.
+
+### CI Coverage, GUI Validation Docs, or Smoke Script Changes
+- Apply: VM-006.
+- Validate shell/PowerShell scripts with the parser checks listed in VM-006.
+- Keep GUI test plan IDs, report template fields, smoke script names, and workflow references synchronized.
+- Treat coverage threshold changes as quality-policy changes that require fresh baseline measurement and docs updates.
+
+### Supportability Docs, Templates, or Diagnostics Wording
+- Apply: VM-007.
+- Check redaction wording, telemetry/support language, issue template links, and forbidden internal env names.
+- Keep diagnostics instructions aligned with the worker tracing and window trace contracts.
+- Do not require Rust validation if only support docs/templates changed.
+
 ## Runner and commands
 - Runner: `cargo test`
 - Runner: `cargo test`, `cargo audit`
