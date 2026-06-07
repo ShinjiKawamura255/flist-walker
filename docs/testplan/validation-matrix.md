@@ -28,13 +28,6 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - Run focused `rg` checks for renamed headings, IDs, and file references.
 - Do not run `cargo test` when the diff is limited to docs and `AGENTS.md`; confirm that with `git diff --stat`.
 
-### Search or Query Contract Changes
-- Apply: VM-004.
-- Update SPEC/DESIGN/TESTPLAN together when operator behavior, ranking, matching, highlight, case sensitivity, or compatibility changes.
-- Add or update failing tests first for query operators such as `'`, `!`, `^`, `$`, and `|`.
-- Verify CLI and GUI-facing behavior stay aligned.
-- Add focused GUI checks when highlight, visible result filtering, or user-facing result ordering changes.
-
 ### GUI Orchestration, Rendering, Input, Tabs, or Session Changes
 - Apply: VM-002.
 - Keep heavy I/O and long computation out of the egui frame path.
@@ -49,12 +42,12 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - Run the VM-003 ignored perf tests when index/filelist/walker paths are touched.
 - Add large-root manual GUI checks when the change can affect responsiveness or throughput.
 
-### Runtime Config, Settings, or Startup Bootstrap Changes
-- Apply: VM-008.
-- Keep runtime config seed-only behavior and migration rules aligned across code and public docs.
-- Do not mention development-only update override environment variables in public-facing docs or help.
-- Verify first-run config creation, existing-config precedence, and startup/session path behavior.
-- Update release/config docs when user-facing settings locations or defaults change.
+### Search or Query Contract Changes
+- Apply: VM-004.
+- Update SPEC/DESIGN/TESTPLAN together when operator behavior, ranking, matching, highlight, case sensitivity, or compatibility changes.
+- Add or update failing tests first for query operators such as `'`, `!`, `^`, `$`, and `|`.
+- Verify CLI and GUI-facing behavior stay aligned.
+- Add focused GUI checks when highlight, visible result filtering, or user-facing result ordering changes.
 
 ### CLI, Build, Release, Updater, or OSS Packaging Changes
 - Apply: VM-005.
@@ -75,6 +68,13 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - Keep diagnostics instructions aligned with the worker tracing and window trace contracts.
 - Do not require Rust validation if only support docs/templates changed.
 
+### Runtime Config, Settings, or Startup Bootstrap Changes
+- Apply: VM-008.
+- Keep runtime config seed-only behavior and migration rules aligned across code and public docs.
+- Do not mention development-only update override environment variables in public-facing docs or help.
+- Verify first-run config creation, existing-config precedence, and startup/session path behavior.
+- Update release/config docs when user-facing settings locations or defaults change.
+
 ## Runner and commands
 - Runner: `cargo test`
 - Runner: `cargo test`, `cargo audit`
@@ -86,9 +86,9 @@ Use this checklist before selecting runner commands. The VM table below remains 
 | VM-003 Indexing path | `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/filelist_hierarchy.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/adaptive_walker.rs`, `rust/src/app/workers.rs`, `rust/src/app/mod.rs`, `rust/src/app/pipeline.rs` の index/filelist/walker 経路 | `cd rust && cargo test`; `cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture`; FileList read path を変えた場合は `cargo test perf_filelist_stream_reuses_line_buffer --lib -- --ignored --nocapture`; `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`; adaptive walker 評価時は `cargo test perf_adaptive_walker_reports_local_dataset_metrics --lib -- --ignored --nocapture` | 大規模 root で GUI 手動試験。worker/index trace の observable output を変えた場合は TC-120 の focused smoke を追加実施する |
 | VM-004 Search/query contract | `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/match_eval.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ui_model.rs`, highlight / sort 契約変更 | `cd rust && cargo test` | 主要 query (`'`, `!`, `^`, `$`, `|`) の GUI 手動試験 |
 | VM-005 CLI / build / release / updater | `rust/src/main.rs`, `rust/build.rs`, `rust/src/updater.rs`, `rust/src/updater/*.rs`, `scripts/build-rust-*.sh`, `.github/workflows/*`, `docs/RELEASE.md` | `cd rust && cargo test`; release 前は `cargo clippy --all-targets -- -D warnings` と release build logs の warning ゼロを確認する; updater platform apply/helper を触った場合は `cd rust && cargo check --locked --target x86_64-pc-windows-gnu` | release/update 導線や platform 資産を変えた場合は該当 manual test と release doc review。workflow 変更時は tag workflow の preflight 条件、Windows native test、Windows GNU cross build、`cargo audit`、perf regression workflow の役割分担も確認する |
-| VM-008 Runtime config bootstrap | `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/session.rs`, `rust/src/updater.rs` | `cd rust && cargo test` | 初回起動で config file が生成されること、既存 file が env より優先されること、seed-only 挙動を manual smoke で確認する |
 | VM-006 CI coverage gate / GUI validation docs | `.github/workflows/ci-cross-platform.yml` の coverage command、`docs/TESTPLAN.md` の coverage/render validation 方針、`docs/GUI-TESTPLAN.md`、`docs/GUI-TESTREPORT.template.md`、`scripts/gui-smoke-fixture.sh`、`scripts/gui-headful-smoke.*` | `cd rust && cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`; workflow diff review。GUI docs/script だけの変更では `bash -n scripts/gui-smoke-fixture.sh`、`bash -n scripts/gui-headful-smoke.sh`、PowerShell parser で `scripts/gui-headful-smoke.ps1` を確認、`scripts/gui-smoke-fixture.sh`、`rg -n "GUI-TESTPLAN|GUI-TESTREPORT|GUI-HEADFUL-SMOKE|gui-smoke-fixture|gui-headful-smoke|GSM-" docs/TESTPLAN.md docs/GUI-TESTPLAN.md docs/GUI-TESTREPORT.template.md scripts/gui-headful-smoke.sh scripts/gui-headful-smoke.ps1` を required validation とする | Rust 実装に触れない場合 `cargo test` は coverage run に含まれるため別実行不要。coverage threshold を 80% へ上げる場合は fresh baseline を再測定し、`TESTPLAN.md` と `CURRENT_STATUS.md` へ測定値、追加 test、残る不足領域を更新する。Headful GUI launch は release/nightly smoke とし、通常 PR の CI 必須にしない |
 | VM-007 Supportability docs/templates | `.github/ISSUE_TEMPLATE/*`, `docs/SUPPORT.md`, README support links | affected doc/template diff review; `rg` で redaction / telemetry wording and forbidden internal update override names を確認 | Rust 実装に触れない限り `cargo test` は不要 |
+| VM-008 Runtime config bootstrap | `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/session.rs`, `rust/src/updater.rs` | `cd rust && cargo test` | 初回起動で config file が生成されること、既存 file が env より優先されること、seed-only 挙動を manual smoke で確認する |
 - 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
 - app architecture のような構造改善後も、恒久的な検証基準は VM-001 / VM-002 / VM-003 を直接適用する。
 - `ui_model.rs` は display/highlight/preview concern に限定し、action decision は `actions.rs` 側の unit test と `TC-107` で固定する。

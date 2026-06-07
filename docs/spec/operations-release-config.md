@@ -1,5 +1,51 @@
 ﻿# Operations, Release, and Runtime Configuration Specification
 
+## SP-012 CI / Release Security Hygiene
+### Requirements
+- MUST: 通常 CI は Windows/macOS/Linux の release 対象 OS を継続検証する。
+- MUST: 通常 CI で `cargo audit` による依存脆弱性検査を実行する。
+- MUST: `x86_64-pc-windows-gnu` 向け release build は最終 `flistwalker.exe` に Windows icon resource を含み、Explorer 上で埋め込みアイコンを表示できなければならない。
+- MUST: draft release 作成後、macOS notarization は別工程で確認できる状態を維持する。
+- MUST: notarization 環境が未整備な当面の間は、macOS 配布物の notarization 確認を publish 前提条件にしてはならない。その場合 publish 時は GitHub Release 本文の `Security` または `Known issues` に未 notarized である旨を明記しなければならない。
+- SHOULD: release note / release template / release docs に checksum 検証手順と notarization の扱いを明記する。
+
+### Preconditions / Postconditions
+- Preconditions: CI または release workflow を更新する。
+- Postconditions: 依存脆弱性検知と release 対象 OS の継続検証が行える。
+## SP-014 起動時自己更新
+### Requirements
+- MUST: GUI 起動時に GitHub Releases の最新 version 確認を非同期 worker で実行し、UI スレッドをブロックしてはならない。
+- MUST: 現在 version より新しい release が存在する場合、利用者へ更新承認ダイアログを表示する。
+- MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` / `SHA256SUMS.sig` に限定する。
+- MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.LICENSE.txt` と `*.THIRD_PARTY_NOTICES.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` として配置しなければならない。
+- MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.README.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `README.txt` として配置しなければならない。
+- MUST: ダウンロード後は埋め込み公開鍵で `SHA256SUMS.sig` が `SHA256SUMS` を正しく署名していることを確認し、失敗時は更新を中止する。
+- MUST: 署名検証通過後に、`SHA256SUMS` に記載された対象 asset の SHA-256 と一致することを確認し、一致しない場合は更新を中止する。
+- MUST: Windows では実行中 EXE を直接上書きせず、一時ディレクトリへ生成した補助 updater を別プロセスとして起動し、旧 EXE 終了後に置換と再起動を行う。
+- MUST: Linux では staged binary を一時ディレクトリへ配置し、別プロセスの更新スクリプト経由で置換と再起動を行う。
+- MUST: 更新失敗時は既存バイナリを維持し、利用者へ原因を通知する。
+- SHOULD: 署名公開鍵が埋め込まれていない開発用ビルドでは、自動更新を manual-only として扱える。
+- MUST: macOS では新しい release を検知しても自動置換を試みず、手動更新が必要であることを通知する。
+- MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
+- MUST: 抑止済み target version 以下の更新候補は次回起動以降も再表示してはならず、より新しい version を検知した場合のみ再び更新ダイアログを表示しなければならない。
+- MUST: 起動時の更新確認が失敗した場合、失敗理由を利用者へ確認できる軽量ダイアログを表示しなければならない。ただし通常の検索/操作は継続可能でなければならない。
+- MUST: update worker 応答は request_id で相関し、stale 応答が新しい prompt / failure / install_started 状態を上書きしてはならない。
+- MUST: update check / install が失敗、抑止、または supersede された場合、pending / in_progress 状態は解放され、通常操作を継続できなければならない。
+- SHOULD: 上記の起動時更新確認失敗ダイアログは、「今後この種の起動時エラーを表示しない」として抑止でき、この設定は起動間で保持される。
+- MUST: `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy な場合、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` というファイルが存在する場合、起動時の更新確認、更新ダイアログ表示、更新適用開始を行ってはならない。
+- MUST: 手動試験用 override 環境変数（更新 feed URL 差し替え、同一 version 許可、downgrade 許可）は内部検証専用とし、README、release note、配布物、ユーザ向けヘルプへ露出してはならない。
+- SHOULD: 内部検証用に `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE` を受け付け、起動時更新確認を意図的に失敗させて失敗ダイアログを強制表示できる。
+- SHOULD: 更新チェック失敗やダウンロード失敗は通常の検索/操作を妨げない。
+- SHOULD: 手動試験のために、更新 feed URL 差し替え、同一 version 許可、downgrade 許可を環境変数で上書きできる。
+
+### Preconditions / Postconditions
+- Preconditions: GUI モードで起動し、ネットワーク経由で GitHub Releases へ到達可能。
+- Postconditions: 新版が無ければ何も変更せず、新版があれば承認後に検証済みバイナリだけが置換・再起動される。
+
+### Edge / Error
+- GitHub API 失敗、タイムアウト、asset 欠落、checksum 不一致は更新失敗として通知し、現行バイナリで継続する。
+- 対応外 OS/arch は新版検知のみ行い、自動更新非対応の案内だけを返す。
+
 ## SP-015 Ignore List フィルタ
 ### Requirements
 - MUST: 実行中 binary と同じフォルダにある `flistwalker.ignore.txt` を ignore list ファイルとして読み取れる。
@@ -63,50 +109,3 @@
 ### Edge / Error
 - sample が既に存在する場合は上書きしない。
 - 実行中 binary の隣に ignore list が既にある場合は sample の生成だけを行い、live ignore list を作成しない。
-
-## SP-014 起動時自己更新
-### Requirements
-- MUST: GUI 起動時に GitHub Releases の最新 version 確認を非同期 worker で実行し、UI スレッドをブロックしてはならない。
-- MUST: 現在 version より新しい release が存在する場合、利用者へ更新承認ダイアログを表示する。
-- MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` / `SHA256SUMS.sig` に限定する。
-- MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.LICENSE.txt` と `*.THIRD_PARTY_NOTICES.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` として配置しなければならない。
-- MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.README.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `README.txt` として配置しなければならない。
-- MUST: ダウンロード後は埋め込み公開鍵で `SHA256SUMS.sig` が `SHA256SUMS` を正しく署名していることを確認し、失敗時は更新を中止する。
-- MUST: 署名検証通過後に、`SHA256SUMS` に記載された対象 asset の SHA-256 と一致することを確認し、一致しない場合は更新を中止する。
-- MUST: Windows では実行中 EXE を直接上書きせず、一時ディレクトリへ生成した補助 updater を別プロセスとして起動し、旧 EXE 終了後に置換と再起動を行う。
-- MUST: Linux では staged binary を一時ディレクトリへ配置し、別プロセスの更新スクリプト経由で置換と再起動を行う。
-- MUST: 更新失敗時は既存バイナリを維持し、利用者へ原因を通知する。
-- SHOULD: 署名公開鍵が埋め込まれていない開発用ビルドでは、自動更新を manual-only として扱える。
-- MUST: macOS では新しい release を検知しても自動置換を試みず、手動更新が必要であることを通知する。
-- MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
-- MUST: 抑止済み target version 以下の更新候補は次回起動以降も再表示してはならず、より新しい version を検知した場合のみ再び更新ダイアログを表示しなければならない。
-- MUST: 起動時の更新確認が失敗した場合、失敗理由を利用者へ確認できる軽量ダイアログを表示しなければならない。ただし通常の検索/操作は継続可能でなければならない。
-- MUST: update worker 応答は request_id で相関し、stale 応答が新しい prompt / failure / install_started 状態を上書きしてはならない。
-- MUST: update check / install が失敗、抑止、または supersede された場合、pending / in_progress 状態は解放され、通常操作を継続できなければならない。
-- SHOULD: 上記の起動時更新確認失敗ダイアログは、「今後この種の起動時エラーを表示しない」として抑止でき、この設定は起動間で保持される。
-- MUST: `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy な場合、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` というファイルが存在する場合、起動時の更新確認、更新ダイアログ表示、更新適用開始を行ってはならない。
-- MUST: 手動試験用 override 環境変数（更新 feed URL 差し替え、同一 version 許可、downgrade 許可）は内部検証専用とし、README、release note、配布物、ユーザ向けヘルプへ露出してはならない。
-- SHOULD: 内部検証用に `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE` を受け付け、起動時更新確認を意図的に失敗させて失敗ダイアログを強制表示できる。
-- SHOULD: 更新チェック失敗やダウンロード失敗は通常の検索/操作を妨げない。
-- SHOULD: 手動試験のために、更新 feed URL 差し替え、同一 version 許可、downgrade 許可を環境変数で上書きできる。
-
-### Preconditions / Postconditions
-- Preconditions: GUI モードで起動し、ネットワーク経由で GitHub Releases へ到達可能。
-- Postconditions: 新版が無ければ何も変更せず、新版があれば承認後に検証済みバイナリだけが置換・再起動される。
-
-### Edge / Error
-- GitHub API 失敗、タイムアウト、asset 欠落、checksum 不一致は更新失敗として通知し、現行バイナリで継続する。
-- 対応外 OS/arch は新版検知のみ行い、自動更新非対応の案内だけを返す。
-
-## SP-012 CI / Release Security Hygiene
-### Requirements
-- MUST: 通常 CI は Windows/macOS/Linux の release 対象 OS を継続検証する。
-- MUST: 通常 CI で `cargo audit` による依存脆弱性検査を実行する。
-- MUST: `x86_64-pc-windows-gnu` 向け release build は最終 `flistwalker.exe` に Windows icon resource を含み、Explorer 上で埋め込みアイコンを表示できなければならない。
-- MUST: draft release 作成後、macOS notarization は別工程で確認できる状態を維持する。
-- MUST: notarization 環境が未整備な当面の間は、macOS 配布物の notarization 確認を publish 前提条件にしてはならない。その場合 publish 時は GitHub Release 本文の `Security` または `Known issues` に未 notarized である旨を明記しなければならない。
-- SHOULD: release note / release template / release docs に checksum 検証手順と notarization の扱いを明記する。
-
-### Preconditions / Postconditions
-- Preconditions: CI または release workflow を更新する。
-- Postconditions: 依存脆弱性検知と release 対象 OS の継続検証が行える。

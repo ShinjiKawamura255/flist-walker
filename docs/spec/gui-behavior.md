@@ -76,6 +76,15 @@
 - 非対象範囲: TextEdit 内の通常 `Ctrl+C` / `Cmd+C` による query text コピー。
 - 関連テストID: TC-018.
 
+## SP-011 GUI 回帰テスト計画
+### Requirements
+- MUST: GUI の主要フロー（起動、検索、選択、実行/オープン、再読込）を手順化する。
+- MUST: 仕様IDに対応するテストIDで結果を記録する。
+- SHOULD: 主要OS差分（Windows/macOS/Linux）で確認観点を持つ。
+
+### Preconditions / Postconditions
+- Preconditions: 対象ビルドが実行可能。
+- Postconditions: 回帰実施可否を判定できる記録が残る。
 ## SP-013 検索結果ソート
 ### Requirements
 - MUST: ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。
@@ -97,13 +106,3 @@
 - 検索結果が空のときはソート要求を無視する。
 - path が削除済み・権限不足などで属性取得に失敗した場合はその項目だけ `None` 扱いで継続する。
 - 保留中ソート応答が古い query / root / tab に属する場合は破棄する。
-
-## SP-011 GUI 回帰テスト計画
-### Requirements
-- MUST: GUI の主要フロー（起動、検索、選択、実行/オープン、再読込）を手順化する。
-- MUST: 仕様IDに対応するテストIDで結果を記録する。
-- SHOULD: 主要OS差分（Windows/macOS/Linux）で確認観点を持つ。
-
-### Preconditions / Postconditions
-- Preconditions: 対象ビルドが実行可能。
-- Postconditions: 回帰実施可否を判定できる記録が残る。

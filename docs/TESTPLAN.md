@@ -1,4 +1,4 @@
-# TESTPLAN
+﻿# TESTPLAN
 
 This file is the entry point for FlistWalker test planning. Detailed test strategy, TC tables, runner commands, manual procedures, and traceability are split by topic under `docs/testplan/`.
 
@@ -13,6 +13,9 @@ This file is the entry point for FlistWalker test planning. Detailed test strate
 ## Change-Type Checklist
 Use the checklist in [Validation Matrix and Runner Commands](testplan/validation-matrix.md#change-type-checklist) before choosing commands. It maps common change intents such as docs-only edits, search contract changes, GUI orchestration, indexing, runtime config, release/update work, and supportability docs to the required docs, tests, and follow-up checks.
 
+## ID Ordering
+ID-bearing tables and normative sections SHOULD be kept in ascending ID order to make later insertions predictable. Suffix IDs such as `TC-003A` SHOULD be placed immediately after their parent ID. History, release notes, regression guards, and narrative examples MAY use chronological, risk, or topic order when that is clearer than numeric order.
+
 ## Validation Matrix
 - Full matrix: [Validation Matrix and Runner Commands](testplan/validation-matrix.md)
 - VM-001 Docs only: affected doc diff review and `rg` ID/reference checks; Rust implementation untouched means `cargo test` is not required.
@@ -20,6 +23,9 @@ Use the checklist in [Validation Matrix and Runner Commands](testplan/validation
 - VM-003 Indexing path: `cd rust && cargo test` plus ignored perf tests for FileList / Walker indexing paths.
 - VM-004 Search/query contract: `cd rust && cargo test` and focused query GUI checks when relevant.
 - VM-005 CLI / build / release / updater: `cd rust && cargo test` plus release/update-specific checks.
+- VM-006 CI coverage gate / GUI validation docs: coverage command or script/parser checks as applicable.
+- VM-007 Supportability docs/templates: affected doc/template diff review and support wording checks.
+- VM-008 Runtime config bootstrap: `cd rust && cargo test` plus first-run/config precedence checks when relevant.
 
 ## Docs-only Validation
 For documentation-only restructuring, apply VM-001:
