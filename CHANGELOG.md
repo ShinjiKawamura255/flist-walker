@@ -24,6 +24,31 @@
 ### Known issues
 -
 
+## [0.18.7] - 2026-06-07
+### Added
+- GUI で現在プロセス中に閉じたタブを `Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で直近順に復元できるようにした。
+- 初見の開発者や Agent 向けに `docs/ARCHITECTURE_OVERVIEW.md` を追加し、主要 runtime flow、責務マップ、変更種別ごとの入口を整理した。
+
+### Changed
+- SDD / 詳細設計 / テスト計画文書を topic 別ファイルへ分割し、トップレベル文書を entrypoint として使いやすくした。
+- `docs/TESTPLAN.md` と Validation Matrix を変更種別別チェックリストとして強化し、docs-only、GUI、indexing、search、release/update、runtime config の検証入口を明確化した。
+- TC / VM / SP の表・規範セクションを ID 昇順へ整理し、release preflight skill に ID Ordering gate を追加した。
+
+### Fixed
+-
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.6] - 2026-06-05
 ### Added
 -
@@ -1396,7 +1421,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.5...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.7...HEAD
+[0.18.7]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.7
+[0.18.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.6
 [0.18.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.5
 [0.18.4]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.4
 [0.18.3]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.3
