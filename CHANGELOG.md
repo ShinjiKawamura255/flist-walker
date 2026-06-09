@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.18.8] - 2026-06-09
+### Added
+- GUI の保存済み root 操作を `Manage list` に統合し、別ウィンドウで path 直接入力または `Browse...` による追加、チェックボックス選択による削除、`Apply` / `OK` / `Cancel` の draft 反映境界を扱えるようにした。
+
+### Changed
+-
+
+### Fixed
+- Manage list の下部操作ボタンの表示軸を揃え、hover / active 状態でも 1 つのボタンだけ上下に膨らまないようにした。
+- Manage list の保存済み root 更新テストが実ユーザーの saved roots ファイルを書き換えないよう、テスト用保存先を隔離した。
+- Browse で存在しない root から開始する場合でも、既存の親ディレクトリへフォールバックしてフォルダ選択を開けるようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.7] - 2026-06-07
 ### Added
 - GUI で現在プロセス中に閉じたタブを `Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で直近順に復元できるようにした。
@@ -1421,7 +1445,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.7...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.8...HEAD
+[0.18.8]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.8
 [0.18.7]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.7
 [0.18.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.6
 [0.18.5]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.5
