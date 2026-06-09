@@ -105,6 +105,38 @@ fn ctrl_o_browses_and_changes_root() {
 }
 
 #[test]
+fn ctrl_o_browse_uses_existing_parent_when_current_root_is_missing() {
+    let root = test_root("shortcut-ctrl-o-missing-root-parent");
+    let missing_root = root.join("missing").join("child");
+    let new_root = root.join("new-root");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&new_root).expect("create new root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.root = missing_root;
+    app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(new_root.clone())));
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::O,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: gui_shortcut_modifiers(false),
+        }],
+    );
+
+    assert_eq!(
+        app.shell.features.root_browser.last_browse_dialog_root,
+        Some(root.clone())
+    );
+    assert_eq!(app.shell.runtime.root, new_root);
+    assert!(!app.shell.runtime.notice.contains("Browse failed"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn ctrl_shift_o_browses_in_new_tab() {
     let root = test_root("shortcut-ctrl-shift-o");
     let new_root = root.join("new-root");
@@ -132,6 +164,41 @@ fn ctrl_shift_o_browses_in_new_tab() {
     assert_eq!(app.shell.tabs.get(0).expect("tab 0").id, original_tab_id);
     assert_eq!(app.shell.tabs.get(0).expect("tab 0").root, root);
     assert_eq!(app.shell.tabs.get(1).expect("tab 1").root, new_root);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ctrl_shift_o_browse_falls_back_when_current_root_is_missing() {
+    let root = test_root("shortcut-ctrl-shift-o-missing-root");
+    let missing_root = root.join("missing");
+    let new_root = root.join("new-root");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::create_dir_all(&new_root).expect("create new root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.root = missing_root;
+    app.sync_active_tab_state();
+    app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(new_root.clone())));
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::O,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: gui_shortcut_modifiers(true),
+        }],
+    );
+
+    assert_eq!(
+        app.shell.features.root_browser.last_browse_dialog_root,
+        Some(root.clone())
+    );
+    assert_eq!(app.shell.tabs.len(), 2);
+    assert_eq!(app.shell.tabs.active_tab, 1);
+    assert_eq!(app.shell.runtime.root, new_root);
+    assert!(!app.shell.runtime.notice.contains("Browse failed"));
     let _ = fs::remove_dir_all(&root);
 }
 

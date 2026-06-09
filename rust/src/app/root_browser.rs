@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 impl FlistWalkerApp {
     /// ダイアログで選んだ root を現在 tab に適用する。
     pub(super) fn browse_for_root(&mut self) {
-        let dialog_root = normalize_windows_path_buf(self.shell.runtime.root.clone());
+        let dialog_root = Self::browse_dialog_start_location(&self.shell.runtime.root);
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => self.apply_root_change(dir),
             Ok(None) => {}
@@ -19,7 +19,7 @@ impl FlistWalkerApp {
 
     /// ダイアログで選んだ root を新規 tab として開く。
     pub(super) fn browse_for_root_in_new_tab(&mut self) {
-        let dialog_root = normalize_windows_path_buf(self.shell.runtime.root.clone());
+        let dialog_root = Self::browse_dialog_start_location(&self.shell.runtime.root);
         match self.select_root_via_dialog(&dialog_root) {
             Ok(Some(dir)) => {
                 self.create_new_tab();
@@ -30,8 +30,20 @@ impl FlistWalkerApp {
         }
     }
 
+    fn browse_dialog_start_location(root: &Path) -> PathBuf {
+        let normalized = normalize_windows_path_buf(root.to_path_buf());
+        if normalized.is_dir() {
+            return normalized;
+        }
+        if let Some(ancestor) = normalized.ancestors().find(|ancestor| ancestor.is_dir()) {
+            return ancestor.to_path_buf();
+        }
+        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+    }
+
     #[cfg(test)]
-    fn select_root_via_dialog(&mut self, _dialog_root: &Path) -> Result<Option<PathBuf>, String> {
+    fn select_root_via_dialog(&mut self, dialog_root: &Path) -> Result<Option<PathBuf>, String> {
+        self.shell.features.root_browser.last_browse_dialog_root = Some(dialog_root.to_path_buf());
         self.shell
             .features
             .root_browser

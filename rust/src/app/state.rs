@@ -292,6 +292,8 @@ pub struct AppShellState {
 pub(super) struct RootBrowserState {
     #[cfg(test)]
     pub(super) browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
+    #[cfg(test)]
+    pub(super) last_browse_dialog_root: Option<PathBuf>,
     pub(super) saved_roots: Vec<PathBuf>,
     pub(super) default_root: Option<PathBuf>,
 }

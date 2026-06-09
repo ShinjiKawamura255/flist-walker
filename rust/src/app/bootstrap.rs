@@ -315,6 +315,8 @@ impl FlistWalkerApp {
                     root_browser: RootBrowserState {
                         #[cfg(test)]
                         browse_dialog_result: None,
+                        #[cfg(test)]
+                        last_browse_dialog_root: None,
                         saved_roots,
                         default_root,
                     },
