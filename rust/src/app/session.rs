@@ -7,7 +7,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
+
+#[cfg(test)]
+static SAVED_ROOTS_FILE_PATH_OVERRIDE: OnceLock<Mutex<Option<PathBuf>>> = OnceLock::new();
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) enum TabAccentColor {
@@ -302,11 +307,29 @@ impl FlistWalkerApp {
     }
 
     fn saved_roots_file_path() -> Option<PathBuf> {
+        #[cfg(test)]
+        if let Some(path) = SAVED_ROOTS_FILE_PATH_OVERRIDE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .expect("saved roots path override lock")
+            .clone()
+        {
+            return Some(path);
+        }
+
         settings_base_dir().map(|base| Self::saved_roots_file_path_in(&base))
     }
 
-    fn saved_roots_file_path_in(base: &Path) -> PathBuf {
+    pub(super) fn saved_roots_file_path_in(base: &Path) -> PathBuf {
         base.join(".flistwalker_roots.txt")
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_saved_roots_file_path_override_for_test(path: Option<PathBuf>) {
+        *SAVED_ROOTS_FILE_PATH_OVERRIDE
+            .get_or_init(|| Mutex::new(None))
+            .lock()
+            .expect("saved roots path override lock") = path;
     }
 
     pub(super) fn load_saved_roots() -> Vec<PathBuf> {
@@ -333,7 +356,7 @@ impl FlistWalkerApp {
         out
     }
 
-    fn save_saved_roots(&self) {
+    pub(super) fn save_saved_roots(&self) {
         let Some(file) = Self::saved_roots_file_path() else {
             return;
         };
@@ -390,40 +413,6 @@ impl FlistWalkerApp {
         current_path.to_path_buf()
     }
 
-    pub(super) fn add_current_root_to_saved(&mut self) {
-        let root = self
-            .shell
-            .runtime
-            .root
-            .canonicalize()
-            .unwrap_or_else(|_| self.shell.runtime.root.clone());
-        let root = normalize_windows_path_buf(root);
-        let key = path_key(&root);
-        if self
-            .shell
-            .features
-            .root_browser
-            .saved_roots
-            .iter()
-            .any(|p| path_key(p) == key)
-        {
-            self.set_notice("Current root is already registered");
-            return;
-        }
-        self.shell
-            .features
-            .root_browser
-            .saved_roots
-            .push(root.clone());
-        self.shell
-            .features
-            .root_browser
-            .saved_roots
-            .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
-        self.save_saved_roots();
-        self.set_notice(format!("Registered root: {}", root.display()));
-    }
-
     pub(super) fn set_current_root_as_default(&mut self) {
         self.set_current_root_as_default_with(Self::restore_tabs_enabled());
     }
@@ -452,33 +441,6 @@ impl FlistWalkerApp {
 
     pub(super) fn can_set_current_root_as_default_with(restore_tabs_enabled: bool) -> bool {
         !restore_tabs_enabled
-    }
-
-    pub(super) fn remove_current_root_from_saved(&mut self) {
-        let key = path_key(&self.shell.runtime.root);
-        let before = self.shell.features.root_browser.saved_roots.len();
-        self.shell
-            .features
-            .root_browser
-            .saved_roots
-            .retain(|p| path_key(p) != key);
-        if self.shell.features.root_browser.saved_roots.len() == before {
-            self.set_notice("Current root is not in saved list");
-            return;
-        }
-        if self
-            .shell
-            .features
-            .root_browser
-            .default_root
-            .as_ref()
-            .is_some_and(|p| path_key(p) == key)
-        {
-            self.shell.features.root_browser.default_root = None;
-            self.mark_ui_state_dirty();
-        }
-        self.save_saved_roots();
-        self.set_notice("Removed current root from saved list");
     }
 
     pub(super) fn save_ui_state(&self) {

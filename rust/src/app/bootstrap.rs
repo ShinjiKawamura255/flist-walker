@@ -319,6 +319,7 @@ impl FlistWalkerApp {
                         last_browse_dialog_root: None,
                         saved_roots,
                         default_root,
+                        manage_list: Default::default(),
                     },
                     filelist: FileListManager::default(),
                     update: UpdateManager::from_state(update_state),

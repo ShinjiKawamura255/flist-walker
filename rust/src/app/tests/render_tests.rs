@@ -18,6 +18,20 @@ fn filelist_use_walker_dialog_lines_are_stable() {
 }
 
 #[test]
+fn manage_root_list_action_button_rects_share_same_axis() {
+    let row = egui::Rect::from_min_size(egui::pos2(8.4, 467.6), egui::vec2(700.0, 22.0));
+    let rects = FlistWalkerApp::manage_root_list_action_button_rects(row, 22.0, 8.0);
+
+    for rect in rects {
+        assert_eq!(rect.top(), 468.0);
+        assert_eq!(rect.bottom(), 490.0);
+        assert_eq!(rect.height(), 22.0);
+    }
+    assert_eq!(rects[1].left() - rects[0].left(), 80.0);
+    assert_eq!(rects[2].left() - rects[1].left(), 80.0);
+}
+
+#[test]
 fn top_action_labels_show_history_actions_while_history_search_is_active() {
     let root = test_root("render-history-actions");
     fs::create_dir_all(&root).expect("create dir");

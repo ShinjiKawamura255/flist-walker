@@ -296,12 +296,22 @@ pub(super) struct RootBrowserState {
     pub(super) last_browse_dialog_root: Option<PathBuf>,
     pub(super) saved_roots: Vec<PathBuf>,
     pub(super) default_root: Option<PathBuf>,
+    pub(super) manage_list: RootListManagerState,
 }
 
 impl RootBrowserState {
     pub(super) fn saved_roots(&self) -> &[PathBuf] {
         &self.saved_roots
     }
+}
+
+#[derive(Default)]
+pub(super) struct RootListManagerState {
+    pub(super) open: bool,
+    pub(super) input_path: String,
+    pub(super) draft_roots: Vec<PathBuf>,
+    pub(super) selected_indices: HashSet<usize>,
+    pub(super) notice: String,
 }
 
 pub(crate) struct FeatureStateBundle {

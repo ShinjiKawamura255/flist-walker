@@ -54,6 +54,10 @@
 - MUST: タブ accent color は保存対象のタブ状態に含め、タブ復元時に保持する。
 - MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
 - MUST: runtime config の `restore_tabs_enabled` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
+- MUST: 保存済み root list の追加と削除は `Manage list` へ統合し、メインウィンドウへ埋め込まれない独立した非ブロッキング native 管理ウィンドウで操作できなければならない。
+- MUST: `Manage list` では直接入力したフォルダパス、または `Browse...` で選択したフォルダを draft list へ追加できなければならない。
+- MUST: `Manage list` ではチェックボックスで選択した draft list の項目を削除できなければならない。
+- MUST: `Manage list` の draft 変更は `Apply` または `OK` を押したタイミングでのみ保存済み root list へ反映し、`Cancel` またはウィンドウ close では反映してはならない。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
 - MUST: 現在のプロセス中に閉じた GUI タブは in-memory の直近順スタックとして保持し、`Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で最後に閉じたタブから active tab として復元できなければならない。
 - MUST: 閉じたタブを復元する際は、閉じた時点の tab index を優先し、現在の tab 数を超える場合のみ末尾へ復元しなければならない。

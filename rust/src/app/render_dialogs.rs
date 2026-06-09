@@ -317,3 +317,177 @@ pub(super) fn render_update_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context
         }
     }
 }
+
+pub(super) fn render_manage_root_list_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    if !app.shell.features.root_browser.manage_list.open {
+        return;
+    }
+
+    let mut add_input = false;
+    let mut browse_and_add = false;
+    let mut remove_selected = false;
+    let mut apply = false;
+    let mut ok = false;
+    let mut cancel = false;
+    let viewport_id = FlistWalkerApp::manage_root_list_viewport_id();
+    let viewport_builder = FlistWalkerApp::manage_root_list_viewport_builder();
+
+    ctx.show_viewport_immediate(viewport_id, viewport_builder, |ui, _class| {
+        if ui.input(|input| {
+            input
+                .viewport()
+                .events
+                .contains(&egui::ViewportEvent::Close)
+        }) {
+            cancel = true;
+        }
+
+        egui::CentralPanel::default().show_inside(ui, |ui| {
+            ui.horizontal(|ui| {
+                let row_height = ui.spacing().interact_size.y;
+                let browse_width = 84.0;
+                let add_width = 52.0;
+                let spacing = ui.spacing().item_spacing.x * 2.0;
+                let input_width =
+                    (ui.available_width() - browse_width - add_width - spacing).max(160.0);
+                ui.add(
+                    egui::TextEdit::singleline(
+                        &mut app.shell.features.root_browser.manage_list.input_path,
+                    )
+                    .desired_width(input_width)
+                    .hint_text("Folder path"),
+                );
+                if ui
+                    .add_sized([browse_width, row_height], egui::Button::new("Browse..."))
+                    .clicked()
+                {
+                    browse_and_add = true;
+                }
+                if ui
+                    .add_sized([add_width, row_height], egui::Button::new("Add"))
+                    .clicked()
+                {
+                    add_input = true;
+                }
+            });
+
+            let notice = app.shell.features.root_browser.manage_list.notice.clone();
+            if !notice.is_empty() {
+                ui.label(notice);
+            }
+
+            ui.separator();
+            ui.horizontal(|ui| {
+                ui.heading("Saved roots");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .add_sized(
+                            [132.0, ui.spacing().interact_size.y],
+                            egui::Button::new("Remove selected"),
+                        )
+                        .clicked()
+                    {
+                        remove_selected = true;
+                    }
+                });
+            });
+
+            let button_row_height = ui.spacing().interact_size.y + ui.spacing().item_spacing.y;
+            let list_height = (ui.available_height() - button_row_height - 8.0).max(80.0);
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .max_height(list_height)
+                .show(ui, |ui| {
+                    let roots = app
+                        .shell
+                        .features
+                        .root_browser
+                        .manage_list
+                        .draft_roots
+                        .clone();
+                    if roots.is_empty() {
+                        ui.label("No saved roots");
+                    }
+                    for (index, root) in roots.iter().enumerate() {
+                        let mut selected = app
+                            .shell
+                            .features
+                            .root_browser
+                            .manage_list
+                            .selected_indices
+                            .contains(&index);
+                        let label = root.to_string_lossy().to_string();
+                        if ui.checkbox(&mut selected, label).changed() {
+                            let selected_indices =
+                                &mut app.shell.features.root_browser.manage_list.selected_indices;
+                            if selected {
+                                selected_indices.insert(index);
+                            } else {
+                                selected_indices.remove(&index);
+                            }
+                        }
+                    }
+                });
+
+            ui.separator();
+            let action_height = ui.spacing().interact_size.y.round();
+            let (row_rect, _) = ui.allocate_exact_size(
+                egui::vec2(ui.available_width(), action_height),
+                egui::Sense::hover(),
+            );
+            let [apply_rect, ok_rect, cancel_rect] =
+                FlistWalkerApp::manage_root_list_action_button_rects(
+                    row_rect,
+                    action_height,
+                    ui.spacing().item_spacing.x,
+                );
+            ui.scope(|ui| {
+                let mut style = (**ui.style()).clone();
+                style.visuals.widgets.hovered.expansion = 0.0;
+                style.visuals.widgets.active.expansion = 0.0;
+                style.visuals.widgets.open.expansion = 0.0;
+                ui.set_style(style);
+                if ui.put(apply_rect, egui::Button::new("Apply")).clicked() {
+                    apply = true;
+                }
+                if ui.put(ok_rect, egui::Button::new("OK")).clicked() {
+                    ok = true;
+                }
+                if ui.put(cancel_rect, egui::Button::new("Cancel")).clicked() {
+                    cancel = true;
+                }
+            });
+        });
+    });
+
+    if browse_and_add {
+        app.queue_render_command(super::render::RenderCommand::RootListDialog(
+            super::render::RenderRootListDialogCommand::BrowseAndAdd,
+        ));
+    }
+    if add_input {
+        app.queue_render_command(super::render::RenderCommand::RootListDialog(
+            super::render::RenderRootListDialogCommand::AddInput,
+        ));
+    }
+    if remove_selected {
+        app.queue_render_command(super::render::RenderCommand::RootListDialog(
+            super::render::RenderRootListDialogCommand::RemoveSelected,
+        ));
+    }
+    if apply {
+        app.queue_render_command(super::render::RenderCommand::RootListDialog(
+            super::render::RenderRootListDialogCommand::Apply,
+        ));
+    }
+    if ok {
+        app.queue_render_command(super::render::RenderCommand::RootListDialog(
+            super::render::RenderRootListDialogCommand::Ok,
+        ));
+    }
+    if cancel {
+        app.queue_render_command(super::render::RenderCommand::RootListDialog(
+            super::render::RenderRootListDialogCommand::Cancel,
+        ));
+    }
+}

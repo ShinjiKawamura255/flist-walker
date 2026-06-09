@@ -209,8 +209,7 @@ CLI では:
 
 - `Browse...`: Root を変更
 - `Set as default`: 次回起動時の既定 root を保存
-- `Add to list`: 現在 root を保存済みリストへ追加
-- `Remove from list`: 現在 root を保存済みリストから削除
+- `Manage list`: 保存済み root のネイティブ管理ウィンドウを非ブロッキングで開きます。パスを直接入力するか `Browse...` でフォルダを選んで追加し、チェックした項目を draft list から削除できます。反映は `Apply` または `OK` のタイミングで行い、`Cancel` では保存済みリストを変更しません。
 
 ## テスト
 

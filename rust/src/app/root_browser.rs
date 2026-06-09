@@ -30,6 +30,169 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn open_manage_root_list(&mut self) {
+        let root_browser = &mut self.shell.features.root_browser;
+        root_browser.manage_list.open = true;
+        root_browser.manage_list.draft_roots = root_browser.saved_roots.clone();
+        root_browser.manage_list.selected_indices.clear();
+        root_browser.manage_list.input_path =
+            normalize_windows_path_buf(self.shell.runtime.root.clone())
+                .to_string_lossy()
+                .to_string();
+        root_browser.manage_list.notice.clear();
+        self.clear_focus_query_request();
+        self.request_unfocus_query();
+    }
+
+    pub(super) fn add_manage_root_list_input(&mut self) {
+        let input = self
+            .shell
+            .features
+            .root_browser
+            .manage_list
+            .input_path
+            .trim()
+            .to_string();
+        match Self::normalize_manage_root_list_path(&input) {
+            Ok(root) => self.add_manage_root_list_path(root),
+            Err(message) => {
+                self.shell.features.root_browser.manage_list.notice = message;
+            }
+        }
+    }
+
+    pub(super) fn browse_for_manage_root_list(&mut self) {
+        let input = self
+            .shell
+            .features
+            .root_browser
+            .manage_list
+            .input_path
+            .trim();
+        let start = if input.is_empty() {
+            Self::browse_dialog_start_location(&self.shell.runtime.root)
+        } else {
+            Self::browse_dialog_start_location(Path::new(input))
+        };
+        match self.select_root_via_dialog(&start) {
+            Ok(Some(dir)) => {
+                let root = normalize_windows_path_buf(dir);
+                self.shell.features.root_browser.manage_list.input_path =
+                    root.to_string_lossy().to_string();
+                self.add_manage_root_list_path(root);
+            }
+            Ok(None) => {}
+            Err(err) => {
+                self.shell.features.root_browser.manage_list.notice =
+                    format!("Browse failed: {}", err);
+            }
+        }
+    }
+
+    pub(super) fn remove_selected_manage_root_list_items(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        if manage.selected_indices.is_empty() {
+            manage.notice = "Select one or more roots to remove".to_string();
+            return;
+        }
+        let selected = &manage.selected_indices;
+        manage.draft_roots = manage
+            .draft_roots
+            .iter()
+            .cloned()
+            .enumerate()
+            .filter_map(|(index, root)| (!selected.contains(&index)).then_some(root))
+            .collect();
+        manage.selected_indices.clear();
+        manage.notice = "Removed selected roots from the draft list".to_string();
+    }
+
+    pub(super) fn apply_manage_root_list_changes(&mut self) {
+        let draft_roots = self
+            .shell
+            .features
+            .root_browser
+            .manage_list
+            .draft_roots
+            .clone();
+        self.shell.features.root_browser.saved_roots = draft_roots;
+        self.shell.ui.set_root_dropdown_highlight(None);
+        let mut default_cleared = false;
+        if let Some(default_root) = self.shell.features.root_browser.default_root.as_ref() {
+            let default_key = path_key(default_root);
+            let default_still_saved = self
+                .shell
+                .features
+                .root_browser
+                .saved_roots
+                .iter()
+                .any(|root| path_key(root) == default_key);
+            if !default_still_saved {
+                self.shell.features.root_browser.default_root = None;
+                default_cleared = true;
+            }
+        }
+        if default_cleared {
+            self.mark_ui_state_dirty();
+            self.persist_ui_state_now();
+        }
+        self.save_saved_roots();
+        self.shell.features.root_browser.manage_list.notice =
+            "Applied saved roots list".to_string();
+        self.set_notice("Applied saved roots list");
+    }
+
+    pub(super) fn confirm_manage_root_list_changes(&mut self) {
+        self.apply_manage_root_list_changes();
+        self.close_manage_root_list();
+    }
+
+    pub(super) fn cancel_manage_root_list(&mut self) {
+        self.close_manage_root_list();
+        self.set_notice("Canceled saved roots list changes");
+    }
+
+    fn close_manage_root_list(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        manage.open = false;
+        manage.input_path.clear();
+        manage.draft_roots.clear();
+        manage.selected_indices.clear();
+        manage.notice.clear();
+    }
+
+    fn normalize_manage_root_list_path(input: &str) -> Result<PathBuf, String> {
+        if input.is_empty() {
+            return Err("Enter a folder path to add".to_string());
+        }
+        let path = normalize_windows_path_buf(PathBuf::from(input));
+        if !path.is_dir() {
+            return Err(format!("Path is not a folder: {}", path.display()));
+        }
+        Ok(normalize_windows_path_buf(
+            path.canonicalize().unwrap_or(path),
+        ))
+    }
+
+    fn add_manage_root_list_path(&mut self, root: PathBuf) {
+        let root = normalize_windows_path_buf(root);
+        let key = path_key(&root);
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        if manage
+            .draft_roots
+            .iter()
+            .any(|candidate| path_key(candidate) == key)
+        {
+            manage.notice = "Root is already in the draft list".to_string();
+            return;
+        }
+        manage.draft_roots.push(root.clone());
+        manage
+            .draft_roots
+            .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
+        manage.notice = format!("Added root to draft list: {}", root.display());
+    }
+
     fn browse_dialog_start_location(root: &Path) -> PathBuf {
         let normalized = normalize_windows_path_buf(root.to_path_buf());
         if normalized.is_dir() {

@@ -38,6 +38,16 @@ pub(super) enum RenderUpdateDialogCommand {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum RenderRootListDialogCommand {
+    AddInput,
+    BrowseAndAdd,
+    RemoveSelected,
+    Apply,
+    Ok,
+    Cancel,
+}
+
+#[derive(Clone, Copy)]
 pub(super) enum RenderTabBarCommand {
     CreateNewTab,
     CloseTab(usize),
@@ -59,6 +69,7 @@ pub(super) enum RenderCommand {
     OpenRuntimeConfig,
     FileListDialog(RenderFileListDialogCommand),
     UpdateDialog(RenderUpdateDialogCommand),
+    RootListDialog(RenderRootListDialogCommand),
     TabBar(RenderTabBarCommand),
 }
 
@@ -72,6 +83,38 @@ impl FlistWalkerApp {
     pub(super) const TAB_ACCENT_LINE_HEIGHT: f32 = 3.0;
     pub(super) const TAB_ACTIVE_BORDER_WIDTH: f32 = 2.0;
     pub(super) const TAB_INACTIVE_BORDER_WIDTH: f32 = 1.0;
+    pub(super) const MANAGE_ROOT_LIST_VIEWPORT_TITLE: &'static str = "Manage list";
+    pub(super) const MANAGE_ROOT_LIST_VIEWPORT_SIZE: egui::Vec2 = egui::vec2(720.0, 460.0);
+    pub(super) const MANAGE_ROOT_LIST_ACTION_BUTTON_WIDTH: f32 = 72.0;
+
+    pub(super) fn manage_root_list_viewport_id() -> egui::ViewportId {
+        egui::ViewportId::from_hash_of("flistwalker-manage-root-list")
+    }
+
+    pub(super) fn manage_root_list_viewport_builder() -> egui::ViewportBuilder {
+        egui::ViewportBuilder::default()
+            .with_title(Self::MANAGE_ROOT_LIST_VIEWPORT_TITLE)
+            .with_inner_size(Self::MANAGE_ROOT_LIST_VIEWPORT_SIZE)
+            .with_min_inner_size(egui::vec2(520.0, 320.0))
+            .with_resizable(true)
+            .with_active(true)
+    }
+
+    pub(super) fn manage_root_list_action_button_rects(
+        row_rect: egui::Rect,
+        button_height: f32,
+        spacing_x: f32,
+    ) -> [egui::Rect; 3] {
+        let button_size = egui::vec2(Self::MANAGE_ROOT_LIST_ACTION_BUTTON_WIDTH, button_height);
+        let top = row_rect.top().round();
+        let left = row_rect.left().round();
+        let step = (Self::MANAGE_ROOT_LIST_ACTION_BUTTON_WIDTH + spacing_x).round();
+        [
+            egui::Rect::from_min_size(egui::pos2(left, top), button_size),
+            egui::Rect::from_min_size(egui::pos2(left + step, top), button_size),
+            egui::Rect::from_min_size(egui::pos2(left + (step * 2.0), top), button_size),
+        ]
+    }
 
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
         [
@@ -160,6 +203,7 @@ impl FlistWalkerApp {
         render_dialogs::render_filelist_dialogs(self, ctx);
         render_dialogs::render_update_dialog(self, ctx);
         self.render_central_panel(ctx);
+        render_dialogs::render_manage_root_list_dialog(self, ctx);
         self.dispatch_render_commands(ctx);
         self.maybe_save_ui_state(false);
     }
@@ -268,6 +312,24 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::UpdateDialog(RenderUpdateDialogCommand::DismissCheckFailure) => {
                     self.dismiss_update_check_failure();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::AddInput) => {
+                    self.add_manage_root_list_input();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::BrowseAndAdd) => {
+                    self.browse_for_manage_root_list();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::RemoveSelected) => {
+                    self.remove_selected_manage_root_list_items();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::Apply) => {
+                    self.apply_manage_root_list_changes();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::Ok) => {
+                    self.confirm_manage_root_list_changes();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::Cancel) => {
+                    self.cancel_manage_root_list();
                 }
                 RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab) => {
                     self.create_new_tab();

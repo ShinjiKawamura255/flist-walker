@@ -69,14 +69,12 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
             let button_width = 96.0;
             let set_default_width = 130.0;
-            let add_width = 100.0;
-            let remove_width = 130.0;
+            let manage_width = 104.0;
             let field_width = (ui.available_width()
                 - button_width
-                - add_width
                 - set_default_width
-                - remove_width
-                - (ui.spacing().item_spacing.x * 4.0))
+                - manage_width
+                - (ui.spacing().item_spacing.x * 3.0))
                 .max(120.0);
             let selected_text = app.root_display_text();
             let mut next_root: Option<PathBuf> = None;
@@ -152,19 +150,10 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 app.set_current_root_as_default();
             }
             if ui
-                .add_sized([add_width, row_height], egui::Button::new("Add to list"))
+                .add_sized([manage_width, row_height], egui::Button::new("Manage list"))
                 .clicked()
             {
-                app.add_current_root_to_saved();
-            }
-            if ui
-                .add_sized(
-                    [remove_width, row_height],
-                    egui::Button::new("Remove from list"),
-                )
-                .clicked()
-            {
-                app.remove_current_root_from_saved();
+                app.open_manage_root_list();
             }
             if let Some(root) = next_root {
                 app.close_root_dropdown(ui.ctx());
