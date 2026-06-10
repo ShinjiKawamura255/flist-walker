@@ -54,9 +54,15 @@
 - MUST: タブ accent color は保存対象のタブ状態に含め、タブ復元時に保持する。
 - MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
 - MUST: runtime config の `restore_tabs_enabled` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
-- MUST: 保存済み root list の追加と削除は `Manage list` へ統合し、メインウィンドウへ埋め込まれない独立した非ブロッキング native 管理ウィンドウで操作できなければならない。
+- MUST: 保存済み root list の追加・編集・削除は `Manage list` へ統合し、メインウィンドウへ埋め込まれない独立した非ブロッキング native 管理ウィンドウで操作できなければならない。
 - MUST: `Manage list` では直接入力したフォルダパス、または `Browse...` で選択したフォルダを draft list へ追加できなければならない。
-- MUST: `Manage list` ではチェックボックスで選択した draft list の項目を削除できなければならない。
+- MUST: `Manage list` の通常状態ではチェックボックスを表示せず、単一の draft list 項目を行選択し、`Edit` でその行だけをテキスト編集へ切り替えられなければならない。
+- MUST: `Manage list` の通常状態にある draft list 項目は、パス文字列部分だけでなく一覧の利用可能な横幅全体をクリックして行選択できなければならない。
+- MUST: 編集値は空文字、フォルダではないパス、または自分以外の draft 項目と重複するパスの場合は反映せず、編集状態を維持して理由を通知しなければならない。
+- MUST: `Manage list` の追加または編集に失敗した場合、対象入力欄を赤系の枠と背景でエラー表示し、操作名を含む理由を入力欄の直下へ表示しなければならない。失敗後は対象入力欄へフォーカスを戻して入力値を全選択し、入力値が変更された時点でその欄のエラー表示を解除しなければならない。
+- MUST: default root に対応する draft 項目を編集した場合、`Apply` または `OK` による確定時に default root も編集後のパスへ追従しなければならない。
+- MUST: `Manage list` は `Remove...` により明示的な削除モードへ移行し、削除モード中だけ複数選択用チェックボックスと `Remove selected` / `Cancel` を表示しなければならない。
+- MUST: 削除モードの `Cancel` は選択状態だけを破棄して通常状態へ戻り、draft list を変更してはならない。
 - MUST: `Manage list` の draft 変更は `Apply` または `OK` を押したタイミングでのみ保存済み root list へ反映し、`Cancel` またはウィンドウ close では反映してはならない。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
 - MUST: 現在のプロセス中に閉じた GUI タブは in-memory の直近順スタックとして保持し、`Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で最後に閉じたタブから active tab として復元できなければならない。

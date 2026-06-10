@@ -32,6 +32,21 @@ fn manage_root_list_action_button_rects_share_same_axis() {
 }
 
 #[test]
+fn manage_root_list_selectable_row_uses_full_available_width() {
+    let ctx = egui::Context::default();
+    let mut measured = None;
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        let available_width = ui.available_width();
+        let response = FlistWalkerApp::manage_root_list_selectable_row(ui, false, "C:\\saved-root");
+        measured = Some((response.rect.width(), available_width));
+    });
+
+    let (row_width, available_width) = measured.expect("row measurement");
+    assert!((row_width - available_width).abs() < f32::EPSILON);
+}
+
+#[test]
 fn top_action_labels_show_history_actions_while_history_search_is_active() {
     let root = test_root("render-history-actions");
     fs::create_dir_all(&root).expect("create dir");

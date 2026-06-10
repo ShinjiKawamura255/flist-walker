@@ -309,8 +309,19 @@ impl RootBrowserState {
 pub(super) struct RootListManagerState {
     pub(super) open: bool,
     pub(super) input_path: String,
+    pub(super) add_error: String,
+    pub(super) add_focus_requested: bool,
+    pub(super) add_select_all_requested: bool,
     pub(super) draft_roots: Vec<PathBuf>,
+    pub(super) draft_default_root: Option<PathBuf>,
+    pub(super) selected_index: Option<usize>,
     pub(super) selected_indices: HashSet<usize>,
+    pub(super) remove_mode: bool,
+    pub(super) editing_index: Option<usize>,
+    pub(super) edit_path: String,
+    pub(super) edit_error: String,
+    pub(super) edit_focus_requested: bool,
+    pub(super) edit_select_all_requested: bool,
     pub(super) notice: String,
 }
 

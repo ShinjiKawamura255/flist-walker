@@ -41,7 +41,12 @@ pub(super) enum RenderUpdateDialogCommand {
 pub(super) enum RenderRootListDialogCommand {
     AddInput,
     BrowseAndAdd,
+    StartEdit,
+    SaveEdit,
+    CancelEdit,
+    EnterRemoveMode,
     RemoveSelected,
+    CancelRemoveMode,
     Apply,
     Ok,
     Cancel,
@@ -114,6 +119,99 @@ impl FlistWalkerApp {
             egui::Rect::from_min_size(egui::pos2(left + step, top), button_size),
             egui::Rect::from_min_size(egui::pos2(left + (step * 2.0), top), button_size),
         ]
+    }
+
+    pub(super) fn manage_root_list_selectable_row(
+        ui: &mut egui::Ui,
+        selected: bool,
+        label: &str,
+    ) -> egui::Response {
+        let desired_size = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+        if ui.is_rect_visible(rect) {
+            let visuals = ui.style().interact_selectable(&response, selected);
+            if selected || response.hovered() || response.has_focus() {
+                ui.painter().rect(
+                    rect.expand(visuals.expansion),
+                    visuals.corner_radius,
+                    visuals.bg_fill,
+                    visuals.bg_stroke,
+                    egui::StrokeKind::Inside,
+                );
+            }
+            ui.painter().with_clip_rect(rect).text(
+                egui::pos2(rect.left() + ui.spacing().button_padding.x, rect.center().y),
+                egui::Align2::LEFT_CENTER,
+                label,
+                egui::TextStyle::Button.resolve(ui.style()),
+                visuals.text_color(),
+            );
+        }
+        if response.hovered() {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+        }
+        response
+    }
+
+    pub(super) fn manage_root_list_text_edit(
+        ui: &mut egui::Ui,
+        text: &mut String,
+        desired_width: f32,
+        error: bool,
+        hint_text: Option<&str>,
+    ) -> egui::Response {
+        if !error {
+            let edit = egui::TextEdit::singleline(text).desired_width(desired_width);
+            if let Some(hint_text) = hint_text {
+                return ui.add(edit.hint_text(hint_text));
+            } else {
+                return ui.add(edit);
+            }
+        }
+        let edit = egui::TextEdit::singleline(text).desired_width(desired_width);
+        let edit = if let Some(hint_text) = hint_text {
+            edit.hint_text(hint_text)
+        } else {
+            edit
+        };
+        egui::Frame::new()
+            .fill(egui::Color32::from_rgba_unmultiplied(160, 40, 40, 28))
+            .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(224, 92, 92)))
+            .corner_radius(3.0)
+            .inner_margin(1.0)
+            .show(ui, |ui| ui.add(edit.frame(egui::Frame::NONE)))
+            .inner
+    }
+
+    pub(super) fn apply_manage_root_list_text_edit_focus(
+        response: &egui::Response,
+        text: &str,
+        focus_requested: &mut bool,
+        select_all_requested: &mut bool,
+    ) {
+        if *focus_requested {
+            response.request_focus();
+            *focus_requested = false;
+        }
+        if *select_all_requested {
+            let mut state = egui::text_edit::TextEditState::load(&response.ctx, response.id)
+                .unwrap_or_default();
+            state
+                .cursor
+                .set_char_range(Some(egui::text::CCursorRange::two(
+                    egui::text::CCursor::new(0),
+                    egui::text::CCursor::new(text.chars().count()),
+                )));
+            state.store(&response.ctx, response.id);
+            *select_all_requested = false;
+        }
+    }
+
+    pub(super) fn manage_root_list_error_label(ui: &mut egui::Ui, error: &str) {
+        ui.colored_label(
+            egui::Color32::from_rgb(238, 105, 105),
+            format!("Error: {}", error),
+        );
     }
 
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
@@ -319,8 +417,23 @@ impl FlistWalkerApp {
                 RenderCommand::RootListDialog(RenderRootListDialogCommand::BrowseAndAdd) => {
                     self.browse_for_manage_root_list();
                 }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::StartEdit) => {
+                    self.start_editing_manage_root_list_item();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::SaveEdit) => {
+                    self.save_manage_root_list_edit();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::CancelEdit) => {
+                    self.cancel_manage_root_list_edit();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::EnterRemoveMode) => {
+                    self.enter_manage_root_list_remove_mode();
+                }
                 RenderCommand::RootListDialog(RenderRootListDialogCommand::RemoveSelected) => {
                     self.remove_selected_manage_root_list_items();
+                }
+                RenderCommand::RootListDialog(RenderRootListDialogCommand::CancelRemoveMode) => {
+                    self.cancel_manage_root_list_remove_mode();
                 }
                 RenderCommand::RootListDialog(RenderRootListDialogCommand::Apply) => {
                     self.apply_manage_root_list_changes();

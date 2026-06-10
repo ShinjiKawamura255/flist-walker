@@ -180,7 +180,7 @@ In CLI mode:
 
 - `Browse...`: change root
 - `Set as default`: save the current root for the next launch
-- `Manage list`: open a non-blocking native saved roots manager window. Add folders by typing a path or using `Browse...`, remove checked items from the draft list, then commit with `Apply` or `OK`. `Cancel` closes the manager without changing the saved roots list.
+- `Manage list`: open a non-blocking native saved roots manager window. Add folders by typing a path or using `Browse...`. Select one saved root and use `Edit` to change its path. Use `Remove...` to enter a dedicated removal mode where checkboxes are shown for multi-select removal. Commit draft changes with `Apply` or `OK`; `Cancel` closes the manager without changing the saved roots list.
 
 ## Testing
 

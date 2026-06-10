@@ -54,7 +54,7 @@
 | TC-044 | unit | `Ctrl+Shift+R` は履歴検索を開始しない | SP-010 |
 | TC-045 | unit | query 履歴は 100 件上限を維持し、保存状態へ永続化される | SP-010 |
 | TC-046 | unit | runtime config の `restore_tabs_enabled` が有効な間は `Set as default` が無効化され、既定 root を保存しない | SP-010 |
-| TC-046A | unit | `Manage list` は draft list への追加・選択削除を `Apply` / `OK` でのみ保存済み root list へ反映し、`Cancel` では破棄する。保存済み default root を draft から削除して反映した場合は default root も解除する | SP-010 |
+| TC-046A | unit | `Manage list` は通常時の一覧横幅全体をクリック可能な単一行選択から root path を編集でき、無効・重複パスを拒否して編集を継続する。追加・編集の検証失敗は対象入力欄の専用エラー、再フォーカス、全選択要求として保持し、入力変更時にその欄のエラーだけを解除する。削除モード中だけチェックボックスによる複数選択を許可し、削除モードの `Cancel` は draft を変更しない。追加・編集・削除は `Apply` / `OK` でのみ保存済み root list へ反映し、ウィンドウの `Cancel` では破棄する。default root の編集は新パスへ追従し、削除は default root を解除する | SP-010 |
 | TC-047 | unit | FileList 作成時は祖先の既存 FileList へ子 FileList 参照を重複なく追記し、親 mtime を維持する | SP-001 |
 | TC-048 | unit | 祖先探索は callback/失敗時に即停止し、それ以降の上位階層を処理しない | SP-001 |
 | TC-049 | unit | FileList に root 外パスが含まれても候補表示時の追加フィルタを行わず、インデクシング経路の挙動を維持する | SP-007 |

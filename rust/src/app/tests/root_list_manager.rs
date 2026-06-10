@@ -166,3 +166,192 @@ fn manage_root_list_removing_default_root_clears_default_on_apply() {
     assert!(app.shell.features.root_browser.default_root.is_none());
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn manage_root_list_edit_replaces_selected_draft_root_only() {
+    let _scope = saved_roots_test_scope("manage-root-list-edit-settings");
+    let root = test_root("manage-root-list-edit");
+    let original = root.join("original");
+    let replacement = root.join("replacement");
+    fs::create_dir_all(&original).expect("create original");
+    fs::create_dir_all(&replacement).expect("create replacement");
+    let replacement_canonical =
+        normalize_windows_path_buf(replacement.canonicalize().unwrap_or(replacement.clone()));
+    let mut app = FlistWalkerApp::new(original.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![original.clone()];
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+    app.shell.features.root_browser.manage_list.edit_path =
+        replacement.to_string_lossy().to_string();
+    app.save_manage_root_list_edit();
+
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.draft_roots,
+        vec![replacement_canonical]
+    );
+    assert_eq!(app.shell.features.root_browser.saved_roots, vec![original]);
+    assert!(app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .editing_index
+        .is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_edit_rejects_duplicate_and_keeps_editor_open() {
+    let _scope = saved_roots_test_scope("manage-root-list-edit-duplicate-settings");
+    let root = test_root("manage-root-list-edit-duplicate");
+    let first = root.join("first");
+    let second = root.join("second");
+    fs::create_dir_all(&first).expect("create first");
+    fs::create_dir_all(&second).expect("create second");
+    let mut app = FlistWalkerApp::new(first.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![first.clone(), second.clone()];
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+    app.shell.features.root_browser.manage_list.edit_path = second.to_string_lossy().to_string();
+    app.save_manage_root_list_edit();
+
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.draft_roots,
+        vec![first, second]
+    );
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.editing_index,
+        Some(0)
+    );
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.edit_error,
+        "Couldn't update the root. This folder is already in the list."
+    );
+    assert!(
+        app.shell
+            .features
+            .root_browser
+            .manage_list
+            .edit_focus_requested
+    );
+    assert!(
+        app.shell
+            .features
+            .root_browser
+            .manage_list
+            .edit_select_all_requested
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_add_invalid_path_uses_field_error_and_refocuses_input() {
+    let _scope = saved_roots_test_scope("manage-root-list-add-invalid-settings");
+    let root = test_root("manage-root-list-add-invalid");
+    fs::create_dir_all(&root).expect("create root");
+    let invalid = root.join("missing");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.open_manage_root_list();
+    app.shell.features.root_browser.manage_list.input_path = invalid.to_string_lossy().to_string();
+    app.add_manage_root_list_input();
+
+    let manage = &app.shell.features.root_browser.manage_list;
+    assert_eq!(
+        manage.add_error,
+        format!(
+            "Couldn't add the root. Folder not found: {}",
+            invalid.display()
+        )
+    );
+    assert!(manage.add_focus_requested);
+    assert!(manage.add_select_all_requested);
+    assert!(manage.notice.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_input_change_clears_only_its_field_error() {
+    let root = test_root("manage-root-list-clear-field-error");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.open_manage_root_list();
+    app.shell.features.root_browser.manage_list.add_error = "add error".to_string();
+    app.shell.features.root_browser.manage_list.edit_error = "edit error".to_string();
+
+    app.clear_manage_root_list_add_error();
+
+    assert!(app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .add_error
+        .is_empty());
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.edit_error,
+        "edit error"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_remove_mode_is_explicit_and_cancelable() {
+    let _scope = saved_roots_test_scope("manage-root-list-remove-mode-settings");
+    let root = test_root("manage-root-list-remove-mode");
+    let first = root.join("first");
+    let second = root.join("second");
+    fs::create_dir_all(&first).expect("create first");
+    fs::create_dir_all(&second).expect("create second");
+    let mut app = FlistWalkerApp::new(first.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![first, second];
+
+    app.open_manage_root_list();
+    app.enter_manage_root_list_remove_mode();
+    app.shell
+        .features
+        .root_browser
+        .manage_list
+        .selected_indices
+        .insert(0);
+    app.cancel_manage_root_list_remove_mode();
+
+    let manage = &app.shell.features.root_browser.manage_list;
+    assert!(!manage.remove_mode);
+    assert!(manage.selected_indices.is_empty());
+    assert_eq!(manage.draft_roots.len(), 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_editing_default_root_follows_replacement_on_apply() {
+    let _scope = saved_roots_test_scope("manage-root-list-edit-default-settings");
+    let root = test_root("manage-root-list-edit-default");
+    let original = root.join("original");
+    let replacement = root.join("replacement");
+    fs::create_dir_all(&original).expect("create original");
+    fs::create_dir_all(&replacement).expect("create replacement");
+    let replacement_canonical =
+        normalize_windows_path_buf(replacement.canonicalize().unwrap_or(replacement.clone()));
+    let mut app = FlistWalkerApp::new(original.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![original.clone()];
+    app.shell.features.root_browser.default_root = Some(original);
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+    app.shell.features.root_browser.manage_list.edit_path =
+        replacement.to_string_lossy().to_string();
+    app.save_manage_root_list_edit();
+    app.apply_manage_root_list_changes();
+
+    assert_eq!(
+        app.shell.features.root_browser.default_root,
+        Some(replacement_canonical)
+    );
+    let _ = fs::remove_dir_all(&root);
+}

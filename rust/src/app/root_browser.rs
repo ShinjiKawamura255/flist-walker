@@ -34,11 +34,22 @@ impl FlistWalkerApp {
         let root_browser = &mut self.shell.features.root_browser;
         root_browser.manage_list.open = true;
         root_browser.manage_list.draft_roots = root_browser.saved_roots.clone();
+        root_browser.manage_list.draft_default_root = root_browser.default_root.clone();
+        root_browser.manage_list.selected_index = None;
         root_browser.manage_list.selected_indices.clear();
+        root_browser.manage_list.remove_mode = false;
+        root_browser.manage_list.editing_index = None;
+        root_browser.manage_list.edit_path.clear();
+        root_browser.manage_list.edit_error.clear();
+        root_browser.manage_list.edit_focus_requested = false;
+        root_browser.manage_list.edit_select_all_requested = false;
         root_browser.manage_list.input_path =
             normalize_windows_path_buf(self.shell.runtime.root.clone())
                 .to_string_lossy()
                 .to_string();
+        root_browser.manage_list.add_error.clear();
+        root_browser.manage_list.add_focus_requested = false;
+        root_browser.manage_list.add_select_all_requested = false;
         root_browser.manage_list.notice.clear();
         self.clear_focus_query_request();
         self.request_unfocus_query();
@@ -56,9 +67,158 @@ impl FlistWalkerApp {
         match Self::normalize_manage_root_list_path(&input) {
             Ok(root) => self.add_manage_root_list_path(root),
             Err(message) => {
-                self.shell.features.root_browser.manage_list.notice = message;
+                let manage = &mut self.shell.features.root_browser.manage_list;
+                manage.add_error = format!("Couldn't add the root. {}", message);
+                manage.add_focus_requested = true;
+                manage.add_select_all_requested = true;
+                manage.notice.clear();
             }
         }
+    }
+
+    pub(super) fn clear_manage_root_list_add_error(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        manage.add_error.clear();
+        manage.add_focus_requested = false;
+        manage.add_select_all_requested = false;
+    }
+
+    pub(super) fn clear_manage_root_list_edit_error(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        manage.edit_error.clear();
+        manage.edit_focus_requested = false;
+        manage.edit_select_all_requested = false;
+    }
+
+    pub(super) fn select_manage_root_list_item(&mut self, index: usize) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        if !manage.remove_mode && manage.editing_index.is_none() && index < manage.draft_roots.len()
+        {
+            manage.selected_index = Some(index);
+            manage.notice.clear();
+        }
+    }
+
+    pub(super) fn start_editing_manage_root_list_item(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        let Some(index) = manage.selected_index else {
+            manage.notice = "Select a root to edit".to_string();
+            return;
+        };
+        let Some(root) = manage.draft_roots.get(index) else {
+            manage.selected_index = None;
+            manage.notice = "Select a root to edit".to_string();
+            return;
+        };
+        manage.edit_path = root.to_string_lossy().to_string();
+        manage.editing_index = Some(index);
+        manage.edit_error.clear();
+        manage.edit_focus_requested = true;
+        manage.edit_select_all_requested = false;
+        manage.notice.clear();
+    }
+
+    pub(super) fn cancel_manage_root_list_edit(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        manage.editing_index = None;
+        manage.edit_path.clear();
+        manage.edit_error.clear();
+        manage.edit_focus_requested = false;
+        manage.edit_select_all_requested = false;
+        manage.notice.clear();
+    }
+
+    pub(super) fn save_manage_root_list_edit(&mut self) {
+        let (index, input) = {
+            let manage = &self.shell.features.root_browser.manage_list;
+            let Some(index) = manage.editing_index else {
+                return;
+            };
+            (index, manage.edit_path.trim().to_string())
+        };
+        let replacement = match Self::normalize_manage_root_list_path(&input) {
+            Ok(root) => root,
+            Err(message) => {
+                let manage = &mut self.shell.features.root_browser.manage_list;
+                manage.edit_error = format!("Couldn't update the root. {}", message);
+                manage.edit_focus_requested = true;
+                manage.edit_select_all_requested = true;
+                manage.notice.clear();
+                return;
+            }
+        };
+        let replacement_key = path_key(&replacement);
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        if manage
+            .draft_roots
+            .iter()
+            .enumerate()
+            .any(|(candidate_index, candidate)| {
+                candidate_index != index && path_key(candidate) == replacement_key
+            })
+        {
+            manage.edit_error =
+                "Couldn't update the root. This folder is already in the list.".to_string();
+            manage.edit_focus_requested = true;
+            manage.edit_select_all_requested = true;
+            manage.notice.clear();
+            return;
+        }
+        let Some(original) = manage.draft_roots.get(index).cloned() else {
+            manage.editing_index = None;
+            manage.edit_path.clear();
+            manage.edit_error.clear();
+            manage.edit_focus_requested = false;
+            manage.edit_select_all_requested = false;
+            manage.selected_index = None;
+            manage.notice = "The selected root is no longer available".to_string();
+            return;
+        };
+        if manage
+            .draft_default_root
+            .as_ref()
+            .is_some_and(|default_root| path_key(default_root) == path_key(&original))
+        {
+            manage.draft_default_root = Some(replacement.clone());
+        }
+        manage.draft_roots[index] = replacement.clone();
+        manage
+            .draft_roots
+            .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
+        manage.selected_index = manage
+            .draft_roots
+            .iter()
+            .position(|candidate| path_key(candidate) == replacement_key);
+        manage.editing_index = None;
+        manage.edit_path.clear();
+        manage.edit_error.clear();
+        manage.edit_focus_requested = false;
+        manage.edit_select_all_requested = false;
+        manage.notice = format!("Updated root in draft list: {}", replacement.display());
+    }
+
+    pub(super) fn enter_manage_root_list_remove_mode(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        if manage.draft_roots.is_empty() {
+            manage.notice = "There are no roots to remove".to_string();
+            return;
+        }
+        manage.remove_mode = true;
+        manage.selected_index = None;
+        manage.selected_indices.clear();
+        manage.editing_index = None;
+        manage.edit_path.clear();
+        manage.edit_error.clear();
+        manage.edit_focus_requested = false;
+        manage.edit_select_all_requested = false;
+        manage.notice = "Select one or more roots to remove".to_string();
+    }
+
+    pub(super) fn cancel_manage_root_list_remove_mode(&mut self) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        manage.remove_mode = false;
+        manage.selected_indices.clear();
+        manage.notice.clear();
     }
 
     pub(super) fn browse_for_manage_root_list(&mut self) {
@@ -96,6 +256,20 @@ impl FlistWalkerApp {
             return;
         }
         let selected = &manage.selected_indices;
+        if manage
+            .draft_default_root
+            .as_ref()
+            .is_some_and(|default_root| {
+                let default_key = path_key(default_root);
+                manage
+                    .draft_roots
+                    .iter()
+                    .enumerate()
+                    .any(|(index, root)| selected.contains(&index) && path_key(root) == default_key)
+            })
+        {
+            manage.draft_default_root = None;
+        }
         manage.draft_roots = manage
             .draft_roots
             .iter()
@@ -104,35 +278,31 @@ impl FlistWalkerApp {
             .filter_map(|(index, root)| (!selected.contains(&index)).then_some(root))
             .collect();
         manage.selected_indices.clear();
+        manage.selected_index = None;
+        manage.remove_mode = false;
         manage.notice = "Removed selected roots from the draft list".to_string();
     }
 
     pub(super) fn apply_manage_root_list_changes(&mut self) {
-        let draft_roots = self
+        let (draft_roots, draft_default_root) = {
+            let manage = &self.shell.features.root_browser.manage_list;
+            (
+                manage.draft_roots.clone(),
+                manage.draft_default_root.clone(),
+            )
+        };
+        let previous_default_key = self
             .shell
             .features
             .root_browser
-            .manage_list
-            .draft_roots
-            .clone();
+            .default_root
+            .as_ref()
+            .map(|root| path_key(root));
+        let draft_default_key = draft_default_root.as_ref().map(|root| path_key(root));
         self.shell.features.root_browser.saved_roots = draft_roots;
+        self.shell.features.root_browser.default_root = draft_default_root;
         self.shell.ui.set_root_dropdown_highlight(None);
-        let mut default_cleared = false;
-        if let Some(default_root) = self.shell.features.root_browser.default_root.as_ref() {
-            let default_key = path_key(default_root);
-            let default_still_saved = self
-                .shell
-                .features
-                .root_browser
-                .saved_roots
-                .iter()
-                .any(|root| path_key(root) == default_key);
-            if !default_still_saved {
-                self.shell.features.root_browser.default_root = None;
-                default_cleared = true;
-            }
-        }
-        if default_cleared {
+        if previous_default_key != draft_default_key {
             self.mark_ui_state_dirty();
             self.persist_ui_state_now();
         }
@@ -156,18 +326,29 @@ impl FlistWalkerApp {
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.open = false;
         manage.input_path.clear();
+        manage.add_error.clear();
+        manage.add_focus_requested = false;
+        manage.add_select_all_requested = false;
         manage.draft_roots.clear();
+        manage.draft_default_root = None;
+        manage.selected_index = None;
         manage.selected_indices.clear();
+        manage.remove_mode = false;
+        manage.editing_index = None;
+        manage.edit_path.clear();
+        manage.edit_error.clear();
+        manage.edit_focus_requested = false;
+        manage.edit_select_all_requested = false;
         manage.notice.clear();
     }
 
     fn normalize_manage_root_list_path(input: &str) -> Result<PathBuf, String> {
         if input.is_empty() {
-            return Err("Enter a folder path to add".to_string());
+            return Err("Enter a folder path.".to_string());
         }
         let path = normalize_windows_path_buf(PathBuf::from(input));
         if !path.is_dir() {
-            return Err(format!("Path is not a folder: {}", path.display()));
+            return Err(format!("Folder not found: {}", path.display()));
         }
         Ok(normalize_windows_path_buf(
             path.canonicalize().unwrap_or(path),
@@ -183,13 +364,24 @@ impl FlistWalkerApp {
             .iter()
             .any(|candidate| path_key(candidate) == key)
         {
-            manage.notice = "Root is already in the draft list".to_string();
+            manage.add_error =
+                "Couldn't add the root. This folder is already in the list.".to_string();
+            manage.add_focus_requested = true;
+            manage.add_select_all_requested = true;
+            manage.notice.clear();
             return;
         }
         manage.draft_roots.push(root.clone());
         manage
             .draft_roots
             .sort_by_key(|p| p.to_string_lossy().to_string().to_ascii_lowercase());
+        manage.selected_index = manage
+            .draft_roots
+            .iter()
+            .position(|candidate| path_key(candidate) == key);
+        manage.add_error.clear();
+        manage.add_focus_requested = false;
+        manage.add_select_all_requested = false;
         manage.notice = format!("Added root to draft list: {}", root.display());
     }
 
