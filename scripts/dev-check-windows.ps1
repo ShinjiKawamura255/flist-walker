@@ -8,6 +8,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'common-win-gnu.ps1')
 
 function Require-Command {
     param(
@@ -43,20 +44,6 @@ function Require-RustComponent {
     Write-Host "OK: rustup component $Name"
 }
 
-function Require-RustTarget {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Target
-    )
-
-    $installed = rustup target list --installed
-    if ($installed -notcontains $Target) {
-        Write-Error "$Target target was not found. Run: rustup target add $Target"
-    }
-
-    Write-Host "OK: rustup target $Target"
-}
-
 function Invoke-Checked {
     param(
         [Parameter(Mandatory = $true)]
@@ -69,46 +56,6 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) {
         $commandLine = @($FilePath) + $ArgumentList
         Write-Error "Command failed with exit code ${LASTEXITCODE}: $($commandLine -join ' ')"
-    }
-}
-
-function Resolve-GnuTool {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$EnvName,
-
-        [Parameter(Mandatory = $true)]
-        [string[]]$Names
-    )
-
-    $fromEnv = [Environment]::GetEnvironmentVariable($EnvName)
-    if ($fromEnv -and (Test-Path $fromEnv)) {
-        Write-Host "OK: $EnvName -> $fromEnv"
-        return $fromEnv
-    }
-
-    foreach ($name in $Names) {
-        $command = Get-Command $name -ErrorAction SilentlyContinue
-        if ($command) {
-            Write-Host "OK: $name -> $($command.Source)"
-            return $command.Source
-        }
-    }
-
-    Write-Error "Missing GNU tool for $EnvName. Install MSYS2 mingw-w64 toolchain and add C:\msys64\mingw64\bin to PATH. Tried: $($Names -join ', ')"
-}
-
-function Add-Msys2PathIfPresent {
-    $candidates = @(
-        'C:\msys64\mingw64\bin',
-        'C:\msys64\usr\bin'
-    )
-
-    foreach ($path in $candidates) {
-        if ((Test-Path $path) -and ($env:PATH -notlike "*$path*")) {
-            $env:PATH = "$path;$env:PATH"
-            Write-Host "Added MSYS2 path for this check: $path"
-        }
     }
 }
 
@@ -127,23 +74,7 @@ Require-Command rustup 'Install rustup from https://rustup.rs/.'
 $cargoTargetArgs = @()
 if ($Toolchain -eq 'gnu') {
     $targetTriple = 'x86_64-pc-windows-gnu'
-    Add-Msys2PathIfPresent
-    Require-RustTarget $targetTriple
-    $linker = Resolve-GnuTool 'FLISTWALKER_WINDOWS_LINKER' @('x86_64-w64-mingw32-gcc', 'gcc')
-    $cxx = Resolve-GnuTool 'FLISTWALKER_WINDOWS_CXX' @('x86_64-w64-mingw32-g++', 'g++')
-    $ar = Resolve-GnuTool 'FLISTWALKER_WINDOWS_AR' @('x86_64-w64-mingw32-ar', 'ar')
-    $ranlib = Resolve-GnuTool 'FLISTWALKER_WINDOWS_RANLIB' @('x86_64-w64-mingw32-ranlib', 'ranlib')
-    $windres = Resolve-GnuTool 'FLISTWALKER_WINDOWS_WINDRES' @('x86_64-w64-mingw32-windres', 'windres')
-    $env:FLISTWALKER_WINDOWS_LINKER = $linker
-    $env:FLISTWALKER_WINDOWS_CXX = $cxx
-    $env:FLISTWALKER_WINDOWS_AR = $ar
-    $env:FLISTWALKER_WINDOWS_RANLIB = $ranlib
-    $env:FLISTWALKER_WINDOWS_WINDRES = $windres
-    $env:CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER = $linker
-    $env:CC_x86_64_pc_windows_gnu = $linker
-    $env:CXX_x86_64_pc_windows_gnu = $cxx
-    $env:AR_x86_64_pc_windows_gnu = $ar
-    $env:RANLIB_x86_64_pc_windows_gnu = $ranlib
+    [void](Initialize-FlistWalkerWindowsGnu -Mode 'NoInstall')
     $cargoTargetArgs = @('--target', $targetTriple)
 } else {
     $targetTriple = 'host-msvc'

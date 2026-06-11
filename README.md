@@ -220,6 +220,20 @@ pacman -S mingw-w64-x86_64-gcc
 `scripts/dev-check-windows.ps1` automatically adds `C:\msys64\mingw64\bin` for
 the current check when it exists.
 
+For a release-equivalent Windows build directly from PowerShell:
+
+```powershell
+.\scripts\build-rust-win.ps1
+# clean build
+.\scripts\build-rust-win-clean.ps1
+```
+
+The scripts detect Rustup, the GNU Rust target, MSYS2, and the required MinGW
+tools. When something is missing, the normal mode explains the package and
+asks before each installation. Use `-CheckOnly` for detection only,
+`-NoInstall` to fail with manual commands without prompting, or
+`-InstallMissing` for explicit unattended approval.
+
 ## Support and Bug Reports
 
 Use the GitHub Issues templates for bug reports and feature requests. Before filing an issue, read [docs/SUPPORT.md](docs/SUPPORT.md) and redact usernames, project names, full paths, tokens, and other sensitive data.
@@ -238,14 +252,21 @@ cargo build --target x86_64-pc-windows-gnu
 The MSVC host target is still useful as a fallback for quick Windows UI smoke
 checks, but it is not the release-equivalent build.
 
+From Windows PowerShell:
+
+```powershell
+.\scripts\build-rust-win.ps1
+```
+
 From WSL or a Linux shell:
 
 ```bash
 ./scripts/build-rust-win.sh
 ```
 
-This builds `x86_64-pc-windows-gnu` entirely from WSL/Linux.
-Explorer icon embedding is also handled on the WSL side, so PowerShell and Windows-side Rust are not required.
+Both paths build `x86_64-pc-windows-gnu` and preserve the Explorer icon and
+`asInvoker` manifest. The PowerShell path can guide installation of missing
+Rustup/MSYS2 dependencies after explicit approval.
 
 Required tools:
 
@@ -270,7 +291,11 @@ Clean build:
 ./scripts/build-rust-win-clean.sh
 ```
 
-The old `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` scripts have been retired and now return an error that points to the WSL/Linux build flow.
+Or from PowerShell:
+
+```powershell
+.\scripts\build-rust-win-clean.ps1
+```
 
 Artifacts:
 

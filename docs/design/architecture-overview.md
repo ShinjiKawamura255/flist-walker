@@ -125,3 +125,11 @@
 - 実装: `scripts/prepare-release.sh`, `scripts/prepare-release-linux.sh`, `scripts/prepare-release.ps1`, `scripts/prepare-release-macos.sh`, `rust/src/updater.rs`, `docs/RELEASE.md`
 - 役割補足: ignore list sample は binary に埋め込まれ、起動時に `flistwalker.ignore.txt.example` が無ければ local 実体として生成される。
 - 役割補足: 既存 `flistwalker.ignore.txt` を上書きせず、sample 生成失敗は本体起動や自己更新を妨げない。
+
+- DES-019 PowerShell Windows GNU Build Coordinator
+- 役割: Windows PowerShell での依存検出、導入承認、process PATH 再構成、GNU tool 解決、release/clean build、artifact 同期を一貫した契約で提供する。
+- 実装: `scripts/common-win-gnu.ps1`, `scripts/build-rust-win.ps1`, `scripts/build-rust-win-clean.ps1`, `scripts/dev-check-windows.ps1`, `scripts/test-build-rust-win.ps1`, `scripts/test-windows-build-artifact.ps1`, `rust/build.rs`, `rust/windows_resource_build.rs`
+- 役割補足: shared helper は検出、承認、install、PATH 再構成、tool/env export、checked command 実行だけを担当し、build/clean/test の操作順は各 entrypoint が所有する。
+- 役割補足: install mode は `CheckOnly` / `NoInstall` / `InstallMissing` / interactive を明示し、非対話 interactive は `NoInstall` へ縮退する。machine state の変更は winget/pacman/rustup の利用者承認後だけ行い、script 自身は永続 PATH を変更しない。
+- 役割補足: Windows-host GNU `build.rs` は resolved `windres` / `ar` で resource を生成し、GNU target の GUI binary へ `resource.o` を明示リンクする。
+- 役割補足: build entrypoint は source/destination の正規化比較で自己 copy を避け、strip 済み実体を 2 名の artifact へ同期する。

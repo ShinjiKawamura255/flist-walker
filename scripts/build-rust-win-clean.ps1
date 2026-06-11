@@ -1,14 +1,34 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$CheckOnly,
+    [switch]$NoInstall,
+    [switch]$InstallMissing,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$CargoArgs = @()
+)
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'common-win-gnu.ps1')
 
-Write-Error @"
-scripts/build-rust-win-clean.ps1 は退役しました。
+$mode = Get-FlistWalkerInstallMode -CheckOnly:$CheckOnly -NoInstall:$NoInstall -InstallMissing:$InstallMissing
+if ($mode -eq 'CheckOnly') {
+    [void](Invoke-FlistWalkerDependencyCheck)
+    Write-Host 'Windows GNU clean-build dependencies are available. No clean or build was run.'
+    exit 0
+}
+$environment = Initialize-FlistWalkerWindowsGnu -Mode $mode
 
-Windows 向けクリーンビルドは WSL/Linux 側の mingw-w64 + x86_64-pc-windows-gnu へ移行しています。
-次を実行してください:
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+$rustDir = Join-Path $repoRoot 'rust'
+Push-Location $rustDir
+try {
+    Write-Host '==> Cleaning Windows GNU target'
+    Invoke-FlistWalkerChecked -FilePath $environment.Cargo -ArgumentList @('clean', '--target', $environment.Target)
+} finally {
+    Pop-Location
+}
 
-  ./scripts/build-rust-win-clean.sh
-"@
-exit 1
+& (Join-Path $PSScriptRoot 'build-rust-win.ps1') -NoInstall @CargoArgs
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}

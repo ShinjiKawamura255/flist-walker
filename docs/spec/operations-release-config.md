@@ -109,3 +109,26 @@
 ### Edge / Error
 - sample が既に存在する場合は上書きしない。
 - 実行中 binary の隣に ignore list が既にある場合は sample の生成だけを行い、live ignore list を作成しない。
+
+## SP-018 PowerShell Windows GNU Build
+### Requirements
+- MUST: `scripts/build-rust-win.ps1` は Windows PowerShell から `cargo build --release --locked --target x86_64-pc-windows-gnu` を実行し、`rust/target/x86_64-pc-windows-gnu/release/flistwalker.exe` と `FlistWalker.exe` を生成しなければならない。
+- MUST: `scripts/build-rust-win-clean.ps1` は同じ依存解決契約を使い、対象 target の clean 後に release build を実行しなければならない。
+- MUST: `-CheckOnly` は検出だけを行い、install、`rustup target add`、clean、build、copy、strip を実行してはならない。
+- MUST: `-NoInstall` は prompt を表示せず、不足項目と手動導入コマンドを表示して非ゼロ終了しなければならない。
+- MUST: `-InstallMissing` は Rustup、Rust GNU target、MSYS2、`mingw-w64-x86_64-gcc` の導入を明示承認済みとして扱う。通常モードは各導入単位を別々に確認し、非対話環境では `-NoInstall` 相当で動作しなければならない。
+- MUST: Rustup と MSYS2 の bootstrap は `winget` の exact package ID と `winget` source を指定し、実行前に package ID、変更内容、管理者権限を要求する可能性を表示しなければならない。
+- MUST: MSYS2 package 導入は `C:\msys64\usr\bin\pacman.exe` または検出した同等パスを直接実行し、`pacman -S --needed --noconfirm mingw-w64-x86_64-gcc` を使わなければならない。`pacman -Sy` 単独による partial upgrade を行ってはならない。
+- MUST: install 後は process/User/Machine PATH、Cargo home、MSYS2 固定候補を再読込し、`cargo`、`rustup`、`gcc`、`g++`、`ar`、`ranlib`、`windres`、`strip` を再検出しなければならない。永続 PATH をスクリプト自身が直接変更してはならない。
+- MUST: GNU tool は `FLISTWALKER_WINDOWS_*` override、MSYS2 mingw64 固定候補、PATH の順で解決し、解決結果を Cargo target と `build.rs` 用環境変数へ設定しなければならない。
+- MUST: Windows host の GNU build でも `windres` と `ar` を使って Windows resource を生成し、`resource.o` を `flistwalker` GUI binary へ明示リンクしなければならない。
+- MUST: strip は実体へ一度だけ適用し、大小文字を無視して同一パスとなる自己 copy を避けたうえで、最終的な 2 名の EXE を byte-identical にしなければならない。
+
+### Preconditions / Postconditions
+- Preconditions: Windows PowerShell 5.1 または PowerShell 7 で repository checkout を利用し、既存依存を使うか、利用者が不足依存の導入を承認する。
+- Postconditions: build 成功時は Windows icon/resource、`asInvoker` manifest、GUI subsystem を持ち、意図しない MSYS2 runtime DLL に依存しない release EXE が 2 名で存在する。
+
+### Edge / Error
+- `winget` 不在、承認拒否、install 失敗、install 後の再検出失敗、build/strip 失敗では後続 build を実行せず、原因と再実行または手動導入コマンドを表示する。
+- install 後に現在の process で再検出できない場合は、新しい PowerShell を開いて再実行する案内を表示する。
+- partial install は自動 rollback せず、導入済み package ID/package 名を表示して再実行可能な状態を保つ。

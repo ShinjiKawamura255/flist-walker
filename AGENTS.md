@@ -37,7 +37,7 @@
 - 品質: TDD を基本とし、主要機能は unit test で保証する。
 - セキュリティ: 外部コマンド実行は配列引数で呼び出し、シェル展開依存を避ける。
 - 運用:
-- Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win-clean.sh` を利用し、`x86_64-pc-windows-gnu` + mingw-w64 で WSL/Linux から完結させる。
+- Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win-clean.sh` または `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` を利用し、`x86_64-pc-windows-gnu` + mingw-w64 で WSL/Linux と Windows PowerShell のどちらからでも実行可能にする。
 - GitHub Actions の tag push（`v*`）で各 OS 向け release build を実行し、draft release と asset upload を行う workflow を維持する。
 - tag push 後は GitHub 上に作成された draft release を確認し、公開時は Codex から GitHub Release 本文を整えたうえで draft を本リリースへ切り替える運用とする。
 - 当面の暫定運用として、macOS 配布物の notarization 確認は本リリース publish の前提条件にしない。notarization 環境が整うまでは publish を許容する。

@@ -77,6 +77,7 @@ This document is descriptive, not a new normative specification. It maps to the 
 | GUI operation and responsiveness | SP-010, SP-013, DES-009, DES-013 | Sections 6.6 through 6.10, 7.4, 8.1, 9 | TC-010, TC-057 through TC-064, TC-068 through TC-070, TC-104 |
 | GUI regression plan and Window/IME stability | SP-011, DES-010, DES-011 | Sections 6.8, 6.9, 10, 11 | TC-011, TC-020, TC-099 |
 | CI / Release security hygiene | SP-012, DES-012 | Sections 10, 11 | TC-056, TC-090, TC-108 |
+| PowerShell Windows GNU build | SP-018, DES-019 | Sections 10, 11 | TC-145, TC-146, TC-147, TC-148 |
 | Self-update | SP-014, DES-014 | Sections 6.13, 8.5, 10 | TC-074 through TC-081, TC-086, TC-096 through TC-098, TC-100, TC-117, TC-119 |
 | Diagnostics and supportability | SP-010, SP-014, DES-015 | Sections 6.9, 10, 11 | TC-109, TC-120 |
 | Non-functional performance/reliability/testability | SP-007, SP-008, SP-009, DES-006, DES-007, DES-008 | Sections 9, 10, 11, 12 | VM-002 through VM-006 and related perf/security cases |

@@ -245,6 +245,19 @@ pacman -S mingw-w64-x86_64-gcc
 
 `scripts/dev-check-windows.ps1` は `C:\msys64\mingw64\bin` が存在する場合、現在のチェック用 PATH に自動追加します。
 
+PowerShell から release 相当の Windows build を行う場合:
+
+```powershell
+.\scripts\build-rust-win.ps1
+# clean build
+.\scripts\build-rust-win-clean.ps1
+```
+
+不足している Rustup、GNU Rust target、MSYS2、MinGW tools は内容を表示し、
+通常モードでは導入単位ごとに確認してからインストールします。
+検出だけ行う場合は `-CheckOnly`、prompt せず手動コマンドを表示して終了する場合は
+`-NoInstall`、不足依存の導入を明示的に一括承認する場合は `-InstallMissing` を使います。
+
 ## サポート / 不具合報告
 
 不具合報告や機能要望は GitHub Issues のテンプレートを利用してください。報告前に [docs/SUPPORT.md](docs/SUPPORT.md) を確認し、ユーザー名、プロジェクト名、フルパス、トークンなどの機微情報は必ず伏せてください。
@@ -261,14 +274,21 @@ cargo build --target x86_64-pc-windows-gnu
 
 MSVC host target は GNU toolchain が未導入の環境での一時的な確認や Windows UI smoke には使えますが、release-equivalent build ではありません。
 
+Windows PowerShell から:
+
+```powershell
+.\scripts\build-rust-win.ps1
+```
+
 WSL / Linux シェルから:
 
 ```bash
 ./scripts/build-rust-win.sh
 ```
 
-このスクリプトは WSL / Linux 側だけで `x86_64-pc-windows-gnu` をビルドします。
-Explorer アイコン埋め込みも WSL 側で行うため、PowerShell や Windows 側 Rust は不要です。
+どちらの経路も `x86_64-pc-windows-gnu` をビルドし、Explorer アイコンと
+`asInvoker` manifest を維持します。PowerShell 版は明示承認後に不足する
+Rustup / MSYS2 依存の導入を案内できます。
 必要なツール:
 
 - `x86_64-w64-mingw32-gcc`
@@ -288,7 +308,11 @@ release profile では `lto = "thin"`, `codegen-units = 1`, `panic = "abort"`, `
 ./scripts/build-rust-win-clean.sh
 ```
 
-旧 `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` は退役済みで、WSL/Linux 側ビルドへ誘導するエラーを返します。
+PowerShell からは次を実行します:
+
+```powershell
+.\scripts\build-rust-win-clean.ps1
+```
 
 成果物:
 

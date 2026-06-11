@@ -53,6 +53,8 @@ fn find_program_in_path(candidates: &[&str]) -> Option<PathBuf> {
 fn main() {
     println!("cargo:rerun-if-changed=assets/flistwalker-icon.svg");
     println!("cargo:rerun-if-env-changed=FLISTWALKER_UPDATE_PUBLIC_KEY_HEX");
+    println!("cargo:rerun-if-env-changed=FLISTWALKER_WINDOWS_WINDRES");
+    println!("cargo:rerun-if-env-changed=FLISTWALKER_WINDOWS_AR");
 
     let target = env::var("TARGET").unwrap_or_default();
     if !target.contains("windows") {
@@ -73,9 +75,8 @@ fn main() {
     let mut file = File::create(&ico_path).expect("create .ico");
     icon_dir.write(&mut file).expect("write .ico");
 
-    let host = env::var("HOST").unwrap_or_default();
     let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
-    if target_env == "gnu" && !host.contains("windows") {
+    if windows_resource_build::should_use_gnu_resource_tools(&target_env) {
         let windres = env::var_os("FLISTWALKER_WINDOWS_WINDRES")
             .map(PathBuf::from)
             .or_else(|| find_program_in_path(&["x86_64-w64-mingw32-windres", "windres"]));
@@ -101,7 +102,7 @@ fn main() {
             }
         } else {
             println!(
-                "cargo:warning=skipping Windows EXE icon embedding on non-Windows GNU host \
+                "cargo:warning=skipping Windows EXE icon embedding for GNU target \
                  (install x86_64-w64-mingw32-windres and x86_64-w64-mingw32-ar or set FLISTWALKER_WINDOWS_WINDRES / \
                  FLISTWALKER_WINDOWS_AR)"
             );
@@ -115,6 +116,7 @@ fn main() {
     if let Some(rc) = rc_path.as_ref() {
         env::set_var("RC", rc);
     }
+    let host = env::var("HOST").unwrap_or_default();
     if host.contains("windows") || rc_path.is_some() {
         let mut res = winres::WindowsResource::new();
         res.set_icon(ico_path.to_str().expect("ico path utf-8"));

@@ -32,3 +32,4 @@
 - FR-029: ツールは保存済みウィンドウ位置が現在の表示範囲外にある場合、GUI 起動時に表示範囲内へ補正しなければならない。
 - FR-030: ツールはタブの close 操作領域にマウスがある場合、close 操作として押下されることを視覚的に示さなければならない。
 - FR-031: ツールは GUI で現在のプロセス中に閉じたタブを `Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で直近順に復元できなければならない。閉じたタブ履歴は前回セッションから復元してはならない。
+- FR-032: Windows 開発者は PowerShell から `x86_64-pc-windows-gnu` release build と clean release build を実行できなければならない。不足する Rustup、Rust target、MSYS2、GNU build package は明示され、利用者の個別承認または明示的な一括承認がある場合だけ導入され、再検出後に build を継続しなければならない。

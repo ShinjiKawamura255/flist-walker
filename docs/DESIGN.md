@@ -5,7 +5,7 @@ This file is the entry point for FlistWalker design. Detailed DES content is spl
 ## Document Map
 | Topic | Content |
 | --- | --- |
-| [Architecture Overview](design/architecture-overview.md) | DES-001 through DES-005, DES-009, DES-010, and DES-012 through DES-018 responsibilities and implementation locations |
+| [Architecture Overview](design/architecture-overview.md) | DES-001 through DES-005, DES-009, DES-010, and DES-012 through DES-019 responsibilities and implementation locations |
 | [Flows, Data Model, and API Contract](design/flows-data-api.md) | Main flows, data model, Rust API contract |
 | [Non-functional Runtime Design](design/nonfunctional-runtime.md) | DES-006, DES-007, DES-008, DES-011, and runtime policies |
 | [Operations, Trade-offs, and Traceability](design/operations-traceability.md) | Error handling, migration/rollback, trade-offs, traceability excerpt |
@@ -24,3 +24,4 @@ This file is the entry point for FlistWalker design. Detailed DES content is spl
 - DES-012 -> TC-056 (SP-012)
 - DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081, TC-140 (SP-014)
 - DES-017 -> TC-111, TC-127 (SP-016)
+- DES-019 -> TC-145, TC-146, TC-147, TC-148 (SP-018)

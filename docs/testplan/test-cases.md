@@ -150,3 +150,7 @@
 | TC-142 | unit | runtime config の `emacs_keybindings_enabled=false` では `Ctrl+J` / `Ctrl+M` が実行/オープンを起動せず、通常の `Enter` は維持される | SP-010, SP-016 |
 | TC-143 | unit | runtime config の `emacs_keybindings_enabled=false` では検索欄フォーカス中の `Ctrl+K` など TextEdit 側の Emacs 風編集 chord も query を変更しない | SP-010, SP-016 |
 | TC-144 | unit | `Ctrl+Shift+T` は現在プロセス中に閉じたタブを LIFO で active tab として復元し、可能な限り閉じる前の tab index へ戻し、復元対象がない場合はタブ構成を変更しない。復元タブは新しい tab id を持ち、古い pending request/routing 状態を復元しない。閉じたタブ stack は直近 25 件を上限にする。起動時復元された background tab を初回 activate 前に閉じて復元しても lazy refresh を実行する | SP-010 |
+| TC-145 | integration | PowerShell build helper は `-CheckOnly` で machine state を変更せず、`-NoInstall` と非対話通常モードでは不足依存ごとの手動コマンドを表示して失敗する | SP-018 |
+| TC-146 | integration | PowerShell build helper は Rustup、Rust GNU target、MSYS2、`mingw-w64-x86_64-gcc` を別々に承認し、固定 package ID/source と `pacman -S --needed` を使い、拒否・winget 不在・install failure・再検出 failure で build を開始しない | SP-018 |
+| TC-147 | integration | Windows native GNU release build は strip 済みの `flistwalker.exe` / `FlistWalker.exe` を byte-identical に生成し、`.rsrc`、`asInvoker` manifest、GUI subsystem を保持し、意図しない MSYS2 runtime DLL に依存しない | SP-018 |
+| TC-148 | unit | Windows host の GNU resource build は resolved `windres` / `ar` を使用し、`resource.o` を `flistwalker` binary へ明示リンクする | SP-018 |

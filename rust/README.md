@@ -36,7 +36,7 @@ cargo build --target x86_64-pc-windows-gnu
 cargo clippy --target x86_64-pc-windows-gnu --all-targets -- -D warnings
 ```
 
-GNU toolchain が未導入の環境で一時的に確認する場合だけ `..\scripts\dev-check-windows.ps1 -Toolchain msvc` を使います。配布用の Windows release asset は、下記の WSL/Linux GNU cross-build を使います。
+GNU toolchain が未導入の環境で一時的に確認する場合だけ `..\scripts\dev-check-windows.ps1 -Toolchain msvc` を使います。
 
 初回 setup:
 
@@ -52,7 +52,19 @@ pacman -S mingw-w64-x86_64-gcc
 
 ## Build (Windows EXE with Explorer icon)
 
-WSL/Linux 側だけで `x86_64-pc-windows-gnu` をビルド:
+Windows PowerShell から:
+
+```powershell
+cd ..
+.\scripts\build-rust-win.ps1
+# clean build
+.\scripts\build-rust-win-clean.ps1
+```
+
+不足依存の検出だけは `-CheckOnly`、自動導入なしは `-NoInstall`、明示的な
+一括導入承認は `-InstallMissing` を指定します。
+
+WSL/Linux から:
 
 ```bash
 cd ..

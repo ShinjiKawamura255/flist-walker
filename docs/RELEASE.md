@@ -92,8 +92,9 @@
 
 ## リリース手順（Windows アセット）
 1. Windows 向け EXE をビルドする。
+- PowerShell: `powershell -ExecutionPolicy Bypass -File .\scripts\build-rust-win.ps1 -NoInstall`
 - WSL/Linux: `./scripts/build-rust-win.sh`
-- `x86_64-pc-windows-gnu` + mingw-w64 を利用し、PowerShell や Windows 側 Rust は使用しない
+- どちらも `x86_64-pc-windows-gnu` + mingw-w64 を利用する。PowerShell 版は `-CheckOnly` / `-NoInstall` / `-InstallMissing` を提供し、通常モードでは不足依存を個別確認してから導入する
 - ビルド後は `flistwalker.exe` の `.rsrc` にアイコンリソースが含まれることを前提とし、Windows Explorer で埋め込みアイコンが表示されなければリリース不可
 - 必要ツール:
   - `x86_64-w64-mingw32-gcc`
@@ -121,9 +122,9 @@
 
 ## Regression Guard
 - 発生条件: Windows ビルドを `msvc` から `x86_64-pc-windows-gnu` へ切り替えた際、`windres` 生成物が最終 EXE に入らず Explorer 上のアイコンが既定表示へ退行する。
-- 期待動作: WSL/Linux からの GNU ビルド後も `flistwalker.exe` / 配布用 `FlistWalker.exe` の両方で Explorer アイコンが維持される。
+- 期待動作: WSL/Linux または PowerShell からの GNU ビルド後も `flistwalker.exe` / 配布用 `FlistWalker.exe` の両方で Explorer アイコンが維持される。
 - 非対象範囲: 実行中ウィンドウのランタイムアイコン変更、ショートカット `.lnk` 側の個別アイコン設定。
-- 関連テストID: TC-090.
+- 関連テストID: TC-090, TC-147, TC-148.
 
 ## リリース手順（macOS アセット）
 1. macOS 向けバイナリをビルドする。

@@ -57,7 +57,7 @@
 | Support | [SUPPORT.md](../SUPPORT.md) defines redaction and issue reporting expectations. |
 | CI security | Cross-platform CI keeps release OS targets under test and runs dependency vulnerability checks such as `cargo audit`. |
 | Coverage | The CI coverage gate uses `cargo llvm-cov` with the line threshold documented in [TESTPLAN.md](../TESTPLAN.md). |
-| Windows GNU release | WSL/Linux build scripts keep `x86_64-pc-windows-gnu` builds and Windows resource/icon embedding reproducible. |
+| Windows GNU release | WSL/Linux shell scripts and Windows PowerShell scripts both build `x86_64-pc-windows-gnu`; PowerShell may guide explicitly approved dependency installation and both paths preserve Windows resource/icon embedding. |
 | Release sidecars | Standalone assets and archives must carry README, LICENSE, and THIRD_PARTY_NOTICES sidecars. |
 | macOS notarization | Notarization is currently a documented manual/non-blocking release consideration until signing infrastructure is ready. |
 

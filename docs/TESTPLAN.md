@@ -42,3 +42,4 @@ For documentation-only restructuring, apply VM-001:
 - TC-056 -> SP-012 -> DES-012 -> NFR-005
 - TC-074 -> SP-014 -> DES-014 -> FR-019
 - TC-111 -> SP-016 -> DES-017 -> FR-026
+- TC-145 -> SP-018 -> DES-019 -> FR-032

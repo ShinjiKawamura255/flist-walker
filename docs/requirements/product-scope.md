@@ -62,3 +62,4 @@
 - AC-030: 保存済みウィンドウ位置が現在の仮想ディスプレイ矩形外にある状態で GUI を起動しても、初期ウィンドウは現在の表示範囲内に配置される。現在の仮想ディスプレイ内の負座標配置は維持される。
 - AC-031: タブの close ボタン上へマウスを移動すると、close ボタンの押下領域が背景・枠・カーソルなどでタブ本体の押下領域と区別できる。
 - AC-032: GUI で複数タブを閉じた後、`Ctrl+Shift+T` は最後に閉じたタブから順に active tab として復元し、可能な限り閉じる前の tab 位置へ戻す。復元対象がない場合はタブ数を変えずに通知する。
+- AC-033: `scripts/build-rust-win.ps1` と `scripts/build-rust-win-clean.ps1` は Windows PowerShell から GNU release artifact を生成できる。`-CheckOnly` は環境を変更せず、`-NoInstall` は不足時に手動コマンドを表示して失敗し、通常モードは Rustup、Rust target、MSYS2、GNU package を個別確認し、`-InstallMissing` はそれらを明示承認済みとして扱う。生成後の `flistwalker.exe` と `FlistWalker.exe` は同一内容で、Windows icon/resource、`asInvoker` manifest、GUI subsystem を保持する。
