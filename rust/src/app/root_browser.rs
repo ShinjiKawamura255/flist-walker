@@ -147,14 +147,15 @@ impl FlistWalkerApp {
                 return;
             }
         };
-        let replacement_key = path_key(&replacement);
+        let replacement_key = Self::manage_root_list_path_key(&replacement);
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage
             .draft_roots
             .iter()
             .enumerate()
             .any(|(candidate_index, candidate)| {
-                candidate_index != index && path_key(candidate) == replacement_key
+                candidate_index != index
+                    && Self::manage_root_list_path_key(candidate) == replacement_key
             })
         {
             manage.edit_error =
@@ -177,7 +178,10 @@ impl FlistWalkerApp {
         if manage
             .draft_default_root
             .as_ref()
-            .is_some_and(|default_root| path_key(default_root) == path_key(&original))
+            .is_some_and(|default_root| {
+                Self::manage_root_list_path_key(default_root)
+                    == Self::manage_root_list_path_key(&original)
+            })
         {
             manage.draft_default_root = Some(replacement.clone());
         }
@@ -188,7 +192,7 @@ impl FlistWalkerApp {
         manage.selected_index = manage
             .draft_roots
             .iter()
-            .position(|candidate| path_key(candidate) == replacement_key);
+            .position(|candidate| Self::manage_root_list_path_key(candidate) == replacement_key);
         manage.editing_index = None;
         manage.edit_path.clear();
         manage.edit_error.clear();
@@ -260,12 +264,11 @@ impl FlistWalkerApp {
             .draft_default_root
             .as_ref()
             .is_some_and(|default_root| {
-                let default_key = path_key(default_root);
-                manage
-                    .draft_roots
-                    .iter()
-                    .enumerate()
-                    .any(|(index, root)| selected.contains(&index) && path_key(root) == default_key)
+                let default_key = Self::manage_root_list_path_key(default_root);
+                manage.draft_roots.iter().enumerate().any(|(index, root)| {
+                    selected.contains(&index)
+                        && Self::manage_root_list_path_key(root) == default_key
+                })
             })
         {
             manage.draft_default_root = None;
@@ -297,8 +300,10 @@ impl FlistWalkerApp {
             .root_browser
             .default_root
             .as_ref()
-            .map(|root| path_key(root));
-        let draft_default_key = draft_default_root.as_ref().map(|root| path_key(root));
+            .map(|root| Self::manage_root_list_path_key(root));
+        let draft_default_key = draft_default_root
+            .as_ref()
+            .map(|root| Self::manage_root_list_path_key(root));
         self.shell.features.root_browser.saved_roots = draft_roots;
         self.shell.features.root_browser.default_root = draft_default_root;
         self.shell.ui.set_root_dropdown_highlight(None);
@@ -355,14 +360,19 @@ impl FlistWalkerApp {
         ))
     }
 
+    fn manage_root_list_path_key(path: &Path) -> String {
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+        path_key(&normalize_windows_path_buf(canonical))
+    }
+
     fn add_manage_root_list_path(&mut self, root: PathBuf) {
         let root = normalize_windows_path_buf(root);
-        let key = path_key(&root);
+        let key = Self::manage_root_list_path_key(&root);
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage
             .draft_roots
             .iter()
-            .any(|candidate| path_key(candidate) == key)
+            .any(|candidate| Self::manage_root_list_path_key(candidate) == key)
         {
             manage.add_error =
                 "Couldn't add the root. This folder is already in the list.".to_string();
@@ -378,7 +388,7 @@ impl FlistWalkerApp {
         manage.selected_index = manage
             .draft_roots
             .iter()
-            .position(|candidate| path_key(candidate) == key);
+            .position(|candidate| Self::manage_root_list_path_key(candidate) == key);
         manage.add_error.clear();
         manage.add_focus_requested = false;
         manage.add_select_all_requested = false;
