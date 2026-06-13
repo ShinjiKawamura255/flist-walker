@@ -4,7 +4,7 @@
 - Date: 2026-06-13
 - Tester: Codex
 - Build/version: Windows GNU release build, FlistWalker 0.18.9
-- Base commit: `5aed09f46cab2a1ace3119d93825bf013e1b093b` plus the v0.18.9 release preparation working tree
+- Candidate: v0.18.9 release preparation sequence ending at the tagged commit
 - Scope: `GSM-006`, `GSM-008`, saved-root edit regression, headful launch
 - OS/display: Windows, native desktop window
 - Fixture root: `rust/target/gui-smoke/root`

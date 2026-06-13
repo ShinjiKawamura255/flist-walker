@@ -115,6 +115,8 @@
 ## 11. Progress Log
 - 2026-06-12: Planned.
 - 2026-06-12: Specialist convergence reviews completed; implementation approved.
+- 2026-06-13: Slice A implementation and local preflight completed.
+- 2026-06-13: Release preparation commit `563b9af` passed CI Cross Platform run `27450898304`.
 
 ## 12. Communication Plan
 - 計画レビュー完了、blocking issue、公開完了時に報告する。
