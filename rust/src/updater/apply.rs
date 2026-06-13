@@ -1,5 +1,9 @@
-use crate::updater::{staging, VerifiedUpdateBundle};
-use anyhow::{Context, Result};
+#[cfg(any(test, not(target_os = "macos")))]
+use crate::updater::staging;
+use crate::updater::VerifiedUpdateBundle;
+#[cfg(not(target_os = "macos"))]
+use anyhow::Context;
+use anyhow::Result;
 #[cfg(any(test, all(unix, not(target_os = "macos"))))]
 use std::fs;
 #[cfg(all(unix, not(target_os = "macos")))]

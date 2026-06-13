@@ -144,21 +144,34 @@ impl StagedUpdatePaths {
 }
 
 pub(super) struct VerifiedUpdateBundle {
+    #[cfg(not(target_os = "macos"))]
     pub(super) staged_path: PathBuf,
+    #[cfg(not(target_os = "macos"))]
     pub(super) staged_readme_path: PathBuf,
+    #[cfg(not(target_os = "macos"))]
     pub(super) staged_license_path: PathBuf,
+    #[cfg(not(target_os = "macos"))]
     pub(super) staged_notices_path: PathBuf,
+    #[cfg(not(target_os = "macos"))]
     pub(super) temp_dir: PathBuf,
 }
 
 impl VerifiedUpdateBundle {
     fn new(staged: StagedUpdatePaths) -> Self {
-        Self {
-            staged_path: staged.staged_path,
-            staged_readme_path: staged.staged_readme_path,
-            staged_license_path: staged.staged_license_path,
-            staged_notices_path: staged.staged_notices_path,
-            temp_dir: staged.temp_dir,
+        #[cfg(not(target_os = "macos"))]
+        {
+            Self {
+                staged_path: staged.staged_path,
+                staged_readme_path: staged.staged_readme_path,
+                staged_license_path: staged.staged_license_path,
+                staged_notices_path: staged.staged_notices_path,
+                temp_dir: staged.temp_dir,
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let _ = staged;
+            Self {}
         }
     }
 }

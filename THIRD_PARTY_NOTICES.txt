@@ -99,6 +99,15 @@ Additional notice-bearing components
   slotmap 1.1.1, tinyvec 1.10.0, and platform-specific windowing crates
   such as dispatch2 / objc2-* on macOS and xkeysym on Linux.
 
+- native-dialog 0.9.7 backend dependencies
+  Licenses: MIT or MIT OR Apache-2.0
+  Source: https://github.com/balthild/native-dialog-rs
+  Crates: native-dialog 0.9.7, env_home 0.1.0, formatx 0.2.4,
+  versions 7.0.0, which 7.0.3, wfd 0.1.8, winsafe 0.0.19
+  Notes: native-dialog 0.9.7 uses the current objc2/dispatch2 macOS backend;
+  the previous cocoa 0.25.0, block 0.1.6, and objc 0.2.7 dependency path is
+  no longer present in packaged builds.
+
 Direct dependency summary
 -------------------------
 

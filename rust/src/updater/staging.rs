@@ -108,6 +108,7 @@ pub(super) fn open_new_staged_file(path: &Path) -> Result<File> {
         .with_context(|| format!("failed to create new staged file {}", path.display()))
 }
 
+#[cfg(any(test, not(target_os = "macos")))]
 pub(super) fn write_new_staged_file(path: &Path, contents: &str) -> Result<()> {
     use std::io::Write as _;
     let mut file = open_new_staged_file(path)?;

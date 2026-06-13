@@ -419,9 +419,10 @@ impl FlistWalkerApp {
 
     #[cfg(not(test))]
     fn select_root_via_dialog(&mut self, dialog_root: &Path) -> Result<Option<PathBuf>, String> {
-        native_dialog::FileDialog::new()
+        native_dialog::DialogBuilder::file()
             .set_location(dialog_root)
-            .show_open_single_dir()
+            .open_single_dir()
+            .show()
             .map_err(|err| err.to_string())
     }
 

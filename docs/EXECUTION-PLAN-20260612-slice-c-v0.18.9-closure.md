@@ -1,4 +1,4 @@
-# EXECUTION PLAN: v0.18.9 Closure
+# EXECUTION PLAN: v0.18.9 Candidate / v0.18.10 Release Closure
 
 ## Metadata
 - Date: 2026-06-12
@@ -19,7 +19,7 @@
 - Temporary AGENTS.md Ownership: section-only
 - Docs Directory Initial State: existing
 - Temporary Docs Directory Ownership: existing-directory
-- Scope Label: v0.18.9 closure
+- Scope Label: v0.18.9 candidate rejection and v0.18.10 release closure
 - Review Status: レビュー済み
 - Review Viewpoints: goal-achievement, testing, security, operability, rollback
 
@@ -27,11 +27,12 @@
 - Roadmap goal達成を確認し、公開記録を失わず一時成果物を削除する。
 
 ## Execution Strategy
-1. Release/tag/assets、CI、working tree、CHANGELOG linksを確認する。
-2. `docs/releases/v0.18.9.md` に preparation CI URL、tagged workflow URL、release URL、tag object/peeled commit SHA、`docs/releases/evidence/v0.18.9/` のGUI evidence、PowerShell build結果、asset/checksum/signature結果、warning/SKIPPED理由、pre-publish review結果を転記する。
-3. Specialist final reviewを実施し、findingsを反映・再検証する。
-4. Roadmapをclose可能と判断する。
-5. Temporary AGENTS rule、plans、manifestを削除し、closure commitをpushする。
+1. `v0.18.9` candidate rejection、`v0.18.10` release/tag/assets、CI、working tree、CHANGELOG linksを確認する。
+2. `docs/releases/v0.18.9-candidate-rejection.md` に未公開判断、tag/draft/workflow、warning、immutable asset方針を記録する。
+3. `docs/releases/v0.18.10.md` に preparation CI URL、tagged workflow URL、release URL、tag object/peeled commit SHA、`docs/releases/evidence/v0.18.10/` と継承する `v0.18.9` GUI evidence、PowerShell build結果、asset/checksum/signature結果、macOS warningゼロ、warning/SKIPPED理由、pre-publish review結果を転記する。
+4. Specialist final reviewを実施し、findingsを反映・再検証する。
+5. Roadmapをclose可能と判断する。
+6. Temporary AGENTS rule、plans、manifestを削除し、closure commitをpushする。
 
 ## Completion
 - [ ] Goal achieved

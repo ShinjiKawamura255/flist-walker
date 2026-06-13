@@ -3,7 +3,7 @@
     "schema": "plan-driven-execution.work-items.v1",
     "created": "2026-06-12",
     "target_project": "FlistWalker",
-    "scope_label": "v0.18.9 release",
+    "scope_label": "v0.18.9 candidate rejection and v0.18.10 patch release",
     "execution_plan": "docs/EXECUTION-PLAN-20260612-roadmap-v0.18.9-release.md",
     "execution_profile": "safety-critical",
     "notes": "Main agent owns release mutations and closure."
@@ -140,8 +140,8 @@
     },
     {
       "id": "slice-b.tag",
-      "title": "Create and push v0.18.9 tag",
-      "status": "pending",
+      "title": "Record immutable v0.18.9 candidate tag",
+      "status": "complete",
       "depends_on": ["slice-a.ci"],
       "owner": "main",
       "target_files": ["git tag"],
@@ -150,13 +150,13 @@
         "The tag is annotated; preparation commit SHA equals local and remote peeled SHAs; tag object SHA and peeled commit SHA are recorded."
       ],
       "verification": ["git ls-remote, git cat-file, git rev-parse, and gh run list"],
-      "result": null,
+      "result": "Annotated tag v0.18.9 was pushed. Tag object a7f9b59c0680f4537651508ff541d49cd59e1195 peels to bd39b87b4f796287ea9577407d1625be950ebee9 locally and remotely.",
       "blocker": null
     },
     {
       "id": "slice-b.workflow",
-      "title": "Verify tagged release workflow and draft",
-      "status": "pending",
+      "title": "Verify v0.18.9 tagged release workflow and reject warned candidate",
+      "status": "failed",
       "depends_on": ["slice-b.tag"],
       "owner": "main",
       "target_files": ["GitHub Actions", "GitHub draft release"],
@@ -166,17 +166,80 @@
         "Checksums, signature, version names, .app exclusion, and both LICENSE.txt and THIRD_PARTY_NOTICES.txt in every archive and standalone sidecar pass."
       ],
       "verification": ["gh run watch", "gh release download", "scripts/validate-release-bundle.sh", "signature verification"],
+      "result": "Run 27451243280 succeeded and the 24-asset bundle passed checksum/archive validation. Pre-publish review rejected publication because both macOS release builds emitted four project warnings and block v0.1.6 future-incompatibility warnings.",
+      "blocker": "Repair in a new v0.18.10 commit/tag without rewriting v0.18.9."
+    },
+    {
+      "id": "slice-b.macos-warning-repair",
+      "title": "Repair macOS release warnings for v0.18.10",
+      "status": "complete",
+      "depends_on": ["slice-b.tag"],
+      "owner": "main",
+      "target_files": ["rust/src/updater/apply.rs", "rust/src/updater.rs", "rust/src/updater/staging.rs", "rust/Cargo.toml", "rust/Cargo.lock", "CHANGELOG.md"],
+      "acceptance": [
+        "macOS target compilation emits no project warnings.",
+        "The block v0.1.6 future-incompatibility dependency is removed or upgraded.",
+        "v0.18.10 metadata records the warning-gate repair."
+      ],
+      "verification": ["cargo test --locked", "cargo clippy --all-targets -- -D warnings", "cargo audit", "macOS native CI build log"],
+      "result": "Updater cfg boundaries were corrected; native-dialog was upgraded from 0.7.0 to 0.9.7, removing block 0.1.6 and legacy cocoa/objc dependencies. cargo test --locked, clippy -D warnings, cargo audit, four-target metadata, Windows GNU target check/build/artifact validation, bundle validator regression, and Windows native folder dialog interaction passed. macOS warning-free confirmation remains a normal CI gate before tagging.",
+      "blocker": null
+    },
+    {
+      "id": "slice-b.v0.18.10-prep-ci",
+      "title": "Commit v0.18.10 repair and verify normal CI",
+      "status": "pending",
+      "depends_on": ["slice-b.macos-warning-repair"],
+      "owner": "main",
+      "target_files": ["git", "GitHub Actions"],
+      "acceptance": [
+        "The repair commit is pushed before tag creation.",
+        "Linux, macOS, Windows native, Windows GNU cross, clippy/coverage, and cargo-audit jobs succeed.",
+        "macOS test/build logs contain no FlistWalker or dependency warnings."
+      ],
+      "verification": ["gh run watch", "gh run view --log warning review"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.v0.18.10-tag",
+      "title": "Create and push v0.18.10 tag",
+      "status": "pending",
+      "depends_on": ["slice-b.v0.18.10-prep-ci"],
+      "owner": "main",
+      "target_files": ["git tag"],
+      "acceptance": [
+        "Remote refs/tags/v0.18.10 is absent before creation.",
+        "The tag is annotated and local/remote peeled SHAs match."
+      ],
+      "verification": ["git ls-remote, git cat-file, git rev-parse"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.v0.18.10-workflow",
+      "title": "Verify v0.18.10 tagged release workflow and draft",
+      "status": "pending",
+      "depends_on": ["slice-b.v0.18.10-tag"],
+      "owner": "main",
+      "target_files": ["GitHub Actions", "GitHub draft release v0.18.10"],
+      "acceptance": [
+        "All release jobs succeed without project or dependency warnings.",
+        "Downloaded draft contains exactly 24 expected assets and 22 checksum entries.",
+        "Checksums, signature, version names, .app exclusion, and both LICENSE.txt and THIRD_PARTY_NOTICES.txt in every archive and standalone sidecar pass."
+      ],
+      "verification": ["gh run watch", "gh release download", "scripts/validate-release-bundle.sh", "signature verification"],
       "result": null,
       "blocker": null
     },
     {
       "id": "slice-b.body",
-      "title": "Finalize v0.18.9 release body",
+      "title": "Finalize v0.18.10 release body",
       "status": "pending",
-      "depends_on": ["slice-b.workflow"],
+      "depends_on": ["slice-b.v0.18.10-workflow"],
       "owner": "main",
-      "target_files": ["GitHub release v0.18.9"],
-      "acceptance": ["Body follows fixed format, matches v0.18.8..v0.18.9, and states macOS is not notarized."],
+      "target_files": ["GitHub release v0.18.10"],
+      "acceptance": ["Body follows fixed format, matches v0.18.8..v0.18.10, and states macOS is not notarized."],
       "verification": ["gh release view and body policy grep"],
       "result": null,
       "blocker": null
@@ -198,11 +261,11 @@
     },
     {
       "id": "slice-b.publish",
-      "title": "Publish v0.18.9",
+      "title": "Publish v0.18.10",
       "status": "pending",
       "depends_on": ["slice-b.pre-publish-review"],
       "owner": "main",
-      "target_files": ["GitHub release v0.18.9"],
+      "target_files": ["GitHub release v0.18.10"],
       "acceptance": [
         "Release is public with the reviewed body and assets.",
         "A post-publish incident never overwrites the published tag or assets and follows the approved containment runbook."
@@ -213,11 +276,11 @@
     },
     {
       "id": "slice-c.record",
-      "title": "Write durable v0.18.9 release evidence",
+      "title": "Write durable v0.18.9 rejection and v0.18.10 release evidence",
       "status": "pending",
       "depends_on": ["slice-b.publish"],
       "owner": "main",
-      "target_files": ["docs/releases/v0.18.9.md", "docs/releases/evidence/v0.18.9"],
+      "target_files": ["docs/releases/v0.18.9-candidate-rejection.md", "docs/releases/v0.18.10.md", "docs/releases/evidence/v0.18.10"],
       "acceptance": ["Permanent release evidence contains URLs, tag object and peeled commit SHAs, durable GUI evidence paths, PowerShell/asset/signature results, warnings, skips, and pre-publish review."],
       "verification": ["Document review and link checks"],
       "result": null,

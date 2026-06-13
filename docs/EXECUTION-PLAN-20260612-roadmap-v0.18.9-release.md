@@ -1,4 +1,4 @@
-# EXECUTION PLAN: v0.18.9 Release Roadmap
+# EXECUTION PLAN: v0.18.9 Candidate / v0.18.10 Patch Release Roadmap
 
 ## Metadata
 - Date: 2026-06-12
@@ -22,7 +22,7 @@
 - Temporary AGENTS.md Ownership: section-only
 - Docs Directory Initial State: existing
 - Temporary Docs Directory Ownership: existing-directory
-- Scope Label: v0.18.9 release
+- Scope Label: v0.18.9 candidate rejection and v0.18.10 patch release
 - Related Tickets/Issues: none
 - Review Status: レビュー済み
 - Review Viewpoints: purpose-scope, ordering, validation, rollback, testing, security, operability
@@ -36,7 +36,8 @@
 - release/tag/publishは署名付き配布物と外部公開を伴うため、preflight完了前にtagを作らない。
 
 ## 2. Goal
-- `v0.18.9` のversion、CHANGELOG、tag、release本文、配布assetを一致させる。
+- `v0.18.9` candidate は公開前 warning gate 不合格のため公開しない。tag と生成済み asset は書き換えない。
+- macOS build warning を解消した `v0.18.10` のversion、CHANGELOG、tag、release本文、配布assetを一致させる。
 - release workflowで秘密鍵を署名stepだけに限定する。公開鍵secretの形式、秘密鍵から導出した公開鍵、配布クライアントが使用する公開鍵の一致と署名往復検証、期待24 assetの完全一致、22 checksum entryの自己検証、archive内容検証を行う。
 - tagged workflowの全jobと全assetを確認し、macOS未notarizedを明記したreleaseを公開する。
 - 最後にclosure sliceでgoal達成を確認し、一時計画を削除する。
@@ -48,10 +49,12 @@
 - `.github/workflows/release-tagged.yml` とrelease bundle validationのhardening。既存release/assetを検出した場合は停止し、`--clobber` による上書きを禁止する。
 - 公開後incident用の恒久runbook作成。
 - VM-002 / VM-005、release preflight、tagged workflow、asset、checksum/signature確認。
-- tag `v0.18.9`、draft release、publish。
+- `v0.18.9` candidate rejection の恒久記録。
+- macOS warningの根本原因である `native-dialog` と推移依存の更新、および `docs/OSS_COMPLIANCE.md` に基づく notice / resolve graph確認。
+- tag `v0.18.10`、draft release、publish。
 
 ### Out of Scope
-- 新機能追加、依存更新、asset命名変更、notarization導入。
+- 新機能追加、上記warning修正以外の依存更新、asset命名変更、notarization導入。
 
 ## 4. Constraints and Assumptions
 - 最新release tagは `v0.18.8`、対象rangeは `v0.18.8..HEAD`。
@@ -66,6 +69,9 @@
 - Tagged workflowまたは署名失敗:
   - Impact: draft/asset未完成。
   - Mitigation: publishせず、tagged runとdraftを修復する。
+- Tagged candidate の warning gate 不合格:
+  - Impact: warningを含む配布物の公開。
+  - Mitigation: candidateを公開せず、既存tag/assetを書き換えず、新しいpatch versionで修正する。
 - 不完全なasset公開:
   - Impact: OS別配布欠落、自己更新失敗。
   - Mitigation: expected asset一覧とSHA256SUMS/SHA256SUMS.sigを照合する。
@@ -77,9 +83,9 @@
 1. Slice A: release preparation and preflight
    - Workflow hardening、恒久incident runbook、Version、CHANGELOG、release note draft、GUI evidence、PowerShell native build、docs/asset/OSS/ID ordering、VM-002/005を検証する。
 2. Slice B: tag, draft, asset validation, publish
-   - 準備commitをpushし、tagをpush、workflowとdraft assetを再downloadして検証し、本文を設定し、pre-publish specialist review後にpublishする。
+   - `v0.18.9` candidate rejectionを記録し、macOS warningを修正する。`v0.18.10` 準備commitをpushし、新tagをpush、workflowとdraft assetを再downloadして検証し、本文を設定し、pre-publish specialist review後にpublishする。
 3. Slice C: closure
-   - 公開状態、tag、assets、working tree、final reviewを確認し、`docs/releases/v0.18.9.md` に恒久証跡を残してから一時成果物を削除する。
+   - `v0.18.9` candidate rejection と `v0.18.10` 公開状態、tag、assets、working tree、final reviewを確認し、両方の恒久証跡を残してから一時成果物を削除する。
 
 ## 7. Detailed Task Breakdown
 - [ ] Specialist plan review and convergence review
@@ -117,6 +123,8 @@
 - 2026-06-12: Specialist convergence reviews completed; implementation approved.
 - 2026-06-13: Slice A implementation and local preflight completed.
 - 2026-06-13: Release preparation commit `563b9af` passed CI Cross Platform run `27450898304`.
+- 2026-06-13: `v0.18.9` tagged workflow `27451243280` succeeded and produced a valid draft bundle, but pre-publish review rejected publication because macOS builds emitted project warnings and a `block v0.1.6` future-incompatibility warning.
+- 2026-06-13: Immutable-tag policy applied. `v0.18.9` remains unpublished; remediation and publication move to `v0.18.10`.
 
 ## 12. Communication Plan
 - 計画レビュー完了、blocking issue、公開完了時に報告する。
