@@ -126,6 +126,7 @@ pub(super) struct StagedUpdatePaths {
     pub(super) staged_notices_path: PathBuf,
     pub(super) checksum_path: PathBuf,
     pub(super) signature_path: PathBuf,
+    #[cfg(not(target_os = "macos"))]
     pub(super) temp_dir: PathBuf,
 }
 
@@ -138,6 +139,7 @@ impl StagedUpdatePaths {
             staged_notices_path: temp_dir.join(&candidate.notices_asset_name),
             checksum_path: temp_dir.join("SHA256SUMS"),
             signature_path: temp_dir.join(CHECKSUM_SIGNATURE_NAME),
+            #[cfg(not(target_os = "macos"))]
             temp_dir,
         }
     }
