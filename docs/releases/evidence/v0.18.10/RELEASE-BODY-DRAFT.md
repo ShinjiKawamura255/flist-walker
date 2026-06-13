@@ -1,6 +1,6 @@
 ## Summary
 
-FlistWalker v0.18.10 was released on June 13, 2026.
+FlistWalker v0.18.10 was released on June 14, 2026.
 
 This release improves saved-root editing, restores the complete PowerShell Windows GNU build path, fixes cross-platform path checks, and hardens signed release asset validation. It supersedes the unpublished v0.18.9 release candidate with warning-free macOS release builds.
 

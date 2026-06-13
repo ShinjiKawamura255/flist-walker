@@ -72,10 +72,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule: v0.18.9 release
-- `docs/EXECUTION-PLAN-20260612-roadmap-v0.18.9-release.md` を最上位計画として扱う。
-- active slice の `docs/EXECUTION-PLAN-20260612-slice-*.md` と `docs/EXECUTION-WORK-ITEMS-20260612-v0.18.9-release.json` を読み、依存が完了した ready item のみ実行する。
-- preflight完了前にtagを作成しない。既存tag、release、assetを更新・削除・上書きしない。
-- publish前にtagged workflow、全asset、checksum/signature、release本文、warning、`docs/RELEASE_INCIDENT_RUNBOOK.md` を専門レビューする。
-- final specialist review完了前に一時計画と本ルールを削除しない。
