@@ -203,6 +203,25 @@ fn manage_root_list_edit_replaces_selected_draft_root_only() {
 }
 
 #[test]
+fn manage_root_list_edit_requests_focus_and_select_all() {
+    let _scope = saved_roots_test_scope("manage-root-list-edit-focus-settings");
+    let root = test_root("manage-root-list-edit-focus");
+    let original = root.join("original");
+    fs::create_dir_all(&original).expect("create original");
+    let mut app = FlistWalkerApp::new(original.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![original];
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+
+    let manage = &app.shell.features.root_browser.manage_list;
+    assert!(manage.edit_focus_requested);
+    assert!(manage.edit_select_all_requested);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn manage_root_list_edit_rejects_duplicate_and_keeps_editor_open() {
     let _scope = saved_roots_test_scope("manage-root-list-edit-duplicate-settings");
     let root = test_root("manage-root-list-edit-duplicate");

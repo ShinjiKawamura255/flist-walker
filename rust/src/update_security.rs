@@ -42,6 +42,11 @@ pub fn sign_message(message: &[u8], signing_key_hex: &str) -> Result<Vec<u8>> {
     Ok(signing_key.sign(message).to_bytes().to_vec())
 }
 
+pub fn public_key_hex_from_signing_key(signing_key_hex: &str) -> Result<String> {
+    let signing_key = signing_key_from_hex(signing_key_hex)?;
+    Ok(encode_hex(signing_key.verifying_key().as_bytes()))
+}
+
 fn verifying_key_from_hex(hex: &str) -> Result<VerifyingKey> {
     let bytes = decode_hex_fixed::<32>(hex)
         .with_context(|| format!("invalid {UPDATE_PUBLIC_KEY_ENV} value"))?;
@@ -96,6 +101,16 @@ fn decode_nibble(byte: u8) -> Result<u8> {
     }
 }
 
+fn encode_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        encoded.push(HEX[(byte >> 4) as usize] as char);
+        encoded.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    encoded
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,6 +125,12 @@ mod tests {
         let message = b"sha manifest";
         let signature = sign_message(message, TEST_SIGNING_KEY_HEX).expect("sign");
         verify_signature(message, &signature, TEST_PUBLIC_KEY_HEX).expect("verify");
+    }
+
+    #[test]
+    fn derives_public_key_from_signing_key() {
+        let public_key = public_key_hex_from_signing_key(TEST_SIGNING_KEY_HEX).expect("derive");
+        assert_eq!(public_key, TEST_PUBLIC_KEY_HEX);
     }
 
     #[test]

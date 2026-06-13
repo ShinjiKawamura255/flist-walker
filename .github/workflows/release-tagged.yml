@@ -213,8 +213,6 @@ jobs:
     name: Create Draft Release
     runs-on: ubuntu-latest
     needs: build-release-assets
-    env:
-      FLISTWALKER_UPDATE_SIGNING_KEY_HEX: ${{ secrets.FLISTWALKER_UPDATE_SIGNING_KEY_HEX }}
     permissions:
       contents: write
 
@@ -225,11 +223,16 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Validate signing key
+      - name: Reject an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${FLISTWALKER_UPDATE_SIGNING_KEY_HEX}"
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "release already exists for ${GITHUB_REF_NAME}; refusing to overwrite assets" >&2
+            exit 1
+          fi
 
       - name: Download packaged assets
         uses: actions/download-artifact@v7
@@ -256,11 +259,18 @@ jobs:
           ls -la release-bundle
 
       - name: Sign release checksum manifest
+        env:
+          FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: ${{ secrets.FLISTWALKER_UPDATE_PUBLIC_KEY_HEX }}
+          FLISTWALKER_UPDATE_SIGNING_KEY_HEX: ${{ secrets.FLISTWALKER_UPDATE_SIGNING_KEY_HEX }}
         shell: bash
         run: |
           set -euo pipefail
           cargo run --manifest-path rust/Cargo.toml --quiet --bin sign_update_manifest -- \
             release-bundle/SHA256SUMS release-bundle/SHA256SUMS.sig
+
+      - name: Validate release bundle
+        shell: bash
+        run: bash ./scripts/validate-release-bundle.sh "${GITHUB_REF_NAME}" release-bundle
 
       - name: Create draft GitHub release
         env:
@@ -274,19 +284,9 @@ jobs:
             echo "release-bundle is empty" >&2
             exit 1
           fi
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" "${assets[@]}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --clobber
-            gh release edit "$tag" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$tag" \
-              --draft
-          else
-            gh release create "$tag" "${assets[@]}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$tag" \
-              --verify-tag \
-              --draft \
-              --generate-notes
-          fi
+          gh release create "$tag" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$tag" \
+            --verify-tag \
+            --draft \
+            --generate-notes

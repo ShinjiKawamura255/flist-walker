@@ -114,7 +114,7 @@ impl FlistWalkerApp {
         manage.editing_index = Some(index);
         manage.edit_error.clear();
         manage.edit_focus_requested = true;
-        manage.edit_select_all_requested = false;
+        manage.edit_select_all_requested = true;
         manage.notice.clear();
     }
 

@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "flist-walker"
-version = "0.18.8"
+version = "0.18.9"
 dependencies = [
  "anyhow",
  "clap",

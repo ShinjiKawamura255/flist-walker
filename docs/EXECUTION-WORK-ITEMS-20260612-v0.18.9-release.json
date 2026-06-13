@@ -1,0 +1,251 @@
+{
+  "metadata": {
+    "schema": "plan-driven-execution.work-items.v1",
+    "created": "2026-06-12",
+    "target_project": "FlistWalker",
+    "scope_label": "v0.18.9 release",
+    "execution_plan": "docs/EXECUTION-PLAN-20260612-roadmap-v0.18.9-release.md",
+    "execution_profile": "safety-critical",
+    "notes": "Main agent owns release mutations and closure."
+  },
+  "status_rules": {
+    "allowed_statuses": ["pending", "ready", "in_progress", "blocked", "failed", "complete"],
+    "ready_rule": "All dependencies must be complete.",
+    "complete_rule": "Record file, command, run URL, release URL, or review evidence.",
+    "repair_rule": "Repair the smallest failed release item before continuing."
+  },
+  "prohibited_shortcuts": [
+    "Do not create the tag before preflight is complete.",
+    "Do not publish an incomplete draft.",
+    "Do not rewrite an existing release tag.",
+    "Do not omit checksum, signature, sidecar, warning, or notarization checks."
+  ],
+  "items": [
+    {
+      "id": "plan.review",
+      "title": "Review and converge release plans",
+      "status": "complete",
+      "depends_on": [],
+      "owner": "subagent:specialists",
+      "target_files": ["docs/EXECUTION-PLAN-20260612-*.md"],
+      "acceptance": ["Initial specialist findings are recorded, plan revisions are made, and convergence review approves implementation."],
+      "verification": ["Testing/release-integrity and security/operability review."],
+      "result": "Testing/release-integrity and security/operability convergence reviews completed with no blocking findings.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.workflow-hardening",
+      "title": "Harden tagged release workflow",
+      "status": "complete",
+      "depends_on": ["plan.review"],
+      "owner": "main",
+      "target_files": [".github/workflows/release-tagged.yml", "scripts/validate-release-bundle.sh", "rust/src/bin/sign_update_manifest.rs", "docs/RELEASE.md", "docs/TESTPLAN.md"],
+      "acceptance": [
+        "Signing secret is limited to the signing step.",
+        "The public-key secret is nonempty 64-hex, equals the public key derived from the signing key, equals the distributed client's embedded or configured key, and verifies SHA256SUMS.sig.",
+        "Expected 24 release assets, 22 checksum entries, checksums, forbidden .app bundle assets, and both LICENSE.txt and THIRD_PARTY_NOTICES.txt in every archive and standalone sidecar are validated.",
+        "An existing release or asset for the tag stops the workflow; uploads never use --clobber and never overwrite release assets."
+      ],
+      "verification": ["cargo test/clippy", "bash syntax", "workflow diff review", "focused signing tests"],
+      "result": "Signing key/client key round-trip validation, immutable release creation, exact bundle validation, and regression tests implemented; cargo tests/clippy/audit and bundle validator tests passed.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.incident-runbook",
+      "title": "Create durable release incident runbook",
+      "status": "complete",
+      "depends_on": ["slice-a.workflow-hardening"],
+      "owner": "main",
+      "target_files": ["docs/RELEASE_INCIDENT_RUNBOOK.md"],
+      "acceptance": [
+        "The runbook defines severity criteria, acquisition-stop actions, GitHub Release warning actions, update-feed stop and impact checks, owners, evidence storage, patch-release decision, user notice, and closure criteria.",
+        "The runbook forbids overwriting published tags and assets."
+      ],
+      "verification": ["Documentation review and pre-publish specialist review"],
+      "result": "docs/RELEASE_INCIDENT_RUNBOOK.md created with severity, containment, ownership, evidence, patch, notice, and closure procedures.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.metadata",
+      "title": "Prepare v0.18.9 metadata",
+      "status": "complete",
+      "depends_on": ["slice-a.workflow-hardening", "slice-a.incident-runbook"],
+      "owner": "main",
+      "target_files": ["rust/Cargo.toml", "rust/Cargo.lock", "CHANGELOG.md"],
+      "acceptance": ["Version and changelog describe v0.18.9 from v0.18.8..HEAD."],
+      "verification": ["Version/tag/changelog comparison and commit coverage."],
+      "result": "Cargo.toml/Cargo.lock set to 0.18.9; CHANGELOG dated 2026-06-13 and release body draft covers v0.18.8..HEAD.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.gui-evidence",
+      "title": "Record release candidate GUI evidence",
+      "status": "complete",
+      "depends_on": ["slice-a.metadata"],
+      "owner": "main",
+      "target_files": ["rust/target/gui-smoke/evidence", "docs/releases/evidence/v0.18.9"],
+      "acceptance": [
+        "Windows GSM-006 and GSM-008 record selection, edit focus/select-all, deletion cancel/confirm, Apply and OK in a dated PASS/FAIL/SKIPPED report with evidence paths.",
+        "Evidence needed for the publish decision is copied to docs/releases/evidence/v0.18.9/.",
+        "macOS GUI is explicitly SKIPPED with environment reason and macOS CI test/build substitute evidence."
+      ],
+      "verification": ["GUI-TESTREPORT.local.md and evidence paths"],
+      "result": "Windows GSM-006/GSM-008 and headful smoke passed; a focus/select-all regression was found, fixed with a test, rebuilt, and reverified. Durable evidence is under docs/releases/evidence/v0.18.9/. macOS GUI is SKIPPED with CI substitute evidence.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.powershell-native",
+      "title": "Verify PowerShell native GNU build",
+      "status": "complete",
+      "depends_on": ["slice-a.metadata"],
+      "owner": "main",
+      "target_files": ["scripts/*.ps1", "rust/target/x86_64-pc-windows-gnu/release"],
+      "acceptance": [
+        "Changed PowerShell scripts parse.",
+        "Regression, CheckOnly, native build, and artifact validation pass.",
+        "Executable hashes, resource section, manifest, subsystem, and DLL dependencies are recorded."
+      ],
+      "verification": [
+        "scripts/test-build-rust-win.ps1",
+        "scripts/build-rust-win.ps1 -CheckOnly -NoInstall",
+        "scripts/build-rust-win.ps1 -NoInstall",
+        "scripts/test-windows-build-artifact.ps1"
+      ],
+      "result": "Regression tests, CheckOnly, native GNU release build, and artifact validation passed. Final FlistWalker.exe and flistwalker.exe were byte-identical with SHA-256 5826EFB5A34650B9ACD1FD4632402F2895171C356314935BA7C4FE42816D1F64.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.preflight",
+      "title": "Run release preflight",
+      "status": "complete",
+      "depends_on": ["slice-a.gui-evidence", "slice-a.powershell-native"],
+      "owner": "main",
+      "target_files": ["repository"],
+      "acceptance": ["VM-002/005 and project release preflight pass."],
+      "verification": ["Tests, clippy, audit, PowerShell checks, required grep, docs/assets/OSS review."],
+      "result": "cargo test --locked (504 tests, 6 ignored), clippy -D warnings, cargo audit, shell validators, PowerShell checks, four-target cargo metadata, required greps, ID ordering review, OSS review, and GUI evidence passed. No dependency changes beyond the root version.",
+      "blocker": null
+    },
+    {
+      "id": "slice-a.ci",
+      "title": "Commit release preparation and verify CI",
+      "status": "ready",
+      "depends_on": ["slice-a.preflight"],
+      "owner": "main",
+      "target_files": ["git", "GitHub Actions"],
+      "acceptance": ["Preparation commit is on master and CI is green."],
+      "verification": ["gh run watch"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.tag",
+      "title": "Create and push v0.18.9 tag",
+      "status": "pending",
+      "depends_on": ["slice-a.ci"],
+      "owner": "main",
+      "target_files": ["git tag"],
+      "acceptance": [
+        "Remote refs/tags/v0.18.9 is absent before creation; an existing tag stops the release and is never updated or deleted.",
+        "The tag is annotated; preparation commit SHA equals local and remote peeled SHAs; tag object SHA and peeled commit SHA are recorded."
+      ],
+      "verification": ["git ls-remote, git cat-file, git rev-parse, and gh run list"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.workflow",
+      "title": "Verify tagged release workflow and draft",
+      "status": "pending",
+      "depends_on": ["slice-b.tag"],
+      "owner": "main",
+      "target_files": ["GitHub Actions", "GitHub draft release"],
+      "acceptance": [
+        "All release jobs succeed; warnings block by default, and any exception records warning text, impact, approver, and reason in the pre-publish review and durable release record.",
+        "Downloaded draft contains exactly 24 expected assets and 22 checksum entries.",
+        "Checksums, signature, version names, .app exclusion, and both LICENSE.txt and THIRD_PARTY_NOTICES.txt in every archive and standalone sidecar pass."
+      ],
+      "verification": ["gh run watch", "gh release download", "scripts/validate-release-bundle.sh", "signature verification"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.body",
+      "title": "Finalize v0.18.9 release body",
+      "status": "pending",
+      "depends_on": ["slice-b.workflow"],
+      "owner": "main",
+      "target_files": ["GitHub release v0.18.9"],
+      "acceptance": ["Body follows fixed format, matches v0.18.8..v0.18.9, and states macOS is not notarized."],
+      "verification": ["gh release view and body policy grep"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.pre-publish-review",
+      "title": "Perform specialist pre-publish review",
+      "status": "pending",
+      "depends_on": ["slice-b.body"],
+      "owner": "subagent:specialists",
+      "target_files": ["draft release", "assets", "body", "workflow logs", "validation evidence"],
+      "acceptance": [
+        "Findings are handled and publish is approved.",
+        "Warning exceptions, if any, and docs/RELEASE_INCIDENT_RUNBOOK.md with concrete criteria, GitHub Release/update-feed operations, owners, evidence storage, patch decision, user notice, and closure criteria are approved."
+      ],
+      "verification": ["Testing/release-integrity and security/operability review"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-b.publish",
+      "title": "Publish v0.18.9",
+      "status": "pending",
+      "depends_on": ["slice-b.pre-publish-review"],
+      "owner": "main",
+      "target_files": ["GitHub release v0.18.9"],
+      "acceptance": [
+        "Release is public with the reviewed body and assets.",
+        "A post-publish incident never overwrites the published tag or assets and follows the approved containment runbook."
+      ],
+      "verification": ["gh release view"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-c.record",
+      "title": "Write durable v0.18.9 release evidence",
+      "status": "pending",
+      "depends_on": ["slice-b.publish"],
+      "owner": "main",
+      "target_files": ["docs/releases/v0.18.9.md", "docs/releases/evidence/v0.18.9"],
+      "acceptance": ["Permanent release evidence contains URLs, tag object and peeled commit SHAs, durable GUI evidence paths, PowerShell/asset/signature results, warnings, skips, and pre-publish review."],
+      "verification": ["Document review and link checks"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-c.final-review",
+      "title": "Perform specialist final review",
+      "status": "pending",
+      "depends_on": ["slice-c.record"],
+      "owner": "subagent:specialists",
+      "target_files": ["durable release record", "git diff", "validation evidence"],
+      "acceptance": ["Findings are handled and closure is approved."],
+      "verification": ["Final testing/security/operability review"],
+      "result": null,
+      "blocker": null
+    },
+    {
+      "id": "slice-c.cleanup",
+      "title": "Remove temporary plan artifacts",
+      "status": "pending",
+      "depends_on": ["slice-c.final-review"],
+      "owner": "main",
+      "target_files": ["AGENTS.md", "docs/EXECUTION-PLAN-20260612-*.md", "docs/EXECUTION-WORK-ITEMS-20260612-v0.18.9-release.json"],
+      "acceptance": ["Temporary artifacts are removed and closure commit is pushed."],
+      "verification": ["git status, git diff, CI status"],
+      "result": null,
+      "blocker": null
+    }
+  ]
+}

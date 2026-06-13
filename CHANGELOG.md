@@ -24,6 +24,32 @@
 ### Known issues
 -
 
+## [0.18.9] - 2026-06-13
+### Added
+- 保存済み root の `Manage list` で選択項目を直接編集し、重複や無効な path を検証して更新できるようにした。
+- Windows PowerShell だけで GNU toolchain の依存確認、任意導入、release build、生成物検証を行えるスクリプトと回帰テストを追加した。
+
+### Changed
+- 保存済み root の編集開始時に入力欄へ focus して全選択し、削除の確認、`Apply` / `OK` の反映境界を一貫させた。
+- tagged release workflow で署名秘密鍵から導出した公開鍵、配布 build の公開鍵、checksum 署名を照合し、期待する asset と license notice を公開前に検証するようにした。
+
+### Fixed
+- macOS の `/var` と `/private/var`、Windows の短縮 path と長い path など、同一 root の別表記を重複として判定できるようにした。
+- クロスプラットフォーム CI で OS 固有 path の前提が混在して失敗する問題と、Windows resource build test の配置に起因する Clippy エラーを修正した。
+- 同一 tag の既存 GitHub Release asset を release workflow が上書きできないようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+- release checksum の署名鍵と配布クライアントの検証鍵が一致しない場合に release を停止し、公開済み tag / asset を不変として扱うようにした。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.8] - 2026-06-09
 ### Added
 - GUI の保存済み root 操作を `Manage list` に統合し、別ウィンドウで path 直接入力または `Browse...` による追加、チェックボックス選択による削除、`Apply` / `OK` / `Cancel` の draft 反映境界を扱えるようにした。
@@ -1445,7 +1471,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.8...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.9...HEAD
+[0.18.9]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.9
 [0.18.8]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.8
 [0.18.7]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.7
 [0.18.6]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.6

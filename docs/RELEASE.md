@@ -154,11 +154,12 @@
 1. `vX.Y.Z` 形式の新規 tag を push する。
 2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked`、Linux の `cargo clippy --all-targets -- -D warnings`、`cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
 3. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
-4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。
-5. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内を続ける。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は `FLISTWALKER_UPDATE_SIGNING_KEY_HEX` で署名する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
+4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。同一tagのreleaseが既に存在する場合は停止し、既存assetを上書きしない。
+5. draft release には各 OS 向け実行バイナリ、配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内を続ける。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は署名秘密鍵から導出した公開鍵、build時の公開鍵、署名検証鍵が一致する場合だけ生成する。`scripts/validate-release-bundle.sh` で期待24 asset、22 checksum entry、archive/sidecarの `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を検証する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
 6. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
 7. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
 8. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
+9. 公開後に重大問題を検出した場合は `docs/RELEASE_INCIDENT_RUNBOOK.md` に従い、公開済みtag/assetを上書きせずに取得停止、警告、影響確認、patch releaseを行う。
 
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
@@ -167,6 +168,9 @@
 - `THIRD_PARTY_NOTICES.txt` が現在の `Cargo.toml` / `Cargo.lock` の direct dependency と license families を反映していること。自己更新系依存（例: `ed25519-dalek`, `rand_core`, `sha2`, `ureq`, `semver`）の追加・更新時は同一変更で見直すこと。
 - 自動更新を有効にする配布ビルドでは、`FLISTWALKER_UPDATE_PUBLIC_KEY_HEX` が build 時に設定されていること。
 - `SHA256SUMS.sig` を生成する release 作業では、`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` が package / draft release 作成時に設定されていること。
+- signing stepで公開鍵secretが64桁hexであり、署名秘密鍵から導出した公開鍵および配布buildへ埋め込む公開鍵と一致すること。
+- `scripts/validate-release-bundle.sh vX.Y.Z <bundle-dir>` が成功し、期待24 asset、22 checksum entry、archive/sidecarのlicense/noticeが揃うこと。
+- 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
