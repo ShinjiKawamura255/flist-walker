@@ -125,6 +125,7 @@
 - 2026-06-13: Release preparation commit `563b9af` passed CI Cross Platform run `27450898304`.
 - 2026-06-13: `v0.18.9` tagged workflow `27451243280` succeeded and produced a valid draft bundle, but pre-publish review rejected publication because macOS builds emitted project warnings and a `block v0.1.6` future-incompatibility warning.
 - 2026-06-13: Immutable-tag policy applied. `v0.18.9` remains unpublished; remediation and publication move to `v0.18.10`.
+- 2026-06-13: Warning repair commits `8525e65` and `d0e2a48` passed CI Cross Platform run `27466994937`; the macOS job and full run log contained no compiler, dependency, future-incompatibility, or GitHub warning annotations.
 
 ## 12. Communication Plan
 - 計画レビュー完了、blocking issue、公開完了時に報告する。

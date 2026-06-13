@@ -52,7 +52,7 @@
 
 ## Completion
 - [x] v0.18.9 candidate rejected without publication or tag rewrite
-- [ ] macOS release build warning-free
+- [x] macOS normal CI build warning-free (`27466994937`)
 - [ ] v0.18.10 tagged workflow green
 - [ ] Expected assets verified
 - [ ] Checksum and signature verified
