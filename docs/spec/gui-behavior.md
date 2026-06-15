@@ -55,6 +55,7 @@
 - MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
 - MUST: runtime config の `restore_tabs_enabled` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
 - MUST: 保存済み root list の追加・編集・削除は `Manage list` へ統合し、メインウィンドウへ埋め込まれない独立した非ブロッキング native 管理ウィンドウで操作できなければならない。
+- MUST: `Manage list` は FlistWalker メインウィンドウの外枠を基準に中央配置し、メインウィンドウが負座標を含む別ディスプレイ上にある場合も同じ仮想デスクトップ座標系で配置しなければならない。メインウィンドウの geometry を取得できない場合は OS の既定配置へフォールバックしてよい。
 - MUST: `Manage list` では直接入力したフォルダパス、または `Browse...` で選択したフォルダを draft list へ追加できなければならない。
 - MUST: `Manage list` の通常状態ではチェックボックスを表示せず、単一の draft list 項目を行選択し、`Edit` でその行だけをテキスト編集へ切り替えられなければならない。
 - MUST: `Manage list` の通常状態にある draft list 項目は、パス文字列部分だけでなく一覧の利用可能な横幅全体をクリックして行選択できなければならない。

@@ -335,7 +335,8 @@ pub(super) fn render_manage_root_list_dialog(app: &mut FlistWalkerApp, ctx: &egu
     let mut ok = false;
     let mut cancel = false;
     let viewport_id = FlistWalkerApp::manage_root_list_viewport_id();
-    let viewport_builder = FlistWalkerApp::manage_root_list_viewport_builder();
+    let parent_rect = ctx.input(|input| input.viewport().outer_rect);
+    let viewport_builder = FlistWalkerApp::manage_root_list_viewport_builder(parent_rect);
 
     ctx.show_viewport_immediate(viewport_id, viewport_builder, |ui, _class| {
         if ui.input(|input| {

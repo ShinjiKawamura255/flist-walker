@@ -33,7 +33,9 @@ fn saved_roots_test_scope(name: &str) -> SavedRootsTestScope {
 
 #[test]
 fn manage_root_list_uses_stable_native_viewport_contract() {
-    let builder = FlistWalkerApp::manage_root_list_viewport_builder();
+    let parent_rect =
+        egui::Rect::from_min_size(egui::pos2(-1200.0, 80.0), egui::vec2(1000.0, 700.0));
+    let builder = FlistWalkerApp::manage_root_list_viewport_builder(Some(parent_rect));
 
     assert_eq!(
         builder.title.as_deref(),
@@ -43,10 +45,18 @@ fn manage_root_list_uses_stable_native_viewport_contract() {
         builder.inner_size,
         Some(FlistWalkerApp::MANAGE_ROOT_LIST_VIEWPORT_SIZE)
     );
+    assert_eq!(builder.position, Some(egui::pos2(-1060.0, 200.0)));
     assert_eq!(
         FlistWalkerApp::manage_root_list_viewport_id(),
         egui::ViewportId::from_hash_of("flistwalker-manage-root-list")
     );
+}
+
+#[test]
+fn manage_root_list_uses_os_position_when_parent_geometry_is_unavailable() {
+    let builder = FlistWalkerApp::manage_root_list_viewport_builder(None);
+
+    assert_eq!(builder.position, None);
 }
 
 #[test]

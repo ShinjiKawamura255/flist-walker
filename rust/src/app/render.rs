@@ -96,13 +96,20 @@ impl FlistWalkerApp {
         egui::ViewportId::from_hash_of("flistwalker-manage-root-list")
     }
 
-    pub(super) fn manage_root_list_viewport_builder() -> egui::ViewportBuilder {
-        egui::ViewportBuilder::default()
+    pub(super) fn manage_root_list_viewport_builder(
+        parent_rect: Option<egui::Rect>,
+    ) -> egui::ViewportBuilder {
+        let mut builder = egui::ViewportBuilder::default()
             .with_title(Self::MANAGE_ROOT_LIST_VIEWPORT_TITLE)
             .with_inner_size(Self::MANAGE_ROOT_LIST_VIEWPORT_SIZE)
             .with_min_inner_size(egui::vec2(520.0, 320.0))
             .with_resizable(true)
-            .with_active(true)
+            .with_active(true);
+        if let Some(parent_rect) = parent_rect {
+            let position = parent_rect.center() - (Self::MANAGE_ROOT_LIST_VIEWPORT_SIZE * 0.5);
+            builder = builder.with_position(position);
+        }
+        builder
     }
 
     pub(super) fn manage_root_list_action_button_rects(
