@@ -16,6 +16,7 @@ use execute::{
     collect_entries_parallel, collect_entries_sequential, collect_parallel, collect_sequential,
 };
 use match_eval::{compile_query, SearchContext};
+#[cfg(test)]
 pub(crate) use rank::filter_search_results;
 use rank::{
     materialize_scored_entries, scored_indices_to_paths, sort_scored_matches, top_ranked_scores,
@@ -39,6 +40,31 @@ pub(crate) struct SearchScoredMatches {
     pub(crate) scored: Vec<SearchCandidateScore>,
 }
 
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct SearchResultSet {
+    pub(crate) results: Vec<(PathBuf, f64)>,
+    pub(crate) total_match_count: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum SearchResultSortMode {
+    #[default]
+    Score,
+    NameAsc,
+    NameDesc,
+    ModifiedDesc,
+    ModifiedAsc,
+    CreatedDesc,
+    CreatedAsc,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum SearchResultSortScope {
+    #[default]
+    ShownResults,
+    AllMatches,
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn rank_search_results(
     entries: &Arc<Vec<Entry>>,
@@ -49,7 +75,9 @@ pub(crate) fn rank_search_results(
     ignore_case: bool,
     prefer_relative: bool,
     prefix_cache: &mut SearchPrefixCache,
-) -> (Vec<(PathBuf, f64)>, Option<String>) {
+    sort_mode: SearchResultSortMode,
+    sort_scope: SearchResultSortScope,
+) -> (SearchResultSet, Option<String>) {
     let query_trimmed = query.trim().to_string();
     let snapshot = SearchEntriesSnapshotKey::from_entries(entries);
     let cached_candidates = if use_regex {
@@ -57,18 +85,47 @@ pub(crate) fn rank_search_results(
     } else {
         prefix_cache.lookup_candidates(snapshot, &query_trimmed)
     };
-    let scored_matches = match try_collect_entry_matches(
-        query,
-        entries,
-        use_regex,
-        ignore_case,
-        Some(root),
-        prefer_relative,
-        cached_candidates.as_ref().map(|items| items.as_slice()),
-    ) {
-        Ok(scored_matches) => scored_matches,
-        Err(err) => return (Vec::new(), Some(err)),
+    let scored_matches = if query_trimmed.is_empty() {
+        SearchScoredMatches {
+            scored: entries
+                .iter()
+                .enumerate()
+                .map(|(index, _)| SearchCandidateScore {
+                    index,
+                    score: 0.0,
+                    ordinal: index,
+                })
+                .collect(),
+        }
+    } else {
+        match try_collect_entry_matches(
+            query,
+            entries,
+            use_regex,
+            ignore_case,
+            Some(root),
+            prefer_relative,
+            cached_candidates.as_ref().map(|items| items.as_slice()),
+        ) {
+            Ok(scored_matches) => scored_matches,
+            Err(err) => return (SearchResultSet::default(), Some(err)),
+        }
     };
+    let mut scored_matches = scored_matches;
+    if !use_regex {
+        scored_matches.scored.retain(|item| {
+            entries.get(item.index).is_some_and(|entry| {
+                crate::query::has_visible_match(
+                    entry.path(),
+                    root,
+                    query,
+                    prefer_relative,
+                    ignore_case,
+                )
+            })
+        });
+    }
+    let total_match_count = scored_matches.scored.len();
     if SearchPrefixCache::is_cacheable_query(&query_trimmed)
         && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
     {
@@ -77,19 +134,134 @@ pub(crate) fn rank_search_results(
         let matched_indices = ranked.iter().map(|item| item.index).collect();
         prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
     }
-    let ranked = top_ranked_scores(scored_matches.scored, limit);
-    let raw_results = scored_indices_to_paths(entries, &ranked, limit);
+    let ranked = match (sort_scope, sort_mode) {
+        (SearchResultSortScope::AllMatches, SearchResultSortMode::NameAsc)
+        | (SearchResultSortScope::AllMatches, SearchResultSortMode::NameDesc) => {
+            top_name_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
+        }
+        (
+            SearchResultSortScope::AllMatches,
+            SearchResultSortMode::ModifiedDesc
+            | SearchResultSortMode::ModifiedAsc
+            | SearchResultSortMode::CreatedDesc
+            | SearchResultSortMode::CreatedAsc,
+        ) => top_metadata_sorted_scores(entries, scored_matches.scored, limit, sort_mode),
+        _ => top_ranked_scores(scored_matches.scored, limit),
+    };
+    let results = scored_indices_to_paths(entries, &ranked, limit);
     (
-        filter_search_results(
-            raw_results,
-            root,
-            query,
-            prefer_relative,
-            use_regex,
-            ignore_case,
-        ),
+        SearchResultSet {
+            results,
+            total_match_count,
+        },
         None,
     )
+}
+
+fn entry_name_key(entry: &Entry) -> String {
+    entry
+        .path()
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
+}
+
+fn entry_path_key(entry: &Entry) -> String {
+    crate::path_utils::path_key(entry.path()).replace('\\', "/")
+}
+
+fn top_name_sorted_scores(
+    entries: &[Entry],
+    mut scored: Vec<SearchCandidateScore>,
+    limit: usize,
+    mode: SearchResultSortMode,
+) -> Vec<IndexedScore> {
+    let desc = mode == SearchResultSortMode::NameDesc;
+    scored.sort_unstable_by(|a, b| {
+        let Some(entry_a) = entries.get(a.index) else {
+            return std::cmp::Ordering::Greater;
+        };
+        let Some(entry_b) = entries.get(b.index) else {
+            return std::cmp::Ordering::Less;
+        };
+        let cmp = entry_name_key(entry_a)
+            .cmp(&entry_name_key(entry_b))
+            .then_with(|| entry_path_key(entry_a).cmp(&entry_path_key(entry_b)))
+            .then_with(|| a.ordinal.cmp(&b.ordinal));
+        if desc {
+            cmp.reverse()
+        } else {
+            cmp
+        }
+    });
+    scored
+        .into_iter()
+        .take(limit)
+        .map(|item| IndexedScore {
+            index: item.index,
+            score: item.score,
+        })
+        .collect()
+}
+
+fn top_metadata_sorted_scores(
+    entries: &[Entry],
+    scored: Vec<SearchCandidateScore>,
+    limit: usize,
+    mode: SearchResultSortMode,
+) -> Vec<IndexedScore> {
+    let desc = matches!(
+        mode,
+        SearchResultSortMode::ModifiedDesc | SearchResultSortMode::CreatedDesc
+    );
+    let mut items = scored
+        .into_iter()
+        .filter_map(|item| {
+            let entry = entries.get(item.index)?;
+            let metadata = std::fs::metadata(entry.path()).ok();
+            let timestamp = match mode {
+                SearchResultSortMode::ModifiedDesc | SearchResultSortMode::ModifiedAsc => {
+                    metadata.and_then(|meta| meta.modified().ok())
+                }
+                SearchResultSortMode::CreatedDesc | SearchResultSortMode::CreatedAsc => {
+                    metadata.and_then(|meta| meta.created().ok())
+                }
+                _ => None,
+            };
+            Some((
+                item,
+                entry_name_key(entry),
+                entry_path_key(entry),
+                timestamp,
+            ))
+        })
+        .collect::<Vec<_>>();
+    items.sort_unstable_by(|a, b| {
+        match (a.3, b.3) {
+            (Some(a_time), Some(b_time)) => {
+                if desc {
+                    b_time.cmp(&a_time)
+                } else {
+                    a_time.cmp(&b_time)
+                }
+            }
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+        .then_with(|| a.1.cmp(&b.1))
+        .then_with(|| a.2.cmp(&b.2))
+        .then_with(|| a.0.ordinal.cmp(&b.0.ordinal))
+    });
+    items
+        .into_iter()
+        .take(limit)
+        .map(|(item, _, _, _)| IndexedScore {
+            index: item.index,
+            score: item.score,
+        })
+        .collect()
 }
 
 fn try_collect_entry_matches(
@@ -229,9 +401,30 @@ pub fn try_search_entries_with_scope(
     root: Option<&Path>,
     prefer_relative: bool,
 ) -> Result<Vec<(PathBuf, f64)>, String> {
+    Ok(try_search_entries_with_scope_and_count(
+        query,
+        entries,
+        limit,
+        use_regex,
+        ignore_case,
+        root,
+        prefer_relative,
+    )?
+    .results)
+}
+
+pub(crate) fn try_search_entries_with_scope_and_count(
+    query: &str,
+    entries: &[PathBuf],
+    limit: usize,
+    use_regex: bool,
+    ignore_case: bool,
+    root: Option<&Path>,
+    prefer_relative: bool,
+) -> Result<SearchResultSet, String> {
     let started_at = Instant::now();
     let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
-    let scored = try_collect_search_matches(
+    let mut scored = try_collect_search_matches(
         query,
         &path_refs,
         use_regex,
@@ -240,6 +433,16 @@ pub fn try_search_entries_with_scope(
         prefer_relative,
         None,
     )?;
+    if !use_regex {
+        if let Some(root) = root {
+            scored.scored.retain(|item| {
+                path_refs.get(item.index).is_some_and(|path| {
+                    crate::query::has_visible_match(path, root, query, prefer_relative, ignore_case)
+                })
+            });
+        }
+    }
+    let total_match_count = scored.scored.len();
     let results = materialize_scored_entries(&path_refs, top_ranked_scores(scored.scored, limit));
     let elapsed_ms = started_at.elapsed().as_millis();
     debug!(
@@ -261,7 +464,10 @@ pub fn try_search_entries_with_scope(
             "search latency exceeded 100ms target"
         );
     }
-    Ok(results)
+    Ok(SearchResultSet {
+        results,
+        total_match_count,
+    })
 }
 
 pub fn try_search_entries_indexed_with_scope(

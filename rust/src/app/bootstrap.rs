@@ -5,9 +5,9 @@ use super::{
     FeatureStateBundle, FileListManager, FileListWorkerBus, FlistWalkerApp, HashSet,
     HighlightCacheState, IndexBuildResult, IndexCoordinator, IndexRequest, IndexResponse,
     IndexSource, KindWorkerBus, LaunchSettings, PreviewCacheState, PreviewWorkerBus, QueryState,
-    Receiver, ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState, SearchCoordinator,
-    SearchRequest, SearchResponse, Sender, SortMetadataCacheState, SortWorkerBus, TabSessionState,
-    UpdateWorkerBus, WorkerBus, WorkerRuntime,
+    Receiver, ResultSortMode, ResultSortScope, RootBrowserState, RuntimeUiState, SavedTabState,
+    SearchCoordinator, SearchRequest, SearchResponse, Sender, SortMetadataCacheState,
+    SortWorkerBus, TabSessionState, UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
 use crate::ignore_list::load_ignore_terms_from_current_exe;
@@ -293,6 +293,8 @@ impl FlistWalkerApp {
                     base_results: Vec::new(),
                     results: Vec::new(),
                     result_sort_mode: ResultSortMode::Score,
+                    result_sort_scope: ResultSortScope::ShownResults,
+                    total_match_count: 0,
                     pinned_paths: HashSet::new(),
                     current_row: Some(0),
                     emacs_keybindings_enabled,

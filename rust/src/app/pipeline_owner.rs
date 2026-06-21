@@ -1,4 +1,7 @@
-use super::{result_reducer, AppTabState, Entry, FlistWalkerApp, SearchRequest};
+use super::{
+    result_reducer, AppTabState, Entry, FlistWalkerApp, ResultSortMode, ResultSortScope,
+    SearchRequest,
+};
 use crate::app::search_coordinator::SearchResponseRoute;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -69,7 +72,9 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn update_results(&mut self) {
-        if self.app.shell.runtime.query_state.query.trim().is_empty() {
+        if self.app.shell.runtime.query_state.query.trim().is_empty()
+            && !self.search_worker_needed_for_empty_query_sort()
+        {
             self.app.shell.search.clear_active_request_state();
             let results = self
                 .app
@@ -81,6 +86,7 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
+            self.app.shell.runtime.total_match_count = self.app.shell.runtime.entries.len();
             self.app.replace_results_snapshot(results, false);
             return;
         }
@@ -121,6 +127,7 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
+            self.app.shell.runtime.total_match_count = base.len();
             self.app
                 .replace_results_snapshot(results, keep_scroll_position);
             return;
@@ -148,6 +155,10 @@ impl<'a> PipelineOwner<'a> {
         self.app.shell.indexing.search_rerun_pending = false;
 
         if self.app.shell.runtime.query_state.query.trim().is_empty() {
+            if self.search_worker_needed_for_empty_query_sort() {
+                self.update_results();
+                return;
+            }
             self.app.shell.search.clear_active_request_state();
             let results = self
                 .app
@@ -159,6 +170,7 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
+            self.app.shell.runtime.total_match_count = self.app.shell.runtime.entries.len();
             self.app
                 .replace_results_snapshot(results, keep_scroll_position);
         } else {
@@ -179,6 +191,7 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
+            self.app.shell.runtime.total_match_count = source.len();
             self.app.shell.indexing.last_search_snapshot_len = source.len();
             self.app.shell.indexing.last_incremental_results_refresh = Instant::now();
             self.app.replace_results_snapshot(results, true);
@@ -196,6 +209,7 @@ impl<'a> PipelineOwner<'a> {
             .cloned()
             .map(|entry| (entry.path, 0.0))
             .collect();
+        self.app.shell.runtime.total_match_count = self.app.shell.runtime.entries.len();
         self.app.replace_results_snapshot(results, true);
     }
 
@@ -246,6 +260,8 @@ impl<'a> PipelineOwner<'a> {
             prefer_relative: FlistWalkerApp::prefer_relative_display_for(
                 &tab.index_state.index.source,
             ),
+            sort_mode: tab.result_state.result_sort_mode,
+            sort_scope: tab.result_state.result_sort_scope,
         }
     }
 
@@ -259,7 +275,14 @@ impl<'a> PipelineOwner<'a> {
             ignore_case: self.app.shell.runtime.ignore_case,
             root: self.app.shell.runtime.root.clone(),
             prefer_relative: self.app.prefer_relative_display(),
+            sort_mode: self.app.shell.runtime.result_sort_mode,
+            sort_scope: self.app.shell.runtime.result_sort_scope,
         }
+    }
+
+    fn search_worker_needed_for_empty_query_sort(&self) -> bool {
+        self.app.shell.runtime.result_sort_scope == ResultSortScope::AllMatches
+            && self.app.shell.runtime.result_sort_mode != ResultSortMode::Score
     }
 
     fn filtered_entries(&self, source: &[Entry]) -> Vec<Entry> {

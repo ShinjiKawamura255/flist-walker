@@ -21,7 +21,9 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) result_sort_mode: String,
+    pub(super) result_sort_scope: String,
     pub(super) result_count: usize,
+    pub(super) total_match_count: usize,
     pub(super) current_result: Option<String>,
     pub(super) pinned_count: usize,
     pub(super) tab_count: usize,
@@ -155,7 +157,9 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         include_files: app.shell.runtime.include_files,
         include_dirs: app.shell.runtime.include_dirs,
         result_sort_mode: app.shell.runtime.result_sort_mode.label().to_string(),
+        result_sort_scope: app.shell.runtime.result_sort_scope.label().to_string(),
         result_count: app.shell.runtime.results.len(),
+        total_match_count: app.shell.runtime.total_match_count,
         current_result: app
             .shell
             .runtime

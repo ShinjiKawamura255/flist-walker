@@ -1,6 +1,6 @@
 use super::{
     normalize_windows_path_buf, FlistWalkerApp, PendingActiveIndexFinish, ResultSortMode,
-    SavedTabState, TabAccentColor,
+    ResultSortScope, SavedTabState, TabAccentColor,
 };
 use crate::app::worker_protocol::IndexEntry;
 use crate::entry::Entry;
@@ -50,6 +50,8 @@ pub(super) struct TabResultState {
     pub(super) base_results: Vec<(PathBuf, f64)>,
     pub(super) results: Vec<(PathBuf, f64)>,
     pub(super) result_sort_mode: ResultSortMode,
+    pub(super) result_sort_scope: ResultSortScope,
+    pub(super) total_match_count: usize,
     pub(super) pending_sort_request_id: Option<u64>,
     pub(super) sort_in_progress: bool,
     pub(super) pinned_paths: HashSet<PathBuf>,
@@ -214,6 +216,8 @@ impl TabResultState {
             base_results: shell.shell.runtime.base_results.clone(),
             results: shell.shell.runtime.results.clone(),
             result_sort_mode: shell.shell.runtime.result_sort_mode,
+            result_sort_scope: shell.shell.runtime.result_sort_scope,
+            total_match_count: shell.shell.runtime.total_match_count,
             pending_sort_request_id: shell.shell.worker_bus.sort.pending_request_id,
             sort_in_progress: shell.shell.worker_bus.sort.in_progress,
             pinned_paths: shell.shell.runtime.pinned_paths.clone(),
@@ -227,6 +231,8 @@ impl TabResultState {
         shell.shell.runtime.base_results = self.base_results.clone();
         shell.shell.runtime.results = self.results.clone();
         shell.shell.runtime.result_sort_mode = self.result_sort_mode;
+        shell.shell.runtime.result_sort_scope = self.result_sort_scope;
+        shell.shell.runtime.total_match_count = self.total_match_count;
         shell.shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
         shell.shell.worker_bus.sort.in_progress = self.sort_in_progress;
         shell.shell.runtime.pinned_paths = self.pinned_paths.clone();
@@ -341,6 +347,8 @@ impl AppTabState {
                 base_results: Vec::new(),
                 results: Vec::new(),
                 result_sort_mode: ResultSortMode::Score,
+                result_sort_scope: ResultSortScope::ShownResults,
+                total_match_count: 0,
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pinned_paths: HashSet::new(),

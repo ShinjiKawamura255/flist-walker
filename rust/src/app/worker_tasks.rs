@@ -9,7 +9,9 @@ use super::SortMetadata;
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
 use crate::indexer::write_filelist_cancellable;
-use crate::search::{rank_search_results, SearchPrefixCache};
+use crate::search::{
+    rank_search_results, SearchPrefixCache, SearchResultSortMode, SearchResultSortScope,
+};
 use crate::ui_model::build_preview_text_with_kind;
 use crate::updater::{check_for_update, prepare_and_start_update};
 use std::path::Path;
@@ -39,6 +41,25 @@ fn trace_worker_receiver_closed(flow: &'static str, request_id: u64) {
     );
 }
 
+fn search_sort_mode(mode: super::ResultSortMode) -> SearchResultSortMode {
+    match mode {
+        super::ResultSortMode::Score => SearchResultSortMode::Score,
+        super::ResultSortMode::NameAsc => SearchResultSortMode::NameAsc,
+        super::ResultSortMode::NameDesc => SearchResultSortMode::NameDesc,
+        super::ResultSortMode::ModifiedDesc => SearchResultSortMode::ModifiedDesc,
+        super::ResultSortMode::ModifiedAsc => SearchResultSortMode::ModifiedAsc,
+        super::ResultSortMode::CreatedDesc => SearchResultSortMode::CreatedDesc,
+        super::ResultSortMode::CreatedAsc => SearchResultSortMode::CreatedAsc,
+    }
+}
+
+fn search_sort_scope(scope: super::ResultSortScope) -> SearchResultSortScope {
+    match scope {
+        super::ResultSortScope::ShownResults => SearchResultSortScope::ShownResults,
+        super::ResultSortScope::AllMatches => SearchResultSortScope::AllMatches,
+    }
+}
+
 pub(super) fn spawn_search_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
@@ -59,7 +80,7 @@ pub(super) fn spawn_search_worker(
                 req = newer;
             }
             trace_worker_started("search", req.request_id);
-            let (results, error) = rank_search_results(
+            let (result_set, error) = rank_search_results(
                 &req.entries,
                 &req.query,
                 &req.root,
@@ -68,12 +89,15 @@ pub(super) fn spawn_search_worker(
                 req.ignore_case,
                 req.prefer_relative,
                 &mut prefix_cache,
+                search_sort_mode(req.sort_mode),
+                search_sort_scope(req.sort_scope),
             );
             info!(
                 flow = "search",
                 event = "finished",
                 request_id = req.request_id,
-                result_count = results.len(),
+                result_count = result_set.results.len(),
+                total_match_count = result_set.total_match_count,
                 has_error = error.is_some(),
                 "worker request finished"
             );
@@ -81,7 +105,10 @@ pub(super) fn spawn_search_worker(
             if tx_res
                 .send(SearchResponse {
                     request_id: req.request_id,
-                    results,
+                    results: result_set.results,
+                    total_match_count: result_set.total_match_count,
+                    sort_mode: req.sort_mode,
+                    sort_scope: req.sort_scope,
                     error,
                 })
                 .is_err()

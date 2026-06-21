@@ -42,6 +42,22 @@ pub(super) enum ResultSortMode {
     CreatedAsc,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum ResultSortScope {
+    #[default]
+    ShownResults,
+    AllMatches,
+}
+
+impl ResultSortScope {
+    pub(super) fn label(self) -> &'static str {
+        match self {
+            Self::ShownResults => "Shown results",
+            Self::AllMatches => "All matches",
+        }
+    }
+}
+
 impl ResultSortMode {
     pub(super) fn label(self) -> &'static str {
         match self {
@@ -269,6 +285,8 @@ pub struct AppRuntimeState {
     pub(super) base_results: Vec<(PathBuf, f64)>,
     pub(super) results: Vec<(PathBuf, f64)>,
     pub(super) result_sort_mode: ResultSortMode,
+    pub(super) result_sort_scope: ResultSortScope,
+    pub(super) total_match_count: usize,
     pub(super) pinned_paths: HashSet<PathBuf>,
     pub(super) current_row: Option<usize>,
     pub(super) emacs_keybindings_enabled: bool,

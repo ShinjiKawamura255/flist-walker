@@ -19,7 +19,7 @@ pub(super) use crate::app::{
     EntryKind, FileListDialogKind, FileListManager, FileListRequest, FileListResponse,
     FlistWalkerApp, HighlightCacheKey, HighlightCacheState, IndexBuildResult, IndexEntry,
     IndexRequest, IndexResponse, IndexSource, LaunchSettings, PreviewRequest, PreviewResponse,
-    QueryState, ResultSortMode, RootBrowserState, RuntimeUiState, SavedTabState,
+    QueryState, ResultSortMode, ResultSortScope, RootBrowserState, RuntimeUiState, SavedTabState,
     SavedWindowGeometry, SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState,
     SortMetadataRequest, SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState,
     TabSessionState, UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,

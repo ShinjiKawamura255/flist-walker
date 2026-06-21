@@ -102,6 +102,8 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         base_results: vec![(root.join("base.txt"), 0.5)],
         results: vec![(root.join("visible.txt"), 1.0)],
         result_sort_mode: ResultSortMode::NameAsc,
+        result_sort_scope: ResultSortScope::AllMatches,
+        total_match_count: 12,
         pending_sort_request_id: Some(21),
         sort_in_progress: true,
         pinned_paths: HashSet::from([root.join("pinned.txt")]),
@@ -246,6 +248,14 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     assert_eq!(
         restored.result_state.result_sort_mode,
         snapshot.result_state.result_sort_mode
+    );
+    assert_eq!(
+        restored.result_state.result_sort_scope,
+        snapshot.result_state.result_sort_scope
+    );
+    assert_eq!(
+        restored.result_state.total_match_count,
+        snapshot.result_state.total_match_count
     );
     assert_eq!(
         restored.result_state.pending_sort_request_id,

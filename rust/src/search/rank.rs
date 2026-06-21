@@ -37,6 +37,7 @@ pub(crate) fn top_ranked_scores(
         .collect()
 }
 
+#[cfg(test)]
 pub(crate) fn filter_search_results(
     results: Vec<(PathBuf, f64)>,
     root: &Path,

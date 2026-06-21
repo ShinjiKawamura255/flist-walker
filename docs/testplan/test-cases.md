@@ -67,6 +67,8 @@
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
 | TC-056A | docs+security | `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に依存経路、受容理由、owner、review cadence、再評価 trigger を記録する | SP-012 |
 | TC-057 | unit | `Score` / `Name` / `Modified` / `Created` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
+| TC-057A | unit | 検索応答は limit 前の全マッチ件数を返し、GUI snapshot / status は表示件数と全マッチ件数を区別できる | SP-010, SP-013 |
+| TC-057B | unit | `All matches` scope の非 `Score` ソートは検索 worker に再要求され、表示中 snapshot 外の候補も全マッチ集合の sort key 上位なら表示対象になる | SP-013 |
 | TC-058 | unit | query 変更や結果更新時にソートを破棄し、インデクシング経路へ属性取得を追加しない | SP-013 |
 | TC-059 | unit | 日付ソートの未キャッシュ path は別 worker へ要求し、古い応答は request_id で破棄する | SP-013 |
 | TC-060 | unit | sort metadata cache は上限を超えて増加せず、古い項目を破棄する | SP-013 |

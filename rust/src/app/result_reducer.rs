@@ -90,8 +90,10 @@ pub(super) fn apply_background_search_response(
         .unwrap_or_default();
     tab.result_state.base_results = response.results.clone();
     tab.result_state.results = response.results;
+    tab.result_state.total_match_count = response.total_match_count;
     tab.result_state.results_compacted = false;
-    tab.result_state.result_sort_mode = ResultSortMode::Score;
+    tab.result_state.result_sort_mode = response.sort_mode;
+    tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
     clamp_tab_result_selection(tab);
     FlistWalkerApp::compact_inactive_tab_state(tab);
@@ -110,6 +112,9 @@ pub(super) fn apply_active_search_response(
     } else {
         app.clear_notice();
     }
+    app.shell.runtime.total_match_count = response.total_match_count;
+    app.shell.runtime.result_sort_mode = response.sort_mode;
+    app.shell.runtime.result_sort_scope = response.sort_scope;
     app.replace_results_snapshot(response.results, false);
     if app.shell.indexing.search_rerun_pending
         && !app.shell.runtime.query_state.query.trim().is_empty()
@@ -133,7 +138,6 @@ pub(super) fn replace_results_snapshot(
     keep_scroll_position: bool,
 ) {
     app.shell.worker_bus.sort.clear_request();
-    app.shell.runtime.result_sort_mode = ResultSortMode::Score;
     app.shell.runtime.base_results = results.clone();
     // Regression guard: search refreshes must keep the cursor on the same row number.
     // Following the previous path here makes the highlight jump when the query changes.
@@ -144,6 +148,7 @@ pub(super) fn invalidate_result_sort(app: &mut FlistWalkerApp, keep_scroll_posit
     let had_non_score_sort = app.shell.runtime.result_sort_mode != ResultSortMode::Score;
     app.shell.worker_bus.sort.clear_request();
     app.shell.runtime.result_sort_mode = ResultSortMode::Score;
+    app.shell.runtime.result_sort_scope = super::ResultSortScope::ShownResults;
     if had_non_score_sort
         && !app.shell.runtime.base_results.is_empty()
         && app.shell.runtime.results != app.shell.runtime.base_results
@@ -185,6 +190,13 @@ fn request_sort_metadata(
 }
 
 pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
+    if app.shell.runtime.result_sort_scope == super::ResultSortScope::AllMatches
+        && app.shell.runtime.result_sort_mode != ResultSortMode::Score
+    {
+        app.shell.worker_bus.sort.clear_request();
+        app.enqueue_search_request();
+        return;
+    }
     if app.shell.runtime.base_results.is_empty() {
         app.shell.worker_bus.sort.clear_request();
         app.refresh_status_line();
@@ -217,6 +229,14 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
 
 pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMode) {
     app.shell.runtime.result_sort_mode = mode;
+    apply_result_sort(app, false);
+}
+
+pub(super) fn set_result_sort_scope(app: &mut FlistWalkerApp, scope: super::ResultSortScope) {
+    if app.shell.runtime.result_sort_scope == scope {
+        return;
+    }
+    app.shell.runtime.result_sort_scope = scope;
     apply_result_sort(app, false);
 }
 

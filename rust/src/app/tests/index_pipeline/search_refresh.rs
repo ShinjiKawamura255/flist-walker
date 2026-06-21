@@ -13,6 +13,9 @@ fn search_error_updates_notice() {
     tx.send(SearchResponse {
         request_id: 7,
         results: Vec::new(),
+        total_match_count: 0,
+        sort_mode: ResultSortMode::Score,
+        sort_scope: ResultSortScope::ShownResults,
         error: Some("invalid regex '[*': syntax error".to_string()),
     })
     .expect("send search response");
@@ -44,6 +47,9 @@ fn stale_search_response_is_ignored_after_index_refresh() {
         .send(SearchResponse {
             request_id: 5,
             results: vec![(root.join("stale.txt"), 1.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
             error: None,
         })
         .expect("send stale search response");

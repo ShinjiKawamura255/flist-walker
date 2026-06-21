@@ -12,6 +12,7 @@ pub(super) struct StatusLineContext<'a> {
     pub(super) tab_count: usize,
     pub(super) indexed_count: usize,
     pub(super) results_len: usize,
+    pub(super) total_match_count: usize,
     pub(super) limit: usize,
     pub(super) pinned_paths_len: usize,
     pub(super) search_in_progress: bool,
@@ -34,7 +35,9 @@ pub(super) fn build_status_line(ctx: StatusLineContext<'_>) -> String {
     } else {
         format!("Tab: {}/{}", ctx.active_tab + 1, ctx.tab_count)
     };
-    let clip_text = if ctx.results_len >= ctx.limit {
+    let clip_text = if ctx.total_match_count > ctx.results_len {
+        format!(" of {} shown", ctx.total_match_count)
+    } else if ctx.results_len >= ctx.limit {
         format!(" (limit {} reached)", ctx.limit)
     } else {
         String::new()
@@ -184,6 +187,7 @@ impl FlistWalkerApp {
             tab_count: self.shell.tabs.len(),
             indexed_count,
             results_len: self.shell.runtime.results.len(),
+            total_match_count: self.shell.runtime.total_match_count,
             limit: self.shell.runtime.limit,
             pinned_paths_len: self.shell.runtime.pinned_paths.len(),
             search_in_progress: self.shell.search.in_progress(),
@@ -379,6 +383,7 @@ mod tests {
             tab_count: 3,
             indexed_count: 42,
             results_len: 7,
+            total_match_count: 12,
             limit: 10,
             pinned_paths_len: 2,
             search_in_progress: true,
@@ -398,6 +403,7 @@ mod tests {
         assert!(status.contains("Tab: 2/3"));
         assert!(status.contains("Entries: 42"));
         assert!(status.contains("Results: 7"));
+        assert!(status.contains("of 12 shown"));
         assert!(status.contains("Pinned: 2"));
         assert!(status.contains("Searching..."));
         assert!(status.contains("Indexing..."));

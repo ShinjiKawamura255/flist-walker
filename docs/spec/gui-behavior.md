@@ -76,6 +76,8 @@
 - MUST: タブ並び替え時は active tab を index ではなく同一タブ実体として維持し、root/query/filter/進行中状態を他タブへ取り違えてはならない。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 - MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` を選択できる。
+- MUST: 結果ペインは表示件数と limit 前の全マッチ件数を区別できる表示を持ち、limit により一部だけを表示している場合は `shown of total` 相当の情報を示す。
+- MUST: 結果ペインは sort scope として `Shown results` / `All matches` を選択でき、既定は `Shown results` とする。
 
 ### Preconditions / Postconditions
 - Preconditions: GUI モードで起動しインデックス構築可能。
@@ -98,10 +100,14 @@
 - Postconditions: 回帰実施可否を判定できる記録が残る。
 ## SP-013 検索結果ソート
 ### Requirements
-- MUST: ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。
+- MUST: 既定の `Shown results` scope では、ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。
+- MUST: 検索応答は表示上限適用前の全マッチ件数を返し、GUI は表示中件数と全マッチ件数を区別して扱わなければならない。
+- MUST: `All matches` scope では、現在の query / File・Folder filter / Ignore List / regex / case-sensitivity 条件を満たす全マッチ集合から選択 sort key の上位 `limit` 件を作り直さなければならない。
+- MUST: `All matches` scope であっても、GUI は全マッチを一覧へ全件描画せず、表示対象は `limit` 件以内に抑えなければならない。
 - MUST: `Score` は検索エンジンが返した元の順位へ戻せる。
 - MUST: `Name` ソートはファイル/ディレクトリ名を主キー、正規化済みフルパスを副キーとして即時に並び替える。
 - MUST: `Modified` / `Created` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
+- MUST: `All matches` scope の非 `Score` ソートは UI thread ではなく worker で実行し、検索応答の request_id / tab routing により古い応答を破棄できなければならない。
 - MUST: `Modified` / `Created` の取得中も UI 入力と一覧操作を維持する。
 - MUST: query が 1 文字でも変化した場合、適用済みソートと保留中ソート要求を破棄し、表示順を `Score` に戻す。
 - MUST: root 変更、index refresh、filter 変更、tab 切替で結果スナップショットが変化した場合も、保留中ソート要求は破棄できる。

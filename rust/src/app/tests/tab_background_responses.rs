@@ -45,6 +45,9 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .send(SearchResponse {
             request_id: search_request_id,
             results: vec![(selected.clone(), 9.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
             error: None,
         })
         .expect("send search response");
@@ -230,6 +233,9 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         .send(SearchResponse {
             request_id: 89,
             results: vec![(background_file.clone(), 9.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
             error: None,
         })
         .expect("send background search response");

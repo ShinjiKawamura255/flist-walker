@@ -434,6 +434,9 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
         .send(SearchResponse {
             request_id: search_request_id,
             results: vec![(indexed_file.clone(), 9.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
             error: None,
         })
         .expect("send background search response");

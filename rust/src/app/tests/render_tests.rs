@@ -280,7 +280,9 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             "include_files": true,
             "include_dirs": true,
             "result_sort_mode": "Score",
+            "result_sort_scope": "Shown results",
             "result_count": 0,
+            "total_match_count": 0,
             "current_result": null,
             "pinned_count": 0,
             "tab_count": 1,
@@ -322,7 +324,9 @@ fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     app.shell.ui.set_ignore_list_enabled(false);
     app.shell.runtime.include_dirs = false;
     app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
     app.shell.runtime.results = vec![(selected.clone(), 9.0), (other, 3.0)];
+    app.shell.runtime.total_match_count = 12;
     app.shell.runtime.current_row = Some(0);
     app.shell.runtime.pinned_paths.insert(selected.clone());
 
@@ -336,7 +340,9 @@ fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     assert_eq!(snapshot["include_files"], json!(true));
     assert_eq!(snapshot["include_dirs"], json!(false));
     assert_eq!(snapshot["result_sort_mode"], json!("Name (A-Z)"));
+    assert_eq!(snapshot["result_sort_scope"], json!("All matches"));
     assert_eq!(snapshot["result_count"], json!(2));
+    assert_eq!(snapshot["total_match_count"], json!(12));
     assert_eq!(
         snapshot["current_result"],
         json!(selected.display().to_string())
@@ -395,7 +401,9 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             "include_files": true,
             "include_dirs": true,
             "result_sort_mode": "Score",
+            "result_sort_scope": "Shown results",
             "result_count": 0,
+            "total_match_count": 0,
             "current_result": null,
             "pinned_count": 0,
             "tab_count": 1,

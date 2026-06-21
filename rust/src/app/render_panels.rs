@@ -2,6 +2,7 @@
 
 use super::{
     render_tabs, render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode,
+    ResultSortScope,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use eframe::egui;
@@ -485,12 +486,30 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
 pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.heading("Results");
+        let total = app.shell.runtime.total_match_count;
+        let shown = app.shell.runtime.results.len();
+        if total > shown {
+            ui.label(format!("{shown} of {total} shown"));
+        } else {
+            ui.label(format!("{shown} shown"));
+        }
         let row_height = ui.spacing().interact_size.y;
         let row_width = ui.available_width();
         ui.allocate_ui_with_layout(
             egui::vec2(row_width, row_height),
             egui::Layout::right_to_left(egui::Align::Center),
             |ui| {
+                let mut selected_scope = app.shell.runtime.result_sort_scope;
+                egui::ComboBox::from_id_salt("results-sort-scope-selector")
+                    .width(126.0)
+                    .selected_text(selected_scope.label())
+                    .show_ui(ui, |ui| {
+                        ui.set_min_width(126.0);
+                        for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
+                            ui.selectable_value(&mut selected_scope, scope, scope.label());
+                        }
+                    });
+                ui.label("Scope");
                 let mut selected = app.shell.runtime.result_sort_mode;
                 egui::ComboBox::from_id_salt("results-sort-selector")
                     .width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH)
@@ -512,6 +531,9 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ui.label("Sorted by");
                 if selected != app.shell.runtime.result_sort_mode {
                     app.set_result_sort_mode(selected);
+                }
+                if selected_scope != app.shell.runtime.result_sort_scope {
+                    app.set_result_sort_scope(selected_scope);
                 }
             },
         );

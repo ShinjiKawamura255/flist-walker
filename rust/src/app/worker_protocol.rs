@@ -1,4 +1,4 @@
-use super::{ResultSortMode, SortMetadata};
+use super::{ResultSortMode, ResultSortScope, SortMetadata};
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::IndexSource;
 use crate::updater::UpdateCandidate;
@@ -15,11 +15,16 @@ pub(super) struct SearchRequest {
     pub(super) ignore_case: bool,
     pub(super) root: PathBuf,
     pub(super) prefer_relative: bool,
+    pub(super) sort_mode: ResultSortMode,
+    pub(super) sort_scope: ResultSortScope,
 }
 
 pub(super) struct SearchResponse {
     pub(super) request_id: u64,
     pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) total_match_count: usize,
+    pub(super) sort_mode: ResultSortMode,
+    pub(super) sort_scope: ResultSortScope,
     pub(super) error: Option<String>,
 }
 

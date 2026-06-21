@@ -59,6 +59,40 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
 }
 
 #[test]
+fn all_matches_sort_scope_reissues_search_request_for_non_score_sort() {
+    let root = test_root("result-sort-all-matches-research");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, "module".to_string());
+    let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
+    app.shell.search.tx = search_tx;
+    app.shell.runtime.entries = Arc::new(vec![
+        file_entry(root.join("zeta").join("module.rs")),
+        file_entry(root.join("alpha").join("module.rs")),
+        file_entry(root.join("beta").join("module.rs")),
+    ]);
+    app.replace_results_snapshot(
+        app.shell
+            .runtime
+            .entries
+            .iter()
+            .take(2)
+            .map(|entry| (entry.path.clone(), 0.0))
+            .collect(),
+        false,
+    );
+
+    app.set_result_sort_scope(ResultSortScope::AllMatches);
+    app.set_result_sort_mode(ResultSortMode::NameAsc);
+
+    let request = search_rx.try_recv().expect("all-match sort search request");
+    assert_eq!(request.query, "module");
+    assert_eq!(request.limit, 2);
+    assert_eq!(request.sort_scope, ResultSortScope::AllMatches);
+    assert_eq!(request.sort_mode, ResultSortMode::NameAsc);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression() {
     let root = test_root("search-refresh-clamp-row");
     fs::create_dir_all(&root).expect("create dir");

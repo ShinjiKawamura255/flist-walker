@@ -40,6 +40,57 @@ fn limited_search_matches_full_indexed_ranking() {
 }
 
 #[test]
+fn limited_search_reports_total_match_count() {
+    let entries: Vec<PathBuf> = (0..20)
+        .map(|i| PathBuf::from(format!("/tmp/src/module_{i:02}.rs")))
+        .collect();
+
+    let out =
+        try_search_entries_with_scope_and_count("module", &entries, 5, false, true, None, false)
+            .expect("search with count");
+
+    assert_eq!(out.results.len(), 5);
+    assert_eq!(out.total_match_count, 20);
+}
+
+#[test]
+fn all_matches_name_sort_can_surface_items_outside_score_limited_snapshot() {
+    let entries = Arc::new(vec![
+        Entry::new(
+            PathBuf::from("/tmp/zeta/module.rs"),
+            Some(crate::entry::EntryKind::file()),
+        ),
+        Entry::new(
+            PathBuf::from("/tmp/alpha/module.rs"),
+            Some(crate::entry::EntryKind::file()),
+        ),
+        Entry::new(
+            PathBuf::from("/tmp/beta/module.rs"),
+            Some(crate::entry::EntryKind::file()),
+        ),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (out, error) = rank_search_results(
+        &entries,
+        "module",
+        Path::new("/tmp"),
+        1,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchResultSortMode::NameAsc,
+        SearchResultSortScope::AllMatches,
+    );
+
+    assert!(error.is_none());
+    assert_eq!(out.total_match_count, 3);
+    assert_eq!(out.results.len(), 1);
+    assert_eq!(out.results[0].0, PathBuf::from("/tmp/alpha/module.rs"));
+}
+
+#[test]
 fn parallel_collection_matches_sequential_ranking() {
     let entries: Vec<PathBuf> = (0..50_000)
         .map(|i| PathBuf::from(format!("/tmp/src/module_{i:05}.rs")))

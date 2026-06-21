@@ -157,4 +157,9 @@ impl FlistWalkerApp {
     pub(super) fn set_result_sort_mode(&mut self, mode: ResultSortMode) {
         result_reducer::set_result_sort_mode(self, mode);
     }
+
+    /// sort scope を切り替え、必要なら全マッチ検索を再実行する。
+    pub(super) fn set_result_sort_scope(&mut self, scope: super::ResultSortScope) {
+        result_reducer::set_result_sort_scope(self, scope);
+    }
 }
