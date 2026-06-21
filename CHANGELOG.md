@@ -24,6 +24,29 @@
 ### Known issues
 -
 
+## [0.18.11] - 2026-06-21
+### Added
+- `docs/INDEX.md` を追加し、README / SDD / release / validation への入口を整理した。
+- 検索結果に sort scope と total match counts を表示するようにした。
+
+### Changed
+-
+
+### Fixed
+- Manage root list の viewport を parent geometry に合わせて中央寄せするようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+-
+
 ## [0.18.10] - 2026-06-13
 ### Added
 - 保存済み root の `Manage list` で選択項目を直接編集し、重複や無効な path を検証して更新できるようにした。
@@ -1477,7 +1500,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.10...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...HEAD
+[0.18.11]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.10...v0.18.11
 [0.18.10]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.9...v0.18.10
 [0.18.9]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.9
 [0.18.8]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.8
