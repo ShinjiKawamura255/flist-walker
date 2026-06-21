@@ -20,6 +20,7 @@ This file is the entry point for the repository-level detailed design. Detailed 
 - Use [TESTPLAN.md](./TESTPLAN.md) for the validation matrix after selecting changed files.
 
 ## Related Docs
+- [INDEX.md](./INDEX.md)
 - [REQUIREMENTS.md](./REQUIREMENTS.md)
 - [SPEC.md](./SPEC.md)
 - [DESIGN.md](./DESIGN.md)

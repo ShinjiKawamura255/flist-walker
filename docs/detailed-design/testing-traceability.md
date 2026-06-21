@@ -58,7 +58,6 @@ No unresolved in-scope open questions remain for this detailed design document.
 Out-of-scope follow-up candidates:
 
 - Whether to add generated diagrams to release documentation.
-- Whether to create a separate `docs/INDEX.md` or docs overview page. This document uses local Overview/Index anchors because no repo-level `docs/INDEX.md` currently exists.
 - Whether macOS notarization should become a release publish gate after signing infrastructure is ready.
 
 [[↑ Back to Top]](#top)

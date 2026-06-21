@@ -31,6 +31,7 @@ cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.in
 Use the validation matrix in `docs/TESTPLAN.md` for narrower or additional checks.
 
 ## Release-Candidate Validation Pointers
+- Documentation map: `docs/INDEX.md`
 - Cross-platform CI and release workflow: `.github/workflows/ci-cross-platform.yml`, `.github/workflows/release-tagged.yml`
 - GUI smoke: `docs/GUI-TESTPLAN.md`
 - GUI report template: `docs/GUI-TESTREPORT.template.md`

@@ -7,6 +7,7 @@
 - 表示名: `FlistWalker`
 - GitHub リポジトリ名: `flist-walker`
 - 実行コマンド: `flistwalker`（Windows 成果物は `FlistWalker.exe`）
+- ドキュメント索引: [docs/INDEX.md](docs/INDEX.md)
 - 保守者向けの現状入口: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
 ## 主要機能

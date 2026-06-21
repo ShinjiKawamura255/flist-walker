@@ -53,6 +53,7 @@
 - 仕様演算子（`'`, `!`, `^`, `$`）の検索契約は後方互換を維持する。
 
 ## 6. ドキュメント/プロセス
+- ドキュメント全体の地図は `docs/INDEX.md` を入口とし、用途別の読み順を確認する。
 - `docs/` に `REQUIREMENTS.md` / `SPEC.md` / `DESIGN.md` / `TESTPLAN.md` を配置。
 - ID は `FR-###` / `NFR-###` / `CON-###` / `SP-###` / `DES-###` / `TC-###` を付与。
 - SPEC は MUST/SHOULD で規範化し、TDD を徹底する。
