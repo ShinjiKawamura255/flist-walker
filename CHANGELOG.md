@@ -24,6 +24,29 @@
 ### Known issues
 -
 
+## [0.18.12] - 2026-06-23
+### Added
+-
+
+### Changed
+- トップパネルの操作部をコンパクトな中央寄せ行にまとめ、ラベルとチェックボックスの視覚的な揃いを改善した。
+- `Score` 以外のソートでは inactive tab に結果を保持するようにし、タブ切り替え時の再利用を速くした。
+
+### Fixed
+- root 変更、新規タブ作成、background indexing 完了後の total match count を適切に更新し、結果件数表示の stale state を防ぐようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+- `cargo audit` で `memmap2` の transitive advisory `RUSTSEC-2026-0186` が 1 件検出されるが、`eframe` / `winit` / `resvg` / `usvg` 由来の許容済み警告として `docs/OSS_COMPLIANCE.md` で追跡している。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.11] - 2026-06-21
 ### Added
 - `docs/INDEX.md` を追加し、README / SDD / release / validation への入口を整理した。
@@ -1500,7 +1523,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...HEAD
+[0.18.12]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...v0.18.12
 [0.18.11]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.10...v0.18.11
 [0.18.10]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.9...v0.18.10
 [0.18.9]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.18.9

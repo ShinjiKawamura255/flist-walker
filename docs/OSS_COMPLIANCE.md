@@ -68,3 +68,13 @@
   - `cd rust && cargo audit`
   - verify `rust/Cargo.lock` does not reintroduce `paste` / `metal`
   - if GUI dependencies change again, run `cd rust && cargo test --locked`, `cd rust && cargo clippy --all-targets -- -D warnings`, notice/license review, and release asset sidecar review.
+
+## Accepted audit warnings
+
+### RUSTSEC-2026-0186: `memmap2 0.9.10` unchecked pointer offset
+- Status: accepted on 2026-06-23 as a transitive advisory surfaced by `cargo audit`.
+- Observed path: `memmap2 0.9.10` via `winit 0.30.13` / `glutin-winit 0.5.0` / `eframe 0.34.1` and via `usvg 0.43.0` / `resvg 0.43.0` / `eframe 0.34.1`.
+- Owner: Rust dependency maintainer for release preflight.
+- Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
+- Re-evaluation trigger: upstream advisory fix, `eframe` / `winit` / `resvg` / `usvg` dependency refresh, or any audit output change.
+- Current `cargo audit` behavior: exits successfully with one allowed warning, so release can proceed only while this note remains current.
