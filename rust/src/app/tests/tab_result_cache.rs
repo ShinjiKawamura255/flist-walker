@@ -243,6 +243,82 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
 }
 
 #[test]
+fn non_score_sorted_inactive_tab_keeps_results_for_fast_activation() {
+    let root = test_root("inactive-tab-keeps-sorted-results");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("b.txt");
+    let second = root.join("a.txt");
+    fs::write(&first, "b").expect("write first");
+    fs::write(&second, "a").expect("write second");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![
+        unknown_entry(first.clone()),
+        unknown_entry(second.clone()),
+    ]);
+    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.results = vec![(second.clone(), 5.0), (first.clone(), 10.0)];
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.current_row = Some(0);
+
+    app.create_new_tab();
+
+    let inactive = app.shell.tabs.get(0).expect("tab 0");
+    assert!(!inactive.result_state.results_compacted);
+    assert_eq!(inactive.result_state.results.len(), 2);
+    assert_eq!(inactive.result_state.results[0].0, second);
+
+    app.switch_to_tab_index(0);
+
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(app.shell.runtime.results.len(), 2);
+    assert_eq!(app.shell.runtime.results[0].0, second);
+    assert!(!app.shell.worker_bus.sort.in_progress);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn metadata_sorted_inactive_tab_does_not_request_metadata_on_activation() {
+    let root = test_root("inactive-tab-keeps-metadata-sorted-results");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("old.txt");
+    let second = root.join("new.txt");
+    fs::write(&first, "old").expect("write first");
+    fs::write(&second, "new").expect("write second");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
+    app.shell.worker_bus.sort.tx = sort_tx;
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![
+        unknown_entry(first.clone()),
+        unknown_entry(second.clone()),
+    ]);
+    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.results = vec![(second.clone(), 5.0), (first.clone(), 10.0)];
+    app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
+    app.shell.runtime.current_row = Some(0);
+
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+
+    assert_eq!(
+        app.shell.runtime.result_sort_mode,
+        ResultSortMode::ModifiedDesc
+    );
+    assert_eq!(app.shell.runtime.results.len(), 2);
+    assert_eq!(app.shell.runtime.results[0].0, second);
+    assert!(!app.shell.worker_bus.sort.in_progress);
+    assert!(sort_rx.try_recv().is_err());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tab_activation_restores_visible_cursor_when_selection_is_missing() {
     let root = test_root("tab-activation-restore-cursor");
     fs::create_dir_all(&root).expect("create dir");

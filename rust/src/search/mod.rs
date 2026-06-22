@@ -173,32 +173,33 @@ fn entry_path_key(entry: &Entry) -> String {
 
 fn top_name_sorted_scores(
     entries: &[Entry],
-    mut scored: Vec<SearchCandidateScore>,
+    scored: Vec<SearchCandidateScore>,
     limit: usize,
     mode: SearchResultSortMode,
 ) -> Vec<IndexedScore> {
     let desc = mode == SearchResultSortMode::NameDesc;
-    scored.sort_unstable_by(|a, b| {
-        let Some(entry_a) = entries.get(a.index) else {
-            return std::cmp::Ordering::Greater;
-        };
-        let Some(entry_b) = entries.get(b.index) else {
-            return std::cmp::Ordering::Less;
-        };
-        let cmp = entry_name_key(entry_a)
-            .cmp(&entry_name_key(entry_b))
-            .then_with(|| entry_path_key(entry_a).cmp(&entry_path_key(entry_b)))
-            .then_with(|| a.ordinal.cmp(&b.ordinal));
+    let mut items = scored
+        .into_iter()
+        .filter_map(|item| {
+            let entry = entries.get(item.index)?;
+            Some((item, entry_name_key(entry), entry_path_key(entry)))
+        })
+        .collect::<Vec<_>>();
+    items.sort_unstable_by(|a, b| {
+        let cmp =
+            a.1.cmp(&b.1)
+                .then_with(|| a.2.cmp(&b.2))
+                .then_with(|| a.0.ordinal.cmp(&b.0.ordinal));
         if desc {
             cmp.reverse()
         } else {
             cmp
         }
     });
-    scored
+    items
         .into_iter()
         .take(limit)
-        .map(|item| IndexedScore {
+        .map(|(item, _, _)| IndexedScore {
             index: item.index,
             score: item.score,
         })

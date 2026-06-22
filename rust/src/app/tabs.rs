@@ -419,6 +419,7 @@ impl FlistWalkerApp {
         let can_compact_results = !tab.index_state.index_in_progress
             && !tab.search_in_progress
             && !tab.result_state.sort_in_progress
+            && tab.result_state.result_sort_mode == ResultSortMode::Score
             && tab.pending_request_id.is_none()
             && tab.result_state.pending_sort_request_id.is_none();
         if can_compact_results && !tab.result_state.results.is_empty() {

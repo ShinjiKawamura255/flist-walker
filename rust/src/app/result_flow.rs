@@ -61,6 +61,10 @@ impl FlistWalkerApp {
         mode: ResultSortMode,
         cache: &HashMap<PathBuf, SortMetadata>,
     ) -> Vec<(PathBuf, f64)> {
+        if mode == ResultSortMode::Score {
+            return base_results.to_vec();
+        }
+
         let mut items = base_results
             .iter()
             .cloned()
@@ -79,7 +83,7 @@ impl FlistWalkerApp {
             })
             .collect::<Vec<_>>();
         match mode {
-            ResultSortMode::Score => return base_results.to_vec(),
+            ResultSortMode::Score => unreachable!("score mode returns before sorting"),
             ResultSortMode::NameAsc | ResultSortMode::NameDesc => {
                 let desc = matches!(mode, ResultSortMode::NameDesc);
                 items.sort_by(|a, b| {
