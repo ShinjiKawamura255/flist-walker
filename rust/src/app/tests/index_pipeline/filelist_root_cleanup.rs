@@ -16,6 +16,7 @@ fn root_change_clears_stale_selection_state() {
     app.shell.runtime.current_row = Some(0);
     app.shell.runtime.preview = "stale preview".to_string();
     app.shell.runtime.results = vec![(root_old.join("result.txt"), 0.0)];
+    app.shell.runtime.total_match_count = 500_000;
 
     app.apply_root_change(root_new.clone());
 
@@ -25,6 +26,8 @@ fn root_change_clears_stale_selection_state() {
     assert!(app.shell.runtime.all_entries.is_empty());
     assert!(app.shell.runtime.entries.is_empty());
     assert!(app.shell.runtime.results.is_empty());
+    assert_eq!(app.shell.runtime.total_match_count, 0);
+    assert!(!app.shell.runtime.status_line.contains("of 500000 shown"));
     let active_tab = app.shell.tabs.active_tab;
     assert_eq!(app.shell.tabs.get(active_tab).expect("tab").root, root_new);
     assert!(app

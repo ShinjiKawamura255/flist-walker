@@ -242,6 +242,7 @@ impl FlistWalkerApp {
                         .cloned()
                         .map(|entry| (entry.path, 0.0))
                         .collect();
+                    tab.result_state.total_match_count = tab.index_state.entries.len();
                     if tab.result_state.results.is_empty() {
                         tab.result_state.current_row = None;
                         tab.result_state.preview.clear();
@@ -561,6 +562,7 @@ impl FlistWalkerApp {
             .collect();
         tab.result_state.result_sort_mode = ResultSortMode::Score;
         tab.result_state.clear_sort_request_state();
+        tab.result_state.total_match_count = tab.index_state.entries.len();
         tab.result_state.pinned_paths.clear();
         tab.result_state.current_row = None;
         tab.result_state.preview.clear();

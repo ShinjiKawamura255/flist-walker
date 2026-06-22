@@ -157,6 +157,84 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 }
 
 #[test]
+fn background_empty_query_index_finish_updates_total_match_count() {
+    let root = test_root("background-empty-query-total-count");
+    fs::create_dir_all(&root).expect("create dir");
+    let active_file = root.join("active.txt");
+    let indexed_a = root.join("indexed-a.txt");
+    let indexed_b = root.join("indexed-b.txt");
+    fs::write(&active_file, "a").expect("write active");
+    fs::write(&indexed_a, "a").expect("write indexed a");
+    fs::write(&indexed_b, "b").expect("write indexed b");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 1, String::new());
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_res_rx;
+    app.shell.runtime.entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
+    app.shell.runtime.base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.total_match_count = 99;
+    app.sync_active_tab_state();
+
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(77, background_tab_id);
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .pending_index_request_id = Some(77);
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .index_in_progress = true;
+
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: 77,
+            entries: vec![
+                IndexEntry {
+                    path: indexed_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: indexed_b.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send background batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: 77,
+            source: IndexSource::Walker,
+        })
+        .expect("send background finished");
+
+    app.poll_index_response();
+
+    let background_tab = app.shell.tabs.get(0).expect("tab 0");
+    assert_eq!(background_tab.result_state.results.len(), 1);
+    assert_eq!(background_tab.result_state.total_match_count, 2);
+
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.runtime.results.len(), 1);
+    assert_eq!(app.shell.runtime.total_match_count, 2);
+    assert!(app.status_line_text().contains("Results: 1 of 2 shown"));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn background_tab_search_and_index_responses_do_not_override_active_results() {
     let root = test_root("background-tab-response-isolation");
     fs::create_dir_all(&root).expect("create dir");

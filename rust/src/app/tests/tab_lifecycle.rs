@@ -31,6 +31,28 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
 }
 
 #[test]
+fn create_new_tab_resets_total_match_count_to_current_entries() {
+    let root = test_root("new-tab-total-count");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("first.txt");
+    let second = root.join("second.txt");
+    fs::write(&first, "a").expect("write first");
+    fs::write(&second, "b").expect("write second");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 1, "previous".to_string());
+    app.shell.runtime.entries = Arc::new(vec![file_entry(first), file_entry(second)]);
+    app.shell.runtime.total_match_count = 99;
+
+    app.create_new_tab();
+
+    assert!(app.shell.runtime.query_state.query.is_empty());
+    assert_eq!(app.shell.runtime.results.len(), 1);
+    assert_eq!(app.shell.runtime.total_match_count, 2);
+    assert!(app.status_line_text().contains("Results: 1 of 2 shown"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
     let root = test_root("shortcut-ctrl-w-close-tab");
     fs::create_dir_all(&root).expect("create dir");
