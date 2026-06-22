@@ -32,6 +32,16 @@ fn manage_root_list_action_button_rects_share_same_axis() {
 }
 
 #[test]
+fn top_panel_checkbox_icon_and_label_share_center_axis() {
+    let row = egui::Rect::from_min_size(egui::pos2(4.0, 12.0), egui::vec2(120.0, 24.0));
+    let (checkbox_rect, text_pos) =
+        render_panels::centered_checkbox_layout(row, 14.0, 4.0, egui::vec2(68.0, 13.0), 2.0, -1.0);
+
+    assert_eq!(checkbox_rect.center().y, row.center().y - 1.0);
+    assert_eq!(text_pos.y + (13.0 / 2.0), row.center().y + 2.0);
+}
+
+#[test]
 fn manage_root_list_selectable_row_uses_full_available_width() {
     let ctx = egui::Context::default();
     let mut measured = None;

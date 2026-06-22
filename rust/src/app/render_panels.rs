@@ -8,6 +8,9 @@ use crate::path_utils::normalize_windows_path_buf;
 use eframe::egui;
 use std::path::{Path, PathBuf};
 
+const COMPACT_ROW_TEXT_Y_OFFSET: f32 = 2.0;
+const COMPACT_ROW_CHECKBOX_Y_OFFSET: f32 = -1.0;
+
 fn paint_root_selector_button(
     ui: &egui::Ui,
     rect: egui::Rect,
@@ -59,6 +62,136 @@ fn paint_root_selector_button(
     let text_pos = egui::Align2::LEFT_CENTER.align_size_within_rect(galley.size(), text_rect);
     ui.painter()
         .galley(text_pos.min, galley, visuals.text_color());
+}
+
+pub(super) fn centered_checkbox_layout(
+    rect: egui::Rect,
+    checkbox_size: f32,
+    icon_spacing: f32,
+    text_size: egui::Vec2,
+    label_y_offset: f32,
+    checkbox_y_offset: f32,
+) -> (egui::Rect, egui::Pos2) {
+    let checkbox_rect = egui::Rect::from_center_size(
+        egui::pos2(
+            rect.left() + (checkbox_size / 2.0),
+            rect.center().y + checkbox_y_offset,
+        ),
+        egui::Vec2::splat(checkbox_size),
+    );
+    let text_pos = egui::pos2(
+        checkbox_rect.right() + icon_spacing,
+        rect.center().y - (text_size.y / 2.0) + label_y_offset,
+    );
+    (checkbox_rect, text_pos)
+}
+
+fn centered_checkbox(ui: &mut egui::Ui, checked: &mut bool, label: &str) -> egui::Response {
+    let font_id = egui::TextStyle::Button.resolve(ui.style());
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font_id, ui.visuals().text_color());
+    let checkbox_size = ui.spacing().icon_width;
+    let desired_size = egui::vec2(
+        checkbox_size + ui.spacing().icon_spacing + galley.size().x,
+        ui.spacing()
+            .interact_size
+            .y
+            .max(checkbox_size)
+            .max(galley.size().y),
+    );
+    let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+    if response.clicked() {
+        *checked = !*checked;
+        response.mark_changed();
+    }
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Checkbox, ui.is_enabled(), *checked, label)
+    });
+
+    if ui.is_rect_visible(rect) {
+        let checkbox_style = ui.style().checkbox_style(response.widget_state());
+        let (checkbox_rect, text_pos) = centered_checkbox_layout(
+            rect,
+            checkbox_style.checkbox_size,
+            ui.spacing().icon_spacing,
+            galley.size(),
+            COMPACT_ROW_TEXT_Y_OFFSET,
+            COMPACT_ROW_CHECKBOX_Y_OFFSET,
+        );
+        ui.painter().add(egui::epaint::RectShape::new(
+            checkbox_rect.expand(checkbox_style.checkbox_frame.inner_margin.left.into()),
+            checkbox_style.checkbox_frame.corner_radius,
+            checkbox_style.checkbox_frame.fill,
+            checkbox_style.checkbox_frame.stroke,
+            egui::epaint::StrokeKind::Inside,
+        ));
+
+        if *checked {
+            let check_rect = egui::Rect::from_center_size(
+                checkbox_rect.center(),
+                egui::Vec2::splat(checkbox_style.check_size),
+            );
+            ui.painter().add(egui::Shape::line(
+                vec![
+                    egui::pos2(check_rect.left(), check_rect.center().y),
+                    egui::pos2(check_rect.center().x, check_rect.bottom()),
+                    egui::pos2(check_rect.right(), check_rect.top()),
+                ],
+                checkbox_style.check_stroke,
+            ));
+        }
+        ui.painter()
+            .galley(text_pos, galley, checkbox_style.text_style.color);
+    }
+
+    response
+}
+
+fn centered_top_panel_label(ui: &mut egui::Ui, text: impl Into<String>) -> egui::Response {
+    let text = text.into();
+    let font_id = egui::TextStyle::Button.resolve(ui.style());
+    let galley = ui
+        .painter()
+        .layout_no_wrap(text, font_id, ui.visuals().text_color());
+    let desired_size = egui::vec2(
+        galley.size().x,
+        ui.spacing().interact_size.y.max(galley.size().y),
+    );
+    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
+    if ui.is_rect_visible(rect) {
+        let text_pos = egui::pos2(
+            rect.left(),
+            rect.center().y - (galley.size().y / 2.0) + COMPACT_ROW_TEXT_Y_OFFSET,
+        );
+        ui.painter()
+            .galley(text_pos, galley, ui.visuals().text_color());
+    }
+    response
+}
+
+fn paint_compact_row_text(ui: &egui::Ui, rect: egui::Rect, text: &str, color: egui::Color32) {
+    let font_id = egui::TextStyle::Button.resolve(ui.style());
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), font_id, color);
+    let text_pos = egui::pos2(
+        rect.left(),
+        rect.center().y - (galley.size().y / 2.0) + COMPACT_ROW_TEXT_Y_OFFSET,
+    );
+    ui.painter().galley(text_pos, galley, color);
+}
+
+fn paint_compact_combo_selected_text(ui: &egui::Ui, response: &egui::Response, text: &str) {
+    let inner_rect = response.rect.shrink2(ui.spacing().button_padding);
+    let icon_reserved = ui.spacing().icon_width + ui.spacing().icon_spacing;
+    let text_rect = egui::Rect::from_min_max(
+        inner_rect.left_top(),
+        egui::pos2(
+            (inner_rect.right() - icon_reserved).max(inner_rect.left()),
+            inner_rect.bottom(),
+        ),
+    );
+    let visuals = ui.style().interact(response);
+    paint_compact_row_text(ui, text_rect, text, visuals.text_color());
 }
 
 pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
@@ -163,22 +296,23 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         });
 
         ui.horizontal(|ui| {
-            let use_filelist_changed = ui
-                .checkbox(&mut app.shell.runtime.use_filelist, "Use FileList")
-                .changed();
-            if ui.checkbox(&mut app.shell.runtime.use_regex, "Regex").changed() {
+            let use_filelist_changed =
+                centered_checkbox(ui, &mut app.shell.runtime.use_filelist, "Use FileList")
+                    .changed();
+            if centered_checkbox(ui, &mut app.shell.runtime.use_regex, "Regex").changed() {
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
-            if ui
-                .checkbox(&mut app.shell.runtime.ignore_case, "Ignore Case")
-                .changed()
+            if centered_checkbox(ui, &mut app.shell.runtime.ignore_case, "Ignore Case").changed()
             {
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
-            let ignore_list_response = ui
-                .checkbox(&mut app.shell.ui.ignore_list_enabled, "Use Ignore List")
+            let ignore_list_response = centered_checkbox(
+                ui,
+                &mut app.shell.ui.ignore_list_enabled,
+                "Use Ignore List",
+            )
                 .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
             if ignore_list_response.changed()
             {
@@ -193,20 +327,21 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     app.shell.runtime.include_dirs = true;
                     forced_changed = true;
                 }
-                ui.add_enabled(false, egui::Checkbox::new(&mut app.shell.runtime.include_files, "Files"));
-                ui.add_enabled(
-                    false,
-                    egui::Checkbox::new(&mut app.shell.runtime.include_dirs, "Folders"),
-                );
+                ui.add_enabled_ui(false, |ui| {
+                    centered_checkbox(ui, &mut app.shell.runtime.include_files, "Files");
+                });
+                ui.add_enabled_ui(false, |ui| {
+                    centered_checkbox(ui, &mut app.shell.runtime.include_dirs, "Folders");
+                });
                 (forced_changed, forced_changed)
             } else {
                 (
-                    ui.checkbox(&mut app.shell.runtime.include_files, "Files").changed(),
-                    ui.checkbox(&mut app.shell.runtime.include_dirs, "Folders").changed(),
+                    centered_checkbox(ui, &mut app.shell.runtime.include_files, "Files").changed(),
+                    centered_checkbox(ui, &mut app.shell.runtime.include_dirs, "Folders").changed(),
                 )
             };
             let mut show_preview = app.shell.ui.show_preview();
-            if ui.checkbox(&mut show_preview, "Preview").changed() {
+            if centered_checkbox(ui, &mut show_preview, "Preview").changed() {
                 app.shell.ui.set_show_preview(show_preview);
                 if !show_preview {
                     app.clear_preview_cache();
@@ -215,7 +350,7 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 app.persist_ui_state_now();
             }
             ui.separator();
-            ui.label(app.source_text());
+            centered_top_panel_label(ui, app.source_text());
             app.maybe_reindex_from_filter_toggles(
                 use_filelist_changed,
                 files_changed,
@@ -500,20 +635,22 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             egui::Layout::right_to_left(egui::Align::Center),
             |ui| {
                 let mut selected_scope = app.shell.runtime.result_sort_scope;
-                egui::ComboBox::from_id_salt("results-sort-scope-selector")
+                let scope_response = egui::ComboBox::from_id_salt("results-sort-scope-selector")
                     .width(126.0)
-                    .selected_text(selected_scope.label())
+                    .selected_text("")
                     .show_ui(ui, |ui| {
                         ui.set_min_width(126.0);
                         for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
                             ui.selectable_value(&mut selected_scope, scope, scope.label());
                         }
-                    });
-                ui.label("Scope");
+                    })
+                    .response;
+                paint_compact_combo_selected_text(ui, &scope_response, selected_scope.label());
+                centered_top_panel_label(ui, "Scope");
                 let mut selected = app.shell.runtime.result_sort_mode;
-                egui::ComboBox::from_id_salt("results-sort-selector")
+                let sort_response = egui::ComboBox::from_id_salt("results-sort-selector")
                     .width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH)
-                    .selected_text(selected.label())
+                    .selected_text("")
                     .show_ui(ui, |ui| {
                         ui.set_min_width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH);
                         for mode in [
@@ -527,8 +664,10 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         ] {
                             ui.selectable_value(&mut selected, mode, mode.label());
                         }
-                    });
-                ui.label("Sorted by");
+                    })
+                    .response;
+                paint_compact_combo_selected_text(ui, &sort_response, selected.label());
+                centered_top_panel_label(ui, "Sorted by");
                 if selected != app.shell.runtime.result_sort_mode {
                     app.set_result_sort_mode(selected);
                 }
