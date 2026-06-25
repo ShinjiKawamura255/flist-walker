@@ -1,4 +1,5 @@
 use crate::path_utils::{display_path_with_mode, normalize_windows_path};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -200,6 +201,57 @@ fn candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> boo
     }
 }
 
+fn literal_occurrence_count(text: &str, needle: &str, ignore_case: bool) -> usize {
+    let text = if ignore_case {
+        text.to_ascii_lowercase()
+    } else {
+        text.to_string()
+    };
+    let needle = if ignore_case {
+        needle.to_ascii_lowercase()
+    } else {
+        needle.to_string()
+    };
+    if needle.is_empty() {
+        return 0;
+    }
+
+    let mut count = 0;
+    let mut search_from = 0;
+    while let Some(offset) = text[search_from..].find(&needle) {
+        count += 1;
+        search_from += offset + needle.len();
+    }
+    count
+}
+
+fn exact_terms_match_texts(
+    terms: &[String],
+    filename: &str,
+    display: &str,
+    ignore_case: bool,
+) -> bool {
+    let mut repeated_unanchored = BTreeMap::<&str, usize>::new();
+    for term in terms {
+        let (anchored_start, anchored_end, core) = split_anchor(term);
+        if !anchored_start && !anchored_end {
+            *repeated_unanchored.entry(core).or_default() += 1;
+            continue;
+        }
+        if !exact_candidate_matches_text(filename, term, ignore_case)
+            && !exact_candidate_matches_text(display, term, ignore_case)
+        {
+            return false;
+        }
+    }
+
+    repeated_unanchored.into_iter().all(|(core, required)| {
+        let filename_count = literal_occurrence_count(filename, core, ignore_case);
+        let display_count = literal_occurrence_count(display, core, ignore_case);
+        filename_count.max(display_count) >= required
+    })
+}
+
 pub fn has_visible_match(
     path: &Path,
     root: &Path,
@@ -223,12 +275,8 @@ pub fn has_visible_match(
         .and_then(|s| s.to_str())
         .unwrap_or_default();
 
-    for term in &spec.exact_terms {
-        if !exact_candidate_matches_text(filename, term, ignore_case)
-            && !exact_candidate_matches_text(&display, term, ignore_case)
-        {
-            return false;
-        }
+    if !exact_terms_match_texts(&spec.exact_terms, filename, &display, ignore_case) {
+        return false;
     }
 
     for term in &spec.include_terms {
@@ -283,8 +331,8 @@ pub fn path_matches_ignore_terms(
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_include_alternative, parse_query, path_matches_ignore_terms, split_anchor,
-        token_uses_regex_syntax, QuerySpec,
+        has_visible_match, parse_include_alternative, parse_query, path_matches_ignore_terms,
+        split_anchor, token_uses_regex_syntax, QuerySpec,
     };
     use std::path::PathBuf;
 
@@ -369,6 +417,32 @@ mod tests {
         assert!(path_matches_ignore_terms(&upper, &root, &terms, true, true));
         assert!(!path_matches_ignore_terms(
             &upper, &root, &terms, true, false
+        ));
+    }
+
+    #[test]
+    fn visible_match_repeated_exact_tokens_require_repeated_literal_occurrences() {
+        let root = PathBuf::from("/tmp/root");
+        assert!(!has_visible_match(
+            &root.join("abc.txt"),
+            &root,
+            "'abc 'abc",
+            true,
+            true
+        ));
+        assert!(has_visible_match(
+            &root.join("abc-abc.txt"),
+            &root,
+            "'abc 'abc",
+            true,
+            true
+        ));
+        assert!(has_visible_match(
+            &root.join("abc/child-abc.txt"),
+            &root,
+            "'abc 'abc",
+            true,
+            true
         ));
     }
 }

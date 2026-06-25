@@ -284,6 +284,26 @@ fn exact_token_matches_literal_substring() {
 }
 
 #[test]
+fn repeated_exact_tokens_require_repeated_literal_occurrences() {
+    let entries = vec![
+        PathBuf::from("/tmp/src/abc.txt"),
+        PathBuf::from("/tmp/src/abc-abc.txt"),
+        PathBuf::from("/tmp/src/abc/child-abc.txt"),
+    ];
+    let out = search_entries("'abc 'abc", &entries, 10, false, true);
+    let names: Vec<String> = out
+        .iter()
+        .map(|(p, _)| p.to_string_lossy().into_owned())
+        .collect();
+
+    assert!(!names.iter().any(|path| path.ends_with("/abc.txt")));
+    assert!(names.iter().any(|path| path.ends_with("/abc-abc.txt")));
+    assert!(names
+        .iter()
+        .any(|path| path.ends_with("/abc/child-abc.txt")));
+}
+
+#[test]
 fn exact_token_supports_or_operator() {
     let entries = vec![
         PathBuf::from("/tmp/src/foo.rs"),

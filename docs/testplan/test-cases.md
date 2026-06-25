@@ -7,6 +7,7 @@
 | TC-002 | unit | リスト未存在時に walker 走査で候補生成 | SP-002 |
 | TC-003 | unit | ファジー検索が関連度順・件数制限を満たす | SP-003 |
 | TC-003A | unit | 通常語の各 token は subsequence-only よりリテラル一致を高順位にする | SP-003 |
+| TC-003B | unit | 同じ unanchored 完全一致 token を複数回指定した場合は、指定回数以上のリテラル出現を含む候補だけが一致する | SP-003 |
 | TC-004 | unit | 実行可能ファイルで execute 分岐 | SP-004 |
 | TC-004A | unit | open / execute helper seam が open/execute handler を適切に呼び分ける | SP-004, SP-005 |
 | TC-005 | unit | フォルダで open 分岐 | SP-005 |

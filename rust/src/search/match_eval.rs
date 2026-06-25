@@ -7,6 +7,7 @@ use crate::query::{
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use regex::{Regex, RegexBuilder};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -25,6 +26,12 @@ pub(super) struct AlternativeSet {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct ExactTermMatcher {
+    set: AlternativeSet,
+    required_unanchored_count: usize,
+}
+
+#[derive(Debug, Clone)]
 pub(super) struct IncludeAlternative {
     exact: bool,
     literal: LiteralPattern,
@@ -38,7 +45,7 @@ pub(super) enum IncludeMatcher {
 
 #[derive(Debug, Clone)]
 pub(super) struct CompiledQuery {
-    exact_terms: Vec<AlternativeSet>,
+    exact_terms: Vec<ExactTermMatcher>,
     exclude_terms: Vec<AlternativeSet>,
     include_terms: Vec<IncludeMatcher>,
     include_literal_bonus_terms: Vec<AlternativeSet>,
@@ -105,6 +112,30 @@ fn compile_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet {
         .filter_map(|candidate| compile_literal_pattern(&candidate, ignore_case))
         .collect();
     AlternativeSet { alternatives }
+}
+
+fn compile_exact_term_matchers(terms: &[String], ignore_case: bool) -> Vec<ExactTermMatcher> {
+    let mut counts = BTreeMap::<String, usize>::new();
+    for term in terms {
+        *counts.entry(term.clone()).or_default() += 1;
+    }
+
+    counts
+        .into_iter()
+        .map(|(term, count)| {
+            let set = compile_alternative_set(&term, ignore_case);
+            let required_unanchored_count = set
+                .alternatives
+                .first()
+                .is_some_and(|pattern| !pattern.anchored_start && !pattern.anchored_end)
+                .then_some(count)
+                .unwrap_or(1);
+            ExactTermMatcher {
+                set,
+                required_unanchored_count,
+            }
+        })
+        .collect()
 }
 
 fn compile_non_exact_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet {
@@ -178,11 +209,7 @@ pub(super) fn compile_query(
 ) -> Result<CompiledQuery, String> {
     let spec = parse_query(query);
 
-    let exact_terms = spec
-        .exact_terms
-        .iter()
-        .map(|term| compile_alternative_set(term, ignore_case))
-        .collect::<Vec<_>>();
+    let exact_terms = compile_exact_term_matchers(&spec.exact_terms, ignore_case);
     let exclude_terms = spec
         .exclude_terms
         .iter()
@@ -261,6 +288,32 @@ fn matches_alternative_set(set: &AlternativeSet, name: &str, full: &str) -> bool
     })
 }
 
+fn literal_occurrence_count(text: &str, needle: &str) -> usize {
+    if needle.is_empty() {
+        return 0;
+    }
+
+    let mut count = 0;
+    let mut search_from = 0;
+    while let Some(offset) = text[search_from..].find(needle) {
+        count += 1;
+        search_from += offset + needle.len();
+    }
+    count
+}
+
+fn matches_exact_term(term: &ExactTermMatcher, name: &str, full: &str) -> bool {
+    if term.required_unanchored_count <= 1 {
+        return matches_alternative_set(&term.set, name, full);
+    }
+
+    term.set.alternatives.iter().any(|pattern| {
+        let name_count = literal_occurrence_count(name, &pattern.core);
+        let full_count = literal_occurrence_count(full, &pattern.core);
+        name_count.max(full_count) >= term.required_unanchored_count
+    })
+}
+
 fn matches_include_literal(pattern: &LiteralPattern, name: &str, full: &str) -> bool {
     if pattern.anchored_start
         && !matches!(
@@ -335,7 +388,7 @@ fn matches_compiled_query(compiled: &CompiledQuery, entry: &SearchableEntry) -> 
     }
 
     for term in &compiled.exact_terms {
-        if !matches_alternative_set(term, &entry.name, &entry.full) {
+        if !matches_exact_term(term, &entry.name, &entry.full) {
             return false;
         }
     }
@@ -381,7 +434,7 @@ fn score_entry(matcher: &SkimMatcherV2, compiled: &CompiledQuery, entry: &Search
     }
 
     for term in &compiled.exact_terms {
-        if matches_alternative_set(term, &entry.name, &entry.full) {
+        if matches_exact_term(term, &entry.name, &entry.full) {
             score += 800.0;
         }
     }
