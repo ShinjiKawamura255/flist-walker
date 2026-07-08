@@ -1,7 +1,6 @@
 use super::{FlistWalkerApp, UpdateSupport};
 use serde::Serialize;
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(super) struct DialogSnapshot {
     pub(super) title: String,
@@ -9,7 +8,6 @@ pub(super) struct DialogSnapshot {
     pub(super) buttons: Vec<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(super) struct GuiSurfaceSnapshot {
     pub(super) root: String,
@@ -37,12 +35,10 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) update_dialogs: Vec<DialogSnapshot>,
 }
 
-#[allow(dead_code)]
 fn preview_width_px(width: f32) -> u32 {
     width.round().max(0.0) as u32
 }
 
-#[allow(dead_code)]
 pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
     let mut filelist_dialogs = Vec::new();
     if let Some(pending) = app

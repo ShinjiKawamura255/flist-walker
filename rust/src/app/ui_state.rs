@@ -67,6 +67,7 @@ impl RuntimeUiState {
         self.show_preview = show_preview;
     }
 
+    #[cfg(test)]
     pub(super) fn ignore_list_enabled(&self) -> bool {
         self.ignore_list_enabled
     }

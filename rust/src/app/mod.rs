@@ -31,6 +31,7 @@ mod query_state;
 mod render;
 mod render_dialogs;
 mod render_panels;
+#[cfg(test)]
 mod render_snapshot;
 mod render_tabs;
 mod render_theme;

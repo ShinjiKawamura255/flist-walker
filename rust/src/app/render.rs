@@ -1,7 +1,4 @@
-use super::{
-    render_dialogs, render_panels, render_snapshot, render_tabs, render_theme, FlistWalkerApp,
-    TabAccentColor,
-};
+use super::{render_dialogs, render_panels, render_theme, FlistWalkerApp, TabAccentColor};
 use eframe::egui;
 
 // Render command surface. Render.rs stays focused on drawing and input
@@ -327,21 +324,15 @@ impl FlistWalkerApp {
         )
     }
 
-    #[allow(dead_code)]
-    pub(super) fn render_tab_bar(&mut self, ui: &mut egui::Ui) {
-        render_tabs::render_tab_bar(self, ui);
-    }
-
     pub(super) fn render_central_panel(&mut self, ctx: &egui::Context) {
         render_panels::render_central_panel(self, ctx);
     }
 
-    #[allow(dead_code)]
-    pub(super) fn gui_surface_snapshot(&self) -> render_snapshot::GuiSurfaceSnapshot {
-        render_snapshot::gui_surface_snapshot(self)
+    #[cfg(test)]
+    pub(super) fn gui_surface_snapshot(&self) -> super::render_snapshot::GuiSurfaceSnapshot {
+        super::render_snapshot::gui_surface_snapshot(self)
     }
 
-    #[allow(dead_code)]
     pub(super) fn queue_render_command(&mut self, command: RenderCommand) {
         self.shell.ui.pending_render_commands.push(command);
     }
