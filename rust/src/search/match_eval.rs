@@ -124,12 +124,15 @@ fn compile_exact_term_matchers(terms: &[String], ignore_case: bool) -> Vec<Exact
         .into_iter()
         .map(|(term, count)| {
             let set = compile_alternative_set(&term, ignore_case);
-            let required_unanchored_count = set
+            let first_alternative_is_unanchored = set
                 .alternatives
                 .first()
-                .is_some_and(|pattern| !pattern.anchored_start && !pattern.anchored_end)
-                .then_some(count)
-                .unwrap_or(1);
+                .is_some_and(|pattern| !pattern.anchored_start && !pattern.anchored_end);
+            let required_unanchored_count = if first_alternative_is_unanchored {
+                count
+            } else {
+                1
+            };
             ExactTermMatcher {
                 set,
                 required_unanchored_count,
