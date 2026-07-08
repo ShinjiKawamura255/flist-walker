@@ -1,4 +1,4 @@
-use super::super::{input_dialogs, FlistWalkerApp};
+use super::super::FlistWalkerApp;
 use eframe::egui;
 
 impl FlistWalkerApp {
@@ -147,10 +147,6 @@ impl FlistWalkerApp {
         }
         #[cfg(not(target_os = "macos"))]
         false
-    }
-
-    fn handle_filelist_dialog_shortcuts(&mut self, ctx: &egui::Context) -> bool {
-        input_dialogs::handle_filelist_dialog_shortcuts(self, ctx)
     }
 
     pub(in crate::app) fn handle_shortcuts_with_focus(

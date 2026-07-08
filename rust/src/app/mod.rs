@@ -22,8 +22,6 @@ mod filelist;
 mod index_coordinator;
 mod index_worker;
 mod input;
-mod input_dialogs;
-mod input_history;
 mod pipeline;
 mod pipeline_owner;
 mod preview_flow;
