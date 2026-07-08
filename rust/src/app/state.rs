@@ -393,7 +393,6 @@ impl RequestTabRoutingState {
         self.sort.retain(|_, id| *id != tab_id);
     }
 
-    #[allow(dead_code)]
     pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
         self.clear_preview_for_tab(tab_id);
         self.clear_action_for_tab(tab_id);
@@ -452,11 +451,6 @@ impl TabSessionState {
 
     pub(super) fn len(&self) -> usize {
         self.tabs.len()
-    }
-
-    #[allow(dead_code)]
-    pub(super) fn is_empty(&self) -> bool {
-        self.tabs.is_empty()
     }
 
     pub(super) fn get(&self, index: usize) -> Option<&AppTabState> {

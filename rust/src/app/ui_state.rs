@@ -27,7 +27,6 @@ pub(super) struct RuntimeUiState {
     pub(super) cjk_font_applied: bool,
 }
 
-#[allow(dead_code)]
 impl RuntimeUiState {
     pub(super) fn new(
         show_preview: bool,
@@ -72,6 +71,7 @@ impl RuntimeUiState {
         self.ignore_list_enabled
     }
 
+    #[cfg(test)]
     pub(super) fn set_ignore_list_enabled(&mut self, value: bool) {
         self.ignore_list_enabled = value;
     }
@@ -96,10 +96,6 @@ impl RuntimeUiState {
         self.scroll_to_current
     }
 
-    pub(super) fn set_scroll_to_current(&mut self, value: bool) {
-        self.scroll_to_current = value;
-    }
-
     pub(super) fn root_dropdown_highlight(&self) -> Option<usize> {
         self.root_dropdown_highlight
     }
@@ -118,29 +114,5 @@ impl RuntimeUiState {
 
     pub(super) fn unfocus_query_requested(&self) -> bool {
         self.unfocus_query_requested
-    }
-
-    pub(super) fn request_focus_query(&mut self) {
-        self.focus_query_requested = true;
-    }
-
-    pub(super) fn request_unfocus_query(&mut self) {
-        self.unfocus_query_requested = true;
-    }
-
-    pub(super) fn clear_focus_query_request(&mut self) {
-        self.focus_query_requested = false;
-    }
-
-    pub(super) fn clear_unfocus_query_request(&mut self) {
-        self.unfocus_query_requested = false;
-    }
-
-    pub(super) fn pending_render_commands_mut(&mut self) -> &mut Vec<super::render::RenderCommand> {
-        &mut self.pending_render_commands
-    }
-
-    pub(super) fn take_pending_render_commands(&mut self) -> Vec<super::render::RenderCommand> {
-        std::mem::take(&mut self.pending_render_commands)
     }
 }
