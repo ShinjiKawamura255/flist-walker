@@ -428,7 +428,6 @@ impl FlistWalkerApp {
     }
 
     #[cfg(test)]
-    #[allow(dead_code)]
     pub(super) fn set_entry_kind(&mut self, path: &Path, kind: EntryKind) {
         self.apply_entry_kind_updates(&[(path.to_path_buf(), kind)]);
     }

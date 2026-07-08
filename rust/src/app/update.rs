@@ -7,17 +7,14 @@ use std::path::PathBuf;
 
 // Update reducer command surface. Update-specific state transitions live in
 // UpdateManager; this module bridges those commands back into FlistWalkerApp.
-#[allow(dead_code)]
 pub(super) enum UpdateUiCommand {
     SetNotice(String),
 }
 
-#[allow(dead_code)]
 pub(super) enum UpdateWorkerCommand {
     Start(UpdateRequest),
 }
 
-#[allow(dead_code)]
 pub(super) enum UpdateAppCommand {
     MarkUiStateDirty,
     PersistUiStateNow,
@@ -28,7 +25,6 @@ pub(super) enum UpdateAppCommand {
     },
 }
 
-#[allow(dead_code)]
 pub(super) enum UpdateCommand {
     Ui(UpdateUiCommand),
     Worker(UpdateWorkerCommand),

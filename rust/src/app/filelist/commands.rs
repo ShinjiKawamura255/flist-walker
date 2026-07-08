@@ -1,26 +1,17 @@
-use super::super::{FileListRequest, FlistWalkerApp, PendingFileListAfterIndex};
+use super::super::{FileListRequest, FlistWalkerApp};
 // FileList reducer command surface. FileListManager owns the workflow state,
 // and this module bridges those commands back into FlistWalkerApp.
-#[allow(dead_code)]
 pub(super) enum FileListUiCommand {
     RefreshStatusLine,
     SetNotice(String),
 }
 
-#[allow(dead_code)]
 pub(super) enum FileListWorkerCommand {
     Start(FileListRequest),
 }
 
-#[allow(dead_code)]
 pub(super) enum FileListAppCommand {
-    SetPendingAfterIndex(Option<PendingFileListAfterIndex>),
-    SetIncludeFilesAndDirs {
-        include_files: bool,
-        include_dirs: bool,
-    },
     RequestIndexRefresh,
-    RequestCreateFileListWalkerRefresh,
     RequestBackgroundIndexRefreshForTab(usize),
     SetUseFileListForTab {
         tab_index: usize,
@@ -28,7 +19,6 @@ pub(super) enum FileListAppCommand {
     },
 }
 
-#[allow(dead_code)]
 pub(super) enum FileListCommand {
     Ui(FileListUiCommand),
     Worker(FileListWorkerCommand),
@@ -53,21 +43,8 @@ impl FlistWalkerApp {
                         self.dispatch_filelist_commands(fallback);
                     }
                 }
-                FileListCommand::App(FileListAppCommand::SetPendingAfterIndex(pending)) => {
-                    self.shell.features.filelist.workflow.pending_after_index = pending;
-                }
-                FileListCommand::App(FileListAppCommand::SetIncludeFilesAndDirs {
-                    include_files,
-                    include_dirs,
-                }) => {
-                    self.shell.runtime.include_files = include_files;
-                    self.shell.runtime.include_dirs = include_dirs;
-                }
                 FileListCommand::App(FileListAppCommand::RequestIndexRefresh) => {
                     self.request_index_refresh();
-                }
-                FileListCommand::App(FileListAppCommand::RequestCreateFileListWalkerRefresh) => {
-                    self.request_create_filelist_walker_refresh();
                 }
                 FileListCommand::App(FileListAppCommand::RequestBackgroundIndexRefreshForTab(
                     tab_index,

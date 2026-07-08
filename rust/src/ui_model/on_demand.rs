@@ -37,7 +37,7 @@ fn metadata_file_attributes(metadata: &std::fs::Metadata) -> u32 {
     metadata.file_attributes()
 }
 
-#[cfg_attr(not(any(test, windows)), allow(dead_code))]
+#[cfg(any(test, windows))]
 fn should_skip_preview_from_attr_tag(file_attributes: u32, reparse_tag: Option<u32>) -> bool {
     has_on_demand_attributes(file_attributes)
         || reparse_tag
@@ -45,7 +45,7 @@ fn should_skip_preview_from_attr_tag(file_attributes: u32, reparse_tag: Option<u
             .unwrap_or(false)
 }
 
-#[cfg_attr(not(any(test, windows)), allow(dead_code))]
+#[cfg(any(test, windows))]
 fn has_on_demand_attributes(file_attributes: u32) -> bool {
     const FILE_ATTRIBUTE_OFFLINE: u32 = 0x0000_1000;
     const FILE_ATTRIBUTE_RECALL_ON_OPEN: u32 = 0x0004_0000;
@@ -65,8 +65,7 @@ fn is_cloud_placeholder(file_attributes: u32, reparse_tag: u32) -> bool {
     cf_get_placeholder_state_from_attribute_tag(file_attributes, reparse_tag) != 0
 }
 
-#[cfg(not(windows))]
-#[cfg_attr(not(test), allow(dead_code))]
+#[cfg(all(test, not(windows)))]
 fn is_cloud_placeholder(_file_attributes: u32, _reparse_tag: u32) -> bool {
     false
 }

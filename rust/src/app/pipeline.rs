@@ -562,7 +562,6 @@ impl FlistWalkerApp {
         );
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(super) fn enqueue_search_request(&mut self) {
         self.pipeline_owner().enqueue_search_request();
     }
