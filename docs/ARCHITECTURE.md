@@ -34,7 +34,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - sequential / parallel collect と candidate evaluation の execution path を担当する。
 - [search/rank.rs](../rust/src/search/rank.rs)
   - ranking、result materialization、visible-result filter を担当する。
-- [ui_model.rs](../rust/src/ui_model/mod.rs)
+- [ui_model/mod.rs](../rust/src/ui_model/mod.rs)
   - highlight 判定、preview 文面、表示パス整形を担当する。action decision policy は持たず、表示専用 helper に限定する。
 - [path_utils.rs](../rust/src/path_utils.rs)
   - Windows path normalization と path identity helper を担当する。
@@ -147,7 +147,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - `FileListManager` と `UpdateManager` は内部 bundle を透明に露出せず、`workflow` / `state` を明示的に触る boundary として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。
-  - `rust/src/app/tests/session_tabs.rs` の contract test は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout をフルリテラルで固定し、field drift を compile-time で検出する。
+  - `rust/src/app/tests/tab_contract.rs` の contract test は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout をフルリテラルで固定し、field drift を compile-time で検出する。
 - [workers.rs](../rust/src/app/workers.rs)
   - search/preview/action/sort/update/filelist/kind worker の registry shim を担当する。
 - [worker_tasks.rs](../rust/src/app/worker_tasks.rs)
@@ -158,8 +158,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - update dialog / manager / worker-response lifecycle を command 境界で検証する。
 - `rust/src/app/tests/session_restore.rs`
   - startup root 選択、saved tab sanitize、restore 時の active/background tab 初期化を restore owner 境界で検証する。
-- `rust/src/app/tests/session_tabs.rs`
-  - tab switch/reorder/close と background tab 応答 routing を tab owner 境界で検証する。
+- `rust/src/app/tests/tab_lifecycle.rs`, `rust/src/app/tests/tab_drag.rs`, `rust/src/app/tests/tab_background_responses.rs`, `rust/src/app/tests/tab_contract.rs`
+  - tab switch/close/restore、tab reorder、background tab 応答 routing、tab snapshot contract を tab owner 境界で検証する。
 - `rust/src/app/tests/index_pipeline/*`
   - filelist、index inflight、kind resolution、search refresh の pipeline lifecycle を command 単位で検証する。
 - `rust/src/app/tests/app_core.rs`
@@ -197,7 +197,7 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 
 - [path_utils.rs](../rust/src/path_utils.rs)
   - Windows パス正規化、path identity、display/shell 変換。
-- [ui_model.rs](../rust/src/ui_model/mod.rs)
+- [ui_model/mod.rs](../rust/src/ui_model/mod.rs)
   - preview/highlight 計算。
 - [fs_atomic.rs](../rust/src/fs_atomic.rs)
   - 原子的ファイル書き込み。

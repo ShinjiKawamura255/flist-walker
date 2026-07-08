@@ -157,7 +157,7 @@ Key design:
 - [app/render.rs](../../rust/src/app/render.rs) owns the `run_ui_frame()` facade and `RenderCommand` dispatcher.
 - [app/render_panels.rs](../../rust/src/app/render_panels.rs), [app/render_dialogs.rs](../../rust/src/app/render_dialogs.rs), [app/render_tabs.rs](../../rust/src/app/render_tabs.rs), [app/render_snapshot.rs](../../rust/src/app/render_snapshot.rs), and [app/render_theme.rs](../../rust/src/app/render_theme.rs) draw panels, dialogs, tabs, snapshots, theme colors, and result lists.
 - `RenderCommand` boundaries prevent immediate complex state mutation from inside UI painting code.
-- [app/input.rs](../../rust/src/app/input/mod.rs), [app/input_history.rs](../../rust/src/app/input_history.rs), and [app/query_state.rs](../../rust/src/app/query_state.rs) handle shortcuts, IME fallback, query editing, and shared history.
+- [app/input/mod.rs](../../rust/src/app/input/mod.rs), [app/input_history.rs](../../rust/src/app/input_history.rs), and [app/query_state.rs](../../rust/src/app/query_state.rs) handle shortcuts, IME fallback, query editing, and shared history.
 
 Rationale: egui UI code is easier to regress when it directly mutates cross-feature state. Command dispatch after drawing keeps rendering and behavior boundaries clearer.
 
@@ -198,7 +198,7 @@ Failure mode handling:
 
 ### 6.11 FileList Creation Lifecycle
 
-Responsibility: [app/filelist.rs](../../rust/src/app/filelist/mod.rs), `FileListManager` in [app/state.rs](../../rust/src/app/state.rs), [app/worker_protocol.rs](../../rust/src/app/worker_protocol.rs), [app/worker_tasks.rs](../../rust/src/app/worker_tasks.rs), and [indexer/filelist_writer.rs](../../rust/src/indexer/filelist_writer.rs) own the Create File List workflow.
+Responsibility: [app/filelist/mod.rs](../../rust/src/app/filelist/mod.rs), `FileListManager` in [app/state.rs](../../rust/src/app/state.rs), [app/worker_protocol.rs](../../rust/src/app/worker_protocol.rs), [app/worker_tasks.rs](../../rust/src/app/worker_tasks.rs), and [indexer/filelist_writer.rs](../../rust/src/indexer/filelist_writer.rs) own the Create File List workflow.
 
 Lifecycle rules:
 

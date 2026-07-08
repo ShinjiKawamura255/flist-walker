@@ -17,7 +17,7 @@
 4. Treat `docs/TASKS.md` as history, not the main entrypoint.
    - Start from this file, then read `ARCHITECTURE.md`, `TESTPLAN.md`, or `TASKS.md` only as needed.
 5. Keep large-file reductions from regressing.
-   - The first reduction wave completed on 2026-05-14: oversized app tests, `ui_model.rs`, `app/input.rs`, `indexer/mod.rs`, `search/mod.rs`, `app/filelist.rs`, `runtime_config.rs`, `app/session.rs`, and `app/index_worker.rs` were split by owner.
+   - The first reduction wave completed on 2026-05-14: oversized app tests and owner modules were split into surfaces such as `ui_model/`, `app/input/`, `app/filelist/`, `indexer/`, `search/`, `runtime_config.rs`, `app/session.rs`, and `app/index_worker.rs`.
    - No top-level Rust production file remained above 800 lines at closure; use `docs/TASKS.md` for the historical closure record.
 
 ## Daily Validation

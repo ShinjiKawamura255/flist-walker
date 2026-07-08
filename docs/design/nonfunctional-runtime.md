@@ -59,7 +59,7 @@
 - OS シグナル（例: `Ctrl+C`）受信時は shutdown 要求を立て、GUI 側で window close を発行して終了処理へ収束させる。
 - FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - Create File List は app 側で pending confirmation / pending after index / in-flight request を 1 系列の状態として管理し、status panel の `Cancel Create File List` から共通キャンセル処理へ流す。
-- God Object 解消の第一段として、Create File List は `app/filelist.rs` 内の FileList 専用 reducer/manager 境界へ寄せ、FileList worker request/response の lifecycle と stale/cancel 判定だけを manager 側で所有する。
+- God Object 解消の第一段として、Create File List は `app/filelist/` 内の FileList 専用 reducer/manager 境界へ寄せ、FileList worker request/response の lifecycle と stale/cancel 判定だけを manager 側で所有する。
 - FileList 系の副作用は `UiCommand`、`WorkerCommand`、`FileListAppCommand` のようなカテゴリ化した戻り値で表現し、単一巨大 enum や `&mut FlistWalkerApp` への直接依存を増やさない。
 - `pending_after_index`、tab/root 切替時の再インデックス判断、active/background tab への反映は orchestration として `FlistWalkerApp` 側に残し、manager は必要な app command を返すだけに留める。
 - FileList 作成は OS 一時領域に出力してから最終配置へ移動する。クロスデバイスで `rename` 不可の場合は `copy` フォールバックし、最終配置のみを更新する。
@@ -113,8 +113,8 @@
 - indexer/search/actions/ui_model を独立モジュール化。
 - query 解釈は `rust/src/query.rs` へ集約し、search と UI highlight で同じ token 分解・正規化を再利用する。
 - OS 依存処理は抽象境界を薄くして単体テスト可能性を維持。
-- app regression tests は monolithic な `FlistWalkerApp` fixture へ集約し続けず、owner/command seam ごとに module を分ける。update lifecycle は `rust/src/app/tests/update_commands.rs`、session restore/startup root は `rust/src/app/tests/session_restore.rs`、tab interaction/background routing は `rust/src/app/tests/session_tabs.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を基準に保守する。
-  - `session_tabs.rs` には `tab_state_contract_round_trip_pins_field_layout` を置き、tab snapshot field の増減を compile-time で検出する。
+- app regression tests は monolithic な `FlistWalkerApp` fixture へ集約し続けず、owner/command seam ごとに module を分ける。update lifecycle は `rust/src/app/tests/update_commands.rs`、session restore/startup root は `rust/src/app/tests/session_restore.rs`、tab interaction/background routing は `rust/src/app/tests/tab_lifecycle.rs` / `rust/src/app/tests/tab_drag.rs` / `rust/src/app/tests/tab_background_responses.rs`、tab snapshot contract は `rust/src/app/tests/tab_contract.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を基準に保守する。
+  - `tab_contract.rs` には `tab_state_contract_round_trip_pins_field_layout` を置き、tab snapshot field の増減を compile-time で検出する。
 
 - DES-011 Window/IME Stability (Windows)
 - マルチディスプレイ跨ぎ時の一時的な巨大ウィンドウサイズを永続化しないよう、保存前に monitor 幅/高さでジオメトリをクランプする。
