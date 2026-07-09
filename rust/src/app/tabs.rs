@@ -157,6 +157,7 @@ impl FlistWalkerApp {
                 }
                 let state = indexing.background_states.entry(request_id).or_default();
                 state.entries.clear();
+                state.replaced = true;
                 for entry in entries {
                     state.entries.push(entry.into());
                 }
@@ -171,8 +172,23 @@ impl FlistWalkerApp {
                     .remove(&request_id)
                     .unwrap_or_default();
                 tab.index_state.index.source = state.source.unwrap_or(source);
-                tab.index_state.index.entries.clear();
-                tab.index_state.all_entries = Arc::new(state.entries);
+                let mut completed_entries = if state.replaced {
+                    Vec::new()
+                } else {
+                    std::mem::take(&mut tab.index_state.index.entries)
+                };
+                if !state.replaced
+                    && tab.index_state.pending_index_entries_request_id == Some(request_id)
+                {
+                    completed_entries.extend(
+                        tab.index_state
+                            .pending_index_entries
+                            .drain(..)
+                            .map(Entry::from),
+                    );
+                }
+                completed_entries.extend(state.entries);
+                tab.index_state.all_entries = Arc::new(completed_entries);
                 if tab.include_files && tab.include_dirs {
                     tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
                 } else {

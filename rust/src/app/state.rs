@@ -22,6 +22,7 @@ use std::time::SystemTime;
 pub(super) struct BackgroundIndexState {
     pub(super) source: Option<IndexSource>,
     pub(super) entries: Vec<Entry>,
+    pub(super) replaced: bool,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -157,6 +157,212 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 }
 
 #[test]
+fn active_index_progress_before_tab_switch_is_preserved_on_background_finish() {
+    let root = test_root("active-index-progress-before-tab-switch");
+    fs::create_dir_all(&root).expect("create dir");
+    let first_file = root.join("first.txt");
+    let second_file = root.join("second.txt");
+    fs::write(&first_file, "first").expect("write first");
+    fs::write(&second_file, "second").expect("write second");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    app.shell.indexing.tx = index_req_tx;
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_res_rx;
+
+    app.request_index_refresh();
+    let index_req = index_req_rx.try_recv().expect("index request");
+
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: index_req.request_id,
+            entries: vec![IndexEntry {
+                path: first_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send active batch");
+    app.poll_index_response();
+    assert_eq!(app.shell.runtime.index.entries.len(), 1);
+
+    app.create_new_tab();
+    assert_eq!(app.shell.tabs.active_tab, 1);
+
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: index_req.request_id,
+            entries: vec![IndexEntry {
+                path: second_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send background batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_req.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background finished");
+
+    app.poll_index_response();
+    app.switch_to_tab_index(0);
+
+    assert_eq!(app.shell.runtime.entries.len(), 2);
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == first_file));
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == second_file));
+    assert!(!app.shell.indexing.in_progress);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn active_index_handoff_preserves_pending_and_background_batches() {
+    let root = test_root("active-index-handoff-pending-background");
+    fs::create_dir_all(&root).expect("create dir");
+    let drained_file = root.join("drained.txt");
+    let pending_file = root.join("pending.txt");
+    let background_file = root.join("background.txt");
+    fs::write(&drained_file, "drained").expect("write drained");
+    fs::write(&pending_file, "pending").expect("write pending");
+    fs::write(&background_file, "background").expect("write background");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    app.shell.indexing.tx = index_req_tx;
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_res_rx;
+
+    app.request_index_refresh();
+    let index_req = index_req_rx.try_recv().expect("index request");
+    app.shell.runtime.index.entries = vec![file_entry(drained_file.clone())];
+    app.shell.indexing.pending_entries_request_id = Some(index_req.request_id);
+    app.shell.indexing.pending_entries.push_back(IndexEntry {
+        path: pending_file.clone(),
+        kind: EntryKind::file(),
+        kind_known: true,
+    });
+
+    app.create_new_tab();
+    assert_eq!(app.shell.tabs.active_tab, 1);
+
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: index_req.request_id,
+            entries: vec![IndexEntry {
+                path: background_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send background batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_req.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background finished");
+
+    app.poll_index_response();
+    app.switch_to_tab_index(0);
+
+    assert_eq!(app.shell.runtime.entries.len(), 3);
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == drained_file));
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == pending_file));
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == background_file));
+    assert!(!app.shell.indexing.in_progress);
+    assert!(app.shell.indexing.pending_entries.is_empty());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn background_replace_all_after_active_handoff_discards_prior_partial_index() {
+    let root = test_root("background-replace-all-discards-partial");
+    fs::create_dir_all(&root).expect("create dir");
+    let stale_file = root.join("stale.txt");
+    let replacement_file = root.join("replacement.txt");
+    fs::write(&stale_file, "stale").expect("write stale");
+    fs::write(&replacement_file, "replacement").expect("write replacement");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    app.shell.indexing.tx = index_req_tx;
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_res_rx;
+
+    app.request_index_refresh();
+    let index_req = index_req_rx.try_recv().expect("index request");
+    app.shell.runtime.index.entries = vec![file_entry(stale_file.clone())];
+    app.shell.indexing.pending_entries_request_id = Some(index_req.request_id);
+    app.shell.indexing.pending_entries.push_back(IndexEntry {
+        path: stale_file.clone(),
+        kind: EntryKind::file(),
+        kind_known: true,
+    });
+
+    app.create_new_tab();
+
+    index_res_tx
+        .send(IndexResponse::ReplaceAll {
+            request_id: index_req.request_id,
+            entries: vec![IndexEntry {
+                path: replacement_file.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send replace all");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_req.request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .expect("send finished");
+
+    app.poll_index_response();
+    app.switch_to_tab_index(0);
+
+    assert_eq!(app.shell.runtime.entries.len(), 1);
+    assert_eq!(app.shell.runtime.entries[0], replacement_file);
+    assert!(!app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == stale_file));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn background_empty_query_index_finish_updates_total_match_count() {
     let root = test_root("background-empty-query-total-count");
     fs::create_dir_all(&root).expect("create dir");
