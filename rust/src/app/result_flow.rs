@@ -9,6 +9,7 @@ struct SortableResult {
     name_key: String,
     path_key: String,
     timestamp: Option<SystemTime>,
+    size_bytes: Option<u64>,
 }
 
 impl FlistWalkerApp {
@@ -31,6 +32,19 @@ impl FlistWalkerApp {
         match mode {
             ResultSortMode::ModifiedDesc | ResultSortMode::ModifiedAsc => metadata.modified,
             ResultSortMode::CreatedDesc | ResultSortMode::CreatedAsc => metadata.created,
+            _ => None,
+        }
+    }
+
+    fn sort_size_for_path(
+        cache: &HashMap<PathBuf, SortMetadata>,
+        path: &Path,
+        mode: ResultSortMode,
+    ) -> Option<u64> {
+        match mode {
+            ResultSortMode::SizeDesc | ResultSortMode::SizeAsc => {
+                cache.get(path).and_then(|metadata| metadata.size_bytes)
+            }
             _ => None,
         }
     }
@@ -71,6 +85,7 @@ impl FlistWalkerApp {
             .enumerate()
             .map(|(original_index, entry)| {
                 let timestamp = Self::sort_timestamp_for_path(cache, &entry.0, mode);
+                let size_bytes = Self::sort_size_for_path(cache, &entry.0, mode);
                 let name_key = Self::path_name_key(&entry.0);
                 let path_key = normalized_compare_key(&entry.0);
                 SortableResult {
@@ -79,6 +94,7 @@ impl FlistWalkerApp {
                     name_key,
                     path_key,
                     timestamp,
+                    size_bytes,
                 }
             })
             .collect::<Vec<_>>();
@@ -102,27 +118,26 @@ impl FlistWalkerApp {
             ResultSortMode::ModifiedDesc
             | ResultSortMode::ModifiedAsc
             | ResultSortMode::CreatedDesc
-            | ResultSortMode::CreatedAsc => {
+            | ResultSortMode::CreatedAsc
+            | ResultSortMode::SizeDesc
+            | ResultSortMode::SizeAsc => {
                 let desc = matches!(
                     mode,
-                    ResultSortMode::ModifiedDesc | ResultSortMode::CreatedDesc
+                    ResultSortMode::ModifiedDesc
+                        | ResultSortMode::CreatedDesc
+                        | ResultSortMode::SizeDesc
                 );
                 items.sort_by(|a, b| {
-                    match (a.timestamp, b.timestamp) {
-                        (Some(a), Some(b)) => {
-                            if desc {
-                                b.cmp(&a)
-                            } else {
-                                a.cmp(&b)
-                            }
-                        }
-                        (Some(_), None) => std::cmp::Ordering::Less,
-                        (None, Some(_)) => std::cmp::Ordering::Greater,
-                        (None, None) => std::cmp::Ordering::Equal,
-                    }
-                    .then_with(|| a.name_key.cmp(&b.name_key))
-                    .then_with(|| a.path_key.cmp(&b.path_key))
-                    .then_with(|| a.original_index.cmp(&b.original_index))
+                    let value_cmp =
+                        if matches!(mode, ResultSortMode::SizeDesc | ResultSortMode::SizeAsc) {
+                            compare_optional_sort_value(a.size_bytes, b.size_bytes, desc)
+                        } else {
+                            compare_optional_sort_value(a.timestamp, b.timestamp, desc)
+                        };
+                    value_cmp
+                        .then_with(|| a.name_key.cmp(&b.name_key))
+                        .then_with(|| a.path_key.cmp(&b.path_key))
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
         }
@@ -165,5 +180,24 @@ impl FlistWalkerApp {
     /// sort scope を切り替え、必要なら全マッチ検索を再実行する。
     pub(super) fn set_result_sort_scope(&mut self, scope: super::ResultSortScope) {
         result_reducer::set_result_sort_scope(self, scope);
+    }
+}
+
+fn compare_optional_sort_value<T: Ord>(
+    a: Option<T>,
+    b: Option<T>,
+    desc: bool,
+) -> std::cmp::Ordering {
+    match (a, b) {
+        (Some(a), Some(b)) => {
+            if desc {
+                b.cmp(&a)
+            } else {
+                a.cmp(&b)
+            }
+        }
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
     }
 }

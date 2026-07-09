@@ -35,6 +35,14 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(in crate::app) fn toggle_pin_current_from_tab(&mut self) {
+        let before = self.shell.runtime.current_row;
+        self.toggle_pin_current();
+        if self.shell.runtime.tab_pin_moves_to_next_row && before.is_some() {
+            self.move_row(1);
+        }
+    }
+
     /// 先頭行へ移動し preview を更新する。
     pub(in crate::app) fn move_to_first_row(&mut self) {
         self.commit_query_history_if_needed(true);

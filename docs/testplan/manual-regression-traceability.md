@@ -47,7 +47,7 @@ Phase 9 の structural refactoring 完了判定では、この手順を別環境
 6. FileList 作成
 Walker source で `Create File List` を実行し、確認ダイアログ、進捗表示、完了後の notice が動くことを確認する。FileList source で同操作を行い、background Walker 準備メッセージが出ることも確認する。
 7. Sort
-`Score`, `Name`, `Modified`, `Created` を切り替え、`Modified` / `Created` 中も入力とスクロールが継続できることを確認する。`Score` へ戻したときに一覧が破綻しないことも確認する。
+`Score`, `Name`, `Modified`, `Created`, `Size` を切り替え、`Modified` / `Created` / `Size` 中も入力とスクロールが継続できることを確認する。`Score` へ戻したときに一覧が破綻しないことも確認する。
 8. Self-update ダイアログ
 更新確認ダイアログを出せる環境なら、表示、Later、抑止チェック、失敗ダイアログのいずれか 1 系統を確認する。難しい場合はこの項目だけ `not run` と記録し、理由を残す。
 

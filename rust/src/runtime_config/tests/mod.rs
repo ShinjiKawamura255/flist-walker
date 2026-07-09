@@ -126,6 +126,12 @@ fn seeds_and_writes_config_when_missing() {
             .and_then(|value| value.as_bool()),
         Some(true)
     );
+    assert_eq!(
+        saved
+            .get("tab_pin_moves_to_next_row")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
     assert!(!saved.contains_key("search_threads"));
     assert!(!saved.contains_key("walker_threads"));
     assert!(!saved.contains_key("window_trace_enabled"));
@@ -209,7 +215,13 @@ fn seeds_default_user_config_values_when_missing() {
             .and_then(|value| value.as_bool()),
         Some(true)
     );
-    assert_eq!(saved.len(), 4);
+    assert_eq!(
+        saved
+            .get("tab_pin_moves_to_next_row")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(saved.len(), 5);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -378,6 +390,7 @@ fn load_runtime_config_from_path_handles_missing_field_defaults() {
     );
     assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
     assert!(loaded.emacs_keybindings_enabled);
+    assert!(!loaded.tab_pin_moves_to_next_row);
     assert_eq!(loaded.developer, DeveloperRuntimeConfig::default());
 
     let _ = fs::remove_dir_all(&home);
@@ -397,6 +410,7 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
     assert!(!loaded.history_persist_disabled);
     assert!(!loaded.restore_tabs_enabled);
     assert!(loaded.emacs_keybindings_enabled);
+    assert!(!loaded.tab_pin_moves_to_next_row);
     let text = fs::read_to_string(&path).expect("read backfilled config");
     let saved_json: serde_json::Value = serde_json::from_str(&text).expect("parse config");
     let saved = saved_json.as_object().expect("object config");
@@ -424,7 +438,13 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
             .and_then(|value| value.as_bool()),
         Some(true)
     );
-    assert_eq!(saved.len(), 4);
+    assert_eq!(
+        saved
+            .get("tab_pin_moves_to_next_row")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(saved.len(), 5);
 
     let _ = fs::remove_dir_all(&home);
 }

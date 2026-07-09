@@ -81,6 +81,36 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
 }
 
 #[test]
+fn tab_can_toggle_pin_and_move_to_next_row_when_configured() {
+    let root = test_root("shortcut-tab-pin-move-next");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("picked.txt");
+    let next = root.join("next.txt");
+    fs::write(&selected, "x").expect("write file");
+    fs::write(&next, "y").expect("write next file");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = vec![(selected.clone(), 0.0), (next.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.tab_pin_moves_to_next_row = true;
+
+    run_shortcuts_frame(
+        &mut app,
+        false,
+        vec![egui::Event::Key {
+            key: egui::Key::Tab,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    );
+
+    assert!(app.shell.runtime.pinned_paths.contains(&selected));
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn regression_tab_shortcut_clears_focus_traversal_target() {
     let root = test_root("regression-tab-focus-traversal");
     fs::create_dir_all(&root).expect("create dir");

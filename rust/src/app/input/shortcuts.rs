@@ -297,7 +297,7 @@ impl FlistWalkerApp {
         }
         let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
         if tab_forward {
-            self.toggle_pin_current();
+            self.toggle_pin_current_from_tab();
             // Keep Tab dedicated to pin toggle without changing query focus active/inactive state.
             if query_focused {
                 ctx.memory_mut(|m| m.request_focus(self.shell.ui.query_input_id));
@@ -307,7 +307,7 @@ impl FlistWalkerApp {
         }
         let tab_backward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab));
         if tab_backward {
-            self.toggle_pin_current();
+            self.toggle_pin_current_from_tab();
             // Keep Shift+Tab dedicated to pin toggle without changing query focus active/inactive state.
             if query_focused {
                 ctx.memory_mut(|m| m.request_focus(self.shell.ui.query_input_id));
@@ -316,7 +316,7 @@ impl FlistWalkerApp {
             }
         }
         if self.consume_emacs_shortcut(ctx, egui::Key::I, false) {
-            self.toggle_pin_current();
+            self.toggle_pin_current_from_tab();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
             self.move_row(1);

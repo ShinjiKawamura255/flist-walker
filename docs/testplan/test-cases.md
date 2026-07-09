@@ -30,7 +30,7 @@
 | TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
 | TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` / `Esc` で query clear + filter reset が実行される | SP-010 |
-| TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除のみ実行し current row を維持する | SP-010 |
+| TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除を実行し、既定では current row を維持する。`tab_pin_moves_to_next_row=true` では PIN 固定/解除後に次行へ移動する | SP-010, SP-016 |
 | TC-023A | unit | tab 切替や `Esc` 系の reset 後も、結果がある場合は visible な current row が復元される | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 | TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、種別解決後に FILE/DIR/LINK 表示とフィルタ状態を反映する | SP-001, SP-010, SP-007 |
@@ -67,14 +67,14 @@
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
 | TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
 | TC-056A | docs+security | `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に依存経路、受容理由、owner、review cadence、再評価 trigger を記録する | SP-012 |
-| TC-057 | unit | `Score` / `Name` / `Modified` / `Created` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
+| TC-057 | unit | `Score` / `Name` / `Modified` / `Created` / `Size` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
 | TC-057A | unit | 検索応答は limit 前の全マッチ件数を返し、GUI snapshot / status は表示件数と全マッチ件数を区別できる | SP-010, SP-013 |
 | TC-057B | unit | `All matches` scope の非 `Score` ソートは検索 worker に再要求され、表示中 snapshot 外の候補も全マッチ集合の sort key 上位なら表示対象になる | SP-013 |
 | TC-058 | unit | query 変更や結果更新時にソートを破棄し、インデクシング経路へ属性取得を追加しない | SP-013 |
 | TC-059 | unit | 日付ソートの未キャッシュ path は別 worker へ要求し、古い応答は request_id で破棄する | SP-013 |
 | TC-060 | unit | sort metadata cache は上限を超えて増加せず、古い項目を破棄する | SP-013 |
-| TC-061 | unit | `created()` 取得不可の項目は `Created` ソート時に末尾へ送る | SP-013 |
-| TC-062 | manual | 結果ペインの `Sort` UI から各ソートを選択でき、`Modified` / `Created` 中も入力が継続できる | SP-010, SP-013 |
+| TC-061 | unit | `created()` 取得不可の項目は `Created` ソート時に末尾へ送り、フォルダや size 取得不可項目は `Size` ソート時に末尾へ送る | SP-013 |
+| TC-062 | manual | 結果ペインの `Sort` UI から各ソートを選択でき、`Modified` / `Created` / `Size` 中も入力が継続できる | SP-010, SP-013 |
 | TC-063 | perf | ソート機能追加後もインデクシング時の属性取得数を増やさず、既存の逐次表示挙動を維持する | SP-007, SP-013 |
 | TC-064 | unit | タブのドラッグ移動は並び順のみを更新し、active tab の実体と保存順を維持する | SP-010 |
 | TC-068 | unit | 回帰: 検索結果更新で current row は行番号を維持し、結果数縮小時のみ末尾へ丸める | SP-010 |
@@ -133,7 +133,7 @@
 | TC-121 | unit | Windows regression: `copy_selected_paths` の notice 正規化は `app.shell.runtime.notice` を更新し、旧 shell 直参照の残骸を検出する | SP-010 |
 | TC-122 | unit | 回帰: Walker 完了後の kind 解決は表示中結果に限定し、巨大な on-demand root で全件 metadata 解決を継続しない | SP-007 |
 | TC-124 | unit+perf | adaptive walker は唯一の backend として同一 dataset の候補件数を標準 read_dir 走査と一致させつつ elapsed time と read_dir 制御指標を診断出力できる。adaptive limit は探索方向を保持し、減少で改善した場合はさらに減少、増加で悪化しない場合は増加探索を継続し、悪化時は方向反転する。Windows の Hidden+System+ReparsePoint 互換 junction は候補化せず、single-worker serial fast path は同じ候補を返して metrics を記録する | SP-002, SP-007, SP-016 |
-| TC-125 | unit | `developer` runtime config は手動追記時だけ読み込まれ、自動生成 config seed には出力されない。自動生成 config seed には `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` が既定値で含まれ、既存 config に欠けている場合も読み込み時に補完される。`walker_threads` / `walker_backend` は既存 config から削除され、adaptive walker の initial/max limit 未指定時の既定と明示値を検証し、metrics summary を指定ファイルへ追記できる。`adaptive_limit_avg` と `adaptive_limit_change_count` を含む summary 形式を固定し、平均並列度の読み取り手順を残す | SP-002, SP-016 |
+| TC-125 | unit | `developer` runtime config は手動追記時だけ読み込まれ、自動生成 config seed には出力されない。自動生成 config seed には `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` / `tab_pin_moves_to_next_row` が既定値で含まれ、既存 config に欠けている場合も読み込み時に補完される。`walker_threads` / `walker_backend` は既存 config から削除され、adaptive walker の initial/max limit 未指定時の既定と明示値を検証し、metrics summary を指定ファイルへ追記できる。`adaptive_limit_avg` と `adaptive_limit_change_count` を含む summary 形式を固定し、平均並列度の読み取り手順を残す | SP-002, SP-016 |
 | TC-126 | unit+perf | adaptive walker の制御メトリクスは `adaptive_limit_final` だけでなく `adaptive_limit_avg` と `adaptive_limit_change_count` を出力し、再測定時に平均並列度・揺れ幅・最終値を比較できる。`adaptive_limit_avg` は shutdown/join 尾を少量含みうることを前提に解釈する | SP-002, SP-016 |
 | TC-127 | unit | GUI 設定ボタンの handler は runtime config file を生成済みのパスとして解決し、既定アプリ open が失敗した場合にテキストエディタ相当の fallback handler を呼ぶ | SP-016 |
 | TC-128 | unit | active indexing の `Finished` 応答時に未反映 entries が残っている場合、GUI frame は全件 drain せず、複数 frame に分けて吸収した後に terminal state へ遷移する | SP-010 |

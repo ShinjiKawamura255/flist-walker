@@ -29,6 +29,7 @@ pub(super) struct BackgroundIndexState {
 pub(super) struct SortMetadata {
     pub(super) modified: Option<SystemTime>,
     pub(super) created: Option<SystemTime>,
+    pub(super) size_bytes: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -41,6 +42,8 @@ pub(super) enum ResultSortMode {
     ModifiedAsc,
     CreatedDesc,
     CreatedAsc,
+    SizeDesc,
+    SizeAsc,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -69,13 +72,20 @@ impl ResultSortMode {
             Self::ModifiedAsc => "Modified (Old)",
             Self::CreatedDesc => "Created (New)",
             Self::CreatedAsc => "Created (Old)",
+            Self::SizeDesc => "Size (Large)",
+            Self::SizeAsc => "Size (Small)",
         }
     }
 
     pub(super) fn uses_metadata(self) -> bool {
         matches!(
             self,
-            Self::ModifiedDesc | Self::ModifiedAsc | Self::CreatedDesc | Self::CreatedAsc
+            Self::ModifiedDesc
+                | Self::ModifiedAsc
+                | Self::CreatedDesc
+                | Self::CreatedAsc
+                | Self::SizeDesc
+                | Self::SizeAsc
         )
     }
 }
@@ -291,6 +301,7 @@ pub struct AppRuntimeState {
     pub(super) pinned_paths: HashSet<PathBuf>,
     pub(super) current_row: Option<usize>,
     pub(super) emacs_keybindings_enabled: bool,
+    pub(super) tab_pin_moves_to_next_row: bool,
     pub(super) preview: String,
     pub(super) notice: String,
     pub(super) status_line: String,

@@ -43,7 +43,7 @@
 - preview/highlight/sort metadata cache は app coordinator 直下の flat field ではなく専用 state struct へ束ね、root 変更や index refresh 開始時にまとめて破棄できるようにする。
 - 結果ソートは `base_results` に検索エンジンの元順位を保持し、表示用 `results` だけを並び替えることで `Score` 復帰を O(n) で実現する。
 - `Name` ソートは UI スレッド上で `base_results` の clone を即時ソートし、追加 I/O を行わない。
-- `Modified` / `Created` は結果スナップショット中の未キャッシュ path だけを sort worker へ送り、属性解決後に表示リストを更新する。
+- `Modified` / `Created` / `Size` は結果スナップショット中の未キャッシュ path だけを sort worker へ送り、属性解決後に表示リストを更新する。`Size` は通常ファイルの `metadata.len()` だけを使い、フォルダは再帰計算せず `None` として末尾へ送る。
 - 検索 worker は `results` とは別に limit 前の `total_match_count` を返し、GUI は `results.len()` と全マッチ件数を区別して status / result header に表示する。
 - 結果ソートは `Shown results` / `All matches` の scope を持つ。`Shown results` は既存の `base_results` だけを並び替える既定動作とし、`All matches` の非 `Score` ソートは検索 worker で現在条件を満たす全マッチ集合を再評価して、選択 sort key の上位 `limit` 件だけを materialize する。
 - `All matches` scope でも通常検索の prefix cache は全マッチ配列を恒久保持せず、count と表示上限分の結果だけを UI state へ返す。
@@ -87,8 +87,9 @@
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
 - runtime config の `history_persist_disabled` が有効なときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
 - 結果ソート状態と sort scope はタブ単位で保持するが、query 変更や結果スナップショット更新時には `Score` / `Shown results` へ戻し、保留中の sort request_id を無効化する。
-- 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` を選択可能にする。併せて `Scope` ドロップダウンを配置し、`Shown results` / `All matches` を選択可能にする。
+- 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択可能にする。併せて `Scope` ドロップダウンを配置し、`Shown results` / `All matches` を選択可能にする。
 - `Created` 属性は取得失敗を正常系として扱い、notice ではなく並び順の末尾送りだけで吸収する。
+- `Size` 属性は通常ファイルだけを値ありとして扱い、フォルダや取得不可項目は notice ではなく並び順の末尾送りだけで吸収する。
 - タブ復元は runtime config の `restore_tabs_enabled` が有効なときだけ有効化し、永続化対象は `root/query/use_filelist/use_regex/include_files/include_dirs/tab_accent/active_tab` に限定する。
 - 起動時の優先順位は `--root` 明示 > 復元タブ（runtime config 有効時） > 最後に使っていた root > `Set as default` > 通常 root とし、バージョン更新やバイナリ差し替えでも最後の root を維持する。
 - runtime config の `restore_tabs_enabled` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。tooltip / notice は runtime config の Restore tabs 設定を指し、seed-only の環境変数名を利用者向け排他理由として表示しない。
@@ -103,6 +104,7 @@
 - タブ close ボタンは固定サイズの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
+- `tab_pin_moves_to_next_row=true` のときは `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` が PIN トグル後に `move_row(1)` を呼ぶ。既定の `false` では従来どおり current row を維持する。
 - `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作は維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は `SHA256SUMS.sig` を埋め込み公開鍵で検証してから `SHA256SUMS` を信頼し、staged binary の checksum 検証へ進む。検証失敗時は既存バイナリと UI セッションを維持する。

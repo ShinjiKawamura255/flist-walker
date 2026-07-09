@@ -56,6 +56,8 @@ pub(crate) enum SearchResultSortMode {
     ModifiedAsc,
     CreatedDesc,
     CreatedAsc,
+    SizeDesc,
+    SizeAsc,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -144,7 +146,9 @@ pub(crate) fn rank_search_results(
             SearchResultSortMode::ModifiedDesc
             | SearchResultSortMode::ModifiedAsc
             | SearchResultSortMode::CreatedDesc
-            | SearchResultSortMode::CreatedAsc,
+            | SearchResultSortMode::CreatedAsc
+            | SearchResultSortMode::SizeDesc
+            | SearchResultSortMode::SizeAsc,
         ) => top_metadata_sorted_scores(entries, scored_matches.scored, limit, sort_mode),
         _ => top_ranked_scores(scored_matches.scored, limit),
     };
@@ -214,7 +218,9 @@ fn top_metadata_sorted_scores(
 ) -> Vec<IndexedScore> {
     let desc = matches!(
         mode,
-        SearchResultSortMode::ModifiedDesc | SearchResultSortMode::CreatedDesc
+        SearchResultSortMode::ModifiedDesc
+            | SearchResultSortMode::CreatedDesc
+            | SearchResultSortMode::SizeDesc
     );
     let mut items = scored
         .into_iter()
@@ -223,11 +229,18 @@ fn top_metadata_sorted_scores(
             let metadata = std::fs::metadata(entry.path()).ok();
             let timestamp = match mode {
                 SearchResultSortMode::ModifiedDesc | SearchResultSortMode::ModifiedAsc => {
-                    metadata.and_then(|meta| meta.modified().ok())
+                    metadata.as_ref().and_then(|meta| meta.modified().ok())
                 }
                 SearchResultSortMode::CreatedDesc | SearchResultSortMode::CreatedAsc => {
-                    metadata.and_then(|meta| meta.created().ok())
+                    metadata.as_ref().and_then(|meta| meta.created().ok())
                 }
+                _ => None,
+            };
+            let size_bytes = match mode {
+                SearchResultSortMode::SizeDesc | SearchResultSortMode::SizeAsc => metadata
+                    .as_ref()
+                    .filter(|meta| meta.is_file())
+                    .map(|meta| meta.len()),
                 _ => None,
             };
             Some((
@@ -235,34 +248,51 @@ fn top_metadata_sorted_scores(
                 entry_name_key(entry),
                 entry_path_key(entry),
                 timestamp,
+                size_bytes,
             ))
         })
         .collect::<Vec<_>>();
     items.sort_unstable_by(|a, b| {
-        match (a.3, b.3) {
-            (Some(a_time), Some(b_time)) => {
-                if desc {
-                    b_time.cmp(&a_time)
-                } else {
-                    a_time.cmp(&b_time)
-                }
-            }
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => std::cmp::Ordering::Equal,
-        }
-        .then_with(|| a.1.cmp(&b.1))
-        .then_with(|| a.2.cmp(&b.2))
-        .then_with(|| a.0.ordinal.cmp(&b.0.ordinal))
+        let value_cmp = if matches!(
+            mode,
+            SearchResultSortMode::SizeDesc | SearchResultSortMode::SizeAsc
+        ) {
+            compare_optional_sort_value(a.4, b.4, desc)
+        } else {
+            compare_optional_sort_value(a.3, b.3, desc)
+        };
+        value_cmp
+            .then_with(|| a.1.cmp(&b.1))
+            .then_with(|| a.2.cmp(&b.2))
+            .then_with(|| a.0.ordinal.cmp(&b.0.ordinal))
     });
     items
         .into_iter()
         .take(limit)
-        .map(|(item, _, _, _)| IndexedScore {
+        .map(|(item, _, _, _, _)| IndexedScore {
             index: item.index,
             score: item.score,
         })
         .collect()
+}
+
+fn compare_optional_sort_value<T: Ord>(
+    a: Option<T>,
+    b: Option<T>,
+    desc: bool,
+) -> std::cmp::Ordering {
+    match (a, b) {
+        (Some(a), Some(b)) => {
+            if desc {
+                b.cmp(&a)
+            } else {
+                a.cmp(&b)
+            }
+        }
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
+    }
 }
 
 fn try_collect_entry_matches(

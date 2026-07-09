@@ -40,9 +40,10 @@
 - AC-009: Create File List 実行時、祖先 FileList 更新がありうる場合は確認ダイアログが表示され、拒否時は root 直下の FileList だけが更新される。
 - AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。
 - AC-010A: runtime config の `emacs_keybindings_enabled` が `false` のときは Emacs 風ショートカットをアプリ操作として消費せず、`true` または未指定時は既存どおり有効にする。
+- AC-010B: runtime config の `tab_pin_moves_to_next_row` が `true` のとき、`Tab` / `Shift+Tab` / `Ctrl+I` による PIN 固定/解除後に選択行を次行へ進める。未指定または `false` のときは既存どおり現在行に留まる。
 - AC-011: CI は Linux/macOS/Windows でテストを実行し、依存脆弱性検査を通過する。
-- AC-012: GUI の結果ペインから `Score` / `Name` / `Modified` / `Created` を選択できる。
-- AC-013: `Name` ソートは即時に並び替わり、`Modified` / `Created` ソートは UI を固めずに完了する。
+- AC-012: GUI の結果ペインから `Score` / `Name` / `Modified` / `Created` / `Size` を選択できる。
+- AC-013: `Name` ソートは即時に並び替わり、`Modified` / `Created` / `Size` ソートは UI を固めずに完了する。`Size` ソートでは通常ファイルの byte size を使い、フォルダや取得不可項目は末尾へ送る。
 - AC-014: query 変更後はソート結果が維持されず、検索スコア順へ戻る。
 - AC-015: インデクシング時の path 種別/日付属性取得は増えず、ソート属性は検索結果に対してのみ遅延取得される。
 - AC-016: GUI でタブをドラッグすると並び順だけが更新され、active tab の root/query/filter は他タブへ入れ替わらない。
@@ -54,7 +55,7 @@
 - AC-022: macOS では更新検知時に自動更新非対応が案内され、誤って自己置換しない。
 - AC-023: 利用者が更新ダイアログで「次のバージョンが出るまで表示しない」を選ぶと、その target version は次回起動以降も再表示されず、より新しい version が見つかった場合のみ再びダイアログが表示される。
 - AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の非 fuzzy 除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
-- AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、一般利用者向けの `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` を既定値で保持し、詳細項目は設定済み環境変数だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
+- AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、一般利用者向けの `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` / `tab_pin_moves_to_next_row` を既定値で保持し、詳細項目は設定済み環境変数だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では `%LocalAppData%\flistwalker\` に、Linux/macOS では `~/.flistwalker/` に保存される。
 - AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。
 - AC-026: `flistwalker.ignore.txt.example` が存在しない状態で起動しても、ツールは sample を実行バイナリの隣へ自動生成し、`flistwalker.ignore.txt` へのリネーム案内を提供する。

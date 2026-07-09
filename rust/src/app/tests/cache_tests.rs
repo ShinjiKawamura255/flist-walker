@@ -196,6 +196,7 @@ fn created_sort_places_missing_timestamps_last() {
         SortMetadata {
             modified: None,
             created: None,
+            size_bytes: None,
         },
     );
     app.cache_sort_metadata(
@@ -203,6 +204,7 @@ fn created_sort_places_missing_timestamps_last() {
         SortMetadata {
             modified: None,
             created: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(5)),
+            size_bytes: None,
         },
     );
 
@@ -221,6 +223,72 @@ fn created_sort_places_missing_timestamps_last() {
 }
 
 #[test]
+fn size_sort_places_folders_and_unknown_sizes_last() {
+    let root = test_root("result-sort-size-folders-last");
+    fs::create_dir_all(&root).expect("create dir");
+    let large = root.join("large.txt");
+    let small = root.join("small.txt");
+    let folder = root.join("folder");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "a".to_string());
+
+    app.replace_results_snapshot(
+        vec![
+            (folder.clone(), 8.0),
+            (small.clone(), 7.0),
+            (large.clone(), 6.0),
+        ],
+        false,
+    );
+    app.cache_sort_metadata(
+        folder.clone(),
+        SortMetadata {
+            modified: None,
+            created: None,
+            size_bytes: None,
+        },
+    );
+    app.cache_sort_metadata(
+        small.clone(),
+        SortMetadata {
+            modified: None,
+            created: None,
+            size_bytes: Some(10),
+        },
+    );
+    app.cache_sort_metadata(
+        large.clone(),
+        SortMetadata {
+            modified: None,
+            created: None,
+            size_bytes: Some(100),
+        },
+    );
+
+    app.set_result_sort_mode(ResultSortMode::SizeDesc);
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![large.clone(), small.clone(), folder.clone()]
+    );
+
+    app.set_result_sort_mode(ResultSortMode::SizeAsc);
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![small, large, folder]
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn sort_metadata_cache_is_bounded() {
     let root = test_root("result-sort-cache-bounded");
     fs::create_dir_all(&root).expect("create dir");
@@ -232,6 +300,7 @@ fn sort_metadata_cache_is_bounded() {
             SortMetadata {
                 modified: Some(SystemTime::UNIX_EPOCH + Duration::from_secs(i as u64)),
                 created: None,
+                size_bytes: None,
             },
         );
     }

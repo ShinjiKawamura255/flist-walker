@@ -50,6 +50,8 @@ fn search_sort_mode(mode: super::ResultSortMode) -> SearchResultSortMode {
         super::ResultSortMode::ModifiedAsc => SearchResultSortMode::ModifiedAsc,
         super::ResultSortMode::CreatedDesc => SearchResultSortMode::CreatedDesc,
         super::ResultSortMode::CreatedAsc => SearchResultSortMode::CreatedAsc,
+        super::ResultSortMode::SizeDesc => SearchResultSortMode::SizeDesc,
+        super::ResultSortMode::SizeAsc => SearchResultSortMode::SizeAsc,
     }
 }
 
@@ -430,9 +432,13 @@ pub(super) fn spawn_sort_metadata_worker(
                 }
                 let metadata = std::fs::metadata(&path)
                     .ok()
-                    .map(|meta| SortMetadata {
-                        modified: meta.modified().ok(),
-                        created: meta.created().ok(),
+                    .map(|meta| {
+                        let size_bytes = meta.is_file().then_some(meta.len());
+                        SortMetadata {
+                            modified: meta.modified().ok(),
+                            created: meta.created().ok(),
+                            size_bytes,
+                        }
                     })
                     .unwrap_or_default();
                 entries.push((path, metadata));

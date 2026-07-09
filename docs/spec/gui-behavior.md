@@ -27,7 +27,7 @@
 - SHOULD: IME 合成中の未確定文字列は query 履歴へ保存せず、変換確定後の query のみ履歴対象とする。
 - MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
-- MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除のみを実行し、選択行移動は行わない。
+- MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除を実行する。runtime config の `tab_pin_moves_to_next_row` が `false` または未指定のときは選択行移動を行わず、`true` のときは PIN 固定/解除後に選択行を次行へ進める。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
 - MUST: search / index の非同期応答は、active request_id または request-tab routing で結び付いた background tab に対してのみ適用し、stale 応答で現在の root / tab / result state を巻き戻してはならない。
 - MUST: active indexing 中にタブ切替で request が background tab に移った場合、GUI は切替前に active tab 側へ取り込み済みの entries、未 drain の pending entries、切替後の background batches を同じ request_id の完了 snapshot として統合しなければならない。ただし同じ request_id で `ReplaceAll` を受けた場合は、切替前の部分 snapshot を混ぜず置換 snapshot のみで確定しなければならない。
@@ -76,7 +76,7 @@
 - MUST: タブバーはドラッグアンドドロップで並び替え可能でなければならず、ドロップ先は既存タブ領域内に限定する。
 - MUST: タブ並び替え時は active tab を index ではなく同一タブ実体として維持し、root/query/filter/進行中状態を他タブへ取り違えてはならない。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
-- MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` を選択できる。
+- MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択できる。
 - MUST: 結果ペインは表示件数と limit 前の全マッチ件数を区別できる表示を持ち、limit により一部だけを表示している場合は `shown of total` 相当の情報を示す。
 - MUST: 結果ペインは sort scope として `Shown results` / `All matches` を選択でき、既定は `Shown results` とする。
 
@@ -107,13 +107,14 @@
 - MUST: `All matches` scope であっても、GUI は全マッチを一覧へ全件描画せず、表示対象は `limit` 件以内に抑えなければならない。
 - MUST: `Score` は検索エンジンが返した元の順位へ戻せる。
 - MUST: `Name` ソートはファイル/ディレクトリ名を主キー、正規化済みフルパスを副キーとして即時に並び替える。
-- MUST: `Modified` / `Created` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
+- MUST: `Modified` / `Created` / `Size` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
 - MUST: `All matches` scope の非 `Score` ソートは UI thread ではなく worker で実行し、検索応答の request_id / tab routing により古い応答を破棄できなければならない。
-- MUST: `Modified` / `Created` の取得中も UI 入力と一覧操作を維持する。
+- MUST: `Modified` / `Created` / `Size` の取得中も UI 入力と一覧操作を維持する。
 - MUST: query が 1 文字でも変化した場合、適用済みソートと保留中ソート要求を破棄し、表示順を `Score` に戻す。
 - MUST: root 変更、index refresh、filter 変更、tab 切替で結果スナップショットが変化した場合も、保留中ソート要求は破棄できる。
 - MUST: 属性キャッシュは上限付きで保持し、上限超過時は古い項目から破棄する。
 - MUST: `created()` が取得できない OS/ファイルは `None` として扱い、`Created` ソート時は末尾へ送る。
+- MUST: `Size` ソートは通常ファイルの byte size を使う。フォルダ、または size を取得できない項目は `None` として扱い、昇順・降順のどちらでも末尾へ送る。フォルダサイズを再帰計算してはならない。
 - SHOULD: 既にキャッシュ済みの属性だけで並び替え可能な場合、日付ソートも同期的に完了できる。
 
 ### Preconditions / Postconditions

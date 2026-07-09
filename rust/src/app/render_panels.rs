@@ -661,6 +661,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                             ResultSortMode::ModifiedAsc,
                             ResultSortMode::CreatedDesc,
                             ResultSortMode::CreatedAsc,
+                            ResultSortMode::SizeDesc,
+                            ResultSortMode::SizeAsc,
                         ] {
                             ui.selectable_value(&mut selected, mode, mode.label());
                         }

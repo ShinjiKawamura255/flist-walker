@@ -271,7 +271,9 @@ impl FlistWalkerApp {
             ignore_list_terms,
             update_state,
         ) = Self::launch_seed(root, limit, query, &launch).into_parts();
-        let emacs_keybindings_enabled = current_runtime_config().emacs_keybindings_enabled;
+        let runtime_config = current_runtime_config();
+        let emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
+        let tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
         let mut app = Self {
             shell: AppShellState {
                 runtime: AppRuntimeState {
@@ -298,6 +300,7 @@ impl FlistWalkerApp {
                     pinned_paths: HashSet::new(),
                     current_row: Some(0),
                     emacs_keybindings_enabled,
+                    tab_pin_moves_to_next_row,
                     preview: String::new(),
                     notice: String::new(),
                     status_line: "Initializing...".to_string(),
