@@ -180,7 +180,10 @@ impl FlistWalkerApp {
         };
         egui::Frame::new()
             .fill(egui::Color32::from_rgba_unmultiplied(160, 40, 40, 28))
-            .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(224, 92, 92)))
+            .stroke(egui::Stroke::new(
+                1.0_f32,
+                egui::Color32::from_rgb(224, 92, 92),
+            ))
             .corner_radius(3.0)
             .inner_margin(1.0)
             .show(ui, |ui| ui.add(edit.frame(egui::Frame::NONE)))

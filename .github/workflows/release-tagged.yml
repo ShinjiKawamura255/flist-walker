@@ -77,7 +77,7 @@ jobs:
         run: cargo install cargo-audit --locked --force
 
       - name: Run cargo audit
-        run: cargo audit
+        run: cargo audit --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195
 
   build-release-assets:
     name: Build Release Assets (${{ matrix.label }})

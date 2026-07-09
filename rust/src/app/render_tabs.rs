@@ -158,7 +158,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     let indicator_x = target_rect.left();
                     let indicator_top = target_rect.top() - 3.0;
                     let indicator_bottom = target_rect.bottom() + 3.0;
-                    let stroke = egui::Stroke::new(3.0, ui.visuals().selection.stroke.color);
+                    let stroke = egui::Stroke::new(3.0_f32, ui.visuals().selection.stroke.color);
                     ui.painter().line_segment(
                         [
                             egui::pos2(indicator_x, indicator_top),
@@ -256,7 +256,7 @@ pub(super) fn tab_close_button_visuals(
         };
         return TabCloseButtonVisuals {
             fill,
-            stroke: egui::Stroke::new(0.65, stroke_color),
+            stroke: egui::Stroke::new(0.65_f32, stroke_color),
             text: palette.foreground,
         };
     }
@@ -385,9 +385,9 @@ pub(super) fn render_tab_accent_menu(
                     .fill(palette.background)
                     .stroke(egui::Stroke::new(
                         if current_accent == Some(accent) {
-                            2.0
+                            2.0_f32
                         } else {
-                            1.0
+                            1.0_f32
                         },
                         palette.border,
                     ))
