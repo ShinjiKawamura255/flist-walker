@@ -57,6 +57,24 @@
 
 ## Resolved audit warnings
 
+### RUSTSEC-2026-0204: `crossbeam-epoch 0.9.18` invalid pointer dereference in pointer formatting
+- Status: resolved on 2026-07-09.
+- Resolution: refreshed `Cargo.lock` to `crossbeam-epoch 0.9.20`.
+- Previous observed path from `cargo audit`: `crossbeam-epoch 0.9.18 -> crossbeam-deque 0.8.6 -> rayon-core 1.13.0 -> rayon 1.11.0 -> flist-walker`.
+- Current lockfile check: `rust/Cargo.lock` contains `crossbeam-epoch 0.9.20`.
+
+### RUSTSEC-2026-0190: `anyhow 1.0.101` unsound downcast
+- Status: resolved on 2026-07-09.
+- Resolution: refreshed `Cargo.lock` to `anyhow 1.0.103`.
+- Previous observed path from `cargo audit`: direct dependency `anyhow 1.0.101 -> flist-walker`.
+- Current lockfile check: `rust/Cargo.lock` contains `anyhow 1.0.103`.
+
+### RUSTSEC-2026-0186: `memmap2 0.9.10` unchecked pointer offset
+- Status: resolved on 2026-07-09.
+- Resolution: refreshed `Cargo.lock` to `memmap2 0.9.11`.
+- Previous observed path from `cargo audit`: `memmap2 0.9.10` via `winit 0.30.13` / `glutin-winit 0.5.0` / `eframe 0.34.x` and via `usvg 0.43.0` / `resvg 0.43.0`.
+- Current lockfile check: `rust/Cargo.lock` contains `memmap2 0.9.11`.
+
 ### RUSTSEC-2024-0436: `paste 1.0.15` unmaintained
 - Status: resolved on 2026-04-26.
 - Resolution: upgraded the GUI stack from `eframe 0.29.1` to `eframe 0.34.1`, which updated `egui` / `wgpu` and removed the locked `metal -> paste` path.
@@ -71,10 +89,21 @@
 
 ## Accepted audit warnings
 
-### RUSTSEC-2026-0186: `memmap2 0.9.10` unchecked pointer offset
-- Status: accepted on 2026-06-23 as a transitive advisory surfaced by `cargo audit`.
-- Observed path: `memmap2 0.9.10` via `winit 0.30.13` / `glutin-winit 0.5.0` / `eframe 0.34.1` and via `usvg 0.43.0` / `resvg 0.43.0` / `eframe 0.34.1`.
+### RUSTSEC-2026-0194 / RUSTSEC-2026-0195: `quick-xml 0.39.4` via `wayland-scanner`
+- Status: accepted on 2026-07-09 as a transitive build-time advisory surfaced by `cargo audit`.
+- Observed path: `quick-xml 0.39.4 -> wayland-scanner 0.31.10 -> wayland-client` / `wayland-protocols` / `smithay-client-toolkit` -> `winit 0.30.13` / `egui-winit 0.34.x` -> `eframe 0.34.x` -> `flist-walker`.
+- Exposure note: the vulnerable crate is used through Wayland protocol code generation in the GUI stack; FlistWalker does not parse untrusted XML at runtime through this path, and the crate is not part of the application input surface.
+- Attempted resolution: `cargo update -p quick-xml` can only move to `0.39.4` under current `wayland-scanner 0.31.10`; `eframe 0.35.0` still retains the same `wayland-scanner` path and requires a larger egui API migration, so it is deferred from the v0.18.13 patch release.
 - Owner: Rust dependency maintainer for release preflight.
 - Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
-- Re-evaluation trigger: upstream advisory fix, `eframe` / `winit` / `resvg` / `usvg` dependency refresh, or any audit output change.
-- Current `cargo audit` behavior: exits successfully with one allowed warning, so release can proceed only while this note remains current.
+- Re-evaluation trigger: `wayland-scanner` updates to a `quick-xml >=0.41.0` dependency, `eframe` / `winit` / Wayland stack refresh, or any new runtime exposure.
+- Current accepted audit command: `cd rust && cargo audit --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195`.
+
+### RUSTSEC-2026-0192: `ttf-parser 0.24.1` unmaintained
+- Status: accepted on 2026-07-09 as a transitive unmaintained warning surfaced by `cargo audit`.
+- Observed path: `ttf-parser 0.24.1` via `fontdb 0.21.0` / `rustybuzz 0.18.0` -> `usvg 0.43.0` -> `resvg 0.43.0` -> `flist-walker`.
+- Exposure note: this path is used for icon/SVG rendering support rather than network or command execution; no direct replacement is available without a broader `resvg` / `usvg` dependency refresh.
+- Owner: Rust dependency maintainer for release preflight.
+- Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
+- Re-evaluation trigger: `resvg` / `usvg` / `fontdb` refresh, maintained `ttf-parser` successor, or any new font parsing input surface.
+- Current `cargo audit` behavior: reports this as an allowed warning and exits successfully when the accepted `quick-xml` vulnerabilities are ignored.

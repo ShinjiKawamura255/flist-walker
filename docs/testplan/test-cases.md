@@ -157,3 +157,4 @@
 | TC-146 | integration | PowerShell build helper は Rustup、Rust GNU target、MSYS2、`mingw-w64-x86_64-gcc` を別々に承認し、固定 package ID/source と `pacman -S --needed` を使い、拒否・winget 不在・install failure・再検出 failure で build を開始しない | SP-018 |
 | TC-147 | integration | Windows native GNU release build は strip 済みの `flistwalker.exe` / `FlistWalker.exe` を byte-identical に生成し、`.rsrc`、`asInvoker` manifest、GUI subsystem を保持し、意図しない MSYS2 runtime DLL に依存しない | SP-018 |
 | TC-148 | unit | Windows host の GNU resource build は resolved `windres` / `ar` を使用し、`resource.o` を `flistwalker` binary へ明示リンクする | SP-018 |
+| TC-149 | unit | active indexing 中にタブ切替して request が background 化しても、切替前に取り込み済みの entries、未 drain の pending entries、切替後の background batch を同じ完了 snapshot に統合し、`ReplaceAll` では切替前 partial を破棄する | SP-010 |

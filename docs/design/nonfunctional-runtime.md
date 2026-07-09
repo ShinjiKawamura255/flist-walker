@@ -94,6 +94,7 @@
 - runtime config の `restore_tabs_enabled` が有効な間は root 行の `Set as default` ボタンを disabled 表示にし、ロジック側でも no-op + notice で排他を強制する。tooltip / notice は runtime config の Restore tabs 設定を指し、seed-only の環境変数名を利用者向け排他理由として表示しない。
 - タブ復元時は active tab だけ即時 `request_index_refresh()` を行い、background tab は `pending_restore_refresh` を保持して初回 `switch_to_tab_index()` 時に lazy refresh する。
 - background tab の search/index 応答は active tab の結果スナップショットへ直接触れず、tab-local state へ適用してから activation 時の restore 経路で前面へ戻す。
+- active indexing 中のタブ切替では、切替時点の `index.entries` と同じ request_id の `pending_index_entries` を tab snapshot に保持し、background 完了時に `background_states` の batches と合流して terminal `all_entries` を確定する。background 側で `ReplaceAll` を受けた request は replacement snapshot を正とし、切替前の partial snapshot は破棄する。
 - 閉じたタブ復元は `TabSessionState` の in-memory `closed_tabs` stack に限定し、保持数は直近 25 件までとする。`close_tab_index()` は閉じる直前に同期した `AppTabState`、閉じた時点の tab index、起動時復元由来の lazy refresh 要否を stack へ積み、上限超過時は最古の閉じたタブを破棄し、既存の closed-tab cleanup で古い tab id の request routing を破棄する。`restore_recently_closed_tab()` は stack から LIFO で取り出し、新しい tab id を割り当て、pending search/index/preview/action/sort request 状態をクリアしてから、保存した tab index または現在の末尾位置へ active tab として追加する。閉じる前に起動時復元の lazy refresh が未消費だった場合は、新しい tab id に refresh pending を付け替えて復元直後に index refresh へ進める。閉じたタブ stack は UI state へ保存しない。
 - タブ並び替えは `render_tab_bar` がドラッグ開始/ホバー/ドロップを扱い、実際の `Vec<AppTabState>` 更新は `move_tab(from, to)` に集約する。
 - `move_tab` は並び替え前に `sync_active_tab_state()` を実行し、active tab の `tab.id` を基準に移動後 index を再解決することで UI 状態の取り違えを防ぐ。

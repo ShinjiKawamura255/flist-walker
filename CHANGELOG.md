@@ -19,6 +19,29 @@
 -
 
 ### Security
+- `anyhow`、`crossbeam-epoch`、`memmap2` を audit 修正版へ更新し、残る Wayland build-time `quick-xml` advisory と `ttf-parser` warning の受容条件を `docs/OSS_COMPLIANCE.md` に記録した。
+
+### Known issues
+-
+
+## [0.18.13] - 2026-07-09
+### Added
+-
+
+### Changed
+- 入力ダイアログと履歴入力まわりの内部モジュール構成を整理し、保守性を改善した。
+
+### Fixed
+- 同じ完全一致トークンを複数回含む検索で、各トークンに対応する出現回数を正しく要求するようにした。
+- インデックス作成中にタブを切り替えた場合でも、切り替え前の取り込み済み・保留中エントリとバックグラウンド到着分を統合し、部分的な index で完了扱いにならないようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
 -
 
 ### Known issues
@@ -1524,6 +1547,7 @@
 - macOS アセットは未提供。
 
 [Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...HEAD
+[0.18.13]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...v0.18.13
 [0.18.12]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...v0.18.12
 [0.18.11]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.10...v0.18.11
 [0.18.10]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.9...v0.18.10
