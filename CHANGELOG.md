@@ -24,12 +24,14 @@
 ### Known issues
 -
 
-## [0.18.13] - 2026-07-09
+## [0.18.13] - 2026-07-10
 ### Added
--
+- タブをピン留めしたときに現在の行へ留まるか、次の行へ選択を移すかを runtime config で選べるようにした。
+- 結果一覧をファイルサイズ順でソートできるようにした。フォルダはサイズを持たないため、同順位として名前順で安定化する。
 
 ### Changed
 - 入力ダイアログと履歴入力まわりの内部モジュール構成を整理し、保守性を改善した。
+- adaptive walker のバックグラウンド遷移と worker 状態の変化を含む index 完了処理を整理し、関連する回帰テストを追加した。
 
 ### Fixed
 - 同じ完全一致トークンを複数回含む検索で、各トークンに対応する出現回数を正しく要求するようにした。
@@ -42,7 +44,7 @@
 -
 
 ### Security
--
+- `cargo audit` の accepted advisory を release workflow で明示的に扱い、許容済みの transitive warning で配布が停止しないようにした。
 
 ### Known issues
 -
@@ -1546,7 +1548,7 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...HEAD
 [0.18.13]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...v0.18.13
 [0.18.12]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...v0.18.12
 [0.18.11]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.10...v0.18.11
