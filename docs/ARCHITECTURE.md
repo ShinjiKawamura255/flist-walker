@@ -1,5 +1,7 @@
 # ARCHITECTURE
 
+This document owns the current implementation ownership map, threading boundaries, major runtime flows, and structural regression guards. Normative DES items remain in [DESIGN.md](DESIGN.md), while deeper data and sequence mechanics remain in [DETAILED_DESIGN.md](DETAILED_DESIGN.md).
+
 ## Overview
 FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileList 優先インデクシングと walker ベース再帰走査の両方を扱う。主要コンポーネントは search/index domain、GUI coordinator、OS integration、shared utility に分かれる。
 
@@ -204,32 +206,43 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 
 ## Related Docs
 - [INDEX.md](./INDEX.md)
+- [STRUCTURE.md](./STRUCTURE.md)
 - [ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md)
 - [CURRENT_STATUS.md](./CURRENT_STATUS.md)
 - [REQUIREMENTS.md](./REQUIREMENTS.md)
 - [SPEC.md](./SPEC.md)
 - [DESIGN.md](./DESIGN.md)
+- [DETAILED_DESIGN.md](./DETAILED_DESIGN.md)
 - [TESTPLAN.md](./TESTPLAN.md)
 - [RELEASE.md](./RELEASE.md)
 - [TASKS.md](./TASKS.md)
+- [history/INDEX.md](./history/INDEX.md)
 
 ## Document Roles
 - `CURRENT_STATUS.md`
-  - 現在の品質姿勢、直近の保守優先度、日常 validation の入口を保持する。新しい作業では最初に読む短い entrypoint として扱う。
+  - 現在の品質姿勢と保守優先度を保持する。validation command や完了履歴は owning document へリンクする。
 - `INDEX.md`
   - docs 全体の索引と用途別の読み順を保持する。詳細な仕様、設計、検証内容は各 owning document へリンクする。
+- `STRUCTURE.md`
+  - リポジトリのディレクトリ構成、主要 entrypoint、build/test/release hook の所在を保持する。
 - `ARCHITECTURE_OVERVIEW.md`
   - 初見の Agent / 開発者が短時間で product shape、runtime flow、ownership map、変更種別ごとの入口を把握するための短い地図を保持する。
 - `REQUIREMENTS.md` / `SPEC.md`
   - プロダクト契約と振る舞いの規範面を保持する。
-- `ARCHITECTURE.md` / `DESIGN.md`
-  - steady-state の構造、責務境界、運用上の設計判断を保持する。
+- `ARCHITECTURE.md`
+  - 現在の module ownership、threading boundary、主要 runtime flow、構造上の regression guard を保持する。
+- `DESIGN.md`
+  - 規範的な DES 項目、実現方式、FR/SP/TC との traceability を保持する。
+- `DETAILED_DESIGN.md`
+  - module、data、sequence、resilience、operations の実装詳細への入口を保持する。
 - `TESTPLAN.md`
   - 継続運用する validation matrix、manual test、regression guard を保持する。
 - `RELEASE.md`
   - release 運用と配布手順を保持する。
 - `TASKS.md`
-  - change program の履歴、closure record、恒久的に残す進捗サマリを保持する。通常の作業開始時は `CURRENT_STATUS.md` を入口にし、詳細な経緯が必要な場合だけ参照する。
+  - active task の所有境界と、current context・completed record への routing を保持する。
+- `history/INDEX.md`
+  - 完了した maintenance program と closure record への索引を保持する。
 
 ## Regression Guards
 

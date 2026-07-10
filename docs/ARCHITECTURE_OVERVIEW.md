@@ -1,6 +1,6 @@
 # Architecture Overview for New Agents
 
-This document is a short entrypoint for understanding FlistWalker before making changes. Use it as the first map, then follow the linked steady-state docs for details.
+This document is a short, non-normative orientation to FlistWalker runtime flow and code ownership. Use it to select initial files, then follow [ARCHITECTURE.md](ARCHITECTURE.md) for current module boundaries, [DESIGN.md](DESIGN.md) for normative DES content, or [DETAILED_DESIGN.md](DETAILED_DESIGN.md) for implementation mechanics.
 
 ## Product Shape
 FlistWalker is a Rust GUI/CLI tool for fast file and folder search. It aims to provide an `fzf --walker`-like experience with FileList-first indexing, walker fallback, fzf-compatible query operators, highlighting, multi-select operations, and Windows-focused release workflows.

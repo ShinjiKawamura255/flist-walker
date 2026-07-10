@@ -1,6 +1,6 @@
 # FlistWalker Detailed Design
 
-This file is the entry point for the repository-level detailed design. Detailed sections are split by topic under `docs/detailed-design/`.
+This file is the entry point for deep implementation mechanics: modules, data, sequences, resilience, operations, and testing concerns. Normative DES ownership and traceability remain in [DESIGN.md](DESIGN.md); current module boundaries and regression guards remain in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Document Map
 | Topic | Content |
