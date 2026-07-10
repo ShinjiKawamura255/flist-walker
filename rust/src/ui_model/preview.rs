@@ -25,7 +25,12 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
         );
     }
 
-    let head = format!("File: {}\n", normalized_path);
+    let size_line = std::fs::metadata(path)
+        .ok()
+        .filter(|metadata| metadata.is_file())
+        .map(|metadata| format!("Size: {}\n", format_file_size(metadata.len())))
+        .unwrap_or_default();
+    let head = format!("File: {}\n{}", normalized_path, size_line);
 
     match read_preview_lines(path, PREVIEW_MAX_LINES, PREVIEW_MAX_BYTES) {
         Ok(preview) => {
@@ -36,6 +41,21 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
             }
         }
         Err(_) => format!("{}\n<binary or unreadable file>", head),
+    }
+}
+
+fn format_file_size(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
+    let mut value = bytes as f64;
+    let mut unit = 0usize;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{} {}", bytes, UNITS[unit])
+    } else {
+        format!("{value:.1} {}", UNITS[unit])
     }
 }
 
@@ -254,6 +274,7 @@ mod tests {
 
             let preview = build_preview_text(&file);
             assert!(preview.contains("File:"));
+            assert!(preview.contains("Size: 18 B"));
             assert!(preview.contains("hi"));
             assert!(!preview.contains("Action:"));
             assert!(!preview.contains("Execute"));
@@ -266,10 +287,23 @@ mod tests {
 
             let preview = build_preview_text(&file);
             assert!(preview.contains("File:"));
+            assert!(preview.contains("Size: 3 B"));
             assert!(!preview.contains("Action:"));
             assert!(!preview.contains("Execute"));
         }
 
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn build_preview_text_formats_large_file_size() {
+        let root = test_root("preview-size");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("large.bin");
+        fs::write(&file, vec![0u8; 1536]).expect("write file");
+
+        let preview = build_preview_text(&file);
+        assert!(preview.contains("Size: 1.5 KiB"), "{preview}");
         let _ = fs::remove_dir_all(&root);
     }
 

@@ -1,6 +1,5 @@
 use super::{match_positions_for_path, EntryKind, FlistWalkerApp, HighlightCacheKey};
 use crate::app::PreviewRequest;
-use crate::ui_model::{build_preview_text_with_kind, should_skip_preview};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
@@ -136,13 +135,6 @@ impl FlistWalkerApp {
                     return;
                 };
                 let is_dir = kind.is_dir;
-                if should_skip_preview(&path, is_dir) {
-                    let preview = build_preview_text_with_kind(&path, is_dir);
-                    self.cache_preview(path.clone(), preview.clone());
-                    self.shell.runtime.preview = preview;
-                    self.shell.worker_bus.preview.clear_request();
-                    return;
-                }
                 self.shell.runtime.preview = "Loading preview...".to_string();
                 let request_id = self.shell.worker_bus.preview.begin_request();
                 self.bind_preview_request_to_current_tab(request_id);
