@@ -29,6 +29,52 @@ fn search_error_updates_notice() {
 }
 
 #[test]
+fn search_response_requeues_unknown_walker_result_kind() {
+    let root = test_root("search-response-requeues-unknown-kind");
+    fs::create_dir_all(&root).expect("create dir");
+    let link = root.join("tail.lnk");
+    fs::write(&link, "shortcut").expect("write shortcut");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "tail".to_string());
+    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.runtime.entries = Arc::new(vec![unknown_entry(link.clone())]);
+    app.shell.runtime.results.clear();
+    app.shell.cache.entry_kind.clear();
+    app.shell.search.set_pending_request_id(Some(71));
+    app.shell.search.set_in_progress(true);
+    let (tx, rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search.rx = rx;
+
+    tx.send(SearchResponse {
+        request_id: 71,
+        results: vec![(link.clone(), 0.0)],
+        total_match_count: 1,
+        sort_mode: ResultSortMode::Score,
+        sort_scope: ResultSortScope::ShownResults,
+        error: None,
+    })
+    .expect("send search response");
+
+    app.poll_search_response();
+
+    assert_eq!(app.shell.runtime.results, vec![(link.clone(), 0.0)]);
+    assert_eq!(app.find_entry_kind(&link), None);
+    assert!(matches!(
+        app.shell.runtime.index.source,
+        IndexSource::Walker
+    ));
+    assert!(
+        app.shell
+            .indexing
+            .pending_kind_paths
+            .iter()
+            .any(|path| path == &link)
+            || app.shell.indexing.in_flight_kind_paths.contains(&link)
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn stale_search_response_is_ignored_after_index_refresh() {
     let root = test_root("stale-search-after-refresh");
     fs::create_dir_all(&root).expect("create dir");

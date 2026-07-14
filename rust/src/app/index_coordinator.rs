@@ -31,6 +31,7 @@ pub(super) struct IndexCoordinator {
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
     pub(super) pending_kind_paths_set: HashSet<PathBuf>,
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
+    pub(super) resolved_kind_updates: Vec<(PathBuf, EntryKind)>,
     pub(super) kind_resolution_epoch: u64,
     pub(super) kind_resolution_in_progress: bool,
     pub(super) last_incremental_results_refresh: Instant,
@@ -63,6 +64,7 @@ impl IndexCoordinator {
             pending_kind_paths: VecDeque::new(),
             pending_kind_paths_set: HashSet::new(),
             in_flight_kind_paths: HashSet::new(),
+            resolved_kind_updates: Vec::new(),
             kind_resolution_epoch: 1,
             kind_resolution_in_progress: false,
             last_incremental_results_refresh: Instant::now(),
@@ -130,6 +132,7 @@ impl IndexCoordinator {
         tab.index_state.pending_kind_paths.clear();
         tab.index_state.pending_kind_paths_set.clear();
         tab.index_state.in_flight_kind_paths.clear();
+        tab.index_state.resolved_kind_updates.clear();
         tab.index_state.kind_resolution_in_progress = false;
         tab.index_state.kind_resolution_epoch =
             tab.index_state.kind_resolution_epoch.saturating_add(1);
@@ -204,6 +207,7 @@ impl FlistWalkerApp {
         self.shell.indexing.pending_kind_paths.clear();
         self.shell.indexing.pending_kind_paths_set.clear();
         self.shell.indexing.in_flight_kind_paths.clear();
+        self.shell.indexing.resolved_kind_updates.clear();
         self.shell.indexing.kind_resolution_in_progress = false;
         self.shell.indexing.kind_resolution_epoch =
             self.shell.indexing.kind_resolution_epoch.saturating_add(1);
@@ -282,6 +286,7 @@ impl FlistWalkerApp {
             };
             self.shell.indexing.pending_kind_paths_set.remove(&path);
             let req = KindResolveRequest {
+                tab_id: self.current_tab_id().unwrap_or_default(),
                 epoch: self.shell.indexing.kind_resolution_epoch,
                 path: path.clone(),
             };
@@ -303,8 +308,29 @@ impl FlistWalkerApp {
         let mut resolved_any = false;
         let mut resolved_current_row = false;
         let mut resolved_updates: Vec<(PathBuf, EntryKind)> = Vec::new();
+        let active_tab_id = self.current_tab_id().unwrap_or_default();
 
         while let Ok(response) = self.shell.worker_bus.kind.rx.try_recv() {
+            if response.tab_id != active_tab_id {
+                if let Some(tab_index) = self.find_tab_index_by_id(response.tab_id) {
+                    if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
+                        if tab.index_state.kind_resolution_epoch == response.epoch {
+                            tab.index_state.in_flight_kind_paths.remove(&response.path);
+                            if let Some(kind) = response.kind {
+                                tab.index_state
+                                    .resolved_kind_updates
+                                    .push((response.path.clone(), kind));
+                            }
+                            tab.index_state.refresh_kind_resolution_progress();
+                        }
+                    }
+                }
+                processed = processed.saturating_add(1);
+                if processed >= MAX_MESSAGES_PER_FRAME {
+                    break;
+                }
+                continue;
+            }
             if response.epoch != self.shell.indexing.kind_resolution_epoch {
                 continue;
             }
@@ -333,6 +359,10 @@ impl FlistWalkerApp {
 
         if !resolved_updates.is_empty() {
             self.apply_entry_kind_updates(&resolved_updates);
+            self.shell
+                .indexing
+                .resolved_kind_updates
+                .extend(resolved_updates);
         }
 
         self.shell.indexing.kind_resolution_in_progress =

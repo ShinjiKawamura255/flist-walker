@@ -151,11 +151,13 @@ pub(super) struct SortMetadataResponse {
 }
 
 pub(super) struct KindResolveRequest {
+    pub(super) tab_id: u64,
     pub(super) epoch: u64,
     pub(super) path: PathBuf,
 }
 
 pub(super) struct KindResolveResponse {
+    pub(super) tab_id: u64,
     pub(super) epoch: u64,
     pub(super) path: PathBuf,
     pub(super) kind: Option<EntryKind>,

@@ -503,6 +503,8 @@ impl FlistWalkerApp {
         self.set_query_history_dirty_since(None);
         self.reset_history_search_state();
         self.rebuild_entry_kind_cache();
+        let resolved_kind_updates = self.shell.indexing.resolved_kind_updates.clone();
+        self.apply_entry_kind_updates(&resolved_kind_updates);
         self.refresh_status_line();
     }
 

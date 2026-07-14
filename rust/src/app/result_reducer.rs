@@ -2,6 +2,7 @@ use super::{
     AppTabState, FlistWalkerApp, PreviewResponse, ResultSortMode, SearchResponse,
     SortMetadataRequest, SortMetadataResponse,
 };
+use crate::indexer::IndexSource;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -116,6 +117,12 @@ pub(super) fn apply_active_search_response(
     app.shell.runtime.result_sort_mode = response.sort_mode;
     app.shell.runtime.result_sort_scope = response.sort_scope;
     app.replace_results_snapshot(response.results, false);
+    if matches!(app.shell.runtime.index.source, IndexSource::Walker) {
+        // Search results can arrive after index completion. Queue kind resolution
+        // from the newly installed result snapshot so deferred LINK entries are
+        // not lost when the finish-time snapshot was stale.
+        app.queue_unknown_kind_paths_for_visible_results();
+    }
     if app.shell.indexing.search_rerun_pending
         && !app.shell.runtime.query_state.query.trim().is_empty()
         && app.shell.indexing.in_progress

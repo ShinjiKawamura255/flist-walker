@@ -40,6 +40,7 @@ impl FlistWalkerApp {
         self.clear_preview_cache();
         self.clear_highlight_cache();
         self.shell.cache.entry_kind.clear();
+        self.shell.indexing.resolved_kind_updates.clear();
         self.shell.indexing.incremental_filtered_entries.clear();
         self.shell.indexing.pending_entries.clear();
         self.shell.indexing.pending_entries_request_id = None;
@@ -50,6 +51,7 @@ impl FlistWalkerApp {
             self.shell.indexing.pending_kind_paths.clear();
             self.shell.indexing.pending_kind_paths_set.clear();
             self.shell.indexing.in_flight_kind_paths.clear();
+            self.shell.indexing.resolved_kind_updates.clear();
             self.shell.indexing.kind_resolution_in_progress = false;
             self.shell.indexing.kind_resolution_epoch =
                 self.shell.indexing.kind_resolution_epoch.saturating_add(1);

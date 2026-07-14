@@ -79,6 +79,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         pending_kind_paths: VecDeque::from(vec![root.join("kind.txt")]),
         pending_kind_paths_set: HashSet::from([root.join("kind.txt")]),
         in_flight_kind_paths: HashSet::from([root.join("kind-in-flight.txt")]),
+        resolved_kind_updates: Vec::new(),
         kind_resolution_epoch: 9,
         kind_resolution_in_progress: true,
         incremental_filtered_entries: vec![file_entry(root.join("filtered.txt"))],

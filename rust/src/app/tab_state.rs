@@ -3,7 +3,7 @@ use super::{
     ResultSortScope, SavedTabState, TabAccentColor,
 };
 use crate::app::worker_protocol::IndexEntry;
-use crate::entry::Entry;
+use crate::entry::{Entry, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
@@ -36,6 +36,7 @@ pub(super) struct TabIndexState {
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
     pub(super) pending_kind_paths_set: HashSet<PathBuf>,
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
+    pub(super) resolved_kind_updates: Vec<(PathBuf, EntryKind)>,
     pub(super) kind_resolution_epoch: u64,
     pub(super) kind_resolution_in_progress: bool,
     pub(super) incremental_filtered_entries: Vec<Entry>,
@@ -102,6 +103,7 @@ impl TabIndexState {
         self.pending_kind_paths.clear();
         self.pending_kind_paths_set.clear();
         self.in_flight_kind_paths.clear();
+        self.resolved_kind_updates.clear();
         self.kind_resolution_in_progress = false;
     }
 
@@ -123,6 +125,7 @@ impl TabIndexState {
             pending_kind_paths: shell.shell.indexing.pending_kind_paths.clone(),
             pending_kind_paths_set: shell.shell.indexing.pending_kind_paths_set.clone(),
             in_flight_kind_paths: shell.shell.indexing.in_flight_kind_paths.clone(),
+            resolved_kind_updates: shell.shell.indexing.resolved_kind_updates.clone(),
             kind_resolution_epoch: shell.shell.indexing.kind_resolution_epoch,
             kind_resolution_in_progress: shell.shell.indexing.kind_resolution_in_progress,
             incremental_filtered_entries: shell.shell.indexing.incremental_filtered_entries.clone(),
@@ -145,6 +148,7 @@ impl TabIndexState {
         shell.shell.indexing.pending_kind_paths = self.pending_kind_paths.clone();
         shell.shell.indexing.pending_kind_paths_set = self.pending_kind_paths_set.clone();
         shell.shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths.clone();
+        shell.shell.indexing.resolved_kind_updates = self.resolved_kind_updates.clone();
         shell.shell.indexing.kind_resolution_epoch = self.kind_resolution_epoch;
         shell.shell.indexing.kind_resolution_in_progress = self.kind_resolution_in_progress;
         shell.shell.indexing.incremental_filtered_entries =
@@ -324,6 +328,7 @@ impl AppTabState {
                 pending_kind_paths: VecDeque::new(),
                 pending_kind_paths_set: HashSet::new(),
                 in_flight_kind_paths: HashSet::new(),
+                resolved_kind_updates: Vec::new(),
                 kind_resolution_epoch: 1,
                 kind_resolution_in_progress: false,
                 incremental_filtered_entries: Vec::new(),

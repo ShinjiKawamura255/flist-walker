@@ -311,6 +311,7 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     app.shell.worker_bus.kind.rx = rx;
     app.shell.indexing.in_flight_kind_paths.insert(dir.clone());
     tx.send(KindResolveResponse {
+        tab_id: app.current_tab_id().unwrap_or_default(),
         epoch: app.shell.indexing.kind_resolution_epoch,
         path: dir.clone(),
         kind: Some(EntryKind::dir()),
@@ -350,12 +351,14 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
         .insert(right.clone());
     let epoch = app.shell.indexing.kind_resolution_epoch;
     tx.send(KindResolveResponse {
+        tab_id: app.current_tab_id().unwrap_or_default(),
         epoch,
         path: left.clone(),
         kind: Some(EntryKind::dir()),
     })
     .expect("send left kind response");
     tx.send(KindResolveResponse {
+        tab_id: app.current_tab_id().unwrap_or_default(),
         epoch,
         path: right.clone(),
         kind: Some(EntryKind::dir()),
@@ -370,6 +373,55 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
         app.shell.runtime.entries.as_ref(),
         &vec![left.clone(), right.clone()]
     );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn inactive_tab_kind_response_is_retained_until_tab_activation() {
+    let root = test_root("inactive-tab-kind-response-retained");
+    fs::create_dir_all(&root).expect("create dir");
+    let link = root.join("tail.lnk");
+    fs::write(&link, "shortcut").expect("write shortcut");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let inactive_tab_id = app.shell.tabs.get(0).expect("inactive tab").id;
+    let epoch = 23;
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("inactive tab");
+        tab.index_state.index.source = IndexSource::Walker;
+        tab.index_state.all_entries = Arc::new(vec![unknown_entry(link.clone())]);
+        tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
+        tab.index_state.kind_resolution_epoch = epoch;
+        tab.index_state.in_flight_kind_paths.insert(link.clone());
+        tab.index_state.kind_resolution_in_progress = true;
+        tab.result_state.results = vec![(link.clone(), 0.0)];
+    }
+
+    let (tx, rx) = mpsc::channel::<KindResolveResponse>();
+    app.shell.worker_bus.kind.rx = rx;
+    tx.send(KindResolveResponse {
+        tab_id: inactive_tab_id,
+        epoch,
+        path: link.clone(),
+        kind: Some(EntryKind::link(false)),
+    })
+    .expect("send inactive tab kind response");
+
+    app.poll_kind_response();
+
+    let inactive_tab = app.shell.tabs.get(0).expect("inactive tab");
+    assert!(!inactive_tab
+        .index_state
+        .in_flight_kind_paths
+        .contains(&link));
+    assert_eq!(
+        inactive_tab.index_state.resolved_kind_updates,
+        vec![(link.clone(), EntryKind::link(false))]
+    );
+
+    app.switch_to_tab_index(0);
+    assert_eq!(app.find_entry_kind(&link), Some(EntryKind::link(false)));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -388,6 +440,7 @@ fn kind_resolver_marks_symlink_as_link() {
     let shutdown = Arc::new(AtomicBool::new(false));
     let (tx, rx, handle) = spawn_kind_resolver_worker(Arc::clone(&shutdown));
     tx.send(KindResolveRequest {
+        tab_id: 1,
         epoch: 7,
         path: link.clone(),
     })
@@ -452,6 +505,7 @@ fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
     app.shell.worker_bus.kind.rx = rx;
     app.shell.indexing.in_flight_kind_paths.insert(left.clone());
     tx.send(KindResolveResponse {
+        tab_id: app.current_tab_id().unwrap_or_default(),
         epoch: app.shell.indexing.kind_resolution_epoch,
         path: left.clone(),
         kind: Some(EntryKind::dir()),

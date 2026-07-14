@@ -188,6 +188,7 @@ pub(super) fn spawn_kind_resolver_worker(
             info!(
                 flow = "kind_resolver",
                 event = "finished",
+                tab_id = req.tab_id,
                 epoch = req.epoch,
                 path = %req.path.display(),
                 kind_known = kind.is_some(),
@@ -195,6 +196,7 @@ pub(super) fn spawn_kind_resolver_worker(
             );
             if tx_res
                 .send(KindResolveResponse {
+                    tab_id: req.tab_id,
                     epoch: req.epoch,
                     path: req.path,
                     kind,
@@ -204,6 +206,7 @@ pub(super) fn spawn_kind_resolver_worker(
                 warn!(
                     flow = "kind_resolver",
                     event = "receiver_closed",
+                    tab_id = req.tab_id,
                     epoch = req.epoch,
                     "worker response receiver closed"
                 );
