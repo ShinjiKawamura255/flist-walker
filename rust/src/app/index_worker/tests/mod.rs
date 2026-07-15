@@ -57,9 +57,76 @@ fn classify_walker_entry_defers_windows_shortcut_when_both_filters_enabled() {
         classify_walker_entry(&path, file_type, true, true).expect("classify walker entry");
 
     #[cfg(windows)]
-    assert_eq!(classified, (EntryKind::file(), false));
+    assert_eq!(classified, (EntryKind::link_unknown(), false));
     #[cfg(not(windows))]
     assert_eq!(classified, (EntryKind::file(), true));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn missing_path_resolves_to_terminal_other_kind() {
+    let path = test_root("missing-terminal").join("missing-entry");
+
+    assert_eq!(resolve_entry_kind(&path), Some(EntryKind::other()));
+    assert!(!EntryKind::other().needs_resolution());
+}
+
+#[cfg(unix)]
+#[test]
+fn classify_walker_entry_marks_symlink_before_resolving_target_kind() {
+    use std::os::unix::fs::symlink;
+
+    let root = test_root("symlink-fast-path");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create dir");
+    let target = root.join("target.txt");
+    let path = root.join("target-link");
+    std::fs::write(&target, "target").expect("write target");
+    symlink(&target, &path).expect("create symlink");
+    let file_type = std::fs::symlink_metadata(&path)
+        .expect("metadata")
+        .file_type();
+
+    let classified =
+        classify_walker_entry(&path, file_type, true, true).expect("classify walker entry");
+
+    assert_eq!(classified, (EntryKind::link_unknown(), false));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn classify_walker_entry_does_not_promote_unix_socket_to_link() {
+    use std::os::unix::net::UnixListener;
+
+    let root = test_root("unix-socket");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("socket");
+    let listener = UnixListener::bind(&path).expect("bind unix socket");
+    let file_type = std::fs::symlink_metadata(&path)
+        .expect("metadata")
+        .file_type();
+
+    assert!(classify_walker_entry(&path, file_type, true, true).is_none());
+
+    drop(listener);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn broken_symlink_resolves_to_link_with_unknown_target_kind() {
+    use std::os::unix::fs::symlink;
+
+    let root = test_root("broken-symlink");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("broken-link");
+    symlink(root.join("missing"), &path).expect("create broken symlink");
+
+    assert_eq!(resolve_entry_kind(&path), Some(EntryKind::link_unknown()));
+
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -617,6 +684,20 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
         let dir = dataset.join(format!("dir-{i}"));
         std::fs::create_dir_all(&dir).expect("create dir");
         std::fs::write(dir.join("main.rs"), "fn main() {}").expect("write file");
+    }
+    #[cfg(unix)]
+    let link_target = dataset.join("dir-0").join("main.rs");
+    for i in 0..128usize {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+            symlink(&link_target, dataset.join(format!("link-{i}"))).expect("create symlink");
+        }
+        #[cfg(windows)]
+        {
+            std::fs::write(dataset.join(format!("link-{i}.lnk")), "shortcut")
+                .expect("write shortcut");
+        }
     }
 
     let mut eager_best = Duration::MAX;

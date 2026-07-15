@@ -20,7 +20,7 @@
 - MUST: Create File List worker 応答は request_id と requested root の組で相関し、requested root と一致しない stale completion / failure / cancel では pending / in_progress cleanup 以外の follow-up（`use_filelist` 復帰、再インデックス、notice 更新）を行ってはならない。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
-- SHOULD: include_files/include_dirs が両方有効な場合、種別判定（FILE/DIR/LINK）は遅延解決して初期読み込みを優先する。
+- SHOULD: include_files/include_dirs が両方有効な場合、通常の FILE/DIR は即時確定し、LINK の表示は先行できる一方でリンク先の FILE/DIR 判定は遅延解決して初期読み込みを優先する。
 - MUST: include_files/include_dirs が両方有効な FileList ストリーム解析では、パス区切りのプラットフォーム差異は字句変換だけで吸収し、候補選択のための per-line filesystem existence probe を追加してはならない。
 - SHOULD: 非 Windows で `\` を含む FileList 行を include_files/include_dirs 両有効の高速経路で読む場合、Windows/WSL 互換を優先して `/` 正規化候補を先に扱ってよい。表示は実装依存とし、初期ストリームで literal `\` filename との曖昧性解消は必須としない。
 
@@ -39,8 +39,9 @@
 - MUST: FileList 未使用時にルート以下を再帰走査し候補化する。
 - MUST: ファイル/フォルダの包含条件（include_files/include_dirs）を適用する。
 - MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
-- MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。リンク種別などの詳細判定は完了後または必要時の後処理へ遅延できる。
-- MUST: Walker で遅延させた種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。
+- MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。`file_type` で確認できる LINK identity は先行表示してよいが、リンク先の FILE/DIR 判定は完了後または必要時の後処理へ遅延しなければならない。
+- MUST: Walker は `file_type` で通常 FILE/DIR でも symlink でもない特殊ファイルを LINK に昇格させてはならず、現行のファイル/フォルダ候補から除外しなければならない。
+- MUST: Walker で遅延させたリンク先種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。解決済み OTHER または解決不能の終端状態を未解決として再キューしてはならない。
 - MUST: Walker backend は adaptive のみを使用し、jwalk backend への runtime config 切替口を持ってはならない。
 - SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時の最大値は論理コア数の半分（端数切り上げ、最低 1、既定上限 8）とし、初期値は最大値の半分（端数切り上げ、最低 1）とする。
 - SHOULD: adaptive walker backend の自動調整は、単発の read_dir 遅延ではなく、短いサンプル窓の throughput を比較して行う。探索方向が未確定の場合は、窓内の完了件数 / 経過時間が前窓から有意に改善した場合に limit を 1 段増やし、悪化した場合に 1 段減らし、誤差帯では維持する。探索方向が確定した後は、改善または誤差帯では同方向へ 1 段進み、悪化した場合は方向を反転しなければならない。

@@ -862,6 +862,9 @@ fn build_result_row_job(
         Some(display_kind @ EntryDisplayKind::Link) => {
             ("LINK", render_theme::entry_kind_color(display_kind))
         }
+        Some(display_kind @ EntryDisplayKind::Other) => {
+            ("OTHR", render_theme::entry_kind_color(display_kind))
+        }
         None => ("....", ui.visuals().weak_text_color()),
     };
     job.append(

@@ -486,6 +486,27 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
 }
 
 #[test]
+fn request_preview_does_not_requeue_terminal_other_kind() {
+    let root = test_root("preview-terminal-other-kind");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("socket");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<KindResolveRequest>();
+    app.shell.worker_bus.kind.tx = tx;
+    app.shell.runtime.results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.set_entry_kind(&path, EntryKind::other());
+
+    app.request_preview_for_current();
+
+    assert!(rx.try_recv().is_err());
+    assert_eq!(app.shell.runtime.preview, "<preview unavailable>");
+    assert!(!app.shell.indexing.kind_resolution_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
     let root = test_root("kind-response-no-arc-clone-regression");
     let left = root.join("left");

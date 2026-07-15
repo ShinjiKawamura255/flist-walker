@@ -134,7 +134,17 @@ impl FlistWalkerApp {
                     self.shell.worker_bus.preview.clear_request();
                     return;
                 };
-                let is_dir = kind.is_dir;
+                let Some(is_dir) = kind.is_dir else {
+                    if kind.needs_resolution() {
+                        self.shell.runtime.preview = "Resolving entry type...".to_string();
+                        self.queue_kind_resolution(path);
+                        self.pump_kind_resolution_requests();
+                    } else {
+                        self.shell.runtime.preview = "<preview unavailable>".to_string();
+                    }
+                    self.shell.worker_bus.preview.clear_request();
+                    return;
+                };
                 self.shell.runtime.preview = "Loading preview...".to_string();
                 let request_id = self.shell.worker_bus.preview.begin_request();
                 self.bind_preview_request_to_current_tab(request_id);

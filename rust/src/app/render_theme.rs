@@ -14,6 +14,7 @@ pub(super) fn entry_kind_color(kind: EntryDisplayKind) -> egui::Color32 {
         EntryDisplayKind::Dir => egui::Color32::from_rgb(52, 211, 153),
         EntryDisplayKind::File => egui::Color32::from_rgb(96, 165, 250),
         EntryDisplayKind::Link => egui::Color32::from_rgb(250, 204, 21),
+        EntryDisplayKind::Other => egui::Color32::from_rgb(156, 163, 175),
     }
 }
 

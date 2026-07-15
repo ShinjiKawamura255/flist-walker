@@ -256,7 +256,10 @@ impl FlistWalkerApp {
     /// 指定 path 群から kind 未解決のものだけを queue へ積む。
     pub(super) fn queue_unknown_kind_paths(&mut self, source: &[PathBuf]) {
         for path in source {
-            if self.find_entry_kind(path).is_none() {
+            if self
+                .find_entry_kind(path)
+                .is_none_or(|kind| kind.needs_resolution())
+            {
                 self.queue_kind_resolution(path.clone());
             }
         }

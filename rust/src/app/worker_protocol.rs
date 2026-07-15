@@ -37,7 +37,12 @@ pub(super) struct IndexEntry {
 
 impl From<IndexEntry> for Entry {
     fn from(value: IndexEntry) -> Self {
-        Self::new(value.path, value.kind_known.then_some(value.kind))
+        let kind = if value.kind_known || value.kind.is_link() {
+            Some(value.kind)
+        } else {
+            None
+        };
+        Self::new(value.path, kind)
     }
 }
 

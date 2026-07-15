@@ -38,7 +38,7 @@ Use this checklist before selecting runner commands. The VM table below remains 
 ### Indexing, FileList, Walker, or Kind Resolution Changes
 - Apply: VM-003.
 - Update indexer tests before changing FileList detection, precedence, root lookup, nested FileList handling, or walker classification.
-- Preserve incremental ingestion and avoid full-list synchronous metadata resolution in idle UI paths.
+- Preserve incremental ingestion, keep regular FILE/DIR classification on the `file_type` fast path, and avoid full-list synchronous metadata resolution in idle UI paths. Confirm LINK identity is not used as a fallback for special files and terminal OTHER results are not requeued.
 - Run the VM-003 ignored perf tests when index/filelist/walker paths are touched.
 - Add large-root manual GUI checks when the change can affect responsiveness or throughput.
 

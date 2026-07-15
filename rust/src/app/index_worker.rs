@@ -97,7 +97,10 @@ fn is_windows_shortcut(path: &Path) -> bool {
 }
 
 pub(super) fn resolve_entry_kind(path: &Path) -> Option<EntryKind> {
-    let symlink_meta = std::fs::symlink_metadata(path).ok()?;
+    let symlink_meta = match std::fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return Some(EntryKind::other()),
+    };
     let is_link = symlink_meta.file_type().is_symlink() || is_windows_shortcut(path);
 
     if symlink_meta.is_dir() {
@@ -115,7 +118,10 @@ pub(super) fn resolve_entry_kind(path: &Path) -> Option<EntryKind> {
         });
     }
 
-    let meta = std::fs::metadata(path).ok()?;
+    let meta = match std::fs::metadata(path) {
+        Ok(metadata) => metadata,
+        Err(_) => return is_link.then_some(EntryKind::link_unknown()),
+    };
     if meta.is_dir() {
         Some(if is_link {
             EntryKind::link(true)
@@ -128,8 +134,10 @@ pub(super) fn resolve_entry_kind(path: &Path) -> Option<EntryKind> {
         } else {
             EntryKind::file()
         })
+    } else if is_link {
+        Some(EntryKind::link_unknown())
     } else {
-        None
+        Some(EntryKind::other())
     }
 }
 
@@ -147,18 +155,21 @@ fn classify_walker_entry(
         return include_files.then_some((EntryKind::file(), true));
     }
 
-    if include_files && include_dirs {
-        // Defer expensive metadata/link resolution until after initial indexing so Walker can
-        // finish streaming candidates as quickly as possible.
-        return Some((EntryKind::file(), false));
+    if file_type.is_symlink() || is_windows_shortcut(path) {
+        if include_files && include_dirs {
+            // Link identity is available from FileType/extension. The target
+            // directory state is intentionally resolved after the fast stream.
+            return Some((EntryKind::link_unknown(), false));
+        }
+    } else {
+        // Special files are neither searchable files nor directories in the
+        // current product contract. Exclude them without metadata probing.
+        return None;
     }
 
     let kind = resolve_entry_kind(path)?;
-    if (kind.is_dir && include_dirs) || (!kind.is_dir && include_files) {
-        Some((kind, true))
-    } else {
-        None
-    }
+    kind.is_visible_for_flags(include_files, include_dirs)
+        .then_some((kind, true))
 }
 
 fn flush_batch(

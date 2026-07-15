@@ -33,7 +33,7 @@
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除を実行し、既定では current row を維持する。`tab_pin_moves_to_next_row=true` では PIN 固定/解除後に次行へ移動する | SP-010, SP-016 |
 | TC-023A | unit | tab 切替や `Esc` 系の reset 後も、結果がある場合は visible な current row が復元される | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
-| TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、種別解決後に FILE/DIR/LINK 表示とフィルタ状態を反映する | SP-001, SP-010, SP-007 |
+| TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、LINK identity とリンク先種別を分離して、解決後に FILE/DIR/LINK 表示とフィルタ状態を反映する。OTHER/解決不能の終端状態は再解決しない | SP-001, SP-010, SP-007 |
 | TC-026 | unit | 回帰: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で current row が移動する | SP-010 |
 | TC-027 | unit | 回帰: `Ctrl+I` は検索窓フォーカス有無を問わず PIN をトグルし current row を維持する | SP-010 |
 | TC-028 | unit | 回帰: 検索窓フォーカス中でも `Ctrl+J` / `Ctrl+M` が `Enter` 同等に実行/オープンを起動する | SP-010 |
@@ -92,7 +92,7 @@
 | TC-080 | manual+unit | 手動試験 override により downgrade 候補でも更新ダイアログを表示できる | SP-014 |
 | TC-081 | unit | 更新ダイアログで抑止した target version は起動間で保持され、より新しい version が出るまで再表示されない | SP-014 |
 | TC-082 | unit+perf | 回帰: FileList の `\` 区切り候補を filesystem existence probe なしでプラットフォーム優先解釈し、line-only fast path が metadata-probe baseline を十分に上回ることを維持する（CI 下限 1.20x）。FileList read path は行バッファを再利用し、`lines()` による行ごとの確保 baseline より遅くならないことを明示計測する | SP-001, SP-007 |
-| TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、eager metadata 解決に対して現行 control baseline で 1.25x 以上の速度差を維持し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
+| TC-083 | unit+perf | Walker 初期インデクシングは通常ファイル/ディレクトリを `file_type` ベースで流し、特殊ファイルを LINK に誤分類せず、symlink のリンク先判定だけを遅延する。eager metadata 解決に対して現行 control baseline で 1.25x 以上の速度差を維持し、その後に遅延種別解決を自動開始する | SP-002, SP-007 |
 | TC-084 | unit | Source が FileList のタブで Create File List を確認すると、新規タブを開かずに同一タブの裏で Walker indexing を実行する | SP-001, SP-010 |
 | TC-085 | unit | FileList source の Create File List 完了時、元タブが background 化していてもその元タブを再インデックスし、完了前に元タブ root が変わっていた場合は再インデックスしない | SP-001, SP-010 |
 | TC-086 | unit | 実行バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合も、自己更新を無効化する | SP-014 |

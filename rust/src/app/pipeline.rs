@@ -589,7 +589,9 @@ impl FlistWalkerApp {
         if let Some(kind) = entry.kind {
             self.shell.cache.entry_kind.set(entry.path.clone(), kind);
         }
-        if entry.kind.is_none() && self.kind_resolution_needed_for_filters() {
+        if entry.kind.is_none_or(|kind| kind.needs_resolution())
+            && self.kind_resolution_needed_for_filters()
+        {
             self.queue_kind_resolution(entry.path.clone());
         }
         if self.should_track_incremental_filtered_entries()
