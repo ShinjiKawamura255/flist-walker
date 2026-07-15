@@ -1572,7 +1572,7 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.14...HEAD
 [0.18.14]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...v0.18.14
 [0.18.13]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...v0.18.13
 [0.18.12]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...v0.18.12
