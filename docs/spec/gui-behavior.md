@@ -13,6 +13,9 @@
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
 - MUST: 本文プレビューは拡張子で制限せず、UTF-8、BOM 付き UTF-16、および主要 OS で一般的なレガシー文字コードを順に解釈して、テキストとして安全に復号できた内容を表示する。
 - MUST: ファイルの本文プレビューには byte size を `Size:` として人間可読単位で表示する。サイズ取得を含む preview I/O は worker で実行し、UI thread をブロックしてはならない。フォルダサイズの再帰計算は行わない。
+- MUST: Preview は取得できる場合に `Updated:`（filesystem の `modified()`）を表示し、`Created:` は filesystem の `created()` が利用できる場合に表示する。日時は `YYYY-MM-DD HH:mm UTC` 形式とする。
+- SHOULD: Preview は `Read-only` / Windows の `Hidden` 属性を `Attributes:` に表示し、シンボリックリンクにはリンク先を `Target:` として表示する。属性またはリンク先を取得できない場合も本文プレビュー全体を失敗させてはならない。
+- MUST: シンボリックリンクでは、本文・`Target Size:`・`Target Created:`・`Target Updated:` はリンク先を対象とし、`Attributes:` はリンク自身を対象とする。リンク先 metadata を取得できない行は省略する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR/LINK 表示を後追い更新できる。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
 - MUST: runtime config の `emacs_keybindings_enabled` が `false` のとき、Emacs 風の `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` および検索欄編集用 `Ctrl+A` / `Ctrl+E` / `Ctrl+B` / `Ctrl+F` / `Ctrl+H` / `Ctrl+D` / `Ctrl+W` / `Ctrl+K` / `Ctrl+Y` / `Ctrl+U` はアプリ側ショートカットとして消費してはならない。

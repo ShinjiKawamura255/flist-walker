@@ -27,6 +27,7 @@
 
 - DES-009 GUI Adapter (egui/eframe)
 - 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。
+- 役割補足: Preview worker は File/Directory の header に取得可能な size、`Created` / `Updated`、条件付き属性、シンボリックリンクの `Target` を付加する。symlink では size/日時を `Target ...` としてリンク先、属性をリンク自身へ分ける。日時は依存追加なしの UTC 表示とし、metadata の取得失敗は該当行を省略して本文表示を継続する。
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
