@@ -106,4 +106,13 @@
 - Owner: Rust dependency maintainer for release preflight.
 - Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
 - Re-evaluation trigger: `resvg` / `usvg` / `fontdb` refresh, maintained `ttf-parser` successor, or any new font parsing input surface.
-- Current `cargo audit` behavior: reports this as an allowed warning and exits successfully when the accepted `quick-xml` vulnerabilities are ignored.
+- Current `cargo audit` behavior: reports this and `RUSTSEC-2026-0206` as allowed warnings and exits successfully when the accepted `quick-xml` vulnerabilities are ignored.
+
+### RUSTSEC-2026-0206: `rustybuzz 0.18.0` unmaintained
+- Status: accepted on 2026-07-15 as a transitive unmaintained warning surfaced by `cargo audit`.
+- Observed path: `rustybuzz 0.18.0 -> usvg 0.43.0 -> resvg 0.43.0 -> flist-walker`.
+- Exposure note: this path is used for local icon/SVG rendering; FlistWalker does not expose a network-fed font parsing service through this dependency.
+- Owner: Rust dependency maintainer for release preflight.
+- Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
+- Re-evaluation trigger: `resvg` / `usvg` / `rustybuzz` refresh, a maintained successor, or any new untrusted font/SVG input surface.
+- Current `cargo audit` behavior: allowed warning; it must remain visible in audit output and must not be added to the vulnerability ignore list.

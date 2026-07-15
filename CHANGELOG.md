@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.18.14] - 2026-07-15
+### Added
+- Preview にファイルサイズ、更新日時、作成日時、ファイル種別、シンボリックリンク情報を表示するようにした。
+
+### Changed
+- terminal / link entry の kind resolution と preview routing を整理し、関連する回帰テストを追加した。
+- ドキュメントのナビゲーションと構造索引を整理した。
+- Unix socket 分類テストの一時パスを短縮し、環境依存の失敗を避けた。
+
+### Fixed
+- 検索やタブ切り替えをまたぐ deferred link resolution が結果状態へ正しく反映されるようにした。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+- cross-platform CI の `cargo audit` で、文書化済みの accepted advisory だけを継続的に許容するようにし、`quick-xml` / `rustybuzz` / `ttf-parser` の transitive advisory を `docs/OSS_COMPLIANCE.md` で追跡した。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.18.13] - 2026-07-10
 ### Added
 - タブをピン留めしたときに現在の行へ留まるか、次の行へ選択を移すかを runtime config で選べるようにした。
@@ -1549,6 +1573,7 @@
 - macOS アセットは未提供。
 
 [Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...HEAD
+[0.18.14]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...v0.18.14
 [0.18.13]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...v0.18.13
 [0.18.12]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...v0.18.12
 [0.18.11]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.10...v0.18.11
