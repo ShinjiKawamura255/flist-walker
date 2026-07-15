@@ -99,10 +99,15 @@ fn classify_walker_entry_marks_symlink_before_resolving_target_kind() {
 fn classify_walker_entry_does_not_promote_unix_socket_to_link() {
     use std::os::unix::net::UnixListener;
 
-    let root = test_root("unix-socket");
-    let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).expect("create dir");
-    let path = root.join("socket");
+    // AF_UNIX paths have a platform-specific short length limit (SUN_LEN on
+    // macOS). Keep the socket path independent from the long test fixture
+    // root used by the other worker tests.
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!("flistwalker-socket-{nonce}"));
+    let _ = std::fs::remove_file(&path);
     let listener = UnixListener::bind(&path).expect("bind unix socket");
     let file_type = std::fs::symlink_metadata(&path)
         .expect("metadata")
@@ -111,7 +116,7 @@ fn classify_walker_entry_does_not_promote_unix_socket_to_link() {
     assert!(classify_walker_entry(&path, file_type, true, true).is_none());
 
     drop(listener);
-    let _ = std::fs::remove_dir_all(&root);
+    let _ = std::fs::remove_file(&path);
 }
 
 #[cfg(unix)]
