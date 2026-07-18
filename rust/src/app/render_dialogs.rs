@@ -567,12 +567,12 @@ pub(super) fn render_manage_root_list_dialog(app: &mut FlistWalkerApp, ctx: &egu
                             let response = FlistWalkerApp::manage_root_list_selectable_row(
                                 ui, selected, &label,
                             );
-                            if response.clicked() {
-                                app.select_manage_root_list_item(index);
-                            }
                             if response.double_clicked() {
+                                if app.select_manage_root_list_item(index) {
+                                    start_edit = true;
+                                }
+                            } else if response.clicked() {
                                 app.select_manage_root_list_item(index);
-                                start_edit = true;
                             }
                         }
                     }

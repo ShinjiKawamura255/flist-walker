@@ -232,6 +232,85 @@ fn manage_root_list_edit_requests_focus_and_select_all() {
 }
 
 #[test]
+fn manage_root_list_selecting_another_root_cancels_clean_edit() {
+    let _scope = saved_roots_test_scope("manage-root-list-switch-clean-edit-settings");
+    let root = test_root("manage-root-list-switch-clean-edit");
+    let first = root.join("first");
+    let second = root.join("second");
+    fs::create_dir_all(&first).expect("create first");
+    fs::create_dir_all(&second).expect("create second");
+    let mut app = FlistWalkerApp::new(first.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![first, second];
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+
+    assert!(app.select_manage_root_list_item(1));
+
+    let manage = &app.shell.features.root_browser.manage_list;
+    assert_eq!(manage.selected_index, Some(1));
+    assert!(manage.editing_index.is_none());
+    assert!(manage.edit_path.is_empty());
+    assert!(manage.notice.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_switching_to_another_root_can_start_editing_it() {
+    let _scope = saved_roots_test_scope("manage-root-list-switch-edit-settings");
+    let root = test_root("manage-root-list-switch-edit");
+    let first = root.join("first");
+    let second = root.join("second");
+    fs::create_dir_all(&first).expect("create first");
+    fs::create_dir_all(&second).expect("create second");
+    let mut app = FlistWalkerApp::new(first.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![first, second.clone()];
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+
+    assert!(app.select_manage_root_list_item(1));
+    app.start_editing_manage_root_list_item();
+
+    let manage = &app.shell.features.root_browser.manage_list;
+    assert_eq!(manage.selected_index, Some(1));
+    assert_eq!(manage.editing_index, Some(1));
+    assert_eq!(manage.edit_path, second.to_string_lossy());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn manage_root_list_does_not_switch_away_from_dirty_edit() {
+    let _scope = saved_roots_test_scope("manage-root-list-switch-dirty-edit-settings");
+    let root = test_root("manage-root-list-switch-dirty-edit");
+    let first = root.join("first");
+    let second = root.join("second");
+    fs::create_dir_all(&first).expect("create first");
+    fs::create_dir_all(&second).expect("create second");
+    let mut app = FlistWalkerApp::new(first.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![first, second];
+
+    app.open_manage_root_list();
+    app.select_manage_root_list_item(0);
+    app.start_editing_manage_root_list_item();
+    app.shell.features.root_browser.manage_list.edit_path = "unsaved change".to_string();
+
+    assert!(!app.select_manage_root_list_item(1));
+
+    let manage = &app.shell.features.root_browser.manage_list;
+    assert_eq!(manage.selected_index, Some(0));
+    assert_eq!(manage.editing_index, Some(0));
+    assert_eq!(manage.edit_path, "unsaved change");
+    assert_eq!(
+        manage.notice,
+        "Save or Cancel the current edit before selecting another root"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn manage_root_list_edit_rejects_duplicate_and_keeps_editor_open() {
     let _scope = saved_roots_test_scope("manage-root-list-edit-duplicate-settings");
     let root = test_root("manage-root-list-edit-duplicate");

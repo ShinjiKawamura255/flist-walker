@@ -90,13 +90,33 @@ impl FlistWalkerApp {
         manage.edit_select_all_requested = false;
     }
 
-    pub(super) fn select_manage_root_list_item(&mut self, index: usize) {
+    pub(super) fn select_manage_root_list_item(&mut self, index: usize) -> bool {
         let manage = &mut self.shell.features.root_browser.manage_list;
-        if !manage.remove_mode && manage.editing_index.is_none() && index < manage.draft_roots.len()
-        {
-            manage.selected_index = Some(index);
-            manage.notice.clear();
+        if manage.remove_mode || index >= manage.draft_roots.len() {
+            return false;
         }
+        if manage.editing_index.is_some() && manage.editing_index != Some(index) {
+            let edit_is_dirty = match manage.editing_index {
+                Some(editing_index) => match manage.draft_roots.get(editing_index) {
+                    Some(root) => manage.edit_path != root.to_string_lossy(),
+                    None => true,
+                },
+                None => false,
+            };
+            if edit_is_dirty {
+                manage.notice =
+                    "Save or Cancel the current edit before selecting another root".to_string();
+                return false;
+            }
+            manage.editing_index = None;
+            manage.edit_path.clear();
+            manage.edit_error.clear();
+            manage.edit_focus_requested = false;
+            manage.edit_select_all_requested = false;
+        }
+        manage.selected_index = Some(index);
+        manage.notice.clear();
+        true
     }
 
     pub(super) fn start_editing_manage_root_list_item(&mut self) {
