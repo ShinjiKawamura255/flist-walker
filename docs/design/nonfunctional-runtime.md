@@ -70,8 +70,16 @@
 - Root 変更時は旧 root 由来の選択状態（current row / pinned / preview）を即時クリアし、旧パスの実行/コピー誤操作を防ぐ。
 - Root 変更時は旧 root 向けの FileList 上書き確認ダイアログを破棄し、誤上書きを防ぐ。
 - root 配下判定はアクション実行直前にのみ行い、FileList 読み込みや walker indexing のスループットへ影響させない。
-- root 配下判定は `root == path` または `path.starts_with(root)` を基本とし、UNC root でも同一 share / 同一 root 配下なら許可する。
-- root 外パスは候補表示を維持しつつ、Action worker が OS 起動要求を出す前に拒否して notice を返す。
+- UI の root precheck は path component だけを評価する純粋な `Reject` / `Defer` 判定とし、canonicalize、metadata、存在確認を行わない。証明可能な字句的 escape だけを `Reject` とし、曖昧な形式は worker へ `Defer` する。
+- Action worker は request が保持する trusted root を 1 回解決し、すべての raw effective target を解決して `Path` component の `starts_with` で containment を確認する。`to_string_lossy`、separator rewrite、manual case folding、単純な文字列 prefix は認可に使わない。
+- direct action では選択 path、open-containing-folder では通常ファイル/file link の字句的な親または directory/directory link/junction 自身を raw effective target とする。表示用 path と execution path は別に保持する。
+- 複数選択は全 target を事前認可してから dispatch を開始し、解決失敗、root 外、mixed valid/invalid のいずれも backend call 0 件で fail closed とする。解決済み execution path の重複は display 情報を維持したまま除く。
+- Action worker は各 backend call の直前に raw effective target を再解決して containment を再確認し、最後に認可した解決済み execution path だけを OS leaf へ渡す。途中の再検証失敗では残件を停止し、完了件数を含む partial completion を notice と trace に残す。
+- open-containing-folder の対象種別は worker で `symlink_metadata` と追跡 metadata を使って明示判定し、broken link、metadata error、特殊種別を fail closed とする。deduplicate された target も対応する全 source path から effective target を直前に再導出し、種別変更または解決先変更を検出する。
+- rejected notice は選択時の display path または effective display path を用い、root 外の canonical destination を漏らさない。trusted root または target の解決失敗も同じく action error とする。
+- executor error の詳細は内部 trace に限定し、利用者向け notice は display path と結果区分だけから構築する。trace は `request_id`、`result`（success / blocked / failed / partial）、`completed`、`total`、失敗段階を構造化 field として残す。
+- UNC root は canonical path component による同一 root 配下判定を使い、同一 share/root 配下だけを許可する。Windows の junction、symlink、case、extended prefix と実 UNC は自動または manual evidence で確認する。
+- 最終再検証と OS 利用の間の link/object 差し替えを完全に排除できないため、handle-relative launch がない platform では residual TOCTOU として扱う。解決済み path を直ちに dispatch して窓を縮小するが、外部 action の原子性や rollback は保証しない。
 - Create File List は root 直下の FileList 作成と祖先追記を分離し、祖先追記がありうる場合のみ GUI 側の確認ダイアログを通す。
 - 利用者が祖先追記を拒否した場合、root 直下の FileList 作成は成功扱いのまま維持し、祖先追記経路だけをスキップする。
 - Source が FileList のアクティブタブで Create File List を要求した場合は、新規タブを作らずに同一タブへ `use_filelist = false` の一時 index request を発行する。完了後はその Walker snapshot で FileList を作成し、FileList 作成完了応答で同一タブを通常の FileList 再インデックスへ戻す。

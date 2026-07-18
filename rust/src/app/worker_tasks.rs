@@ -1,10 +1,13 @@
+use super::action_authorization::{
+    authorize_action_targets, reauthorize_action_target, ActionAuthorizationFailure,
+};
 use super::index_worker::resolve_entry_kind;
 use super::worker_protocol::{
     ActionRequest, ActionResponse, FileListRequest, FileListResponse, KindResolveRequest,
     KindResolveResponse, PreviewRequest, PreviewResponse, SearchRequest, SearchResponse,
     SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
-use super::worker_support::{action_notice_for_targets, action_targets_for_request};
+use super::worker_support::action_notice_for_targets;
 use super::SortMetadata;
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
@@ -12,9 +15,9 @@ use crate::indexer::write_filelist_cancellable;
 use crate::search::{
     rank_search_results, SearchPrefixCache, SearchResultSortMode, SearchResultSortScope,
 };
-use crate::ui_model::build_preview_text_with_kind;
+use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
@@ -355,37 +358,127 @@ pub(super) fn spawn_action_worker(
 
 fn run_action_request(req: ActionRequest, tx_res: Sender<ActionResponse>) {
     trace_worker_started("action", req.request_id);
-
-    let targets = action_targets_for_request(&req.paths, req.open_parent_for_files);
-    let mut failure: Option<String> = None;
-    for target in &targets {
-        if let Err(err) = run_action_target(target) {
-            failure = Some(format!("Action failed: {}", err));
-            break;
-        }
-    }
-
-    let notice = if let Some(failed) = failure {
-        failed
-    } else {
-        action_notice_for_targets(&targets)
-    };
+    let response = process_action_request_with(req, run_action_target);
     info!(
         flow = "action",
         event = "finished",
-        request_id = req.request_id,
-        target_count = targets.len(),
+        request_id = response.request_id,
         "worker request finished"
     );
 
-    if tx_res
-        .send(ActionResponse {
-            request_id: req.request_id,
-            notice,
-        })
-        .is_err()
-    {
-        trace_worker_receiver_closed("action", req.request_id);
+    let request_id = response.request_id;
+    if tx_res.send(response).is_err() {
+        trace_worker_receiver_closed("action", request_id);
+    }
+}
+
+pub(crate) fn process_action_request_with(
+    req: ActionRequest,
+    mut execute: impl FnMut(&Path) -> anyhow::Result<()>,
+) -> ActionResponse {
+    let batch = match authorize_action_targets(&req.root, &req.paths, req.open_parent_for_files) {
+        Ok(batch) => batch,
+        Err(err) => {
+            warn!(
+                flow = "action",
+                event = "authorization_failed",
+                request_id = req.request_id,
+                result = "blocked",
+                completed = 0,
+                total = req.paths.len(),
+                error = %err,
+                "action request blocked"
+            );
+            return ActionResponse {
+                request_id: req.request_id,
+                notice: action_blocked_notice(&err),
+            };
+        }
+    };
+    let total = batch.targets.len();
+
+    for (completed, target) in batch.targets.iter().enumerate() {
+        let execution_path = match reauthorize_action_target(&batch.canonical_root, target) {
+            Ok(path) => path,
+            Err(err) => {
+                let result = if completed == 0 { "blocked" } else { "partial" };
+                warn!(
+                    flow = "action",
+                    event = "reauthorization_failed",
+                    request_id = req.request_id,
+                    result,
+                    completed,
+                    total,
+                    error = %err,
+                    "action target reauthorization failed"
+                );
+                let notice = if completed == 0 {
+                    action_blocked_notice(&err)
+                } else {
+                    format!(
+                        "Action failed after launching {completed} of {total} items while opening {}: authorization changed",
+                        normalize_path_for_display(&target.display_path)
+                    )
+                };
+                return ActionResponse {
+                    request_id: req.request_id,
+                    notice,
+                };
+            }
+        };
+        if let Err(err) = execute(&execution_path) {
+            let result = if completed == 0 { "failed" } else { "partial" };
+            warn!(
+                flow = "action",
+                event = "executor_failed",
+                request_id = req.request_id,
+                result,
+                completed,
+                total,
+                error = %err,
+                "action executor failed"
+            );
+            let display_path = normalize_path_for_display(&target.display_path);
+            return ActionResponse {
+                request_id: req.request_id,
+                notice: if completed == 0 {
+                    format!("Action failed: {display_path}")
+                } else {
+                    format!(
+                        "Action failed after launching {completed} of {total} items while opening {display_path}"
+                    )
+                },
+            };
+        }
+    }
+
+    let display_targets: Vec<PathBuf> = batch
+        .targets
+        .iter()
+        .map(|target| target.display_path.clone())
+        .collect();
+    info!(
+        flow = "action",
+        event = "completed",
+        request_id = req.request_id,
+        result = "success",
+        completed = total,
+        total,
+        "action request completed"
+    );
+    ActionResponse {
+        request_id: req.request_id,
+        notice: action_notice_for_targets(&display_targets),
+    }
+}
+
+fn action_blocked_notice(failure: &ActionAuthorizationFailure) -> String {
+    match &failure.display_path {
+        Some(path) => format!(
+            "Action blocked: {}: {failure}",
+            normalize_path_for_display(path)
+        ),
+        None => format!("Action blocked: {failure}"),
     }
 }
 

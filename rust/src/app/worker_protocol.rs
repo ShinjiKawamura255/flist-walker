@@ -99,6 +99,7 @@ pub(super) struct PreviewResponse {
 
 pub(super) struct ActionRequest {
     pub(super) request_id: u64,
+    pub(super) root: PathBuf,
     pub(super) paths: Vec<PathBuf>,
     pub(super) open_parent_for_files: bool,
 }

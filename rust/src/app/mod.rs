@@ -13,6 +13,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
+mod action_authorization;
 mod adaptive_walker;
 mod bootstrap;
 mod cache;
@@ -52,8 +53,9 @@ mod worker_support;
 mod worker_tasks;
 mod workers;
 
+use action_authorization::{lexical_action_path_precheck, ActionPathPrecheck};
 use cache::{EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
-use coordinator::{normalized_compare_key, path_is_within_root};
+use coordinator::normalized_compare_key;
 use index_coordinator::IndexCoordinator;
 use index_worker::spawn_index_worker;
 use pipeline_owner::PipelineOwner;

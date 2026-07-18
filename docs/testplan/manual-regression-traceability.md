@@ -6,8 +6,57 @@
 - Data:
 - 一時ディレクトリに擬似ファイル/フォルダを生成
 - `FileList.txt`/`filelist.txt` をケース別に生成
-- UNC root 相当のパス比較は Windows 実機またはパス正規化の unit test で確認
+- UNC path form は unit test、real UNC の解決・認可は Windows 実機の TC-051 procedure で確認
 - 自己更新手動試験では、必要に応じてローカル HTTP サーバーで release JSON / asset / `SHA256SUMS` / `SHA256SUMS.sig` を配信する
+
+## Action Authorization Platform Evidence (TC-050 / TC-051)
+
+この確認は OS action backend を起動せず、worker の recording executor または authorization-only test seam を使用する。選択時の display path、最後に認可された execution path、backend call count、notice、実行環境を証跡として記録する。外部 canonical destination や実在する UNC の機微情報はマスクする。
+
+### Windows junction / link
+1. 同一ローカル volume の一時領域に `root/in-root` と `outside` を作成し、`root/escape-junction` から `outside` への directory junction を作る。権限があれば同じ配置の directory/file symlink も作る。
+2. `root/escape-junction` を direct action と open-containing-folder の対象にして worker authorization seam を実行する。
+3. `root/in-root` の通常対象を含む複数選択に escape junction を混在させ、全 target の事前認可失敗を確認する。
+4. recording executor の call count がすべて 0、notice が display path を示し外部 canonical destination を含まないことを確認する。
+5. root 内 file link が root 外の file を指す配置では、direct action は拒否し、open-containing-folder は root 内の字句的親を解決した execution path だけを 1 回受け取ることを確認する。
+6. junction/link の作成権限がない場合は `not run`、OS/build、失敗した作成操作と理由を記録し、pass として扱わない。一時領域は証跡取得後に削除する。
+
+### Real UNC / Windows path forms
+1. 実際に到達可能な UNC root と、その配下 target、同一 share の root 外 target、可能なら別 share target を用意する。認証情報と server/share の実名は証跡へ残さない。
+2. authorization-only seam で同一 UNC root 配下が許可され、その解決済み execution path が recording executor に 1 回渡ることを確認する。
+3. 同一 share の root 外、別 share、解決不能 UNC は backend call 0 件で拒否されることを確認する。
+4. unit evidence では Windows の大小文字差、extended/verbatim prefix、drive-relative、rooted-without-drive を含む UI precheck 表を確認し、曖昧な形式が UI だけで許可されず `Defer` されることを確認する。
+5. real UNC が利用できない場合は `not run` と理由を記録する。synthetic path の unit test は real UNC の代替 pass にしない。
+
+### Evidence record
+- Date / operator:
+- OS / build / filesystem:
+- Case: junction / symlink / real UNC / Windows path forms
+- Expected result:
+- Actual authorization result:
+- Recording executor call count and masked execution path:
+- Notice display-path check:
+- Status: pass / fail / not run
+- Residual note: 最終再検証後の filesystem object 差し替えは handle-relative launch がない backend では完全に排除できず、TOCTOU residual risk として残る。
+
+#### Evidence 2026-07-19
+- Date / operator: 2026-07-19 / Codex
+- OS / build / filesystem: Microsoft Windows NT 10.0.26200.0 / NTFS
+- Case: directory junction escape (direct action / open-containing-folder / mixed selection)
+- Test data: `C:\tmp\flistwalker-tc051-<masked>\root\escape-junction` -> sibling `outside`; root 内に通常ファイルを併置
+- Expected result: 全 target の事前認可を拒否し、recording executor call count は 0。notice は外部 canonical destination を含まない。
+- Actual authorization result: `cargo test --locked tc_051_windows_junction_escape_manual_evidence --lib -- --ignored --nocapture` が pass（1 passed）。direct/open-containing-folder とも要求全体を拒否した。
+- Recording executor call count and masked execution path: 0 / none
+- Notice display-path check: `Action blocked:` を返し、外部 canonical destination の文字列を含まないことを assertion で確認
+- Windows path-form automated evidence: case 違いと extended/verbatim prefix の同一実体を worker が許可して canonical execution path を recording executor へ渡す test、および非 Unicode path を lossy normalization 前に UI が `Defer` する test が pass
+- Status: pass
+- Cleanup: junction を先に削除後、検証用 `C:\tmp\flistwalker-tc051-<masked>` を削除済み
+- Revalidation: source type の厳格判定、display-only failure notice、structured result trace の追加後に同じ ignored test を再実行し、1 passed。再作成した一時 junction/tree も同じ手順で削除済み。
+- Case: real UNC
+- Expected result: 同一 root 配下だけを許可し、同一 share の root 外、別 share、解決不能 UNC は backend call 0 件で拒否する。
+- Actual authorization result: 到達可能な検証用 UNC share がこの環境にないため未実行
+- Status: not run
+- Residual note: synthetic UNC path の UI precheck test は pass しているが、real UNC の worker canonicalization evidence の代替にはしない。
 
 ## Self Update Manual Test
 1. 同一 version の表示確認:

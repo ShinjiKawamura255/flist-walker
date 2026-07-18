@@ -18,8 +18,11 @@
 - 実装: `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/match_eval.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`
 
 - DES-004 Action Executor
-- 役割: ファイル実行/オープン、フォルダオープンを OS 差分吸収して実行し、open/execute の testable seam を保つ。
-- 実装: `rust/src/actions.rs`
+- 役割: UI の action intent、worker の root confinement、OS 固有の open/execute leaf を分離し、認可済み path だけが OS 境界へ到達する testable seam を保つ。
+- 役割補足: UI は同期 filesystem I/O を行わない `Reject` / `Defer` の字句的 precheck と trusted root を含む request 構築だけを担当する。`Defer` は許可を意味せず、worker の権威的な判定へ必ず送る。
+- 役割補足: action authorization module は action mode から raw effective target と display path を導出し、解決済み root に対する component containment、解決済み execution path の deduplication、execution/display path の分離を担当する。
+- 役割補足: Action worker は全 target の fail-closed な事前認可、各 OS 呼び出し直前の再認可、実行順序、途中失敗時の残件停止と partial-completion 通知を担当する。OS leaf は認可済みの解決済み path を実行し、root policy を判断しない。
+- 実装: `rust/src/app/coordinator.rs`, `rust/src/app/input/actions.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/action_authorization.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/worker_support.rs`, `rust/src/actions.rs`
 
 - DES-005 CLI Adapter
 - 役割: `clap` 引数を受け取り CLI 出力へ変換。

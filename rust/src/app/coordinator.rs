@@ -132,32 +132,6 @@ pub(super) fn normalized_compare_key(path: &Path) -> String {
     key
 }
 
-pub(super) fn path_is_within_root(root: &Path, path: &Path) -> bool {
-    let root_key = normalized_compare_key(root);
-    let path_key = normalized_compare_key(path);
-    if path_key == root_key
-        || path_key
-            .strip_prefix(&root_key)
-            .is_some_and(|suffix| suffix.starts_with('/'))
-    {
-        return true;
-    }
-
-    let canonical_root = root.canonicalize().ok();
-    let canonical_path = path.canonicalize().ok();
-    match (canonical_root, canonical_path) {
-        (Some(canonical_root), Some(canonical_path)) => {
-            let root_key = normalized_compare_key(&canonical_root);
-            let path_key = normalized_compare_key(&canonical_path);
-            path_key == root_key
-                || path_key
-                    .strip_prefix(&root_key)
-                    .is_some_and(|suffix| suffix.starts_with('/'))
-        }
-        _ => false,
-    }
-}
-
 impl FlistWalkerApp {
     pub(super) fn status_line_text(&mut self) -> String {
         self.status_line_text_with_memory_sample(false)
@@ -374,7 +348,7 @@ impl Drop for FlistWalkerApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use crate::app::action_authorization::{lexical_action_path_precheck, ActionPathPrecheck};
 
     #[test]
     fn build_status_line_includes_progress_and_notice() {
@@ -416,11 +390,31 @@ mod tests {
 
     #[test]
     fn path_guard_accepts_descendants_and_rejects_outside_paths() {
-        let root = PathBuf::from("/tmp/work/root");
-        let inside = PathBuf::from("/tmp/work/root/sub/file.txt");
-        let outside = PathBuf::from("/tmp/work/other/file.txt");
+        let base = std::env::temp_dir().join("flistwalker-path-guard");
+        let root = base.join("root");
+        let inside = root.join("sub").join("file.txt");
+        let outside = base.join("other").join("file.txt");
 
-        assert!(path_is_within_root(&root, &inside));
-        assert!(!path_is_within_root(&root, &outside));
+        assert_eq!(
+            lexical_action_path_precheck(&root, &inside),
+            ActionPathPrecheck::Defer
+        );
+        assert_eq!(
+            lexical_action_path_precheck(&root, &outside),
+            ActionPathPrecheck::Reject
+        );
+    }
+
+    #[test]
+    fn tc_050_path_guard_rejects_parent_component_escape() {
+        let root = std::env::temp_dir()
+            .join("flistwalker-path-guard-parent")
+            .join("root");
+        let escaped = root.join("..").join("outside").join("tool.exe");
+
+        assert_eq!(
+            lexical_action_path_precheck(&root, &escaped),
+            ActionPathPrecheck::Reject
+        );
     }
 }

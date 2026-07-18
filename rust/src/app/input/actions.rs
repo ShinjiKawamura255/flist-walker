@@ -76,6 +76,7 @@ impl FlistWalkerApp {
 
         let req = ActionRequest {
             request_id,
+            root: self.shell.runtime.root.clone(),
             paths,
             open_parent_for_files,
         };

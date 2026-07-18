@@ -1,6 +1,6 @@
 use super::{
-    egui, path_is_within_root, Entry, EntryKind, FlistWalkerApp, IndexSource, PathBuf,
-    ResultSortMode,
+    egui, lexical_action_path_precheck, ActionPathPrecheck, Entry, EntryKind, FlistWalkerApp,
+    IndexSource, PathBuf, ResultSortMode,
 };
 use crate::actions::open_text_file_with_default_or_editor;
 use crate::path_utils::normalize_windows_path_buf;
@@ -319,7 +319,10 @@ impl FlistWalkerApp {
     pub(super) fn first_action_path_outside_root(&self, paths: &[PathBuf]) -> Option<PathBuf> {
         paths
             .iter()
-            .find(|path| !path_is_within_root(&self.shell.runtime.root, path))
+            .find(|path| {
+                lexical_action_path_precheck(&self.shell.runtime.root, path)
+                    == ActionPathPrecheck::Reject
+            })
             .cloned()
     }
 

@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 
-pub(super) use crate::app::coordinator::path_is_within_root;
 pub(super) use crate::app::index_coordinator::IndexResponseRoute;
 pub(super) use crate::app::search_coordinator::SearchResponseRoute;
 pub(super) use crate::app::session::UiState;

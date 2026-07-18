@@ -60,8 +60,8 @@
 | TC-047 | unit | FileList 作成時は祖先の既存 FileList へ子 FileList 参照を重複なく追記し、親 mtime を維持する | SP-001 |
 | TC-048 | unit | 祖先探索は callback/失敗時に即停止し、それ以降の上位階層を処理しない | SP-001 |
 | TC-049 | unit | FileList に root 外パスが含まれても候補表示時の追加フィルタを行わず、インデクシング経路の挙動を維持する | SP-007 |
-| TC-050 | unit | root 外パスは結果一覧に存在しても execute/open 直前で拒否される | SP-004 |
-| TC-051 | unit | UNC root 配下のパスは execute/open 直前の root 判定で許可される | SP-004 |
+| TC-050 | unit+integration | UI precheck は filesystem I/O なしで、`.`、root 内の正規化可能な component を `Defer` し、root を越える `..` または明らかな別 prefix だけを `Reject` する。worker は trusted root と direct/open-containing-folder の全 effective target を解決済み component で事前認可し、通常 path、root 外 path、`..` escape、解決不能 root/target、mixed valid/invalid、root 外を指す link を検証する。open-containing-folder は通常 file/directory、file/directory link、broken link、metadata error を区別し、推測による親変換を行わない。事前認可失敗時の recording backend 呼び出しは 0 件とし、成功時は display path ではなく最後に認可した解決済み execution path だけを受け取る。各 source の種別/effective target を直前に再導出し、種別変更または再検証失敗では残件を停止して先行呼び出し件数を含む partial completion を返す。blocked/executor failure/partial の利用者向け通知は display path を保ち、canonical execution path と OS error 本文を含めない | SP-004 |
+| TC-051 | unit+manual | platform path evidence として、Unix symlink escape、作成可能な Windows symlink/junction escape、Windows の大小文字・extended/verbatim prefix、UNC の同一 root 配下/同一 share の root 外/別 share を検証する。root 外を解決先とする directory link/junction の direct/open-containing-folder は backend 0 件で拒否し、root 内 file link の open-containing-folder は解決済みの字句的親だけを許可する。同一 UNC root 配下は許可し、別 share/root 外と解決不能 UNC は拒否する。Windows junction と real UNC は `manual-regression-traceability.md` の手順・expected/actual・実行可否を記録し、未実行を成功扱いにしない | SP-004 |
 | TC-052 | unit | Create File List で祖先 FileList への追記が実際に発生しうる場合は確認ダイアログを要求する | SP-001, SP-010 |
 | TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
 | TC-054 | unit | runtime config の `history_persist_disabled` が有効なとき query history を保存も復元も行わない | SP-010 |
