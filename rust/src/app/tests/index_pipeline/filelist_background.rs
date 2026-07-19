@@ -78,7 +78,7 @@ fn deferred_filelist_is_canceled_when_root_changes() {
     fs::create_dir_all(&root_old).expect("create old dir");
     fs::create_dir_all(&root_new).expect("create new dir");
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
-    let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, _index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
@@ -123,7 +123,7 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
     app.apply_root_change(root_b.clone());
     app.switch_to_tab_index(1);
 
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.shell.indexing.tx = index_tx;
     app.shell.worker_bus.filelist.rx = filelist_rx;
@@ -180,7 +180,7 @@ fn filelist_finish_ignores_original_tab_when_its_root_changed() {
     }
     app.shell.runtime.root = root_new.clone();
 
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.shell.indexing.tx = index_tx;
     app.shell.worker_bus.filelist.rx = filelist_rx;
@@ -234,8 +234,8 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
         .pending_restore_refresh_tabs
         .insert(app.shell.tabs.get(0).expect("tab 0").id);
 
-    let (_, rx) = mpsc::channel::<IndexRequest>();
-    let (closed_tx, _) = mpsc::channel::<IndexRequest>();
+    let (_, rx) = bounded_request_channel::<IndexRequest>(2);
+    let (closed_tx, _) = bounded_request_channel::<IndexRequest>(2);
     drop(rx);
     app.shell.indexing.tx = closed_tx;
 

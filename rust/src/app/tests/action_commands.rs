@@ -3,10 +3,14 @@ use crate::app::action_authorization::{
     action_target_path_for_open_in_folder, authorize_action_targets, lexical_action_path_precheck,
     ActionPathPrecheck,
 };
+use crate::app::worker_channel::bounded_request_channel;
 #[cfg(target_os = "windows")]
 use crate::app::worker_support::action_notice_for_targets;
-use crate::app::worker_tasks::process_action_request_with;
-use crate::app::workers::spawn_action_worker;
+use crate::app::worker_tasks::{
+    process_action_request_with, process_action_request_with_outcome, spawn_action_worker_with,
+    ActionTerminalOutcome, SharedActionExecutor,
+};
+use std::sync::atomic::AtomicUsize;
 
 #[test]
 fn execute_selected_enqueues_action_request_without_sync_io() {
@@ -14,7 +18,7 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
     fs::create_dir_all(&root).expect("create dir");
     let missing = root.join("missing-not-executed");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
@@ -43,7 +47,7 @@ fn execute_selected_for_activation_uses_open_folder_mode_when_requested() {
     let selected = folder.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
@@ -73,7 +77,7 @@ fn execute_selected_notice_normalizes_extended_prefix() {
         selected.to_string_lossy().replace('/', r"\")
     ));
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (action_tx_req, _action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, _action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
@@ -99,7 +103,7 @@ fn execute_selected_blocks_path_outside_current_root() {
     fs::create_dir_all(outside.parent().expect("outside parent")).expect("create outside parent");
     fs::write(&outside, "x").expect("write outside file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
@@ -124,7 +128,7 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
     let root = PathBuf::from(r"\\server\share\workspace");
     let child = PathBuf::from(r"\\server\share\workspace\bin\tool.exe");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
@@ -142,39 +146,245 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
 }
 
 #[test]
-fn action_worker_allows_later_open_request_while_previous_request_is_blocked() {
-    let root = test_root("action-worker-multiple-open");
+fn tc_150_action_worker_uses_two_workers_and_bounds_total_to_ten() {
+    use std::sync::{Condvar, Mutex};
+
+    let root = test_root("tc-150-action-worker-bound");
     fs::create_dir_all(&root).expect("create dir");
-    let first = root.join("block-action-target.txt");
-    let second = root.join("second.txt");
-    fs::write(&first, "first").expect("write first");
-    fs::write(&second, "second").expect("write second");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write selected");
     let shutdown = Arc::new(AtomicBool::new(false));
-    let (tx, rx, handle) = spawn_action_worker(Arc::clone(&shutdown));
+    let active = Arc::new(AtomicUsize::new(0));
+    let max_active = Arc::new(AtomicUsize::new(0));
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let (started_tx, started_rx) = mpsc::channel();
+    let executor: SharedActionExecutor = {
+        let active = Arc::clone(&active);
+        let max_active = Arc::clone(&max_active);
+        let gate = Arc::clone(&gate);
+        Arc::new(move |_| {
+            let now = active.fetch_add(1, Ordering::SeqCst) + 1;
+            max_active.fetch_max(now, Ordering::SeqCst);
+            started_tx.send(()).expect("signal started");
+            let (lock, ready) = &*gate;
+            let mut open = lock.lock().expect("lock gate");
+            while !*open {
+                open = ready.wait(open).expect("wait gate");
+            }
+            active.fetch_sub(1, Ordering::SeqCst);
+            Ok(())
+        })
+    };
+    let (tx, rx, handles) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
+    assert_eq!(
+        handles.len(),
+        2,
+        "action executor must have exactly two workers"
+    );
 
-    tx.send(ActionRequest {
-        request_id: 1,
+    let request = |request_id| ActionRequest {
+        request_id,
         root: root.clone(),
-        paths: vec![first.clone()],
+        paths: vec![selected.clone()],
         open_parent_for_files: false,
-    })
-    .expect("send first action");
-    tx.send(ActionRequest {
-        request_id: 2,
-        root: root.clone(),
-        paths: vec![second.clone()],
-        open_parent_for_files: false,
-    })
-    .expect("send second action");
+    };
+    tx.send(request(1)).expect("send first action");
+    tx.send(request(2)).expect("send second action");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("first worker started");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("second worker started");
+    assert_eq!(max_active.load(Ordering::SeqCst), 2);
 
-    let response = rx
-        .recv_timeout(Duration::from_millis(500))
-        .expect("later action should complete while first action is blocked");
-    assert_eq!(response.request_id, 2);
+    for request_id in 3..=10 {
+        tx.send(request(request_id))
+            .expect("fill bounded action queue");
+    }
+    assert_eq!(
+        tx.load(),
+        crate::app::worker_channel::WorkerLoadSnapshot {
+            queued: 8,
+            inflight: 2,
+            capacity: 8,
+        }
+    );
+    assert!(matches!(
+        tx.try_send(request(11)),
+        Err(mpsc::TrySendError::Full(_))
+    ));
+
+    let (lock, ready) = &*gate;
+    *lock.lock().expect("lock gate") = true;
+    ready.notify_all();
+    for _ in 0..10 {
+        rx.recv_timeout(Duration::from_secs(1))
+            .expect("receive bounded action response");
+    }
+    for _ in 0..1_000 {
+        if tx.load().inflight == 0 {
+            break;
+        }
+        thread::yield_now();
+    }
+    assert_eq!(tx.load().queued, 0);
+    assert_eq!(tx.load().inflight, 0);
 
     shutdown.store(true, Ordering::Relaxed);
     drop(tx);
-    handle.join().expect("join action worker");
+    for handle in handles {
+        handle.join().expect("join action worker");
+    }
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_153_action_shutdown_drains_accepted_queue_with_terminal_cancellation() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let calls = Arc::new(AtomicUsize::new(0));
+    let executor: SharedActionExecutor = {
+        let calls = Arc::clone(&calls);
+        Arc::new(move |_| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        })
+    };
+    let (tx, rx, handles) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
+    shutdown.store(true, Ordering::Relaxed);
+    for request_id in 1..=4 {
+        tx.send(ActionRequest {
+            request_id,
+            root: PathBuf::from("shutdown-root"),
+            paths: vec![PathBuf::from("shutdown-root/selected.txt")],
+            open_parent_for_files: false,
+        })
+        .expect("accept action before channel close");
+    }
+    drop(tx);
+
+    let mut settled = Vec::new();
+    for _ in 0..4 {
+        let response = rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("terminal shutdown action response");
+        assert!(response.notice.contains("shutting down"));
+        settled.push(response.request_id);
+    }
+    settled.sort_unstable();
+    assert_eq!(settled, vec![1, 2, 3, 4]);
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+    for handle in handles {
+        handle.join().expect("join action worker");
+    }
+}
+
+#[test]
+fn tc_153_action_terminal_outcome_distinguishes_success_and_executor_failure() {
+    let root = test_root("tc-153-action-outcome");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write selected");
+    let request = || ActionRequest {
+        request_id: 41,
+        root: root.clone(),
+        paths: vec![selected.clone()],
+        open_parent_for_files: false,
+    };
+
+    let (_response, completed) = process_action_request_with_outcome(request(), |_| Ok(()));
+    assert_eq!(completed, ActionTerminalOutcome::Completed);
+    assert_eq!(completed.as_str(), "completed");
+
+    let (_response, failed) =
+        process_action_request_with_outcome(request(), |_| anyhow::bail!("executor failure"));
+    assert_eq!(failed, ActionTerminalOutcome::Failed);
+    assert_eq!(failed.as_str(), "failed");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_150_action_full_preserves_prior_accepted_request_state() {
+    let root = test_root("tc-150-action-full");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write selected");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<ActionRequest>(1);
+    tx.send(ActionRequest {
+        request_id: 1,
+        root: root.clone(),
+        paths: vec![selected.clone()],
+        open_parent_for_files: false,
+    })
+    .expect("fill action queue");
+    app.shell.worker_bus.action.tx = tx;
+    let prior_request_id = 41;
+    let next_request_id = 42;
+    app.shell.worker_bus.action.next_request_id = next_request_id;
+    app.shell.worker_bus.action.pending_request_id = Some(prior_request_id);
+    app.shell.worker_bus.action.in_progress = true;
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.bind_action_request_to_tab(prior_request_id, tab_id);
+    let active_tab = app.shell.tabs.active_tab_index();
+    app.shell
+        .tabs
+        .get_mut(active_tab)
+        .expect("active tab")
+        .begin_action_request(prior_request_id);
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+
+    app.execute_selected();
+
+    assert_eq!(
+        app.shell.worker_bus.action.pending_request_id,
+        Some(prior_request_id)
+    );
+    assert!(app.shell.worker_bus.action.in_progress);
+    assert_eq!(app.action_request_tab(prior_request_id), Some(tab_id));
+    assert_eq!(app.action_request_tab(next_request_id), None);
+    let tab = app.shell.tabs.get(active_tab).expect("active tab");
+    assert_eq!(tab.pending_action_request_id, Some(prior_request_id));
+    assert!(tab.action_in_progress);
+    assert!(app.shell.runtime.notice.contains("busy"));
+    drop(rx);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_150_action_disconnect_settles_action_state() {
+    let root = test_root("tc-150-action-disconnect");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write selected");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<ActionRequest>(1);
+    drop(rx);
+    app.shell.worker_bus.action.tx = tx;
+    let prior_request_id = 41;
+    app.shell.worker_bus.action.pending_request_id = Some(prior_request_id);
+    app.shell.worker_bus.action.in_progress = true;
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.bind_action_request_to_tab(prior_request_id, tab_id);
+    let active_tab = app.shell.tabs.active_tab_index();
+    app.shell
+        .tabs
+        .get_mut(active_tab)
+        .expect("active tab")
+        .begin_action_request(prior_request_id);
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+
+    app.execute_selected();
+
+    assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
+    assert!(!app.shell.worker_bus.action.in_progress);
+    assert_eq!(app.action_request_tab(prior_request_id), None);
+    let tab = app.shell.tabs.get(active_tab).expect("active tab");
+    assert_eq!(tab.pending_action_request_id, None);
+    assert!(!tab.action_in_progress);
+    assert!(app.shell.runtime.notice.contains("unavailable"));
     let _ = fs::remove_dir_all(&root);
 }
 

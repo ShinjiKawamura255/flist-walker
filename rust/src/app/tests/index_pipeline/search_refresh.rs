@@ -80,7 +80,7 @@ fn stale_search_response_is_ignored_after_index_refresh() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     let (search_tx, search_rx) = mpsc::channel::<SearchResponse>();
-    let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, _index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.search.rx = search_rx;
     app.shell.indexing.tx = index_tx;
     app.shell.search.set_pending_request_id(Some(5));
@@ -113,7 +113,7 @@ fn index_refresh_marks_search_resume_pending_for_non_empty_query() {
     let root = test_root("resume-pending-on-refresh");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, _index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
 
     app.request_index_refresh();
@@ -127,7 +127,7 @@ fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
     let root = test_root("resume-first-batch");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     // Use a manual search channel so the test can inspect enqueued requests.
     let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
@@ -170,7 +170,7 @@ fn filtered_out_batch_still_resumes_non_empty_query_search() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
     app.shell.search.tx = search_tx_real;

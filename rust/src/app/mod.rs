@@ -47,6 +47,7 @@ mod ui_state;
 mod update;
 mod worker_bus;
 mod worker_bus_lifecycle;
+mod worker_channel;
 mod worker_protocol;
 mod worker_runtime;
 mod worker_support;

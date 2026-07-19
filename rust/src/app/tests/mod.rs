@@ -9,6 +9,7 @@ pub(super) use crate::app::state::{
     PendingFileListUseWalkerConfirmation, SortMetadata, UpdateCheckFailureState, UpdateManager,
     UpdatePromptState, UpdateState,
 };
+pub(super) use crate::app::worker_channel::bounded_request_channel;
 pub(super) use crate::app::worker_protocol::{
     KindResolveRequest, KindResolveResponse, UpdateRequestKind,
 };

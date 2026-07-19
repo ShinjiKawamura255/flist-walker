@@ -39,11 +39,16 @@ For documentation-only restructuring, apply VM-001:
 - TC-051 adds Unix symlink and Windows link/junction/path-form coverage plus the environment-dependent real-UNC evidence in [Manual Regression and Traceability](testplan/manual-regression-traceability.md#action-authorization-platform-evidence-tc-050--tc-051).
 - An unavailable Windows junction or real-UNC environment is recorded as `not run`; it is not equivalent to passing evidence.
 
+## Bounded Worker Scheduling Verification
+- TC-150 through TC-153 fix the action/kind/index capacity arithmetic, accepted-only non-blocking dispatch, `Full`/`Disconnected` settlement, stale-before-I/O cancellation, RAII load accounting, lock boundaries, named worker ownership, 250ms shutdown budget, and structured load/correlation trace.
+- Apply VM-002 to action/kind/runtime scheduling and VM-003 to index scheduling; TC-149 remains the independent background-index snapshot regression guard.
+
 ## Traceability (excerpt)
 - Full excerpt: [Manual Regression and Traceability](testplan/manual-regression-traceability.md)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
 - TC-003 -> SP-003 -> DES-003 -> FR-003
 - TC-010 -> SP-010 -> DES-009 -> FR-007
+- TC-150, TC-151, TC-152, TC-153 -> SP-010 -> DES-006, DES-007, DES-009 -> FR-007, NFR-008
 - TC-050, TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
 - TC-056 -> SP-012 -> DES-012 -> NFR-005
 - TC-074 -> SP-014 -> DES-014 -> FR-019

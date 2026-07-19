@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::worker_channel::bounded_request_channel;
 
 #[test]
 fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused() {
@@ -269,7 +270,7 @@ fn ctrl_j_and_ctrl_m_do_not_execute_when_emacs_keybindings_are_disabled() {
     }
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
     app.shell.runtime.emacs_keybindings_enabled = false;
-    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
@@ -361,7 +362,7 @@ fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
     let selected_file = folder.join("picked.txt");
     fs::write(&selected_file, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    let (action_tx_req, action_rx_req) = mpsc::channel::<ActionRequest>();
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;

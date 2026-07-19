@@ -3,6 +3,11 @@
 ## Non-functional design
 - DES-006 Performance
 - Indexer と search を分離し、GUI ではワーカースレッドで非同期処理する。
+- action executor は固定 2 worker と待機 queue 8 件で構成し、受理済み要求の総量を running 2 + queued 8 = 10 件に制限する。要求ごとの detached thread は生成しない。
+- kind resolver は固定 1 worker と待機 queue 256 件で構成し、受理済み要求の総量を running 1 + queued 256 = 257 件に制限する。
+- index executor は固定 2 worker と待機 queue 2 件で構成し、stale だが未 settle の要求も含めて running 2 + queued 2 = 4 件に制限する。index coordinator が同時に dispatch 済みとして追跡する要求は 2 件以下、app 側の再試行用 pending request は全体 4 件以下かつ tab ごとに最新 1 件とする。
+- UI から各 bounded queue への送信は non-blocking `try_send` とし、`Full` では action を未受理として扱い、kind は queue 先頭、index は tab ごとの latest-only pending slot へ戻す。いずれも UI thread で capacity 解放を待たない。
+- kind worker は tab identity / epoch の最新性を metadata I/O より前に検証し、stale、tab 消失、共有状態の poison は metadata call 0 件の `kind=None` terminal response にする。index worker は supersede/cancel を root canonicalize より前に検証し、stale request は filesystem I/O 0 件の `Canceled` response にする。
 - 検索要求は入力ごとに発行しつつ、ワーカーでキューを集約して最新要求のみ処理する。
 - インデックス再読込開始時は保留中の検索 request_id を破棄し、旧スナップショット由来の検索応答が UI 結果を上書きしないようにする。
 - 非空クエリ時は再読込後の最初のインデックスバッチで検索を即時再開し、中断後の復帰遅延を最小化する。
@@ -56,6 +61,11 @@
 - GUI 検索はワーカーからエラー文字列を受け取り、notice に反映する。
 - GUI ワーカーは shutdown フラグを共有し、`Drop` 時に停止要求 + channel 切断 + `join` で終了待機する。
 - `Drop` 時の worker `join` は短いタイムアウト付き（既定 250ms）で待機し、超過時はタイムアウト件数を記録して UI 終了の無限待ちと体感遅延を同時に避ける。
+- bounded worker の queue depth / in-flight count は受理成功時だけ増加させ、queue からの取り出し、正常完了、error、cancel、stale、channel 切断、panic unwind のすべてで RAII load guard が必ず減算する。`Full` または `Disconnected` では guard を生成せず、負数化、二重解放、負荷枠のリークを許さない。
+- scheduling lock は queue、load counter、accepting/closed flag の更新だけに限定し、filesystem metadata、canonicalize、walker/FileList 読み込み、OS action、response send、trace 出力を lock 保持中に実行しない。複数 lock が必要な場合は scheduler state から routing/state の順に固定し、I/O 前にすべて解放する。
+- `WorkerRuntime` は action 2、kind 1、index 2 の各固定 worker を識別可能な名前付き `JoinHandle` として直接所有し、request ごとの detached thread や join 不能な入れ子 spawn を許可しない。
+- shutdown は accepting flag を落として新規 dispatch を止め、request sender を閉じ、queue 内要求を terminal cancel/failed response で drain し、名前付き worker を join してから response endpoint を閉じる。UI thread が待つ shutdown budget は全体 250ms 以下とし、超過 worker は worker_id と timeout 時点の bounded-family 残存負荷を `load_scope=family` とともに記録して無限待ちしない。
+- bounded worker の structured trace は worker family、worker_id、request_id、必要な場合の tab_id / epoch、queue_depth、in_flight、outcome（accepted / full / disconnected / completed / canceled / stale / failed / shutdown_timeout）を含める。family 共有 queue/load の値を個別 worker の負荷として偽装せず `load_scope=family` を付ける。path や executor error の詳細は既存の disclosure policy に従い、相関 field を欠いた自由形式ログだけにしない。
 - OS シグナル（例: `Ctrl+C`）受信時は shutdown 要求を立て、GUI 側で window close を発行して終了処理へ収束させる。
 - FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - Create File List は app 側で pending confirmation / pending after index / in-flight request を 1 系列の状態として管理し、status panel の `Cancel Create File List` から共通キャンセル処理へ流す。

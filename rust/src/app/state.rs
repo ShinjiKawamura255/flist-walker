@@ -401,6 +401,10 @@ impl RequestTabRoutingState {
         self.action.retain(|_, id| *id != tab_id);
     }
 
+    pub(super) fn clear_action(&mut self) {
+        self.action.clear();
+    }
+
     pub(super) fn clear_sort_for_tab(&mut self, tab_id: u64) {
         self.sort.retain(|_, id| *id != tab_id);
     }
@@ -572,6 +576,10 @@ impl TabSessionState {
 
     pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) {
         self.request_tab_routing.clear_for_tab(tab_id);
+    }
+
+    pub(super) fn clear_action_request_routing(&mut self) {
+        self.request_tab_routing.clear_action();
     }
 }
 

@@ -36,6 +36,11 @@
 - MUST: search / index の非同期応答は、active request_id または request-tab routing で結び付いた background tab に対してのみ適用し、stale 応答で現在の root / tab / result state を巻き戻してはならない。
 - MUST: active indexing 中にタブ切替で request が background tab に移った場合、GUI は切替前に active tab 側へ取り込み済みの entries、未 drain の pending entries、切替後の background batches を同じ request_id の完了 snapshot として統合しなければならない。ただし同じ request_id で `ReplaceAll` を受けた場合は、切替前の部分 snapshot を混ぜず置換 snapshot のみで確定しなければならない。
 - MUST: supersede または cancel された非同期 flow は、pending / in_progress / deferred action 状態を解放し、現在の UI state を壊さずに継続操作可能でなければならない。
+- MUST: action、kind resolution、indexing の worker dispatch は上限付き channel への non-blocking `try_send` 相当で行い、UI thread は空き待ちしてはならない。`Full` と `Disconnected` は通常の制御結果として処理し、要求と UI state を未確定のまま残してはならない。
+- MUST: action request は request_id を採番して dispatch を試み、受理された場合にだけ pending action、request-tab routing、in-progress 表示をその request_id へ更新しなければならない。`Full` の場合は直前に受理済みの action state を変更せず、今回の要求を未受理として通知する。`Disconnected` の場合は今回の要求を失敗として終端し、pending/routing/in-progress を新設してはならない。
+- MUST: kind resolution request が `Full` になった場合は対象を pending queue の先頭へ戻して後続 frame で再試行し、重複する in-flight 状態を作ってはならない。worker は filesystem metadata I/O より前に tab identity と epoch の最新性を判定し、stale、tab 消失、共有状態の poison のいずれでも filesystem I/O を行わず `kind=None` の terminal response を返して pending/in-flight を解放しなければならない。`Disconnected` でも同じ terminal settlement を行う。
+- MUST: index request が `Full` になった場合は UI 側の bounded pending scheduler へ戻し、tab ごとの最新要求だけを再試行対象として保持しなければならない。worker は root の canonicalize、FileList 読み込み、walker 開始より前に supersede/cancel を判定し、stale request を `Canceled` response で終端しなければならない。`Disconnected` でも request routing と pending/in-progress を失敗状態へ収束させなければならない。
+- MUST: worker shutdown は新規要求の受理停止、保留要求の drain または cancel、固定 worker の join、response endpoint の close の順で行い、UI 終了を無期限に待たせてはならない。
 - MUST: indexing の `Finished` 応答時に未反映の index entries が残っている場合、GUI はそれらを単一フレームで全件吸収してはならない。frame budget 内で分割反映し、全件反映後に terminal state へ遷移しなければならない。
 - MUST: `Finished` 応答後の内部後処理 drain は、探索中の表示更新より小さい件数上限を用い、完了速度より入力応答性を優先しなければならない。
 - MUST: Walker が上限打ち切り（`Truncated`）に到達した場合でも、GUI は終端直前の大きな batch backlog を過小な固定件数で長時間 drain し続けてはならない。frame budget を応答性の上限として維持しつつ、`Indexing...` の終端尾を短く保てる件数を 1 frame 内で吸収しなければならない。

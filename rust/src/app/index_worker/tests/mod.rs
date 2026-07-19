@@ -1,6 +1,8 @@
 use super::*;
 use crate::app::adaptive_walker::{next_limit_from_throughput, LimitDirection};
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
+use std::sync::atomic::AtomicUsize;
+use std::sync::Condvar;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tracing_subscriber::EnvFilter;
 
@@ -527,6 +529,151 @@ fn filelist_stream_applies_nested_override_after_initial_batches() {
     assert!(!replaced_paths.contains(&child));
 
     let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_152_stale_index_request_cancels_before_root_resolution() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(7, 2)])));
+    let root_resolve_calls = Arc::new(AtomicUsize::new(0));
+    let resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync> = {
+        let root_resolve_calls = Arc::clone(&root_resolve_calls);
+        Arc::new(move |root| {
+            root_resolve_calls.fetch_add(1, Ordering::SeqCst);
+            root.to_path_buf()
+        })
+    };
+    let (tx, rx, handles) =
+        spawn_index_worker_with(Arc::clone(&shutdown), latest_request_ids, resolve_root);
+    tx.send(IndexRequest {
+        request_id: 1,
+        tab_id: 7,
+        root: PathBuf::from("stale-root"),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+    })
+    .expect("send stale index request");
+    assert!(matches!(
+        rx.recv_timeout(Duration::from_secs(1))
+            .expect("stale terminal response"),
+        IndexResponse::Canceled { request_id: 1 }
+    ));
+    assert_eq!(root_resolve_calls.load(Ordering::SeqCst), 0);
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    for handle in handles {
+        handle.join().expect("join index worker");
+    }
+}
+
+#[test]
+fn tc_152_index_workers_bound_total_to_four() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_request_ids = Arc::new(Mutex::new(HashMap::from([
+        (1, 1),
+        (2, 2),
+        (3, 3),
+        (4, 4),
+        (5, 5),
+    ])));
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let (started_tx, started_rx) = mpsc::channel();
+    let resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync> = {
+        let gate = Arc::clone(&gate);
+        Arc::new(move |root| {
+            started_tx.send(()).expect("signal root resolution");
+            let (lock, ready) = &*gate;
+            let mut open = lock.lock().expect("lock gate");
+            while !*open {
+                open = ready.wait(open).expect("wait gate");
+            }
+            root.to_path_buf()
+        })
+    };
+    let (tx, _rx, handles) =
+        spawn_index_worker_with(Arc::clone(&shutdown), latest_request_ids, resolve_root);
+    let request = |request_id| IndexRequest {
+        request_id,
+        tab_id: request_id,
+        root: PathBuf::from(format!("missing-root-{request_id}")),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+    };
+    tx.send(request(1)).expect("send first index request");
+    tx.send(request(2)).expect("send second index request");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("first index worker started");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("second index worker started");
+    tx.send(request(3)).expect("fill first queue slot");
+    tx.send(request(4)).expect("fill second queue slot");
+    assert!(matches!(
+        tx.try_send(request(5)),
+        Err(mpsc::TrySendError::Full(_))
+    ));
+    assert_eq!(tx.load().queued, 2);
+    assert_eq!(tx.load().inflight, 2);
+    assert_eq!(tx.load().capacity, 2);
+
+    let (lock, ready) = &*gate;
+    *lock.lock().expect("lock gate") = true;
+    ready.notify_all();
+    drop(tx);
+    for handle in handles {
+        handle.join().expect("join index worker");
+    }
+}
+
+#[test]
+fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let root_resolve_calls = Arc::new(AtomicUsize::new(0));
+    let resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync> = {
+        let root_resolve_calls = Arc::clone(&root_resolve_calls);
+        Arc::new(move |root| {
+            root_resolve_calls.fetch_add(1, Ordering::SeqCst);
+            root.to_path_buf()
+        })
+    };
+    let (tx, rx, handles) = spawn_index_worker_with(
+        Arc::clone(&shutdown),
+        Arc::new(Mutex::new(HashMap::new())),
+        resolve_root,
+    );
+    shutdown.store(true, Ordering::Relaxed);
+    for request_id in 1..=4 {
+        tx.send(IndexRequest {
+            request_id,
+            tab_id: request_id,
+            root: PathBuf::from(format!("shutdown-root-{request_id}")),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+        })
+        .expect("accept index request before channel close");
+    }
+    drop(tx);
+
+    let mut settled = Vec::new();
+    for _ in 0..4 {
+        match rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("terminal shutdown index response")
+        {
+            IndexResponse::Canceled { request_id } => settled.push(request_id),
+            _ => panic!("shutdown must emit only terminal cancellation"),
+        }
+    }
+    settled.sort_unstable();
+    assert_eq!(settled, vec![1, 2, 3, 4]);
+    assert_eq!(root_resolve_calls.load(Ordering::SeqCst), 0);
+    for handle in handles {
+        handle.join().expect("join index worker");
+    }
 }
 
 #[test]

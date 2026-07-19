@@ -5,7 +5,7 @@ fn create_filelist_waits_while_indexing() {
     let root = test_root("filelist-waits-indexing");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.index.source = IndexSource::Walker;
@@ -47,7 +47,7 @@ fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
     let root = test_root("filelist-waits-indexing-needs-reindex");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.index.source = IndexSource::Walker;
@@ -76,7 +76,7 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
     let root = test_root("filelist-force-files-dirs");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
@@ -107,7 +107,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     let root = test_root("filelist-use-filelist-confirm");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
 
     assert!(app.shell.runtime.use_filelist);
@@ -339,7 +339,7 @@ fn filelist_finished_triggers_reindex_when_enabled() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = filelist_rx;
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
     app.shell.features.filelist.workflow.pending_request_id = Some(12);
     app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();

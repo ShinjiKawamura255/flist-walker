@@ -59,6 +59,8 @@
 - 役割補足: `app/mod.rs` の frame/update/exit orchestration は `poll_runtime_events()`, `run_update_cycle()`, `schedule_frame_repaint()`, `request_viewport_close_if_needed()`, `persist_state_and_shutdown()` といった helper seam を経由し、`update()` / `on_exit()` / `Drop` の open-coded sequence を最小化する。
 - 役割補足: app 起動時の worker wiring と launch 由来の seed 構築は `app/bootstrap.rs` へ寄せ、`new_with_launch` は coordinator として初期化結果を束ねる。
 - 役割補足: worker request/response channel は `app/worker_bus.rs` へ集約し、`FlistWalkerApp` 直下には worker bus 全体を 1 フィールドで保持する。
+- 役割補足: action、kind、index の dispatch owner は bounded sender の `try_send` 結果を state transition へ変換する。action は受理後だけ request routing と in-progress state を commit し、kind/index は `Full` の要求を owner の bounded retry state へ戻す。`Disconnected`、stale、cancel は owner が terminal response と同じ cleanup reducer へ流し、pending/routing を残さない。
+- 役割補足: index coordinator は dispatch 済み要求を最大 2 件、app pending scheduler は全体最大 4 件かつ tab ごとに最新 1 件だけ所有する。kind owner は `Full` で取り出した path を queue 先頭へ戻し、worker からの `kind=None` terminal response で pending/in-flight set を解放する。
 - 役割補足: runtime UI の一時状態は `app/ui_state.rs` の `RuntimeUiState` へ、query/history 系は `app/query_state.rs` の `QueryState` へ束ね、coordinator は state holder を介して feature 間を調停する。
 - 役割補足: `app/pipeline.rs` は index queue、index response poll、dispatcher を担当し、active tab 向け search/result refresh と entry filter 再適用は `app/pipeline_owner.rs` の dedicated owner surface へ、background tab 向け search/index response apply は `app/tabs.rs` の background-flow helper へ委譲する。index request の採番・tracking・active/background refresh 開始・terminal cleanup の owner API は `app/index_coordinator.rs` 側へ寄せ、search worker の request/tab routing helper は `app/search_coordinator.rs` 側へ寄せる。
 - 役割補足: `app/search_coordinator.rs` は search request_id 採番、active/background tab routing、stale response route 判定を担当し、active search の apply / rerun は `app/pipeline_owner.rs`、background search 応答の保持は `app/tabs.rs` が担当する。
@@ -67,6 +69,7 @@
 - 役割補足: `app/index_worker.rs` は FileList / Walker streaming、kind classification、index worker 実装を担当し、`app/workers.rs` の registry shim から indexing concern を切り離す。worker body は `app/worker_tasks.rs` に集約する。
 - 役割補足: `app/worker_protocol.rs` は search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を worker 実装や bus wiring から独立して保守できるようにする。
 - 役割補足: `app/worker_runtime.rs` は worker shutdown signal と join timeout の管理だけを持ち、個別 worker 実装から runtime orchestration を分離する。
+- 役割補足: `app/worker_runtime.rs` は action 2、kind 1、index 2 の固定 worker handle を名前付きで直接所有し、stop accepting -> queued request settle -> join -> response close を全体 250ms の終了予算で調停する。
 - 役割補足: `app/cache.rs` は preview/highlight/sort metadata cache state と invalidation に専念し、bounded storage と scope/eviction を局所化する。preview/highlight/routing の orchestration は `app/preview_flow.rs` へ、sort の orchestration は `app/result_flow.rs` へ、実際の response apply と snapshot refresh は `app/result_reducer.rs` へ分離する。
 - 役割補足: `app/response_flow.rs` は preview/action/sort を中心に worker response の polling と routing を集約し、background tab 応答も owner ごとに dispatch できるようにする。
 - 役割補足: `app/root_browser.rs` は root selector dialog の state と root change cleanup を担当し、root 変更時の一時 UI を tab/session state から分離する。

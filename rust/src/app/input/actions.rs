@@ -53,36 +53,82 @@ impl FlistWalkerApp {
             return;
         }
 
-        let request_id = self.shell.worker_bus.action.begin_request();
-        self.bind_action_request_to_current_tab(request_id);
-
-        if paths.len() == 1 {
-            if open_parent_for_files {
-                self.set_notice(format!(
-                    "Action: open containing folder for {}",
-                    normalize_path_for_display(&paths[0])
-                ));
-            } else {
-                self.set_notice(format!("Action: {}", normalize_path_for_display(&paths[0])));
-            }
-        } else if open_parent_for_files {
-            self.set_notice(format!(
-                "Action: launched {} containing folder items",
-                paths.len()
-            ));
-        } else {
-            self.set_notice(format!("Action: launched {} items", paths.len()));
-        }
-
+        let request_id = self.shell.worker_bus.action.allocate_request_id();
+        let tab_id = self.current_tab_id();
         let req = ActionRequest {
             request_id,
             root: self.shell.runtime.root.clone(),
-            paths,
+            paths: paths.clone(),
             open_parent_for_files,
         };
-        if self.shell.worker_bus.action.tx.send(req).is_err() {
-            self.shell.worker_bus.action.clear_request();
-            self.set_notice("Action worker is unavailable");
+        match self.shell.worker_bus.action.tx.try_send(req) {
+            Ok(()) => {
+                super::super::worker_channel::trace_worker_load(
+                    &self.shell.worker_bus.action.tx,
+                    "action",
+                    "accepted",
+                    super::super::worker_channel::WorkerTraceContext {
+                        worker_id: "ui-dispatch",
+                        request_id: Some(request_id),
+                        tab_id,
+                        epoch: None,
+                        outcome: "accepted",
+                    },
+                );
+                self.shell.worker_bus.action.accept_request(request_id);
+                self.bind_action_request_to_current_tab(request_id);
+                if paths.len() == 1 {
+                    if open_parent_for_files {
+                        self.set_notice(format!(
+                            "Action: open containing folder for {}",
+                            normalize_path_for_display(&paths[0])
+                        ));
+                    } else {
+                        self.set_notice(format!(
+                            "Action: {}",
+                            normalize_path_for_display(&paths[0])
+                        ));
+                    }
+                } else if open_parent_for_files {
+                    self.set_notice(format!(
+                        "Action: launched {} containing folder items",
+                        paths.len()
+                    ));
+                } else {
+                    self.set_notice(format!("Action: launched {} items", paths.len()));
+                }
+            }
+            Err(std::sync::mpsc::TrySendError::Full(_)) => {
+                super::super::worker_channel::trace_worker_load(
+                    &self.shell.worker_bus.action.tx,
+                    "action",
+                    "full",
+                    super::super::worker_channel::WorkerTraceContext {
+                        worker_id: "ui-dispatch",
+                        request_id: Some(request_id),
+                        tab_id,
+                        epoch: None,
+                        outcome: "full",
+                    },
+                );
+                self.set_notice("Action worker is busy");
+            }
+            Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                super::super::worker_channel::trace_worker_load(
+                    &self.shell.worker_bus.action.tx,
+                    "action",
+                    "disconnected",
+                    super::super::worker_channel::WorkerTraceContext {
+                        worker_id: "ui-dispatch",
+                        request_id: Some(request_id),
+                        tab_id,
+                        epoch: None,
+                        outcome: "disconnected",
+                    },
+                );
+                self.clear_all_action_request_state();
+                self.set_notice("Action worker is unavailable");
+            }
         }
     }
 

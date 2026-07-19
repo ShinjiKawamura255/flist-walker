@@ -10,6 +10,7 @@ use super::{
     SortWorkerBus, TabSessionState, UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
+use crate::app::worker_channel::BoundedSender;
 use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::current_runtime_config;
@@ -22,8 +23,9 @@ type WorkerBootstrapParts = (
     Sender<SearchRequest>,
     Receiver<SearchResponse>,
     WorkerBus,
-    Sender<IndexRequest>,
+    BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
+    Arc<Mutex<HashMap<u64, u64>>>,
     Arc<Mutex<HashMap<u64, u64>>>,
     WorkerRuntime,
 );
@@ -46,9 +48,10 @@ pub(super) struct AppWorkerBootstrap {
     search_tx: Sender<SearchRequest>,
     search_rx: Receiver<SearchResponse>,
     worker_bus: WorkerBus,
-    index_tx: Sender<IndexRequest>,
+    index_tx: BoundedSender<IndexRequest>,
     index_rx: Receiver<IndexResponse>,
     latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     worker_runtime: WorkerRuntime,
 }
 
@@ -75,6 +78,7 @@ impl AppWorkerBootstrap {
             self.index_tx,
             self.index_rx,
             self.latest_index_request_ids,
+            self.latest_kind_epochs,
             self.worker_runtime,
         )
     }
@@ -146,14 +150,19 @@ impl FlistWalkerApp {
         let (preview_tx, preview_rx, preview_handle) =
             spawn_preview_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("preview", preview_handle);
-        let (action_tx, action_rx, action_handle) =
+        let (action_tx, action_rx, action_handles) =
             spawn_action_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("action", action_handle);
+        for (idx, handle) in action_handles.into_iter().enumerate() {
+            worker_runtime.push(format!("action-{idx}"), handle);
+        }
         let (sort_tx, sort_rx, sort_handle) =
             spawn_sort_metadata_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("sort-metadata", sort_handle);
-        let (kind_tx, kind_rx, kind_handle) =
-            spawn_kind_resolver_worker(Arc::clone(&worker_shutdown));
+        let latest_kind_epochs = Arc::new(Mutex::new(HashMap::new()));
+        let (kind_tx, kind_rx, kind_handle) = spawn_kind_resolver_worker(
+            Arc::clone(&worker_shutdown),
+            Arc::clone(&latest_kind_epochs),
+        );
         worker_runtime.push("kind-resolver", kind_handle);
         let (filelist_tx, filelist_rx, filelist_handle) =
             spawn_filelist_worker(Arc::clone(&worker_shutdown));
@@ -211,6 +220,7 @@ impl FlistWalkerApp {
             index_tx,
             index_rx,
             latest_index_request_ids,
+            latest_kind_epochs,
             worker_runtime,
         }
     }
@@ -256,6 +266,7 @@ impl FlistWalkerApp {
             index_tx,
             index_rx,
             latest_index_request_ids,
+            latest_kind_epochs,
             worker_runtime,
         ) = Self::bootstrap_workers().into_parts();
         let (
@@ -307,7 +318,12 @@ impl FlistWalkerApp {
                 },
                 search: SearchCoordinator::new(search_tx, search_rx),
                 worker_bus,
-                indexing: IndexCoordinator::new(index_tx, index_rx, latest_index_request_ids),
+                indexing: IndexCoordinator::new(
+                    index_tx,
+                    index_rx,
+                    latest_index_request_ids,
+                    latest_kind_epochs,
+                ),
                 ui: RuntimeUiState::new(show_preview, ignore_list_enabled, preview_panel_width),
                 cache: CacheStateBundle {
                     preview: PreviewCacheState::default(),

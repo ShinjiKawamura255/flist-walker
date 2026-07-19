@@ -50,6 +50,14 @@ impl FlistWalkerApp {
         self.shell.tabs.take_action_request_tab(request_id)
     }
 
+    pub(super) fn clear_all_action_request_state(&mut self) {
+        self.shell.worker_bus.action.clear_request();
+        self.shell.tabs.clear_action_request_routing();
+        for tab in &mut self.shell.tabs {
+            tab.clear_action_request_state();
+        }
+    }
+
     pub(super) fn bind_sort_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
         self.shell.tabs.bind_sort_request(request_id, tab_id);
     }

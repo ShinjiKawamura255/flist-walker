@@ -1,4 +1,263 @@
 use super::*;
+use crate::app::worker_channel::bounded_request_channel;
+use crate::app::worker_tasks::{spawn_kind_resolver_worker_with, SharedKindResolver};
+use std::collections::HashMap;
+use std::sync::atomic::AtomicUsize;
+use std::sync::Mutex;
+
+#[test]
+fn tc_151_kind_full_requeues_without_loss_or_duplication() {
+    let root = test_root("tc-151-kind-full-requeue");
+    fs::create_dir_all(&root).expect("create root");
+    let queued = root.join("queued.lnk");
+    let occupied = root.join("occupied.lnk");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let epoch = app.shell.indexing.kind_resolution_epoch;
+    let (tx, rx) = bounded_request_channel::<KindResolveRequest>(1);
+    tx.send(KindResolveRequest {
+        tab_id,
+        epoch,
+        path: occupied,
+    })
+    .expect("fill kind queue");
+    app.shell.worker_bus.kind.tx = tx;
+    app.shell
+        .indexing
+        .pending_kind_paths
+        .push_back(queued.clone());
+    app.shell
+        .indexing
+        .pending_kind_paths_set
+        .insert(queued.clone());
+
+    app.pump_kind_resolution_requests();
+
+    assert_eq!(
+        app.shell
+            .indexing
+            .pending_kind_paths
+            .iter()
+            .filter(|path| **path == queued)
+            .count(),
+        1
+    );
+    assert!(app.shell.indexing.pending_kind_paths_set.contains(&queued));
+    assert!(!app.shell.indexing.in_flight_kind_paths.contains(&queued));
+    drop(rx);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_151_kind_worker_bounds_total_to_257() {
+    use std::sync::Condvar;
+
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_epochs = Arc::new(Mutex::new(HashMap::from([(7, 1)])));
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let (started_tx, started_rx) = mpsc::channel();
+    let resolver: SharedKindResolver = {
+        let gate = Arc::clone(&gate);
+        Arc::new(move |_| {
+            started_tx.send(()).expect("signal kind resolver start");
+            let (lock, ready) = &*gate;
+            let mut open = lock.lock().expect("lock gate");
+            while !*open {
+                open = ready.wait(open).expect("wait gate");
+            }
+            Some(EntryKind::file())
+        })
+    };
+    let (tx, rx, handle) =
+        spawn_kind_resolver_worker_with(Arc::clone(&shutdown), latest_epochs, resolver);
+    let request = |index| KindResolveRequest {
+        tab_id: 7,
+        epoch: 1,
+        path: PathBuf::from(format!("kind-{index}")),
+    };
+    tx.send(request(0)).expect("start kind worker");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("kind worker started");
+    for index in 1..=256 {
+        tx.send(request(index)).expect("fill kind queue");
+    }
+    assert!(matches!(
+        tx.try_send(request(257)),
+        Err(mpsc::TrySendError::Full(_))
+    ));
+    assert_eq!(tx.load().queued, 256);
+    assert_eq!(tx.load().inflight, 1);
+    assert_eq!(tx.load().capacity, 256);
+
+    let (lock, ready) = &*gate;
+    *lock.lock().expect("lock gate") = true;
+    ready.notify_all();
+    for _ in 0..257 {
+        rx.recv_timeout(Duration::from_secs(1))
+            .expect("receive kind response");
+    }
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    handle.join().expect("join kind worker");
+}
+
+#[test]
+fn tc_153_kind_shutdown_drains_accepted_queue_with_terminal_cancellation() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let calls = Arc::new(AtomicUsize::new(0));
+    let resolver: SharedKindResolver = {
+        let calls = Arc::clone(&calls);
+        Arc::new(move |_| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            Some(EntryKind::file())
+        })
+    };
+    let (tx, rx, handle) = spawn_kind_resolver_worker_with(
+        Arc::clone(&shutdown),
+        Arc::new(Mutex::new(HashMap::from([(7, 9)]))),
+        resolver,
+    );
+    shutdown.store(true, Ordering::Relaxed);
+    for index in 0..4 {
+        tx.send(KindResolveRequest {
+            tab_id: 7,
+            epoch: 9,
+            path: PathBuf::from(format!("shutdown-kind-{index}")),
+        })
+        .expect("accept kind request before channel close");
+    }
+    drop(tx);
+
+    let mut settled = Vec::new();
+    for _ in 0..4 {
+        let response = rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("terminal shutdown kind response");
+        assert_eq!(response.kind, None);
+        settled.push(response.path);
+    }
+    assert_eq!(settled.len(), 4);
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+    handle.join().expect("join kind worker");
+}
+
+#[test]
+fn tc_151_stale_or_missing_kind_epoch_skips_metadata_and_settles() {
+    let root = test_root("tc-151-kind-stale");
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("selected.txt");
+    fs::write(&path, "selected").expect("write selected");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_epochs = Arc::new(Mutex::new(HashMap::from([(7, 2)])));
+    let calls = Arc::new(AtomicUsize::new(0));
+    let resolver: SharedKindResolver = {
+        let calls = Arc::clone(&calls);
+        Arc::new(move |_| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            Some(EntryKind::file())
+        })
+    };
+    let (tx, rx, handle) = spawn_kind_resolver_worker_with(
+        Arc::clone(&shutdown),
+        Arc::clone(&latest_epochs),
+        resolver,
+    );
+
+    for (tab_id, epoch) in [(7, 1), (8, 1)] {
+        tx.send(KindResolveRequest {
+            tab_id,
+            epoch,
+            path: path.clone(),
+        })
+        .expect("send stale kind request");
+        let response = rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("terminal stale response");
+        assert_eq!(response.tab_id, tab_id);
+        assert_eq!(response.epoch, epoch);
+        assert_eq!(response.kind, None);
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    handle.join().expect("join kind worker");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_151_poisoned_epoch_state_fails_closed_without_metadata() {
+    let root = test_root("tc-151-kind-poison");
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("selected.txt");
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_epochs = Arc::new(Mutex::new(HashMap::from([(7, 1)])));
+    let poison = Arc::clone(&latest_epochs);
+    let _ = thread::spawn(move || {
+        let _guard = poison.lock().expect("lock epochs");
+        panic!("poison epoch state");
+    })
+    .join();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let resolver: SharedKindResolver = {
+        let calls = Arc::clone(&calls);
+        Arc::new(move |_| {
+            calls.fetch_add(1, Ordering::SeqCst);
+            Some(EntryKind::file())
+        })
+    };
+    let (tx, rx, handle) =
+        spawn_kind_resolver_worker_with(Arc::clone(&shutdown), latest_epochs, resolver);
+    tx.send(KindResolveRequest {
+        tab_id: 7,
+        epoch: 1,
+        path,
+    })
+    .expect("send poisoned-state request");
+    assert_eq!(
+        rx.recv_timeout(Duration::from_secs(1))
+            .expect("terminal poisoned-state response")
+            .kind,
+        None
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    handle.join().expect("join kind worker");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_151_reset_publishes_and_tab_cleanup_removes_latest_kind_epoch() {
+    let root = test_root("tc-151-kind-epoch-publication");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+
+    app.reset_kind_resolution_state();
+
+    let epoch = app.shell.indexing.kind_resolution_epoch;
+    assert_eq!(
+        app.shell
+            .indexing
+            .latest_kind_epochs
+            .lock()
+            .expect("lock kind epochs")
+            .get(&tab_id)
+            .copied(),
+        Some(epoch)
+    );
+    app.shell.indexing.clear_for_tab(tab_id);
+    assert!(!app
+        .shell
+        .indexing
+        .latest_kind_epochs
+        .lock()
+        .expect("lock kind epochs")
+        .contains_key(&tab_id));
+    let _ = fs::remove_dir_all(&root);
+}
 
 #[test]
 fn unknown_kind_entries_remain_visible_when_both_filters_enabled() {
@@ -168,7 +427,7 @@ fn walker_finished_queues_unknown_kind_resolution_for_visible_results_only_regre
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.limit = 1;
     let (tx, rx) = mpsc::channel::<IndexResponse>();
-    let (kind_tx, kind_rx) = mpsc::channel::<KindResolveRequest>();
+    let (kind_tx, kind_rx) = bounded_request_channel::<KindResolveRequest>(256);
     app.shell.indexing.rx = rx;
     app.shell.worker_bus.kind.tx = kind_tx;
     let req_id = app
@@ -438,7 +697,8 @@ fn kind_resolver_marks_symlink_as_link() {
     symlink(&target, &link).expect("create symlink");
 
     let shutdown = Arc::new(AtomicBool::new(false));
-    let (tx, rx, handle) = spawn_kind_resolver_worker(Arc::clone(&shutdown));
+    let latest_epochs = Arc::new(Mutex::new(HashMap::from([(1, 7)])));
+    let (tx, rx, handle) = spawn_kind_resolver_worker(Arc::clone(&shutdown), latest_epochs);
     tx.send(KindResolveRequest {
         tab_id: 1,
         epoch: 7,
@@ -467,7 +727,7 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
     fs::write(&path, "hello").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<KindResolveRequest>();
+    let (tx, rx) = bounded_request_channel::<KindResolveRequest>(256);
     app.shell.worker_bus.kind.tx = tx;
     app.shell.runtime.results = vec![(path.clone(), 0.0)];
     app.shell.runtime.current_row = Some(0);
@@ -492,7 +752,7 @@ fn request_preview_does_not_requeue_terminal_other_kind() {
     let path = root.join("socket");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<KindResolveRequest>();
+    let (tx, rx) = bounded_request_channel::<KindResolveRequest>(256);
     app.shell.worker_bus.kind.tx = tx;
     app.shell.runtime.results = vec![(path.clone(), 0.0)];
     app.shell.runtime.current_row = Some(0);

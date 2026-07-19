@@ -5,7 +5,7 @@ fn request_index_refresh_reenables_files_when_both_filters_are_off() {
     let root = test_root("request-refresh-filter-guard");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = false;
@@ -25,7 +25,7 @@ fn request_index_refresh_uses_latest_toggle_state() {
     let root = test_root("request-refresh-toggle-state");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
@@ -45,7 +45,7 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
     let root = test_root("create-filelist-walker-refresh-reset");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.indexing.pending_entries.push_back(IndexEntry {
         path: root.join("stale.txt"),
@@ -96,7 +96,7 @@ fn files_toggle_change_requests_reindex() {
     let root = test_root("files-toggle-reindex");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
@@ -115,7 +115,7 @@ fn use_filelist_forces_type_filters_to_both_enabled() {
     let root = test_root("use-filelist-forces-type-filters");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.include_files = false;
@@ -137,7 +137,7 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     let root = test_root("use-filelist-walker-keeps-type-filters");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.index.source = IndexSource::Walker;
@@ -538,5 +538,85 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
         .pop_next_index_request()
         .expect("queued same-tab request should run");
     assert_eq!(popped.request_id, 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
+    let root = test_root("tc-152-index-full-requeue");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let active_tab = app.current_tab_id().expect("active tab");
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    for request_id in 90..=91 {
+        tx.send(IndexRequest {
+            request_id,
+            tab_id: request_id,
+            root: root.clone(),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+        })
+        .expect("fill worker queue");
+    }
+    app.shell.indexing.tx = tx;
+    let queued = IndexRequest {
+        request_id: 92,
+        tab_id: active_tab,
+        root: root.clone(),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+    };
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(queued.request_id, active_tab);
+    app.shell.indexing.pending_queue.push_back(queued);
+
+    app.dispatch_index_queue();
+
+    assert_eq!(app.shell.indexing.pending_queue.len(), 1);
+    assert_eq!(app.shell.indexing.pending_queue[0].request_id, 92);
+    assert!(!app.shell.indexing.inflight_requests.contains(&92));
+    drop(rx);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_152_dispatch_keeps_coordinator_inflight_at_two() {
+    let root = test_root("tc-152-index-coordinator-bound");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let active_tab = app.current_tab_id().expect("active tab");
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    app.shell.indexing.pending_queue.clear();
+    app.shell.indexing.inflight_requests.clear();
+    app.shell.indexing.request_tabs.clear();
+    for request_id in 100..103 {
+        let tab_id = if request_id == 100 {
+            active_tab
+        } else {
+            request_id
+        };
+        app.shell.indexing.request_tabs.insert(request_id, tab_id);
+        app.shell.indexing.pending_queue.push_back(IndexRequest {
+            request_id,
+            tab_id,
+            root: root.clone(),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+        });
+    }
+
+    app.dispatch_index_queue();
+
+    assert_eq!(app.shell.indexing.inflight_requests.len(), 2);
+    assert_eq!(app.shell.indexing.pending_queue.len(), 1);
+    assert_eq!(rx.try_recv().expect("first dispatched").request_id, 100);
+    assert!(rx.try_recv().is_ok());
+    assert!(rx.try_recv().is_err());
     let _ = fs::remove_dir_all(&root);
 }

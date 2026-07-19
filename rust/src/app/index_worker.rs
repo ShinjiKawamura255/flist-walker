@@ -1,4 +1,7 @@
 use super::adaptive_walker::{walk_adaptive, AdaptiveWalkerEntry, AdaptiveWalkerMetrics};
+use super::worker_channel::{
+    bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
+};
 use super::worker_protocol::{IndexEntry, IndexRequest, IndexResponse};
 use crate::entry::EntryKind;
 use crate::indexer::{
@@ -734,81 +737,166 @@ pub(super) fn spawn_index_worker(
     shutdown: Arc<AtomicBool>,
     latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
 ) -> (
-    Sender<IndexRequest>,
+    BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
     Vec<thread::JoinHandle<()>>,
 ) {
-    let (tx_req, rx_req) = mpsc::channel::<IndexRequest>();
+    spawn_index_worker_with(
+        shutdown,
+        latest_request_ids,
+        Arc::new(|root| root.canonicalize().unwrap_or_else(|_| root.to_path_buf())),
+    )
+}
+
+fn spawn_index_worker_with(
+    shutdown: Arc<AtomicBool>,
+    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync>,
+) -> (
+    BoundedSender<IndexRequest>,
+    Receiver<IndexResponse>,
+    Vec<thread::JoinHandle<()>>,
+) {
+    let (tx_req, rx_req) = bounded_request_channel::<IndexRequest>(2);
     let (tx_res, rx_res) = mpsc::channel::<IndexResponse>();
     let rx_req = Arc::new(Mutex::new(rx_req));
     let mut handles = Vec::new();
 
-    for _ in 0..2 {
+    for worker_index in 0..2 {
         let tx_res_worker = tx_res.clone();
         let rx_req_worker = Arc::clone(&rx_req);
         let latest_request_ids_worker = Arc::clone(&latest_request_ids);
         let shutdown_worker = Arc::clone(&shutdown);
-        let handle = thread::spawn(move || loop {
-            let req = {
-                let Ok(rx) = rx_req_worker.lock() else {
-                    break;
+        let resolve_root_worker = Arc::clone(&resolve_root);
+        let worker_id = format!("flistwalker-index-{worker_index}");
+        let handle = thread::Builder::new()
+            .name(worker_id.clone())
+            .spawn(move || loop {
+                let req = {
+                    let Ok(rx) = rx_req_worker.lock() else {
+                        break;
+                    };
+                    match rx.recv_tracked() {
+                        Ok(received) => received,
+                        Err(_) => break,
+                    }
                 };
-                match rx.recv() {
-                    Ok(req) => req,
-                    Err(_) => break,
-                }
-            };
-            if shutdown_worker.load(Ordering::Relaxed) {
-                break;
-            }
-
-            if !req.include_files && !req.include_dirs {
-                if tx_res_worker
-                    .send(IndexResponse::Started {
-                        request_id: req.request_id,
-                        source: IndexSource::None,
-                    })
-                    .is_err()
-                {
-                    warn!(
-                        flow = "index",
-                        source_kind = "none",
-                        event = "receiver_closed",
-                        request_id = req.request_id,
-                        "worker response receiver closed before empty start"
+                let (req, inflight) = req;
+                if shutdown_worker.load(Ordering::Relaxed) {
+                    trace_worker_snapshot(
+                        inflight.load(),
+                        "index",
+                        "terminal",
+                        WorkerTraceContext {
+                            worker_id: &worker_id,
+                            request_id: Some(req.request_id),
+                            tab_id: Some(req.tab_id),
+                            epoch: None,
+                            outcome: "canceled",
+                        },
                     );
-                    break;
+                    if tx_res_worker
+                        .send(IndexResponse::Canceled {
+                            request_id: req.request_id,
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                    continue;
                 }
-                if tx_res_worker
-                    .send(IndexResponse::Finished {
-                        request_id: req.request_id,
-                        source: IndexSource::None,
-                    })
-                    .is_err()
-                {
-                    warn!(
-                        flow = "index",
-                        source_kind = "none",
-                        event = "receiver_closed",
-                        request_id = req.request_id,
-                        "worker response receiver closed before empty finish"
-                    );
-                    break;
-                }
-                continue;
-            }
 
-            let root = req.root.canonicalize().unwrap_or_else(|_| req.root.clone());
-            let result = if req.use_filelist {
-                if let Some(filelist) = find_filelist_in_first_level(&root) {
-                    stream_filelist_index(
-                        &tx_res_worker,
-                        &req,
-                        &root,
-                        filelist,
-                        shutdown_worker.as_ref(),
-                        latest_request_ids_worker.as_ref(),
-                    )
+                let is_current = latest_request_ids_worker
+                    .lock()
+                    .map(|latest| latest.get(&req.tab_id).copied() == Some(req.request_id))
+                    .unwrap_or(false);
+                if !is_current {
+                    trace_worker_snapshot(
+                        inflight.load(),
+                        "index",
+                        "terminal",
+                        WorkerTraceContext {
+                            worker_id: &worker_id,
+                            request_id: Some(req.request_id),
+                            tab_id: Some(req.tab_id),
+                            epoch: None,
+                            outcome: "stale",
+                        },
+                    );
+                    let _ = tx_res_worker.send(IndexResponse::Canceled {
+                        request_id: req.request_id,
+                    });
+                    continue;
+                }
+
+                if !req.include_files && !req.include_dirs {
+                    if tx_res_worker
+                        .send(IndexResponse::Started {
+                            request_id: req.request_id,
+                            source: IndexSource::None,
+                        })
+                        .is_err()
+                    {
+                        warn!(
+                            flow = "index",
+                            source_kind = "none",
+                            event = "receiver_closed",
+                            request_id = req.request_id,
+                            "worker response receiver closed before empty start"
+                        );
+                        break;
+                    }
+                    if tx_res_worker
+                        .send(IndexResponse::Finished {
+                            request_id: req.request_id,
+                            source: IndexSource::None,
+                        })
+                        .is_err()
+                    {
+                        warn!(
+                            flow = "index",
+                            source_kind = "none",
+                            event = "receiver_closed",
+                            request_id = req.request_id,
+                            "worker response receiver closed before empty finish"
+                        );
+                        break;
+                    }
+                    trace_worker_snapshot(
+                        inflight.load(),
+                        "index",
+                        "terminal",
+                        WorkerTraceContext {
+                            worker_id: &worker_id,
+                            request_id: Some(req.request_id),
+                            tab_id: Some(req.tab_id),
+                            epoch: None,
+                            outcome: "completed",
+                        },
+                    );
+                    continue;
+                }
+
+                let root = resolve_root_worker(&req.root);
+                let result = if req.use_filelist {
+                    if let Some(filelist) = find_filelist_in_first_level(&root) {
+                        stream_filelist_index(
+                            &tx_res_worker,
+                            &req,
+                            &root,
+                            filelist,
+                            shutdown_worker.as_ref(),
+                            latest_request_ids_worker.as_ref(),
+                        )
+                    } else {
+                        stream_walker_index(
+                            &tx_res_worker,
+                            &req,
+                            &root,
+                            shutdown_worker.as_ref(),
+                            latest_request_ids_worker.as_ref(),
+                        )
+                    }
                 } else {
                     stream_walker_index(
                         &tx_res_worker,
@@ -817,82 +905,110 @@ pub(super) fn spawn_index_worker(
                         shutdown_worker.as_ref(),
                         latest_request_ids_worker.as_ref(),
                     )
-                }
-            } else {
-                stream_walker_index(
-                    &tx_res_worker,
-                    &req,
-                    &root,
-                    shutdown_worker.as_ref(),
-                    latest_request_ids_worker.as_ref(),
-                )
-            };
+                };
 
-            match result {
-                Ok(source) => {
-                    let source_kind = index_source_kind(&source);
-                    info!(
-                        flow = "index",
-                        source_kind,
-                        event = "completed",
-                        request_id = req.request_id,
-                        "worker lifecycle completed"
-                    );
-                    if tx_res_worker
-                        .send(IndexResponse::Finished {
-                            request_id: req.request_id,
-                            source: source.clone(),
-                        })
-                        .is_err()
-                    {
-                        warn!(
-                            flow = "index",
-                            source_kind,
-                            event = "receiver_closed",
-                            request_id = req.request_id,
-                            "worker response receiver closed before finish"
-                        );
-                        break;
-                    }
-                }
-                Err(error) => {
-                    if error == "superseded" {
+                match result {
+                    Ok(source) => {
+                        let source_kind = index_source_kind(&source);
                         info!(
                             flow = "index",
-                            event = "superseded",
+                            source_kind,
+                            event = "completed",
                             request_id = req.request_id,
-                            "worker request superseded"
+                            "worker lifecycle completed"
                         );
-                        let _ = tx_res_worker.send(IndexResponse::Canceled {
-                            request_id: req.request_id,
-                        });
-                        continue;
+                        if tx_res_worker
+                            .send(IndexResponse::Finished {
+                                request_id: req.request_id,
+                                source: source.clone(),
+                            })
+                            .is_err()
+                        {
+                            warn!(
+                                flow = "index",
+                                source_kind,
+                                event = "receiver_closed",
+                                request_id = req.request_id,
+                                "worker response receiver closed before finish"
+                            );
+                            break;
+                        }
+                        trace_worker_snapshot(
+                            inflight.load(),
+                            "index",
+                            "terminal",
+                            WorkerTraceContext {
+                                worker_id: &worker_id,
+                                request_id: Some(req.request_id),
+                                tab_id: Some(req.tab_id),
+                                epoch: None,
+                                outcome: "completed",
+                            },
+                        );
                     }
-                    warn!(
-                        flow = "index",
-                        event = "failed",
-                        request_id = req.request_id,
-                        error = %error,
-                        "worker request failed"
-                    );
-                    if tx_res_worker
-                        .send(IndexResponse::Failed {
-                            request_id: req.request_id,
-                            error,
-                        })
-                        .is_err()
-                    {
+                    Err(error) => {
+                        if error == "superseded" {
+                            info!(
+                                flow = "index",
+                                event = "superseded",
+                                request_id = req.request_id,
+                                "worker request superseded"
+                            );
+                            let _ = tx_res_worker.send(IndexResponse::Canceled {
+                                request_id: req.request_id,
+                            });
+                            trace_worker_snapshot(
+                                inflight.load(),
+                                "index",
+                                "terminal",
+                                WorkerTraceContext {
+                                    worker_id: &worker_id,
+                                    request_id: Some(req.request_id),
+                                    tab_id: Some(req.tab_id),
+                                    epoch: None,
+                                    outcome: "canceled",
+                                },
+                            );
+                            continue;
+                        }
                         warn!(
                             flow = "index",
-                            event = "receiver_closed",
+                            event = "failed",
                             request_id = req.request_id,
-                            "worker response receiver closed before failure"
+                            error = %error,
+                            "worker request failed"
                         );
-                        break;
+                        if tx_res_worker
+                            .send(IndexResponse::Failed {
+                                request_id: req.request_id,
+                                error,
+                            })
+                            .is_err()
+                        {
+                            warn!(
+                                flow = "index",
+                                event = "receiver_closed",
+                                request_id = req.request_id,
+                                "worker response receiver closed before failure"
+                            );
+                            break;
+                        }
+                        trace_worker_snapshot(
+                            inflight.load(),
+                            "index",
+                            "terminal",
+                            WorkerTraceContext {
+                                worker_id: &worker_id,
+                                request_id: Some(req.request_id),
+                                tab_id: Some(req.tab_id),
+                                epoch: None,
+                                outcome: "failed",
+                            },
+                        );
                     }
                 }
-            }
-        });
+            })
+            .expect("spawn index worker");
         handles.push(handle);
     }
 

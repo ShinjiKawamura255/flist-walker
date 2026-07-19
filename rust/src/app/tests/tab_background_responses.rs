@@ -109,7 +109,7 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
     fs::write(&indexed_file, "b").expect("write indexed");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
@@ -166,7 +166,7 @@ fn active_index_progress_before_tab_switch_is_preserved_on_background_finish() {
     fs::write(&second_file, "second").expect("write second");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
@@ -240,7 +240,7 @@ fn active_index_handoff_preserves_pending_and_background_batches() {
     fs::write(&background_file, "background").expect("write background");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
@@ -313,7 +313,7 @@ fn background_replace_all_after_active_handoff_discards_prior_partial_index() {
     fs::write(&replacement_file, "replacement").expect("write replacement");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
@@ -450,7 +450,7 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     fs::write(&background_file, "background").expect("write background");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = index_req_tx;
     app.shell.indexing.rx = index_res_rx;
@@ -590,7 +590,7 @@ fn background_walker_truncated_notice_points_to_config_file_setting() {
     let root = test_root("background-walker-truncated-config-notice");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (_index_req_tx, _index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (_index_req_tx, _index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
 

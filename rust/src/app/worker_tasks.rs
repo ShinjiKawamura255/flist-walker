@@ -2,6 +2,9 @@ use super::action_authorization::{
     authorize_action_targets, reauthorize_action_target, ActionAuthorizationFailure,
 };
 use super::index_worker::resolve_entry_kind;
+use super::worker_channel::{
+    bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
+};
 use super::worker_protocol::{
     ActionRequest, ActionResponse, FileListRequest, FileListResponse, KindResolveRequest,
     KindResolveResponse, PreviewRequest, PreviewResponse, SearchRequest, SearchResponse,
@@ -11,20 +14,23 @@ use super::worker_support::action_notice_for_targets;
 use super::SortMetadata;
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
+use crate::entry::EntryKind;
 use crate::indexer::write_filelist_cancellable;
 use crate::search::{
     rank_search_results, SearchPrefixCache, SearchResultSortMode, SearchResultSortScope,
 };
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
-#[cfg(test)]
-use std::time::Duration;
 use tracing::{info, warn};
+
+pub(crate) type SharedKindResolver = Arc<dyn Fn(&Path) -> Option<EntryKind> + Send + Sync>;
+pub(crate) type SharedActionExecutor = Arc<dyn Fn(&Path) -> anyhow::Result<()> + Send + Sync>;
 
 fn trace_worker_started(flow: &'static str, request_id: u64) {
     info!(
@@ -174,49 +180,104 @@ pub(super) fn spawn_preview_worker(
 
 pub(super) fn spawn_kind_resolver_worker(
     shutdown: Arc<AtomicBool>,
+    latest_epochs: Arc<Mutex<HashMap<u64, u64>>>,
 ) -> (
-    Sender<KindResolveRequest>,
+    BoundedSender<KindResolveRequest>,
     Receiver<KindResolveResponse>,
     thread::JoinHandle<()>,
 ) {
-    let (tx_req, rx_req) = mpsc::channel::<KindResolveRequest>();
+    spawn_kind_resolver_worker_with(shutdown, latest_epochs, Arc::new(resolve_entry_kind))
+}
+
+pub(crate) fn spawn_kind_resolver_worker_with(
+    shutdown: Arc<AtomicBool>,
+    latest_epochs: Arc<Mutex<HashMap<u64, u64>>>,
+    resolve: SharedKindResolver,
+) -> (
+    BoundedSender<KindResolveRequest>,
+    Receiver<KindResolveResponse>,
+    thread::JoinHandle<()>,
+) {
+    let (tx_req, rx_req) = bounded_request_channel::<KindResolveRequest>(256);
     let (tx_res, rx_res) = mpsc::channel::<KindResolveResponse>();
 
-    let handle = thread::spawn(move || {
-        while let Ok(req) = rx_req.recv() {
-            if shutdown.load(Ordering::Relaxed) {
-                break;
-            }
-            let kind = resolve_entry_kind(&req.path);
-            info!(
-                flow = "kind_resolver",
-                event = "finished",
-                tab_id = req.tab_id,
-                epoch = req.epoch,
-                path = %req.path.display(),
-                kind_known = kind.is_some(),
-                "worker request finished"
-            );
-            if tx_res
-                .send(KindResolveResponse {
-                    tab_id: req.tab_id,
-                    epoch: req.epoch,
-                    path: req.path,
-                    kind,
-                })
-                .is_err()
-            {
-                warn!(
+    let handle = thread::Builder::new()
+        .name("flistwalker-kind-resolver-0".to_string())
+        .spawn(move || {
+            while let Ok((req, inflight)) = rx_req.recv_tracked() {
+                if shutdown.load(Ordering::Relaxed) {
+                    trace_worker_snapshot(
+                        inflight.load(),
+                        "kind_resolver",
+                        "terminal",
+                        WorkerTraceContext {
+                            worker_id: "flistwalker-kind-resolver-0",
+                            request_id: None,
+                            tab_id: Some(req.tab_id),
+                            epoch: Some(req.epoch),
+                            outcome: "canceled",
+                        },
+                    );
+                    if tx_res
+                        .send(KindResolveResponse {
+                            tab_id: req.tab_id,
+                            epoch: req.epoch,
+                            path: req.path,
+                            kind: None,
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                    continue;
+                }
+                let is_current = latest_epochs
+                    .lock()
+                    .map(|epochs| epochs.get(&req.tab_id).copied() == Some(req.epoch))
+                    .unwrap_or(false);
+                let kind = if is_current { resolve(&req.path) } else { None };
+                trace_worker_snapshot(
+                    inflight.load(),
+                    "kind_resolver",
+                    "terminal",
+                    WorkerTraceContext {
+                        worker_id: "flistwalker-kind-resolver-0",
+                        request_id: None,
+                        tab_id: Some(req.tab_id),
+                        epoch: Some(req.epoch),
+                        outcome: if is_current { "completed" } else { "stale" },
+                    },
+                );
+                info!(
                     flow = "kind_resolver",
-                    event = "receiver_closed",
+                    event = "finished",
                     tab_id = req.tab_id,
                     epoch = req.epoch,
-                    "worker response receiver closed"
+                    path = %req.path.display(),
+                    kind_known = kind.is_some(),
+                    "worker request finished"
                 );
-                break;
+                if tx_res
+                    .send(KindResolveResponse {
+                        tab_id: req.tab_id,
+                        epoch: req.epoch,
+                        path: req.path,
+                        kind,
+                    })
+                    .is_err()
+                {
+                    warn!(
+                        flow = "kind_resolver",
+                        event = "receiver_closed",
+                        tab_id = req.tab_id,
+                        epoch = req.epoch,
+                        "worker response receiver closed"
+                    );
+                    break;
+                }
             }
-        }
-    });
+        })
+        .expect("spawn kind resolver worker");
 
     (tx_req, rx_res, handle)
 }
@@ -336,29 +397,98 @@ pub(super) fn spawn_filelist_worker(
 pub(super) fn spawn_action_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
-    Sender<ActionRequest>,
+    BoundedSender<ActionRequest>,
     Receiver<ActionResponse>,
-    thread::JoinHandle<()>,
+    Vec<thread::JoinHandle<()>>,
 ) {
-    let (tx_req, rx_req) = mpsc::channel::<ActionRequest>();
-    let (tx_res, rx_res) = mpsc::channel::<ActionResponse>();
-
-    let handle = thread::spawn(move || {
-        while let Ok(req) = rx_req.recv() {
-            if shutdown.load(Ordering::Relaxed) {
-                break;
-            }
-            let tx_res = tx_res.clone();
-            thread::spawn(move || run_action_request(req, tx_res));
-        }
-    });
-
-    (tx_req, rx_res, handle)
+    spawn_action_worker_with(shutdown, Arc::new(run_action_target))
 }
 
-fn run_action_request(req: ActionRequest, tx_res: Sender<ActionResponse>) {
+pub(crate) fn spawn_action_worker_with(
+    shutdown: Arc<AtomicBool>,
+    execute: SharedActionExecutor,
+) -> (
+    BoundedSender<ActionRequest>,
+    Receiver<ActionResponse>,
+    Vec<thread::JoinHandle<()>>,
+) {
+    const ACTION_WORKERS: usize = 2;
+    const ACTION_QUEUE_CAPACITY: usize = 8;
+
+    let (tx_req, rx_req) = bounded_request_channel::<ActionRequest>(ACTION_QUEUE_CAPACITY);
+    let (tx_res, rx_res) = mpsc::channel::<ActionResponse>();
+    let rx_req = Arc::new(Mutex::new(rx_req));
+    let mut handles = Vec::with_capacity(ACTION_WORKERS);
+    for worker_index in 0..ACTION_WORKERS {
+        let shutdown = Arc::clone(&shutdown);
+        let execute = Arc::clone(&execute);
+        let tx_res = tx_res.clone();
+        let rx_req = Arc::clone(&rx_req);
+        let worker_id = format!("flistwalker-action-{worker_index}");
+        let handle = thread::Builder::new()
+            .name(worker_id.clone())
+            .spawn(move || loop {
+                let received = {
+                    let receiver = rx_req.lock().expect("action request receiver poisoned");
+                    receiver.recv_tracked()
+                };
+                let Ok((req, inflight)) = received else {
+                    break;
+                };
+                if shutdown.load(Ordering::Relaxed) {
+                    trace_worker_snapshot(
+                        inflight.load(),
+                        "action",
+                        "terminal",
+                        WorkerTraceContext {
+                            worker_id: &worker_id,
+                            request_id: Some(req.request_id),
+                            tab_id: None,
+                            epoch: None,
+                            outcome: "canceled",
+                        },
+                    );
+                    if tx_res
+                        .send(ActionResponse {
+                            request_id: req.request_id,
+                            notice: "Action canceled: application is shutting down".to_string(),
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                    continue;
+                }
+                let request_id = req.request_id;
+                let outcome = run_action_request_with(req, &tx_res, execute.as_ref());
+                trace_worker_snapshot(
+                    inflight.load(),
+                    "action",
+                    "terminal",
+                    WorkerTraceContext {
+                        worker_id: &worker_id,
+                        request_id: Some(request_id),
+                        tab_id: None,
+                        epoch: None,
+                        outcome,
+                    },
+                );
+            })
+            .expect("spawn action worker");
+        handles.push(handle);
+    }
+    drop(tx_res);
+
+    (tx_req, rx_res, handles)
+}
+
+fn run_action_request_with(
+    req: ActionRequest,
+    tx_res: &Sender<ActionResponse>,
+    execute: &(dyn Fn(&Path) -> anyhow::Result<()> + Send + Sync),
+) -> &'static str {
     trace_worker_started("action", req.request_id);
-    let response = process_action_request_with(req, run_action_target);
+    let (response, outcome) = process_action_request_with_outcome(req, |path| execute(path));
     info!(
         flow = "action",
         event = "finished",
@@ -369,13 +499,39 @@ fn run_action_request(req: ActionRequest, tx_res: Sender<ActionResponse>) {
     let request_id = response.request_id;
     if tx_res.send(response).is_err() {
         trace_worker_receiver_closed("action", request_id);
+        "disconnected"
+    } else {
+        outcome.as_str()
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ActionTerminalOutcome {
+    Completed,
+    Failed,
+}
+
+impl ActionTerminalOutcome {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Completed => "completed",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+#[cfg(test)]
 pub(crate) fn process_action_request_with(
     req: ActionRequest,
-    mut execute: impl FnMut(&Path) -> anyhow::Result<()>,
+    execute: impl FnMut(&Path) -> anyhow::Result<()>,
 ) -> ActionResponse {
+    process_action_request_with_outcome(req, execute).0
+}
+
+pub(crate) fn process_action_request_with_outcome(
+    req: ActionRequest,
+    mut execute: impl FnMut(&Path) -> anyhow::Result<()>,
+) -> (ActionResponse, ActionTerminalOutcome) {
     let batch = match authorize_action_targets(&req.root, &req.paths, req.open_parent_for_files) {
         Ok(batch) => batch,
         Err(err) => {
@@ -389,10 +545,13 @@ pub(crate) fn process_action_request_with(
                 error = %err,
                 "action request blocked"
             );
-            return ActionResponse {
-                request_id: req.request_id,
-                notice: action_blocked_notice(&err),
-            };
+            return (
+                ActionResponse {
+                    request_id: req.request_id,
+                    notice: action_blocked_notice(&err),
+                },
+                ActionTerminalOutcome::Failed,
+            );
         }
     };
     let total = batch.targets.len();
@@ -420,10 +579,13 @@ pub(crate) fn process_action_request_with(
                         normalize_path_for_display(&target.display_path)
                     )
                 };
-                return ActionResponse {
-                    request_id: req.request_id,
-                    notice,
-                };
+                return (
+                    ActionResponse {
+                        request_id: req.request_id,
+                        notice,
+                    },
+                    ActionTerminalOutcome::Failed,
+                );
             }
         };
         if let Err(err) = execute(&execution_path) {
@@ -439,16 +601,19 @@ pub(crate) fn process_action_request_with(
                 "action executor failed"
             );
             let display_path = normalize_path_for_display(&target.display_path);
-            return ActionResponse {
-                request_id: req.request_id,
-                notice: if completed == 0 {
-                    format!("Action failed: {display_path}")
-                } else {
-                    format!(
-                        "Action failed after launching {completed} of {total} items while opening {display_path}"
-                    )
+            return (
+                ActionResponse {
+                    request_id: req.request_id,
+                    notice: if completed == 0 {
+                        format!("Action failed: {display_path}")
+                    } else {
+                        format!(
+                            "Action failed after launching {completed} of {total} items while opening {display_path}"
+                        )
+                    },
                 },
-            };
+                ActionTerminalOutcome::Failed,
+            );
         }
     }
 
@@ -466,10 +631,13 @@ pub(crate) fn process_action_request_with(
         total,
         "action request completed"
     );
-    ActionResponse {
-        request_id: req.request_id,
-        notice: action_notice_for_targets(&display_targets),
-    }
+    (
+        ActionResponse {
+            request_id: req.request_id,
+            notice: action_notice_for_targets(&display_targets),
+        },
+        ActionTerminalOutcome::Completed,
+    )
 }
 
 fn action_blocked_notice(failure: &ActionAuthorizationFailure) -> String {
@@ -488,16 +656,9 @@ fn run_action_target(path: &Path) -> anyhow::Result<()> {
 }
 
 #[cfg(test)]
-fn run_action_target(path: &Path) -> anyhow::Result<()> {
+fn run_action_target(_path: &Path) -> anyhow::Result<()> {
     // GUI shortcut / action worker tests only need request/notice behavior.
     // Avoid spawning xdg-open/open during test runs so stderr stays clean.
-    if path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| name.contains("block-action-target"))
-    {
-        thread::sleep(Duration::from_secs(2));
-    }
     Ok(())
 }
 

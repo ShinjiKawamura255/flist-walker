@@ -10,6 +10,7 @@ use super::{
 };
 use crate::app::process_shutdown_requested;
 use eframe::egui;
+use tracing::{info, warn};
 
 pub(super) struct WorkerRuntime {
     shutdown: Arc<AtomicBool>,
@@ -45,6 +46,14 @@ impl WorkerRuntime {
 
     pub(super) fn request_shutdown(&self) {
         self.shutdown.store(true, Ordering::Relaxed);
+    }
+
+    #[cfg(test)]
+    pub(super) fn worker_names(&self) -> Vec<String> {
+        self.handles
+            .iter()
+            .map(|handle| handle.name.clone())
+            .collect()
     }
 
     pub(super) fn join_all_with_timeout(mut self, timeout: Duration) -> WorkerJoinSummary {
@@ -104,12 +113,14 @@ impl FlistWalkerApp {
     fn disconnect_worker_channels(&mut self) {
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
         let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
-        let (dummy_action_tx, _) = mpsc::channel::<ActionRequest>();
+        let (dummy_action_tx, _) =
+            super::worker_channel::bounded_request_channel::<ActionRequest>(1);
         let (dummy_sort_tx, _) = mpsc::channel::<SortMetadataRequest>();
-        let (dummy_kind_tx, _) = mpsc::channel::<KindResolveRequest>();
+        let (dummy_kind_tx, _) =
+            super::worker_channel::bounded_request_channel::<KindResolveRequest>(1);
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
-        let (dummy_index_tx, _) = mpsc::channel::<IndexRequest>();
+        let (dummy_index_tx, _) = super::worker_channel::bounded_request_channel::<IndexRequest>(1);
         let old_search_tx = std::mem::replace(&mut self.shell.search.tx, dummy_search_tx);
         let old_preview_tx =
             std::mem::replace(&mut self.shell.worker_bus.preview.tx, dummy_preview_tx);
@@ -140,18 +151,82 @@ impl FlistWalkerApp {
     ) -> Option<WorkerJoinSummary> {
         let runtime = self.shell.worker_runtime.as_ref()?;
         runtime.request_shutdown();
+        let action_load = self.shell.worker_bus.action.tx.load_observer();
+        let kind_load = self.shell.worker_bus.kind.tx.load_observer();
+        let index_load = self.shell.indexing.tx.load_observer();
         self.disconnect_worker_channels();
         let runtime = self.shell.worker_runtime.take()?;
         let summary = runtime.join_all_with_timeout(timeout);
         if summary.joined < summary.total {
-            let pending = if summary.pending.is_empty() {
+            let pending_names = if summary.pending.is_empty() {
                 "unknown".to_string()
             } else {
                 summary.pending.join(", ")
             };
             eprintln!(
-                "Worker shutdown timeout during {phase}: joined {}/{} threads within {:?}; pending: {pending}",
+                "Worker shutdown timeout during {phase}: joined {}/{} threads within {:?}; pending: {pending_names}",
                 summary.joined, summary.total, timeout
+            );
+            for pending_worker in &summary.pending {
+                let (worker_family, load, load_known) = if pending_worker.starts_with("action-") {
+                    ("action", action_load.load(), true)
+                } else if pending_worker == "kind-resolver" {
+                    ("kind_resolver", kind_load.load(), true)
+                } else if pending_worker.starts_with("index-") {
+                    ("index", index_load.load(), true)
+                } else {
+                    (
+                        "other",
+                        super::worker_channel::WorkerLoadSnapshot {
+                            queued: 0,
+                            inflight: 0,
+                            capacity: 0,
+                        },
+                        false,
+                    )
+                };
+                let record = super::worker_channel::worker_trace_record(
+                    load,
+                    worker_family,
+                    "shutdown_timeout",
+                    super::worker_channel::WorkerTraceContext {
+                        worker_id: pending_worker,
+                        request_id: None,
+                        tab_id: None,
+                        epoch: None,
+                        outcome: "shutdown_timeout",
+                    },
+                );
+                warn!(
+                    flow = "worker_runtime",
+                    worker_family = record.worker_family,
+                    event = record.event,
+                    worker_id = record.worker_id,
+                    phase,
+                    joined = summary.joined,
+                    total = summary.total,
+                    pending = pending_names,
+                    timeout_ms = timeout.as_millis() as u64,
+                    queue_depth = record.queue_depth,
+                    in_flight = record.in_flight,
+                    capacity = record.capacity,
+                    load_scope = "family",
+                    load_known,
+                    outcome = record.outcome,
+                    "worker shutdown exceeded its join budget"
+                );
+            }
+        } else {
+            info!(
+                flow = "worker_runtime",
+                event = "shutdown_complete",
+                worker_id = "runtime",
+                phase,
+                joined = summary.joined,
+                total = summary.total,
+                timeout_ms = timeout.as_millis() as u64,
+                outcome = "completed",
+                "worker shutdown completed within its join budget"
             );
         }
         Some(summary)

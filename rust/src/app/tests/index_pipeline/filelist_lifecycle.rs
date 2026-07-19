@@ -91,7 +91,7 @@ fn filelist_finished_for_previous_root_does_not_trigger_reindex() {
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.rx = filelist_rx;
-    let (_index_tx, index_rx) = mpsc::channel::<IndexRequest>();
+    let (_index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = _index_tx;
     app.shell.features.filelist.workflow.pending_request_id = Some(51);
     app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
@@ -446,7 +446,7 @@ fn request_index_refresh_keeps_existing_entries_visible_until_new_results_arrive
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.entries = Arc::new(vec![unknown_entry(path.clone())]);
     app.shell.runtime.results = vec![(path.clone(), 0.0)];
@@ -679,11 +679,15 @@ fn pending_finished_index_finalization_does_not_shrink_drained_queue_regression(
     })
     .expect("send finished");
 
-    for _ in 0..8 {
-        app.poll_index_response();
+    app.poll_index_response();
+    // Simulate the post-Finished per-frame entry cap deterministically. Repeated
+    // wall-clock-budget polling is scheduler-sensitive under the parallel suite.
+    for _ in 0..3 {
         if app.shell.indexing.pending_finish.is_none() {
             break;
         }
+        app.drain_queued_index_entries(303, 2_048);
+        app.poll_index_response();
     }
 
     assert!(capacity_before >= 20_000);

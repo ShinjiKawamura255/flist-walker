@@ -10,7 +10,7 @@ fn root_change_clears_stale_selection_state() {
     fs::write(&old_path, "x").expect("write old file");
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     app.shell.runtime.pinned_paths.insert(old_path);
     app.shell.runtime.current_row = Some(0);
@@ -60,7 +60,7 @@ fn root_change_cancels_pending_filelist_overwrite_confirmation() {
     fs::create_dir_all(&root_new).expect("create new dir");
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
-    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
@@ -91,7 +91,7 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
     fs::create_dir_all(&root_new).expect("create new dir");
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
-    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell
@@ -126,7 +126,7 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
     fs::create_dir_all(&root_new).expect("create new dir");
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
-    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell

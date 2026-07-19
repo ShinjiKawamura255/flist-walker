@@ -212,7 +212,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     fs::create_dir_all(&root_a).expect("create root a");
     fs::create_dir_all(&root_b).expect("create root b");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
 
@@ -276,7 +276,7 @@ fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
     let root = test_root("restore-tabs-default-row");
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (tx, _rx) = mpsc::channel::<IndexRequest>();
+    let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
 
@@ -306,7 +306,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
     fs::create_dir_all(&root_a).expect("create root a");
     fs::create_dir_all(&root_b).expect("create root b");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
-    let (tx, rx) = mpsc::channel::<IndexRequest>();
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
 
@@ -359,7 +359,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     fs::write(&indexed_file, "indexed").expect("write indexed file");
 
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = index_req_tx;
     app.shell.indexing.rx = index_res_rx;
@@ -515,7 +515,7 @@ fn close_tab_triggers_pending_restore_refresh_for_survivor() {
     fs::create_dir_all(&root_b).expect("create root b");
 
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     let (_index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = index_req_tx;
     app.shell.indexing.rx = index_res_rx;
@@ -570,7 +570,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
     fs::create_dir_all(&root_b).expect("create root b");
 
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
-    let (index_req_tx, index_req_rx) = mpsc::channel::<IndexRequest>();
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
     let (_index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = index_req_tx;
     app.shell.indexing.rx = index_res_rx;

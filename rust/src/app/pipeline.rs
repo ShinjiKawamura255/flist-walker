@@ -365,7 +365,7 @@ impl FlistWalkerApp {
         false
     }
 
-    fn dispatch_index_queue(&mut self) {
+    pub(super) fn dispatch_index_queue(&mut self) {
         loop {
             if self.shell.indexing.inflight_requests.len() >= Self::INDEX_MAX_CONCURRENT {
                 let _ = self.preempt_background_for_active_request();
@@ -375,11 +375,55 @@ impl FlistWalkerApp {
                 break;
             };
             let req_id = req.request_id;
-            if self.shell.indexing.tx.send(req).is_err() {
-                self.handle_index_worker_unavailable();
-                break;
-            } else {
-                self.shell.indexing.inflight_requests.insert(req_id);
+            let req_tab_id = req.tab_id;
+            match self.shell.indexing.tx.try_send(req) {
+                Ok(()) => {
+                    super::worker_channel::trace_worker_load(
+                        &self.shell.indexing.tx,
+                        "index",
+                        "accepted",
+                        super::worker_channel::WorkerTraceContext {
+                            worker_id: "ui-dispatch",
+                            request_id: Some(req_id),
+                            tab_id: Some(req_tab_id),
+                            epoch: None,
+                            outcome: "accepted",
+                        },
+                    );
+                    self.shell.indexing.inflight_requests.insert(req_id);
+                }
+                Err(std::sync::mpsc::TrySendError::Full(req)) => {
+                    super::worker_channel::trace_worker_load(
+                        &self.shell.indexing.tx,
+                        "index",
+                        "full",
+                        super::worker_channel::WorkerTraceContext {
+                            worker_id: "ui-dispatch",
+                            request_id: Some(req_id),
+                            tab_id: Some(req_tab_id),
+                            epoch: None,
+                            outcome: "full",
+                        },
+                    );
+                    self.shell.indexing.pending_queue.push_front(req);
+                    break;
+                }
+                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                    super::worker_channel::trace_worker_load(
+                        &self.shell.indexing.tx,
+                        "index",
+                        "disconnected",
+                        super::worker_channel::WorkerTraceContext {
+                            worker_id: "ui-dispatch",
+                            request_id: Some(req_id),
+                            tab_id: Some(req_tab_id),
+                            epoch: None,
+                            outcome: "disconnected",
+                        },
+                    );
+                    self.handle_index_worker_unavailable();
+                    break;
+                }
             }
         }
     }
@@ -605,7 +649,11 @@ impl FlistWalkerApp {
         self.shell.runtime.index.entries.push(entry);
     }
 
-    fn drain_queued_index_entries(&mut self, request_id: u64, max_entries: usize) -> bool {
+    pub(super) fn drain_queued_index_entries(
+        &mut self,
+        request_id: u64,
+        max_entries: usize,
+    ) -> bool {
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
             return false;
         }

@@ -1,3 +1,4 @@
+use super::worker_channel::BoundedSender;
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
     IndexSource, KindResolveRequest, PendingActiveIndexFinish, TabSessionState,
@@ -5,7 +6,7 @@ use super::{
 use crate::entry::{Entry, EntryKind};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -16,11 +17,12 @@ pub(super) enum IndexResponseRoute {
 }
 
 pub(super) struct IndexCoordinator {
-    pub(super) tx: Sender<IndexRequest>,
+    pub(super) tx: BoundedSender<IndexRequest>,
     pub(super) rx: Receiver<IndexResponse>,
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) pending_queue: VecDeque<IndexRequest>,
     pub(super) inflight_requests: HashSet<u64>,
     pub(super) in_progress: bool,
@@ -44,9 +46,10 @@ pub(super) struct IndexCoordinator {
 
 impl IndexCoordinator {
     pub(super) fn new(
-        tx: Sender<IndexRequest>,
+        tx: BoundedSender<IndexRequest>,
         rx: Receiver<IndexResponse>,
         latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+        latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     ) -> Self {
         Self {
             tx,
@@ -54,6 +57,7 @@ impl IndexCoordinator {
             next_request_id: 1,
             pending_request_id: None,
             latest_request_ids,
+            latest_kind_epochs,
             pending_queue: VecDeque::new(),
             inflight_requests: HashSet::new(),
             in_progress: false,
@@ -80,6 +84,9 @@ impl IndexCoordinator {
         self.request_tabs.retain(|_, id| *id != tab_id);
         self.pending_queue.retain(|req| req.tab_id != tab_id);
         if let Ok(mut latest) = self.latest_request_ids.lock() {
+            latest.remove(&tab_id);
+        }
+        if let Ok(mut latest) = self.latest_kind_epochs.lock() {
             latest.remove(&tab_id);
         }
         self.background_states
@@ -136,6 +143,9 @@ impl IndexCoordinator {
         tab.index_state.kind_resolution_in_progress = false;
         tab.index_state.kind_resolution_epoch =
             tab.index_state.kind_resolution_epoch.saturating_add(1);
+        if let Ok(mut latest) = self.latest_kind_epochs.lock() {
+            latest.insert(tab.id, tab.index_state.kind_resolution_epoch);
+        }
         tab.pending_preview_request_id = None;
         tab.preview_in_progress = false;
         tab.index_state.last_incremental_results_refresh = Instant::now();
@@ -211,6 +221,11 @@ impl FlistWalkerApp {
         self.shell.indexing.kind_resolution_in_progress = false;
         self.shell.indexing.kind_resolution_epoch =
             self.shell.indexing.kind_resolution_epoch.saturating_add(1);
+        if let Some(tab_id) = self.current_tab_id() {
+            if let Ok(mut latest) = self.shell.indexing.latest_kind_epochs.lock() {
+                latest.insert(tab_id, self.shell.indexing.kind_resolution_epoch);
+            }
+        }
     }
 
     /// 表示中または incremental index 中の entry から kind 未解決 path を拾う。
@@ -282,6 +297,11 @@ impl FlistWalkerApp {
     /// kind resolver worker へ frame 予算内で request を流す。
     pub(super) fn pump_kind_resolution_requests(&mut self) {
         const MAX_DISPATCH_PER_FRAME: usize = 128;
+        let tab_id = self.current_tab_id().unwrap_or_default();
+        let epoch = self.shell.indexing.kind_resolution_epoch;
+        if let Ok(mut latest) = self.shell.indexing.latest_kind_epochs.lock() {
+            latest.insert(tab_id, epoch);
+        }
         let mut dispatched = 0usize;
         while dispatched < MAX_DISPATCH_PER_FRAME {
             let Some(path) = self.shell.indexing.pending_kind_paths.pop_front() else {
@@ -289,15 +309,71 @@ impl FlistWalkerApp {
             };
             self.shell.indexing.pending_kind_paths_set.remove(&path);
             let req = KindResolveRequest {
-                tab_id: self.current_tab_id().unwrap_or_default(),
-                epoch: self.shell.indexing.kind_resolution_epoch,
+                tab_id,
+                epoch,
                 path: path.clone(),
             };
-            if self.shell.worker_bus.kind.tx.send(req).is_err() {
-                break;
+            match self.shell.worker_bus.kind.tx.try_send(req) {
+                Ok(()) => {
+                    super::worker_channel::trace_worker_load(
+                        &self.shell.worker_bus.kind.tx,
+                        "kind_resolver",
+                        "accepted",
+                        super::worker_channel::WorkerTraceContext {
+                            worker_id: "ui-dispatch",
+                            request_id: None,
+                            tab_id: Some(tab_id),
+                            epoch: Some(epoch),
+                            outcome: "accepted",
+                        },
+                    );
+                    self.shell.indexing.in_flight_kind_paths.insert(path);
+                    dispatched = dispatched.saturating_add(1);
+                }
+                Err(std::sync::mpsc::TrySendError::Full(req)) => {
+                    super::worker_channel::trace_worker_load(
+                        &self.shell.worker_bus.kind.tx,
+                        "kind_resolver",
+                        "full",
+                        super::worker_channel::WorkerTraceContext {
+                            worker_id: "ui-dispatch",
+                            request_id: None,
+                            tab_id: Some(req.tab_id),
+                            epoch: Some(req.epoch),
+                            outcome: "full",
+                        },
+                    );
+                    self.shell
+                        .indexing
+                        .pending_kind_paths_set
+                        .insert(req.path.clone());
+                    self.shell.indexing.pending_kind_paths.push_front(req.path);
+                    break;
+                }
+                Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                    super::worker_channel::trace_worker_load(
+                        &self.shell.worker_bus.kind.tx,
+                        "kind_resolver",
+                        "disconnected",
+                        super::worker_channel::WorkerTraceContext {
+                            worker_id: "ui-dispatch",
+                            request_id: None,
+                            tab_id: Some(tab_id),
+                            epoch: Some(epoch),
+                            outcome: "disconnected",
+                        },
+                    );
+                    self.shell.indexing.pending_kind_paths.clear();
+                    self.shell.indexing.pending_kind_paths_set.clear();
+                    self.shell.indexing.in_flight_kind_paths.clear();
+                    self.shell.indexing.kind_resolution_in_progress = false;
+                    for tab in &mut self.shell.tabs {
+                        tab.index_state.clear_kind_resolution_state();
+                    }
+                    self.set_notice("Kind resolver worker is unavailable");
+                    break;
+                }
             }
-            self.shell.indexing.in_flight_kind_paths.insert(path);
-            dispatched = dispatched.saturating_add(1);
         }
         self.shell.indexing.kind_resolution_in_progress =
             !self.shell.indexing.pending_kind_paths.is_empty()
