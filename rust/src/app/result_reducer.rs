@@ -81,6 +81,9 @@ pub(super) fn apply_background_search_response(
     let Some(tab_index) = app.find_tab_index_by_id(tab_id) else {
         return;
     };
+    if tab_index == app.shell.tabs.active_tab_index() {
+        return;
+    }
     let Some(tab) = app.shell.tabs.get_mut(tab_index) else {
         return;
     };
@@ -257,6 +260,9 @@ pub(super) fn apply_background_preview_response(
     let Some(tab_index) = app.find_tab_index_by_id(tab_id) else {
         return;
     };
+    if tab_index == app.shell.tabs.active_tab_index() {
+        return;
+    }
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
         tab.clear_preview_request_state();
@@ -305,6 +311,9 @@ pub(super) fn apply_background_sort_response(
     let Some(tab_index) = app.find_tab_index_by_id(tab_id) else {
         return;
     };
+    if tab_index == app.shell.tabs.active_tab_index() {
+        return;
+    }
     let sort_metadata = app.shell.cache.sort_metadata.get_map().clone();
     let Some(tab) = app.shell.tabs.get_mut(tab_index) else {
         return;

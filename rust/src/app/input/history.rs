@@ -37,8 +37,11 @@ fn push_query_history(history: &mut VecDeque<String>, query: &str) {
 
 fn sync_shared_query_history_to_tabs(app: &mut FlistWalkerApp) {
     let history = app.shell.runtime.query_state.query_history.clone();
-    for tab in app.shell.tabs.iter_mut() {
-        tab.query_state.query_history = history.clone();
+    let active_tab = app.shell.tabs.active_tab_index();
+    for (index, tab) in app.shell.tabs.iter_mut().enumerate() {
+        if index != active_tab {
+            tab.query_state.query_history = history.clone();
+        }
     }
 }
 

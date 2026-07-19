@@ -326,12 +326,6 @@ fn tc_150_action_full_preserves_prior_accepted_request_state() {
     app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(prior_request_id, tab_id);
-    let active_tab = app.shell.tabs.active_tab_index();
-    app.shell
-        .tabs
-        .get_mut(active_tab)
-        .expect("active tab")
-        .begin_action_request(prior_request_id);
     app.shell.runtime.results = vec![(selected, 0.0)];
     app.shell.runtime.current_row = Some(0);
 
@@ -344,9 +338,6 @@ fn tc_150_action_full_preserves_prior_accepted_request_state() {
     assert!(app.shell.worker_bus.action.in_progress);
     assert_eq!(app.action_request_tab(prior_request_id), Some(tab_id));
     assert_eq!(app.action_request_tab(next_request_id), None);
-    let tab = app.shell.tabs.get(active_tab).expect("active tab");
-    assert_eq!(tab.pending_action_request_id, Some(prior_request_id));
-    assert!(tab.action_in_progress);
     assert!(app.shell.runtime.notice.contains("busy"));
     drop(rx);
     let _ = fs::remove_dir_all(&root);
@@ -367,12 +358,6 @@ fn tc_150_action_disconnect_settles_action_state() {
     app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(prior_request_id, tab_id);
-    let active_tab = app.shell.tabs.active_tab_index();
-    app.shell
-        .tabs
-        .get_mut(active_tab)
-        .expect("active tab")
-        .begin_action_request(prior_request_id);
     app.shell.runtime.results = vec![(selected, 0.0)];
     app.shell.runtime.current_row = Some(0);
 
@@ -381,9 +366,6 @@ fn tc_150_action_disconnect_settles_action_state() {
     assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
     assert!(!app.shell.worker_bus.action.in_progress);
     assert_eq!(app.action_request_tab(prior_request_id), None);
-    let tab = app.shell.tabs.get(active_tab).expect("active tab");
-    assert_eq!(tab.pending_action_request_id, None);
-    assert!(!tab.action_in_progress);
     assert!(app.shell.runtime.notice.contains("unavailable"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -860,18 +842,6 @@ fn stale_action_completion_is_ignored_by_request_id() {
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(1, tab_id);
     app.bind_action_request_to_tab(2, tab_id);
-    let active_tab = app.shell.tabs.active_tab;
-    app.shell
-        .tabs
-        .get_mut(active_tab)
-        .expect("active tab")
-        .pending_action_request_id = Some(2);
-    app.shell
-        .tabs
-        .get_mut(active_tab)
-        .expect("active tab")
-        .action_in_progress = true;
-
     tx.send(ActionResponse {
         request_id: 1,
         notice: "Action failed: stale".to_string(),

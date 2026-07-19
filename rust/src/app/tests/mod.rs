@@ -77,6 +77,7 @@ mod tab_background_responses;
 mod tab_contract;
 mod tab_drag;
 mod tab_lifecycle;
+mod tab_ownership;
 mod tab_result_cache;
 mod update_commands;
 mod window_ime;

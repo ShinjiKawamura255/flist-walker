@@ -396,6 +396,7 @@ impl FlistWalkerApp {
                         if tab.index_state.kind_resolution_epoch == response.epoch {
                             tab.index_state.in_flight_kind_paths.remove(&response.path);
                             if let Some(kind) = response.kind {
+                                tab.entry_kind_cache.set(response.path.clone(), kind);
                                 tab.index_state
                                     .resolved_kind_updates
                                     .push((response.path.clone(), kind));

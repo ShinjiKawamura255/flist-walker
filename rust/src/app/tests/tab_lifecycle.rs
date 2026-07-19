@@ -149,15 +149,7 @@ fn restoring_closed_tab_prefers_original_position() {
 
     assert_eq!(app.shell.tabs.len(), 3);
     assert_eq!(app.shell.tabs.active_tab, 1);
-    assert_eq!(
-        app.shell
-            .tabs
-            .get(1)
-            .expect("restored middle tab")
-            .query_state
-            .query,
-        "middle"
-    );
+    assert_eq!(app.shell.runtime.query_state.query, "middle");
     assert_ne!(
         app.shell.tabs.get(1).expect("restored middle tab").id,
         middle_tab_id

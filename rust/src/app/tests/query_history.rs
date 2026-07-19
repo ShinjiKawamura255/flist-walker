@@ -141,6 +141,51 @@ fn query_history_is_shared_across_tabs() {
 }
 
 #[test]
+fn create_new_tab_commits_dirty_query_before_copying_shared_history() {
+    let root = test_root("query-history-new-tab-dirty-commit");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.query_state.query = "pending-query".to_string();
+    app.mark_query_edited();
+
+    app.create_new_tab();
+
+    assert_eq!(
+        app.shell
+            .runtime
+            .query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
+        vec!["pending-query".to_string()]
+    );
+    app.shell.runtime.query_state.query = "second-query".to_string();
+    app.mark_query_edited();
+    commit_query_history_for_test(&mut app);
+    assert!(app
+        .shell
+        .tabs
+        .get(app.shell.tabs.active_tab_index())
+        .expect("active scratch")
+        .query_state
+        .query_history
+        .is_empty());
+    app.switch_to_tab_index(0);
+    assert_eq!(
+        app.shell
+            .runtime
+            .query_state
+            .query_history
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>(),
+        vec!["pending-query".to_string(), "second-query".to_string()]
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn root_change_resets_query_history_navigation_state() {
     let root_a = test_root("query-history-root-a");
     let root_b = test_root("query-history-root-b");

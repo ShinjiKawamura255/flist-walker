@@ -401,17 +401,6 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn rebuild_entry_kind_cache(&mut self) {
-        let all_entries = Arc::clone(&self.shell.runtime.all_entries);
-        let index_entries = self.shell.runtime.index.entries.clone();
-        let entries = Arc::clone(&self.shell.runtime.entries);
-        self.shell.cache.entry_kind.rebuild_from_sources(&[
-            all_entries.as_ref(),
-            &index_entries,
-            entries.as_ref(),
-        ]);
-    }
-
     // Regression Guard (v0.16.0):
     // DO NOT invoke `set_entry_kind_in_arc_batch` or `Arc::make_mut` here.
     // Iterating and cloning all elements in the 500k+ `entries` arrays for every 512-item batch

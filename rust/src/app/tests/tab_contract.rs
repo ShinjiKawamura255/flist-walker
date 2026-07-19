@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::cache::EntryKindCacheState;
 use crate::app::tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 
 #[test]
@@ -124,6 +125,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         index_state,
         query_state,
         result_state,
+        entry_kind_cache: EntryKindCacheState::default(),
         notice: "contract notice".to_string(),
         pending_request_id: Some(31),
         pending_preview_request_id: Some(32),

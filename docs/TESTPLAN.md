@@ -43,12 +43,17 @@ For documentation-only restructuring, apply VM-001:
 - TC-150 through TC-153 fix the action/kind/index capacity arithmetic, accepted-only non-blocking dispatch, `Full`/`Disconnected` settlement, stale-before-I/O cancellation, RAII load accounting, lock boundaries, named worker ownership, 250ms shutdown budget, and structured load/correlation trace.
 - Apply VM-002 to action/kind/runtime scheduling and VM-003 to index scheduling; TC-149 remains the independent background-index snapshot regression guard.
 
+## Tab Ownership Transfer Verification
+- TC-154 fixes allocation-preserving active/inactive ownership transfer, lifecycle/routing compatibility, persisted-field projection, and native large-tab responsiveness.
+- Apply VM-002 with focused tab owner tests; use non-compacting/non-sparse fixtures for pointer/capacity identity and verify result compaction separately.
+
 ## Traceability (excerpt)
 - Full excerpt: [Manual Regression and Traceability](testplan/manual-regression-traceability.md)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
 - TC-003 -> SP-003 -> DES-003 -> FR-003
 - TC-010 -> SP-010 -> DES-009 -> FR-007
 - TC-150, TC-151, TC-152, TC-153 -> SP-010 -> DES-006, DES-007, DES-009 -> FR-007, NFR-008
+- TC-154 -> SP-010 -> DES-009 -> FR-007, NFR-009
 - TC-050, TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
 - TC-056 -> SP-012 -> DES-012 -> NFR-005
 - TC-074 -> SP-014 -> DES-014 -> FR-019

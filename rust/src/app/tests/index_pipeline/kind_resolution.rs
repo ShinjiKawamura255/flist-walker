@@ -678,6 +678,10 @@ fn inactive_tab_kind_response_is_retained_until_tab_activation() {
         inactive_tab.index_state.resolved_kind_updates,
         vec![(link.clone(), EntryKind::link(false))]
     );
+    assert_eq!(
+        inactive_tab.entry_kind_cache.get(&link),
+        Some(EntryKind::link(false))
+    );
 
     app.switch_to_tab_index(0);
     assert_eq!(app.find_entry_kind(&link), Some(EntryKind::link(false)));

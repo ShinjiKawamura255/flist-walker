@@ -8,11 +8,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_preview_request_to_current_tab(&mut self, request_id: u64) {
-        let active_tab = self.shell.tabs.active_tab_index();
-        let Some(tab_id) = self.shell.tabs.get_mut(active_tab).map(|tab| {
-            tab.begin_preview_request(request_id);
-            tab.id
-        }) else {
+        let Some(tab_id) = self.current_tab_id() else {
             return;
         };
         self.bind_preview_request_to_tab(request_id, tab_id);
@@ -36,11 +32,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_action_request_to_current_tab(&mut self, request_id: u64) {
-        let active_tab = self.shell.tabs.active_tab_index();
-        let Some(tab_id) = self.shell.tabs.get_mut(active_tab).map(|tab| {
-            tab.begin_action_request(request_id);
-            tab.id
-        }) else {
+        let Some(tab_id) = self.current_tab_id() else {
             return;
         };
         self.bind_action_request_to_tab(request_id, tab_id);
@@ -63,11 +55,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn bind_sort_request_to_current_tab(&mut self, request_id: u64) {
-        let active_tab = self.shell.tabs.active_tab_index();
-        let Some(tab_id) = self.shell.tabs.get_mut(active_tab).map(|tab| {
-            tab.result_state.begin_sort_request(request_id);
-            tab.id
-        }) else {
+        let Some(tab_id) = self.current_tab_id() else {
             return;
         };
         self.bind_sort_request_to_tab(request_id, tab_id);
@@ -111,6 +99,9 @@ impl FlistWalkerApp {
         let Some(tab_index) = self.find_tab_index_by_id(tab_id) else {
             return;
         };
+        if tab_index == self.shell.tabs.active_tab_index() {
+            return;
+        }
         let Some(tab) = self.shell.tabs.get_mut(tab_index) else {
             return;
         };
@@ -164,7 +155,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn apply_background_preview_response(&mut self, response: PreviewResponse) {
+    pub(super) fn apply_background_preview_response(&mut self, response: PreviewResponse) {
         result_reducer::apply_background_preview_response(self, response);
     }
 

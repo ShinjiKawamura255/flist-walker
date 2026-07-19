@@ -422,19 +422,14 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
 }
 
 #[test]
-fn entry_kind_cache_survives_tab_state_roundtrip_and_preserves_precedence() {
+fn entry_kind_cache_survives_tab_state_roundtrip() {
     let root = test_root("entry-kind-cache-roundtrip");
     fs::create_dir_all(&root).expect("create dir");
     let path = root.join("shared.txt");
     fs::write(&path, "content").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    app.shell.runtime.all_entries =
-        Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::file()))]);
-    app.shell.runtime.index.entries = vec![Entry::new(path.clone(), Some(EntryKind::dir()))];
-    app.shell.runtime.entries =
-        Arc::new(vec![Entry::new(path.clone(), Some(EntryKind::link(false)))]);
-    app.rebuild_entry_kind_cache();
+    app.set_entry_kind(&path, EntryKind::link(false));
 
     assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
 

@@ -1,11 +1,12 @@
 use super::{
-    normalize_windows_path_buf, FlistWalkerApp, PendingActiveIndexFinish, ResultSortMode,
-    ResultSortScope, SavedTabState, TabAccentColor,
+    normalize_windows_path_buf, EntryKindCacheState, FlistWalkerApp, PendingActiveIndexFinish,
+    ResultSortMode, ResultSortScope, SavedTabState, TabAccentColor,
 };
 use crate::app::worker_protocol::IndexEntry;
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
 use std::collections::{HashSet, VecDeque};
+use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -61,7 +62,8 @@ pub(super) struct TabResultState {
     pub(super) results_compacted: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
 pub(crate) struct AppTabState {
     pub(super) id: u64,
     pub(super) root: PathBuf,
@@ -74,6 +76,7 @@ pub(crate) struct AppTabState {
     pub(super) index_state: TabIndexState,
     pub(super) query_state: TabQueryState,
     pub(super) result_state: TabResultState,
+    pub(super) entry_kind_cache: EntryKindCacheState,
     pub(super) notice: String,
     pub(super) pending_request_id: Option<u64>,
     pub(super) pending_preview_request_id: Option<u64>,
@@ -112,6 +115,7 @@ impl TabIndexState {
             !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
     }
 
+    #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
             index: shell.shell.runtime.index.clone(),
@@ -136,6 +140,7 @@ impl TabIndexState {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.index = self.index.clone();
         shell.shell.runtime.all_entries = Arc::clone(&self.all_entries);
@@ -159,9 +164,80 @@ impl TabIndexState {
         shell.shell.indexing.search_resume_pending = self.search_resume_pending;
         shell.shell.indexing.search_rerun_pending = self.search_rerun_pending;
     }
+
+    pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
+        mem::swap(&mut self.index, &mut shell.shell.runtime.index);
+        mem::swap(&mut self.all_entries, &mut shell.shell.runtime.all_entries);
+        mem::swap(&mut self.entries, &mut shell.shell.runtime.entries);
+        mem::swap(
+            &mut self.pending_index_request_id,
+            &mut shell.shell.indexing.pending_request_id,
+        );
+        mem::swap(
+            &mut self.index_in_progress,
+            &mut shell.shell.indexing.in_progress,
+        );
+        mem::swap(
+            &mut self.pending_index_entries,
+            &mut shell.shell.indexing.pending_entries,
+        );
+        mem::swap(
+            &mut self.pending_index_entries_request_id,
+            &mut shell.shell.indexing.pending_entries_request_id,
+        );
+        mem::swap(
+            &mut self.pending_index_finish,
+            &mut shell.shell.indexing.pending_finish,
+        );
+        mem::swap(
+            &mut self.pending_kind_paths,
+            &mut shell.shell.indexing.pending_kind_paths,
+        );
+        mem::swap(
+            &mut self.pending_kind_paths_set,
+            &mut shell.shell.indexing.pending_kind_paths_set,
+        );
+        mem::swap(
+            &mut self.in_flight_kind_paths,
+            &mut shell.shell.indexing.in_flight_kind_paths,
+        );
+        mem::swap(
+            &mut self.resolved_kind_updates,
+            &mut shell.shell.indexing.resolved_kind_updates,
+        );
+        mem::swap(
+            &mut self.kind_resolution_epoch,
+            &mut shell.shell.indexing.kind_resolution_epoch,
+        );
+        mem::swap(
+            &mut self.kind_resolution_in_progress,
+            &mut shell.shell.indexing.kind_resolution_in_progress,
+        );
+        mem::swap(
+            &mut self.incremental_filtered_entries,
+            &mut shell.shell.indexing.incremental_filtered_entries,
+        );
+        mem::swap(
+            &mut self.last_incremental_results_refresh,
+            &mut shell.shell.indexing.last_incremental_results_refresh,
+        );
+        mem::swap(
+            &mut self.last_search_snapshot_len,
+            &mut shell.shell.indexing.last_search_snapshot_len,
+        );
+        mem::swap(
+            &mut self.search_resume_pending,
+            &mut shell.shell.indexing.search_resume_pending,
+        );
+        mem::swap(
+            &mut self.search_rerun_pending,
+            &mut shell.shell.indexing.search_rerun_pending,
+        );
+    }
 }
 
 impl TabQueryState {
+    #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
             query: shell.shell.runtime.query_state.query.clone(),
@@ -186,6 +262,7 @@ impl TabQueryState {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.query_state.query = self.query.clone();
         shell.shell.runtime.query_state.query_history = self.query_history.clone();
@@ -202,19 +279,49 @@ impl TabQueryState {
             self.history_search_results.clone();
         shell.shell.runtime.query_state.history_search_current = self.history_search_current;
     }
+
+    pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
+        let query_state = &mut shell.shell.runtime.query_state;
+        mem::swap(&mut self.query, &mut query_state.query);
+        mem::swap(&mut self.query_history, &mut query_state.query_history);
+        mem::swap(
+            &mut self.query_history_cursor,
+            &mut query_state.query_history_cursor,
+        );
+        mem::swap(
+            &mut self.query_history_draft,
+            &mut query_state.query_history_draft,
+        );
+        mem::swap(
+            &mut self.history_search_active,
+            &mut query_state.history_search_active,
+        );
+        mem::swap(
+            &mut self.history_search_query,
+            &mut query_state.history_search_query,
+        );
+        mem::swap(
+            &mut self.history_search_original_query,
+            &mut query_state.history_search_original_query,
+        );
+        mem::swap(
+            &mut self.history_search_results,
+            &mut query_state.history_search_results,
+        );
+        mem::swap(
+            &mut self.history_search_current,
+            &mut query_state.history_search_current,
+        );
+    }
 }
 
 impl TabResultState {
-    pub(super) fn begin_sort_request(&mut self, request_id: u64) {
-        self.pending_sort_request_id = Some(request_id);
-        self.sort_in_progress = true;
-    }
-
     pub(super) fn clear_sort_request_state(&mut self) {
         self.pending_sort_request_id = None;
         self.sort_in_progress = false;
     }
 
+    #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
             base_results: shell.shell.runtime.base_results.clone(),
@@ -231,6 +338,7 @@ impl TabResultState {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.base_results = self.base_results.clone();
         shell.shell.runtime.results = self.results.clone();
@@ -242,6 +350,40 @@ impl TabResultState {
         shell.shell.runtime.pinned_paths = self.pinned_paths.clone();
         shell.shell.runtime.current_row = self.current_row;
         shell.shell.runtime.preview = self.preview.clone();
+    }
+
+    pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
+        mem::swap(
+            &mut self.base_results,
+            &mut shell.shell.runtime.base_results,
+        );
+        mem::swap(&mut self.results, &mut shell.shell.runtime.results);
+        mem::swap(
+            &mut self.result_sort_mode,
+            &mut shell.shell.runtime.result_sort_mode,
+        );
+        mem::swap(
+            &mut self.result_sort_scope,
+            &mut shell.shell.runtime.result_sort_scope,
+        );
+        mem::swap(
+            &mut self.total_match_count,
+            &mut shell.shell.runtime.total_match_count,
+        );
+        mem::swap(
+            &mut self.pending_sort_request_id,
+            &mut shell.shell.worker_bus.sort.pending_request_id,
+        );
+        mem::swap(
+            &mut self.sort_in_progress,
+            &mut shell.shell.worker_bus.sort.in_progress,
+        );
+        mem::swap(
+            &mut self.pinned_paths,
+            &mut shell.shell.runtime.pinned_paths,
+        );
+        mem::swap(&mut self.current_row, &mut shell.shell.runtime.current_row);
+        mem::swap(&mut self.preview, &mut shell.shell.runtime.preview);
     }
 }
 
@@ -256,19 +398,9 @@ impl AppTabState {
         self.search_in_progress = false;
     }
 
-    pub(super) fn begin_preview_request(&mut self, request_id: u64) {
-        self.pending_preview_request_id = Some(request_id);
-        self.preview_in_progress = true;
-    }
-
     pub(super) fn clear_preview_request_state(&mut self) {
         self.pending_preview_request_id = None;
         self.preview_in_progress = false;
-    }
-
-    pub(super) fn begin_action_request(&mut self, request_id: u64) {
-        self.pending_action_request_id = Some(request_id);
-        self.action_in_progress = true;
     }
 
     pub(super) fn clear_action_request_state(&mut self) {
@@ -276,6 +408,7 @@ impl AppTabState {
         self.action_in_progress = false;
     }
 
+    #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp, id: u64) -> Self {
         Self {
             id,
@@ -293,6 +426,7 @@ impl AppTabState {
             index_state: TabIndexState::from_shell(shell),
             query_state: TabQueryState::from_shell(shell),
             result_state: TabResultState::from_shell(shell),
+            entry_kind_cache: shell.shell.cache.entry_kind.clone(),
             notice: shell.shell.runtime.notice.clone(),
             pending_request_id: shell.shell.search.pending_request_id(),
             pending_preview_request_id: shell.shell.worker_bus.preview.pending_request_id,
@@ -361,6 +495,7 @@ impl AppTabState {
                 preview: String::new(),
                 results_compacted: false,
             },
+            entry_kind_cache: EntryKindCacheState::default(),
             notice: "Restored tab".to_string(),
             pending_request_id: None,
             pending_preview_request_id: None,
@@ -371,6 +506,146 @@ impl AppTabState {
         }
     }
 
+    pub(super) fn scratch_from_shell(shell: &FlistWalkerApp, id: u64) -> Self {
+        let saved = Self::saved_from_shell(shell, false);
+        Self::from_saved(shell, id, &saved)
+    }
+
+    pub(super) fn new_tab_from_shell(shell: &FlistWalkerApp, id: u64) -> Self {
+        let base_results = shell
+            .shell
+            .runtime
+            .entries
+            .iter()
+            .take(shell.shell.runtime.limit)
+            .cloned()
+            .map(|entry| (entry.path, 0.0))
+            .collect::<Vec<_>>();
+        Self {
+            id,
+            root: shell.shell.runtime.root.clone(),
+            tab_accent: None,
+            use_filelist: true,
+            use_regex: shell.shell.runtime.use_regex,
+            ignore_case: shell.shell.runtime.ignore_case,
+            include_files: shell.shell.runtime.include_files,
+            include_dirs: shell.shell.runtime.include_dirs,
+            index_state: TabIndexState {
+                index: IndexBuildResult {
+                    entries: Vec::new(),
+                    source: shell.shell.runtime.index.source.clone(),
+                },
+                all_entries: Arc::clone(&shell.shell.runtime.all_entries),
+                entries: Arc::clone(&shell.shell.runtime.entries),
+                pending_index_request_id: None,
+                index_in_progress: false,
+                pending_index_entries: VecDeque::new(),
+                pending_index_entries_request_id: None,
+                pending_index_finish: None,
+                pending_kind_paths: VecDeque::new(),
+                pending_kind_paths_set: HashSet::new(),
+                in_flight_kind_paths: HashSet::new(),
+                resolved_kind_updates: Vec::new(),
+                kind_resolution_epoch: 1,
+                kind_resolution_in_progress: false,
+                incremental_filtered_entries: Vec::new(),
+                last_incremental_results_refresh: Instant::now(),
+                last_search_snapshot_len: shell.shell.runtime.entries.len(),
+                search_resume_pending: false,
+                search_rerun_pending: false,
+            },
+            query_state: TabQueryState {
+                query: String::new(),
+                query_history: shell.shell.runtime.query_state.query_history.clone(),
+                query_history_cursor: None,
+                query_history_draft: None,
+                history_search_active: false,
+                history_search_query: String::new(),
+                history_search_original_query: String::new(),
+                history_search_results: Vec::new(),
+                history_search_current: None,
+            },
+            result_state: TabResultState {
+                results: base_results.clone(),
+                base_results,
+                result_sort_mode: ResultSortMode::Score,
+                result_sort_scope: shell.shell.runtime.result_sort_scope,
+                total_match_count: shell.shell.runtime.entries.len(),
+                pending_sort_request_id: None,
+                sort_in_progress: false,
+                pinned_paths: HashSet::new(),
+                current_row: None,
+                preview: String::new(),
+                results_compacted: false,
+            },
+            entry_kind_cache: EntryKindCacheState::default(),
+            notice: "Opened new tab".to_string(),
+            pending_request_id: None,
+            pending_preview_request_id: None,
+            pending_action_request_id: None,
+            search_in_progress: false,
+            preview_in_progress: false,
+            action_in_progress: false,
+        }
+    }
+
+    pub(super) fn sync_small_fields_from_shell(&mut self, shell: &FlistWalkerApp) {
+        self.root.clone_from(&shell.shell.runtime.root);
+        self.use_filelist = shell.shell.runtime.use_filelist;
+        self.use_regex = shell.shell.runtime.use_regex;
+        self.ignore_case = shell.shell.runtime.ignore_case;
+        self.include_files = shell.shell.runtime.include_files;
+        self.include_dirs = shell.shell.runtime.include_dirs;
+    }
+
+    pub(super) fn apply_small_fields_to_shell(&self, shell: &mut FlistWalkerApp) {
+        shell.shell.runtime.root.clone_from(&self.root);
+        shell.shell.runtime.use_filelist = self.use_filelist;
+        shell.shell.runtime.use_regex = self.use_regex;
+        shell.shell.runtime.ignore_case = self.ignore_case;
+        shell.shell.runtime.include_files = self.include_files;
+        shell.shell.runtime.include_dirs = self.include_dirs;
+    }
+
+    pub(super) fn swap_payload_with_shell(&mut self, shell: &mut FlistWalkerApp) {
+        self.index_state.swap_shell(shell);
+        self.query_state.swap_shell(shell);
+        self.result_state.swap_shell(shell);
+        mem::swap(
+            &mut self.entry_kind_cache,
+            &mut shell.shell.cache.entry_kind,
+        );
+        mem::swap(&mut self.notice, &mut shell.shell.runtime.notice);
+
+        let shell_search_request_id = shell.shell.search.pending_request_id();
+        shell
+            .shell
+            .search
+            .set_pending_request_id(self.pending_request_id);
+        self.pending_request_id = shell_search_request_id;
+        mem::swap(
+            &mut self.pending_preview_request_id,
+            &mut shell.shell.worker_bus.preview.pending_request_id,
+        );
+        mem::swap(
+            &mut self.pending_action_request_id,
+            &mut shell.shell.worker_bus.action.pending_request_id,
+        );
+
+        let shell_search_in_progress = shell.shell.search.in_progress();
+        shell.shell.search.set_in_progress(self.search_in_progress);
+        self.search_in_progress = shell_search_in_progress;
+        mem::swap(
+            &mut self.preview_in_progress,
+            &mut shell.shell.worker_bus.preview.in_progress,
+        );
+        mem::swap(
+            &mut self.action_in_progress,
+            &mut shell.shell.worker_bus.action.in_progress,
+        );
+    }
+
+    #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.root = self.root.clone();
         shell.shell.runtime.use_filelist = self.use_filelist;
@@ -381,6 +656,7 @@ impl AppTabState {
         self.index_state.apply_shell(shell);
         self.query_state.apply_shell(shell);
         self.result_state.apply_shell(shell);
+        shell.shell.cache.entry_kind = self.entry_kind_cache.clone();
         shell.shell.runtime.notice = self.notice.clone();
         shell
             .shell
@@ -393,7 +669,7 @@ impl AppTabState {
         shell.shell.worker_bus.action.in_progress = self.action_in_progress;
     }
 
-    pub(super) fn into_saved(self, history_persist_disabled: bool) -> SavedTabState {
+    pub(super) fn to_saved(&self, history_persist_disabled: bool) -> SavedTabState {
         SavedTabState {
             root: self.root.to_string_lossy().to_string(),
             use_filelist: self.use_filelist,
@@ -401,13 +677,45 @@ impl AppTabState {
             ignore_case: self.ignore_case,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
-            query: self.query_state.query,
+            query: self.query_state.query.clone(),
             query_history: if history_persist_disabled {
                 Vec::new()
             } else {
-                self.query_state.query_history.into_iter().collect()
+                self.query_state.query_history.iter().cloned().collect()
             },
             tab_accent: self.tab_accent,
+        }
+    }
+
+    pub(super) fn saved_from_shell(
+        shell: &FlistWalkerApp,
+        history_persist_disabled: bool,
+    ) -> SavedTabState {
+        SavedTabState {
+            root: shell.shell.runtime.root.to_string_lossy().to_string(),
+            use_filelist: shell.shell.runtime.use_filelist,
+            use_regex: shell.shell.runtime.use_regex,
+            ignore_case: shell.shell.runtime.ignore_case,
+            include_files: shell.shell.runtime.include_files,
+            include_dirs: shell.shell.runtime.include_dirs,
+            query: shell.shell.runtime.query_state.query.clone(),
+            query_history: if history_persist_disabled {
+                Vec::new()
+            } else {
+                shell
+                    .shell
+                    .runtime
+                    .query_state
+                    .query_history
+                    .iter()
+                    .cloned()
+                    .collect()
+            },
+            tab_accent: shell
+                .shell
+                .tabs
+                .get(shell.shell.tabs.active_tab_index())
+                .and_then(|tab| tab.tab_accent),
         }
     }
 }

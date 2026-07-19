@@ -9,6 +9,7 @@
 - NFR-006: ソート追加後もインデクシング速度は既存実装より劣化させないこと。
 - NFR-007: 更新確認・ダウンロードは UI スレッドをブロックせず、失敗時も通常検索操作を継続可能でなければならない。
 - NFR-008: GUI の action、kind resolution、indexing のワーカー実行は同時実行数と待機件数に固定上限を持ち、UI スレッドをブロックせず、過負荷・切断・stale・shutdown の各経路で要求を終端状態へ収束させなければならない。
+- NFR-009: GUI の通常のタブ切替は、active tab の大規模な index、pending queue、kind resolution、incremental result、search result を要素単位で複製せず所有権移動で遷移し、候補件数に比例する同期コピーによって UI 入力応答性を損なってはならない。
 
 ### Constraints (CON)
 - CON-001: 本実装は Rust で行う。
