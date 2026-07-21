@@ -1,6 +1,13 @@
-use crate::path_utils::{display_path_with_mode, normalize_windows_path};
-use std::collections::BTreeMap;
 use std::path::Path;
+
+mod compiled;
+
+#[cfg(test)]
+pub(crate) use compiled::{ignore_compile_count, query_compile_count, reset_compile_counts};
+pub use compiled::{
+    CompiledIgnoreTerms, CompiledQuery, EvidenceLevel, PreparedCandidate, QueryEvaluation,
+    QueryOptions, QueryScope,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuerySpec {
@@ -109,149 +116,6 @@ pub fn token_uses_regex_syntax(token: &str) -> bool {
     })
 }
 
-fn chars_equal(a: char, b: char, ignore_case: bool) -> bool {
-    if ignore_case && a.is_ascii() && b.is_ascii() {
-        a.eq_ignore_ascii_case(&b)
-    } else {
-        a == b
-    }
-}
-
-fn exact_candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> bool {
-    let (anchored_start, anchored_end, core) = split_anchor(candidate);
-    if core.is_empty() {
-        return false;
-    }
-
-    let text_chars: Vec<char> = text.chars().collect();
-    let core_chars: Vec<char> = core.chars().collect();
-    if core_chars.len() > text_chars.len() {
-        return false;
-    }
-
-    for start in 0..=text_chars.len() - core_chars.len() {
-        if !core_chars
-            .iter()
-            .enumerate()
-            .all(|(offset, query)| chars_equal(text_chars[start + offset], *query, ignore_case))
-        {
-            continue;
-        }
-        if anchored_start && start != 0 {
-            continue;
-        }
-        if anchored_end && start + core_chars.len() != text_chars.len() {
-            continue;
-        }
-        return true;
-    }
-
-    false
-}
-
-fn fuzzy_candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> bool {
-    let (anchored_start, anchored_end, core) = split_anchor(candidate);
-    if core.is_empty() {
-        return false;
-    }
-
-    if anchored_start {
-        let Some(first_char) = core.chars().next() else {
-            return false;
-        };
-        if !text
-            .chars()
-            .next()
-            .is_some_and(|value| chars_equal(value, first_char, ignore_case))
-        {
-            return false;
-        }
-    }
-    if anchored_end {
-        let Some(last_char) = core.chars().last() else {
-            return false;
-        };
-        if !text
-            .chars()
-            .last()
-            .is_some_and(|value| chars_equal(value, last_char, ignore_case))
-        {
-            return false;
-        }
-    }
-
-    let mut qi = 0usize;
-    let query_chars: Vec<char> = core.chars().collect();
-    for ch in text.chars() {
-        if qi < query_chars.len() && chars_equal(ch, query_chars[qi], ignore_case) {
-            qi += 1;
-        }
-    }
-    qi == query_chars.len() || text.contains(core)
-}
-
-fn candidate_matches_text(text: &str, candidate: &str, ignore_case: bool) -> bool {
-    let Some((exact, parsed)) = parse_include_alternative(candidate) else {
-        return false;
-    };
-    if exact {
-        exact_candidate_matches_text(text, &parsed, ignore_case)
-    } else {
-        fuzzy_candidate_matches_text(text, &parsed, ignore_case)
-    }
-}
-
-fn literal_occurrence_count(text: &str, needle: &str, ignore_case: bool) -> usize {
-    let text = if ignore_case {
-        text.to_ascii_lowercase()
-    } else {
-        text.to_string()
-    };
-    let needle = if ignore_case {
-        needle.to_ascii_lowercase()
-    } else {
-        needle.to_string()
-    };
-    if needle.is_empty() {
-        return 0;
-    }
-
-    let mut count = 0;
-    let mut search_from = 0;
-    while let Some(offset) = text[search_from..].find(&needle) {
-        count += 1;
-        search_from += offset + needle.len();
-    }
-    count
-}
-
-fn exact_terms_match_texts(
-    terms: &[String],
-    filename: &str,
-    display: &str,
-    ignore_case: bool,
-) -> bool {
-    let mut repeated_unanchored = BTreeMap::<&str, usize>::new();
-    for term in terms {
-        let (anchored_start, anchored_end, core) = split_anchor(term);
-        if !anchored_start && !anchored_end {
-            *repeated_unanchored.entry(core).or_default() += 1;
-            continue;
-        }
-        if !exact_candidate_matches_text(filename, term, ignore_case)
-            && !exact_candidate_matches_text(display, term, ignore_case)
-        {
-            return false;
-        }
-    }
-
-    repeated_unanchored.into_iter().all(|(core, required)| {
-        let filename_count = literal_occurrence_count(filename, core, ignore_case);
-        let display_count = literal_occurrence_count(display, core, ignore_case);
-        filename_count.max(display_count) >= required
-    })
-}
-
 pub fn has_visible_match(
     path: &Path,
     root: &Path,
@@ -262,39 +126,17 @@ pub fn has_visible_match(
     if query.trim().is_empty() {
         return true;
     }
-
-    let spec = parse_query(query);
-    if spec.include_terms.is_empty() && spec.exact_terms.is_empty() {
-        return true;
-    }
-
-    let display = display_path_with_mode(path, root, prefer_relative);
-    let normalized_path = normalize_windows_path(path);
-    let filename = normalized_path
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or_default();
-
-    if !exact_terms_match_texts(&spec.exact_terms, filename, &display, ignore_case) {
+    let Ok(compiled) = CompiledQuery::compile(
+        query,
+        QueryOptions {
+            use_regex: false,
+            ignore_case,
+        },
+    ) else {
         return false;
-    }
-
-    for term in &spec.include_terms {
-        let mut matched = false;
-        for candidate in include_alternatives(term) {
-            if candidate_matches_text(filename, candidate, ignore_case)
-                || candidate_matches_text(&display, candidate, ignore_case)
-            {
-                matched = true;
-                break;
-            }
-        }
-        if !matched {
-            return false;
-        }
-    }
-
-    true
+    };
+    let prepared = compiled.prepare_candidate(path, Some(root), prefer_relative);
+    compiled.matches_positive_projection(&prepared)
 }
 
 pub fn path_matches_ignore_terms(
@@ -307,32 +149,23 @@ pub fn path_matches_ignore_terms(
     if ignore_terms.is_empty() {
         return false;
     }
-
-    let display = display_path_with_mode(path, root, prefer_relative);
-    let normalized_path = normalize_windows_path(path);
-    let filename = normalized_path
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or_default();
-
-    for term in ignore_terms {
-        for candidate in include_alternatives(term) {
-            if exact_candidate_matches_text(filename, candidate, ignore_case)
-                || exact_candidate_matches_text(&display, candidate, ignore_case)
-            {
-                return true;
-            }
-        }
-    }
-
-    false
+    let compiled = CompiledIgnoreTerms::compile(ignore_terms, ignore_case);
+    compiled.matches_path(
+        path,
+        QueryScope {
+            root: Some(root),
+            prefer_relative,
+            ignore_case,
+        },
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         has_visible_match, parse_include_alternative, parse_query, path_matches_ignore_terms,
-        split_anchor, token_uses_regex_syntax, QuerySpec,
+        query_compile_count, reset_compile_counts, split_anchor, token_uses_regex_syntax,
+        CompiledQuery, EvidenceLevel, QueryOptions, QuerySpec,
     };
     use std::path::PathBuf;
 
@@ -421,6 +254,26 @@ mod tests {
     }
 
     #[test]
+    fn tc_155_ignore_terms_preserve_literal_quote_behavior() {
+        let root = PathBuf::from("/tmp/root");
+        let terms = vec!["'old".to_string()];
+        assert!(path_matches_ignore_terms(
+            &root.join("build/'old-cache.txt"),
+            &root,
+            &terms,
+            true,
+            true,
+        ));
+        assert!(!path_matches_ignore_terms(
+            &root.join("build/old-cache.txt"),
+            &root,
+            &terms,
+            true,
+            true,
+        ));
+    }
+
+    #[test]
     fn visible_match_repeated_exact_tokens_require_repeated_literal_occurrences() {
         let root = PathBuf::from("/tmp/root");
         assert!(!has_visible_match(
@@ -444,5 +297,49 @@ mod tests {
             true,
             true
         ));
+    }
+
+    #[test]
+    fn tc_155_regression_visible_match_remains_a_positive_term_projection() {
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("src/main.py");
+
+        assert!(has_visible_match(&path, &root, "main !src", true, true));
+        assert!(!has_visible_match(&path, &root, "main zzzz", true, true));
+    }
+
+    #[test]
+    fn tc_155_compiled_query_supplies_visibility_score_and_multibyte_spans() {
+        reset_compile_counts();
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("日本語/テスト-main.rs");
+        let compiled = CompiledQuery::compile(
+            "テスト 'main !vendor",
+            QueryOptions {
+                use_regex: false,
+                ignore_case: true,
+            },
+        )
+        .expect("compile query");
+        let prepared = compiled.prepare_candidate(&path, Some(&root), true);
+
+        let ranked = compiled
+            .evaluate(&prepared, EvidenceLevel::RankOnly)
+            .expect("rank match");
+        assert!(ranked.score.is_finite());
+        assert!(ranked.spans.is_empty());
+
+        let highlighted = compiled
+            .evaluate(&prepared, EvidenceLevel::WithSpans)
+            .expect("highlight match");
+        let visible: Vec<char> = prepared.visible_text().chars().collect();
+        let highlighted_text: String = highlighted
+            .spans
+            .iter()
+            .filter_map(|index| visible.get(*index))
+            .collect();
+        assert!(highlighted_text.contains("テスト"));
+        assert!(highlighted_text.contains("main"));
+        assert_eq!(query_compile_count(), 1);
     }
 }

@@ -54,6 +54,46 @@ fn limited_search_reports_total_match_count() {
 }
 
 #[test]
+fn tc_155_regression_rank_search_compiles_query_once_per_request() {
+    crate::query::reset_compile_counts();
+    let entries = Arc::new(vec![Entry::new(
+        PathBuf::from("/tmp/src/main.rs"),
+        Some(crate::entry::EntryKind::file()),
+    )]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (result, error) = rank_search_results(
+        &entries,
+        "main",
+        Path::new("/tmp"),
+        10,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchResultSortMode::Score,
+        SearchResultSortScope::ShownResults,
+    );
+
+    assert!(error.is_none());
+    assert_eq!(result.total_match_count, 1);
+    assert_eq!(crate::query::query_compile_count(), 1);
+}
+
+#[test]
+fn tc_155_regression_authoritative_search_still_applies_exclusion() {
+    let entries = vec![
+        PathBuf::from("/tmp/src/main.rs"),
+        PathBuf::from("/tmp/docs/main.rs"),
+    ];
+
+    let result = search_entries("main !src", &entries, 10, false, true);
+
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].0, PathBuf::from("/tmp/docs/main.rs"));
+}
+
+#[test]
 fn all_matches_name_sort_can_surface_items_outside_score_limited_snapshot() {
     let entries = Arc::new(vec![
         Entry::new(
@@ -564,6 +604,177 @@ fn perf_search_100k_candidates_reports_latency() {
     eprintln!("search_100k_elapsed_ms={}", elapsed.as_millis());
     assert!(!out.is_empty());
     assert!(elapsed < Duration::from_secs(2));
+}
+
+#[test]
+#[ignore = "TC-156 release-mode perf regression; run explicitly"]
+fn perf_search_100k_cold_warm_query_shapes() {
+    const SAMPLE_COUNT: usize = 5;
+    const HARD_SAMPLE_LIMIT: Duration = Duration::from_millis(250);
+    let root = PathBuf::from("/tmp");
+    let entries = Arc::new(
+        (0..100_000)
+            .map(|index| {
+                Entry::file(PathBuf::from(format!(
+                    "/tmp/src/group_{:02}/module_{index:06}.rs",
+                    index % 32
+                )))
+            })
+            .collect::<Vec<_>>(),
+    );
+
+    let mut warmup_cache = SearchPrefixCache::default();
+    let _ = rank_search_results(
+        &entries,
+        "module_000",
+        &root,
+        100,
+        false,
+        true,
+        true,
+        &mut warmup_cache,
+        SearchResultSortMode::Score,
+        SearchResultSortScope::ShownResults,
+    );
+
+    let shapes = [
+        ("selective-fuzzy", "module_099", false),
+        ("dense-fuzzy", "module", false),
+        ("multi-and", "src module_099", false),
+        ("exact", "'module_099", false),
+        ("inverse", "module_099 !vendor", false),
+        ("anchor", "^module_099", false),
+        ("or", "module_099|module_098", false),
+        ("regex", r"module_09[0-9]{4}", true),
+    ];
+
+    for (label, query, use_regex) in shapes {
+        let compile_started = Instant::now();
+        let compiled = crate::query::CompiledQuery::compile(
+            query,
+            crate::query::QueryOptions {
+                use_regex,
+                ignore_case: true,
+            },
+        )
+        .expect("compile perf query");
+        let compile_micros = compile_started.elapsed().as_micros();
+        std::hint::black_box(compiled);
+        let mut samples = Vec::with_capacity(SAMPLE_COUNT);
+        let mut last = None;
+        for _ in 0..SAMPLE_COUNT {
+            let mut cache = SearchPrefixCache::default();
+            let started = Instant::now();
+            let (result, error) = rank_search_results(
+                &entries,
+                query,
+                &root,
+                100,
+                use_regex,
+                true,
+                true,
+                &mut cache,
+                SearchResultSortMode::Score,
+                SearchResultSortScope::ShownResults,
+            );
+            samples.push(started.elapsed());
+            assert!(error.is_none(), "{label}: {error:?}");
+            assert!(result.total_match_count > 0, "{label} must match");
+            last = Some(result);
+        }
+        samples.sort_unstable();
+        let median = samples[SAMPLE_COUNT / 2];
+        let maximum = *samples.last().expect("sample");
+        let result = last.expect("result");
+        eprintln!(
+            "tc_156 shape={label} candidates={} evaluated={} matches={} compile_us={} median_ms={} max_ms={}",
+            entries.len(),
+            result.evaluated_candidate_count,
+            result.total_match_count,
+            compile_micros,
+            median.as_millis(),
+            maximum.as_millis()
+        );
+        assert!(
+            median < HARD_SAMPLE_LIMIT,
+            "{label} median {:?} exceeded {:?}",
+            median,
+            HARD_SAMPLE_LIMIT
+        );
+        assert!(
+            maximum < HARD_SAMPLE_LIMIT,
+            "{label} maximum {:?} exceeded {:?}",
+            maximum,
+            HARD_SAMPLE_LIMIT
+        );
+    }
+
+    let mut cold_cache = SearchPrefixCache::default();
+    let (cold, cold_error) = rank_search_results(
+        &entries,
+        "module_0999",
+        &root,
+        100,
+        false,
+        true,
+        true,
+        &mut cold_cache,
+        SearchResultSortMode::Score,
+        SearchResultSortScope::ShownResults,
+    );
+    assert!(cold_error.is_none());
+
+    let mut warm_samples = Vec::with_capacity(SAMPLE_COUNT);
+    let mut warm_result = None;
+    for _ in 0..SAMPLE_COUNT {
+        let mut cache = SearchPrefixCache::default();
+        let (_, seed_error) = rank_search_results(
+            &entries,
+            "module_099",
+            &root,
+            100,
+            false,
+            true,
+            true,
+            &mut cache,
+            SearchResultSortMode::Score,
+            SearchResultSortScope::ShownResults,
+        );
+        assert!(seed_error.is_none());
+        let started = Instant::now();
+        let (warm, error) = rank_search_results(
+            &entries,
+            "module_0999",
+            &root,
+            100,
+            false,
+            true,
+            true,
+            &mut cache,
+            SearchResultSortMode::Score,
+            SearchResultSortScope::ShownResults,
+        );
+        warm_samples.push(started.elapsed());
+        assert!(error.is_none());
+        warm_result = Some(warm);
+    }
+    warm_samples.sort_unstable();
+    let warm_median = warm_samples[SAMPLE_COUNT / 2];
+    let warm_maximum = *warm_samples.last().expect("warm sample");
+    let warm = warm_result.expect("warm result");
+    eprintln!(
+        "tc_156 shape=prefix-warm candidates={} evaluated={} matches={} median_ms={} max_ms={}",
+        entries.len(),
+        warm.evaluated_candidate_count,
+        warm.total_match_count,
+        warm_median.as_millis(),
+        warm_maximum.as_millis()
+    );
+    assert_eq!(warm.results, cold.results);
+    assert_eq!(warm.total_match_count, cold.total_match_count);
+    assert!(warm.evaluated_candidate_count < cold.evaluated_candidate_count);
+    assert!(warm_median < HARD_SAMPLE_LIMIT);
+    assert!(warm_maximum < HARD_SAMPLE_LIMIT);
 }
 
 #[test]

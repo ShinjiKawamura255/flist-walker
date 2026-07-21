@@ -10,7 +10,13 @@
 - MUST: `^` / `$` は非 regex モードでは「先頭/末尾の隣接文字制約 + ファジー評価」として評価する。
 - MUST: regex モードでも include token が regex 構文（例: `[](){}.*+?\\`）を含まない plain token の場合は、非 regex モードと同じファジー条件として評価する。
 - MUST: regex モードで include token が regex 構文を含む場合のみ、その token を regex として評価する。
+- MUST: token 内の `|` は OR alternative として評価し、空 alternative は別の有効 alternative がある場合に無視する。各 alternative の先頭にある `'` はその alternative だけを完全一致にする。
 - MUST: 検索結果のハイライトは search と同じ query interpretation を用い、exact / include / exclude / anchor / OR の解釈差を生じさせてはならない。
+- MUST: query は検索要求ごと、または GUI highlight cache scope ごとに1回だけ compile し、候補ごと・表示行ごとの再 parse / regex compile を行ってはならない。
+- MUST: 同一候補に対する match/visibility、score、highlight span は同じ compiled query と clause matcher から導出し、search 完了後に別 evaluator で可視性を再判定してはならない。
+- MUST: rank-only 評価は全候補分の highlight span を割り当てず、highlight span が必要な候補だけ同じ clause matcher を span 付きで評価する。
+- MUST: 既存の query/search/highlight 公開 API は、空 query、無効 regex、相対/絶対表示、case mode を含む既存の戻り値・エラー契約を維持する。
+- MUST: 公開 `has_visible_match` adapter は positive term の成立だけを投影し、除外 term を判定に含めない。公開 highlight adapter は各 positive term の一致 span を独立に投影し、別の positive term の不一致または除外 term の一致を理由に、成立済み span を消してはならない。authoritative search evaluation だけが全 positive term と除外 term を組み合わせた最終 truth を返す。
 - SHOULD: 厳密な prefix/suffix 一致が必要な場合は regex モードを使える。
 - MUST: 上位 `limit` 件を関連度順で返す。
 - SHOULD: 大文字小文字差を緩和する。
@@ -22,6 +28,13 @@
 ### Edge / Error
 - クエリ空文字または `limit=0` は空結果を返す。
 - 正規表現モードで無効パターンは結果を返さず、GUI ではエラー理由を通知する。
+
+### Regression Guard: Public positive projections
+- Scenario: shared evaluator 移行で `main !src` の公開 visibility adapter と `main zzzz` の公開 highlight adapter が authoritative full-query truth を適用し、従来の positive projection を失う。
+- Expected Behavior: visibility は `main` の成立を返し、highlight は成立した `main` の span を返す一方、authoritative search は除外または未成立 term を含む候補を結果から除く。
+- Non-goals: search の除外条件、AND 条件、score/order、operator syntax は変更しない。
+- Related Tests: `tc_155_regression_visible_match_remains_a_positive_term_projection`、`tc_155_regression_highlight_remains_a_partial_positive_projection`。
+- Notes for Future Changes: 公開 projection adapter を full `evaluate` へ置換せず、共有 clause primitive から projection と authoritative truth を分けて導出する。
 
 ## SP-004 ファイル実行/オープン
 ### Requirements
@@ -94,6 +107,8 @@
 - MUST: indexer/search/actions/ui_model を分離し単体テスト可能にする。
 - MUST: OS 依存処理はモック可能な境界を維持する。
 - SHOULD: 仕様IDとテストIDの対応を継続管理する。
+- MUST: query domain は compiled query、prepared candidate、compiled ignore terms を所有し、search は traversal/ranking、UI は bounded highlight cache/rendering を所有する。
+- MUST: ignore terms は CLI の filter operation ごと、GUI の terms/case scope または filter pass ごとに1回だけ compile し、候補 loop で公開 single-path adapter を繰り返し compile してはならない。
 
 ### Preconditions / Postconditions
 - Preconditions: モジュール境界が定義済み。

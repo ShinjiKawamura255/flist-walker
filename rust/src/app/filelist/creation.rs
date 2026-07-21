@@ -6,11 +6,19 @@ use crate::indexer::{ancestor_filelist_propagation_needed, find_filelist_in_firs
 use std::path::PathBuf;
 impl FlistWalkerApp {
     pub(in crate::app) fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
+        let compiled_ignore_terms = self.shell.ui.ignore_list_enabled.then(|| {
+            crate::query::CompiledIgnoreTerms::compile(
+                self.shell.runtime.ignore_list_terms.as_slice(),
+                self.shell.runtime.ignore_case,
+            )
+        });
         self.shell
             .runtime
             .all_entries
             .iter()
-            .filter(|entry| self.is_entry_visible_for_current_filter(entry))
+            .filter(|entry| {
+                self.is_entry_visible_for_current_filter(entry, compiled_ignore_terms.as_ref())
+            })
             .map(|entry| entry.path.clone())
             .collect()
     }

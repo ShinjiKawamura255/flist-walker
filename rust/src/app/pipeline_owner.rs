@@ -102,6 +102,7 @@ impl<'a> PipelineOwner<'a> {
             self.app.reset_kind_resolution_state();
         }
 
+        let compiled_ignore_terms = self.app.compiled_ignore_terms();
         let source_is_all_entries =
             !self.app.shell.indexing.in_progress || self.app.shell.runtime.index.entries.is_empty();
         let base = if !source_is_all_entries {
@@ -136,7 +137,11 @@ impl<'a> PipelineOwner<'a> {
         // Ignore List must stay in the filtered path even when files/folders are both enabled,
         // otherwise the default all-entries snapshot leaks ignored paths back into the UI.
         if needs_filtering {
-            self.app.shell.runtime.entries = Arc::new(self.filtered_entries(base));
+            self.app.shell.runtime.entries = Arc::new(Self::filtered_entries(
+                self.app,
+                base,
+                compiled_ignore_terms.as_deref(),
+            ));
         } else if source_is_all_entries {
             self.app.shell.runtime.entries = Arc::clone(&self.app.shell.runtime.all_entries);
         } else {
@@ -285,10 +290,14 @@ impl<'a> PipelineOwner<'a> {
             && self.app.shell.runtime.result_sort_mode != ResultSortMode::Score
     }
 
-    fn filtered_entries(&self, source: &[Entry]) -> Vec<Entry> {
+    fn filtered_entries(
+        app: &FlistWalkerApp,
+        source: &[Entry],
+        ignore_terms: Option<&crate::query::CompiledIgnoreTerms>,
+    ) -> Vec<Entry> {
         source
             .iter()
-            .filter(|entry| self.app.is_entry_visible_for_current_filter(entry))
+            .filter(|entry| app.is_entry_visible_for_current_filter(entry, ignore_terms))
             .cloned()
             .collect()
     }

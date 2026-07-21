@@ -68,6 +68,9 @@
 - SHOULD: 10万件規模で検索応答 100ms 未満を目標とする。
 - SHOULD: インデックス構築中も UI 操作が停止しない。
 - SHOULD: 正規表現クエリはクエリ単位でコンパイルし、候補ごとの再コンパイルを避ける。
+- MUST: TC-156 の 10万件 fixture は計測区間外で構築し、release mode で cold（空 prefix cache）と warm（cacheable query を seed 後に単調延長）を5回以上計測して median と maximum を報告する。
+- MUST: TC-156 は selective fuzzy、multi-token AND、exact、inverse/exclusion、anchor、OR、regex の sparse/dense shape を含め、cold/warm の path・score・order 一致と warm の評価候補削減を検証し、各 shape の maximum が 250ms 未満であることを weekly regression ceiling として検証する。
+- MUST: prefix cache は候補 snapshot の live identity と、`ignore_case`、`prefer_relative`、正規化 root を key に含め、異なる検索意味論の候補集合を再利用してはならない。
 - SHOULD: プレビューキャッシュは上限管理し、長時間利用でメモリが無制限に増加しない。
 
 ### Preconditions / Postconditions

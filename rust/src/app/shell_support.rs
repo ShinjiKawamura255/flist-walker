@@ -379,16 +379,33 @@ impl FlistWalkerApp {
         entry.is_visible_for_flags(include_files, include_dirs)
     }
 
-    pub(super) fn is_entry_visible_for_current_filter(&self, entry: &Entry) -> bool {
-        if self.shell.ui.ignore_list_enabled
-            && crate::query::path_matches_ignore_terms(
+    pub(super) fn compiled_ignore_terms(
+        &mut self,
+    ) -> Option<std::sync::Arc<crate::query::CompiledIgnoreTerms>> {
+        if !self.shell.ui.ignore_list_enabled || self.shell.runtime.ignore_list_terms.is_empty() {
+            return None;
+        }
+        Some(self.shell.cache.ignore_matcher.compiled(
+            self.shell.runtime.ignore_list_terms.as_slice(),
+            self.shell.runtime.ignore_case,
+        ))
+    }
+
+    pub(super) fn is_entry_visible_for_current_filter(
+        &self,
+        entry: &Entry,
+        ignore_terms: Option<&crate::query::CompiledIgnoreTerms>,
+    ) -> bool {
+        if ignore_terms.is_some_and(|compiled| {
+            compiled.matches_path(
                 entry.path(),
-                &self.shell.runtime.root,
-                self.shell.runtime.ignore_list_terms.as_slice(),
-                self.prefer_relative_display(),
-                self.shell.runtime.ignore_case,
+                crate::query::QueryScope {
+                    root: Some(&self.shell.runtime.root),
+                    prefer_relative: self.prefer_relative_display(),
+                    ignore_case: self.shell.runtime.ignore_case,
+                },
             )
-        {
+        }) {
             return false;
         }
         let kind = self.find_entry_kind(entry.path()).or(entry.kind);

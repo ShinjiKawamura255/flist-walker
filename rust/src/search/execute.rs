@@ -1,9 +1,10 @@
 use super::{
     config::{search_parallel_chunk_size, with_search_thread_pool},
-    match_eval::{evaluate_candidate, CompiledQuery, SearchContext},
+    match_eval::{evaluate_candidate, SearchContext},
     SearchCandidateScore, SearchScoredMatches,
 };
 use crate::entry::Entry;
+use crate::query::CompiledQuery;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use rayon::prelude::*;
 use std::path::Path;

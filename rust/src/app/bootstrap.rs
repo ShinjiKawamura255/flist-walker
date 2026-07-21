@@ -3,11 +3,12 @@ use super::{
     spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
     ActionWorkerBus, AppRuntimeState, AppShellState, CacheStateBundle, EntryKindCacheState,
     FeatureStateBundle, FileListManager, FileListWorkerBus, FlistWalkerApp, HashSet,
-    HighlightCacheState, IndexBuildResult, IndexCoordinator, IndexRequest, IndexResponse,
-    IndexSource, KindWorkerBus, LaunchSettings, PreviewCacheState, PreviewWorkerBus, QueryState,
-    Receiver, ResultSortMode, ResultSortScope, RootBrowserState, RuntimeUiState, SavedTabState,
-    SearchCoordinator, SearchRequest, SearchResponse, Sender, SortMetadataCacheState,
-    SortWorkerBus, TabSessionState, UpdateWorkerBus, WorkerBus, WorkerRuntime,
+    HighlightCacheState, IgnoreMatcherCacheState, IndexBuildResult, IndexCoordinator, IndexRequest,
+    IndexResponse, IndexSource, KindWorkerBus, LaunchSettings, PreviewCacheState, PreviewWorkerBus,
+    QueryState, Receiver, ResultSortMode, ResultSortScope, RootBrowserState, RuntimeUiState,
+    SavedTabState, SearchCoordinator, SearchRequest, SearchResponse, Sender,
+    SortMetadataCacheState, SortWorkerBus, TabSessionState, UpdateWorkerBus, WorkerBus,
+    WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
 use crate::app::worker_channel::BoundedSender;
@@ -328,6 +329,7 @@ impl FlistWalkerApp {
                 cache: CacheStateBundle {
                     preview: PreviewCacheState::default(),
                     highlight: HighlightCacheState::with_scope_ignore_case(true),
+                    ignore_matcher: IgnoreMatcherCacheState::default(),
                     entry_kind: EntryKindCacheState::default(),
                     sort_metadata: SortMetadataCacheState::default(),
                 },

@@ -1,5 +1,6 @@
 use super::{EntryKind, HighlightCacheKey, SortMetadata};
 use crate::path_utils::path_key;
+use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions};
 use std::collections::{HashMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -18,8 +19,16 @@ pub(super) struct HighlightCacheState {
     scope_use_regex: bool,
     scope_ignore_case: bool,
     scope_prefer_relative: bool,
+    compiled: Option<Arc<CompiledQuery>>,
     entries: HashMap<HighlightCacheKey, Arc<Vec<u16>>>,
     order: VecDeque<HighlightCacheKey>,
+}
+
+#[derive(Default)]
+pub(super) struct IgnoreMatcherCacheState {
+    scope_terms: Vec<String>,
+    scope_ignore_case: bool,
+    compiled: Option<Arc<CompiledIgnoreTerms>>,
 }
 
 #[derive(Default)]
@@ -123,12 +132,26 @@ impl HighlightCacheState {
         ignore_case: bool,
         prefer_relative: bool,
     ) {
+        let compiled = CompiledQuery::compile(
+            &query,
+            QueryOptions {
+                use_regex,
+                ignore_case,
+            },
+        )
+        .ok()
+        .map(Arc::new);
         self.scope_query = query;
         self.scope_root = root;
         self.scope_use_regex = use_regex;
         self.scope_ignore_case = ignore_case;
         self.scope_prefer_relative = prefer_relative;
+        self.compiled = compiled;
         self.clear();
+    }
+
+    pub(super) fn compiled(&self) -> Option<Arc<CompiledQuery>> {
+        self.compiled.as_ref().map(Arc::clone)
     }
 
     pub(super) fn get(&self, key: &HighlightCacheKey) -> Option<Arc<Vec<u16>>> {
@@ -150,6 +173,28 @@ impl HighlightCacheState {
                 self.entries.remove(&oldest);
             }
         }
+    }
+}
+
+impl IgnoreMatcherCacheState {
+    pub(super) fn compiled(
+        &mut self,
+        terms: &[String],
+        ignore_case: bool,
+    ) -> Arc<CompiledIgnoreTerms> {
+        if self.compiled.is_none()
+            || self.scope_ignore_case != ignore_case
+            || self.scope_terms != terms
+        {
+            self.scope_terms = terms.to_vec();
+            self.scope_ignore_case = ignore_case;
+            self.compiled = Some(Arc::new(CompiledIgnoreTerms::compile(terms, ignore_case)));
+        }
+        Arc::clone(
+            self.compiled
+                .as_ref()
+                .expect("ignore matcher is compiled for the requested scope"),
+        )
     }
 }
 

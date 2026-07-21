@@ -1,4 +1,4 @@
-use super::{match_positions_for_path, EntryKind, FlistWalkerApp, HighlightCacheKey};
+use super::{match_positions_for_path_with_compiled, EntryKind, FlistWalkerApp, HighlightCacheKey};
 use crate::app::PreviewRequest;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -82,14 +82,20 @@ impl FlistWalkerApp {
             return positions;
         }
 
-        let positions = Self::compact_highlight_positions(match_positions_for_path(
-            path,
-            &self.shell.runtime.root,
-            &self.shell.runtime.query_state.query,
-            prefer_relative,
-            self.shell.runtime.use_regex,
-            self.shell.runtime.ignore_case,
-        ));
+        let positions = self
+            .shell
+            .cache
+            .highlight
+            .compiled()
+            .map(|compiled| {
+                Self::compact_highlight_positions(match_positions_for_path_with_compiled(
+                    path,
+                    &self.shell.runtime.root,
+                    &compiled,
+                    prefer_relative,
+                ))
+            })
+            .unwrap_or_default();
         self.cache_highlight_positions_for_key(key.clone(), positions);
         self.shell
             .cache

@@ -2,7 +2,7 @@ use crate::entry::{Entry, EntryDisplayKind, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
 use crate::path_utils::normalize_windows_path_buf;
 use crate::ui_model::{
-    display_path_with_mode, match_positions_for_path, normalize_path_for_display,
+    display_path_with_mode, match_positions_for_path_with_compiled, normalize_path_for_display,
 };
 use crate::updater::{
     forced_update_check_failure_message, self_update_disabled, should_skip_update_prompt,
@@ -55,7 +55,10 @@ mod worker_tasks;
 mod workers;
 
 use action_authorization::{lexical_action_path_precheck, ActionPathPrecheck};
-use cache::{EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState};
+use cache::{
+    EntryKindCacheState, HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState,
+    SortMetadataCacheState,
+};
 use coordinator::normalized_compare_key;
 use index_coordinator::IndexCoordinator;
 use index_worker::spawn_index_worker;

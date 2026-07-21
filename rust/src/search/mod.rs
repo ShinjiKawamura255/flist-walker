@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, warn};
 
-pub(crate) use cache::{SearchEntriesSnapshotKey, SearchPrefixCache};
+pub(crate) use cache::SearchPrefixCache;
 use config::{resolve_execution_mode, SearchExecutionMode};
 use execute::{
     collect_entries_parallel, collect_entries_sequential, collect_parallel, collect_sequential,
@@ -44,6 +44,7 @@ pub(crate) struct SearchScoredMatches {
 pub(crate) struct SearchResultSet {
     pub(crate) results: Vec<(PathBuf, f64)>,
     pub(crate) total_match_count: usize,
+    pub(crate) evaluated_candidate_count: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -81,11 +82,17 @@ pub(crate) fn rank_search_results(
     sort_scope: SearchResultSortScope,
 ) -> (SearchResultSet, Option<String>) {
     let query_trimmed = query.trim().to_string();
-    let snapshot = SearchEntriesSnapshotKey::from_entries(entries);
     let cached_candidates = if use_regex {
         None
     } else {
-        prefix_cache.lookup_candidates(snapshot, &query_trimmed)
+        prefix_cache.lookup_candidates(entries, root, ignore_case, prefer_relative, &query_trimmed)
+    };
+    let evaluated_candidate_count = if query_trimmed.is_empty() {
+        0
+    } else {
+        cached_candidates
+            .as_ref()
+            .map_or(entries.len(), |candidates| candidates.len())
     };
     let scored_matches = if query_trimmed.is_empty() {
         SearchScoredMatches {
@@ -113,20 +120,6 @@ pub(crate) fn rank_search_results(
             Err(err) => return (SearchResultSet::default(), Some(err)),
         }
     };
-    let mut scored_matches = scored_matches;
-    if !use_regex {
-        scored_matches.scored.retain(|item| {
-            entries.get(item.index).is_some_and(|entry| {
-                crate::query::has_visible_match(
-                    entry.path(),
-                    root,
-                    query,
-                    prefer_relative,
-                    ignore_case,
-                )
-            })
-        });
-    }
     let total_match_count = scored_matches.scored.len();
     if SearchPrefixCache::is_cacheable_query(&query_trimmed)
         && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
@@ -134,7 +127,14 @@ pub(crate) fn rank_search_results(
         let mut ranked = scored_matches.scored.clone();
         sort_scored_matches(&mut ranked);
         let matched_indices = ranked.iter().map(|item| item.index).collect();
-        prefix_cache.maybe_store(snapshot, &query_trimmed, matched_indices);
+        prefix_cache.maybe_store(
+            entries,
+            root,
+            ignore_case,
+            prefer_relative,
+            &query_trimmed,
+            matched_indices,
+        );
     }
     let ranked = match (sort_scope, sort_mode) {
         (SearchResultSortScope::AllMatches, SearchResultSortMode::NameAsc)
@@ -157,6 +157,7 @@ pub(crate) fn rank_search_results(
         SearchResultSet {
             results,
             total_match_count,
+            evaluated_candidate_count,
         },
         None,
     )
@@ -355,7 +356,6 @@ fn try_collect_entry_matches_with_mode(
     let ctx = SearchContext {
         root: options.root,
         prefer_relative: options.prefer_relative,
-        ignore_case: options.ignore_case,
     };
     let candidate_count = options
         .candidate_indices
@@ -396,7 +396,6 @@ fn try_collect_search_matches_with_mode(
     let ctx = SearchContext {
         root: options.root,
         prefer_relative: options.prefer_relative,
-        ignore_case: options.ignore_case,
     };
     let candidate_count = options
         .candidate_indices
@@ -455,7 +454,7 @@ pub(crate) fn try_search_entries_with_scope_and_count(
 ) -> Result<SearchResultSet, String> {
     let started_at = Instant::now();
     let path_refs = entries.iter().map(PathBuf::as_path).collect::<Vec<_>>();
-    let mut scored = try_collect_search_matches(
+    let scored = try_collect_search_matches(
         query,
         &path_refs,
         use_regex,
@@ -464,15 +463,6 @@ pub(crate) fn try_search_entries_with_scope_and_count(
         prefer_relative,
         None,
     )?;
-    if !use_regex {
-        if let Some(root) = root {
-            scored.scored.retain(|item| {
-                path_refs.get(item.index).is_some_and(|path| {
-                    crate::query::has_visible_match(path, root, query, prefer_relative, ignore_case)
-                })
-            });
-        }
-    }
     let total_match_count = scored.scored.len();
     let results = materialize_scored_entries(&path_refs, top_ranked_scores(scored.scored, limit));
     let elapsed_ms = started_at.elapsed().as_millis();
@@ -498,6 +488,7 @@ pub(crate) fn try_search_entries_with_scope_and_count(
     Ok(SearchResultSet {
         results,
         total_match_count,
+        evaluated_candidate_count: entries.len(),
     })
 }
 

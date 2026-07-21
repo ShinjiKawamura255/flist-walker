@@ -17,17 +17,18 @@ pub(super) use crate::app::{clear_process_shutdown_request, process_shutdown_req
 pub(super) use crate::app::{
     egui, ActionRequest, ActionResponse, AppRuntimeState, AppShellState, CacheStateBundle,
     EntryKind, FileListDialogKind, FileListManager, FileListRequest, FileListResponse,
-    FlistWalkerApp, HighlightCacheKey, HighlightCacheState, IndexBuildResult, IndexEntry,
-    IndexRequest, IndexResponse, IndexSource, LaunchSettings, PreviewRequest, PreviewResponse,
-    QueryState, ResultSortMode, ResultSortScope, RootBrowserState, RuntimeUiState, SavedTabState,
-    SavedWindowGeometry, SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState,
-    SortMetadataRequest, SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState,
-    TabSessionState, UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
+    FlistWalkerApp, HighlightCacheKey, HighlightCacheState, IgnoreMatcherCacheState,
+    IndexBuildResult, IndexEntry, IndexRequest, IndexResponse, IndexSource, LaunchSettings,
+    PreviewRequest, PreviewResponse, QueryState, ResultSortMode, ResultSortScope, RootBrowserState,
+    RuntimeUiState, SavedTabState, SavedWindowGeometry, SearchCoordinator, SearchRequest,
+    SearchResponse, SortMetadataCacheState, SortMetadataRequest, SortMetadataResponse,
+    TabAccentColor, TabAccentPalette, TabDragState, TabSessionState, UpdateRequest, UpdateResponse,
+    WorkerBus, WorkerRuntime,
 };
 pub(super) use crate::app::{render_tabs, request_process_shutdown, spawn_kind_resolver_worker};
 pub(super) use crate::entry::Entry;
 pub(super) use crate::path_utils::{normalize_windows_path_buf, path_key};
-pub(super) use crate::search::{SearchEntriesSnapshotKey, SearchPrefixCache};
+pub(super) use crate::search::SearchPrefixCache;
 pub(super) use crate::ui_model::normalize_path_for_display;
 pub(super) use crate::updater::{UpdateCandidate, UpdateSupport};
 pub(super) use std::collections::{HashMap, HashSet, VecDeque};

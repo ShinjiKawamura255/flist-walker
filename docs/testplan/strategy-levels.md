@@ -5,7 +5,7 @@
 - Priority:
 - P0: FR-001/002/003/004/005
 - P1: FR-006/007, NFR-002/003/004
-- P2: NFR-001（性能計測）
+- P1: NFR-001（TC-156 weekly release-mode regression ceiling）
 
 ## Test levels
 - Unit:
@@ -34,6 +34,7 @@
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` と `perf_adaptive_walker_reports_local_dataset_metrics` として分離し、walker 側の現行 control baseline は 1.25x を下限としつつ、adaptive の件数一致・実行時間・read_dir 制御指標も継続計測する。
+- Search Perf: TC-156 は weekly/manual の release-mode gate とし、固定10万件 fixture を計測区間外で構築する。rayon 初期化後、5回以上の compile/cold/warm/query-shape を測定し、候補数・評価候補数・match 数・median・maximum を出力する。代表 median 100ms は NFR target、全 shape 250ms は hosted CI hard ceiling として分離する。
 - Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` を実行し、line coverage 75% 未満への低下を失敗扱いにする。2026-05-14 の fresh baseline は 79.08%（LH=12604 / LF=15938）。中期目標は 80% とする。enforced threshold を上げる変更では、同一変更内で fresh baseline、失敗時の不足領域、追加した owner-seam test を記録する。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。
 - Sec: root 外パス実行拒否、履歴永続化無効化、CI の依存脆弱性検査を確認。

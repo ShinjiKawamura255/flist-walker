@@ -47,3 +47,6 @@ jobs:
 
       - name: Run adaptive walker metrics perf test
         run: cargo test perf_adaptive_walker_reports_local_dataset_metrics --lib -- --ignored --nocapture
+
+      - name: Run TC-156 search cold warm query-shape regression
+        run: cargo test --release --locked perf_search_100k_cold_warm_query_shapes --lib -- --ignored --nocapture

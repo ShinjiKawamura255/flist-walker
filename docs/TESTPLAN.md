@@ -50,10 +50,11 @@ For documentation-only restructuring, apply VM-001:
 ## Traceability (excerpt)
 - Full excerpt: [Manual Regression and Traceability](testplan/manual-regression-traceability.md)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
-- TC-003 -> SP-003 -> DES-003 -> FR-003
+- TC-003, TC-155 -> SP-003 -> DES-003 -> FR-003
 - TC-010 -> SP-010 -> DES-009 -> FR-007
 - TC-150, TC-151, TC-152, TC-153 -> SP-010 -> DES-006, DES-007, DES-009 -> FR-007, NFR-008
 - TC-154 -> SP-010 -> DES-009 -> FR-007, NFR-009
+- TC-156 -> SP-007 -> DES-006 -> NFR-001
 - TC-050, TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
 - TC-056 -> SP-012 -> DES-012 -> NFR-005
 - TC-074 -> SP-014 -> DES-014 -> FR-019

@@ -1,5 +1,6 @@
 use crate::app::cache::{
-    EntryKindCacheState, HighlightCacheState, PreviewCacheState, SortMetadataCacheState,
+    EntryKindCacheState, HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState,
+    SortMetadataCacheState,
 };
 use crate::app::index_coordinator::IndexCoordinator;
 use crate::app::query_state::QueryState;
@@ -276,6 +277,7 @@ pub(super) struct UpdateManager {
 pub(super) struct CacheStateBundle {
     pub(super) preview: PreviewCacheState,
     pub(super) highlight: HighlightCacheState,
+    pub(super) ignore_matcher: IgnoreMatcherCacheState,
     pub(super) entry_kind: EntryKindCacheState,
     pub(super) sort_metadata: SortMetadataCacheState,
 }

@@ -9,6 +9,9 @@
 - UI から各 bounded queue への送信は non-blocking `try_send` とし、`Full` では action を未受理として扱い、kind は queue 先頭、index は tab ごとの latest-only pending slot へ戻す。いずれも UI thread で capacity 解放を待たない。
 - kind worker は tab identity / epoch の最新性を metadata I/O より前に検証し、stale、tab 消失、共有状態の poison は metadata call 0 件の `kind=None` terminal response にする。index worker は supersede/cancel を root canonicalize より前に検証し、stale request は filesystem I/O 0 件の `Canceled` response にする。
 - 検索要求は入力ごとに発行しつつ、ワーカーでキューを集約して最新要求のみ処理する。
+- 検索要求は query を1回だけ `CompiledQuery` に変換し、各 path を1回だけ `PreparedCandidate` に変換する。rank-only 評価は match/score だけを返し、UI は query/options scope に保持した同じ compiled representation から可視行だけ span 付き評価する。
+- prefix cache は raw query の単調延長だけでなく、`ignore_case`、`prefer_relative`、正規化 root、live snapshot identity が一致する場合だけ候補 index を再利用する。
+- 10万件検索は TC-156 の fixed fixture、release mode、5回以上の sample で compile/cold/warm/query-shape/evaluated-candidate を分離計測し、100ms median target と weekly CI の 250ms hard ceiling を別々に扱う。
 - インデックス再読込開始時は保留中の検索 request_id を破棄し、旧スナップショット由来の検索応答が UI 結果を上書きしないようにする。
 - 非空クエリ時は再読込後の最初のインデックスバッチで検索を即時再開し、中断後の復帰遅延を最小化する。
 - 非空クエリで indexing 中の自動再検索は、差分件数と時間の両閾値（既定: 2048件・1500ms）を満たす場合のみ実行し、indexing スループット低下を抑える。
@@ -132,7 +135,8 @@
 
 - DES-008 Testability
 - indexer/search/actions/ui_model を独立モジュール化。
-- query 解釈は `rust/src/query.rs` へ集約し、search と UI highlight で同じ token 分解・正規化を再利用する。
+- query 解釈は `rust/src/query.rs` の immutable compiled representation へ集約し、search と UI highlight は同じ clause matcher と candidate normalization を再利用する。公開 adapter は互換 projection として維持する。
+- ignore list は `CompiledIgnoreTerms` を CLI operation または GUI terms/case scope/pass で1回生成し、候補 loop へ再利用する。
 - OS 依存処理は抽象境界を薄くして単体テスト可能性を維持。
 - app regression tests は monolithic な `FlistWalkerApp` fixture へ集約し続けず、owner/command seam ごとに module を分ける。update lifecycle は `rust/src/app/tests/update_commands.rs`、session restore/startup root は `rust/src/app/tests/session_restore.rs`、tab interaction/background routing は `rust/src/app/tests/tab_lifecycle.rs` / `rust/src/app/tests/tab_drag.rs` / `rust/src/app/tests/tab_background_responses.rs`、tab snapshot contract は `rust/src/app/tests/tab_contract.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を基準に保守する。
   - `tab_contract.rs` には `tab_state_contract_round_trip_pins_field_layout` を置き、tab snapshot field の増減を compile-time で検出する。

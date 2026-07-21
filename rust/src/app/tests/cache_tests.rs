@@ -1,5 +1,5 @@
 use super::*;
-use crate::search::{SearchEntriesSnapshotKey, SearchPrefixCache};
+use crate::search::SearchPrefixCache;
 
 #[test]
 fn preview_cache_is_bounded() {
@@ -331,18 +331,30 @@ fn search_prefix_cache_accepts_only_plain_single_token_queries() {
 
 #[test]
 fn search_prefix_cache_prefers_longest_prefix_and_evicts_old_entries() {
-    let snapshot = SearchEntriesSnapshotKey { ptr: 1, len: 100 };
+    let root = PathBuf::from("/tmp/cache-root");
+    let entries = Arc::new(
+        (0..100)
+            .map(|index| Entry::unknown(root.join(format!("file-{index}"))))
+            .collect(),
+    );
     let mut cache = SearchPrefixCache::default();
-    cache.maybe_store(snapshot, "abc", vec![0, 1, 2, 3]);
-    cache.maybe_store(snapshot, "abcd", vec![1, 3]);
+    cache.maybe_store(&entries, &root, true, true, "abc", vec![0, 1, 2, 3]);
+    cache.maybe_store(&entries, &root, true, true, "abcd", vec![1, 3]);
 
     let candidates = cache
-        .lookup_candidates(snapshot, "abcde")
+        .lookup_candidates(&entries, &root, true, true, "abcde")
         .expect("cached candidates");
     assert_eq!(candidates.as_ref(), &vec![1, 3]);
 
     for idx in 0..(SearchPrefixCache::MAX_ENTRIES + 4) {
-        cache.maybe_store(snapshot, &format!("q{:03}", idx), vec![idx]);
+        cache.maybe_store(
+            &entries,
+            &root,
+            true,
+            true,
+            &format!("q{:03}", idx),
+            vec![idx],
+        );
     }
     assert!(cache.entries.len() <= SearchPrefixCache::MAX_ENTRIES);
     assert!(cache.total_bytes <= SearchPrefixCache::MAX_BYTES);
@@ -350,17 +362,80 @@ fn search_prefix_cache_prefers_longest_prefix_and_evicts_old_entries() {
 
 #[test]
 fn search_prefix_cache_skips_oversized_match_sets() {
-    let snapshot = SearchEntriesSnapshotKey {
-        ptr: 2,
-        len: 1_000_000,
-    };
+    let root = PathBuf::from("/tmp/cache-root");
+    let entries = Arc::new(vec![Entry::unknown(root.join("one"))]);
     let mut cache = SearchPrefixCache::default();
     let oversized = (0..=SearchPrefixCache::MAX_MATCHED_INDICES).collect::<Vec<_>>();
 
-    cache.maybe_store(snapshot, "oversized", oversized);
+    cache.maybe_store(&entries, &root, true, true, "oversized", oversized);
 
-    assert!(cache.lookup_candidates(snapshot, "oversizedx").is_none());
+    assert!(cache
+        .lookup_candidates(&entries, &root, true, true, "oversizedx")
+        .is_none());
     assert_eq!(cache.total_bytes, 0);
+}
+
+#[test]
+fn tc_155_search_prefix_cache_isolates_semantic_scope_and_snapshot_lifetime() {
+    let root = PathBuf::from("/tmp/cache-root");
+    let entries = Arc::new(vec![Entry::unknown(root.join("Alpha.txt"))]);
+    let mut cache = SearchPrefixCache::default();
+    cache.maybe_store(&entries, &root, true, true, "alp", vec![0]);
+
+    assert!(cache
+        .lookup_candidates(&entries, &root, false, true, "alph")
+        .is_none());
+    assert!(cache
+        .lookup_candidates(&entries, &root, true, false, "alph")
+        .is_none());
+    assert!(cache
+        .lookup_candidates(
+            &entries,
+            &PathBuf::from("/tmp/other-root"),
+            true,
+            true,
+            "alph",
+        )
+        .is_none());
+
+    let replacement = Arc::new(entries.as_ref().clone());
+    assert!(cache
+        .lookup_candidates(&replacement, &root, true, true, "alph")
+        .is_none());
+    assert!(cache
+        .lookup_candidates(&entries, &root, true, true, "alph")
+        .is_some());
+}
+
+#[test]
+fn tc_155_ignore_matcher_cache_compiles_once_per_terms_and_case_scope() {
+    crate::query::reset_compile_counts();
+    let mut cache = IgnoreMatcherCacheState::default();
+    let terms = vec!["target".to_string()];
+
+    let first = cache.compiled(&terms, true);
+    let second = cache.compiled(&terms, true);
+    assert!(Arc::ptr_eq(&first, &second));
+    assert_eq!(crate::query::ignore_compile_count(), 1);
+
+    let case_sensitive = cache.compiled(&terms, false);
+    assert!(!Arc::ptr_eq(&first, &case_sensitive));
+    assert_eq!(crate::query::ignore_compile_count(), 2);
+}
+
+#[test]
+fn tc_155_regression_highlight_scope_compiles_once_for_multiple_rows() {
+    let root = PathBuf::from("/tmp/highlight-scope");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.query_state.query = "main".to_string();
+    crate::query::reset_compile_counts();
+
+    let first = app.highlight_positions_for_path_cached(&root.join("src/main.rs"), true);
+    let second = app.highlight_positions_for_path_cached(&root.join("tests/main_test.rs"), true);
+
+    assert!(!first.is_empty());
+    assert!(!second.is_empty());
+    assert_eq!(crate::query::query_compile_count(), 1);
 }
 
 #[test]

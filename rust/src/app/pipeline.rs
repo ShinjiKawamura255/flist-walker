@@ -638,8 +638,9 @@ impl FlistWalkerApp {
         {
             self.queue_kind_resolution(entry.path.clone());
         }
+        let compiled_ignore_terms = self.compiled_ignore_terms();
         if self.should_track_incremental_filtered_entries()
-            && self.is_entry_visible_for_current_filter(&entry)
+            && self.is_entry_visible_for_current_filter(&entry, compiled_ignore_terms.as_deref())
         {
             self.shell
                 .indexing
