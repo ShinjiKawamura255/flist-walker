@@ -10,6 +10,7 @@
 - NFR-007: 更新確認・ダウンロードは UI スレッドをブロックせず、失敗時も通常検索操作を継続可能でなければならない。
 - NFR-008: GUI の action、kind resolution、indexing のワーカー実行は同時実行数と待機件数に固定上限を持ち、UI スレッドをブロックせず、過負荷・切断・stale・shutdown の各経路で要求を終端状態へ収束させなければならない。
 - NFR-009: GUI の通常のタブ切替は、active tab の大規模な index、pending queue、kind resolution、incremental result、search result を要素単位で複製せず所有権移動で遷移し、候補件数に比例する同期コピーによって UI 入力応答性を損なってはならない。
+- NFR-010: 自己更新の release metadata、署名済み manifest、署名、binary、sidecar は接続・無通信・要求・全体時間と decoded byte 数に固定上限を持ち、署名済み manifest を信頼する前に配布 asset を取得してはならない。失敗時はこの要求が作成した partial staging だけを削除し、既存 path や別 transaction の証跡を変更してはならない。
 
 ### Constraints (CON)
 - CON-001: 本実装は Rust で行う。
@@ -29,3 +30,4 @@
 - R-009: ignore list の解釈が query とずれると、検索結果と UI 表示が不一致になる。軽減策: 除外判定は query の `!` と同じ非 fuzzy の比較ルールに寄せ、既定有効/切替状態を session に保持する。
 - R-010: runtime config file の自動生成や seed-only 挙動が不明瞭だと、環境変数での一時的な変更が効かず、起動時設定の期待が外れる。軽減策: 初回生成と既存ファイル優先、Windows での `%LocalAppData%\flistwalker\` と Linux/macOS の `~/.flistwalker/` を README / release README / SPEC に明記し、起動時に file が source of truth であることを固定する。UI state、saved roots、window trace も同じ保存先ルールに揃える。旧保存先からの移行は transition period に限って維持し、後続版で削除できるようにする。
 - R-011: sample ignore list を release asset にのみ依存させると、自己更新時や特殊な配布形態で sample が欠落しうる。軽減策: sample を埋め込み、起動時に local 実体を自動生成し、既存 ignore list は上書きしない。
+- R-012: updater helper または本体が置換途中で停止すると binary と sidecar の版が分離しうる。軽減策: 同一ディレクトリの create-new 準備、固定 lock、per-target write-ahead marker、backup、binary-last commit、hash 検証付き recovery を用い、曖昧な状態では自動 cleanup/再更新を停止する。

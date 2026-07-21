@@ -33,3 +33,4 @@
 - FR-030: ツールはタブの close 操作領域にマウスがある場合、close 操作として押下されることを視覚的に示さなければならない。
 - FR-031: ツールは GUI で現在のプロセス中に閉じたタブを `Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で直近順に復元できなければならない。閉じたタブ履歴は前回セッションから復元してはならない。
 - FR-032: Windows 開発者は PowerShell から `x86_64-pc-windows-gnu` release build と clean release build を実行できなければならない。不足する Rustup、Rust target、MSYS2、GNU build package は明示され、利用者の個別承認または明示的な一括承認がある場合だけ導入され、再検出後に build を継続しなければならない。
+- FR-033: Windows/Linux の自己更新は、検証済み bundle を同一ディレクトリの準備領域から sidecar 優先・binary 最後の transaction として適用し、binary commit 前または再起動生成失敗時は旧 bundle へ復元しなければならない。中断後は永続 marker と hash から一意に回復できない限り更新を継続せず、証跡を保持しなければならない。

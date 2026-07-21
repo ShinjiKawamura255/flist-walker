@@ -99,8 +99,10 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
     }
 
     let staged = staging::stage_update_assets(candidate)?;
-    let verified = verify_staged_update(candidate, staged)?;
-    apply::spawn_update_helper(current_exe, &verified)
+    let mut verified = verify_staged_update(candidate, staged)?;
+    apply::spawn_update_helper(current_exe, &verified)?;
+    verified.disarm_cleanup();
+    Ok(())
 }
 
 pub fn should_skip_update_prompt(target_version: &str, skipped_version: Option<&str>) -> bool {
@@ -119,6 +121,7 @@ pub(super) fn env_flag(name: &str) -> bool {
         .unwrap_or(false)
 }
 
+#[derive(Debug)]
 pub(super) struct StagedUpdatePaths {
     pub(super) staged_path: PathBuf,
     pub(super) staged_readme_path: PathBuf,
@@ -126,8 +129,8 @@ pub(super) struct StagedUpdatePaths {
     pub(super) staged_notices_path: PathBuf,
     pub(super) checksum_path: PathBuf,
     pub(super) signature_path: PathBuf,
-    #[cfg(not(target_os = "macos"))]
     pub(super) temp_dir: PathBuf,
+    cleanup_armed: bool,
 }
 
 impl StagedUpdatePaths {
@@ -139,8 +142,16 @@ impl StagedUpdatePaths {
             staged_notices_path: temp_dir.join(&candidate.notices_asset_name),
             checksum_path: temp_dir.join("SHA256SUMS"),
             signature_path: temp_dir.join(CHECKSUM_SIGNATURE_NAME),
-            #[cfg(not(target_os = "macos"))]
             temp_dir,
+            cleanup_armed: true,
+        }
+    }
+}
+
+impl Drop for StagedUpdatePaths {
+    fn drop(&mut self) {
+        if self.cleanup_armed {
+            let _ = std::fs::remove_dir_all(&self.temp_dir);
         }
     }
 }
@@ -154,26 +165,45 @@ pub(super) struct VerifiedUpdateBundle {
     pub(super) staged_license_path: PathBuf,
     #[cfg(not(target_os = "macos"))]
     pub(super) staged_notices_path: PathBuf,
-    #[cfg(not(target_os = "macos"))]
     pub(super) temp_dir: PathBuf,
+    cleanup_armed: bool,
 }
 
 impl VerifiedUpdateBundle {
-    fn new(staged: StagedUpdatePaths) -> Self {
+    fn new(mut staged: StagedUpdatePaths) -> Self {
         #[cfg(not(target_os = "macos"))]
         {
-            Self {
-                staged_path: staged.staged_path,
-                staged_readme_path: staged.staged_readme_path,
-                staged_license_path: staged.staged_license_path,
-                staged_notices_path: staged.staged_notices_path,
-                temp_dir: staged.temp_dir,
-            }
+            let bundle = Self {
+                staged_path: staged.staged_path.clone(),
+                staged_readme_path: staged.staged_readme_path.clone(),
+                staged_license_path: staged.staged_license_path.clone(),
+                staged_notices_path: staged.staged_notices_path.clone(),
+                temp_dir: staged.temp_dir.clone(),
+                cleanup_armed: true,
+            };
+            staged.cleanup_armed = false;
+            bundle
         }
         #[cfg(target_os = "macos")]
         {
-            let _ = staged;
-            Self {}
+            let bundle = Self {
+                temp_dir: staged.temp_dir.clone(),
+                cleanup_armed: true,
+            };
+            staged.cleanup_armed = false;
+            bundle
+        }
+    }
+
+    fn disarm_cleanup(&mut self) {
+        self.cleanup_armed = false;
+    }
+}
+
+impl Drop for VerifiedUpdateBundle {
+    fn drop(&mut self) {
+        if self.cleanup_armed {
+            let _ = std::fs::remove_dir_all(&self.temp_dir);
         }
     }
 }

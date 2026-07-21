@@ -10,6 +10,8 @@
 ## Migration / rollback
 - 移行: Rust 本実装を正として機能追加する。
 - ロールバック: 不安定な変更は小さな単位で revert し、仕様ID単位で影響範囲を判断する。
+- updater staging は trust/bounds/cleanup を独立 rollback 単位とし、activation は `VerifiedUpdateBundle` 以降の transaction/recovery を別単位とする。
+- updater runtime rollback は binary commit 前と restart 生成失敗で旧 bundle を hash 検証付きで復元する。binary commit 後の完全な新 bundleは維持し、ambiguous state は自動変更せず marker/backup を recovery 証跡として残す。
 
 ## Trade-offs
 - GUI フレームワークは `egui/eframe` を採用し、クロスプラットフォーム性と開発速度を優先。
@@ -51,7 +53,7 @@
 - DES-011 -> TC-020 (SP-010, SP-011)
 - DES-012 -> TC-056 (SP-012)
 - DES-013 -> TC-057, TC-058, TC-059, TC-060 (SP-013)
-- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081, TC-140 (SP-014)
+- DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081, TC-140, TC-157, TC-158, TC-159, TC-160 (SP-014)
 - DES-015 -> TC-120 (SP-010, SP-014)
 - DES-016 -> TC-110, TC-112, TC-117 (SP-015)
 - DES-017 -> TC-111 (SP-016)

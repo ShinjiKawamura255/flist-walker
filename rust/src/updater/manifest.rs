@@ -3,7 +3,7 @@ use anyhow::{bail, Context, Result};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader, Cursor, Read};
 use std::path::Path;
 
 pub(super) fn verify_checksum_manifest_signature(
@@ -37,25 +37,53 @@ pub(super) fn verify_download(
 fn parse_sha256sums_file(path: &Path) -> Result<HashMap<String, String>> {
     let file =
         fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
+    parse_sha256sums_reader(BufReader::new(file), &path.display().to_string())
+}
+
+pub(super) fn parse_sha256sums_bytes(bytes: &[u8]) -> Result<HashMap<String, String>> {
+    parse_sha256sums_reader(BufReader::new(Cursor::new(bytes)), "checksum manifest")
+}
+
+fn parse_sha256sums_reader(reader: impl BufRead, source: &str) -> Result<HashMap<String, String>> {
     let mut out = HashMap::new();
-    for line in BufReader::new(file).lines() {
-        let line = line.with_context(|| format!("failed to read {}", path.display()))?;
-        if let Some((hash, name)) = parse_checksum_line(&line) {
-            out.insert(name.to_string(), hash.to_string());
+    for (line_index, line) in reader.lines().enumerate() {
+        let line = line.with_context(|| format!("failed to read {source}"))?;
+        let (hash, name) = parse_checksum_line(&line)
+            .with_context(|| format!("invalid checksum manifest line {}", line_index + 1))?;
+        if out.insert(name.to_string(), hash.to_string()).is_some() {
+            bail!("duplicate checksum manifest filename: {name}");
         }
+    }
+    if out.is_empty() {
+        bail!("checksum manifest must contain at least one entry");
     }
     Ok(out)
 }
 
-fn parse_checksum_line(line: &str) -> Option<(&str, &str)> {
-    let trimmed = line.trim();
-    if trimmed.is_empty() {
-        return None;
+fn parse_checksum_line(line: &str) -> Result<(&str, &str)> {
+    if line.len() < 67 || !line.is_ascii() {
+        bail!("checksum line must be ASCII SHA-256 plus filename");
     }
-    let mut parts = trimmed.split_whitespace();
-    let hash = parts.next()?;
-    let name = parts.last().or_else(|| trimmed.split("  ").nth(1))?;
-    Some((hash, name.trim_start_matches('*')))
+    let hash = &line[..64];
+    if !hash.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        bail!("checksum digest must contain exactly 64 hexadecimal digits");
+    }
+    let separator = &line.as_bytes()[64..66];
+    if separator != b"  " && separator != b" *" {
+        bail!("checksum digest and filename must use sha256sum separator");
+    }
+    let name = &line[66..];
+    if name.is_empty()
+        || name == "."
+        || name == ".."
+        || name.bytes().any(|byte| byte.is_ascii_whitespace())
+        || name.contains('/')
+        || name.contains('\\')
+        || !name.starts_with("FlistWalker-")
+    {
+        bail!("checksum filename is not an allowed release asset basename");
+    }
+    Ok((hash, name))
 }
 
 fn sha256_file(path: &Path) -> Result<String> {
@@ -88,38 +116,84 @@ mod tests {
 
     #[test]
     fn parse_checksum_line_supports_sha256sum_format() {
-        let (hash, name) =
-            parse_checksum_line("abc123  FlistWalker-0.12.3-linux-x86_64").expect("checksum");
-        assert_eq!(hash, "abc123");
+        let digest = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        let line = format!("{digest}  FlistWalker-0.12.3-linux-x86_64");
+        let (hash, name) = parse_checksum_line(&line).expect("checksum");
+        assert_eq!(hash, digest);
         assert_eq!(name, "FlistWalker-0.12.3-linux-x86_64");
+    }
+
+    #[test]
+    fn tc157_manifest_rejects_duplicate_required_filename() {
+        let dir = staging::test_unique_update_temp_dir().expect("temp dir");
+        let sums_path = dir.join("SHA256SUMS");
+        let digest = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        fs::write(
+            &sums_path,
+            format!("{digest}  FlistWalker-1.0.0-linux-x86_64\n{digest}  FlistWalker-1.0.0-linux-x86_64\n"),
+        )
+        .expect("write sums");
+
+        let err = parse_sha256sums_file(&sums_path)
+            .expect_err("duplicate manifest filename must fail closed");
+        assert!(
+            err.to_string().contains("duplicate"),
+            "unexpected error: {err}"
+        );
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tc157_manifest_rejects_invalid_digest_and_unsafe_filename() {
+        for line in [
+            "abc123  FlistWalker-1.0.0-linux-x86_64\n",
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  ../FlistWalker-1.0.0-linux-x86_64\n",
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  unrelated.bin\n",
+        ] {
+            let dir = staging::test_unique_update_temp_dir().expect("temp dir");
+            let sums_path = dir.join("SHA256SUMS");
+            fs::write(&sums_path, line).expect("write sums");
+
+            assert!(
+                parse_sha256sums_file(&sums_path).is_err(),
+                "invalid manifest line must fail closed: {line:?}"
+            );
+
+            let _ = fs::remove_dir_all(&dir);
+        }
     }
 
     #[test]
     fn checksum_verification_detects_match() {
         let dir = staging::test_unique_update_temp_dir().expect("temp dir");
-        let file_path = dir.join("sample.bin");
+        let asset_name = "FlistWalker-1.0.0-linux-x86_64";
+        let file_path = dir.join(asset_name);
         let sums_path = dir.join("SHA256SUMS");
         fs::write(&file_path, b"hello").expect("write sample");
         fs::write(
             &sums_path,
-            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  sample.bin\n",
+            format!(
+                "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  {asset_name}\n"
+            ),
         )
         .expect("write sums");
 
-        verify_download(&file_path, &sums_path, "sample.bin").expect("checksum match");
+        verify_download(&file_path, &sums_path, asset_name).expect("checksum match");
         let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn checksum_verification_detects_sidecar_match() {
         let dir = staging::test_unique_update_temp_dir().expect("temp dir");
-        let file_path = dir.join("sample.LICENSE.txt");
+        let asset_name = "FlistWalker-1.0.0-linux-x86_64.LICENSE.txt";
+        let file_path = dir.join(asset_name);
         let sums_path = dir.join("SHA256SUMS");
         fs::write(&file_path, b"license text").expect("write sample");
         let hash = sha256_file(&file_path).expect("hash");
-        fs::write(&sums_path, format!("{hash}  sample.LICENSE.txt\n")).expect("write sums");
+        fs::write(&sums_path, format!("{hash}  {asset_name}\n")).expect("write sums");
 
-        verify_download(&file_path, &sums_path, "sample.LICENSE.txt").expect("checksum match");
+        verify_download(&file_path, &sums_path, asset_name).expect("checksum match");
         let _ = fs::remove_dir_all(&dir);
     }
 

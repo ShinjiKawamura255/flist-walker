@@ -1,6 +1,6 @@
 use crate::update_security::{self, CHECKSUM_SIGNATURE_NAME};
-use crate::updater::{current_version_string, env_flag, UpdateCandidate, UpdateSupport};
-use anyhow::{anyhow, Context, Result};
+use crate::updater::{env_flag, UpdateCandidate, UpdateSupport};
+use anyhow::{Context, Result};
 use semver::Version;
 use serde::Deserialize;
 
@@ -40,18 +40,13 @@ struct GitHubAsset {
 }
 
 pub(super) fn fetch_latest_release() -> Result<GitHubRelease> {
-    let response = ureq::get(&release_feed_url())
-        .set(
-            "User-Agent",
-            &format!("flistwalker/{}", current_version_string()),
-        )
-        .set("Accept", "application/vnd.github+json")
-        .call()
-        .map_err(|err| anyhow!("failed to query latest release: {err}"))?;
-    let body = response
-        .into_string()
-        .map_err(|err| anyhow!("failed to read latest release response: {err}"))?;
-    serde_json::from_str(&body).context("failed to parse latest release response")
+    let feed_url = release_feed_url();
+    let allow_loopback = std::env::var("FLISTWALKER_UPDATE_FEED_URL")
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty());
+    let body = super::staging::fetch_release_json(&feed_url, allow_loopback)
+        .context("failed to query latest release")?;
+    serde_json::from_slice(&body).context("failed to parse latest release response")
 }
 
 pub(super) fn parse_version(text: &str) -> Result<Version> {

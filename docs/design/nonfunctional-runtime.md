@@ -128,9 +128,18 @@
 - `tab_pin_moves_to_next_row=true` のときは `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` が PIN トグル後に `move_row(1)` を呼ぶ。既定の `false` では従来どおり current row を維持する。
 - `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作は維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
-- 自己更新は `SHA256SUMS.sig` を埋め込み公開鍵で検証してから `SHA256SUMS` を信頼し、staged binary の checksum 検証へ進む。検証失敗時は既存バイナリと UI セッションを維持する。
-- Windows の自己更新は実行中 EXE とは別実体の PowerShell スクリプトを一時配置して `powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden` で非表示起動し、`Copy-Item -LiteralPath` ベースで本体と `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を配置する。
-- Linux の自己更新は一時 shell script を起動して本体終了を待ち、`cp` + `chmod` 後に新 binary を再起動する。sidecar 文書（`README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt`）も同一ディレクトリへ同期する。
+- 自己更新は release metadata、manifest、署名、binary、sidecar ごとの decoded-byte 上限と、接続 10 秒・無通信 30 秒・request 5 分・全体 10 分の deadline を transport/streaming reader の両層で強制する。
+- redirect は 3 hop まで手動追跡し、各 hop で scheme/host を検証する。production は HTTPS の GitHub 配布 origin だけを許可し、test transport だけが loopback HTTP を許可する。
+- `SHA256SUMS` / `SHA256SUMS.sig` を asset より先に取得し、strict line parser が必須 filename ごとに一意な SHA-256 を構築して署名検証を通過するまで binary/sidecar request を送らない。
+- binary/sidecar は private create-new file へ streaming 書き込みし、decoded byte 数と SHA-256 を同じ pass で検証する。`Content-Length` は早期拒否の補助にだけ使い、欠落または虚偽でも reader 上限を迂回できない。
+- staging ownership guard は main process が作成した file/directory だけを記録し、download/flush/hash/helper-spawn 前の失敗で partial を cleanup する。既存 path または ownership 未確認 path は削除しない。
+- activation preparation は canonical executable parent 内に target ごとの `.new`、非衝突 backup、固定 transaction lock、versioned marker、acknowledgement を create-new で作り、directory/symlink/reparse point と parent identity 変化を拒否する。
+- marker は transaction ID、parent/helper PID と start/executable identity、global phase `prepared_parent_owned|helper_registered|applying_sidecars|binary_intent|binary_committed|rolled_back`、各 target の存在・旧新 hash・`prepared|intent|applied|rolled_back` を保持する。marker 更新は temporary state の同期と atomic replace を使い、各 filesystem mutation の直前に `intent`、hash 検証後に `applied` を永続化する。
+- parent は `prepared_parent_owned` を同期して helper を spawn し、観測した helper identity を `helper_registered` として同期する。helper は marker identity が自身と一致することを確認して acknowledgement を create-new/sync し、それまでは mutation しない。parent は ack を確認するまで ApplyStarted を返さず、本体 close を許可しない。
+- acknowledgement 後、helper は parent 終了を最大 30 秒待つ。pre-registration parent crash は helper が無変更で終了し、live 登録 helper がある transaction は startup recovery が同時操作しない。
+- sidecar を先に適用し、binary を最後の commit point とする。Windows の既存 target は `[System.IO.File]::Replace(new, target, backup, false)`、Linux は create-new backup の file/parent sync 後に same-directory rename と parent sync を用いる。不在 target は no-overwrite move/rename とする。
+- precommit/restart-process-creation failure は originally-present target を検証済み backup から atomic restore し、originally-absent target を除去して旧 bundle hash を検証する。binary commit 後は完全な新 bundle を hash 検証して startup cleanup へ渡す。
+- startup recovery は phase と旧新 hash を照合して precommit rollback、committed、rolled-back のいずれかへ収束する。backup 欠落、hash 不一致、不正 transition、path/type/reparse 変化は ambiguous とし、lock/marker/backup を保持して別 update を拒否する。
 - macOS は最新 version 検知のみ実施し、自動適用は非対応として release URL への案内に留める。
 
 - DES-008 Testability
@@ -164,6 +173,7 @@
 - 起動時の update check 失敗は worker からエラー文字列つきで返し、GUI 側は通常操作を継続したまま軽量ダイアログで理由を表示する。利用者が「今後この種の起動時エラーを表示しない」を選んだ場合は UI state へ永続化し、次回以降の startup check failure dialog を抑止する。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
 - restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。
+- production activation logic に test bypass を置かず、filesystem/restart/clock/failure injection seam へ inert dummy bundle を渡して成功・rollback・中断 recovery を検証する。Windows/Linux の実 filesystem 証跡は同一 filesystem の一時 directory に限定し、FlistWalker 本体または外部 application は起動しない。
 - update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
 - 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。
 - `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy、または実行中バイナリと同一ディレクトリに同名ファイルがある場合は GUI 側で起動時 update request 自体を送らず、update install 側でも同じ判定で最終ガードする。

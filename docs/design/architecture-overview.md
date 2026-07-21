@@ -103,6 +103,8 @@
 - 役割補足: `check_for_update()` は release fetch と candidate 解決を分け、candidate 解決側では release asset 選択と support classification を helper 化して contract を小さく保つ。
 - 役割補足: self-update apply helper は署名検証と全 staged asset の checksum 検証を通過した private verified bundle だけを受け取り、未検証 staged path を platform apply へ渡さない。
 - 役割補足: staged asset と helper script は no-overwrite file creation primitive を経由し、既存 path の暗黙上書きを避ける。
+- 役割補足: staging は署名済み manifest を asset より先に取得し、strict manifest parser、redirect/origin policy、decoded-byte counter、request/overall deadline、streaming SHA-256 を通過した `VerifiedUpdateBundle` だけを生成する。main process の ownership guard が helper 起動前の partial cleanup を担当する。
+- 役割補足: activation は executable parent 内の same-directory preparation、create-new lock、per-target write-ahead marker、parent/helper registration acknowledgement、sidecars-first/binary-last commit、platform atomic replacement、backup rollback、startup recovery を 1 transaction として管理する。ambiguous state は証跡を保持して停止する。
 - 役割補足: update request / apply / failure の主要遷移は `AppendWindowTrace` と worker-side `tracing` の両方で残し、worker trace は `flow=update` / `event=*` / `request_id=*` を canonical field として support 時の request_id correlation を取りやすくする。
 - 役割補足: request/response trace の details には request_id を必ず含め、update_check_failed や update_failed は error 内容も併記して support 時の切り分けをしやすくする。
 - 役割補足: `UpdateState` と update worker request/response の lifecycle、stale 応答吸収、prompt/failure/install_started の遷移は `app/update.rs` の manager 境界へ集約する。

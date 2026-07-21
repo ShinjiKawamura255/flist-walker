@@ -19,11 +19,20 @@
 - MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` / `SHA256SUMS.sig` に限定する。
 - MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.LICENSE.txt` と `*.THIRD_PARTY_NOTICES.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` として配置しなければならない。
 - MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.README.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `README.txt` として配置しなければならない。
-- MUST: ダウンロード後は埋め込み公開鍵で `SHA256SUMS.sig` が `SHA256SUMS` を正しく署名していることを確認し、失敗時は更新を中止する。
-- MUST: 署名検証通過後に、`SHA256SUMS` に記載された対象 asset の SHA-256 と一致することを確認し、一致しない場合は更新を中止する。
-- MUST: Windows では実行中 EXE を直接上書きせず、一時ディレクトリへ生成した補助 updater を別プロセスとして起動し、旧 EXE 終了後に置換と再起動を行う。
-- MUST: Linux では staged binary を一時ディレクトリへ配置し、別プロセスの更新スクリプト経由で置換と再起動を行う。
-- MUST: 更新失敗時は既存バイナリを維持し、利用者へ原因を通知する。
+- MUST: release metadata は 2 MiB、`SHA256SUMS` は 1 MiB、`SHA256SUMS.sig` は 64 KiB、standalone binary は 512 MiB、各 sidecar は 16 MiB の decoded byte 上限を持ち、`Content-Length` の有無や値にかかわらず streaming reader が実受信 byte 数を強制しなければならない。
+- MUST: 接続 timeout は 10 秒、無通信 timeout は 30 秒、1 request の deadline は 5 分、update staging 全体の monotonic deadline は 10 分とし、timeout/deadline 到達時は更新を中止しなければならない。
+- MUST: redirect は最大 3 hop を明示処理し、production は HTTPS かつ `api.github.com`、`github.com`、または `*.githubusercontent.com` のみに制限しなければならない。開発・自動試験だけは loopback HTTP を許可してよい。
+- MUST: 先に `SHA256SUMS` と `SHA256SUMS.sig` だけを取得し、埋め込み公開鍵で署名を検証してから配布 asset を取得しなければならない。manifest は空白区切りの SHA-256 と単一 filename からなる厳密な行文法を使い、必須 asset の欠落、重複、未知 filename、無効 digest を拒否しなければならない。
+- MUST: 署名検証通過後、対象 binary と全 sidecar を private create-new file へ streaming download しながら SHA-256 を計算し、manifest と一致した完全な bundle だけを `VerifiedUpdateBundle` として activation へ渡さなければならない。
+- MUST: staging 失敗時は main process がこの要求で create-new した partial file と staging directory だけを helper 起動前に削除し、既存 path を cleanup 対象にしてはならない。
+- MUST: activation 準備は現在 executable の canonical parent 内の固定派生名を使い、target、`.new`、backup、lock、marker が directory、symlink、Windows reparse point、または parent 外である場合は更新を開始してはならない。
+- MUST: 1 個の create-new active lock と versioned durable marker で transaction を排他し、marker は transaction/parent/helper identity、global phase、各 target の存在・旧新 hash・`prepared|intent|applied|rolled_back` 状態を write-ahead で記録しなければならない。
+- MUST: helper は parent が durable `helper_registered` phase と helper identity を記録したことを確認し、create-new acknowledgement を同期するまで filesystem mutation を行ってはならない。parent は acknowledgement を検証するまで適用開始を通知せず、本体終了を許可してはならない。
+- MUST: helper は acknowledgement 後に旧 process の終了を最大 30 秒待ち、timeout を binary commit 前失敗として扱わなければならない。
+- MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の `[System.IO.File]::Replace(new, target, backup, false)`、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は no-overwrite move/rename を使わなければならない。
+- MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
+- MUST: 起動時 recovery は marker phase と旧新 hash から precommit rollback、完全な committed bundle、rolled-back bundle のいずれかへ収束させなければならない。live 登録 helper が存在する transaction と同時に回復してはならず、欠落 backup、hash 不一致、不正 state 遷移、path/type 変化は ambiguous として証跡を保持し、新しい update を開始してはならない。
+- MUST: 検証では Windows/Linux の同一 filesystem 上にある inert dummy file だけを使い、実行中 FlistWalker binary の置換または外部 application の起動を行ってはならない。
 - SHOULD: 署名公開鍵が埋め込まれていない開発用ビルドでは、自動更新を manual-only として扱える。
 - MUST: macOS では新しい release を検知しても自動置換を試みず、手動更新が必要であることを通知する。
 - MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
@@ -40,10 +49,11 @@
 
 ### Preconditions / Postconditions
 - Preconditions: GUI モードで起動し、ネットワーク経由で GitHub Releases へ到達可能。
-- Postconditions: 新版が無ければ何も変更せず、新版があれば承認後に検証済みバイナリだけが置換・再起動される。
+- Postconditions: 新版が無ければ何も変更せず、新版があれば承認後に検証済み bundle 全体が置換・再起動される。失敗または中断時は検証済み旧 bundle へ戻るか、完全な新 bundle を保持するか、曖昧状態を変更せず停止する。
 
 ### Edge / Error
-- GitHub API 失敗、タイムアウト、asset 欠落、checksum 不一致は更新失敗として通知し、現行バイナリで継続する。
+- GitHub API 失敗、timeout/deadline、redirect/origin 違反、上限超過、manifest 不正、asset 欠落、checksum 不一致は更新失敗として通知し、現行バイナリで継続する。
+- transaction lock/marker 衝突、helper acknowledgement 不成立、parent wait timeout、backup/atomic primitive 不成立、recovery ambiguity は fail closed とし、既存 installation と recovery 証跡を変更しない。
 - 対応外 OS/arch は新版検知のみ行い、自動更新非対応の案内だけを返す。
 
 ## SP-015 Ignore List フィルタ
