@@ -1,164 +1,103 @@
-#[cfg(any(test, not(target_os = "macos")))]
-use crate::updater::staging;
+use crate::updater::transaction::{self, TransactionSources};
 use crate::updater::VerifiedUpdateBundle;
-#[cfg(not(target_os = "macos"))]
-use anyhow::Context;
-use anyhow::Result;
-#[cfg(any(test, all(unix, not(target_os = "macos"))))]
-use std::fs;
-#[cfg(all(unix, not(target_os = "macos")))]
-use std::os::unix::fs::PermissionsExt;
+use anyhow::{bail, Context, Result};
+use std::ffi::{OsStr, OsString};
+use std::path::Path;
+use std::process::{Child, Command};
+use std::time::{Duration, Instant};
+
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
-use std::path::Path;
-#[cfg(any(target_os = "windows", all(unix, not(target_os = "macos"))))]
-use std::process::Command;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+pub(crate) const INTERNAL_HELPER_FLAG: &str = "--flistwalker-internal-update-helper";
 
-pub(super) fn spawn_update_helper(current_exe: &Path, bundle: &VerifiedUpdateBundle) -> Result<()> {
-    #[cfg(target_os = "windows")]
-    {
-        spawn_windows_update_helper(current_exe, bundle)
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        spawn_linux_update_helper(current_exe, bundle)
-    }
+pub(super) fn spawn_update_helper(
+    current_exe: &Path,
+    bundle: &mut VerifiedUpdateBundle,
+) -> Result<()> {
     #[cfg(target_os = "macos")]
     {
         let _ = (current_exe, bundle);
-        anyhow::bail!("macOS auto-update is unsupported");
+        bail!("macOS auto-update is unsupported");
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let sources = TransactionSources {
+            binary: &bundle.staged_path,
+            readme: &bundle.staged_readme_path,
+            license: &bundle.staged_license_path,
+            notices: &bundle.staged_notices_path,
+        };
+        let mut prepared = transaction::prepare_transaction(current_exe, sources)?;
+        bundle.cleanup_staging()?;
+        let start_token = transaction::new_start_token();
+        let arguments = helper_arguments(
+            prepared.marker_path().as_os_str(),
+            OsStr::new(prepared.transaction_id()),
+            OsStr::new(&start_token),
+        );
+        let mut command = Command::new(prepared.helper_path());
+        command.args(&arguments).current_dir(prepared.install_dir());
+        #[cfg(target_os = "windows")]
+        command.creation_flags(CREATE_NO_WINDOW);
+        let mut child = command.spawn().with_context(|| {
+            format!(
+                "failed to spawn updater helper {}",
+                prepared.helper_path().display()
+            )
+        })?;
+        if let Err(err) = prepared.register_helper(child.id(), &start_token) {
+            stop_unregistered_helper(&mut child);
+            return Err(err).context("failed to durably register updater helper");
+        }
+        if let Err(err) = wait_for_acknowledgement(&prepared, &start_token, &mut child) {
+            stop_unregistered_helper(&mut child);
+            return Err(err);
+        }
+        prepared.disarm();
+        Ok(())
     }
 }
 
-#[cfg(target_os = "windows")]
-fn spawn_windows_update_helper(current_exe: &Path, bundle: &VerifiedUpdateBundle) -> Result<()> {
-    let script_path = bundle.temp_dir.join("apply-update.ps1");
-    staging::write_new_staged_file(&script_path, windows_update_script())?;
-    let mut command = Command::new("powershell.exe");
-    command
-        .args([
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-WindowStyle",
-            "Hidden",
-            "-File",
-        ])
-        .arg(&script_path)
-        .arg(current_exe)
-        .arg(&bundle.staged_path)
-        .arg(&bundle.staged_readme_path)
-        .arg(&bundle.staged_license_path)
-        .arg(&bundle.staged_notices_path);
-    command.creation_flags(CREATE_NO_WINDOW);
-    command
-        .spawn()
-        .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
-    Ok(())
+fn helper_arguments(marker: &OsStr, transaction_id: &OsStr, start_token: &OsStr) -> [OsString; 4] {
+    [
+        INTERNAL_HELPER_FLAG.into(),
+        marker.to_os_string(),
+        transaction_id.to_os_string(),
+        start_token.to_os_string(),
+    ]
 }
 
-#[cfg(any(test, target_os = "windows"))]
-fn windows_update_script() -> &'static str {
-    r#"
-param(
-    [string]$TargetPath,
-    [string]$StagedPath,
-[string]$ReadmePath,
-[string]$LicensePath,
-[string]$NoticesPath
-)
-$targetDir = Split-Path -Parent $TargetPath
-$readmeTarget = Join-Path $targetDir 'README.txt'
-$licenseTarget = Join-Path $targetDir 'LICENSE.txt'
-$noticesTarget = Join-Path $targetDir 'THIRD_PARTY_NOTICES.txt'
-for ($i = 0; $i -lt 100; $i++) {
-    try {
-        Copy-Item -LiteralPath $StagedPath -Destination $TargetPath -Force
-        if (Test-Path -LiteralPath $ReadmePath) {
-            Copy-Item -LiteralPath $ReadmePath -Destination $readmeTarget -Force
-            Remove-Item -LiteralPath $ReadmePath -Force -ErrorAction SilentlyContinue
+fn wait_for_acknowledgement(
+    prepared: &transaction::PreparedTransaction,
+    start_token: &str,
+    child: &mut Child,
+) -> Result<()> {
+    let deadline = Instant::now()
+        .checked_add(Duration::from_secs(10))
+        .context("helper acknowledgement deadline overflow")?;
+    loop {
+        if prepared.acknowledgement_matches(start_token) {
+            return Ok(());
         }
-        if (Test-Path -LiteralPath $LicensePath) {
-            Copy-Item -LiteralPath $LicensePath -Destination $licenseTarget -Force
-            Remove-Item -LiteralPath $LicensePath -Force -ErrorAction SilentlyContinue
+        if let Some(status) = child
+            .try_wait()
+            .context("failed to query updater helper status")?
+        {
+            bail!("updater helper exited before acknowledgement: {status}");
         }
-        if (Test-Path -LiteralPath $NoticesPath) {
-            Copy-Item -LiteralPath $NoticesPath -Destination $noticesTarget -Force
-            Remove-Item -LiteralPath $NoticesPath -Force -ErrorAction SilentlyContinue
+        if Instant::now() >= deadline {
+            bail!("timed out waiting for updater helper acknowledgement");
         }
-        Remove-Item -LiteralPath $StagedPath -Force -ErrorAction SilentlyContinue
-        Start-Process -FilePath $TargetPath -WorkingDirectory $targetDir
-        exit 0
-    } catch {
-        Start-Sleep -Milliseconds 200
+        std::thread::sleep(Duration::from_millis(25));
     }
 }
-exit 1
-"#
-}
 
-#[cfg(all(unix, not(target_os = "macos")))]
-fn spawn_linux_update_helper(current_exe: &Path, bundle: &VerifiedUpdateBundle) -> Result<()> {
-    let script_path = bundle.temp_dir.join("apply-update.sh");
-    staging::write_new_staged_file(&script_path, linux_update_script())?;
-    let mut perms = fs::metadata(&script_path)
-        .with_context(|| format!("failed to read metadata {}", script_path.display()))?
-        .permissions();
-    perms.set_mode(0o700);
-    fs::set_permissions(&script_path, perms)
-        .with_context(|| format!("failed to chmod {}", script_path.display()))?;
-    Command::new("sh")
-        .arg(&script_path)
-        .arg(current_exe)
-        .arg(&bundle.staged_path)
-        .arg(&bundle.staged_readme_path)
-        .arg(&bundle.staged_license_path)
-        .arg(&bundle.staged_notices_path)
-        .spawn()
-        .with_context(|| format!("failed to spawn updater {}", script_path.display()))?;
-    Ok(())
-}
-
-#[cfg(any(test, all(unix, not(target_os = "macos"))))]
-fn linux_update_script() -> &'static str {
-    r#"#!/bin/sh
-set -eu
-target="$1"
-staged="$2"
-readme_src="$3"
-license_src="$4"
-notices_src="$5"
-target_dir=$(dirname "$target")
-ignore_target="$target_dir/flistwalker.ignore.txt"
-readme_target="$target_dir/README.txt"
-license_target="$target_dir/LICENSE.txt"
-notices_target="$target_dir/THIRD_PARTY_NOTICES.txt"
-for _ in $(seq 1 100); do
-  if cp "$staged" "$target" 2>/dev/null; then
-    if [ -f "$readme_src" ]; then
-      cp "$readme_src" "$readme_target" 2>/dev/null || true
-      rm -f "$readme_src"
-    fi
-    if [ -f "$license_src" ]; then
-      cp "$license_src" "$license_target" 2>/dev/null || true
-      rm -f "$license_src"
-    fi
-    if [ -f "$notices_src" ]; then
-      cp "$notices_src" "$notices_target" 2>/dev/null || true
-      rm -f "$notices_src"
-    fi
-    chmod 755 "$target" || true
-    rm -f "$staged"
-    cd "$target_dir"
-    exec "$target"
-  fi
-  sleep 0.2
-done
-exit 1
-"#
+fn stop_unregistered_helper(child: &mut Child) {
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(test)]
@@ -166,51 +105,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn windows_update_script_preserves_argument_order_and_sidecars() {
-        let script = windows_update_script();
-
-        assert!(script.contains("[string]$TargetPath"));
-        assert!(script.contains("[string]$StagedPath"));
-        assert!(script.contains("[string]$ReadmePath"));
-        assert!(script.contains("[string]$LicensePath"));
-        assert!(script.contains("[string]$NoticesPath"));
-        assert!(
-            script.contains("Copy-Item -LiteralPath $StagedPath -Destination $TargetPath -Force")
+    fn tc159_internal_helper_arguments_are_exact_and_positional() {
+        let args = helper_arguments(
+            OsStr::new("marker"),
+            OsStr::new("00112233445566778899aabbccddeeff"),
+            OsStr::new("start-token-0123456789"),
         );
-        assert!(script.contains("Start-Process -FilePath $TargetPath -WorkingDirectory $targetDir"));
-    }
 
-    #[test]
-    fn linux_update_script_preserves_argument_order_and_sidecars() {
-        let script = linux_update_script();
-
-        assert!(script.contains("target=\"$1\""));
-        assert!(script.contains("staged=\"$2\""));
-        assert!(script.contains("readme_src=\"$3\""));
-        assert!(script.contains("license_src=\"$4\""));
-        assert!(script.contains("notices_src=\"$5\""));
-        assert!(script.contains("cp \"$staged\" \"$target\""));
-        assert!(script.contains("exec \"$target\""));
-    }
-
-    #[test]
-    fn helper_script_creation_refuses_existing_path() {
-        let dir = staging::test_unique_update_temp_dir().expect("temp dir");
-        let script_path = dir.join("apply-update.sh");
-        fs::write(&script_path, "existing").expect("write existing script");
-
-        let err = staging::write_new_staged_file(&script_path, linux_update_script())
-            .expect_err("helper script must not overwrite existing path");
-
-        assert!(
-            err.to_string().contains("failed to create new staged file"),
-            "unexpected error: {err}"
-        );
         assert_eq!(
-            fs::read_to_string(&script_path).expect("read existing"),
-            "existing"
+            args,
+            [
+                OsString::from(INTERNAL_HELPER_FLAG),
+                OsString::from("marker"),
+                OsString::from("00112233445566778899aabbccddeeff"),
+                OsString::from("start-token-0123456789")
+            ]
         );
-
-        let _ = fs::remove_dir_all(&dir);
     }
 }

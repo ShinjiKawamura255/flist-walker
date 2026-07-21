@@ -83,77 +83,91 @@ where
         .checked_add(limits.total_timeout)
         .context("update staging deadline overflow")?;
     let temp_dir = unique_update_temp_dir_in(base_dir, random_update_suffix)?;
-    let paths = StagedUpdatePaths::new(temp_dir, candidate);
+    let mut paths = StagedUpdatePaths::new(temp_dir, candidate);
 
-    let manifest = fetch_small_body(
-        &candidate.checksum_url,
-        limits.manifest_bytes,
-        deadline,
-        limits.request_timeout,
-        allow_loopback,
-        fetch,
-    )?;
-    let signature = fetch_small_body(
-        &candidate.checksum_signature_url,
-        limits.signature_bytes,
-        deadline,
-        limits.request_timeout,
-        allow_loopback,
-        fetch,
-    )?;
-    write_new_staged_bytes(&paths.checksum_path, &manifest)?;
-    write_new_staged_bytes(&paths.signature_path, &signature)?;
-    verify_signature(&manifest, &signature)?;
-
-    let checksums = super::manifest::parse_sha256sums_bytes(&manifest)?;
-    let required = [
-        (
-            candidate.asset_name.as_str(),
-            candidate.asset_url.as_str(),
-            paths.staged_path.as_path(),
-            limits.binary_bytes,
-        ),
-        (
-            candidate.readme_asset_name.as_str(),
-            candidate.readme_asset_url.as_str(),
-            paths.staged_readme_path.as_path(),
-            limits.sidecar_bytes,
-        ),
-        (
-            candidate.license_asset_name.as_str(),
-            candidate.license_asset_url.as_str(),
-            paths.staged_license_path.as_path(),
-            limits.sidecar_bytes,
-        ),
-        (
-            candidate.notices_asset_name.as_str(),
-            candidate.notices_asset_url.as_str(),
-            paths.staged_notices_path.as_path(),
-            limits.sidecar_bytes,
-        ),
-    ];
-    let verified_required = required
-        .into_iter()
-        .map(|(name, url, path, byte_limit)| {
-            let expected = checksums
-                .get(name)
-                .with_context(|| format!("missing checksum for {name}"))?
-                .clone();
-            Ok((name, url, path, byte_limit, expected))
-        })
-        .collect::<Result<Vec<_>>>()?;
-    for (name, url, path, byte_limit, expected) in verified_required {
-        download_verified_asset(
-            name,
-            url,
-            path,
-            &expected,
-            byte_limit,
+    let staging = (|| -> Result<()> {
+        let manifest = fetch_small_body(
+            &candidate.checksum_url,
+            limits.manifest_bytes,
             deadline,
             limits.request_timeout,
             allow_loopback,
             fetch,
         )?;
+        let signature = fetch_small_body(
+            &candidate.checksum_signature_url,
+            limits.signature_bytes,
+            deadline,
+            limits.request_timeout,
+            allow_loopback,
+            fetch,
+        )?;
+        write_new_staged_bytes(&paths.checksum_path, &manifest)?;
+        write_new_staged_bytes(&paths.signature_path, &signature)?;
+        verify_signature(&manifest, &signature)?;
+
+        let checksums = super::manifest::parse_sha256sums_bytes(&manifest)?;
+        let required = [
+            (
+                candidate.asset_name.as_str(),
+                candidate.asset_url.as_str(),
+                paths.staged_path.as_path(),
+                limits.binary_bytes,
+            ),
+            (
+                candidate.readme_asset_name.as_str(),
+                candidate.readme_asset_url.as_str(),
+                paths.staged_readme_path.as_path(),
+                limits.sidecar_bytes,
+            ),
+            (
+                candidate.license_asset_name.as_str(),
+                candidate.license_asset_url.as_str(),
+                paths.staged_license_path.as_path(),
+                limits.sidecar_bytes,
+            ),
+            (
+                candidate.notices_asset_name.as_str(),
+                candidate.notices_asset_url.as_str(),
+                paths.staged_notices_path.as_path(),
+                limits.sidecar_bytes,
+            ),
+        ];
+        let verified_required = required
+            .into_iter()
+            .map(|(name, url, path, byte_limit)| {
+                let expected = checksums
+                    .get(name)
+                    .with_context(|| format!("missing checksum for {name}"))?
+                    .clone();
+                Ok((name, url, path, byte_limit, expected))
+            })
+            .collect::<Result<Vec<_>>>()?;
+        for (name, url, path, byte_limit, expected) in verified_required {
+            download_verified_asset(
+                name,
+                url,
+                path,
+                &expected,
+                byte_limit,
+                deadline,
+                limits.request_timeout,
+                allow_loopback,
+                fetch,
+            )?;
+        }
+        Ok(())
+    })();
+    if let Err(err) = staging {
+        if let Err(cleanup) = paths.cleanup_now() {
+            return Err(err).with_context(|| {
+                format!(
+                    "staging cleanup failed and retained {}: {cleanup}",
+                    paths.temp_dir.display()
+                )
+            });
+        }
+        return Err(err);
     }
     Ok(paths)
 }
@@ -371,7 +385,7 @@ pub(super) fn open_new_staged_file(path: &Path) -> Result<File> {
         .with_context(|| format!("failed to create new staged file {}", path.display()))
 }
 
-#[cfg(any(test, not(target_os = "macos")))]
+#[cfg(test)]
 pub(super) fn write_new_staged_file(path: &Path, contents: &str) -> Result<()> {
     use std::io::Write as _;
     let mut file = open_new_staged_file(path)?;

@@ -42,5 +42,5 @@
 - Sec: Windows の一般 `.ps1` は既定で直接実行せず、既定アプリでオープンする。
 - Sec: 自己更新は `SHA256SUMS.sig` の署名検証と checksum 検証を通過した asset のみを staged binary として採用する。
 - Sec: 自己更新は署名済み manifest を asset より先に検証し、全 body の decoded byte/deadline/redirect-origin 上限、create-new staging cleanup、same-directory atomic commit、backup rollback、durable recovery を failure injection で確認する。
-- Platform: updater activation は Windows/Linux の inert dummy file だけで実 filesystem primitive と recovery を確認し、実行中本体の置換や外部 application 起動を検証手段にしない。
+- Platform: updater activation は copied Rust helper core と Windows/Linux atomic adapter を inert dummy file だけで確認し、実行中本体の置換や外部 application 起動を検証手段にしない。
 - Sec: `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に owner、review cadence、re-evaluation trigger を明記し、release candidate ごとに再確認する。

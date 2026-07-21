@@ -1,11 +1,12 @@
 use crate::update_security::CHECKSUM_SIGNATURE_NAME;
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 
 mod apply;
 mod manifest;
 mod release;
 mod staging;
+mod transaction;
 
 const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 const FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
@@ -100,9 +101,7 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
 
     let staged = staging::stage_update_assets(candidate)?;
     let mut verified = verify_staged_update(candidate, staged)?;
-    apply::spawn_update_helper(current_exe, &verified)?;
-    verified.disarm_cleanup();
-    Ok(())
+    apply::spawn_update_helper(current_exe, &mut verified)
 }
 
 pub fn should_skip_update_prompt(target_version: &str, skipped_version: Option<&str>) -> bool {
@@ -145,6 +144,16 @@ impl StagedUpdatePaths {
             temp_dir,
             cleanup_armed: true,
         }
+    }
+
+    fn cleanup_now(&mut self) -> Result<()> {
+        if !self.cleanup_armed {
+            return Ok(());
+        }
+        std::fs::remove_dir_all(&self.temp_dir)
+            .with_context(|| format!("failed to remove staging {}", self.temp_dir.display()))?;
+        self.cleanup_armed = false;
+        Ok(())
     }
 }
 
@@ -195,8 +204,14 @@ impl VerifiedUpdateBundle {
         }
     }
 
-    fn disarm_cleanup(&mut self) {
+    fn cleanup_staging(&mut self) -> Result<()> {
+        if !self.cleanup_armed {
+            bail!("verified staging ownership was already transferred");
+        }
+        std::fs::remove_dir_all(&self.temp_dir)
+            .with_context(|| format!("failed to remove staging {}", self.temp_dir.display()))?;
         self.cleanup_armed = false;
+        Ok(())
     }
 }
 
@@ -210,31 +225,80 @@ impl Drop for VerifiedUpdateBundle {
 
 fn verify_staged_update(
     candidate: &UpdateCandidate,
-    staged: StagedUpdatePaths,
+    mut staged: StagedUpdatePaths,
 ) -> Result<VerifiedUpdateBundle> {
-    manifest::verify_checksum_manifest_signature(&staged.checksum_path, &staged.signature_path)?;
-    manifest::verify_download(
-        &staged.staged_path,
-        &staged.checksum_path,
-        &candidate.asset_name,
-    )?;
-    manifest::verify_download(
-        &staged.staged_readme_path,
-        &staged.checksum_path,
-        &candidate.readme_asset_name,
-    )?;
-    manifest::verify_download(
-        &staged.staged_license_path,
-        &staged.checksum_path,
-        &candidate.license_asset_name,
-    )?;
-    manifest::verify_download(
-        &staged.staged_notices_path,
-        &staged.checksum_path,
-        &candidate.notices_asset_name,
-    )?;
-    staging::make_staged_binary_executable(&staged.staged_path)?;
+    let verification = (|| {
+        manifest::verify_checksum_manifest_signature(
+            &staged.checksum_path,
+            &staged.signature_path,
+        )?;
+        manifest::verify_download(
+            &staged.staged_path,
+            &staged.checksum_path,
+            &candidate.asset_name,
+        )?;
+        manifest::verify_download(
+            &staged.staged_readme_path,
+            &staged.checksum_path,
+            &candidate.readme_asset_name,
+        )?;
+        manifest::verify_download(
+            &staged.staged_license_path,
+            &staged.checksum_path,
+            &candidate.license_asset_name,
+        )?;
+        manifest::verify_download(
+            &staged.staged_notices_path,
+            &staged.checksum_path,
+            &candidate.notices_asset_name,
+        )?;
+        staging::make_staged_binary_executable(&staged.staged_path)
+    })();
+    if let Err(err) = verification {
+        if let Err(cleanup) = staged.cleanup_now() {
+            return Err(err).with_context(|| {
+                format!(
+                    "staging cleanup failed and retained {}: {cleanup}",
+                    staged.temp_dir.display()
+                )
+            });
+        }
+        return Err(err);
+    }
     Ok(VerifiedUpdateBundle::new(staged))
+}
+
+pub fn run_internal_update_helper_if_requested() -> Result<bool> {
+    let mut arguments = std::env::args_os();
+    let _program = arguments.next();
+    let Some(flag) = arguments.next() else {
+        return Ok(false);
+    };
+    if flag != apply::INTERNAL_HELPER_FLAG {
+        return Ok(false);
+    }
+    let marker = arguments
+        .next()
+        .context("internal updater helper marker argument is missing")?;
+    let transaction_id = arguments
+        .next()
+        .and_then(|value| value.into_string().ok())
+        .context("internal updater helper transaction ID is missing or invalid")?;
+    let start_token = arguments
+        .next()
+        .and_then(|value| value.into_string().ok())
+        .context("internal updater helper start token is missing or invalid")?;
+    if arguments.next().is_some() {
+        bail!("internal updater helper received unexpected arguments");
+    }
+    transaction::run_internal_helper(Path::new(&marker), &transaction_id, &start_token)?;
+    Ok(true)
+}
+
+pub fn recover_interrupted_update_on_startup() -> Result<Option<String>> {
+    let current_exe = std::env::current_exe().context("failed to resolve current executable")?;
+    transaction::recover_current_installation(&current_exe)
+        .map(|outcome| outcome.map(|value| format!("{value:?}")))
 }
 
 #[cfg(test)]
@@ -242,6 +306,40 @@ mod tests {
     use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn tc157_explicit_cleanup_failure_reports_and_retains_the_owned_path() {
+        let base = std::env::temp_dir().join(format!(
+            "flistwalker-cleanup-report-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        fs::create_dir(&base).expect("base");
+        let retained = base.join("retained-as-file");
+        fs::write(&retained, b"retain").expect("retained file");
+        let mut staged = StagedUpdatePaths {
+            staged_path: retained.join("binary"),
+            staged_readme_path: retained.join("readme"),
+            staged_license_path: retained.join("license"),
+            staged_notices_path: retained.join("notices"),
+            checksum_path: retained.join("SHA256SUMS"),
+            signature_path: retained.join(CHECKSUM_SIGNATURE_NAME),
+            temp_dir: retained.clone(),
+            cleanup_armed: true,
+        };
+
+        let err = staged
+            .cleanup_now()
+            .expect_err("non-directory owned path must report cleanup failure");
+
+        assert!(err.to_string().contains(&retained.display().to_string()));
+        assert!(retained.exists());
+        staged.cleanup_armed = false;
+        fs::remove_file(retained).expect("cleanup retained fixture");
+        fs::remove_dir(base).expect("cleanup base fixture");
+    }
 
     #[test]
     fn self_update_disabled_flag_is_honored() {

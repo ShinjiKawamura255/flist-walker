@@ -81,19 +81,19 @@ Windows/Linux 実機で `Download and Restart` を押し、現行プロセス終
 window/session/input/update の observable output を変更した場合だけ、`FLISTWALKER_WINDOW_TRACE=1 FLISTWALKER_WINDOW_TRACE_PATH=<temp-path> cargo run --bin flistwalker -- --root .. --limit 1000` または対象 GUI 操作に相当する手順を実施し、変更対象 family の event が trace file に出ることを確認する。window trace に変更がない場合は `not needed` と記録する。
 
 ## Transactional Updater Platform Evidence (TC-160)
-1. Windows と Linux でそれぞれ同一 filesystem の private temporary directory を作り、old/new binary と 3 sidecar を inert text file として配置する。production executable/feed は使用しない。
+1. Windows と Linux でそれぞれ同一 filesystem の private temporary directory を作り、copied-helper transaction core に old/new binary と 3 sidecar の inert text fixture を渡す。production executable/feed は使用しない。
 2. success injection で sidecars-first/binary-last の操作順、完全な new hash、startup cleanup 後の lock/marker/ack/backup 不在を記録する。
 3. 各 sidecar 適用後と `binary_intent` 後の precommit failure injection で old bundle hash へ戻り、originally-absent target が残らないことを記録する。
 4. binary commit 後の restart failure injection で old bundle へ rollback し、旧 binary の再起動は recording backend への call としてのみ確認する。
 5. `prepared_parent_owned`、`helper_registered` ack 前後、各 target の `intent/applied`、`binary_intent/binary_committed` marker fixture を再読込し、live matching helper の回復除外、precommit rollback、committed promotion、ambiguous retention を記録する。
-6. Windows は existing target の `File.Replace(..., false)`、Linux は backup/file/parent sync と same-directory rename が実際に成功することを確認する。いずれかの platform 証跡が無い場合、TC-160 と Slice E は未完了とする。
+6. Windows adapter は existing target の PowerShell `File.Replace(..., false)`、Linux adapter は backup/file/parent sync と same-directory rename が実際に成功することを確認する。いずれかの platform 証跡が無い場合、TC-160 と Slice E は未完了とする。
 
-- Evidence directory:
-- Windows result:
-- Linux result:
-- Failure points covered:
-- Cleanup/remaining artifacts:
-- Production binary/external process untouched: yes / no
+- Evidence directory: test-owned private temporary directories created by `staging::test_unique_update_temp_dir`; each fixture removes its exact directory after assertion.
+- Windows result: pass (`cargo test tc160_windows_file_replace_preserves_the_old_dummy_file_as_backup --lib`: 1 passed; `cargo test tc157_ / tc158_ / tc159_ --lib`: 12 / 5 / 22 passed). The adapter executed PowerShell `[System.IO.File]::Replace(..., false)` against inert text files and preserved the old target as backup.
+- Linux result: pass under WSL2 Ubuntu (`cargo test tc160_linux_synced_rename_preserves_the_old_dummy_file_as_backup --lib`: 1 passed; `cargo test tc157_ / tc158_ / tc159_ --lib`: 12 / 5 / 22 passed). The production Linux adapter executed synced backup + same-directory rename against inert text files.
+- Failure points covered: pre-marker orphan preservation/lone-lock cleanup、ack-before-mutation rejection、live-parent pre-mutation deferral、helper executable/hash/token mismatch、parent wait timeout、operation-time target/prepared hash change、absent-target racing destination、cleanup artifact hash/type mismatch、precommit sidecar failure、restart failure rollback、complete `binary_intent` promotion、unknown hash/invalid transition retention、interrupted postcommit rollback resumption。
+- Cleanup/remaining artifacts: committed/rolled-back fixtures assert lock/marker removal; ambiguous fixtures intentionally retain lock/marker/`.new` evidence only inside fixture-owned directories, which fixture teardown removes.
+- Production binary/external process untouched: yes. Restart behavior used only a recording/no-launch backend; no production update feed or application executable was targeted.
 
 ## Structural Refactoring GUI Smoke Test
 Phase 9 の structural refactoring 完了判定では、この手順を別環境で 1 回通せば GUI smoke 合格とみなす。

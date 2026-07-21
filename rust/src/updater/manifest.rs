@@ -69,8 +69,8 @@ fn parse_checksum_line(line: &str) -> Result<(&str, &str)> {
         bail!("checksum digest must contain exactly 64 hexadecimal digits");
     }
     let separator = &line.as_bytes()[64..66];
-    if separator != b"  " && separator != b" *" {
-        bail!("checksum digest and filename must use sha256sum separator");
+    if separator != b"  " {
+        bail!("checksum digest and filename must use the two-space text separator");
     }
     let name = &line[66..];
     if name.is_empty()
@@ -148,6 +148,7 @@ mod tests {
     fn tc157_manifest_rejects_invalid_digest_and_unsafe_filename() {
         for line in [
             "abc123  FlistWalker-1.0.0-linux-x86_64\n",
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824 *FlistWalker-1.0.0-linux-x86_64\n",
             "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  ../FlistWalker-1.0.0-linux-x86_64\n",
             "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824  unrelated.bin\n",
         ] {

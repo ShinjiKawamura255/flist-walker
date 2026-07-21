@@ -16,6 +16,9 @@ use flist_walker::indexer::build_index;
 use flist_walker::query::{CompiledIgnoreTerms, QueryScope};
 use flist_walker::runtime_config::initialize_runtime_config;
 use flist_walker::search::search_entries_with_scope;
+use flist_walker::updater::{
+    recover_interrupted_update_on_startup, run_internal_update_helper_if_requested,
+};
 use resvg::{tiny_skia, usvg};
 
 const APP_TITLE: &str = "FlistWalker";
@@ -275,6 +278,18 @@ fn init_tracing() {
 
 fn main() -> Result<()> {
     init_tracing();
+    if run_internal_update_helper_if_requested()? {
+        return Ok(());
+    }
+    match recover_interrupted_update_on_startup() {
+        Ok(Some(outcome)) => {
+            warn!("startup updater recovery completed: {outcome}");
+        }
+        Ok(None) => {}
+        Err(err) => {
+            warn!("startup updater recovery requires operator attention: {err}");
+        }
+    }
     ctrlc::set_handler(|| {
         request_process_shutdown();
     })

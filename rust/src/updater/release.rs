@@ -205,12 +205,15 @@ fn effective_update_support(platform_support: UpdateSupport) -> UpdateSupport {
 }
 
 fn release_asset_by_name(release: &GitHubRelease, name: &str) -> Result<GitHubAsset> {
-    release
-        .assets
-        .iter()
-        .find(|asset| asset.name == name)
+    let mut matches = release.assets.iter().filter(|asset| asset.name == name);
+    let asset = matches
+        .next()
         .cloned()
-        .with_context(|| format!("release asset missing: {name}"))
+        .with_context(|| format!("release asset missing: {name}"))?;
+    if matches.next().is_some() {
+        anyhow::bail!("duplicate release asset: {name}");
+    }
+    Ok(asset)
 }
 
 #[cfg(test)]
@@ -405,6 +408,26 @@ mod tests {
         assert_eq!(assets.notices_asset.name, target.notices_asset_name);
         assert_eq!(assets.checksum.name, "SHA256SUMS");
         assert_eq!(assets.checksum_signature.name, CHECKSUM_SIGNATURE_NAME);
+    }
+
+    #[test]
+    fn tc157_candidate_resolution_rejects_duplicate_required_asset_name() {
+        let mut release = test_release("v0.13.1");
+        let target = current_platform_target(&Version::new(0, 13, 1))
+            .expect("platform target")
+            .expect("target");
+        release.assets.push(GitHubAsset {
+            name: target.asset_name,
+            browser_download_url: "https://example.invalid/duplicate".to_string(),
+        });
+
+        let err = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
+            .expect_err("duplicate required release asset must fail closed");
+
+        assert!(
+            err.to_string().contains("duplicate"),
+            "unexpected error: {err}"
+        );
     }
 
     #[test]
