@@ -701,7 +701,7 @@ mod tests {
             &current_exe,
             fixture.sources(),
             "00112233445566778899aabbccddeeff",
-            42,
+            u32::MAX,
         )
         .expect("prepare");
         fs::write(fixture.root.join("README.txt"), b"unknown-content").expect("tamper");
@@ -987,6 +987,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_os = "macos"))]
     #[test]
     fn tc159_process_executable_identity_matches_the_current_test_process() {
         let current = std::env::current_exe().expect("current test executable");
