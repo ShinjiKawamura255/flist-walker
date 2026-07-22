@@ -1,6 +1,24 @@
 # Durable History
 
 ## Durable History
+
+### 2026-07-22 Design and implementation hardening
+
+The hardening roadmap closed as `closed-with-partial-native-validation`. Product and deterministic goals are complete; native GUI interaction remains a durable release/manual validation responsibility under `docs/GUI-TESTPLAN.md` and is not reported as PASS.
+
+| Slice | Durable commit | Outcome |
+| --- | --- | --- |
+| A | `0274f1b` | Worker-side resolved-path authorization and root-confinement evidence. |
+| B | `e9d1ae5` | Bounded action/kind/index scheduling, terminal settlement, stale-before-I/O cancellation, and shutdown handling. |
+| C | `57d6eeb` | Ownership transfer for high-volume tab state and large-tab transition regression coverage. |
+| D | `ee29108` | Shared compiled query/evaluation contract and optimized 100k cold/warm query-shape performance gate. |
+| E staging | `cf05220` | Trust-first, bounded, streaming-verified updater staging with owned cleanup. |
+| E activation | `227fb7d` | Transactional same-directory activation, rollback, restart-failure handling, and deterministic recovery. |
+| F | `1b9f2d2` | Strict UTF-8 FileList contract, optional leading BOM, explicit invalid-input rejection, and cancellation bounds. |
+| G | `3054582` | Canonical deterministic GUI inventory, isolated staged liveness harness, fixture guards, and integrated validation. |
+
+Closure validation owns full Rust tests, clippy, format/diff, the 75% coverage gate, VM-003/VM-004 performance gates, Windows GNU cross-check, Windows/WSL deterministic GUI wrappers, and SDD/link consistency. Slice G evidence records deterministic 10/10 groups and isolated Windows/WSL liveness as PASS; all required native-interaction axes remain `NOT RUN` with owner, frequency, reason, and reproduction procedure. No production updater activation, external file action, clipboard mutation, production binary replacement, or user-owned data access was used as roadmap evidence.
+
 - 2026-04-08: 次の app architecture 改善を 2 段 change plan に再編し、`docs/CHANGE-PLAN-20260408-app-architecture-roadmap.md` と `docs/CHANGE-PLAN-20260408-pipeline-owner-slice.md` を追加した。
 - 2026-04-08: Slice A 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-background-tab-result-flow-slice.md` を追加し、background tab result-flow separation に進める状態へ更新した。
 - 2026-04-08: Slice B 完了後、次の child slice として `docs/CHANGE-PLAN-20260408-worker-protocol-separation-slice.md` を追加し、worker protocol separation に進める状態へ更新した。

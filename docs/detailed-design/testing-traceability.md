@@ -24,7 +24,7 @@ Recommended validation for changes that use this document:
 | VM-006 | CI coverage gate / GUI validation docs | `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` | Re-measure and update baseline when raising threshold. |
 | VM-007 | Supportability docs/templates | affected doc/template diff review and redaction/telemetry wording check | No Rust tests unless support code changes. |
 
-Manual-heavy checks remain documented in [TESTPLAN.md](../TESTPLAN.md), including structural GUI smoke, diagnostics trace smoke, and self-update sidecar tests. Release/security changes should also consider `cargo audit`, release sidecar completeness, and notarization notes.
+Manual-heavy checks remain documented in [TESTPLAN.md](../TESTPLAN.md). Structural GUI checks use the isolated staged launch and three-axis evidence contract in [GUI-TESTPLAN.md](../GUI-TESTPLAN.md); diagnostics use deterministic owner tests unless a dedicated staged trace launch exists; VM-005 self-update checks use only a private sandbox and local inert feed. Release/security changes should also consider `cargo audit`, release sidecar completeness, and notarization notes.
 
 [[↑ Back to Top]](#top)
 

@@ -50,7 +50,8 @@
 | Operation | Design |
 | --- | --- |
 | Build | `cargo` from [rust](../../rust), with Windows GNU helper scripts under [scripts](../../scripts). |
-| GUI run | `cargo run --bin flistwalker -- --root .. --limit 1000`. |
+| GUI developer run | `cargo run --bin flistwalker -- --root .. --limit 1000`; this is an interactive development launch, not validation evidence. |
+| GUI validation | Use the isolated staged executable from `scripts/gui-headful-smoke.sh` or `scripts/gui-headful-smoke.ps1` and record the independent axes required by [GUI-TESTPLAN.md](../GUI-TESTPLAN.md). |
 | CLI run | `cargo run -- --cli "query" --root .. --limit 1000`. |
 | Release | Release assets and sidecar notices are managed by scripts and GitHub Actions described in [RELEASE.md](../RELEASE.md). |
 | Diagnostics | Worker tracing uses `RUST_LOG`; GUI/window trace uses `FLISTWALKER_WINDOW_TRACE=1` and optional path override. |
