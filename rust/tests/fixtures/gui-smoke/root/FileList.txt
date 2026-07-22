@@ -1,0 +1,8 @@
+README-preview.txt
+docs/alpha-report.md
+docs/beta_notes.txt
+actions/open-target.txt
+actions/space name.txt
+ignored/old.tmp
+nested/FileList.txt
+empty-dir

@@ -47,6 +47,12 @@ For documentation-only restructuring, apply VM-001:
 - TC-154 fixes allocation-preserving active/inactive ownership transfer, lifecycle/routing compatibility, persisted-field projection, and native large-tab responsiveness.
 - Apply VM-002 with focused tab owner tests; use non-compacting/non-sparse fixtures for pointer/capacity identity and verify result compaction separately.
 
+## GUI Evidence Axes
+- `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..010. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.
+- `scripts/gui-deterministic-scenarios.tsv` is the canonical nonzero owner-test inventory used by both platform wrappers.
+- Headful smoke MUST launch only a fresh BaseDir-owned staged executable with isolated settings, the exact binary/ignore/sample allowlist, and no `.flistwalker-update*` artifact. External actions, clipboard mutation, network update checks, and live updater activation are not validation defaults.
+- Apply VM-006 after changing the GUI plan/template, deterministic wrappers/inventory, fixture, or headful scripts; this includes the exact 75% llvm-cov command and parser/fixture/reference checks.
+
 ## Traceability (excerpt)
 - Full excerpt: [Manual Regression and Traceability](testplan/manual-regression-traceability.md)
 - TC-001 -> SP-001 -> DES-001 -> FR-001

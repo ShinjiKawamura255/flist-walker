@@ -466,6 +466,7 @@ fn tc_050_worker_rejects_mixed_selection_before_executor_call() {
 fn tc_050_worker_dispatches_only_resolved_path_and_preserves_display_notice() {
     let root = test_root("action-worker-resolved-root");
     fs::create_dir_all(&root).expect("create root");
+    fs::create_dir(root.join("sub")).expect("create intermediate directory");
     let selected = root.join("sub").join("..").join("selected.txt");
     let actual = root.join("selected.txt");
     fs::write(&actual, "selected").expect("write selected");

@@ -3,121 +3,105 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "$script_dir/.." && pwd -P)"
-base_dir="${1:-"$repo_root/rust/target/gui-smoke"}"
+base_dir="$repo_root/rust/target/gui-smoke"
+verify_only=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base-dir)
+      base_dir="$2"
+      shift 2
+      ;;
+    --verify-only)
+      verify_only=1
+      shift
+      ;;
+    -h|--help)
+      echo "Usage: scripts/gui-smoke-fixture.sh [--base-dir PATH] [--verify-only]"
+      exit 0
+      ;;
+    *)
+      # Preserve the original positional BaseDir contract.
+      base_dir="$1"
+      shift
+      ;;
+  esac
+done
 root_dir="$base_dir/root"
 evidence_dir="$base_dir/evidence"
-debug_dir="$repo_root/rust/target/debug"
+fixture_dir="$repo_root/rust/tests/fixtures/gui-smoke"
+manifest_path="$fixture_dir/SHA256SUMS"
+spec_path="$fixture_dir/fixture-spec.tsv"
 
-mkdir -p \
-  "$root_dir/docs" \
-  "$root_dir/nested" \
-  "$root_dir/ignored" \
-  "$root_dir/actions" \
-  "$root_dir/empty-dir" \
-  "$evidence_dir" \
-  "$debug_dir"
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    echo "Neither sha256sum nor shasum is available" >&2
+    return 1
+  fi
+}
 
-cat >"$root_dir/README-preview.txt" <<'EOF'
-FlistWalker GUI smoke fixture
+spec_value() {
+  local key="$1"
+  awk -F '\t' -v key="$key" '$1 == key { print $2 }' "$spec_path"
+}
 
-This file is used for preview, search highlighting, and action routing checks.
-Search terms: alpha beta gamma exact-start final-end
-EOF
+validate_fixture() {
+  local expected_hash relative_path actual_hash expected_root expected_nested
+  while read -r expected_hash relative_path; do
+    [[ -n "$expected_hash" && -n "$relative_path" ]] || continue
+    [[ -f "$base_dir/$relative_path" ]] || {
+      echo "Missing GUI fixture file: $base_dir/$relative_path" >&2
+      return 1
+    }
+    actual_hash="$(sha256_file "$base_dir/$relative_path")"
+    [[ "$actual_hash" == "$expected_hash" ]] || {
+      echo "GUI fixture hash mismatch: $relative_path" >&2
+      return 1
+    }
+  done <"$manifest_path"
 
-cat >"$root_dir/docs/alpha-report.md" <<'EOF'
-# Alpha Report
+  expected_root="$(spec_value root_filelist_entries)"
+  expected_nested="$(spec_value nested_filelist_entries)"
+  [[ -n "$expected_root" && -n "$expected_nested" ]] || {
+    echo "GUI fixture spec is incomplete" >&2
+    return 1
+  }
+  [[ "$(awk 'NF { count++ } END { print count + 0 }' "$root_dir/FileList.txt")" == "$expected_root" ]] || {
+    echo "Root FileList entry count mismatch" >&2
+    return 1
+  }
+  [[ "$(awk 'NF { count++ } END { print count + 0 }' "$root_dir/nested/FileList.txt")" == "$expected_nested" ]] || {
+    echo "Nested FileList entry count mismatch" >&2
+    return 1
+  }
+}
 
-Use this file for non-empty query, preview, and sort checks.
-EOF
+[[ -f "$manifest_path" && -f "$spec_path" ]] || {
+  echo "Canonical GUI fixture metadata is missing" >&2
+  exit 1
+}
 
-cat >"$root_dir/docs/beta_notes.txt" <<'EOF'
-beta note
-This file is intentionally plain text for preview checks.
-EOF
+if [[ "$verify_only" -eq 0 ]]; then
+  mkdir -p "$root_dir" "$root_dir/empty-dir" "$evidence_dir"
+  cp -R "$fixture_dir/root/." "$root_dir/"
+  cp "$fixture_dir/flistwalker.ignore.txt" "$base_dir/flistwalker.ignore.txt"
+fi
 
-cat >"$root_dir/actions/open-target.txt" <<'EOF'
-Open action target for manual GUI smoke.
-EOF
+validate_fixture
 
-cat >"$root_dir/actions/space name.txt" <<'EOF'
-Path with a space for copy/open path checks.
-EOF
-
-cat >"$root_dir/ignored/old.tmp" <<'EOF'
-This file should be hidden when the executable-local ignore list is enabled.
-EOF
-
-cat >"$root_dir/nested/child-one.txt" <<'EOF'
-nested child one
-EOF
-
-cat >"$root_dir/nested/child-two.log" <<'EOF'
-nested child two
-EOF
-
-cat >"$root_dir/nested/FileList.txt" <<'EOF'
-child-one.txt
-child-two.log
-EOF
-
-cat >"$root_dir/FileList.txt" <<'EOF'
-README-preview.txt
-docs/alpha-report.md
-docs/beta_notes.txt
-actions/open-target.txt
-actions/space name.txt
-ignored/old.tmp
-nested/FileList.txt
-empty-dir
-EOF
-
-cat >"$debug_dir/flistwalker.ignore.txt" <<'EOF'
-old.tmp
-ignored
-EOF
-
-cat >"$evidence_dir/GUI-TESTREPORT.local.md" <<EOF
-# GUI TESTREPORT
-
-## Summary
-- Date:
-- Tester:
-- Build/version:
-- OS/display:
-- Fixture root: \`$root_dir\`
-- Evidence dir: \`$evidence_dir\`
-- Command: \`cd "$repo_root/rust" && cargo run --bin flistwalker -- --root "$root_dir" --limit 1000\`
-
-## Results
-| ID | Status | Notes | Evidence |
-| --- | --- | --- | --- |
-| GSM-001 | NOT RUN | Startup/indexing | |
-| GSM-002 | NOT RUN | Search/highlight/operators | |
-| GSM-003 | NOT RUN | Preview and selection movement | |
-| GSM-004 | NOT RUN | Open/copy action routing | |
-| GSM-005 | NOT RUN | Sort modes | |
-| GSM-006 | NOT RUN | FileList source and Create File List dialog | |
-| GSM-007 | NOT RUN | Tabs and per-tab state | |
-| GSM-008 | NOT RUN | Dialog cancel/failure handling | |
-| GSM-009 | NOT RUN | Light/dark theme visual pass | |
-| GSM-010 | NOT RUN | Responsiveness during indexing/search | |
-
-## Defects
-- None recorded.
-
-## Follow-ups
-- Replace NOT RUN with PASS/FAIL/SKIPPED and record evidence before release.
-EOF
+if [[ "$verify_only" -eq 0 && ! -f "$evidence_dir/GUI-TESTREPORT.local.md" ]]; then
+  cp "$repo_root/docs/GUI-TESTREPORT.template.md" "$evidence_dir/GUI-TESTREPORT.local.md"
+fi
 
 cat <<EOF
 GUI smoke fixture prepared.
 Root: $root_dir
 Evidence: $evidence_dir
-Executable-local ignore list for cargo run: $debug_dir/flistwalker.ignore.txt
-
-Run:
-  cd "$repo_root/rust"
-  cargo run --bin flistwalker -- --root "$root_dir" --limit 1000
+Canonical hashes and FileList counts: PASS
 
 Record results in:
   $evidence_dir/GUI-TESTREPORT.local.md

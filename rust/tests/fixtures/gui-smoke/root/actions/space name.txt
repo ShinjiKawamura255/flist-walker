@@ -1,0 +1,1 @@
+Path with a space for copy/open path checks.
