@@ -45,8 +45,9 @@ Use this checklist before selecting runner commands. The VM table below remains 
 ### Indexing, FileList, Walker, or Kind Resolution Changes
 - Apply: VM-003.
 - Update indexer tests before changing FileList detection, precedence, root lookup, nested FileList handling, or walker classification.
+- FileList byte decoding、BOM、line bound、ancestor read/append を変更する場合は TC-161 を先に red/green 実行し、stable invalid root の callback 0 件、invalid child subtree 不変、invalid ancestor no-rewrite、64 KiB 以下の cancel cadence を確認する。
 - Preserve incremental ingestion, keep regular FILE/DIR classification on the `file_type` fast path, and avoid full-list synchronous metadata resolution in idle UI paths. Confirm LINK identity is not used as a fallback for special files and terminal OTHER results are not requeued.
-- Run the VM-003 ignored perf tests when index/filelist/walker paths are touched.
+- Run the VM-003 ignored perf tests when index/filelist/walker paths are touched. FileList encoding preflight を変更する場合、metadata-probe/allocating-lines controls は production と同じ preflight を通し既存 threshold を維持し、validation-only と total parse elapsed を記録する。
 - Add large-root manual GUI checks when the change can affect responsiveness or throughput.
 
 ### Search or Query Contract Changes

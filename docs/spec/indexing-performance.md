@@ -6,6 +6,10 @@
 - MUST: 両方ある場合は `FileList.txt` を優先する。
 - MUST: 上記2名が無い場合、`filelist.txt` と大文字小文字のみ異なるファイル名（例: `FILELIST.TXT`）をルート直下から検出対象に含める。
 - MUST: 空行と `#` コメント行を無視する。
+- MUST: root と階層の FileList は UTF-8 として読み込む。byte offset 0 の UTF-8 BOM (`EF BB BF`) は 1 個だけ任意とし、候補文字列には含めない。UTF-8 BOM の有無、LF/CRLF、ASCII/非 ASCII path の違いで候補解釈を変えてはならない。
+- MUST: UTF-16LE/BE BOM、NUL byte、不正または途中切れ UTF-8 を locale、置換文字、または文字コード推測で復号してはならない。FileList path と `expected UTF-8 (optional BOM)`、不正 byte offset または拒否理由を含むエラーで失敗しなければならない。
+- MUST: optional BOM と CR/LF を除く 1 論理行の encoded payload は 1 MiB 以下とする。上限超過は候補化せず、FileList path と上限を含むエラーで失敗しなければならない。
+- MUST: encoding preflight と line parse は 64 KiB 以下の chunk ごとに supersede/cancel を確認しなければならない。安定した不正 root FileList は callback/候補を 0 件に保ち、不正な階層 FileList はその local replacement 完成前に親由来 subtree を変更してはならない。
 - MUST: 階層 FileList 展開は、読み込み済み候補内でファイル名が `FileList.txt` / `filelist.txt` に完全一致するエントリのみを対象とする。
 - MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。
 - MUST: FileList 作成時は、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ作成済み子 FileList の参照を重複なく追記できる。
@@ -14,6 +18,7 @@
 - MUST: Create File List 実行中は status panel にキャンセル導線を表示し、利用者が再実行ボタンや root 変更へ頼らず中断要求できる。
 - MUST: Create File List のキャンセル要求後、root 直下の最終置換と祖先 FileList 追記は開始前なら実行してはならない。
 - MUST: 上記の祖先 FileList 追記後は、親 FileList の mtime を更新前の値へ戻す。
+- MUST: 祖先 FileList の参照重複判定と追記も同じ UTF-8/optional-BOM/NUL/行上限契約を使わなければならない。先頭 BOM は最初の参照文字列に含めず、拒否対象の親 FileList は書き換えず、既存どおりその時点で祖先追記だけを終了する。
 - MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
 - MUST: Source が FileList のタブで Create File List を実行する場合、新規タブを開かずに同一タブの裏で Walker indexing を実行し、その結果で FileList を作成しなければならない。作成完了後は同じタブを新しい FileList で再インデックスしなければならない。
 - MUST: 上記の FileList 作成完了後再インデックスは、元タブが非アクティブに変わっていても元タブに対して継続しなければならない。一方、完了前にその元タブの root が変更されていた場合は、旧 root 向けの再インデックスや `use_filelist` 復帰を行ってはならない。
@@ -30,7 +35,9 @@
 
 ### Edge / Error
 - 空ファイルは候補ゼロ件で正常終了する。
+- UTF-8 BOM だけのファイルは候補ゼロ件で正常終了する。
 - 読み込み失敗時はエラーを返し、終了コードを非ゼロにする。
+- 安定した拒否対象 root FileList は valid prefix を候補として返さない。FileList が validation と parse の間に同一 handle 上で in-place 更新された場合、valid UTF-8 の混在 snapshot までは検知保証しないが、各 parse chunk の strict UTF-8/NUL/行上限確認は維持する。
 - 利用者が祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続し、祖先追記は行わない。
 - 利用者が Create File List をキャンセルした場合、進行中 request は `Canceled` として扱い、成功/失敗通知や再インデックスを発生させない。
 

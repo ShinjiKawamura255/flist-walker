@@ -1,8 +1,10 @@
 mod perf;
 
-use super::filelist_reader::resolve_filelist_entry_candidates;
 #[cfg(not(windows))]
 use super::filelist_reader::windows_path_to_wsl;
+use super::filelist_reader::{
+    open_validated_filelist, resolve_filelist_entry_candidates, validate_filelist_encoding,
+};
 use super::filelist_writer::{
     annotate_write_target_error, filelist_modified_time, normalize_filelist_entry_for_text_compare,
     visit_ancestor_directories,
@@ -11,8 +13,8 @@ use super::*;
 use anyhow::Context;
 use std::collections::HashSet;
 use std::fs;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::BufRead;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 fn test_root(name: &str) -> PathBuf {
@@ -452,7 +454,250 @@ fn parse_filelist_stream_can_be_canceled() {
     .expect_err("canceled parse should fail");
 
     assert_eq!(visited, 0);
-    assert!(err.to_string().contains("superseded"));
+    assert_eq!(err.to_string(), "superseded");
+    let _ = fs::remove_dir_all(&root);
+}
+
+fn assert_tc161_rejected_bytes(label: &str, bytes: &[u8]) {
+    let root = test_root(label);
+    fs::create_dir_all(&root).expect("create dir");
+    let filelist = root.join("FileList.txt");
+    fs::write(&filelist, bytes).expect("write raw filelist");
+    let mut callbacks = 0usize;
+
+    let err = parse_filelist_stream(
+        &filelist,
+        &root,
+        true,
+        true,
+        || false,
+        |_path, _is_dir| callbacks = callbacks.saturating_add(1),
+    )
+    .expect_err("unsupported FileList bytes must fail");
+
+    let message = err.to_string();
+    assert_eq!(callbacks, 0, "{label} emitted a candidate before failure");
+    assert!(
+        message.contains(&filelist.display().to_string()),
+        "{label} error omitted FileList path: {message}"
+    );
+    assert!(
+        message.contains("expected UTF-8 (optional BOM)"),
+        "{label} error omitted encoding contract: {message}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_utf8_bom_crlf_and_non_ascii_path_match_plain_utf8() {
+    let root = test_root("tc161-utf8-bom");
+    fs::create_dir_all(&root).expect("create dir");
+    let expected = root.join("日本語.txt");
+    fs::write(&expected, "x").expect("write non-ASCII file");
+    let filelist = root.join("FileList.txt");
+    let mut bom_text = vec![0xEF, 0xBB, 0xBF];
+    bom_text.extend_from_slice("日本語.txt\r\n".as_bytes());
+    fs::write(&filelist, bom_text).expect("write BOM filelist");
+
+    let bom_entries = parse_filelist(&filelist, &root, true, false).expect("parse BOM filelist");
+    fs::write(&filelist, "日本語.txt\n").expect("write plain UTF-8 filelist");
+    let plain_entries =
+        parse_filelist(&filelist, &root, true, false).expect("parse plain filelist");
+
+    assert_eq!(bom_entries, vec![expected]);
+    assert_eq!(bom_entries, plain_entries);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_bom_only_filelist_is_empty() {
+    let root = test_root("tc161-bom-only");
+    fs::create_dir_all(&root).expect("create dir");
+    let filelist = root.join("FileList.txt");
+    fs::write(&filelist, [0xEF, 0xBB, 0xBF]).expect("write BOM-only filelist");
+
+    let entries = parse_filelist(&filelist, &root, true, true).expect("parse BOM-only filelist");
+
+    assert!(entries.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_rejects_utf16_legacy_invalid_utf8_nul_and_truncated_sequences() {
+    assert_tc161_rejected_bytes("tc161-utf16le", &[0xFF, 0xFE, b'a', 0x00, b'\n', 0x00]);
+    assert_tc161_rejected_bytes("tc161-utf16be", &[0xFE, 0xFF, 0x00, b'a', 0x00, b'\n']);
+    assert_tc161_rejected_bytes("tc161-shift-jis", &[0x93, 0xFA, 0x96, 0x7B, b'\n']);
+    assert_tc161_rejected_bytes("tc161-nul", b"valid.txt\0hidden.txt\n");
+    assert_tc161_rejected_bytes(
+        "tc161-truncated",
+        &[b'a', b'.', b't', b'x', b't', 0xE3, 0x81],
+    );
+}
+
+#[test]
+fn tc161_stable_invalid_root_emits_no_valid_prefix_and_reports_byte_offset() {
+    let root = test_root("tc161-invalid-after-valid-prefix");
+    fs::create_dir_all(&root).expect("create dir");
+    let filelist = root.join("FileList.txt");
+    fs::write(&filelist, b"valid.txt\n\xFF\n").expect("write invalid suffix");
+    let mut callbacks = 0usize;
+
+    let err = parse_filelist_stream(
+        &filelist,
+        &root,
+        true,
+        true,
+        || false,
+        |_path, _is_dir| callbacks = callbacks.saturating_add(1),
+    )
+    .expect_err("stable invalid suffix must fail before callbacks");
+
+    assert_eq!(callbacks, 0);
+    assert!(err.to_string().contains("byte 10"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_rejects_over_one_mib_line_before_callback() {
+    const MAX_LINE_BYTES: usize = 1024 * 1024;
+    let mut bytes = vec![b'a'; MAX_LINE_BYTES + 1];
+    bytes.push(b'\n');
+    let root = test_root("tc161-line-limit");
+    fs::create_dir_all(&root).expect("create dir");
+    let filelist = root.join("FileList.txt");
+    fs::write(&filelist, bytes).expect("write oversized line");
+    let mut callbacks = 0usize;
+
+    let err = parse_filelist_stream(
+        &filelist,
+        &root,
+        true,
+        true,
+        || false,
+        |_path, _is_dir| callbacks = callbacks.saturating_add(1),
+    )
+    .expect_err("oversized line must fail");
+
+    assert_eq!(callbacks, 0);
+    assert!(err.to_string().contains("1 MiB"));
+    assert!(err.to_string().contains(&filelist.display().to_string()));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_long_line_cancellation_occurs_before_callback() {
+    let root = test_root("tc161-long-line-cancel");
+    fs::create_dir_all(&root).expect("create dir");
+    let filelist = root.join("FileList.txt");
+    fs::write(&filelist, vec![b'a'; 320 * 1024]).expect("write long line");
+    let checks = AtomicUsize::new(0);
+    let mut callbacks = 0usize;
+
+    let err = parse_filelist_stream(
+        &filelist,
+        &root,
+        true,
+        true,
+        || checks.fetch_add(1, Ordering::Relaxed) >= 4,
+        |_path, _is_dir| callbacks = callbacks.saturating_add(1),
+    )
+    .expect_err("long-line validation must observe cancellation");
+
+    assert_eq!(callbacks, 0);
+    assert!(checks.load(Ordering::Relaxed) >= 5);
+    assert_eq!(err.to_string(), "superseded");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_invalid_nested_filelist_preserves_parent_entries() {
+    let root = test_root("tc161-invalid-nested");
+    let child = root.join("child");
+    fs::create_dir_all(&child).expect("create child");
+    let child_filelist = child.join("FileList.txt");
+    fs::write(&child_filelist, [0xFF, 0xFE, b'x', 0x00]).expect("write invalid child");
+    let retained = child.join("from-parent.txt");
+    let mut entries = vec![retained.clone(), child_filelist.clone()];
+    let before = entries.clone();
+
+    let err = apply_filelist_hierarchy_overrides(
+        &root.join("FileList.txt"),
+        &root,
+        &mut entries,
+        true,
+        true,
+        || false,
+    )
+    .expect_err("invalid child FileList must fail");
+
+    assert_eq!(entries, before);
+    assert!(err.to_string().contains("expected UTF-8 (optional BOM)"));
+    assert!(err
+        .to_string()
+        .contains(&child_filelist.display().to_string()));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc161_bom_ancestor_dedupes_existing_child_reference() {
+    let top = test_root("tc161-bom-ancestor-dedupe");
+    let parent = top.join("parent");
+    let root = parent.join("child");
+    fs::create_dir_all(&root).expect("create child root");
+    let parent_filelist = parent.join("FileList.txt");
+    let mut parent_bytes = vec![0xEF, 0xBB, 0xBF];
+    parent_bytes.extend_from_slice(b"child/FileList.txt\n");
+    fs::write(&parent_filelist, &parent_bytes).expect("write BOM parent");
+
+    write_filelist(&root, &[], "FileList.txt", true).expect("write child filelist");
+
+    let parent_content = fs::read(&parent_filelist).expect("read parent bytes");
+    assert_eq!(parent_content, parent_bytes);
+    let decoded = std::str::from_utf8(&parent_content).expect("parent remains UTF-8");
+    assert_eq!(decoded.matches("child/FileList.txt").count(), 1);
+    let _ = fs::remove_dir_all(&top);
+}
+
+#[test]
+fn tc161_nul_ancestor_is_not_rewritten() {
+    let top = test_root("tc161-nul-ancestor");
+    let parent = top.join("parent");
+    let root = parent.join("child");
+    fs::create_dir_all(&root).expect("create child root");
+    let parent_filelist = parent.join("FileList.txt");
+    let invalid_parent = b"keep.txt\0hidden.txt\n";
+    fs::write(&parent_filelist, invalid_parent).expect("write NUL parent");
+
+    write_filelist(&root, &[], "FileList.txt", true).expect("child write remains successful");
+
+    assert_eq!(
+        fs::read(&parent_filelist).expect("read parent"),
+        invalid_parent
+    );
+    let _ = fs::remove_dir_all(&top);
+}
+
+#[test]
+fn tc161_writer_round_trip_is_utf8_without_bom() {
+    let root = test_root("tc161-writer-roundtrip");
+    fs::create_dir_all(&root).expect("create root");
+    let expected = root.join("日本語.txt");
+    fs::write(&expected, "x").expect("write non-ASCII entry");
+
+    let filelist = write_filelist(
+        &root,
+        std::slice::from_ref(&expected),
+        "FileList.txt",
+        false,
+    )
+    .expect("write FileList");
+    let bytes = fs::read(&filelist).expect("read FileList bytes");
+    assert!(!bytes.starts_with(&[0xEF, 0xBB, 0xBF]));
+    assert!(std::str::from_utf8(&bytes).is_ok());
+    assert_eq!(
+        parse_filelist(&filelist, &root, true, false).expect("round-trip parse"),
+        vec![expected]
+    );
     let _ = fs::remove_dir_all(&root);
 }
 

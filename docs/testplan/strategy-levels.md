@@ -7,6 +7,7 @@
 - P1: FR-006/007, NFR-002/003/004
 - P1: NFR-001（TC-156 weekly release-mode regression ceiling）
 - P0: FR-033, NFR-010（TC-157〜TC-160 updater trust/transaction/recovery safety）
+- P0: FR-034（TC-161 FileList encoding/line-bound determinism）
 
 ## Test levels
 - Unit:
@@ -34,7 +35,7 @@
 - release candidate / nightly では `scripts/gui-headful-smoke.sh` または `scripts/gui-headful-smoke.ps1` で native window 起動の早期クラッシュを検出し、`rust/target/gui-smoke/evidence/GUI-HEADFUL-SMOKE.local.md` に記録する。通常 PR の required gate にはしない。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
-- Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` と `perf_adaptive_walker_reports_local_dataset_metrics` として分離し、walker 側の現行 control baseline は 1.25x を下限としつつ、adaptive の件数一致・実行時間・read_dir 制御指標も継続計測する。
+- Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。encoding preflight 追加後は metadata-probe control と allocating-lines control の両方が production と同じ preflight を実行して差分要因を維持し、threshold は変更しない。TC-161 evidence は validation-only と total parse elapsed も別々に記録する。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` と `perf_adaptive_walker_reports_local_dataset_metrics` として分離し、walker 側の現行 control baseline は 1.25x を下限としつつ、adaptive の件数一致・実行時間・read_dir 制御指標も継続計測する。
 - Search Perf: TC-156 は weekly/manual の release-mode gate とし、固定10万件 fixture を計測区間外で構築する。rayon 初期化後、5回以上の compile/cold/warm/query-shape を測定し、候補数・評価候補数・match 数・median・maximum を出力する。代表 median 100ms は NFR target、全 shape 250ms は hosted CI hard ceiling として分離する。
 - Coverage: CI の `lint-and-coverage` job は `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75` を実行し、line coverage 75% 未満への低下を失敗扱いにする。2026-05-14 の fresh baseline は 79.08%（LH=12604 / LF=15938）。中期目標は 80% とする。enforced threshold を上げる変更では、同一変更内で fresh baseline、失敗時の不足領域、追加した owner-seam test を記録する。
 - Sec: コマンド引数を配列化しシェルインジェクションを回避。

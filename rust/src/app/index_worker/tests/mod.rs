@@ -419,6 +419,39 @@ fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
 }
 
 #[test]
+fn filelist_stream_returns_superseded_when_canceled_before_entry() {
+    let root = test_root("filelist-canceled-before-entry");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    let filelist = root.join("FileList.txt");
+    std::fs::write(&filelist, "main.rs\n").expect("write FileList");
+
+    let (tx_res, _rx_res) = mpsc::channel();
+    let req = IndexRequest {
+        request_id: 11,
+        tab_id: 4,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+    };
+    let shutdown = AtomicBool::new(false);
+    let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id + 1)]));
+
+    let result = stream_filelist_index(
+        &tx_res,
+        &req,
+        &root,
+        filelist,
+        &shutdown,
+        &latest_request_ids,
+    );
+
+    assert_eq!(result, Err("superseded".to_string()));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn filelist_stream_uses_larger_batches() {
     let root = test_root("filelist-large-batch");
     let _ = std::fs::remove_dir_all(&root);

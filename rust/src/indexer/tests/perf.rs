@@ -1,18 +1,42 @@
 use super::*;
 
+fn validate_control_line<'a>(
+    raw: &'a str,
+    line_index: usize,
+    filelist_path: &Path,
+) -> Result<&'a str> {
+    let line = if line_index == 0 {
+        raw.strip_prefix('\u{feff}').unwrap_or(raw)
+    } else {
+        raw
+    };
+    if line.len() > 1024 * 1024 {
+        anyhow::bail!(
+            "FileList line {} in {} exceeds the 1 MiB logical line limit",
+            line_index + 1,
+            filelist_path.display()
+        );
+    }
+    if line.as_bytes().contains(&0) {
+        anyhow::bail!(
+            "invalid FileList encoding in {}: NUL bytes are not allowed",
+            filelist_path.display()
+        );
+    }
+    Ok(line)
+}
+
 fn parse_filelist_stream_metadata_probe_count(filelist_path: &Path, root: &Path) -> Result<usize> {
     // This models the probe-heavy path we want to keep out of the fast stream.
-    let file = File::open(filelist_path)
-        .with_context(|| format!("failed to read {}", filelist_path.display()))?;
-    let reader = BufReader::new(file);
+    let reader = open_validated_filelist(filelist_path, &|| false)?;
     let filelist_base = filelist_path.parent().unwrap_or(root);
     let mut seen = HashSet::new();
     let mut count = 0usize;
 
-    for line_result in reader.lines() {
+    for (line_index, line_result) in reader.lines().enumerate() {
         let raw =
             line_result.with_context(|| format!("failed to read {}", filelist_path.display()))?;
-        let line = raw.trim();
+        let line = validate_control_line(&raw, line_index, filelist_path)?.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
@@ -37,17 +61,15 @@ fn parse_filelist_stream_allocating_lines_count(
     filelist_path: &Path,
     root: &Path,
 ) -> Result<usize> {
-    let file = File::open(filelist_path)
-        .with_context(|| format!("failed to read {}", filelist_path.display()))?;
-    let reader = BufReader::new(file);
+    let reader = open_validated_filelist(filelist_path, &|| false)?;
     let filelist_base = filelist_path.parent().unwrap_or(root);
     let mut seen = HashSet::new();
     let mut count = 0usize;
 
-    for line_result in reader.lines() {
+    for (line_index, line_result) in reader.lines().enumerate() {
         let raw =
             line_result.with_context(|| format!("failed to read {}", filelist_path.display()))?;
-        let line = raw.trim();
+        let line = validate_control_line(&raw, line_index, filelist_path)?.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
@@ -82,10 +104,15 @@ fn perf_filelist_stream_is_faster_than_metadata_probe_baseline() {
     let iterations = 5usize;
     let mut probe_baseline_best = Duration::MAX;
     let mut current_best = Duration::MAX;
+    let mut validation_best = Duration::MAX;
     let mut probe_baseline_count = 0usize;
     let mut current_count = 0usize;
 
     for _ in 0..iterations {
+        let validation_start = Instant::now();
+        validate_filelist_encoding(&filelist, &|| false).expect("validation-only pass");
+        validation_best = validation_best.min(validation_start.elapsed());
+
         let probe_baseline_start = Instant::now();
         probe_baseline_count = parse_filelist_stream_metadata_probe_count(&filelist, &root)
             .expect("metadata probe baseline parse");
@@ -109,6 +136,7 @@ fn perf_filelist_stream_is_faster_than_metadata_probe_baseline() {
 
     let probe_baseline_ms = probe_baseline_best.as_secs_f64() * 1000.0;
     let current_ms = current_best.as_secs_f64() * 1000.0;
+    let validation_ms = validation_best.as_secs_f64() * 1000.0;
     let speedup = if current_ms > 0.0 {
         probe_baseline_ms / current_ms
     } else {
@@ -116,7 +144,7 @@ fn perf_filelist_stream_is_faster_than_metadata_probe_baseline() {
     };
 
     eprintln!(
-        "FileList perf control_baseline lines={lines} metadata_probe_ms={probe_baseline_ms:.3} current_ms={current_ms:.3} speedup={speedup:.2}x metadata_probe_count={probe_baseline_count} current_count={current_count}"
+        "FileList perf control_baseline lines={lines} validation_only_ms={validation_ms:.3} metadata_probe_total_ms={probe_baseline_ms:.3} current_total_ms={current_ms:.3} speedup={speedup:.2}x metadata_probe_count={probe_baseline_count} current_count={current_count}"
     );
 
     assert_eq!(probe_baseline_count, lines);
@@ -148,10 +176,15 @@ fn perf_filelist_stream_reuses_line_buffer() {
     let iterations = 5usize;
     let mut allocating_best = Duration::MAX;
     let mut current_best = Duration::MAX;
+    let mut validation_best = Duration::MAX;
     let mut allocating_count = 0usize;
     let mut current_count = 0usize;
 
     for _ in 0..iterations {
+        let validation_start = Instant::now();
+        validate_filelist_encoding(&filelist, &|| false).expect("validation-only pass");
+        validation_best = validation_best.min(validation_start.elapsed());
+
         let allocating_start = Instant::now();
         allocating_count = parse_filelist_stream_allocating_lines_count(&filelist, &root)
             .expect("allocating lines parse");
@@ -175,6 +208,7 @@ fn perf_filelist_stream_reuses_line_buffer() {
 
     let allocating_ms = allocating_best.as_secs_f64() * 1000.0;
     let current_ms = current_best.as_secs_f64() * 1000.0;
+    let validation_ms = validation_best.as_secs_f64() * 1000.0;
     let speedup = if current_ms > 0.0 {
         allocating_ms / current_ms
     } else {
@@ -182,7 +216,7 @@ fn perf_filelist_stream_reuses_line_buffer() {
     };
 
     eprintln!(
-        "FileList line buffer perf lines={lines} allocating_lines_ms={allocating_ms:.3} current_ms={current_ms:.3} speedup={speedup:.2}x allocating_count={allocating_count} current_count={current_count}"
+        "FileList line buffer perf lines={lines} validation_only_ms={validation_ms:.3} allocating_lines_total_ms={allocating_ms:.3} current_total_ms={current_ms:.3} speedup={speedup:.2}x allocating_count={allocating_count} current_count={current_count}"
     );
 
     assert_eq!(allocating_count, lines);

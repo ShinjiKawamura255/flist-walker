@@ -3,6 +3,9 @@
 ## Architecture overview
 - DES-001 Index Source Resolver
 - 役割: FileList 優先モード有効時に `FileList.txt`/`filelist.txt`（`filelist.txt` の大小違い含む）を検出して優先読み込み。
+- 役割補足: `filelist_reader` は同じ open handle を 64 KiB 以下の chunk で事前検証し、UTF-8 と先頭 UTF-8 BOM だけを受理する。UTF-16 BOM、NUL、不正/途中切れ UTF-8、1 MiB 超の論理行は候補 callback 前に path/offset/limit を伴う error とし、validation 後は `BufReader::seek(SeekFrom::Start(0))` で内部 buffer を破棄してから strict byte-line parser を実行する。
+- 役割補足: `filelist_hierarchy` は child FileList を local replacement vector へ完全に読み込んでから subtree を置換する。`filelist_writer` は UTF-8 BOM なしで生成し、祖先 FileList の重複判定/追記では同じ strict validator を使って先頭 BOM を参照文字列から除外し、拒否対象の親を変更しない。
+- 役割補足: validation と parse の間の in-place valid UTF-8 rewrite は一貫 snapshot を保証しない。parser は parse 中も strict UTF-8/NUL/行上限/cancel を確認し、安定した拒否入力の zero-callback と invalid child の no-subtree-mutation を保証する。
 - 実装: `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/filelist_hierarchy.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-002 Walker Indexer

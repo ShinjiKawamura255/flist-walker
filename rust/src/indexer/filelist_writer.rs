@@ -6,7 +6,9 @@ use std::fs::File;
 use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
-use super::filelist_reader::{looks_like_windows_absolute_path, strip_wrapping_quotes};
+use super::filelist_reader::{
+    looks_like_windows_absolute_path, read_filelist_text_strict, strip_wrapping_quotes,
+};
 
 pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
     build_filelist_text_cancellable(entries, root, &|| false)
@@ -196,15 +198,27 @@ fn parent_filelist_contains_child_reference(
     parent_filelist: &Path,
     child_filelist: &Path,
 ) -> std::io::Result<bool> {
+    let content = read_filelist_text_strict(parent_filelist)?;
+    Ok(parent_filelist_content_contains_child_reference(
+        parent_filelist,
+        child_filelist,
+        &content,
+    ))
+}
+
+fn parent_filelist_content_contains_child_reference(
+    parent_filelist: &Path,
+    child_filelist: &Path,
+    content: &str,
+) -> bool {
     let Some(parent_dir) = parent_filelist.parent() else {
-        return Ok(false);
+        return false;
     };
     let child_keys = child_filelist_reference_keys(parent_dir, child_filelist);
-    let content = fs::read_to_string(parent_filelist)?;
-    Ok(content
+    content
         .lines()
         .filter_map(normalize_filelist_entry_for_text_compare)
-        .any(|line| child_keys.contains(&line)))
+        .any(|line| child_keys.contains(&line))
 }
 
 fn restore_file_mtime(
@@ -236,8 +250,8 @@ fn append_child_filelist_to_parent_filelist_if_missing(
     let metadata = fs::metadata(parent_filelist)?;
     let modified = metadata.modified()?;
     let accessed = metadata.accessed().ok();
-    let mut content = fs::read_to_string(parent_filelist)?;
-    if parent_filelist_contains_child_reference(parent_filelist, child_filelist)? {
+    let mut content = read_filelist_text_strict(parent_filelist)?;
+    if parent_filelist_content_contains_child_reference(parent_filelist, child_filelist, &content) {
         return Ok(());
     }
     if !content.is_empty() && !content.ends_with('\n') {
