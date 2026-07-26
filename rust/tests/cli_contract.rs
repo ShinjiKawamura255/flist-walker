@@ -854,6 +854,24 @@ fn tc_006_interactive_requires_cli_mode() {
 }
 
 #[test]
+fn tc_163_interactive_rejects_batch_only_exit_and_progress_options() {
+    for option in ["--fail-no-match", "--progress"] {
+        let output = cli_command("interactive-batch-only-conflict")
+            .args(["--cli", "--interactive", option])
+            .output()
+            .expect("run conflicting interactive CLI");
+
+        assert_eq!(output.status.code(), Some(2), "option {option}");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("--interactive"),
+            "unexpected stderr: {stderr}"
+        );
+        assert!(stderr.contains(option), "unexpected stderr: {stderr}");
+    }
+}
+
+#[test]
 fn tc_006_absolute_and_print0_control_path_framing() {
     let root = test_root("absolute-print0");
     fs::create_dir_all(&root).expect("create root");
@@ -1085,7 +1103,10 @@ fn tc_006_progress_is_written_to_stderr_only() {
 
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "alpha.txt");
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Indexing"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Indexing"));
+    assert!(stderr.contains("Indexed 1 candidate"), "{stderr}");
+    assert!(stderr.contains("Matched 1 path"), "{stderr}");
 
     let _ = fs::remove_dir_all(&root);
 }

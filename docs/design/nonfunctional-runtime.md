@@ -9,6 +9,8 @@
 - UI から各 bounded queue への送信は non-blocking `try_send` とし、`Full` では action を未受理として扱い、kind は queue 先頭、index は tab ごとの latest-only pending slot へ戻す。いずれも UI thread で capacity 解放を待たない。
 - kind worker は tab identity / epoch の最新性を metadata I/O より前に検証し、stale、tab 消失、共有状態の poison は metadata call 0 件の `kind=None` terminal response にする。index worker は supersede/cancel を root canonicalize より前に検証し、stale request は filesystem I/O 0 件の `Canceled` response にする。
 - 検索要求は入力ごとに発行しつつ、ワーカーでキューを集約して最新要求のみ処理する。
+- interactive CLI の候補 snapshot は immutable path batch を共有し、増分 append で既存 path 全件を複製しない。
+- interactive CLI の event loop は worker 応答を 1 iteration 最大 64 件だけ反映する。backlog 中は次回 poll timeout を 0 にするが、各 iteration の key polling は省略しない。
 - 検索要求は query を1回だけ `CompiledQuery` に変換し、各 path を1回だけ `PreparedCandidate` に変換する。rank-only 評価は match/score だけを返し、UI は query/options scope に保持した同じ compiled representation から可視行だけ span 付き評価する。
 - prefix cache は raw query の単調延長だけでなく、`ignore_case`、`prefer_relative`、正規化 root、live snapshot identity が一致する場合だけ候補 index を再利用する。
 - 10万件検索は TC-156 の fixed fixture、release mode、5回以上の sample で compile/cold/warm/query-shape/evaluated-candidate を分離計測し、100ms median target と weekly CI の 250ms hard ceiling を別々に扱う。

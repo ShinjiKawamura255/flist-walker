@@ -41,6 +41,7 @@ const INPUT_DEBOUNCE: Duration = Duration::from_millis(35);
 const INDEX_REFRESH_THROTTLE: Duration = Duration::from_millis(100);
 const EVENT_POLL: Duration = Duration::from_millis(50);
 const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
+const MAX_WORKER_RESPONSES_PER_TICK: usize = 64;
 const PREVIEW_MIN_WIDTH: u16 = 100;
 const PREVIEW_MIN_HEIGHT: u16 = 8;
 
@@ -56,7 +57,9 @@ pub struct CliTuiOptions {
     pub require_filelist: bool,
     pub regex: bool,
     pub ignore_case: bool,
+    pub ignore_enabled: bool,
     pub ignore_terms: Vec<String>,
+    pub sort_mode: SearchSortMode,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,11 +123,40 @@ enum FileListWorkerResult {
 struct SearchRequest {
     request_id: u64,
     query: String,
-    entries: Arc<Vec<PathBuf>>,
+    entries: Arc<Vec<Arc<[PathBuf]>>>,
     root: PathBuf,
     limit: usize,
     options: SearchOptions,
     ignore_terms: Arc<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct CandidateBatches {
+    batches: Arc<Vec<Arc<[PathBuf]>>>,
+    len: usize,
+}
+
+impl CandidateBatches {
+    fn push(&mut self, entries: Vec<PathBuf>) {
+        if entries.is_empty() {
+            return;
+        }
+        self.len = self.len.saturating_add(entries.len());
+        Arc::make_mut(&mut self.batches).push(Arc::from(entries));
+    }
+
+    fn clear(&mut self) {
+        self.batches = Arc::new(Vec::new());
+        self.len = 0;
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    fn snapshot(&self) -> Arc<Vec<Arc<[PathBuf]>>> {
+        Arc::clone(&self.batches)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -183,7 +215,7 @@ impl TuiRuntimeOptions {
             include_dirs: options.include_dirs,
             regex: options.regex,
             ignore_case: options.ignore_case,
-            ignore_enabled: true,
+            ignore_enabled: options.ignore_enabled,
             source,
         }
     }
@@ -345,7 +377,7 @@ struct TuiState {
     indexed: bool,
     root_filelist_known: bool,
     root_filelist_exists: bool,
-    entries: Arc<Vec<PathBuf>>,
+    entries: CandidateBatches,
     root: PathBuf,
     saved_roots: Vec<PathBuf>,
     root_picker: Option<RootPicker>,
@@ -497,7 +529,7 @@ impl TuiState {
             indexed: false,
             root_filelist_known: false,
             root_filelist_exists: false,
-            entries: Arc::new(Vec::new()),
+            entries: CandidateBatches::default(),
             root: PathBuf::new(),
             saved_roots: Vec::new(),
             root_picker: None,
@@ -567,7 +599,7 @@ impl TuiState {
         SearchRequest {
             request_id,
             query: self.query.clone(),
-            entries: Arc::clone(&self.entries),
+            entries: self.entries.snapshot(),
             root,
             limit,
             options: self.runtime_options.search_options(self.sort_mode),
@@ -582,7 +614,7 @@ impl TuiState {
         self.indexed = false;
         self.root_filelist_known = false;
         self.root_filelist_exists = false;
-        self.entries = Arc::new(Vec::new());
+        self.entries.clear();
         self.results.clear();
         self.selected = 0;
         self.offset = 0;
@@ -982,6 +1014,124 @@ where
     result
 }
 
+fn process_index_request<C, S>(request: IndexRequest, should_cancel: &C, mut send: S)
+where
+    C: Fn() -> bool,
+    S: FnMut(WorkerResponse),
+{
+    if should_cancel() {
+        return;
+    }
+    match std::fs::metadata(&request.root) {
+        Ok(metadata) if metadata.is_dir() => {}
+        Ok(_) => {
+            send(WorkerResponse::IndexFailed {
+                request_id: request.request_id,
+                root: request.root,
+                has_root_filelist: false,
+                error: "selected root is not a directory".to_string(),
+            });
+            return;
+        }
+        Err(error) => {
+            send(WorkerResponse::IndexFailed {
+                request_id: request.request_id,
+                root: request.root,
+                has_root_filelist: false,
+                error: format!("failed to read selected root: {error}"),
+            });
+            return;
+        }
+    }
+    let has_filelist = find_filelist_in_first_level(&request.root).is_some();
+    let use_filelist = match request.source {
+        TuiSource::Auto => has_filelist,
+        TuiSource::FileList => true,
+        TuiSource::Walker => false,
+    };
+    if request.source == TuiSource::FileList && !has_filelist {
+        if !should_cancel() {
+            send(WorkerResponse::IndexFailed {
+                request_id: request.request_id,
+                root: request.root,
+                has_root_filelist: false,
+                error: "FileList source selected but no FileList was found".to_string(),
+            });
+        }
+        return;
+    }
+
+    if use_filelist {
+        match build_index_cancellable(
+            &request.root,
+            true,
+            request.include_files,
+            request.include_dirs,
+            should_cancel,
+        ) {
+            Ok(paths) => {
+                if !paths.is_empty() && !should_cancel() {
+                    send(WorkerResponse::IndexedBatch {
+                        request_id: request.request_id,
+                        root: request.root.clone(),
+                        entries: paths,
+                    });
+                }
+            }
+            Err(error) if is_index_build_cancelled(&error) => return,
+            Err(error) => {
+                if !should_cancel() {
+                    send(WorkerResponse::IndexFailed {
+                        request_id: request.request_id,
+                        root: request.root,
+                        has_root_filelist: has_filelist,
+                        error: error.to_string(),
+                    });
+                }
+                return;
+            }
+        }
+    } else {
+        let mut batch = Vec::with_capacity(256);
+        let result = walk_entries_stream_cancellable(
+            &request.root,
+            request.include_files,
+            request.include_dirs,
+            should_cancel,
+            |path| {
+                batch.push(path);
+                if batch.len() >= 256 && !should_cancel() {
+                    send(WorkerResponse::IndexedBatch {
+                        request_id: request.request_id,
+                        root: request.root.clone(),
+                        entries: std::mem::take(&mut batch),
+                    });
+                }
+            },
+        );
+        match result {
+            Ok(()) => {
+                if !batch.is_empty() && !should_cancel() {
+                    send(WorkerResponse::IndexedBatch {
+                        request_id: request.request_id,
+                        root: request.root.clone(),
+                        entries: batch,
+                    });
+                }
+            }
+            Err(_) => return,
+        }
+    }
+
+    if !should_cancel() {
+        send(WorkerResponse::IndexedFinished {
+            request_id: request.request_id,
+            root: request.root,
+            has_root_filelist: has_filelist,
+        });
+    }
+}
+
 pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome> {
     if !interactive_terminal_supported(io::stdin().is_terminal(), io::stderr().is_terminal()) {
         anyhow::bail!("--interactive requires terminal stdin and stderr");
@@ -1158,89 +1308,14 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                 while let Ok(newer) = index_rx.try_recv() {
                     request = newer;
                 }
+                let request_id = request.request_id;
                 let should_cancel = || {
                     worker_cancelled.load(Ordering::Relaxed)
-                        || !worker_index_freshness.is_current(request.request_id)
+                        || !worker_index_freshness.is_current(request_id)
                 };
-                if should_cancel() {
-                    continue;
-                }
-                let send_batch = |entries: Vec<PathBuf>| {
-                    if !entries.is_empty() && !should_cancel() {
-                        let _ = worker_tx.send(WorkerResponse::IndexedBatch {
-                            request_id: request.request_id,
-                            root: request.root.clone(),
-                            entries,
-                        });
-                    }
-                };
-                if should_cancel() {
-                    continue;
-                }
-                let has_filelist = find_filelist_in_first_level(&request.root).is_some();
-                let use_filelist = match request.source {
-                    TuiSource::Auto => has_filelist,
-                    TuiSource::FileList => true,
-                    TuiSource::Walker => false,
-                };
-                if request.source == TuiSource::FileList && !has_filelist {
-                    if !should_cancel() {
-                        let _ = worker_tx.send(WorkerResponse::IndexFailed {
-                            request_id: request.request_id,
-                            root: request.root.clone(),
-                            has_root_filelist: has_filelist,
-                            error: "FileList source selected but no FileList was found".to_string(),
-                        });
-                    }
-                    continue;
-                }
-                if use_filelist {
-                    match build_index_cancellable(
-                        &request.root,
-                        true,
-                        request.include_files,
-                        request.include_dirs,
-                        should_cancel,
-                    ) {
-                        Ok(paths) => send_batch(paths),
-                        Err(error) if is_index_build_cancelled(&error) => {}
-                        Err(error) => {
-                            if !should_cancel() {
-                                let _ = worker_tx.send(WorkerResponse::IndexFailed {
-                                    request_id: request.request_id,
-                                    root: request.root.clone(),
-                                    has_root_filelist: has_filelist,
-                                    error: error.to_string(),
-                                });
-                            }
-                            continue;
-                        }
-                    }
-                } else {
-                    let mut batch = Vec::with_capacity(256);
-                    let result = walk_entries_stream_cancellable(
-                        &request.root,
-                        request.include_files,
-                        request.include_dirs,
-                        should_cancel,
-                        |path| {
-                            batch.push(path);
-                            if batch.len() >= 256 {
-                                send_batch(std::mem::take(&mut batch));
-                            }
-                        },
-                    );
-                    if result.is_ok() {
-                        send_batch(batch);
-                    }
-                }
-                if !should_cancel() {
-                    let _ = worker_tx.send(WorkerResponse::IndexedFinished {
-                        request_id: request.request_id,
-                        root: request.root,
-                        has_root_filelist: has_filelist,
-                    });
-                }
+                process_index_request(request, &should_cancel, |response| {
+                    let _ = worker_tx.send(response);
+                });
             }
             let _ = index_done_tx.send(());
         }) {
@@ -1468,6 +1543,7 @@ fn run_event_loop<W: Write>(
     state.root = root.clone();
     state.saved_roots = saved_roots;
     state.runtime_options = TuiRuntimeOptions::from_startup(options);
+    state.sort_mode = options.sort_mode;
     state.ignore_terms = Arc::new(options.ignore_terms.clone());
     state.history_enabled = history_enabled;
     state.history_entries = history_entries;
@@ -1521,7 +1597,9 @@ fn run_event_loop<W: Write>(
                 }
             }
         }
-        while let Ok(response) = rx.try_recv() {
+        let ready_responses = take_ready_responses(rx, MAX_WORKER_RESPONSES_PER_TICK);
+        let worker_backlog = ready_responses.len() == MAX_WORKER_RESPONSES_PER_TICK;
+        for response in ready_responses {
             let preview_path_before = state.current_path().cloned();
             apply_worker_response(&mut state, response)?;
             if preview_path_before != state.current_path().cloned() {
@@ -1549,7 +1627,12 @@ fn run_event_loop<W: Write>(
             draw(terminal_output, &mut state, options)?;
             state.dirty = false;
         }
-        if event::poll(EVENT_POLL)? {
+        let poll_timeout = if worker_backlog {
+            Duration::ZERO
+        } else {
+            EVENT_POLL
+        };
+        if event::poll(poll_timeout)? {
             match event::read()? {
                 Event::Key(key) if key.kind != KeyEventKind::Release => {
                     let preview_path_before = state.current_path().cloned();
@@ -1712,6 +1795,10 @@ fn dispatch_index_request(
     index_tx.send(request)
 }
 
+fn take_ready_responses<T>(rx: &mpsc::Receiver<T>, limit: usize) -> Vec<T> {
+    rx.try_iter().take(limit).collect()
+}
+
 fn dispatch_current_index(
     state: &mut TuiState,
     index_tx: &mpsc::Sender<IndexRequest>,
@@ -1855,7 +1942,7 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             if state.active_index_request.as_ref() != Some(&(request_id, root)) {
                 return Ok(());
             }
-            Arc::make_mut(&mut state.entries).extend(entries);
+            state.entries.push(entries);
             state.indexed = true;
             let now = Instant::now();
             if state
@@ -2656,6 +2743,7 @@ fn search(
         request
             .entries
             .iter()
+            .flat_map(|batch| batch.iter())
             .filter(|path| {
                 compiled_ignore.as_ref().is_none_or(|compiled| {
                     !compiled.matches_path(
@@ -3538,6 +3626,52 @@ mod tests {
     }
 
     #[test]
+    fn tc_162_walker_failure_emits_index_failed_without_finished() {
+        let missing_root = TestTempDir::new("walker-failure").path.join("missing");
+        let request = IndexRequest {
+            request_id: 7,
+            root: missing_root,
+            include_files: true,
+            include_dirs: true,
+            source: TuiSource::Walker,
+        };
+        let mut responses = Vec::new();
+
+        process_index_request(request, &|| false, |response| responses.push(response));
+
+        assert!(matches!(
+            responses.as_slice(),
+            [WorkerResponse::IndexFailed { request_id: 7, .. }]
+        ));
+    }
+
+    #[test]
+    fn tc_162_candidate_batches_append_without_cloning_existing_paths() {
+        let mut candidates = CandidateBatches::default();
+        candidates.push(vec![PathBuf::from("first.txt")]);
+        let search_snapshot = candidates.snapshot();
+        let first_batch = Arc::clone(&search_snapshot[0]);
+
+        candidates.push(vec![PathBuf::from("second.txt")]);
+
+        assert_eq!(candidates.len(), 2);
+        assert!(Arc::ptr_eq(&first_batch, &candidates.snapshot()[0]));
+    }
+
+    #[test]
+    fn tc_162_worker_response_drain_respects_per_tick_budget() {
+        let (tx, rx) = mpsc::channel();
+        for value in 0..=MAX_WORKER_RESPONSES_PER_TICK {
+            tx.send(value).expect("queue response");
+        }
+
+        let drained = take_ready_responses(&rx, MAX_WORKER_RESPONSES_PER_TICK);
+
+        assert_eq!(drained.len(), MAX_WORKER_RESPONSES_PER_TICK);
+        assert_eq!(rx.try_recv(), Ok(MAX_WORKER_RESPONSES_PER_TICK));
+    }
+
+    #[test]
     fn tc_162_query_editor_supports_delete_home_end_and_unicode_paste() {
         let mut state = TuiState::new("ab");
         handle_key(&mut state, KeyEvent::new(KeyCode::Home, KeyModifiers::NONE));
@@ -4100,7 +4234,9 @@ mod tests {
             require_filelist: false,
             regex: false,
             ignore_case: false,
+            ignore_enabled: true,
             ignore_terms: vec!["ignored".to_string()],
+            sort_mode: SearchSortMode::Score,
         });
         let mut search_only = base;
         search_only.regex = true;
@@ -4151,7 +4287,7 @@ mod tests {
             },
         )
         .expect("stale response ignored");
-        assert!(state.entries.is_empty());
+        assert_eq!(state.entries.len(), 0);
         apply_worker_response(
             &mut state,
             WorkerResponse::IndexedBatch {
@@ -4161,16 +4297,20 @@ mod tests {
             },
         )
         .expect("fresh response accepted");
-        assert_eq!(state.entries.as_slice(), [PathBuf::from("fresh.txt")]);
+        assert_eq!(state.entries.len(), 1);
+        assert_eq!(
+            state.entries.snapshot()[0].as_ref(),
+            [PathBuf::from("fresh.txt")]
+        );
     }
 
     #[test]
     fn tc_162_tui_search_applies_ignore_in_worker_snapshot_and_sorts_before_limit() {
-        let entries = Arc::new(vec![
+        let entries = Arc::new(vec![Arc::from(vec![
             PathBuf::from("root/zeta.txt"),
             PathBuf::from("root/ignored.txt"),
             PathBuf::from("root/alpha.txt"),
-        ]);
+        ])]);
         let mut cache = SearchPrefixCache::default();
         let request = SearchRequest {
             request_id: 1,
@@ -4210,6 +4350,47 @@ mod tests {
         assert!(results
             .iter()
             .any(|(path, _)| path.ends_with("ignored.txt")));
+    }
+
+    #[test]
+    fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
+        let startup = CliTuiOptions {
+            initial_query: String::new(),
+            limit: 10,
+            absolute: false,
+            print0: false,
+            include_files: true,
+            include_dirs: true,
+            use_filelist: true,
+            require_filelist: false,
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: false,
+            ignore_terms: vec!["ignored".to_string()],
+            sort_mode: SearchSortMode::Score,
+        };
+        let mut runtime = TuiRuntimeOptions::from_startup(&startup);
+        assert!(!runtime.ignore_enabled);
+
+        runtime.ignore_enabled = true;
+        let request = SearchRequest {
+            request_id: 1,
+            query: String::new(),
+            entries: Arc::new(vec![Arc::from(vec![
+                PathBuf::from("root/visible.txt"),
+                PathBuf::from("root/ignored.txt"),
+            ])]),
+            root: PathBuf::from("root"),
+            limit: 10,
+            options: runtime.search_options(SearchSortMode::Score),
+            ignore_terms: Arc::new(startup.ignore_terms),
+        };
+
+        let (results, error) = search(&request, &mut SearchPrefixCache::default());
+
+        assert!(error.is_none());
+        assert_eq!(results.len(), 1);
+        assert!(results[0].0.ends_with("visible.txt"));
     }
 
     #[test]
@@ -4396,7 +4577,9 @@ mod tests {
                 require_filelist: false,
                 regex: false,
                 ignore_case: false,
+                ignore_enabled: true,
                 ignore_terms: Vec::new(),
+                sort_mode: SearchSortMode::Score,
             }),
             selected: 0,
         };
@@ -4502,7 +4685,9 @@ mod tests {
                 require_filelist: false,
                 regex: false,
                 ignore_case: false,
+                ignore_enabled: true,
                 ignore_terms: Vec::new(),
+                sort_mode: SearchSortMode::Score,
             }),
             selected: 5,
         };
@@ -4924,7 +5109,7 @@ mod tests {
         state.root = temp.path.clone();
         state.runtime_options.include_files = true;
         state.runtime_options.include_dirs = false;
-        state.entries = Arc::new(vec![temp.path.join("visible.txt")]);
+        state.entries.push(vec![temp.path.join("visible.txt")]);
         let request = state.next_filelist_request(false, true);
 
         let entries =

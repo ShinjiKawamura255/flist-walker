@@ -7,14 +7,16 @@
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
 - Flow-005: GUI 起動 -> update worker が上限付きで GitHub Releases を確認 -> 新版あり -> 利用者承認 -> `SHA256SUMS` / `SHA256SUMS.sig` を先行取得 -> strict parse と署名検証 -> binary/sidecar を private create-new file へ上限付き streaming download/hash 検証 -> `VerifiedUpdateBundle` -> executable parent 内へ同一 directory 準備 -> durable parent/helper registration と acknowledgement -> 本体終了 -> sidecar 適用 -> binary-last atomic commit -> 再起動。precommit/restart failure は旧 bundle へ rollback し、中断は起動時 marker/hash recovery へ収束する。ignore list sample は別途起動時初期化で補完する。
   `FLISTWALKER_DISABLE_SELF_UPDATE=1`、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合は update flow を起動せず、通常起動のみ行う。
-- Flow-006: batch CLI -> root selection -> index/search -> full-match sort -> limit -> print または preauthorized action。action multi-target guard は backend dispatch より前に完結する。
+- Flow-006: batch CLI -> root selection -> index（`--progress` では開始と候補件数/時間を stderr）-> search/full-match sort -> limit（全一致件数・返却件数/時間を stderr）-> `BufWriter` による逐次 print または preauthorized action。action multi-target guard は backend dispatch より前に完結する。
 - Flow-007: FileList create -> deterministic write plan/content precompute -> per-target cancellation check -> commit -> success report、または rollback attempt -> terminal settlement report。TUI は settlement 後にのみ pending output/root/exit intent を解決する。
 - Flow-008: GUI/TUI frame -> `UiStatePatch + history_delta` enqueue -> persistence worker bounded lock -> latest JSON read/merge -> atomic write -> committed generations only clear。失敗は同一 coalesced payload を retry queue に残す。
+- Flow-009: interactive CLI -> startup root selector 解決 -> index worker で root metadata 検証 -> immutable candidate batch を event loop へ送信 -> 1 iteration 最大 64 応答を append -> batch snapshot を search worker と共有。root error は `IndexFailed`、backlog があれば次 iteration の poll timeout を 0 にする。
 
 ## Data model
 - Candidate
 - `path: PathBuf` 正規化済み絶対パス
 - `display: String` 画面表示用パス
+- `CandidateBatches`: `Arc<Vec<Arc<[PathBuf]>>>` と総件数。増分 append は batch reference のみを copy-on-write し、既存 path allocation を共有する。
 - SearchResult
 - `candidate: Candidate`
 - `score: f64`

@@ -10,8 +10,9 @@ Responsibility: [main.rs](../../rust/src/main.rs) owns `Args`, tracing setup, si
 
 Public interface:
 
-- `flistwalker [query] [--root PATH] [--limit N] [--cli]`
-- `run_cli(args)` builds an index and prints candidates or scored results.
+- `flistwalker [query] [--root PATH|--use-default-root|--saved-root INDEX] [--limit N] [--cli [--interactive]]`
+- `run_cli(args)` builds an index, searches/sorts, then prints path-only records or dispatches an explicitly authorized action.
+- `run_cli_tui(args)` owns terminal setup/restore and coordinates index/search workers with immutable candidate batches and a bounded per-iteration response budget.
 - `run_gui(args)` creates `eframe::NativeOptions` and launches `FlistWalkerApp::from_launch`.
 
 Inputs and outputs:
@@ -21,9 +22,9 @@ Inputs and outputs:
 
 Failure modes:
 
-- Root canonicalization failure or non-directory root returns an `anyhow` error.
+- Batch/GUI startup root canonicalization failure or non-directory root returns an `anyhow` error. An in-session TUI root failure is a recoverable `IndexFailed` worker response and must not become an empty successful index.
 - GUI startup maps eframe errors into `anyhow`.
-- CLI action does not execute selected results; it prints index/search output only.
+- CLI `print` writes path-only records. `open` / `reveal` dispatch only after whole-request authorization; TUI side-effect actions target the current row only and run after terminal ownership rules are satisfied.
 
 ### 6.2 Candidate and Entry Model
 
