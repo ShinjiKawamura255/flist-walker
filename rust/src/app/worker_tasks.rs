@@ -16,9 +16,7 @@ use super::SortMetadata;
 use crate::actions::execute_or_open;
 use crate::entry::EntryKind;
 use crate::indexer::write_filelist_cancellable;
-use crate::search::{
-    rank_search_results, SearchPrefixCache, SearchResultSortMode, SearchResultSortScope,
-};
+use crate::search::{rank_search_results, SearchPrefixCache};
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
 use std::collections::HashMap;
@@ -50,27 +48,6 @@ fn trace_worker_receiver_closed(flow: &'static str, request_id: u64) {
     );
 }
 
-fn search_sort_mode(mode: super::ResultSortMode) -> SearchResultSortMode {
-    match mode {
-        super::ResultSortMode::Score => SearchResultSortMode::Score,
-        super::ResultSortMode::NameAsc => SearchResultSortMode::NameAsc,
-        super::ResultSortMode::NameDesc => SearchResultSortMode::NameDesc,
-        super::ResultSortMode::ModifiedDesc => SearchResultSortMode::ModifiedDesc,
-        super::ResultSortMode::ModifiedAsc => SearchResultSortMode::ModifiedAsc,
-        super::ResultSortMode::CreatedDesc => SearchResultSortMode::CreatedDesc,
-        super::ResultSortMode::CreatedAsc => SearchResultSortMode::CreatedAsc,
-        super::ResultSortMode::SizeDesc => SearchResultSortMode::SizeDesc,
-        super::ResultSortMode::SizeAsc => SearchResultSortMode::SizeAsc,
-    }
-}
-
-fn search_sort_scope(scope: super::ResultSortScope) -> SearchResultSortScope {
-    match scope {
-        super::ResultSortScope::ShownResults => SearchResultSortScope::ShownResults,
-        super::ResultSortScope::AllMatches => SearchResultSortScope::AllMatches,
-    }
-}
-
 pub(super) fn spawn_search_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
@@ -100,8 +77,8 @@ pub(super) fn spawn_search_worker(
                 req.ignore_case,
                 req.prefer_relative,
                 &mut prefix_cache,
-                search_sort_mode(req.sort_mode),
-                search_sort_scope(req.sort_scope),
+                req.sort_mode,
+                req.sort_scope,
             );
             info!(
                 flow = "search",

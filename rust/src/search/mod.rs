@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, warn};
 
-pub(crate) use cache::SearchPrefixCache;
+pub use cache::SearchPrefixCache;
 use config::{resolve_execution_mode, SearchExecutionMode};
 use execute::{
     collect_entries_parallel, collect_entries_sequential, collect_parallel, collect_sequential,
@@ -41,14 +41,14 @@ pub(crate) struct SearchScoredMatches {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct SearchResultSet {
-    pub(crate) results: Vec<(PathBuf, f64)>,
-    pub(crate) total_match_count: usize,
-    pub(crate) evaluated_candidate_count: usize,
+pub struct SearchResultSet {
+    pub results: Vec<(PathBuf, f64)>,
+    pub total_match_count: usize,
+    pub evaluated_candidate_count: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum SearchResultSortMode {
+pub enum SearchSortMode {
     #[default]
     Score,
     NameAsc,
@@ -61,15 +61,59 @@ pub(crate) enum SearchResultSortMode {
     SizeAsc,
 }
 
+impl SearchSortMode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Score => "Score",
+            Self::NameAsc => "Name (A-Z)",
+            Self::NameDesc => "Name (Z-A)",
+            Self::ModifiedDesc => "Modified (New)",
+            Self::ModifiedAsc => "Modified (Old)",
+            Self::CreatedDesc => "Created (New)",
+            Self::CreatedAsc => "Created (Old)",
+            Self::SizeDesc => "Size (Large)",
+            Self::SizeAsc => "Size (Small)",
+        }
+    }
+
+    pub fn uses_metadata(self) -> bool {
+        matches!(
+            self,
+            Self::ModifiedDesc
+                | Self::ModifiedAsc
+                | Self::CreatedDesc
+                | Self::CreatedAsc
+                | Self::SizeDesc
+                | Self::SizeAsc
+        )
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum SearchResultSortScope {
+pub enum SearchSortScope {
     #[default]
     ShownResults,
     AllMatches,
 }
 
+impl SearchSortScope {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::ShownResults => "Shown results",
+            Self::AllMatches => "All matches",
+        }
+    }
+
+    pub fn sorts_all_matches_before_limit(self, mode: SearchSortMode) -> bool {
+        self == Self::AllMatches && mode != SearchSortMode::Score
+    }
+}
+
+pub type SearchResultSortMode = SearchSortMode;
+pub type SearchResultSortScope = SearchSortScope;
+
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn rank_search_results(
+pub fn rank_search_results(
     entries: &Arc<Vec<Entry>>,
     query: &str,
     root: &Path,
@@ -78,8 +122,8 @@ pub(crate) fn rank_search_results(
     ignore_case: bool,
     prefer_relative: bool,
     prefix_cache: &mut SearchPrefixCache,
-    sort_mode: SearchResultSortMode,
-    sort_scope: SearchResultSortScope,
+    sort_mode: SearchSortMode,
+    sort_scope: SearchSortScope,
 ) -> (SearchResultSet, Option<String>) {
     let query_trimmed = query.trim().to_string();
     let cached_candidates = if use_regex {
@@ -136,20 +180,15 @@ pub(crate) fn rank_search_results(
             matched_indices,
         );
     }
-    let ranked = match (sort_scope, sort_mode) {
-        (SearchResultSortScope::AllMatches, SearchResultSortMode::NameAsc)
-        | (SearchResultSortScope::AllMatches, SearchResultSortMode::NameDesc) => {
+    let ranked = match sort_mode {
+        SearchSortMode::NameAsc | SearchSortMode::NameDesc
+            if sort_scope.sorts_all_matches_before_limit(sort_mode) =>
+        {
             top_name_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
         }
-        (
-            SearchResultSortScope::AllMatches,
-            SearchResultSortMode::ModifiedDesc
-            | SearchResultSortMode::ModifiedAsc
-            | SearchResultSortMode::CreatedDesc
-            | SearchResultSortMode::CreatedAsc
-            | SearchResultSortMode::SizeDesc
-            | SearchResultSortMode::SizeAsc,
-        ) => top_metadata_sorted_scores(entries, scored_matches.scored, limit, sort_mode),
+        _ if sort_scope.sorts_all_matches_before_limit(sort_mode) => {
+            top_metadata_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
+        }
         _ => top_ranked_scores(scored_matches.scored, limit),
     };
     let results = scored_indices_to_paths(entries, &ranked, limit);
@@ -180,9 +219,9 @@ fn top_name_sorted_scores(
     entries: &[Entry],
     scored: Vec<SearchCandidateScore>,
     limit: usize,
-    mode: SearchResultSortMode,
+    mode: SearchSortMode,
 ) -> Vec<IndexedScore> {
-    let desc = mode == SearchResultSortMode::NameDesc;
+    let desc = mode == SearchSortMode::NameDesc;
     let mut items = scored
         .into_iter()
         .filter_map(|item| {
@@ -215,13 +254,11 @@ fn top_metadata_sorted_scores(
     entries: &[Entry],
     scored: Vec<SearchCandidateScore>,
     limit: usize,
-    mode: SearchResultSortMode,
+    mode: SearchSortMode,
 ) -> Vec<IndexedScore> {
     let desc = matches!(
         mode,
-        SearchResultSortMode::ModifiedDesc
-            | SearchResultSortMode::CreatedDesc
-            | SearchResultSortMode::SizeDesc
+        SearchSortMode::ModifiedDesc | SearchSortMode::CreatedDesc | SearchSortMode::SizeDesc
     );
     let mut items = scored
         .into_iter()
@@ -229,16 +266,16 @@ fn top_metadata_sorted_scores(
             let entry = entries.get(item.index)?;
             let metadata = std::fs::metadata(entry.path()).ok();
             let timestamp = match mode {
-                SearchResultSortMode::ModifiedDesc | SearchResultSortMode::ModifiedAsc => {
+                SearchSortMode::ModifiedDesc | SearchSortMode::ModifiedAsc => {
                     metadata.as_ref().and_then(|meta| meta.modified().ok())
                 }
-                SearchResultSortMode::CreatedDesc | SearchResultSortMode::CreatedAsc => {
+                SearchSortMode::CreatedDesc | SearchSortMode::CreatedAsc => {
                     metadata.as_ref().and_then(|meta| meta.created().ok())
                 }
                 _ => None,
             };
             let size_bytes = match mode {
-                SearchResultSortMode::SizeDesc | SearchResultSortMode::SizeAsc => metadata
+                SearchSortMode::SizeDesc | SearchSortMode::SizeAsc => metadata
                     .as_ref()
                     .filter(|meta| meta.is_file())
                     .map(|meta| meta.len()),
@@ -254,10 +291,7 @@ fn top_metadata_sorted_scores(
         })
         .collect::<Vec<_>>();
     items.sort_unstable_by(|a, b| {
-        let value_cmp = if matches!(
-            mode,
-            SearchResultSortMode::SizeDesc | SearchResultSortMode::SizeAsc
-        ) {
+        let value_cmp = if matches!(mode, SearchSortMode::SizeDesc | SearchSortMode::SizeAsc) {
             compare_optional_sort_value(a.4, b.4, desc)
         } else {
             compare_optional_sort_value(a.3, b.3, desc)

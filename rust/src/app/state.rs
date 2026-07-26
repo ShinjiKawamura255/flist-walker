@@ -11,6 +11,9 @@ use crate::app::worker_bus::WorkerBus;
 use crate::app::worker_runtime::WorkerRuntime;
 use crate::entry::Entry;
 use crate::indexer::{IndexBuildResult, IndexSource};
+pub(super) use crate::search::{
+    SearchSortMode as ResultSortMode, SearchSortScope as ResultSortScope,
+};
 use crate::updater::UpdateCandidate;
 use eframe::egui;
 use std::collections::{HashMap, HashSet};
@@ -31,64 +34,6 @@ pub(super) struct SortMetadata {
     pub(super) modified: Option<SystemTime>,
     pub(super) created: Option<SystemTime>,
     pub(super) size_bytes: Option<u64>,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) enum ResultSortMode {
-    #[default]
-    Score,
-    NameAsc,
-    NameDesc,
-    ModifiedDesc,
-    ModifiedAsc,
-    CreatedDesc,
-    CreatedAsc,
-    SizeDesc,
-    SizeAsc,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) enum ResultSortScope {
-    #[default]
-    ShownResults,
-    AllMatches,
-}
-
-impl ResultSortScope {
-    pub(super) fn label(self) -> &'static str {
-        match self {
-            Self::ShownResults => "Shown results",
-            Self::AllMatches => "All matches",
-        }
-    }
-}
-
-impl ResultSortMode {
-    pub(super) fn label(self) -> &'static str {
-        match self {
-            Self::Score => "Score",
-            Self::NameAsc => "Name (A-Z)",
-            Self::NameDesc => "Name (Z-A)",
-            Self::ModifiedDesc => "Modified (New)",
-            Self::ModifiedAsc => "Modified (Old)",
-            Self::CreatedDesc => "Created (New)",
-            Self::CreatedAsc => "Created (Old)",
-            Self::SizeDesc => "Size (Large)",
-            Self::SizeAsc => "Size (Small)",
-        }
-    }
-
-    pub(super) fn uses_metadata(self) -> bool {
-        matches!(
-            self,
-            Self::ModifiedDesc
-                | Self::ModifiedAsc
-                | Self::CreatedDesc
-                | Self::CreatedAsc
-                | Self::SizeDesc
-                | Self::SizeAsc
-        )
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

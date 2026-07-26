@@ -1,5 +1,6 @@
 use super::*;
 use crate::ui_model::has_visible_match;
+use std::fs;
 use std::time::{Duration, Instant};
 
 #[test]
@@ -128,6 +129,183 @@ fn all_matches_name_sort_can_surface_items_outside_score_limited_snapshot() {
     assert_eq!(out.total_match_count, 3);
     assert_eq!(out.results.len(), 1);
     assert_eq!(out.results[0].0, PathBuf::from("/tmp/alpha/module.rs"));
+}
+
+#[test]
+fn tc_057b_tc_163_shared_all_match_sort_orders_before_limit_for_empty_queries() {
+    let entries = Arc::new(vec![
+        Entry::new(PathBuf::from("/tmp/zeta"), None),
+        Entry::new(PathBuf::from("/tmp/alpha"), None),
+        Entry::new(PathBuf::from("/tmp/beta"), None),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (out, error) = rank_search_results(
+        &entries,
+        "",
+        Path::new("/tmp"),
+        2,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::NameAsc,
+        SearchSortScope::AllMatches,
+    );
+
+    assert!(error.is_none());
+    assert_eq!(out.total_match_count, 3);
+    assert_eq!(out.evaluated_candidate_count, 0);
+    assert_eq!(
+        out.results
+            .iter()
+            .map(|(path, _)| path.file_name().and_then(|name| name.to_str()))
+            .collect::<Vec<_>>(),
+        vec![Some("alpha"), Some("beta")]
+    );
+}
+
+#[test]
+fn tc_057b_tc_163_shared_all_match_sort_keeps_score_and_uses_stable_name_path_ties() {
+    let entries = Arc::new(vec![
+        Entry::new(PathBuf::from("/tmp/z/module.rs"), None),
+        Entry::new(PathBuf::from("/tmp/a/module.rs"), None),
+        Entry::new(PathBuf::from("/tmp/a/other.rs"), None),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (name_sorted, name_error) = rank_search_results(
+        &entries,
+        "",
+        Path::new("/tmp"),
+        2,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::NameAsc,
+        SearchSortScope::AllMatches,
+    );
+    assert!(name_error.is_none());
+    assert_eq!(
+        name_sorted.results,
+        vec![
+            (PathBuf::from("/tmp/a/module.rs"), 0.0),
+            (PathBuf::from("/tmp/z/module.rs"), 0.0),
+        ]
+    );
+
+    let score_entries = Arc::new(vec![
+        Entry::new(PathBuf::from("/tmp/my_module.rs"), None),
+        Entry::new(PathBuf::from("/tmp/module.rs"), None),
+    ]);
+    let (score_sorted, score_error) = rank_search_results(
+        &score_entries,
+        "module",
+        Path::new("/tmp"),
+        2,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::AllMatches,
+    );
+    assert!(score_error.is_none());
+    assert_eq!(score_sorted.results.len(), 2);
+    assert_eq!(score_sorted.results[0].0, PathBuf::from("/tmp/module.rs"));
+    assert_eq!(
+        score_sorted.results[1].0,
+        PathBuf::from("/tmp/my_module.rs")
+    );
+    assert!(score_sorted.results[0].1 > score_sorted.results[1].1);
+}
+
+#[test]
+fn tc_057b_tc_163_shared_all_match_sort_returns_no_results_at_zero_limit() {
+    let entries = Arc::new(vec![Entry::new(PathBuf::from("/tmp/module.rs"), None)]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (out, error) = rank_search_results(
+        &entries,
+        "module",
+        Path::new("/tmp"),
+        0,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::NameAsc,
+        SearchSortScope::AllMatches,
+    );
+
+    assert!(error.is_none());
+    assert_eq!(out.total_match_count, 1);
+    assert!(out.results.is_empty());
+}
+
+#[test]
+fn tc_057b_tc_163_shared_all_match_metadata_sort_keeps_missing_and_folder_sizes_last() {
+    let root = std::env::temp_dir().join(format!("flistwalker-shared-sort-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("folder")).expect("create folder");
+    fs::write(root.join("small.txt"), b"a").expect("write small file");
+    fs::write(root.join("large.txt"), b"abcdef").expect("write large file");
+    let entries = Arc::new(vec![
+        Entry::new(root.join("missing.txt"), None),
+        Entry::new(root.join("folder"), None),
+        Entry::new(root.join("large.txt"), None),
+        Entry::new(root.join("small.txt"), None),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (out, error) = rank_search_results(
+        &entries,
+        "",
+        &root,
+        4,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::SizeDesc,
+        SearchSortScope::AllMatches,
+    );
+
+    assert!(error.is_none());
+    assert_eq!(
+        out.results,
+        vec![
+            (root.join("large.txt"), 0.0),
+            (root.join("small.txt"), 0.0),
+            (root.join("folder"), 0.0),
+            (root.join("missing.txt"), 0.0),
+        ]
+    );
+    fs::remove_dir_all(root).expect("remove temporary sort root");
+}
+
+#[test]
+fn tc_057b_tc_163_shared_sort_returns_query_errors_without_partial_results() {
+    let entries = Arc::new(vec![Entry::new(PathBuf::from("/tmp/module.rs"), None)]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (out, error) = rank_search_results(
+        &entries,
+        "[",
+        Path::new("/tmp"),
+        10,
+        true,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::NameAsc,
+        SearchSortScope::AllMatches,
+    );
+
+    assert!(error.is_some());
+    assert!(out.results.is_empty());
+    assert_eq!(out.total_match_count, 0);
 }
 
 #[test]

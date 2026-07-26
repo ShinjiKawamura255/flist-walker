@@ -32,7 +32,7 @@ pub(crate) struct SearchPrefixCacheEntry {
 }
 
 #[derive(Default)]
-pub(crate) struct SearchPrefixCache {
+pub struct SearchPrefixCache {
     pub(crate) entries: VecDeque<SearchPrefixCacheEntry>,
     pub(crate) total_bytes: usize,
 }
