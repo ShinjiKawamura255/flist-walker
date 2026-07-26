@@ -222,17 +222,23 @@
     {
       "id": "slice-d.sort-options",
       "title": "Implement TUI sort picker and runtime options",
-      "status": "pending",
+      "status": "complete",
       "depends_on": ["slice-c.action"],
       "owner": "subagent:terra-tui-sort-options",
       "model_capability": "standard",
       "routing_reason": "Bounded TUI overlay/state transitions with shared sort API.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/cli_tui.rs"],
       "acceptance": ["F2/F3 state precedence passes", "Sort-before-limit and reindex-only-when-needed pass", "Input remains responsive"],
       "verification": ["cargo test cli_tui::tests", "cargo test"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {
+        "files": ["rust/src/cli_tui.rs", "README.md", "README-ja.md"],
+        "commands": ["cargo test cli_tui::tests --lib", "cargo test --test cli_contract", "cargo test", "cargo check", "cargo clippy --all-targets --all-features -- -D warnings", "cargo fmt --all -- --check", "cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture", "cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture", "git diff --check"],
+        "artifacts": [],
+        "reviews": ["Sol integration review added in-flight index supersession, filter-change score reset, recoverable FileList-source errors, source-scoped cleanup, compact overlay visibility, and lock-free hot-path freshness"],
+        "logs": ["VM-003 FileList ratio 7.88x; Walker ratio 2.17x"]
+      },
+      "result": "F2 runtime options and F3 all-match sorting are worker-backed and stale-safe; only source/file-kind changes reindex, dynamic ignore/filter changes reuse the snapshot, compact overlays remain navigable, and persistent index requests are promptly superseded without hot-path locks.",
       "blocker": null
     },
     {

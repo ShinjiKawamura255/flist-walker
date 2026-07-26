@@ -3,6 +3,7 @@ use crate::actions::{
     AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport,
     AuthorizedActionRequest,
 };
+use crate::entry::Entry;
 use crate::indexer::{
     build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
     walk_entries_stream_cancellable,
@@ -12,7 +13,7 @@ use crate::persistence::{
     history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
 };
 use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
-use crate::search::try_search_entries_with_scope;
+use crate::search::{rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope};
 use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
 use anyhow::{Context, Result};
 use crossterm::cursor::{Hide, MoveTo, Show};
@@ -64,12 +65,25 @@ pub enum CliTuiOutcome {
 }
 
 enum WorkerResponse {
-    IndexedBatch(Vec<PathBuf>),
-    IndexedFinished,
-    IndexFailed(String),
+    IndexedBatch {
+        request_id: u64,
+        root: PathBuf,
+        entries: Vec<PathBuf>,
+    },
+    IndexedFinished {
+        request_id: u64,
+        root: PathBuf,
+    },
+    IndexFailed {
+        request_id: u64,
+        root: PathBuf,
+        error: String,
+    },
     Searched {
         request_id: u64,
+        root: PathBuf,
         query: String,
+        options: SearchOptions,
         results: Vec<(PathBuf, f64)>,
         error: Option<String>,
     },
@@ -93,8 +107,108 @@ struct SearchRequest {
     entries: Arc<Vec<PathBuf>>,
     root: PathBuf,
     limit: usize,
+    options: SearchOptions,
+    ignore_terms: Arc<Vec<String>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct SearchOptions {
     regex: bool,
     ignore_case: bool,
+    ignore_enabled: bool,
+    sort_mode: SearchSortMode,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TuiSource {
+    Auto,
+    FileList,
+    Walker,
+}
+
+impl TuiSource {
+    const ALL: [Self; 3] = [Self::Auto, Self::FileList, Self::Walker];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Auto => "Auto",
+            Self::FileList => "FileList",
+            Self::Walker => "Walker",
+        }
+    }
+
+    fn next(self) -> Self {
+        let index = Self::ALL.iter().position(|item| *item == self).unwrap_or(0);
+        Self::ALL[(index + 1) % Self::ALL.len()]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct TuiRuntimeOptions {
+    include_files: bool,
+    include_dirs: bool,
+    regex: bool,
+    ignore_case: bool,
+    ignore_enabled: bool,
+    source: TuiSource,
+}
+
+impl TuiRuntimeOptions {
+    fn from_startup(options: &CliTuiOptions) -> Self {
+        let source = if options.require_filelist {
+            TuiSource::FileList
+        } else if options.use_filelist {
+            TuiSource::Auto
+        } else {
+            TuiSource::Walker
+        };
+        Self {
+            include_files: options.include_files,
+            include_dirs: options.include_dirs,
+            regex: options.regex,
+            ignore_case: options.ignore_case,
+            ignore_enabled: true,
+            source,
+        }
+    }
+
+    fn search_options(self, sort_mode: SearchSortMode) -> SearchOptions {
+        SearchOptions {
+            regex: self.regex,
+            ignore_case: self.ignore_case,
+            ignore_enabled: self.ignore_enabled,
+            sort_mode,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct IndexRequest {
+    request_id: u64,
+    root: PathBuf,
+    include_files: bool,
+    include_dirs: bool,
+    source: TuiSource,
+}
+
+struct TuiIndexFreshness {
+    current_request_id: AtomicU64,
+}
+
+impl TuiIndexFreshness {
+    fn new() -> Self {
+        Self {
+            current_request_id: AtomicU64::new(0),
+        }
+    }
+
+    fn activate(&self, request_id: u64) {
+        self.current_request_id.store(request_id, Ordering::Release);
+    }
+
+    fn is_current(&self, request_id: u64) -> bool {
+        self.current_request_id.load(Ordering::Acquire) == request_id
+    }
 }
 
 struct PreviewRequest {
@@ -152,6 +266,8 @@ impl AuthorizedActionBackend for TuiActionBackend {
 }
 
 struct EventLoopContext<'a> {
+    index_tx: &'a mpsc::Sender<IndexRequest>,
+    index_freshness: Arc<TuiIndexFreshness>,
     search_tx: &'a mpsc::Sender<SearchRequest>,
     preview_tx: &'a mpsc::Sender<PreviewRequest>,
     action_tx: &'a mpsc::Sender<TuiActionRequest>,
@@ -177,6 +293,7 @@ enum KeyAction {
     HistoryApplied,
     HistoryOpened(Option<String>),
     DispatchAction(AuthorizedActionMode),
+    Reindex,
 }
 
 struct TuiState {
@@ -191,6 +308,12 @@ struct TuiState {
     indexed: bool,
     entries: Arc<Vec<PathBuf>>,
     root: PathBuf,
+    runtime_options: TuiRuntimeOptions,
+    ignore_terms: Arc<Vec<String>>,
+    sort_mode: SearchSortMode,
+    source_changed_on_apply: bool,
+    next_index_request_id: u64,
+    active_index_request: Option<(u64, PathBuf)>,
     pinned: Vec<PathBuf>,
     viewport_rows: usize,
     next_search_request_id: u64,
@@ -205,6 +328,8 @@ struct TuiState {
     history_entries: Vec<String>,
     history: Option<HistoryOverlay>,
     help: Option<HelpContext>,
+    options_overlay: Option<OptionsOverlay>,
+    sort_picker: Option<SortPicker>,
     next_action_request_id: u64,
     active_action_request: Option<(u64, PathBuf)>,
 }
@@ -218,6 +343,29 @@ struct HistoryOverlay {
     selected: usize,
     offset: usize,
 }
+
+#[derive(Clone, Debug)]
+struct OptionsOverlay {
+    draft: TuiRuntimeOptions,
+    selected: usize,
+}
+
+#[derive(Clone, Debug)]
+struct SortPicker {
+    selected: usize,
+}
+
+const SORT_MODES: [SearchSortMode; 9] = [
+    SearchSortMode::Score,
+    SearchSortMode::NameAsc,
+    SearchSortMode::NameDesc,
+    SearchSortMode::ModifiedDesc,
+    SearchSortMode::ModifiedAsc,
+    SearchSortMode::CreatedDesc,
+    SearchSortMode::CreatedAsc,
+    SearchSortMode::SizeDesc,
+    SearchSortMode::SizeAsc,
+];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum HelpContext {
@@ -246,6 +394,19 @@ impl TuiState {
             indexed: false,
             entries: Arc::new(Vec::new()),
             root: PathBuf::new(),
+            runtime_options: TuiRuntimeOptions {
+                include_files: true,
+                include_dirs: true,
+                regex: false,
+                ignore_case: false,
+                ignore_enabled: true,
+                source: TuiSource::Auto,
+            },
+            ignore_terms: Arc::new(Vec::new()),
+            sort_mode: SearchSortMode::Score,
+            source_changed_on_apply: false,
+            next_index_request_id: 0,
+            active_index_request: None,
             pinned: Vec::new(),
             viewport_rows: 1,
             next_search_request_id: 0,
@@ -260,6 +421,8 @@ impl TuiState {
             history_entries: Vec::new(),
             history: None,
             help: None,
+            options_overlay: None,
+            sort_picker: None,
             next_action_request_id: 0,
             active_action_request: None,
         }
@@ -276,17 +439,17 @@ impl TuiState {
             .and_then(|selected| self.results.iter().position(|(path, _)| path == selected))
             .unwrap_or(0);
         self.ensure_selection_visible();
-        self.status = error.unwrap_or_else(|| format!("{} result(s)", self.results.len()));
+        self.status = error.unwrap_or_else(|| {
+            format!(
+                "{} result(s) | {}",
+                self.results.len(),
+                self.current_options_summary()
+            )
+        });
         self.dirty = true;
     }
 
-    fn next_search_request(
-        &mut self,
-        root: PathBuf,
-        limit: usize,
-        regex: bool,
-        ignore_case: bool,
-    ) -> SearchRequest {
+    fn next_search_request(&mut self, root: PathBuf, limit: usize) -> SearchRequest {
         self.next_search_request_id = self.next_search_request_id.wrapping_add(1);
         let request_id = self.next_search_request_id;
         self.active_search_request_id = Some(request_id);
@@ -296,8 +459,30 @@ impl TuiState {
             entries: Arc::clone(&self.entries),
             root,
             limit,
-            regex,
-            ignore_case,
+            options: self.runtime_options.search_options(self.sort_mode),
+            ignore_terms: Arc::clone(&self.ignore_terms),
+        }
+    }
+
+    fn next_index_request(&mut self, root: PathBuf) -> IndexRequest {
+        self.next_index_request_id = self.next_index_request_id.wrapping_add(1);
+        let request_id = self.next_index_request_id;
+        self.active_index_request = Some((request_id, root.clone()));
+        self.indexed = false;
+        self.entries = Arc::new(Vec::new());
+        self.results.clear();
+        self.selected = 0;
+        self.offset = 0;
+        self.clear_preview();
+        self.active_search_request_id = None;
+        self.status = "Indexing...".to_string();
+        self.dirty = true;
+        IndexRequest {
+            request_id,
+            root,
+            include_files: self.runtime_options.include_files,
+            include_dirs: self.runtime_options.include_dirs,
+            source: self.runtime_options.source,
         }
     }
 
@@ -335,7 +520,37 @@ impl TuiState {
     }
 
     fn mark_query_changed(&mut self) {
+        self.sort_mode = SearchSortMode::Score;
         self.last_query_change = Some(Instant::now());
+    }
+
+    fn current_options_summary(&self) -> String {
+        format!(
+            "Sort: {} | Source: {} | Files: {} | Folders: {} | Regex: {} | Ignore Case: {} | Ignore: {}",
+            self.sort_mode.label(),
+            self.runtime_options.source.label(),
+            if self.runtime_options.include_files { "on" } else { "off" },
+            if self.runtime_options.include_dirs { "on" } else { "off" },
+            if self.runtime_options.regex { "on" } else { "off" },
+            if self.runtime_options.ignore_case { "on" } else { "off" },
+            if self.runtime_options.ignore_enabled { "on" } else { "off" },
+        )
+    }
+
+    fn open_options(&mut self) {
+        self.options_overlay = Some(OptionsOverlay {
+            draft: self.runtime_options,
+            selected: 0,
+        });
+    }
+
+    fn open_sort_picker(&mut self) {
+        self.sort_picker = Some(SortPicker {
+            selected: SORT_MODES
+                .iter()
+                .position(|mode| *mode == self.sort_mode)
+                .unwrap_or(0),
+        });
     }
 
     fn current_path(&self) -> Option<&PathBuf> {
@@ -614,6 +829,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
     let search_handle = thread::Builder::new()
         .name("flistwalker-cli-search".to_string())
         .spawn(move || {
+            let mut prefix_cache = SearchPrefixCache::default();
             while !search_cancelled.load(Ordering::Relaxed) {
                 let mut request = match search_rx.recv_timeout(EVENT_POLL) {
                     Ok(request) => request,
@@ -623,19 +839,14 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                 while let Ok(newer) = search_rx.try_recv() {
                     request = newer;
                 }
-                let (results, error) = search(
-                    &request.query,
-                    &request.entries,
-                    request.limit,
-                    &request.root,
-                    request.regex,
-                    request.ignore_case,
-                );
+                let (results, error) = search(&request, &mut prefix_cache);
                 if search_cancelled.load(Ordering::Relaxed)
                     || response_tx
                         .send(WorkerResponse::Searched {
                             request_id: request.request_id,
+                            root: request.root,
                             query: request.query,
+                            options: request.options,
                             results,
                             error,
                         })
@@ -742,74 +953,104 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         }
     };
 
+    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
     let (index_done_tx, index_done_rx) = mpsc::channel();
     let worker_cancelled = Arc::clone(&cancelled);
     let worker_tx = tx.clone();
-    let worker_root = root.clone();
-    let worker_options = options.clone();
+    let index_freshness = Arc::new(TuiIndexFreshness::new());
+    let worker_index_freshness = Arc::clone(&index_freshness);
     let index_handle = match thread::Builder::new()
         .name("flistwalker-cli-index-search".to_string())
         .spawn(move || {
-            let compiled = CompiledIgnoreTerms::compile(
-                &worker_options.ignore_terms,
-                worker_options.ignore_case,
-            );
-            let send_batch = |paths: Vec<PathBuf>| {
-                if worker_cancelled.load(Ordering::Relaxed) {
-                    return;
+            while !worker_cancelled.load(Ordering::Relaxed) {
+                let mut request = match index_rx.recv_timeout(EVENT_POLL) {
+                    Ok(request) => request,
+                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                };
+                while let Ok(newer) = index_rx.try_recv() {
+                    request = newer;
                 }
-                let filtered = paths
-                    .into_iter()
-                    .filter(|path| {
-                        !compiled.matches_path(
-                            path,
-                            QueryScope {
-                                root: Some(&worker_root),
-                                prefer_relative: true,
-                                ignore_case: worker_options.ignore_case,
-                            },
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                if !filtered.is_empty() {
-                    let _ = worker_tx.send(WorkerResponse::IndexedBatch(filtered));
+                let should_cancel = || {
+                    worker_cancelled.load(Ordering::Relaxed)
+                        || !worker_index_freshness.is_current(request.request_id)
+                };
+                if should_cancel() {
+                    continue;
                 }
-            };
-            let has_filelist = find_filelist_in_first_level(&worker_root).is_some();
-            if worker_options.use_filelist && has_filelist {
-                match build_index_cancellable(
-                    &worker_root,
-                    true,
-                    worker_options.include_files,
-                    worker_options.include_dirs,
-                    || worker_cancelled.load(Ordering::Relaxed),
-                ) {
-                    Ok(paths) => send_batch(paths),
-                    Err(error) if is_index_build_cancelled(&error) => {}
-                    Err(error) => {
-                        let _ = worker_tx.send(WorkerResponse::IndexFailed(error.to_string()));
+                let send_batch = |entries: Vec<PathBuf>| {
+                    if !entries.is_empty() && !should_cancel() {
+                        let _ = worker_tx.send(WorkerResponse::IndexedBatch {
+                            request_id: request.request_id,
+                            root: request.root.clone(),
+                            entries,
+                        });
+                    }
+                };
+                if should_cancel() {
+                    continue;
+                }
+                let has_filelist = find_filelist_in_first_level(&request.root).is_some();
+                let use_filelist = match request.source {
+                    TuiSource::Auto => has_filelist,
+                    TuiSource::FileList => true,
+                    TuiSource::Walker => false,
+                };
+                if request.source == TuiSource::FileList && !has_filelist {
+                    if !should_cancel() {
+                        let _ = worker_tx.send(WorkerResponse::IndexFailed {
+                            request_id: request.request_id,
+                            root: request.root.clone(),
+                            error: "FileList source selected but no FileList was found".to_string(),
+                        });
+                    }
+                    continue;
+                }
+                if use_filelist {
+                    match build_index_cancellable(
+                        &request.root,
+                        true,
+                        request.include_files,
+                        request.include_dirs,
+                        should_cancel,
+                    ) {
+                        Ok(paths) => send_batch(paths),
+                        Err(error) if is_index_build_cancelled(&error) => {}
+                        Err(error) => {
+                            if !should_cancel() {
+                                let _ = worker_tx.send(WorkerResponse::IndexFailed {
+                                    request_id: request.request_id,
+                                    root: request.root.clone(),
+                                    error: error.to_string(),
+                                });
+                            }
+                            continue;
+                        }
+                    }
+                } else {
+                    let mut batch = Vec::with_capacity(256);
+                    let result = walk_entries_stream_cancellable(
+                        &request.root,
+                        request.include_files,
+                        request.include_dirs,
+                        should_cancel,
+                        |path| {
+                            batch.push(path);
+                            if batch.len() >= 256 {
+                                send_batch(std::mem::take(&mut batch));
+                            }
+                        },
+                    );
+                    if result.is_ok() {
+                        send_batch(batch);
                     }
                 }
-            } else {
-                let mut batch = Vec::with_capacity(256);
-                let result = walk_entries_stream_cancellable(
-                    &worker_root,
-                    worker_options.include_files,
-                    worker_options.include_dirs,
-                    || worker_cancelled.load(Ordering::Relaxed),
-                    |path| {
-                        batch.push(path);
-                        if batch.len() >= 256 {
-                            send_batch(std::mem::take(&mut batch));
-                        }
-                    },
-                );
-                if result.is_ok() {
-                    send_batch(batch);
+                if !should_cancel() {
+                    let _ = worker_tx.send(WorkerResponse::IndexedFinished {
+                        request_id: request.request_id,
+                        root: request.root,
+                    });
                 }
-            }
-            if !worker_cancelled.load(Ordering::Relaxed) {
-                let _ = worker_tx.send(WorkerResponse::IndexedFinished);
             }
             let _ = index_done_tx.send(());
         }) {
@@ -830,6 +1071,8 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         run_event_loop(
             terminal_output,
             EventLoopContext {
+                index_tx: &index_tx,
+                index_freshness: Arc::clone(&index_freshness),
                 search_tx: &search_tx,
                 preview_tx: &preview_tx,
                 action_tx: &action_tx,
@@ -846,6 +1089,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
     });
     cancelled.store(true, Ordering::Release);
     drop(search_tx);
+    drop(index_tx);
     drop(preview_tx);
     drop(action_tx);
     finish_worker(search_handle, search_done_rx);
@@ -899,6 +1143,8 @@ fn run_event_loop<W: Write>(
     context: EventLoopContext<'_>,
 ) -> Result<TuiExit> {
     let EventLoopContext {
+        index_tx,
+        index_freshness,
         search_tx,
         preview_tx,
         action_tx,
@@ -913,8 +1159,14 @@ fn run_event_loop<W: Write>(
     } = context;
     let mut state = TuiState::new(&options.initial_query);
     state.root = root.clone();
+    state.runtime_options = TuiRuntimeOptions::from_startup(options);
+    state.ignore_terms = Arc::new(options.ignore_terms.clone());
     state.history_enabled = history_enabled;
     state.history_entries = history_entries;
+    if dispatch_index_request(&mut state, index_tx, index_freshness.as_ref(), root.clone()).is_err()
+    {
+        anyhow::bail!("index worker unavailable");
+    }
     loop {
         while let Ok(response) = rx.try_recv() {
             let preview_path_before = state.current_path().cloned();
@@ -937,12 +1189,7 @@ fn run_event_loop<W: Write>(
             state.last_query_change = None;
             state.status = "Searching...".to_string();
             state.dirty = true;
-            let _ = search_tx.send(state.next_search_request(
-                root.clone(),
-                options.limit,
-                options.regex,
-                options.ignore_case,
-            ));
+            let _ = search_tx.send(state.next_search_request(root.clone(), options.limit));
         }
 
         if state.dirty {
@@ -1001,6 +1248,26 @@ fn run_event_loop<W: Write>(
                                 state.dirty = true;
                             }
                         }
+                        KeyAction::Reindex => {
+                            if state.source_changed_on_apply {
+                                prepare_source_transition(
+                                    &mut state,
+                                    action_freshness.as_ref(),
+                                    &root,
+                                );
+                            }
+                            if dispatch_index_request(
+                                &mut state,
+                                index_tx,
+                                index_freshness.as_ref(),
+                                root.clone(),
+                            )
+                            .is_err()
+                            {
+                                state.status = "Index worker unavailable".to_string();
+                                state.dirty = true;
+                            }
+                        }
                         KeyAction::Continue => {
                             if preview_path_before != state.current_path().cloned()
                                 || preview_preferred_before != state.preview_preferred
@@ -1018,9 +1285,39 @@ fn run_event_loop<W: Write>(
     }
 }
 
+fn dispatch_index_request(
+    state: &mut TuiState,
+    index_tx: &mpsc::Sender<IndexRequest>,
+    freshness: &TuiIndexFreshness,
+    root: PathBuf,
+) -> Result<(), mpsc::SendError<IndexRequest>> {
+    let request = state.next_index_request(root);
+    freshness.activate(request.request_id);
+    index_tx.send(request)
+}
+
+fn prepare_source_transition(
+    state: &mut TuiState,
+    action_freshness: &TuiActionFreshness,
+    root: &Path,
+) {
+    state.pinned.clear();
+    state.clear_preview();
+    state.active_action_request = None;
+    action_freshness.activate(0, root);
+    state.source_changed_on_apply = false;
+}
+
 fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Result<()> {
     match response {
-        WorkerResponse::IndexedBatch(entries) => {
+        WorkerResponse::IndexedBatch {
+            request_id,
+            root,
+            entries,
+        } => {
+            if state.active_index_request.as_ref() != Some(&(request_id, root)) {
+                return Ok(());
+            }
             Arc::make_mut(&mut state.entries).extend(entries);
             state.indexed = true;
             let now = Instant::now();
@@ -1034,9 +1331,12 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             state.status = format!("Indexing... {} candidates", state.entries.len());
             state.dirty = true;
         }
-        WorkerResponse::IndexedFinished => {
+        WorkerResponse::IndexedFinished { request_id, root } => {
+            if state.active_index_request.as_ref() != Some(&(request_id, root)) {
+                return Ok(());
+            }
             state.indexed = true;
-            state.status = "Ready".to_string();
+            state.status = format!("Ready | {}", state.current_options_summary());
             state.last_query_change = Some(
                 Instant::now()
                     .checked_sub(INPUT_DEBOUNCE)
@@ -1044,13 +1344,26 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             );
             state.dirty = true;
         }
-        WorkerResponse::IndexFailed(error) => anyhow::bail!("indexing failed: {error}"),
+        WorkerResponse::IndexFailed {
+            request_id,
+            root,
+            error,
+        } => {
+            if state.active_index_request.as_ref() == Some(&(request_id, root)) {
+                state.active_index_request = None;
+                state.indexed = false;
+                state.status = format!("Indexing failed: {error}. Choose Auto or Walker in F2.");
+                state.dirty = true;
+            }
+        }
         WorkerResponse::Searched {
             request_id,
+            root,
             query,
+            options,
             results,
             error,
-        } => apply_search_response(state, request_id, &query, results, error),
+        } => apply_search_response(state, request_id, &root, &query, options, results, error),
         WorkerResponse::Previewed {
             request_id,
             root,
@@ -1115,11 +1428,17 @@ fn interactive_terminal_supported(stdin_is_tty: bool, stderr_is_tty: bool) -> bo
 fn apply_search_response(
     state: &mut TuiState,
     request_id: u64,
+    root: &Path,
     query: &str,
+    options: SearchOptions,
     results: Vec<(PathBuf, f64)>,
     error: Option<String>,
 ) {
-    if state.active_search_request_id == Some(request_id) && query == state.query {
+    if state.active_search_request_id == Some(request_id)
+        && state.root.as_path() == root
+        && query == state.query
+        && options == state.runtime_options.search_options(state.sort_mode)
+    {
         state.set_results(results, error);
     }
 }
@@ -1288,6 +1607,124 @@ fn selected_paths(state: &TuiState) -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
+fn move_overlay_selection(selected: &mut usize, delta: isize, len: usize) {
+    if delta.is_negative() {
+        *selected = selected.saturating_sub(delta.unsigned_abs());
+    } else {
+        *selected = selected
+            .saturating_add(delta as usize)
+            .min(len.saturating_sub(1));
+    }
+}
+
+fn toggle_option(overlay: &mut OptionsOverlay) {
+    match overlay.selected {
+        0 if overlay.draft.include_dirs => {
+            overlay.draft.include_files = !overlay.draft.include_files
+        }
+        1 if overlay.draft.include_files => {
+            overlay.draft.include_dirs = !overlay.draft.include_dirs
+        }
+        2 => overlay.draft.regex = !overlay.draft.regex,
+        3 => overlay.draft.ignore_case = !overlay.draft.ignore_case,
+        4 => overlay.draft.ignore_enabled = !overlay.draft.ignore_enabled,
+        5 => overlay.draft.source = overlay.draft.source.next(),
+        _ => {}
+    }
+}
+
+fn option_change_requires_reindex(before: TuiRuntimeOptions, after: TuiRuntimeOptions) -> bool {
+    before.include_files != after.include_files
+        || before.include_dirs != after.include_dirs
+        || before.source != after.source
+}
+
+fn handle_options_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if matches!(
+        (key.code, key.modifiers),
+        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+    ) {
+        return KeyAction::Cancel;
+    }
+    match (key.code, key.modifiers) {
+        (KeyCode::Esc, _) | (KeyCode::Char('g'), KeyModifiers::CONTROL) => {
+            state.options_overlay = None;
+        }
+        (KeyCode::Enter, _) => {
+            let Some(overlay) = state.options_overlay.take() else {
+                return KeyAction::Continue;
+            };
+            let previous = state.runtime_options;
+            let changed = previous != overlay.draft;
+            let reindex = option_change_requires_reindex(previous, overlay.draft);
+            let source_changed = previous.source != overlay.draft.source;
+            state.runtime_options = overlay.draft;
+            if changed {
+                state.sort_mode = SearchSortMode::Score;
+                state.active_search_request_id = None;
+                state.source_changed_on_apply = source_changed;
+            }
+            if reindex {
+                state.status = "Reindexing...".to_string();
+                state.dirty = true;
+                return KeyAction::Reindex;
+            }
+            state.status = "Options applied".to_string();
+            state.last_query_change = Some(Instant::now());
+        }
+        (KeyCode::Up, _) => {
+            if let Some(overlay) = state.options_overlay.as_mut() {
+                move_overlay_selection(&mut overlay.selected, -1, 6);
+            }
+        }
+        (KeyCode::Down, _) => {
+            if let Some(overlay) = state.options_overlay.as_mut() {
+                move_overlay_selection(&mut overlay.selected, 1, 6);
+            }
+        }
+        (KeyCode::Char(' '), _) | (KeyCode::Left, _) | (KeyCode::Right, _) => {
+            if let Some(overlay) = state.options_overlay.as_mut() {
+                toggle_option(overlay);
+            }
+        }
+        _ => {}
+    }
+    state.dirty = true;
+    KeyAction::Continue
+}
+
+fn handle_sort_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if matches!(
+        (key.code, key.modifiers),
+        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+    ) {
+        return KeyAction::Cancel;
+    }
+    match (key.code, key.modifiers) {
+        (KeyCode::Esc, _) | (KeyCode::Char('g'), KeyModifiers::CONTROL) => state.sort_picker = None,
+        (KeyCode::Enter, _) => {
+            if let Some(picker) = state.sort_picker.take() {
+                state.sort_mode = SORT_MODES[picker.selected];
+                state.status = format!("Sorting by {}...", state.sort_mode.label());
+                state.last_query_change = Some(Instant::now());
+            }
+        }
+        (KeyCode::Up, _) => {
+            if let Some(picker) = state.sort_picker.as_mut() {
+                move_overlay_selection(&mut picker.selected, -1, SORT_MODES.len());
+            }
+        }
+        (KeyCode::Down, _) => {
+            if let Some(picker) = state.sort_picker.as_mut() {
+                move_overlay_selection(&mut picker.selected, 1, SORT_MODES.len());
+            }
+        }
+        _ => {}
+    }
+    state.dirty = true;
+    KeyAction::Continue
+}
+
 fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     if state.help.is_some() {
         match (key.code, key.modifiers) {
@@ -1299,6 +1736,12 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
         }
         state.dirty = true;
         return KeyAction::Continue;
+    }
+    if state.options_overlay.is_some() {
+        return handle_options_key(state, key);
+    }
+    if state.sort_picker.is_some() {
+        return handle_sort_key(state, key);
     }
     if matches!(key.code, KeyCode::F(1)) {
         state.open_help();
@@ -1351,6 +1794,16 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
             }
             _ => {}
         }
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
+    if matches!(key.code, KeyCode::F(2)) {
+        state.open_options();
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
+    if matches!(key.code, KeyCode::F(3)) {
+        state.open_sort_picker();
         state.dirty = true;
         return KeyAction::Continue;
     }
@@ -1469,35 +1922,52 @@ fn insert_paste(state: &mut TuiState, pasted: &str) {
 }
 
 fn search(
-    query: &str,
-    entries: &[PathBuf],
-    limit: usize,
-    root: &Path,
-    regex: bool,
-    ignore_case: bool,
+    request: &SearchRequest,
+    prefix_cache: &mut SearchPrefixCache,
 ) -> (Vec<(PathBuf, f64)>, Option<String>) {
-    if query.trim().is_empty() {
-        return (
-            entries
-                .iter()
-                .take(limit)
-                .cloned()
-                .map(|path| (path, 0.0))
-                .collect(),
-            None,
-        );
-    }
-    match try_search_entries_with_scope(query, entries, limit, regex, ignore_case, Some(root), true)
-    {
-        Ok(results) => (results, None),
-        Err(error) => (Vec::new(), Some(error.to_string())),
-    }
+    let compiled_ignore = request
+        .options
+        .ignore_enabled
+        .then(|| CompiledIgnoreTerms::compile(&request.ignore_terms, request.options.ignore_case));
+    let entries = Arc::new(
+        request
+            .entries
+            .iter()
+            .filter(|path| {
+                compiled_ignore.as_ref().is_none_or(|compiled| {
+                    !compiled.matches_path(
+                        path,
+                        QueryScope {
+                            root: Some(&request.root),
+                            prefer_relative: true,
+                            ignore_case: request.options.ignore_case,
+                        },
+                    )
+                })
+            })
+            .cloned()
+            .map(Entry::from)
+            .collect(),
+    );
+    let (result_set, error) = rank_search_results(
+        &entries,
+        &request.query,
+        &request.root,
+        request.limit,
+        request.options.regex,
+        request.options.ignore_case,
+        true,
+        prefix_cache,
+        request.options.sort_mode,
+        SearchSortScope::AllMatches,
+    );
+    (result_set.results, error)
 }
 
 fn draw<W: Write>(
     terminal_output: &mut W,
     state: &mut TuiState,
-    options: &CliTuiOptions,
+    _options: &CliTuiOptions,
 ) -> Result<()> {
     let (width, height) = terminal::size()?;
     let preview_visible = preview_visible_for_size(state.preview_preferred, width, height);
@@ -1548,7 +2018,10 @@ fn draw<W: Write>(
             MoveTo(0, 3),
             SetForegroundColor(Color::DarkGrey),
             Print(clip_to_width(
-                "Enter select | Tab pin | Alt+P preview | Esc cancel",
+                &format!(
+                    "Enter select | F2 options | F3 {} | Alt+P preview | Esc cancel",
+                    state.sort_mode.label()
+                ),
                 list_width as usize,
             )),
             ResetColor
@@ -1558,8 +2031,8 @@ fn draw<W: Write>(
         CompiledQuery::compile(
             &state.query,
             QueryOptions {
-                use_regex: options.regex,
-                ignore_case: options.ignore_case,
+                use_regex: state.runtime_options.regex,
+                ignore_case: state.runtime_options.ignore_case,
             },
         )
     });
@@ -1599,11 +2072,117 @@ fn draw<W: Write>(
     }
     if let Some(context) = state.help {
         render_help_overlay(terminal_output, context, width, height)?;
+    } else if let Some(options_overlay) = state.options_overlay.as_ref() {
+        render_options_overlay(terminal_output, options_overlay, width, height)?;
+    } else if let Some(sort_picker) = state.sort_picker.as_ref() {
+        render_sort_picker(terminal_output, sort_picker, width, height)?;
     } else if let Some(history) = state.history.as_ref() {
         render_history_overlay(terminal_output, history, width, height)?;
     }
     terminal_output.flush()?;
     Ok(())
+}
+
+fn render_options_overlay<W: Write>(
+    terminal_output: &mut W,
+    overlay: &OptionsOverlay,
+    width: u16,
+    height: u16,
+) -> Result<()> {
+    let on_off = |value| if value { "on" } else { "off" };
+    let lines = [
+        "Options".to_string(),
+        "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows + Space change".to_string(),
+        format!("Files: {}", on_off(overlay.draft.include_files)),
+        format!("Folders: {}", on_off(overlay.draft.include_dirs)),
+        format!("Regex: {}", on_off(overlay.draft.regex)),
+        format!("Ignore Case: {}", on_off(overlay.draft.ignore_case)),
+        format!("Ignore: {}", on_off(overlay.draft.ignore_enabled)),
+        format!("Source: {}", overlay.draft.source.label()),
+    ];
+    execute!(terminal_output, Clear(ClearType::All))?;
+    for (row, line) in lines.iter().take(2).enumerate().take(height as usize) {
+        execute!(
+            terminal_output,
+            MoveTo(0, row as u16),
+            Print(clip_to_width(line, width as usize)),
+        )?;
+    }
+    let option_rows = &lines[2..];
+    let visible = height.saturating_sub(2) as usize;
+    let start = overlay_window_start(overlay.selected, option_rows.len(), visible);
+    for (row, (index, line)) in option_rows
+        .iter()
+        .enumerate()
+        .skip(start)
+        .take(visible)
+        .enumerate()
+    {
+        let marker = if index == overlay.selected {
+            "> "
+        } else {
+            "  "
+        };
+        execute!(
+            terminal_output,
+            MoveTo(0, row as u16),
+            Print(clip_to_width(&format!("{marker}{line}"), width as usize)),
+        )?;
+    }
+    Ok(())
+}
+
+fn render_sort_picker<W: Write>(
+    terminal_output: &mut W,
+    picker: &SortPicker,
+    width: u16,
+    height: u16,
+) -> Result<()> {
+    execute!(terminal_output, Clear(ClearType::All))?;
+    let heading = [
+        "Sort results".to_string(),
+        "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows move".to_string(),
+    ];
+    for (row, line) in heading.into_iter().enumerate() {
+        if row < height as usize {
+            execute!(
+                terminal_output,
+                MoveTo(0, row as u16),
+                Print(clip_to_width(&line, width as usize)),
+            )?;
+        }
+    }
+    let visible = height.saturating_sub(2) as usize;
+    let start = overlay_window_start(picker.selected, SORT_MODES.len(), visible);
+    for (row, (index, mode)) in SORT_MODES
+        .iter()
+        .enumerate()
+        .skip(start)
+        .take(visible)
+        .enumerate()
+    {
+        let marker = if index == picker.selected { "> " } else { "  " };
+        execute!(
+            terminal_output,
+            MoveTo(0, (row + 2) as u16),
+            Print(clip_to_width(
+                &format!("{marker}{}", mode.label()),
+                width as usize
+            )),
+        )?;
+    }
+    Ok(())
+}
+
+fn overlay_window_start(selected: usize, total: usize, visible: usize) -> usize {
+    if visible >= total {
+        return 0;
+    }
+    let visible = visible.max(1);
+    let before = visible / 2;
+    selected
+        .saturating_sub(before)
+        .min(total.saturating_sub(visible))
 }
 
 fn render_history_overlay<W: Write>(
@@ -1680,7 +2259,7 @@ fn render_help_overlay<W: Write>(
             "Enter output selection | Tab pin | arrows/Page move".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
-            "Alt+P toggle preview | F1 help".to_string(),
+            "F2 options | F3 sort | Alt+P toggle preview | F1 help".to_string(),
         ]),
         HelpContext::History => lines.extend([
             "History search is paused while help is open.".to_string(),
@@ -2024,13 +2603,17 @@ mod tests {
     #[test]
     fn tc_162_stale_search_response_is_ignored_by_request_id() {
         let mut state = TuiState::new("new");
+        state.root = PathBuf::from("root");
         state.active_search_request_id = Some(2);
         state.results = vec![(PathBuf::from("current.txt"), 1.0)];
+        let search_options = state.runtime_options.search_options(state.sort_mode);
 
         apply_search_response(
             &mut state,
             1,
+            Path::new("root"),
             "new",
+            search_options,
             vec![(PathBuf::from("stale.txt"), 2.0)],
             None,
         );
@@ -2039,24 +2622,44 @@ mod tests {
         apply_search_response(
             &mut state,
             2,
+            Path::new("root"),
             "new",
+            search_options,
             vec![(PathBuf::from("latest.txt"), 3.0)],
+            None,
+        );
+        assert_eq!(state.results[0].0, PathBuf::from("latest.txt"));
+
+        state.active_search_request_id = Some(3);
+        apply_search_response(
+            &mut state,
+            3,
+            Path::new("other-root"),
+            "new",
+            search_options,
+            vec![(PathBuf::from("wrong-root.txt"), 4.0)],
             None,
         );
         assert_eq!(state.results[0].0, PathBuf::from("latest.txt"));
     }
 
     #[test]
-    fn tc_162_index_failure_propagates_out_of_the_event_loop() {
+    fn tc_162_index_failure_keeps_tui_recoverable() {
         let mut state = TuiState::new("");
+        state.active_index_request = Some((1, PathBuf::from("root")));
 
-        let error = apply_worker_response(
+        apply_worker_response(
             &mut state,
-            WorkerResponse::IndexFailed("broken FileList".to_string()),
+            WorkerResponse::IndexFailed {
+                request_id: 1,
+                root: PathBuf::from("root"),
+                error: "broken FileList".to_string(),
+            },
         )
-        .expect_err("index failure must terminate the TUI");
+        .expect("index failure is surfaced in status");
 
-        assert!(error.to_string().contains("broken FileList"));
+        assert!(state.status.contains("broken FileList"));
+        assert!(state.active_index_request.is_none());
     }
 
     #[test]
@@ -2560,6 +3163,298 @@ mod tests {
                 "overlay must clear terminal before rendering"
             );
         }
+    }
+
+    #[test]
+    fn tc_162_f2_options_and_f3_sort_overlays_have_precedence_without_side_effects() {
+        let mut state = TuiState::new("draft");
+        state.results = vec![(PathBuf::from("selected.txt"), 1.0)];
+        state.pinned.push(PathBuf::from("pinned.txt"));
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::F(2), KeyModifiers::NONE));
+        assert!(state.options_overlay.is_some());
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::Continue
+        ));
+        assert_eq!(state.query, "draft");
+        assert_eq!(state.pinned, vec![PathBuf::from("pinned.txt")]);
+        handle_key(&mut state, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::F(3), KeyModifiers::NONE));
+        assert!(state.sort_picker.is_some());
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+            ),
+            KeyAction::Continue
+        ));
+        assert_eq!(state.sort_mode, SearchSortMode::Score);
+    }
+
+    #[test]
+    fn tc_162_tui_sort_picker_has_all_nine_shared_modes_and_query_resets_score() {
+        assert_eq!(SORT_MODES.len(), 9);
+        assert_eq!(SORT_MODES[0], SearchSortMode::Score);
+        assert_eq!(SORT_MODES[8], SearchSortMode::SizeAsc);
+        let mut state = TuiState::new("draft");
+        state.sort_mode = SearchSortMode::SizeDesc;
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+        );
+
+        assert_eq!(state.sort_mode, SearchSortMode::Score);
+    }
+
+    #[test]
+    fn tc_162_tui_options_reindex_only_for_scope_or_source_changes() {
+        let base = TuiRuntimeOptions::from_startup(&CliTuiOptions {
+            initial_query: String::new(),
+            limit: 10,
+            absolute: false,
+            print0: false,
+            include_files: true,
+            include_dirs: true,
+            use_filelist: true,
+            require_filelist: false,
+            regex: false,
+            ignore_case: false,
+            ignore_terms: vec!["ignored".to_string()],
+        });
+        let mut search_only = base;
+        search_only.regex = true;
+        search_only.ignore_case = true;
+        search_only.ignore_enabled = false;
+        assert!(!option_change_requires_reindex(base, search_only));
+        let mut reindex = base;
+        reindex.include_files = false;
+        assert!(option_change_requires_reindex(base, reindex));
+        let mut source = base;
+        source.source = TuiSource::Walker;
+        assert!(option_change_requires_reindex(base, source));
+    }
+
+    #[test]
+    fn tc_162_options_never_disable_both_files_and_folders() {
+        let mut overlay = OptionsOverlay {
+            draft: TuiRuntimeOptions {
+                include_files: true,
+                include_dirs: false,
+                regex: false,
+                ignore_case: false,
+                ignore_enabled: true,
+                source: TuiSource::Auto,
+            },
+            selected: 0,
+        };
+        toggle_option(&mut overlay);
+        assert!(overlay.draft.include_files);
+        overlay.draft.include_dirs = true;
+        toggle_option(&mut overlay);
+        assert!(!overlay.draft.include_files);
+        overlay.selected = 1;
+        toggle_option(&mut overlay);
+        assert!(overlay.draft.include_dirs);
+    }
+
+    #[test]
+    fn tc_162_stale_index_responses_are_discarded_by_identity() {
+        let mut state = TuiState::new("");
+        state.active_index_request = Some((2, PathBuf::from("root-b")));
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::IndexedBatch {
+                request_id: 1,
+                root: PathBuf::from("root-a"),
+                entries: vec![PathBuf::from("stale.txt")],
+            },
+        )
+        .expect("stale response ignored");
+        assert!(state.entries.is_empty());
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::IndexedBatch {
+                request_id: 2,
+                root: PathBuf::from("root-b"),
+                entries: vec![PathBuf::from("fresh.txt")],
+            },
+        )
+        .expect("fresh response accepted");
+        assert_eq!(state.entries.as_slice(), [PathBuf::from("fresh.txt")]);
+    }
+
+    #[test]
+    fn tc_162_tui_search_applies_ignore_in_worker_snapshot_and_sorts_before_limit() {
+        let entries = Arc::new(vec![
+            PathBuf::from("root/zeta.txt"),
+            PathBuf::from("root/ignored.txt"),
+            PathBuf::from("root/alpha.txt"),
+        ]);
+        let mut cache = SearchPrefixCache::default();
+        let request = SearchRequest {
+            request_id: 1,
+            query: String::new(),
+            entries: Arc::clone(&entries),
+            root: PathBuf::from("root"),
+            limit: 2,
+            options: SearchOptions {
+                regex: false,
+                ignore_case: false,
+                ignore_enabled: true,
+                sort_mode: SearchSortMode::NameAsc,
+            },
+            ignore_terms: Arc::new(vec!["ignored".to_string()]),
+        };
+        let (results, error) = search(&request, &mut cache);
+        assert!(error.is_none());
+        assert_eq!(
+            results.iter().map(|(path, _)| path).collect::<Vec<_>>(),
+            vec![
+                &PathBuf::from("root/alpha.txt"),
+                &PathBuf::from("root/zeta.txt")
+            ],
+            "Name sort must run over all non-ignored matches before limit"
+        );
+
+        let unignored = SearchRequest {
+            options: SearchOptions {
+                ignore_enabled: false,
+                ..request.options
+            },
+            ..request
+        };
+        let (results, error) = search(&unignored, &mut cache);
+        assert!(error.is_none());
+        assert_eq!(results.len(), 2);
+        assert!(results
+            .iter()
+            .any(|(path, _)| path.ends_with("ignored.txt")));
+    }
+
+    #[test]
+    fn tc_162_newer_index_identity_supersedes_an_in_progress_request() {
+        let freshness = TuiIndexFreshness::new();
+        freshness.activate(1);
+        assert!(freshness.is_current(1));
+
+        freshness.activate(2);
+        assert!(
+            !freshness.is_current(1),
+            "walker/FileList cancellation closure must stop the superseded request"
+        );
+        assert!(freshness.is_current(2));
+    }
+
+    #[test]
+    fn tc_162_applied_options_reset_sort_only_when_the_draft_changes() {
+        let mut state = TuiState::new("query");
+        state.sort_mode = SearchSortMode::SizeDesc;
+        state.options_overlay = Some(OptionsOverlay {
+            draft: state.runtime_options,
+            selected: 0,
+        });
+        handle_options_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert_eq!(state.sort_mode, SearchSortMode::SizeDesc);
+
+        state.sort_mode = SearchSortMode::SizeDesc;
+        let mut changed = state.runtime_options;
+        changed.ignore_case = !changed.ignore_case;
+        state.options_overlay = Some(OptionsOverlay {
+            draft: changed,
+            selected: 0,
+        });
+        handle_options_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert_eq!(state.sort_mode, SearchSortMode::Score);
+        assert!(state.active_search_request_id.is_none());
+    }
+
+    #[test]
+    fn tc_162_source_transition_clears_source_scoped_state_before_reindex() {
+        let mut state = TuiState::new("");
+        state.root = PathBuf::from("root");
+        state.pinned.push(PathBuf::from("root/pinned.txt"));
+        state.preview = "old preview".to_string();
+        state.active_preview_request = Some(PreviewRequestIdentity {
+            request_id: 3,
+            root: state.root.clone(),
+            path: PathBuf::from("root/old.txt"),
+        });
+        state.active_action_request = Some((4, PathBuf::from("root/old.txt")));
+        state.source_changed_on_apply = true;
+        let action_freshness = TuiActionFreshness::new();
+        action_freshness.activate(4, &state.root);
+
+        prepare_source_transition(&mut state, &action_freshness, Path::new("root"));
+
+        assert!(state.pinned.is_empty());
+        assert!(state.preview.is_empty());
+        assert!(state.active_preview_request.is_none());
+        assert!(state.active_action_request.is_none());
+        assert!(!state.source_changed_on_apply);
+        assert!(!action_freshness.is_current(4, Path::new("root")));
+    }
+
+    #[test]
+    fn tc_162_every_reindex_clears_current_preview_and_pending_search_without_clearing_pins() {
+        let mut state = TuiState::new("");
+        state.root = PathBuf::from("root");
+        state.results = vec![(PathBuf::from("root/current.txt"), 1.0)];
+        state.pinned.push(PathBuf::from("root/pinned.txt"));
+        state.preview = "stale preview".to_string();
+        state.active_preview_request = Some(PreviewRequestIdentity {
+            request_id: 1,
+            root: state.root.clone(),
+            path: PathBuf::from("root/current.txt"),
+        });
+        state.active_search_request_id = Some(2);
+
+        state.next_index_request(state.root.clone());
+
+        assert!(state.results.is_empty());
+        assert!(state.preview.is_empty());
+        assert!(state.active_preview_request.is_none());
+        assert!(state.active_search_request_id.is_none());
+        assert_eq!(state.pinned, vec![PathBuf::from("root/pinned.txt")]);
+    }
+
+    #[test]
+    fn tc_162_small_overlays_keep_source_and_size_selection_visible() {
+        assert_eq!(overlay_window_start(5, 6, 2), 4);
+        assert_eq!(overlay_window_start(8, 9, 2), 7);
+        let options = OptionsOverlay {
+            draft: TuiRuntimeOptions::from_startup(&CliTuiOptions {
+                initial_query: String::new(),
+                limit: 1,
+                absolute: false,
+                print0: false,
+                include_files: true,
+                include_dirs: true,
+                use_filelist: true,
+                require_filelist: false,
+                regex: false,
+                ignore_case: false,
+                ignore_terms: Vec::new(),
+            }),
+            selected: 5,
+        };
+        let mut output = Vec::new();
+        render_options_overlay(&mut output, &options, 80, 4).expect("render options");
+        assert!(String::from_utf8_lossy(&output).contains("> Source:"));
+        let mut output = Vec::new();
+        render_sort_picker(&mut output, &SortPicker { selected: 8 }, 80, 4).expect("render sort");
+        assert!(String::from_utf8_lossy(&output).contains("> Size (Small)"));
     }
 
     #[derive(Default)]
