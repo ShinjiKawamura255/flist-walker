@@ -200,17 +200,23 @@
     {
       "id": "slice-c.action",
       "title": "Implement current-only TUI open/reveal actions",
-      "status": "pending",
+      "status": "complete",
       "depends_on": ["slice-c.preview-history-help"],
       "owner": "subagent:terra-tui-action",
       "model_capability": "standard",
       "routing_reason": "Bounded TUI side-effect worker with recording backend and lifecycle tests.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/cli_tui.rs", "rust/src/main.rs", "README.md", "README-ja.md"],
       "acceptance": ["Ctrl+O/Shift+Enter target current only", "Pins never fan out side effects", "Exit/root switch prevents new backend calls after observed cancellation"],
       "verification": ["focused TUI action tests", "cargo test cli_tui::tests", "cargo test"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {
+        "files": ["rust/src/cli_tui.rs", "README.md", "README-ja.md"],
+        "commands": ["cargo test cli_tui::tests --lib", "cargo test --test cli_contract", "cargo test", "cargo check", "cargo clippy --all-targets --all-features -- -D warnings", "cargo fmt --all -- --check", "git diff --check"],
+        "artifacts": [],
+        "reviews": ["Sol integration review confirmed current-row-only dispatch, preauthorized effective reveal target, cancellation/freshness checks, safe diagnostics, and TC-164 trace naming"],
+        "logs": []
+      },
+      "result": "TUI Ctrl+O and Shift+Enter dispatch only the current row through the shared authorization lifecycle on a dedicated worker; pins and overlays cannot fan out side effects, and stale/canceled/error responses remain safe and stdout-free.",
       "blocker": null
     },
     {

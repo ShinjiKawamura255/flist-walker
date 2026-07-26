@@ -1,3 +1,8 @@
+use crate::actions::{
+    execute_authorized_action_request, execute_or_open, AuthorizedActionBackend,
+    AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport,
+    AuthorizedActionRequest,
+};
 use crate::indexer::{
     build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
     walk_entries_stream_cancellable,
@@ -23,9 +28,9 @@ use fuzzy_matcher::FuzzyMatcher;
 use std::collections::HashSet;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use unicode_width::UnicodeWidthChar;
@@ -74,6 +79,12 @@ enum WorkerResponse {
         path: PathBuf,
         preview: String,
     },
+    Actioned {
+        request_id: u64,
+        root: PathBuf,
+        selected_path: PathBuf,
+        report: AuthorizedActionReport,
+    },
 }
 
 struct SearchRequest {
@@ -92,15 +103,66 @@ struct PreviewRequest {
     path: PathBuf,
 }
 
+struct TuiActionRequest {
+    request: AuthorizedActionRequest,
+    selected_path: PathBuf,
+}
+
+struct TuiActionFreshness {
+    current_request_id: AtomicU64,
+    trusted_root: Mutex<PathBuf>,
+}
+
+impl TuiActionFreshness {
+    fn new() -> Self {
+        Self {
+            current_request_id: AtomicU64::new(0),
+            trusted_root: Mutex::new(PathBuf::new()),
+        }
+    }
+
+    fn activate(&self, request_id: u64, root: &Path) {
+        if let Ok(mut trusted_root) = self.trusted_root.lock() {
+            *trusted_root = root.to_path_buf();
+        }
+        self.current_request_id.store(request_id, Ordering::Release);
+    }
+}
+
+impl AuthorizedActionGuard for TuiActionFreshness {
+    fn is_current(&self, request_id: u64, trusted_root: &Path) -> bool {
+        self.current_request_id.load(Ordering::Acquire) == request_id
+            && self
+                .trusted_root
+                .lock()
+                .is_ok_and(|current_root| current_root.as_path() == trusted_root)
+    }
+}
+
+struct TuiActionBackend;
+
+impl AuthorizedActionBackend for TuiActionBackend {
+    fn execute_or_open(&self, path: &Path) -> Result<()> {
+        execute_or_open(path)
+    }
+
+    fn reveal(&self, path: &Path) -> Result<()> {
+        execute_or_open(path)
+    }
+}
+
 struct EventLoopContext<'a> {
     search_tx: &'a mpsc::Sender<SearchRequest>,
     preview_tx: &'a mpsc::Sender<PreviewRequest>,
+    action_tx: &'a mpsc::Sender<TuiActionRequest>,
     rx: &'a mpsc::Receiver<WorkerResponse>,
     root: PathBuf,
     options: &'a CliTuiOptions,
     history_enabled: bool,
     history_entries: Vec<String>,
     history_persistence: Option<&'a AsyncHistoryPersistence>,
+    action_freshness: Arc<TuiActionFreshness>,
+    cancellation: Arc<AtomicBool>,
 }
 
 enum TuiExit {
@@ -114,6 +176,7 @@ enum KeyAction {
     Select,
     HistoryApplied,
     HistoryOpened(Option<String>),
+    DispatchAction(AuthorizedActionMode),
 }
 
 struct TuiState {
@@ -142,6 +205,8 @@ struct TuiState {
     history_entries: Vec<String>,
     history: Option<HistoryOverlay>,
     help: Option<HelpContext>,
+    next_action_request_id: u64,
+    active_action_request: Option<(u64, PathBuf)>,
 }
 
 #[derive(Clone, Debug)]
@@ -195,6 +260,8 @@ impl TuiState {
             history_entries: Vec::new(),
             history: None,
             help: None,
+            next_action_request_id: 0,
+            active_action_request: None,
         }
     }
 
@@ -359,6 +426,33 @@ impl TuiState {
 
     fn close_help(&mut self) {
         self.help = None;
+    }
+
+    fn next_action_request(
+        &mut self,
+        mode: AuthorizedActionMode,
+        freshness: &TuiActionFreshness,
+        cancellation: Arc<AtomicBool>,
+    ) -> Option<TuiActionRequest> {
+        let selected_path = self.current_path()?.clone();
+        self.next_action_request_id = self.next_action_request_id.wrapping_add(1);
+        let request_id = self.next_action_request_id;
+        freshness.activate(request_id, &self.root);
+        self.active_action_request = Some((request_id, selected_path.clone()));
+        self.status = match mode {
+            AuthorizedActionMode::ExecuteOrOpen => "Opening selected item...".to_string(),
+            AuthorizedActionMode::Reveal => "Revealing selected item...".to_string(),
+        };
+        Some(TuiActionRequest {
+            request: AuthorizedActionRequest::new_with_cancellation(
+                request_id,
+                self.root.clone(),
+                vec![selected_path.clone()],
+                mode,
+                cancellation,
+            ),
+            selected_path,
+        })
     }
 }
 
@@ -596,6 +690,58 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         }
     };
 
+    let action_freshness = Arc::new(TuiActionFreshness::new());
+    let (action_tx, action_rx) = mpsc::channel::<TuiActionRequest>();
+    let (action_done_tx, action_done_rx) = mpsc::channel();
+    let action_cancelled = Arc::clone(&cancelled);
+    let action_response_tx = tx.clone();
+    let action_worker_freshness = Arc::clone(&action_freshness);
+    let action_handle = match thread::Builder::new()
+        .name("flistwalker-cli-action".to_string())
+        .spawn(move || {
+            while !action_cancelled.load(Ordering::Acquire) {
+                let mut action = match action_rx.recv_timeout(EVENT_POLL) {
+                    Ok(action) => action,
+                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                };
+                while let Ok(newer) = action_rx.try_recv() {
+                    action = newer;
+                }
+                let request_id = action.request.request_id;
+                let root = action.request.trusted_root.clone();
+                let selected_path = action.selected_path;
+                let report = execute_authorized_action_request(
+                    &action.request,
+                    action_worker_freshness.as_ref(),
+                    &TuiActionBackend,
+                );
+                if action_cancelled.load(Ordering::Acquire)
+                    || action_response_tx
+                        .send(WorkerResponse::Actioned {
+                            request_id,
+                            root,
+                            selected_path,
+                            report,
+                        })
+                        .is_err()
+                {
+                    break;
+                }
+            }
+            let _ = action_done_tx.send(());
+        }) {
+        Ok(handle) => handle,
+        Err(error) => {
+            cancelled.store(true, Ordering::Release);
+            drop(search_tx);
+            drop(preview_tx);
+            finish_worker(search_handle, search_done_rx);
+            finish_worker(preview_handle, preview_done_rx);
+            return Err(error).context("failed to start CLI action worker");
+        }
+    };
+
     let (index_done_tx, index_done_rx) = mpsc::channel();
     let worker_cancelled = Arc::clone(&cancelled);
     let worker_tx = tx.clone();
@@ -672,8 +818,10 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
             cancelled.store(true, Ordering::Relaxed);
             drop(search_tx);
             drop(preview_tx);
+            drop(action_tx);
             finish_worker(search_handle, search_done_rx);
             finish_worker(preview_handle, preview_done_rx);
+            finish_worker(action_handle, action_done_rx);
             return Err(error).context("failed to start CLI index worker");
         }
     };
@@ -684,20 +832,25 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
             EventLoopContext {
                 search_tx: &search_tx,
                 preview_tx: &preview_tx,
+                action_tx: &action_tx,
                 rx: &rx,
                 root: root.clone(),
                 options,
                 history_enabled,
                 history_entries,
                 history_persistence: history_persistence.as_ref(),
+                action_freshness: Arc::clone(&action_freshness),
+                cancellation: Arc::clone(&cancelled),
             },
         )
     });
-    cancelled.store(true, Ordering::Relaxed);
+    cancelled.store(true, Ordering::Release);
     drop(search_tx);
     drop(preview_tx);
+    drop(action_tx);
     finish_worker(search_handle, search_done_rx);
     finish_worker(preview_handle, preview_done_rx);
+    finish_worker(action_handle, action_done_rx);
     finish_worker(index_handle, index_done_rx);
 
     if let Ok(TuiExit::Selected { query, .. }) = &result {
@@ -748,12 +901,15 @@ fn run_event_loop<W: Write>(
     let EventLoopContext {
         search_tx,
         preview_tx,
+        action_tx,
         rx,
         root,
         options,
         history_enabled,
         history_entries,
         history_persistence,
+        action_freshness,
+        cancellation,
     } = context;
     let mut state = TuiState::new(&options.initial_query);
     state.root = root.clone();
@@ -799,8 +955,12 @@ fn run_event_loop<W: Write>(
                     let preview_path_before = state.current_path().cloned();
                     let preview_preferred_before = state.preview_preferred;
                     match handle_key(&mut state, key) {
-                        KeyAction::Cancel => return Ok(TuiExit::Cancelled),
+                        KeyAction::Cancel => {
+                            cancellation.store(true, Ordering::Release);
+                            return Ok(TuiExit::Cancelled);
+                        }
                         KeyAction::Select => {
+                            cancellation.store(true, Ordering::Release);
                             return Ok(TuiExit::Selected {
                                 paths: selected_paths(&state),
                                 query: state.query.clone(),
@@ -823,6 +983,22 @@ fn run_event_loop<W: Write>(
                                         format!("History persistence unavailable: {error}");
                                     state.dirty = true;
                                 }
+                            }
+                        }
+                        KeyAction::DispatchAction(mode) => {
+                            if let Some(request) = state.next_action_request(
+                                mode,
+                                action_freshness.as_ref(),
+                                Arc::clone(&cancellation),
+                            ) {
+                                if action_tx.send(request).is_err() {
+                                    state.active_action_request = None;
+                                    state.status = "Action worker unavailable".to_string();
+                                }
+                                state.dirty = true;
+                            } else {
+                                state.status = "No selection".to_string();
+                                state.dirty = true;
                             }
                         }
                         KeyAction::Continue => {
@@ -881,8 +1057,55 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             path,
             preview,
         } => apply_preview_response(state, request_id, &root, &path, preview),
+        WorkerResponse::Actioned {
+            request_id,
+            root,
+            selected_path,
+            report,
+        } => apply_action_response(state, request_id, &root, &selected_path, &report),
     }
     Ok(())
+}
+
+fn apply_action_response(
+    state: &mut TuiState,
+    request_id: u64,
+    root: &Path,
+    selected_path: &Path,
+    report: &AuthorizedActionReport,
+) {
+    if state
+        .active_action_request
+        .as_ref()
+        .is_none_or(|(active_id, active_path)| {
+            *active_id != request_id || active_path.as_path() != selected_path
+        })
+        || state.root.as_path() != root
+    {
+        return;
+    }
+    state.active_action_request = None;
+    state.status = tui_action_status(report);
+    state.dirty = true;
+}
+
+fn tui_action_status(report: &AuthorizedActionReport) -> String {
+    match report.outcome {
+        AuthorizedActionOutcome::Completed => "Action completed".to_string(),
+        AuthorizedActionOutcome::Blocked => format!(
+            "Action blocked: {}",
+            report
+                .diagnostic
+                .as_deref()
+                .unwrap_or("authorization failed")
+        ),
+        AuthorizedActionOutcome::Canceled | AuthorizedActionOutcome::Superseded => {
+            "Action canceled".to_string()
+        }
+        AuthorizedActionOutcome::Failed | AuthorizedActionOutcome::PartialFailure => {
+            "Action failed: executor failed".to_string()
+        }
+    }
 }
 
 fn interactive_terminal_supported(stdin_is_tty: bool, stderr_is_tty: bool) -> bool {
@@ -1161,6 +1384,12 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
             } else {
                 state.status = "Preview enabled".to_string();
             }
+        }
+        (KeyCode::Char('o'), KeyModifiers::CONTROL) => {
+            return KeyAction::DispatchAction(AuthorizedActionMode::ExecuteOrOpen);
+        }
+        (KeyCode::Enter, KeyModifiers::SHIFT) => {
+            return KeyAction::DispatchAction(AuthorizedActionMode::Reveal);
         }
         (KeyCode::Enter, _) => {
             if selected_paths(state).is_empty() {
@@ -1449,6 +1678,7 @@ fn render_help_overlay<W: Write>(
     match context {
         HelpContext::Normal => lines.extend([
             "Enter output selection | Tab pin | arrows/Page move".to_string(),
+            "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
             "Alt+P toggle preview | F1 help".to_string(),
         ]),
@@ -2330,6 +2560,220 @@ mod tests {
                 "overlay must clear terminal before rendering"
             );
         }
+    }
+
+    #[derive(Default)]
+    struct RecordingTuiActionBackend {
+        calls: Mutex<Vec<(AuthorizedActionMode, PathBuf)>>,
+        fail: bool,
+    }
+
+    impl AuthorizedActionBackend for RecordingTuiActionBackend {
+        fn execute_or_open(&self, path: &Path) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("record action")
+                .push((AuthorizedActionMode::ExecuteOrOpen, path.to_path_buf()));
+            if self.fail {
+                anyhow::bail!("raw executor path and failure detail")
+            }
+            Ok(())
+        }
+
+        fn reveal(&self, path: &Path) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("record action")
+                .push((AuthorizedActionMode::Reveal, path.to_path_buf()));
+            if self.fail {
+                anyhow::bail!("raw executor path and failure detail")
+            }
+            Ok(())
+        }
+    }
+
+    fn action_fixture(name: &str) -> (PathBuf, PathBuf, PathBuf) {
+        let root = std::env::temp_dir().join(format!(
+            "flistwalker-tui-action-{name}-{}-{}",
+            std::process::id(),
+            Instant::now().elapsed().as_nanos()
+        ));
+        std::fs::create_dir_all(root.join("folder")).expect("create action fixture");
+        let current = root.join("current.txt");
+        let pinned = root.join("folder").join("pinned.txt");
+        std::fs::write(&current, "current").expect("write current");
+        std::fs::write(&pinned, "pinned").expect("write pinned");
+        (root, current, pinned)
+    }
+
+    #[test]
+    fn tc_164_tui_actions_snapshot_only_the_current_row_not_pins() {
+        let (root, current, pinned) = action_fixture("current-only");
+        let mut state = TuiState::new("");
+        state.root = root.clone();
+        state.results = vec![(current.clone(), 1.0)];
+        state.pinned.push(pinned.clone());
+        let freshness = TuiActionFreshness::new();
+        let request = state
+            .next_action_request(
+                AuthorizedActionMode::ExecuteOrOpen,
+                &freshness,
+                Arc::new(AtomicBool::new(false)),
+            )
+            .expect("action request");
+        assert_eq!(request.request.selected_targets, vec![current.clone()]);
+
+        let backend = RecordingTuiActionBackend::default();
+        let report = execute_authorized_action_request(&request.request, &freshness, &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Completed);
+        let calls = backend.calls.lock().expect("calls");
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, AuthorizedActionMode::ExecuteOrOpen);
+        assert!(calls[0].1.ends_with("current.txt"));
+        drop(calls);
+        assert!(!backend
+            .calls
+            .lock()
+            .expect("calls")
+            .iter()
+            .any(|(_, path)| path == &pinned));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tc_164_tui_reveal_is_current_only_and_preauthorization_blocks_zero_calls() {
+        let (root, current, _) = action_fixture("reveal-and-block");
+        let freshness = TuiActionFreshness::new();
+        freshness.activate(1, &root);
+        let reveal = AuthorizedActionRequest::new_with_cancellation(
+            1,
+            root.clone(),
+            vec![current.clone()],
+            AuthorizedActionMode::Reveal,
+            Arc::new(AtomicBool::new(false)),
+        );
+        let backend = RecordingTuiActionBackend::default();
+        let report = execute_authorized_action_request(&reveal, &freshness, &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Completed);
+        let calls = backend.calls.lock().expect("calls");
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, AuthorizedActionMode::Reveal);
+        assert!(calls[0]
+            .1
+            .ends_with(root.file_name().expect("fixture root name")));
+
+        freshness.activate(2, &root);
+        let outside = root
+            .parent()
+            .expect("fixture parent")
+            .join("outside-action.txt");
+        std::fs::write(&outside, "outside").expect("write outside");
+        let blocked = AuthorizedActionRequest::new_with_cancellation(
+            2,
+            root.clone(),
+            vec![outside.clone()],
+            AuthorizedActionMode::ExecuteOrOpen,
+            Arc::new(AtomicBool::new(false)),
+        );
+        let blocked_backend = RecordingTuiActionBackend::default();
+        let report = execute_authorized_action_request(&blocked, &freshness, &blocked_backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Blocked);
+        assert!(blocked_backend.calls.lock().expect("calls").is_empty());
+        let _ = std::fs::remove_file(outside);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tc_164_tui_action_stale_cancel_and_executor_errors_are_safe() {
+        let (root, current, _) = action_fixture("stale-cancel-error");
+        let freshness = TuiActionFreshness::new();
+        freshness.activate(1, &root);
+        let cancellation = Arc::new(AtomicBool::new(false));
+        let request = AuthorizedActionRequest::new_with_cancellation(
+            1,
+            root.clone(),
+            vec![current.clone()],
+            AuthorizedActionMode::ExecuteOrOpen,
+            Arc::clone(&cancellation),
+        );
+        freshness.activate(2, &root);
+        let backend = RecordingTuiActionBackend::default();
+        let report = execute_authorized_action_request(&request, &freshness, &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Superseded);
+        assert!(backend.calls.lock().expect("calls").is_empty());
+
+        freshness.activate(3, &root);
+        cancellation.store(true, Ordering::Release);
+        let canceled = AuthorizedActionRequest::new_with_cancellation(
+            3,
+            root.clone(),
+            vec![current.clone()],
+            AuthorizedActionMode::ExecuteOrOpen,
+            Arc::clone(&cancellation),
+        );
+        let report = execute_authorized_action_request(&canceled, &freshness, &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Canceled);
+        assert!(backend.calls.lock().expect("calls").is_empty());
+
+        let failing_backend = RecordingTuiActionBackend {
+            calls: Mutex::default(),
+            fail: true,
+        };
+        let active = AuthorizedActionRequest::new_with_cancellation(
+            4,
+            root.clone(),
+            vec![current.clone()],
+            AuthorizedActionMode::ExecuteOrOpen,
+            Arc::new(AtomicBool::new(false)),
+        );
+        freshness.activate(4, &root);
+        let report = execute_authorized_action_request(&active, &freshness, &failing_backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Failed);
+        assert_eq!(tui_action_status(&report), "Action failed: executor failed");
+        assert!(!tui_action_status(&report).contains("raw executor"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tc_162_tui_action_keys_are_current_only_and_disabled_in_overlays() {
+        let mut state = TuiState::new("");
+        state.results = vec![(PathBuf::from("current.txt"), 1.0)];
+        state.pinned.push(PathBuf::from("pinned.txt"));
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::DispatchAction(AuthorizedActionMode::ExecuteOrOpen)
+        ));
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::SHIFT)
+            ),
+            KeyAction::DispatchAction(AuthorizedActionMode::Reveal)
+        ));
+
+        state.history_enabled = true;
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::Continue
+        ));
+        state.open_help();
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::SHIFT)
+            ),
+            KeyAction::Continue
+        ));
     }
 
     #[test]
