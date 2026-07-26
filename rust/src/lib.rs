@@ -8,8 +8,9 @@ pub mod indexer;
 pub mod path_utils;
 pub mod persistence {
     pub use crate::app::{
-        load_persisted_roots_and_history, load_persisted_roots_and_history_from_paths,
-        AsyncHistoryPersistence, PersistedRootsAndHistory,
+        history_persistence_enabled, load_persisted_roots_and_history,
+        load_persisted_roots_and_history_from_paths, AsyncHistoryPersistence,
+        PersistedRootsAndHistory,
     };
 }
 pub mod query;

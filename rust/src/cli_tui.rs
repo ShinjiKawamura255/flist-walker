@@ -3,9 +3,12 @@ use crate::indexer::{
     walk_entries_stream_cancellable,
 };
 use crate::path_utils::output_path_bytes;
+use crate::persistence::{
+    history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
+};
 use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
 use crate::search::try_search_entries_with_scope;
-use crate::ui_model::display_path_with_mode;
+use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
 use anyhow::{Context, Result};
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::event::{
@@ -15,6 +18,8 @@ use crossterm::event::{
 use crossterm::execute;
 use crossterm::style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
 use std::collections::HashSet;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -29,6 +34,8 @@ const INPUT_DEBOUNCE: Duration = Duration::from_millis(35);
 const INDEX_REFRESH_THROTTLE: Duration = Duration::from_millis(100);
 const EVENT_POLL: Duration = Duration::from_millis(50);
 const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
+const PREVIEW_MIN_WIDTH: u16 = 100;
+const PREVIEW_MIN_HEIGHT: u16 = 8;
 
 #[derive(Clone, Debug)]
 pub struct CliTuiOptions {
@@ -61,6 +68,12 @@ enum WorkerResponse {
         results: Vec<(PathBuf, f64)>,
         error: Option<String>,
     },
+    Previewed {
+        request_id: u64,
+        root: PathBuf,
+        path: PathBuf,
+        preview: String,
+    },
 }
 
 struct SearchRequest {
@@ -73,15 +86,34 @@ struct SearchRequest {
     ignore_case: bool,
 }
 
+struct PreviewRequest {
+    request_id: u64,
+    root: PathBuf,
+    path: PathBuf,
+}
+
+struct EventLoopContext<'a> {
+    search_tx: &'a mpsc::Sender<SearchRequest>,
+    preview_tx: &'a mpsc::Sender<PreviewRequest>,
+    rx: &'a mpsc::Receiver<WorkerResponse>,
+    root: PathBuf,
+    options: &'a CliTuiOptions,
+    history_enabled: bool,
+    history_entries: Vec<String>,
+    history_persistence: Option<&'a AsyncHistoryPersistence>,
+}
+
 enum TuiExit {
     Cancelled,
-    Selected(Vec<PathBuf>),
+    Selected { paths: Vec<PathBuf>, query: String },
 }
 
 enum KeyAction {
     Continue,
     Cancel,
     Select,
+    HistoryApplied,
+    HistoryOpened(Option<String>),
 }
 
 struct TuiState {
@@ -101,6 +133,38 @@ struct TuiState {
     next_search_request_id: u64,
     active_search_request_id: Option<u64>,
     last_incremental_search: Option<Instant>,
+    preview_preferred: bool,
+    preview_visible: bool,
+    preview: String,
+    next_preview_request_id: u64,
+    active_preview_request: Option<PreviewRequestIdentity>,
+    history_enabled: bool,
+    history_entries: Vec<String>,
+    history: Option<HistoryOverlay>,
+    help: Option<HelpContext>,
+}
+
+#[derive(Clone, Debug)]
+struct HistoryOverlay {
+    draft_query: String,
+    filter: String,
+    filter_cursor: usize,
+    results: Vec<String>,
+    selected: usize,
+    offset: usize,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum HelpContext {
+    Normal,
+    History,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PreviewRequestIdentity {
+    request_id: u64,
+    root: PathBuf,
+    path: PathBuf,
 }
 
 impl TuiState {
@@ -122,6 +186,15 @@ impl TuiState {
             next_search_request_id: 0,
             active_search_request_id: None,
             last_incremental_search: None,
+            preview_preferred: true,
+            preview_visible: false,
+            preview: String::new(),
+            next_preview_request_id: 0,
+            active_preview_request: None,
+            history_enabled: false,
+            history_entries: Vec::new(),
+            history: None,
+            help: None,
         }
     }
 
@@ -196,6 +269,96 @@ impl TuiState {
 
     fn mark_query_changed(&mut self) {
         self.last_query_change = Some(Instant::now());
+    }
+
+    fn current_path(&self) -> Option<&PathBuf> {
+        self.results.get(self.selected).map(|(path, _)| path)
+    }
+
+    fn clear_preview(&mut self) {
+        self.preview.clear();
+        self.active_preview_request = None;
+    }
+
+    fn next_preview_request(&mut self) -> Option<PreviewRequest> {
+        if !self.preview_visible {
+            self.clear_preview();
+            return None;
+        }
+        let Some(path) = self.current_path().cloned() else {
+            self.clear_preview();
+            return None;
+        };
+        self.next_preview_request_id = self.next_preview_request_id.wrapping_add(1);
+        let identity = PreviewRequestIdentity {
+            request_id: self.next_preview_request_id,
+            root: self.root.clone(),
+            path: path.clone(),
+        };
+        self.active_preview_request = Some(identity.clone());
+        self.preview = "Loading preview...".to_string();
+        Some(PreviewRequest {
+            request_id: identity.request_id,
+            root: identity.root,
+            path,
+        })
+    }
+
+    fn begin_history(&mut self) {
+        if !self.history_enabled || self.history.is_some() {
+            return;
+        }
+        let mut history = HistoryOverlay {
+            draft_query: self.query.clone(),
+            filter: String::new(),
+            filter_cursor: 0,
+            results: Vec::new(),
+            selected: 0,
+            offset: 0,
+        };
+        refresh_history_results(&mut history, &self.history_entries);
+        self.history = Some(history);
+    }
+
+    fn commit_query_to_history(&mut self) -> Option<String> {
+        let query = self.query.trim().to_string();
+        if query.is_empty() {
+            return None;
+        }
+        self.history_entries.retain(|entry| entry != &query);
+        self.history_entries.push(query.clone());
+        while self.history_entries.len() > 100 {
+            self.history_entries.remove(0);
+        }
+        Some(query)
+    }
+
+    fn cancel_history(&mut self) {
+        if let Some(history) = self.history.take() {
+            self.query = history.draft_query;
+            self.query_cursor = self.query.chars().count();
+        }
+    }
+
+    fn accept_history(&mut self) -> Option<String> {
+        let history = self.history.take()?;
+        let selected = history.results.get(history.selected)?.clone();
+        self.query = selected.clone();
+        self.query_cursor = self.query.chars().count();
+        self.mark_query_changed();
+        Some(selected)
+    }
+
+    fn open_help(&mut self) {
+        self.help = Some(if self.history.is_some() {
+            HelpContext::History
+        } else {
+            HelpContext::Normal
+        });
+    }
+
+    fn close_help(&mut self) {
+        self.help = None;
     }
 }
 
@@ -336,6 +499,16 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         );
     }
 
+    let history_enabled = history_persistence_enabled();
+    let history_entries = if history_enabled {
+        load_persisted_roots_and_history().query_history
+    } else {
+        Vec::new()
+    };
+    let history_persistence = history_enabled
+        .then(AsyncHistoryPersistence::new_default)
+        .flatten();
+
     let guard = TerminalGuard::start(CrosstermOps, io::stderr())?;
     let root = root.to_path_buf();
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -380,6 +553,48 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
             let _ = search_done_tx.send(());
         })
         .context("failed to start CLI search worker")?;
+
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    let (preview_done_tx, preview_done_rx) = mpsc::channel();
+    let preview_cancelled = Arc::clone(&cancelled);
+    let preview_response_tx = tx.clone();
+    let preview_handle = match thread::Builder::new()
+        .name("flistwalker-cli-preview".to_string())
+        .spawn(move || {
+            while !preview_cancelled.load(Ordering::Relaxed) {
+                let mut request = match preview_rx.recv_timeout(EVENT_POLL) {
+                    Ok(request) => request,
+                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                };
+                while let Ok(newer) = preview_rx.try_recv() {
+                    request = newer;
+                }
+                let is_dir = request.path.is_dir();
+                let preview = build_preview_text_with_kind(&request.path, is_dir);
+                if preview_cancelled.load(Ordering::Relaxed)
+                    || preview_response_tx
+                        .send(WorkerResponse::Previewed {
+                            request_id: request.request_id,
+                            root: request.root,
+                            path: request.path,
+                            preview,
+                        })
+                        .is_err()
+                {
+                    break;
+                }
+            }
+            let _ = preview_done_tx.send(());
+        }) {
+        Ok(handle) => handle,
+        Err(error) => {
+            cancelled.store(true, Ordering::Relaxed);
+            drop(search_tx);
+            finish_worker(search_handle, search_done_rx);
+            return Err(error).context("failed to start CLI preview worker");
+        }
+    };
 
     let (index_done_tx, index_done_rx) = mpsc::channel();
     let worker_cancelled = Arc::clone(&cancelled);
@@ -456,22 +671,49 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         Err(error) => {
             cancelled.store(true, Ordering::Relaxed);
             drop(search_tx);
+            drop(preview_tx);
             finish_worker(search_handle, search_done_rx);
+            finish_worker(preview_handle, preview_done_rx);
             return Err(error).context("failed to start CLI index worker");
         }
     };
 
     let result = run_terminal_operation(guard, |terminal_output| {
-        run_event_loop(terminal_output, &search_tx, &rx, root.clone(), options)
+        run_event_loop(
+            terminal_output,
+            EventLoopContext {
+                search_tx: &search_tx,
+                preview_tx: &preview_tx,
+                rx: &rx,
+                root: root.clone(),
+                options,
+                history_enabled,
+                history_entries,
+                history_persistence: history_persistence.as_ref(),
+            },
+        )
     });
     cancelled.store(true, Ordering::Relaxed);
     drop(search_tx);
+    drop(preview_tx);
     finish_worker(search_handle, search_done_rx);
+    finish_worker(preview_handle, preview_done_rx);
     finish_worker(index_handle, index_done_rx);
+
+    if let Ok(TuiExit::Selected { query, .. }) = &result {
+        if let Err(error) = enqueue_history_delta(history_persistence.as_ref(), query) {
+            eprintln!("warning: failed to enqueue query history: {error}");
+        }
+    }
+    if let Some(persistence) = history_persistence {
+        if let Err(error) = persistence.shutdown(WORKER_JOIN_TIMEOUT) {
+            eprintln!("warning: failed to persist query history: {error}");
+        }
+    }
 
     match result? {
         TuiExit::Cancelled => Ok(CliTuiOutcome::Cancelled),
-        TuiExit::Selected(paths) => {
+        TuiExit::Selected { paths, .. } => {
             write_selected_paths(&paths, &root, options.absolute, options.print0)?;
             Ok(CliTuiOutcome::Selected)
         }
@@ -501,16 +743,34 @@ fn write_selected_paths(
 
 fn run_event_loop<W: Write>(
     terminal_output: &mut W,
-    search_tx: &mpsc::Sender<SearchRequest>,
-    rx: &mpsc::Receiver<WorkerResponse>,
-    root: PathBuf,
-    options: &CliTuiOptions,
+    context: EventLoopContext<'_>,
 ) -> Result<TuiExit> {
+    let EventLoopContext {
+        search_tx,
+        preview_tx,
+        rx,
+        root,
+        options,
+        history_enabled,
+        history_entries,
+        history_persistence,
+    } = context;
     let mut state = TuiState::new(&options.initial_query);
     state.root = root.clone();
+    state.history_enabled = history_enabled;
+    state.history_entries = history_entries;
     loop {
         while let Ok(response) = rx.try_recv() {
+            let preview_path_before = state.current_path().cloned();
             apply_worker_response(&mut state, response)?;
+            if preview_path_before != state.current_path().cloned() {
+                request_preview_for_current(&mut state, preview_tx);
+            }
+        }
+
+        let (width, height) = terminal::size()?;
+        if update_preview_visibility(&mut state, width, height) {
+            request_preview_for_current(&mut state, preview_tx);
         }
 
         if state.indexed
@@ -536,10 +796,42 @@ fn run_event_loop<W: Write>(
         if event::poll(EVENT_POLL)? {
             match event::read()? {
                 Event::Key(key) if key.kind != KeyEventKind::Release => {
+                    let preview_path_before = state.current_path().cloned();
+                    let preview_preferred_before = state.preview_preferred;
                     match handle_key(&mut state, key) {
                         KeyAction::Cancel => return Ok(TuiExit::Cancelled),
-                        KeyAction::Select => return Ok(TuiExit::Selected(selected_paths(&state))),
-                        KeyAction::Continue => {}
+                        KeyAction::Select => {
+                            return Ok(TuiExit::Selected {
+                                paths: selected_paths(&state),
+                                query: state.query.clone(),
+                            });
+                        }
+                        KeyAction::HistoryApplied => {
+                            if let Err(error) =
+                                enqueue_history_delta(history_persistence, &state.query)
+                            {
+                                state.status = format!("History persistence unavailable: {error}");
+                                state.dirty = true;
+                            }
+                        }
+                        KeyAction::HistoryOpened(query) => {
+                            if let Some(query) = query {
+                                if let Err(error) =
+                                    enqueue_history_delta(history_persistence, &query)
+                                {
+                                    state.status =
+                                        format!("History persistence unavailable: {error}");
+                                    state.dirty = true;
+                                }
+                            }
+                        }
+                        KeyAction::Continue => {
+                            if preview_path_before != state.current_path().cloned()
+                                || preview_preferred_before != state.preview_preferred
+                            {
+                                request_preview_for_current(&mut state, preview_tx);
+                            }
+                        }
                     }
                 }
                 Event::Paste(text) => insert_paste(&mut state, &text),
@@ -583,6 +875,12 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             results,
             error,
         } => apply_search_response(state, request_id, &query, results, error),
+        WorkerResponse::Previewed {
+            request_id,
+            root,
+            path,
+            preview,
+        } => apply_preview_response(state, request_id, &root, &path, preview),
     }
     Ok(())
 }
@@ -603,6 +901,159 @@ fn apply_search_response(
     }
 }
 
+fn preview_visible_for_size(preferred: bool, width: u16, height: u16) -> bool {
+    preferred && width >= PREVIEW_MIN_WIDTH && height >= PREVIEW_MIN_HEIGHT
+}
+
+fn update_preview_visibility(state: &mut TuiState, width: u16, height: u16) -> bool {
+    let visible = preview_visible_for_size(state.preview_preferred, width, height);
+    if state.preview_visible == visible {
+        return false;
+    }
+    state.preview_visible = visible;
+    state.clear_preview();
+    state.dirty = true;
+    visible
+}
+
+fn request_preview_for_current(state: &mut TuiState, preview_tx: &mpsc::Sender<PreviewRequest>) {
+    let Some(request) = state.next_preview_request() else {
+        state.dirty = true;
+        return;
+    };
+    if preview_tx.send(request).is_err() {
+        state.preview = "<preview unavailable>".to_string();
+        state.active_preview_request = None;
+    }
+    state.dirty = true;
+}
+
+fn apply_preview_response(
+    state: &mut TuiState,
+    request_id: u64,
+    root: &Path,
+    path: &Path,
+    preview: String,
+) {
+    let expected = PreviewRequestIdentity {
+        request_id,
+        root: root.to_path_buf(),
+        path: path.to_path_buf(),
+    };
+    if state.preview_visible
+        && state.active_preview_request.as_ref() == Some(&expected)
+        && state.root.as_path() == root
+        && state.current_path().is_some_and(|current| current == path)
+    {
+        state.preview = preview;
+        state.active_preview_request = None;
+        state.dirty = true;
+    }
+}
+
+fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Option<i64> {
+    if query.trim().is_empty() {
+        return Some(recency_rank as i64);
+    }
+    let matcher = SkimMatcherV2::default();
+    matcher.fuzzy_match(candidate, query).or_else(|| {
+        let query_lower = query.to_ascii_lowercase();
+        let candidate_lower = candidate.to_ascii_lowercase();
+        candidate_lower
+            .contains(&query_lower)
+            .then_some((query_lower.len() as i64) * 100 + recency_rank as i64)
+    })
+}
+
+fn refresh_history_results(history: &mut HistoryOverlay, entries: &[String]) {
+    let mut scored = entries
+        .iter()
+        .rev()
+        .enumerate()
+        .filter_map(|(index, entry)| {
+            history_search_score(
+                history.filter.trim(),
+                entry,
+                entries.len().saturating_sub(index),
+            )
+            .map(|score| (entry.clone(), score, index))
+        })
+        .collect::<Vec<_>>();
+    scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.2.cmp(&right.2)));
+    history.results = scored.into_iter().map(|(entry, _, _)| entry).collect();
+    history.selected = 0;
+    history.offset = 0;
+}
+
+fn history_move_selection(history: &mut HistoryOverlay, delta: isize, viewport_rows: usize) {
+    if history.results.is_empty() {
+        history.selected = 0;
+        history.offset = 0;
+        return;
+    }
+    history.selected = if delta.is_negative() {
+        history.selected.saturating_sub(delta.unsigned_abs())
+    } else {
+        history
+            .selected
+            .saturating_add(delta as usize)
+            .min(history.results.len() - 1)
+    };
+    let viewport_rows = viewport_rows.max(1);
+    if history.selected < history.offset {
+        history.offset = history.selected;
+    } else if history.selected >= history.offset + viewport_rows {
+        history.offset = history.selected + 1 - viewport_rows;
+    }
+    history.offset = history
+        .offset
+        .min(history.results.len().saturating_sub(viewport_rows));
+}
+
+fn edit_history_filter(history: &mut HistoryOverlay, entries: &[String], key: KeyCode) -> bool {
+    match key {
+        KeyCode::Backspace if history.filter_cursor > 0 => {
+            let start = char_to_byte_index(&history.filter, history.filter_cursor - 1);
+            let end = char_to_byte_index(&history.filter, history.filter_cursor);
+            history.filter.replace_range(start..end, "");
+            history.filter_cursor -= 1;
+        }
+        KeyCode::Delete if history.filter_cursor < history.filter.chars().count() => {
+            let start = char_to_byte_index(&history.filter, history.filter_cursor);
+            let end = char_to_byte_index(&history.filter, history.filter_cursor + 1);
+            history.filter.replace_range(start..end, "");
+        }
+        KeyCode::Left => history.filter_cursor = history.filter_cursor.saturating_sub(1),
+        KeyCode::Right => {
+            history.filter_cursor = (history.filter_cursor + 1).min(history.filter.chars().count())
+        }
+        KeyCode::Home => history.filter_cursor = 0,
+        KeyCode::End => history.filter_cursor = history.filter.chars().count(),
+        KeyCode::Char(ch) if !ch.is_control() => {
+            let byte_index = char_to_byte_index(&history.filter, history.filter_cursor);
+            history.filter.insert(byte_index, ch);
+            history.filter_cursor += 1;
+        }
+        _ => return false,
+    }
+    refresh_history_results(history, entries);
+    true
+}
+
+fn enqueue_history_delta(
+    persistence: Option<&AsyncHistoryPersistence>,
+    query: &str,
+) -> Result<(), String> {
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(());
+    }
+    if let Some(persistence) = persistence {
+        persistence.enqueue_history(vec![query.to_string()])?;
+    }
+    Ok(())
+}
+
 fn selected_paths(state: &TuiState) -> Vec<PathBuf> {
     if !state.pinned.is_empty() {
         return state.pinned.clone();
@@ -615,9 +1066,101 @@ fn selected_paths(state: &TuiState) -> Vec<PathBuf> {
 }
 
 fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if state.help.is_some() {
+        match (key.code, key.modifiers) {
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => return KeyAction::Cancel,
+            (KeyCode::Enter, _)
+            | (KeyCode::Esc, _)
+            | (KeyCode::Char('g'), KeyModifiers::CONTROL) => state.close_help(),
+            _ => {}
+        }
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
+    if matches!(key.code, KeyCode::F(1)) {
+        state.open_help();
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
+    if state.history.is_some() {
+        if matches!(
+            (key.code, key.modifiers),
+            (KeyCode::Char('c'), KeyModifiers::CONTROL)
+        ) {
+            return KeyAction::Cancel;
+        }
+        let viewport_rows = state.viewport_rows;
+        match (key.code, key.modifiers) {
+            (KeyCode::Esc, _) | (KeyCode::Char('g'), KeyModifiers::CONTROL) => {
+                state.cancel_history();
+            }
+            (KeyCode::Enter, _) if state.accept_history().is_some() => {
+                state.dirty = true;
+                return KeyAction::HistoryApplied;
+            }
+            (KeyCode::Up, _) => history_move_selection(
+                state.history.as_mut().expect("history overlay checked"),
+                -1,
+                viewport_rows,
+            ),
+            (KeyCode::Down, _) => history_move_selection(
+                state.history.as_mut().expect("history overlay checked"),
+                1,
+                viewport_rows,
+            ),
+            (KeyCode::PageUp, _) => history_move_selection(
+                state.history.as_mut().expect("history overlay checked"),
+                -(viewport_rows.max(1) as isize),
+                viewport_rows,
+            ),
+            (KeyCode::PageDown, _) => history_move_selection(
+                state.history.as_mut().expect("history overlay checked"),
+                viewport_rows.max(1) as isize,
+                viewport_rows,
+            ),
+            _ if key.modifiers.is_empty() || key.modifiers == KeyModifiers::SHIFT => {
+                let entries = state.history_entries.clone();
+                let _ = edit_history_filter(
+                    state.history.as_mut().expect("history overlay checked"),
+                    &entries,
+                    key.code,
+                );
+            }
+            _ => {}
+        }
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
     match (key.code, key.modifiers) {
         (KeyCode::Esc, _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
             return KeyAction::Cancel;
+        }
+        (KeyCode::Char('g'), KeyModifiers::CONTROL) => {
+            state.query.clear();
+            state.query_cursor = 0;
+            state.pinned.clear();
+            state.status = "Query and pins cleared".to_string();
+            state.mark_query_changed();
+        }
+        (KeyCode::Char('r'), KeyModifiers::CONTROL) => {
+            if state.history_enabled {
+                let query = state.commit_query_to_history();
+                state.begin_history();
+                state.dirty = true;
+                return KeyAction::HistoryOpened(query);
+            } else {
+                return KeyAction::Continue;
+            }
+        }
+        (KeyCode::Char('p'), KeyModifiers::ALT) | (KeyCode::Char('P'), KeyModifiers::ALT) => {
+            state.preview_preferred = !state.preview_preferred;
+            if !state.preview_preferred {
+                state.preview_visible = false;
+                state.clear_preview();
+                state.status = "Preview hidden".to_string();
+            } else {
+                state.status = "Preview enabled".to_string();
+            }
         }
         (KeyCode::Enter, _) => {
             if selected_paths(state).is_empty() {
@@ -678,7 +1221,15 @@ fn char_to_byte_index(text: &str, char_index: usize) -> usize {
 }
 
 fn insert_paste(state: &mut TuiState, pasted: &str) {
-    if pasted.is_empty() {
+    if pasted.is_empty() || state.help.is_some() {
+        return;
+    }
+    if let Some(history) = state.history.as_mut() {
+        let byte_index = char_to_byte_index(&history.filter, history.filter_cursor);
+        history.filter.insert_str(byte_index, pasted);
+        history.filter_cursor += pasted.chars().count();
+        refresh_history_results(history, &state.history_entries);
+        state.dirty = true;
         return;
     }
     let byte_index = char_to_byte_index(&state.query, state.query_cursor);
@@ -720,7 +1271,21 @@ fn draw<W: Write>(
     options: &CliTuiOptions,
 ) -> Result<()> {
     let (width, height) = terminal::size()?;
-    let visible = height.saturating_sub(4) as usize;
+    let preview_visible = preview_visible_for_size(state.preview_preferred, width, height);
+    state.preview_visible = preview_visible;
+    if !preview_visible {
+        state.clear_preview();
+    }
+    let list_width = if preview_visible {
+        width.saturating_mul(3).saturating_div(5).max(1)
+    } else {
+        width
+    };
+    let visible = if state.history.is_some() {
+        height.saturating_sub(3) as usize
+    } else {
+        height.saturating_sub(4) as usize
+    };
     state.viewport_rows = visible.max(1);
     state.ensure_selection_visible();
     let start = state.offset.min(state.results.len());
@@ -729,14 +1294,14 @@ fn draw<W: Write>(
         Clear(ClearType::All),
         MoveTo(0, 0),
         SetAttribute(Attribute::Bold),
-        Print(clip_to_width("FlistWalker CLI", width as usize)),
+        Print(clip_to_width("FlistWalker CLI", list_width as usize)),
         SetAttribute(Attribute::Reset),
     )?;
     if height > 1 {
         execute!(
             terminal_output,
             MoveTo(0, 1),
-            Print(query_line_for_width(state, width as usize))
+            Print(query_line_for_width(state, list_width as usize))
         )?;
     }
     if height > 2 {
@@ -744,7 +1309,7 @@ fn draw<W: Write>(
             terminal_output,
             MoveTo(0, 2),
             SetForegroundColor(Color::DarkGrey),
-            Print(clip_to_width(&state.status, width as usize)),
+            Print(clip_to_width(&state.status, list_width as usize)),
             ResetColor
         )?;
     }
@@ -754,8 +1319,8 @@ fn draw<W: Write>(
             MoveTo(0, 3),
             SetForegroundColor(Color::DarkGrey),
             Print(clip_to_width(
-                "Enter select | Tab pin | Esc cancel | arrows/PageUp/PageDown move",
-                width as usize,
+                "Enter select | Tab pin | Alt+P preview | Esc cancel",
+                list_width as usize,
             )),
             ResetColor
         )?;
@@ -797,10 +1362,143 @@ fn draw<W: Write>(
             marker,
             &display,
             &positions,
-            width,
+            list_width,
         )?;
     }
+    if preview_visible {
+        render_preview_pane(terminal_output, state, list_width, width, height)?;
+    }
+    if let Some(context) = state.help {
+        render_help_overlay(terminal_output, context, width, height)?;
+    } else if let Some(history) = state.history.as_ref() {
+        render_history_overlay(terminal_output, history, width, height)?;
+    }
     terminal_output.flush()?;
+    Ok(())
+}
+
+fn render_history_overlay<W: Write>(
+    terminal_output: &mut W,
+    history: &HistoryOverlay,
+    width: u16,
+    height: u16,
+) -> Result<()> {
+    execute!(
+        terminal_output,
+        Clear(ClearType::All),
+        MoveTo(0, 0),
+        SetAttribute(Attribute::Bold),
+        Print(clip_to_width("History", width as usize)),
+        SetAttribute(Attribute::Reset),
+    )?;
+    if height > 1 {
+        execute!(
+            terminal_output,
+            MoveTo(0, 1),
+            Print(clip_to_width(
+                &format!("Filter: {}", history.filter),
+                width as usize,
+            )),
+        )?;
+    }
+    if height > 2 {
+        execute!(
+            terminal_output,
+            MoveTo(0, 2),
+            SetForegroundColor(Color::DarkGrey),
+            Print(clip_to_width(
+                "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows/Page move",
+                width as usize,
+            )),
+            ResetColor,
+        )?;
+    }
+    let visible = height.saturating_sub(3) as usize;
+    for (row, entry) in history
+        .results
+        .iter()
+        .skip(history.offset)
+        .take(visible)
+        .enumerate()
+    {
+        let marker = if history.offset + row == history.selected {
+            "> "
+        } else {
+            "  "
+        };
+        execute!(
+            terminal_output,
+            MoveTo(0, (row + 3) as u16),
+            Print(clip_to_width(marker, width as usize)),
+            Print(clip_to_width(entry, width.saturating_sub(2) as usize)),
+        )?;
+    }
+    Ok(())
+}
+
+fn render_help_overlay<W: Write>(
+    terminal_output: &mut W,
+    context: HelpContext,
+    width: u16,
+    height: u16,
+) -> Result<()> {
+    let mut lines = vec![
+        "Help".to_string(),
+        "Enter / Esc / Ctrl+G close help | Ctrl+C exit".to_string(),
+    ];
+    match context {
+        HelpContext::Normal => lines.extend([
+            "Enter output selection | Tab pin | arrows/Page move".to_string(),
+            "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
+            "Alt+P toggle preview | F1 help".to_string(),
+        ]),
+        HelpContext::History => lines.extend([
+            "History search is paused while help is open.".to_string(),
+            "Close help to use Enter, Esc/Ctrl+G, edit, or navigation.".to_string(),
+        ]),
+    }
+    execute!(terminal_output, Clear(ClearType::All))?;
+    for (row, line) in lines.into_iter().take(height as usize).enumerate() {
+        execute!(
+            terminal_output,
+            MoveTo(0, row as u16),
+            Print(clip_to_width(&line, width as usize)),
+        )?;
+    }
+    Ok(())
+}
+
+fn render_preview_pane<W: Write>(
+    terminal_output: &mut W,
+    state: &TuiState,
+    list_width: u16,
+    terminal_width: u16,
+    terminal_height: u16,
+) -> Result<()> {
+    let x = list_width.saturating_add(1);
+    let pane_width = terminal_width.saturating_sub(x);
+    if pane_width == 0 {
+        return Ok(());
+    }
+    execute!(
+        terminal_output,
+        MoveTo(x, 0),
+        SetAttribute(Attribute::Bold),
+        Print(clip_to_width("Preview", pane_width as usize)),
+        SetAttribute(Attribute::Reset),
+    )?;
+    for (index, line) in state
+        .preview
+        .lines()
+        .take(terminal_height.saturating_sub(1) as usize)
+        .enumerate()
+    {
+        execute!(
+            terminal_output,
+            MoveTo(x, (index + 1) as u16),
+            Print(clip_to_width(line, pane_width as usize)),
+        )?;
+    }
     Ok(())
 }
 
@@ -1190,6 +1888,467 @@ mod tests {
                 .sum::<usize>()
                 <= 8
         );
+    }
+
+    #[test]
+    fn tc_162_preview_toggle_collapse_and_reexpansion_preserve_preference() {
+        let mut state = TuiState::new("");
+        state.results = vec![(PathBuf::from("selected.txt"), 1.0)];
+
+        assert!(update_preview_visibility(
+            &mut state,
+            PREVIEW_MIN_WIDTH,
+            PREVIEW_MIN_HEIGHT
+        ));
+        assert!(state.preview_visible);
+        assert!(state.preview_preferred);
+
+        let request = state
+            .next_preview_request()
+            .expect("visible preview request");
+        assert_eq!(request.path, PathBuf::from("selected.txt"));
+        assert_eq!(state.preview, "Loading preview...");
+
+        assert!(!update_preview_visibility(
+            &mut state,
+            PREVIEW_MIN_WIDTH - 1,
+            PREVIEW_MIN_HEIGHT
+        ));
+        assert!(!state.preview_visible);
+        assert!(state.preview_preferred);
+        assert!(state.preview.is_empty());
+
+        assert!(update_preview_visibility(
+            &mut state,
+            PREVIEW_MIN_WIDTH,
+            PREVIEW_MIN_HEIGHT
+        ));
+        assert!(state.preview_visible);
+        assert!(state.preview_preferred);
+        let expanded_request = state.next_preview_request().expect("re-expanded request");
+        assert_ne!(expanded_request.request_id, request.request_id);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::ALT),
+        );
+        assert!(!state.preview_preferred);
+        assert!(!state.preview_visible);
+        assert!(state.preview.is_empty());
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::ALT),
+        );
+        assert!(state.preview_preferred);
+        assert!(update_preview_visibility(
+            &mut state,
+            PREVIEW_MIN_WIDTH,
+            PREVIEW_MIN_HEIGHT
+        ));
+        assert!(state.preview_visible);
+        assert!(state.next_preview_request().is_some());
+    }
+
+    #[test]
+    fn tc_162_preview_response_requires_matching_request_root_and_path() {
+        let mut state = TuiState::new("");
+        state.root = PathBuf::from("root-a");
+        state.results = vec![
+            (PathBuf::from("root-a/one.txt"), 1.0),
+            (PathBuf::from("root-a/two.txt"), 1.0),
+        ];
+        update_preview_visibility(&mut state, PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT);
+        let request = state.next_preview_request().expect("preview request");
+
+        apply_preview_response(
+            &mut state,
+            request.request_id,
+            Path::new("root-b"),
+            &request.path,
+            "wrong root".to_string(),
+        );
+        assert_eq!(state.preview, "Loading preview...");
+
+        apply_preview_response(
+            &mut state,
+            request.request_id.wrapping_add(1),
+            &request.root,
+            &request.path,
+            "wrong id".to_string(),
+        );
+        assert_eq!(state.preview, "Loading preview...");
+
+        state.move_selection(1);
+        apply_preview_response(
+            &mut state,
+            request.request_id,
+            &request.root,
+            &request.path,
+            "stale path".to_string(),
+        );
+        assert_eq!(state.preview, "Loading preview...");
+
+        let request = state
+            .next_preview_request()
+            .expect("replacement preview request");
+        assert_eq!(state.preview, "Loading preview...");
+        assert_ne!(request.request_id, 1);
+        apply_preview_response(
+            &mut state,
+            request.request_id,
+            &request.root,
+            &request.path,
+            "fresh preview".to_string(),
+        );
+        assert_eq!(state.preview, "fresh preview");
+    }
+
+    #[test]
+    fn tc_162_preview_request_clears_content_without_selection() {
+        let mut state = TuiState::new("");
+        update_preview_visibility(&mut state, PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT);
+        state.preview = "stale".to_string();
+        state.active_preview_request = Some(PreviewRequestIdentity {
+            request_id: 9,
+            root: PathBuf::from("root"),
+            path: PathBuf::from("root/old.txt"),
+        });
+
+        assert!(state.next_preview_request().is_none());
+        assert!(state.preview.is_empty());
+        assert!(state.active_preview_request.is_none());
+    }
+
+    #[test]
+    fn tc_162_preview_uses_shared_text_builder_for_file_binary_and_error() {
+        let root = std::env::temp_dir().join(format!(
+            "flistwalker-cli-preview-{}-{}",
+            std::process::id(),
+            Instant::now().elapsed().as_nanos()
+        ));
+        std::fs::create_dir_all(&root).expect("create preview fixture");
+        let text = root.join("text.txt");
+        let binary = root.join("binary.bin");
+        std::fs::write(&text, "preview text").expect("write text fixture");
+        std::fs::write(&binary, [0, 159, 146, 150]).expect("write binary fixture");
+
+        assert!(build_preview_text_with_kind(&root, true).contains("Directory:"));
+        assert!(build_preview_text_with_kind(&text, false).contains("preview text"));
+        assert!(
+            build_preview_text_with_kind(&binary, false).contains("<binary or unreadable file>")
+        );
+        assert!(
+            build_preview_text_with_kind(&root.join("missing.txt"), false)
+                .contains("<binary or unreadable file>")
+        );
+
+        std::fs::remove_dir_all(root).expect("remove preview fixture");
+    }
+
+    #[test]
+    fn tc_162_preview_pane_clips_unicode_and_control_text() {
+        let mut state = TuiState::new("");
+        state.preview = "界界\u{1b}x\nsecond".to_string();
+        let mut output = Vec::new();
+
+        render_preview_pane(&mut output, &state, 60, 100, PREVIEW_MIN_HEIGHT)
+            .expect("render preview pane");
+
+        let rendered = String::from_utf8_lossy(&output);
+        assert!(rendered.contains("Preview"));
+        assert!(rendered.contains('�'));
+        assert!(!rendered.contains("\u{1b}x"));
+    }
+
+    #[test]
+    fn tc_162_delayed_preview_worker_cleanup_uses_the_bounded_wait() {
+        let (done_tx, done_rx) = mpsc::channel();
+        let handle = thread::Builder::new()
+            .name("flistwalker-cli-preview-delayed-test".to_string())
+            .spawn(move || {
+                thread::sleep(Duration::from_millis(500));
+                let _ = done_tx.send(());
+            })
+            .expect("start delayed preview worker");
+
+        let started = Instant::now();
+        finish_worker(handle, done_rx);
+        assert!(
+            started.elapsed() < Duration::from_millis(450),
+            "preview cleanup exceeded the bounded wait: {:?}",
+            started.elapsed()
+        );
+    }
+
+    fn history_state(entries: &[&str], query: &str) -> TuiState {
+        let mut state = TuiState::new(query);
+        state.history_enabled = true;
+        state.history_entries = entries.iter().map(|entry| (*entry).to_string()).collect();
+        state.viewport_rows = 1;
+        state
+    }
+
+    #[test]
+    fn tc_162_history_overlay_orders_recent_entries_and_filters_fuzzily() {
+        let mut state = history_state(&["old", "alpha", "beta"], "draft");
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        let history = state.history.as_ref().expect("history overlay");
+        assert_eq!(history.draft_query, "draft");
+        assert_eq!(history.results, vec!["draft", "beta", "alpha", "old"]);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::NONE),
+        );
+        let history = state.history.as_ref().expect("filtered history overlay");
+        assert_eq!(history.filter, "p");
+        assert_eq!(history.results, vec!["alpha"]);
+    }
+
+    #[test]
+    fn tc_162_history_overlay_accept_cancel_navigation_and_paste_contract() {
+        let mut state = history_state(&["one", "two", "three"], "draft");
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::ALT),
+        );
+        assert!(
+            state
+                .history
+                .as_ref()
+                .expect("history overlay")
+                .filter
+                .is_empty(),
+            "side-effect chords must not edit the history filter"
+        );
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::PageDown, KeyModifiers::NONE),
+        );
+        assert_eq!(state.history.as_ref().expect("history overlay").selected, 1);
+        handle_key(&mut state, KeyEvent::new(KeyCode::Up, KeyModifiers::NONE));
+        assert_eq!(state.history.as_ref().expect("history overlay").selected, 0);
+        insert_paste(&mut state, "tw");
+        assert_eq!(
+            state.history.as_ref().expect("history overlay").results,
+            vec!["two"]
+        );
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+            ),
+            KeyAction::HistoryApplied
+        ));
+        assert!(state.history.is_none());
+        assert_eq!(state.query, "two");
+        assert!(state.last_query_change.is_some());
+
+        state.query = "draft again".to_string();
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        insert_paste(&mut state, "x");
+        handle_key(&mut state, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+        assert!(state.history.is_none());
+        assert_eq!(state.query, "draft again");
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        );
+        assert!(state.history.is_none());
+        assert_eq!(state.query, "draft again");
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::Cancel
+        ));
+    }
+
+    #[test]
+    fn tc_162_history_disabled_ctrl_r_is_a_silent_noop() {
+        let mut state = TuiState::new("draft");
+        state.status = "Ready".to_string();
+        state.dirty = false;
+
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::Continue
+        ));
+        assert!(state.history.is_none());
+        assert_eq!(state.query, "draft");
+        assert_eq!(state.status, "Ready");
+        assert!(!state.dirty);
+        assert!(enqueue_history_delta(None, " trimmed ").is_ok());
+    }
+
+    #[test]
+    fn tc_162_history_open_commits_draft_as_the_most_recent_delta() {
+        let mut state = history_state(&["first", "draft", "second"], " draft ");
+
+        let action = handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+
+        assert!(matches!(action, KeyAction::HistoryOpened(Some(ref query)) if query == "draft"));
+        assert_eq!(state.history_entries, vec!["first", "second", "draft"]);
+        assert_eq!(
+            state
+                .history
+                .as_ref()
+                .expect("history overlay")
+                .results
+                .first(),
+            Some(&"draft".to_string())
+        );
+    }
+
+    #[test]
+    fn tc_162_help_overlay_has_precedence_and_ctrl_g_only_closes_it() {
+        let mut state = history_state(&["prior"], "draft");
+        state.pinned.push(PathBuf::from("pinned.txt"));
+        state.preview_preferred = true;
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE));
+        assert_eq!(state.help, Some(HelpContext::Normal));
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE),
+        );
+        handle_key(&mut state, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::ALT),
+        );
+        assert_eq!(state.query, "draft");
+        assert_eq!(state.pinned, vec![PathBuf::from("pinned.txt")]);
+        assert!(state.preview_preferred);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        );
+        assert!(state.help.is_none());
+        assert_eq!(state.query, "draft");
+        assert_eq!(state.pinned, vec![PathBuf::from("pinned.txt")]);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        );
+        assert!(state.query.is_empty());
+        assert!(state.pinned.is_empty());
+    }
+
+    #[test]
+    fn tc_162_help_from_history_restores_history_and_ctrl_c_exits_tui() {
+        let mut state = history_state(&["prior"], "draft");
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        insert_paste(&mut state, "pr");
+        let filter = state
+            .history
+            .as_ref()
+            .expect("history overlay")
+            .filter
+            .clone();
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE));
+        assert_eq!(state.help, Some(HelpContext::History));
+        insert_paste(&mut state, "ignored");
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert!(state.help.is_none());
+        assert_eq!(
+            state.history.as_ref().expect("history overlay").filter,
+            filter
+        );
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE));
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::Cancel
+        ));
+    }
+
+    #[test]
+    fn tc_162_help_and_history_overlays_clear_the_full_terminal() {
+        let history = HistoryOverlay {
+            draft_query: String::new(),
+            filter: String::new(),
+            filter_cursor: 0,
+            results: vec!["entry".to_string()],
+            selected: 0,
+            offset: 0,
+        };
+        let mut history_output = Vec::new();
+        render_history_overlay(&mut history_output, &history, 40, 8).expect("render history");
+        let mut help_output = Vec::new();
+        render_help_overlay(&mut help_output, HelpContext::Normal, 40, 8).expect("render help");
+
+        for output in [&history_output, &help_output] {
+            assert!(
+                output.windows(4).any(|window| window == b"\x1b[2J"),
+                "overlay must clear terminal before rendering"
+            );
+        }
+    }
+
+    #[test]
+    fn tc_162_history_overlay_renderer_clips_control_text() {
+        let mut history = HistoryOverlay {
+            draft_query: String::new(),
+            filter: "\u{1b}x".to_string(),
+            filter_cursor: 2,
+            results: vec!["界\u{1b}x".to_string()],
+            selected: 0,
+            offset: 0,
+        };
+        refresh_history_results(&mut history, &["界\u{1b}x".to_string()]);
+        let mut output = Vec::new();
+        render_history_overlay(&mut output, &history, 12, 6).expect("render history overlay");
+        let rendered = String::from_utf8_lossy(&output);
+        assert!(rendered.contains("History"));
+        assert!(rendered.contains('�'));
+        assert!(!rendered.contains("\u{1b}x"));
     }
 
     #[test]

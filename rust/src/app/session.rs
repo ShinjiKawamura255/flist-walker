@@ -533,6 +533,13 @@ pub struct PersistedRootsAndHistory {
     pub query_history: Vec<String>,
 }
 
+/// Reports whether query-history persistence is enabled for the current process.
+/// Consumers use this before starting an interactive session so the terminal loop
+/// never needs to inspect configuration or acquire persistence locks.
+pub fn history_persistence_enabled() -> bool {
+    !FlistWalkerApp::history_persist_disabled()
+}
+
 pub fn load_persisted_roots_and_history() -> PersistedRootsAndHistory {
     let ui_state = FlistWalkerApp::load_ui_state();
     let saved_roots = FlistWalkerApp::load_saved_roots();

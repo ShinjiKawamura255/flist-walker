@@ -77,6 +77,7 @@
 ## Progress Log
 - 2026-07-26 Planned.
 - 2026-07-26 Main-agent preflight completed; implementation awaits workflow-level focused re-review.
+- 2026-07-26 `slice-c.preview-history-help` completed by Terra and integrated by Sol; async stale-safe preview, delta-merged history, context-specific clear/help overlays, bilingual key documentation, 32 focused TUI tests, 27 CLI contract tests, 697 full unit tests plus binary/integration/doc tests, check, clippy, fmt, and diff checks passed. `slice-c.action` is ready.
 
 ## Closure Capsule
 - Verification Result: pending

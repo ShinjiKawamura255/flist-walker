@@ -66,8 +66,8 @@ use pipeline_owner::PipelineOwner;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
 pub use session::{
-    load_persisted_roots_and_history, load_persisted_roots_and_history_from_paths,
-    AsyncHistoryPersistence, PersistedRootsAndHistory,
+    history_persistence_enabled, load_persisted_roots_and_history,
+    load_persisted_roots_and_history_from_paths, AsyncHistoryPersistence, PersistedRootsAndHistory,
 };
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{

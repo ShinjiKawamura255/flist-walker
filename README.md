@@ -180,7 +180,7 @@ Interactive CLI mode:
 cargo run -- --cli --interactive --root ..
 ```
 
-This starts a lightweight terminal UI. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` to pin results in output order and `Enter` to print them. `Esc` / `Ctrl-C` restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; only selected paths are written to stdout after terminal restoration.
+This starts a lightweight terminal UI. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` to pin results in output order and `Enter` to print them. `Ctrl+G` clears the query and pins, `Alt+P` toggles the width-aware preview, `Ctrl+R` opens persisted query-history search when enabled, and `F1` opens contextual help. In history or help overlays, `Enter`, `Esc`, and `Ctrl+G` close or apply only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; only selected paths are written to stdout after terminal restoration.
 
 ## Behavior
 

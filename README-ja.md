@@ -209,7 +209,7 @@ flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 cargo run -- --cli --interactive --root ..
 ```
 
-軽量な TUI が起動します。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を出力します。`Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけ、選択パスは端末復旧後の標準出力だけへ書き込みます。
+軽量な TUI が起動します。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を出力します。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴または help の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけ、選択パスは端末復旧後の標準出力だけへ書き込みます。
 
 ## 挙動
 
