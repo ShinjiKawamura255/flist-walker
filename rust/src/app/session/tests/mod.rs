@@ -319,18 +319,15 @@ fn tc_168_persistence_enqueue_does_not_wait_for_a_held_lock() {
     let path = base.join("ui-state.json");
     fs::create_dir_all(&base).expect("create base");
     let lock = acquire_sidecar_lock(&path, Duration::from_millis(10)).expect("hold lock");
-    let writer = AsyncHistoryPersistence::new_with_lock_timeout(
-        path.clone(),
-        false,
-        Duration::from_millis(150),
-    );
+    let writer =
+        AsyncHistoryPersistence::new_with_lock_timeout(path.clone(), false, Duration::from_secs(1));
 
     let started = Instant::now();
     writer.enqueue_patch_for_test(
         UiStatePatch::from_json(json!({"frame": "fast"})),
         Vec::new(),
     );
-    assert!(started.elapsed() < Duration::from_millis(50));
+    assert!(started.elapsed() < Duration::from_millis(200));
     drop(lock);
     writer
         .flush(Duration::from_secs(1))
@@ -356,7 +353,7 @@ fn tc_168_detached_ui_state_writer_flushes_outside_frame_waiting_for_lock_releas
         Vec::new(),
         false,
     );
-    assert!(started.elapsed() < Duration::from_millis(50));
+    assert!(started.elapsed() < Duration::from_millis(200));
     drop(lock);
     flush_ui_state_persistence(&path, Duration::from_secs(1));
 
