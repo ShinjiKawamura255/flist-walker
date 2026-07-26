@@ -17,7 +17,25 @@ pub use filelist_writer::{
     ancestor_filelist_propagation_needed, build_filelist_text, build_filelist_text_cancellable,
     has_ancestor_filelists, write_filelist, write_filelist_cancellable,
 };
-pub use walker::{walk_dirs, walk_entries, walk_files};
+pub use walker::{
+    walk_dirs, walk_entries, walk_entries_cancellable, walk_entries_stream,
+    walk_entries_stream_cancellable, walk_files, WalkCancelled,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct IndexBuildCancelled;
+
+impl std::fmt::Display for IndexBuildCancelled {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("index build cancelled")
+    }
+}
+
+impl std::error::Error for IndexBuildCancelled {}
+
+pub fn is_index_build_cancelled(error: &anyhow::Error) -> bool {
+    error.downcast_ref::<IndexBuildCancelled>().is_some()
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IndexSource {
@@ -38,12 +56,28 @@ pub fn build_index_with_metadata(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<IndexBuildResult> {
+    build_index_with_metadata_cancellable(root, use_filelist, include_files, include_dirs, || false)
+}
+
+pub fn build_index_with_metadata_cancellable<C>(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: C,
+) -> Result<IndexBuildResult>
+where
+    C: Fn() -> bool,
+{
     let started_at = Instant::now();
     if !include_files && !include_dirs {
         return Ok(IndexBuildResult {
             entries: Vec::new(),
             source: IndexSource::None,
         });
+    }
+    if should_cancel() {
+        return Err(IndexBuildCancelled.into());
     }
 
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
@@ -54,30 +88,47 @@ pub fn build_index_with_metadata(
                 &root,
                 include_files,
                 include_dirs,
-                || false,
-            )?;
+                &should_cancel,
+            )
+            .map_err(|error| {
+                if should_cancel() {
+                    anyhow::Error::new(IndexBuildCancelled)
+                } else {
+                    error
+                }
+            })?;
             IndexBuildResult {
                 entries: entries.into_iter().map(Entry::from).collect(),
                 source: IndexSource::FileList(filelist),
             }
         } else {
             IndexBuildResult {
-                entries: walk_entries(&root, include_files, include_dirs)
-                    .into_iter()
-                    .map(Entry::from)
-                    .collect(),
+                entries: walk_entries_cancellable(
+                    &root,
+                    include_files,
+                    include_dirs,
+                    &should_cancel,
+                )
+                .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
+                .into_iter()
+                .map(Entry::from)
+                .collect(),
                 source: IndexSource::Walker,
             }
         }
     } else {
         IndexBuildResult {
-            entries: walk_entries(&root, include_files, include_dirs)
+            entries: walk_entries_cancellable(&root, include_files, include_dirs, &should_cancel)
+                .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
                 .into_iter()
                 .map(Entry::from)
                 .collect(),
             source: IndexSource::Walker,
         }
     };
+    if should_cancel() {
+        return Err(IndexBuildCancelled.into());
+    }
     info!(
         root = %root.display(),
         use_filelist,
@@ -97,13 +148,30 @@ pub fn build_index(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<Vec<PathBuf>> {
-    Ok(
-        build_index_with_metadata(root, use_filelist, include_files, include_dirs)?
-            .entries
-            .into_iter()
-            .map(|entry| entry.path)
-            .collect(),
-    )
+    build_index_cancellable(root, use_filelist, include_files, include_dirs, || false)
+}
+
+pub fn build_index_cancellable<C>(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: C,
+) -> Result<Vec<PathBuf>>
+where
+    C: Fn() -> bool,
+{
+    Ok(build_index_with_metadata_cancellable(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        should_cancel,
+    )?
+    .entries
+    .into_iter()
+    .map(|entry| entry.path)
+    .collect())
 }
 
 #[cfg(test)]

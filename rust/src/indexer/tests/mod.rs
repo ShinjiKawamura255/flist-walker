@@ -155,6 +155,62 @@ fn build_index_walks_when_filelist_missing() {
 }
 
 #[test]
+fn tc006a_build_index_cancellable_reports_filelist_cancellation() {
+    let root = test_root("build-filelist-cancel");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::write(root.join("FileList.txt"), "listed.txt\n").expect("write filelist");
+    let checks = AtomicUsize::new(0);
+
+    let err = build_index_cancellable(&root, true, true, true, || {
+        checks.fetch_add(1, Ordering::Relaxed) >= 2
+    })
+    .expect_err("FileList indexing should be cancellable");
+
+    assert!(is_index_build_cancelled(&err));
+    assert!(checks.load(Ordering::Relaxed) >= 3);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc006a_build_index_cancellable_reports_walker_cancellation() {
+    let root = test_root("build-walker-cancel");
+    fs::create_dir_all(root.join("nested")).expect("create nested dir");
+    fs::write(root.join("nested").join("item.txt"), "x").expect("write file");
+    let checks = AtomicUsize::new(0);
+
+    let err = build_index_cancellable(&root, false, true, true, || {
+        checks.fetch_add(1, Ordering::Relaxed) >= 2
+    })
+    .expect_err("walker indexing should be cancellable");
+
+    assert!(is_index_build_cancelled(&err));
+    assert!(checks.load(Ordering::Relaxed) >= 3);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc006a_walk_entries_stream_cancellable_stops_before_callback() {
+    let root = test_root("walk-stream-cancel");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::write(root.join("item.txt"), "x").expect("write file");
+    let callbacks = AtomicUsize::new(0);
+
+    let result = walk_entries_stream_cancellable(
+        &root,
+        true,
+        true,
+        || true,
+        |_path| {
+            callbacks.fetch_add(1, Ordering::Relaxed);
+        },
+    );
+
+    assert_eq!(result, Err(WalkCancelled));
+    assert_eq!(callbacks.load(Ordering::Relaxed), 0);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn build_index_with_metadata_reports_filelist_source() {
     let root = test_root("source-filelist");
     fs::create_dir_all(&root).expect("create dir");
