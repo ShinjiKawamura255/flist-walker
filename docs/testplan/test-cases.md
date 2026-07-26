@@ -11,8 +11,8 @@
 | TC-004 | unit | 実行可能ファイルで execute 分岐 | SP-004 |
 | TC-004A | unit | open / execute helper seam が open/execute handler を適切に呼び分ける | SP-004, SP-005 |
 | TC-005 | unit | フォルダで open 分岐 | SP-005 |
-| TC-006 | integration | CLI 契約（`--cli`/`--root`/`--limit`）を満たす | SP-006 |
-| TC-006A | integration | CLI の `--limit` は 1000 件へ暗黙丸めせず、そのまま実効上限として扱う | SP-006 |
+| TC-006 | integration | legacy `--cli`/`--root`/`--limit` invocation と既定 no-match exit 0を維持し、承認済みの `[score] absolute-path` からroot相対path-only改行出力へのmigration、およびCLI-only optionと`--interactive`が`--cli`を要求することを検証する | SP-006 |
+| TC-006A | integration | CLI の `--limit` は 1000 件へ暗黙丸めせず、absolute/NUL/no-match/type/regex/case/source/ignore/progress option と conflict/error を規範どおり扱う | SP-006 |
 | TC-007 | perf | 10万件検索の遅延計測 | SP-007 |
 | TC-008 | unit | 例外時に非ゼロ終了コードを返す | SP-008 |
 | TC-009 | unit | モジュール分離により単体テスト可能 | SP-009 |
@@ -171,3 +171,4 @@
 | TC-159 | unit+integration | deterministic failure injection は per-target write-ahead state、pre-marker orphan lock/evidence retention、parent/helper registration と acknowledgement の全 crash point、ack 前 no-mutation、live parent/helper の artifact-mutation 前 exclusion、helper executable path/hash/token identity、30秒 parent wait の fail-closed 判定、各 sidecar/binary 操作、restart failure、startup recovery、marker/artifact type・hash cleanup validation、invalid transition/ambiguous-state retentionを検証する。rollback 開始は `rolling_back` を先行永続化し、その途中の中断から再開する。precommit/restart failure は旧 bundle、committed state は完全な新 bundleへ hash 検証付きで収束する | SP-014 |
 | TC-160 | platform | copied Rust helper core と Windows PowerShell `File.Replace` / Linux synchronized rename adapter は、同一 filesystem 上の inert dummy transaction で成功、precommit failure rollback、restart failure rollback、中断 recovery、atomic primitive、cleanup を実証する。実行中 FlistWalker binary、production update feed、外部 application を置換・起動しない | SP-014 |
 | TC-161 | unit+perf | root/階層/祖先 FileList は UTF-8 と先頭 UTF-8 BOM、LF/CRLF、非 ASCII path を同一解釈で扱い、writer は UTF-8 BOM なしで round-trip する。UTF-16LE/BE BOM、legacy 不正 byte、NUL、途中切れ UTF-8、1 MiB 超/no-newline 行は path と offset/limit を含む明示 error となり、安定した root 入力は callback 0 件、invalid child は親 subtree 不変、invalid ancestor は no-rewrite、長行途中 cancel は 64 KiB 以下の cadence で停止する。VM-003 の allocating/probe control は production と同じ preflight を使い既存 threshold を維持し、validation-only と total parse elapsed を別々に記録する | SP-001, SP-007 |
+| TC-162 | unit+integration+platform | interactive CLI は stdin+stderr TTY / redirectable stdout の ownership、stderr-only ANSI、guard 解放後 stdout、partial setup/draw/read error/unwind 復旧、request-id freshness、selected-path preservation、ordered hidden pin、empty Enter、cursor editing/paste/repeat、dynamic viewport/resize、Unicode clipping、batch/TUI cancellation exit 130、bounded worker shutdown を検証する。pseudo-TTY で自動化できない terminal case は Windows 実端末で証跡を残す | SP-006, SP-008 |

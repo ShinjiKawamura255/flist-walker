@@ -174,9 +174,28 @@ cargo run -- --cli "main" --root .. --limit 1000
 CLI では:
 
 - query 未指定時は候補一覧を `limit` 件まで表示します。
-- query 指定時はスコア付きで結果を表示します。
+- query 指定時は一致したパスを1行ずつ表示します。
 - `--limit` は内部で 1000 件に丸めず、そのまま上限件数として扱います。
-- 現状の CLI は GUI と違って `Regex` 切り替えを持たず、通常検索のみです。
+- 既定出力は root 相対・改行区切り・スコア/ANSIなしです。スクリプトでは `--absolute` と `--print0` を利用できます。
+- 互換性: query 指定時も、旧来の `[score] absolute-path` ではなく空query時と同じpath専用形式になりました。旧出力の絶対pathを利用していた場合は `--absolute` へ移行してください。score文字列は出力しません。
+- `--type all|file|folder`、`--regex`、`--case-sensitive` で検索対象と照合方法を指定できます。
+- `--source auto|filelist|walker` でインデックス元を指定できます。`filelist` は root FileList がなければ失敗し、`auto` は FileList 優先で walker へフォールバックします。
+- `--ignore-file PATH` は実行ファイル横の ignore list を置き換え、`--no-ignore` は ignore を無効化します。両者は同時指定できません。
+- `--progress` は進捗だけを標準エラー出力へ表示します。`--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、キャンセルは exit 130 です。
+
+パスを安全にシェル連携する例:
+
+```bash
+flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
+```
+
+インタラクティブ CLI モード:
+
+```bash
+cargo run -- --cli --interactive --root ..
+```
+
+軽量な TUI が起動します。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を出力します。`Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけ、選択パスは端末復旧後の標準出力だけへ書き込みます。
 
 ## 挙動
 

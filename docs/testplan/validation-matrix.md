@@ -129,3 +129,4 @@ Use this checklist before selecting runner commands. The VM table below remains 
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-self-update-test.ps1 -Mode Custom -FeedVersion 0.12.1`
   Windows sandbox で任意 version のローカル feed を生成し、署名付き manifest を使った update 手順を再現する。
 - CLI 動作確認: `cargo run -- --cli "main" --root .. --limit 20`
+- CLI/TUI 契約変更では `cargo test --test cli_contract` と `cargo test cli_tui::tests` を先行し、`cargo test` を再実行する。terminal evidence は stdout pipe、stdin/stderr non-TTY rejection、partial setup failure、draw/read error restoration、resize/paste、cleanup-before-output を含める。pseudo-TTY で自動化できない項目は Windows 実端末で必須記録とする。

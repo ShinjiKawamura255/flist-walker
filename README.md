@@ -145,9 +145,28 @@ cargo run -- --cli "main" --root .. --limit 1000
 In CLI mode:
 
 - If no query is provided, the tool prints up to `limit` candidates.
-- If a query is provided, results are shown with scores.
+- If a query is provided, matching paths are printed one per line.
 - `--limit` is treated as a real upper bound, not rounded down to 1000.
-- The current CLI does not have a `Regex` toggle like the GUI; it performs normal search only.
+- Output is root-relative, newline-delimited, and free of scores/ANSI by default. Use `--absolute` and `--print0` for scripts.
+- Compatibility: query output is now the same script-safe path-only format as empty-query output. Consumers of the former `[score] absolute-path` rows should use `--absolute`; score text is no longer emitted.
+- `--type all|file|folder`, `--regex`, and `--case-sensitive` control matching.
+- `--source auto|filelist|walker` controls indexing. `filelist` fails if no root FileList exists; `auto` prefers it and falls back to the walker.
+- `--ignore-file PATH` replaces the executable-side ignore list; `--no-ignore` disables ignore filtering. These options conflict.
+- `--progress` writes progress only to stderr. `--fail-no-match` changes an empty result from exit 0 to exit 1. Cancellation exits 130.
+
+For shell-safe path handling:
+
+```bash
+flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
+```
+
+Interactive CLI mode:
+
+```bash
+cargo run -- --cli --interactive --root ..
+```
+
+This starts a lightweight terminal UI. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` to pin results in output order and `Enter` to print them. `Esc` / `Ctrl-C` restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; only selected paths are written to stdout after terminal restoration.
 
 ## Behavior
 

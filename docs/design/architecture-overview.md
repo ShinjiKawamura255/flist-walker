@@ -29,8 +29,10 @@
 - 実装: `rust/src/app/coordinator.rs`, `rust/src/app/input/actions.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/action_authorization.rs`, `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/worker_support.rs`, `rust/src/actions.rs`
 
 - DES-005 CLI Adapter
-- 役割: `clap` 引数を受け取り CLI 出力へ変換。
-- 実装: `rust/src/main.rs`
+- 役割: `clap` 引数を typed CLI options へ変換し、GUI、batch CLI、interactive CLI を明示 dispatch する。legacy `--cli` 契約を維持し、CLI-only option の依存/競合と mode-specific initialization/exit status を所有する。
+- 役割補足: batch adapter は cancellable index/search、source/type/ignore/search option、relative/absolute path、newline/NUL framing を構成し、結果だけを stdout、進捗/診断を stderr へ送る。
+- 役割補足: interactive adapter は request identity を持つ index/search worker、cursor-aware editor、ordered pin、dynamic viewport、stderr renderer を分離する。terminal session guard は raw/alternate/cursor/bracketed-paste の成立状態を所有して逆順復旧し、guard 解放後だけ stdout result writer を呼ぶ。
+- 実装: `rust/src/main.rs`, `rust/src/cli_tui.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/walker.rs`
 
 - DES-009 GUI Adapter (egui/eframe)
 - 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。

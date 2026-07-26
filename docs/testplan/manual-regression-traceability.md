@@ -160,13 +160,19 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - Related Tests: Self Update Manual Test step 3, step 4.
 - Notes for Future Changes: 自己更新 asset 名や sidecar 種別を増減させた場合は、この helper script と manual test 手順を同一変更で更新すること。
 
+## Interactive CLI Terminal Matrix (TC-162)
+
+- Automated evidence: `cargo test cli_tui::tests --lib` は stdin/stderr TTY policy、stdout非依存、partial setup、runtime error/unwind時の逆順復旧、cleanup-before-output、request freshness、選択/pin、editor/paste/page移動、Unicode幅と制御文字の安全なclipを検証する。`cargo test --test cli_contract` はbatch出力・引数契約を検証する。
+- Windows ConPTY E2E (2026-07-26): 一時 `pywinpty 3.0.5` harnessからnative Windows binaryを起動し、stdoutをraw file handleへredirectした状態でpaste、terminal resize、Enter選択、2件のpin順序、Esc、Ctrl-Cを送信した。選択はpathだけ、cancelは空stdout、Esc/Ctrl-Cはいずれもexit 130となり、全sessionでalternate screen退出、cursor再表示、bracketed paste無効化sequenceを確認した。結果: `conpty_select=ok conpty_pin_order=ok conpty_escape=130 conpty_ctrl_c=130 restoration=ok stdout_redirect=ok`。
+- Environment note: MSYS2 `script` PTYはnative Windows crosstermへkey eventを配送できなかったため証跡に採用しない。Windows ConPTY E2Eがvalidation matrixのpseudo-TTY automation evidenceを満たす。Windows Terminalでの目視spot-checkは任意の追加確認とする。
+
 ## Traceability (excerpt)
 - TC-001 -> SP-001 -> DES-001 -> FR-001
 - TC-002 -> SP-002 -> DES-002 -> FR-002
 - TC-003 -> SP-003 -> DES-003 -> FR-003
 - TC-004 -> SP-004 -> DES-004 -> FR-004
 - TC-005 -> SP-005 -> DES-004 -> FR-005
-- TC-006 -> SP-006 -> DES-005 -> FR-006
+- TC-006, TC-006A -> SP-006 -> DES-005 -> FR-006
 - TC-007 -> SP-007 -> DES-006 -> NFR-001
 - TC-008 -> SP-008 -> DES-007 -> NFR-002
 - TC-009 -> SP-009 -> DES-008 -> NFR-003
@@ -176,6 +182,7 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-013 -> SP-002, SP-007 -> DES-006 -> NFR-001
 - TC-014 -> SP-010, SP-008 -> DES-009, DES-007 -> FR-007, NFR-002
 - TC-015 -> SP-006, SP-008 -> DES-005, DES-007 -> FR-006, NFR-002
+- TC-162 -> SP-006, SP-008 -> DES-005, DES-007 -> FR-006, NFR-002, NFR-011
 - TC-016 -> SP-010 -> DES-007, DES-009 -> FR-007
 - TC-017 -> SP-010 -> DES-007, DES-009 -> FR-007
 - TC-018 -> SP-010 -> DES-009 -> FR-007

@@ -83,14 +83,36 @@
 ## SP-006 CLI 契約
 ### Requirements
 - MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。
-- MUST: `--root` と `--limit` を受理する。
+- MUST: `--root` と `--limit` を受理し、既存の `--cli [QUERY] --root ... --limit ...` invocation を維持する。本仕様では subcommand を追加しない。
 - MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。
 - MUST: CLI の `--limit` は実効値を追加で 1000 件へ丸めてはならない。
-- SHOULD: 出力形式は機械処理しやすい行単位とする。
+- MUST: batch CLI の既定出力は root 相対 path の改行区切りとし、スコアや ANSI 装飾を付加してはならない。既定の一致なしは stdout 空・exit 0 とする。
+- Compatibility: query 指定時に `[score] absolute-path` を出力していた旧形式は、script-safe な単一path形式へ意図的に置き換える。旧 invocation は維持するが旧出力 framing は維持せず、絶対pathが必要なconsumerは `--absolute` へ移行する。score出力はCLI契約に含めない。
+- MUST: batch CLI は `--absolute`、`--print0`、`--fail-no-match`、`--type all|file|folder`、`--regex`、`--case-sensitive`、`--source auto|filelist|walker`、`--ignore-file PATH`、`--no-ignore`、`--progress` を受理する。`--absolute` は path 形式だけ、`--print0` は delimiter だけを変更し、`--fail-no-match` は一致なしを exit 1 にする。
+- MUST: `--ignore-file` と `--no-ignore` は同時指定を拒否する。`--source filelist` は root 直下に FileList がなければ非ゼロ終了し、`auto` は FileList 優先、`walker` は FileList を使用しない。
+- MUST: CLI 専用 option は `--cli` を必要とし、`--interactive` 単独指定は GUI を起動せず引数エラーとする。
+- MAY: `--cli --interactive` でインタラクティブ CLI を起動する。
+- MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
+- MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、選択結果だけを terminal 復旧後に標準出力へ出力する。
+- MUST: インタラクティブ CLI は query 入力、上下移動、`Enter` による選択結果の標準出力、`Esc` / `Ctrl-C` による終了を提供する。
+- MUST: `Esc` / `Ctrl-C` は worker cancellation を要求し、terminal 復旧後に選択結果を出力せず exit 130 とする。batch CLI の Ctrl-C も FileList/walker の cancellable index path を停止して exit 130 とする。
+- MUST: `Tab` は現在行の pin を切り替え、pin がある場合の `Enter` は現在の filter 結果に含まれない pin も pin 順で出力する。選択可能な結果も pin もない `Enter` は終了してはならない。
+- MUST: query editor は挿入 cursor、左右移動、Home/End、Backspace/Delete、paste を扱い、上下/PageUp/PageDown と key repeat で結果を移動できる。terminal resize 後は表示可能行数から viewport を再計算する。
+- SHOULD: インタラクティブ CLI は GUI と同じ query 解釈による一致文字のハイライトを表示する。
+- MUST: インタラクティブ CLI の index/search は UI 入力ループと別スレッドで実行し、query 文字列だけでなく単調増加 request identity により最新でない検索応答を表示してはならない。結果更新時は選択中 path が残る限り同じ path を維持する。
+- SHOULD: インタラクティブ CLI は状態変更時だけ端末を再描画し、候補全件を毎回描画してはならない。
+- MUST: terminal session は raw mode、alternate screen、cursor 非表示、bracketed paste の成立状態を個別に追跡し、setup 途中失敗、event/draw error、正常終了、cancel、unwind で成立済み状態だけを逆順に best-effort 復旧する。選択結果は guard 解放後だけ出力する。
+- SHOULD: interactive indexing の増分 batch は検索再実行を throttle/debounce し、結果更新のたびに current row を先頭へ戻してはならない。
 
 ### Preconditions / Postconditions
 - Preconditions: CLI モードで起動される。
-- Postconditions: 結果またはエラーが標準出力/標準エラーへ出力される。
+- Postconditions: batch/interactive の結果だけが指定 delimiter で標準出力へ出力される。進捗、TUI、診断、エラーは標準エラー出力を使用し、interactive 終了後は terminal state が復旧済みとなる。
+
+### Edge / Error
+- 引数契約違反、root/source/ignore/regex/index error は非ゼロ終了する。
+- `--fail-no-match` なしの一致なしは正常終了、指定時は exit 1 とする。
+- stdout が pipe でも stdin+stderr が TTY なら interactive mode を許可する。stdin または stderr が非 TTY なら terminal setup 前に拒否する。
+- Unicode 列幅は `unicode-width` の幅計算と terminal 幅に従って clip し、combining/emoji/East Asian ambiguous width の端末固有差を完全には保証しない。
 
 ## SP-008 エラー処理
 ### Requirements

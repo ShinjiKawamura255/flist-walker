@@ -35,3 +35,4 @@ This file is the entry point for FlistWalker requirements. Detailed FR/NFR/CON a
 - NFR-010 -> SP-014 -> DES-014 -> TC-157, TC-159, TC-160
 - FR-034 -> SP-001 -> DES-001 -> TC-161
 - NFR-001 -> SP-007 -> DES-006 -> TC-007, TC-156, TC-161
+- FR-006, NFR-011 -> SP-006 -> DES-005 -> TC-006, TC-006A, TC-015, TC-162
