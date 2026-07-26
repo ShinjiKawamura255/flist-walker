@@ -83,6 +83,7 @@
 - 2026-07-26 Planned.
 - 2026-07-26 Main-agent preflight completed; implementation awaits workflow-level focused re-review.
 - 2026-07-26 `slice-d.sort-options` completed by Terra and integrated by Sol; F2 runtime options, F3 nine-mode all-match sorting, coalescing/cancellable index requests, dynamic ignore filtering, compact overlay navigation, 47 focused TUI tests, full Rust regression, and VM-003 performance checks passed. `slice-d.root-refresh` is ready.
+- 2026-07-26 `slice-d.root-refresh` completed by Terra and integrated by Sol; F4 saved-root switching, F5 refresh, root-scoped stale-response invalidation, active-root output ordering, modal paste confinement, and overlay rendering checks passed in 54 focused TUI tests and the full Rust suite. `slice-d.filelist` is ready.
 
 ## Closure Capsule
 - Verification Result: pending

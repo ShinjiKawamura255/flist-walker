@@ -273,6 +273,7 @@ struct EventLoopContext<'a> {
     action_tx: &'a mpsc::Sender<TuiActionRequest>,
     rx: &'a mpsc::Receiver<WorkerResponse>,
     root: PathBuf,
+    saved_roots: Vec<PathBuf>,
     options: &'a CliTuiOptions,
     history_enabled: bool,
     history_entries: Vec<String>,
@@ -283,7 +284,11 @@ struct EventLoopContext<'a> {
 
 enum TuiExit {
     Cancelled,
-    Selected { paths: Vec<PathBuf>, query: String },
+    Selected {
+        paths: Vec<PathBuf>,
+        query: String,
+        root: PathBuf,
+    },
 }
 
 enum KeyAction {
@@ -294,6 +299,8 @@ enum KeyAction {
     HistoryOpened(Option<String>),
     DispatchAction(AuthorizedActionMode),
     Reindex,
+    Refresh,
+    SwitchRoot(PathBuf),
 }
 
 struct TuiState {
@@ -308,6 +315,8 @@ struct TuiState {
     indexed: bool,
     entries: Arc<Vec<PathBuf>>,
     root: PathBuf,
+    saved_roots: Vec<PathBuf>,
+    root_picker: Option<RootPicker>,
     runtime_options: TuiRuntimeOptions,
     ignore_terms: Arc<Vec<String>>,
     sort_mode: SearchSortMode,
@@ -355,6 +364,11 @@ struct SortPicker {
     selected: usize,
 }
 
+#[derive(Clone, Debug)]
+struct RootPicker {
+    selected: usize,
+}
+
 const SORT_MODES: [SearchSortMode; 9] = [
     SearchSortMode::Score,
     SearchSortMode::NameAsc,
@@ -394,6 +408,8 @@ impl TuiState {
             indexed: false,
             entries: Arc::new(Vec::new()),
             root: PathBuf::new(),
+            saved_roots: Vec::new(),
+            root_picker: None,
             runtime_options: TuiRuntimeOptions {
                 include_files: true,
                 include_dirs: true,
@@ -526,7 +542,8 @@ impl TuiState {
 
     fn current_options_summary(&self) -> String {
         format!(
-            "Sort: {} | Source: {} | Files: {} | Folders: {} | Regex: {} | Ignore Case: {} | Ignore: {}",
+            "Root: {} | Sort: {} | Source: {} | Files: {} | Folders: {} | Regex: {} | Ignore Case: {} | Ignore: {}",
+            self.root.display(),
             self.sort_mode.label(),
             self.runtime_options.source.label(),
             if self.runtime_options.include_files { "on" } else { "off" },
@@ -551,6 +568,10 @@ impl TuiState {
                 .position(|mode| *mode == self.sort_mode)
                 .unwrap_or(0),
         });
+    }
+
+    fn open_root_picker(&mut self) {
+        self.root_picker = Some(RootPicker { selected: 0 });
     }
 
     fn current_path(&self) -> Option<&PathBuf> {
@@ -808,12 +829,14 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         );
     }
 
+    let persisted_roots_and_history = load_persisted_roots_and_history();
     let history_enabled = history_persistence_enabled();
     let history_entries = if history_enabled {
-        load_persisted_roots_and_history().query_history
+        persisted_roots_and_history.query_history
     } else {
         Vec::new()
     };
+    let saved_roots = persisted_roots_and_history.saved_roots;
     let history_persistence = history_enabled
         .then(AsyncHistoryPersistence::new_default)
         .flatten();
@@ -1078,6 +1101,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                 action_tx: &action_tx,
                 rx: &rx,
                 root: root.clone(),
+                saved_roots,
                 options,
                 history_enabled,
                 history_entries,
@@ -1110,7 +1134,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
 
     match result? {
         TuiExit::Cancelled => Ok(CliTuiOutcome::Cancelled),
-        TuiExit::Selected { paths, .. } => {
+        TuiExit::Selected { paths, root, .. } => {
             write_selected_paths(&paths, &root, options.absolute, options.print0)?;
             Ok(CliTuiOutcome::Selected)
         }
@@ -1150,6 +1174,7 @@ fn run_event_loop<W: Write>(
         action_tx,
         rx,
         root,
+        saved_roots,
         options,
         history_enabled,
         history_entries,
@@ -1159,12 +1184,12 @@ fn run_event_loop<W: Write>(
     } = context;
     let mut state = TuiState::new(&options.initial_query);
     state.root = root.clone();
+    state.saved_roots = saved_roots;
     state.runtime_options = TuiRuntimeOptions::from_startup(options);
     state.ignore_terms = Arc::new(options.ignore_terms.clone());
     state.history_enabled = history_enabled;
     state.history_entries = history_entries;
-    if dispatch_index_request(&mut state, index_tx, index_freshness.as_ref(), root.clone()).is_err()
-    {
+    if dispatch_current_index(&mut state, index_tx, index_freshness.as_ref()).is_err() {
         anyhow::bail!("index worker unavailable");
     }
     loop {
@@ -1189,7 +1214,7 @@ fn run_event_loop<W: Write>(
             state.last_query_change = None;
             state.status = "Searching...".to_string();
             state.dirty = true;
-            let _ = search_tx.send(state.next_search_request(root.clone(), options.limit));
+            let _ = search_tx.send(state.next_search_request(state.root.clone(), options.limit));
         }
 
         if state.dirty {
@@ -1211,6 +1236,7 @@ fn run_event_loop<W: Write>(
                             return Ok(TuiExit::Selected {
                                 paths: selected_paths(&state),
                                 query: state.query.clone(),
+                                root: state.root.clone(),
                             });
                         }
                         KeyAction::HistoryApplied => {
@@ -1256,11 +1282,36 @@ fn run_event_loop<W: Write>(
                                     &root,
                                 );
                             }
-                            if dispatch_index_request(
+                            if dispatch_current_index(
                                 &mut state,
                                 index_tx,
                                 index_freshness.as_ref(),
-                                root.clone(),
+                            )
+                            .is_err()
+                            {
+                                state.status = "Index worker unavailable".to_string();
+                                state.dirty = true;
+                            }
+                        }
+                        KeyAction::Refresh => {
+                            prepare_refresh(&mut state);
+                            if dispatch_current_index(
+                                &mut state,
+                                index_tx,
+                                index_freshness.as_ref(),
+                            )
+                            .is_err()
+                            {
+                                state.status = "Index worker unavailable".to_string();
+                                state.dirty = true;
+                            }
+                        }
+                        KeyAction::SwitchRoot(new_root) => {
+                            prepare_root_switch(&mut state, action_freshness.as_ref(), new_root);
+                            if dispatch_current_index(
+                                &mut state,
+                                index_tx,
+                                index_freshness.as_ref(),
                             )
                             .is_err()
                             {
@@ -1296,6 +1347,14 @@ fn dispatch_index_request(
     index_tx.send(request)
 }
 
+fn dispatch_current_index(
+    state: &mut TuiState,
+    index_tx: &mpsc::Sender<IndexRequest>,
+    freshness: &TuiIndexFreshness,
+) -> Result<(), mpsc::SendError<IndexRequest>> {
+    dispatch_index_request(state, index_tx, freshness, state.root.clone())
+}
+
 fn prepare_source_transition(
     state: &mut TuiState,
     action_freshness: &TuiActionFreshness,
@@ -1306,6 +1365,25 @@ fn prepare_source_transition(
     state.active_action_request = None;
     action_freshness.activate(0, root);
     state.source_changed_on_apply = false;
+}
+
+fn prepare_root_switch(state: &mut TuiState, action_freshness: &TuiActionFreshness, root: PathBuf) {
+    state.root = root.clone();
+    state.pinned.clear();
+    state.clear_preview();
+    state.active_search_request_id = None;
+    state.sort_mode = SearchSortMode::Score;
+    state.active_action_request = None;
+    action_freshness.activate(0, &root);
+    state.status = format!("Switching root to {}...", root.display());
+    state.dirty = true;
+}
+
+fn prepare_refresh(state: &mut TuiState) {
+    state.sort_mode = SearchSortMode::Score;
+    state.active_search_request_id = None;
+    state.status = format!("Refreshing {}...", state.root.display());
+    state.dirty = true;
 }
 
 fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Result<()> {
@@ -1352,7 +1430,7 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             if state.active_index_request.as_ref() == Some(&(request_id, root)) {
                 state.active_index_request = None;
                 state.indexed = false;
-                state.status = format!("Indexing failed: {error}. Choose Auto or Walker in F2.");
+                state.status = format!("Indexing failed: {error}. Adjust options in F2 and retry.");
                 state.dirty = true;
             }
         }
@@ -1725,6 +1803,56 @@ fn handle_sort_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     KeyAction::Continue
 }
 
+fn handle_root_picker_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if matches!(
+        (key.code, key.modifiers),
+        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+    ) {
+        return KeyAction::Cancel;
+    }
+    let Some(picker) = state.root_picker.as_mut() else {
+        return KeyAction::Continue;
+    };
+    if state.saved_roots.is_empty() {
+        if matches!(
+            (key.code, key.modifiers),
+            (KeyCode::Enter, _) | (KeyCode::Esc, _) | (KeyCode::Char('g'), KeyModifiers::CONTROL)
+        ) {
+            state.root_picker = None;
+        }
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
+    match (key.code, key.modifiers) {
+        (KeyCode::Esc, _) | (KeyCode::Char('g'), KeyModifiers::CONTROL) => state.root_picker = None,
+        (KeyCode::Enter, _) => {
+            let root = state.saved_roots[picker.selected].clone();
+            state.root_picker = None;
+            state.dirty = true;
+            return KeyAction::SwitchRoot(root);
+        }
+        (KeyCode::Up, _) => {
+            move_overlay_selection(&mut picker.selected, -1, state.saved_roots.len())
+        }
+        (KeyCode::Down, _) => {
+            move_overlay_selection(&mut picker.selected, 1, state.saved_roots.len())
+        }
+        (KeyCode::PageUp, _) => move_overlay_selection(
+            &mut picker.selected,
+            -(state.viewport_rows.max(1) as isize),
+            state.saved_roots.len(),
+        ),
+        (KeyCode::PageDown, _) => move_overlay_selection(
+            &mut picker.selected,
+            state.viewport_rows.max(1) as isize,
+            state.saved_roots.len(),
+        ),
+        _ => {}
+    }
+    state.dirty = true;
+    KeyAction::Continue
+}
+
 fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     if state.help.is_some() {
         match (key.code, key.modifiers) {
@@ -1742,6 +1870,9 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     }
     if state.sort_picker.is_some() {
         return handle_sort_key(state, key);
+    }
+    if state.root_picker.is_some() {
+        return handle_root_picker_key(state, key);
     }
     if matches!(key.code, KeyCode::F(1)) {
         state.open_help();
@@ -1806,6 +1937,14 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
         state.open_sort_picker();
         state.dirty = true;
         return KeyAction::Continue;
+    }
+    if matches!(key.code, KeyCode::F(4)) {
+        state.open_root_picker();
+        state.dirty = true;
+        return KeyAction::Continue;
+    }
+    if matches!(key.code, KeyCode::F(5)) {
+        return KeyAction::Refresh;
     }
     match (key.code, key.modifiers) {
         (KeyCode::Esc, _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
@@ -1903,7 +2042,12 @@ fn char_to_byte_index(text: &str, char_index: usize) -> usize {
 }
 
 fn insert_paste(state: &mut TuiState, pasted: &str) {
-    if pasted.is_empty() || state.help.is_some() {
+    if pasted.is_empty()
+        || state.help.is_some()
+        || state.options_overlay.is_some()
+        || state.sort_picker.is_some()
+        || state.root_picker.is_some()
+    {
         return;
     }
     if let Some(history) = state.history.as_mut() {
@@ -2076,10 +2220,72 @@ fn draw<W: Write>(
         render_options_overlay(terminal_output, options_overlay, width, height)?;
     } else if let Some(sort_picker) = state.sort_picker.as_ref() {
         render_sort_picker(terminal_output, sort_picker, width, height)?;
+    } else if let Some(root_picker) = state.root_picker.as_ref() {
+        render_root_picker(
+            terminal_output,
+            root_picker,
+            &state.saved_roots,
+            width,
+            height,
+        )?;
     } else if let Some(history) = state.history.as_ref() {
         render_history_overlay(terminal_output, history, width, height)?;
     }
     terminal_output.flush()?;
+    Ok(())
+}
+
+fn render_root_picker<W: Write>(
+    terminal_output: &mut W,
+    picker: &RootPicker,
+    roots: &[PathBuf],
+    width: u16,
+    height: u16,
+) -> Result<()> {
+    execute!(terminal_output, Clear(ClearType::All))?;
+    let lines = [
+        "Saved roots".to_string(),
+        "Enter switch | Esc/Ctrl+G cancel | Ctrl+C exit | arrows/Page move".to_string(),
+    ];
+    for (row, line) in lines.iter().enumerate().take(height as usize) {
+        execute!(
+            terminal_output,
+            MoveTo(0, (row + 2) as u16),
+            Print(clip_to_width(line, width as usize)),
+        )?;
+    }
+    if roots.is_empty() {
+        if height > 2 {
+            execute!(
+                terminal_output,
+                MoveTo(0, 2),
+                Print(clip_to_width(
+                    "No saved roots are available.",
+                    width as usize
+                )),
+            )?;
+        }
+        return Ok(());
+    }
+    let visible = height.saturating_sub(2) as usize;
+    let start = overlay_window_start(picker.selected, roots.len(), visible);
+    for (row, (index, root)) in roots
+        .iter()
+        .enumerate()
+        .skip(start)
+        .take(visible)
+        .enumerate()
+    {
+        let marker = if index == picker.selected { "> " } else { "  " };
+        execute!(
+            terminal_output,
+            MoveTo(0, (row + 2) as u16),
+            Print(clip_to_width(
+                &format!("{marker}{}", root.display()),
+                width as usize
+            )),
+        )?;
+    }
     Ok(())
 }
 
@@ -2125,7 +2331,7 @@ fn render_options_overlay<W: Write>(
         };
         execute!(
             terminal_output,
-            MoveTo(0, row as u16),
+            MoveTo(0, (row + 2) as u16),
             Print(clip_to_width(&format!("{marker}{line}"), width as usize)),
         )?;
     }
@@ -2259,7 +2465,7 @@ fn render_help_overlay<W: Write>(
             "Enter output selection | Tab pin | arrows/Page move".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
-            "F2 options | F3 sort | Alt+P toggle preview | F1 help".to_string(),
+            "F2 options | F3 sort | F4 roots | F5 refresh | Alt+P preview | F1 help".to_string(),
         ]),
         HelpContext::History => lines.extend([
             "History search is paused while help is open.".to_string(),
@@ -3427,6 +3633,188 @@ mod tests {
         assert!(state.active_preview_request.is_none());
         assert!(state.active_search_request_id.is_none());
         assert_eq!(state.pinned, vec![PathBuf::from("root/pinned.txt")]);
+    }
+
+    #[test]
+    fn tc_162_root_picker_precedence_empty_state_and_small_viewport_are_safe() {
+        let mut state = TuiState::new("query");
+        state.results = vec![(PathBuf::from("current.txt"), 1.0)];
+        handle_key(&mut state, KeyEvent::new(KeyCode::F(4), KeyModifiers::NONE));
+        assert!(state.root_picker.is_some());
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(state.query, "query");
+        assert!(state.root_picker.is_some());
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        );
+        assert!(state.root_picker.is_none());
+
+        let roots = (0..6)
+            .map(|index| PathBuf::from(format!("root-{index}")))
+            .collect::<Vec<_>>();
+        let mut output = Vec::new();
+        render_root_picker(&mut output, &RootPicker { selected: 5 }, &roots, 80, 4)
+            .expect("render roots");
+        assert!(String::from_utf8_lossy(&output).contains("> root-5"));
+        let mut output = Vec::new();
+        render_root_picker(&mut output, &RootPicker { selected: 0 }, &[], 80, 4)
+            .expect("render empty roots");
+        assert!(String::from_utf8_lossy(&output).contains("No saved roots"));
+    }
+
+    #[test]
+    fn tc_162_root_switch_clears_old_scope_before_new_index_and_preserves_query_options_history() {
+        let mut state = TuiState::new("keep query");
+        state.root = PathBuf::from("old-root");
+        state.history_enabled = true;
+        state.history_entries = vec!["history".to_string()];
+        state.runtime_options.regex = true;
+        state.results = vec![(PathBuf::from("old-root/current.txt"), 1.0)];
+        state.pinned.push(PathBuf::from("old-root/pinned.txt"));
+        state.preview = "old preview".to_string();
+        state.active_search_request_id = Some(5);
+        let freshness = TuiActionFreshness::new();
+        freshness.activate(7, Path::new("old-root"));
+        state.active_action_request = Some((7, PathBuf::from("old-root/current.txt")));
+
+        prepare_root_switch(&mut state, &freshness, PathBuf::from("new-root"));
+        state.next_index_request(state.root.clone());
+
+        assert_eq!(state.root, PathBuf::from("new-root"));
+        assert!(state.results.is_empty());
+        assert!(state.pinned.is_empty());
+        assert!(state.preview.is_empty());
+        assert!(state.active_search_request_id.is_none());
+        assert!(state.active_action_request.is_none());
+        assert_eq!(state.query, "keep query");
+        assert!(state.runtime_options.regex);
+        assert_eq!(state.history_entries, vec!["history"]);
+        assert!(!freshness.is_current(7, Path::new("old-root")));
+    }
+
+    #[test]
+    fn tc_162_root_picker_selects_the_highlighted_root_and_refresh_keeps_pins() {
+        let mut state = TuiState::new("");
+        state.root = PathBuf::from("old-root");
+        state.saved_roots = vec![PathBuf::from("first"), PathBuf::from("second")];
+        state.root_picker = Some(RootPicker { selected: 1 });
+        assert!(matches!(
+            handle_root_picker_key(&mut state, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)),
+            KeyAction::SwitchRoot(ref root) if root == Path::new("second")
+        ));
+        state.pinned.push(PathBuf::from("old-root/pinned.txt"));
+        state.results = vec![(PathBuf::from("old-root/current.txt"), 1.0)];
+        state.next_index_request(state.root.clone());
+        assert_eq!(state.pinned, vec![PathBuf::from("old-root/pinned.txt")]);
+        assert!(state.results.is_empty());
+    }
+
+    #[test]
+    fn tc_162_options_overlay_keeps_headings_and_renders_items_below_them() {
+        let overlay = OptionsOverlay {
+            draft: TuiRuntimeOptions::from_startup(&CliTuiOptions {
+                initial_query: String::new(),
+                limit: 1,
+                absolute: false,
+                print0: false,
+                include_files: true,
+                include_dirs: true,
+                use_filelist: true,
+                require_filelist: false,
+                regex: false,
+                ignore_case: false,
+                ignore_terms: Vec::new(),
+            }),
+            selected: 0,
+        };
+        let mut output = Vec::new();
+        render_options_overlay(&mut output, &overlay, 80, 5).expect("render options");
+        let rendered = String::from_utf8_lossy(&output);
+        assert!(rendered.contains("Options"));
+        assert!(rendered.contains("Enter apply"));
+        assert!(rendered.contains("\x1b[3;1H> Files:"), "{rendered:?}");
+    }
+
+    #[test]
+    fn tc_162_paste_is_confined_to_history_and_never_leaks_through_modal_overlays() {
+        let mut state = TuiState::new("query");
+        state.options_overlay = Some(OptionsOverlay {
+            draft: state.runtime_options,
+            selected: 0,
+        });
+        insert_paste(&mut state, " leaked");
+        assert_eq!(state.query, "query");
+        state.options_overlay = None;
+        state.sort_picker = Some(SortPicker { selected: 0 });
+        insert_paste(&mut state, " leaked");
+        assert_eq!(state.query, "query");
+        state.sort_picker = None;
+        state.root_picker = Some(RootPicker { selected: 0 });
+        insert_paste(&mut state, " leaked");
+        assert_eq!(state.query, "query");
+        state.root_picker = None;
+
+        state.history_enabled = true;
+        state.history_entries = vec!["history".to_string()];
+        state.begin_history();
+        insert_paste(&mut state, "hi");
+        assert_eq!(state.history.as_ref().expect("history").filter, "hi");
+    }
+
+    #[test]
+    fn tc_162_root_switch_and_refresh_reset_sort_and_pending_search() {
+        let freshness = TuiActionFreshness::new();
+        let mut state = TuiState::new("");
+        state.root = PathBuf::from("old-root");
+        state.sort_mode = SearchSortMode::SizeDesc;
+        state.active_search_request_id = Some(4);
+        prepare_root_switch(&mut state, &freshness, PathBuf::from("new-root"));
+        assert_eq!(state.sort_mode, SearchSortMode::Score);
+        assert!(state.active_search_request_id.is_none());
+
+        state.sort_mode = SearchSortMode::NameDesc;
+        state.active_search_request_id = Some(5);
+        prepare_refresh(&mut state);
+        state.next_index_request(state.root.clone());
+        assert_eq!(state.sort_mode, SearchSortMode::Score);
+        assert!(state.active_search_request_id.is_none());
+    }
+
+    #[test]
+    fn tc_162_active_root_relative_output_is_prepared_after_terminal_cleanup() {
+        let calls = Rc::new(RefCell::new(Vec::new()));
+        let guard = TerminalGuard::start(
+            FakeTerminalOps {
+                calls: Rc::clone(&calls),
+                fail_on: None,
+            },
+            Vec::<u8>::new(),
+        )
+        .expect("terminal setup");
+        let active_root = PathBuf::from("active-root");
+        let path = active_root.join("selected.txt");
+        let selected = run_terminal_operation(guard, |_writer| Ok((path, active_root.clone())))
+            .expect("terminal operation");
+        calls.borrow_mut().push("stdout_output");
+        assert_eq!(
+            output_path_bytes(&selected.0, &selected.1, true, false),
+            b"selected.txt"
+        );
+        let disable_raw = calls
+            .borrow()
+            .iter()
+            .position(|call| *call == "disable_raw")
+            .expect("raw cleanup");
+        let stdout_output = calls
+            .borrow()
+            .iter()
+            .position(|call| *call == "stdout_output")
+            .expect("stdout output");
+        assert!(disable_raw < stdout_output);
     }
 
     #[test]

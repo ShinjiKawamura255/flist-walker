@@ -244,17 +244,17 @@
     {
       "id": "slice-d.root-refresh",
       "title": "Implement TUI saved-root picker and refresh lifecycle",
-      "status": "pending",
+      "status": "completed",
       "depends_on": ["slice-d.sort-options"],
       "owner": "subagent:terra-tui-root-refresh",
       "model_capability": "standard",
       "routing_reason": "Focused root/request lifecycle work with stale-response tests.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/cli_tui.rs"],
       "acceptance": ["F4/F5 behavior passes", "Root change clears scoped state before new results", "Old worker responses cannot mutate new root"],
       "verification": ["focused TUI root/index tests", "cargo test cli_tui::tests", "cargo test"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {"files": ["rust/src/cli_tui.rs", "README.md", "README-ja.md"], "commands": ["cargo test cli_tui::tests --lib", "cargo check", "cargo clippy -- -D warnings", "cargo fmt -- --check", "cargo test --quiet"], "artifacts": [], "reviews": ["Sol root/request lifecycle review"], "logs": []},
+      "result": "F4 saved-root switching and F5 refresh are stale-safe, reset Score ordering, preserve the documented root-scoped state, and emit active-root output only after terminal cleanup; 54 focused TUI tests and the full Rust suite passed.",
       "blocker": null
     },
     {
