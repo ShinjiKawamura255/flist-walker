@@ -79,6 +79,7 @@ enum WorkerResponse {
     IndexFailed {
         request_id: u64,
         root: PathBuf,
+        has_root_filelist: bool,
         error: String,
     },
     Searched {
@@ -240,7 +241,6 @@ struct TuiActionRequest {
 struct TuiFileListRequest {
     request_id: u64,
     root: PathBuf,
-    entries: Arc<Vec<PathBuf>>,
     propagate_to_ancestors: bool,
     allow_root_overwrite: bool,
     cancel: Arc<AtomicBool>,
@@ -708,7 +708,6 @@ impl TuiState {
         TuiFileListRequest {
             request_id,
             root: self.root.clone(),
-            entries: Arc::clone(&self.entries),
             propagate_to_ancestors,
             allow_root_overwrite,
             cancel,
@@ -1189,6 +1188,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                         let _ = worker_tx.send(WorkerResponse::IndexFailed {
                             request_id: request.request_id,
                             root: request.root.clone(),
+                            has_root_filelist: has_filelist,
                             error: "FileList source selected but no FileList was found".to_string(),
                         });
                     }
@@ -1209,6 +1209,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                                 let _ = worker_tx.send(WorkerResponse::IndexFailed {
                                     request_id: request.request_id,
                                     root: request.root.clone(),
+                                    has_root_filelist: has_filelist,
                                     error: error.to_string(),
                                 });
                             }
@@ -1325,9 +1326,19 @@ fn spawn_filelist_worker(request: TuiFileListRequest) -> Result<ActiveFileListWo
             let root = request.root.clone();
             let response = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 let should_cancel = || request.cancel.load(Ordering::Acquire);
+                let entries = match build_filelist_snapshot(&request.root, &should_cancel) {
+                    Ok(entries) => entries,
+                    Err(report) => {
+                        return FileListWorkerResult::Finished {
+                            request_id,
+                            root: root.clone(),
+                            report: *report,
+                        };
+                    }
+                };
                 let report = match plan_filelist_write_cancellable(
                     &request.root,
-                    request.entries.as_slice(),
+                    &entries,
                     FileListWriteOptions {
                         allow_root_overwrite: request.allow_root_overwrite,
                         propagate_to_ancestors: request.propagate_to_ancestors,
@@ -1358,6 +1369,64 @@ fn spawn_filelist_worker(request: TuiFileListRequest) -> Result<ActiveFileListWo
         done,
         handle: Some(handle),
     })
+}
+
+/// FileList creation must never inherit the TUI's currently displayed index: it
+/// may be limited by the active source or file-kind filters.  Build the same
+/// fresh, walker-only all-kinds snapshot used by the batch path instead.
+fn build_filelist_snapshot<C>(
+    root: &Path,
+    should_cancel: &C,
+) -> std::result::Result<Vec<PathBuf>, Box<FileListWriteReport>>
+where
+    C: Fn() -> bool,
+{
+    let entries = match build_index_cancellable(root, false, true, true, should_cancel) {
+        Ok(entries) => entries,
+        Err(error) if is_index_build_cancelled(&error) => {
+            return Err(Box::new(canceled_filelist_report(root)));
+        }
+        Err(error) => {
+            return Err(Box::new(FileListWriteReport {
+                status: FileListWriteStatus::Failed,
+                root_target: root.join("FileList.txt"),
+                committed: Vec::new(),
+                failed: vec![crate::indexer::FileListWriteFailure {
+                    path: root.to_path_buf(),
+                    error: error.to_string(),
+                }],
+                rolled_back: Vec::new(),
+                rollback_failed: Vec::new(),
+            }));
+        }
+    };
+    Ok(entries
+        .into_iter()
+        .filter(|entry| !is_root_filelist_entry(root, entry))
+        .collect())
+}
+
+fn canceled_filelist_report(root: &Path) -> FileListWriteReport {
+    FileListWriteReport {
+        status: FileListWriteStatus::Canceled,
+        root_target: root.join("FileList.txt"),
+        committed: Vec::new(),
+        failed: Vec::new(),
+        rolled_back: Vec::new(),
+        rollback_failed: Vec::new(),
+    }
+}
+
+fn is_root_filelist_entry(root: &Path, entry: &Path) -> bool {
+    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let Ok(relative) = entry.strip_prefix(root) else {
+        return false;
+    };
+    relative.components().count() == 1
+        && relative
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.eq_ignore_ascii_case("filelist.txt"))
 }
 
 fn write_selected_paths(
@@ -1821,11 +1890,14 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
         WorkerResponse::IndexFailed {
             request_id,
             root,
+            has_root_filelist,
             error,
         } => {
             if state.active_index_request.as_ref() == Some(&(request_id, root)) {
                 state.active_index_request = None;
                 state.indexed = false;
+                state.root_filelist_known = true;
+                state.root_filelist_exists = has_root_filelist;
                 state.status = format!("Indexing failed: {error}. Adjust options in F2 and retry.");
                 state.dirty = true;
             }
@@ -2311,7 +2383,9 @@ fn handle_filelist_confirmation_key(state: &mut TuiState, key: KeyEvent) -> KeyA
 
 fn handle_active_filelist_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     match (key.code, key.modifiers) {
-        (KeyCode::Char('c'), KeyModifiers::CONTROL) | (KeyCode::Esc, _) => KeyAction::Cancel,
+        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+        | (KeyCode::Char('g'), KeyModifiers::CONTROL)
+        | (KeyCode::Esc, _) => KeyAction::Cancel,
         (KeyCode::F(1), _) => {
             state.open_help();
             state.dirty = true;
@@ -3030,7 +3104,7 @@ fn render_help_overlay<W: Write>(
         ]),
         HelpContext::FileList => lines.extend([
             "FileList creation is settling; no result is accepted before it finishes.".to_string(),
-            "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+C exits after settlement."
+            "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+G/Ctrl+C exits after settlement."
                 .to_string(),
         ]),
     }
@@ -3447,6 +3521,7 @@ mod tests {
             WorkerResponse::IndexFailed {
                 request_id: 1,
                 root: PathBuf::from("root"),
+                has_root_filelist: false,
                 error: "broken FileList".to_string(),
             },
         )
@@ -3454,6 +3529,12 @@ mod tests {
 
         assert!(state.status.contains("broken FileList"));
         assert!(state.active_index_request.is_none());
+        assert!(state.root_filelist_known);
+        assert!(!state.root_filelist_exists);
+        assert!(matches!(
+            handle_key(&mut state, KeyEvent::new(KeyCode::F(6), KeyModifiers::NONE)),
+            KeyAction::OpenFileList
+        ));
     }
 
     #[test]
@@ -4793,7 +4874,7 @@ mod tests {
     }
 
     #[test]
-    fn tc_165_filelist_confirmation_requires_explicit_scope_and_overwrite_consent() {
+    fn tc_166_filelist_confirmation_requires_explicit_scope_and_overwrite_consent() {
         let mut state = TuiState::new("draft");
         state.root = PathBuf::from("fixture-root");
         state.root_filelist_known = true;
@@ -4831,7 +4912,68 @@ mod tests {
     }
 
     #[test]
-    fn tc_165_filelist_requires_completed_index_and_intent_priority_is_sticky() {
+    fn tc_166_filelist_uses_fresh_walker_snapshot_not_partial_tui_entries() {
+        let temp = TestTempDir::new("filelist-fresh-walker");
+        let nested = temp.path.join("nested");
+        fs::create_dir_all(&nested).expect("create nested directory");
+        fs::write(temp.path.join("visible.txt"), "visible").expect("write visible file");
+        fs::write(nested.join("inside.txt"), "inside").expect("write nested file");
+        fs::write(temp.path.join("FileList.txt"), "stale-entry\n").expect("write old FileList");
+
+        let mut state = TuiState::new("");
+        state.root = temp.path.clone();
+        state.runtime_options.include_files = true;
+        state.runtime_options.include_dirs = false;
+        state.entries = Arc::new(vec![temp.path.join("visible.txt")]);
+        let request = state.next_filelist_request(false, true);
+
+        let entries =
+            build_filelist_snapshot(&request.root, &|| false).expect("fresh walker snapshot");
+        assert!(entries.iter().any(|entry| entry.ends_with("visible.txt")));
+        assert!(entries.iter().any(|entry| entry.ends_with("nested")));
+        assert!(entries.iter().any(|entry| entry.ends_with("inside.txt")));
+        assert!(
+            !entries.iter().any(|entry| entry.ends_with("FileList.txt")),
+            "the root FileList must not list itself"
+        );
+
+        let plan = plan_filelist_write_cancellable(
+            &request.root,
+            &entries,
+            FileListWriteOptions {
+                allow_root_overwrite: request.allow_root_overwrite,
+                propagate_to_ancestors: request.propagate_to_ancestors,
+            },
+            &|| false,
+        )
+        .expect("write plan");
+        let report = execute_filelist_write_plan(&plan, &|| false);
+        assert_eq!(report.status, FileListWriteStatus::Completed);
+        let text = fs::read_to_string(temp.path.join("FileList.txt")).expect("read FileList");
+        assert!(text.contains("visible.txt"));
+        assert!(text.contains("nested"));
+        assert!(text.contains("inside.txt"));
+        assert!(!text.contains("FileList.txt"));
+    }
+
+    #[test]
+    fn tc_166_filelist_fresh_walk_cancellation_is_a_clean_report() {
+        let temp = TestTempDir::new("filelist-fresh-walk-cancel");
+        fs::write(temp.path.join("candidate.txt"), "candidate").expect("write candidate");
+        let cancelled = AtomicBool::new(true);
+
+        let report = build_filelist_snapshot(&temp.path, &|| cancelled.load(Ordering::Acquire))
+            .expect_err("cancelled walk must not reach planning");
+
+        assert_eq!(report.status, FileListWriteStatus::Canceled);
+        assert_eq!(report.exit_code(), 130);
+        assert!(report.committed.is_empty());
+        assert!(report.failed.is_empty());
+        assert!(!temp.path.join("FileList.txt").exists());
+    }
+
+    #[test]
+    fn tc_166_filelist_requires_completed_index_and_intent_priority_is_sticky() {
         let mut state = TuiState::new("");
         state.open_filelist_if_ready();
         assert!(state.filelist_confirmation.is_none());
@@ -4844,6 +4986,13 @@ mod tests {
         assert!(state.filelist_confirmation.is_some());
         state.filelist_confirmation = None;
         let request = state.next_filelist_request(false, false);
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL)
+            ),
+            KeyAction::Cancel
+        ));
         state.record_filelist_intent(PendingFileListIntent::SelectOutput);
         assert_eq!(
             state.pending_filelist_intent,
@@ -4874,7 +5023,7 @@ mod tests {
     }
 
     #[test]
-    fn tc_165_filelist_failure_does_not_resume_select_or_root_but_cancel_exits_one() {
+    fn tc_166_filelist_failure_does_not_resume_select_or_root_but_cancel_exits_one() {
         let (index_tx, _index_rx) = mpsc::channel();
         let freshness = TuiIndexFreshness::new();
         let actions = TuiActionFreshness::new();
@@ -4915,7 +5064,7 @@ mod tests {
     }
 
     #[test]
-    fn tc_165_filelist_worker_join_never_detaches_a_delayed_transaction() {
+    fn tc_166_filelist_worker_join_never_detaches_a_delayed_transaction() {
         let temp = TestTempDir::new("filelist-join");
         let marker = temp.path.join("FileList.txt");
         let (result_tx, result_rx) = mpsc::channel();
@@ -4956,7 +5105,7 @@ mod tests {
     }
 
     #[test]
-    fn tc_165_filelist_missing_or_panicked_worker_never_resumes_success_intents() {
+    fn tc_166_filelist_missing_or_panicked_worker_never_resumes_success_intents() {
         let (result_tx, result_rx) = mpsc::channel::<FileListWorkerResult>();
         drop(result_tx);
         let (done_tx, done_rx) = mpsc::channel();
