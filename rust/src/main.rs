@@ -559,6 +559,7 @@ fn validate_list_saved_roots_args(args: &Args) -> std::result::Result<(), &'stat
         || !matches!(args.source, CliIndexSource::Auto)
         || args.ignore_file.is_some()
         || args.no_ignore
+        || args.progress
         || !matches!(args.sort, CliSortMode::Score)
         || !matches!(args.action, CliAction::Print)
         || args.action_all

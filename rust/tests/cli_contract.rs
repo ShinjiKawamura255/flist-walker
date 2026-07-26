@@ -374,6 +374,17 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
         .args(["--cli", "query", "--list-saved-roots"])
         .output()
         .expect("run conflicting list CLI");
+    let (mut progress_conflict_command, progress_conflict_settings_dir) =
+        cli_command_with_settings("list-saved-roots-progress-conflict");
+    write_persisted_roots(
+        &progress_conflict_settings_dir,
+        None,
+        &[first.clone(), second.clone()],
+    );
+    let progress_conflict = progress_conflict_command
+        .args(["--cli", "--list-saved-roots", "--progress"])
+        .output()
+        .expect("run progress-conflicting list CLI");
     let missing = test_root("list-saved-missing");
     let (mut missing_command, missing_settings_dir) =
         cli_command_with_settings("list-saved-missing");
@@ -394,6 +405,10 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
         format!("{}\0{}\0", first.display(), second.display())
     );
     assert_eq!(conflict.status.code(), Some(2));
+    assert_eq!(progress_conflict.status.code(), Some(2));
+    assert!(progress_conflict.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&progress_conflict.stderr)
+        .contains("--list-saved-roots cannot be combined with search options"));
     assert!(missing_output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&missing_output.stdout),
