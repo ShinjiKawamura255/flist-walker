@@ -458,6 +458,7 @@ fn tc_050_worker_rejects_mixed_selection_before_executor_call() {
 
     assert!(calls.is_empty(), "preauthorization must be all-or-nothing");
     assert!(response.notice.starts_with("Action blocked:"));
+    assert!(response.notice.contains("outside current root"));
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&outside_root);
 }
