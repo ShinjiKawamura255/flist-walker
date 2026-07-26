@@ -617,7 +617,9 @@ fn tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots() {
     let _ = fs::remove_dir_all(&saved_root);
 }
 
-#[cfg(unix)]
+// macOS filesystems reject the invalid byte sequence used by this Linux
+// byte-preservation contract, even though Rust exposes Unix OsString APIs.
+#[cfg(target_os = "linux")]
 #[test]
 fn tc_006_print0_preserves_non_utf8_path_bytes() {
     use std::ffi::OsString;
