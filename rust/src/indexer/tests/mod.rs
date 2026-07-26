@@ -546,12 +546,21 @@ fn tc165_plan_uses_deterministic_root_filename_precedence() {
 
     assert_eq!(report.exit_code(), 0);
     assert_eq!(fs::read_to_string(&upper).expect("read upper"), "new.txt\n");
-    #[cfg(not(windows))]
+    // macOS volumes are commonly case-insensitive, so these spellings can
+    // resolve to the same physical entry even though they are distinct paths
+    // on Linux. Only require the lower-priority files to remain unchanged
+    // when the filesystem actually keeps them distinct.
+    if fs::canonicalize(&_lower).expect("canonicalize lower")
+        != fs::canonicalize(&upper).expect("canonicalize upper")
     {
         assert_eq!(
             fs::read_to_string(&_lower).expect("read lower"),
             "lower-old\n"
         );
+    }
+    if fs::canonicalize(&_variant).expect("canonicalize variant")
+        != fs::canonicalize(&upper).expect("canonicalize upper")
+    {
         assert_eq!(
             fs::read_to_string(&_variant).expect("read variant"),
             "variant-old\n"
