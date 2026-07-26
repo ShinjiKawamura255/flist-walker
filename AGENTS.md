@@ -73,19 +73,3 @@
 
 ## 7. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
-
-## Temporary Change Plan Rule
-- This section applies only to CLI/TUI usability parity.
-- Before working on this scope, read the execution plans in order:
-  - `docs/EXECUTION-PLAN-20260726-roadmap-cli-tui-parity.md`
-  - `docs/EXECUTION-PLAN-20260726-slice-a-cli-contracts-shared-core.md`
-  - `docs/EXECUTION-PLAN-20260726-slice-b-batch-cli.md`
-  - `docs/EXECUTION-PLAN-20260726-slice-c-tui-selection.md`
-  - `docs/EXECUTION-PLAN-20260726-slice-d-tui-operations.md`
-  - `docs/EXECUTION-PLAN-20260726-slice-e-closure.md`
-- Use only plans whose `Plan Readiness` is `ready-for-implementation`.
-- Follow the plans' `Execution Profile`, `Risk Tier`, `Planning Depth`, `Review Pattern`, `Review Requiredness`, `Review Placement`, `Execution Mode`, and `Closure Capsule`.
-- Use `docs/EXECUTION-WORK-ITEMS-20260726-cli-tui-parity.json` as execution state and do not mark items complete without concrete evidence.
-- Do not change scope, order, risk handling, review requirements, rollback boundaries, or closure conditions without updating the plan first.
-- Do not remove this rule, delete execution plans, create a closure commit, or report final completion until the required independent final review is complete and findings handling is recorded.
-- After the planned work is complete, remove this temporary section.

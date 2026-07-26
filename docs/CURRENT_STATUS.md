@@ -8,6 +8,12 @@ This document is the short current-state snapshot for maintainers. It does not o
 - The Python implementation under `prototype/python/` is retained as a prototype, not as the feature-development target.
 - GUI responsiveness remains the primary implementation constraint: indexing, search, preview, and FileList creation stay off the UI thread and stale worker responses must not roll state backward.
 
+## CLI/TUI Usability Baseline (2026-07-26)
+
+- Batch CLI provides script-safe sort-before-limit output, source/type/search controls, saved-root selection, authorized open/reveal actions, and transactional FileList creation.
+- Interactive TUI provides asynchronous preview and persisted history, contextual help, runtime options and sorting, saved-root switching and refresh, current-row authorized actions, and settled transactional FileList creation from a fresh all-kind walker snapshot.
+- Full Rust regression, check/clippy/format/diff gates, focused TC-163 through TC-166 contracts, VM-003 indexing performance guards, and Windows ConPTY terminal evidence passed. Exact commit and evidence mapping is in [Durable History](history/durable-history.md); native action launch remains conditional on explicit manual approval and is covered automatically with a recording backend.
+
 ## Hardening Baseline (2026-07-22)
 
 - Worker-side action authorization revalidates resolved targets immediately before OS interaction (`0274f1b`).

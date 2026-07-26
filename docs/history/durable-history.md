@@ -2,6 +2,18 @@
 
 ## Durable History
 
+### 2026-07-26 CLI/TUI usability parity
+
+The CLI/TUI parity roadmap closed after independent Sol review and focused Terra implementation. Batch CLI and interactive TUI now share the GUI-derived search, sorting, action authorization, root persistence, history, preview, refresh, and FileList safety contracts without changing script-safe stdout ownership.
+
+| Area | Durable commits | Outcome |
+| --- | --- | --- |
+| Contracts and shared core | `ac55c9a`, `db26c84`, `4a756a5`, `ce95547`, `f91124e`, `e163f82`, `dd4db42` | SDD trace, shared sort, asynchronous persistence, authorized action lifecycle, and panic-contained transactional FileList writer. |
+| Batch CLI | `3896309`, `6461eda`, `93b5ec6`, `c7266b4` | Sort-before-limit, saved roots, guarded open/reveal, transactional FileList create, and exclusive root-listing options. |
+| Interactive TUI | `b16aa00`, `f973c10`, `062c62a`, `614cffd`, `b6e3b11`, `d4af1ce` | Preview/history/help, current-row actions, runtime options/sort, saved roots/refresh, and settled F6 creation from a fresh all-kind walker snapshot. |
+
+Closure validation passed 728 library tests with 8 ignored performance/platform cases, 7 binary tests, 27 CLI integration tests, all-target check/clippy, format/diff checks, and the required VM-003 FileList/Walker performance guards. Windows ConPTY evidence passed stdout redirection, path-only selection, preview/help, resize, bracketed paste, exit-130 cancellation, and terminal restoration. Real OS action launch was not used without separate explicit approval; TC-164 recording backends verified key dispatch, current-row targeting, authorization, cancellation, and zero-call rejection paths. Final independent review reported code and closure GO with no unresolved blocker, major, or minor findings.
+
 ### 2026-07-22 Design and implementation hardening
 
 The hardening roadmap closed as `closed-with-partial-native-validation`. Product and deterministic goals are complete; native GUI interaction remains a durable release/manual validation responsibility under `docs/GUI-TESTPLAN.md` and is not reported as PASS.
