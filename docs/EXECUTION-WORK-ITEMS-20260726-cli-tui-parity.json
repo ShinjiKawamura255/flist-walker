@@ -134,17 +134,23 @@
     {
       "id": "slice-b.action",
       "title": "Implement batch open/reveal and mass-action guard",
-      "status": "pending",
+      "status": "complete",
       "depends_on": ["slice-b.options-sort"],
       "owner": "subagent:terra-batch-action",
       "model_capability": "standard",
       "routing_reason": "Bounded side-effect adapter work with recording-backend tests.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/main.rs", "rust/tests/cli_contract.rs"],
       "acceptance": ["Implicit multi-target action makes zero calls", "stdout/stderr/exit/partial behavior matches matrix", "Cancellation exits 130"],
       "verification": ["focused CLI action tests", "cargo test --test cli_contract", "cargo test"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {
+        "files": ["rust/src/main.rs", "rust/tests/cli_contract.rs"],
+        "commands": ["cargo test --bin flistwalker tc_164_", "cargo test --test cli_contract", "cargo test", "cargo check", "cargo clippy --all-targets -- -D warnings", "cargo fmt --all -- --check", "git diff --check"],
+        "artifacts": [],
+        "reviews": ["Sol integration review required raw backend diagnostics, display paths, and zero-call/cancel fixtures; all resolved"],
+        "logs": []
+      },
+      "result": "Batch CLI now supports print/open/reveal, refuses implicit multi-target side effects before backend calls, runs non-print targets through the shared authorized lifecycle, reports safe path/count/raw executor diagnostics on stderr, keeps stdout empty, and maps cancellation to exit 130.",
       "blocker": null
     },
     {

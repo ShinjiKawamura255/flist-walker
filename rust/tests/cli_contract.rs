@@ -401,6 +401,83 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
     );
 }
 
+#[test]
+fn tc_164_action_print_preserves_output_and_action_all_requires_non_print_mode() {
+    let root = test_root("action-print");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write file");
+    fs::write(root.join("beta.txt"), "beta").expect("write file");
+
+    let print = cli_command("action-print")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--action",
+            "print",
+        ])
+        .output()
+        .expect("run print action CLI");
+    let invalid_all = cli_command("action-all-print")
+        .args(["--cli", "--action-all"])
+        .output()
+        .expect("run invalid action-all CLI");
+    let absolute = cli_command("action-open-absolute")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--action",
+            "open",
+            "--absolute",
+        ])
+        .output()
+        .expect("run invalid absolute action CLI");
+    let print0 = cli_command("action-reveal-print0")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--action",
+            "reveal",
+            "--print0",
+        ])
+        .output()
+        .expect("run invalid print0 action CLI");
+    let implicit_multi = cli_command("action-open-implicit-multi")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--action",
+            "open",
+        ])
+        .output()
+        .expect("run implicit multi action CLI");
+
+    assert!(print.status.success());
+    assert_eq!(String::from_utf8_lossy(&print.stdout).trim(), "alpha.txt");
+    assert_eq!(invalid_all.status.code(), Some(2));
+    assert_eq!(absolute.status.code(), Some(2));
+    assert_eq!(print0.status.code(), Some(2));
+    assert_eq!(implicit_multi.status.code(), Some(1));
+    assert!(implicit_multi.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&implicit_multi.stderr).contains("require --action-all"));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[cfg(unix)]
 #[test]
 fn tc_006_print0_preserves_non_utf8_path_bytes() {
@@ -612,6 +689,8 @@ fn tc_006_help_describes_cli_usability_options() {
         "--ignore-file",
         "--no-ignore",
         "--progress",
+        "--action",
+        "--action-all",
     ] {
         assert!(
             stdout.contains(expected),

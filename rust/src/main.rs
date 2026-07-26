@@ -14,6 +14,11 @@ use std::time::Instant;
 use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
+use flist_walker::actions::{
+    execute_authorized_action_request, execute_or_open, AuthorizedActionBackend,
+    AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport,
+    AuthorizedActionRequest,
+};
 use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
 use flist_walker::cli_tui::{run_cli_tui, CliTuiOptions, CliTuiOutcome};
 use flist_walker::entry::Entry;
@@ -23,7 +28,7 @@ use flist_walker::ignore_list::{
 use flist_walker::indexer::{
     build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
 };
-use flist_walker::path_utils::output_path_bytes;
+use flist_walker::path_utils::{normalize_path_for_display, output_path_bytes};
 use flist_walker::persistence::load_persisted_roots_and_history;
 use flist_walker::query::{CompiledIgnoreTerms, QueryScope};
 use flist_walker::runtime_config::initialize_runtime_config;
@@ -78,6 +83,24 @@ enum CliSortMode {
     CreatedAsc,
     SizeDesc,
     SizeAsc,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+enum CliAction {
+    #[default]
+    Print,
+    Open,
+    Reveal,
+}
+
+impl CliAction {
+    fn authorized_mode(self) -> Option<AuthorizedActionMode> {
+        match self {
+            Self::Print => None,
+            Self::Open => Some(AuthorizedActionMode::ExecuteOrOpen),
+            Self::Reveal => Some(AuthorizedActionMode::Reveal),
+        }
+    }
 }
 
 impl From<CliSortMode> for SearchSortMode {
@@ -202,21 +225,49 @@ struct Args {
     )]
     sort: CliSortMode,
 
+    /// Print matches, open a match, or reveal its containing folder.
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliAction::Print,
+        requires = "cli",
+        conflicts_with_all = ["interactive", "list_saved_roots"]
+    )]
+    action: CliAction,
+
+    /// Allow an open or reveal action to target every post-limit match.
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "cli",
+        conflicts_with_all = ["interactive", "list_saved_roots"]
+    )]
+    action_all: bool,
+
     /// List persisted saved roots without indexing or selecting paths.
     #[arg(
         long,
         default_value_t = false,
         requires = "cli",
-        conflicts_with_all = ["root", "use_default_root", "saved_root", "interactive"]
+        conflicts_with_all = [
+            "root",
+            "use_default_root",
+            "saved_root",
+            "interactive",
+            "action",
+            "action_all"
+        ]
     )]
     list_saved_roots: bool,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum BatchOutcome {
     Matches,
     NoMatch,
     Cancelled,
+    ActionRejected,
+    Action(AuthorizedActionReport),
 }
 
 #[cfg(target_os = "windows")]
@@ -246,7 +297,17 @@ fn load_cli_ignore_terms(args: &Args) -> Result<Vec<String>> {
     }
 }
 
-fn run_cli(args: &Args, root: &Path, cancelled: &AtomicBool) -> Result<BatchOutcome> {
+fn run_cli(args: &Args, root: &Path, cancelled: &Arc<AtomicBool>) -> Result<BatchOutcome> {
+    let backend = CliActionBackend;
+    run_cli_with_backend(args, root, cancelled, &backend)
+}
+
+fn run_cli_with_backend(
+    args: &Args,
+    root: &Path,
+    cancelled: &Arc<AtomicBool>,
+    backend: &dyn AuthorizedActionBackend,
+) -> Result<BatchOutcome> {
     let (include_files, include_dirs) = args.entry_type.include_flags();
     let use_filelist = match args.source {
         CliIndexSource::Auto | CliIndexSource::Filelist => true,
@@ -324,32 +385,128 @@ fn run_cli(args: &Args, root: &Path, cancelled: &AtomicBool) -> Result<BatchOutc
         .map(|(path, _score)| path)
         .collect::<Vec<_>>();
 
-    let mut framed_output = Vec::new();
-    for path in &paths {
+    if args.action == CliAction::Print {
+        write_cli_paths(&paths, root, args.absolute, args.print0, cancelled.as_ref())?;
         if cancelled.load(Ordering::Relaxed) {
             return Ok(BatchOutcome::Cancelled);
         }
-        framed_output.extend_from_slice(&output_path_bytes(
-            path,
-            root,
-            !args.absolute,
-            args.print0,
-        ));
-        framed_output.extend_from_slice(if args.print0 { b"\0" } else { b"\n" });
+        return Ok(if paths.is_empty() {
+            BatchOutcome::NoMatch
+        } else {
+            BatchOutcome::Matches
+        });
+    }
+    if paths.is_empty() {
+        return Ok(BatchOutcome::NoMatch);
+    }
+    Ok(dispatch_cli_action(args, root, paths, cancelled, backend))
+}
+
+fn dispatch_cli_action(
+    args: &Args,
+    root: &Path,
+    paths: Vec<PathBuf>,
+    cancelled: &Arc<AtomicBool>,
+    backend: &dyn AuthorizedActionBackend,
+) -> BatchOutcome {
+    if paths.len() > 1 && !args.action_all {
+        eprintln!(
+            "Action refused: {} matches require --action-all",
+            paths.len()
+        );
+        return BatchOutcome::ActionRejected;
+    }
+    let request = AuthorizedActionRequest::new_with_cancellation(
+        1,
+        root.to_path_buf(),
+        paths,
+        args.action
+            .authorized_mode()
+            .expect("non-print CLI action has an authorized mode"),
+        Arc::clone(cancelled),
+    );
+    let report = execute_authorized_action_request(&request, &CliActionGuard, backend);
+    write_cli_action_report(&report);
+    BatchOutcome::Action(report)
+}
+
+fn write_cli_paths(
+    paths: &[PathBuf],
+    root: &Path,
+    absolute: bool,
+    print0: bool,
+    cancelled: &AtomicBool,
+) -> Result<()> {
+    let mut framed_output = Vec::new();
+    for path in paths {
+        if cancelled.load(Ordering::Relaxed) {
+            return Ok(());
+        }
+        framed_output.extend_from_slice(&output_path_bytes(path, root, !absolute, print0));
+        framed_output.extend_from_slice(if print0 { b"\0" } else { b"\n" });
     }
     if cancelled.load(Ordering::Relaxed) {
-        return Ok(BatchOutcome::Cancelled);
+        return Ok(());
     }
     let stdout = io::stdout();
     let mut output = stdout.lock();
     output.write_all(&framed_output)?;
     output.flush()?;
+    Ok(())
+}
 
-    Ok(if paths.is_empty() {
-        BatchOutcome::NoMatch
-    } else {
-        BatchOutcome::Matches
-    })
+struct CliActionGuard;
+
+impl AuthorizedActionGuard for CliActionGuard {
+    fn is_current(&self, _request_id: u64, _trusted_root: &Path) -> bool {
+        true
+    }
+}
+
+struct CliActionBackend;
+
+impl AuthorizedActionBackend for CliActionBackend {
+    fn execute_or_open(&self, path: &Path) -> Result<()> {
+        execute_or_open(path)
+    }
+
+    fn reveal(&self, path: &Path) -> Result<()> {
+        // The shared authorization lifecycle has already converted files to their parent
+        // directories for reveal mode and reauthorized the resulting execution path.
+        execute_or_open(path)
+    }
+}
+
+fn write_cli_action_report(report: &AuthorizedActionReport) {
+    eprintln!("{}", format_cli_action_report(report));
+}
+
+fn format_cli_action_report(report: &AuthorizedActionReport) -> String {
+    let path = report
+        .display_path
+        .as_deref()
+        .map(normalize_path_for_display)
+        .unwrap_or_else(|| "selected target".to_string());
+    let diagnostic = report.diagnostic.as_deref().unwrap_or("executor failed");
+    let backend_error = report.backend_error.as_deref().unwrap_or("unknown error");
+    match report.outcome {
+        AuthorizedActionOutcome::Completed => {
+            format!("Action completed: {}/{} targets", report.completed, report.total)
+        }
+        AuthorizedActionOutcome::Blocked => format!(
+            "Action blocked: {path}: {}",
+            report.diagnostic.as_deref().unwrap_or("authorization failed")
+        ),
+        AuthorizedActionOutcome::Canceled => "Action canceled".to_string(),
+        AuthorizedActionOutcome::Superseded => "Action superseded".to_string(),
+        AuthorizedActionOutcome::Failed => {
+            format!("Action failed: {path}: {diagnostic}: {backend_error}")
+        }
+        AuthorizedActionOutcome::PartialFailure => format!(
+            "Action partial failure: completed {}/{} targets at {path}: {diagnostic}: {backend_error}",
+            report.completed, report.total
+        ),
+    }
 }
 
 fn resolve_cli_root(args: &Args) -> std::result::Result<PathBuf, String> {
@@ -385,8 +542,20 @@ fn validate_list_saved_roots_args(args: &Args) -> std::result::Result<(), &'stat
         || args.no_ignore
         || args.progress
         || !matches!(args.sort, CliSortMode::Score)
+        || !matches!(args.action, CliAction::Print)
+        || args.action_all
     {
         return Err("--list-saved-roots cannot be combined with search options");
+    }
+    Ok(())
+}
+
+fn validate_batch_action_args(args: &Args) -> std::result::Result<(), &'static str> {
+    if args.action_all && args.action == CliAction::Print {
+        return Err("--action-all requires --action open or --action reveal");
+    }
+    if args.action != CliAction::Print && (args.absolute || args.print0) {
+        return Err("--absolute and --print0 are only valid with --action print");
     }
     Ok(())
 }
@@ -626,6 +795,23 @@ fn initialize_gui_mode() -> Result<()> {
     Ok(())
 }
 
+fn batch_exit_code(outcome: BatchOutcome, fail_no_match: bool) -> ExitCode {
+    match outcome {
+        BatchOutcome::Cancelled => ExitCode::from(130),
+        BatchOutcome::NoMatch if fail_no_match => ExitCode::from(1),
+        BatchOutcome::Matches | BatchOutcome::NoMatch => ExitCode::SUCCESS,
+        BatchOutcome::ActionRejected => ExitCode::from(1),
+        BatchOutcome::Action(report) => match report.outcome {
+            AuthorizedActionOutcome::Completed => ExitCode::SUCCESS,
+            AuthorizedActionOutcome::Canceled => ExitCode::from(130),
+            AuthorizedActionOutcome::Blocked
+            | AuthorizedActionOutcome::Superseded
+            | AuthorizedActionOutcome::Failed
+            | AuthorizedActionOutcome::PartialFailure => ExitCode::from(1),
+        },
+    }
+}
+
 fn main() -> Result<ExitCode> {
     init_tracing();
     if run_internal_update_helper_if_requested()? {
@@ -633,6 +819,12 @@ fn main() -> Result<ExitCode> {
     }
 
     let args = Args::parse();
+    if args.cli && !args.interactive {
+        if let Err(error) = validate_batch_action_args(&args) {
+            eprintln!("error: {error}");
+            return Ok(ExitCode::from(2));
+        }
+    }
     if args.cli && !args.interactive && args.list_saved_roots {
         if let Err(error) = validate_list_saved_roots_args(&args) {
             eprintln!("error: {error}");
@@ -678,11 +870,10 @@ fn main() -> Result<ExitCode> {
             let signal_cancelled = Arc::clone(&cancelled);
             ctrlc::set_handler(move || signal_cancelled.store(true, Ordering::Relaxed))
                 .context("failed to install CLI signal handler")?;
-            Ok(match run_cli(&args, &root, &cancelled)? {
-                BatchOutcome::Cancelled => ExitCode::from(130),
-                BatchOutcome::NoMatch if args.fail_no_match => ExitCode::from(1),
-                BatchOutcome::Matches | BatchOutcome::NoMatch => ExitCode::SUCCESS,
-            })
+            Ok(batch_exit_code(
+                run_cli(&args, &root, &cancelled)?,
+                args.fail_no_match,
+            ))
         }
     } else {
         initialize_gui_mode()?;
@@ -694,6 +885,96 @@ fn main() -> Result<ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct RecordingCliActionBackend {
+        calls: Mutex<Vec<(AuthorizedActionMode, PathBuf)>>,
+        fail_at: Option<usize>,
+        cancel_after_first_call: Option<Arc<AtomicBool>>,
+    }
+
+    impl RecordingCliActionBackend {
+        fn successful() -> Self {
+            Self {
+                calls: Mutex::new(Vec::new()),
+                fail_at: None,
+                cancel_after_first_call: None,
+            }
+        }
+
+        fn failing_at(call_index: usize) -> Self {
+            Self {
+                calls: Mutex::new(Vec::new()),
+                fail_at: Some(call_index),
+                cancel_after_first_call: None,
+            }
+        }
+
+        fn canceling_after_first_call(cancellation: Arc<AtomicBool>) -> Self {
+            Self {
+                calls: Mutex::new(Vec::new()),
+                fail_at: None,
+                cancel_after_first_call: Some(cancellation),
+            }
+        }
+
+        fn calls(&self) -> Vec<(AuthorizedActionMode, PathBuf)> {
+            self.calls.lock().expect("recording backend lock").clone()
+        }
+
+        fn dispatch(&self, mode: AuthorizedActionMode, path: &Path) -> Result<()> {
+            let call_index = {
+                let mut calls = self.calls.lock().expect("recording backend lock");
+                let index = calls.len();
+                calls.push((mode, path.to_path_buf()));
+                index
+            };
+            if call_index == 0 {
+                if let Some(cancellation) = &self.cancel_after_first_call {
+                    cancellation.store(true, Ordering::Release);
+                }
+            }
+            if self.fail_at == Some(call_index) {
+                anyhow::bail!("recorded backend failure {call_index}");
+            }
+            Ok(())
+        }
+    }
+
+    impl AuthorizedActionBackend for RecordingCliActionBackend {
+        fn execute_or_open(&self, path: &Path) -> Result<()> {
+            self.dispatch(AuthorizedActionMode::ExecuteOrOpen, path)
+        }
+
+        fn reveal(&self, path: &Path) -> Result<()> {
+            self.dispatch(AuthorizedActionMode::Reveal, path)
+        }
+    }
+
+    fn action_test_root(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        std::env::temp_dir().join(format!("flistwalker-cli-action-{name}-{nonce}"))
+    }
+
+    fn action_args(action: &str, action_all: bool) -> Args {
+        let mut args = vec!["flistwalker", "--cli", "--action", action];
+        if action_all {
+            args.push("--action-all");
+        }
+        Args::try_parse_from(args).expect("parse action args")
+    }
+
+    fn action_report(outcome: BatchOutcome) -> AuthorizedActionReport {
+        match outcome {
+            BatchOutcome::Action(report) => report,
+            other => panic!("expected action report, got {other:?}"),
+        }
+    }
 
     #[test]
     fn default_gui_args_do_not_trigger_cli_option_requirements() {
@@ -717,12 +998,159 @@ mod tests {
             root.to_str().expect("UTF-8 test path"),
         ])
         .expect("parse CLI arguments");
-        let cancelled = AtomicBool::new(true);
+        let cancelled = Arc::new(AtomicBool::new(true));
 
         assert_eq!(
             run_cli(&args, &root, &cancelled).expect("cancelled CLI outcome"),
             BatchOutcome::Cancelled
         );
+    }
+
+    #[test]
+    fn tc_164_cli_action_rejects_implicit_multi_and_preflight_escape_without_calls() {
+        let root = action_test_root("preflight");
+        let outside = action_test_root("outside");
+        fs::create_dir_all(&root).expect("create root");
+        fs::create_dir_all(&outside).expect("create outside");
+        let first = root.join("first.txt");
+        let second = root.join("second.txt");
+        let escape = outside.join("escape.txt");
+        fs::write(&first, "first").expect("write first");
+        fs::write(&second, "second").expect("write second");
+        fs::write(&escape, "escape").expect("write escape");
+        let root = root.canonicalize().expect("canonical root");
+        let first = first.canonicalize().expect("canonical first");
+        let second = second.canonicalize().expect("canonical second");
+        let escape = escape.canonicalize().expect("canonical escape");
+        let cancellation = Arc::new(AtomicBool::new(false));
+
+        let implicit_backend = RecordingCliActionBackend::successful();
+        assert_eq!(
+            dispatch_cli_action(
+                &action_args("open", false),
+                &root,
+                vec![first.clone(), second],
+                &cancellation,
+                &implicit_backend,
+            ),
+            BatchOutcome::ActionRejected
+        );
+        assert!(implicit_backend.calls().is_empty());
+
+        let escape_backend = RecordingCliActionBackend::successful();
+        let report = action_report(dispatch_cli_action(
+            &action_args("open", true),
+            &root,
+            vec![first, escape.clone()],
+            &cancellation,
+            &escape_backend,
+        ));
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Blocked);
+        assert_eq!(report.completed, 0);
+        assert!(escape_backend.calls().is_empty());
+        let blocked_diagnostic = format_cli_action_report(&report);
+        assert!(blocked_diagnostic.contains("outside current root"));
+        assert!(blocked_diagnostic.contains(&normalize_path_for_display(&escape)));
+
+        let _ = fs::remove_dir_all(root);
+        let _ = fs::remove_dir_all(outside);
+    }
+
+    #[test]
+    fn tc_164_cli_action_uses_recording_backend_for_open_reveal_partial_and_cancel() {
+        let root = action_test_root("dispatch");
+        fs::create_dir_all(&root).expect("create root");
+        let first = root.join("first.txt");
+        let second = root.join("second.txt");
+        fs::write(&first, "first").expect("write first");
+        fs::write(&second, "second").expect("write second");
+        let root = root.canonicalize().expect("canonical root");
+        let first = first.canonicalize().expect("canonical first");
+        let second = second.canonicalize().expect("canonical second");
+
+        let open_backend = RecordingCliActionBackend::successful();
+        let open = action_report(dispatch_cli_action(
+            &action_args("open", false),
+            &root,
+            vec![first.clone()],
+            &Arc::new(AtomicBool::new(false)),
+            &open_backend,
+        ));
+        assert_eq!(open.outcome, AuthorizedActionOutcome::Completed);
+        assert_eq!(
+            open_backend.calls(),
+            vec![(AuthorizedActionMode::ExecuteOrOpen, first.clone())]
+        );
+
+        let reveal_backend = RecordingCliActionBackend::successful();
+        let reveal = action_report(dispatch_cli_action(
+            &action_args("reveal", false),
+            &root,
+            vec![first.clone()],
+            &Arc::new(AtomicBool::new(false)),
+            &reveal_backend,
+        ));
+        assert_eq!(reveal.outcome, AuthorizedActionOutcome::Completed);
+        assert_eq!(
+            reveal_backend.calls(),
+            vec![(AuthorizedActionMode::Reveal, root.clone())]
+        );
+
+        let partial_backend = RecordingCliActionBackend::failing_at(1);
+        let partial = action_report(dispatch_cli_action(
+            &action_args("open", true),
+            &root,
+            vec![first.clone(), second.clone()],
+            &Arc::new(AtomicBool::new(false)),
+            &partial_backend,
+        ));
+        assert_eq!(partial.outcome, AuthorizedActionOutcome::PartialFailure);
+        assert_eq!((partial.completed, partial.total), (1, 2));
+        let partial_diagnostic = format_cli_action_report(&partial);
+        assert!(partial_diagnostic.contains("completed 1/2 targets"));
+        assert!(partial_diagnostic.contains("recorded backend failure 1"));
+        assert!(partial_diagnostic.contains(&normalize_path_for_display(&second)));
+        assert_eq!(partial_backend.calls().len(), 2);
+        assert_eq!(
+            batch_exit_code(BatchOutcome::Action(partial.clone()), false),
+            ExitCode::from(1)
+        );
+
+        let canceled = Arc::new(AtomicBool::new(true));
+        let pre_canceled_backend = RecordingCliActionBackend::successful();
+        let pre_canceled = action_report(dispatch_cli_action(
+            &action_args("open", false),
+            &root,
+            vec![first.clone()],
+            &canceled,
+            &pre_canceled_backend,
+        ));
+        assert_eq!(pre_canceled.outcome, AuthorizedActionOutcome::Canceled);
+        assert!(pre_canceled_backend.calls().is_empty());
+        assert_eq!(
+            batch_exit_code(BatchOutcome::Action(pre_canceled.clone()), false),
+            ExitCode::from(130)
+        );
+
+        let between_canceled = Arc::new(AtomicBool::new(false));
+        let between_backend =
+            RecordingCliActionBackend::canceling_after_first_call(Arc::clone(&between_canceled));
+        let between = action_report(dispatch_cli_action(
+            &action_args("open", true),
+            &root,
+            vec![first, second],
+            &between_canceled,
+            &between_backend,
+        ));
+        assert_eq!(between.outcome, AuthorizedActionOutcome::Canceled);
+        assert_eq!(between.completed, 1);
+        assert_eq!(between_backend.calls().len(), 1);
+        assert_eq!(
+            batch_exit_code(BatchOutcome::Action(between), false),
+            ExitCode::from(130)
+        );
+
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
