@@ -55,6 +55,13 @@
 - self-update 後も配置先ディレクトリに `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が残る必要がある。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## CLI terminal dependency review (2026-07-26)
+
+- Direct dependencies: `crossterm 0.28.1` (MIT, <https://github.com/crossterm-rs/crossterm>) and `unicode-width 0.1.14` (MIT OR Apache-2.0, <https://github.com/unicode-rs/unicode-width>).
+- Newly resolved terminal dependencies were reviewed as permissive: `crossterm_winapi 0.9.1` (MIT), `mio 1.1.1` (MIT), `signal-hook 0.3.18` (Apache-2.0/MIT), `signal-hook-mio 0.2.5` (MIT OR Apache-2.0), and `signal-hook-registry 1.4.8` (MIT OR Apache-2.0).
+- `THIRD_PARTY_NOTICES.txt` の direct dependency summary を更新した。追加 notice や copyleft 条件はない。
+- 配布物の構成は変更しない。release archive、standalone sidecar、macOS app bundle、self-update 後の `LICENSE` / `THIRD_PARTY_NOTICES` 同梱導線を既存 script/workflowで再検証する。
+
 ## Resolved audit warnings
 
 ### RUSTSEC-2026-0204: `crossbeam-epoch 0.9.18` invalid pointer dereference in pointer formatting

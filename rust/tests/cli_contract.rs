@@ -90,6 +90,33 @@ fn cli_outputs_at_most_limit_lines_for_empty_query() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[cfg(unix)]
+#[test]
+fn tc_006_print0_preserves_non_utf8_path_bytes() {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+
+    let root = test_root("print0-non-utf8");
+    fs::create_dir_all(&root).expect("create root");
+    let filename = vec![b'n', 0x80, b'.', b't', b'x', b't'];
+    fs::write(root.join(OsString::from_vec(filename.clone())), "x").expect("write non-UTF-8 file");
+
+    let output = cli_command("print0-non-utf8")
+        .arg("--cli")
+        .arg("--root")
+        .arg(&root)
+        .args(["--source", "walker", "--type", "file", "--print0"])
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    let mut expected = filename;
+    expected.push(0);
+    assert_eq!(output.stdout, expected);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn cli_does_not_cap_limit_to_1000() {
     let root = test_root("limit-over-1000");
@@ -145,7 +172,7 @@ fn cli_returns_non_zero_when_root_does_not_exist() {
 }
 
 #[test]
-fn cli_formats_scored_output_for_query() {
+fn cli_formats_path_output_for_query() {
     let root = test_root("scored-output");
     fs::create_dir_all(&root).expect("create root");
     fs::write(root.join("main.rs"), "fn main() {}").expect("write main");
@@ -170,8 +197,7 @@ fn cli_formats_scored_output_for_query() {
         .filter(|line| !line.trim().is_empty())
         .collect();
     assert_eq!(lines.len(), 1);
-    assert!(lines[0].starts_with('['));
-    assert!(lines[0].contains("] "));
+    assert_eq!(lines[0], "main.rs");
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -222,7 +248,7 @@ fn cli_interprets_filelist_paths_for_current_platform() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let actual = fs::canonicalize(stdout.trim()).expect("canonicalize cli output");
+    let actual = fs::canonicalize(root.join(stdout.trim())).expect("canonicalize cli output");
     let expected = fs::canonicalize(&file).expect("canonicalize expected file");
     assert_eq!(actual, expected);
 
@@ -250,6 +276,285 @@ fn cli_returns_non_zero_when_root_is_file() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("root is not a directory"));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_006_help_describes_cli_usability_options() {
+    let output = cli_command("help-options")
+        .arg("--help")
+        .output()
+        .expect("run cli help");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for expected in [
+        "--interactive",
+        "--absolute",
+        "--print0",
+        "--fail-no-match",
+        "--type",
+        "--regex",
+        "--case-sensitive",
+        "--source",
+        "--ignore-file",
+        "--no-ignore",
+        "--progress",
+    ] {
+        assert!(
+            stdout.contains(expected),
+            "help missing {expected}: {stdout}"
+        );
+    }
+    assert!(stdout.contains("Print paths without opening the GUI"));
+}
+
+#[test]
+fn tc_006_interactive_requires_cli_mode() {
+    let output = cli_command("interactive-requires-cli")
+        .arg("--interactive")
+        .output()
+        .expect("run cli");
+
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("--cli"), "unexpected stderr: {stderr}");
+}
+
+#[test]
+fn tc_006_absolute_and_print0_control_path_framing() {
+    let root = test_root("absolute-print0");
+    fs::create_dir_all(&root).expect("create root");
+    let file = root.join("alpha.txt");
+    fs::write(&file, "alpha").expect("write file");
+
+    let output = cli_command("absolute-print0")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--absolute",
+            "--print0",
+        ])
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    assert_eq!(output.stdout.last(), Some(&0));
+    assert_eq!(output.stdout.iter().filter(|byte| **byte == 0).count(), 1);
+    let text = String::from_utf8_lossy(&output.stdout[..output.stdout.len() - 1]);
+    let actual = fs::canonicalize(text.as_ref()).expect("canonicalize output");
+    assert_eq!(actual, fs::canonicalize(file).expect("canonicalize file"));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_006_fail_no_match_changes_only_the_exit_status() {
+    let root = test_root("fail-no-match");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write file");
+
+    let output = cli_command("fail-no-match")
+        .args([
+            "--cli",
+            "missing",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--fail-no-match",
+        ])
+        .output()
+        .expect("run cli");
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_006_type_filter_distinguishes_files_and_folders() {
+    let root = test_root("type-filter");
+    fs::create_dir_all(root.join("folder")).expect("create folder");
+    fs::write(root.join("file.txt"), "file").expect("write file");
+
+    let files = cli_command("type-files")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--type",
+            "file",
+        ])
+        .output()
+        .expect("run files cli");
+    let folders = cli_command("type-folders")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--type",
+            "folder",
+        ])
+        .output()
+        .expect("run folders cli");
+
+    assert!(files.status.success());
+    assert_eq!(String::from_utf8_lossy(&files.stdout).trim(), "file.txt");
+    assert!(folders.status.success());
+    assert_eq!(String::from_utf8_lossy(&folders.stdout).trim(), "folder");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_006_regex_and_case_sensitive_options_reach_shared_search() {
+    let root = test_root("regex-case");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("Alpha123.txt"), "alpha").expect("write file");
+
+    let regex = cli_command("regex")
+        .args([
+            "--cli",
+            "Alpha[0-9]+",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--regex",
+        ])
+        .output()
+        .expect("run regex cli");
+    let case_sensitive = cli_command("case-sensitive")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--case-sensitive",
+        ])
+        .output()
+        .expect("run case-sensitive cli");
+
+    assert!(regex.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&regex.stdout).trim(),
+        "Alpha123.txt"
+    );
+    assert!(case_sensitive.status.success());
+    assert!(case_sensitive.stdout.is_empty());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_006_source_controls_filelist_and_walker_selection() {
+    let root = test_root("source-selection");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("listed.txt"), "listed").expect("write listed");
+    fs::write(root.join("walked.txt"), "walked").expect("write walked");
+    fs::write(root.join("FileList.txt"), "listed.txt\n").expect("write filelist");
+
+    let automatic = cli_command("source-auto")
+        .args(["--cli", "walked", "--root", root.to_string_lossy().as_ref()])
+        .output()
+        .expect("run auto cli");
+    let walker = cli_command("source-walker")
+        .args([
+            "--cli",
+            "walked",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+        ])
+        .output()
+        .expect("run walker cli");
+
+    assert!(automatic.status.success());
+    assert!(automatic.stdout.is_empty());
+    assert!(walker.status.success());
+    assert_eq!(String::from_utf8_lossy(&walker.stdout).trim(), "walked.txt");
+
+    let missing_root = test_root("source-filelist-missing");
+    fs::create_dir_all(&missing_root).expect("create missing root");
+    let required = cli_command("source-filelist-missing")
+        .args([
+            "--cli",
+            "--root",
+            missing_root.to_string_lossy().as_ref(),
+            "--source",
+            "filelist",
+        ])
+        .output()
+        .expect("run required filelist cli");
+    assert!(!required.status.success());
+    assert!(String::from_utf8_lossy(&required.stderr).contains("FileList"));
+
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&missing_root);
+}
+
+#[test]
+fn tc_006_explicit_ignore_file_and_no_ignore_are_supported_and_conflict() {
+    let root = test_root("ignore-options");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("visible.txt"), "visible").expect("write visible");
+    fs::write(root.join("hidden.tmp"), "hidden").expect("write hidden");
+    let ignore = root.join("custom.ignore");
+    fs::write(&ignore, "tmp\n").expect("write ignore");
+
+    let filtered = cli_command("ignore-file")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--ignore-file",
+            ignore.to_string_lossy().as_ref(),
+        ])
+        .output()
+        .expect("run ignore cli");
+    assert!(filtered.status.success());
+    let filtered_text = String::from_utf8_lossy(&filtered.stdout);
+    assert!(filtered_text.contains("visible.txt"));
+    assert!(!filtered_text.contains("hidden.tmp"));
+
+    let conflict = cli_command("ignore-conflict")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--ignore-file",
+            ignore.to_string_lossy().as_ref(),
+            "--no-ignore",
+        ])
+        .output()
+        .expect("run conflicting cli");
+    assert!(!conflict.status.success());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_006_progress_is_written_to_stderr_only() {
+    let root = test_root("progress");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write file");
+
+    let output = cli_command("progress")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--progress",
+        ])
+        .output()
+        .expect("run cli");
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "alpha.txt");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Indexing"));
 
     let _ = fs::remove_dir_all(&root);
 }

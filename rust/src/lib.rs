@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod app;
+pub mod cli_tui;
 pub mod entry;
 pub mod fs_atomic;
 pub mod ignore_list;

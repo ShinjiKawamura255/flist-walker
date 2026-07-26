@@ -54,6 +54,27 @@ pub fn display_path_with_mode(path: &Path, root: &Path, prefer_relative: bool) -
     strip_windows_extended_prefix(&raw)
 }
 
+pub fn output_path_bytes(
+    path: &Path,
+    root: &Path,
+    prefer_relative: bool,
+    _nul_delimited: bool,
+) -> Vec<u8> {
+    #[cfg(unix)]
+    if _nul_delimited {
+        use std::os::unix::ffi::OsStrExt;
+
+        let output_path = if prefer_relative {
+            path.strip_prefix(root).unwrap_or(path)
+        } else {
+            path
+        };
+        return output_path.as_os_str().as_bytes().to_vec();
+    }
+
+    display_path_with_mode(path, root, prefer_relative).into_bytes()
+}
+
 pub fn normalize_path_for_display(path: &Path) -> String {
     let normalized = normalize_windows_path(path);
     strip_windows_extended_prefix(&normalized.to_string_lossy())
