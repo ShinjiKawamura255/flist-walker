@@ -15,7 +15,10 @@ pub use filelist_reader::{
 };
 pub use filelist_writer::{
     ancestor_filelist_propagation_needed, build_filelist_text, build_filelist_text_cancellable,
-    has_ancestor_filelists, write_filelist, write_filelist_cancellable,
+    execute_filelist_write_plan, has_ancestor_filelists, plan_filelist_write,
+    plan_filelist_write_cancellable, write_filelist, write_filelist_cancellable,
+    FileListWriteFailure, FileListWriteOptions, FileListWritePlan, FileListWriteReport,
+    FileListWriteStatus, FileListWriteTarget, FileListWriteTargetKind,
 };
 pub use walker::{
     walk_dirs, walk_entries, walk_entries_cancellable, walk_entries_stream,

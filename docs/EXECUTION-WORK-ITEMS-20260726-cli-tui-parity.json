@@ -90,17 +90,23 @@
     {
       "id": "slice-a.shared-filelist",
       "title": "Add FileList write-plan, error report, and rollback API",
-      "status": "ready",
+      "status": "complete",
       "depends_on": ["slice-a.shared-action"],
       "owner": "subagent:terra-filelist",
       "model_capability": "standard",
       "routing_reason": "Focused write safety boundary with temporary-root failure and rollback fixtures.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/indexer/filelist_reader.rs", "rust/src/indexer/filelist_writer.rs", "rust/src/indexer/tests"],
       "acceptance": ["All root/ancestor targets are planned before writes", "No-consent causes zero writes", "I/O errors are not swallowed", "Partial failure/cancel produces rollback/report evidence"],
       "verification": ["both-name/lowercase/read-only/invalid-ancestor/symlink/multi-ancestor/cancel fixtures", "cargo test"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {
+        "files": ["rust/src/indexer/filelist_writer.rs", "rust/src/indexer/tests/mod.rs", "rust/src/app/worker_tasks.rs", "rust/src/fs_atomic.rs"],
+        "commands": ["cargo test tc165_ --lib", "cargo test --lib", "cargo test --bin flistwalker", "cargo test --test cli_contract", "cargo test --doc", "cargo check", "cargo clippy --all-targets -- -D warnings", "cargo fmt --all -- --check", "git diff --check"],
+        "artifacts": [],
+        "reviews": ["Sol integration review: cancellation during planning, exact failure paths, and plan-to-execute TOCTOU revalidation resolved"],
+        "logs": []
+      },
+      "result": "A public cancellable FileList plan/execute/report boundary now precomputes deterministic root and ancestor targets, requires explicit overwrite/propagation consent, revalidates immediately before atomic replacement, and rolls back committed targets with complete failure evidence; the GUI worker uses the shared transaction adapter.",
       "blocker": null
     },
     {

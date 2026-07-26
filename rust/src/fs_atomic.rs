@@ -47,10 +47,14 @@ pub fn sidecar_lock_path(path: &Path) -> PathBuf {
 }
 
 pub fn write_text_atomic(path: &Path, text: &str) -> std::io::Result<()> {
+    write_bytes_atomic(path, text.as_bytes())
+}
+
+pub fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     let parent = path.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent)?;
     let tmp = build_temp_path(path);
-    fs::write(&tmp, text)?;
+    fs::write(&tmp, bytes)?;
     if let Err(err) = replace_file(&tmp, path) {
         let _ = fs::remove_file(&tmp);
         return Err(err);

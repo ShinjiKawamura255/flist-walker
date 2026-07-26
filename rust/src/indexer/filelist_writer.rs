@@ -1,4 +1,4 @@
-use crate::fs_atomic::write_text_atomic;
+use crate::fs_atomic::write_bytes_atomic;
 use anyhow::{Context, Result};
 use std::collections::HashSet;
 use std::fs;
@@ -9,6 +9,138 @@ use std::time::SystemTime;
 use super::filelist_reader::{
     looks_like_windows_absolute_path, read_filelist_text_strict, strip_wrapping_quotes,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileListWriteTargetKind {
+    Root,
+    Ancestor,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FileListWriteOptions {
+    pub allow_root_overwrite: bool,
+    pub propagate_to_ancestors: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileListWriteFailure {
+    pub path: PathBuf,
+    pub error: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileListWriteStatus {
+    Completed,
+    Canceled,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileListWriteReport {
+    pub status: FileListWriteStatus,
+    pub root_target: PathBuf,
+    pub committed: Vec<PathBuf>,
+    pub failed: Vec<FileListWriteFailure>,
+    pub rolled_back: Vec<PathBuf>,
+    pub rollback_failed: Vec<FileListWriteFailure>,
+}
+
+impl FileListWriteReport {
+    fn completed(root_target: PathBuf) -> Self {
+        Self {
+            status: FileListWriteStatus::Completed,
+            root_target,
+            committed: Vec::new(),
+            failed: Vec::new(),
+            rolled_back: Vec::new(),
+            rollback_failed: Vec::new(),
+        }
+    }
+
+    fn preflight_failed(root_target: PathBuf, failure_path: PathBuf, error: impl ToString) -> Self {
+        Self {
+            status: FileListWriteStatus::Failed,
+            root_target: root_target.clone(),
+            committed: Vec::new(),
+            failed: vec![FileListWriteFailure {
+                path: failure_path,
+                error: error.to_string(),
+            }],
+            rolled_back: Vec::new(),
+            rollback_failed: Vec::new(),
+        }
+    }
+
+    fn canceled(root_target: PathBuf) -> Self {
+        Self {
+            status: FileListWriteStatus::Canceled,
+            root_target,
+            committed: Vec::new(),
+            failed: Vec::new(),
+            rolled_back: Vec::new(),
+            rollback_failed: Vec::new(),
+        }
+    }
+
+    pub fn exit_code(&self) -> i32 {
+        match self.status {
+            FileListWriteStatus::Completed => 0,
+            FileListWriteStatus::Canceled
+                if self.failed.is_empty() && self.rollback_failed.is_empty() =>
+            {
+                130
+            }
+            FileListWriteStatus::Canceled | FileListWriteStatus::Failed => 1,
+        }
+    }
+
+    pub fn summary(&self) -> String {
+        let mut parts = Vec::new();
+        for failure in self.failed.iter().chain(&self.rollback_failed) {
+            parts.push(format!("{}: {}", failure.path.display(), failure.error));
+        }
+        if parts.is_empty() && self.status == FileListWriteStatus::Canceled {
+            "filelist creation canceled".to_string()
+        } else if parts.is_empty() {
+            "filelist write failed".to_string()
+        } else {
+            parts.join("; ")
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct PriorFileState {
+    bytes: Option<Vec<u8>>,
+    permissions: Option<fs::Permissions>,
+    modified: Option<SystemTime>,
+    accessed: Option<SystemTime>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FileListWriteTarget {
+    pub path: PathBuf,
+    pub kind: FileListWriteTargetKind,
+    content: Vec<u8>,
+    prior: PriorFileState,
+    preserve_mtime_on_success: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct FileListWritePlan {
+    root_target: PathBuf,
+    targets: Vec<FileListWriteTarget>,
+}
+
+impl FileListWritePlan {
+    pub fn root_target(&self) -> &Path {
+        &self.root_target
+    }
+
+    pub fn targets(&self) -> &[FileListWriteTarget] {
+        &self.targets
+    }
+}
 
 pub fn build_filelist_text(entries: &[PathBuf], root: &Path) -> String {
     build_filelist_text_cancellable(entries, root, &|| false)
@@ -97,12 +229,7 @@ pub(crate) fn filelist_modified_time(path: &Path) -> Option<SystemTime> {
         .and_then(|meta| meta.modified().ok())
 }
 
-fn write_text_to_path(out: &Path, text: &str) -> Result<()> {
-    write_text_atomic(out, text)
-        .map_err(|err| annotate_write_target_error(out, err))
-        .with_context(|| format!("failed to write {}", out.display()))
-}
-
+#[cfg(test)]
 pub(crate) fn annotate_write_target_error(out: &Path, err: std::io::Error) -> anyhow::Error {
     if err.kind() == std::io::ErrorKind::PermissionDenied {
         return anyhow::anyhow!(
@@ -136,15 +263,29 @@ fn find_all_filelists_in_directory(dir: &Path) -> std::io::Result<Vec<PathBuf>> 
         if !name.eq_ignore_ascii_case("filelist.txt") {
             continue;
         }
-        if !entry.file_type()?.is_file() {
-            continue;
-        }
         if seen.insert(path.clone()) {
             matches.push(path);
         }
     }
-    matches.sort_by_key(|path| path.to_string_lossy().to_ascii_lowercase());
+    matches.sort_by(|left, right| {
+        filelist_name_precedence(left)
+            .cmp(&filelist_name_precedence(right))
+            .then_with(|| left.to_string_lossy().cmp(&right.to_string_lossy()))
+    });
     Ok(matches)
+}
+
+fn filelist_name_precedence(path: &Path) -> (u8, String) {
+    let name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    let rank = match name {
+        "FileList.txt" => 0,
+        "filelist.txt" => 1,
+        _ => 2,
+    };
+    (rank, name.to_ascii_lowercase())
 }
 
 pub(crate) fn normalize_filelist_entry_for_text_compare(line: &str) -> Option<String> {
@@ -221,98 +362,6 @@ fn parent_filelist_content_contains_child_reference(
         .any(|line| child_keys.contains(&line))
 }
 
-fn restore_file_mtime(
-    path: &Path,
-    modified: SystemTime,
-    accessed: Option<SystemTime>,
-) -> std::io::Result<()> {
-    let file = File::options().write(true).open(path)?;
-    let times = match accessed {
-        Some(accessed) => fs::FileTimes::new()
-            .set_accessed(accessed)
-            .set_modified(modified),
-        None => fs::FileTimes::new().set_modified(modified),
-    };
-    file.set_times(times)
-}
-
-fn append_child_filelist_to_parent_filelist_if_missing(
-    parent_filelist: &Path,
-    child_filelist: &Path,
-    should_cancel: &impl Fn() -> bool,
-) -> std::io::Result<()> {
-    if should_cancel() {
-        return Err(std::io::Error::other("filelist creation canceled"));
-    }
-    let Some(parent_dir) = parent_filelist.parent() else {
-        return Ok(());
-    };
-    let metadata = fs::metadata(parent_filelist)?;
-    let modified = metadata.modified()?;
-    let accessed = metadata.accessed().ok();
-    let mut content = read_filelist_text_strict(parent_filelist)?;
-    if parent_filelist_content_contains_child_reference(parent_filelist, child_filelist, &content) {
-        return Ok(());
-    }
-    if !content.is_empty() && !content.ends_with('\n') {
-        content.push('\n');
-    }
-    if should_cancel() {
-        return Err(std::io::Error::other("filelist creation canceled"));
-    }
-    content.push_str(&filelist_line_for_entry(
-        child_filelist,
-        parent_dir,
-        parent_dir.canonicalize().ok().as_deref(),
-    ));
-    content.push('\n');
-
-    if should_cancel() {
-        return Err(std::io::Error::other("filelist creation canceled"));
-    }
-    write_text_to_path(parent_filelist, &content)
-        .map_err(|err| std::io::Error::other(err.to_string()))?;
-    restore_file_mtime(parent_filelist, modified, accessed)?;
-    Ok(())
-}
-
-fn propagate_child_filelist_to_ancestor_filelists(
-    child_filelist: &Path,
-    should_cancel: &impl Fn() -> bool,
-) -> Result<()> {
-    let Some(root_dir) = child_filelist.parent() else {
-        return Ok(());
-    };
-    if should_cancel() {
-        anyhow::bail!("filelist creation canceled");
-    }
-    visit_ancestor_directories(root_dir, |ancestor_dir| {
-        if should_cancel() {
-            return false;
-        }
-        let parent_filelists = match find_all_filelists_in_directory(ancestor_dir) {
-            Ok(parent_filelists) => parent_filelists,
-            Err(_) => return false,
-        };
-        for parent_filelist in parent_filelists {
-            if append_child_filelist_to_parent_filelist_if_missing(
-                &parent_filelist,
-                child_filelist,
-                should_cancel,
-            )
-            .is_err()
-            {
-                return false;
-            }
-        }
-        true
-    });
-    if should_cancel() {
-        anyhow::bail!("filelist creation canceled");
-    }
-    Ok(())
-}
-
 pub fn has_ancestor_filelists(root: &Path) -> bool {
     let mut found = false;
     visit_ancestor_directories(root, |ancestor_dir| {
@@ -354,6 +403,385 @@ pub fn ancestor_filelist_propagation_needed(root: &Path) -> bool {
     needs_confirmation
 }
 
+/// Precompute every FileList replacement, including the prior bytes and
+/// metadata required to restore already committed targets after a later error.
+/// This function performs no writes.
+pub fn plan_filelist_write(
+    root: &Path,
+    entries: &[PathBuf],
+    options: FileListWriteOptions,
+) -> std::result::Result<FileListWritePlan, Box<FileListWriteReport>> {
+    plan_filelist_write_cancellable(root, entries, options, &|| false)
+}
+
+/// Build a write plan without mutating the filesystem. Cancellation during
+/// entry serialization or ancestor discovery returns a clean cancellation
+/// report; no replacement has started at that point.
+pub fn plan_filelist_write_cancellable<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    options: FileListWriteOptions,
+    should_cancel: &C,
+) -> std::result::Result<FileListWritePlan, Box<FileListWriteReport>>
+where
+    C: Fn() -> bool,
+{
+    let fallback_target = root.join("FileList.txt");
+    if should_cancel() {
+        return Err(Box::new(FileListWriteReport::canceled(fallback_target)));
+    }
+    validate_filelist_directory(root).map_err(|error| {
+        Box::new(FileListWriteReport::preflight_failed(
+            fallback_target.clone(),
+            root.to_path_buf(),
+            error,
+        ))
+    })?;
+    let root_target = find_all_filelists_in_directory(root)
+        .map_err(|error| {
+            Box::new(FileListWriteReport::preflight_failed(
+                fallback_target.clone(),
+                root.to_path_buf(),
+                error,
+            ))
+        })?
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| fallback_target.clone());
+    if fs::symlink_metadata(&root_target).is_ok() && !options.allow_root_overwrite {
+        return Err(Box::new(FileListWriteReport::preflight_failed(
+            root_target.clone(),
+            root_target.clone(),
+            format!(
+                "refusing to overwrite existing FileList target {} without explicit consent",
+                root_target.display()
+            ),
+        )));
+    }
+
+    let root_text =
+        build_filelist_text_cancellable(entries, root, should_cancel).map_err(|error| {
+            if should_cancel() {
+                Box::new(FileListWriteReport::canceled(root_target.clone()))
+            } else {
+                Box::new(FileListWriteReport::preflight_failed(
+                    root_target.clone(),
+                    root_target.clone(),
+                    error,
+                ))
+            }
+        })?;
+    let mut targets = vec![prepare_filelist_target(
+        root_target.clone(),
+        FileListWriteTargetKind::Root,
+        root_text.into_bytes(),
+        false,
+    )
+    .map_err(|error| {
+        Box::new(FileListWriteReport::preflight_failed(
+            root_target.clone(),
+            root_target.clone(),
+            error,
+        ))
+    })?];
+
+    if options.propagate_to_ancestors {
+        let mut ancestor = root.parent();
+        while let Some(directory) = ancestor {
+            if should_cancel() {
+                return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
+            }
+            let parent_filelists = find_all_filelists_in_directory(directory).map_err(|error| {
+                Box::new(FileListWriteReport::preflight_failed(
+                    root_target.clone(),
+                    directory.to_path_buf(),
+                    error,
+                ))
+            })?;
+            for parent_filelist in parent_filelists {
+                if should_cancel() {
+                    return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
+                }
+                inspect_filelist_target(&parent_filelist).map_err(|error| {
+                    Box::new(FileListWriteReport::preflight_failed(
+                        root_target.clone(),
+                        parent_filelist.clone(),
+                        error,
+                    ))
+                })?;
+                let mut content = read_filelist_text_strict(&parent_filelist).map_err(|error| {
+                    Box::new(FileListWriteReport::preflight_failed(
+                        root_target.clone(),
+                        parent_filelist.clone(),
+                        error,
+                    ))
+                })?;
+                if should_cancel() {
+                    return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
+                }
+                if !parent_filelist_content_contains_child_reference(
+                    &parent_filelist,
+                    &root_target,
+                    &content,
+                ) {
+                    if !content.is_empty() && !content.ends_with('\n') {
+                        content.push('\n');
+                    }
+                    content.push_str(&filelist_line_for_entry(&root_target, directory, None));
+                    content.push('\n');
+                    targets.push(
+                        prepare_filelist_target(
+                            parent_filelist.clone(),
+                            FileListWriteTargetKind::Ancestor,
+                            content.into_bytes(),
+                            true,
+                        )
+                        .map_err(|error| {
+                            Box::new(FileListWriteReport::preflight_failed(
+                                root_target.clone(),
+                                parent_filelist.clone(),
+                                error,
+                            ))
+                        })?,
+                    );
+                }
+            }
+            ancestor = directory.parent();
+        }
+    }
+
+    Ok(FileListWritePlan {
+        root_target,
+        targets,
+    })
+}
+
+/// Execute a previously validated plan. Cancellation is sampled immediately
+/// before every target replacement; any committed target is then restored in
+/// reverse order before the report is returned.
+pub fn execute_filelist_write_plan<C>(
+    plan: &FileListWritePlan,
+    should_cancel: &C,
+) -> FileListWriteReport
+where
+    C: Fn() -> bool,
+{
+    execute_filelist_write_plan_with(plan, should_cancel, &mut |path, bytes| {
+        write_bytes_atomic(path, bytes)
+    })
+}
+
+pub(super) fn execute_filelist_write_plan_with<C, W>(
+    plan: &FileListWritePlan,
+    should_cancel: &C,
+    replace: &mut W,
+) -> FileListWriteReport
+where
+    C: Fn() -> bool,
+    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+{
+    let mut report = FileListWriteReport::completed(plan.root_target.clone());
+    let mut committed_indexes = Vec::new();
+    for (index, target) in plan.targets.iter().enumerate() {
+        if should_cancel() {
+            report.status = FileListWriteStatus::Canceled;
+            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
+            return report;
+        }
+        if let Err(error) = revalidate_filelist_target(target) {
+            report.status = FileListWriteStatus::Failed;
+            report.failed.push(FileListWriteFailure {
+                path: target.path.clone(),
+                error: error.to_string(),
+            });
+            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
+            return report;
+        }
+        if should_cancel() {
+            report.status = FileListWriteStatus::Canceled;
+            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
+            return report;
+        }
+        if let Err(error) = replace(&target.path, &target.content) {
+            report.status = FileListWriteStatus::Failed;
+            report.failed.push(FileListWriteFailure {
+                path: target.path.clone(),
+                error: error.to_string(),
+            });
+            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
+            return report;
+        }
+        report.committed.push(target.path.clone());
+        committed_indexes.push(index);
+        if let Err(error) = restore_success_metadata(target) {
+            report.status = FileListWriteStatus::Failed;
+            report.failed.push(FileListWriteFailure {
+                path: target.path.clone(),
+                error: error.to_string(),
+            });
+            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
+            return report;
+        }
+    }
+    report
+}
+
+fn validate_filelist_directory(directory: &Path) -> Result<()> {
+    let metadata = fs::symlink_metadata(directory).with_context(|| {
+        format!(
+            "failed to inspect FileList directory {}",
+            directory.display()
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        anyhow::bail!("refusing unsafe FileList directory {}", directory.display());
+    }
+    if metadata.permissions().readonly() {
+        anyhow::bail!(
+            "refusing read-only FileList directory {}",
+            directory.display()
+        );
+    }
+    Ok(())
+}
+
+fn inspect_filelist_target(path: &Path) -> Result<Option<fs::Metadata>> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("FileList target has no parent: {}", path.display()))?;
+    validate_filelist_directory(parent)?;
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => {
+            if metadata.file_type().is_symlink() || !metadata.is_file() {
+                anyhow::bail!("refusing unsafe FileList target {}", path.display());
+            }
+            if metadata.permissions().readonly() {
+                anyhow::bail!("refusing read-only FileList target {}", path.display());
+            }
+            Ok(Some(metadata))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn revalidate_filelist_target(target: &FileListWriteTarget) -> std::io::Result<()> {
+    let metadata = inspect_filelist_target(&target.path)
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    match (&target.prior.bytes, metadata) {
+        (None, None) => Ok(()),
+        (Some(expected), Some(_)) => {
+            let actual = fs::read(&target.path)?;
+            if actual == *expected {
+                Ok(())
+            } else {
+                Err(std::io::Error::other(format!(
+                    "FileList target changed after planning: {}",
+                    target.path.display()
+                )))
+            }
+        }
+        (None, Some(_)) => Err(std::io::Error::other(format!(
+            "FileList target appeared after planning: {}",
+            target.path.display()
+        ))),
+        (Some(_), None) => Err(std::io::Error::other(format!(
+            "FileList target disappeared after planning: {}",
+            target.path.display()
+        ))),
+    }
+}
+
+fn prepare_filelist_target(
+    path: PathBuf,
+    kind: FileListWriteTargetKind,
+    content: Vec<u8>,
+    preserve_mtime_on_success: bool,
+) -> Result<FileListWriteTarget> {
+    let prior = match inspect_filelist_target(&path)? {
+        Some(metadata) => {
+            let accessed = match metadata.accessed() {
+                Ok(time) => Some(time),
+                Err(error) if error.kind() == std::io::ErrorKind::Unsupported => None,
+                Err(error) => return Err(error.into()),
+            };
+            PriorFileState {
+                bytes: Some(fs::read(&path).with_context(|| {
+                    format!("failed to read prior FileList target {}", path.display())
+                })?),
+                permissions: Some(metadata.permissions()),
+                modified: Some(metadata.modified()?),
+                accessed,
+            }
+        }
+        None => PriorFileState {
+            bytes: None,
+            permissions: None,
+            modified: None,
+            accessed: None,
+        },
+    };
+    Ok(FileListWriteTarget {
+        path,
+        kind,
+        content,
+        prior,
+        preserve_mtime_on_success,
+    })
+}
+
+fn restore_success_metadata(target: &FileListWriteTarget) -> std::io::Result<()> {
+    if let Some(permissions) = &target.prior.permissions {
+        fs::set_permissions(&target.path, permissions.clone())?;
+    }
+    if target.preserve_mtime_on_success {
+        restore_file_metadata(&target.path, &target.prior)?;
+    }
+    Ok(())
+}
+
+fn restore_file_metadata(path: &Path, prior: &PriorFileState) -> std::io::Result<()> {
+    if let Some(permissions) = &prior.permissions {
+        fs::set_permissions(path, permissions.clone())?;
+    }
+    let Some(modified) = prior.modified else {
+        return Ok(());
+    };
+    let file = File::options().write(true).open(path)?;
+    let times = match prior.accessed {
+        Some(accessed) => fs::FileTimes::new()
+            .set_accessed(accessed)
+            .set_modified(modified),
+        None => fs::FileTimes::new().set_modified(modified),
+    };
+    file.set_times(times)
+}
+
+fn rollback_committed_targets<W>(
+    targets: &[FileListWriteTarget],
+    committed_indexes: &[usize],
+    report: &mut FileListWriteReport,
+    replace: &mut W,
+) where
+    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+{
+    for index in committed_indexes.iter().rev().copied() {
+        let target = &targets[index];
+        let result = match &target.prior.bytes {
+            Some(bytes) => replace(&target.path, bytes)
+                .and_then(|_| restore_file_metadata(&target.path, &target.prior)),
+            None => fs::remove_file(&target.path),
+        };
+        match result {
+            Ok(()) => report.rolled_back.push(target.path.clone()),
+            Err(error) => report.rollback_failed.push(FileListWriteFailure {
+                path: target.path.clone(),
+                error: error.to_string(),
+            }),
+        }
+    }
+}
+
 pub fn write_filelist(
     root: &Path,
     entries: &[PathBuf],
@@ -373,15 +801,29 @@ pub fn write_filelist_cancellable<C>(
 where
     C: Fn() -> bool,
 {
-    let out = root.join(filename);
-    let text = build_filelist_text_cancellable(entries, root, should_cancel)?;
+    if filename != "FileList.txt" && filename != "filelist.txt" {
+        anyhow::bail!("unsupported FileList filename {filename}");
+    }
     if should_cancel() {
         anyhow::bail!("filelist creation canceled");
     }
-    write_text_to_path(&out, &text)?;
-    if propagate_to_ancestors {
-        propagate_child_filelist_to_ancestor_filelists(&out, should_cancel)?;
+    let plan = plan_filelist_write_cancellable(
+        root,
+        entries,
+        FileListWriteOptions {
+            // The legacy GUI reaches this adapter only after its overwrite
+            // confirmation. New CLI/TUI callers use the public option model.
+            allow_root_overwrite: true,
+            propagate_to_ancestors,
+        },
+        should_cancel,
+    )
+    .map_err(|report| anyhow::anyhow!(report.summary()))?;
+    let root_target = plan.root_target.clone();
+    let report = execute_filelist_write_plan(&plan, should_cancel);
+    if report.exit_code() == 0 {
+        Ok(root_target)
+    } else {
+        Err(anyhow::anyhow!(report.summary()))
     }
-
-    Ok(out)
 }

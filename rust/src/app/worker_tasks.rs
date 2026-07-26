@@ -16,7 +16,10 @@ use crate::actions::{
     AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport, AuthorizedActionRequest,
 };
 use crate::entry::EntryKind;
-use crate::indexer::write_filelist_cancellable;
+use crate::indexer::{
+    execute_filelist_write_plan, plan_filelist_write_cancellable, FileListWriteOptions,
+    FileListWriteStatus,
+};
 use crate::search::{rank_search_results, SearchPrefixCache};
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
@@ -297,35 +300,54 @@ pub(super) fn spawn_filelist_worker(
             }
             let _tab_id = req.tab_id;
             let count = req.entries.len();
-            let result = write_filelist_cancellable(
+            let cancellation_requested =
+                || shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Relaxed);
+            let msg = match plan_filelist_write_cancellable(
                 &req.root,
                 &req.entries,
-                "FileList.txt",
-                req.propagate_to_ancestors,
-                &|| shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Relaxed),
-            )
-            .map(|path| (path, count));
-            let msg = match result {
-                Ok((path, count)) => FileListResponse::Finished {
-                    request_id: req.request_id,
-                    root: req.root.clone(),
-                    path,
-                    count,
+                FileListWriteOptions {
+                    // GUI confirmation is the explicit root-overwrite consent.
+                    allow_root_overwrite: true,
+                    propagate_to_ancestors: req.propagate_to_ancestors,
                 },
-                Err(err) => {
-                    if req.cancel.load(Ordering::Relaxed) || shutdown.load(Ordering::Relaxed) {
-                        FileListResponse::Canceled {
+                &cancellation_requested,
+            ) {
+                Ok(plan) => {
+                    let path = plan.root_target().to_path_buf();
+                    let report = execute_filelist_write_plan(&plan, &cancellation_requested);
+                    match report.status {
+                        FileListWriteStatus::Completed => FileListResponse::Finished {
                             request_id: req.request_id,
                             root: req.root.clone(),
+                            path,
+                            count,
+                        },
+                        FileListWriteStatus::Canceled if report.exit_code() == 130 => {
+                            FileListResponse::Canceled {
+                                request_id: req.request_id,
+                                root: req.root.clone(),
+                            }
                         }
-                    } else {
-                        FileListResponse::Failed {
-                            request_id: req.request_id,
-                            root: req.root.clone(),
-                            error: err.to_string(),
+                        FileListWriteStatus::Canceled | FileListWriteStatus::Failed => {
+                            FileListResponse::Failed {
+                                request_id: req.request_id,
+                                root: req.root.clone(),
+                                error: report.summary(),
+                            }
                         }
                     }
                 }
+                Err(report) if report.status == FileListWriteStatus::Canceled => {
+                    FileListResponse::Canceled {
+                        request_id: req.request_id,
+                        root: req.root.clone(),
+                    }
+                }
+                Err(report) => FileListResponse::Failed {
+                    request_id: req.request_id,
+                    root: req.root.clone(),
+                    error: report.summary(),
+                },
             };
             match &msg {
                 FileListResponse::Finished {

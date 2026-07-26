@@ -127,6 +127,7 @@
 - 2026-07-26 `slice-a.shared-sort` completed by Terra and integrated by Sol; shared mode/scope/result APIs now drive GUI search directly, focused shared-sort tests 5 passed, full `cargo test` passed. `slice-a.shared-persistence` is ready.
 - 2026-07-26 `slice-a.shared-persistence` completed by Terra and integrated by Sol; GUI writes enqueue off-frame, history delta merge is cross-process safe and generation-aware, public read/enqueue/flush APIs are available, focused TC-167/168, fmt, clippy, and full tests passed. `slice-a.shared-action` is ready.
 - 2026-07-26 `slice-a.shared-action` completed by Terra and integrated by Sol; shared preflight/reauthorization/cancel/freshness lifecycle now drives the GUI worker adapter and exposes safe/raw diagnostics, focused TC-164 and GUI action tests plus full regression passed. `slice-a.shared-filelist` is ready.
+- 2026-07-26 `slice-a.shared-filelist` completed by Terra and integrated by Sol; cancellable precomputed plans, exact preflight diagnostics, plan-to-execute revalidation, atomic replacement, and rollback reports now drive the GUI adapter. TC-165, component/full regression, check, clippy, fmt, and diff checks passed. Slice B is ready.
 
 ## Closure Capsule
 - Verification Result: pending
