@@ -24,6 +24,31 @@
 ### Known issues
 -
 
+## [0.19.0] - 2026-07-26
+### Added
+- interactive TUI に保存済みルートの選択・更新、ソート、プレビュー履歴、ヘルプ、現在行への認可済み open/reveal 操作、トランザクション型 FileList 作成を追加した。
+- batch CLI に保存済みルート選択、全ソートモード、認可済み open/reveal、トランザクション型 FileList 作成を追加した。
+
+### Changed
+- GUI、CLI、TUI で検索結果のソート契約、非同期履歴永続化、FileList 読み書き、クエリ評価を共通化した。
+- terminal UI 依存を追加し、関連する OSS notice と CI の性能・キャッシュ耐性を更新した。
+
+### Fixed
+- FileList 作成時の panic と、保存済みルート一覧中の進捗表示、fresh walker state を使用しない TUI FileList 作成を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- query history は既定で平文永続化される。必要なら runtime config の `history_persist_disabled=true` を設定する。
+- 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
+
+### Known issues
+- macOS 配布物は未 notarized の場合がある。
+
 ## [0.18.14] - 2026-07-15
 ### Added
 - Preview にファイルサイズ、更新日時、作成日時、ファイル種別、シンボリックリンク情報を表示するようにした。
@@ -1572,7 +1597,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.14...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.14...v0.19.0
 [0.18.14]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...v0.18.14
 [0.18.13]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...v0.18.13
 [0.18.12]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.11...v0.18.12
