@@ -16,6 +16,7 @@ use tracing_subscriber::EnvFilter;
 
 use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
 use flist_walker::cli_tui::{run_cli_tui, CliTuiOptions, CliTuiOutcome};
+use flist_walker::entry::Entry;
 use flist_walker::ignore_list::{
     ensure_ignore_list_sample, load_ignore_terms_from_current_exe, parse_ignore_terms,
 };
@@ -23,9 +24,12 @@ use flist_walker::indexer::{
     build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
 };
 use flist_walker::path_utils::output_path_bytes;
+use flist_walker::persistence::load_persisted_roots_and_history;
 use flist_walker::query::{CompiledIgnoreTerms, QueryScope};
 use flist_walker::runtime_config::initialize_runtime_config;
-use flist_walker::search::try_search_entries_with_scope;
+use flist_walker::search::{
+    rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope,
+};
 use flist_walker::updater::{
     recover_interrupted_update_on_startup, run_internal_update_helper_if_requested,
 };
@@ -62,6 +66,36 @@ enum CliIndexSource {
     Walker,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+enum CliSortMode {
+    #[default]
+    Score,
+    NameAsc,
+    NameDesc,
+    ModifiedDesc,
+    ModifiedAsc,
+    CreatedDesc,
+    CreatedAsc,
+    SizeDesc,
+    SizeAsc,
+}
+
+impl From<CliSortMode> for SearchSortMode {
+    fn from(value: CliSortMode) -> Self {
+        match value {
+            CliSortMode::Score => Self::Score,
+            CliSortMode::NameAsc => Self::NameAsc,
+            CliSortMode::NameDesc => Self::NameDesc,
+            CliSortMode::ModifiedDesc => Self::ModifiedDesc,
+            CliSortMode::ModifiedAsc => Self::ModifiedAsc,
+            CliSortMode::CreatedDesc => Self::CreatedDesc,
+            CliSortMode::CreatedAsc => Self::CreatedAsc,
+            CliSortMode::SizeDesc => Self::SizeDesc,
+            CliSortMode::SizeAsc => Self::SizeAsc,
+        }
+    }
+}
+
 #[derive(Parser, Debug)]
 #[command(name = "flistwalker")]
 #[command(about = "Find files and folders with fuzzy search")]
@@ -72,8 +106,30 @@ struct Args {
     query: String,
 
     /// Root directory to search (defaults to the current directory).
-    #[arg(long, value_name = "PATH")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        conflicts_with_all = ["use_default_root", "saved_root", "list_saved_roots"]
+    )]
     root: Option<PathBuf>,
+
+    /// Search using the persisted default root.
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "cli",
+        conflicts_with_all = ["root", "saved_root", "interactive", "list_saved_roots"]
+    )]
+    use_default_root: bool,
+
+    /// Search using a one-based index from the persisted saved roots.
+    #[arg(
+        long,
+        value_name = "INDEX",
+        requires = "cli",
+        conflicts_with_all = ["root", "use_default_root", "interactive", "list_saved_roots"]
+    )]
+    saved_root: Option<usize>,
 
     /// Maximum number of paths to return.
     #[arg(long, default_value_t = 1000)]
@@ -136,6 +192,24 @@ struct Args {
     /// Write indexing progress to standard error.
     #[arg(long, default_value_t = false, requires = "cli")]
     progress: bool,
+
+    /// Sort the complete match set before applying --limit.
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliSortMode::Score,
+        requires = "cli"
+    )]
+    sort: CliSortMode,
+
+    /// List persisted saved roots without indexing or selecting paths.
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "cli",
+        conflicts_with_all = ["root", "use_default_root", "saved_root", "interactive"]
+    )]
+    list_saved_roots: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -172,15 +246,14 @@ fn load_cli_ignore_terms(args: &Args) -> Result<Vec<String>> {
     }
 }
 
-fn run_cli(args: &Args, cancelled: &AtomicBool) -> Result<BatchOutcome> {
-    let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
+fn run_cli(args: &Args, root: &Path, cancelled: &AtomicBool) -> Result<BatchOutcome> {
     let (include_files, include_dirs) = args.entry_type.include_flags();
     let use_filelist = match args.source {
         CliIndexSource::Auto | CliIndexSource::Filelist => true,
         CliIndexSource::Walker => false,
     };
     if matches!(args.source, CliIndexSource::Filelist)
-        && find_filelist_in_first_level(&root).is_none()
+        && find_filelist_in_first_level(root).is_none()
     {
         anyhow::bail!(
             "FileList was required but none was found in {}",
@@ -196,7 +269,7 @@ fn run_cli(args: &Args, cancelled: &AtomicBool) -> Result<BatchOutcome> {
         eprintln!("Indexing {}...", root.display());
     }
     let indexed_entries =
-        match build_index_cancellable(&root, use_filelist, include_files, include_dirs, || {
+        match build_index_cancellable(root, use_filelist, include_files, include_dirs, || {
             cancelled.load(Ordering::Relaxed)
         }) {
             Ok(entries) => entries,
@@ -214,7 +287,7 @@ fn run_cli(args: &Args, cancelled: &AtomicBool) -> Result<BatchOutcome> {
         if !compiled_ignore_terms.matches_path(
             &path,
             QueryScope {
-                root: Some(&root),
+                root: Some(root),
                 prefer_relative: true,
                 ignore_case,
             },
@@ -225,28 +298,31 @@ fn run_cli(args: &Args, cancelled: &AtomicBool) -> Result<BatchOutcome> {
     if cancelled.load(Ordering::Relaxed) {
         return Ok(BatchOutcome::Cancelled);
     }
-    let query = args.query.trim();
-    let paths = if query.is_empty() {
-        entries.iter().take(args.limit).cloned().collect::<Vec<_>>()
-    } else {
-        let results = try_search_entries_with_scope(
-            query,
-            &entries,
-            args.limit,
-            args.regex,
-            ignore_case,
-            Some(&root),
-            true,
-        )
-        .map_err(anyhow::Error::msg)?;
-        if cancelled.load(Ordering::Relaxed) {
-            return Ok(BatchOutcome::Cancelled);
-        }
-        results
-            .into_iter()
-            .map(|(path, _score)| path)
-            .collect::<Vec<_>>()
-    };
+    let entries = Arc::new(entries.into_iter().map(Entry::from).collect());
+    let mut prefix_cache = SearchPrefixCache::default();
+    let (search_results, search_error) = rank_search_results(
+        &entries,
+        args.query.trim(),
+        root,
+        args.limit,
+        args.regex,
+        ignore_case,
+        true,
+        &mut prefix_cache,
+        args.sort.into(),
+        SearchSortScope::AllMatches,
+    );
+    if let Some(error) = search_error {
+        return Err(anyhow::Error::msg(error));
+    }
+    if cancelled.load(Ordering::Relaxed) {
+        return Ok(BatchOutcome::Cancelled);
+    }
+    let paths = search_results
+        .results
+        .into_iter()
+        .map(|(path, _score)| path)
+        .collect::<Vec<_>>();
 
     let mut framed_output = Vec::new();
     for path in &paths {
@@ -255,7 +331,7 @@ fn run_cli(args: &Args, cancelled: &AtomicBool) -> Result<BatchOutcome> {
         }
         framed_output.extend_from_slice(&output_path_bytes(
             path,
-            &root,
+            root,
             !args.absolute,
             args.print0,
         ));
@@ -274,6 +350,76 @@ fn run_cli(args: &Args, cancelled: &AtomicBool) -> Result<BatchOutcome> {
     } else {
         BatchOutcome::Matches
     })
+}
+
+fn resolve_cli_root(args: &Args) -> std::result::Result<PathBuf, String> {
+    if args.use_default_root {
+        let roots = load_persisted_roots_and_history();
+        let root = roots
+            .default_root
+            .ok_or_else(|| "no persisted default root is configured".to_string())?;
+        return resolve_root(&root).map_err(|error| error.to_string());
+    }
+    if let Some(index) = args.saved_root {
+        let roots = load_persisted_roots_and_history();
+        let root = roots
+            .saved_roots
+            .get(index.saturating_sub(1))
+            .filter(|_| index != 0)
+            .ok_or_else(|| format!("saved root index {index} is not configured"))?;
+        return resolve_root(root).map_err(|error| error.to_string());
+    }
+    resolve_root(args.root.as_deref().unwrap_or(Path::new("."))).map_err(|error| error.to_string())
+}
+
+fn validate_list_saved_roots_args(args: &Args) -> std::result::Result<(), &'static str> {
+    if !args.query.is_empty()
+        || args.limit != 1000
+        || args.absolute
+        || args.fail_no_match
+        || !matches!(args.entry_type, CliEntryType::All)
+        || args.regex
+        || args.case_sensitive
+        || !matches!(args.source, CliIndexSource::Auto)
+        || args.ignore_file.is_some()
+        || args.no_ignore
+        || args.progress
+        || !matches!(args.sort, CliSortMode::Score)
+    {
+        return Err("--list-saved-roots cannot be combined with search options");
+    }
+    Ok(())
+}
+
+fn absolute_stored_path(path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|current| current.join(path))
+            .unwrap_or_else(|_| path.to_path_buf())
+    }
+}
+
+fn list_saved_roots(args: &Args) -> Result<()> {
+    validate_list_saved_roots_args(args).map_err(anyhow::Error::msg)?;
+    let roots = load_persisted_roots_and_history();
+    let mut framed_output = Vec::new();
+    for (position, root) in roots.saved_roots.iter().enumerate() {
+        let path = absolute_stored_path(root);
+        if args.print0 {
+            framed_output.extend_from_slice(&output_path_bytes(&path, Path::new("."), false, true));
+            framed_output.push(0);
+        } else {
+            framed_output
+                .extend_from_slice(format!("{}\t{}\n", position + 1, path.display()).as_bytes());
+        }
+    }
+    let stdout = io::stdout();
+    let mut output = stdout.lock();
+    output.write_all(&framed_output)?;
+    output.flush()?;
+    Ok(())
 }
 
 fn run_gui(args: &Args) -> Result<()> {
@@ -487,6 +633,14 @@ fn main() -> Result<ExitCode> {
     }
 
     let args = Args::parse();
+    if args.cli && !args.interactive && args.list_saved_roots {
+        if let Err(error) = validate_list_saved_roots_args(&args) {
+            eprintln!("error: {error}");
+            return Ok(ExitCode::from(2));
+        }
+        list_saved_roots(&args)?;
+        return Ok(ExitCode::SUCCESS);
+    }
     let _runtime_config = initialize_runtime_config();
     if let Err(err) = ensure_ignore_list_sample() {
         warn!("failed to materialize ignore list sample: {}", err);
@@ -513,11 +667,18 @@ fn main() -> Result<ExitCode> {
                 CliTuiOutcome::Cancelled => ExitCode::from(130),
             })
         } else {
+            let root = match resolve_cli_root(&args) {
+                Ok(root) => root,
+                Err(error) => {
+                    eprintln!("error: {error}");
+                    return Ok(ExitCode::from(2));
+                }
+            };
             let cancelled = Arc::new(AtomicBool::new(false));
             let signal_cancelled = Arc::clone(&cancelled);
             ctrlc::set_handler(move || signal_cancelled.store(true, Ordering::Relaxed))
                 .context("failed to install CLI signal handler")?;
-            Ok(match run_cli(&args, &cancelled)? {
+            Ok(match run_cli(&args, &root, &cancelled)? {
                 BatchOutcome::Cancelled => ExitCode::from(130),
                 BatchOutcome::NoMatch if args.fail_no_match => ExitCode::from(1),
                 BatchOutcome::Matches | BatchOutcome::NoMatch => ExitCode::SUCCESS,
@@ -559,7 +720,7 @@ mod tests {
         let cancelled = AtomicBool::new(true);
 
         assert_eq!(
-            run_cli(&args, &cancelled).expect("cancelled CLI outcome"),
+            run_cli(&args, &root, &cancelled).expect("cancelled CLI outcome"),
             BatchOutcome::Cancelled
         );
     }

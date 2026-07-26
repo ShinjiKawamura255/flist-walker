@@ -76,6 +76,7 @@
 ## Progress Log
 - 2026-07-26 Planned.
 - 2026-07-26 Main-agent preflight completed; implementation awaits workflow-level focused re-review.
+- 2026-07-26 `slice-b.options-sort` completed by Terra and integrated by Sol; all nine shared sort modes, sort-before-limit, default/saved root selectors, exclusive root listing, and legacy framing are covered by TC-163. Focused CLI/bin tests, full library regression, check, clippy, fmt, and diff checks passed; one unrelated ordering-sensitive index-worker test failed once in aggregate and passed targeted plus full-library rerun.
 
 ## Closure Capsule
 - Verification Result: pending

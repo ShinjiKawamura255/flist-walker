@@ -18,7 +18,7 @@ fn bin_path() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_flistwalker"))
 }
 
-fn cli_command(name: &str) -> Command {
+fn cli_command_with_settings(name: &str) -> (Command, PathBuf) {
     let settings_root = test_root(&format!("{name}-settings"));
     fs::create_dir_all(&settings_root).expect("create settings root");
     let mut command = Command::new(bin_path());
@@ -28,7 +28,47 @@ fn cli_command(name: &str) -> Command {
         .env("USERPROFILE", &settings_root)
         .env("LOCALAPPDATA", &settings_root)
         .env("APPDATA", &settings_root);
-    command
+    let settings_dir = if cfg!(windows) {
+        settings_root.join("flistwalker")
+    } else {
+        settings_root.join(".flistwalker")
+    };
+    (command, settings_dir)
+}
+
+fn cli_command(name: &str) -> Command {
+    cli_command_with_settings(name).0
+}
+
+fn write_persisted_roots(
+    settings_dir: &std::path::Path,
+    default_root: Option<&std::path::Path>,
+    saved_roots: &[PathBuf],
+) {
+    fs::create_dir_all(settings_dir).expect("create settings directory");
+    if let Some(default_root) = default_root {
+        let default_root = serde_json::to_string(&default_root.to_string_lossy().to_string())
+            .expect("serialize default root");
+        let ui_state = format!(
+            r#"{{"last_root":null,"default_root":{default_root},"show_preview":null,"ignore_list_enabled":true,"preview_panel_width":null,"query_history":[],"results_panel_width":null,"tabs":[],"active_tab":null,"window":null,"skipped_update_target_version":null,"suppress_update_check_failure_dialog":false}}"#
+        );
+        fs::write(settings_dir.join(".flistwalker_ui_state.json"), ui_state)
+            .expect("write UI state");
+    }
+    let saved_roots = saved_roots
+        .iter()
+        .map(|path| path.to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("\n");
+    fs::write(
+        settings_dir.join(".flistwalker_roots.txt"),
+        if saved_roots.is_empty() {
+            String::new()
+        } else {
+            format!("{saved_roots}\n")
+        },
+    )
+    .expect("write saved roots");
 }
 
 #[test]
@@ -88,6 +128,277 @@ fn cli_outputs_at_most_limit_lines_for_empty_query() {
     assert_eq!(lines.len(), 1);
 
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_163_batch_sort_uses_shared_full_match_sort_before_limit() {
+    let root = test_root("sort-before-limit");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("zeta.txt"), "z").expect("write zeta");
+    fs::write(root.join("alpha.txt"), "a").expect("write alpha");
+    fs::write(root.join("large.txt"), "123456789").expect("write large");
+
+    let name = cli_command("sort-name")
+        .args([
+            "--cli",
+            "txt",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--sort",
+            "name-asc",
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("run name-sort CLI");
+    let size = cli_command("sort-size")
+        .args([
+            "--cli",
+            "txt",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--sort",
+            "size-desc",
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("run size-sort CLI");
+    let name_desc = cli_command("sort-name-desc")
+        .args([
+            "--cli",
+            "txt",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--sort",
+            "name-desc",
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("run descending name-sort CLI");
+    let size_asc = cli_command("sort-size-asc")
+        .args([
+            "--cli",
+            "txt",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--sort",
+            "size-asc",
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("run ascending size-sort CLI");
+    let zero_limit = cli_command("sort-limit-zero")
+        .args([
+            "--cli",
+            "txt",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--sort",
+            "name-asc",
+            "--limit",
+            "0",
+        ])
+        .output()
+        .expect("run zero-limit CLI");
+
+    assert!(name.status.success());
+    assert_eq!(String::from_utf8_lossy(&name.stdout).trim(), "alpha.txt");
+    assert!(size.status.success());
+    assert_eq!(String::from_utf8_lossy(&size.stdout).trim(), "large.txt");
+    assert!(name_desc.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&name_desc.stdout).trim(),
+        "zeta.txt"
+    );
+    assert!(size_asc.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&size_asc.stdout).trim(),
+        "alpha.txt"
+    );
+    assert!(zero_limit.status.success());
+    assert!(zero_limit.stdout.is_empty());
+
+    for sort in [
+        "score",
+        "name-asc",
+        "name-desc",
+        "modified-desc",
+        "modified-asc",
+        "created-desc",
+        "created-asc",
+        "size-desc",
+        "size-asc",
+    ] {
+        let output = cli_command(&format!("sort-accept-{sort}"))
+            .args([
+                "--cli",
+                "txt",
+                "--root",
+                root.to_string_lossy().as_ref(),
+                "--source",
+                "walker",
+                "--sort",
+                sort,
+                "--limit",
+                "1",
+            ])
+            .output()
+            .expect("run accepted sort mode");
+        assert!(output.status.success(), "sort mode {sort} was not accepted");
+    }
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_163_batch_root_selectors_use_persisted_roots_and_report_usage_errors() {
+    let default_root = test_root("default-root");
+    let saved_root = test_root("saved-root");
+    fs::create_dir_all(&default_root).expect("create default root");
+    fs::create_dir_all(&saved_root).expect("create saved root");
+    fs::write(default_root.join("default.txt"), "default").expect("write default file");
+    fs::write(saved_root.join("saved.txt"), "saved").expect("write saved file");
+
+    let (mut default_command, default_settings) = cli_command_with_settings("default-root");
+    write_persisted_roots(
+        &default_settings,
+        Some(&default_root),
+        std::slice::from_ref(&saved_root),
+    );
+    let default_output = default_command
+        .args([
+            "--cli",
+            "default",
+            "--use-default-root",
+            "--source",
+            "walker",
+        ])
+        .output()
+        .expect("run default-root CLI");
+
+    let (mut saved_command, saved_settings) = cli_command_with_settings("saved-root");
+    write_persisted_roots(
+        &saved_settings,
+        Some(&default_root),
+        std::slice::from_ref(&saved_root),
+    );
+    let saved_output = saved_command
+        .args(["--cli", "saved", "--saved-root", "1", "--source", "walker"])
+        .output()
+        .expect("run saved-root CLI");
+
+    let missing_default = cli_command("missing-default")
+        .args(["--cli", "--use-default-root"])
+        .output()
+        .expect("run missing-default CLI");
+    let invalid_index = cli_command("invalid-saved-index")
+        .args(["--cli", "--saved-root", "0"])
+        .output()
+        .expect("run invalid saved-root CLI");
+    let root_default_conflict = cli_command("root-default-conflict")
+        .args([
+            "--cli",
+            "--root",
+            default_root.to_string_lossy().as_ref(),
+            "--use-default-root",
+        ])
+        .output()
+        .expect("run root/default conflict CLI");
+    let root_saved_conflict = cli_command("root-saved-conflict")
+        .args([
+            "--cli",
+            "--root",
+            default_root.to_string_lossy().as_ref(),
+            "--saved-root",
+            "1",
+        ])
+        .output()
+        .expect("run root/saved conflict CLI");
+    let default_saved_conflict = cli_command("default-saved-conflict")
+        .args(["--cli", "--use-default-root", "--saved-root", "1"])
+        .output()
+        .expect("run default/saved conflict CLI");
+
+    assert!(default_output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&default_output.stdout).trim(),
+        "default.txt"
+    );
+    assert!(saved_output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&saved_output.stdout).trim(),
+        "saved.txt"
+    );
+    assert_eq!(missing_default.status.code(), Some(2));
+    assert_eq!(invalid_index.status.code(), Some(2));
+    assert_eq!(root_default_conflict.status.code(), Some(2));
+    assert_eq!(root_saved_conflict.status.code(), Some(2));
+    assert_eq!(default_saved_conflict.status.code(), Some(2));
+
+    let _ = fs::remove_dir_all(&default_root);
+    let _ = fs::remove_dir_all(&saved_root);
+}
+
+#[test]
+fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
+    let first = test_root("list-saved-first");
+    let second = test_root("list-saved-second");
+    let (mut command, settings_dir) = cli_command_with_settings("list-saved-roots");
+    write_persisted_roots(&settings_dir, None, &[first.clone(), second.clone()]);
+    let human = command
+        .args(["--cli", "--list-saved-roots"])
+        .output()
+        .expect("run saved-roots list");
+
+    let (mut nul_command, nul_settings_dir) = cli_command_with_settings("list-saved-roots-nul");
+    write_persisted_roots(&nul_settings_dir, None, &[first.clone(), second.clone()]);
+    let nul = nul_command
+        .args(["--cli", "--list-saved-roots", "--print0"])
+        .output()
+        .expect("run NUL saved-roots list");
+
+    let conflict = cli_command("list-saved-roots-conflict")
+        .args(["--cli", "query", "--list-saved-roots"])
+        .output()
+        .expect("run conflicting list CLI");
+    let missing = test_root("list-saved-missing");
+    let (mut missing_command, missing_settings_dir) =
+        cli_command_with_settings("list-saved-missing");
+    write_persisted_roots(&missing_settings_dir, None, std::slice::from_ref(&missing));
+    let missing_output = missing_command
+        .args(["--cli", "--list-saved-roots"])
+        .output()
+        .expect("run saved-roots list with missing root");
+
+    assert!(human.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&human.stdout),
+        format!("1\t{}\n2\t{}\n", first.display(), second.display())
+    );
+    assert!(nul.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&nul.stdout),
+        format!("{}\0{}\0", first.display(), second.display())
+    );
+    assert_eq!(conflict.status.code(), Some(2));
+    assert!(missing_output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&missing_output.stdout),
+        format!("1\t{}\n", missing.display())
+    );
 }
 
 #[cfg(unix)]

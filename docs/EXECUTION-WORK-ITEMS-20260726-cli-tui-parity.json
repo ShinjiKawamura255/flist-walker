@@ -112,17 +112,23 @@
     {
       "id": "slice-b.options-sort",
       "title": "Implement batch option validation, roots, listing, and sorting",
-      "status": "pending",
+      "status": "complete",
       "depends_on": ["slice-a.shared-filelist"],
       "owner": "subagent:terra-batch-options",
       "model_capability": "standard",
       "routing_reason": "Bounded clap/adapter work against fixed matrices.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/main.rs", "rust/tests/cli_contract.rs"],
       "acceptance": ["All combinations/exit codes match Slice A matrix", "Sort-before-limit uses shared API", "Legacy stdout bytes remain unchanged"],
       "verification": ["cargo test --test cli_contract", "cargo test"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {
+        "files": ["rust/src/main.rs", "rust/tests/cli_contract.rs"],
+        "commands": ["cargo test --test cli_contract", "cargo test --bin flistwalker", "cargo test --lib", "cargo check", "cargo clippy --all-targets -- -D warnings", "cargo fmt --all -- --check", "git diff --check"],
+        "artifacts": [],
+        "reviews": ["Sol integration review added all-mode acceptance, ascending/descending, limit-zero, selector-conflict, and no-index listing coverage"],
+        "logs": []
+      },
+      "result": "Batch CLI now exposes all shared sort modes with sort-before-limit, mutually exclusive current/default/saved root selection, and exclusive saved-root listing with script-safe newline or NUL framing while preserving legacy defaults.",
       "blocker": null
     },
     {
