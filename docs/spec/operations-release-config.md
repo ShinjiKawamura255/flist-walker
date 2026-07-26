@@ -90,6 +90,10 @@
 - MUST: 自動生成される runtime config file には、一般利用者が調整してよい `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled`、`emacs_keybindings_enabled`、`tab_pin_moves_to_next_row` を既定値で含めなければならない。
 - SHOULD: 既存 runtime config file に上記 5 項目が欠けている場合、読み込み時に現在の実効値で項目を補完して書き戻す。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
+- MUST: shared persistence は default/saved-root の read-only access と query-history mutation を分離する。`history_persist_disabled` が true のとき、history load/save と history diagnostic text は no-op とする。
+- MUST: history writer は full snapshot ではなく ordered、trimmed、nonempty delta を submit する。cross-process sidecar lock の下で latest JSON を reread し、各 delta を exact duplicate removal、most-recent append、front trim 100 entries の順で適用する。serialized writers が別 query を追加した場合は commit order で両方を保持する。
+- MUST: GUI/TUI frame code は `UiStatePatch + history_delta` を enqueue するだけとする。non-history leaf は last-write-wins、history delta は enqueue order で全て concat し、unknown top-level/nested JSON field は保持する。lock timeout/write failure は exact coalesced patch/delta を retry 用に保持し、successful commit はその generation だけ clear する。
+- MUST: bounded lock wait、latest-read merge、atomic write は persistence worker が行い、frame dispatch を block してはならない。graceful shutdown は frame rendering 外で bounded flush を要求する。crash-before-flush history loss は residual risk とする。
 - MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、Emacs 風 keybindings、Tab pin movement、update policy を含めなければならない。
 - MUST: GUI は runtime config file を開く設定ボタンを提供し、押下時に config file が存在しない場合は生成してから OS 既定アプリケーションで開かなければならない。既定アプリケーションで開けない場合は、標準的なテキストエディタ相当のフォールバックを試行しなければならない。
 - SHOULD: runtime config file は手動追記された `developer` セクションを読み取れる。ただし `developer` セクションは自動生成 config seed に含めてはならず、公開 README や通常ヘルプで案内してはならない。

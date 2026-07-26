@@ -37,8 +37,8 @@
 - AC-006: GUI で検索・選択・実行/オープン・再読込を確認できる。`Manage list` では root を追加でき、通常時の単一行選択から編集でき、削除モード中だけ表示されるチェックボックスで複数 root を draft から削除できる。
 - AC-007: root 外パスは結果一覧に表示されても実行/オープンされず、利用者へブロック理由が通知される。
 - AC-008: UNC root 配下の候補は root 外判定に誤って拒否されない。
-- AC-009: Create File List 実行時、祖先 FileList 更新がありうる場合は確認ダイアログが表示され、拒否時は root 直下の FileList だけが更新される。
-- AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。
+- AC-009: Create File List 実行時、既存 root FileList の置換と祖先 FileList 更新はそれぞれ明示 consent を要求し、拒否時は未認可 target を更新しない。取消または部分失敗では commit 済み target の rollback を試み、失敗 target を報告する。
+- AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。有効時は複数 writer の ordered delta を失わず、既存/unknown UI state field を保持して最大 100 件へ merge する。
 - AC-010A: runtime config の `emacs_keybindings_enabled` が `false` のときは Emacs 風ショートカットをアプリ操作として消費せず、`true` または未指定時は既存どおり有効にする。
 - AC-010B: runtime config の `tab_pin_moves_to_next_row` が `true` のとき、`Tab` / `Shift+Tab` / `Ctrl+I` による PIN 固定/解除後に選択行を次行へ進める。未指定または `false` のときは既存どおり現在行に留まる。
 - AC-011: CI は Linux/macOS/Windows でテストを実行し、依存脆弱性検査を通過する。
@@ -66,4 +66,4 @@
 - AC-033: `scripts/build-rust-win.ps1` と `scripts/build-rust-win-clean.ps1` は Windows PowerShell から GNU release artifact を生成できる。`-CheckOnly` は環境を変更せず、`-NoInstall` は不足時に手動コマンドを表示して失敗し、通常モードは Rustup、Rust target、MSYS2、GNU package を個別確認し、`-InstallMissing` はそれらを明示承認済みとして扱う。生成後の `flistwalker.exe` と `FlistWalker.exe` は同一内容で、Windows icon/resource、`asInvoker` manifest、GUI subsystem を保持する。
 - AC-034: 自己更新は署名済み manifest を先に検証し、定義済み byte/time 上限内で streaming hash が一致した bundle だけを適用する。Windows/Linux の dummy transaction では、成功、binary commit 前の失敗、再起動生成失敗、中断 recovery の各経路で旧 bundle または完全な新 bundle のどちらかへ収束し、partial file・lock・backup は所有権を検証して cleanup される。
 - AC-035: UTF-8 および先頭 UTF-8 BOM 付き FileList は同じ候補を返す。UTF-16 BOM、NUL、不正・途中切れ UTF-8、1 MiB 超の論理行は候補を返す前に明示的に失敗し、階層 FileList の失敗は親由来 subtree を部分置換しない。
-- AC-036: legacy `--cli [QUERY] --root ... --limit ...` invocation は維持する。batch出力は旧 `[score] absolute-path` 形式からroot相対pathの改行区切りへ移行し、absolute/NUL/no-match/type/regex/case/source/ignore/progress を選択できる。interactive CLI は stdin と stderr が TTY の場合に stderr へ UI を描画し、redirect 可能な stdout へ terminal 復旧後の選択 path だけを出力する。batch Ctrl-C と interactive の `Esc` / `Ctrl-C` は処理を中断して exit 130 となり、interactive の最新応答・選択・pin・編集・resize・Unicode 列幅・復旧契約を自動試験または Windows 実端末証跡で確認できる。
+- AC-036: legacy `--cli [QUERY] --root ... --limit ...` invocation と既定 path-only stdout を維持する。batch は sort-before-limit、print/open/reveal の明示 action と mass-action guard、default/saved root、saved-root listing、安全な FileList create を提供する。interactive CLI は redirect 可能な stdout へ terminal 復旧後の選択 path だけを出力し、preview、current-only action、history、clear/help、sort/options/root picker、refresh、FileList confirmation を stderr TUI で提供する。FileList active は pending intent、rollback/report、worker join の settlement 前に output/root switch/return を行わず、terminal cleanup、exit code、stale response、非ブロッキング persistence を自動試験または Windows 実端末証跡で確認できる。

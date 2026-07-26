@@ -7,6 +7,9 @@
 - Flow-004: GUI 起動 -> 非同期インデックス -> 最新要求優先検索（古い要求を破棄） -> プレビュー -> 実行/オープン。
 - Flow-005: GUI 起動 -> update worker が上限付きで GitHub Releases を確認 -> 新版あり -> 利用者承認 -> `SHA256SUMS` / `SHA256SUMS.sig` を先行取得 -> strict parse と署名検証 -> binary/sidecar を private create-new file へ上限付き streaming download/hash 検証 -> `VerifiedUpdateBundle` -> executable parent 内へ同一 directory 準備 -> durable parent/helper registration と acknowledgement -> 本体終了 -> sidecar 適用 -> binary-last atomic commit -> 再起動。precommit/restart failure は旧 bundle へ rollback し、中断は起動時 marker/hash recovery へ収束する。ignore list sample は別途起動時初期化で補完する。
   `FLISTWALKER_DISABLE_SELF_UPDATE=1`、または実行中バイナリと同一ディレクトリに `FLISTWALKER_DISABLE_SELF_UPDATE` ファイルがある場合は update flow を起動せず、通常起動のみ行う。
+- Flow-006: batch CLI -> root selection -> index/search -> full-match sort -> limit -> print または preauthorized action。action multi-target guard は backend dispatch より前に完結する。
+- Flow-007: FileList create -> deterministic write plan/content precompute -> per-target cancellation check -> commit -> success report、または rollback attempt -> terminal settlement report。TUI は settlement 後にのみ pending output/root/exit intent を解決する。
+- Flow-008: GUI/TUI frame -> `UiStatePatch + history_delta` enqueue -> persistence worker bounded lock -> latest JSON read/merge -> atomic write -> committed generations only clear。失敗は同一 coalesced payload を retry queue に残す。
 
 ## Data model
 - Candidate
@@ -15,6 +18,10 @@
 - SearchResult
 - `candidate: Candidate`
 - `score: f64`
+- `SortMode`: score/name/modified/created/size の方向付き enum。shared sort は full match set と mode を受け、adapter がその後に limit を適用する。
+- `AuthorizedActionRequest`: trusted root、current-row snapshot、request identity、cancellation token、action kind。
+- `FileListWritePlan`: ordered root/ancestor targets、expected prior contents、new contents、consent scope。`FileListTransactionReport` は committed/failed/rolled-back/rollback-failed display paths と settlement reason を保持する。
+- `UiStatePatch`: named non-history JSON leaf patch と ordered history deltas。worker generation は commit に含めた enqueue range を記録する。
 
 ## API contract (Rust)
 - `build_index(root, use_filelist, include_files, include_dirs)`
@@ -27,3 +34,7 @@
 - `prepare_update_transaction(bundle, current_executable) -> PreparedUpdateTransaction`
 - `recover_update_transaction(marker, filesystem) -> RecoveryOutcome`
 - CLI: `flistwalker [query] [--root PATH] [--limit N] [--cli]`
+- `sort_all_matches(matches, mode) -> sorted matches`
+- `execute_authorized_action(request, backend) -> ActionReport`
+- `plan_filelist_write(options, filesystem) -> FileListWritePlan`; `settle_filelist_plan(plan, cancel) -> FileListTransactionReport`
+- `enqueue_persistence(patch, history_delta)`; `flush_persistence_bounded() -> CommitOutcome`

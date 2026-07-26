@@ -31,7 +31,9 @@
 - DES-005 CLI Adapter
 - 役割: `clap` 引数を typed CLI options へ変換し、GUI、batch CLI、interactive CLI を明示 dispatch する。legacy `--cli` 契約を維持し、CLI-only option の依存/競合と mode-specific initialization/exit status を所有する。
 - 役割補足: batch adapter は cancellable index/search、source/type/ignore/search option、relative/absolute path、newline/NUL framing を構成し、結果だけを stdout、進捗/診断を stderr へ送る。
+- 役割補足: batch adapter は shared full-match sort の後に limit を適用し、print/open/reveal、root selector、saved-root listing、FileList operation の引数整合性と exit status を所有する。外部 action と FileList write は shared worker boundary を通し、adapter 自身は backend/write を行わない。
 - 役割補足: interactive adapter は request identity を持つ index/search worker、cursor-aware editor、ordered pin、dynamic viewport、stderr renderer を分離する。terminal session guard は raw/alternate/cursor/bracketed-paste の成立状態を所有して逆順復旧し、guard 解放後だけ stdout result writer を呼ぶ。
+- 役割補足: TUI FileList active は pending intent state machine を所有し、`CancelExit > SwitchRoot > SelectOutput` を settlement 後にだけ解決する。FileList worker は generic shutdown detach の対象外で、panic/disconnect を failed settlement として合成する。
 - 実装: `rust/src/main.rs`, `rust/src/cli_tui.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/walker.rs`
 
 - DES-009 GUI Adapter (egui/eframe)
@@ -130,6 +132,7 @@
 - 実装: `rust/src/ignore_list.rs`, `rust/src/query.rs`, `rust/src/app/session.rs`, `rust/src/app/ui_state.rs`, `rust/src/app/bootstrap.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/main.rs`
 - 役割補足: ignore list の各ルールは query の `!` 除外と同じ非 fuzzy の literal / anchor 比較で評価し、既定では GUI の `Use Ignore List` チェックボックスが有効な状態で候補集合へ反映する。
 - 役割補足: ignore list ファイルの読込失敗や未存在は空ルールとして扱い、検索/GUI/CLI の通常操作を止めない。
+- 役割補足: CLI/TUI の filter/sort/root transition は GUI と同じ ignore setting を shared query input として渡し、adapter 固有の別解釈を作らない。
 
 - DES-017 Runtime Config Bootstrap
 - 役割: Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を runtime settings の保存先として扱い、起動初回のみ current env を seed に自動生成する。
@@ -138,6 +141,7 @@
 - 役割補足: Windows の旧 exe-side / home-directory 配置ファイルと Linux/macOS の旧 home-root 配置ファイルは、新しい保存先が未作成のときだけ初回起動で移行し、既存の新配置ファイルを上書きしない。transition migration は v0.20.0 までの一時対応として扱う。
 - 役割補足: GUI の設定ボタンは render command 経由で `shell_support` の config open 処理を呼び、`runtime_config_file_path` を生成済みにしたうえで `actions` の既定アプリ open を試す。既定アプリが失敗した場合は、Windows では `notepad.exe`、macOS では `open -t`、Linux では `VISUAL` / `EDITOR` または一般的な GUI editor へフォールバックする。
 - 役割補足: build-time 公開鍵や release signing secret は runtime config file に含めず、既存の build / release / dev-test secret 経路に残す。
+- 役割補足: session persistence は read-only roots API と async history/UI-state writer を分ける。worker は sidecar lock 下で latest-read delta merge と atomic write を行い、unknown JSON fields を保持する。GUI/TUI frame は enqueue のみを行い、lock timeout/write failure の generation は retry queue に残す。
 
 - DES-018 Release Sample Ignore List
 - 役割: release asset と self-update helper が ignore list サンプルを同梱・配置し、初回利用時の導線を提供する。

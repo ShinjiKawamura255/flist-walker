@@ -49,6 +49,7 @@
 - MUST: direct action の effective target は選択対象、open-containing-folder の effective target は通常ファイルまたは file link の字句的な親、ディレクトリまたは directory link/junction 自身とする。解決後の effective target が解決済み root 配下でなければ拒否する。
 - MUST: 複数選択では、すべての effective target の解決と認可が成功するまで OS backend を一度も呼び出してはならない。1 件でも解決不能または root 外なら要求全体を拒否する。
 - MUST: worker は各 backend 呼び出しの直前にも対応する raw effective target を再解決し、root 配下判定を繰り返す。再検証が途中で失敗した場合は残りを実行せず、すでに開始した件数を含む partial completion として通知し、完了済み外部アクションを rollback したと主張してはならない。
+- MUST: shared action request は trusted root、current-row selection snapshot、request identity、cancellation token を保持する。whole-request の事前認可成功後、単一 backend 呼び出しの直前に freshness/cancel 確認と再認可を行う。root switch または exit cancellation の観測後、新しい backend 呼び出しを開始してはならない。開始済み OS action は不可逆として扱う。
 - MUST: OS backend へ渡す path は最後に認可した解決済み execution path とする。成功/失敗通知は利用者が選択した display path または effective display path を使い、拒否した root 外の解決先を表示してはならない。
 - MUST: root 外パスは一覧表示されていても実行/オープンを拒否し、利用者へ通知する。
 - MUST: UNC root を検索 root とする場合も、解決済みの同一 root 配下は許可し、別 share または root 外は拒否する。
@@ -86,6 +87,13 @@
 - MUST: `--root` と `--limit` を受理し、既存の `--cli [QUERY] --root ... --limit ...` invocation を維持する。本仕様では subcommand を追加しない。
 - MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。
 - MUST: CLI の `--limit` は実効値を追加で 1000 件へ丸めてはならない。
+- MUST: batch CLI は `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` を受理し、既定を `score` とする。全 match set を sort してから `limit` を適用し、`limit=0` は target 0 件とする。
+- MUST: batch CLI は `--action print|open|reveal` を受理し、既定を `print` とする。`--action-all` は `open` / `reveal` のみで有効とし、non-print action の post-sort/post-limit target が複数で `--action-all` が無い場合は backend 呼び出し前に拒否する。既定 target は 1 件、`--action-all` は全 target である。
+- MUST: `print` は既存 path-only stdout framing を維持する。non-print action は stdout に result path を書かず、progress、diagnostic、partial summary を stderr に書く。non-print action と `--absolute` または `--print0` の組合せは argument error とする。
+- MUST: action/root option の argument または組合せ error は exit 2、authorization/executor/partial failure は exit 1、cancellation は exit 130 とする。no match は既存どおり exit 0、`--fail-no-match` 指定時だけ exit 1 とする。preflight authorization failure は backend 呼び出し 0 件とする。
+- MUST: root selector は `--root PATH`、`--use-default-root`、`--saved-root INDEX` の高々 1 つとする。saved-root index は `--list-saved-roots` の one-based order とし、selector 無しは current-directory behavior を維持する。無効 default/index は indexing 前に exit 2 とする。
+- MUST: `--list-saved-roots` は exclusive batch operation とし、indexing/action/write を行わない。通常は one-based index と absolute stored path を newline で、`--print0` では path-only record を NUL で出力する。
+- MUST: `--create-filelist` は query search/action/listing と排他的であり、non-default search/filter/sort option を拒否する。`--overwrite-filelist` と `--propagate-ancestors` は `--create-filelist` を必要とし、root selector は有効である。
 - MUST: batch CLI の既定出力は root 相対 path の改行区切りとし、スコアや ANSI 装飾を付加してはならない。既定の一致なしは stdout 空・exit 0 とする。
 - Compatibility: query 指定時に `[score] absolute-path` を出力していた旧形式は、script-safe な単一path形式へ意図的に置き換える。旧 invocation は維持するが旧出力 framing は維持せず、絶対pathが必要なconsumerは `--absolute` へ移行する。score出力はCLI契約に含めない。
 - MUST: batch CLI は `--absolute`、`--print0`、`--fail-no-match`、`--type all|file|folder`、`--regex`、`--case-sensitive`、`--source auto|filelist|walker`、`--ignore-file PATH`、`--no-ignore`、`--progress` を受理する。`--absolute` は path 形式だけ、`--print0` は delimiter だけを変更し、`--fail-no-match` は一致なしを exit 1 にする。
@@ -103,6 +111,12 @@
 - SHOULD: インタラクティブ CLI は状態変更時だけ端末を再描画し、候補全件を毎回描画してはならない。
 - MUST: terminal session は raw mode、alternate screen、cursor 非表示、bracketed paste の成立状態を個別に追跡し、setup 途中失敗、event/draw error、正常終了、cancel、unwind で成立済み状態だけを逆順に best-effort 復旧する。選択結果は guard 解放後だけ出力する。
 - SHOULD: interactive indexing の増分 batch は検索再実行を throttle/debounce し、結果更新のたびに current row を先頭へ戻してはならない。
+- MUST: TUI normal state は Enter で current/pins を terminal 復旧後に出力し、Esc で exit 130、Ctrl-C で worker cancel と exit 130、Tab で pin toggle とする。`Ctrl+O` と `Shift+Enter` は pins に関わらず current row だけを action target とし、`Ctrl+G` は query と pins を clear する。
+- MUST: TUI history overlay は Enter で highlighted history query を適用し、Esc/Ctrl+G で draft を復元して閉じ、Ctrl-C で全体を exit 130 とする。help overlay は Enter/Esc/Ctrl+G で閉じ、side-effect key を dispatch してはならない。options/sort/root overlay は Enter だけで highlighted choice を適用し、Esc/Ctrl+G は旧 state を保存して閉じ、Ctrl-C は exit 130 とする。
+- MUST: TUI FileList confirmation は confirm choice に加えて overwrite confirmation を要求し、active confirmation 中は action/root/refresh dispatch を許可しない。preview は width 100 column 以上で既定有効、狭幅では collapse し、`Alt+P` で toggle し、I/O は worker-only とする。
+- MUST: non-FileList worker busy 中も navigation/query と request-identity による latest request supersession を許可し、stale response は state を変更してはならない。root/source transition は root-scoped current/pin/preview state を clear してから新結果を受理する。
+- MUST: FileList active 中は Enter/Esc/Ctrl-C/root switch を pending intent として記録して cancel を要求し、transaction settlement 前に output、root switch、terminal return を行ってはならない。intent priority は sticky `CancelExit` > latest `SwitchRoot(path)` > `SelectOutput` とする。generic 250ms detach path は FileList worker に適用してはならない。
+- MUST: FileList worker は panic-contained transaction report を返す。panic/channel disconnect/missing terminal response は join 後 failed settlement として合成し、selection/root intent を success として再開してはならない。rollback/report failure は recovery path を表示し、selection/root intent を TUI 内で明示 retry/exit まで保持する。ただし `CancelExit` は terminal を復旧して exit 1 とする。
 
 ### Preconditions / Postconditions
 - Preconditions: CLI モードで起動される。
