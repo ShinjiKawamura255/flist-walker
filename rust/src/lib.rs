@@ -6,6 +6,12 @@ pub mod fs_atomic;
 pub mod ignore_list;
 pub mod indexer;
 pub mod path_utils;
+pub mod persistence {
+    pub use crate::app::{
+        load_persisted_roots_and_history, load_persisted_roots_and_history_from_paths,
+        AsyncHistoryPersistence, PersistedRootsAndHistory,
+    };
+}
 pub mod query;
 pub mod runtime_config;
 pub mod search;

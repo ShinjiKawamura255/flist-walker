@@ -65,6 +65,10 @@ use index_worker::spawn_index_worker;
 use pipeline_owner::PipelineOwner;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
+pub use session::{
+    load_persisted_roots_and_history, load_persisted_roots_and_history_from_paths,
+    AsyncHistoryPersistence, PersistedRootsAndHistory,
+};
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
     AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, ClosedTabState,
