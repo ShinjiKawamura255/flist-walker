@@ -260,17 +260,17 @@
     {
       "id": "slice-d.filelist",
       "title": "Implement cancellable TUI FileList confirmation and worker flow",
-      "status": "pending",
+      "status": "completed",
       "depends_on": ["slice-d.root-refresh"],
       "owner": "subagent:terra-tui-filelist",
       "model_capability": "standard",
       "routing_reason": "Focused TUI write workflow using shared plan/report API.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/cli_tui.rs", "README.md", "README-ja.md"],
       "acceptance": ["F6 confirmation precedence passes", "Cancel/stale/write-plan behavior passes", "TUI return/root-switch/selection output wait for FileList terminal settlement", "Sticky pending-intent priority is deterministic", "Panic/disconnect synthesize failed settlement", "FileList worker is joined without timeout detach", "No unconsented or post-return target is written"],
       "verification": ["delayed >250ms and post-return write fixtures", "four single intents and double-intent priority fixtures", "panic/disconnect fixtures", "commit-then-cancel and rollback-failure fixtures", "focused TUI/FileList tests", "cargo test cli_tui::tests", "cargo test", "ignored indexing perf tests when paths change"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {"files": ["rust/src/cli_tui.rs", "rust/src/indexer/filelist_writer.rs", "rust/src/indexer/tests/mod.rs", "README.md", "README-ja.md"], "commands": ["cargo test cli_tui::tests --lib", "cargo check --lib", "cargo clippy --lib -- -D warnings", "cargo fmt -- --check", "cargo test --quiet", "cargo check --all-targets", "git diff --check"], "artifacts": [], "reviews": ["Sol FileList settlement and non-detach review"], "logs": []},
+      "result": "F6 now requires explicit scope and overwrite consent, runs a one-shot non-detached FileList transaction, joins before output/root/exit settlement, and preserves deterministic pending-intent and rollback-failure behavior; 59 focused TUI tests and the full Rust suite passed.",
       "blocker": null
     },
     {

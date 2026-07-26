@@ -5,8 +5,9 @@ use crate::actions::{
 };
 use crate::entry::Entry;
 use crate::indexer::{
-    build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
-    walk_entries_stream_cancellable,
+    build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
+    is_index_build_cancelled, plan_filelist_write_cancellable, walk_entries_stream_cancellable,
+    FileListWriteOptions, FileListWriteReport, FileListWriteStatus,
 };
 use crate::path_utils::output_path_bytes;
 use crate::persistence::{
@@ -73,6 +74,7 @@ enum WorkerResponse {
     IndexedFinished {
         request_id: u64,
         root: PathBuf,
+        has_root_filelist: bool,
     },
     IndexFailed {
         request_id: u64,
@@ -98,6 +100,19 @@ enum WorkerResponse {
         root: PathBuf,
         selected_path: PathBuf,
         report: AuthorizedActionReport,
+    },
+}
+
+enum FileListWorkerResult {
+    Finished {
+        request_id: u64,
+        root: PathBuf,
+        report: FileListWriteReport,
+    },
+    Failed {
+        request_id: u64,
+        root: PathBuf,
+        error: String,
     },
 }
 
@@ -222,6 +237,15 @@ struct TuiActionRequest {
     selected_path: PathBuf,
 }
 
+struct TuiFileListRequest {
+    request_id: u64,
+    root: PathBuf,
+    entries: Arc<Vec<PathBuf>>,
+    propagate_to_ancestors: bool,
+    allow_root_overwrite: bool,
+    cancel: Arc<AtomicBool>,
+}
+
 struct TuiActionFreshness {
     current_request_id: AtomicU64,
     trusted_root: Mutex<PathBuf>,
@@ -284,6 +308,7 @@ struct EventLoopContext<'a> {
 
 enum TuiExit {
     Cancelled,
+    Failed(String),
     Selected {
         paths: Vec<PathBuf>,
         query: String,
@@ -301,6 +326,11 @@ enum KeyAction {
     Reindex,
     Refresh,
     SwitchRoot(PathBuf),
+    OpenFileList,
+    StartFileList {
+        propagate_to_ancestors: bool,
+        allow_root_overwrite: bool,
+    },
 }
 
 struct TuiState {
@@ -313,6 +343,8 @@ struct TuiState {
     dirty: bool,
     last_query_change: Option<Instant>,
     indexed: bool,
+    root_filelist_known: bool,
+    root_filelist_exists: bool,
     entries: Arc<Vec<PathBuf>>,
     root: PathBuf,
     saved_roots: Vec<PathBuf>,
@@ -339,6 +371,10 @@ struct TuiState {
     help: Option<HelpContext>,
     options_overlay: Option<OptionsOverlay>,
     sort_picker: Option<SortPicker>,
+    filelist_confirmation: Option<FileListConfirmation>,
+    next_filelist_request_id: u64,
+    active_filelist: Option<ActiveFileList>,
+    pending_filelist_intent: Option<PendingFileListIntent>,
     next_action_request_id: u64,
     active_action_request: Option<(u64, PathBuf)>,
 }
@@ -369,6 +405,58 @@ struct RootPicker {
     selected: usize,
 }
 
+#[derive(Clone, Debug)]
+enum FileListConfirmation {
+    Mode { propagate_to_ancestors: bool },
+    Overwrite { propagate_to_ancestors: bool },
+}
+
+#[derive(Clone, Debug)]
+struct ActiveFileList {
+    request_id: u64,
+    root: PathBuf,
+    cancel: Arc<AtomicBool>,
+}
+
+struct ActiveFileListWorker {
+    cancel: Arc<AtomicBool>,
+    result: mpsc::Receiver<FileListWorkerResult>,
+    done: mpsc::Receiver<()>,
+    handle: Option<thread::JoinHandle<()>>,
+}
+
+impl ActiveFileListWorker {
+    fn join(mut self) {
+        let _ = self.done.recv();
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+
+    fn is_finished(&self) -> bool {
+        self.handle
+            .as_ref()
+            .is_some_and(thread::JoinHandle::is_finished)
+    }
+}
+
+impl Drop for ActiveFileListWorker {
+    fn drop(&mut self) {
+        self.cancel.store(true, Ordering::Release);
+        let _ = self.done.recv();
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum PendingFileListIntent {
+    SelectOutput,
+    SwitchRoot(PathBuf),
+    CancelExit,
+}
+
 const SORT_MODES: [SearchSortMode; 9] = [
     SearchSortMode::Score,
     SearchSortMode::NameAsc,
@@ -385,6 +473,7 @@ const SORT_MODES: [SearchSortMode; 9] = [
 enum HelpContext {
     Normal,
     History,
+    FileList,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -406,6 +495,8 @@ impl TuiState {
             dirty: true,
             last_query_change: Some(Instant::now()),
             indexed: false,
+            root_filelist_known: false,
+            root_filelist_exists: false,
             entries: Arc::new(Vec::new()),
             root: PathBuf::new(),
             saved_roots: Vec::new(),
@@ -439,6 +530,10 @@ impl TuiState {
             help: None,
             options_overlay: None,
             sort_picker: None,
+            filelist_confirmation: None,
+            next_filelist_request_id: 0,
+            active_filelist: None,
+            pending_filelist_intent: None,
             next_action_request_id: 0,
             active_action_request: None,
         }
@@ -485,6 +580,8 @@ impl TuiState {
         let request_id = self.next_index_request_id;
         self.active_index_request = Some((request_id, root.clone()));
         self.indexed = false;
+        self.root_filelist_known = false;
+        self.root_filelist_exists = false;
         self.entries = Arc::new(Vec::new());
         self.results.clear();
         self.selected = 0;
@@ -574,6 +671,72 @@ impl TuiState {
         self.root_picker = Some(RootPicker { selected: 0 });
     }
 
+    fn open_filelist_confirmation(&mut self) {
+        self.filelist_confirmation = Some(FileListConfirmation::Mode {
+            propagate_to_ancestors: false,
+        });
+        self.dirty = true;
+    }
+
+    fn open_filelist_if_ready(&mut self) {
+        if self.active_filelist.is_some() {
+            return;
+        }
+        if self.root_filelist_known {
+            self.open_filelist_confirmation();
+        } else {
+            self.status = "Wait for indexing to finish before creating FileList".to_string();
+            self.dirty = true;
+        }
+    }
+
+    fn next_filelist_request(
+        &mut self,
+        propagate_to_ancestors: bool,
+        allow_root_overwrite: bool,
+    ) -> TuiFileListRequest {
+        self.next_filelist_request_id = self.next_filelist_request_id.wrapping_add(1);
+        let request_id = self.next_filelist_request_id;
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.active_filelist = Some(ActiveFileList {
+            request_id,
+            root: self.root.clone(),
+            cancel: Arc::clone(&cancel),
+        });
+        self.status = "Creating FileList...".to_string();
+        self.dirty = true;
+        TuiFileListRequest {
+            request_id,
+            root: self.root.clone(),
+            entries: Arc::clone(&self.entries),
+            propagate_to_ancestors,
+            allow_root_overwrite,
+            cancel,
+        }
+    }
+
+    fn cancel_active_filelist(&mut self) {
+        if let Some(active) = self.active_filelist.as_ref() {
+            active.cancel.store(true, Ordering::Release);
+            self.status = "Canceling FileList creation...".to_string();
+            self.dirty = true;
+        }
+    }
+
+    fn record_filelist_intent(&mut self, intent: PendingFileListIntent) {
+        let replace = match (&self.pending_filelist_intent, &intent) {
+            (Some(PendingFileListIntent::CancelExit), _) => false,
+            (_, PendingFileListIntent::CancelExit) => true,
+            (_, PendingFileListIntent::SwitchRoot(_)) => true,
+            (None, PendingFileListIntent::SelectOutput) => true,
+            _ => false,
+        };
+        if replace {
+            self.pending_filelist_intent = Some(intent);
+        }
+        self.cancel_active_filelist();
+    }
+
     fn current_path(&self) -> Option<&PathBuf> {
         self.results.get(self.selected).map(|(path, _)| path)
     }
@@ -653,7 +816,9 @@ impl TuiState {
     }
 
     fn open_help(&mut self) {
-        self.help = Some(if self.history.is_some() {
+        self.help = Some(if self.active_filelist.is_some() {
+            HelpContext::FileList
+        } else if self.history.is_some() {
             HelpContext::History
         } else {
             HelpContext::Normal
@@ -1072,6 +1237,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                     let _ = worker_tx.send(WorkerResponse::IndexedFinished {
                         request_id: request.request_id,
                         root: request.root,
+                        has_root_filelist: has_filelist,
                     });
                 }
             }
@@ -1134,6 +1300,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
 
     match result? {
         TuiExit::Cancelled => Ok(CliTuiOutcome::Cancelled),
+        TuiExit::Failed(error) => anyhow::bail!(error),
         TuiExit::Selected { paths, root, .. } => {
             write_selected_paths(&paths, &root, options.absolute, options.print0)?;
             Ok(CliTuiOutcome::Selected)
@@ -1145,6 +1312,52 @@ fn finish_worker(handle: thread::JoinHandle<()>, done: mpsc::Receiver<()>) {
     if done.recv_timeout(WORKER_JOIN_TIMEOUT).is_ok() {
         let _ = handle.join();
     }
+}
+
+fn spawn_filelist_worker(request: TuiFileListRequest) -> Result<ActiveFileListWorker> {
+    let cancel = Arc::clone(&request.cancel);
+    let (done_tx, done) = mpsc::channel();
+    let (result_tx, result) = mpsc::channel();
+    let handle = thread::Builder::new()
+        .name("flistwalker-cli-filelist".to_string())
+        .spawn(move || {
+            let request_id = request.request_id;
+            let root = request.root.clone();
+            let response = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let should_cancel = || request.cancel.load(Ordering::Acquire);
+                let report = match plan_filelist_write_cancellable(
+                    &request.root,
+                    request.entries.as_slice(),
+                    FileListWriteOptions {
+                        allow_root_overwrite: request.allow_root_overwrite,
+                        propagate_to_ancestors: request.propagate_to_ancestors,
+                    },
+                    &should_cancel,
+                ) {
+                    Ok(plan) => execute_filelist_write_plan(&plan, &should_cancel),
+                    Err(report) => *report,
+                };
+                FileListWorkerResult::Finished {
+                    request_id,
+                    root: root.clone(),
+                    report,
+                }
+            }))
+            .unwrap_or_else(|_| FileListWorkerResult::Failed {
+                request_id,
+                root,
+                error: "FileList worker panicked".to_string(),
+            });
+            let _ = result_tx.send(response);
+            let _ = done_tx.send(());
+        })
+        .context("failed to start CLI FileList worker")?;
+    Ok(ActiveFileListWorker {
+        cancel,
+        result,
+        done,
+        handle: Some(handle),
+    })
 }
 
 fn write_selected_paths(
@@ -1192,7 +1405,53 @@ fn run_event_loop<W: Write>(
     if dispatch_current_index(&mut state, index_tx, index_freshness.as_ref()).is_err() {
         anyhow::bail!("index worker unavailable");
     }
+    let mut filelist_worker: Option<ActiveFileListWorker> = None;
     loop {
+        let filelist_result =
+            filelist_worker
+                .as_ref()
+                .and_then(|worker| match worker.result.try_recv() {
+                    Ok(result) => Some(Ok(result)),
+                    Err(mpsc::TryRecvError::Disconnected) if worker.is_finished() => {
+                        Some(Err("FileList worker disconnected".to_string()))
+                    }
+                    Err(mpsc::TryRecvError::Empty) if worker.is_finished() => {
+                        Some(Err("FileList worker finished without a result".to_string()))
+                    }
+                    Err(_) => None,
+                });
+        if let Some(filelist_result) = filelist_result {
+            if let Some(worker) = filelist_worker.take() {
+                worker.join();
+            }
+            let settlement = match filelist_result {
+                Ok(FileListWorkerResult::Finished {
+                    request_id,
+                    root,
+                    report,
+                }) => filelist_settlement_from_report(&mut state, request_id, &root, report),
+                Ok(FileListWorkerResult::Failed {
+                    request_id,
+                    root,
+                    error,
+                }) => filelist_worker_failure(&mut state, request_id, &root, error),
+                Err(error) => state
+                    .active_filelist
+                    .take()
+                    .map(|_| FileListSettlement::Failed(error)),
+            };
+            if let Some(settlement) = settlement {
+                if let Some(exit) = settle_filelist(
+                    &mut state,
+                    settlement,
+                    index_tx,
+                    index_freshness.as_ref(),
+                    action_freshness.as_ref(),
+                ) {
+                    return Ok(exit);
+                }
+            }
+        }
         while let Ok(response) = rx.try_recv() {
             let preview_path_before = state.current_path().cloned();
             apply_worker_response(&mut state, response)?;
@@ -1228,10 +1487,18 @@ fn run_event_loop<W: Write>(
                     let preview_preferred_before = state.preview_preferred;
                     match handle_key(&mut state, key) {
                         KeyAction::Cancel => {
+                            if state.active_filelist.is_some() {
+                                state.record_filelist_intent(PendingFileListIntent::CancelExit);
+                                continue;
+                            }
                             cancellation.store(true, Ordering::Release);
                             return Ok(TuiExit::Cancelled);
                         }
                         KeyAction::Select => {
+                            if state.active_filelist.is_some() {
+                                state.record_filelist_intent(PendingFileListIntent::SelectOutput);
+                                continue;
+                            }
                             cancellation.store(true, Ordering::Release);
                             return Ok(TuiExit::Selected {
                                 paths: selected_paths(&state),
@@ -1294,6 +1561,9 @@ fn run_event_loop<W: Write>(
                             }
                         }
                         KeyAction::Refresh => {
+                            if state.active_filelist.is_some() {
+                                continue;
+                            }
                             prepare_refresh(&mut state);
                             if dispatch_current_index(
                                 &mut state,
@@ -1307,6 +1577,12 @@ fn run_event_loop<W: Write>(
                             }
                         }
                         KeyAction::SwitchRoot(new_root) => {
+                            if state.active_filelist.is_some() {
+                                state.record_filelist_intent(PendingFileListIntent::SwitchRoot(
+                                    new_root,
+                                ));
+                                continue;
+                            }
                             prepare_root_switch(&mut state, action_freshness.as_ref(), new_root);
                             if dispatch_current_index(
                                 &mut state,
@@ -1317,6 +1593,26 @@ fn run_event_loop<W: Write>(
                             {
                                 state.status = "Index worker unavailable".to_string();
                                 state.dirty = true;
+                            }
+                        }
+                        KeyAction::OpenFileList => {
+                            state.open_filelist_if_ready();
+                        }
+                        KeyAction::StartFileList {
+                            propagate_to_ancestors,
+                            allow_root_overwrite,
+                        } => {
+                            let request = state.next_filelist_request(
+                                propagate_to_ancestors,
+                                allow_root_overwrite,
+                            );
+                            match spawn_filelist_worker(request) {
+                                Ok(worker) => filelist_worker = Some(worker),
+                                Err(error) => {
+                                    state.active_filelist = None;
+                                    state.status = format!("FileList worker unavailable: {error}");
+                                    state.dirty = true;
+                                }
                             }
                         }
                         KeyAction::Continue => {
@@ -1386,6 +1682,100 @@ fn prepare_refresh(state: &mut TuiState) {
     state.dirty = true;
 }
 
+enum FileListSettlement {
+    Completed,
+    Canceled,
+    Failed(String),
+}
+
+fn filelist_settlement_from_report(
+    state: &mut TuiState,
+    request_id: u64,
+    root: &Path,
+    report: FileListWriteReport,
+) -> Option<FileListSettlement> {
+    let active = state.active_filelist.as_ref()?;
+    if active.request_id != request_id || active.root.as_path() != root {
+        return None;
+    }
+    state.active_filelist = None;
+    Some(match report.status {
+        FileListWriteStatus::Completed => FileListSettlement::Completed,
+        FileListWriteStatus::Canceled if report.exit_code() == 130 => FileListSettlement::Canceled,
+        FileListWriteStatus::Canceled | FileListWriteStatus::Failed => {
+            FileListSettlement::Failed(report.summary())
+        }
+    })
+}
+
+fn filelist_worker_failure(
+    state: &mut TuiState,
+    request_id: u64,
+    root: &Path,
+    error: String,
+) -> Option<FileListSettlement> {
+    let active = state.active_filelist.as_ref()?;
+    if active.request_id != request_id || active.root.as_path() != root {
+        return None;
+    }
+    state.active_filelist = None;
+    Some(FileListSettlement::Failed(error))
+}
+
+fn settle_filelist(
+    state: &mut TuiState,
+    settlement: FileListSettlement,
+    index_tx: &mpsc::Sender<IndexRequest>,
+    index_freshness: &TuiIndexFreshness,
+    action_freshness: &TuiActionFreshness,
+) -> Option<TuiExit> {
+    let intent = state.pending_filelist_intent.take();
+    match settlement {
+        FileListSettlement::Failed(error) => {
+            state.status = format!("FileList creation failed: {error}");
+            state.dirty = true;
+            if intent == Some(PendingFileListIntent::CancelExit) {
+                return Some(TuiExit::Failed(error));
+            }
+        }
+        FileListSettlement::Completed | FileListSettlement::Canceled => {
+            let completed = matches!(settlement, FileListSettlement::Completed);
+            state.status = if completed {
+                "FileList created; refreshing...".to_string()
+            } else {
+                "FileList creation canceled".to_string()
+            };
+            state.dirty = true;
+            match intent {
+                Some(PendingFileListIntent::CancelExit) => return Some(TuiExit::Cancelled),
+                Some(PendingFileListIntent::SelectOutput) => {
+                    return Some(TuiExit::Selected {
+                        paths: selected_paths(state),
+                        query: state.query.clone(),
+                        root: state.root.clone(),
+                    });
+                }
+                Some(PendingFileListIntent::SwitchRoot(root)) => {
+                    prepare_root_switch(state, action_freshness, root);
+                    if dispatch_current_index(state, index_tx, index_freshness).is_err() {
+                        state.status = "Index worker unavailable".to_string();
+                        state.dirty = true;
+                    }
+                }
+                None if completed => {
+                    prepare_refresh(state);
+                    if dispatch_current_index(state, index_tx, index_freshness).is_err() {
+                        state.status = "Index worker unavailable".to_string();
+                        state.dirty = true;
+                    }
+                }
+                None => {}
+            }
+        }
+    }
+    None
+}
+
 fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Result<()> {
     match response {
         WorkerResponse::IndexedBatch {
@@ -1409,11 +1799,17 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             state.status = format!("Indexing... {} candidates", state.entries.len());
             state.dirty = true;
         }
-        WorkerResponse::IndexedFinished { request_id, root } => {
+        WorkerResponse::IndexedFinished {
+            request_id,
+            root,
+            has_root_filelist,
+        } => {
             if state.active_index_request.as_ref() != Some(&(request_id, root)) {
                 return Ok(());
             }
             state.indexed = true;
+            state.root_filelist_known = true;
+            state.root_filelist_exists = has_root_filelist;
             state.status = format!("Ready | {}", state.current_options_summary());
             state.last_query_change = Some(
                 Instant::now()
@@ -1853,6 +2249,104 @@ fn handle_root_picker_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     KeyAction::Continue
 }
 
+fn handle_filelist_confirmation_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    let Some(confirmation) = state.filelist_confirmation.as_mut() else {
+        return KeyAction::Continue;
+    };
+    if matches!(
+        (key.code, key.modifiers),
+        (KeyCode::Char('c'), KeyModifiers::CONTROL)
+    ) {
+        return KeyAction::Cancel;
+    }
+    match (key.code, key.modifiers) {
+        (KeyCode::Esc, _) | (KeyCode::Char('g'), KeyModifiers::CONTROL) => {
+            state.filelist_confirmation = None;
+        }
+        (KeyCode::Enter, _) => match confirmation {
+            FileListConfirmation::Mode {
+                propagate_to_ancestors,
+            } if state.root_filelist_known && state.root_filelist_exists => {
+                let propagate_to_ancestors = *propagate_to_ancestors;
+                state.filelist_confirmation = Some(FileListConfirmation::Overwrite {
+                    propagate_to_ancestors,
+                });
+            }
+            FileListConfirmation::Mode {
+                propagate_to_ancestors,
+            } => {
+                let propagate_to_ancestors = *propagate_to_ancestors;
+                state.filelist_confirmation = None;
+                state.dirty = true;
+                return KeyAction::StartFileList {
+                    propagate_to_ancestors,
+                    allow_root_overwrite: false,
+                };
+            }
+            FileListConfirmation::Overwrite {
+                propagate_to_ancestors,
+            } => {
+                let propagate_to_ancestors = *propagate_to_ancestors;
+                state.filelist_confirmation = None;
+                state.dirty = true;
+                return KeyAction::StartFileList {
+                    propagate_to_ancestors,
+                    allow_root_overwrite: true,
+                };
+            }
+        },
+        (KeyCode::Up, _) | (KeyCode::Down, _) | (KeyCode::Char(' '), _) => {
+            if let FileListConfirmation::Mode {
+                propagate_to_ancestors,
+            } = confirmation
+            {
+                *propagate_to_ancestors = !*propagate_to_ancestors;
+            }
+        }
+        _ => {}
+    }
+    state.dirty = true;
+    KeyAction::Continue
+}
+
+fn handle_active_filelist_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    match (key.code, key.modifiers) {
+        (KeyCode::Char('c'), KeyModifiers::CONTROL) | (KeyCode::Esc, _) => KeyAction::Cancel,
+        (KeyCode::F(1), _) => {
+            state.open_help();
+            state.dirty = true;
+            KeyAction::Continue
+        }
+        (KeyCode::F(4), _) => {
+            state.open_root_picker();
+            state.dirty = true;
+            KeyAction::Continue
+        }
+        (KeyCode::Enter, _) => KeyAction::Select,
+        (KeyCode::Up, _) => {
+            state.move_selection(-1);
+            state.dirty = true;
+            KeyAction::Continue
+        }
+        (KeyCode::Down, _) => {
+            state.move_selection(1);
+            state.dirty = true;
+            KeyAction::Continue
+        }
+        (KeyCode::PageUp, _) => {
+            state.move_selection(-(state.viewport_rows.max(1) as isize));
+            state.dirty = true;
+            KeyAction::Continue
+        }
+        (KeyCode::PageDown, _) => {
+            state.move_selection(state.viewport_rows.max(1) as isize);
+            state.dirty = true;
+            KeyAction::Continue
+        }
+        _ => KeyAction::Continue,
+    }
+}
+
 fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     if state.help.is_some() {
         match (key.code, key.modifiers) {
@@ -1873,6 +2367,12 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     }
     if state.root_picker.is_some() {
         return handle_root_picker_key(state, key);
+    }
+    if state.filelist_confirmation.is_some() {
+        return handle_filelist_confirmation_key(state, key);
+    }
+    if state.active_filelist.is_some() {
+        return handle_active_filelist_key(state, key);
     }
     if matches!(key.code, KeyCode::F(1)) {
         state.open_help();
@@ -1945,6 +2445,9 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     }
     if matches!(key.code, KeyCode::F(5)) {
         return KeyAction::Refresh;
+    }
+    if matches!(key.code, KeyCode::F(6)) {
+        return KeyAction::OpenFileList;
     }
     match (key.code, key.modifiers) {
         (KeyCode::Esc, _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
@@ -2047,6 +2550,8 @@ fn insert_paste(state: &mut TuiState, pasted: &str) {
         || state.options_overlay.is_some()
         || state.sort_picker.is_some()
         || state.root_picker.is_some()
+        || state.filelist_confirmation.is_some()
+        || state.active_filelist.is_some()
     {
         return;
     }
@@ -2228,10 +2733,62 @@ fn draw<W: Write>(
             width,
             height,
         )?;
+    } else if let Some(confirmation) = state.filelist_confirmation.as_ref() {
+        render_filelist_confirmation(terminal_output, confirmation, width, height)?;
     } else if let Some(history) = state.history.as_ref() {
         render_history_overlay(terminal_output, history, width, height)?;
     }
     terminal_output.flush()?;
+    Ok(())
+}
+
+fn render_filelist_confirmation<W: Write>(
+    terminal_output: &mut W,
+    confirmation: &FileListConfirmation,
+    width: u16,
+    height: u16,
+) -> Result<()> {
+    execute!(terminal_output, Clear(ClearType::All))?;
+    let lines = match confirmation {
+        FileListConfirmation::Mode {
+            propagate_to_ancestors,
+        } => vec![
+            "Create FileList".to_string(),
+            "Up/Down/Space choose scope | Enter continue | Esc/Ctrl+G cancel | Ctrl+C exit"
+                .to_string(),
+            format!(
+                "> Scope: {}",
+                if *propagate_to_ancestors {
+                    "root and ancestors"
+                } else {
+                    "root only"
+                }
+            ),
+            "No files are written until this confirmation is accepted.".to_string(),
+        ],
+        FileListConfirmation::Overwrite {
+            propagate_to_ancestors,
+        } => vec![
+            "Overwrite existing root FileList?".to_string(),
+            "Enter overwrite | Esc/Ctrl+G cancel | Ctrl+C exit".to_string(),
+            format!(
+                "Scope: {}",
+                if *propagate_to_ancestors {
+                    "root and ancestors"
+                } else {
+                    "root only"
+                }
+            ),
+            "This is the final write confirmation.".to_string(),
+        ],
+    };
+    for (row, line) in lines.into_iter().take(height as usize).enumerate() {
+        execute!(
+            terminal_output,
+            MoveTo(0, row as u16),
+            Print(clip_to_width(&line, width as usize)),
+        )?;
+    }
     Ok(())
 }
 
@@ -2250,7 +2807,7 @@ fn render_root_picker<W: Write>(
     for (row, line) in lines.iter().enumerate().take(height as usize) {
         execute!(
             terminal_output,
-            MoveTo(0, (row + 2) as u16),
+            MoveTo(0, row as u16),
             Print(clip_to_width(line, width as usize)),
         )?;
     }
@@ -2465,11 +3022,16 @@ fn render_help_overlay<W: Write>(
             "Enter output selection | Tab pin | arrows/Page move".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
-            "F2 options | F3 sort | F4 roots | F5 refresh | Alt+P preview | F1 help".to_string(),
+            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
         ]),
         HelpContext::History => lines.extend([
             "History search is paused while help is open.".to_string(),
             "Close help to use Enter, Esc/Ctrl+G, edit, or navigation.".to_string(),
+        ]),
+        HelpContext::FileList => lines.extend([
+            "FileList creation is settling; no result is accepted before it finishes.".to_string(),
+            "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+C exits after settlement."
+                .to_string(),
         ]),
     }
     execute!(terminal_output, Clear(ClearType::All))?;
@@ -2633,8 +3195,34 @@ fn query_line_for_width(state: &TuiState, width: usize) -> String {
 mod tests {
     use super::*;
     use std::cell::RefCell;
+    use std::fs;
     use std::panic::{catch_unwind, AssertUnwindSafe};
     use std::rc::Rc;
+
+    struct TestTempDir {
+        path: PathBuf,
+    }
+
+    impl TestTempDir {
+        fn new(label: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "flistwalker-cli-tui-{label}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("system time")
+                    .as_nanos()
+            ));
+            fs::create_dir_all(&path).expect("create temporary test directory");
+            Self { path }
+        }
+    }
+
+    impl Drop for TestTempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
 
     #[derive(Clone)]
     struct FakeTerminalOps {
@@ -4202,5 +4790,208 @@ mod tests {
             .position(|call| *call == "stdout_output")
             .expect("stdout output");
         assert!(disable_raw < stdout_output);
+    }
+
+    #[test]
+    fn tc_165_filelist_confirmation_requires_explicit_scope_and_overwrite_consent() {
+        let mut state = TuiState::new("draft");
+        state.root = PathBuf::from("fixture-root");
+        state.root_filelist_known = true;
+        state.root_filelist_exists = true;
+
+        assert!(matches!(
+            handle_key(&mut state, KeyEvent::new(KeyCode::F(6), KeyModifiers::NONE)),
+            KeyAction::OpenFileList
+        ));
+        state.open_filelist_confirmation();
+        insert_paste(&mut state, " must-not-leak");
+        assert_eq!(state.query, "draft");
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+            ),
+            KeyAction::Continue
+        ));
+        assert!(matches!(
+            state.filelist_confirmation,
+            Some(FileListConfirmation::Overwrite { .. })
+        ));
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+            ),
+            KeyAction::StartFileList {
+                propagate_to_ancestors: false,
+                allow_root_overwrite: true,
+            }
+        ));
+        assert!(state.filelist_confirmation.is_none());
+    }
+
+    #[test]
+    fn tc_165_filelist_requires_completed_index_and_intent_priority_is_sticky() {
+        let mut state = TuiState::new("");
+        state.open_filelist_if_ready();
+        assert!(state.filelist_confirmation.is_none());
+        assert_eq!(
+            state.status,
+            "Wait for indexing to finish before creating FileList"
+        );
+        state.root_filelist_known = true;
+        state.open_filelist_if_ready();
+        assert!(state.filelist_confirmation.is_some());
+        state.filelist_confirmation = None;
+        let request = state.next_filelist_request(false, false);
+        state.record_filelist_intent(PendingFileListIntent::SelectOutput);
+        assert_eq!(
+            state.pending_filelist_intent,
+            Some(PendingFileListIntent::SelectOutput)
+        );
+        state.record_filelist_intent(PendingFileListIntent::SwitchRoot(PathBuf::from("first")));
+        assert_eq!(
+            state.pending_filelist_intent,
+            Some(PendingFileListIntent::SwitchRoot(PathBuf::from("first")))
+        );
+        state.record_filelist_intent(PendingFileListIntent::SwitchRoot(PathBuf::from("latest")));
+        assert_eq!(
+            state.pending_filelist_intent,
+            Some(PendingFileListIntent::SwitchRoot(PathBuf::from("latest")))
+        );
+        state.record_filelist_intent(PendingFileListIntent::CancelExit);
+        assert_eq!(
+            state.pending_filelist_intent,
+            Some(PendingFileListIntent::CancelExit)
+        );
+        state.record_filelist_intent(PendingFileListIntent::SwitchRoot(PathBuf::from("ignored")));
+        state.record_filelist_intent(PendingFileListIntent::SelectOutput);
+        assert_eq!(
+            state.pending_filelist_intent,
+            Some(PendingFileListIntent::CancelExit)
+        );
+        assert!(request.cancel.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn tc_165_filelist_failure_does_not_resume_select_or_root_but_cancel_exits_one() {
+        let (index_tx, _index_rx) = mpsc::channel();
+        let freshness = TuiIndexFreshness::new();
+        let actions = TuiActionFreshness::new();
+        let mut state = TuiState::new("");
+        state.pending_filelist_intent = Some(PendingFileListIntent::SelectOutput);
+        assert!(settle_filelist(
+            &mut state,
+            FileListSettlement::Failed("rollback failed".to_string()),
+            &index_tx,
+            &freshness,
+            &actions,
+        )
+        .is_none());
+        state.pending_filelist_intent = Some(PendingFileListIntent::CancelExit);
+        assert!(matches!(
+            settle_filelist(
+                &mut state,
+                FileListSettlement::Failed("rollback failed".to_string()),
+                &index_tx,
+                &freshness,
+                &actions,
+            ),
+            Some(TuiExit::Failed(_))
+        ));
+
+        state.root = PathBuf::from("before");
+        state.pending_filelist_intent =
+            Some(PendingFileListIntent::SwitchRoot(PathBuf::from("after")));
+        assert!(settle_filelist(
+            &mut state,
+            FileListSettlement::Failed("rollback failed".to_string()),
+            &index_tx,
+            &freshness,
+            &actions,
+        )
+        .is_none());
+        assert_eq!(state.root, PathBuf::from("before"));
+    }
+
+    #[test]
+    fn tc_165_filelist_worker_join_never_detaches_a_delayed_transaction() {
+        let temp = TestTempDir::new("filelist-join");
+        let marker = temp.path.join("FileList.txt");
+        let (result_tx, result_rx) = mpsc::channel();
+        let (done_tx, done_rx) = mpsc::channel();
+        let finished = Arc::new(AtomicBool::new(false));
+        let worker_finished = Arc::clone(&finished);
+        let handle = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(300));
+            fs::write(&marker, "committed\n").expect("write delayed FileList marker");
+            worker_finished.store(true, Ordering::Release);
+            let _ = result_tx.send(FileListWorkerResult::Failed {
+                request_id: 1,
+                root: PathBuf::from("fixture"),
+                error: "injected missing response path".to_string(),
+            });
+            let _ = done_tx.send(());
+        });
+        let worker = ActiveFileListWorker {
+            cancel: Arc::new(AtomicBool::new(false)),
+            result: result_rx,
+            done: done_rx,
+            handle: Some(handle),
+        };
+        let started = Instant::now();
+        worker.join();
+        assert!(
+            started.elapsed() >= Duration::from_millis(250),
+            "FileList worker must not use the generic bounded-detach cleanup"
+        );
+        assert!(finished.load(Ordering::Acquire));
+        let bytes_at_return = fs::read(temp.path.join("FileList.txt")).expect("read marker");
+        thread::sleep(Duration::from_millis(80));
+        assert_eq!(
+            fs::read(temp.path.join("FileList.txt")).expect("read marker after return"),
+            bytes_at_return,
+            "no FileList write may occur after the transaction worker has been joined"
+        );
+    }
+
+    #[test]
+    fn tc_165_filelist_missing_or_panicked_worker_never_resumes_success_intents() {
+        let (result_tx, result_rx) = mpsc::channel::<FileListWorkerResult>();
+        drop(result_tx);
+        let (done_tx, done_rx) = mpsc::channel();
+        let handle = thread::spawn(move || {
+            drop(done_tx);
+            panic!("injected FileList worker panic");
+        });
+        let worker = ActiveFileListWorker {
+            cancel: Arc::new(AtomicBool::new(false)),
+            result: result_rx,
+            done: done_rx,
+            handle: Some(handle),
+        };
+        while !worker.is_finished() {
+            thread::yield_now();
+        }
+        assert!(matches!(
+            worker.result.try_recv(),
+            Err(mpsc::TryRecvError::Disconnected)
+        ));
+        worker.join();
+
+        let (index_tx, _index_rx) = mpsc::channel();
+        let freshness = TuiIndexFreshness::new();
+        let actions = TuiActionFreshness::new();
+        let mut state = TuiState::new("");
+        state.pending_filelist_intent = Some(PendingFileListIntent::SelectOutput);
+        assert!(settle_filelist(
+            &mut state,
+            FileListSettlement::Failed("FileList worker disconnected".to_string()),
+            &index_tx,
+            &freshness,
+            &actions,
+        )
+        .is_none());
+        assert!(state.status.contains("failed"));
     }
 }
