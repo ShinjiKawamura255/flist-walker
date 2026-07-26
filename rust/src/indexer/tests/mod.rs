@@ -17,6 +17,38 @@ use std::io::BufRead;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+static TEMP_DIR_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+
+struct TempDir {
+    path: PathBuf,
+}
+
+impl TempDir {
+    fn new(label: &str) -> Self {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let sequence = TEMP_DIR_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "fff-rs-{label}-{}-{nonce}-{sequence}",
+            std::process::id(),
+        ));
+        fs::create_dir_all(&path).expect("create temporary directory");
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
 fn test_root(name: &str) -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -909,6 +941,92 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
     assert_eq!(rollback_failed.rollback_failed.len(), 1);
     assert_eq!(rollback_failed.rollback_failed[0].path, root_filelist);
     let _ = fs::remove_dir_all(&top);
+}
+
+#[test]
+fn tc165_panic_replacing_later_target_rolls_back_earlier_commit() {
+    let top = TempDir::new("tc165-panic-commit");
+    let root = top.path().join("child");
+    fs::create_dir_all(&root).expect("create root");
+    let root_filelist = root.join("FileList.txt");
+    let parent_filelist = top.path().join("FileList.txt");
+    fs::write(&root_filelist, "root-old\n").expect("write root");
+    fs::write(&parent_filelist, "parent-old\n").expect("write parent");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("plan");
+
+    let calls = AtomicUsize::new(0);
+    let report = execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| match calls
+        .fetch_add(1, Ordering::SeqCst)
+    {
+        0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
+        1 => panic!("injected commit replacement panic"),
+        _ => crate::fs_atomic::write_bytes_atomic(path, bytes),
+    });
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert_eq!(report.exit_code(), 1);
+    assert_eq!(report.committed, vec![root_filelist.clone()]);
+    assert_eq!(report.rolled_back, vec![root_filelist.clone()]);
+    assert_eq!(
+        fs::read_to_string(&root_filelist).expect("read restored root"),
+        "root-old\n"
+    );
+    assert_eq!(
+        fs::read_to_string(&parent_filelist).expect("read untouched parent"),
+        "parent-old\n"
+    );
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
+}
+
+#[test]
+fn tc165_panic_during_rollback_is_reported_without_unwinding() {
+    let top = TempDir::new("tc165-panic-rollback");
+    let root = top.path().join("child");
+    fs::create_dir_all(&root).expect("create root");
+    let root_filelist = root.join("FileList.txt");
+    let parent_filelist = top.path().join("FileList.txt");
+    fs::write(&root_filelist, "root-old\n").expect("write root");
+    fs::write(&parent_filelist, "parent-old\n").expect("write parent");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("plan");
+
+    let calls = AtomicUsize::new(0);
+    let report = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| match calls
+            .fetch_add(1, Ordering::SeqCst)
+        {
+            0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
+            1 => panic!("injected commit replacement panic"),
+            _ => panic!("injected rollback replacement panic"),
+        })
+    }))
+    .expect("replacement panic must be reported");
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert_eq!(report.exit_code(), 1);
+    assert_eq!(report.rollback_failed.len(), 1);
+    assert_eq!(report.rollback_failed[0].path, root_filelist);
+    assert!(report.rollback_failed[0]
+        .error
+        .starts_with("FileList replacement panicked:"));
+    assert!(report.rollback_failed[0]
+        .error
+        .contains("injected rollback replacement panic"));
 }
 
 #[test]

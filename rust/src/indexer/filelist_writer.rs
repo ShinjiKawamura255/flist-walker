@@ -1,8 +1,10 @@
 use crate::fs_atomic::write_bytes_atomic;
 use anyhow::{Context, Result};
+use std::any::Any;
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
@@ -602,7 +604,7 @@ where
             rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
             return report;
         }
-        if let Err(error) = replace(&target.path, &target.content) {
+        if let Err(error) = replace_filelist_target(replace, &target.path, &target.content) {
             report.status = FileListWriteStatus::Failed;
             report.failed.push(FileListWriteFailure {
                 path: target.path.clone(),
@@ -624,6 +626,40 @@ where
         }
     }
     report
+}
+
+fn replace_filelist_target<W>(replace: &mut W, path: &Path, bytes: &[u8]) -> std::io::Result<()>
+where
+    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+{
+    catch_unwind(AssertUnwindSafe(|| replace(path, bytes))).map_err(replacement_panic_error)?
+}
+
+fn replacement_panic_error(payload: Box<dyn Any + Send>) -> std::io::Error {
+    let detail = payload
+        .downcast_ref::<&str>()
+        .copied()
+        .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
+        .and_then(concise_panic_detail);
+    let message = match detail {
+        Some(detail) => format!("FileList replacement panicked: {detail}"),
+        None => "FileList replacement panicked".to_string(),
+    };
+    std::io::Error::other(message)
+}
+
+fn concise_panic_detail(message: &str) -> Option<String> {
+    const MAX_CHARS: usize = 160;
+
+    let normalized = message.split_whitespace().collect::<Vec<_>>().join(" ");
+    if normalized.is_empty() {
+        return None;
+    }
+    let mut detail: String = normalized.chars().take(MAX_CHARS).collect();
+    if normalized.chars().nth(MAX_CHARS).is_some() {
+        detail.push('…');
+    }
+    Some(detail)
 }
 
 fn validate_filelist_directory(directory: &Path) -> Result<()> {
@@ -768,7 +804,7 @@ fn rollback_committed_targets<W>(
     for index in committed_indexes.iter().rev().copied() {
         let target = &targets[index];
         let result = match &target.prior.bytes {
-            Some(bytes) => replace(&target.path, bytes)
+            Some(bytes) => replace_filelist_target(replace, &target.path, bytes)
                 .and_then(|_| restore_file_metadata(&target.path, &target.prior)),
             None => fs::remove_file(&target.path),
         };
