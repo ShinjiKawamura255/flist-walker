@@ -153,6 +153,20 @@ In CLI mode:
 - `--source auto|filelist|walker` controls indexing. `filelist` fails if no root FileList exists; `auto` prefers it and falls back to the walker.
 - `--ignore-file PATH` replaces the executable-side ignore list; `--no-ignore` disables ignore filtering. These options conflict.
 - `--progress` writes progress only to stderr. `--fail-no-match` changes an empty result from exit 0 to exit 1. Cancellation exits 130.
+- `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
+- `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
+- `--create-filelist` builds a fresh walker-based root FileList without prompting and writes no stdout. `--overwrite-filelist` is required to replace an existing root FileList; `--propagate-ancestors` is an explicit opt-in for existing ancestor FileLists. Creation rejects query/search/output/action options, returns 0 on success, 130 on clean cancellation, and 1 for read/write/rollback failures.
+
+Examples:
+
+```bash
+# Create a new root FileList; refuse an existing one unless overwrite is explicit.
+flistwalker --cli --root . --create-filelist
+flistwalker --cli --root . --create-filelist --overwrite-filelist
+
+# Explicitly open every post-limit match (stdout remains empty).
+flistwalker --cli "report" --root . --limit 10 --action open --action-all
+```
 
 For shell-safe path handling:
 

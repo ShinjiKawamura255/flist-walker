@@ -156,17 +156,23 @@
     {
       "id": "slice-b.filelist-docs",
       "title": "Implement batch FileList operation and batch documentation",
-      "status": "pending",
+      "status": "complete",
       "depends_on": ["slice-b.action"],
       "owner": "subagent:terra-batch-filelist",
       "model_capability": "standard",
       "routing_reason": "Bounded adapter/docs work using shared write plan.",
-      "model_override": null,
+      "model_override": "gpt-5.6-terra",
       "target_files": ["rust/src/main.rs", "rust/tests/cli_contract.rs", "README.md", "README-ja.md"],
       "acceptance": ["Batch FileList consent/rollback/report matches matrix", "Clean cancel is 130 and any I/O/rollback failure is 1", "README documents every batch flag"],
       "verification": ["commit-cancel rollback-success/rollback-failure fixtures", "cargo test --test cli_contract", "cargo test", "git diff --check"],
-      "evidence": {"files": [], "commands": [], "artifacts": [], "reviews": [], "logs": []},
-      "result": null,
+      "evidence": {
+        "files": ["rust/src/main.rs", "rust/tests/cli_contract.rs", "README.md", "README-ja.md"],
+        "commands": ["cargo test --test cli_contract", "cargo test --bin flistwalker", "cargo test", "cargo check", "cargo clippy --all-targets -- -D warnings", "cargo fmt --all -- --check", "git diff --check"],
+        "artifacts": [],
+        "reviews": ["Sol integration review corrected operational-failure exit classification, enabled FileList progress, and expanded overwrite/ancestor/root-selector coverage"],
+        "logs": []
+      },
+      "result": "Batch CLI now creates FileLists through the shared cancellable transaction API with explicit overwrite and ancestor consent, complete stderr reports, correct 0/1/130 exits, saved-root support, and bilingual documentation for every batch usability flag.",
       "blocker": null
     },
     {

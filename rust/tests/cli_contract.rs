@@ -478,6 +478,130 @@ fn tc_164_action_print_preserves_output_and_action_all_requires_non_print_mode()
     let _ = fs::remove_dir_all(&root);
 }
 
+#[test]
+fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_empty() {
+    let root = test_root("create-filelist");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write file");
+
+    let created = cli_command("create-filelist")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--create-filelist",
+        ])
+        .output()
+        .expect("create FileList");
+    let original = fs::read_to_string(root.join("FileList.txt")).expect("read created FileList");
+    let refused = cli_command("create-filelist-refused")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--create-filelist",
+        ])
+        .output()
+        .expect("refuse overwrite");
+    let invalid_query = cli_command("create-filelist-query")
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--create-filelist",
+        ])
+        .output()
+        .expect("reject query combination");
+
+    assert!(created.status.success());
+    assert!(created.stdout.is_empty());
+    assert!(created
+        .stderr
+        .windows(b"committed".len())
+        .any(|part| part == b"committed"));
+    assert!(original.contains("alpha.txt"));
+    assert_eq!(refused.status.code(), Some(1));
+    assert!(refused.stdout.is_empty());
+    assert_eq!(
+        fs::read_to_string(root.join("FileList.txt")).expect("read unchanged"),
+        original
+    );
+    assert_eq!(invalid_query.status.code(), Some(2));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots() {
+    let parent = test_root("create-filelist-ancestor");
+    let root = parent.join("child");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write file");
+    let parent_filelist = parent.join("FileList.txt");
+    fs::write(&parent_filelist, "before\n").expect("write ancestor FileList");
+
+    let initial = cli_command("create-filelist-initial")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--create-filelist",
+        ])
+        .output()
+        .expect("create root FileList");
+    let without_propagation =
+        fs::read_to_string(&parent_filelist).expect("read unchanged ancestor");
+    let overwrite = cli_command("create-filelist-overwrite")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--create-filelist",
+            "--overwrite-filelist",
+            "--propagate-ancestors",
+        ])
+        .output()
+        .expect("overwrite and propagate FileList");
+    let propagated = fs::read_to_string(&parent_filelist).expect("read propagated ancestor");
+
+    let saved_root = test_root("create-filelist-saved");
+    fs::create_dir_all(&saved_root).expect("create saved root");
+    fs::write(saved_root.join("saved.txt"), "saved").expect("write saved file");
+    let (mut saved_command, settings_dir) = cli_command_with_settings("create-filelist-saved");
+    write_persisted_roots(
+        &settings_dir,
+        Some(&saved_root),
+        std::slice::from_ref(&saved_root),
+    );
+    let saved = saved_command
+        .args(["--cli", "--use-default-root", "--create-filelist"])
+        .output()
+        .expect("create default saved-root FileList");
+    let overwrite_only = cli_command("overwrite-requires-create")
+        .args(["--cli", "--overwrite-filelist"])
+        .output()
+        .expect("overwrite requires create");
+    let propagate_only = cli_command("propagate-requires-create")
+        .args(["--cli", "--propagate-ancestors"])
+        .output()
+        .expect("propagate requires create");
+
+    assert!(initial.status.success());
+    assert_eq!(without_propagation, "before\n");
+    assert!(overwrite.status.success());
+    assert!(
+        propagated.contains("child/FileList.txt") || propagated.contains("child\\FileList.txt")
+    );
+    assert!(saved.status.success());
+    assert!(saved_root.join("FileList.txt").exists());
+    assert_eq!(overwrite_only.status.code(), Some(2));
+    assert_eq!(propagate_only.status.code(), Some(2));
+
+    let _ = fs::remove_dir_all(&parent);
+    let _ = fs::remove_dir_all(&saved_root);
+}
+
 #[cfg(unix)]
 #[test]
 fn tc_006_print0_preserves_non_utf8_path_bytes() {

@@ -182,6 +182,20 @@ CLI では:
 - `--source auto|filelist|walker` でインデックス元を指定できます。`filelist` は root FileList がなければ失敗し、`auto` は FileList 優先で walker へフォールバックします。
 - `--ignore-file PATH` は実行ファイル横の ignore list を置き換え、`--no-ignore` は ignore を無効化します。両者は同時指定できません。
 - `--progress` は進捗だけを標準エラー出力へ表示します。`--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、キャンセルは exit 130 です。
+- `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
+- `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
+- `--create-filelist` は prompt を出さず walker ベースで root の FileList を作成し、標準出力には書き込みません。既存 root FileList の置換には `--overwrite-filelist`、既存 ancestor FileList の更新には `--propagate-ancestors` が必要です。作成時は query/search/output/action の指定を拒否し、成功は exit 0、完全 rollback を伴う clean cancel は 130、read/write/rollback failure は 1 です。
+
+例:
+
+```bash
+# 新規 root FileList を作成する。既存ファイルの置換には明示指定が必要。
+flistwalker --cli --root . --create-filelist
+flistwalker --cli --root . --create-filelist --overwrite-filelist
+
+# post-limit の全一致を明示して開く（標準出力は空）。
+flistwalker --cli "report" --root . --limit 10 --action open --action-all
+```
 
 パスを安全にシェル連携する例:
 

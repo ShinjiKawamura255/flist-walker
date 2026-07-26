@@ -26,7 +26,9 @@ use flist_walker::ignore_list::{
     ensure_ignore_list_sample, load_ignore_terms_from_current_exe, parse_ignore_terms,
 };
 use flist_walker::indexer::{
-    build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
+    build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
+    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
+    FileListWriteReport,
 };
 use flist_walker::path_utils::{normalize_path_for_display, output_path_bytes};
 use flist_walker::persistence::load_persisted_roots_and_history;
@@ -243,6 +245,23 @@ struct Args {
         conflicts_with_all = ["interactive", "list_saved_roots"]
     )]
     action_all: bool,
+
+    /// Create the root FileList from a fresh walker index without prompting.
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "cli",
+        conflicts_with_all = ["interactive", "list_saved_roots", "action", "action_all"]
+    )]
+    create_filelist: bool,
+
+    /// Permit replacing an existing root FileList during --create-filelist.
+    #[arg(long, default_value_t = false, requires = "create_filelist")]
+    overwrite_filelist: bool,
+
+    /// Update pre-existing ancestor FileLists during --create-filelist.
+    #[arg(long, default_value_t = false, requires = "create_filelist")]
+    propagate_ancestors: bool,
 
     /// List persisted saved roots without indexing or selecting paths.
     #[arg(
@@ -540,7 +559,6 @@ fn validate_list_saved_roots_args(args: &Args) -> std::result::Result<(), &'stat
         || !matches!(args.source, CliIndexSource::Auto)
         || args.ignore_file.is_some()
         || args.no_ignore
-        || args.progress
         || !matches!(args.sort, CliSortMode::Score)
         || !matches!(args.action, CliAction::Print)
         || args.action_all
@@ -558,6 +576,107 @@ fn validate_batch_action_args(args: &Args) -> std::result::Result<(), &'static s
         return Err("--absolute and --print0 are only valid with --action print");
     }
     Ok(())
+}
+
+fn validate_create_filelist_args(args: &Args) -> std::result::Result<(), &'static str> {
+    if !args.create_filelist {
+        return Ok(());
+    }
+    if !args.query.is_empty()
+        || args.limit != 1000
+        || args.absolute
+        || args.print0
+        || args.fail_no_match
+        || !matches!(args.entry_type, CliEntryType::All)
+        || args.regex
+        || args.case_sensitive
+        || !matches!(args.source, CliIndexSource::Auto)
+        || args.ignore_file.is_some()
+        || args.no_ignore
+        || !matches!(args.sort, CliSortMode::Score)
+        || !matches!(args.action, CliAction::Print)
+        || args.action_all
+    {
+        return Err("--create-filelist cannot be combined with search, output, or action options");
+    }
+    Ok(())
+}
+
+enum CliFileListOutcome {
+    CanceledBeforePlan,
+    FailedBeforePlan,
+    Report(FileListWriteReport),
+}
+
+fn run_cli_filelist(root: &Path, args: &Args, cancelled: &AtomicBool) -> CliFileListOutcome {
+    if args.progress {
+        eprintln!("Indexing {} for FileList creation...", root.display());
+    }
+    let entries = match build_index_cancellable(root, false, true, true, || {
+        cancelled.load(Ordering::Relaxed)
+    }) {
+        Ok(entries) => entries,
+        Err(error) if is_index_build_cancelled(&error) => {
+            return CliFileListOutcome::CanceledBeforePlan
+        }
+        Err(error) => {
+            eprintln!("FileList failed: {error}");
+            return CliFileListOutcome::FailedBeforePlan;
+        }
+    };
+    let should_cancel = || cancelled.load(Ordering::Relaxed);
+    let report = match plan_filelist_write_cancellable(
+        root,
+        &entries,
+        FileListWriteOptions {
+            allow_root_overwrite: args.overwrite_filelist,
+            propagate_to_ancestors: args.propagate_ancestors,
+        },
+        &should_cancel,
+    ) {
+        Ok(plan) => execute_filelist_write_plan(&plan, &should_cancel),
+        Err(report) => *report,
+    };
+    write_cli_filelist_report(&report);
+    CliFileListOutcome::Report(report)
+}
+
+fn write_cli_filelist_report(report: &FileListWriteReport) {
+    for path in &report.committed {
+        eprintln!("FileList committed: {}", path.display());
+    }
+    for failure in &report.failed {
+        eprintln!(
+            "FileList failed: {}: {}",
+            failure.path.display(),
+            failure.error
+        );
+    }
+    for path in &report.rolled_back {
+        eprintln!("FileList rolled back: {}", path.display());
+    }
+    for failure in &report.rollback_failed {
+        eprintln!(
+            "FileList rollback failed: {}: {}",
+            failure.path.display(),
+            failure.error
+        );
+    }
+    if report.committed.is_empty()
+        && report.failed.is_empty()
+        && report.rolled_back.is_empty()
+        && report.rollback_failed.is_empty()
+    {
+        eprintln!("FileList canceled");
+    }
+}
+
+fn cli_filelist_exit_code(outcome: CliFileListOutcome) -> ExitCode {
+    match outcome {
+        CliFileListOutcome::CanceledBeforePlan => ExitCode::from(130),
+        CliFileListOutcome::FailedBeforePlan => ExitCode::from(1),
+        CliFileListOutcome::Report(report) => ExitCode::from(report.exit_code() as u8),
+    }
 }
 
 fn absolute_stored_path(path: &Path) -> PathBuf {
@@ -824,6 +943,10 @@ fn main() -> Result<ExitCode> {
             eprintln!("error: {error}");
             return Ok(ExitCode::from(2));
         }
+        if let Err(error) = validate_create_filelist_args(&args) {
+            eprintln!("error: {error}");
+            return Ok(ExitCode::from(2));
+        }
     }
     if args.cli && !args.interactive && args.list_saved_roots {
         if let Err(error) = validate_list_saved_roots_args(&args) {
@@ -832,6 +955,24 @@ fn main() -> Result<ExitCode> {
         }
         list_saved_roots(&args)?;
         return Ok(ExitCode::SUCCESS);
+    }
+    if args.cli && !args.interactive && args.create_filelist {
+        let root = match resolve_cli_root(&args) {
+            Ok(root) => root,
+            Err(error) => {
+                eprintln!("error: {error}");
+                return Ok(ExitCode::from(2));
+            }
+        };
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let signal_cancelled = Arc::clone(&cancelled);
+        ctrlc::set_handler(move || signal_cancelled.store(true, Ordering::Relaxed))
+            .context("failed to install CLI signal handler")?;
+        return Ok(cli_filelist_exit_code(run_cli_filelist(
+            &root,
+            &args,
+            cancelled.as_ref(),
+        )));
     }
     let _runtime_config = initialize_runtime_config();
     if let Err(err) = ensure_ignore_list_sample() {
@@ -1151,6 +1292,43 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tc_165_cli_filelist_exit_mapping_preserves_clean_cancel_and_rollback_failure() {
+        let root_target = PathBuf::from("FileList.txt");
+        let clean_cancel = flist_walker::indexer::FileListWriteReport {
+            status: flist_walker::indexer::FileListWriteStatus::Canceled,
+            root_target: root_target.clone(),
+            committed: vec![root_target.clone()],
+            failed: Vec::new(),
+            rolled_back: vec![root_target.clone()],
+            rollback_failed: Vec::new(),
+        };
+        let rollback_failure = flist_walker::indexer::FileListWriteReport {
+            status: flist_walker::indexer::FileListWriteStatus::Canceled,
+            root_target: root_target.clone(),
+            committed: vec![root_target.clone()],
+            failed: Vec::new(),
+            rolled_back: Vec::new(),
+            rollback_failed: vec![flist_walker::indexer::FileListWriteFailure {
+                path: root_target,
+                error: "rollback injection".to_string(),
+            }],
+        };
+
+        assert_eq!(
+            cli_filelist_exit_code(CliFileListOutcome::Report(clean_cancel)),
+            ExitCode::from(130)
+        );
+        assert_eq!(
+            cli_filelist_exit_code(CliFileListOutcome::Report(rollback_failure)),
+            ExitCode::from(1)
+        );
+        assert_eq!(
+            cli_filelist_exit_code(CliFileListOutcome::FailedBeforePlan),
+            ExitCode::from(1)
+        );
     }
 
     #[test]
