@@ -600,11 +600,15 @@ impl TuiState {
             .unwrap_or(0);
         self.ensure_selection_visible();
         self.status = error.unwrap_or_else(|| {
-            format!(
+            let result_status = format!(
                 "{} result(s) | {}",
                 self.results.len(),
                 self.current_options_summary()
-            )
+            );
+            match self.index_truncated_limit {
+                Some(limit) => format!("{} | {result_status}", walker_truncated_notice(limit)),
+                None => result_status,
+            }
         });
         self.dirty = true;
     }
@@ -2030,7 +2034,6 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             state.root_filelist_exists = has_root_filelist;
             state.status = state
                 .index_truncated_limit
-                .take()
                 .map(walker_truncated_notice)
                 .unwrap_or_else(|| format!("Ready | {}", state.current_options_summary()));
             state.last_query_change = Some(
@@ -3134,21 +3137,46 @@ fn draw<W: Write>(
             height,
         )?;
     } else if let Some(options_overlay) = state.options_overlay.as_ref() {
-        render_options_overlay(terminal_output, options_overlay, width, height)?;
+        render_options_overlay(
+            terminal_output,
+            options_overlay,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(sort_picker) = state.sort_picker.as_ref() {
-        render_sort_picker(terminal_output, sort_picker, width, height)?;
+        render_sort_picker(
+            terminal_output,
+            sort_picker,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(root_picker) = state.root_picker.as_ref() {
         render_root_picker(
             terminal_output,
             root_picker,
             &state.saved_roots,
+            state.emacs_keybindings_enabled,
             width,
             height,
         )?;
     } else if let Some(confirmation) = state.filelist_confirmation.as_ref() {
-        render_filelist_confirmation(terminal_output, confirmation, width, height)?;
+        render_filelist_confirmation(
+            terminal_output,
+            confirmation,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(history) = state.history.as_ref() {
-        render_history_overlay(terminal_output, history, width, height)?;
+        render_history_overlay(
+            terminal_output,
+            history,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     }
     terminal_output.flush()?;
     Ok(())
@@ -3157,17 +3185,20 @@ fn draw<W: Write>(
 fn render_filelist_confirmation<W: Write>(
     terminal_output: &mut W,
     confirmation: &FileListConfirmation,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     execute!(terminal_output, Clear(ClearType::All))?;
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let lines = match confirmation {
         FileListConfirmation::Mode {
             propagate_to_ancestors,
         } => vec![
             "Create FileList".to_string(),
-            "Up/Down/Space choose scope | Enter continue | Esc/Ctrl+G cancel | Ctrl+C exit"
-                .to_string(),
+            format!(
+                "Up/Down/Space choose scope | Enter continue | {cancel_keys} cancel | Ctrl+C exit"
+            ),
             format!(
                 "> Scope: {}",
                 if *propagate_to_ancestors {
@@ -3182,7 +3213,7 @@ fn render_filelist_confirmation<W: Write>(
             propagate_to_ancestors,
         } => vec![
             "Overwrite existing root FileList?".to_string(),
-            "Enter overwrite | Esc/Ctrl+G cancel | Ctrl+C exit".to_string(),
+            format!("Enter overwrite | {cancel_keys} cancel | Ctrl+C exit"),
             format!(
                 "Scope: {}",
                 if *propagate_to_ancestors {
@@ -3208,13 +3239,15 @@ fn render_root_picker<W: Write>(
     terminal_output: &mut W,
     picker: &RootPicker,
     roots: &[PathBuf],
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     execute!(terminal_output, Clear(ClearType::All))?;
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let lines = [
         "Saved roots".to_string(),
-        "Enter switch | Esc/Ctrl+G cancel | Ctrl+C exit | arrows/Page move".to_string(),
+        format!("Enter switch | {cancel_keys} cancel | Ctrl+C exit | arrows/Page move"),
     ];
     for (row, line) in lines.iter().enumerate().take(height as usize) {
         execute!(
@@ -3261,13 +3294,15 @@ fn render_root_picker<W: Write>(
 fn render_options_overlay<W: Write>(
     terminal_output: &mut W,
     overlay: &OptionsOverlay,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     let on_off = |value| if value { "on" } else { "off" };
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let lines = [
         "Options".to_string(),
-        "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows + Space change".to_string(),
+        format!("Enter apply | {cancel_keys} cancel | Ctrl+C exit | arrows + Space change"),
         format!("Files: {}", on_off(overlay.draft.include_files)),
         format!("Folders: {}", on_off(overlay.draft.include_dirs)),
         format!("Regex: {}", on_off(overlay.draft.regex)),
@@ -3310,13 +3345,15 @@ fn render_options_overlay<W: Write>(
 fn render_sort_picker<W: Write>(
     terminal_output: &mut W,
     picker: &SortPicker,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     execute!(terminal_output, Clear(ClearType::All))?;
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let heading = [
         "Sort results".to_string(),
-        "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows move".to_string(),
+        format!("Enter apply | {cancel_keys} cancel | Ctrl+C exit | arrows move"),
     ];
     for (row, line) in heading.into_iter().enumerate() {
         if row < height as usize {
@@ -3363,6 +3400,7 @@ fn overlay_window_start(selected: usize, total: usize, visible: usize) -> usize 
 fn render_history_overlay<W: Write>(
     terminal_output: &mut W,
     history: &HistoryOverlay,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
@@ -3390,7 +3428,10 @@ fn render_history_overlay<W: Write>(
             MoveTo(0, 2),
             SetForegroundColor(Color::DarkGrey),
             Print(clip_to_width(
-                "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows/Page move",
+                &format!(
+                    "Enter apply | {} cancel | Ctrl+C exit | arrows/Page move",
+                    overlay_cancel_keys(emacs_keybindings_enabled)
+                ),
                 width as usize,
             )),
             ResetColor,
@@ -3417,6 +3458,14 @@ fn render_history_overlay<W: Write>(
         )?;
     }
     Ok(())
+}
+
+fn overlay_cancel_keys(emacs_keybindings_enabled: bool) -> &'static str {
+    if emacs_keybindings_enabled {
+        "Esc/Ctrl+G"
+    } else {
+        "Esc"
+    }
 }
 
 fn render_help_overlay<W: Write>(
@@ -4700,7 +4749,7 @@ mod tests {
             offset: 0,
         };
         let mut history_output = Vec::new();
-        render_history_overlay(&mut history_output, &history, 40, 8).expect("render history");
+        render_history_overlay(&mut history_output, &history, true, 40, 8).expect("render history");
         let mut help_output = Vec::new();
         render_help_overlay(&mut help_output, HelpContext::Normal, true, 40, 8)
             .expect("render help");
@@ -4731,6 +4780,61 @@ mod tests {
         assert!(!disabled_text.contains("Ctrl+N"));
         assert!(!disabled_text.contains("Ctrl+G"));
         assert!(!disabled_text.contains("Ctrl+R"));
+
+        let options = OptionsOverlay {
+            draft: TuiRuntimeOptions {
+                include_files: true,
+                include_dirs: true,
+                regex: false,
+                ignore_case: false,
+                ignore_enabled: true,
+                source: TuiSource::Walker,
+            },
+            selected: 0,
+        };
+        let history = HistoryOverlay {
+            draft_query: String::new(),
+            filter: String::new(),
+            filter_cursor: 0,
+            results: Vec::new(),
+            selected: 0,
+            offset: 0,
+        };
+        let mut overlay_outputs = vec![Vec::new(); 5];
+        render_options_overlay(&mut overlay_outputs[0], &options, false, 120, 8)
+            .expect("render disabled options");
+        render_sort_picker(
+            &mut overlay_outputs[1],
+            &SortPicker { selected: 0 },
+            false,
+            120,
+            8,
+        )
+        .expect("render disabled sort");
+        render_root_picker(
+            &mut overlay_outputs[2],
+            &RootPicker { selected: 0 },
+            &[PathBuf::from("root")],
+            false,
+            120,
+            8,
+        )
+        .expect("render disabled roots");
+        render_filelist_confirmation(
+            &mut overlay_outputs[3],
+            &FileListConfirmation::Mode {
+                propagate_to_ancestors: false,
+            },
+            false,
+            120,
+            8,
+        )
+        .expect("render disabled FileList confirmation");
+        render_history_overlay(&mut overlay_outputs[4], &history, false, 120, 8)
+            .expect("render disabled history");
+        for output in overlay_outputs {
+            assert!(!String::from_utf8_lossy(&output).contains("Ctrl+G"));
+        }
     }
 
     #[test]
@@ -4890,7 +4994,24 @@ mod tests {
         )
         .expect("fresh finish accepted");
         assert!(state.status.contains("Walker capped at 5 entries"));
-        assert_eq!(state.index_truncated_limit, None);
+        assert_eq!(state.index_truncated_limit, Some(5));
+
+        state.root = PathBuf::from("root-b");
+        state.active_search_request_id = Some(9);
+        let options = state.runtime_options.search_options(state.sort_mode);
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::Searched {
+                request_id: 9,
+                root: PathBuf::from("root-b"),
+                query: String::new(),
+                options,
+                results: vec![(PathBuf::from("fresh.txt"), 1.0)],
+                error: None,
+            },
+        )
+        .expect("search response accepted");
+        assert!(state.status.contains("Walker capped at 5 entries"));
     }
 
     #[test]
@@ -5096,11 +5217,18 @@ mod tests {
             .map(|index| PathBuf::from(format!("root-{index}")))
             .collect::<Vec<_>>();
         let mut output = Vec::new();
-        render_root_picker(&mut output, &RootPicker { selected: 5 }, &roots, 80, 4)
-            .expect("render roots");
+        render_root_picker(
+            &mut output,
+            &RootPicker { selected: 5 },
+            &roots,
+            true,
+            80,
+            4,
+        )
+        .expect("render roots");
         assert!(String::from_utf8_lossy(&output).contains("> root-5"));
         let mut output = Vec::new();
-        render_root_picker(&mut output, &RootPicker { selected: 0 }, &[], 80, 4)
+        render_root_picker(&mut output, &RootPicker { selected: 0 }, &[], true, 80, 4)
             .expect("render empty roots");
         assert!(String::from_utf8_lossy(&output).contains("No saved roots"));
     }
@@ -5173,7 +5301,7 @@ mod tests {
             selected: 0,
         };
         let mut output = Vec::new();
-        render_options_overlay(&mut output, &overlay, 80, 5).expect("render options");
+        render_options_overlay(&mut output, &overlay, true, 80, 5).expect("render options");
         let rendered = String::from_utf8_lossy(&output);
         assert!(rendered.contains("Options"));
         assert!(rendered.contains("Enter apply"));
@@ -5281,10 +5409,11 @@ mod tests {
             selected: 5,
         };
         let mut output = Vec::new();
-        render_options_overlay(&mut output, &options, 80, 4).expect("render options");
+        render_options_overlay(&mut output, &options, true, 80, 4).expect("render options");
         assert!(String::from_utf8_lossy(&output).contains("> Source:"));
         let mut output = Vec::new();
-        render_sort_picker(&mut output, &SortPicker { selected: 8 }, 80, 4).expect("render sort");
+        render_sort_picker(&mut output, &SortPicker { selected: 8 }, true, 80, 4)
+            .expect("render sort");
         assert!(String::from_utf8_lossy(&output).contains("> Size (Small)"));
     }
 
@@ -5514,7 +5643,7 @@ mod tests {
         };
         refresh_history_results(&mut history, &["界\u{1b}x".to_string()]);
         let mut output = Vec::new();
-        render_history_overlay(&mut output, &history, 12, 6).expect("render history overlay");
+        render_history_overlay(&mut output, &history, true, 12, 6).expect("render history overlay");
         let rendered = String::from_utf8_lossy(&output);
         assert!(rendered.contains("History"));
         assert!(rendered.contains('�'));

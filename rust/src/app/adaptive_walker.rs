@@ -21,17 +21,17 @@ pub(crate) struct AdaptiveWalkerEntry {
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct AdaptiveWalkerMetrics {
-    pub(crate) dirs_read: usize,
-    pub(crate) read_dir_errors: usize,
-    pub(crate) max_inflight_read_dirs: usize,
-    pub(crate) throttle_events: usize,
-    pub(crate) adaptive_limit_min: usize,
-    pub(crate) adaptive_limit_max: usize,
-    pub(crate) adaptive_limit_final: usize,
-    pub(crate) adaptive_limit_change_count: usize,
-    pub(crate) adaptive_limit_avg: f64,
-    pub(crate) read_dir_total_us: u128,
-    pub(crate) read_dir_max_us: u128,
+    pub(super) dirs_read: usize,
+    pub(super) read_dir_errors: usize,
+    pub(super) max_inflight_read_dirs: usize,
+    pub(super) throttle_events: usize,
+    pub(super) adaptive_limit_min: usize,
+    pub(super) adaptive_limit_max: usize,
+    pub(super) adaptive_limit_final: usize,
+    pub(super) adaptive_limit_change_count: usize,
+    pub(super) adaptive_limit_avg: f64,
+    pub(super) read_dir_total_us: u128,
+    pub(super) read_dir_max_us: u128,
 }
 
 struct SharedState {

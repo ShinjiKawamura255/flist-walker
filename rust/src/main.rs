@@ -1002,13 +1002,15 @@ fn main() -> Result<ExitCode> {
             eprintln!("error: {error}");
             return Ok(ExitCode::from(2));
         }
+        if args.list_saved_roots {
+            if let Err(error) = validate_list_saved_roots_args(&args) {
+                eprintln!("error: {error}");
+                return Ok(ExitCode::from(2));
+            }
+        }
     }
     let _runtime_config = initialize_runtime_config();
     if args.cli && !args.interactive && args.list_saved_roots {
-        if let Err(error) = validate_list_saved_roots_args(&args) {
-            eprintln!("error: {error}");
-            return Ok(ExitCode::from(2));
-        }
         list_saved_roots(&args)?;
         return Ok(ExitCode::SUCCESS);
     }

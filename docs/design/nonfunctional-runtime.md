@@ -42,7 +42,7 @@
 - adaptive worker 上限が 1 の場合、adaptive backend は serial fast path を使い、channel / condvar / worker pool の制御 overhead を避ける。
 - `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張しない。
 - adaptive backend は Windows 互換用の `Hidden + System + ReparsePoint` junction を候補から除外する。その他の reparse point directory は候補として残してもリンク先へは再帰せず、`follow_links(false)` 相当の Walker 境界を保つ。
-- GUI index worker と TUI index worker は `adaptive_walker`、walker runtime settings、entry classification を crate 内で共有する。TUI は設定済み上限へ到達したら残 batch、request identity 付き truncation、finished の順で応答し、最新 request の status にだけ上限 notice を残す。FileList 作成経路は表示 index から独立した完全 snapshot を維持する。
+- GUI index worker と TUI index worker は `adaptive_walker`、walker runtime settings、entry classification を crate 内で共有する。TUI は設定済み上限へ到達したら残 batch、request identity 付き truncation、finished の順で応答し、最新 request の上限 notice を検索結果 status に合成して次の index 開始まで保持する。FileList 作成経路は表示 index から独立した完全 snapshot を維持する。
 - `developer.walker_metrics = true` の場合だけ、GUI index worker は Walker request の terminal point で summary metrics を 1 件出力する。per-entry/per-directory log は出さず、Indexing 完了・キャンセル・失敗後に継続ロギングしない。
 - `developer.walker_metrics_log_path` が空でない場合、上記 summary metrics を指定ファイルへ append する。これは Windows release GUI build のように stderr が取得しにくい環境での開発者向け計測導線とする。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
@@ -130,7 +130,7 @@
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - GUI/TUI は `tab_pin_moves_to_next_row=true` のとき `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` による PIN トグル後に次行へ移動する。既定の `false` では current row を維持する。TUI event-loop state は process runtime config の両値を起動時に取り込む。
 - GUI/TUI は `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作を維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
-- TUI は normal query と history filter に同じ Emacs 風 text editing helper を適用し、runtime config が無効なら両方を処理しない。help renderer にも有効状態を渡し、無効な chord を操作案内へ表示しない。
+- TUI は normal query と history filter に同じ Emacs 風 text editing helper を適用し、runtime config が無効なら両方を処理しない。help と history/options/sort/root/FileList overlay renderer にも有効状態を渡し、無効な chord を操作案内へ表示しない。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は release metadata、manifest、署名、binary、sidecar ごとの decoded-byte 上限と、接続 10 秒・無通信 30 秒・request 5 分・全体 10 分の deadline を transport/streaming reader の両層で強制する。
 - redirect は 3 hop まで手動追跡し、各 hop で scheme/host を検証する。production は HTTPS の GitHub 配布 origin だけを許可し、test transport だけが loopback HTTP を許可する。

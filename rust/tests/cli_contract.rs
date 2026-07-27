@@ -413,6 +413,12 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
     assert!(progress_conflict.stdout.is_empty());
     assert!(String::from_utf8_lossy(&progress_conflict.stderr)
         .contains("--list-saved-roots cannot be combined with search options"));
+    assert!(
+        !progress_conflict_settings_dir
+            .join(".flistwalker_config.json")
+            .exists(),
+        "invalid list-saved-roots arguments must not bootstrap runtime config"
+    );
     assert!(missing_output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&missing_output.stdout),
