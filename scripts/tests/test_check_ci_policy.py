@@ -45,6 +45,9 @@ jobs:
         self.assertIn("ci-policy-guardian.yml", POLICY.REQUIRED_WORKFLOWS)
         self.assertIn("dependabot-auto-merge.yml", POLICY.REQUIRED_WORKFLOWS)
         self.assertIn(".github/dependabot.yml", POLICY.REQUIRED_FILES)
+        trusted_paths = POLICY.trusted_policy_paths(ROOT)
+        self.assertIn("rust/.cargo/audit.toml", trusted_paths)
+        self.assertIn("scripts/tests/test_check_ci_policy.py", trusted_paths)
 
     def test_write_all_and_unapproved_pull_request_target_are_rejected(self) -> None:
         excessive = """
@@ -138,6 +141,20 @@ jobs:
             self.assertEqual(
                 [], POLICY.validate_trusted_policy_update(ROOT, proposed_root)
             )
+
+            audit_path = proposed_root / "rust" / ".cargo" / "audit.toml"
+            audit_text = audit_path.read_text(encoding="utf-8")
+            audit_path.write_text(
+                audit_text.replace(
+                    "ignore = [",
+                    'ignore = [\n    "RUSTSEC-2099-9999",',
+                    1,
+                ),
+                encoding="utf-8",
+            )
+            violations = POLICY.validate_trusted_policy_update(ROOT, proposed_root)
+            self.assertTrue(any("rust/.cargo/audit.toml" in item for item in violations))
+            audit_path.write_text(audit_text, encoding="utf-8")
 
             ci_path = proposed_root / ".github" / "workflows" / "ci-cross-platform.yml"
             ci_text = ci_path.read_text(encoding="utf-8")

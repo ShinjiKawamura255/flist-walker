@@ -6,6 +6,7 @@
 - MUST: `master` 変更は PR と required `CI Gate` / `CI Policy Guardian` を経由し、required approving review は 0 件とする。PR ごとの auto-merge を明示登録し、直接 push、force push、branch deletion、admin bypass で gate を回避してはならない。
 - MUST: `CI Gate` は CI policy、release 対象 OS test/build、clippy/coverage を集約する。任意階層の `Cargo.toml` / `Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/test の変更では `cargo audit` も集約し、対象変更で audit が skipped の場合は失敗しなければならない。非対象変更の skipped は正常としてよい。
 - MUST: accepted vulnerability advisory はcargo-auditがproject-local configとして自動読込する`rust/.cargo/audit.toml`に限定し、根拠・owner・review cadence・再評価 trigger を `docs/OSS_COMPLIANCE.md` に保持する。unmaintained warning は出力上で可視のままにする。
+- MUST: workflow、Dependabot設定、toolchain、audit exception、CI policy checker/testはdefault branch版をimmutable trusted setとし、通常PRではrunner/action/tool version pinだけを変更可能にする。accepted advisoryを含む構造変更は設定snapshot、独立agent review、guardian requirementの一時解除と即時復元、protected-route再検証を伴うcontrolled rolloutでのみ行う。
 - MUST: scheduled security audit は後日公開 advisory を検知し、失敗 issue を同じ run で作成または更新する。agent は 24 時間以内に分類する。
 - MUST: latest runner/Rust canary は required gate と分離し、失敗 issue を同じ run で作成または更新する。agent は 7 日以内に分類する。
 - MUST: canary failure/success、security notice、EOL/deprecation、dependency MSRV、hosted image drift を pin 更新検討 trigger とする。通常 promotion は scheduled canary 2 回連続成功と candidate `CI Gate` 成功を必要とし、security/EOL/deprecation 対応でも candidate gate を省略してはならない。

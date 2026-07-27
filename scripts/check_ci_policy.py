@@ -75,10 +75,13 @@ def audit_result_is_acceptable(cargo_changed: bool, audit_result: str) -> bool:
 def normalize_trusted_policy(name: str, text: str) -> str:
     if name == "scripts/check_ci_policy.py":
         return PIN_ASSIGNMENT_RE.sub(r'\1<PIN>\2', text)
-    normalized = ACTION_LINE_RE.sub(r"\1<ACTION_SHA>", text)
-    normalized = RUNNER_GENERATION_RE.sub(r"\1-<GENERATION>", normalized)
-    normalized = WORKFLOW_VERSION_LINE_RE.sub(r"\1<VERSION>\2", normalized)
-    return TOOLCHAIN_CHANNEL_RE.sub(r'\1<VERSION>\2', normalized)
+    if name.startswith(".github/workflows/"):
+        normalized = ACTION_LINE_RE.sub(r"\1<ACTION_SHA>", text)
+        normalized = RUNNER_GENERATION_RE.sub(r"\1-<GENERATION>", normalized)
+        return WORKFLOW_VERSION_LINE_RE.sub(r"\1<VERSION>\2", normalized)
+    if name == "rust/rust-toolchain.toml":
+        return TOOLCHAIN_CHANNEL_RE.sub(r'\1<VERSION>\2', text)
+    return text
 
 
 def trusted_policy_paths(root: Path) -> set[str]:
@@ -91,8 +94,10 @@ def trusted_policy_paths(root: Path) -> set[str]:
     paths.update(
         {
             ".github/dependabot.yml",
+            "rust/.cargo/audit.toml",
             "rust/rust-toolchain.toml",
             "scripts/check_ci_policy.py",
+            "scripts/tests/test_check_ci_policy.py",
         }
     )
     return paths

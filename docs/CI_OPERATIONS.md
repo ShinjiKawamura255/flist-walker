@@ -8,7 +8,7 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - required approving review は 0 件とする。PR を作成した agent は `gh pr merge --auto --merge` 相当で PR ごとの auto-merge を明示登録する。
 - `CI Gate` は change detection、CI policy、Windows/macOS/Linux test/build、clippy/coverage、および条件付き Cargo audit を集約する。Cargo 関連変更で audit が skipped の場合は gate を失敗させ、非 Cargo 変更での skipped だけを正常とする。
 - `CI Policy Guardian` は `pull_request_target` で default branch の trusted checker を checkoutし、PR head の workflow/pin/Dependabot policy blob だけを GitHub API から一時領域へ取得して data として検査する。PR head の checkout/実行、secret、cache、artifact、write permission は使用しない。
-- workflow一式、Dependabot設定、toolchain定義、checker本体はfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
+- workflow一式、Dependabot設定、toolchain定義、audit exception設定、checker本体とtestはfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更やaccepted advisory変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
 - force push、branch deletion、直接 push、admin bypass で gate を回避してはならない。
 - Dependabot PR は CI 成功後に `.github/workflows/dependabot-auto-merge.yml` が同じ auto-merge を登録する。
 - 失敗を再実行だけで消してはならない。runner/network/cache など外部一時障害と判断できる証跡がある場合に限り、run URL と判断を残して再実行する。
