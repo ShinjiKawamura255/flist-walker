@@ -72,8 +72,9 @@
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
 ## 7. CI / PR 運用
-- `master` へ直接 push しない。変更は machine PR とし、required approving review は 0 件、required check は GitHub Actions の `CI Gate` とする。
+- `master` へ直接 push しない。変更は machine PR とし、required approving review は 0 件、required check は GitHub Actions の `CI Gate` と `CI Policy Guardian` とする。
 - PR 作成 agent は `gh pr merge --auto --merge` 相当を明示登録する。force push、branch deletion、admin bypass で gate を回避しない。Dependabot PR は trusted `workflow_run` から同じ auto-merge を登録する。
+- `CI Policy Guardian` は default branch の immutable trusted policy だけを実行し、PR head は API から取得した policy file blob を data として検査する。PR code、secret、cache、artifact を扱う `pull_request_target` は禁止する。
 - required CI は numbered runner generation、`rust/rust-toolchain.toml` の Rust、full SHA Action、固定 CI tool versionを使う。hosted image内容はmutableなので各jobの`ImageOS`/`ImageVersion`を証跡化する。
 - Cargo audit対象は任意階層の`Cargo.toml`/`Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/testとする。対象変更ではauditを`CI Gate`へ集約し、非対象変更のみskipを許可する。
 - scheduled security auditとlatest canaryはrequired checkにしない。失敗issueをauditは24時間、canaryは7日以内にagentがtriageする。

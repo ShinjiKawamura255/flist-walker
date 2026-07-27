@@ -25,7 +25,7 @@
 - R-002: 大規模ディレクトリで走査コストが増大する。軽減策: FileList 優先、非同期処理、バッチ更新を維持する。
 - R-003: FileList に root 外パスが含まれると、意図しない実行対象が一覧へ混入する。軽減策: 表示は許容しつつ、実行/オープン直前に root 配下判定で拒否する。
 - R-004: query history の平文永続化は、運用によっては機微な検索語を残す。軽減策: 永続化無効化設定と注意書きを提供する。
-- R-005: mutable runner/toolchain/security database、重い cache、重複実行により、product regression でない CI failure が merge を不安定にする。軽減策: required 環境の version-addressing、cache 制限、concurrency/timeout、Cargo変更時audit、scheduled audit、non-required latest canary、単一 `CI Gate` を適用する。
+- R-005: mutable runner/toolchain/security database、重い cache、重複実行、PR自身によるrequired workflow弱体化により、CI failureや誤ったgreen判定がmergeを不安定にする。軽減策: required環境のversion-addressing、cache制限、concurrency/timeout、Cargo変更時audit、scheduled audit、non-required latest canary、集約`CI Gate`、default branch版policyだけを実行する`CI Policy Guardian`を適用する。
 - R-006: 日付ソートのために全候補へ `metadata()` を導入すると index/search の体感が悪化する。軽減策: 結果スナップショット限定の遅延解決と上限付きキャッシュを採用する。
 - R-007: GitHub API 一時障害やネットワーク不通で起動時更新確認が失敗する。軽減策: 非同期確認として失敗を notice に閉じ込め、検索機能は継続する。
 - R-008: 実行中バイナリの置換に失敗すると更新後再起動できない。軽減策: Windows は別 updater、Linux は一時スクリプト経由で置換し、署名済み checksum manifest と整合する staged binary のみ使用する。
