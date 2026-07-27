@@ -25,6 +25,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | How does a runtime flow or module work internally? | [DETAILED_DESIGN.md](DETAILED_DESIGN.md) |
 | Which checks are required for my change? | [TESTPLAN.md](TESTPLAN.md), then the [Validation Matrix](testplan/validation-matrix.md) |
 | How is a release built and published? | [RELEASE.md](RELEASE.md) |
+| How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | What evidence exists for a previous release? | [releases/INDEX.md](releases/INDEX.md) |
 | Where is active or completed task context? | [TASKS.md](TASKS.md) |
 
@@ -38,6 +39,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | GUI behavior, input, tabs, sessions, or responsiveness | [GUI Behavior Specification](spec/gui-behavior.md), [ARCHITECTURE.md](ARCHITECTURE.md), [GUI-TESTPLAN.md](GUI-TESTPLAN.md) | [VM-002](testplan/validation-matrix.md#gui-orchestration-rendering-input-tabs-or-session-changes) |
 | Runtime configuration or startup bootstrap | [Operations and Runtime Specification](spec/operations-release-config.md), [Detailed Module Design](detailed-design/module-design.md) | [VM-008](testplan/validation-matrix.md#runtime-config-settings-or-startup-bootstrap-changes) |
 | Build, updater, packaging, or release | [RELEASE.md](RELEASE.md), [OSS_COMPLIANCE.md](OSS_COMPLIANCE.md), project-local release skills | [VM-005](testplan/validation-matrix.md#cli-build-release-updater-or-oss-packaging-changes) |
+| CI workflow, runner/tool pin, branch gate, or machine PR operation | [CI_OPERATIONS.md](CI_OPERATIONS.md), [Operations and Runtime Specification](spec/operations-release-config.md) | [VM-009](testplan/validation-matrix.md#ci-reliability-version-pins-security-audit-or-merge-policy-changes) |
 | GUI validation docs or smoke tooling | [GUI-TESTPLAN.md](GUI-TESTPLAN.md), [GUI-TESTREPORT.template.md](GUI-TESTREPORT.template.md) | [VM-006](testplan/validation-matrix.md#ci-coverage-gui-validation-docs-or-smoke-script-changes) |
 | Support or issue templates | [SUPPORT.md](SUPPORT.md) | [VM-007](testplan/validation-matrix.md#supportability-docs-templates-or-diagnostics-wording) |
 
@@ -71,6 +73,7 @@ Root SDD files are concise entrypoints. Topic content remains grouped by SDD res
 | Release procedure and asset rules | [RELEASE.md](RELEASE.md) |
 | Release failure response | [RELEASE_INCIDENT_RUNBOOK.md](RELEASE_INCIDENT_RUNBOOK.md) |
 | OSS licenses, notices, and audit posture | [OSS_COMPLIANCE.md](OSS_COMPLIANCE.md) |
+| CI, machine PR, canary, and pin update operation | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | Support and issue-report guidance | [SUPPORT.md](SUPPORT.md) |
 | Active-task boundary and task routing | [TASKS.md](TASKS.md) |
 | Completed maintenance history | [history/INDEX.md](history/INDEX.md) |

@@ -35,7 +35,7 @@ This document is the short current-state snapshot for maintainers. It does not o
 ## Maintenance Priorities
 
 1. Preserve asynchronous UI and request-ID response routing.
-2. Keep stable-toolchain warnings visible through the configured clippy gate.
+2. Keep pinned-toolchain warnings visible through the configured clippy gate and review latest canary drift.
 3. Improve app/GUI owner-seam coverage without weakening the existing threshold.
 4. Keep FileList and walker performance guards aligned with indexing-path changes.
 5. Record concrete GUI evidence when the validation matrix requires it.

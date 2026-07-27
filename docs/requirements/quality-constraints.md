@@ -5,7 +5,7 @@
 - NFR-002: 例外時はユーザ向けに原因を表示し、非ゼロ終了コードを返すこと。
 - NFR-003: モジュールはテスト可能に分離され、主要機能に unit test を持つこと。query の operator truth、score、visibility、highlight span は共有 evaluator で検証可能とし、公開 adapter 間の互換性を characterization test で固定する。
 - NFR-004: GUI の主要フロー（検索、選択、アクション、再読込）は回帰手順を定義すること。
-- NFR-005: セキュリティ衛生として、CI は release 対象 OS を継続検証し、依存関係の脆弱性検査を自動実行しなければならない。
+- NFR-005: セキュリティ衛生と再現性のため、required CI は version-addressed な runner 世代・Rust・Action・CI tool で release 対象 OS を継続検証し、Cargo 関連変更の依存脆弱性検査を merge gate に含めなければならない。時間経過で変化する advisory と latest 環境互換性は別の定期 workflow で観測し、失敗を追跡可能にしなければならない。
 - NFR-006: ソート追加後もインデクシング速度は既存実装より劣化させないこと。
 - NFR-007: 更新確認・ダウンロードは UI スレッドをブロックせず、失敗時も通常検索操作を継続可能でなければならない。
 - NFR-008: GUI の action、kind resolution、indexing のワーカー実行は同時実行数と待機件数に固定上限を持ち、UI スレッドをブロックせず、過負荷・切断・stale・shutdown の各経路で要求を終端状態へ収束させなければならない。
@@ -25,7 +25,7 @@
 - R-002: 大規模ディレクトリで走査コストが増大する。軽減策: FileList 優先、非同期処理、バッチ更新を維持する。
 - R-003: FileList に root 外パスが含まれると、意図しない実行対象が一覧へ混入する。軽減策: 表示は許容しつつ、実行/オープン直前に root 配下判定で拒否する。
 - R-004: query history の平文永続化は、運用によっては機微な検索語を残す。軽減策: 永続化無効化設定と注意書きを提供する。
-- R-005: 依存脆弱性や release 対象 OS の退行が CI で検知されない。軽減策: Linux 追加と `cargo audit` を必須化する。
+- R-005: mutable runner/toolchain/security database、重い cache、重複実行により、product regression でない CI failure が merge を不安定にする。軽減策: required 環境の version-addressing、cache 制限、concurrency/timeout、Cargo変更時audit、scheduled audit、non-required latest canary、単一 `CI Gate` を適用する。
 - R-006: 日付ソートのために全候補へ `metadata()` を導入すると index/search の体感が悪化する。軽減策: 結果スナップショット限定の遅延解決と上限付きキャッシュを採用する。
 - R-007: GitHub API 一時障害やネットワーク不通で起動時更新確認が失敗する。軽減策: 非同期確認として失敗を notice に閉じ込め、検索機能は継続する。
 - R-008: 実行中バイナリの置換に失敗すると更新後再起動できない。軽減策: Windows は別 updater、Linux は一時スクリプト経由で置換し、署名済み checksum manifest と整合する staged binary のみ使用する。

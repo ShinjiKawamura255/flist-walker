@@ -1,7 +1,7 @@
 ﻿# Manual Regression and Traceability
 
 ## Environment and data
-- Rust stable toolchain（`rustup` 管理）
+- repository指定のRust toolchain（`rust/rust-toolchain.toml`、`rustup` 管理）
 - OS: Windows 11 / Linux / macOS
 - Data:
 - 一時ディレクトリに擬似ファイル/フォルダを生成

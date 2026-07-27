@@ -98,8 +98,10 @@
 - 実装: `docs/TESTPLAN.md` の GUI 手順節
 
 - DES-012 CI / Release Hygiene
-- 役割: release 対象 OS の CI 継続検証、依存脆弱性検査、notarization 運用の文書化。
-- 実装: `.github/workflows/ci-cross-platform.yml`, `docs/RELEASE.md`, `.github/release-template.md`, `rust/build.rs`
+- 役割: version-addressed required CI と単一 `CI Gate`、Cargo-change detector付き audit、scheduled security intelligence、latest canary、machine-PR auto-merge、release検証を責務分離する。
+- 実装: `.github/workflows/ci-cross-platform.yml`, `.github/workflows/security-audit.yml`, `.github/workflows/ci-canary.yml`, `.github/workflows/dependabot-auto-merge.yml`, `.github/workflows/perf-regression.yml`, `.github/workflows/release-tagged.yml`, `.github/dependabot.yml`, `scripts/check_ci_policy.py`, `scripts/tests/test_check_ci_policy.py`, `rust/rust-toolchain.toml`, `rust/.cargo/audit.toml`, `docs/CI_OPERATIONS.md`, `docs/OSS_COMPLIANCE.md`
+- 役割補足: required CI は product/change correctness を判定し、Cargo 関連変更時だけ mutable advisory database を merge gate に接続する。scheduled audit は後日 advisory、canary は latest compatibility を観測するため branch protection の required context にしない。
+- 役割補足: numbered hosted runner label でも image 内容は更新されるため、各 job は `ImageOS` / `ImageVersion` を evidence とし、policy checker が full SHA、pin、permissions、timeout、cache、conditional audit/gate contract を検査する。
 
 - DES-013 Result Sort Controller
 - 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。

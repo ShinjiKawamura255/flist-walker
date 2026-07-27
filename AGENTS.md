@@ -71,5 +71,13 @@
 - リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` を必ず使い、その手順に従って前回 tag から対象 tag までの差分を一次情報にする。本文は手書きの記憶や直近数件の commit だけで作らず、`git log --oneline <前回tag>..<対象tag>` と `git diff --stat <前回tag>..<対象tag>` を確認してから要約する。
 - 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 
-## 7. トレース（抜粋）
+## 7. CI / PR 運用
+- `master` へ直接 push しない。変更は machine PR とし、required approving review は 0 件、required check は GitHub Actions の `CI Gate` とする。
+- PR 作成 agent は `gh pr merge --auto --merge` 相当を明示登録する。force push、branch deletion、admin bypass で gate を回避しない。Dependabot PR は trusted `workflow_run` から同じ auto-merge を登録する。
+- required CI は numbered runner generation、`rust/rust-toolchain.toml` の Rust、full SHA Action、固定 CI tool versionを使う。hosted image内容はmutableなので各jobの`ImageOS`/`ImageVersion`を証跡化する。
+- Cargo audit対象は任意階層の`Cargo.toml`/`Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/testとする。対象変更ではauditを`CI Gate`へ集約し、非対象変更のみskipを許可する。
+- scheduled security auditとlatest canaryはrequired checkにしない。失敗issueをauditは24時間、canaryは7日以内にagentがtriageする。
+- pin更新triggerとpromotion条件、失敗分類、rollbackは`docs/CI_OPERATIONS.md`を正本とし、workflow変更はVM-009で検証する。
+
+## 8. トレース（抜粋）
 - FR-### → SP-### → DES-### → TC-###
