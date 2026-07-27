@@ -40,7 +40,7 @@
 - AC-009: Create File List 実行時、既存 root FileList の置換と祖先 FileList 更新はそれぞれ明示 consent を要求し、拒否時は未認可 target を更新しない。取消または部分失敗では commit 済み target の rollback を試み、失敗 target を報告する。
 - AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。有効時は複数 writer の ordered delta を失わず、既存/unknown UI state field を保持して最大 100 件へ merge する。
 - AC-010A: runtime config の `emacs_keybindings_enabled` が `false` のときは Emacs 風ショートカットをアプリ操作として消費せず、`true` または未指定時は既存どおり有効にする。
-- AC-010B: runtime config の `tab_pin_moves_to_next_row` が `true` のとき、`Tab` / `Shift+Tab` / `Ctrl+I` による PIN 固定/解除後に選択行を次行へ進める。未指定または `false` のときは既存どおり現在行に留まる。
+- AC-010B: GUI/TUI は runtime config の `tab_pin_moves_to_next_row` が `true` のとき、`Tab` / `Shift+Tab` / `Ctrl+I` による PIN 固定/解除後に選択行を次行へ進める。未指定または `false` のときは既存どおり現在行に留まる。`Ctrl+I` を含む Emacs 風操作は `emacs_keybindings_enabled` が `true` のときだけ有効にする。
 - AC-011: CI は Linux/macOS/Windows でテストを実行し、依存脆弱性検査を通過する。
 - AC-012: GUI の結果ペインから `Score` / `Name` / `Modified` / `Created` / `Size` を選択できる。
 - AC-013: `Name` ソートは即時に並び替わり、`Modified` / `Created` / `Size` ソートは UI を固めずに完了する。`Size` ソートでは通常ファイルの byte size を使い、フォルダや取得不可項目は末尾へ送る。

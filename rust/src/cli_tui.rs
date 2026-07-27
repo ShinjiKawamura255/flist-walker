@@ -14,6 +14,7 @@ use crate::persistence::{
     history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
 };
 use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
+use crate::runtime_config::current_runtime_config;
 use crate::search::{rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope};
 use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
 use anyhow::{Context, Result};
@@ -388,6 +389,9 @@ struct TuiState {
     next_index_request_id: u64,
     active_index_request: Option<(u64, PathBuf)>,
     pinned: Vec<PathBuf>,
+    emacs_keybindings_enabled: bool,
+    tab_pin_moves_to_next_row: bool,
+    kill_buffer: String,
     viewport_rows: usize,
     next_search_request_id: u64,
     active_search_request_id: Option<u64>,
@@ -547,6 +551,9 @@ impl TuiState {
             next_index_request_id: 0,
             active_index_request: None,
             pinned: Vec::new(),
+            emacs_keybindings_enabled: true,
+            tab_pin_moves_to_next_row: false,
+            kill_buffer: String::new(),
             viewport_rows: 1,
             next_search_request_id: 0,
             active_search_request_id: None,
@@ -1540,6 +1547,9 @@ fn run_event_loop<W: Write>(
         cancellation,
     } = context;
     let mut state = TuiState::new(&options.initial_query);
+    let runtime_config = current_runtime_config();
+    state.emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
+    state.tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
     state.root = root.clone();
     state.saved_roots = saved_roots;
     state.runtime_options = TuiRuntimeOptions::from_startup(options);
@@ -2508,7 +2518,142 @@ fn handle_active_filelist_key(state: &mut TuiState, key: KeyEvent) -> KeyAction 
     }
 }
 
+fn is_emacs_shortcut(key: KeyEvent) -> bool {
+    match (key.code, key.modifiers) {
+        (KeyCode::Char(ch), KeyModifiers::CONTROL) => matches!(
+            ch.to_ascii_lowercase(),
+            'a' | 'b'
+                | 'd'
+                | 'e'
+                | 'f'
+                | 'g'
+                | 'h'
+                | 'i'
+                | 'j'
+                | 'k'
+                | 'm'
+                | 'n'
+                | 'p'
+                | 'r'
+                | 'u'
+                | 'v'
+                | 'w'
+                | 'y'
+        ),
+        (KeyCode::Char(ch), KeyModifiers::ALT) => ch.eq_ignore_ascii_case(&'v'),
+        _ => false,
+    }
+}
+
+fn normalize_emacs_shortcut(key: KeyEvent) -> KeyEvent {
+    let code = match (key.code, key.modifiers) {
+        (KeyCode::Char(ch), KeyModifiers::CONTROL) => match ch.to_ascii_lowercase() {
+            'n' => Some(KeyCode::Down),
+            'p' => Some(KeyCode::Up),
+            'v' => Some(KeyCode::PageDown),
+            'i' => Some(KeyCode::Tab),
+            'j' | 'm' => Some(KeyCode::Enter),
+            _ => None,
+        },
+        (KeyCode::Char(ch), KeyModifiers::ALT) if ch.eq_ignore_ascii_case(&'v') => {
+            Some(KeyCode::PageUp)
+        }
+        _ => None,
+    };
+    code.map_or(key, |code| KeyEvent::new(code, KeyModifiers::NONE))
+}
+
+fn apply_emacs_query_editing(state: &mut TuiState, key: KeyEvent) -> bool {
+    let (KeyCode::Char(ch), KeyModifiers::CONTROL) = (key.code, key.modifiers) else {
+        return false;
+    };
+    let char_len = state.query.chars().count();
+    let mut changed = false;
+    match ch.to_ascii_lowercase() {
+        'a' => state.query_cursor = 0,
+        'e' => state.query_cursor = char_len,
+        'b' => state.query_cursor = state.query_cursor.saturating_sub(1),
+        'f' => state.query_cursor = (state.query_cursor + 1).min(char_len),
+        'h' if state.query_cursor > 0 => {
+            let start = char_to_byte_index(&state.query, state.query_cursor - 1);
+            let end = char_to_byte_index(&state.query, state.query_cursor);
+            state.query.replace_range(start..end, "");
+            state.query_cursor -= 1;
+            changed = true;
+        }
+        'd' if state.query_cursor < char_len => {
+            let start = char_to_byte_index(&state.query, state.query_cursor);
+            let end = char_to_byte_index(&state.query, state.query_cursor + 1);
+            state.query.replace_range(start..end, "");
+            changed = true;
+        }
+        'w' if state.query_cursor > 0 => {
+            let chars: Vec<char> = state.query.chars().collect();
+            let mut start = state.query_cursor;
+            while start > 0 && chars[start - 1].is_whitespace() {
+                start -= 1;
+            }
+            while start > 0 && !chars[start - 1].is_whitespace() {
+                start -= 1;
+            }
+            let start_byte = char_to_byte_index(&state.query, start);
+            let end_byte = char_to_byte_index(&state.query, state.query_cursor);
+            state.kill_buffer = state.query[start_byte..end_byte].to_string();
+            state.query.replace_range(start_byte..end_byte, "");
+            state.query_cursor = start;
+            changed = true;
+        }
+        'k' if state.query_cursor < char_len => {
+            let start = char_to_byte_index(&state.query, state.query_cursor);
+            state.kill_buffer = state.query[start..].to_string();
+            state.query.truncate(start);
+            changed = true;
+        }
+        'y' if !state.kill_buffer.is_empty() => {
+            let byte_index = char_to_byte_index(&state.query, state.query_cursor);
+            state.query.insert_str(byte_index, &state.kill_buffer);
+            state.query_cursor += state.kill_buffer.chars().count();
+            changed = true;
+        }
+        'u' if state.query_cursor > 0 => {
+            let end = char_to_byte_index(&state.query, state.query_cursor);
+            state.query.replace_range(..end, "");
+            state.query_cursor = 0;
+            changed = true;
+        }
+        'd' | 'h' | 'k' | 'u' | 'w' | 'y' => {}
+        _ => return false,
+    }
+    if changed {
+        state.mark_query_changed();
+    }
+    true
+}
+
+fn toggle_pin_current(state: &mut TuiState) {
+    let Some(path) = state
+        .results
+        .get(state.selected)
+        .map(|(path, _)| path.clone())
+    else {
+        return;
+    };
+    if let Some(index) = state.pinned.iter().position(|pinned| pinned == &path) {
+        state.pinned.remove(index);
+    } else {
+        state.pinned.push(path);
+    }
+    if state.tab_pin_moves_to_next_row {
+        state.move_selection(1);
+    }
+}
+
 fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if !state.emacs_keybindings_enabled && is_emacs_shortcut(key) {
+        return KeyAction::Continue;
+    }
+    let original_key = key;
+    let key = normalize_emacs_shortcut(key);
     if state.help.is_some() {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => return KeyAction::Cancel,
@@ -2654,15 +2799,8 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
                 return KeyAction::Select;
             }
         }
-        (KeyCode::Tab, _) => {
-            if let Some((path, _)) = state.results.get(state.selected) {
-                if let Some(index) = state.pinned.iter().position(|pinned| pinned == path) {
-                    state.pinned.remove(index);
-                } else {
-                    state.pinned.push(path.clone());
-                }
-            }
-        }
+        (KeyCode::Tab, _) | (KeyCode::BackTab, _) => toggle_pin_current(state),
+        _ if apply_emacs_query_editing(state, original_key) => {}
         (KeyCode::Backspace, _) if state.query_cursor > 0 => {
             let start = char_to_byte_index(&state.query, state.query_cursor - 1);
             let end = char_to_byte_index(&state.query, state.query_cursor);
@@ -3495,6 +3633,158 @@ mod tests {
             selected_paths(&state),
             vec![PathBuf::from("one.txt"), PathBuf::from("two.txt")]
         );
+    }
+
+    #[test]
+    fn tc_162_tui_emacs_navigation_pin_and_select_follow_runtime_toggle() {
+        let mut enabled = TuiState::new("");
+        enabled.results = (0..8)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect();
+        enabled.viewport_rows = 3;
+
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.selected, 1);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.selected, 0);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('v'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.selected, 3);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('v'), KeyModifiers::ALT),
+        );
+        assert_eq!(enabled.selected, 0);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.pinned, vec![PathBuf::from("0.txt")]);
+        assert!(matches!(
+            handle_key(
+                &mut enabled,
+                KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL),
+            ),
+            KeyAction::Select
+        ));
+
+        let mut disabled = TuiState::new("");
+        disabled.emacs_keybindings_enabled = false;
+        disabled.results = enabled.results.clone();
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(disabled.selected, 0);
+        assert!(disabled.pinned.is_empty());
+        assert!(matches!(
+            handle_key(
+                &mut disabled,
+                KeyEvent::new(KeyCode::Char('m'), KeyModifiers::CONTROL),
+            ),
+            KeyAction::Continue
+        ));
+        disabled.query = "keep".to_string();
+        disabled.query_cursor = disabled.query.chars().count();
+        disabled.history_enabled = true;
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(disabled.query, "keep");
+        assert!(disabled.history.is_none());
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+        );
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+        );
+        assert_eq!(disabled.selected, 1);
+        assert_eq!(disabled.pinned, vec![PathBuf::from("1.txt")]);
+    }
+
+    #[test]
+    fn tc_162_tui_tab_pin_move_setting_applies_to_tab_backtab_and_ctrl_i() {
+        let mut state = TuiState::new("");
+        state.tab_pin_moves_to_next_row = true;
+        state.results = (0..3)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect();
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert_eq!(state.pinned, vec![PathBuf::from("0.txt")]);
+        assert_eq!(state.selected, 1);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::BackTab, KeyModifiers::SHIFT),
+        );
+        assert_eq!(
+            state.pinned,
+            vec![PathBuf::from("0.txt"), PathBuf::from("1.txt")]
+        );
+        assert_eq!(state.selected, 2);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(state.pinned.last(), Some(&PathBuf::from("2.txt")));
+        assert_eq!(state.selected, 2);
+    }
+
+    #[test]
+    fn tc_162_tui_emacs_query_editing_uses_the_same_runtime_toggle() {
+        let mut enabled = TuiState::new("alpha beta");
+        enabled.query_cursor = 5;
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query, "alpha");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query, "alpha beta");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query_cursor, 0);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query_cursor, enabled.query.chars().count());
+
+        let mut disabled = TuiState::new("alpha beta");
+        disabled.emacs_keybindings_enabled = false;
+        disabled.query_cursor = 5;
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(disabled.query, "alpha beta");
+        assert_eq!(disabled.query_cursor, 5);
     }
 
     #[test]

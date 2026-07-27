@@ -127,8 +127,8 @@
 - タブ close ボタンは固定サイズの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
-- `tab_pin_moves_to_next_row=true` のときは `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` が PIN トグル後に `move_row(1)` を呼ぶ。既定の `false` では従来どおり current row を維持する。
-- `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作は維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
+- GUI/TUI は `tab_pin_moves_to_next_row=true` のとき `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` による PIN トグル後に次行へ移動する。既定の `false` では current row を維持する。TUI event-loop state は process runtime config の両値を起動時に取り込む。
+- GUI/TUI は `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作を維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は release metadata、manifest、署名、binary、sidecar ごとの decoded-byte 上限と、接続 10 秒・無通信 30 秒・request 5 分・全体 10 分の deadline を transport/streaming reader の両層で強制する。
 - redirect は 3 hop まで手動追跡し、各 hop で scheme/host を検証する。production は HTTPS の GitHub 配布 origin だけを許可し、test transport だけが loopback HTTP を許可する。
