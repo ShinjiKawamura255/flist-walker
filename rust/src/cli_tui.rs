@@ -2563,67 +2563,84 @@ fn normalize_emacs_shortcut(key: KeyEvent) -> KeyEvent {
     code.map_or(key, |code| KeyEvent::new(code, KeyModifiers::NONE))
 }
 
-fn apply_emacs_query_editing(state: &mut TuiState, key: KeyEvent) -> bool {
+fn apply_emacs_text_editing(
+    text: &mut String,
+    cursor: &mut usize,
+    kill_buffer: &mut String,
+    key: KeyEvent,
+) -> Option<bool> {
     let (KeyCode::Char(ch), KeyModifiers::CONTROL) = (key.code, key.modifiers) else {
-        return false;
+        return None;
     };
-    let char_len = state.query.chars().count();
+    let char_len = text.chars().count();
     let mut changed = false;
     match ch.to_ascii_lowercase() {
-        'a' => state.query_cursor = 0,
-        'e' => state.query_cursor = char_len,
-        'b' => state.query_cursor = state.query_cursor.saturating_sub(1),
-        'f' => state.query_cursor = (state.query_cursor + 1).min(char_len),
-        'h' if state.query_cursor > 0 => {
-            let start = char_to_byte_index(&state.query, state.query_cursor - 1);
-            let end = char_to_byte_index(&state.query, state.query_cursor);
-            state.query.replace_range(start..end, "");
-            state.query_cursor -= 1;
+        'a' => *cursor = 0,
+        'e' => *cursor = char_len,
+        'b' => *cursor = cursor.saturating_sub(1),
+        'f' => *cursor = (*cursor + 1).min(char_len),
+        'h' if *cursor > 0 => {
+            let start = char_to_byte_index(text, *cursor - 1);
+            let end = char_to_byte_index(text, *cursor);
+            text.replace_range(start..end, "");
+            *cursor -= 1;
             changed = true;
         }
-        'd' if state.query_cursor < char_len => {
-            let start = char_to_byte_index(&state.query, state.query_cursor);
-            let end = char_to_byte_index(&state.query, state.query_cursor + 1);
-            state.query.replace_range(start..end, "");
+        'd' if *cursor < char_len => {
+            let start = char_to_byte_index(text, *cursor);
+            let end = char_to_byte_index(text, *cursor + 1);
+            text.replace_range(start..end, "");
             changed = true;
         }
-        'w' if state.query_cursor > 0 => {
-            let chars: Vec<char> = state.query.chars().collect();
-            let mut start = state.query_cursor;
+        'w' if *cursor > 0 => {
+            let chars: Vec<char> = text.chars().collect();
+            let mut start = *cursor;
             while start > 0 && chars[start - 1].is_whitespace() {
                 start -= 1;
             }
             while start > 0 && !chars[start - 1].is_whitespace() {
                 start -= 1;
             }
-            let start_byte = char_to_byte_index(&state.query, start);
-            let end_byte = char_to_byte_index(&state.query, state.query_cursor);
-            state.kill_buffer = state.query[start_byte..end_byte].to_string();
-            state.query.replace_range(start_byte..end_byte, "");
-            state.query_cursor = start;
+            let start_byte = char_to_byte_index(text, start);
+            let end_byte = char_to_byte_index(text, *cursor);
+            *kill_buffer = text[start_byte..end_byte].to_string();
+            text.replace_range(start_byte..end_byte, "");
+            *cursor = start;
             changed = true;
         }
-        'k' if state.query_cursor < char_len => {
-            let start = char_to_byte_index(&state.query, state.query_cursor);
-            state.kill_buffer = state.query[start..].to_string();
-            state.query.truncate(start);
+        'k' if *cursor < char_len => {
+            let start = char_to_byte_index(text, *cursor);
+            *kill_buffer = text[start..].to_string();
+            text.truncate(start);
             changed = true;
         }
-        'y' if !state.kill_buffer.is_empty() => {
-            let byte_index = char_to_byte_index(&state.query, state.query_cursor);
-            state.query.insert_str(byte_index, &state.kill_buffer);
-            state.query_cursor += state.kill_buffer.chars().count();
+        'y' if !kill_buffer.is_empty() => {
+            let byte_index = char_to_byte_index(text, *cursor);
+            text.insert_str(byte_index, kill_buffer);
+            *cursor += kill_buffer.chars().count();
             changed = true;
         }
-        'u' if state.query_cursor > 0 => {
-            let end = char_to_byte_index(&state.query, state.query_cursor);
-            state.query.replace_range(..end, "");
-            state.query_cursor = 0;
+        'u' if *cursor > 0 => {
+            let end = char_to_byte_index(text, *cursor);
+            text.replace_range(..end, "");
+            *cursor = 0;
             changed = true;
         }
         'd' | 'h' | 'k' | 'u' | 'w' | 'y' => {}
-        _ => return false,
+        _ => return None,
     }
+    Some(changed)
+}
+
+fn apply_emacs_query_editing(state: &mut TuiState, key: KeyEvent) -> bool {
+    let Some(changed) = apply_emacs_text_editing(
+        &mut state.query,
+        &mut state.query_cursor,
+        &mut state.kill_buffer,
+        key,
+    ) else {
+        return false;
+    };
     if changed {
         state.mark_query_changed();
     }
@@ -2691,6 +2708,27 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
         ) {
             return KeyAction::Cancel;
+        }
+        let emacs_edit_handled = {
+            let history = state.history.as_mut().expect("history overlay checked");
+            match apply_emacs_text_editing(
+                &mut history.filter,
+                &mut history.filter_cursor,
+                &mut state.kill_buffer,
+                original_key,
+            ) {
+                Some(changed) => {
+                    if changed {
+                        refresh_history_results(history, &state.history_entries);
+                    }
+                    true
+                }
+                None => false,
+            }
+        };
+        if emacs_edit_handled {
+            state.dirty = true;
+            return KeyAction::Continue;
         }
         let viewport_rows = state.viewport_rows;
         match (key.code, key.modifiers) {
@@ -3020,7 +3058,13 @@ fn draw<W: Write>(
         render_preview_pane(terminal_output, state, list_width, width, height)?;
     }
     if let Some(context) = state.help {
-        render_help_overlay(terminal_output, context, width, height)?;
+        render_help_overlay(
+            terminal_output,
+            context,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(options_overlay) = state.options_overlay.as_ref() {
         render_options_overlay(terminal_output, options_overlay, width, height)?;
     } else if let Some(sort_picker) = state.sort_picker.as_ref() {
@@ -3310,28 +3354,47 @@ fn render_history_overlay<W: Write>(
 fn render_help_overlay<W: Write>(
     terminal_output: &mut W,
     context: HelpContext,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
-    let mut lines = vec![
-        "Help".to_string(),
-        "Enter / Esc / Ctrl+G close help | Ctrl+C exit".to_string(),
-    ];
+    let close_help = if emacs_keybindings_enabled {
+        "Enter / Esc / Ctrl+G close help | Ctrl+C exit"
+    } else {
+        "Enter / Esc close help | Ctrl+C exit"
+    };
+    let mut lines = vec!["Help".to_string(), close_help.to_string()];
     match context {
-        HelpContext::Normal => lines.extend([
-            "Enter output selection | Tab pin | arrows/Page move".to_string(),
+        HelpContext::Normal if emacs_keybindings_enabled => lines.extend([
+            "Enter/Ctrl+J/Ctrl+M output | Tab/Shift+Tab/Ctrl+I pin".to_string(),
+            "arrows/Ctrl+P/Ctrl+N move | PageUp/Alt+V and PageDown/Ctrl+V".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
             "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
         ]),
+        HelpContext::Normal => lines.extend([
+            "Enter output selection | Tab/Shift+Tab pin | arrows/Page move".to_string(),
+            "Emacs shortcuts disabled by runtime config".to_string(),
+            "Ctrl+O open current | Shift+Enter reveal current".to_string(),
+            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
+        ]),
         HelpContext::History => lines.extend([
             "History search is paused while help is open.".to_string(),
-            "Close help to use Enter, Esc/Ctrl+G, edit, or navigation.".to_string(),
+            if emacs_keybindings_enabled {
+                "Close help to use Enter, Esc/Ctrl+G, edit, or navigation."
+            } else {
+                "Close help to use Enter, Esc, edit, or navigation."
+            }
+            .to_string(),
         ]),
         HelpContext::FileList => lines.extend([
             "FileList creation is settling; no result is accepted before it finishes.".to_string(),
-            "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+G/Ctrl+C exits after settlement."
-                .to_string(),
+            if emacs_keybindings_enabled {
+                "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+G/Ctrl+C exits after settlement."
+            } else {
+                "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+C exits after settlement."
+            }
+            .to_string(),
         ]),
     }
     execute!(terminal_output, Clear(ClearType::All))?;
@@ -4241,6 +4304,60 @@ mod tests {
     }
 
     #[test]
+    fn tc_162_history_filter_supports_enabled_emacs_editing_and_disabled_noop() {
+        let mut enabled = history_state(&["alpha beta", "alpha"], "draft");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        insert_paste(&mut enabled, "alpha beta");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            enabled.history.as_ref().expect("history overlay").filter,
+            "alpha "
+        );
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            enabled.history.as_ref().expect("history overlay").filter,
+            "alpha beta"
+        );
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            enabled
+                .history
+                .as_ref()
+                .expect("history overlay")
+                .filter_cursor,
+            0
+        );
+
+        let mut disabled = history_state(&["alpha"], "draft");
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        insert_paste(&mut disabled, "alpha");
+        disabled.emacs_keybindings_enabled = false;
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            disabled.history.as_ref().expect("history overlay").filter,
+            "alpha"
+        );
+    }
+
+    #[test]
     fn tc_162_history_overlay_accept_cancel_navigation_and_paste_contract() {
         let mut state = history_state(&["one", "two", "three"], "draft");
         handle_key(
@@ -4454,7 +4571,8 @@ mod tests {
         let mut history_output = Vec::new();
         render_history_overlay(&mut history_output, &history, 40, 8).expect("render history");
         let mut help_output = Vec::new();
-        render_help_overlay(&mut help_output, HelpContext::Normal, 40, 8).expect("render help");
+        render_help_overlay(&mut help_output, HelpContext::Normal, true, 40, 8)
+            .expect("render help");
 
         for output in [&history_output, &help_output] {
             assert!(
@@ -4462,6 +4580,26 @@ mod tests {
                 "overlay must clear terminal before rendering"
             );
         }
+    }
+
+    #[test]
+    fn tc_162_help_overlay_matches_emacs_runtime_config() {
+        let mut enabled_output = Vec::new();
+        render_help_overlay(&mut enabled_output, HelpContext::Normal, true, 100, 10)
+            .expect("render enabled help");
+        let enabled_text = String::from_utf8_lossy(&enabled_output);
+        assert!(enabled_text.contains("Ctrl+N"));
+        assert!(enabled_text.contains("Ctrl+G"));
+        assert!(enabled_text.contains("Ctrl+R"));
+
+        let mut disabled_output = Vec::new();
+        render_help_overlay(&mut disabled_output, HelpContext::Normal, false, 100, 10)
+            .expect("render disabled help");
+        let disabled_text = String::from_utf8_lossy(&disabled_output);
+        assert!(disabled_text.contains("Emacs shortcuts disabled"));
+        assert!(!disabled_text.contains("Ctrl+N"));
+        assert!(!disabled_text.contains("Ctrl+G"));
+        assert!(!disabled_text.contains("Ctrl+R"));
     }
 
     #[test]

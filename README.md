@@ -182,7 +182,7 @@ Interactive CLI mode:
 cargo run -- --cli --interactive --root ..
 ```
 
-The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style query editing. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
+The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style editing in both the normal query and history filter. The contextual help reflects whether these shortcuts are enabled. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
 
 This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--saved-root` select its startup root; `--sort` sets its initial ordering, and `--no-ignore` starts with Ignore visibly disabled. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` / `Shift+Tab` to pin results in output order and `Enter` to print them.
 
