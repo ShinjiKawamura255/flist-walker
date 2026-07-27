@@ -14,14 +14,14 @@ use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
 mod action_authorization;
-mod adaptive_walker;
+pub(crate) mod adaptive_walker;
 mod bootstrap;
 mod cache;
 mod config;
 mod coordinator;
 mod filelist;
 mod index_coordinator;
-mod index_worker;
+pub(crate) mod index_worker;
 mod input;
 mod pipeline;
 mod pipeline_owner;
@@ -101,7 +101,7 @@ pub(crate) use shell_support::clear_process_shutdown_request;
 pub(crate) use shell_support::process_shutdown_requested;
 pub use shell_support::{configure_egui_fonts, request_process_shutdown};
 
-fn walker_truncated_notice(limit: usize) -> String {
+pub(crate) fn walker_truncated_notice(limit: usize) -> String {
     format!(
         "Walker capped at {limit} entries (set walker_max_entries in the config file to adjust)"
     )

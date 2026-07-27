@@ -95,8 +95,9 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - Only the commonly useful toggles are documented here. Advanced keys are intentionally undocumented.
 - The file is plain JSON, so you can edit it directly.
 - If you delete the file, the next launch will recreate it from the current environment values.
-- `walker_max_entries` is also exposed here because it affects large-root scans.
-- Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and query-box editing chords. It is enabled by default.
+- `walker_max_entries` is also exposed here because it caps large-root Walker scans in both the GUI and TUI.
+- Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and query editing chords in both the GUI and TUI. It is enabled by default.
+- Set `tab_pin_moves_to_next_row` to `true` to move to the next result after `Tab`, `Shift+Tab`, or enabled `Ctrl+I` pin toggles in both the GUI and TUI. It is disabled by default.
 
 Example:
 
@@ -105,7 +106,8 @@ Example:
   "walker_max_entries": 500000,
   "history_persist_disabled": false,
   "restore_tabs_enabled": false,
-  "emacs_keybindings_enabled": true
+  "emacs_keybindings_enabled": true,
+  "tab_pin_moves_to_next_row": false
 }
 ```
 
@@ -152,7 +154,7 @@ In CLI mode:
 - `--type all|file|folder`, `--regex`, and `--case-sensitive` control matching.
 - `--source auto|filelist|walker` controls indexing. `filelist` fails if no root FileList exists; `auto` prefers it and falls back to the walker.
 - `--ignore-file PATH` replaces the executable-side ignore list; `--no-ignore` disables ignore filtering. These options conflict.
-- `--progress` writes progress only to stderr. `--fail-no-match` changes an empty result from exit 0 to exit 1. Cancellation exits 130.
+- In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
 - `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
 - `--create-filelist` builds a fresh walker-based root FileList without prompting and writes no stdout. `--overwrite-filelist` is required to replace an existing root FileList; `--propagate-ancestors` is an explicit opt-in for existing ancestor FileLists. Creation rejects query/search/output/action options, returns 0 on success, 130 on clean cancellation, and 1 for read/write/rollback failures.
@@ -180,7 +182,15 @@ Interactive CLI mode:
 cargo run -- --cli --interactive --root ..
 ```
 
-This starts a lightweight terminal UI. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` to pin results in output order and `Enter` to print them. `F2` opens an apply/cancel options overlay for Files, Folders, Regex, Ignore Case, loaded Ignore terms, and source (`Auto` / `FileList` / `Walker`); source and file-kind changes reindex, while search-only changes reuse the current snapshot. `F3` selects Score, name, modified, created, or size ordering (ascending/descending where applicable); non-score ordering ranks all matches before applying the limit. `F4` opens saved roots and switches to the highlighted root; `F5` refreshes the current root. `F6` creates a FileList after choosing root-only or ancestor propagation; an existing root FileList requires a separate overwrite confirmation. Creation runs in the background, and pending selection, exit, or root-switch requests wait for its committed cancellation/rollback result. Root switching clears old selections and pins but keeps the query, history, and options; refresh keeps pins. `Ctrl+O` opens or executes only the current row, while `Shift+Enter` reveals only its containing folder; pinned rows are never included in either action. `Ctrl+G` clears the query and pins, `Alt+P` toggles the width-aware preview, `Ctrl+R` opens persisted query-history search when enabled, and `F1` opens contextual help. In history, help, options, sort, root, or FileList overlays, `Enter`, `Esc`, and `Ctrl+G` apply or close only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; only selected paths are written to stdout after terminal restoration.
+The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style editing in both the normal query and history filter. The contextual help reflects whether these shortcuts are enabled. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
+
+The TUI Walker uses the same adaptive traversal limits and `walker_max_entries` cap as the GUI. When the cap is reached, the status line reports the applied limit. FileList creation still builds a complete fresh Walker snapshot and is not truncated by the display-index cap.
+
+This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--saved-root` select its startup root; `--sort` sets its initial ordering, and `--no-ignore` starts with Ignore visibly disabled. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` / `Shift+Tab` to pin results in output order and `Enter` to print them.
+
+`F2` opens an apply/cancel options overlay for Files, Folders, Regex, Ignore Case, loaded Ignore terms, and source (`Auto` / `FileList` / `Walker`); source and file-kind changes reindex, while search-only changes reuse the current snapshot. `F3` selects Score, name, modified, created, or size ordering (ascending/descending where applicable); non-score ordering ranks all matches before applying the limit. `F4` opens saved roots and switches to the highlighted root; `F5` refreshes the current root. `F6` creates a FileList after choosing root-only or ancestor propagation; an existing root FileList requires a separate overwrite confirmation. Creation runs in the background, and pending selection, exit, or root-switch requests wait for its committed cancellation/rollback result. Root switching clears old selections and pins but keeps the query, history, and options; refresh keeps pins.
+
+`Ctrl+O` opens or executes only the current row, while `Shift+Enter` reveals only its containing folder; pinned rows are never included in either action. With Emacs keybindings enabled, `Ctrl+G` clears the query and pins and `Ctrl+R` opens persisted query-history search. `Alt+P` toggles the width-aware preview, and `F1` opens contextual help. In history, help, options, sort, root, or FileList overlays, `Enter`, `Esc`, and enabled `Ctrl+G` apply or close only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; only selected paths are written to stdout after terminal restoration.
 
 ## Behavior
 

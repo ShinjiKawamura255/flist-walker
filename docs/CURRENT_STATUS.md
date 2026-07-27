@@ -11,7 +11,7 @@ This document is the short current-state snapshot for maintainers. It does not o
 ## CLI/TUI Usability Baseline (2026-07-26)
 
 - Batch CLI provides script-safe sort-before-limit output, source/type/search controls, saved-root selection, authorized open/reveal actions, and transactional FileList creation.
-- Interactive TUI provides asynchronous preview and persisted history, contextual help, runtime options and sorting, saved-root switching and refresh, current-row authorized actions, and settled transactional FileList creation from a fresh all-kind walker snapshot.
+- Interactive TUI provides asynchronous preview and persisted history, contextual help, direct default/saved-root startup, initial sort/ignore options, runtime options and sorting, saved-root switching and refresh, current-row authorized actions, and settled transactional FileList creation from a fresh all-kind walker snapshot. Candidate ingestion uses shared immutable batches and a bounded event-loop response budget; invalid roots surface as recoverable index failures.
 - Full Rust regression, check/clippy/format/diff gates, focused TC-163 through TC-166 contracts, VM-003 indexing performance guards, and Windows ConPTY terminal evidence passed. Exact commit and evidence mapping is in [Durable History](history/durable-history.md); native action launch remains conditional on explicit manual approval and is covered automatically with a recording backend.
 
 ## Hardening Baseline (2026-07-22)

@@ -86,7 +86,7 @@
 - MUST: ツールは runtime config file と関連する永続化ファイルを、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` へ保存しなければならない。
 - MUST: runtime config file は Windows では `%LocalAppData%\flistwalker\.flistwalker_config.json`、Linux/macOS では `~/.flistwalker/.flistwalker_config.json` を使わなければならない。
 - MUST: Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しない場合に限り、新しい保存先へ移行しなければならない。
-- MUST: runtime config file が存在しない場合、ツールは起動時に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。
+- MUST: runtime config file が存在しない場合、ツールは有効な GUI、batch CLI、interactive CLI、`--list-saved-roots`、`--create-filelist` の dispatch 前に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。内部 update helper と引数検証失敗は bootstrap 対象外とする。
 - MUST: 自動生成される runtime config file には、一般利用者が調整してよい `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled`、`emacs_keybindings_enabled`、`tab_pin_moves_to_next_row` を既定値で含めなければならない。
 - SHOULD: 既存 runtime config file に上記 5 項目が欠けている場合、読み込み時に現在の実効値で項目を補完して書き戻す。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
@@ -94,7 +94,7 @@
 - MUST: history writer は full snapshot ではなく ordered、trimmed、nonempty delta を submit する。cross-process sidecar lock の下で latest JSON を reread し、各 delta を exact duplicate removal、most-recent append、front trim 100 entries の順で適用する。serialized writers が別 query を追加した場合は commit order で両方を保持する。
 - MUST: GUI/TUI frame code は `UiStatePatch + history_delta` を enqueue するだけとする。non-history leaf は last-write-wins、history delta は enqueue order で全て concat し、unknown top-level/nested JSON field は保持する。lock timeout/write failure は exact coalesced patch/delta を retry 用に保持し、successful commit はその generation だけ clear する。
 - MUST: bounded lock wait、latest-read merge、atomic write は persistence worker が行い、frame dispatch を block してはならない。graceful shutdown は frame rendering 外で bounded flush を要求する。crash-before-flush history loss は residual risk とする。
-- MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、Emacs 風 keybindings、Tab pin movement、update policy を含めなければならない。
+- MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、Emacs 風 keybindings、Tab pin movement、update policy を含めなければならない。GUI/TUI の通常 Walker index は同じ `walker_max_entries` と adaptive initial/max limit を参照しなければならない。
 - MUST: GUI は runtime config file を開く設定ボタンを提供し、押下時に config file が存在しない場合は生成してから OS 既定アプリケーションで開かなければならない。既定アプリケーションで開けない場合は、標準的なテキストエディタ相当のフォールバックを試行しなければならない。
 - SHOULD: runtime config file は手動追記された `developer` セクションを読み取れる。ただし `developer` セクションは自動生成 config seed に含めてはならず、公開 README や通常ヘルプで案内してはならない。
 - MUST: runtime config file の読み込みや自動生成に失敗しても、ツールは通常起動を継続しなければならない。

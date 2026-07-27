@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -143,7 +143,7 @@ struct Args {
         long,
         default_value_t = false,
         requires = "cli",
-        conflicts_with_all = ["root", "saved_root", "interactive", "list_saved_roots"]
+        conflicts_with_all = ["root", "saved_root", "list_saved_roots"]
     )]
     use_default_root: bool,
 
@@ -152,7 +152,7 @@ struct Args {
         long,
         value_name = "INDEX",
         requires = "cli",
-        conflicts_with_all = ["root", "use_default_root", "interactive", "list_saved_roots"]
+        conflicts_with_all = ["root", "use_default_root", "list_saved_roots"]
     )]
     saved_root: Option<usize>,
 
@@ -176,8 +176,13 @@ struct Args {
     #[arg(long, default_value_t = false, requires = "cli")]
     print0: bool,
 
-    /// Exit with status 1 when no path matches.
-    #[arg(long, default_value_t = false, requires = "cli")]
+    /// Exit with status 1 when no path matches (batch CLI only).
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "cli",
+        conflicts_with = "interactive"
+    )]
     fail_no_match: bool,
 
     /// Select files, folders, or both.
@@ -214,8 +219,13 @@ struct Args {
     #[arg(long, default_value_t = false, requires = "cli")]
     no_ignore: bool,
 
-    /// Write indexing progress to standard error.
-    #[arg(long, default_value_t = false, requires = "cli")]
+    /// Write indexing progress to standard error (batch CLI only).
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "cli",
+        conflicts_with = "interactive"
+    )]
     progress: bool,
 
     /// Sort the complete match set before applying --limit.
@@ -304,15 +314,44 @@ fn configure_windows_dpi_mode() {
 #[cfg(not(target_os = "windows"))]
 fn configure_windows_dpi_mode() {}
 
-fn load_cli_ignore_terms(args: &Args) -> Result<Vec<String>> {
-    if args.no_ignore {
-        Ok(Vec::new())
-    } else if let Some(path) = args.ignore_file.as_deref() {
+fn read_cli_ignore_terms(args: &Args) -> Result<Vec<String>> {
+    if let Some(path) = args.ignore_file.as_deref() {
         let text = std::fs::read_to_string(path)
             .with_context(|| format!("failed to read ignore file: {}", path.display()))?;
         Ok(parse_ignore_terms(&text))
     } else {
         Ok(load_ignore_terms_from_current_exe())
+    }
+}
+
+fn load_cli_ignore_terms(args: &Args) -> Result<Vec<String>> {
+    if args.no_ignore {
+        Ok(Vec::new())
+    } else {
+        read_cli_ignore_terms(args)
+    }
+}
+
+fn load_cli_tui_ignore_terms(args: &Args) -> Result<Vec<String>> {
+    read_cli_ignore_terms(args)
+}
+
+fn cli_tui_options(args: &Args, ignore_terms: Vec<String>) -> CliTuiOptions {
+    let (include_files, include_dirs) = args.entry_type.include_flags();
+    CliTuiOptions {
+        initial_query: args.query.clone(),
+        limit: args.limit,
+        absolute: args.absolute,
+        print0: args.print0,
+        include_files,
+        include_dirs,
+        use_filelist: !matches!(args.source, CliIndexSource::Walker),
+        require_filelist: matches!(args.source, CliIndexSource::Filelist),
+        regex: args.regex,
+        ignore_case: !args.case_sensitive,
+        ignore_enabled: !args.no_ignore,
+        ignore_terms,
+        sort_mode: args.sort.into(),
     }
 }
 
@@ -345,6 +384,7 @@ fn run_cli_with_backend(
     let ignore_case = !args.case_sensitive;
     let compiled_ignore_terms = CompiledIgnoreTerms::compile(&ignore_terms, ignore_case);
 
+    let index_started = Instant::now();
     if args.progress {
         eprintln!("Indexing {}...", root.display());
     }
@@ -358,6 +398,13 @@ fn run_cli_with_backend(
         };
     if cancelled.load(Ordering::Relaxed) {
         return Ok(BatchOutcome::Cancelled);
+    }
+    if args.progress {
+        eprintln!(
+            "Indexed {} candidate(s) in {} ms; filtering and searching...",
+            indexed_entries.len(),
+            index_started.elapsed().as_millis()
+        );
     }
     let mut entries = Vec::with_capacity(indexed_entries.len());
     for path in indexed_entries {
@@ -380,6 +427,7 @@ fn run_cli_with_backend(
     }
     let entries = Arc::new(entries.into_iter().map(Entry::from).collect());
     let mut prefix_cache = SearchPrefixCache::default();
+    let search_started = Instant::now();
     let (search_results, search_error) = rank_search_results(
         &entries,
         args.query.trim(),
@@ -397,6 +445,14 @@ fn run_cli_with_backend(
     }
     if cancelled.load(Ordering::Relaxed) {
         return Ok(BatchOutcome::Cancelled);
+    }
+    if args.progress {
+        eprintln!(
+            "Matched {} path(s); returning {} in {} ms",
+            search_results.total_match_count,
+            search_results.results.len(),
+            search_started.elapsed().as_millis()
+        );
     }
     let paths = search_results
         .results
@@ -456,20 +512,18 @@ fn write_cli_paths(
     print0: bool,
     cancelled: &AtomicBool,
 ) -> Result<()> {
-    let mut framed_output = Vec::new();
+    let stdout = io::stdout();
+    let mut output = BufWriter::new(stdout.lock());
     for path in paths {
         if cancelled.load(Ordering::Relaxed) {
             return Ok(());
         }
-        framed_output.extend_from_slice(&output_path_bytes(path, root, !absolute, print0));
-        framed_output.extend_from_slice(if print0 { b"\0" } else { b"\n" });
+        output.write_all(&output_path_bytes(path, root, !absolute, print0))?;
+        output.write_all(if print0 { b"\0" } else { b"\n" })?;
     }
     if cancelled.load(Ordering::Relaxed) {
         return Ok(());
     }
-    let stdout = io::stdout();
-    let mut output = stdout.lock();
-    output.write_all(&framed_output)?;
     output.flush()?;
     Ok(())
 }
@@ -948,12 +1002,15 @@ fn main() -> Result<ExitCode> {
             eprintln!("error: {error}");
             return Ok(ExitCode::from(2));
         }
-    }
-    if args.cli && !args.interactive && args.list_saved_roots {
-        if let Err(error) = validate_list_saved_roots_args(&args) {
-            eprintln!("error: {error}");
-            return Ok(ExitCode::from(2));
+        if args.list_saved_roots {
+            if let Err(error) = validate_list_saved_roots_args(&args) {
+                eprintln!("error: {error}");
+                return Ok(ExitCode::from(2));
+            }
         }
+    }
+    let _runtime_config = initialize_runtime_config();
+    if args.cli && !args.interactive && args.list_saved_roots {
         list_saved_roots(&args)?;
         return Ok(ExitCode::SUCCESS);
     }
@@ -975,27 +1032,19 @@ fn main() -> Result<ExitCode> {
             cancelled.as_ref(),
         )));
     }
-    let _runtime_config = initialize_runtime_config();
     if let Err(err) = ensure_ignore_list_sample() {
         warn!("failed to materialize ignore list sample: {}", err);
     }
     if args.cli {
         if args.interactive {
-            let root = resolve_root(args.root.as_deref().unwrap_or(Path::new(".")))?;
-            let (include_files, include_dirs) = args.entry_type.include_flags();
-            let options = CliTuiOptions {
-                initial_query: args.query.clone(),
-                limit: args.limit,
-                absolute: args.absolute,
-                print0: args.print0,
-                include_files,
-                include_dirs,
-                use_filelist: !matches!(args.source, CliIndexSource::Walker),
-                require_filelist: matches!(args.source, CliIndexSource::Filelist),
-                regex: args.regex,
-                ignore_case: !args.case_sensitive,
-                ignore_terms: load_cli_ignore_terms(&args)?,
+            let root = match resolve_cli_root(&args) {
+                Ok(root) => root,
+                Err(error) => {
+                    eprintln!("error: {error}");
+                    return Ok(ExitCode::from(2));
+                }
             };
+            let options = cli_tui_options(&args, load_cli_tui_ignore_terms(&args)?);
             Ok(match run_cli_tui(&root, &options)? {
                 CliTuiOutcome::Selected => ExitCode::SUCCESS,
                 CliTuiOutcome::Cancelled => ExitCode::from(130),
@@ -1126,6 +1175,37 @@ mod tests {
         assert!(!args.interactive);
         assert!(matches!(args.entry_type, CliEntryType::All));
         assert!(matches!(args.source, CliIndexSource::Auto));
+    }
+
+    #[test]
+    fn tc_163_interactive_startup_preserves_sort_ignore_and_saved_root_options() {
+        let mut args = Args::try_parse_from([
+            "flistwalker",
+            "--cli",
+            "--interactive",
+            "--saved-root",
+            "1",
+            "--sort",
+            "name-desc",
+            "--no-ignore",
+        ])
+        .expect("interactive saved-root options should parse");
+        let ignore_root = action_test_root("interactive-ignore-terms");
+        fs::create_dir_all(&ignore_root).expect("create ignore root");
+        let ignore_file = ignore_root.join("ignore-list.txt");
+        fs::write(&ignore_file, "ignored\n").expect("write ignore fixture");
+        args.ignore_file = Some(ignore_file);
+
+        let options = cli_tui_options(
+            &args,
+            load_cli_tui_ignore_terms(&args).expect("load disabled TUI ignore terms"),
+        );
+        assert_eq!(options.sort_mode, SearchSortMode::NameDesc);
+        assert!(!options.ignore_enabled);
+        assert_eq!(options.ignore_terms, ["ignored"]);
+        assert_eq!(args.saved_root, Some(1));
+
+        let _ = fs::remove_dir_all(ignore_root);
     }
 
     #[test]

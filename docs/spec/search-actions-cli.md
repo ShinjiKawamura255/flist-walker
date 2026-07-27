@@ -97,9 +97,11 @@
 - MUST: batch CLI の既定出力は root 相対 path の改行区切りとし、スコアや ANSI 装飾を付加してはならない。既定の一致なしは stdout 空・exit 0 とする。
 - Compatibility: query 指定時に `[score] absolute-path` を出力していた旧形式は、script-safe な単一path形式へ意図的に置き換える。旧 invocation は維持するが旧出力 framing は維持せず、絶対pathが必要なconsumerは `--absolute` へ移行する。score出力はCLI契約に含めない。
 - MUST: batch CLI は `--absolute`、`--print0`、`--fail-no-match`、`--type all|file|folder`、`--regex`、`--case-sensitive`、`--source auto|filelist|walker`、`--ignore-file PATH`、`--no-ignore`、`--progress` を受理する。`--absolute` は path 形式だけ、`--print0` は delimiter だけを変更し、`--fail-no-match` は一致なしを exit 1 にする。
+- MUST: batch CLI の `--progress` は indexing 開始、候補件数と所要時間、全一致件数・返却件数と検索所要時間を stderr へ出力し、stdout framing を変更してはならない。path 出力は全出力を別 buffer に複製せず、上限付き writer で逐次書き込む。
 - MUST: `--ignore-file` と `--no-ignore` は同時指定を拒否する。`--source filelist` は root 直下に FileList がなければ非ゼロ終了し、`auto` は FileList 優先、`walker` は FileList を使用しない。
 - MUST: CLI 専用 option は `--cli` を必要とし、`--interactive` 単独指定は GUI を起動せず引数エラーとする。
 - MAY: `--cli --interactive` でインタラクティブ CLI を起動する。
+- MUST: interactive CLI は `--root`、`--use-default-root`、`--saved-root` を起動 root として受理し、`--sort` を初期 sort、`--no-ignore` を初期 Ignore 無効状態として反映する。`--no-ignore` でも読み込んだ ignore terms は保持し、TUI で Ignore を再度有効化したときに再読込なしで適用する。batch 専用の `--progress` と `--fail-no-match` は interactive との組合せを引数エラーにする。
 - MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
 - MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、選択結果だけを terminal 復旧後に標準出力へ出力する。
 - MUST: インタラクティブ CLI は query 入力、上下移動、`Enter` による選択結果の標準出力、`Esc` / `Ctrl-C` による終了を提供する。
@@ -111,11 +113,13 @@
 - SHOULD: インタラクティブ CLI は状態変更時だけ端末を再描画し、候補全件を毎回描画してはならない。
 - MUST: terminal session は raw mode、alternate screen、cursor 非表示、bracketed paste の成立状態を個別に追跡し、setup 途中失敗、event/draw error、正常終了、cancel、unwind で成立済み状態だけを逆順に best-effort 復旧する。選択結果は guard 解放後だけ出力する。
 - SHOULD: interactive indexing の増分 batch は検索再実行を throttle/debounce し、結果更新のたびに current row を先頭へ戻してはならない。
-- MUST: TUI normal state は Enter で current/pins を terminal 復旧後に出力し、Esc で exit 130、Ctrl-C で worker cancel と exit 130、Tab で pin toggle とする。`Ctrl+O` と `Shift+Enter` は pins に関わらず current row だけを action target とし、`Ctrl+G` は query と pins を clear する。
-- MUST: TUI history overlay は Enter で highlighted history query を適用し、Esc/Ctrl+G で draft を復元して閉じ、Ctrl-C で全体を exit 130 とする。help overlay は Enter/Esc/Ctrl+G で閉じ、side-effect key を dispatch してはならない。options/sort/root overlay は Enter だけで highlighted choice を適用し、Esc/Ctrl+G は旧 state を保存して閉じ、Ctrl-C は exit 130 とする。
+- MUST: TUI normal state は Enter で current/pins を terminal 復旧後に出力し、Esc で exit 130、Ctrl-C で worker cancel と exit 130、Tab/Shift+Tab で pin toggle とする。runtime config の `tab_pin_moves_to_next_row=true` では pin toggle 後に次行へ進み、`false` では current row を維持する。`emacs_keybindings_enabled=true` では `Ctrl+N` / `Ctrl+P`、`Ctrl+V` / `Alt+V`、`Ctrl+I`、`Ctrl+J` / `Ctrl+M`、`Ctrl+G` / `Ctrl+R` と normal query / history filter の editing chords を GUI と同じ意味で有効にし、`false` ではこれらを TUI action として処理しない。`Ctrl+O` と `Shift+Enter` は pins に関わらず current row だけを action target とする。
+- MUST: TUI history overlay は Enter で highlighted history query を適用し、Esc で draft を復元して閉じ、Ctrl-C で全体を exit 130 とする。help overlay は Enter/Esc で閉じ、side-effect key を dispatch してはならない。options/sort/root overlay は Enter だけで highlighted choice を適用し、Esc は旧 state を保存して閉じ、Ctrl-C は exit 130 とする。`emacs_keybindings_enabled=true` のときだけ各 overlay の `Ctrl+G` を Esc と同義にし、help と各 overlay の操作案内へ有効な Emacs 風 shortcut だけを掲載する。
 - MUST: TUI FileList confirmation は confirm choice に加えて overwrite confirmation を要求し、active confirmation 中は action/root/refresh dispatch を許可しない。preview は width 100 column 以上で既定有効、狭幅では collapse し、`Alt+P` で toggle し、I/O は worker-only とする。
 - MUST: non-FileList worker busy 中も navigation/query と request-identity による latest request supersession を許可し、stale response は state を変更してはならない。root/source transition は root-scoped current/pin/preview state を clear してから新結果を受理する。
-- MUST: FileList active 中は Enter/Esc/Ctrl-C/root switch を pending intent として記録して cancel を要求し、transaction settlement 前に output、root switch、terminal return を行ってはならない。intent priority は sticky `CancelExit` > latest `SwitchRoot(path)` > `SelectOutput` とする。generic 250ms detach path は FileList worker に適用してはならない。
+- MUST: TUI index worker は選択 root の metadata error、missing、non-directory を `IndexFailed` として返し、空 index の正常完了へ変換してはならない。Walker source は GUI index worker と同じ adaptive traversal と runtime config の adaptive initial/max limit を使い、`walker_max_entries` 件で候補投入を停止して request identity 付き truncation 応答を terminal finish より先に返さなければならない。最新 request の cap notice は検索結果更新後も次の index 開始まで status に保持する。増分候補は immutable batch として共有し、入力ループ上の batch 追加で既存 path 全件を copy-on-write 複製してはならない。
+- MUST: TUI event loop は worker 応答を iteration ごとの固定件数まで反映して key polling を継続し、backlog が残る場合だけ待機時間を 0 にして次 iteration へ進む。
+- MUST: FileList active 中は Enter/Esc/Ctrl-C/root switch を pending intent として記録して cancel を要求し、transaction settlement 前に output、root switch、terminal return を行ってはならない。intent priority は sticky `CancelExit` > latest `SwitchRoot(path)` > `SelectOutput` とする。generic 250ms detach path は FileList worker に適用してはならない。FileList 作成用 snapshot は表示中 TUI index や `walker_max_entries` cap を再利用せず、walker-only/all-kinds の完全な fresh snapshot とする。
 - MUST: FileList worker は panic-contained transaction report を返す。panic/channel disconnect/missing terminal response は join 後 failed settlement として合成し、selection/root intent を success として再開してはならない。rollback/report failure は recovery path を表示し、selection/root intent を TUI 内で明示 retry/exit まで保持する。ただし `CancelExit` は terminal を復旧して exit 1 とする。
 
 ### Preconditions / Postconditions

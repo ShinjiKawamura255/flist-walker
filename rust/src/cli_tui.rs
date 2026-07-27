@@ -3,17 +3,21 @@ use crate::actions::{
     AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport,
     AuthorizedActionRequest,
 };
+use crate::app::adaptive_walker::{walk_adaptive, AdaptiveWalkerEntry};
+use crate::app::index_worker::{classify_walker_entry, walker_runtime_settings};
+use crate::app::walker_truncated_notice;
 use crate::entry::Entry;
 use crate::indexer::{
     build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
-    is_index_build_cancelled, plan_filelist_write_cancellable, walk_entries_stream_cancellable,
-    FileListWriteOptions, FileListWriteReport, FileListWriteStatus,
+    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
+    FileListWriteReport, FileListWriteStatus,
 };
 use crate::path_utils::output_path_bytes;
 use crate::persistence::{
     history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
 };
 use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
+use crate::runtime_config::{current_runtime_config, RuntimeConfig};
 use crate::search::{rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope};
 use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
 use anyhow::{Context, Result};
@@ -41,6 +45,7 @@ const INPUT_DEBOUNCE: Duration = Duration::from_millis(35);
 const INDEX_REFRESH_THROTTLE: Duration = Duration::from_millis(100);
 const EVENT_POLL: Duration = Duration::from_millis(50);
 const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
+const MAX_WORKER_RESPONSES_PER_TICK: usize = 64;
 const PREVIEW_MIN_WIDTH: u16 = 100;
 const PREVIEW_MIN_HEIGHT: u16 = 8;
 
@@ -56,7 +61,9 @@ pub struct CliTuiOptions {
     pub require_filelist: bool,
     pub regex: bool,
     pub ignore_case: bool,
+    pub ignore_enabled: bool,
     pub ignore_terms: Vec<String>,
+    pub sort_mode: SearchSortMode,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -75,6 +82,11 @@ enum WorkerResponse {
         request_id: u64,
         root: PathBuf,
         has_root_filelist: bool,
+    },
+    IndexTruncated {
+        request_id: u64,
+        root: PathBuf,
+        limit: usize,
     },
     IndexFailed {
         request_id: u64,
@@ -120,11 +132,40 @@ enum FileListWorkerResult {
 struct SearchRequest {
     request_id: u64,
     query: String,
-    entries: Arc<Vec<PathBuf>>,
+    entries: Arc<Vec<Arc<[PathBuf]>>>,
     root: PathBuf,
     limit: usize,
     options: SearchOptions,
     ignore_terms: Arc<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct CandidateBatches {
+    batches: Arc<Vec<Arc<[PathBuf]>>>,
+    len: usize,
+}
+
+impl CandidateBatches {
+    fn push(&mut self, entries: Vec<PathBuf>) {
+        if entries.is_empty() {
+            return;
+        }
+        self.len = self.len.saturating_add(entries.len());
+        Arc::make_mut(&mut self.batches).push(Arc::from(entries));
+    }
+
+    fn clear(&mut self) {
+        self.batches = Arc::new(Vec::new());
+        self.len = 0;
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+
+    fn snapshot(&self) -> Arc<Vec<Arc<[PathBuf]>>> {
+        Arc::clone(&self.batches)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -183,7 +224,7 @@ impl TuiRuntimeOptions {
             include_dirs: options.include_dirs,
             regex: options.regex,
             ignore_case: options.ignore_case,
-            ignore_enabled: true,
+            ignore_enabled: options.ignore_enabled,
             source,
         }
     }
@@ -345,7 +386,7 @@ struct TuiState {
     indexed: bool,
     root_filelist_known: bool,
     root_filelist_exists: bool,
-    entries: Arc<Vec<PathBuf>>,
+    entries: CandidateBatches,
     root: PathBuf,
     saved_roots: Vec<PathBuf>,
     root_picker: Option<RootPicker>,
@@ -355,7 +396,11 @@ struct TuiState {
     source_changed_on_apply: bool,
     next_index_request_id: u64,
     active_index_request: Option<(u64, PathBuf)>,
+    index_truncated_limit: Option<usize>,
     pinned: Vec<PathBuf>,
+    emacs_keybindings_enabled: bool,
+    tab_pin_moves_to_next_row: bool,
+    kill_buffer: String,
     viewport_rows: usize,
     next_search_request_id: u64,
     active_search_request_id: Option<u64>,
@@ -497,7 +542,7 @@ impl TuiState {
             indexed: false,
             root_filelist_known: false,
             root_filelist_exists: false,
-            entries: Arc::new(Vec::new()),
+            entries: CandidateBatches::default(),
             root: PathBuf::new(),
             saved_roots: Vec::new(),
             root_picker: None,
@@ -514,7 +559,11 @@ impl TuiState {
             source_changed_on_apply: false,
             next_index_request_id: 0,
             active_index_request: None,
+            index_truncated_limit: None,
             pinned: Vec::new(),
+            emacs_keybindings_enabled: true,
+            tab_pin_moves_to_next_row: false,
+            kill_buffer: String::new(),
             viewport_rows: 1,
             next_search_request_id: 0,
             active_search_request_id: None,
@@ -551,11 +600,15 @@ impl TuiState {
             .unwrap_or(0);
         self.ensure_selection_visible();
         self.status = error.unwrap_or_else(|| {
-            format!(
+            let result_status = format!(
                 "{} result(s) | {}",
                 self.results.len(),
                 self.current_options_summary()
-            )
+            );
+            match self.index_truncated_limit {
+                Some(limit) => format!("{} | {result_status}", walker_truncated_notice(limit)),
+                None => result_status,
+            }
         });
         self.dirty = true;
     }
@@ -567,7 +620,7 @@ impl TuiState {
         SearchRequest {
             request_id,
             query: self.query.clone(),
-            entries: Arc::clone(&self.entries),
+            entries: self.entries.snapshot(),
             root,
             limit,
             options: self.runtime_options.search_options(self.sort_mode),
@@ -579,10 +632,11 @@ impl TuiState {
         self.next_index_request_id = self.next_index_request_id.wrapping_add(1);
         let request_id = self.next_index_request_id;
         self.active_index_request = Some((request_id, root.clone()));
+        self.index_truncated_limit = None;
         self.indexed = false;
         self.root_filelist_known = false;
         self.root_filelist_exists = false;
-        self.entries = Arc::new(Vec::new());
+        self.entries.clear();
         self.results.clear();
         self.selected = 0;
         self.offset = 0;
@@ -982,6 +1036,165 @@ where
     result
 }
 
+fn process_index_request<C, S>(request: IndexRequest, should_cancel: &C, send: S)
+where
+    C: Fn() -> bool,
+    S: FnMut(WorkerResponse),
+{
+    let config = current_runtime_config();
+    process_index_request_with_config(request, &config, should_cancel, send);
+}
+
+fn process_index_request_with_config<C, S>(
+    request: IndexRequest,
+    config: &RuntimeConfig,
+    should_cancel: &C,
+    mut send: S,
+) where
+    C: Fn() -> bool,
+    S: FnMut(WorkerResponse),
+{
+    if should_cancel() {
+        return;
+    }
+    match std::fs::metadata(&request.root) {
+        Ok(metadata) if metadata.is_dir() => {}
+        Ok(_) => {
+            send(WorkerResponse::IndexFailed {
+                request_id: request.request_id,
+                root: request.root,
+                has_root_filelist: false,
+                error: "selected root is not a directory".to_string(),
+            });
+            return;
+        }
+        Err(error) => {
+            send(WorkerResponse::IndexFailed {
+                request_id: request.request_id,
+                root: request.root,
+                has_root_filelist: false,
+                error: format!("failed to read selected root: {error}"),
+            });
+            return;
+        }
+    }
+    let has_filelist = find_filelist_in_first_level(&request.root).is_some();
+    let use_filelist = match request.source {
+        TuiSource::Auto => has_filelist,
+        TuiSource::FileList => true,
+        TuiSource::Walker => false,
+    };
+    if request.source == TuiSource::FileList && !has_filelist {
+        if !should_cancel() {
+            send(WorkerResponse::IndexFailed {
+                request_id: request.request_id,
+                root: request.root,
+                has_root_filelist: false,
+                error: "FileList source selected but no FileList was found".to_string(),
+            });
+        }
+        return;
+    }
+
+    if use_filelist {
+        match build_index_cancellable(
+            &request.root,
+            true,
+            request.include_files,
+            request.include_dirs,
+            should_cancel,
+        ) {
+            Ok(paths) => {
+                if !paths.is_empty() && !should_cancel() {
+                    send(WorkerResponse::IndexedBatch {
+                        request_id: request.request_id,
+                        root: request.root.clone(),
+                        entries: paths,
+                    });
+                }
+            }
+            Err(error) if is_index_build_cancelled(&error) => return,
+            Err(error) => {
+                if !should_cancel() {
+                    send(WorkerResponse::IndexFailed {
+                        request_id: request.request_id,
+                        root: request.root,
+                        has_root_filelist: has_filelist,
+                        error: error.to_string(),
+                    });
+                }
+                return;
+            }
+        }
+    } else {
+        let settings = walker_runtime_settings(config);
+        let max_entries = settings.max_entries;
+        let mut batch = Vec::with_capacity(256);
+        let mut emitted_entries = 0usize;
+        let mut truncated = false;
+        walk_adaptive(
+            &request.root,
+            settings.adaptive_max_limit,
+            settings.adaptive_initial_limit,
+            |entry: AdaptiveWalkerEntry| {
+                if should_cancel() {
+                    return false;
+                }
+                if classify_walker_entry(
+                    &entry.path,
+                    entry.file_type,
+                    request.include_files,
+                    request.include_dirs,
+                )
+                .is_none()
+                {
+                    return true;
+                }
+                if emitted_entries >= max_entries {
+                    truncated = true;
+                    return false;
+                }
+                batch.push(entry.path);
+                emitted_entries = emitted_entries.saturating_add(1);
+                if batch.len() >= 256 && !should_cancel() {
+                    send(WorkerResponse::IndexedBatch {
+                        request_id: request.request_id,
+                        root: request.root.clone(),
+                        entries: std::mem::take(&mut batch),
+                    });
+                }
+                true
+            },
+            should_cancel,
+        );
+        if should_cancel() {
+            return;
+        }
+        if !batch.is_empty() {
+            send(WorkerResponse::IndexedBatch {
+                request_id: request.request_id,
+                root: request.root.clone(),
+                entries: batch,
+            });
+        }
+        if truncated {
+            send(WorkerResponse::IndexTruncated {
+                request_id: request.request_id,
+                root: request.root.clone(),
+                limit: max_entries,
+            });
+        }
+    }
+
+    if !should_cancel() {
+        send(WorkerResponse::IndexedFinished {
+            request_id: request.request_id,
+            root: request.root,
+            has_root_filelist: has_filelist,
+        });
+    }
+}
+
 pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome> {
     if !interactive_terminal_supported(io::stdin().is_terminal(), io::stderr().is_terminal()) {
         anyhow::bail!("--interactive requires terminal stdin and stderr");
@@ -1158,89 +1371,14 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                 while let Ok(newer) = index_rx.try_recv() {
                     request = newer;
                 }
+                let request_id = request.request_id;
                 let should_cancel = || {
                     worker_cancelled.load(Ordering::Relaxed)
-                        || !worker_index_freshness.is_current(request.request_id)
+                        || !worker_index_freshness.is_current(request_id)
                 };
-                if should_cancel() {
-                    continue;
-                }
-                let send_batch = |entries: Vec<PathBuf>| {
-                    if !entries.is_empty() && !should_cancel() {
-                        let _ = worker_tx.send(WorkerResponse::IndexedBatch {
-                            request_id: request.request_id,
-                            root: request.root.clone(),
-                            entries,
-                        });
-                    }
-                };
-                if should_cancel() {
-                    continue;
-                }
-                let has_filelist = find_filelist_in_first_level(&request.root).is_some();
-                let use_filelist = match request.source {
-                    TuiSource::Auto => has_filelist,
-                    TuiSource::FileList => true,
-                    TuiSource::Walker => false,
-                };
-                if request.source == TuiSource::FileList && !has_filelist {
-                    if !should_cancel() {
-                        let _ = worker_tx.send(WorkerResponse::IndexFailed {
-                            request_id: request.request_id,
-                            root: request.root.clone(),
-                            has_root_filelist: has_filelist,
-                            error: "FileList source selected but no FileList was found".to_string(),
-                        });
-                    }
-                    continue;
-                }
-                if use_filelist {
-                    match build_index_cancellable(
-                        &request.root,
-                        true,
-                        request.include_files,
-                        request.include_dirs,
-                        should_cancel,
-                    ) {
-                        Ok(paths) => send_batch(paths),
-                        Err(error) if is_index_build_cancelled(&error) => {}
-                        Err(error) => {
-                            if !should_cancel() {
-                                let _ = worker_tx.send(WorkerResponse::IndexFailed {
-                                    request_id: request.request_id,
-                                    root: request.root.clone(),
-                                    has_root_filelist: has_filelist,
-                                    error: error.to_string(),
-                                });
-                            }
-                            continue;
-                        }
-                    }
-                } else {
-                    let mut batch = Vec::with_capacity(256);
-                    let result = walk_entries_stream_cancellable(
-                        &request.root,
-                        request.include_files,
-                        request.include_dirs,
-                        should_cancel,
-                        |path| {
-                            batch.push(path);
-                            if batch.len() >= 256 {
-                                send_batch(std::mem::take(&mut batch));
-                            }
-                        },
-                    );
-                    if result.is_ok() {
-                        send_batch(batch);
-                    }
-                }
-                if !should_cancel() {
-                    let _ = worker_tx.send(WorkerResponse::IndexedFinished {
-                        request_id: request.request_id,
-                        root: request.root,
-                        has_root_filelist: has_filelist,
-                    });
-                }
+                process_index_request(request, &should_cancel, |response| {
+                    let _ = worker_tx.send(response);
+                });
             }
             let _ = index_done_tx.send(());
         }) {
@@ -1465,9 +1603,13 @@ fn run_event_loop<W: Write>(
         cancellation,
     } = context;
     let mut state = TuiState::new(&options.initial_query);
+    let runtime_config = current_runtime_config();
+    state.emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
+    state.tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
     state.root = root.clone();
     state.saved_roots = saved_roots;
     state.runtime_options = TuiRuntimeOptions::from_startup(options);
+    state.sort_mode = options.sort_mode;
     state.ignore_terms = Arc::new(options.ignore_terms.clone());
     state.history_enabled = history_enabled;
     state.history_entries = history_entries;
@@ -1521,7 +1663,9 @@ fn run_event_loop<W: Write>(
                 }
             }
         }
-        while let Ok(response) = rx.try_recv() {
+        let ready_responses = take_ready_responses(rx, MAX_WORKER_RESPONSES_PER_TICK);
+        let worker_backlog = ready_responses.len() == MAX_WORKER_RESPONSES_PER_TICK;
+        for response in ready_responses {
             let preview_path_before = state.current_path().cloned();
             apply_worker_response(&mut state, response)?;
             if preview_path_before != state.current_path().cloned() {
@@ -1549,7 +1693,12 @@ fn run_event_loop<W: Write>(
             draw(terminal_output, &mut state, options)?;
             state.dirty = false;
         }
-        if event::poll(EVENT_POLL)? {
+        let poll_timeout = if worker_backlog {
+            Duration::ZERO
+        } else {
+            EVENT_POLL
+        };
+        if event::poll(poll_timeout)? {
             match event::read()? {
                 Event::Key(key) if key.kind != KeyEventKind::Release => {
                     let preview_path_before = state.current_path().cloned();
@@ -1712,6 +1861,10 @@ fn dispatch_index_request(
     index_tx.send(request)
 }
 
+fn take_ready_responses<T>(rx: &mpsc::Receiver<T>, limit: usize) -> Vec<T> {
+    rx.try_iter().take(limit).collect()
+}
+
 fn dispatch_current_index(
     state: &mut TuiState,
     index_tx: &mpsc::Sender<IndexRequest>,
@@ -1855,7 +2008,7 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             if state.active_index_request.as_ref() != Some(&(request_id, root)) {
                 return Ok(());
             }
-            Arc::make_mut(&mut state.entries).extend(entries);
+            state.entries.push(entries);
             state.indexed = true;
             let now = Instant::now();
             if state
@@ -1879,12 +2032,27 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             state.indexed = true;
             state.root_filelist_known = true;
             state.root_filelist_exists = has_root_filelist;
-            state.status = format!("Ready | {}", state.current_options_summary());
+            state.status = state
+                .index_truncated_limit
+                .map(walker_truncated_notice)
+                .unwrap_or_else(|| format!("Ready | {}", state.current_options_summary()));
             state.last_query_change = Some(
                 Instant::now()
                     .checked_sub(INPUT_DEBOUNCE)
                     .unwrap_or_else(Instant::now),
             );
+            state.dirty = true;
+        }
+        WorkerResponse::IndexTruncated {
+            request_id,
+            root,
+            limit,
+        } => {
+            if state.active_index_request.as_ref() != Some(&(request_id, root)) {
+                return Ok(());
+            }
+            state.index_truncated_limit = Some(limit);
+            state.status = walker_truncated_notice(limit);
             state.dirty = true;
         }
         WorkerResponse::IndexFailed {
@@ -2421,7 +2589,159 @@ fn handle_active_filelist_key(state: &mut TuiState, key: KeyEvent) -> KeyAction 
     }
 }
 
+fn is_emacs_shortcut(key: KeyEvent) -> bool {
+    match (key.code, key.modifiers) {
+        (KeyCode::Char(ch), KeyModifiers::CONTROL) => matches!(
+            ch.to_ascii_lowercase(),
+            'a' | 'b'
+                | 'd'
+                | 'e'
+                | 'f'
+                | 'g'
+                | 'h'
+                | 'i'
+                | 'j'
+                | 'k'
+                | 'm'
+                | 'n'
+                | 'p'
+                | 'r'
+                | 'u'
+                | 'v'
+                | 'w'
+                | 'y'
+        ),
+        (KeyCode::Char(ch), KeyModifiers::ALT) => ch.eq_ignore_ascii_case(&'v'),
+        _ => false,
+    }
+}
+
+fn normalize_emacs_shortcut(key: KeyEvent) -> KeyEvent {
+    let code = match (key.code, key.modifiers) {
+        (KeyCode::Char(ch), KeyModifiers::CONTROL) => match ch.to_ascii_lowercase() {
+            'n' => Some(KeyCode::Down),
+            'p' => Some(KeyCode::Up),
+            'v' => Some(KeyCode::PageDown),
+            'i' => Some(KeyCode::Tab),
+            'j' | 'm' => Some(KeyCode::Enter),
+            _ => None,
+        },
+        (KeyCode::Char(ch), KeyModifiers::ALT) if ch.eq_ignore_ascii_case(&'v') => {
+            Some(KeyCode::PageUp)
+        }
+        _ => None,
+    };
+    code.map_or(key, |code| KeyEvent::new(code, KeyModifiers::NONE))
+}
+
+fn apply_emacs_text_editing(
+    text: &mut String,
+    cursor: &mut usize,
+    kill_buffer: &mut String,
+    key: KeyEvent,
+) -> Option<bool> {
+    let (KeyCode::Char(ch), KeyModifiers::CONTROL) = (key.code, key.modifiers) else {
+        return None;
+    };
+    let char_len = text.chars().count();
+    let mut changed = false;
+    match ch.to_ascii_lowercase() {
+        'a' => *cursor = 0,
+        'e' => *cursor = char_len,
+        'b' => *cursor = cursor.saturating_sub(1),
+        'f' => *cursor = (*cursor + 1).min(char_len),
+        'h' if *cursor > 0 => {
+            let start = char_to_byte_index(text, *cursor - 1);
+            let end = char_to_byte_index(text, *cursor);
+            text.replace_range(start..end, "");
+            *cursor -= 1;
+            changed = true;
+        }
+        'd' if *cursor < char_len => {
+            let start = char_to_byte_index(text, *cursor);
+            let end = char_to_byte_index(text, *cursor + 1);
+            text.replace_range(start..end, "");
+            changed = true;
+        }
+        'w' if *cursor > 0 => {
+            let chars: Vec<char> = text.chars().collect();
+            let mut start = *cursor;
+            while start > 0 && chars[start - 1].is_whitespace() {
+                start -= 1;
+            }
+            while start > 0 && !chars[start - 1].is_whitespace() {
+                start -= 1;
+            }
+            let start_byte = char_to_byte_index(text, start);
+            let end_byte = char_to_byte_index(text, *cursor);
+            *kill_buffer = text[start_byte..end_byte].to_string();
+            text.replace_range(start_byte..end_byte, "");
+            *cursor = start;
+            changed = true;
+        }
+        'k' if *cursor < char_len => {
+            let start = char_to_byte_index(text, *cursor);
+            *kill_buffer = text[start..].to_string();
+            text.truncate(start);
+            changed = true;
+        }
+        'y' if !kill_buffer.is_empty() => {
+            let byte_index = char_to_byte_index(text, *cursor);
+            text.insert_str(byte_index, kill_buffer);
+            *cursor += kill_buffer.chars().count();
+            changed = true;
+        }
+        'u' if *cursor > 0 => {
+            let end = char_to_byte_index(text, *cursor);
+            text.replace_range(..end, "");
+            *cursor = 0;
+            changed = true;
+        }
+        'd' | 'h' | 'k' | 'u' | 'w' | 'y' => {}
+        _ => return None,
+    }
+    Some(changed)
+}
+
+fn apply_emacs_query_editing(state: &mut TuiState, key: KeyEvent) -> bool {
+    let Some(changed) = apply_emacs_text_editing(
+        &mut state.query,
+        &mut state.query_cursor,
+        &mut state.kill_buffer,
+        key,
+    ) else {
+        return false;
+    };
+    if changed {
+        state.mark_query_changed();
+    }
+    true
+}
+
+fn toggle_pin_current(state: &mut TuiState) {
+    let Some(path) = state
+        .results
+        .get(state.selected)
+        .map(|(path, _)| path.clone())
+    else {
+        return;
+    };
+    if let Some(index) = state.pinned.iter().position(|pinned| pinned == &path) {
+        state.pinned.remove(index);
+    } else {
+        state.pinned.push(path);
+    }
+    if state.tab_pin_moves_to_next_row {
+        state.move_selection(1);
+    }
+}
+
 fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if !state.emacs_keybindings_enabled && is_emacs_shortcut(key) {
+        return KeyAction::Continue;
+    }
+    let original_key = key;
+    let key = normalize_emacs_shortcut(key);
     if state.help.is_some() {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => return KeyAction::Cancel,
@@ -2459,6 +2779,27 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
             (KeyCode::Char('c'), KeyModifiers::CONTROL)
         ) {
             return KeyAction::Cancel;
+        }
+        let emacs_edit_handled = {
+            let history = state.history.as_mut().expect("history overlay checked");
+            match apply_emacs_text_editing(
+                &mut history.filter,
+                &mut history.filter_cursor,
+                &mut state.kill_buffer,
+                original_key,
+            ) {
+                Some(changed) => {
+                    if changed {
+                        refresh_history_results(history, &state.history_entries);
+                    }
+                    true
+                }
+                None => false,
+            }
+        };
+        if emacs_edit_handled {
+            state.dirty = true;
+            return KeyAction::Continue;
         }
         let viewport_rows = state.viewport_rows;
         match (key.code, key.modifiers) {
@@ -2567,15 +2908,8 @@ fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
                 return KeyAction::Select;
             }
         }
-        (KeyCode::Tab, _) => {
-            if let Some((path, _)) = state.results.get(state.selected) {
-                if let Some(index) = state.pinned.iter().position(|pinned| pinned == path) {
-                    state.pinned.remove(index);
-                } else {
-                    state.pinned.push(path.clone());
-                }
-            }
-        }
+        (KeyCode::Tab, _) | (KeyCode::BackTab, _) => toggle_pin_current(state),
+        _ if apply_emacs_query_editing(state, original_key) => {}
         (KeyCode::Backspace, _) if state.query_cursor > 0 => {
             let start = char_to_byte_index(&state.query, state.query_cursor - 1);
             let end = char_to_byte_index(&state.query, state.query_cursor);
@@ -2656,6 +2990,7 @@ fn search(
         request
             .entries
             .iter()
+            .flat_map(|batch| batch.iter())
             .filter(|path| {
                 compiled_ignore.as_ref().is_none_or(|compiled| {
                     !compiled.matches_path(
@@ -2794,23 +3129,54 @@ fn draw<W: Write>(
         render_preview_pane(terminal_output, state, list_width, width, height)?;
     }
     if let Some(context) = state.help {
-        render_help_overlay(terminal_output, context, width, height)?;
+        render_help_overlay(
+            terminal_output,
+            context,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(options_overlay) = state.options_overlay.as_ref() {
-        render_options_overlay(terminal_output, options_overlay, width, height)?;
+        render_options_overlay(
+            terminal_output,
+            options_overlay,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(sort_picker) = state.sort_picker.as_ref() {
-        render_sort_picker(terminal_output, sort_picker, width, height)?;
+        render_sort_picker(
+            terminal_output,
+            sort_picker,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(root_picker) = state.root_picker.as_ref() {
         render_root_picker(
             terminal_output,
             root_picker,
             &state.saved_roots,
+            state.emacs_keybindings_enabled,
             width,
             height,
         )?;
     } else if let Some(confirmation) = state.filelist_confirmation.as_ref() {
-        render_filelist_confirmation(terminal_output, confirmation, width, height)?;
+        render_filelist_confirmation(
+            terminal_output,
+            confirmation,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     } else if let Some(history) = state.history.as_ref() {
-        render_history_overlay(terminal_output, history, width, height)?;
+        render_history_overlay(
+            terminal_output,
+            history,
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
     }
     terminal_output.flush()?;
     Ok(())
@@ -2819,17 +3185,20 @@ fn draw<W: Write>(
 fn render_filelist_confirmation<W: Write>(
     terminal_output: &mut W,
     confirmation: &FileListConfirmation,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     execute!(terminal_output, Clear(ClearType::All))?;
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let lines = match confirmation {
         FileListConfirmation::Mode {
             propagate_to_ancestors,
         } => vec![
             "Create FileList".to_string(),
-            "Up/Down/Space choose scope | Enter continue | Esc/Ctrl+G cancel | Ctrl+C exit"
-                .to_string(),
+            format!(
+                "Up/Down/Space choose scope | Enter continue | {cancel_keys} cancel | Ctrl+C exit"
+            ),
             format!(
                 "> Scope: {}",
                 if *propagate_to_ancestors {
@@ -2844,7 +3213,7 @@ fn render_filelist_confirmation<W: Write>(
             propagate_to_ancestors,
         } => vec![
             "Overwrite existing root FileList?".to_string(),
-            "Enter overwrite | Esc/Ctrl+G cancel | Ctrl+C exit".to_string(),
+            format!("Enter overwrite | {cancel_keys} cancel | Ctrl+C exit"),
             format!(
                 "Scope: {}",
                 if *propagate_to_ancestors {
@@ -2870,13 +3239,15 @@ fn render_root_picker<W: Write>(
     terminal_output: &mut W,
     picker: &RootPicker,
     roots: &[PathBuf],
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     execute!(terminal_output, Clear(ClearType::All))?;
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let lines = [
         "Saved roots".to_string(),
-        "Enter switch | Esc/Ctrl+G cancel | Ctrl+C exit | arrows/Page move".to_string(),
+        format!("Enter switch | {cancel_keys} cancel | Ctrl+C exit | arrows/Page move"),
     ];
     for (row, line) in lines.iter().enumerate().take(height as usize) {
         execute!(
@@ -2923,13 +3294,15 @@ fn render_root_picker<W: Write>(
 fn render_options_overlay<W: Write>(
     terminal_output: &mut W,
     overlay: &OptionsOverlay,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     let on_off = |value| if value { "on" } else { "off" };
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let lines = [
         "Options".to_string(),
-        "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows + Space change".to_string(),
+        format!("Enter apply | {cancel_keys} cancel | Ctrl+C exit | arrows + Space change"),
         format!("Files: {}", on_off(overlay.draft.include_files)),
         format!("Folders: {}", on_off(overlay.draft.include_dirs)),
         format!("Regex: {}", on_off(overlay.draft.regex)),
@@ -2972,13 +3345,15 @@ fn render_options_overlay<W: Write>(
 fn render_sort_picker<W: Write>(
     terminal_output: &mut W,
     picker: &SortPicker,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
     execute!(terminal_output, Clear(ClearType::All))?;
+    let cancel_keys = overlay_cancel_keys(emacs_keybindings_enabled);
     let heading = [
         "Sort results".to_string(),
-        "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows move".to_string(),
+        format!("Enter apply | {cancel_keys} cancel | Ctrl+C exit | arrows move"),
     ];
     for (row, line) in heading.into_iter().enumerate() {
         if row < height as usize {
@@ -3025,6 +3400,7 @@ fn overlay_window_start(selected: usize, total: usize, visible: usize) -> usize 
 fn render_history_overlay<W: Write>(
     terminal_output: &mut W,
     history: &HistoryOverlay,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
@@ -3052,7 +3428,10 @@ fn render_history_overlay<W: Write>(
             MoveTo(0, 2),
             SetForegroundColor(Color::DarkGrey),
             Print(clip_to_width(
-                "Enter apply | Esc/Ctrl+G cancel | Ctrl+C exit | arrows/Page move",
+                &format!(
+                    "Enter apply | {} cancel | Ctrl+C exit | arrows/Page move",
+                    overlay_cancel_keys(emacs_keybindings_enabled)
+                ),
                 width as usize,
             )),
             ResetColor,
@@ -3081,31 +3460,58 @@ fn render_history_overlay<W: Write>(
     Ok(())
 }
 
+fn overlay_cancel_keys(emacs_keybindings_enabled: bool) -> &'static str {
+    if emacs_keybindings_enabled {
+        "Esc/Ctrl+G"
+    } else {
+        "Esc"
+    }
+}
+
 fn render_help_overlay<W: Write>(
     terminal_output: &mut W,
     context: HelpContext,
+    emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
 ) -> Result<()> {
-    let mut lines = vec![
-        "Help".to_string(),
-        "Enter / Esc / Ctrl+G close help | Ctrl+C exit".to_string(),
-    ];
+    let close_help = if emacs_keybindings_enabled {
+        "Enter / Esc / Ctrl+G close help | Ctrl+C exit"
+    } else {
+        "Enter / Esc close help | Ctrl+C exit"
+    };
+    let mut lines = vec!["Help".to_string(), close_help.to_string()];
     match context {
-        HelpContext::Normal => lines.extend([
-            "Enter output selection | Tab pin | arrows/Page move".to_string(),
+        HelpContext::Normal if emacs_keybindings_enabled => lines.extend([
+            "Enter/Ctrl+J/Ctrl+M output | Tab/Shift+Tab/Ctrl+I pin".to_string(),
+            "arrows/Ctrl+P/Ctrl+N move | PageUp/Alt+V and PageDown/Ctrl+V".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
             "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
         ]),
+        HelpContext::Normal => lines.extend([
+            "Enter output selection | Tab/Shift+Tab pin | arrows/Page move".to_string(),
+            "Emacs shortcuts disabled by runtime config".to_string(),
+            "Ctrl+O open current | Shift+Enter reveal current".to_string(),
+            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
+        ]),
         HelpContext::History => lines.extend([
             "History search is paused while help is open.".to_string(),
-            "Close help to use Enter, Esc/Ctrl+G, edit, or navigation.".to_string(),
+            if emacs_keybindings_enabled {
+                "Close help to use Enter, Esc/Ctrl+G, edit, or navigation."
+            } else {
+                "Close help to use Enter, Esc, edit, or navigation."
+            }
+            .to_string(),
         ]),
         HelpContext::FileList => lines.extend([
             "FileList creation is settling; no result is accepted before it finishes.".to_string(),
-            "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+G/Ctrl+C exits after settlement."
-                .to_string(),
+            if emacs_keybindings_enabled {
+                "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+G/Ctrl+C exits after settlement."
+            } else {
+                "Enter selects after cancellation, F4 chooses a root, Esc/Ctrl+C exits after settlement."
+            }
+            .to_string(),
         ]),
     }
     execute!(terminal_output, Clear(ClearType::All))?;
@@ -3268,6 +3674,7 @@ fn query_line_for_width(state: &TuiState, width: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime_config::{DeveloperRuntimeConfig, RuntimeConfig};
     use std::cell::RefCell;
     use std::fs;
     use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -3410,6 +3817,158 @@ mod tests {
     }
 
     #[test]
+    fn tc_162_tui_emacs_navigation_pin_and_select_follow_runtime_toggle() {
+        let mut enabled = TuiState::new("");
+        enabled.results = (0..8)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect();
+        enabled.viewport_rows = 3;
+
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.selected, 1);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.selected, 0);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('v'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.selected, 3);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('v'), KeyModifiers::ALT),
+        );
+        assert_eq!(enabled.selected, 0);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.pinned, vec![PathBuf::from("0.txt")]);
+        assert!(matches!(
+            handle_key(
+                &mut enabled,
+                KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL),
+            ),
+            KeyAction::Select
+        ));
+
+        let mut disabled = TuiState::new("");
+        disabled.emacs_keybindings_enabled = false;
+        disabled.results = enabled.results.clone();
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(disabled.selected, 0);
+        assert!(disabled.pinned.is_empty());
+        assert!(matches!(
+            handle_key(
+                &mut disabled,
+                KeyEvent::new(KeyCode::Char('m'), KeyModifiers::CONTROL),
+            ),
+            KeyAction::Continue
+        ));
+        disabled.query = "keep".to_string();
+        disabled.query_cursor = disabled.query.chars().count();
+        disabled.history_enabled = true;
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        );
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(disabled.query, "keep");
+        assert!(disabled.history.is_none());
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+        );
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE),
+        );
+        assert_eq!(disabled.selected, 1);
+        assert_eq!(disabled.pinned, vec![PathBuf::from("1.txt")]);
+    }
+
+    #[test]
+    fn tc_162_tui_tab_pin_move_setting_applies_to_tab_backtab_and_ctrl_i() {
+        let mut state = TuiState::new("");
+        state.tab_pin_moves_to_next_row = true;
+        state.results = (0..3)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect();
+
+        handle_key(&mut state, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
+        assert_eq!(state.pinned, vec![PathBuf::from("0.txt")]);
+        assert_eq!(state.selected, 1);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::BackTab, KeyModifiers::SHIFT),
+        );
+        assert_eq!(
+            state.pinned,
+            vec![PathBuf::from("0.txt"), PathBuf::from("1.txt")]
+        );
+        assert_eq!(state.selected, 2);
+
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(state.pinned.last(), Some(&PathBuf::from("2.txt")));
+        assert_eq!(state.selected, 2);
+    }
+
+    #[test]
+    fn tc_162_tui_emacs_query_editing_uses_the_same_runtime_toggle() {
+        let mut enabled = TuiState::new("alpha beta");
+        enabled.query_cursor = 5;
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query, "alpha");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query, "alpha beta");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query_cursor, 0);
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(enabled.query_cursor, enabled.query.chars().count());
+
+        let mut disabled = TuiState::new("alpha beta");
+        disabled.emacs_keybindings_enabled = false;
+        disabled.query_cursor = 5;
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(disabled.query, "alpha beta");
+        assert_eq!(disabled.query_cursor, 5);
+    }
+
+    #[test]
     fn tc_162_result_refresh_preserves_the_selected_path() {
         let mut state = TuiState::new("");
         state.results = vec![
@@ -3535,6 +4094,114 @@ mod tests {
             handle_key(&mut state, KeyEvent::new(KeyCode::F(6), KeyModifiers::NONE)),
             KeyAction::OpenFileList
         ));
+    }
+
+    #[test]
+    fn tc_162_walker_failure_emits_index_failed_without_finished() {
+        let missing_root = TestTempDir::new("walker-failure").path.join("missing");
+        let request = IndexRequest {
+            request_id: 7,
+            root: missing_root,
+            include_files: true,
+            include_dirs: true,
+            source: TuiSource::Walker,
+        };
+        let mut responses = Vec::new();
+
+        process_index_request(request, &|| false, |response| responses.push(response));
+
+        assert!(matches!(
+            responses.as_slice(),
+            [WorkerResponse::IndexFailed { request_id: 7, .. }]
+        ));
+    }
+
+    #[test]
+    fn tc_162_tui_walker_uses_runtime_adaptive_limits_and_reports_cap_before_finish() {
+        let temp = TestTempDir::new("walker-runtime-limits");
+        for name in ["one.txt", "two.txt", "three.txt"] {
+            fs::write(temp.path.join(name), name).expect("write walker fixture");
+        }
+        let request = IndexRequest {
+            request_id: 8,
+            root: temp.path.clone(),
+            include_files: true,
+            include_dirs: false,
+            source: TuiSource::Walker,
+        };
+        let config = RuntimeConfig {
+            walker_max_entries: 1,
+            developer: DeveloperRuntimeConfig {
+                walker_adaptive_initial_limit: Some(1),
+                walker_adaptive_max_limit: Some(1),
+                ..DeveloperRuntimeConfig::default()
+            },
+            ..RuntimeConfig::default()
+        };
+        let mut responses = Vec::new();
+
+        process_index_request_with_config(request, &config, &|| false, |response| {
+            responses.push(response)
+        });
+
+        let emitted = responses
+            .iter()
+            .map(|response| match response {
+                WorkerResponse::IndexedBatch { entries, .. } => entries.len(),
+                _ => 0,
+            })
+            .sum::<usize>();
+        let truncated = responses
+            .iter()
+            .position(|response| {
+                matches!(
+                    response,
+                    WorkerResponse::IndexTruncated {
+                        request_id: 8,
+                        limit: 1,
+                        ..
+                    }
+                )
+            })
+            .expect("truncation response");
+        let finished = responses
+            .iter()
+            .position(|response| {
+                matches!(
+                    response,
+                    WorkerResponse::IndexedFinished { request_id: 8, .. }
+                )
+            })
+            .expect("finished response");
+
+        assert_eq!(emitted, 1);
+        assert!(truncated < finished);
+    }
+
+    #[test]
+    fn tc_162_candidate_batches_append_without_cloning_existing_paths() {
+        let mut candidates = CandidateBatches::default();
+        candidates.push(vec![PathBuf::from("first.txt")]);
+        let search_snapshot = candidates.snapshot();
+        let first_batch = Arc::clone(&search_snapshot[0]);
+
+        candidates.push(vec![PathBuf::from("second.txt")]);
+
+        assert_eq!(candidates.len(), 2);
+        assert!(Arc::ptr_eq(&first_batch, &candidates.snapshot()[0]));
+    }
+
+    #[test]
+    fn tc_162_worker_response_drain_respects_per_tick_budget() {
+        let (tx, rx) = mpsc::channel();
+        for value in 0..=MAX_WORKER_RESPONSES_PER_TICK {
+            tx.send(value).expect("queue response");
+        }
+
+        let drained = take_ready_responses(&rx, MAX_WORKER_RESPONSES_PER_TICK);
+
+        assert_eq!(drained.len(), MAX_WORKER_RESPONSES_PER_TICK);
+        assert_eq!(rx.try_recv(), Ok(MAX_WORKER_RESPONSES_PER_TICK));
     }
 
     #[test]
@@ -3817,6 +4484,60 @@ mod tests {
     }
 
     #[test]
+    fn tc_162_history_filter_supports_enabled_emacs_editing_and_disabled_noop() {
+        let mut enabled = history_state(&["alpha beta", "alpha"], "draft");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        insert_paste(&mut enabled, "alpha beta");
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            enabled.history.as_ref().expect("history overlay").filter,
+            "alpha "
+        );
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('y'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            enabled.history.as_ref().expect("history overlay").filter,
+            "alpha beta"
+        );
+        handle_key(
+            &mut enabled,
+            KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            enabled
+                .history
+                .as_ref()
+                .expect("history overlay")
+                .filter_cursor,
+            0
+        );
+
+        let mut disabled = history_state(&["alpha"], "draft");
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('r'), KeyModifiers::CONTROL),
+        );
+        insert_paste(&mut disabled, "alpha");
+        disabled.emacs_keybindings_enabled = false;
+        handle_key(
+            &mut disabled,
+            KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL),
+        );
+        assert_eq!(
+            disabled.history.as_ref().expect("history overlay").filter,
+            "alpha"
+        );
+    }
+
+    #[test]
     fn tc_162_history_overlay_accept_cancel_navigation_and_paste_contract() {
         let mut state = history_state(&["one", "two", "three"], "draft");
         handle_key(
@@ -4028,15 +4749,91 @@ mod tests {
             offset: 0,
         };
         let mut history_output = Vec::new();
-        render_history_overlay(&mut history_output, &history, 40, 8).expect("render history");
+        render_history_overlay(&mut history_output, &history, true, 40, 8).expect("render history");
         let mut help_output = Vec::new();
-        render_help_overlay(&mut help_output, HelpContext::Normal, 40, 8).expect("render help");
+        render_help_overlay(&mut help_output, HelpContext::Normal, true, 40, 8)
+            .expect("render help");
 
         for output in [&history_output, &help_output] {
             assert!(
                 output.windows(4).any(|window| window == b"\x1b[2J"),
                 "overlay must clear terminal before rendering"
             );
+        }
+    }
+
+    #[test]
+    fn tc_162_help_overlay_matches_emacs_runtime_config() {
+        let mut enabled_output = Vec::new();
+        render_help_overlay(&mut enabled_output, HelpContext::Normal, true, 100, 10)
+            .expect("render enabled help");
+        let enabled_text = String::from_utf8_lossy(&enabled_output);
+        assert!(enabled_text.contains("Ctrl+N"));
+        assert!(enabled_text.contains("Ctrl+G"));
+        assert!(enabled_text.contains("Ctrl+R"));
+
+        let mut disabled_output = Vec::new();
+        render_help_overlay(&mut disabled_output, HelpContext::Normal, false, 100, 10)
+            .expect("render disabled help");
+        let disabled_text = String::from_utf8_lossy(&disabled_output);
+        assert!(disabled_text.contains("Emacs shortcuts disabled"));
+        assert!(!disabled_text.contains("Ctrl+N"));
+        assert!(!disabled_text.contains("Ctrl+G"));
+        assert!(!disabled_text.contains("Ctrl+R"));
+
+        let options = OptionsOverlay {
+            draft: TuiRuntimeOptions {
+                include_files: true,
+                include_dirs: true,
+                regex: false,
+                ignore_case: false,
+                ignore_enabled: true,
+                source: TuiSource::Walker,
+            },
+            selected: 0,
+        };
+        let history = HistoryOverlay {
+            draft_query: String::new(),
+            filter: String::new(),
+            filter_cursor: 0,
+            results: Vec::new(),
+            selected: 0,
+            offset: 0,
+        };
+        let mut overlay_outputs = vec![Vec::new(); 5];
+        render_options_overlay(&mut overlay_outputs[0], &options, false, 120, 8)
+            .expect("render disabled options");
+        render_sort_picker(
+            &mut overlay_outputs[1],
+            &SortPicker { selected: 0 },
+            false,
+            120,
+            8,
+        )
+        .expect("render disabled sort");
+        render_root_picker(
+            &mut overlay_outputs[2],
+            &RootPicker { selected: 0 },
+            &[PathBuf::from("root")],
+            false,
+            120,
+            8,
+        )
+        .expect("render disabled roots");
+        render_filelist_confirmation(
+            &mut overlay_outputs[3],
+            &FileListConfirmation::Mode {
+                propagate_to_ancestors: false,
+            },
+            false,
+            120,
+            8,
+        )
+        .expect("render disabled FileList confirmation");
+        render_history_overlay(&mut overlay_outputs[4], &history, false, 120, 8)
+            .expect("render disabled history");
+        for output in overlay_outputs {
+            assert!(!String::from_utf8_lossy(&output).contains("Ctrl+G"));
         }
     }
 
@@ -4100,7 +4897,9 @@ mod tests {
             require_filelist: false,
             regex: false,
             ignore_case: false,
+            ignore_enabled: true,
             ignore_terms: vec!["ignored".to_string()],
+            sort_mode: SearchSortMode::Score,
         });
         let mut search_only = base;
         search_only.regex = true;
@@ -4144,6 +4943,16 @@ mod tests {
         state.active_index_request = Some((2, PathBuf::from("root-b")));
         apply_worker_response(
             &mut state,
+            WorkerResponse::IndexTruncated {
+                request_id: 1,
+                root: PathBuf::from("root-a"),
+                limit: 3,
+            },
+        )
+        .expect("stale truncation ignored");
+        assert_eq!(state.index_truncated_limit, None);
+        apply_worker_response(
+            &mut state,
             WorkerResponse::IndexedBatch {
                 request_id: 1,
                 root: PathBuf::from("root-a"),
@@ -4151,7 +4960,7 @@ mod tests {
             },
         )
         .expect("stale response ignored");
-        assert!(state.entries.is_empty());
+        assert_eq!(state.entries.len(), 0);
         apply_worker_response(
             &mut state,
             WorkerResponse::IndexedBatch {
@@ -4161,16 +4970,57 @@ mod tests {
             },
         )
         .expect("fresh response accepted");
-        assert_eq!(state.entries.as_slice(), [PathBuf::from("fresh.txt")]);
+        assert_eq!(state.entries.len(), 1);
+        assert_eq!(
+            state.entries.snapshot()[0].as_ref(),
+            [PathBuf::from("fresh.txt")]
+        );
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::IndexTruncated {
+                request_id: 2,
+                root: PathBuf::from("root-b"),
+                limit: 5,
+            },
+        )
+        .expect("fresh truncation accepted");
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::IndexedFinished {
+                request_id: 2,
+                root: PathBuf::from("root-b"),
+                has_root_filelist: false,
+            },
+        )
+        .expect("fresh finish accepted");
+        assert!(state.status.contains("Walker capped at 5 entries"));
+        assert_eq!(state.index_truncated_limit, Some(5));
+
+        state.root = PathBuf::from("root-b");
+        state.active_search_request_id = Some(9);
+        let options = state.runtime_options.search_options(state.sort_mode);
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::Searched {
+                request_id: 9,
+                root: PathBuf::from("root-b"),
+                query: String::new(),
+                options,
+                results: vec![(PathBuf::from("fresh.txt"), 1.0)],
+                error: None,
+            },
+        )
+        .expect("search response accepted");
+        assert!(state.status.contains("Walker capped at 5 entries"));
     }
 
     #[test]
     fn tc_162_tui_search_applies_ignore_in_worker_snapshot_and_sorts_before_limit() {
-        let entries = Arc::new(vec![
+        let entries = Arc::new(vec![Arc::from(vec![
             PathBuf::from("root/zeta.txt"),
             PathBuf::from("root/ignored.txt"),
             PathBuf::from("root/alpha.txt"),
-        ]);
+        ])]);
         let mut cache = SearchPrefixCache::default();
         let request = SearchRequest {
             request_id: 1,
@@ -4210,6 +5060,47 @@ mod tests {
         assert!(results
             .iter()
             .any(|(path, _)| path.ends_with("ignored.txt")));
+    }
+
+    #[test]
+    fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
+        let startup = CliTuiOptions {
+            initial_query: String::new(),
+            limit: 10,
+            absolute: false,
+            print0: false,
+            include_files: true,
+            include_dirs: true,
+            use_filelist: true,
+            require_filelist: false,
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: false,
+            ignore_terms: vec!["ignored".to_string()],
+            sort_mode: SearchSortMode::Score,
+        };
+        let mut runtime = TuiRuntimeOptions::from_startup(&startup);
+        assert!(!runtime.ignore_enabled);
+
+        runtime.ignore_enabled = true;
+        let request = SearchRequest {
+            request_id: 1,
+            query: String::new(),
+            entries: Arc::new(vec![Arc::from(vec![
+                PathBuf::from("root/visible.txt"),
+                PathBuf::from("root/ignored.txt"),
+            ])]),
+            root: PathBuf::from("root"),
+            limit: 10,
+            options: runtime.search_options(SearchSortMode::Score),
+            ignore_terms: Arc::new(startup.ignore_terms),
+        };
+
+        let (results, error) = search(&request, &mut SearchPrefixCache::default());
+
+        assert!(error.is_none());
+        assert_eq!(results.len(), 1);
+        assert!(results[0].0.ends_with("visible.txt"));
     }
 
     #[test]
@@ -4326,11 +5217,18 @@ mod tests {
             .map(|index| PathBuf::from(format!("root-{index}")))
             .collect::<Vec<_>>();
         let mut output = Vec::new();
-        render_root_picker(&mut output, &RootPicker { selected: 5 }, &roots, 80, 4)
-            .expect("render roots");
+        render_root_picker(
+            &mut output,
+            &RootPicker { selected: 5 },
+            &roots,
+            true,
+            80,
+            4,
+        )
+        .expect("render roots");
         assert!(String::from_utf8_lossy(&output).contains("> root-5"));
         let mut output = Vec::new();
-        render_root_picker(&mut output, &RootPicker { selected: 0 }, &[], 80, 4)
+        render_root_picker(&mut output, &RootPicker { selected: 0 }, &[], true, 80, 4)
             .expect("render empty roots");
         assert!(String::from_utf8_lossy(&output).contains("No saved roots"));
     }
@@ -4396,12 +5294,14 @@ mod tests {
                 require_filelist: false,
                 regex: false,
                 ignore_case: false,
+                ignore_enabled: true,
                 ignore_terms: Vec::new(),
+                sort_mode: SearchSortMode::Score,
             }),
             selected: 0,
         };
         let mut output = Vec::new();
-        render_options_overlay(&mut output, &overlay, 80, 5).expect("render options");
+        render_options_overlay(&mut output, &overlay, true, 80, 5).expect("render options");
         let rendered = String::from_utf8_lossy(&output);
         assert!(rendered.contains("Options"));
         assert!(rendered.contains("Enter apply"));
@@ -4502,15 +5402,18 @@ mod tests {
                 require_filelist: false,
                 regex: false,
                 ignore_case: false,
+                ignore_enabled: true,
                 ignore_terms: Vec::new(),
+                sort_mode: SearchSortMode::Score,
             }),
             selected: 5,
         };
         let mut output = Vec::new();
-        render_options_overlay(&mut output, &options, 80, 4).expect("render options");
+        render_options_overlay(&mut output, &options, true, 80, 4).expect("render options");
         assert!(String::from_utf8_lossy(&output).contains("> Source:"));
         let mut output = Vec::new();
-        render_sort_picker(&mut output, &SortPicker { selected: 8 }, 80, 4).expect("render sort");
+        render_sort_picker(&mut output, &SortPicker { selected: 8 }, true, 80, 4)
+            .expect("render sort");
         assert!(String::from_utf8_lossy(&output).contains("> Size (Small)"));
     }
 
@@ -4740,7 +5643,7 @@ mod tests {
         };
         refresh_history_results(&mut history, &["界\u{1b}x".to_string()]);
         let mut output = Vec::new();
-        render_history_overlay(&mut output, &history, 12, 6).expect("render history overlay");
+        render_history_overlay(&mut output, &history, true, 12, 6).expect("render history overlay");
         let rendered = String::from_utf8_lossy(&output);
         assert!(rendered.contains("History"));
         assert!(rendered.contains('�'));
@@ -4924,7 +5827,7 @@ mod tests {
         state.root = temp.path.clone();
         state.runtime_options.include_files = true;
         state.runtime_options.include_dirs = false;
-        state.entries = Arc::new(vec![temp.path.join("visible.txt")]);
+        state.entries.push(vec![temp.path.join("visible.txt")]);
         let request = state.next_filelist_request(false, true);
 
         let entries =

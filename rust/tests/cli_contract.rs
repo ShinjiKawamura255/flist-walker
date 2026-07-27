@@ -395,6 +395,10 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
         .expect("run saved-roots list with missing root");
 
     assert!(human.status.success());
+    assert!(
+        settings_dir.join(".flistwalker_config.json").is_file(),
+        "saved-root listing must initialize runtime config"
+    );
     assert_eq!(
         String::from_utf8_lossy(&human.stdout),
         format!("1\t{}\n2\t{}\n", first.display(), second.display())
@@ -409,6 +413,12 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
     assert!(progress_conflict.stdout.is_empty());
     assert!(String::from_utf8_lossy(&progress_conflict.stderr)
         .contains("--list-saved-roots cannot be combined with search options"));
+    assert!(
+        !progress_conflict_settings_dir
+            .join(".flistwalker_config.json")
+            .exists(),
+        "invalid list-saved-roots arguments must not bootstrap runtime config"
+    );
     assert!(missing_output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&missing_output.stdout),
@@ -499,7 +509,8 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
     fs::create_dir_all(&root).expect("create root");
     fs::write(root.join("alpha.txt"), "alpha").expect("write file");
 
-    let created = cli_command("create-filelist")
+    let (mut created_command, created_settings_dir) = cli_command_with_settings("create-filelist");
+    let created = created_command
         .args([
             "--cli",
             "--root",
@@ -530,6 +541,12 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
         .expect("reject query combination");
 
     assert!(created.status.success());
+    assert!(
+        created_settings_dir
+            .join(".flistwalker_config.json")
+            .is_file(),
+        "FileList creation must initialize runtime config"
+    );
     assert!(created.stdout.is_empty());
     assert!(created
         .stderr
@@ -854,6 +871,24 @@ fn tc_006_interactive_requires_cli_mode() {
 }
 
 #[test]
+fn tc_163_interactive_rejects_batch_only_exit_and_progress_options() {
+    for option in ["--fail-no-match", "--progress"] {
+        let output = cli_command("interactive-batch-only-conflict")
+            .args(["--cli", "--interactive", option])
+            .output()
+            .expect("run conflicting interactive CLI");
+
+        assert_eq!(output.status.code(), Some(2), "option {option}");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("--interactive"),
+            "unexpected stderr: {stderr}"
+        );
+        assert!(stderr.contains(option), "unexpected stderr: {stderr}");
+    }
+}
+
+#[test]
 fn tc_006_absolute_and_print0_control_path_framing() {
     let root = test_root("absolute-print0");
     fs::create_dir_all(&root).expect("create root");
@@ -1085,7 +1120,10 @@ fn tc_006_progress_is_written_to_stderr_only() {
 
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "alpha.txt");
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Indexing"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Indexing"));
+    assert!(stderr.contains("Indexed 1 candidate"), "{stderr}");
+    assert!(stderr.contains("Matched 1 path"), "{stderr}");
 
     let _ = fs::remove_dir_all(&root);
 }

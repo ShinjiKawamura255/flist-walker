@@ -9,6 +9,8 @@
 - UI から各 bounded queue への送信は non-blocking `try_send` とし、`Full` では action を未受理として扱い、kind は queue 先頭、index は tab ごとの latest-only pending slot へ戻す。いずれも UI thread で capacity 解放を待たない。
 - kind worker は tab identity / epoch の最新性を metadata I/O より前に検証し、stale、tab 消失、共有状態の poison は metadata call 0 件の `kind=None` terminal response にする。index worker は supersede/cancel を root canonicalize より前に検証し、stale request は filesystem I/O 0 件の `Canceled` response にする。
 - 検索要求は入力ごとに発行しつつ、ワーカーでキューを集約して最新要求のみ処理する。
+- interactive CLI の候補 snapshot は immutable path batch を共有し、増分 append で既存 path 全件を複製しない。
+- interactive CLI の event loop は worker 応答を 1 iteration 最大 64 件だけ反映する。backlog 中は次回 poll timeout を 0 にするが、各 iteration の key polling は省略しない。
 - 検索要求は query を1回だけ `CompiledQuery` に変換し、各 path を1回だけ `PreparedCandidate` に変換する。rank-only 評価は match/score だけを返し、UI は query/options scope に保持した同じ compiled representation から可視行だけ span 付き評価する。
 - prefix cache は raw query の単調延長だけでなく、`ignore_case`、`prefer_relative`、正規化 root、live snapshot identity が一致する場合だけ候補 index を再利用する。
 - 10万件検索は TC-156 の fixed fixture、release mode、5回以上の sample で compile/cold/warm/query-shape/evaluated-candidate を分離計測し、100ms median target と weekly CI の 250ms hard ceiling を別々に扱う。
@@ -40,6 +42,7 @@
 - adaptive worker 上限が 1 の場合、adaptive backend は serial fast path を使い、channel / condvar / worker pool の制御 overhead を避ける。
 - `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張しない。
 - adaptive backend は Windows 互換用の `Hidden + System + ReparsePoint` junction を候補から除外する。その他の reparse point directory は候補として残してもリンク先へは再帰せず、`follow_links(false)` 相当の Walker 境界を保つ。
+- GUI index worker と TUI index worker は `adaptive_walker`、walker runtime settings、entry classification を crate 内で共有する。TUI は設定済み上限へ到達したら残 batch、request identity 付き truncation、finished の順で応答し、最新 request の上限 notice を検索結果 status に合成して次の index 開始まで保持する。FileList 作成経路は表示 index から独立した完全 snapshot を維持する。
 - `developer.walker_metrics = true` の場合だけ、GUI index worker は Walker request の terminal point で summary metrics を 1 件出力する。per-entry/per-directory log は出さず、Indexing 完了・キャンセル・失敗後に継続ロギングしない。
 - `developer.walker_metrics_log_path` が空でない場合、上記 summary metrics を指定ファイルへ append する。これは Windows release GUI build のように stderr が取得しにくい環境での開発者向け計測導線とする。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
@@ -125,8 +128,9 @@
 - タブ close ボタンは固定サイズの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
-- `tab_pin_moves_to_next_row=true` のときは `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` が PIN トグル後に `move_row(1)` を呼ぶ。既定の `false` では従来どおり current row を維持する。
-- `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作は維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
+- GUI/TUI は `tab_pin_moves_to_next_row=true` のとき `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` による PIN トグル後に次行へ移動する。既定の `false` では current row を維持する。TUI event-loop state は process runtime config の両値を起動時に取り込む。
+- GUI/TUI は `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作を維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
+- TUI は normal query と history filter に同じ Emacs 風 text editing helper を適用し、runtime config が無効なら両方を処理しない。help と history/options/sort/root/FileList overlay renderer にも有効状態を渡し、無効な chord を操作案内へ表示しない。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は release metadata、manifest、署名、binary、sidecar ごとの decoded-byte 上限と、接続 10 秒・無通信 30 秒・request 5 分・全体 10 分の deadline を transport/streaming reader の両層で強制する。
 - redirect は 3 hop まで手動追跡し、各 hop で scheme/host を検証する。production は HTTPS の GitHub 配布 origin だけを許可し、test transport だけが loopback HTTP を許可する。
