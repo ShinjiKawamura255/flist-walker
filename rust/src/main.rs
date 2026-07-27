@@ -1003,6 +1003,7 @@ fn main() -> Result<ExitCode> {
             return Ok(ExitCode::from(2));
         }
     }
+    let _runtime_config = initialize_runtime_config();
     if args.cli && !args.interactive && args.list_saved_roots {
         if let Err(error) = validate_list_saved_roots_args(&args) {
             eprintln!("error: {error}");
@@ -1029,7 +1030,6 @@ fn main() -> Result<ExitCode> {
             cancelled.as_ref(),
         )));
     }
-    let _runtime_config = initialize_runtime_config();
     if let Err(err) = ensure_ignore_list_sample() {
         warn!("failed to materialize ignore list sample: {}", err);
     }

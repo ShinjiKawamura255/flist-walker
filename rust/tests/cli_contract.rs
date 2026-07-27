@@ -395,6 +395,10 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
         .expect("run saved-roots list with missing root");
 
     assert!(human.status.success());
+    assert!(
+        settings_dir.join(".flistwalker_config.json").is_file(),
+        "saved-root listing must initialize runtime config"
+    );
     assert_eq!(
         String::from_utf8_lossy(&human.stdout),
         format!("1\t{}\n2\t{}\n", first.display(), second.display())
@@ -499,7 +503,8 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
     fs::create_dir_all(&root).expect("create root");
     fs::write(root.join("alpha.txt"), "alpha").expect("write file");
 
-    let created = cli_command("create-filelist")
+    let (mut created_command, created_settings_dir) = cli_command_with_settings("create-filelist");
+    let created = created_command
         .args([
             "--cli",
             "--root",
@@ -530,6 +535,12 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
         .expect("reject query combination");
 
     assert!(created.status.success());
+    assert!(
+        created_settings_dir
+            .join(".flistwalker_config.json")
+            .is_file(),
+        "FileList creation must initialize runtime config"
+    );
     assert!(created.stdout.is_empty());
     assert!(created
         .stderr
