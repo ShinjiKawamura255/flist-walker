@@ -1,0 +1,84 @@
+name: CI Latest Canary
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  latest-compatibility:
+    name: Latest Compatibility (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install latest stable Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Run tests
+        working-directory: rust
+        run: cargo test --locked
+
+      - name: Run clippy
+        working-directory: rust
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+  report-failure:
+    name: Track Canary Failure
+    needs: latest-compatibility
+    if: ${{ failure() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update canary issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "[ci-canary] Latest environment compatibility failed"
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" --json number --jq '.[0].number // empty')"
+          body="Canary failed: $RUN_URL. Triage within seven days and decide whether to promote a new runner generation, Rust version, action, or CI tool pin."
+          if [[ -n "$issue_number" ]]; then
+            gh issue comment "$issue_number" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$body"
+          fi

@@ -88,7 +88,7 @@
 - Previous observed path from `cargo audit`: `paste 1.0.15 -> metal 0.29.0 -> wgpu-hal 22.0.0 -> wgpu-core/wgpu -> egui-wgpu 0.29.1 -> eframe 0.29.1 -> flist-walker`.
 - Current `cargo audit` behavior: exits successfully with no warning output.
 - Current lockfile check: `rust/Cargo.lock` no longer contains `paste` or `metal` package entries.
-- Compatibility note: `eframe 0.34.1` requires Rust `1.92`; repository CI and local development use Rust stable, and the local validation toolchain was `rustc 1.93.1`.
+- Compatibility note: `eframe 0.34.1` requires Rust `1.92`; repository CI and local development use the version-addressed `rust/rust-toolchain.toml` pin, currently Rust `1.97.1`.
 - Required evidence for future regressions:
   - `cd rust && cargo audit`
   - verify `rust/Cargo.lock` does not reintroduce `paste` / `metal`
@@ -104,7 +104,7 @@
 - Owner: Rust dependency maintainer for release preflight.
 - Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
 - Re-evaluation trigger: `wayland-scanner` updates to a `quick-xml >=0.41.0` dependency, `eframe` / `winit` / Wayland stack refresh, or any new runtime exposure.
-- Current accepted audit command: `cd rust && cargo audit --ignore RUSTSEC-2026-0194 --ignore RUSTSEC-2026-0195`.
+- Central configuration: cargo-auditのproject-local探索規則に従う`rust/.cargo/audit.toml` contains only `RUSTSEC-2026-0194` and `RUSTSEC-2026-0195`; the required command is `cd rust && cargo audit`.
 
 ### RUSTSEC-2026-0192: `ttf-parser 0.24.1` unmaintained
 - Status: accepted on 2026-07-09 as a transitive unmaintained warning surfaced by `cargo audit`.

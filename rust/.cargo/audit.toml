@@ -1,0 +1,4 @@
+[advisories]
+# Accepted build-time-only quick-xml advisories. The exposure analysis,
+# review cadence, and removal triggers are maintained in docs/OSS_COMPLIANCE.md.
+ignore = ["RUSTSEC-2026-0194", "RUSTSEC-2026-0195"]

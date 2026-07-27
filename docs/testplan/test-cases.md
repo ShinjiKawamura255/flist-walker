@@ -66,8 +66,12 @@
 | TC-053 | unit | 祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続する | SP-001, SP-010 |
 | TC-054 | unit | runtime config の `history_persist_disabled` が有効なとき query history を保存も復元も行わない | SP-010 |
 | TC-055 | manual | README / release docs / release template に平文 history 保存、checksum 検証、notarization の暫定運用と `Security` / `Known issues` 記載前提が明記されている | SP-010, SP-012 |
-| TC-056 | integration | CI は Linux/macOS/Windows を対象にし、`cargo audit` を実行する | SP-012 |
+| TC-056 | integration | required CI は version-addressed Linux/macOS/Windows、固定 Rust/Action/tool、限定 cache、timeout/concurrency で test/build/clippy/coverage を実行し、単一 `CI Gate` が結果を集約する | SP-012 |
 | TC-056A | docs+security | `cargo audit` の accepted transitive warning は `docs/OSS_COMPLIANCE.md` に依存経路、受容理由、owner、review cadence、再評価 trigger を記録する | SP-012 |
+| TC-056B | integration+security | 任意階層の Cargo manifest/lock、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/test の変更は audit を実行して `CI Gate` へ集約する。対象変更で skipped は失敗、非対象変更で skipped は成功とする | SP-012 |
+| TC-056C | scheduled+operations | scheduled audit と latest canary は required gate から分離し、失敗時に専用 issue を作成または更新する。audit は24時間、canary は7日以内のagent triageへ接続する | SP-012 |
+| TC-056D | unit+integration | CI policy checker は latest alias のrequired使用、非SHA Action、未固定Rust/tool、target/tool cache、timeout/concurrency/permissions欠落、`pull_request_target`、audit skip契約違反を拒否する | SP-012 |
+| TC-056E | operations | `master` はPR、approval 0、GitHub Actions由来の `CI Gate`、force/delete禁止を要求し、machine PRのper-PR auto-mergeがadmin bypassなしで完了する | SP-012 |
 | TC-057 | unit | `Score` / `Name` / `Modified` / `Created` / `Size` のソートモード遷移と `Score` 復帰を検証する | SP-013 |
 | TC-057A | unit | 検索応答は limit 前の全マッチ件数を返し、GUI snapshot / status は表示件数と全マッチ件数を区別できる | SP-010, SP-013 |
 | TC-057B | unit | `All matches` scope の非 `Score` ソートは検索 worker に再要求され、表示中 snapshot 外の候補も全マッチ集合の sort key 上位なら表示対象になる | SP-013 |
