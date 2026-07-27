@@ -57,6 +57,7 @@ jobs:
                 or .path == "rust/rust-toolchain.toml"
                 or .path == "rust/.cargo/audit.toml"
                 or .path == "scripts/check_ci_policy.py"
+                or .path == "scripts/tests/test_check_ci_policy.py"
               )
             | [.path, .sha]
             | @tsv
