@@ -3,13 +3,13 @@
 ## SP-012 CI / Release Security Hygiene
 ### Requirements
 - MUST: required CI は Windows/macOS/Linux の release 対象 OS を version-addressed runner 世代、固定 Rust、full SHA Action、固定 CI tool version で継続検証し、hosted image version を run evidence に残す。番号付き hosted runner image 内の package drift は残存リスクとして扱う。
-- MUST: `master` 変更は PR と単一の required `CI Gate` を経由し、required approving review は 0 件とする。PR ごとの auto-merge を明示登録し、直接 push、force push、branch deletion、admin bypass で gate を回避してはならない。
+- MUST: `master` 変更は PR と required `CI Gate` / `CI Policy Guardian` を経由し、required approving review は 0 件とする。PR ごとの auto-merge を明示登録し、直接 push、force push、branch deletion、admin bypass で gate を回避してはならない。
 - MUST: `CI Gate` は CI policy、release 対象 OS test/build、clippy/coverage を集約する。任意階層の `Cargo.toml` / `Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/test の変更では `cargo audit` も集約し、対象変更で audit が skipped の場合は失敗しなければならない。非対象変更の skipped は正常としてよい。
 - MUST: accepted vulnerability advisory はcargo-auditがproject-local configとして自動読込する`rust/.cargo/audit.toml`に限定し、根拠・owner・review cadence・再評価 trigger を `docs/OSS_COMPLIANCE.md` に保持する。unmaintained warning は出力上で可視のままにする。
 - MUST: scheduled security audit は後日公開 advisory を検知し、失敗 issue を同じ run で作成または更新する。agent は 24 時間以内に分類する。
 - MUST: latest runner/Rust canary は required gate と分離し、失敗 issue を同じ run で作成または更新する。agent は 7 日以内に分類する。
 - MUST: canary failure/success、security notice、EOL/deprecation、dependency MSRV、hosted image drift を pin 更新検討 trigger とする。通常 promotion は scheduled canary 2 回連続成功と candidate `CI Gate` 成功を必要とし、security/EOL/deprecation 対応でも candidate gate を省略してはならない。
-- MUST: workflow は least privilege permissions、job timeout、branch/PR concurrency を定義し、untrusted code を `pull_request_target` で実行してはならない。Cargo cache は download data に限定し、tool binary と `rust/target` を共有してはならない。
+- MUST: workflow は least privilege permissions、job timeout、branch/PR concurrency を定義し、untrusted code を `pull_request_target` で実行してはならない。`CI Policy Guardian` に限り read-only `pull_request_target` を許可し、default branch の trusted policy だけを実行して PR policy blob を data として検査し、PR head checkout/実行、secret、cache、artifact を禁止する。Cargo cache は download data に限定し、tool binary と `rust/target` を共有してはならない。
 - MUST: `x86_64-pc-windows-gnu` 向け release build は最終 `flistwalker.exe` に Windows icon resource を含み、Explorer 上で埋め込みアイコンを表示できなければならない。
 - MUST: draft release 作成後、macOS notarization は別工程で確認できる状態を維持する。
 - MUST: notarization 環境が未整備な当面の間は、macOS 配布物の notarization 確認を publish 前提条件にしてはならない。その場合 publish 時は GitHub Release 本文の `Security` または `Known issues` に未 notarized である旨を明記しなければならない。
@@ -17,7 +17,7 @@
 
 ### Preconditions / Postconditions
 - Preconditions: CI、release workflow、runner/Rust/Action/tool pin、または repository merge policy を更新する。
-- Postconditions: `scripts/check_ci_policy.py` と `CI Gate` がrequired契約を検証し、security/latest drift は追跡 issue へ接続される。
+- Postconditions: default branch の`scripts/check_ci_policy.py`を実行する`CI Policy Guardian`と`CI Gate`がrequired契約を検証し、security/latest driftは追跡issueへ接続される。
 ## SP-014 起動時自己更新
 ### Requirements
 - MUST: GUI 起動時に GitHub Releases の最新 version 確認を非同期 worker で実行し、UI スレッドをブロックしてはならない。

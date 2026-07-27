@@ -26,7 +26,7 @@ ID-bearing tables and normative sections SHOULD be kept in ascending ID order to
 - VM-006 CI coverage gate / GUI validation docs: coverage command or script/parser checks as applicable.
 - VM-007 Supportability docs/templates: affected doc/template diff review and support wording checks.
 - VM-008 Runtime config bootstrap: `cd rust && cargo test` plus first-run/config precedence checks when relevant.
-- VM-009 CI reliability / pins / merge policy: CI policy unit tests, workflow parse, Rust/audit regression, PR `CI Gate`, and repository-settings/protected-auto-merge evidence.
+- VM-009 CI reliability / pins / merge policy: CI policy unit tests, guardian fail-closed mode, workflow parse, Rust/audit regression, PR `CI Gate` / `CI Policy Guardian`, and repository-settings/protected-auto-merge evidence.
 
 ## Docs-only Validation
 For documentation-only restructuring, apply VM-001:

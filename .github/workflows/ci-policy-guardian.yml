@@ -1,0 +1,78 @@
+name: CI Policy Guardian
+
+on:
+  pull_request_target:
+    branches:
+      - master
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate-policy:
+    name: CI Policy Guardian
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout trusted base policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Materialize proposed policy files as data
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PROPOSED_ROOT: ${{ runner.temp }}/proposed-ci-policy
+          TREE_JSON: ${{ runner.temp }}/proposed-ci-tree.json
+          POLICY_MANIFEST: ${{ runner.temp }}/proposed-ci-policy.tsv
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROPOSED_ROOT"
+          gh api "repos/$GITHUB_REPOSITORY/git/trees/$HEAD_SHA?recursive=1" > "$TREE_JSON"
+          jq -e '.truncated == false' "$TREE_JSON" > /dev/null
+          jq -r '
+            .tree[]
+            | select(.type == "blob")
+            | select(
+                (.path | test("^\\.github/workflows/[A-Za-z0-9_.-]+\\.ya?ml$"))
+                or .path == ".github/dependabot.yml"
+                or .path == "rust/rust-toolchain.toml"
+                or .path == "rust/.cargo/audit.toml"
+                or .path == "scripts/check_ci_policy.py"
+              )
+            | [.path, .sha]
+            | @tsv
+          ' "$TREE_JSON" > "$POLICY_MANIFEST"
+          while IFS=$'\t' read -r path blob_sha; do
+            destination="$PROPOSED_ROOT/$path"
+            mkdir -p "$(dirname "$destination")"
+            gh api "repos/$GITHUB_REPOSITORY/git/blobs/$blob_sha" --jq .content \
+              | tr -d '\n' \
+              | base64 --decode > "$destination"
+          done < "$POLICY_MANIFEST"
+
+      - name: Validate proposed tree with immutable trusted policy
+        shell: bash
+        env:
+          PROPOSED_ROOT: ${{ runner.temp }}/proposed-ci-policy
+        run: |
+          set -euo pipefail
+          python scripts/check_ci_policy.py --guardian "$PROPOSED_ROOT"

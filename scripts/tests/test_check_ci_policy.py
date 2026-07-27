@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import shutil
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,6 +40,113 @@ jobs:
         self.assertTrue(any("latest runner aliases" in item for item in violations))
         self.assertTrue(any("full SHA" in item for item in violations))
         self.assertTrue(any("Rust must be pinned" in item for item in violations))
+
+    def test_guardian_and_dependabot_automation_are_required(self) -> None:
+        self.assertIn("ci-policy-guardian.yml", POLICY.REQUIRED_WORKFLOWS)
+        self.assertIn("dependabot-auto-merge.yml", POLICY.REQUIRED_WORKFLOWS)
+        self.assertIn(".github/dependabot.yml", POLICY.REQUIRED_FILES)
+
+    def test_write_all_and_unapproved_pull_request_target_are_rejected(self) -> None:
+        excessive = """
+name: Excessive
+on: push
+permissions: write-all
+concurrency:
+  group: excessive
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+"""
+        violations = POLICY.validate_workflow("excessive.yml", excessive)
+        self.assertTrue(any("write-all" in item for item in violations))
+
+        inline = excessive.replace("permissions: write-all", "permissions: {contents: write}")
+        violations = POLICY.validate_workflow("inline.yml", inline)
+        self.assertTrue(any("explicit block" in item for item in violations))
+
+        untrusted_target = excessive.replace("on: push", "on: pull_request_target")
+        violations = POLICY.validate_workflow("not-guardian.yml", untrusted_target)
+        self.assertTrue(any("pull_request_target is guardian-only" in item for item in violations))
+
+    def test_guardian_contract_is_fail_closed(self) -> None:
+        violations = POLICY.validate_guardian_contract("name: CI Policy Guardian\n")
+        self.assertTrue(any("trusted base checkout" in item for item in violations))
+        self.assertTrue(any("PR blobs as data" in item for item in violations))
+        self.assertTrue(any("immutable trusted policy" in item for item in violations))
+
+    def test_dependabot_contract_requires_trusted_completed_ci(self) -> None:
+        violations = POLICY.validate_dependabot_contract("name: Dependabot Auto Merge\n")
+        self.assertTrue(any("workflow_run" in item for item in violations))
+        self.assertTrue(any("trusted Dependabot actor" in item for item in violations))
+        self.assertTrue(any("successful CI conclusion" in item for item in violations))
+
+    def test_trusted_policy_update_allows_only_version_pins(self) -> None:
+        checker = MODULE_PATH.read_text(encoding="utf-8")
+        self.assertEqual(
+            POLICY.normalize_trusted_policy("scripts/check_ci_policy.py", checker),
+            POLICY.normalize_trusted_policy(
+                "scripts/check_ci_policy.py",
+                checker.replace('PINNED_RUST = "1.97.1"', 'PINNED_RUST = "1.98.0"'),
+            ),
+        )
+        weakened = checker.replace(
+            'violations.append(f"{name}: permissions write-all is forbidden")',
+            "pass",
+        )
+        self.assertNotEqual(
+            POLICY.normalize_trusted_policy("scripts/check_ci_policy.py", checker),
+            POLICY.normalize_trusted_policy("scripts/check_ci_policy.py", weakened),
+        )
+        invalid_pin = checker.replace('PINNED_RUST = "1.97.1"', 'PINNED_RUST = "stable"')
+        with mock.patch.object(Path, "read_text", return_value=invalid_pin):
+            _, violations = POLICY.read_proposed_pins(ROOT)
+        self.assertTrue(any("invalid PINNED_RUST" in item for item in violations))
+
+        guardian_path = ROOT / ".github" / "workflows" / "ci-policy-guardian.yml"
+        guardian = guardian_path.read_text(encoding="utf-8")
+        updated_action = guardian.replace(
+            "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+            "actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa # candidate",
+        )
+        self.assertEqual(
+            POLICY.normalize_trusted_policy(
+                ".github/workflows/ci-policy-guardian.yml", guardian
+            ),
+            POLICY.normalize_trusted_policy(
+                ".github/workflows/ci-policy-guardian.yml", updated_action
+            ),
+        )
+        weakened_guardian = guardian.replace("contents: read", "contents: write")
+        self.assertNotEqual(
+            POLICY.normalize_trusted_policy(
+                ".github/workflows/ci-policy-guardian.yml", guardian
+            ),
+            POLICY.normalize_trusted_policy(
+                ".github/workflows/ci-policy-guardian.yml", weakened_guardian
+            ),
+        )
+
+    def test_trusted_policy_set_rejects_structural_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            proposed_root = Path(temp_dir)
+            for relative in POLICY.trusted_policy_paths(ROOT):
+                source = ROOT / relative
+                destination = proposed_root / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, destination)
+            self.assertEqual(
+                [], POLICY.validate_trusted_policy_update(ROOT, proposed_root)
+            )
+
+            ci_path = proposed_root / ".github" / "workflows" / "ci-cross-platform.yml"
+            ci_text = ci_path.read_text(encoding="utf-8")
+            ci_path.write_text(
+                ci_text.replace("  contents: read", "  contents: write", 1),
+                encoding="utf-8",
+            )
+            violations = POLICY.validate_trusted_policy_update(ROOT, proposed_root)
+            self.assertTrue(any("ci-cross-platform.yml" in item for item in violations))
 
     def test_ci_contract_requires_audit_skip_safety(self) -> None:
         violations = POLICY.validate_ci_contract("name: CI Gate\nif: ${{ always() }}")
