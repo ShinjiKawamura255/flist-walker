@@ -794,8 +794,9 @@ fn capped_walker_finished_drains_large_backlog_without_long_tail_regression() {
     })
     .expect("send finished");
 
+    // Keep this assertion about the per-poll entry cap, not host wall-clock speed.
     for _ in 0..8 {
-        app.poll_index_response();
+        app.poll_index_response_with_budget_for_test(Duration::from_secs(1));
         if app.shell.indexing.pending_finish.is_none() {
             break;
         }

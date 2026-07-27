@@ -453,8 +453,16 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_index_response(&mut self) {
+        self.poll_index_response_with_budget(Duration::from_millis(4));
+    }
+
+    #[cfg(test)]
+    pub(super) fn poll_index_response_with_budget_for_test(&mut self, budget: Duration) {
+        self.poll_index_response_with_budget(budget);
+    }
+
+    fn poll_index_response_with_budget(&mut self, frame_budget: Duration) {
         const MAX_MESSAGES_PER_FRAME: usize = 64;
-        const FRAME_BUDGET: Duration = Duration::from_millis(4);
         // Large capped roots can leave hundreds of thousands of entries queued at
         // the terminal point. While the worker is still indexing, allow larger
         // chunks; after Finished, prioritize input responsiveness over tail speed.
@@ -475,7 +483,7 @@ impl FlistWalkerApp {
                         self.shell.indexing.cleanup_request(request_id);
                     }
                     processed = processed.saturating_add(1);
-                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= FRAME_BUDGET
+                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= frame_budget
                     {
                         break;
                     }
@@ -535,13 +543,13 @@ impl FlistWalkerApp {
             }
 
             processed = processed.saturating_add(1);
-            if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= FRAME_BUDGET {
+            if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= frame_budget {
                 break;
             }
         }
 
         if let Some(request_id) = self.shell.indexing.pending_request_id {
-            let remaining_budget = FRAME_BUDGET.saturating_sub(frame_start.elapsed());
+            let remaining_budget = frame_budget.saturating_sub(frame_start.elapsed());
             let consumed = if remaining_budget.is_zero() {
                 self.drain_queued_index_entries(request_id, 32)
             } else {

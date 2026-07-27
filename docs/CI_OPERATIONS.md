@@ -63,7 +63,7 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 | Branch protection identifier | `repos/ShinjiKawamura255/flist-walker/branches/master/protection` |
 | Pull request required | yes |
 | Required approving reviews | `0` |
-| Required status check | `CI Gate` |
+| Required status checks | `CI Gate`, `CI Policy Guardian` |
 | Required check source | GitHub Actions app ID `15368` |
 | Require up-to-date branch | yes (`strict: true`) |
 | Apply to administrators | yes |
@@ -72,3 +72,7 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 変更前状態へ戻す必要がある場合は、先に影響中のPRを確認し、repository admin権限でbranch protection endpointを`DELETE`してからrepositoryの`allow_auto_merge`を`false`へ戻す。通常のCI不具合では保護を外さず、workflowをrevert PRで復旧する。
 
 Protected routeの検証記録は[PR #10](https://github.com/ShinjiKawamura255/flist-walker/pull/10)とする。branch protection適用後に通常権限でPRを作成し、2026-07-28にmerge method `MERGE`のper-PR auto-merge登録が受理された。approvalやadmin bypassは使用せず、strict branch更新と`CI Gate`の最終結果・merge outcomeはGitHubのPR recordを正本とする。
+
+`CI Policy Guardian`は[PR #11](https://github.com/ShinjiKawamura255/flist-walker/pull/11)で`CI Gate`通過後にmergeし、同じGitHub Actions app ID `15368`の第2 required checkとして追加した。追加後のprotection read-backはstrict `true`、approval `0`、administrators適用、force-push/deletion禁止を維持している。
+
+run `30289068993`では、同一treeのPR runが成功した後にmacOSだけ`capped_walker_finished_drains_large_backlog_without_long_tail_regression`が失敗した。原因はproductionの4ms frame budgetと固定8回pollを同時に使ったtestがhost速度を暗黙前提にしたことだった。production budgetは維持し、testだけ明示budgetを注入してentry capの契約を決定的に検証する。
