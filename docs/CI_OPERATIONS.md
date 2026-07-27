@@ -50,3 +50,23 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 - version promotion が失敗した場合は candidate PR を閉じ、required pin を維持する。既に merge 済みなら、直前の version table と full action SHA へ戻す revert PR を作る。
 - branch protection 変更前は現行設定を取得し、変更後は PR requirement、approval count、required context/source、force-push/deletion、auto-merge を read back する。
 - repository policy の rollout record はこの文書へ残す。record には変更前後の要点、protection/ruleset identifier、旧 auto-merge 値、復元方法、protected auto-merge PR を含める。
+
+## Repository policy rollout record (2026-07-28)
+
+変更前は repository auto-merge が `false`、`master` branch protection は未設定だった。`420520c` のmaster pushで `CI Gate` が成功した後、次の設定を適用してread backした。
+
+| Setting | Active value |
+| --- | --- |
+| Repository auto-merge | enabled |
+| Branch protection identifier | `repos/ShinjiKawamura255/flist-walker/branches/master/protection` |
+| Pull request required | yes |
+| Required approving reviews | `0` |
+| Required status check | `CI Gate` |
+| Required check source | GitHub Actions app ID `15368` |
+| Require up-to-date branch | yes (`strict: true`) |
+| Apply to administrators | yes |
+| Force push / branch deletion | disabled / disabled |
+
+変更前状態へ戻す必要がある場合は、先に影響中のPRを確認し、repository admin権限でbranch protection endpointを`DELETE`してからrepositoryの`allow_auto_merge`を`false`へ戻す。通常のCI不具合では保護を外さず、workflowをrevert PRで復旧する。
+
+Protected routeの検証記録は[PR #10](https://github.com/ShinjiKawamura255/flist-walker/pull/10)とする。branch protection適用後に通常権限でPRを作成し、2026-07-28にmerge method `MERGE`のper-PR auto-merge登録が受理された。approvalやadmin bypassは使用せず、strict branch更新と`CI Gate`の最終結果・merge outcomeはGitHubのPR recordを正本とする。
