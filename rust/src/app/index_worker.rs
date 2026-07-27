@@ -33,16 +33,16 @@ enum WalkerBackend {
 }
 
 #[derive(Debug)]
-struct WalkerRuntimeSettings {
-    max_entries: usize,
-    adaptive_initial_limit: usize,
-    adaptive_max_limit: usize,
+pub(crate) struct WalkerRuntimeSettings {
+    pub(crate) max_entries: usize,
+    pub(crate) adaptive_initial_limit: usize,
+    pub(crate) adaptive_max_limit: usize,
     backend: WalkerBackend,
     metrics_enabled: bool,
     metrics_log_path: String,
 }
 
-fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
+pub(crate) fn walker_runtime_settings(config: &RuntimeConfig) -> WalkerRuntimeSettings {
     let adaptive_max_limit = config
         .developer
         .walker_adaptive_max_limit
@@ -144,7 +144,7 @@ pub(super) fn resolve_entry_kind(path: &Path) -> Option<EntryKind> {
     }
 }
 
-fn classify_walker_entry(
+pub(crate) fn classify_walker_entry(
     path: &Path,
     file_type: FileType,
     include_files: bool,

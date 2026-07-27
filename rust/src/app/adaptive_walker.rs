@@ -14,24 +14,24 @@ const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(50);
 const CONTROL_SAMPLE_SIZE: usize = 64;
 const CONTROL_SAMPLE_STABILITY_PCT: u64 = 5;
 
-pub(super) struct AdaptiveWalkerEntry {
-    pub(super) path: PathBuf,
-    pub(super) file_type: fs::FileType,
+pub(crate) struct AdaptiveWalkerEntry {
+    pub(crate) path: PathBuf,
+    pub(crate) file_type: fs::FileType,
 }
 
 #[derive(Clone, Debug, Default)]
-pub(super) struct AdaptiveWalkerMetrics {
-    pub(super) dirs_read: usize,
-    pub(super) read_dir_errors: usize,
-    pub(super) max_inflight_read_dirs: usize,
-    pub(super) throttle_events: usize,
-    pub(super) adaptive_limit_min: usize,
-    pub(super) adaptive_limit_max: usize,
-    pub(super) adaptive_limit_final: usize,
-    pub(super) adaptive_limit_change_count: usize,
-    pub(super) adaptive_limit_avg: f64,
-    pub(super) read_dir_total_us: u128,
-    pub(super) read_dir_max_us: u128,
+pub(crate) struct AdaptiveWalkerMetrics {
+    pub(crate) dirs_read: usize,
+    pub(crate) read_dir_errors: usize,
+    pub(crate) max_inflight_read_dirs: usize,
+    pub(crate) throttle_events: usize,
+    pub(crate) adaptive_limit_min: usize,
+    pub(crate) adaptive_limit_max: usize,
+    pub(crate) adaptive_limit_final: usize,
+    pub(crate) adaptive_limit_change_count: usize,
+    pub(crate) adaptive_limit_avg: f64,
+    pub(crate) read_dir_total_us: u128,
+    pub(crate) read_dir_max_us: u128,
 }
 
 struct SharedState {
@@ -441,7 +441,7 @@ fn adaptive_entry_policy_from_attrs(windows_attrs: Option<u32>) -> AdaptiveEntry
     }
 }
 
-pub(super) fn walk_adaptive(
+pub(crate) fn walk_adaptive(
     root: &Path,
     max_workers: usize,
     initial_limit: usize,

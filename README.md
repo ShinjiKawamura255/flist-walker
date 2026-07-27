@@ -95,7 +95,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - Only the commonly useful toggles are documented here. Advanced keys are intentionally undocumented.
 - The file is plain JSON, so you can edit it directly.
 - If you delete the file, the next launch will recreate it from the current environment values.
-- `walker_max_entries` is also exposed here because it affects large-root scans.
+- `walker_max_entries` is also exposed here because it caps large-root Walker scans in both the GUI and TUI.
 - Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and query editing chords in both the GUI and TUI. It is enabled by default.
 - Set `tab_pin_moves_to_next_row` to `true` to move to the next result after `Tab`, `Shift+Tab`, or enabled `Ctrl+I` pin toggles in both the GUI and TUI. It is disabled by default.
 
@@ -183,6 +183,8 @@ cargo run -- --cli --interactive --root ..
 ```
 
 The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style editing in both the normal query and history filter. The contextual help reflects whether these shortcuts are enabled. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
+
+The TUI Walker uses the same adaptive traversal limits and `walker_max_entries` cap as the GUI. When the cap is reached, the status line reports the applied limit. FileList creation still builds a complete fresh Walker snapshot and is not truncated by the display-index cap.
 
 This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--saved-root` select its startup root; `--sort` sets its initial ordering, and `--no-ignore` starts with Ignore visibly disabled. Edit with `Left` / `Right` / `Home` / `End` / `Backspace` / `Delete` or paste; navigate with `Up` / `Down` / `PageUp` / `PageDown`; press `Tab` / `Shift+Tab` to pin results in output order and `Enter` to print them.
 

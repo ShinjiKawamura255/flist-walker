@@ -3,18 +3,21 @@ use crate::actions::{
     AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport,
     AuthorizedActionRequest,
 };
+use crate::app::adaptive_walker::{walk_adaptive, AdaptiveWalkerEntry};
+use crate::app::index_worker::{classify_walker_entry, walker_runtime_settings};
+use crate::app::walker_truncated_notice;
 use crate::entry::Entry;
 use crate::indexer::{
     build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
-    is_index_build_cancelled, plan_filelist_write_cancellable, walk_entries_stream_cancellable,
-    FileListWriteOptions, FileListWriteReport, FileListWriteStatus,
+    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
+    FileListWriteReport, FileListWriteStatus,
 };
 use crate::path_utils::output_path_bytes;
 use crate::persistence::{
     history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
 };
 use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
-use crate::runtime_config::current_runtime_config;
+use crate::runtime_config::{current_runtime_config, RuntimeConfig};
 use crate::search::{rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope};
 use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
 use anyhow::{Context, Result};
@@ -79,6 +82,11 @@ enum WorkerResponse {
         request_id: u64,
         root: PathBuf,
         has_root_filelist: bool,
+    },
+    IndexTruncated {
+        request_id: u64,
+        root: PathBuf,
+        limit: usize,
     },
     IndexFailed {
         request_id: u64,
@@ -388,6 +396,7 @@ struct TuiState {
     source_changed_on_apply: bool,
     next_index_request_id: u64,
     active_index_request: Option<(u64, PathBuf)>,
+    index_truncated_limit: Option<usize>,
     pinned: Vec<PathBuf>,
     emacs_keybindings_enabled: bool,
     tab_pin_moves_to_next_row: bool,
@@ -550,6 +559,7 @@ impl TuiState {
             source_changed_on_apply: false,
             next_index_request_id: 0,
             active_index_request: None,
+            index_truncated_limit: None,
             pinned: Vec::new(),
             emacs_keybindings_enabled: true,
             tab_pin_moves_to_next_row: false,
@@ -618,6 +628,7 @@ impl TuiState {
         self.next_index_request_id = self.next_index_request_id.wrapping_add(1);
         let request_id = self.next_index_request_id;
         self.active_index_request = Some((request_id, root.clone()));
+        self.index_truncated_limit = None;
         self.indexed = false;
         self.root_filelist_known = false;
         self.root_filelist_exists = false;
@@ -1021,8 +1032,21 @@ where
     result
 }
 
-fn process_index_request<C, S>(request: IndexRequest, should_cancel: &C, mut send: S)
+fn process_index_request<C, S>(request: IndexRequest, should_cancel: &C, send: S)
 where
+    C: Fn() -> bool,
+    S: FnMut(WorkerResponse),
+{
+    let config = current_runtime_config();
+    process_index_request_with_config(request, &config, should_cancel, send);
+}
+
+fn process_index_request_with_config<C, S>(
+    request: IndexRequest,
+    config: &RuntimeConfig,
+    should_cancel: &C,
+    mut send: S,
+) where
     C: Fn() -> bool,
     S: FnMut(WorkerResponse),
 {
@@ -1099,14 +1123,35 @@ where
             }
         }
     } else {
+        let settings = walker_runtime_settings(config);
+        let max_entries = settings.max_entries;
         let mut batch = Vec::with_capacity(256);
-        let result = walk_entries_stream_cancellable(
+        let mut emitted_entries = 0usize;
+        let mut truncated = false;
+        walk_adaptive(
             &request.root,
-            request.include_files,
-            request.include_dirs,
-            should_cancel,
-            |path| {
-                batch.push(path);
+            settings.adaptive_max_limit,
+            settings.adaptive_initial_limit,
+            |entry: AdaptiveWalkerEntry| {
+                if should_cancel() {
+                    return false;
+                }
+                if classify_walker_entry(
+                    &entry.path,
+                    entry.file_type,
+                    request.include_files,
+                    request.include_dirs,
+                )
+                .is_none()
+                {
+                    return true;
+                }
+                if emitted_entries >= max_entries {
+                    truncated = true;
+                    return false;
+                }
+                batch.push(entry.path);
+                emitted_entries = emitted_entries.saturating_add(1);
                 if batch.len() >= 256 && !should_cancel() {
                     send(WorkerResponse::IndexedBatch {
                         request_id: request.request_id,
@@ -1114,19 +1159,26 @@ where
                         entries: std::mem::take(&mut batch),
                     });
                 }
+                true
             },
+            should_cancel,
         );
-        match result {
-            Ok(()) => {
-                if !batch.is_empty() && !should_cancel() {
-                    send(WorkerResponse::IndexedBatch {
-                        request_id: request.request_id,
-                        root: request.root.clone(),
-                        entries: batch,
-                    });
-                }
-            }
-            Err(_) => return,
+        if should_cancel() {
+            return;
+        }
+        if !batch.is_empty() {
+            send(WorkerResponse::IndexedBatch {
+                request_id: request.request_id,
+                root: request.root.clone(),
+                entries: batch,
+            });
+        }
+        if truncated {
+            send(WorkerResponse::IndexTruncated {
+                request_id: request.request_id,
+                root: request.root.clone(),
+                limit: max_entries,
+            });
         }
     }
 
@@ -1976,12 +2028,28 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             state.indexed = true;
             state.root_filelist_known = true;
             state.root_filelist_exists = has_root_filelist;
-            state.status = format!("Ready | {}", state.current_options_summary());
+            state.status = state
+                .index_truncated_limit
+                .take()
+                .map(walker_truncated_notice)
+                .unwrap_or_else(|| format!("Ready | {}", state.current_options_summary()));
             state.last_query_change = Some(
                 Instant::now()
                     .checked_sub(INPUT_DEBOUNCE)
                     .unwrap_or_else(Instant::now),
             );
+            state.dirty = true;
+        }
+        WorkerResponse::IndexTruncated {
+            request_id,
+            root,
+            limit,
+        } => {
+            if state.active_index_request.as_ref() != Some(&(request_id, root)) {
+                return Ok(());
+            }
+            state.index_truncated_limit = Some(limit);
+            state.status = walker_truncated_notice(limit);
             state.dirty = true;
         }
         WorkerResponse::IndexFailed {
@@ -3557,6 +3625,7 @@ fn query_line_for_width(state: &TuiState, width: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime_config::{DeveloperRuntimeConfig, RuntimeConfig};
     use std::cell::RefCell;
     use std::fs;
     use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -3996,6 +4065,68 @@ mod tests {
             responses.as_slice(),
             [WorkerResponse::IndexFailed { request_id: 7, .. }]
         ));
+    }
+
+    #[test]
+    fn tc_162_tui_walker_uses_runtime_adaptive_limits_and_reports_cap_before_finish() {
+        let temp = TestTempDir::new("walker-runtime-limits");
+        for name in ["one.txt", "two.txt", "three.txt"] {
+            fs::write(temp.path.join(name), name).expect("write walker fixture");
+        }
+        let request = IndexRequest {
+            request_id: 8,
+            root: temp.path.clone(),
+            include_files: true,
+            include_dirs: false,
+            source: TuiSource::Walker,
+        };
+        let config = RuntimeConfig {
+            walker_max_entries: 1,
+            developer: DeveloperRuntimeConfig {
+                walker_adaptive_initial_limit: Some(1),
+                walker_adaptive_max_limit: Some(1),
+                ..DeveloperRuntimeConfig::default()
+            },
+            ..RuntimeConfig::default()
+        };
+        let mut responses = Vec::new();
+
+        process_index_request_with_config(request, &config, &|| false, |response| {
+            responses.push(response)
+        });
+
+        let emitted = responses
+            .iter()
+            .map(|response| match response {
+                WorkerResponse::IndexedBatch { entries, .. } => entries.len(),
+                _ => 0,
+            })
+            .sum::<usize>();
+        let truncated = responses
+            .iter()
+            .position(|response| {
+                matches!(
+                    response,
+                    WorkerResponse::IndexTruncated {
+                        request_id: 8,
+                        limit: 1,
+                        ..
+                    }
+                )
+            })
+            .expect("truncation response");
+        let finished = responses
+            .iter()
+            .position(|response| {
+                matches!(
+                    response,
+                    WorkerResponse::IndexedFinished { request_id: 8, .. }
+                )
+            })
+            .expect("finished response");
+
+        assert_eq!(emitted, 1);
+        assert!(truncated < finished);
     }
 
     #[test]
@@ -4708,6 +4839,16 @@ mod tests {
         state.active_index_request = Some((2, PathBuf::from("root-b")));
         apply_worker_response(
             &mut state,
+            WorkerResponse::IndexTruncated {
+                request_id: 1,
+                root: PathBuf::from("root-a"),
+                limit: 3,
+            },
+        )
+        .expect("stale truncation ignored");
+        assert_eq!(state.index_truncated_limit, None);
+        apply_worker_response(
+            &mut state,
             WorkerResponse::IndexedBatch {
                 request_id: 1,
                 root: PathBuf::from("root-a"),
@@ -4730,6 +4871,26 @@ mod tests {
             state.entries.snapshot()[0].as_ref(),
             [PathBuf::from("fresh.txt")]
         );
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::IndexTruncated {
+                request_id: 2,
+                root: PathBuf::from("root-b"),
+                limit: 5,
+            },
+        )
+        .expect("fresh truncation accepted");
+        apply_worker_response(
+            &mut state,
+            WorkerResponse::IndexedFinished {
+                request_id: 2,
+                root: PathBuf::from("root-b"),
+                has_root_filelist: false,
+            },
+        )
+        .expect("fresh finish accepted");
+        assert!(state.status.contains("Walker capped at 5 entries"));
+        assert_eq!(state.index_truncated_limit, None);
     }
 
     #[test]

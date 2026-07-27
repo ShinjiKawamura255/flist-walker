@@ -42,6 +42,7 @@
 - adaptive worker 上限が 1 の場合、adaptive backend は serial fast path を使い、channel / condvar / worker pool の制御 overhead を避ける。
 - `developer.walker_adaptive_initial_limit` と `developer.walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張しない。
 - adaptive backend は Windows 互換用の `Hidden + System + ReparsePoint` junction を候補から除外する。その他の reparse point directory は候補として残してもリンク先へは再帰せず、`follow_links(false)` 相当の Walker 境界を保つ。
+- GUI index worker と TUI index worker は `adaptive_walker`、walker runtime settings、entry classification を crate 内で共有する。TUI は設定済み上限へ到達したら残 batch、request identity 付き truncation、finished の順で応答し、最新 request の status にだけ上限 notice を残す。FileList 作成経路は表示 index から独立した完全 snapshot を維持する。
 - `developer.walker_metrics = true` の場合だけ、GUI index worker は Walker request の terminal point で summary metrics を 1 件出力する。per-entry/per-directory log は出さず、Indexing 完了・キャンセル・失敗後に継続ロギングしない。
 - `developer.walker_metrics_log_path` が空でない場合、上記 summary metrics を指定ファイルへ append する。これは Windows release GUI build のように stderr が取得しにくい環境での開発者向け計測導線とする。
 - 階層 FileList 展開は全ディレクトリ走査ではなく、読み込み済み候補から `FileList.txt` / `filelist.txt` の完全一致エントリを抽出して判定する。
