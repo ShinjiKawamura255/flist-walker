@@ -20,6 +20,9 @@ use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope}
 use crate::runtime_config::{current_runtime_config, RuntimeConfig};
 use crate::search::{rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope};
 use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
+#[cfg(not(test))]
+use crate::updater::check_for_update;
+use crate::updater::UpdateCandidate;
 use anyhow::{Context, Result};
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::event::{
@@ -48,6 +51,26 @@ const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
 const MAX_WORKER_RESPONSES_PER_TICK: usize = 64;
 const PREVIEW_MIN_WIDTH: u16 = 100;
 const PREVIEW_MIN_HEIGHT: u16 = 8;
+
+fn format_tui_update_notice(target_version: &str) -> String {
+    format!("Update available: v{target_version} — Run flistwalker --update after exiting")
+}
+
+#[cfg(not(test))]
+fn spawn_tui_update_check() -> mpsc::Receiver<Option<UpdateCandidate>> {
+    let (tx, rx) = mpsc::channel();
+    thread::spawn(move || {
+        let candidate = check_for_update().ok().flatten();
+        let _ = tx.send(candidate);
+    });
+    rx
+}
+
+#[cfg(test)]
+fn spawn_tui_update_check() -> mpsc::Receiver<Option<UpdateCandidate>> {
+    let (_tx, rx) = mpsc::channel();
+    rx
+}
 
 #[derive(Clone, Debug)]
 pub struct CliTuiOptions {
@@ -381,6 +404,7 @@ struct TuiState {
     selected: usize,
     offset: usize,
     status: String,
+    update_notice: Option<String>,
     dirty: bool,
     last_query_change: Option<Instant>,
     indexed: bool,
@@ -537,6 +561,7 @@ impl TuiState {
             selected: 0,
             offset: 0,
             status: "Indexing...".to_string(),
+            update_notice: None,
             dirty: true,
             last_query_change: Some(Instant::now()),
             indexed: false,
@@ -585,6 +610,13 @@ impl TuiState {
             pending_filelist_intent: None,
             next_action_request_id: 0,
             active_action_request: None,
+        }
+    }
+
+    fn status_line(&self) -> String {
+        match &self.update_notice {
+            Some(notice) => format!("{notice} | {}", self.status),
+            None => self.status.clone(),
         }
     }
 
@@ -1613,11 +1645,16 @@ fn run_event_loop<W: Write>(
     state.ignore_terms = Arc::new(options.ignore_terms.clone());
     state.history_enabled = history_enabled;
     state.history_entries = history_entries;
+    let update_rx = spawn_tui_update_check();
     if dispatch_current_index(&mut state, index_tx, index_freshness.as_ref()).is_err() {
         anyhow::bail!("index worker unavailable");
     }
     let mut filelist_worker: Option<ActiveFileListWorker> = None;
     loop {
+        if let Ok(Some(candidate)) = update_rx.try_recv() {
+            state.update_notice = Some(format_tui_update_notice(&candidate.target_version));
+            state.dirty = true;
+        }
         let filelist_result =
             filelist_worker
                 .as_ref()
@@ -3066,7 +3103,7 @@ fn draw<W: Write>(
             terminal_output,
             MoveTo(0, 2),
             SetForegroundColor(Color::DarkGrey),
-            Print(clip_to_width(&state.status, list_width as usize)),
+            Print(clip_to_width(&state.status_line(), list_width as usize)),
             ResetColor
         )?;
     }
@@ -3674,6 +3711,14 @@ fn query_line_for_width(state: &TuiState, width: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc_169_tui_update_notice_is_english_and_manual_only() {
+        assert_eq!(
+            format_tui_update_notice("0.20.0"),
+            "Update available: v0.20.0 — Run flistwalker --update after exiting"
+        );
+    }
     use crate::runtime_config::{DeveloperRuntimeConfig, RuntimeConfig};
     use std::cell::RefCell;
     use std::fs;

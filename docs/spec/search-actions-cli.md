@@ -83,6 +83,9 @@
 
 ## SP-006 CLI 契約
 ### Requirements
+- MUST: `--check-update` と `--update` は `--cli` を必要としない排他的な CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。
+- MUST: `--check-update` は更新を適用せず、最新版、更新候補、更新確認無効、または失敗を英語で報告する。更新候補がある場合は `flistwalker --update` を手動実行する案内を表示する。
+- MUST: `--update` は利用者による明示的な更新承認として扱う。Windows/Linux の自動更新対応 bundle だけを既存の検証・transaction 経路へ渡し、manual-only platform では release URL を英語で表示して非ゼロ終了する。
 - MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。
 - MUST: `--root` と `--limit` を受理し、既存の `--cli [QUERY] --root ... --limit ...` invocation を維持する。本仕様では subcommand を追加しない。
 - MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。
@@ -104,6 +107,7 @@
 - MUST: interactive CLI は `--root`、`--use-default-root`、`--saved-root` を起動 root として受理し、`--sort` を初期 sort、`--no-ignore` を初期 Ignore 無効状態として反映する。`--no-ignore` でも読み込んだ ignore terms は保持し、TUI で Ignore を再度有効化したときに再読込なしで適用する。batch 専用の `--progress` と `--fail-no-match` は interactive との組合せを引数エラーにする。
 - MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
 - MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、選択結果だけを terminal 復旧後に標準出力へ出力する。
+- MUST: interactive CLI は更新確認を入力ループ外で非同期実行し、新しい version を検知した場合に `Update available: v<version> — Run flistwalker --update after exiting` を英語で表示する。この通知は更新を開始せず、更新確認失敗も検索、入力、終了を妨げてはならない。
 - MUST: インタラクティブ CLI は query 入力、上下移動、`Enter` による選択結果の標準出力、`Esc` / `Ctrl-C` による終了を提供する。
 - MUST: `Esc` / `Ctrl-C` は worker cancellation を要求し、terminal 復旧後に選択結果を出力せず exit 130 とする。batch CLI の Ctrl-C も FileList/walker の cancellable index path を停止して exit 130 とする。
 - MUST: `Tab` は現在行の pin を切り替え、pin がある場合の `Enter` は現在の filter 結果に含まれない pin も pin 順で出力する。選択可能な結果も pin もない `Enter` は終了してはならない。

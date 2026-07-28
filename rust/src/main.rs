@@ -38,7 +38,9 @@ use flist_walker::search::{
     rank_search_results, SearchPrefixCache, SearchSortMode, SearchSortScope,
 };
 use flist_walker::updater::{
+    check_for_update, current_version_string, prepare_and_start_update,
     recover_interrupted_update_on_startup, run_internal_update_helper_if_requested,
+    self_update_disabled, UpdateCandidate, UpdateSupport,
 };
 use resvg::{tiny_skia, usvg};
 
@@ -129,6 +131,14 @@ struct Args {
     /// Query using fuzzy matching and the supported fzf-style operators.
     #[arg(default_value = "", value_name = "QUERY")]
     query: String,
+
+    /// Check for a newer release without installing it.
+    #[arg(long, default_value_t = false, exclusive = true)]
+    check_update: bool,
+
+    /// Check for and install the latest supported release.
+    #[arg(long, default_value_t = false, exclusive = true)]
+    update: bool,
 
     /// Root directory to search (defaults to the current directory).
     #[arg(
@@ -288,6 +298,55 @@ struct Args {
         ]
     )]
     list_saved_roots: bool,
+}
+
+fn update_available_message(candidate: &UpdateCandidate) -> String {
+    format!(
+        "Update available: v{} (current: v{})",
+        candidate.target_version, candidate.current_version
+    )
+}
+
+fn run_update_command(install: bool) -> Result<ExitCode> {
+    if self_update_disabled() {
+        if install {
+            eprintln!("Automatic updates are disabled.");
+            return Ok(ExitCode::from(1));
+        }
+        println!("Update checks are disabled.");
+        return Ok(ExitCode::SUCCESS);
+    }
+
+    if install {
+        if let Some(notice) = recover_interrupted_update_on_startup()? {
+            eprintln!("{notice}");
+        }
+    }
+
+    let Some(candidate) = check_for_update().context("Update check failed")? else {
+        println!("FlistWalker is up to date (v{}).", current_version_string());
+        return Ok(ExitCode::SUCCESS);
+    };
+
+    println!("{}", update_available_message(&candidate));
+    if !install {
+        println!("Run flistwalker --update to install it.");
+        return Ok(ExitCode::SUCCESS);
+    }
+
+    match &candidate.support {
+        UpdateSupport::Auto => {
+            prepare_and_start_update(&candidate, &std::env::current_exe()?)
+                .context("Update installation failed")?;
+            println!("Update started. FlistWalker will restart when installation is complete.");
+            Ok(ExitCode::SUCCESS)
+        }
+        UpdateSupport::ManualOnly { message } => {
+            eprintln!("Automatic update is unavailable: {message}");
+            eprintln!("Download the release manually: {}", candidate.release_url);
+            Ok(ExitCode::from(1))
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -993,6 +1052,9 @@ fn main() -> Result<ExitCode> {
     }
 
     let args = Args::parse();
+    if args.check_update || args.update {
+        return run_update_command(args.update);
+    }
     if args.cli && !args.interactive {
         if let Err(error) = validate_batch_action_args(&args) {
             eprintln!("error: {error}");
