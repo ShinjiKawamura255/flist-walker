@@ -5,12 +5,13 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 ## Merge contract
 
 - すべての変更は PR にし、required check は `CI Gate` と `CI Policy Guardian` とする。
-- required approving review は 0 件とする。PR を作成した agent は `gh pr merge --auto --merge` 相当で PR ごとの auto-merge を明示登録する。
+- required approving review は 0 件とする。PR を作成した agent は `gh pr merge --auto --rebase --delete-branch` 相当を1回だけ登録する。merge commit と squash merge は許可せず、`master` は linear history を維持する。
 - `CI Gate` は change detection、CI policy、Windows/macOS/Linux test/build、clippy/coverage、および条件付き Cargo audit を集約する。Cargo 関連変更で audit が skipped の場合は gate を失敗させ、非 Cargo 変更での skipped だけを正常とする。
 - `CI Policy Guardian` は `pull_request_target` で default branch の trusted checker を checkoutし、PR head の workflow/pin/Dependabot policy blob だけを GitHub API から一時領域へ取得して data として検査する。PR head の checkout/実行、secret、cache、artifact、write permission は使用しない。
 - workflow一式、Dependabot設定、toolchain定義、audit exception設定、checker本体とtestはfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更やaccepted advisory変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
-- force push、branch deletion、直接 push、admin bypass で gate を回避してはならない。
-- Dependabot PR は CI 成功後に `.github/workflows/dependabot-auto-merge.yml` が同じ auto-merge を登録する。
+- ローカルの意味あるコミット境界・順序・message・author は rebase merge で保持する。GitHub が新しい commit SHA と committer metadata を生成することは許容する。
+- feature branch は任意のタイミングで push してよい。履歴整理が必要な場合の force-with-lease は非保護 feature branch に限り、`master` の force push、branch deletion、直接 push、admin bypass で gate を回避してはならない。merge 済み remote feature branch は自動削除する。
+- Dependabot PR は CI 成功後に `.github/workflows/dependabot-auto-merge.yml` が同じ rebase auto-merge を1回だけ登録する。
 - 失敗を再実行だけで消してはならない。runner/network/cache など外部一時障害と判断できる証跡がある場合に限り、run URL と判断を残して再実行する。
 
 ## Version-addressed required environment
@@ -50,8 +51,9 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 
 - `CI Gate` / `CI Policy Guardian` failure は最小の failed job とログを特定し、product regression、policy violation、security advisory、hosted image drift、external transient に分類する。
 - version promotion が失敗した場合は candidate PR を閉じ、required pin を維持する。既に merge 済みなら、直前の version table と full action SHA へ戻す revert PR を作る。
-- branch protection 変更前は現行設定を取得し、変更後は PR requirement、approval count、required context/source、force-push/deletion、auto-merge を read back する。
+- branch protection 変更前は repository 設定と protection 全体を取得し、変更後は merge method、linear history、feature branch自動削除、PR requirement、approval count、required context/source、force-push/deletion、auto-merge、および非対象フィールドを read back する。
 - repository policy の rollout record はこの文書へ残す。record には変更前後の要点、protection/ruleset identifier、旧 auto-merge 値、復元方法、protected auto-merge PR を含める。
+- trusted policy の構造変更を戻す場合も、reverse head の独立レビュー、`CI Gate` 成功、競合PRなし、base/head不変を確認する。`CI Policy Guardian` をrequiredから一時的に外してrevert PRをrebase mergeし、直ちにGuardianと変更前のrepository/protection payloadを復元して全項目をread backする。
 
 ## Repository policy rollout record (2026-07-28)
 

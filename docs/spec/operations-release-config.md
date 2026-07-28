@@ -3,7 +3,7 @@
 ## SP-012 CI / Release Security Hygiene
 ### Requirements
 - MUST: required CI は Windows/macOS/Linux の release 対象 OS を version-addressed runner 世代、固定 Rust、full SHA Action、固定 CI tool version で継続検証し、hosted image version を run evidence に残す。番号付き hosted runner image 内の package drift は残存リスクとして扱う。
-- MUST: `master` 変更は PR と required `CI Gate` / `CI Policy Guardian` を経由し、required approving review は 0 件とする。PR ごとの auto-merge を明示登録し、直接 push、force push、branch deletion、admin bypass で gate を回避してはならない。
+- MUST: `master` 変更は PR と required `CI Gate` / `CI Policy Guardian` を経由し、required approving review は 0 件とする。PR ごとに rebase auto-merge と merge後branch削除を1回だけ登録し、merge commit と squash merge を禁止して linear history を要求する。ローカルcommitの境界・順序・message・authorは保持し、SHAとcommitter metadataの変更は許容する。feature branchは自由にpushでき、force-with-leaseは非保護feature branchに限る。`master` の直接push、force push、branch deletion、admin bypassでgateを回避してはならない。
 - MUST: `CI Gate` は CI policy、release 対象 OS test/build、clippy/coverage を集約する。任意階層の `Cargo.toml` / `Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/test の変更では `cargo audit` も集約し、対象変更で audit が skipped の場合は失敗しなければならない。非対象変更の skipped は正常としてよい。
 - MUST: accepted vulnerability advisory はcargo-auditがproject-local configとして自動読込する`rust/.cargo/audit.toml`に限定し、根拠・owner・review cadence・再評価 trigger を `docs/OSS_COMPLIANCE.md` に保持する。unmaintained warning は出力上で可視のままにする。
 - MUST: workflow、Dependabot設定、toolchain、audit exception、CI policy checker/testはdefault branch版をimmutable trusted setとし、通常PRではrunner/action/tool version pinだけを変更可能にする。accepted advisoryを含む構造変更は設定snapshot、独立agent review、guardian requirementの一時解除と即時復元、protected-route再検証を伴うcontrolled rolloutでのみ行う。

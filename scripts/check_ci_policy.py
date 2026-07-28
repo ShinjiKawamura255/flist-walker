@@ -241,11 +241,34 @@ def validate_dependabot_contract(text: str) -> list[str]:
         "pull request event": "github.event.workflow_run.event == 'pull_request'",
         "successful CI conclusion": "github.event.workflow_run.conclusion == 'success'",
         "trusted Dependabot actor": "github.event.workflow_run.actor.login == 'dependabot[bot]'",
-        "auto-merge without bypass": 'gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --merge',
     }
     for label, token in required_tokens.items():
         if token not in text:
             violations.append(f"dependabot-auto-merge.yml: missing {label}")
+    expected = (
+        'gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" '
+        "--auto --rebase --delete-branch"
+    )
+    merge_commands = [
+        line[line.index("gh pr merge") :].strip()
+        for line in text.splitlines()
+        if "gh pr merge" in line
+    ]
+    if len(merge_commands) != 1:
+        violations.append(
+            "dependabot-auto-merge.yml: exactly one gh pr merge command is required"
+        )
+    if merge_commands != [expected]:
+        violations.append(
+            "dependabot-auto-merge.yml: missing exact rebase auto-merge command"
+        )
+    if any(
+        re.search(r"(?:^|\s)--(?:merge|squash)(?:\s|$)", command)
+        for command in merge_commands
+    ):
+        violations.append(
+            "dependabot-auto-merge.yml: merge and squash modes are forbidden"
+        )
     return violations
 
 

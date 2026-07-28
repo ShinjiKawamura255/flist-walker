@@ -5,7 +5,7 @@
 - NFR-002: 例外時はユーザ向けに原因を表示し、非ゼロ終了コードを返すこと。
 - NFR-003: モジュールはテスト可能に分離され、主要機能に unit test を持つこと。query の operator truth、score、visibility、highlight span は共有 evaluator で検証可能とし、公開 adapter 間の互換性を characterization test で固定する。
 - NFR-004: GUI の主要フロー（検索、選択、アクション、再読込）は回帰手順を定義すること。
-- NFR-005: セキュリティ衛生と再現性のため、required CI は version-addressed な runner 世代・Rust・Action・CI tool で release 対象 OS を継続検証し、Cargo 関連変更の依存脆弱性検査を merge gate に含めなければならない。時間経過で変化する advisory と latest 環境互換性は別の定期 workflow で観測し、失敗を追跡可能にしなければならない。
+- NFR-005: セキュリティ衛生と再現性のため、required CI は version-addressed な runner 世代・Rust・Action・CI tool で release 対象 OS を継続検証し、Cargo 関連変更の依存脆弱性検査を merge gate に含めなければならない。時間経過で変化する advisory と latest 環境互換性は別の定期 workflow で観測し、失敗を追跡可能にしなければならない。protected `master` は linear history とし、machine PR は意味ある複数commitの境界・順序・message・authorを保持してrebase mergeされなければならない。
 - NFR-006: ソート追加後もインデクシング速度は既存実装より劣化させないこと。
 - NFR-007: 更新確認・ダウンロードは UI スレッドをブロックせず、失敗時も通常検索操作を継続可能でなければならない。
 - NFR-008: GUI の action、kind resolution、indexing のワーカー実行は同時実行数と待機件数に固定上限を持ち、UI スレッドをブロックせず、過負荷・切断・stale・shutdown の各経路で要求を終端状態へ収束させなければならない。

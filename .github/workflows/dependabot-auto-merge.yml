@@ -28,9 +28,9 @@ jobs:
           echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
           echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Register auto-merge without bypass
+      - name: Register rebase auto-merge without bypass
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
-        run: gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --merge
+        run: gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --auto --rebase --delete-branch

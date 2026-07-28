@@ -84,6 +84,29 @@ jobs:
         self.assertTrue(any("trusted Dependabot actor" in item for item in violations))
         self.assertTrue(any("successful CI conclusion" in item for item in violations))
 
+    def test_dependabot_contract_requires_exact_rebase_auto_merge(self) -> None:
+        workflow_path = ROOT / ".github" / "workflows" / "dependabot-auto-merge.yml"
+        current = workflow_path.read_text(encoding="utf-8")
+        rebase = current.replace(
+            "--auto --merge", "--auto --rebase --delete-branch"
+        )
+        self.assertEqual([], POLICY.validate_dependabot_contract(rebase))
+
+        for disallowed in ("--merge", "--squash"):
+            with self.subTest(disallowed=disallowed):
+                candidate = rebase.replace(
+                    "--rebase --delete-branch", f"{disallowed} --delete-branch"
+                )
+                violations = POLICY.validate_dependabot_contract(candidate)
+                self.assertTrue(any("rebase auto-merge" in item for item in violations))
+
+        duplicate = rebase + (
+            '\n      - run: gh pr merge "$PR_NUMBER" '
+            '--repo "$GITHUB_REPOSITORY" --auto --rebase --delete-branch\n'
+        )
+        violations = POLICY.validate_dependabot_contract(duplicate)
+        self.assertTrue(any("exactly one" in item for item in violations))
+
     def test_trusted_policy_update_allows_only_version_pins(self) -> None:
         checker = MODULE_PATH.read_text(encoding="utf-8")
         self.assertEqual(
