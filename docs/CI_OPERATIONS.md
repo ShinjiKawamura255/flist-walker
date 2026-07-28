@@ -86,3 +86,11 @@ run `30289068993`では、同一treeのPR runが成功した後にmacOSだけ`ca
 [PR #13](https://github.com/ShinjiKawamura255/flist-walker/pull/13)でaudit exceptionとCI policy testをimmutable trusted setへ追加した。現行guardianはworkflow/checkerの構造変更を期待どおりfail-closedにし、run `30293703506`は失敗した。独立agent reviewで指摘0件、head `d99a550`の`CI Gate` run `30293703807`成功を確認してから、required checksを一時的に`CI Gate`だけへ変更した。auto-mergeで`fbce654`へmerge後、直ちに`CI Policy Guardian`を復元した。
 
 復元後のread-backはrequired checksが`CI Gate` / `CI Policy Guardian`（ともにapp ID `15368`）、strict `true`、approval `0`、administrators適用、force-push/deletion禁止、repository auto-merge有効である。新guardianのprotected-route証跡は[PR #14](https://github.com/ShinjiKawamura255/flist-walker/pull/14)とし、最終checkとmerge outcomeはPR recordを正本とする。
+
+## Rebase-only rollout record (2026-07-28)
+
+変更前snapshotではmerge commit / squash / rebaseが有効、merge済みbranch自動削除とlinear historyが無効だった。[PR #17](https://github.com/ShinjiKawamura255/flist-walker/pull/17)のexact head `33e213a`を独立reviewして`CI Gate` run `30363440720`の成功とGuardianの期待どおりのfail-closedを確認後、repositoryをrebase-only、merge済みbranch自動削除有効、`master`をlinear history必須へ変更した。required checkを一時的に`CI Gate`だけへ限定してreview済みheadをrebase mergeし、直ちに`CI Gate` / `CI Policy Guardian`（app ID `15368`、strict `true`）を復元した。
+
+完全なbefore/after read-backで、repository設定差分はmerge commit無効、squash無効、merge済みbranch自動削除有効（およびmergeに伴う`pushed_at` / `size`）だけ、protection差分はlinear history有効だけだった。approval `0`、administrators適用、master force-push/deletion禁止、signature/conversation/restriction/lock/block/fork設定は不変である。PR #17のremote branchは自動削除され、2つのsource commitは順序とtreeを保った1-parent commitとして`master`へ追加された。
+
+両required checkを通常状態で通すprotected-route証跡は[PR #18](https://github.com/ShinjiKawamura255/flist-walker/pull/18)とする。release note補完と本rollout recordを別commitにし、rebase auto-merge後のcommit数・順序・message・author・patch/tree対応・parent数とbranch自動削除を検証する。最終checkとmerge outcomeはPR recordを正本とする。
