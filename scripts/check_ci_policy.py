@@ -249,22 +249,20 @@ def validate_dependabot_contract(text: str) -> list[str]:
         'gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" '
         "--auto --rebase --delete-branch"
     )
-    merge_commands = [
-        line[line.index("gh pr merge") :].strip()
-        for line in text.splitlines()
-        if "gh pr merge" in line
-    ]
-    if len(merge_commands) != 1:
+    merge_mentions = [line for line in text.splitlines() if "gh pr merge" in line]
+    exact_pattern = re.compile(rf"^\s*run:\s+{re.escape(expected)}\s*$")
+    exact_commands = [line for line in merge_mentions if exact_pattern.fullmatch(line)]
+    if len(merge_mentions) != 1 or len(exact_commands) != 1:
         violations.append(
             "dependabot-auto-merge.yml: exactly one gh pr merge command is required"
         )
-    if merge_commands != [expected]:
+    if len(exact_commands) != 1:
         violations.append(
             "dependabot-auto-merge.yml: missing exact rebase auto-merge command"
         )
     if any(
-        re.search(r"(?:^|\s)--(?:merge|squash)(?:\s|$)", command)
-        for command in merge_commands
+        re.search(r"(?:^|\s)--(?:merge|squash)(?:\s|$)", line)
+        for line in merge_mentions
     ):
         violations.append(
             "dependabot-auto-merge.yml: merge and squash modes are forbidden"
