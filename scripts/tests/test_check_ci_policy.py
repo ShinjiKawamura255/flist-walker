@@ -107,6 +107,19 @@ jobs:
         violations = POLICY.validate_dependabot_contract(duplicate)
         self.assertTrue(any("exactly one" in item for item in violations))
 
+        exact_line = (
+            '        run: gh pr merge "$PR_NUMBER" '
+            '--repo "$GITHUB_REPOSITORY" --auto --rebase --delete-branch'
+        )
+        for lookalike in (
+            exact_line.replace("run: gh", "run: echo gh"),
+            exact_line.replace("run: gh", "# gh"),
+        ):
+            with self.subTest(lookalike=lookalike.strip()):
+                candidate = rebase.replace(exact_line, lookalike)
+                violations = POLICY.validate_dependabot_contract(candidate)
+                self.assertTrue(any("rebase auto-merge" in item for item in violations))
+
     def test_trusted_policy_update_allows_only_version_pins(self) -> None:
         checker = MODULE_PATH.read_text(encoding="utf-8")
         self.assertEqual(
