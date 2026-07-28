@@ -102,6 +102,50 @@ fn cli_prints_version_with_short_flag() {
 }
 
 #[test]
+fn tc_169_update_commands_are_exclusive_and_documented_in_english() {
+    let help = cli_command("update-help")
+        .arg("--help")
+        .output()
+        .expect("run help");
+    assert!(help.status.success());
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    assert!(stdout.contains("--check-update"));
+    assert!(stdout.contains("Check for a newer release without installing it"));
+    assert!(stdout.contains("--update"));
+    assert!(stdout.contains("Check for and install the latest supported release"));
+
+    let conflict = cli_command("update-conflict")
+        .args(["--update", "--cli"])
+        .output()
+        .expect("run conflicting update command");
+    assert_eq!(conflict.status.code(), Some(2));
+
+    let disabled_check = cli_command("update-check-disabled")
+        .env("FLISTWALKER_DISABLE_SELF_UPDATE", "1")
+        .arg("--check-update")
+        .output()
+        .expect("run disabled update check");
+    assert!(disabled_check.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&disabled_check.stdout).trim(),
+        "Update checks are disabled."
+    );
+    assert!(disabled_check.stderr.is_empty());
+
+    let disabled_update = cli_command("update-install-disabled")
+        .env("FLISTWALKER_DISABLE_SELF_UPDATE", "1")
+        .arg("--update")
+        .output()
+        .expect("run disabled update install");
+    assert_eq!(disabled_update.status.code(), Some(1));
+    assert!(disabled_update.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&disabled_update.stderr).trim(),
+        "Automatic updates are disabled."
+    );
+}
+
+#[test]
 fn cli_outputs_at_most_limit_lines_for_empty_query() {
     let root = test_root("limit");
     fs::create_dir_all(&root).expect("create root");

@@ -175,6 +175,8 @@
 - GitHub Releases API の latest endpoint から `tag_name` / asset 名 / `browser_download_url` を取得し、現在 version と比較する。
 - asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary、対応する `*.README.txt` / `*.LICENSE.txt` / `*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS` / `SHA256SUMS.sig` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
+- TUI は専用の短命 update-check worker を起動し、candidate だけを channel で event loop へ渡す。event loop は candidate を永続的な英語 status notice に変換するだけで、download/apply を dispatch しない。check error と up-to-date は通常の TUI state を変更しない。
+- `--check-update` / `--update` は GUI/TUI dispatch より前の排他的 CLI 分岐で処理する。`--update` の明示指定だけが既存の `prepare_and_start_update` を呼び、manual-only candidate は release URL を返して apply しない。
 - 起動時の update check 失敗は worker からエラー文字列つきで返し、GUI 側は通常操作を継続したまま軽量ダイアログで理由を表示する。利用者が「今後この種の起動時エラーを表示しない」を選んだ場合は UI state へ永続化し、次回以降の startup check failure dialog を抑止する。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
 - restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。

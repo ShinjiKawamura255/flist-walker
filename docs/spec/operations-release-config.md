@@ -22,6 +22,8 @@
 ## SP-014 起動時自己更新
 ### Requirements
 - MUST: GUI 起動時に GitHub Releases の最新 version 確認を非同期 worker で実行し、UI スレッドをブロックしてはならない。
+- MUST: TUI 起動時にも最新 version 確認を非同期 worker で実行し、入力ループをブロックしてはならない。candidate の受信は英語の手動更新案内だけを表示し、download/apply を開始してはならない。
+- MUST: CLI からの更新適用は利用者が排他的な `--update` を明示した場合だけ開始し、`--check-update` と TUI 通知は installation state を変更してはならない。
 - MUST: 現在 version より新しい release が存在する場合、利用者へ更新承認ダイアログを表示する。
 - MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` / `SHA256SUMS.sig` に限定する。
 - MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.LICENSE.txt` と `*.THIRD_PARTY_NOTICES.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` として配置しなければならない。
@@ -55,7 +57,7 @@
 - SHOULD: 手動試験のために、更新 feed URL 差し替え、同一 version 許可、downgrade 許可を環境変数で上書きできる。
 
 ### Preconditions / Postconditions
-- Preconditions: GUI モードで起動し、ネットワーク経由で GitHub Releases へ到達可能。
+- Preconditions: GUI/TUI の自動確認、または明示的な CLI 更新操作で起動し、ネットワーク経由で GitHub Releases へ到達可能。
 - Postconditions: 新版が無ければ何も変更せず、新版があれば承認後に検証済み bundle 全体が置換・再起動される。失敗または中断時は検証済み旧 bundle へ戻るか、完全な新 bundle を保持するか、曖昧状態を変更せず停止する。
 
 ### Edge / Error
