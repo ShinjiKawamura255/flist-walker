@@ -19,10 +19,34 @@
 -
 
 ### Security
-- `anyhow`、`crossbeam-epoch`、`memmap2` を audit 修正版へ更新し、残る Wayland build-time `quick-xml` advisory と `ttf-parser` warning の受容条件を `docs/OSS_COMPLIANCE.md` に記録した。
+-
 
 ### Known issues
 -
+
+## [0.19.1] - 2026-07-28
+### Added
+- interactive TUI の runtime shortcut 設定を適用し、Emacs キーバインド時の履歴とヘルプ表示も設定に合わせるようにした。
+
+### Changed
+- TUI の walker 初期化を runtime config の adaptive walker 設定へ統一した。
+- CI の policy guardian と監査ポリシーを追加し、依存 Action を更新して release/CI 経路の保護を強化した。
+
+### Fixed
+- CLI の early mode より前に runtime config を初期化し、TUI の indexing と応答性を安定化した。
+- macOS CI のホスト速度に依存するテストを安定化した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- trusted-base の CI Policy Guardian が監査対象の workflow policy を検査し、監査を不正に skip する変更を fail-closed で検出する。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.19.0] - 2026-07-26
 ### Added
@@ -1597,7 +1621,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.1...HEAD
+[0.19.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.14...v0.19.0
 [0.18.14]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...v0.18.14
 [0.18.13]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.12...v0.18.13
