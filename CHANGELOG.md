@@ -30,7 +30,7 @@
 
 ### Changed
 - TUI の walker 初期化を runtime config の adaptive walker 設定へ統一した。
-- CI の policy guardian と監査ポリシーを追加し、依存 Action を更新して release/CI 経路の保護を強化した。
+- CI の policy guardian と監査ポリシーを追加し、依存 Action、`regex` 1.13.1、`crossterm` 0.29.0 を更新して release/CI 経路の保護と依存関係を最新化した。
 
 ### Fixed
 - CLI の early mode より前に runtime config を初期化し、TUI の indexing と応答性を安定化した。
