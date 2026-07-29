@@ -29,9 +29,12 @@ use crossterm::event::{
     self, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEvent, KeyEventKind,
     KeyModifiers,
 };
-use crossterm::execute;
 use crossterm::style::{Attribute, Color, Print, ResetColor, SetAttribute, SetForegroundColor};
-use crossterm::terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    self, BeginSynchronizedUpdate, Clear, ClearType, EndSynchronizedUpdate, EnterAlternateScreen,
+    LeaveAlternateScreen,
+};
+use crossterm::{execute, queue};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use std::collections::HashSet;
@@ -3062,6 +3065,27 @@ fn search(
 fn draw<W: Write>(
     terminal_output: &mut W,
     state: &mut TuiState,
+    options: &CliTuiOptions,
+) -> Result<()> {
+    let mut frame = Vec::new();
+    render_frame(&mut frame, state, options)?;
+    write_synchronized_frame(terminal_output, &frame)?;
+    Ok(())
+}
+
+fn write_synchronized_frame<W: Write>(terminal_output: &mut W, frame: &[u8]) -> io::Result<()> {
+    queue!(terminal_output, BeginSynchronizedUpdate)?;
+    let frame_result = terminal_output.write_all(frame);
+    let end_result = queue!(terminal_output, EndSynchronizedUpdate);
+    let flush_result = terminal_output.flush();
+    frame_result?;
+    end_result?;
+    flush_result
+}
+
+fn render_frame<W: Write>(
+    terminal_output: &mut W,
+    state: &mut TuiState,
     _options: &CliTuiOptions,
 ) -> Result<()> {
     let (width, height) = terminal::size()?;
@@ -3215,7 +3239,6 @@ fn draw<W: Write>(
             height,
         )?;
     }
-    terminal_output.flush()?;
     Ok(())
 }
 
@@ -5693,6 +5716,23 @@ mod tests {
         assert!(rendered.contains("History"));
         assert!(rendered.contains('�'));
         assert!(!rendered.contains("\u{1b}x"));
+    }
+
+    #[test]
+    fn tc_162_tui_frame_is_wrapped_in_synchronized_terminal_update() {
+        let mut output = Vec::new();
+
+        write_synchronized_frame(&mut output, b"frame").expect("write synchronized frame");
+
+        let rendered = String::from_utf8(output).expect("terminal output is UTF-8");
+        let begin = rendered
+            .find("\x1b[?2026h")
+            .expect("begin synchronized update");
+        let frame = rendered.find("frame").expect("frame payload");
+        let end = rendered
+            .find("\x1b[?2026l")
+            .expect("end synchronized update");
+        assert!(begin < frame && frame < end, "{rendered:?}");
     }
 
     #[test]

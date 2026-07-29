@@ -11,7 +11,7 @@
 - NFR-008: GUI の action、kind resolution、indexing のワーカー実行は同時実行数と待機件数に固定上限を持ち、UI スレッドをブロックせず、過負荷・切断・stale・shutdown の各経路で要求を終端状態へ収束させなければならない。
 - NFR-009: GUI の通常のタブ切替は、active tab の大規模な index、pending queue、kind resolution、incremental result、search result を要素単位で複製せず所有権移動で遷移し、候補件数に比例する同期コピーによって UI 入力応答性を損なってはならない。
 - NFR-010: 自己更新の release metadata、署名済み manifest、署名、binary、sidecar は接続・無通信・要求・全体時間と decoded byte 数に固定上限を持ち、署名済み manifest を信頼する前に配布 asset を取得してはならない。失敗時はこの要求が作成した partial staging だけを削除し、既存 path や別 transaction の証跡を変更してはならない。
-- NFR-011: interactive CLI の index/search は入力ループをブロックせず、同一 query を含む古い応答を request identity で破棄し、結果更新中も利用者の選択を可能な限り維持しなければならない。worker 応答の反映は iteration ごとの固定件数上限を持ち、増分候補の追加で既存候補 path 全件を入力ループ上で複製してはならない。正常終了、cancel、setup 途中失敗、描画/入力エラー、unwind の各経路で terminal mode・alternate screen・cursor・bracketed paste を開始前相当へ復旧しなければならない。
+- NFR-011: interactive CLI の index/search は入力ループをブロックせず、同一 query を含む古い応答を request identity で破棄し、結果更新中も利用者の選択を可能な限り維持しなければならない。worker 応答の反映は iteration ごとの固定件数上限を持ち、増分候補の追加で既存候補 path 全件を入力ループ上で複製してはならない。端末描画はフレーム途中の全画面消去状態を利用者へ表示してはならない。正常終了、cancel、setup 途中失敗、描画/入力エラー、unwind の各経路で terminal mode・alternate screen・cursor・bracketed paste を開始前相当へ復旧しなければならない。
 - NFR-012: FileList transaction と history persistence は UI frame / terminal event loop をブロックせず、FileList の未 settle な worker は selection 出力・root 切替・terminal 終了より先に完了または失敗として確定しなければならない。
 
 ### Constraints (CON)
