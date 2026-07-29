@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.20.0] - 2026-07-29
+### Added
+- batch CLI でコマンドを安全に複数実行できるようにし、引数境界を保った実行とエラー表示を提供した。
+- CLI と interactive TUI に更新通知を追加した。
+
+### Changed
+- TUI のフレーム描画を調整し、入力中の描画応答性を改善した。
+- Dependabot の rebase auto-merge と CI policy の検査を強化した。
+
+### Fixed
+- なし。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- CI policy の merge command 検査を厳格化し、保護ブランチ運用の迂回を防止した。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.19.1] - 2026-07-28
 ### Added
 - interactive TUI の runtime shortcut 設定を適用し、Emacs キーバインド時の履歴とヘルプ表示も設定に合わせるようにした。
