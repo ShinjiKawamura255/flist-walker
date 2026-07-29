@@ -55,6 +55,12 @@
 - self-update 後も配置先ディレクトリに `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が残る必要がある。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## CLI argument-limit dependency review (2026-07-29)
+
+- Direct dependency: Unix targets add `libc 0.2` (MIT OR Apache-2.0) to query `_SC_ARG_MAX`; the crate was already present in the resolved transitive graph, so no new package or license family enters release artifacts.
+- `THIRD_PARTY_NOTICES.txt` now lists `libc` in the direct dependency summary. No additional notice or copyleft condition applies.
+- Packaging is unchanged; existing archive, standalone sidecar, macOS bundle, and self-update `LICENSE` / `THIRD_PARTY_NOTICES` paths remain authoritative and require verification through the normal VM-005 checks.
+
 ## CLI terminal dependency review (2026-07-26)
 
 - Direct dependencies: `crossterm 0.28.1` (MIT, <https://github.com/crossterm-rs/crossterm>) and `unicode-width 0.1.14` (MIT OR Apache-2.0, <https://github.com/unicode-rs/unicode-width>).

@@ -92,6 +92,12 @@
 - MUST: CLI の `--limit` は実効値を追加で 1000 件へ丸めてはならない。
 - MUST: batch CLI は `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` を受理し、既定を `score` とする。全 match set を sort してから `limit` を適用し、`limit=0` は target 0 件とする。
 - MUST: batch CLI は `--action print|open|reveal` を受理し、既定を `print` とする。`--action-all` は `open` / `reveal` のみで有効とし、non-print action の post-sort/post-limit target が複数で `--action-all` が無い場合は backend 呼び出し前に拒否する。既定 target は 1 件、`--action-all` は全 target である。
+- MUST: batch CLI と interactive CLI は `-x` / `--exec COMMAND... {} ...` を受理し、固定 command より後の独立した `{}` 引数を正確に1個要求する。埋め込み `{}`、placeholder 不在、複数 placeholder は runtime config bootstrap と index/action dispatch より前に usage error とする。`-x` は残りの command template を受理するため、FlistWalker option はその前に置く。
+- MUST: exec mode は post-sort/post-limit の全結果、または terminal 復旧後に確定した全選択を、各 path が独立した正規化済み絶対 argv となるよう `{}` の位置へ展開する。shell を暗黙起動せず、結果0件では command を1回も起動しない。
+- MUST: Windows では標準 process API が暗黙に `cmd.exe` を介する `.bat` / `.cmd` program の直接指定を拒否し、`cmd.exe /C script.cmd ... {}` のような明示指定だけを shell semantics への opt-in として許可する。
+- MUST: exec mode は inherited environment と固定 argv の使用量を差し引いた実行環境の command-line 上限まで path を順序どおり貪欲にまとめ、batch を直列実行する。起動時に OS が argument-list-too-long を返した batch は順序を保って細分化し、単一 path でも起動できない場合だけ失敗とする。`--exec-max-args N` は1 batch の path 数へ追加上限を設定し、`--dry-run` は認可と batch 計画だけを行って command を起動せず、対象数と batch 数を stderr へ出力する。
+- MUST: exec mode は全 target を root 配下として事前認可し、各 batch 起動直前に再認可する。spawn failure、child 非ゼロ、認可変更、cancel を観測した場合は後続 batch を起動せず、完了 path 数と全 path 数を stderr へ報告する。success/dry-run は exit 0、失敗は exit 1、cancel は exit 130 とする。
+- MUST: exec mode は `--absolute`、`--print0`、`--action open|reveal`、`--action-all` と同時指定できない。`--fail-no-match` は exec の結果0件にも既存どおり適用する。
 - MUST: `print` は既存 path-only stdout framing を維持する。non-print action は stdout に result path を書かず、progress、diagnostic、partial summary を stderr に書く。non-print action と `--absolute` または `--print0` の組合せは argument error とする。
 - MUST: action/root option の argument または組合せ error は exit 2、authorization/executor/partial failure は exit 1、cancellation は exit 130 とする。no match は既存どおり exit 0、`--fail-no-match` 指定時だけ exit 1 とする。preflight authorization failure は backend 呼び出し 0 件とする。
 - MUST: root selector は `--root PATH`、`--use-default-root`、`--saved-root INDEX` の高々 1 つとする。saved-root index は `--list-saved-roots` の one-based order とし、selector 無しは current-directory behavior を維持する。無効 default/index は indexing 前に exit 2 とする。
@@ -106,7 +112,7 @@
 - MAY: `--cli --interactive` でインタラクティブ CLI を起動する。
 - MUST: interactive CLI は `--root`、`--use-default-root`、`--saved-root` を起動 root として受理し、`--sort` を初期 sort、`--no-ignore` を初期 Ignore 無効状態として反映する。`--no-ignore` でも読み込んだ ignore terms は保持し、TUI で Ignore を再度有効化したときに再読込なしで適用する。batch 専用の `--progress` と `--fail-no-match` は interactive との組合せを引数エラーにする。
 - MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
-- MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、選択結果だけを terminal 復旧後に標準出力へ出力する。
+- MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、terminal 復旧後に選択結果を標準出力へ出力するか、exec mode の外部 command へ渡す。外部 command は terminal guard 解放前に起動してはならない。
 - MUST: interactive CLI は更新確認を入力ループ外で非同期実行し、新しい version を検知した場合に `Update available: v<version> — Run flistwalker --update after exiting` を英語で表示する。この通知は更新を開始せず、更新確認失敗も検索、入力、終了を妨げてはならない。
 - MUST: インタラクティブ CLI は query 入力、上下移動、`Enter` による選択結果の標準出力、`Esc` / `Ctrl-C` による終了を提供する。
 - MUST: `Esc` / `Ctrl-C` は worker cancellation を要求し、terminal 復旧後に選択結果を出力せず exit 130 とする。batch CLI の Ctrl-C も FileList/walker の cancellable index path を停止して exit 130 とする。

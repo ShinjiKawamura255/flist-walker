@@ -61,7 +61,7 @@ Use this checklist before selecting runner commands. The VM table below remains 
 
 ### CLI, Build, Release, Updater, or OSS Packaging Changes
 - Apply: VM-005.
-- CLI/TUI contract changes run TC-163 through TC-166 focused before the full suite; external actions use recording backends and FileList writes use temporary roots only.
+- CLI/TUI contract changes run TC-163 through TC-166 and applicable newer CLI contracts such as TC-170 focused before the full suite; external actions use recording backends and FileList writes use temporary roots only.
 - Run the project-local release preflight skill before tag/release/publish work.
 - Update `docs/RELEASE.md`, `.github/release-template.md`, OSS notices, and asset sidecar handling together when packaging changes.
 - Check release asset names, target OS coverage, update manifest/security behavior, and workflow warning gates.

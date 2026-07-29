@@ -5,7 +5,9 @@
 
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
+use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -21,6 +23,9 @@ use flist_walker::actions::{
 };
 use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
 use flist_walker::cli_tui::{run_cli_tui, CliTuiOptions, CliTuiOutcome};
+use flist_walker::command_exec::{
+    execute_external_command, CommandTemplate, ExecOptions, ExecOutcome, ExecReport,
+};
 use flist_walker::entry::Entry;
 use flist_walker::ignore_list::{
     ensure_ignore_list_sample, load_ignore_terms_from_current_exe, parse_ignore_terms,
@@ -266,6 +271,36 @@ struct Args {
     )]
     action_all: bool,
 
+    /// Execute COMMAND with all result paths expanded at one standalone {} argument.
+    #[arg(
+        short = 'x',
+        long = "exec",
+        value_name = "COMMAND... {} ...",
+        num_args = 1..,
+        allow_hyphen_values = true,
+        requires = "cli",
+        conflicts_with_all = ["action_all", "absolute", "print0", "list_saved_roots", "create_filelist"]
+    )]
+    exec_command: Option<Vec<OsString>>,
+
+    /// Cap the number of result paths placed in each external-command batch.
+    #[arg(
+        long,
+        value_name = "N",
+        requires = "exec_command",
+        conflicts_with_all = ["action_all", "absolute", "print0"]
+    )]
+    exec_max_args: Option<NonZeroUsize>,
+
+    /// Report external-command batch counts without starting the command.
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "exec_command",
+        conflicts_with_all = ["action_all", "absolute", "print0"]
+    )]
+    dry_run: bool,
+
     /// Create the root FileList from a fresh walker index without prompting.
     #[arg(
         long,
@@ -356,6 +391,7 @@ enum BatchOutcome {
     Cancelled,
     ActionRejected,
     Action(AuthorizedActionReport),
+    Exec(ExecReport),
 }
 
 #[cfg(target_os = "windows")]
@@ -519,6 +555,25 @@ fn run_cli_with_backend(
         .map(|(path, _score)| path)
         .collect::<Vec<_>>();
 
+    if let Some(template) = parse_exec_template(args).expect("validated --exec template") {
+        let report = execute_external_command(
+            root,
+            &paths,
+            &template,
+            ExecOptions {
+                max_paths_per_batch: args.exec_max_args.map(NonZeroUsize::get),
+                dry_run: args.dry_run,
+            },
+            cancelled.as_ref(),
+        );
+        write_cli_exec_report(&report);
+        return Ok(if report.outcome == ExecOutcome::NoTargets {
+            BatchOutcome::NoMatch
+        } else {
+            BatchOutcome::Exec(report)
+        });
+    }
+
     if args.action == CliAction::Print {
         write_cli_paths(&paths, root, args.absolute, args.print0, cancelled.as_ref())?;
         if cancelled.load(Ordering::Relaxed) {
@@ -613,6 +668,48 @@ fn write_cli_action_report(report: &AuthorizedActionReport) {
     eprintln!("{}", format_cli_action_report(report));
 }
 
+fn write_cli_exec_report(report: &ExecReport) {
+    match report.outcome {
+        ExecOutcome::NoTargets => {}
+        ExecOutcome::DryRun => eprintln!(
+            "Dry run: {} paths in {} batches",
+            report.total_paths, report.planned_batches
+        ),
+        ExecOutcome::Completed => eprintln!(
+            "Command completed: {} paths in {} batches",
+            report.completed_paths, report.launched_batches
+        ),
+        ExecOutcome::Cancelled => eprintln!(
+            "Command canceled after {} of {} paths",
+            report.completed_paths, report.total_paths
+        ),
+        ExecOutcome::Blocked => eprintln!(
+            "Command blocked after {} of {} paths: {}",
+            report.completed_paths,
+            report.total_paths,
+            report
+                .diagnostic
+                .as_deref()
+                .unwrap_or("authorization failed")
+        ),
+        ExecOutcome::SpawnFailed => eprintln!(
+            "Command failed to start after {} of {} paths: {}",
+            report.completed_paths,
+            report.total_paths,
+            report.diagnostic.as_deref().unwrap_or("unknown error")
+        ),
+        ExecOutcome::ChildFailed => eprintln!(
+            "Command failed after {} of {} paths with exit code {}",
+            report.completed_paths,
+            report.total_paths,
+            report
+                .exit_code
+                .map(|code| code.to_string())
+                .unwrap_or_else(|| "unknown".to_string())
+        ),
+    }
+}
+
 fn format_cli_action_report(report: &AuthorizedActionReport) -> String {
     let path = report
         .display_path
@@ -688,6 +785,22 @@ fn validate_batch_action_args(args: &Args) -> std::result::Result<(), &'static s
     }
     if args.action != CliAction::Print && (args.absolute || args.print0) {
         return Err("--absolute and --print0 are only valid with --action print");
+    }
+    Ok(())
+}
+
+fn parse_exec_template(args: &Args) -> std::result::Result<Option<CommandTemplate>, String> {
+    args.exec_command
+        .as_deref()
+        .map(CommandTemplate::parse)
+        .transpose()
+        .map_err(|error| error.to_string())
+}
+
+fn validate_exec_args(args: &Args) -> std::result::Result<(), String> {
+    let template = parse_exec_template(args)?;
+    if template.is_some() && args.action != CliAction::Print {
+        return Err("--exec cannot be combined with --action open or --action reveal".into());
     }
     Ok(())
 }
@@ -1042,6 +1155,15 @@ fn batch_exit_code(outcome: BatchOutcome, fail_no_match: bool) -> ExitCode {
             | AuthorizedActionOutcome::Failed
             | AuthorizedActionOutcome::PartialFailure => ExitCode::from(1),
         },
+        BatchOutcome::Exec(report) => match report.outcome {
+            ExecOutcome::Completed | ExecOutcome::DryRun | ExecOutcome::NoTargets => {
+                ExitCode::SUCCESS
+            }
+            ExecOutcome::Cancelled => ExitCode::from(130),
+            ExecOutcome::Blocked | ExecOutcome::SpawnFailed | ExecOutcome::ChildFailed => {
+                ExitCode::from(1)
+            }
+        },
     }
 }
 
@@ -1054,6 +1176,12 @@ fn main() -> Result<ExitCode> {
     let args = Args::parse();
     if args.check_update || args.update {
         return run_update_command(args.update);
+    }
+    if args.cli {
+        if let Err(error) = validate_exec_args(&args) {
+            eprintln!("error: {error}");
+            return Ok(ExitCode::from(2));
+        }
     }
     if args.cli && !args.interactive {
         if let Err(error) = validate_batch_action_args(&args) {
@@ -1108,7 +1236,35 @@ fn main() -> Result<ExitCode> {
             };
             let options = cli_tui_options(&args, load_cli_tui_ignore_terms(&args)?);
             Ok(match run_cli_tui(&root, &options)? {
-                CliTuiOutcome::Selected => ExitCode::SUCCESS,
+                CliTuiOutcome::Selected { paths, root } => {
+                    if let Some(template) = parse_exec_template(&args).expect("validated --exec") {
+                        let cancelled = Arc::new(AtomicBool::new(false));
+                        let signal_cancelled = Arc::clone(&cancelled);
+                        ctrlc::set_handler(move || signal_cancelled.store(true, Ordering::Relaxed))
+                            .context("failed to install CLI signal handler")?;
+                        let report = execute_external_command(
+                            &root,
+                            &paths,
+                            &template,
+                            ExecOptions {
+                                max_paths_per_batch: args.exec_max_args.map(NonZeroUsize::get),
+                                dry_run: args.dry_run,
+                            },
+                            cancelled.as_ref(),
+                        );
+                        write_cli_exec_report(&report);
+                        batch_exit_code(BatchOutcome::Exec(report), false)
+                    } else {
+                        write_cli_paths(
+                            &paths,
+                            &root,
+                            args.absolute,
+                            args.print0,
+                            &AtomicBool::new(false),
+                        )?;
+                        ExitCode::SUCCESS
+                    }
+                }
                 CliTuiOutcome::Cancelled => ExitCode::from(130),
             })
         } else {

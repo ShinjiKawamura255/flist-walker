@@ -1087,6 +1087,7 @@ dependencies = [
  "encoding_rs",
  "fuzzy-matcher",
  "ico",
+ "libc",
  "memory-stats",
  "native-dialog",
  "rand_core",

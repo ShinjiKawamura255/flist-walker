@@ -184,6 +184,8 @@ CLI では:
 - batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
 - `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
+- `-x` / `--exec` は以後の引数を command template として受け取り、独立した `{}` 引数1個を post-limit の全結果へ展開します。各パスは正規化済み絶対パスの独立 argv とし、実行環境の command-line 上限まで貪欲にまとめて直列実行します。`--exec-max-args N` で1 batch のパス数をさらに制限でき、`--dry-run` は command を起動せず件数だけを表示します。結果0件では command を起動しません。shell は暗黙起動せず、FlistWalker 側の option はすべて `-x` より前に指定します。
+- child process は FlistWalker のユーザ権限、環境変数、標準 stream を継承します。Windows では暗黙の shell 起動を防ぐため `.bat` / `.cmd` の直接指定を拒否します。shell interpreter と batch script は独自の引数解釈を持つため、`sh -c`、`cmd.exe /C script.cmd`、PowerShell command string の指定はその解釈への明示的な opt-in です。
 - `--create-filelist` は prompt を出さず walker ベースで root の FileList を作成し、標準出力には書き込みません。既存 root FileList の置換には `--overwrite-filelist`、既存 ancestor FileList の更新には `--propagate-ancestors` が必要です。作成時は query/search/output/action の指定を拒否し、成功は exit 0、完全 rollback を伴う clean cancel は 130、read/write/rollback failure は 1 です。
 
 例:
@@ -195,7 +197,15 @@ flistwalker --cli --root . --create-filelist --overwrite-filelist
 
 # post-limit の全一致を明示して開く（標準出力は空）。
 flistwalker --cli "report" --root . --limit 10 --action open --action-all
+
+# post-limit の全一致を実行環境の上限までまとめて外部 command へ渡す。
+flistwalker --cli "report" --root . --exec-max-args 100 -x archive-tool -- {}
+
+# command を起動せず、対象数と batch 数だけを確認する。
+flistwalker --cli "report" --root . --dry-run -x archive-tool -- {}
 ```
+
+PowerShell では placeholder が script block と解釈されないよう、`'{}'` と引用してください。
 
 パスを安全にシェル連携する例:
 
@@ -209,7 +219,7 @@ flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 cargo run -- --cli --interactive --root ..
 ```
 
-軽量な TUI が起動します。`--root`、`--use-default-root`、`--saved-root` で起動 root を選択でき、`--sort` は初期並び順、`--no-ignore` は Ignore が無効と表示される初期状態へ反映されます。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を出力します。`F2` は Files、Folders、Regex、Ignore Case、起動時に読み込んだ Ignore terms、Source（`Auto` / `FileList` / `Walker`）を確定/取消できる options overlay を開きます。Source と Files/Folders の変更は再インデックスし、検索だけに関わる変更は現在の snapshot を再利用します。`F3` は Score、名前、更新日時、作成日時、サイズの並び順（該当する昇順/降順）を選択し、Score 以外は limit 適用前に全 match を並べ替えます。`F4` は保存済みrootを開いて強調行へ切り替え、`F5` は現在rootを更新します。`F6` は root のみ／ancestor までの作成範囲を選んで FileList を作成し、root に既存 FileList がある場合は別途上書き確認を要求します。作成はバックグラウンドで行われ、選択・終了・root 切替の要求は commit/cancel/rollback の完了後にだけ反映されます。root切替では旧選択とpinを消去しますが、query・履歴・optionsは維持し、更新時はpinを維持します。`Ctrl+O` は現在行だけを開く/実行し、`Shift+Enter` は現在行の格納フォルダだけを開きます。pin された行がこれらの副作用操作に含まれることはありません。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴、help、options、sort、root、FileList の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけ、選択パスは端末復旧後の標準出力だけへ書き込みます。
+軽量な TUI が起動します。`--root`、`--use-default-root`、`--saved-root` で起動 root を選択でき、`--sort` は初期並び順、`--no-ignore` は Ignore が無効と表示される初期状態へ反映されます。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を確定します。`F2` は Files、Folders、Regex、Ignore Case、起動時に読み込んだ Ignore terms、Source（`Auto` / `FileList` / `Walker`）を確定/取消できる options overlay を開きます。Source と Files/Folders の変更は再インデックスし、検索だけに関わる変更は現在の snapshot を再利用します。`F3` は Score、名前、更新日時、作成日時、サイズの並び順（該当する昇順/降順）を選択し、Score 以外は limit 適用前に全 match を並べ替えます。`F4` は保存済みrootを開いて強調行へ切り替え、`F5` は現在rootを更新します。`F6` は root のみ／ancestor までの作成範囲を選んで FileList を作成し、root に既存 FileList がある場合は別途上書き確認を要求します。作成はバックグラウンドで行われ、選択・終了・root 切替の要求は commit/cancel/rollback の完了後にだけ反映されます。root切替では旧選択とpinを消去しますが、query・履歴・optionsは維持し、更新時はpinを維持します。`Ctrl+O` は現在行だけを開く/実行し、`Shift+Enter` は現在行の格納フォルダだけを開きます。pin された行がこれらの副作用操作に含まれることはありません。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴、help、options、sort、root、FileList の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけを使い、端末復旧後に選択パスを標準出力へ書くか、明示した `-x` command へ渡します。
 
 ## 挙動
 

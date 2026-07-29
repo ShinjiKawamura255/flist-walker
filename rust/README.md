@@ -104,6 +104,9 @@ cargo run -- --root .. --limit 1000
 cd rust
 source ~/.cargo/env
 cargo run -- --cli "main"
+# 検索結果を実行環境の引数上限までまとめて外部 command へ渡す
+cargo run -- --cli "main" --exec-max-args 100 -x tool -- {}
+# Windows の .bat/.cmd は直接指定せず、必要時だけ cmd.exe /C を明示する
 # バージョン確認
 cargo run -- --version
 ```

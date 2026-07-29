@@ -157,6 +157,8 @@ In CLI mode:
 - In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
 - `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
+- `-x` / `--exec` consumes the remaining command template and replaces exactly one standalone `{}` argument with every post-limit result as separate absolute argv values. Results are packed greedily up to the current platform command-line limit and run sequentially; `--exec-max-args N` adds a per-batch path cap and `--dry-run` reports counts without starting the command. Zero results start no command. Exec mode rejects output framing and built-in non-print action options and never invokes a shell implicitly; put all FlistWalker options before `-x`.
+- The child inherits FlistWalker's user privileges, environment, and standard streams. On Windows, direct `.bat` / `.cmd` programs are rejected to prevent an implicit shell launch. Shell interpreters and batch scripts have their own parsing rules; using `sh -c`, `cmd.exe /C script.cmd`, or PowerShell command strings explicitly opts into those rules.
 - `--create-filelist` builds a fresh walker-based root FileList without prompting and writes no stdout. `--overwrite-filelist` is required to replace an existing root FileList; `--propagate-ancestors` is an explicit opt-in for existing ancestor FileLists. Creation rejects query/search/output/action options, returns 0 on success, 130 on clean cancellation, and 1 for read/write/rollback failures.
 
 Examples:
@@ -168,7 +170,15 @@ flistwalker --cli --root . --create-filelist --overwrite-filelist
 
 # Explicitly open every post-limit match (stdout remains empty).
 flistwalker --cli "report" --root . --limit 10 --action open --action-all
+
+# Pass every post-limit match to an external command in platform-sized batches.
+flistwalker --cli "report" --root . --exec-max-args 100 -x archive-tool -- {}
+
+# Inspect the number of paths and batches without starting the command.
+flistwalker --cli "report" --root . --dry-run -x archive-tool -- {}
 ```
+
+In PowerShell, quote the placeholder as `'{}'` so it is passed as an argument instead of parsed as a script block.
 
 For shell-safe path handling:
 
@@ -190,7 +200,7 @@ This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--sa
 
 `F2` opens an apply/cancel options overlay for Files, Folders, Regex, Ignore Case, loaded Ignore terms, and source (`Auto` / `FileList` / `Walker`); source and file-kind changes reindex, while search-only changes reuse the current snapshot. `F3` selects Score, name, modified, created, or size ordering (ascending/descending where applicable); non-score ordering ranks all matches before applying the limit. `F4` opens saved roots and switches to the highlighted root; `F5` refreshes the current root. `F6` creates a FileList after choosing root-only or ancestor propagation; an existing root FileList requires a separate overwrite confirmation. Creation runs in the background, and pending selection, exit, or root-switch requests wait for its committed cancellation/rollback result. Root switching clears old selections and pins but keeps the query, history, and options; refresh keeps pins.
 
-`Ctrl+O` opens or executes only the current row, while `Shift+Enter` reveals only its containing folder; pinned rows are never included in either action. With Emacs keybindings enabled, `Ctrl+G` clears the query and pins and `Ctrl+R` opens persisted query-history search. `Alt+P` toggles the width-aware preview, and `F1` opens contextual help. In history, help, options, sort, root, or FileList overlays, `Enter`, `Esc`, and enabled `Ctrl+G` apply or close only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; only selected paths are written to stdout after terminal restoration.
+`Ctrl+O` opens or executes only the current row, while `Shift+Enter` reveals only its containing folder; pinned rows are never included in either action. With Emacs keybindings enabled, `Ctrl+G` clears the query and pins and `Ctrl+R` opens persisted query-history search. `Alt+P` toggles the width-aware preview, and `F1` opens contextual help. In history, help, options, sort, root, or FileList overlays, `Enter`, `Esc`, and enabled `Ctrl+G` apply or close only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; after terminal restoration, selected paths are either written to stdout or passed to the explicit `-x` command.
 
 ## Behavior
 

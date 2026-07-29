@@ -12,6 +12,7 @@ use crate::indexer::{
     is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
     FileListWriteReport, FileListWriteStatus,
 };
+#[cfg(test)]
 use crate::path_utils::output_path_bytes;
 use crate::persistence::{
     history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
@@ -92,9 +93,9 @@ pub struct CliTuiOptions {
     pub sort_mode: SearchSortMode,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CliTuiOutcome {
-    Selected,
+    Selected { paths: Vec<PathBuf>, root: PathBuf },
     Cancelled,
 }
 
@@ -1475,10 +1476,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
     match result? {
         TuiExit::Cancelled => Ok(CliTuiOutcome::Cancelled),
         TuiExit::Failed(error) => anyhow::bail!(error),
-        TuiExit::Selected { paths, root, .. } => {
-            write_selected_paths(&paths, &root, options.absolute, options.print0)?;
-            Ok(CliTuiOutcome::Selected)
-        }
+        TuiExit::Selected { paths, root, .. } => Ok(CliTuiOutcome::Selected { paths, root }),
     }
 }
 
@@ -1600,21 +1598,6 @@ fn is_root_filelist_entry(root: &Path, entry: &Path) -> bool {
             .file_name()
             .and_then(|name| name.to_str())
             .is_some_and(|name| name.eq_ignore_ascii_case("filelist.txt"))
-}
-
-fn write_selected_paths(
-    paths: &[PathBuf],
-    root: &Path,
-    absolute: bool,
-    print0: bool,
-) -> io::Result<()> {
-    let stdout = io::stdout();
-    let mut output = stdout.lock();
-    for path in paths {
-        output.write_all(&output_path_bytes(path, root, !absolute, print0))?;
-        output.write_all(if print0 { b"\0" } else { b"\n" })?;
-    }
-    output.flush()
 }
 
 fn run_event_loop<W: Write>(
