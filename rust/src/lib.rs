@@ -20,6 +20,7 @@ pub mod search;
 pub mod ui_model;
 pub mod update_security;
 pub mod updater;
+pub(crate) mod walker_runtime;
 
 #[cfg(test)]
 pub(crate) fn env_var_test_lock() -> &'static std::sync::Mutex<()> {

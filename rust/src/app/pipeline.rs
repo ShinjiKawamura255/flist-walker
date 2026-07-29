@@ -1,10 +1,11 @@
 use super::{
-    walker_truncated_notice, AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry,
-    IndexRequest, IndexResponse, IndexSource, PendingActiveIndexFinish, PipelineOwner,
+    AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry, IndexRequest, IndexResponse,
+    IndexSource, PendingActiveIndexFinish, PipelineOwner,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
+use crate::walker_runtime::walker_truncated_notice;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;

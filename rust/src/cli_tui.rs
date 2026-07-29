@@ -3,9 +3,6 @@ use crate::actions::{
     AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport,
     AuthorizedActionRequest,
 };
-use crate::app::adaptive_walker::{walk_adaptive, AdaptiveWalkerEntry};
-use crate::app::index_worker::{classify_walker_entry, walker_runtime_settings};
-use crate::app::walker_truncated_notice;
 use crate::entry::Entry;
 use crate::indexer::{
     build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
@@ -24,6 +21,10 @@ use crate::ui_model::{build_preview_text_with_kind, display_path_with_mode};
 #[cfg(not(test))]
 use crate::updater::check_for_update;
 use crate::updater::UpdateCandidate;
+use crate::walker_runtime::{
+    classify_walker_entry, walk_adaptive, walker_runtime_settings, walker_truncated_notice,
+    AdaptiveWalkerEntry,
+};
 use anyhow::{Context, Result};
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::event::{
