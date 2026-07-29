@@ -1201,3 +1201,155 @@ fn non_gnu_build_does_not_emit_bin_specific_resource_linking() {
 
     assert!(directives.is_empty());
 }
+
+#[test]
+fn tc_170_help_describes_external_command_batching() {
+    let output = cli_command("exec-help")
+        .arg("--help")
+        .output()
+        .expect("run cli help");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for expected in ["-x", "--exec", "--exec-max-args", "--dry-run", "{}"] {
+        assert!(
+            stdout.contains(expected),
+            "help missing {expected}: {stdout}"
+        );
+    }
+}
+
+#[test]
+fn tc_170_invalid_exec_template_is_rejected_before_runtime_bootstrap() {
+    let (mut command, settings_dir) = cli_command_with_settings("invalid-exec-template");
+    let output = command
+        .args(["--cli", "-x", "tool"])
+        .output()
+        .expect("run invalid exec template");
+
+    assert_eq!(output.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("standalone {} placeholder"));
+    assert!(!settings_dir.join(".flistwalker_config.json").exists());
+}
+
+#[test]
+fn tc_170_zero_matches_do_not_spawn_external_command() {
+    let root = test_root("exec-zero");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write file");
+
+    let output = cli_command("exec-zero")
+        .args([
+            "--cli",
+            "no-such-match",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "-x",
+            "definitely-not-a-real-flistwalker-command",
+            "--",
+            "{}",
+        ])
+        .output()
+        .expect("run zero-result exec");
+
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("failed to start"));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_170_exec_dry_run_reports_all_results_and_greedy_batch_count() {
+    let root = test_root("exec-dry-run");
+    fs::create_dir_all(&root).expect("create root");
+    for index in 0..5 {
+        fs::write(root.join(format!("item-{index}.txt")), "x").expect("write file");
+    }
+
+    let output = cli_command("exec-dry-run")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--type",
+            "file",
+            "--limit",
+            "5",
+            "--exec-max-args",
+            "2",
+            "--dry-run",
+            "-x",
+            "definitely-not-a-real-flistwalker-command",
+            "{}",
+        ])
+        .output()
+        .expect("run exec dry-run");
+
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("Dry run: 5 paths in 3 batches"), "{stderr}");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_170_exec_runs_every_result_in_bounded_batches() {
+    let root = test_root("exec-real");
+    fs::create_dir_all(&root).expect("create root");
+    for index in 0..5 {
+        fs::write(root.join(format!("item-{index}.txt")), "x").expect("write file");
+    }
+
+    let mut command = cli_command("exec-real");
+    command.args([
+        "--cli",
+        "--root",
+        root.to_string_lossy().as_ref(),
+        "--source",
+        "walker",
+        "--type",
+        "file",
+        "--limit",
+        "5",
+        "--exec-max-args",
+        "2",
+        "-x",
+    ]);
+    #[cfg(windows)]
+    command.args(["cmd.exe", "/D", "/C", "rem", "{}"]);
+    #[cfg(unix)]
+    command.args(["true", "{}"]);
+    let output = command.output().expect("run real exec batches");
+
+    assert!(output.status.success());
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Command completed: 5 paths in 3 batches"),
+        "{stderr}"
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_170_exec_rejects_output_and_builtin_action_options() {
+    for extra in [["--absolute", ""], ["--print0", ""], ["--action", "open"]] {
+        let mut command = cli_command("exec-conflict");
+        command.arg("--cli");
+        command.arg(extra[0]);
+        if !extra[1].is_empty() {
+            command.arg(extra[1]);
+        }
+        let output = command
+            .args(["-x", "tool", "{}"])
+            .output()
+            .expect("run conflicting exec CLI");
+
+        assert_eq!(output.status.code(), Some(2), "option {}", extra[0]);
+        assert!(output.stdout.is_empty());
+    }
+}

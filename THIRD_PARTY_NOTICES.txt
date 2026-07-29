@@ -114,7 +114,7 @@ Direct dependency summary
 The main direct dependencies currently used by FlistWalker are under the
 following license families:
 
-- MIT OR Apache-2.0: anyhow, clap, eframe, memory-stats, rand_core, rayon,
+- MIT OR Apache-2.0: anyhow, clap, eframe, libc, memory-stats, rand_core, rayon,
   regex, semver, serde, serde_json, sha2, unicode-width, ureq
 - MIT/Apache-2.0: ctrlc
 - MIT: crossterm, fuzzy-matcher, ico, native-dialog, tracing,
