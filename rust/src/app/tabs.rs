@@ -1,9 +1,10 @@
 use super::{
-    result_reducer, walker_truncated_notice, AppTabState, ClosedTabState, Entry, FlistWalkerApp,
-    IndexResponse, IndexSource, ResultSortMode, SavedTabState, SearchResponse, TabAccentColor,
+    result_reducer, AppTabState, ClosedTabState, Entry, FlistWalkerApp, IndexResponse, IndexSource,
+    ResultSortMode, SavedTabState, SearchResponse, TabAccentColor,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
+use crate::walker_runtime::walker_truncated_notice;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

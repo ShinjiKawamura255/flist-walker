@@ -1,6 +1,10 @@
 use super::*;
-use crate::app::adaptive_walker::{next_limit_from_throughput, LimitDirection};
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
+use crate::walker_runtime::{
+    classify_walker_entry, default_adaptive_max_limit_from_logical_cores,
+    next_limit_from_throughput, resolve_entry_kind, walk_adaptive, walker_runtime_settings,
+    LimitDirection, WalkerBackend,
+};
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
 use std::time::{SystemTime, UNIX_EPOCH};

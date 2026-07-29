@@ -1,4 +1,3 @@
-use super::index_worker::resolve_entry_kind;
 use super::worker_channel::{
     bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
 };
@@ -23,6 +22,7 @@ use crate::indexer::{
 use crate::search::{rank_search_results, SearchPrefixCache};
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
+use crate::walker_runtime::resolve_entry_kind;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};

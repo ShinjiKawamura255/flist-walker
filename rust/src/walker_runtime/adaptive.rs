@@ -21,17 +21,17 @@ pub(crate) struct AdaptiveWalkerEntry {
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct AdaptiveWalkerMetrics {
-    pub(super) dirs_read: usize,
-    pub(super) read_dir_errors: usize,
-    pub(super) max_inflight_read_dirs: usize,
-    pub(super) throttle_events: usize,
-    pub(super) adaptive_limit_min: usize,
-    pub(super) adaptive_limit_max: usize,
-    pub(super) adaptive_limit_final: usize,
-    pub(super) adaptive_limit_change_count: usize,
-    pub(super) adaptive_limit_avg: f64,
-    pub(super) read_dir_total_us: u128,
-    pub(super) read_dir_max_us: u128,
+    pub(crate) dirs_read: usize,
+    pub(crate) read_dir_errors: usize,
+    pub(crate) max_inflight_read_dirs: usize,
+    pub(crate) throttle_events: usize,
+    pub(crate) adaptive_limit_min: usize,
+    pub(crate) adaptive_limit_max: usize,
+    pub(crate) adaptive_limit_final: usize,
+    pub(crate) adaptive_limit_change_count: usize,
+    pub(crate) adaptive_limit_avg: f64,
+    pub(crate) read_dir_total_us: u128,
+    pub(crate) read_dir_max_us: u128,
 }
 
 struct SharedState {
@@ -63,7 +63,7 @@ struct AdaptiveControlSnapshot {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) enum LimitDirection {
+pub(crate) enum LimitDirection {
     Increase,
     Decrease,
 }
@@ -252,7 +252,7 @@ impl Default for LimitControlState {
     }
 }
 
-pub(super) fn next_limit_from_throughput(
+pub(crate) fn next_limit_from_throughput(
     current: usize,
     max_workers: usize,
     last_direction: Option<LimitDirection>,
