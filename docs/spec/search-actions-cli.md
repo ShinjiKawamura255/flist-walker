@@ -115,6 +115,7 @@
 - SHOULD: インタラクティブ CLI は GUI と同じ query 解釈による一致文字のハイライトを表示する。
 - MUST: インタラクティブ CLI の index/search は UI 入力ループと別スレッドで実行し、query 文字列だけでなく単調増加 request identity により最新でない検索応答を表示してはならない。結果更新時は選択中 path が残る限り同じ path を維持する。
 - SHOULD: インタラクティブ CLI は状態変更時だけ端末を再描画し、候補全件を毎回描画してはならない。
+- MUST: interactive CLI の各描画フレームは terminal synchronized update で開始・終了を囲み、全画面消去を含むフレーム途中の状態を表示してはならない。フレームは端末出力へ送る前にメモリ上で完成させ、終了 command は payload 書き込み失敗時も best-effort で送信する。
 - MUST: terminal session は raw mode、alternate screen、cursor 非表示、bracketed paste の成立状態を個別に追跡し、setup 途中失敗、event/draw error、正常終了、cancel、unwind で成立済み状態だけを逆順に best-effort 復旧する。選択結果は guard 解放後だけ出力する。
 - SHOULD: interactive indexing の増分 batch は検索再実行を throttle/debounce し、結果更新のたびに current row を先頭へ戻してはならない。
 - MUST: TUI normal state は Enter で current/pins を terminal 復旧後に出力し、Esc で exit 130、Ctrl-C で worker cancel と exit 130、Tab/Shift+Tab で pin toggle とする。runtime config の `tab_pin_moves_to_next_row=true` では pin toggle 後に次行へ進み、`false` では current row を維持する。`emacs_keybindings_enabled=true` では `Ctrl+N` / `Ctrl+P`、`Ctrl+V` / `Alt+V`、`Ctrl+I`、`Ctrl+J` / `Ctrl+M`、`Ctrl+G` / `Ctrl+R` と normal query / history filter の editing chords を GUI と同じ意味で有効にし、`false` ではこれらを TUI action として処理しない。`Ctrl+O` と `Shift+Enter` は pins に関わらず current row だけを action target とする。

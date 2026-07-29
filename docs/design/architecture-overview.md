@@ -32,7 +32,7 @@
 - 役割: `clap` 引数を typed CLI options へ変換し、GUI、batch CLI、interactive CLI を明示 dispatch する。legacy `--cli` 契約を維持し、CLI-only option の依存/競合と mode-specific initialization/exit status を所有する。
 - 役割補足: batch adapter は cancellable index/search、source/type/ignore/search option、relative/absolute path、newline/NUL framing を構成し、結果だけを stdout、進捗/診断を stderr へ送る。
 - 役割補足: batch adapter は shared full-match sort の後に limit を適用し、print/open/reveal、root selector、saved-root listing、FileList operation の引数整合性と exit status を所有する。外部 action と FileList write は shared worker boundary を通し、adapter 自身は backend/write を行わない。
-- 役割補足: interactive adapter は request identity を持つ index/search worker、cursor-aware editor、ordered pin、dynamic viewport、stderr renderer を分離する。terminal session guard は raw/alternate/cursor/bracketed-paste の成立状態を所有して逆順復旧し、guard 解放後だけ stdout result writer を呼ぶ。
+- 役割補足: interactive adapter は request identity を持つ index/search worker、cursor-aware editor、ordered pin、dynamic viewport、stderr renderer を分離する。renderer は complete frame をメモリ上へ構築して terminal synchronized update で一括送信し、全画面 clear と再描画の中間状態を表示させない。terminal session guard は raw/alternate/cursor/bracketed-paste の成立状態を所有して逆順復旧し、guard 解放後だけ stdout result writer を呼ぶ。
 - 役割補足: TUI FileList active は pending intent state machine を所有し、`CancelExit > SwitchRoot > SelectOutput` を settlement 後にだけ解決する。FileList worker は generic shutdown detach の対象外で、panic/disconnect を failed settlement として合成する。
 - 実装: `rust/src/main.rs`, `rust/src/cli_tui.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/walker.rs`
 
