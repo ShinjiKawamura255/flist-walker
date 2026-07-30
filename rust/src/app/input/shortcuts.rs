@@ -41,7 +41,7 @@ impl FlistWalkerApp {
                 shift,
                 ..Default::default()
             };
-            return ctx.input_mut(|i| i.consume_key(fallback, key));
+            ctx.input_mut(|i| i.consume_key(fallback, key))
         }
         #[cfg(not(target_os = "macos"))]
         {
@@ -143,7 +143,7 @@ impl FlistWalkerApp {
                 shift,
                 ..Default::default()
             };
-            return ctx.input_mut(|i| i.consume_key(fallback, key));
+            ctx.input_mut(|i| i.consume_key(fallback, key))
         }
         #[cfg(not(target_os = "macos"))]
         false
