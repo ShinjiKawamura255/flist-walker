@@ -14,7 +14,7 @@ Primary docs:
 - [RELEASE.md](RELEASE.md): release operations.
 
 ## Main Runtime Flow
-1. `rust/src/main.rs` parses CLI arguments and chooses CLI or GUI mode.
+1. `rust/src/main.rs` preserves startup ordering and routes to the private CLI or GUI launch owners. `rust/src/cli/args.rs` parses and validates arguments, `rust/src/cli/batch.rs` owns batch/TUI/FileList/reporting behavior, and `rust/src/gui_launch.rs` owns native GUI bootstrap.
 2. GUI startup builds `FlistWalkerApp` in `rust/src/app/mod.rs`, with startup/session wiring delegated to `app/bootstrap.rs` and `app/session.rs`.
 3. The app starts an index request. `rust/src/indexer/` chooses FileList reading when available and walker traversal otherwise.
 4. Search requests compile the query through `rust/src/query.rs` and evaluate/rank candidates through `rust/src/search/`.
@@ -24,12 +24,12 @@ Primary docs:
 ## Ownership Map
 | Area | First Files To Read | Main Responsibility |
 | --- | --- | --- |
-| Entrypoint / CLI | `rust/src/main.rs`, `rust/src/lib.rs` | CLI contract, GUI launch, shared module surface |
+| Entrypoint / CLI | `rust/src/main.rs`, `rust/src/cli.rs`, `rust/src/cli/`, `rust/src/cli_tui.rs`, `rust/src/cli_tui/`, `rust/src/gui_launch.rs`, `rust/src/launch_path.rs`, `rust/src/lib.rs` | Startup ordering, typed CLI contract, batch/TUI dispatch, GUI launch, shared module surface |
 | Candidate model | `rust/src/entry.rs` | Shared `Entry` / `EntryKind` representation |
-| Indexing | `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/filelist_hierarchy.rs`, `rust/src/indexer/walker.rs`, `rust/src/app/index_worker.rs` | FileList detection/streaming, walker collection, incremental GUI ingestion |
+| Indexing | `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/filelist_hierarchy.rs`, `rust/src/indexer/walker.rs`, `rust/src/walker_runtime/`, `rust/src/app/index_worker.rs` | FileList detection/streaming, shared adaptive walker runtime/classification, incremental GUI ingestion |
 | Search/query | `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/match_eval.rs`, `rust/src/search/rank.rs` | fzf-like token parsing, filtering, scoring, ranking |
 | GUI coordinator | `rust/src/app/mod.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs` | Top-level egui orchestration, app state bundles, index/search lifecycle |
-| Rendering/input | `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/app/render_dialogs.rs`, `rust/src/app/input/mod.rs` | Frame rendering, dialog commands, shortcuts, text input |
+| Rendering/input | `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/app/render_panels/`, `rust/src/app/render_dialogs.rs`, `rust/src/app/render_dialogs/`, `rust/src/app/input/mod.rs` | Frame rendering, private top-panel/dialog owners, command seams, shortcuts, text input |
 | Tabs/session | `rust/src/app/tabs.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/session.rs` | Tab snapshots, background response routing, persistence |
 | Workers | `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/worker_runtime.rs` | Request/response types, worker channels, worker bodies, shutdown |
 | Actions / OS integration | `rust/src/actions.rs`, `rust/src/path_utils.rs`, `rust/src/app/shell_support.rs` | Open/execute, path normalization, platform-local shell helpers |

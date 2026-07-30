@@ -23,8 +23,13 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 | Path | Role | Start here |
 | --- | --- | --- |
 | `rust/` | Canonical Rust GUI/CLI application | `rust/Cargo.toml`, `rust/src/main.rs`, `rust/src/lib.rs` |
+| `rust/src/cli/` | Typed CLI arguments/validation and batch, TUI, FileList, action, exec, and reporting coordination | `rust/src/cli.rs`, then `rust/src/cli/args.rs` or `rust/src/cli/batch.rs` |
+| `rust/src/cli_tui/` | Interactive terminal protocol, state, workers, FileList flow, input, rendering, terminal guard, and owner tests | `rust/src/cli_tui.rs`, then the concern-specific module |
 | `rust/src/app/` | GUI coordination, rendering, state, worker routing, tabs, sessions, update, and FileList UI flows | `rust/src/app/mod.rs`, then the owner module named in `docs/ARCHITECTURE.md` |
+| `rust/src/app/render_dialogs/` | Private FileList, update, and root-list dialog rendering owners | `rust/src/app/render_dialogs.rs` facade |
+| `rust/src/app/render_panels/` | Private top-panel owner and shared pure paint widgets | `rust/src/app/render_panels.rs` facade/results owner |
 | `rust/src/indexer/` | FileList detection/reading/writing and walker traversal | `rust/src/indexer/mod.rs` |
+| `rust/src/walker_runtime/` | UI-agnostic adaptive walker, runtime settings, entry classification, and truncation notices shared by GUI/TUI | `rust/src/walker_runtime/mod.rs` |
 | `rust/src/search/` | Match evaluation, ranking, caching, configuration, and execution | `rust/src/search/mod.rs` |
 | `rust/src/ui_model/` | UI-facing result and highlight models | `rust/src/ui_model/mod.rs` |
 | `rust/src/runtime_config/` | Runtime configuration parsing and support | `rust/src/runtime_config.rs` and this directory |
@@ -45,7 +50,9 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 
 ## Key Entrypoints
 
-- Product execution: `rust/src/main.rs`
+- Product execution/startup ordering: `rust/src/main.rs`
+- CLI ownership: `rust/src/cli.rs`, `rust/src/cli/`, and `rust/src/cli_tui/`
+- GUI native launch: `rust/src/gui_launch.rs`
 - Shared Rust library surface: `rust/src/lib.rs`
 - GUI coordinator: `rust/src/app/mod.rs`
 - Documentation routing: [INDEX.md](INDEX.md)
@@ -68,4 +75,3 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 - Runtime configuration implementation: `rust/src/runtime_config.rs` and `rust/src/runtime_config/`
 - Release-side notices: `LICENSE` and `THIRD_PARTY_NOTICES.txt`
 - Distribution output: `dist/` is generated and is not a source-of-truth directory
-
