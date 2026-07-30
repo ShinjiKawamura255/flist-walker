@@ -88,10 +88,10 @@ window/session/input/update の observable output を変更した場合は、ま
 3. 各 sidecar 適用後と `binary_intent` 後の precommit failure injection で old bundle hash へ戻り、originally-absent target が残らないことを記録する。
 4. binary commit 後の restart failure injection で old bundle へ rollback し、旧 binary の再起動は recording backend への call としてのみ確認する。
 5. `prepared_parent_owned`、`helper_registered` ack 前後、各 target の `intent/applied`、`binary_intent/binary_committed` marker fixture を再読込し、live matching helper の回復除外、precommit rollback、committed promotion、ambiguous retention を記録する。
-6. Windows adapter は existing target の PowerShell `File.Replace(..., false)`、Linux adapter は backup/file/parent sync と same-directory rename が実際に成功することを確認する。いずれかの platform 証跡が無い場合、TC-160 と Slice E は未完了とする。
+6. Windows adapter は existing target の native `ReplaceFileW` を updater process 内で実行し、PowerShell を起動せずに backup あり/なしと失敗時の source 保持が成功することを確認する。Linux adapter は backup/file/parent sync と same-directory rename が実際に成功することを確認する。いずれかの platform 証跡が無い場合、TC-160 と updater platform validation は未完了とする。
 
 - Evidence directory: test-owned private temporary directories created by `staging::test_unique_update_temp_dir`; each fixture removes its exact directory after assertion.
-- Windows result: pass (`cargo test tc160_windows_file_replace_preserves_the_old_dummy_file_as_backup --lib`: 1 passed; `cargo test tc157_ / tc158_ / tc159_ --lib`: 12 / 5 / 22 passed). The adapter executed PowerShell `[System.IO.File]::Replace(..., false)` against inert text files and preserved the old target as backup.
+- Windows result: native `x86_64-pc-windows-msvc` focused regression pass on 2026-07-30 (`cargo test --locked tc171_regression_windows_file_replace --lib -- --nocapture`: 5 passed). The adapter executed in-process `ReplaceFileW` against inert text files with `PATH` isolated from PowerShell, preserved the old target as backup, handled no-backup and missing-target boundaries, preserved verbatim path encoding, and rejected interior NUL. Transaction suite result: 32 passed (`updater::transaction::tests::tc`); full result: 759 library tests passed / 8 ignored, 8 binary tests passed, 35 CLI contract tests passed; GNU cross-check passed for `x86_64-pc-windows-gnu`.
 - Linux result: pass under WSL2 Ubuntu (`cargo test tc160_linux_synced_rename_preserves_the_old_dummy_file_as_backup --lib`: 1 passed; `cargo test tc157_ / tc158_ / tc159_ --lib`: 12 / 5 / 22 passed). The production Linux adapter executed synced backup + same-directory rename against inert text files.
 - Failure points covered: pre-marker orphan preservation/lone-lock cleanup、ack-before-mutation rejection、live-parent pre-mutation deferral、helper executable/hash/token mismatch、parent wait timeout、operation-time target/prepared hash change、absent-target racing destination、cleanup artifact hash/type mismatch、precommit sidecar failure、restart failure rollback、complete `binary_intent` promotion、unknown hash/invalid transition retention、interrupted postcommit rollback resumption。
 - Cleanup/remaining artifacts: committed/rolled-back fixtures assert lock/marker removal; ambiguous fixtures intentionally retain lock/marker/`.new` evidence only inside fixture-owned directories, which fixture teardown removes.
@@ -159,6 +159,14 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - Non-goals: GitHub Releases 本番 asset の内容妥当性確認、README 本文そのものの文言レビュー。
 - Related Tests: Self Update Manual Test step 3, step 4.
 - Notes for Future Changes: 自己更新 asset 名や sidecar 種別を増減させた場合は、この helper script と manual test 手順を同一変更で更新すること。
+
+## Regression Guard: windows-updater-in-process-replace
+
+- Scenario: Windows updater が durable marker と binary/sidecar の置換ごとに `powershell.exe` を起動し、更新中に複数の terminal window が表示されるか、外部 process 起動の一時失敗で update apply が不安定になる。
+- Expected Behavior: Windows replacement は native `ReplaceFileW` を updater process 内で呼び、PowerShell/PATH に依存しない。backup、rollback 入力、UTF-16 path の同一性を維持する。
+- Non-goals: AV、権限、第三者 process の file lock、production executable を用いた live activation の自動化。
+- Related Tests: TC-171; `tc171_regression_windows_file_replace_does_not_require_powershell_on_path`, `tc171_regression_windows_file_replace_supports_no_backup_boundary`, `tc171_regression_windows_file_replace_failure_preserves_source`, `tc171_regression_windows_file_replace_preserves_verbatim_path_prefix`, `tc171_regression_windows_file_replace_rejects_interior_nul`.
+- Notes for Future Changes: Windows replacement を外部 process へ戻したり path を文字列化したりせず、変更時は native Windows focused tests を必須実行する。
 
 ## Interactive CLI Terminal Matrix (TC-162)
 

@@ -38,7 +38,7 @@
 - MUST: 1 個の create-new active lock と versioned durable marker で transaction を排他し、marker は transaction/parent/helper identity、global phase、各 target の存在・旧新 hash・`prepared|intent|applied|rolled_back` 状態を write-ahead で記録しなければならない。
 - MUST: helper は parent が durable `helper_registered` phase と helper identity を記録したことを確認し、create-new acknowledgement を同期するまで filesystem mutation を行ってはならない。parent は acknowledgement を検証するまで適用開始を通知せず、本体終了を許可してはならない。
 - MUST: helper は acknowledgement 後に旧 process の終了を最大 30 秒待ち、timeout を binary commit 前失敗として扱わなければならない。
-- MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の `[System.IO.File]::Replace(new, target, backup, false)`、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は同一 directory の no-overwrite hard-link promotion と source unlink を使わなければならない。
+- MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の native `ReplaceFileW(target, new, backup, 0, null, null)` を updater process 内で使い、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は同一 directory の no-overwrite hard-link promotion と source unlink を使わなければならない。
 - MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
 - MUST: 起動時 recovery は marker phase と旧新 hash から precommit rollback、完全な committed bundle、rolled-back bundle のいずれかへ収束させなければならない。live 登録 helper が存在する transaction と同時に回復してはならず、欠落 backup、hash 不一致、不正 state 遷移、path/type 変化は ambiguous として証跡を保持し、新しい update を開始してはならない。
 - MUST: 検証では Windows/Linux の同一 filesystem 上にある inert dummy file だけを使い、実行中 FlistWalker binary の置換または外部 application の起動を行ってはならない。
@@ -64,6 +64,13 @@
 - GitHub API 失敗、timeout/deadline、redirect/origin 違反、上限超過、manifest 不正、asset 欠落、checksum 不一致は更新失敗として通知し、現行バイナリで継続する。
 - transaction lock/marker 衝突、helper acknowledgement 不成立、parent wait timeout、backup/atomic primitive 不成立、recovery ambiguity は fail closed とし、既存 installation と recovery 証跡を変更しない。
 - 対応外 OS/arch は新版検知のみ行い、自動更新非対応の案内だけを返す。
+
+### Regression Guard: windows-updater-in-process-replace
+- Scenario: Windows updater が marker と target の原子的置換ごとに `powershell.exe` を外部起動し、更新中にターミナルが何度も表示されるか、一時的な process 起動失敗で適用が失敗する。
+- Expected Behavior: Windows の既存 target 置換は updater process 内の `ReplaceFileW` だけで行い、`powershell.exe` の存在や `PATH` に依存しない。backup あり/なし、失敗時の source 保持、verbatim/UNC を含む非 lossy UTF-16 path、interior NUL 拒否を維持する。
+- Non-goals: antivirus、権限、別 process による file lock 自体の解消、production binary を使った live update の自動試験。
+- Related Tests: TC-158, TC-159, TC-160, TC-171; `tc171_regression_windows_file_replace_*`.
+- Notes for Future Changes: 外部 shell/process に戻す、Windows path を lossy 変換する、または `ReplaceFileW` の target/source/backup 順を変更する場合は paired regression tests と VM-005 を同一変更で更新する。
 
 ## SP-015 Ignore List フィルタ
 ### Requirements
