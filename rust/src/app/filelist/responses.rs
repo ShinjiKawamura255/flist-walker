@@ -1,9 +1,53 @@
 use super::super::{FileListResponse, FlistWalkerApp};
 use super::commands::{FileListAppCommand, FileListCommand};
-use crate::app::state::{FileListResponseContext, FileListResponseScope};
+use crate::app::state::{
+    FileListResponseContext, FileListResponseScope, PendingFileListIndexCompletionNotice,
+};
 use crate::path_utils::path_key;
 use std::path::{Path, PathBuf};
 impl FlistWalkerApp {
+    fn set_filelist_completion_notice_for_tab(&mut self, tab_index: usize, notice: String) {
+        if tab_index == self.shell.tabs.active_tab_index() {
+            self.set_notice(notice);
+        } else if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
+            tab.notice = notice;
+        }
+    }
+
+    fn track_filelist_completion_notice_for_reindex(
+        &mut self,
+        tab_index: usize,
+        root: &Path,
+        notice: String,
+    ) {
+        let active = tab_index == self.shell.tabs.active_tab_index();
+        let Some(tab) = self.shell.tabs.get(tab_index) else {
+            return;
+        };
+        let tab_id = tab.id;
+        let request_id = if active {
+            self.shell.indexing.pending_request_id
+        } else {
+            tab.index_state.pending_index_request_id
+        };
+        let Some(request_id) = request_id else {
+            return;
+        };
+        self.shell
+            .features
+            .filelist
+            .workflow
+            .pending_index_completion_notices
+            .insert(
+                request_id,
+                PendingFileListIndexCompletionNotice {
+                    tab_id,
+                    root: root.to_path_buf(),
+                    notice,
+                },
+            );
+    }
+
     fn resolve_filelist_target_tab_index(&self, tab_id: Option<u64>, root: &Path) -> Option<usize> {
         let tab_id = tab_id?;
         let tab_index = self.find_tab_index_by_id(tab_id)?;
@@ -40,32 +84,55 @@ impl FlistWalkerApp {
 
         match context.root_scope {
             FileListResponseScope::PreviousRoot => {
-                self.set_notice(format!(
+                let completion_notice = format!(
                     "Created {}: {} entries (previous root)",
                     path.display(),
                     count
-                ));
-                if let Some(tab_index) =
-                    target_tab_index.filter(|index| *index != self.shell.tabs.active_tab_index())
-                {
-                    self.dispatch_filelist_commands(vec![FileListCommand::App(
-                        FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
-                    )]);
+                );
+                if let Some(tab_index) = target_tab_index {
+                    self.set_filelist_completion_notice_for_tab(
+                        tab_index,
+                        completion_notice.clone(),
+                    );
+                    if tab_index != self.shell.tabs.active_tab_index() {
+                        self.dispatch_filelist_commands(vec![FileListCommand::App(
+                            FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
+                        )]);
+                        self.track_filelist_completion_notice_for_reindex(
+                            tab_index,
+                            &root,
+                            completion_notice,
+                        );
+                    }
                 }
             }
             FileListResponseScope::CurrentRoot => {
-                self.set_notice(format!("Created {}: {} entries", path.display(), count));
+                let completion_notice = format!("Created {}: {} entries", path.display(), count);
                 if let Some(tab_index) = target_tab_index {
+                    self.set_filelist_completion_notice_for_tab(
+                        tab_index,
+                        completion_notice.clone(),
+                    );
                     if tab_index == self.shell.tabs.active_tab_index()
                         && self.shell.runtime.use_filelist
                     {
                         self.dispatch_filelist_commands(vec![FileListCommand::App(
                             FileListAppCommand::RequestIndexRefresh,
                         )]);
+                        self.track_filelist_completion_notice_for_reindex(
+                            tab_index,
+                            &root,
+                            completion_notice,
+                        );
                     } else if tab_index != self.shell.tabs.active_tab_index() {
                         self.dispatch_filelist_commands(vec![FileListCommand::App(
                             FileListAppCommand::RequestBackgroundIndexRefreshForTab(tab_index),
                         )]);
+                        self.track_filelist_completion_notice_for_reindex(
+                            tab_index,
+                            &root,
+                            completion_notice,
+                        );
                     }
                 }
             }
