@@ -1,9 +1,16 @@
-use crate::updater::transaction::{self, TransactionSources};
 use crate::updater::VerifiedUpdateBundle;
-use anyhow::{bail, Context, Result};
-use std::ffi::{OsStr, OsString};
+use anyhow::{bail, Result};
 use std::path::Path;
+
+#[cfg(any(not(target_os = "macos"), test))]
+use crate::updater::transaction::{self, TransactionSources};
+#[cfg(any(not(target_os = "macos"), test))]
+use anyhow::Context;
+#[cfg(any(not(target_os = "macos"), test))]
+use std::ffi::{OsStr, OsString};
+#[cfg(any(not(target_os = "macos"), test))]
 use std::process::{Child, Command};
+#[cfg(any(not(target_os = "macos"), test))]
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "windows")]
@@ -61,6 +68,7 @@ pub(super) fn spawn_update_helper(
     }
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn helper_arguments(marker: &OsStr, transaction_id: &OsStr, start_token: &OsStr) -> [OsString; 4] {
     [
         INTERNAL_HELPER_FLAG.into(),
@@ -70,6 +78,7 @@ fn helper_arguments(marker: &OsStr, transaction_id: &OsStr, start_token: &OsStr)
     ]
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn wait_for_acknowledgement(
     prepared: &transaction::PreparedTransaction,
     start_token: &str,
@@ -95,6 +104,7 @@ fn wait_for_acknowledgement(
     }
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn stop_unregistered_helper(child: &mut Child) {
     let _ = child.kill();
     let _ = child.wait();

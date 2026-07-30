@@ -204,6 +204,7 @@ impl VerifiedUpdateBundle {
         }
     }
 
+    #[cfg(not(target_os = "macos"))]
     fn cleanup_staging(&mut self) -> Result<()> {
         if !self.cleanup_armed {
             bail!("verified staging ownership was already transferred");
