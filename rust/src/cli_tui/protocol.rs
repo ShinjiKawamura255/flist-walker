@@ -10,6 +10,10 @@ use anyhow::Result;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
+use std::time::Duration;
+
+pub(super) const EVENT_POLL: Duration = Duration::from_millis(50);
+pub(super) const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
 
 pub(super) enum WorkerResponse {
     IndexedBatch {
