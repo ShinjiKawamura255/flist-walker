@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.20.1] - 2026-07-30
+### Added
+- なし。
+
+### Changed
+- walker、CLI/TUI、GUI 描画、updater transaction の内部責務を owner module 単位へ分割し、検索・操作・更新の既存契約を維持したまま保守境界を明確化した。
+- updater transaction の marker model、filesystem safety policy、OS process/replacement primitive、回帰テストを分離し、rollback/recovery と marker-v1 の互換契約を独立して検証できるようにした。
+
+### Fixed
+- Windows の自己更新で既存ファイルを置換する処理を外部 PowerShell から native `ReplaceFileW` へ切り替え、複数の console window が表示される問題と PowerShell の有無に依存する失敗を解消した。
+- Windows updater の verbatim path、backup 有無、置換失敗時の source 保持を回帰テストで固定した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 署名・checksum 検証、no-overwrite、hash/type 再検証、sidecars-first/binary-last、rollback/recovery の既存 self-update 保護契約を維持した。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.20.0] - 2026-07-29
 ### Added
 - batch CLI でコマンドを安全に複数実行できるようにし、引数境界を保った実行とエラー表示を提供した。
@@ -1645,7 +1669,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.1...HEAD
+[0.20.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.0...v0.20.1
+[0.20.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.14...v0.19.0
 [0.18.14]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.18.13...v0.18.14

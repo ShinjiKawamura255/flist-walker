@@ -6,7 +6,7 @@
 - P0: FR-001/002/003/004/005
 - P1: FR-006/007, NFR-002/003/004
 - P1: NFR-001（TC-156 weekly release-mode regression ceiling）
-- P0: FR-033, NFR-010（TC-157〜TC-160 updater trust/transaction/recovery safety）
+- P0: FR-033, NFR-010（TC-157〜TC-160, TC-171 updater trust/transaction/recovery safety）
 - P0: FR-034（TC-161 FileList encoding/line-bound determinism）
 
 ## Test levels

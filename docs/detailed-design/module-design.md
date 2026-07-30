@@ -230,6 +230,14 @@ Important rules:
 
 Responsibility: [updater.rs](../../rust/src/updater.rs), [updater/](../../rust/src/updater/), [update_security.rs](../../rust/src/update_security.rs), [app/update.rs](../../rust/src/app/update.rs), and update worker code handle update discovery and application.
 
+Transaction ownership:
+
+- [transaction.rs](../../rust/src/updater/transaction.rs) coordinates preparation, helper registration, activation, rollback, and startup recovery.
+- [transaction/model.rs](../../rust/src/updater/transaction/model.rs) owns the marker-v1 serialized state model and target ordering contract.
+- [transaction/filesystem.rs](../../rust/src/updater/transaction/filesystem.rs) owns marker/artifact persistence, path/type/hash revalidation, no-overwrite promotion, and backup policy.
+- [transaction/platform.rs](../../rust/src/updater/transaction/platform.rs) owns OS-native process inspection/wait/restart and atomic replacement primitives without depending on the transaction model or filesystem policy.
+- [transaction/tests.rs](../../rust/src/updater/transaction/tests.rs) characterizes marker compatibility, transaction transitions, rollback/recovery, and Windows replacement boundaries.
+
 Flow:
 
 - Fetch GitHub latest release metadata.

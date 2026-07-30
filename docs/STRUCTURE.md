@@ -34,6 +34,7 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 | `rust/src/ui_model/` | UI-facing result and highlight models | `rust/src/ui_model/mod.rs` |
 | `rust/src/runtime_config/` | Runtime configuration parsing and support | `rust/src/runtime_config.rs` and this directory |
 | `rust/src/updater/` | Update discovery, validation, download, and apply support | `rust/src/updater.rs` and this directory |
+| `rust/src/updater/transaction/` | Transaction marker model, filesystem safety policy, OS process/replacement primitives, and characterization tests | `rust/src/updater/transaction.rs`, then the concern-specific module |
 | `prototype/python/` | Retained Python prototype | `prototype/python/pyproject.toml` |
 | `docs/` | Canonical documentation entrypoints and operational references | `docs/INDEX.md` |
 | `docs/requirements/` | Detailed FR/NFR/CON and acceptance-criteria content | `docs/REQUIREMENTS.md` |
