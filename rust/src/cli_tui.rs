@@ -1,6 +1,4 @@
-use crate::actions::{
-    execute_authorized_action_request, AuthorizedActionOutcome, AuthorizedActionReport,
-};
+use crate::actions::{AuthorizedActionOutcome, AuthorizedActionReport};
 use crate::indexer::find_filelist_in_first_level;
 #[cfg(test)]
 use crate::path_utils::output_path_bytes;
@@ -8,49 +6,26 @@ use crate::persistence::{
     history_persistence_enabled, load_persisted_roots_and_history, AsyncHistoryPersistence,
 };
 use crate::runtime_config::current_runtime_config;
-use crate::search::{SearchPrefixCache, SearchSortMode};
-use crate::ui_model::build_preview_text_with_kind;
-#[cfg(not(test))]
-use crate::updater::check_for_update;
-use crate::updater::UpdateCandidate;
+use crate::search::SearchSortMode;
 use crate::walker_runtime::walker_truncated_notice;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use crossterm::event::{self, Event, KeyEventKind};
 use crossterm::terminal;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::mpsc;
 use std::sync::Arc;
-use std::thread;
 use std::time::{Duration, Instant};
 
 const INPUT_DEBOUNCE: Duration = Duration::from_millis(35);
 const INDEX_REFRESH_THROTTLE: Duration = Duration::from_millis(100);
-const EVENT_POLL: Duration = Duration::from_millis(50);
-const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
 const MAX_WORKER_RESPONSES_PER_TICK: usize = 64;
 const PREVIEW_MIN_WIDTH: u16 = 100;
 const PREVIEW_MIN_HEIGHT: u16 = 8;
 
 fn format_tui_update_notice(target_version: &str) -> String {
     format!("Update available: v{target_version} — Run flistwalker --update after exiting")
-}
-
-#[cfg(not(test))]
-fn spawn_tui_update_check() -> mpsc::Receiver<Option<UpdateCandidate>> {
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        let candidate = check_for_update().ok().flatten();
-        let _ = tx.send(candidate);
-    });
-    rx
-}
-
-#[cfg(test)]
-fn spawn_tui_update_check() -> mpsc::Receiver<Option<UpdateCandidate>> {
-    let (_tx, rx) = mpsc::channel();
-    rx
 }
 
 #[derive(Clone, Debug)]
@@ -118,211 +93,29 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
 
     let guard = TerminalGuard::start(CrosstermOps, io::stderr())?;
     let root = root.to_path_buf();
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let (tx, rx) = mpsc::channel();
-    let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
-    let (search_done_tx, search_done_rx) = mpsc::channel();
-    let search_cancelled = Arc::clone(&cancelled);
-    let response_tx = tx.clone();
-    let search_handle = thread::Builder::new()
-        .name("flistwalker-cli-search".to_string())
-        .spawn(move || {
-            let mut prefix_cache = SearchPrefixCache::default();
-            while !search_cancelled.load(Ordering::Relaxed) {
-                let mut request = match search_rx.recv_timeout(EVENT_POLL) {
-                    Ok(request) => request,
-                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                };
-                while let Ok(newer) = search_rx.try_recv() {
-                    request = newer;
-                }
-                let (results, error) = search(&request, &mut prefix_cache);
-                if search_cancelled.load(Ordering::Relaxed)
-                    || response_tx
-                        .send(WorkerResponse::Searched {
-                            request_id: request.request_id,
-                            root: request.root,
-                            query: request.query,
-                            options: request.options,
-                            results,
-                            error,
-                        })
-                        .is_err()
-                {
-                    break;
-                }
-            }
-            let _ = search_done_tx.send(());
-        })
-        .context("failed to start CLI search worker")?;
-
-    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
-    let (preview_done_tx, preview_done_rx) = mpsc::channel();
-    let preview_cancelled = Arc::clone(&cancelled);
-    let preview_response_tx = tx.clone();
-    let preview_handle = match thread::Builder::new()
-        .name("flistwalker-cli-preview".to_string())
-        .spawn(move || {
-            while !preview_cancelled.load(Ordering::Relaxed) {
-                let mut request = match preview_rx.recv_timeout(EVENT_POLL) {
-                    Ok(request) => request,
-                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                };
-                while let Ok(newer) = preview_rx.try_recv() {
-                    request = newer;
-                }
-                let is_dir = request.path.is_dir();
-                let preview = build_preview_text_with_kind(&request.path, is_dir);
-                if preview_cancelled.load(Ordering::Relaxed)
-                    || preview_response_tx
-                        .send(WorkerResponse::Previewed {
-                            request_id: request.request_id,
-                            root: request.root,
-                            path: request.path,
-                            preview,
-                        })
-                        .is_err()
-                {
-                    break;
-                }
-            }
-            let _ = preview_done_tx.send(());
-        }) {
-        Ok(handle) => handle,
-        Err(error) => {
-            cancelled.store(true, Ordering::Relaxed);
-            drop(search_tx);
-            finish_worker(search_handle, search_done_rx);
-            return Err(error).context("failed to start CLI preview worker");
-        }
-    };
-
-    let action_freshness = Arc::new(TuiActionFreshness::new());
-    let (action_tx, action_rx) = mpsc::channel::<TuiActionRequest>();
-    let (action_done_tx, action_done_rx) = mpsc::channel();
-    let action_cancelled = Arc::clone(&cancelled);
-    let action_response_tx = tx.clone();
-    let action_worker_freshness = Arc::clone(&action_freshness);
-    let action_handle = match thread::Builder::new()
-        .name("flistwalker-cli-action".to_string())
-        .spawn(move || {
-            while !action_cancelled.load(Ordering::Acquire) {
-                let mut action = match action_rx.recv_timeout(EVENT_POLL) {
-                    Ok(action) => action,
-                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                };
-                while let Ok(newer) = action_rx.try_recv() {
-                    action = newer;
-                }
-                let request_id = action.request.request_id;
-                let root = action.request.trusted_root.clone();
-                let selected_path = action.selected_path;
-                let report = execute_authorized_action_request(
-                    &action.request,
-                    action_worker_freshness.as_ref(),
-                    &TuiActionBackend,
-                );
-                if action_cancelled.load(Ordering::Acquire)
-                    || action_response_tx
-                        .send(WorkerResponse::Actioned {
-                            request_id,
-                            root,
-                            selected_path,
-                            report,
-                        })
-                        .is_err()
-                {
-                    break;
-                }
-            }
-            let _ = action_done_tx.send(());
-        }) {
-        Ok(handle) => handle,
-        Err(error) => {
-            cancelled.store(true, Ordering::Release);
-            drop(search_tx);
-            drop(preview_tx);
-            finish_worker(search_handle, search_done_rx);
-            finish_worker(preview_handle, preview_done_rx);
-            return Err(error).context("failed to start CLI action worker");
-        }
-    };
-
-    let (index_tx, index_rx) = mpsc::channel::<IndexRequest>();
-    let (index_done_tx, index_done_rx) = mpsc::channel();
-    let worker_cancelled = Arc::clone(&cancelled);
-    let worker_tx = tx.clone();
-    let index_freshness = Arc::new(TuiIndexFreshness::new());
-    let worker_index_freshness = Arc::clone(&index_freshness);
-    let index_handle = match thread::Builder::new()
-        .name("flistwalker-cli-index-search".to_string())
-        .spawn(move || {
-            while !worker_cancelled.load(Ordering::Relaxed) {
-                let mut request = match index_rx.recv_timeout(EVENT_POLL) {
-                    Ok(request) => request,
-                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
-                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
-                };
-                while let Ok(newer) = index_rx.try_recv() {
-                    request = newer;
-                }
-                let request_id = request.request_id;
-                let should_cancel = || {
-                    worker_cancelled.load(Ordering::Relaxed)
-                        || !worker_index_freshness.is_current(request_id)
-                };
-                process_index_request(request, &should_cancel, |response| {
-                    let _ = worker_tx.send(response);
-                });
-            }
-            let _ = index_done_tx.send(());
-        }) {
-        Ok(handle) => handle,
-        Err(error) => {
-            cancelled.store(true, Ordering::Relaxed);
-            drop(search_tx);
-            drop(preview_tx);
-            drop(action_tx);
-            finish_worker(search_handle, search_done_rx);
-            finish_worker(preview_handle, preview_done_rx);
-            finish_worker(action_handle, action_done_rx);
-            return Err(error).context("failed to start CLI index worker");
-        }
-    };
-
+    let workers = TuiWorkerSet::start()?;
     let result = run_terminal_operation(guard, |terminal_output| {
         run_event_loop(
             terminal_output,
             EventLoopContext {
-                index_tx: &index_tx,
-                index_freshness: Arc::clone(&index_freshness),
-                search_tx: &search_tx,
-                preview_tx: &preview_tx,
-                action_tx: &action_tx,
-                rx: &rx,
+                index_tx: workers.index_tx(),
+                index_freshness: workers.index_freshness(),
+                search_tx: workers.search_tx(),
+                preview_tx: workers.preview_tx(),
+                action_tx: workers.action_tx(),
+                rx: workers.response_rx(),
                 root: root.clone(),
                 saved_roots,
                 options,
                 history_enabled,
                 history_entries,
                 history_persistence: history_persistence.as_ref(),
-                action_freshness: Arc::clone(&action_freshness),
-                cancellation: Arc::clone(&cancelled),
+                action_freshness: workers.action_freshness(),
+                cancellation: workers.cancellation(),
             },
         )
     });
-    cancelled.store(true, Ordering::Release);
-    drop(search_tx);
-    drop(index_tx);
-    drop(preview_tx);
-    drop(action_tx);
-    finish_worker(search_handle, search_done_rx);
-    finish_worker(preview_handle, preview_done_rx);
-    finish_worker(action_handle, action_done_rx);
-    finish_worker(index_handle, index_done_rx);
+    workers.shutdown();
 
     if let Ok(TuiExit::Selected { query, .. }) = &result {
         if let Err(error) = enqueue_history_delta(history_persistence.as_ref(), query) {

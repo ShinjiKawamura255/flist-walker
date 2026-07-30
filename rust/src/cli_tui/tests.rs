@@ -1,13 +1,18 @@
 use super::*;
 use crate::actions::{
-    AuthorizedActionBackend, AuthorizedActionGuard, AuthorizedActionMode, AuthorizedActionRequest,
+    execute_authorized_action_request, AuthorizedActionBackend, AuthorizedActionGuard,
+    AuthorizedActionMode, AuthorizedActionRequest,
 };
 use crate::indexer::{
     execute_filelist_write_plan, plan_filelist_write_cancellable, FileListWriteOptions,
     FileListWriteStatus,
 };
+use crate::search::SearchPrefixCache;
+use crate::ui_model::build_preview_text_with_kind;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
+use std::thread;
 use unicode_width::UnicodeWidthChar;
 
 #[test]
