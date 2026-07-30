@@ -15,7 +15,7 @@ use model::{TargetRecord, MARKER_VERSION};
 use platform::*;
 
 use anyhow::{bail, Context, Result};
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(not(target_os = "macos"))]
 use rand_core::{OsRng, RngCore};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -509,7 +509,7 @@ pub(super) fn recover_transaction(
     Ok(RecoveryOutcome::RolledBack)
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(not(target_os = "macos"))]
 pub(super) fn prepare_transaction(
     current_exe: &Path,
     sources: TransactionSources<'_>,
@@ -519,14 +519,14 @@ pub(super) fn prepare_transaction(
     prepare_transaction_with_id(current_exe, sources, &hex_bytes(&bytes), std::process::id())
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(not(target_os = "macos"))]
 pub(super) fn new_start_token() -> String {
     let mut bytes = [0u8; 32];
     OsRng.fill_bytes(&mut bytes);
     hex_bytes(&bytes)
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(not(target_os = "macos"))]
 impl PreparedTransaction {
     pub(super) fn transaction_id(&self) -> &str {
         &self.transaction_id
@@ -675,7 +675,7 @@ fn recover_orphan_preparation(
 struct NoFailure;
 impl FailureInjector for NoFailure {}
 
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(not(target_os = "macos"))]
 fn hex_bytes(bytes: &[u8]) -> String {
     let mut value = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
