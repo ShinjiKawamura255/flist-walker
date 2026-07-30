@@ -211,6 +211,7 @@ pub(super) fn read_marker(path: &Path) -> Result<TransactionMarker> {
     validate_marker(&marker)?;
     Ok(marker)
 }
+#[cfg(any(not(target_os = "macos"), test))]
 pub(super) fn write_marker_new(path: &Path, marker: &TransactionMarker) -> Result<()> {
     validate_marker(marker)?;
     create_new_synced(
@@ -640,6 +641,7 @@ pub(super) fn validate_target_if_present(path: &Path, label: &str) -> Result<()>
         Err(err) => Err(err).with_context(|| format!("failed to inspect {}", path.display())),
     }
 }
+#[cfg(any(not(target_os = "macos"), test))]
 pub(super) fn reject_existing(path: &Path, label: &str) -> Result<()> {
     match fs::symlink_metadata(path) {
         Ok(_) => bail!("{label} already exists"),

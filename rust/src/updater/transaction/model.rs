@@ -77,6 +77,7 @@ pub(in crate::updater) struct TransactionMarker {
     pub(super) targets: Vec<TargetRecord>,
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 pub(in crate::updater) struct TransactionSources<'a> {
     pub(in crate::updater) binary: &'a Path,
     pub(in crate::updater) readme: &'a Path,
@@ -84,6 +85,7 @@ pub(in crate::updater) struct TransactionSources<'a> {
     pub(in crate::updater) notices: &'a Path,
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 impl TransactionSources<'_> {
     pub(super) fn for_role(&self, role: TargetRole) -> &Path {
         match role {

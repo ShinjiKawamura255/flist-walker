@@ -6,16 +6,20 @@ mod model;
 mod platform;
 
 use filesystem::*;
+pub(super) use model::RecoveryOutcome;
+#[cfg(any(not(target_os = "macos"), test))]
+pub(super) use model::TransactionSources;
 use model::{Phase, TargetRecord, TargetRole, TargetState, TransactionMarker, MARKER_VERSION};
-pub(super) use model::{RecoveryOutcome, TransactionSources};
 use platform::*;
 
 use anyhow::{bail, Context, Result};
+#[cfg(any(not(target_os = "macos"), test))]
 use rand_core::{OsRng, RngCore};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+#[cfg(any(not(target_os = "macos"), test))]
 pub(super) struct PreparedTransaction {
     install_dir: PathBuf,
     marker_path: PathBuf,
@@ -27,6 +31,7 @@ pub(super) struct PreparedTransaction {
     armed: bool,
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 impl PreparedTransaction {
     pub(super) fn install_dir(&self) -> &Path {
         &self.install_dir
@@ -72,6 +77,7 @@ impl PreparedTransaction {
     }
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 impl Drop for PreparedTransaction {
     fn drop(&mut self) {
         if self.armed {
@@ -82,6 +88,7 @@ impl Drop for PreparedTransaction {
     }
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 pub(super) fn prepare_transaction_with_id(
     current_exe: &Path,
     sources: TransactionSources<'_>,
@@ -182,15 +189,18 @@ pub(super) fn prepare_transaction_with_id(
     Ok(prepared)
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 #[derive(Default)]
 struct OwnedPreparation {
     paths: Vec<PathBuf>,
 }
+#[cfg(any(not(target_os = "macos"), test))]
 impl OwnedPreparation {
     fn disarm(&mut self) {
         self.paths.clear();
     }
 }
+#[cfg(any(not(target_os = "macos"), test))]
 impl Drop for OwnedPreparation {
     fn drop(&mut self) {
         for path in self.paths.iter().rev() {
@@ -497,6 +507,7 @@ pub(super) fn recover_transaction(
     Ok(RecoveryOutcome::RolledBack)
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 pub(super) fn prepare_transaction(
     current_exe: &Path,
     sources: TransactionSources<'_>,
@@ -506,12 +517,14 @@ pub(super) fn prepare_transaction(
     prepare_transaction_with_id(current_exe, sources, &hex_bytes(&bytes), std::process::id())
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 pub(super) fn new_start_token() -> String {
     let mut bytes = [0u8; 32];
     OsRng.fill_bytes(&mut bytes);
     hex_bytes(&bytes)
 }
 
+#[cfg(any(not(target_os = "macos"), test))]
 impl PreparedTransaction {
     pub(super) fn transaction_id(&self) -> &str {
         &self.transaction_id
@@ -660,6 +673,7 @@ fn recover_orphan_preparation(
 struct NoFailure;
 impl FailureInjector for NoFailure {}
 
+#[cfg(any(not(target_os = "macos"), test))]
 fn hex_bytes(bytes: &[u8]) -> String {
     let mut value = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
