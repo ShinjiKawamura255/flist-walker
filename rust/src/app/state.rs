@@ -91,6 +91,13 @@ pub(super) struct PendingFileListAfterIndex {
     pub(super) root: PathBuf,
 }
 
+#[derive(Clone, Debug)]
+pub(super) struct PendingFileListIndexCompletionNotice {
+    pub(super) tab_id: u64,
+    pub(super) root: PathBuf,
+    pub(super) notice: String,
+}
+
 pub(super) struct PendingFileListUseWalkerConfirmation {
     pub(super) source_tab_id: u64,
     pub(super) root: PathBuf,
@@ -137,6 +144,7 @@ pub(super) struct FileListWorkflowState {
     pub(super) pending_root: Option<PathBuf>,
     pub(super) pending_cancel: Option<Arc<AtomicBool>>,
     pub(super) pending_after_index: Option<PendingFileListAfterIndex>,
+    pub(super) pending_index_completion_notices: HashMap<u64, PendingFileListIndexCompletionNotice>,
     pub(super) pending_confirmation: Option<PendingFileListConfirmation>,
     pub(super) pending_ancestor_confirmation: Option<PendingFileListAncestorConfirmation>,
     pub(super) pending_use_walker_confirmation: Option<PendingFileListUseWalkerConfirmation>,
@@ -155,6 +163,7 @@ impl Default for FileListWorkflowState {
             pending_root: None,
             pending_cancel: None,
             pending_after_index: None,
+            pending_index_completion_notices: HashMap::new(),
             pending_confirmation: None,
             pending_ancestor_confirmation: None,
             pending_use_walker_confirmation: None,

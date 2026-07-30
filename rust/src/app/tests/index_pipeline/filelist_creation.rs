@@ -365,3 +365,402 @@ fn filelist_finished_triggers_reindex_when_enabled() {
     assert!(app.shell.indexing.pending_request_id.is_some());
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn regression_filelist_completion_notice_survives_reindex_settlement() {
+    let root = test_root("filelist-completion-notice-after-reindex");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+    app.shell.worker_bus.filelist.rx = filelist_rx;
+    let (index_tx, index_request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    app.shell.features.filelist.workflow.pending_request_id = Some(13);
+    app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
+    app.shell.features.filelist.workflow.pending_root = Some(root.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
+    app.shell.runtime.use_filelist = false;
+
+    let filelist = root.join("FileList.txt");
+    filelist_tx
+        .send(FileListResponse::Finished {
+            request_id: 13,
+            root: root.clone(),
+            path: filelist.clone(),
+            count: 5,
+        })
+        .expect("send filelist response");
+
+    app.poll_filelist_response();
+
+    let index_request = index_request_rx
+        .try_recv()
+        .expect("reindex request should be sent");
+    index_response_tx
+        .send(IndexResponse::Finished {
+            request_id: index_request.request_id,
+            source: IndexSource::FileList(filelist.clone()),
+        })
+        .expect("send index response");
+
+    app.poll_index_response();
+
+    assert!(app.shell.runtime.notice.contains("Created"));
+    assert!(app.shell.runtime.notice.contains("5 entries"));
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains(filelist.to_string_lossy().as_ref()));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_filelist_completion_notice_is_not_cleared_by_another_tab_refresh() {
+    let root = test_root("filelist-completion-notice-cross-tab-refresh");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let first_tab_id = app.current_tab_id().expect("first tab id");
+    app.create_new_tab();
+    let (index_tx, _index_request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .insert(
+            77,
+            PendingFileListIndexCompletionNotice {
+                tab_id: first_tab_id,
+                root: root.clone(),
+                notice: "Created FileList.txt".to_string(),
+            },
+        );
+
+    app.request_index_refresh();
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .contains_key(&77));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_filelist_completion_notice_is_cleared_by_same_tab_supersede() {
+    let root = test_root("filelist-completion-notice-same-tab-supersede");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_tx, _index_request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .insert(
+            78,
+            PendingFileListIndexCompletionNotice {
+                tab_id,
+                root: root.clone(),
+                notice: "Created FileList.txt".to_string(),
+            },
+        );
+
+    app.request_create_filelist_walker_refresh();
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+fn seed_filelist_completion_notice(
+    app: &mut FlistWalkerApp,
+    request_id: u64,
+    tab_id: u64,
+    root: &Path,
+) {
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .insert(
+            request_id,
+            PendingFileListIndexCompletionNotice {
+                tab_id,
+                root: root.to_path_buf(),
+                notice: "Created FileList.txt: 5 entries".to_string(),
+            },
+        );
+}
+
+#[test]
+fn filelist_completion_notice_is_restored_after_background_reindex_finishes() {
+    let root = test_root("filelist-completion-notice-background-finish");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let creator_tab_id = app.current_tab_id().expect("creator tab id");
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+    app.shell.worker_bus.filelist.rx = filelist_rx;
+    let (index_tx, index_request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    app.shell.features.filelist.workflow.pending_request_id = Some(14);
+    app.shell.features.filelist.workflow.pending_request_tab_id = Some(creator_tab_id);
+    app.shell.features.filelist.workflow.pending_root = Some(root.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
+    app.shell.runtime.use_filelist = false;
+    let filelist = root.join("FileList.txt");
+
+    filelist_tx
+        .send(FileListResponse::Finished {
+            request_id: 14,
+            root: root.clone(),
+            path: filelist.clone(),
+            count: 5,
+        })
+        .expect("send filelist response");
+    app.poll_filelist_response();
+    let index_request = index_request_rx
+        .try_recv()
+        .expect("reindex request should be sent");
+    app.create_new_tab();
+
+    index_response_tx
+        .send(IndexResponse::Finished {
+            request_id: index_request.request_id,
+            source: IndexSource::FileList(filelist),
+        })
+        .expect("send index response");
+    app.poll_index_response();
+
+    let creator_tab = app
+        .shell
+        .tabs
+        .iter()
+        .find(|tab| tab.id == creator_tab_id)
+        .expect("creator tab");
+    assert!(creator_tab.notice.contains("Created"));
+    assert!(creator_tab.notice.contains("5 entries"));
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_completion_notice_follows_creator_when_tab_switch_precedes_response() {
+    let root = test_root("filelist-completion-notice-switch-before-response");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let creator_tab_id = app.current_tab_id().expect("creator tab id");
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
+    app.shell.worker_bus.filelist.rx = filelist_rx;
+    let (index_tx, index_request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    app.shell.features.filelist.workflow.pending_request_id = Some(15);
+    app.shell.features.filelist.workflow.pending_request_tab_id = Some(creator_tab_id);
+    app.shell.features.filelist.workflow.pending_root = Some(root.clone());
+    app.shell.features.filelist.workflow.in_progress = true;
+    app.shell.runtime.use_filelist = false;
+    let filelist = root.join("FileList.txt");
+    app.create_new_tab();
+
+    filelist_tx
+        .send(FileListResponse::Finished {
+            request_id: 15,
+            root: root.clone(),
+            path: filelist.clone(),
+            count: 5,
+        })
+        .expect("send filelist response");
+    app.poll_filelist_response();
+    let index_request = index_request_rx
+        .try_recv()
+        .expect("background reindex request should be sent");
+    assert_eq!(index_request.tab_id, creator_tab_id);
+
+    index_response_tx
+        .send(IndexResponse::Finished {
+            request_id: index_request.request_id,
+            source: IndexSource::FileList(filelist),
+        })
+        .expect("send index response");
+    app.poll_index_response();
+
+    let creator_tab = app
+        .shell
+        .tabs
+        .iter()
+        .find(|tab| tab.id == creator_tab_id)
+        .expect("creator tab");
+    assert!(creator_tab.notice.contains("Created"));
+    assert!(creator_tab.notice.contains("5 entries"));
+    assert!(!app.shell.runtime.notice.contains("Created"));
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_completion_notice_is_discarded_when_reindex_fails() {
+    let root = test_root("filelist-completion-notice-index-failure");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let request_id = 91;
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(request_id);
+    app.shell.indexing.request_tabs.insert(request_id, tab_id);
+    seed_filelist_completion_notice(&mut app, request_id, tab_id, &root);
+
+    tx.send(IndexResponse::Failed {
+        request_id,
+        error: "fixture failure".to_string(),
+    })
+    .expect("send failure");
+    app.poll_index_response();
+
+    assert!(app.shell.runtime.notice.contains("Indexing failed"));
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_completion_notice_is_restored_when_reindex_is_canceled() {
+    let root = test_root("filelist-completion-notice-index-canceled");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let request_id = 92;
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(request_id);
+    app.shell.indexing.request_tabs.insert(request_id, tab_id);
+    seed_filelist_completion_notice(&mut app, request_id, tab_id, &root);
+
+    tx.send(IndexResponse::Canceled { request_id })
+        .expect("send canceled");
+    app.poll_index_response();
+
+    assert!(app.shell.runtime.notice.contains("Created"));
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn mismatched_index_response_does_not_consume_filelist_completion_notice() {
+    let root = test_root("filelist-completion-notice-request-mismatch");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let pending_notice_request_id = 93;
+    let active_request_id = 94;
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(active_request_id);
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(active_request_id, tab_id);
+    seed_filelist_completion_notice(&mut app, pending_notice_request_id, tab_id, &root);
+
+    tx.send(IndexResponse::Canceled {
+        request_id: active_request_id,
+    })
+    .expect("send canceled");
+    app.poll_index_response();
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .contains_key(&pending_notice_request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn root_change_discards_filelist_completion_notice_for_same_tab() {
+    let root = test_root("filelist-completion-notice-root-change-old");
+    let new_root = test_root("filelist-completion-notice-root-change-new");
+    fs::create_dir_all(&root).expect("create old root");
+    fs::create_dir_all(&new_root).expect("create new root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let (index_tx, _index_request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    seed_filelist_completion_notice(&mut app, 95, tab_id, &root);
+
+    app.apply_root_change_direct(new_root.clone());
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&new_root);
+}
+
+#[test]
+fn closing_tab_discards_its_filelist_completion_notice() {
+    let root = test_root("filelist-completion-notice-close-tab");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let closing_tab_id = app.current_tab_id().expect("closing tab id");
+    app.create_new_tab();
+    seed_filelist_completion_notice(&mut app, 96, closing_tab_id, &root);
+
+    app.close_tab_index(0);
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_index_completion_notices
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}

@@ -7,7 +7,7 @@ use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
 use crate::walker_runtime::walker_truncated_notice;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -172,6 +172,11 @@ impl FlistWalkerApp {
             let affected_tab_ids: HashSet<u64> = indexing.request_tabs.values().copied().collect();
 
             features.filelist.workflow.pending_after_index = None;
+            features
+                .filelist
+                .workflow
+                .pending_index_completion_notices
+                .clear();
             indexing.pending_queue.clear();
             indexing.background_states.clear();
             indexing.inflight_requests.clear();
@@ -213,6 +218,12 @@ impl FlistWalkerApp {
     }
 
     fn enqueue_index_request(&mut self, req: IndexRequest) {
+        self.shell
+            .features
+            .filelist
+            .workflow
+            .pending_index_completion_notices
+            .retain(|_, pending| pending.tab_id != req.tab_id);
         let active_tab_id = self.current_tab_id().unwrap_or_default();
         let stale_inflight: Vec<u64> = self
             .shell
@@ -249,6 +260,7 @@ impl FlistWalkerApp {
                 .unwrap_or(0);
             let dropped = self.shell.indexing.pending_queue.remove(drop_idx);
             if let Some(dropped) = dropped {
+                self.discard_filelist_index_completion_notice(dropped.request_id);
                 if let Some(tab_index) = self.find_tab_index_by_id(dropped.tab_id) {
                     if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
                         if tab.index_state.pending_index_request_id == Some(dropped.request_id) {
@@ -435,11 +447,48 @@ impl FlistWalkerApp {
     }
 
     fn handle_background_index_response(&mut self, tab_index: usize, msg: IndexResponse) {
+        let request_id = IndexCoordinator::response_request_id(&msg);
+        let completion_notice_can_apply = self
+            .shell
+            .tabs
+            .get(tab_index)
+            .is_some_and(|tab| tab.index_state.pending_index_request_id == Some(request_id));
+        let restore_completion_notice = matches!(
+            &msg,
+            IndexResponse::Finished { .. } | IndexResponse::Canceled { .. }
+        );
+        let terminal = matches!(
+            &msg,
+            IndexResponse::Finished { .. }
+                | IndexResponse::Failed { .. }
+                | IndexResponse::Canceled { .. }
+        );
         let BackgroundIndexResponseEffect {
             trigger_search,
             cleanup_request_id,
             deferred_filelist,
         } = self.apply_background_index_response(tab_index, msg);
+
+        if terminal {
+            let owner = self
+                .shell
+                .tabs
+                .get(tab_index)
+                .map(|tab| (tab.id, tab.root.clone()));
+            if completion_notice_can_apply && restore_completion_notice {
+                if let Some((tab_id, root)) = owner {
+                    if let Some(notice) =
+                        self.take_filelist_index_completion_notice(request_id, tab_id, &root)
+                    {
+                        if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
+                            tab.notice = notice;
+                        }
+                    }
+                }
+            } else {
+                self.discard_filelist_index_completion_notice(request_id);
+            }
+        }
 
         if let Some((tab_id, root, entries)) = deferred_filelist {
             self.request_filelist_creation(tab_id, root, entries);
@@ -481,6 +530,7 @@ impl FlistWalkerApp {
                     if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
                         self.handle_background_index_response(tab_index, msg);
                     } else {
+                        self.discard_filelist_index_completion_notice(request_id);
                         self.shell.indexing.cleanup_request(request_id);
                     }
                     processed = processed.saturating_add(1);
@@ -491,6 +541,7 @@ impl FlistWalkerApp {
                     continue;
                 }
                 IndexResponseRoute::Stale => {
+                    self.discard_filelist_index_completion_notice(request_id);
                     self.shell
                         .indexing
                         .cleanup_stale_terminal_response(request_id);
@@ -530,11 +581,22 @@ impl FlistWalkerApp {
                 }
                 IndexResponse::Failed { request_id, error } => {
                     self.shell.features.filelist.workflow.pending_after_index = None;
+                    self.discard_filelist_index_completion_notice(request_id);
                     self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
                     self.shell.indexing.complete_active_request(request_id);
                 }
                 IndexResponse::Canceled { request_id } => {
+                    if let Some((tab_id, root)) = self
+                        .current_tab_id()
+                        .map(|tab_id| (tab_id, self.shell.runtime.root.clone()))
+                    {
+                        if let Some(notice) =
+                            self.take_filelist_index_completion_notice(request_id, tab_id, &root)
+                        {
+                            self.set_notice(notice);
+                        }
+                    }
                     self.shrink_checkpoint_buffers();
                     self.shell.indexing.complete_active_request(request_id);
                 }
@@ -796,8 +858,15 @@ impl FlistWalkerApp {
         } else {
             self.reset_kind_resolution_state();
         }
-        self.clear_notice();
         let current_tab_id = self.current_tab_id().unwrap_or_default();
+        let current_root = self.shell.runtime.root.clone();
+        if let Some(notice) =
+            self.take_filelist_index_completion_notice(request_id, current_tab_id, &current_root)
+        {
+            self.set_notice(notice);
+        } else {
+            self.clear_notice();
+        }
         if self
             .shell
             .features
@@ -816,6 +885,31 @@ impl FlistWalkerApp {
             self.request_filelist_creation(current_tab_id, root, entries);
         }
         self.shell.indexing.complete_active_request(request_id);
+    }
+
+    fn take_filelist_index_completion_notice(
+        &mut self,
+        request_id: u64,
+        tab_id: u64,
+        root: &Path,
+    ) -> Option<String> {
+        self.shell
+            .features
+            .filelist
+            .workflow
+            .pending_index_completion_notices
+            .remove(&request_id)
+            .filter(|pending| pending.tab_id == tab_id && path_key(&pending.root) == path_key(root))
+            .map(|pending| pending.notice)
+    }
+
+    fn discard_filelist_index_completion_notice(&mut self, request_id: u64) {
+        self.shell
+            .features
+            .filelist
+            .workflow
+            .pending_index_completion_notices
+            .remove(&request_id);
     }
 
     fn apply_incremental_empty_query_results(&mut self) {

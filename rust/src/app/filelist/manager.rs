@@ -187,6 +187,9 @@ impl FileListManager {
     }
 
     pub(in crate::app) fn clear_pending_for_tab(&mut self, tab_id: u64) {
+        self.workflow
+            .pending_index_completion_notices
+            .retain(|_, pending| pending.tab_id != tab_id);
         if self
             .workflow
             .pending_after_index
