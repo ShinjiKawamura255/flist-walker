@@ -9,7 +9,9 @@ use filesystem::*;
 pub(super) use model::RecoveryOutcome;
 #[cfg(any(not(target_os = "macos"), test))]
 pub(super) use model::TransactionSources;
-use model::{Phase, TargetRecord, TargetRole, TargetState, TransactionMarker, MARKER_VERSION};
+use model::{Phase, TargetRole, TargetState, TransactionMarker};
+#[cfg(any(not(target_os = "macos"), test))]
+use model::{TargetRecord, MARKER_VERSION};
 use platform::*;
 
 use anyhow::{bail, Context, Result};

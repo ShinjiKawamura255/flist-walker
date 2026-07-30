@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+#[cfg(any(not(target_os = "macos"), test))]
 use std::path::Path;
 
 pub(super) const MARKER_VERSION: u32 = 1;
