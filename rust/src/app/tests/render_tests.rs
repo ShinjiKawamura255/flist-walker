@@ -1,7 +1,7 @@
 use super::*;
 use crate::app::render::{
-    RenderCommand, RenderFileListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
-    RenderUpdateDialogCommand,
+    RenderCommand, RenderFileListDialogCommand, RenderRootListDialogCommand, RenderTabBarCommand,
+    RenderTopActionCommand, RenderUpdateDialogCommand,
 };
 use crate::app::render_theme;
 use crate::app::{render_dialogs, render_panels};
@@ -166,6 +166,69 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
     app.dispatch_render_commands(&ctx);
 
     assert!(app.shell.features.update.state.check_failure.is_none());
+    assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn filelist_dialog_command_selection_preserves_button_precedence() {
+    assert!(matches!(
+        render_dialogs::filelist::overwrite_command(true, true),
+        Some(RenderFileListDialogCommand::ConfirmOverwrite)
+    ));
+    assert!(matches!(
+        render_dialogs::filelist::ancestor_command(true, true, true),
+        Some(RenderFileListDialogCommand::ConfirmAncestorPropagation)
+    ));
+    assert!(matches!(
+        render_dialogs::filelist::ancestor_command(false, true, true),
+        Some(RenderFileListDialogCommand::SkipAncestorPropagation)
+    ));
+    assert!(matches!(
+        render_dialogs::filelist::use_walker_command(false, true),
+        Some(RenderFileListDialogCommand::CancelUseWalker)
+    ));
+}
+
+#[test]
+fn update_dialog_command_selection_preserves_skip_and_suppress_state() {
+    assert!(matches!(
+        render_dialogs::update::prompt_command(true, true, true),
+        Some(RenderUpdateDialogCommand::StartInstall)
+    ));
+    assert!(matches!(
+        render_dialogs::update::prompt_command(false, true, true),
+        Some(RenderUpdateDialogCommand::SkipPromptUntilNextVersion)
+    ));
+    assert!(matches!(
+        render_dialogs::update::prompt_command(false, true, false),
+        Some(RenderUpdateDialogCommand::DismissPrompt)
+    ));
+    assert!(matches!(
+        render_dialogs::update::check_failure_command(true, true),
+        Some(RenderUpdateDialogCommand::SuppressCheckFailures)
+    ));
+    assert!(matches!(
+        render_dialogs::update::check_failure_command(true, false),
+        Some(RenderUpdateDialogCommand::DismissCheckFailure)
+    ));
+}
+
+#[test]
+fn dispatch_render_commands_consumes_root_list_cancel_queue() {
+    let root = test_root("render-command-root-list-dialog");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let ctx = egui::Context::default();
+    app.open_manage_root_list();
+    assert!(app.shell.features.root_browser.manage_list.open);
+
+    app.queue_render_command(RenderCommand::RootListDialog(
+        RenderRootListDialogCommand::Cancel,
+    ));
+    app.dispatch_render_commands(&ctx);
+
+    assert!(!app.shell.features.root_browser.manage_list.open);
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
