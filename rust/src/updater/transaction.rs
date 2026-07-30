@@ -3,7 +3,38 @@ mod tests {
     use super::*;
     use crate::updater::staging;
     use std::fs;
+    #[cfg(target_os = "windows")]
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
     use std::path::{Path, PathBuf};
+
+    #[cfg(target_os = "windows")]
+    struct PathEnvGuard {
+        original: Option<std::ffi::OsString>,
+    }
+
+    #[cfg(target_os = "windows")]
+    impl PathEnvGuard {
+        fn isolate_to(path: &Path) -> Self {
+            let original = std::env::var_os("PATH");
+            unsafe {
+                std::env::set_var("PATH", path);
+            }
+            Self { original }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    impl Drop for PathEnvGuard {
+        fn drop(&mut self) {
+            unsafe {
+                if let Some(original) = self.original.take() {
+                    std::env::set_var("PATH", original);
+                } else {
+                    std::env::remove_var("PATH");
+                }
+            }
+        }
+    }
 
     struct TestProcessControl {
         parent_exited: bool,
@@ -1012,6 +1043,97 @@ mod tests {
         fs::remove_dir_all(root).expect("cleanup");
     }
 
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn tc171_regression_windows_file_replace_does_not_require_powershell_on_path() {
+        let _env_lock = crate::env_var_test_lock()
+            .lock()
+            .expect("env var test lock");
+        let root = staging::test_unique_update_temp_dir().expect("root");
+        let isolated_path = root.join("isolated-path");
+        let source = root.join("source.new");
+        let target = root.join("target.bin");
+        let backup = root.join("target.backup");
+        fs::create_dir(&isolated_path).expect("isolated PATH");
+        fs::write(&source, b"new").expect("source");
+        fs::write(&target, b"old").expect("target");
+
+        let path_guard = PathEnvGuard::isolate_to(&isolated_path);
+        let result = windows_file_replace(&source, &target, Some(&backup));
+        drop(path_guard);
+
+        result.expect("in-process File.Replace must not depend on powershell.exe");
+        assert_eq!(fs::read(&target).expect("target"), b"new");
+        assert_eq!(fs::read(&backup).expect("backup"), b"old");
+        assert!(!source.exists());
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn tc171_regression_windows_file_replace_supports_no_backup_boundary() {
+        let root = staging::test_unique_update_temp_dir().expect("root");
+        let source = root.join("source.new");
+        let target = root.join("target.bin");
+        fs::write(&source, b"new").expect("source");
+        fs::write(&target, b"old").expect("target");
+
+        windows_file_replace(&source, &target, None).expect("File.Replace without backup");
+
+        assert_eq!(fs::read(&target).expect("target"), b"new");
+        assert!(!source.exists());
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn tc171_regression_windows_file_replace_failure_preserves_source() {
+        let root = staging::test_unique_update_temp_dir().expect("root");
+        let source = root.join("source.new");
+        let missing_target = root.join("missing-target.bin");
+        let backup = root.join("target.backup");
+        fs::write(&source, b"new").expect("source");
+
+        let error = windows_file_replace(&source, &missing_target, Some(&backup))
+            .expect_err("File.Replace must fail when the target is missing");
+
+        assert!(!error.to_string().is_empty());
+        assert_eq!(fs::read(&source).expect("source remains"), b"new");
+        assert!(!missing_target.exists());
+        assert!(!backup.exists());
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn tc171_regression_windows_file_replace_preserves_verbatim_path_prefix() {
+        let path = Path::new(r"\\?\C:\very-long\update-target.bin");
+        let encoded = windows_replace_wide_path(path).expect("encode verbatim path");
+        let expected = path
+            .as_os_str()
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect::<Vec<_>>();
+
+        assert_eq!(encoded, expected);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn tc171_regression_windows_file_replace_rejects_interior_nul() {
+        let path = PathBuf::from(std::ffi::OsString::from_wide(&[
+            b'C' as u16,
+            b':' as u16,
+            b'\\' as u16,
+            0,
+            b'x' as u16,
+        ]));
+
+        let error = windows_replace_wide_path(&path).expect_err("interior NUL must be rejected");
+
+        assert!(error.to_string().contains("NUL"));
+    }
+
     #[cfg(all(unix, not(target_os = "macos")))]
     #[test]
     fn tc160_linux_synced_rename_preserves_the_old_dummy_file_as_backup() {
@@ -1039,6 +1161,12 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 const MARKER_FILE_NAME: &str = ".flistwalker-update.marker.json";
 const LOCK_FILE_NAME: &str = ".flistwalker-update.lock";
@@ -1857,7 +1985,7 @@ fn write_marker_atomic(path: &Path, marker: &TransactionMarker) -> Result<()> {
 fn replace_marker_file(source: &Path, destination: &Path) -> Result<()> {
     let backup = source.with_extension("previous");
     reject_existing(&backup, "marker replacement backup")?;
-    powershell_file_replace(source, destination, Some(&backup))?;
+    windows_file_replace(source, destination, Some(&backup))?;
     fs::remove_file(&backup)
         .with_context(|| format!("failed to remove marker backup {}", backup.display()))
 }
@@ -1873,7 +2001,7 @@ fn replace_marker_file(source: &Path, destination: &Path) -> Result<()> {
 }
 #[cfg(target_os = "windows")]
 fn replace_existing(source: &Path, target: &Path, backup: &Path) -> Result<()> {
-    powershell_file_replace(source, target, Some(backup))
+    windows_file_replace(source, target, Some(backup))
 }
 #[cfg(not(target_os = "windows"))]
 fn replace_existing(source: &Path, target: &Path, backup: &Path) -> Result<()> {
@@ -1892,7 +2020,7 @@ fn restore_existing(
 ) -> Result<()> {
     let marker = read_marker(&install_dir.join(MARKER_FILE_NAME))?;
     let failed = failed_path(install_dir, &marker.transaction_id, role);
-    powershell_file_replace(backup, target, Some(&failed))?;
+    windows_file_replace(backup, target, Some(&failed))?;
     fs::remove_file(&failed).with_context(|| format!("failed to remove {}", failed.display()))
 }
 #[cfg(not(target_os = "windows"))]
@@ -1907,33 +2035,66 @@ fn restore_existing(
     sync_parent(install_dir)
 }
 #[cfg(target_os = "windows")]
-fn powershell_file_replace(source: &Path, target: &Path, backup: Option<&Path>) -> Result<()> {
-    let command = "$backup=$env:FLISTWALKER_REPLACE_BACKUP;if([string]::IsNullOrEmpty($backup)){$backup=$null};[System.IO.File]::Replace($env:FLISTWALKER_REPLACE_SOURCE,$env:FLISTWALKER_REPLACE_TARGET,$backup,$false)";
-    let mut process = Command::new("powershell.exe");
-    process
-        .args(["-NoProfile", "-NonInteractive", "-Command", command])
-        .env("FLISTWALKER_REPLACE_SOURCE", powershell_path(source))
-        .env("FLISTWALKER_REPLACE_TARGET", powershell_path(target))
-        .env(
-            "FLISTWALKER_REPLACE_BACKUP",
-            backup.map(powershell_path).unwrap_or_default(),
-        );
-    let status = process
-        .status()
-        .context("failed to launch PowerShell File.Replace")?;
-    if !status.success() {
-        bail!("PowerShell File.Replace failed with {status}");
+fn windows_file_replace(source: &Path, target: &Path, backup: Option<&Path>) -> Result<()> {
+    use std::ffi::c_void;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn ReplaceFileW(
+            replaced_file_name: *const u16,
+            replacement_file_name: *const u16,
+            backup_file_name: *const u16,
+            replace_flags: u32,
+            exclude: *mut c_void,
+            reserved: *mut c_void,
+        ) -> i32;
+        fn GetLastError() -> u32;
     }
-    Ok(())
+
+    let source_wide = windows_replace_wide_path(source)?;
+    let target_wide = windows_replace_wide_path(target)?;
+    let backup_wide = backup.map(windows_replace_wide_path).transpose()?;
+    let backup_pointer = backup_wide
+        .as_ref()
+        .map_or(std::ptr::null(), |path| path.as_ptr());
+
+    // Regression guard: updater replacement must stay in-process so one transaction cannot
+    // flash many PowerShell terminals or fail because an external shell is unavailable.
+    // Do not replace this call with a child process without updating the paired regression tests.
+    let replaced = unsafe {
+        ReplaceFileW(
+            target_wide.as_ptr(),
+            source_wide.as_ptr(),
+            backup_pointer,
+            0,
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+        )
+    };
+    if replaced != 0 {
+        return Ok(());
+    }
+
+    let error = unsafe { GetLastError() };
+    Err(std::io::Error::from_raw_os_error(error as i32)).with_context(|| {
+        format!(
+            "ReplaceFileW failed while replacing {} with {}",
+            target.display(),
+            source.display()
+        )
+    })
 }
 
 #[cfg(target_os = "windows")]
-fn powershell_path(path: &Path) -> std::ffi::OsString {
-    let value = path.as_os_str().to_string_lossy();
-    if let Some(rest) = value.strip_prefix(r"\\?\UNC\") {
-        return format!(r"\\{rest}").into();
+fn windows_replace_wide_path(path: &Path) -> Result<Vec<u16>> {
+    use std::os::windows::ffi::OsStrExt;
+
+    let mut wide = path.as_os_str().encode_wide().collect::<Vec<_>>();
+    if wide.contains(&0) {
+        bail!("Windows replacement path contains an interior NUL");
     }
-    value.strip_prefix(r"\\?\").unwrap_or(&value).into()
+    wide.push(0);
+    Ok(wide)
 }
 
 fn revalidate_operation_paths(
@@ -2727,7 +2888,11 @@ fn wait_for_process_exit(_pid: u32, _timeout: Duration) -> Result<bool> {
 
 #[cfg(target_os = "windows")]
 fn restart_target(target: &Path) -> Result<()> {
-    Command::new(target)
+    let mut command = Command::new(target);
+    // The updater must not surface a console even if a Windows build temporarily uses the
+    // console subsystem; the restarted process owns its normal GUI startup path.
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
         .spawn()
         .with_context(|| format!("failed to restart {}", target.display()))?;
     Ok(())
