@@ -1,0 +1,246 @@
+use anyhow::{Context, Result};
+use std::path::Path;
+use std::time::Instant;
+
+use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
+use flist_walker::updater::recover_interrupted_update_on_startup;
+use resvg::{tiny_skia, usvg};
+use tracing::warn;
+
+use crate::launch_path::resolve_root;
+
+const APP_TITLE: &str = "FlistWalker";
+const APP_ID: &str = "flistwalker";
+const DEFAULT_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(1400.0, 900.0);
+const MIN_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(640.0, 400.0);
+
+#[cfg(target_os = "windows")]
+fn configure_windows_dpi_mode() {
+    #[link(name = "user32")]
+    extern "system" {
+        fn SetProcessDPIAware() -> i32;
+    }
+    // SAFETY: process-wide DPI mode is switched before native window creation.
+    // Keep this always-on for Windows to reduce monitor-crossing auto-resize jitter.
+    let _ = unsafe { SetProcessDPIAware() };
+    FlistWalkerApp::trace_window_event("windows_dpi_mode", "mode=system(always)");
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_windows_dpi_mode() {}
+
+pub(crate) fn initialize() -> Result<()> {
+    match recover_interrupted_update_on_startup() {
+        Ok(Some(outcome)) => {
+            warn!("startup updater recovery completed: {outcome}");
+        }
+        Ok(None) => {}
+        Err(err) => {
+            warn!("startup updater recovery requires operator attention: {err}");
+        }
+    }
+    ctrlc::set_handler(|| {
+        request_process_shutdown();
+    })
+    .context("failed to install signal handler")?;
+    Ok(())
+}
+
+pub(crate) fn run(root: Option<&Path>, query: String, limit: usize) -> Result<()> {
+    let startup_start = Instant::now();
+    trace_startup_phase(startup_start, "run_gui_enter");
+    configure_windows_dpi_mode();
+    let root_explicit = root.is_some();
+    let root = resolve_root(root.unwrap_or(Path::new(".")))?;
+    trace_startup_phase(startup_start, "root_resolved");
+    let mut native_options = eframe::NativeOptions::default();
+    let startup_geometry =
+        FlistWalkerApp::startup_window_geometry_with_display_bounds(current_display_bounds());
+    trace_startup_phase(startup_start, "startup_geometry_loaded");
+    FlistWalkerApp::trace_window_event(
+        "run_gui_start",
+        &format!("root={} limit={}", root.display(), limit),
+    );
+    if let Some((pos, size)) = startup_geometry {
+        FlistWalkerApp::trace_window_event(
+            "run_gui_apply_startup_geometry",
+            &format!(
+                "x={:.1} y={:.1} width={:.1} height={:.1}",
+                pos.x, pos.y, size.x, size.y
+            ),
+        );
+    } else {
+        FlistWalkerApp::trace_window_event("run_gui_no_startup_size", "using_default_size");
+    }
+    let icon = load_app_icon();
+    trace_startup_phase(startup_start, "icon_prepared");
+    native_options.viewport = build_root_viewport(startup_geometry, icon);
+
+    trace_startup_phase(startup_start, "run_native_before");
+    eframe::run_native(
+        APP_TITLE,
+        native_options,
+        Box::new(move |cc| {
+            configure_egui_fonts(&cc.egui_ctx);
+            trace_startup_phase(startup_start, "fonts_configured");
+            let app = FlistWalkerApp::from_launch(root, limit, query, root_explicit);
+            trace_startup_phase(startup_start, "app_created");
+            Ok(Box::new(app))
+        }),
+    )
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn current_display_bounds() -> Option<eframe::egui::Rect> {
+    const SM_XVIRTUALSCREEN: i32 = 76;
+    const SM_YVIRTUALSCREEN: i32 = 77;
+    const SM_CXVIRTUALSCREEN: i32 = 78;
+    const SM_CYVIRTUALSCREEN: i32 = 79;
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetSystemMetrics(nIndex: i32) -> i32;
+    }
+    // SAFETY: GetSystemMetrics is read-only and does not require initialized window state.
+    let (x, y, width, height) = unsafe {
+        (
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        )
+    };
+    if width <= 0 || height <= 0 {
+        FlistWalkerApp::trace_window_event(
+            "current_display_bounds_unavailable",
+            &format!("x={x} y={y} width={width} height={height}"),
+        );
+        return None;
+    }
+    let bounds = eframe::egui::Rect::from_min_size(
+        eframe::egui::pos2(x as f32, y as f32),
+        eframe::egui::vec2(width as f32, height as f32),
+    );
+    FlistWalkerApp::trace_window_event(
+        "current_display_bounds",
+        &format!(
+            "x={:.1} y={:.1} width={:.1} height={:.1}",
+            bounds.min.x,
+            bounds.min.y,
+            bounds.width(),
+            bounds.height()
+        ),
+    );
+    Some(bounds)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn current_display_bounds() -> Option<eframe::egui::Rect> {
+    None
+}
+
+fn build_root_viewport(
+    startup_geometry: Option<(eframe::egui::Pos2, eframe::egui::Vec2)>,
+    icon: Option<eframe::egui::IconData>,
+) -> eframe::egui::ViewportBuilder {
+    let mut viewport = eframe::egui::ViewportBuilder::default()
+        .with_title(APP_TITLE)
+        .with_app_id(APP_ID)
+        .with_inner_size(DEFAULT_WINDOW_SIZE)
+        .with_min_inner_size(MIN_WINDOW_SIZE);
+    if let Some((pos, size)) = startup_geometry {
+        viewport = viewport.with_position(pos).with_inner_size(size);
+    }
+    if let Some(icon) = icon {
+        viewport = viewport.with_icon(icon);
+    }
+    viewport
+}
+
+fn load_app_icon() -> Option<eframe::egui::IconData> {
+    let svg = include_bytes!("../assets/flistwalker-icon.svg");
+    let tree = usvg::Tree::from_data(svg, &usvg::Options::default()).ok()?;
+    let target_px = 256u32;
+    let mut pixmap = tiny_skia::Pixmap::new(target_px, target_px)?;
+    let size = tree.size().to_int_size();
+    let sx = target_px as f32 / size.width() as f32;
+    let sy = target_px as f32 / size.height() as f32;
+    let transform = tiny_skia::Transform::from_scale(sx, sy);
+    resvg::render(&tree, transform, &mut pixmap.as_mut());
+    let rgba = premultiplied_to_unmultiplied_rgba(pixmap.data());
+
+    Some(eframe::egui::IconData {
+        rgba,
+        width: target_px,
+        height: target_px,
+    })
+}
+
+fn trace_startup_phase(start: Instant, phase: &str) {
+    FlistWalkerApp::trace_window_event(
+        "startup_phase",
+        &format!(
+            "phase={} elapsed_ms={:.3}",
+            phase,
+            start.elapsed().as_secs_f64() * 1000.0
+        ),
+    );
+}
+
+fn premultiplied_to_unmultiplied_rgba(src: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(src.len());
+    for px in src.chunks_exact(4) {
+        let r = px[0] as u32;
+        let g = px[1] as u32;
+        let b = px[2] as u32;
+        let a = px[3] as u32;
+        if a == 0 {
+            out.extend_from_slice(&[0, 0, 0, 0]);
+            continue;
+        }
+        let unpremul = |c: u32| -> u8 {
+            let v = ((c * 255 + a / 2) / a).min(255);
+            v as u8
+        };
+        out.push(unpremul(r));
+        out.push(unpremul(g));
+        out.push(unpremul(b));
+        out.push(a as u8);
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_root_viewport, APP_ID, APP_TITLE, DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE};
+
+    #[test]
+    fn build_root_viewport_applies_defaults() {
+        let viewport = build_root_viewport(None, None);
+
+        assert_eq!(viewport.title.as_deref(), Some(APP_TITLE));
+        assert_eq!(viewport.app_id.as_deref(), Some(APP_ID));
+        assert_eq!(viewport.inner_size, Some(DEFAULT_WINDOW_SIZE));
+        assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
+        assert_eq!(viewport.position, None);
+    }
+
+    #[test]
+    fn build_root_viewport_prefers_restored_geometry_and_icon() {
+        let icon = eframe::egui::IconData {
+            rgba: vec![255, 0, 0, 255],
+            width: 1,
+            height: 1,
+        };
+        let pos = eframe::egui::pos2(-1600.0, 120.0);
+        let size = eframe::egui::vec2(900.0, 700.0);
+
+        let viewport = build_root_viewport(Some((pos, size)), Some(icon));
+
+        assert_eq!(viewport.position, Some(pos));
+        assert_eq!(viewport.inner_size, Some(size));
+        assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
+        assert!(viewport.icon.is_some());
+    }
+}
