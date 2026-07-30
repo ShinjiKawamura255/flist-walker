@@ -8,9 +8,10 @@ FlistWalker is a single-process desktop/CLI application. The GUI path creates an
 
 ```mermaid
 flowchart LR
-  User[User] --> Main[main.rs]
-  Main -->|--cli| Cli[CLI adapter]
-  Main -->|GUI| Gui[FlistWalkerApp]
+  User[User] --> Main["main.rs startup router"]
+  Main -->|--cli| Cli["cli/args + cli/batch"]
+  Main -->|GUI| Launch[gui_launch]
+  Launch --> Gui[FlistWalkerApp]
   Cli --> Indexer[indexer]
   Cli --> Search[search]
   Gui --> Shell[AppShellState]

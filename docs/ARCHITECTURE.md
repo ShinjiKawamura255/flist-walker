@@ -7,7 +7,13 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 
 ## Top-Level Modules
 - [main.rs](../rust/src/main.rs)
-  - CLI entrypoint。引数解釈と GUI/CLI 起動分岐を担当する。
+  - thin startup entrypoint。tracing、internal update helper、引数検証、runtime config、GUI/CLI 起動の順序を固定する。
+- [cli.rs](../rust/src/cli.rs), [cli/args.rs](../rust/src/cli/args.rs), [cli/batch.rs](../rust/src/cli/batch.rs)
+  - binary-private CLI owner。typed clap contract/validation、batch・interactive・FileList dispatch、action/exec/reporting と exit mapping を分担する。
+- [cli_tui.rs](../rust/src/cli_tui.rs), [cli_tui/](../rust/src/cli_tui/)
+  - public TUI facade と private protocol/state/worker/FileList/input/render/terminal owner。terminal cleanup と request freshness を owner-aligned test で固定する。
+- [gui_launch.rs](../rust/src/gui_launch.rs), [launch_path.rs](../rust/src/launch_path.rs)
+  - native window bootstrap と CLI/GUI 共通 root resolution を担当する。
 - [lib.rs](../rust/src/lib.rs)
   - 共有モジュール公開面。
 - [entry.rs](../rust/src/entry.rs)
@@ -110,8 +116,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - index worker channel、queue/inflight、incremental state、background tab state に加え、request id 採番、active/background refresh 開始、terminal cleanup など index request lifecycle の owner API を保持する。
 - [index_worker.rs](../rust/src/app/index_worker.rs)
   - FileList / Walker streaming、kind classification、index worker thread 実装を担当する。
-- [adaptive_walker.rs](../rust/src/app/adaptive_walker.rs)
-  - 既定かつ唯一の adaptive Walker backend、single-worker serial fast path、read_dir 制御指標の収集を担当する。
+- [walker_runtime/mod.rs](../rust/src/walker_runtime/mod.rs), [walker_runtime/adaptive.rs](../rust/src/walker_runtime/adaptive.rs)
+  - GUI/TUI から独立した adaptive Walker backend、runtime settings、entry classification、truncation notice、single-worker serial fast path、read_dir 制御指標を担当する。
 - [worker_protocol.rs](../rust/src/app/worker_protocol.rs)
   - search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を実装モジュールから分離する。
 - [worker_bus.rs](../rust/src/app/worker_bus.rs)
@@ -138,8 +144,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - preview request/response、highlight lookup、preview routing の orchestration を担当しつつ、response apply は reducer boundary を呼ぶ。
 - [render.rs](../rust/src/app/render.rs)
   - `RenderCommand` / frame orchestration / facade wrapper を担当し、frame 後段で render command を dispatch する。
-- [render_panels.rs](../rust/src/app/render_panels.rs), [render_dialogs.rs](../rust/src/app/render_dialogs.rs), [render_tabs.rs](../rust/src/app/render_tabs.rs), [render_snapshot.rs](../rust/src/app/render_snapshot.rs), [render_theme.rs](../rust/src/app/render_theme.rs)
-  - panel/dialog/results/tab/snapshot/theme の描画責務を担当し、`render.rs` から直接委譲される。
+- [render_panels.rs](../rust/src/app/render_panels.rs), [render_panels/](../rust/src/app/render_panels/), [render_dialogs.rs](../rust/src/app/render_dialogs.rs), [render_dialogs/](../rust/src/app/render_dialogs/), [render_tabs.rs](../rust/src/app/render_tabs.rs), [render_snapshot.rs](../rust/src/app/render_snapshot.rs), [render_theme.rs](../rust/src/app/render_theme.rs)
+  - facade/results/status、private top-panel、FileList/update/root-list dialog、tab/snapshot/theme の描画責務を分担する。render owner は既存 owner method と `RenderCommand` のみを mutation seam とし、filesystem/network/process/worker 実装へ依存しない。
 - [input.rs](../rust/src/app/input/mod.rs)
   - shortcut、IME、history search。
 - [filelist.rs](../rust/src/app/filelist/mod.rs)

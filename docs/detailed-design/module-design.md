@@ -6,14 +6,14 @@
 
 ### 6.1 Entrypoint and CLI Adapter
 
-Responsibility: [main.rs](../../rust/src/main.rs) owns `Args`, tracing setup, signal handler registration, root canonicalization, CLI execution, GUI startup, Windows DPI setup, and app icon loading.
+Responsibility: [main.rs](../../rust/src/main.rs) owns startup ordering and top-level routing. [cli/args.rs](../../rust/src/cli/args.rs) owns typed clap arguments and validation, [cli/batch.rs](../../rust/src/cli/batch.rs) owns batch/TUI/FileList/action/exec/reporting, [gui_launch.rs](../../rust/src/gui_launch.rs) owns GUI signal/DPI/window/icon bootstrap, and [launch_path.rs](../../rust/src/launch_path.rs) owns shared root canonicalization.
 
 Public interface:
 
 - `flistwalker [query] [--root PATH|--use-default-root|--saved-root INDEX] [--limit N] [--cli [--interactive]]`
-- `run_cli(args)` builds an index, searches/sorts, then prints path-only records or dispatches an explicitly authorized action.
-- `run_cli_tui(args)` owns terminal setup/restore and coordinates index/search workers with immutable candidate batches and a bounded per-iteration response budget.
-- `run_gui(args)` creates `eframe::NativeOptions` and launches `FlistWalkerApp::from_launch`.
+- `cli::run(args)` routes CLI special paths, batch, and interactive modes; the batch owner builds an index, searches/sorts, then prints path-only records or dispatches an explicitly authorized action.
+- `cli_tui::run_cli_tui(root, options)` is the public terminal facade; private protocol/state/worker/FileList/input/render/terminal modules preserve terminal setup/restore and bounded request processing.
+- `gui_launch::run(root, query, limit)` creates `eframe::NativeOptions` and launches `FlistWalkerApp::from_launch`.
 
 Inputs and outputs:
 
@@ -156,7 +156,7 @@ Responsibility: rendering modules collect UI intent and produce commands; owner 
 Key design:
 
 - [app/render.rs](../../rust/src/app/render.rs) owns the `run_ui_frame()` facade and `RenderCommand` dispatcher.
-- [app/render_panels.rs](../../rust/src/app/render_panels.rs), [app/render_dialogs.rs](../../rust/src/app/render_dialogs.rs), [app/render_tabs.rs](../../rust/src/app/render_tabs.rs), [app/render_snapshot.rs](../../rust/src/app/render_snapshot.rs), and [app/render_theme.rs](../../rust/src/app/render_theme.rs) draw panels, dialogs, tabs, snapshots, theme colors, and result lists.
+- [app/render_panels.rs](../../rust/src/app/render_panels.rs) owns results/status and delegates top controls to `app/render_panels/top_panel.rs`; [app/render_dialogs.rs](../../rust/src/app/render_dialogs.rs) delegates FileList/update/root management to private owners under `app/render_dialogs/`; [app/render_tabs.rs](../../rust/src/app/render_tabs.rs), [app/render_snapshot.rs](../../rust/src/app/render_snapshot.rs), and [app/render_theme.rs](../../rust/src/app/render_theme.rs) own tabs, snapshots, and theme colors. Render owners mutate through existing owner methods or queued `RenderCommand` values and do not import filesystem/network/process/worker implementations.
 - `RenderCommand` boundaries prevent immediate complex state mutation from inside UI painting code.
 - [app/input/mod.rs](../../rust/src/app/input/mod.rs), [app/input/history.rs](../../rust/src/app/input/history.rs), and [app/query_state.rs](../../rust/src/app/query_state.rs) handle shortcuts, IME fallback, query editing, and shared history.
 

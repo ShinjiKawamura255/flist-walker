@@ -24,6 +24,13 @@ This document is the short current-state snapshot for maintainers. It does not o
 - GUI validation uses one Windows/WSL deterministic inventory and isolated staged liveness harness (`3054582`). The hardening program is closed with partial native validation: deterministic and liveness axes pass, while native interaction, Japanese IME, alternate DPI, multi-display, real UNC, and explicitly authorized external actions remain `NOT RUN` until their documented VM-002/VM-006 or release-candidate gate applies.
 - The durable program record and exact commit mapping are in [Durable History](history/durable-history.md).
 
+## Architecture Boundary Baseline (2026-07-30)
+
+- Adaptive walker settings/classification/truncation are owned by UI-agnostic `walker_runtime/`; GUI protocol/metrics remain in `app/index_worker.rs`.
+- Interactive TUI responsibilities are split into private protocol/state/worker/FileList/input/render/terminal owners with explicit dependencies; its public facade is unchanged.
+- `main.rs` is a thin startup router. Typed CLI validation and batch behavior live in `cli/`, while native window bootstrap lives in `gui_launch.rs`.
+- GUI dialog and top-panel rendering have private owners whose mutation seams remain existing owner methods and queued `RenderCommand` values; deterministic GUI groups pass, while native interaction and liveness remain separate release-candidate evidence axes.
+
 ## Quality Posture
 
 - Cross-platform native tests, Windows GNU cross-build coverage, clippy, coverage, audit, and performance checks are maintained in GitHub Actions.
@@ -36,7 +43,7 @@ This document is the short current-state snapshot for maintainers. It does not o
 
 1. Preserve asynchronous UI and request-ID response routing.
 2. Keep pinned-toolchain warnings visible through the configured clippy gate and review latest canary drift.
-3. Improve app/GUI owner-seam coverage without weakening the existing threshold.
+3. Improve low-covered GUI owner seams, especially native root-list rendering, without weakening the existing threshold.
 4. Keep FileList and walker performance guards aligned with indexing-path changes.
 5. Record concrete GUI evidence when the validation matrix requires it.
 
