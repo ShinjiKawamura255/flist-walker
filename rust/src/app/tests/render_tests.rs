@@ -9,6 +9,16 @@ use crate::entry::EntryDisplayKind;
 use crate::updater::UpdateCandidate;
 use serde_json::json;
 
+fn unmodified_key_event(key: egui::Key) -> egui::Event {
+    egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }
+}
+
 #[test]
 fn filelist_use_walker_dialog_lines_are_stable() {
     let lines = FlistWalkerApp::filelist_use_walker_dialog_lines();
@@ -167,6 +177,108 @@ fn dispatch_render_commands_consumes_update_dialog_queue() {
 
     assert!(app.shell.features.update.state.check_failure.is_none());
     assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_update_check_failure_enter_closes_without_executing_selection() {
+    let root = test_root("update-failure-enter-owns-input");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "fixture").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
+        error: "network timeout".to_string(),
+        suppress_future_errors: false,
+    });
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput {
+        events: vec![unmodified_key_event(egui::Key::Enter)],
+        ..Default::default()
+    });
+    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+    app.run_ui_frame(&ctx);
+    let _ = ctx.end_pass();
+
+    assert!(app.shell.features.update.state.check_failure.is_none());
+    assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_update_check_failure_escape_closes_without_clearing_query() {
+    let root = test_root("update-failure-escape-owns-input");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "draft query".to_string());
+    app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
+        error: "network timeout".to_string(),
+        suppress_future_errors: false,
+    });
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput {
+        events: vec![unmodified_key_event(egui::Key::Escape)],
+        ..Default::default()
+    });
+    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+    app.run_ui_frame(&ctx);
+    let _ = ctx.end_pass();
+
+    assert!(app.shell.features.update.state.check_failure.is_none());
+    assert_eq!(app.shell.runtime.query_state.query, "draft query");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_update_check_failure_blocks_text_input_to_query() {
+    let root = test_root("update-failure-text-owns-input");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "draft query".to_string());
+    app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
+        error: "network timeout".to_string(),
+        suppress_future_errors: false,
+    });
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput {
+        events: vec![egui::Event::Text("leaked text".to_string())],
+        ..Default::default()
+    });
+    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+    app.run_ui_frame(&ctx);
+    let _ = ctx.end_pass();
+
+    assert!(app.shell.features.update.state.check_failure.is_some());
+    assert_eq!(app.shell.runtime.query_state.query, "draft query");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_update_check_failure_blocks_background_selection_shortcuts() {
+    let root = test_root("update-failure-selection-owns-input");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
+        error: "network timeout".to_string(),
+        suppress_future_errors: false,
+    });
+
+    let ctx = egui::Context::default();
+    ctx.begin_pass(egui::RawInput {
+        events: vec![unmodified_key_event(egui::Key::ArrowDown)],
+        ..Default::default()
+    });
+    app.run_ui_frame(&ctx);
+    let _ = ctx.end_pass();
+
+    assert!(app.shell.features.update.state.check_failure.is_some());
+    assert_eq!(app.shell.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 

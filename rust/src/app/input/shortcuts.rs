@@ -14,6 +14,9 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        if self.handle_update_check_failure_shortcuts(ctx) {
+            return;
+        }
         if self.handle_filelist_dialog_shortcuts(ctx) {
             return;
         }

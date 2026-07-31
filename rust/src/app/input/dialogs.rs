@@ -10,6 +10,50 @@ fn filelist_dialog_button_count(kind: FileListDialogKind) -> usize {
 }
 
 impl FlistWalkerApp {
+    pub(in crate::app) fn handle_update_check_failure_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+    ) -> bool {
+        let Some(failure) = self
+            .shell
+            .features
+            .update
+            .state
+            .check_failure
+            .as_ref()
+            .cloned()
+        else {
+            return false;
+        };
+
+        let close = ctx.input_mut(|input| {
+            let enter = input.consume_key(egui::Modifiers::NONE, egui::Key::Enter);
+            let escape = input.consume_key(egui::Modifiers::NONE, egui::Key::Escape);
+            enter || escape
+        });
+        ctx.input_mut(|input| {
+            input.events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::Copy
+                        | egui::Event::Cut
+                        | egui::Event::Paste(_)
+                        | egui::Event::Text(_)
+                        | egui::Event::Key { .. }
+                        | egui::Event::Ime(_)
+                )
+            });
+        });
+
+        if let Some(command) = crate::app::render_dialogs::update::check_failure_command(
+            close,
+            failure.suppress_future_errors,
+        ) {
+            self.queue_render_command(crate::app::render::RenderCommand::UpdateDialog(command));
+        }
+        true
+    }
+
     pub(in crate::app) fn current_filelist_dialog_kind(&self) -> Option<FileListDialogKind> {
         let current_tab_id = self.current_tab_id()?;
         if self
