@@ -30,7 +30,7 @@ pub(in crate::app) fn check_failure_command(
     }
 }
 
-pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+pub(super) fn render_prompt(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     if let Some(prompt) = app.shell.features.update.state.prompt.as_ref().cloned() {
         let mut confirm = false;
         let mut later = false;
@@ -97,7 +97,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             app.queue_render_command(crate::app::render::RenderCommand::UpdateDialog(command));
         }
     }
+}
 
+pub(super) fn render_check_failure(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     if let Some(failure) = app
         .shell
         .features
@@ -109,26 +111,23 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     {
         let mut close = false;
         let mut suppress_future_errors = failure.suppress_future_errors;
-        egui::Window::new("Update Check Failed")
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 88.0))
-            .show(ctx, |ui| {
-                ui.label("FlistWalker couldn't check for updates right now.");
-                ui.label("You can keep using the app as usual and try again later.");
-                ui.add_space(6.0);
-                ui.separator();
-                ui.label("Details");
-                ui.monospace(&failure.error);
-                ui.add_space(6.0);
-                ui.checkbox(
-                    &mut suppress_future_errors,
-                    "Don't show this again for update check errors",
-                );
-                if ui.button("Close").clicked() {
-                    close = true;
-                }
-            });
+        egui::Modal::new(egui::Id::new("update-check-failure-modal")).show(ctx, |ui| {
+            ui.heading("Update Check Failed");
+            ui.label("FlistWalker couldn't check for updates right now.");
+            ui.label("You can keep using the app as usual and try again later.");
+            ui.add_space(6.0);
+            ui.separator();
+            ui.label("Details");
+            ui.monospace(&failure.error);
+            ui.add_space(6.0);
+            ui.checkbox(
+                &mut suppress_future_errors,
+                "Don't show this again for update check errors",
+            );
+            if ui.button("Close").clicked() {
+                close = true;
+            }
+        });
 
         app.shell
             .features

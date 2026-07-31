@@ -302,6 +302,8 @@ impl FlistWalkerApp {
         self.apply_stable_window_geometry(false);
         // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
         self.handle_shortcuts(ctx);
+        // Register the modal layer before background widgets so first-frame input cannot leak.
+        render_dialogs::render_update_check_failure_dialog(self, ctx);
 
         render_panels::render_top_panel(self, ctx);
         render_panels::render_status_panel(self, ctx);
