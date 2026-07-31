@@ -1,6 +1,8 @@
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use anyhow::bail;
 #[cfg(not(target_os = "macos"))]
 use anyhow::Context;
-use anyhow::{bail, Result};
+use anyhow::Result;
 #[cfg(all(unix, not(target_os = "macos")))]
 use std::fs;
 use std::path::Path;
