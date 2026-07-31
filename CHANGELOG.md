@@ -24,17 +24,19 @@
 ### Known issues
 -
 
-## [0.20.1] - 2026-07-30
+## [0.20.1] - 2026-08-01
 ### Added
 - なし。
 
 ### Changed
-- walker、CLI/TUI、GUI 描画、updater transaction の内部責務を owner module 単位へ分割し、検索・操作・更新の既存契約を維持したまま保守境界を明確化した。
-- updater transaction の marker model、filesystem safety policy、OS process/replacement primitive、回帰テストを分離し、rollback/recovery と marker-v1 の互換契約を独立して検証できるようにした。
+- walker、CLI/TUI、GUI 描画、updater transaction の内部責務を owner module 単位へ分割し、検索・更新の主要仕様を維持しながら保守境界を明確化した。利用者が認識できる挙動変更は、下記の不具合修正に限定される。
+- updater transaction の marker model、filesystem safety policy、OS process/replacement primitive、回帰テスト、platform-specific な production/test コンパイル境界を分離し、rollback/recovery と marker-v1 の互換契約を独立して検証できるようにした。
 
 ### Fixed
 - Windows の自己更新で既存ファイルを置換する処理を外部 PowerShell から native `ReplaceFileW` へ切り替え、複数の console window が表示される問題と PowerShell の有無に依存する失敗を解消した。
 - Windows updater の verbatim path、backup 有無、置換失敗時の source 保持を回帰テストで固定した。
+- GUI の FileList 作成成功通知が、自動再インデックス完了時に消えず、完了内容を確認できるようにした。
+- 起動時の更新確認失敗ダイアログを modal 化し、表示中の検索文字入力・選択移動を遮断した。`Return` / `Escape` は選択項目の実行や query の消去を行わず、ダイアログだけを閉じる。
 
 ### Breaking
 - なし。
