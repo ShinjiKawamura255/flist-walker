@@ -2,7 +2,7 @@
 
 ## Summary
 
-FlistWalker v0.20.1, released on July 30, 2026, stabilizes Windows self-update file replacement and completes an internal responsibility split across the walker, CLI/TUI, GUI rendering, and updater transaction code without changing their existing user contracts.
+FlistWalker v0.20.1, released on August 1, 2026, stabilizes Windows self-update file replacement, fixes two GUI dialog/notice lifecycle defects, and completes an internal responsibility split across the walker, CLI/TUI, GUI rendering, and updater transaction code.
 
 ## Downloads
 
@@ -37,13 +37,15 @@ FlistWalker v0.20.1, released on July 30, 2026, stabilizes Windows self-update f
 
 ## Changed
 
-- Split internal walker, CLI/TUI, GUI rendering, and updater transaction responsibilities into focused owner modules while preserving existing search, interaction, and update contracts.
-- Separated the updater transaction marker model, filesystem safety policy, OS process/replacement primitives, and characterization tests so rollback, recovery, and marker-v1 compatibility can be validated independently.
+- Split internal walker, CLI/TUI, GUI rendering, and updater transaction responsibilities into focused owner modules while retaining established search and update semantics; user-visible behavior changes are limited to the fixes below.
+- Separated the updater transaction marker model, filesystem safety policy, OS process/replacement primitives, characterization tests, and platform-specific production/test compilation boundaries so rollback, recovery, and marker-v1 compatibility can be validated independently.
 
 ## Fixed
 
 - Replaced the Windows updater's external PowerShell file replacement with native in-process `ReplaceFileW`, preventing repeated console windows and failures caused by an unavailable PowerShell executable.
 - Preserved verbatim Windows paths and verified replacement behavior with and without backups, including source retention when replacement fails.
+- Kept the successful FileList creation notice visible after its automatic re-index completes, so the completion result is not immediately lost.
+- Made the startup update-check failure prompt modal: background query and selection input is blocked, while `Return` and `Escape` close only the prompt without executing an item or clearing the query.
 
 ## Breaking
 
