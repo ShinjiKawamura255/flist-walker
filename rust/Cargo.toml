@@ -32,7 +32,7 @@ test = false
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 encoding_rs = "0.8"
-eframe = { version = "0.34.1", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
+eframe = { version = "0.35.0", default-features = false, features = ["default_fonts", "glow", "x11", "wayland"] }
 fuzzy-matcher = "0.3"
 native-dialog = "0.9.7"
 regex = "1.11"
