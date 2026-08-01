@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 mod top_panel;
 mod widgets;
 
@@ -29,15 +27,15 @@ pub(super) fn centered_checkbox_layout(
     )
 }
 
-pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
-    top_panel::render(app, ctx);
+pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
+    top_panel::render(app, ui);
 }
 
-pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
-    egui::TopBottomPanel::bottom("status")
+pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
+    egui::Panel::bottom("status")
         .resizable(false)
-        .exact_height(24.0)
-        .show(ctx, |ui| {
+        .exact_size(24.0)
+        .show(ui, |ui| {
             ui.horizontal(|ui| {
                 let version_text = format!("v{}", env!("CARGO_PKG_VERSION"));
                 let version_font = egui::TextStyle::Body.resolve(ui.style());
@@ -106,12 +104,12 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
     if app.shell.ui.show_preview() {
         let max_preview_width = (ui.available_width() - FlistWalkerApp::MIN_RESULTS_PANEL_WIDTH)
             .max(FlistWalkerApp::MIN_PREVIEW_PANEL_WIDTH);
-        let panel = egui::SidePanel::right("preview-panel")
+        let panel = egui::Panel::right("preview-panel")
             .resizable(true)
-            .default_width(app.shell.ui.preview_panel_width().min(max_preview_width))
-            .min_width(FlistWalkerApp::MIN_PREVIEW_PANEL_WIDTH)
-            .max_width(max_preview_width);
-        let response = panel.show_inside(ui, |ui| {
+            .default_size(app.shell.ui.preview_panel_width().min(max_preview_width))
+            .min_size(FlistWalkerApp::MIN_PREVIEW_PANEL_WIDTH)
+            .max_size(max_preview_width);
+        let response = panel.show(ui, |ui| {
             ui.heading("Preview");
             let preview_width = ui.available_width();
             let preview_height = ui.available_height();
@@ -228,9 +226,13 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     });
     let scroll_enabled =
         FlistWalkerApp::results_scroll_enabled(app.shell.ui.preview_resize_in_progress());
+    let scroll_source = if scroll_enabled {
+        egui::scroll_area::ScrollSource::SCROLL_BAR | egui::scroll_area::ScrollSource::MOUSE_WHEEL
+    } else {
+        egui::scroll_area::ScrollSource::NONE
+    };
     egui::ScrollArea::both()
-        .enable_scrolling(scroll_enabled)
-        .drag_to_scroll(false)
+        .scroll_source(scroll_source)
         .auto_shrink([false, false])
         .show(ui, |ui| {
             let mut clicked_row: Option<usize> = None;
@@ -283,7 +285,10 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
         app.shell.runtime.query_state.history_search_results.len()
     ));
     egui::ScrollArea::vertical()
-        .drag_to_scroll(false)
+        .scroll_source(
+            egui::scroll_area::ScrollSource::SCROLL_BAR
+                | egui::scroll_area::ScrollSource::MOUSE_WHEEL,
+        )
         .auto_shrink([false, false])
         .show(ui, |ui| {
             let mut clicked_row: Option<usize> = None;
@@ -442,8 +447,8 @@ fn build_result_row_job(
     job
 }
 
-pub(super) fn render_central_panel(app: &mut FlistWalkerApp, ctx: &egui::Context) {
-    egui::CentralPanel::default().show(ctx, |ui| {
+pub(super) fn render_central_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
+    egui::CentralPanel::default().show(ui, |ui| {
         render_results_and_preview(app, ui);
     });
 }

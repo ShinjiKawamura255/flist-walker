@@ -158,8 +158,8 @@ impl FlistWalkerApp {
             output.state.cursor.char_range().unwrap_or_else(|| {
                 egui::text::CCursorRange::one(egui::text::CCursor::new(char_len))
             });
-        let mut cursor = ccursor.primary.index.min(char_len);
-        let mut anchor = ccursor.secondary.index.min(char_len);
+        let mut cursor = ccursor.primary.index.0.min(char_len);
+        let mut anchor = ccursor.secondary.index.0.min(char_len);
 
         if pressed(egui::Key::A) {
             cursor = 0;

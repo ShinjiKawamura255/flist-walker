@@ -297,21 +297,22 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn run_ui_frame(&mut self, ctx: &egui::Context) {
-        self.capture_window_geometry(ctx);
+    pub(super) fn run_ui_frame(&mut self, ui: &mut egui::Ui) {
+        let ctx = ui.ctx().clone();
+        self.capture_window_geometry(&ctx);
         self.apply_stable_window_geometry(false);
         // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
-        self.handle_shortcuts(ctx);
+        self.handle_shortcuts(&ctx);
         // Register the modal layer before background widgets so first-frame input cannot leak.
-        render_dialogs::render_update_check_failure_dialog(self, ctx);
+        render_dialogs::render_update_check_failure_dialog(self, &ctx);
 
-        render_panels::render_top_panel(self, ctx);
-        render_panels::render_status_panel(self, ctx);
-        render_dialogs::render_filelist_dialogs(self, ctx);
-        render_dialogs::render_update_dialog(self, ctx);
-        self.render_central_panel(ctx);
-        render_dialogs::render_manage_root_list_dialog(self, ctx);
-        self.dispatch_render_commands(ctx);
+        render_panels::render_top_panel(self, ui);
+        render_panels::render_status_panel(self, ui);
+        render_dialogs::render_filelist_dialogs(self, &ctx);
+        render_dialogs::render_update_dialog(self, &ctx);
+        self.render_central_panel(ui);
+        render_dialogs::render_manage_root_list_dialog(self, &ctx);
+        self.dispatch_render_commands(&ctx);
         self.maybe_save_ui_state(false);
     }
 
@@ -329,8 +330,8 @@ impl FlistWalkerApp {
         )
     }
 
-    pub(super) fn render_central_panel(&mut self, ctx: &egui::Context) {
-        render_panels::render_central_panel(self, ctx);
+    pub(super) fn render_central_panel(&mut self, ui: &mut egui::Ui) {
+        render_panels::render_central_panel(self, ui);
     }
 
     #[cfg(test)]

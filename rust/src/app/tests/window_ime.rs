@@ -212,18 +212,16 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
     app.shell.runtime.query_state.query = "abc".to_string();
 
     let ctx = egui::Context::default();
+    app.shell.ui.ime_composition_active = true;
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
-        &[
-            egui::Event::Ime(egui::ImeEvent::Enabled),
-            egui::Event::Key {
-                key: egui::Key::Space,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: egui::Modifiers::NONE,
-            },
-        ],
+        &[egui::Event::Key {
+            key: egui::Key::Space,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
         true,
         false,
         Some(egui::text::CCursorRange::one(egui::text::CCursor::new(3))),
@@ -232,6 +230,31 @@ fn process_query_input_events_inserts_space_even_if_composition_is_active_withou
     assert_eq!(cursor, Some(4));
     assert_eq!(app.shell.runtime.query_state.query, "abc ");
     assert!(app.shell.ui.ime_composition_active);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn process_query_input_events_empty_preedit_dismisses_composition() {
+    let root = test_root("ime-empty-preedit-dismisses");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.ime_composition_active = true;
+
+    let ctx = egui::Context::default();
+    let (changed, cursor) = app.process_query_input_events(
+        &ctx,
+        &[egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: String::new(),
+            active_range_chars: None,
+        })],
+        true,
+        false,
+        None,
+    );
+
+    assert!(!changed);
+    assert_eq!(cursor, None);
+    assert!(!app.shell.ui.ime_composition_active);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -246,8 +269,10 @@ fn process_query_input_events_skips_space_fallback_when_composition_updates() {
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
         &[
-            egui::Event::Ime(egui::ImeEvent::Enabled),
-            egui::Event::Ime(egui::ImeEvent::Preedit("あ".to_string())),
+            egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: "あ".to_string(),
+                active_range_chars: None,
+            }),
             egui::Event::Key {
                 key: egui::Key::Space,
                 physical_key: None,
@@ -278,8 +303,10 @@ fn process_query_input_events_skips_shift_space_fallback_with_composition_update
     let (inserted, cursor) = app.process_query_input_events(
         &ctx,
         &[
-            egui::Event::Ime(egui::ImeEvent::Enabled),
-            egui::Event::Ime(egui::ImeEvent::Preedit("あ".to_string())),
+            egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: "あ".to_string(),
+                active_range_chars: None,
+            }),
             egui::Event::Key {
                 key: egui::Key::Space,
                 physical_key: None,

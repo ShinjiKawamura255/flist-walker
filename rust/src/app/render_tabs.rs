@@ -373,7 +373,7 @@ pub(super) fn render_tab_accent_menu(
         app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::ClearTabAccent(
             index,
         )));
-        ui.close_menu();
+        ui.close();
         return;
     }
     ui.separator();
@@ -399,7 +399,7 @@ pub(super) fn render_tab_accent_menu(
                 app.queue_render_command(RenderCommand::TabBar(
                     RenderTabBarCommand::SetTabAccent { index, accent },
                 ));
-                ui.close_menu();
+                ui.close();
             }
         }
     });

@@ -55,6 +55,13 @@
 - self-update 後も配置先ディレクトリに `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が残る必要がある。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## eframe 0.35 dependency review (2026-08-01)
+
+- Direct dependency: `eframe` and the selected `egui` / `egui_glow` / `egui-winit` stack move from `0.34.3` to `0.35.0`; `epaint_default_fonts` moves to `0.35.0` and retains its existing `(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0` notice requirement.
+- Newly resolved crates are permissively licensed: `glifo 0.1.1` (Apache-2.0 OR MIT), `guillotiere 0.7.0` (MIT/Apache-2.0), `harfrust 0.7.0` (MIT), `hashbrown 0.17.1` (MIT OR Apache-2.0), and `unicode-general-category 1.1.0` (Apache-2.0). Updated transitive crates `fearless_simd 0.4.1`, `read-fonts 0.39.2`, `skrifa 0.42.1`, `vello_common 0.0.9`, and `vello_cpu 0.0.9` remain MIT/Apache-2.0-family licensed.
+- `THIRD_PARTY_NOTICES.txt` updates the egui stack and bundled-font versions. No new copyleft family or additional standalone notice text enters the packaged target graphs.
+- Packaging is unchanged; release archives, standalone sidecars, macOS app bundles, and self-update continue to use the existing `LICENSE` / `THIRD_PARTY_NOTICES` paths.
+
 ## CLI argument-limit dependency review (2026-07-29)
 
 - Direct dependency: Unix targets add `libc 0.2` (MIT OR Apache-2.0) to query `_SC_ARG_MAX`; the crate was already present in the resolved transitive graph, so no new package or license family enters release artifacts.
@@ -104,9 +111,9 @@
 
 ### RUSTSEC-2026-0194 / RUSTSEC-2026-0195: `quick-xml 0.39.4` via `wayland-scanner`
 - Status: accepted on 2026-07-09 as a transitive build-time advisory surfaced by `cargo audit`.
-- Observed path: `quick-xml 0.39.4 -> wayland-scanner 0.31.10 -> wayland-client` / `wayland-protocols` / `smithay-client-toolkit` -> `winit 0.30.13` / `egui-winit 0.34.x` -> `eframe 0.34.x` -> `flist-walker`.
+- Observed path: `quick-xml 0.39.4 -> wayland-scanner 0.31.10 -> wayland-client` / `wayland-protocols` / `smithay-client-toolkit` -> `winit 0.30.13` / `egui-winit 0.35.x` -> `eframe 0.35.x` -> `flist-walker`.
 - Exposure note: the vulnerable crate is used through Wayland protocol code generation in the GUI stack; FlistWalker does not parse untrusted XML at runtime through this path, and the crate is not part of the application input surface.
-- Attempted resolution: `cargo update -p quick-xml` can only move to `0.39.4` under current `wayland-scanner 0.31.10`; `eframe 0.35.0` still retains the same `wayland-scanner` path and requires a larger egui API migration, so it is deferred from the v0.18.13 patch release.
+- Resolution check: `cargo update -p quick-xml` can only move to `0.39.4` under current `wayland-scanner 0.31.10`; the completed `eframe 0.35.0` migration retains this build-time path, so the existing acceptance remains necessary.
 - Owner: Rust dependency maintainer for release preflight.
 - Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
 - Re-evaluation trigger: `wayland-scanner` updates to a `quick-xml >=0.41.0` dependency, `eframe` / `winit` / Wayland stack refresh, or any new runtime exposure.
