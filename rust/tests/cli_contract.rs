@@ -915,6 +915,52 @@ fn tc_006_interactive_requires_cli_mode() {
 }
 
 #[test]
+fn tc_172_color_help_and_batch_output_control_are_explicit() {
+    let help = cli_command("color-help")
+        .arg("--help")
+        .output()
+        .expect("run CLI help");
+    assert!(help.status.success());
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    assert!(stdout.contains("--color <COLOR>"), "{stdout}");
+    assert!(stdout.contains("auto, always, never"), "{stdout}");
+
+    let root = test_root("color-batch");
+    fs::create_dir_all(&root).expect("create color root");
+    fs::write(root.join("match.txt"), "match").expect("write color fixture");
+
+    let always = cli_command("color-always")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--color",
+            "always",
+        ])
+        .output()
+        .expect("run forced-color batch");
+    assert!(always.status.success());
+    assert_eq!(always.stdout, b"\x1b[38;5;11mmatch.txt\x1b[0m\n");
+
+    let auto = cli_command("color-auto")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+        ])
+        .output()
+        .expect("run auto-color batch");
+    assert!(auto.status.success());
+    assert_eq!(auto.stdout, b"match.txt\n");
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn tc_163_interactive_rejects_batch_only_exit_and_progress_options() {
     for option in ["--fail-no-match", "--progress"] {
         let output = cli_command("interactive-batch-only-conflict")

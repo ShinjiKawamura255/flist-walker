@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::io::{self, BufWriter, Write};
+use std::io::{self, BufWriter, IsTerminal, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -30,7 +30,8 @@ use flist_walker::query::{CompiledIgnoreTerms, QueryScope};
 use flist_walker::search::{rank_search_results, SearchPrefixCache, SearchSortScope};
 
 use super::args::{
-    parse_exec_template, validate_list_saved_roots_args, Args, CliAction, CliIndexSource,
+    parse_exec_template, validate_list_saved_roots_args, Args, CliAction, CliColorMode,
+    CliIndexSource,
 };
 use crate::launch_path::resolve_root;
 
@@ -116,6 +117,7 @@ fn run_interactive(args: &Args) -> Result<ExitCode> {
                     &root,
                     args.absolute,
                     args.print0,
+                    false,
                     &AtomicBool::new(false),
                 )?;
                 ExitCode::SUCCESS
@@ -171,7 +173,12 @@ fn cli_tui_options(args: &Args, ignore_terms: Vec<String>) -> CliTuiOptions {
         ignore_enabled: !args.no_ignore,
         ignore_terms,
         sort_mode: args.sort.into(),
+        color_enabled: args.color_mode().enabled(no_color_is_set()),
     }
+}
+
+fn no_color_is_set() -> bool {
+    std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
 }
 
 fn run_cli(args: &Args, root: &Path, cancelled: &Arc<AtomicBool>) -> Result<BatchOutcome> {
@@ -299,7 +306,18 @@ fn run_cli_with_backend(
     }
 
     if args.action == CliAction::Print {
-        write_cli_paths(&paths, root, args.absolute, args.print0, cancelled.as_ref())?;
+        write_cli_paths(
+            &paths,
+            root,
+            args.absolute,
+            args.print0,
+            cli_output_color_enabled(
+                args.color_mode(),
+                io::stdout().is_terminal(),
+                no_color_is_set(),
+            ),
+            cancelled.as_ref(),
+        )?;
         if cancelled.load(Ordering::Relaxed) {
             return Ok(BatchOutcome::Cancelled);
         }
@@ -348,6 +366,7 @@ fn write_cli_paths(
     root: &Path,
     absolute: bool,
     print0: bool,
+    color_enabled: bool,
     cancelled: &AtomicBool,
 ) -> Result<()> {
     let stdout = io::stdout();
@@ -356,14 +375,43 @@ fn write_cli_paths(
         if cancelled.load(Ordering::Relaxed) {
             return Ok(());
         }
-        output.write_all(&output_path_bytes(path, root, !absolute, print0))?;
-        output.write_all(if print0 { b"\0" } else { b"\n" })?;
+        write_cli_path_record(&mut output, path, root, absolute, print0, color_enabled)?;
     }
     if cancelled.load(Ordering::Relaxed) {
         return Ok(());
     }
     output.flush()?;
     Ok(())
+}
+
+fn cli_output_color_enabled(
+    mode: CliColorMode,
+    stdout_is_terminal: bool,
+    no_color_is_set: bool,
+) -> bool {
+    match mode {
+        CliColorMode::Auto => stdout_is_terminal && !no_color_is_set,
+        CliColorMode::Always => true,
+        CliColorMode::Never => false,
+    }
+}
+
+fn write_cli_path_record<W: Write>(
+    output: &mut W,
+    path: &Path,
+    root: &Path,
+    absolute: bool,
+    print0: bool,
+    color_enabled: bool,
+) -> io::Result<()> {
+    if color_enabled {
+        output.write_all(b"\x1b[38;5;11m")?;
+    }
+    output.write_all(&output_path_bytes(path, root, !absolute, print0))?;
+    if color_enabled {
+        output.write_all(b"\x1b[0m")?;
+    }
+    output.write_all(if print0 { b"\0" } else { b"\n" })
 }
 
 struct CliActionGuard;
@@ -635,11 +683,11 @@ mod tests {
     use flist_walker::search::SearchSortMode;
 
     use super::{
-        batch_exit_code, cli_filelist_exit_code, cli_tui_options, dispatch_cli_action,
-        format_cli_action_report, load_cli_tui_ignore_terms, run_cli, BatchOutcome,
-        CliFileListOutcome,
+        batch_exit_code, cli_filelist_exit_code, cli_output_color_enabled, cli_tui_options,
+        dispatch_cli_action, format_cli_action_report, load_cli_tui_ignore_terms, run_cli,
+        write_cli_path_record, BatchOutcome, CliFileListOutcome,
     };
-    use crate::cli::args::Args;
+    use crate::cli::args::{Args, CliColorMode};
 
     struct RecordingCliActionBackend {
         calls: Mutex<Vec<(AuthorizedActionMode, PathBuf)>>,
@@ -757,6 +805,47 @@ mod tests {
         assert_eq!(args.saved_root, Some(1));
 
         let _ = fs::remove_dir_all(ignore_root);
+    }
+
+    #[test]
+    fn tc_172_color_mode_applies_to_batch_and_interactive_output() {
+        let always = Args::try_parse_from(["flistwalker", "--cli", "--color", "always"])
+            .expect("parse forced color mode");
+        assert!(cli_tui_options(&always, Vec::new()).color_enabled);
+
+        let never = Args::try_parse_from(["flistwalker", "--cli", "--color", "never"])
+            .expect("parse disabled color mode");
+        assert!(!cli_tui_options(&never, Vec::new()).color_enabled);
+
+        assert!(cli_output_color_enabled(CliColorMode::Auto, true, false));
+        assert!(!cli_output_color_enabled(CliColorMode::Auto, false, false));
+        assert!(!cli_output_color_enabled(CliColorMode::Auto, true, true));
+        assert!(cli_output_color_enabled(CliColorMode::Always, false, true));
+        assert!(!cli_output_color_enabled(CliColorMode::Never, true, false));
+
+        let mut output = Vec::new();
+        write_cli_path_record(
+            &mut output,
+            Path::new("root/match.txt"),
+            Path::new("root"),
+            false,
+            false,
+            true,
+        )
+        .expect("write colored path");
+        assert_eq!(output, b"\x1b[38;5;11mmatch.txt\x1b[0m\n");
+
+        let mut piped_output = Vec::new();
+        write_cli_path_record(
+            &mut piped_output,
+            Path::new("root/match.txt"),
+            Path::new("root"),
+            false,
+            false,
+            false,
+        )
+        .expect("write plain path");
+        assert_eq!(piped_output, b"match.txt\n");
     }
 
     #[test]

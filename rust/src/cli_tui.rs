@@ -43,6 +43,7 @@ pub struct CliTuiOptions {
     pub ignore_enabled: bool,
     pub ignore_terms: Vec<String>,
     pub sort_mode: SearchSortMode,
+    pub color_enabled: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
