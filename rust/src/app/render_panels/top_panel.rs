@@ -1,5 +1,3 @@
-#![allow(deprecated)]
-
 use super::widgets::centered_top_panel_label;
 use crate::app::{render_tabs, FlistWalkerApp};
 use crate::path_utils::normalize_windows_path_buf;
@@ -108,7 +106,10 @@ fn centered_checkbox(ui: &mut egui::Ui, checked: &mut bool, label: &str) -> egui
     });
 
     if ui.is_rect_visible(rect) {
-        let checkbox_style = ui.style().checkbox_style(response.widget_state());
+        let checkbox_style = ui.style().checkbox_style(
+            &egui::widget_style::Classes::default(),
+            response.widget_state(),
+        );
         let (checkbox_rect, text_pos) = centered_checkbox_layout(
             rect,
             checkbox_style.checkbox_size,
@@ -146,8 +147,9 @@ fn centered_checkbox(ui: &mut egui::Ui, checked: &mut bool, label: &str) -> egui
     response
 }
 
-pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
-    egui::TopBottomPanel::top("top").show(ctx, |ui| {
+pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
+    let ctx = ui.ctx().clone();
+    egui::Panel::top("top").show(ui, |ui| {
         render_tabs::render_tab_bar(app, ui);
         ui.separator();
         ui.horizontal(|ui| {
@@ -183,14 +185,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         }
                     }
                     let popup_id = FlistWalkerApp::root_selector_popup_id();
-                    let below = egui::AboveOrBelow::Below;
-                    egui::popup_above_or_below_widget(
-                        ui,
-                        popup_id,
-                        &response,
-                        below,
-                        egui::PopupCloseBehavior::CloseOnClickOutside,
-                        |ui: &mut egui::Ui| {
+                    egui::Popup::from_response(&response)
+                        .id(popup_id)
+                        .open_memory(None)
+                        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                        .width(field_width)
+                        .show(|ui: &mut egui::Ui| {
                             ui.set_min_width(field_width);
                             for (index, path) in app
                                 .shell
@@ -208,8 +208,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                                     next_root = Some(path.clone());
                                 }
                             }
-                        },
-                    );
+                        });
                 },
             );
             if ui
@@ -321,7 +320,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         let query_input_id = app.shell.ui.query_input_id();
         let query_focused_before_text_edit = ctx.memory(|m| m.has_focus(query_input_id));
         if !editing_history_search {
-            app.consume_disabled_emacs_query_edit_shortcuts(ctx, query_focused_before_text_edit);
+            app.consume_disabled_emacs_query_edit_shortcuts(&ctx, query_focused_before_text_edit);
         }
         let mut output = egui::TextEdit::singleline(if editing_history_search {
             &mut app.shell.runtime.query_state.history_search_query
@@ -355,7 +354,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         let events = ctx.input(|i| i.events.clone());
         if !editing_history_search {
             let (query_event_changed, query_cursor_after_fallback) = app.process_query_input_events(
-                ctx,
+                &ctx,
                 &events,
                 output.response.has_focus(),
                 output.response.changed(),
@@ -373,11 +372,11 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         .set_char_range(Some(egui::text::CCursorRange::one(
                             egui::text::CCursor::new(end),
                         )));
-                    output.state.clone().store(ctx, output.response.id);
+                    output.state.clone().store(&ctx, output.response.id);
                 }
                 app.update_results();
             }
-            if app.apply_emacs_query_shortcuts(ctx, &mut output) {
+            if app.apply_emacs_query_shortcuts(&ctx, &mut output) {
                 app.mark_query_edited();
                 app.update_results();
             }
@@ -392,7 +391,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         .set_char_range(Some(egui::text::CCursorRange::one(
                             egui::text::CCursor::new(end),
                         )));
-                    output.state.clone().store(ctx, output.response.id);
+                    output.state.clone().store(&ctx, output.response.id);
                 }
                 app.mark_query_edited();
                 FlistWalkerApp::append_window_trace(
@@ -419,11 +418,11 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     .set_char_range(Some(egui::text::CCursorRange::one(
                         egui::text::CCursor::new(end),
                     )));
-                output.state.clone().store(ctx, output.response.id);
+                output.state.clone().store(&ctx, output.response.id);
             }
             app.refresh_history_search_results();
         }
-        app.run_deferred_shortcuts(ctx);
+        app.run_deferred_shortcuts(&ctx);
 
         ui.horizontal(|ui| {
             for label in app.top_action_labels() {

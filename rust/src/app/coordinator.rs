@@ -316,22 +316,23 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn run_update_cycle(&mut self, ctx: &egui::Context) -> bool {
-        self.maybe_apply_pending_cjk_font(ctx);
+    pub(super) fn run_update_cycle(&mut self, ui: &mut egui::Ui) -> bool {
+        let ctx = ui.ctx().clone();
+        self.maybe_apply_pending_cjk_font(&ctx);
         self.poll_runtime_events();
-        if self.request_viewport_close_if_needed(ctx) {
+        if self.request_viewport_close_if_needed(&ctx) {
             return false;
         }
         self.commit_query_history_if_needed(false);
-        self.schedule_frame_repaint(ctx);
-        self.run_ui_frame(ctx);
+        self.schedule_frame_repaint(&ctx);
+        self.run_ui_frame(ui);
         true
     }
 }
 
 impl eframe::App for FlistWalkerApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.run_update_cycle(ui.ctx());
+        self.run_update_cycle(ui);
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {

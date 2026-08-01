@@ -195,13 +195,15 @@ fn regression_update_check_failure_enter_closes_without_executing_selection() {
     });
 
     let ctx = egui::Context::default();
-    ctx.begin_pass(egui::RawInput {
+    let input = egui::RawInput {
         events: vec![unmodified_key_event(egui::Key::Enter)],
         ..Default::default()
+    };
+    let _ = ctx.run_ui(input, |ui| {
+        ui.ctx()
+            .memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+        app.run_ui_frame(ui);
     });
-    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
-    app.run_ui_frame(&ctx);
-    let _ = ctx.end_pass();
 
     assert!(app.shell.features.update.state.check_failure.is_none());
     assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
@@ -220,13 +222,15 @@ fn regression_update_check_failure_escape_closes_without_clearing_query() {
     });
 
     let ctx = egui::Context::default();
-    ctx.begin_pass(egui::RawInput {
+    let input = egui::RawInput {
         events: vec![unmodified_key_event(egui::Key::Escape)],
         ..Default::default()
+    };
+    let _ = ctx.run_ui(input, |ui| {
+        ui.ctx()
+            .memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+        app.run_ui_frame(ui);
     });
-    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
-    app.run_ui_frame(&ctx);
-    let _ = ctx.end_pass();
 
     assert!(app.shell.features.update.state.check_failure.is_none());
     assert_eq!(app.shell.runtime.query_state.query, "draft query");
@@ -244,13 +248,15 @@ fn regression_update_check_failure_blocks_text_input_to_query() {
     });
 
     let ctx = egui::Context::default();
-    ctx.begin_pass(egui::RawInput {
+    let input = egui::RawInput {
         events: vec![egui::Event::Text("leaked text".to_string())],
         ..Default::default()
+    };
+    let _ = ctx.run_ui(input, |ui| {
+        ui.ctx()
+            .memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+        app.run_ui_frame(ui);
     });
-    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
-    app.run_ui_frame(&ctx);
-    let _ = ctx.end_pass();
 
     assert!(app.shell.features.update.state.check_failure.is_some());
     assert_eq!(app.shell.runtime.query_state.query, "draft query");
@@ -270,12 +276,11 @@ fn regression_update_check_failure_blocks_background_selection_shortcuts() {
     });
 
     let ctx = egui::Context::default();
-    ctx.begin_pass(egui::RawInput {
+    let input = egui::RawInput {
         events: vec![unmodified_key_event(egui::Key::ArrowDown)],
         ..Default::default()
-    });
-    app.run_ui_frame(&ctx);
-    let _ = ctx.end_pass();
+    };
+    let _ = ctx.run_ui(input, |ui| app.run_ui_frame(ui));
 
     assert!(app.shell.features.update.state.check_failure.is_some());
     assert_eq!(app.shell.runtime.current_row, Some(0));
@@ -694,13 +699,14 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
     });
 
     let ctx = egui::Context::default();
-    ctx.begin_pass(egui::RawInput::default());
-    render_panels::render_top_panel(&mut app, &ctx);
-    render_panels::render_status_panel(&mut app, &ctx);
-    render_panels::render_central_panel(&mut app, &ctx);
-    render_dialogs::render_filelist_dialogs(&mut app, &ctx);
-    render_dialogs::render_update_dialog(&mut app, &ctx);
-    let _ = ctx.end_pass();
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        let ctx = ui.ctx().clone();
+        render_panels::render_top_panel(&mut app, ui);
+        render_panels::render_status_panel(&mut app, ui);
+        render_panels::render_central_panel(&mut app, ui);
+        render_dialogs::render_filelist_dialogs(&mut app, &ctx);
+        render_dialogs::render_update_dialog(&mut app, &ctx);
+    });
 
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
@@ -714,8 +720,7 @@ fn disabled_emacs_keybindings_prevent_textedit_ctrl_k_from_editing_query() {
     app.shell.runtime.emacs_keybindings_enabled = false;
     app.shell.runtime.query_state.query = "alpha beta".to_string();
     let ctx = egui::Context::default();
-
-    ctx.begin_pass(egui::RawInput {
+    let input = egui::RawInput {
         modifiers: egui::Modifiers {
             ctrl: true,
             command: true,
@@ -733,10 +738,12 @@ fn disabled_emacs_keybindings_prevent_textedit_ctrl_k_from_editing_query() {
             },
         }],
         ..Default::default()
+    };
+    let _ = ctx.run_ui(input, |ui| {
+        ui.ctx()
+            .memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
+        render_panels::render_top_panel(&mut app, ui);
     });
-    ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
-    render_panels::render_top_panel(&mut app, &ctx);
-    let _ = ctx.end_pass();
 
     assert_eq!(app.shell.runtime.query_state.query, "alpha beta");
     let _ = fs::remove_dir_all(&root);
@@ -756,9 +763,7 @@ fn run_ui_frame_executes_render_facade_in_headless_frame() {
     app.shell.ui.set_show_preview(true);
 
     let ctx = egui::Context::default();
-    ctx.begin_pass(egui::RawInput::default());
-    app.run_ui_frame(&ctx);
-    let _ = ctx.end_pass();
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
 
     assert!(app.shell.ui.pending_render_commands.is_empty());
     assert_eq!(app.shell.runtime.results.len(), 1);

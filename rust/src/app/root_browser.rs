@@ -452,7 +452,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn is_root_dropdown_open(&self, ctx: &egui::Context) -> bool {
-        ctx.memory(|mem| mem.is_popup_open(Self::root_selector_popup_id()))
+        egui::Popup::is_id_open(ctx, Self::root_selector_popup_id())
     }
 
     fn current_root_dropdown_index(&self) -> Option<usize> {
@@ -485,14 +485,14 @@ impl FlistWalkerApp {
     /// root dropdown を開き、入力 focus を切り替える。
     pub(super) fn open_root_dropdown(&mut self, ctx: &egui::Context) {
         self.sync_root_dropdown_highlight();
-        ctx.memory_mut(|mem| mem.open_popup(Self::root_selector_popup_id()));
+        egui::Popup::open_id(ctx, Self::root_selector_popup_id());
         self.clear_focus_query_request();
         self.request_unfocus_query();
     }
 
     /// root dropdown を閉じる。
     pub(super) fn close_root_dropdown(&mut self, ctx: &egui::Context) {
-        ctx.memory_mut(|mem| mem.close_popup(Self::root_selector_popup_id()));
+        egui::Popup::close_id(ctx, Self::root_selector_popup_id());
     }
 
     /// root dropdown 内の候補選択を上下へ移動する。

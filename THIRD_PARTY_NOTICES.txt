@@ -51,11 +51,11 @@ Additional notice-bearing components
   License: BSD-3-Clause
   Source: https://github.com/RazrFalcon/tiny-skia
 
-- eframe 0.34.3 / egui 0.34.3 / egui_glow 0.34.3 / egui-winit 0.34.3
+- eframe 0.35.0 / egui 0.35.0 / egui_glow 0.35.0 / egui-winit 0.35.0
   Primary license: MIT OR Apache-2.0
   Source: https://github.com/emilk/egui
 
-- epaint_default_fonts 0.34.3
+- epaint_default_fonts 0.35.0
   License expression: (MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0
   Source: https://github.com/emilk/egui/tree/main/crates/epaint_default_fonts
   Notes: default GUI fonts include assets under SIL Open Font License 1.1 and
