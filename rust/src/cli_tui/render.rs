@@ -42,7 +42,7 @@ pub(super) fn write_synchronized_frame<W: Write>(
 pub(super) fn render_frame<W: Write>(
     terminal_output: &mut W,
     state: &mut TuiState,
-    _options: &CliTuiOptions,
+    options: &CliTuiOptions,
 ) -> Result<()> {
     let (width, height) = terminal::size()?;
     let preview_visible = preview_visible_for_size(state.preview_preferred, width, height);
@@ -79,28 +79,38 @@ pub(super) fn render_frame<W: Write>(
         )?;
     }
     if height > 2 {
-        execute!(
-            terminal_output,
-            MoveTo(0, 2),
-            SetForegroundColor(Color::DarkGrey),
-            Print(clip_to_width(&state.status_line(), list_width as usize)),
-            ResetColor
-        )?;
+        let status = clip_to_width(&state.status_line(), list_width as usize);
+        if options.color_enabled {
+            execute!(
+                terminal_output,
+                MoveTo(0, 2),
+                SetForegroundColor(Color::DarkGrey),
+                Print(status),
+                ResetColor
+            )?;
+        } else {
+            execute!(terminal_output, MoveTo(0, 2), Print(status))?;
+        }
     }
     if height > 3 {
-        execute!(
-            terminal_output,
-            MoveTo(0, 3),
-            SetForegroundColor(Color::DarkGrey),
-            Print(clip_to_width(
-                &format!(
-                    "Enter select | F2 options | F3 {} | Alt+P preview | Esc cancel",
-                    state.sort_mode.label()
-                ),
-                list_width as usize,
-            )),
-            ResetColor
-        )?;
+        let help = clip_to_width(
+            &format!(
+                "Enter select | F2 options | F3 {} | Alt+P preview | Esc cancel",
+                state.sort_mode.label()
+            ),
+            list_width as usize,
+        );
+        if options.color_enabled {
+            execute!(
+                terminal_output,
+                MoveTo(0, 3),
+                SetForegroundColor(Color::DarkGrey),
+                Print(help),
+                ResetColor
+            )?;
+        } else {
+            execute!(terminal_output, MoveTo(0, 3), Print(help))?;
+        }
     }
     let compiled = (!state.query.trim().is_empty()).then(|| {
         CompiledQuery::compile(
@@ -140,6 +150,7 @@ pub(super) fn render_frame<W: Write>(
             &display,
             &positions,
             list_width,
+            options.color_enabled,
         )?;
     }
     if preview_visible {
@@ -193,6 +204,7 @@ pub(super) fn render_frame<W: Write>(
             state.emacs_keybindings_enabled,
             width,
             height,
+            options.color_enabled,
         )?;
     }
     Ok(())
@@ -419,6 +431,7 @@ pub(super) fn render_history_overlay<W: Write>(
     emacs_keybindings_enabled: bool,
     width: u16,
     height: u16,
+    color_enabled: bool,
 ) -> Result<()> {
     execute!(
         terminal_output,
@@ -439,19 +452,24 @@ pub(super) fn render_history_overlay<W: Write>(
         )?;
     }
     if height > 2 {
-        execute!(
-            terminal_output,
-            MoveTo(0, 2),
-            SetForegroundColor(Color::DarkGrey),
-            Print(clip_to_width(
-                &format!(
-                    "Enter apply | {} cancel | Ctrl+C exit | arrows/Page move",
-                    overlay_cancel_keys(emacs_keybindings_enabled)
-                ),
-                width as usize,
-            )),
-            ResetColor,
-        )?;
+        let help = clip_to_width(
+            &format!(
+                "Enter apply | {} cancel | Ctrl+C exit | arrows/Page move",
+                overlay_cancel_keys(emacs_keybindings_enabled)
+            ),
+            width as usize,
+        );
+        if color_enabled {
+            execute!(
+                terminal_output,
+                MoveTo(0, 2),
+                SetForegroundColor(Color::DarkGrey),
+                Print(help),
+                ResetColor,
+            )?;
+        } else {
+            execute!(terminal_output, MoveTo(0, 2), Print(help))?;
+        }
     }
     let visible = height.saturating_sub(3) as usize;
     for (row, entry) in history
@@ -582,6 +600,7 @@ pub(super) fn print_highlighted<W: Write>(
     text: &str,
     positions: &HashSet<usize>,
     width: u16,
+    color_enabled: bool,
 ) -> Result<()> {
     execute!(
         terminal_output,
@@ -604,10 +623,12 @@ pub(super) fn print_highlighted<W: Write>(
             if !chunk.is_empty() {
                 execute!(terminal_output, Print(std::mem::take(&mut chunk)))?;
             }
-            if next {
-                execute!(terminal_output, SetForegroundColor(Color::Yellow))?;
-            } else {
-                execute!(terminal_output, ResetColor)?;
+            if color_enabled {
+                if next {
+                    execute!(terminal_output, SetForegroundColor(Color::Yellow))?;
+                } else {
+                    execute!(terminal_output, ResetColor)?;
+                }
             }
             highlighted = next;
         }
@@ -616,7 +637,9 @@ pub(super) fn print_highlighted<W: Write>(
     if !chunk.is_empty() {
         execute!(terminal_output, Print(chunk))?;
     }
-    execute!(terminal_output, ResetColor)?;
+    if color_enabled {
+        execute!(terminal_output, ResetColor)?;
+    }
     Ok(())
 }
 

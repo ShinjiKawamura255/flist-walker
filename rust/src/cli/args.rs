@@ -34,6 +34,24 @@ pub(super) enum CliIndexSource {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
+pub(super) enum CliColorMode {
+    #[default]
+    Auto,
+    Always,
+    Never,
+}
+
+impl CliColorMode {
+    pub(super) fn enabled(self, no_color_is_set: bool) -> bool {
+        match self {
+            Self::Auto => !no_color_is_set,
+            Self::Always => true,
+            Self::Never => false,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
 pub(super) enum CliSortMode {
     #[default]
     Score,
@@ -135,6 +153,10 @@ pub(crate) struct Args {
     /// Run the interactive terminal selector.
     #[arg(long, default_value_t = false, requires = "cli")]
     pub(super) interactive: bool,
+
+    /// Control colors in CLI result output.
+    #[arg(long, value_enum, requires = "cli")]
+    pub(super) color: Option<CliColorMode>,
 
     /// Print absolute paths instead of paths relative to the root.
     #[arg(long, default_value_t = false, requires = "cli")]
@@ -312,6 +334,10 @@ impl Args {
     pub(crate) fn limit(&self) -> usize {
         self.limit
     }
+
+    pub(super) fn color_mode(&self) -> CliColorMode {
+        self.color.unwrap_or_default()
+    }
 }
 
 pub(crate) fn parse_args() -> Args {
@@ -409,7 +435,7 @@ fn validate_create_filelist_args(args: &Args) -> std::result::Result<(), &'stati
 mod tests {
     use clap::Parser;
 
-    use super::{Args, CliEntryType, CliIndexSource};
+    use super::{Args, CliColorMode, CliEntryType, CliIndexSource};
 
     #[test]
     fn default_gui_args_do_not_trigger_cli_option_requirements() {
@@ -419,5 +445,32 @@ mod tests {
         assert!(!args.interactive);
         assert!(matches!(args.entry_type, CliEntryType::All));
         assert!(matches!(args.source, CliIndexSource::Auto));
+    }
+
+    #[test]
+    fn tc_172_color_option_accepts_standard_modes_for_batch_cli() {
+        let default_args =
+            Args::try_parse_from(["flistwalker", "--cli"]).expect("parse default color mode");
+        assert!(matches!(default_args.color_mode(), CliColorMode::Auto));
+
+        let always = Args::try_parse_from(["flistwalker", "--cli", "--color", "always"])
+            .expect("parse always color mode");
+        assert!(matches!(always.color_mode(), CliColorMode::Always));
+
+        let never = Args::try_parse_from(["flistwalker", "--cli", "--color", "never"])
+            .expect("parse never color mode");
+        assert!(matches!(never.color_mode(), CliColorMode::Never));
+
+        let gui = Args::try_parse_from(["flistwalker", "--color", "never"])
+            .expect_err("color option must require CLI mode");
+        assert!(gui.to_string().contains("--cli"));
+    }
+
+    #[test]
+    fn tc_172_color_mode_obeys_no_color_except_when_forced() {
+        assert!(CliColorMode::Auto.enabled(false));
+        assert!(!CliColorMode::Auto.enabled(true));
+        assert!(CliColorMode::Always.enabled(true));
+        assert!(!CliColorMode::Never.enabled(false));
     }
 }

@@ -1097,7 +1097,8 @@ fn tc_162_help_and_history_overlays_clear_the_full_terminal() {
         offset: 0,
     };
     let mut history_output = Vec::new();
-    render_history_overlay(&mut history_output, &history, true, 40, 8).expect("render history");
+    render_history_overlay(&mut history_output, &history, true, 40, 8, true)
+        .expect("render history");
     let mut help_output = Vec::new();
     render_help_overlay(&mut help_output, HelpContext::Normal, true, 40, 8).expect("render help");
 
@@ -1177,7 +1178,7 @@ fn tc_162_help_overlay_matches_emacs_runtime_config() {
         8,
     )
     .expect("render disabled FileList confirmation");
-    render_history_overlay(&mut overlay_outputs[4], &history, false, 120, 8)
+    render_history_overlay(&mut overlay_outputs[4], &history, false, 120, 8, true)
         .expect("render disabled history");
     for output in overlay_outputs {
         assert!(!String::from_utf8_lossy(&output).contains("Ctrl+G"));
@@ -1247,6 +1248,7 @@ fn tc_162_tui_options_reindex_only_for_scope_or_source_changes() {
         ignore_enabled: true,
         ignore_terms: vec!["ignored".to_string()],
         sort_mode: SearchSortMode::Score,
+        color_enabled: true,
     });
     let mut search_only = base;
     search_only.regex = true;
@@ -1425,6 +1427,7 @@ fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
         ignore_enabled: false,
         ignore_terms: vec!["ignored".to_string()],
         sort_mode: SearchSortMode::Score,
+        color_enabled: true,
     };
     let mut runtime = TuiRuntimeOptions::from_startup(&startup);
     assert!(!runtime.ignore_enabled);
@@ -1644,6 +1647,7 @@ fn tc_162_options_overlay_keeps_headings_and_renders_items_below_them() {
             ignore_enabled: true,
             ignore_terms: Vec::new(),
             sort_mode: SearchSortMode::Score,
+            color_enabled: true,
         }),
         selected: 0,
     };
@@ -1752,6 +1756,7 @@ fn tc_162_small_overlays_keep_source_and_size_selection_visible() {
             ignore_enabled: true,
             ignore_terms: Vec::new(),
             sort_mode: SearchSortMode::Score,
+            color_enabled: true,
         }),
         selected: 5,
     };
@@ -1989,7 +1994,8 @@ fn tc_162_history_overlay_renderer_clips_control_text() {
     };
     refresh_history_results(&mut history, &["界\u{1b}x".to_string()]);
     let mut output = Vec::new();
-    render_history_overlay(&mut output, &history, true, 12, 6).expect("render history overlay");
+    render_history_overlay(&mut output, &history, true, 12, 6, true)
+        .expect("render history overlay");
     let rendered = String::from_utf8_lossy(&output);
     assert!(rendered.contains("History"));
     assert!(rendered.contains('�'));
@@ -2011,6 +2017,23 @@ fn tc_162_tui_frame_is_wrapped_in_synchronized_terminal_update() {
         .find("\x1b[?2026l")
         .expect("end synchronized update");
     assert!(begin < frame && frame < end, "{rendered:?}");
+}
+
+#[test]
+fn tc_172_color_never_omits_highlight_escape_sequences() {
+    let positions = [0].into_iter().collect();
+    let mut colored = Vec::new();
+    print_highlighted(&mut colored, 0, "> ", "match", &positions, 20, true)
+        .expect("render colored match");
+    let colored = String::from_utf8(colored).expect("colored frame is UTF-8");
+    assert!(colored.contains("\x1b[38;"), "{colored:?}");
+
+    let mut plain = Vec::new();
+    print_highlighted(&mut plain, 0, "> ", "match", &positions, 20, false)
+        .expect("render plain match");
+    let plain = String::from_utf8(plain).expect("plain frame is UTF-8");
+    assert!(!plain.contains("\x1b[38;"), "{plain:?}");
+    assert!(!plain.contains("\x1b[0m"), "{plain:?}");
 }
 
 #[test]
