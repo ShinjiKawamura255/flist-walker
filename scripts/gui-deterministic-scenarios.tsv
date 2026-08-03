@@ -1,5 +1,6 @@
 group	filter	min_discovered	min_executed	skip
 surface-dialog-theme	render_tests	29	29	-
+shortcut-help	shortcut_help	3	3	-
 ime-window-geometry	window_ime	15	14	measure_cjk_font_load_headless
 action-guard	tc_050_	8	8	-
 bounded-action	tc_150_	3	3	-

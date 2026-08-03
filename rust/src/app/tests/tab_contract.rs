@@ -3,7 +3,7 @@ use crate::app::cache::EntryKindCacheState;
 use crate::app::tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
 
 #[test]
-fn history_search_hides_non_history_actions() {
+fn history_search_keeps_only_history_actions_and_help() {
     let root = test_root("history-search-action-visibility");
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -16,6 +16,7 @@ fn history_search_hides_non_history_actions() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
+            "Help",
         ]
     );
 
@@ -23,7 +24,7 @@ fn history_search_hides_non_history_actions() {
 
     assert_eq!(
         app.top_action_labels(),
-        vec!["Apply History", "Cancel History Search"]
+        vec!["Apply History", "Cancel History Search", "Help"]
     );
 
     let _ = fs::remove_dir_all(&root);

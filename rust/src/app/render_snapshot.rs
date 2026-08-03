@@ -31,6 +31,7 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) preview_panel_width: u32,
     pub(super) top_actions: Vec<String>,
     pub(super) status_line: String,
+    pub(super) help_dialogs: Vec<DialogSnapshot>,
     pub(super) filelist_dialogs: Vec<DialogSnapshot>,
     pub(super) update_dialogs: Vec<DialogSnapshot>,
 }
@@ -40,6 +41,15 @@ fn preview_width_px(width: f32) -> u32 {
 }
 
 pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
+    let help_dialogs = if app.shell.ui.help_open {
+        vec![DialogSnapshot {
+            title: "Keyboard Shortcuts".to_string(),
+            lines: FlistWalkerApp::gui_help_lines(app.shell.runtime.emacs_keybindings_enabled),
+            buttons: vec!["Close".to_string()],
+        }]
+    } else {
+        Vec::new()
+    };
     let mut filelist_dialogs = Vec::new();
     if let Some(pending) = app
         .shell
@@ -174,6 +184,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             .map(str::to_string)
             .collect(),
         status_line: app.shell.runtime.status_line.clone(),
+        help_dialogs,
         filelist_dialogs,
         update_dialogs,
     }

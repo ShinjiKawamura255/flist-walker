@@ -1,4 +1,5 @@
 pub(super) mod filelist;
+pub(super) mod help;
 mod root_list;
 pub(super) mod update;
 
@@ -15,6 +16,10 @@ pub(super) fn render_update_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context
 
 pub(super) fn render_update_check_failure_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     update::render_check_failure(app, ctx);
+}
+
+pub(super) fn render_help_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    help::render(app, ctx);
 }
 
 pub(super) fn render_manage_root_list_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {

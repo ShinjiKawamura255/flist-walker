@@ -19,6 +19,9 @@
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR/LINK 表示を後追い更新できる。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
 - MUST: runtime config の `emacs_keybindings_enabled` が `false` のとき、Emacs 風の `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` および検索欄編集用 `Ctrl+A` / `Ctrl+E` / `Ctrl+B` / `Ctrl+F` / `Ctrl+H` / `Ctrl+D` / `Ctrl+W` / `Ctrl+K` / `Ctrl+Y` / `Ctrl+U` はアプリ側ショートカットとして消費してはならない。
+- MUST: GUI は top action の `Help` と `F1` の両方からモーダルなキーボードショートカット一覧を開き、`F1` / `Esc` / `Close` で閉じられなければならない。
+- MUST: GUI ヘルプは macOS では primary modifier を `Cmd`、その他の OS では `Ctrl` と表示し、runtime config の `emacs_keybindings_enabled` に応じて Emacs 風ショートカット一覧または無効状態を表示しなければならない。
+- MUST: GUI ヘルプ表示中は背後の検索入力、選択、PIN、コピー、実行などを起動するキーイベントを消費し、現在の検索状態を変更してはならない。
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。GUI backend がこの chord を `Event::Copy` として通知し、`Key::C` が来ない場合も同じ選択パスコピーとして扱う。
 - MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。
 - MUST: query 履歴はセッション復元ファイルへ永続化し、後方互換を保ったまま復元できる。

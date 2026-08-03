@@ -20,6 +20,9 @@ impl FlistWalkerApp {
         if self.handle_filelist_dialog_shortcuts(ctx) {
             return;
         }
+        if self.handle_help_dialog_shortcuts(ctx) {
+            return;
+        }
         let query_focused = ctx.memory(|m| m.has_focus(self.shell.ui.query_input_id));
         self.handle_shortcuts_with_focus(ctx, query_focused);
     }

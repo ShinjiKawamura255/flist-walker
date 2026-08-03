@@ -6,7 +6,7 @@ This file is the entry point for FlistWalker requirements. Detailed FR/NFR/CON a
 | Topic | Content |
 | --- | --- |
 | [Product Scope and Acceptance Criteria](requirements/product-scope.md) | Background / KPI, scope, use cases, acceptance criteria |
-| [Functional Requirements](requirements/functional.md) | FR-001 through FR-034 |
+| [Functional Requirements](requirements/functional.md) | FR-001 through FR-036 |
 | [Quality, Constraints, and Risks](requirements/quality-constraints.md) | NFR, CON, risks |
 | [Requirements Traceability](requirements/traceability.md) | FR/NFR to SP/DES/TC traceability excerpt |
 
@@ -35,6 +35,7 @@ This file is the entry point for FlistWalker requirements. Detailed FR/NFR/CON a
 - NFR-010 -> SP-014 -> DES-014 -> TC-157, TC-159, TC-160, TC-171
 - FR-034 -> SP-001 -> DES-001 -> TC-161
 - FR-035 -> SP-006, SP-014 -> DES-005, DES-014 -> TC-169
+- FR-036 -> SP-010 -> DES-009 -> TC-173
 - NFR-001 -> SP-007 -> DES-006 -> TC-007, TC-156, TC-161
 - FR-006, NFR-011 -> SP-004, SP-006, SP-013 -> DES-004, DES-005, DES-006 -> TC-006, TC-006A, TC-015, TC-057B, TC-162, TC-163, TC-164
 - FR-010, NFR-012 -> SP-001, SP-006 -> DES-005, DES-007 -> TC-165, TC-166

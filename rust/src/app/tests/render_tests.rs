@@ -1,7 +1,8 @@
 use super::*;
 use crate::app::render::{
-    RenderCommand, RenderFileListDialogCommand, RenderRootListDialogCommand, RenderTabBarCommand,
-    RenderTopActionCommand, RenderUpdateDialogCommand,
+    RenderCommand, RenderFileListDialogCommand, RenderHelpDialogCommand,
+    RenderRootListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
+    RenderUpdateDialogCommand,
 };
 use crate::app::render_theme;
 use crate::app::{render_dialogs, render_panels};
@@ -75,7 +76,7 @@ fn top_action_labels_show_history_actions_while_history_search_is_active() {
 
     assert_eq!(
         app.top_action_labels(),
-        vec!["Apply History", "Cancel History Search"]
+        vec!["Apply History", "Cancel History Search", "Help"]
     );
     let _ = fs::remove_dir_all(&root);
 }
@@ -94,6 +95,7 @@ fn top_action_labels_show_default_create_label_when_idle() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
+            "Help",
         ]
     );
     let _ = fs::remove_dir_all(&root);
@@ -124,6 +126,24 @@ fn dispatch_render_commands_consumes_top_action_queue() {
     app.dispatch_render_commands(&ctx);
 
     assert!(app.shell.runtime.pinned_paths.is_empty());
+    assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dispatch_render_commands_opens_and_closes_help() {
+    let root = test_root("render-command-help");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::TopAction(RenderTopActionCommand::OpenHelp));
+    app.dispatch_render_commands(&ctx);
+    assert!(app.shell.ui.help_open);
+
+    app.queue_render_command(RenderCommand::HelpDialog(RenderHelpDialogCommand::Close));
+    app.dispatch_render_commands(&ctx);
+    assert!(!app.shell.ui.help_open);
     assert!(app.shell.ui.pending_render_commands.is_empty());
     let _ = fs::remove_dir_all(&root);
 }
@@ -485,9 +505,11 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
                 "Copy Path(s)",
                 "Clear Selected",
                 "Create File List",
-                "Refresh Index"
+                "Refresh Index",
+                "Help"
             ],
             "status_line": "idle status",
+            "help_dialogs": [],
             "filelist_dialogs": [],
             "update_dialogs": [],
         })
@@ -606,9 +628,11 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
                 "Copy Path(s)",
                 "Clear Selected",
                 "Create File List",
-                "Refresh Index"
+                "Refresh Index",
+                "Help"
             ],
             "status_line": "dialog status",
+            "help_dialogs": [],
             "filelist_dialogs": [
                 {
                     "title": "Overwrite FileList?",
@@ -709,6 +733,29 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
     });
 
     assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn gui_surface_snapshot_exposes_contextual_help_dialog() {
+    let root = test_root("render-snapshot-help");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.help_open = true;
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["help_dialogs"][0]["title"],
+        json!("Keyboard Shortcuts")
+    );
+    assert_eq!(snapshot["help_dialogs"][0]["buttons"], json!(["Close"]));
+    let lines = snapshot["help_dialogs"][0]["lines"]
+        .as_array()
+        .expect("help lines");
+    assert!(lines
+        .iter()
+        .any(|line| line == "Ctrl+N / Ctrl+P — Move the current row"));
+
     let _ = fs::remove_dir_all(&root);
 }
 

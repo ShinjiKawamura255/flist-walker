@@ -70,6 +70,7 @@ mod render_tests;
 mod root_list_manager;
 mod session_restore;
 mod shortcut_action;
+mod shortcut_help;
 mod shortcut_navigation;
 mod shortcut_pin_focus;
 mod shortcut_root_history;

@@ -12,6 +12,12 @@ pub(super) enum RenderTopActionCommand {
     ClearPinned,
     CreateFileList,
     RefreshIndex,
+    OpenHelp,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum RenderHelpDialogCommand {
+    Close,
 }
 
 #[derive(Clone, Copy)]
@@ -69,6 +75,7 @@ pub(super) enum RenderTabBarCommand {
 pub(super) enum RenderCommand {
     TopAction(RenderTopActionCommand),
     OpenRuntimeConfig,
+    HelpDialog(RenderHelpDialogCommand),
     FileListDialog(RenderFileListDialogCommand),
     UpdateDialog(RenderUpdateDialogCommand),
     RootListDialog(RenderRootListDialogCommand),
@@ -243,7 +250,7 @@ impl FlistWalkerApp {
 
     pub(super) fn top_action_labels(&self) -> Vec<&'static str> {
         if self.shell.runtime.query_state.history_search_active {
-            return vec!["Apply History", "Cancel History Search"];
+            return vec!["Apply History", "Cancel History Search", "Help"];
         }
 
         let create_label = if self.shell.features.filelist.workflow.in_progress {
@@ -257,6 +264,7 @@ impl FlistWalkerApp {
             "Clear Selected",
             create_label,
             "Refresh Index",
+            "Help",
         ]
     }
 
@@ -271,6 +279,7 @@ impl FlistWalkerApp {
                 Some(RenderTopActionCommand::CreateFileList)
             }
             "Refresh Index" => Some(RenderTopActionCommand::RefreshIndex),
+            "Help" => Some(RenderTopActionCommand::OpenHelp),
             _ => None,
         }
     }
@@ -305,6 +314,7 @@ impl FlistWalkerApp {
         self.handle_shortcuts(&ctx);
         // Register the modal layer before background widgets so first-frame input cannot leak.
         render_dialogs::render_update_check_failure_dialog(self, &ctx);
+        render_dialogs::render_help_dialog(self, &ctx);
 
         render_panels::render_top_panel(self, ui);
         render_panels::render_status_panel(self, ui);
@@ -350,6 +360,9 @@ impl FlistWalkerApp {
                 RenderCommand::OpenRuntimeConfig => {
                     self.open_runtime_config_file();
                 }
+                RenderCommand::HelpDialog(RenderHelpDialogCommand::Close) => {
+                    self.shell.ui.help_open = false;
+                }
                 RenderCommand::TopAction(RenderTopActionCommand::ApplyHistory) => {
                     self.accept_history_search();
                 }
@@ -370,6 +383,9 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::RefreshIndex) => {
                     self.request_index_refresh();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::OpenHelp) => {
+                    self.shell.ui.help_open = true;
                 }
                 RenderCommand::FileListDialog(RenderFileListDialogCommand::ConfirmOverwrite) => {
                     self.confirm_pending_filelist_overwrite();
