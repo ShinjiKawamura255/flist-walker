@@ -30,7 +30,7 @@ Each axis cell uses `STATUS — reason — evidence — reproduction`.
 | GSM-005 | NOT RUN — run deterministic wrapper | NOT RUN — sort modes/typing | NOT RUN — supporting only | Sort modes |
 | GSM-006 | NOT RUN — run deterministic wrapper | NOT RUN — fixture source/dialog interaction | NOT RUN — supporting only | FileList/dialogs |
 | GSM-007 | NOT RUN — run deterministic wrapper | NOT RUN — tabs/reorder | NOT RUN — supporting only | Tabs/per-tab state |
-| GSM-008 | NOT RUN — run deterministic wrapper | NOT RUN — local/forced dialogs only | NOT RUN — supporting only | Dialog cancel/failure |
+| GSM-008 | NOT RUN — run deterministic wrapper | NOT RUN — help and local/forced dialogs only | NOT RUN — supporting only | Help/dialog cancel/failure |
 | GSM-009 | NOT RUN — run deterministic wrapper | NOT RUN — light/dark visual pass | NOT RUN — supporting only | Theme/contrast |
 | GSM-010 | NOT RUN — run deterministic wrapper/perf gates | NOT RUN — responsiveness during native input | NOT RUN — run isolated headful smoke | Responsiveness |
 
