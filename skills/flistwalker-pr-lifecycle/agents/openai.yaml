@@ -1,0 +1,4 @@
+interface:
+  display_name: "FlistWalker PR Lifecycle"
+  short_description: "FlistWalker PR の安全な同期と作業ブランチ整理"
+  default_prompt: "Use $flistwalker-pr-lifecycle to finish this merged FlistWalker PR locally."

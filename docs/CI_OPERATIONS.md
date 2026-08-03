@@ -10,7 +10,8 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - `CI Policy Guardian` は `pull_request_target` で default branch の trusted checker を checkoutし、PR head の workflow/pin/Dependabot policy blob だけを GitHub API から一時領域へ取得して data として検査する。PR head の checkout/実行、secret、cache、artifact、write permission は使用しない。
 - workflow一式、Dependabot設定、toolchain定義、audit exception設定、checker本体とtestはfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更やaccepted advisory変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
 - ローカルの意味あるコミット境界・順序・message・author は rebase merge で保持する。GitHub が新しい commit SHA と committer metadata を生成することは許容する。
-- feature branch は任意のタイミングで push してよい。履歴整理が必要な場合の force-with-lease は非保護 feature branch に限り、`master` の force push、branch deletion、直接 push、admin bypass で gate を回避してはならない。merge 済み remote feature branch は自動削除する。
+- feature branch は任意のタイミングで push してよい。履歴整理が必要な場合の force-with-lease は非保護 feature branch に限り、`master` の force push、branch deletion、直接 push、admin bypass で gate を回避してはならない。merge 済み remote feature branch は GitHub が自動削除する。
+- auto-merge の実完了を確認した active task は [`skills/flistwalker-pr-lifecycle/SKILL.md`](../skills/flistwalker-pr-lifecycle/SKILL.md) に従い、clean worktree のみ `git fetch origin --prune`、`git switch master`、`git pull --ff-only origin master` を実行する。PR の head branch は、`master` にマージ済みで他 worktree に使用されていない場合だけ `git branch -d` でローカルから削除する。未マージ、dirty worktree、fast-forward 不能、または worktree 使用中では同期・削除を行わず状態を報告する。`git reset --hard`、`git branch -D`、remote branch の手動削除はこの後処理で使わない。
 - Dependabot PR は CI 成功後に `.github/workflows/dependabot-auto-merge.yml` が同じ rebase auto-merge を1回だけ登録する。
 - 失敗を再実行だけで消してはならない。runner/network/cache など外部一時障害と判断できる証跡がある場合に限り、run URL と判断を残して再実行する。
 
