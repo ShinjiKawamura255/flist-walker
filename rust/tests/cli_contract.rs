@@ -102,7 +102,7 @@ fn cli_prints_version_with_short_flag() {
 }
 
 #[test]
-fn tc_169_update_commands_are_exclusive_and_documented_in_english() {
+fn tc_169_update_commands_are_headless_and_documented_in_english() {
     let help = cli_command("update-help")
         .arg("--help")
         .output()
@@ -114,11 +114,27 @@ fn tc_169_update_commands_are_exclusive_and_documented_in_english() {
     assert!(stdout.contains("--update"));
     assert!(stdout.contains("Check for and install the latest supported release"));
 
-    let conflict = cli_command("update-conflict")
-        .args(["--update", "--cli"])
+    let aliased_update = cli_command("update-cli-alias")
+        .env("FLISTWALKER_DISABLE_SELF_UPDATE", "1")
+        .args(["--cli", "--update"])
         .output()
-        .expect("run conflicting update command");
-    assert_eq!(conflict.status.code(), Some(2));
+        .expect("run update through a --cli alias");
+    assert_eq!(aliased_update.status.code(), Some(1));
+    assert!(aliased_update.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&aliased_update.stderr).trim(),
+        "Automatic updates are disabled."
+    );
+
+    let headless_restart = cli_command("update-headless-restart")
+        .env_remove("DISPLAY")
+        .env_remove("WAYLAND_DISPLAY")
+        .arg("--flistwalker-internal-update-restart")
+        .output()
+        .expect("run internal post-update restart without a display server");
+    assert!(headless_restart.status.success());
+    assert!(headless_restart.stdout.is_empty());
+    assert!(headless_restart.stderr.is_empty());
 
     let disabled_check = cli_command("update-check-disabled")
         .env("FLISTWALKER_DISABLE_SELF_UPDATE", "1")

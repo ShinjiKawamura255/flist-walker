@@ -341,7 +341,21 @@ impl Args {
 }
 
 pub(crate) fn parse_args() -> Args {
-    Args::parse()
+    Args::parse_from(normalize_update_args(std::env::args_os()))
+}
+
+fn normalize_update_args(arguments: impl IntoIterator<Item = OsString>) -> Vec<OsString> {
+    let arguments = arguments.into_iter().collect::<Vec<_>>();
+    let is_update_command = arguments
+        .iter()
+        .any(|argument| argument == "--check-update" || argument == "--update");
+    if !is_update_command {
+        return arguments;
+    }
+    arguments
+        .into_iter()
+        .filter(|argument| argument != "--cli")
+        .collect()
 }
 
 pub(super) fn parse_exec_template(
@@ -434,8 +448,24 @@ fn validate_create_filelist_args(args: &Args) -> std::result::Result<(), &'stati
 #[cfg(test)]
 mod tests {
     use clap::Parser;
+    use std::ffi::OsString;
 
-    use super::{Args, CliColorMode, CliEntryType, CliIndexSource};
+    use super::{normalize_update_args, Args, CliColorMode, CliEntryType, CliIndexSource};
+
+    #[test]
+    fn tc_169_cli_alias_flag_is_inert_for_update_commands() {
+        let normalized = normalize_update_args([
+            OsString::from("flistwalker"),
+            OsString::from("--cli"),
+            OsString::from("--update"),
+        ]);
+
+        assert_eq!(
+            normalized,
+            [OsString::from("flistwalker"), OsString::from("--update")]
+        );
+        Args::try_parse_from(normalized).expect("parse update command after alias normalization");
+    }
 
     #[test]
     fn default_gui_args_do_not_trigger_cli_option_requirements() {

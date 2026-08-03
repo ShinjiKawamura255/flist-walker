@@ -1,3 +1,4 @@
+use crate::updater::{UpdateRestartMode, INTERNAL_UPDATE_RESTART_FLAG};
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use anyhow::bail;
 #[cfg(not(target_os = "macos"))]
@@ -20,7 +21,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub(in crate::updater) trait ProcessControl {
     fn wait_for_exit(&mut self, pid: u32, timeout: Duration) -> Result<bool>;
-    fn restart(&mut self, target: &Path) -> Result<()>;
+    fn restart(&mut self, target: &Path, mode: UpdateRestartMode) -> Result<()>;
 }
 
 pub(in crate::updater) trait ProcessProbe {
@@ -52,8 +53,8 @@ impl ProcessControl for RealProcessControl {
         wait_for_process_exit(pid, timeout)
     }
 
-    fn restart(&mut self, target: &Path) -> Result<()> {
-        restart_target(target)
+    fn restart(&mut self, target: &Path, mode: UpdateRestartMode) -> Result<()> {
+        restart_target(target, mode)
     }
 }
 
@@ -237,10 +238,14 @@ pub(super) fn wait_for_process_exit(_pid: u32, _timeout: Duration) -> Result<boo
 }
 
 #[cfg(target_os = "windows")]
-pub(super) fn restart_target(target: &Path) -> Result<()> {
+pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<()> {
     let mut command = Command::new(target);
+    if mode == UpdateRestartMode::Headless {
+        command.arg(INTERNAL_UPDATE_RESTART_FLAG);
+    }
     // The updater must not surface a console even if a Windows build temporarily uses the
-    // console subsystem; the restarted process owns its normal GUI startup path.
+    // console subsystem. The restart mode determines whether the child opens the GUI or only
+    // completes transaction recovery.
     command.creation_flags(CREATE_NO_WINDOW);
     command
         .spawn()
@@ -249,13 +254,17 @@ pub(super) fn restart_target(target: &Path) -> Result<()> {
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
-pub(super) fn restart_target(target: &Path) -> Result<()> {
+pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<()> {
     use std::os::unix::process::CommandExt;
-    let error = Command::new(target).exec();
+    let mut command = Command::new(target);
+    if mode == UpdateRestartMode::Headless {
+        command.arg(INTERNAL_UPDATE_RESTART_FLAG);
+    }
+    let error = command.exec();
     Err(error).with_context(|| format!("failed to exec {}", target.display()))
 }
 
 #[cfg(target_os = "macos")]
-pub(super) fn restart_target(_target: &Path) -> Result<()> {
+pub(super) fn restart_target(_target: &Path, _mode: UpdateRestartMode) -> Result<()> {
     bail!("macOS auto-update is unsupported")
 }
