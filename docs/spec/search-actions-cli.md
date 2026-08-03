@@ -83,9 +83,9 @@
 
 ## SP-006 CLI 契約
 ### Requirements
-- MUST: `--check-update` と `--update` は `--cli` を必要としない排他的な CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。
+- MUST: `--check-update` と `--update` は `--cli` を必要としない独立した CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。ただし `flistwalker --cli` を含む shell alias との互換性のため、この2操作と同時指定された `--cli` だけは意味を持たない互換フラグとして受理する。
 - MUST: `--check-update` は更新を適用せず、最新版、更新候補、更新確認無効、または失敗を英語で報告する。更新候補がある場合は `flistwalker --update` を手動実行する案内を表示する。
-- MUST: `--update` は利用者による明示的な更新承認として扱う。Windows/Linux の自動更新対応 bundle だけを既存の検証・transaction 経路へ渡し、manual-only platform では release URL を英語で表示して非ゼロ終了する。
+- MUST: `--update` は利用者による明示的な更新承認として扱う。Windows/Linux の自動更新対応 bundle だけを既存の検証・transaction 経路へ渡し、manual-only platform では release URL を英語で表示して非ゼロ終了する。CLI から開始した更新の適用確認は X11 / Wayland を要求しない内部ヘッドレス再起動で完了し、GUI を起動してはならない。
 - MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。
 - MUST: `--root` と `--limit` を受理し、既存の `--cli [QUERY] --root ... --limit ...` invocation を維持する。本仕様では subcommand を追加しない。
 - MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。

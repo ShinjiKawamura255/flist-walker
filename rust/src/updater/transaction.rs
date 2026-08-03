@@ -14,6 +14,7 @@ use model::{Phase, TargetRole, TargetState, TransactionMarker};
 use model::{TargetRecord, MARKER_VERSION};
 use platform::*;
 
+use crate::updater::UpdateRestartMode;
 use anyhow::{bail, Context, Result};
 #[cfg(not(target_os = "macos"))]
 use rand_core::{OsRng, RngCore};
@@ -246,11 +247,28 @@ pub(super) trait FailureInjector {
     }
 }
 
+#[cfg(test)]
 pub(super) fn execute_registered_transaction(
     marker_path: &Path,
     start_token: &str,
     process: &mut impl ProcessControl,
     failures: &mut impl FailureInjector,
+) -> Result<()> {
+    execute_registered_transaction_with_restart_mode(
+        marker_path,
+        start_token,
+        process,
+        failures,
+        UpdateRestartMode::Headless,
+    )
+}
+
+fn execute_registered_transaction_with_restart_mode(
+    marker_path: &Path,
+    start_token: &str,
+    process: &mut impl ProcessControl,
+    failures: &mut impl FailureInjector,
+    restart_mode: UpdateRestartMode,
 ) -> Result<()> {
     let mut marker = read_marker(marker_path)?;
     let install_dir = validated_marker_parent(marker_path, &marker)?;
@@ -291,9 +309,9 @@ pub(super) fn execute_registered_transaction(
         return Err(err).context("update activation failed and was rolled back");
     }
     let binary = target_path(&install_dir, &marker, TargetRole::Binary);
-    if let Err(err) = process.restart(&binary) {
+    if let Err(err) = process.restart(&binary, restart_mode) {
         rollback_transaction(&install_dir, marker_path, &mut marker)?;
-        let _ = process.restart(&binary);
+        let _ = process.restart(&binary, UpdateRestartMode::Gui);
         return Err(err).context("failed to restart updated application; old bundle restored");
     }
     Ok(())
@@ -543,6 +561,7 @@ pub(super) fn run_internal_helper(
     marker_path: &Path,
     transaction_id: &str,
     start_token: &str,
+    restart_mode: UpdateRestartMode,
 ) -> Result<()> {
     validate_transaction_id(transaction_id)?;
     validate_start_token(start_token)?;
@@ -576,11 +595,12 @@ pub(super) fn run_internal_helper(
                 )?;
                 let mut process = RealProcessControl;
                 let mut failures = NoFailure;
-                return execute_registered_transaction(
+                return execute_registered_transaction_with_restart_mode(
                     marker_path,
                     start_token,
                     &mut process,
                     &mut failures,
+                    restart_mode,
                 );
             }
             _ => bail!("helper observed an invalid pre-ack transaction phase"),

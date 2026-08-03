@@ -10,6 +10,30 @@ mod transaction;
 
 const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 const FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
+const INTERNAL_UPDATE_RESTART_FLAG: &str = "--flistwalker-internal-update-restart";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UpdateRestartMode {
+    Gui,
+    Headless,
+}
+
+impl UpdateRestartMode {
+    fn helper_argument(self) -> &'static str {
+        match self {
+            Self::Gui => "gui",
+            Self::Headless => "headless",
+        }
+    }
+
+    fn from_helper_argument(value: &str) -> Result<Self> {
+        match value {
+            "gui" => Ok(Self::Gui),
+            "headless" => Ok(Self::Headless),
+            _ => bail!("internal updater helper restart mode is invalid"),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpdateSupport {
@@ -87,7 +111,11 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
     release::resolve_update_candidate_from_release(&current_version, &latest_release)
 }
 
-pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path) -> Result<()> {
+pub fn prepare_and_start_update(
+    candidate: &UpdateCandidate,
+    current_exe: &Path,
+    restart_mode: UpdateRestartMode,
+) -> Result<()> {
     if self_update_disabled() {
         bail!(
             "self-update is disabled by {} environment variable or sentinel file",
@@ -101,7 +129,7 @@ pub fn prepare_and_start_update(candidate: &UpdateCandidate, current_exe: &Path)
 
     let staged = staging::stage_update_assets(candidate)?;
     let mut verified = verify_staged_update(candidate, staged)?;
-    apply::spawn_update_helper(current_exe, &mut verified)
+    apply::spawn_update_helper(current_exe, &mut verified, restart_mode)
 }
 
 pub fn should_skip_update_prompt(target_version: &str, skipped_version: Option<&str>) -> bool {
@@ -269,12 +297,19 @@ fn verify_staged_update(
     Ok(VerifiedUpdateBundle::new(staged))
 }
 
-pub fn run_internal_update_helper_if_requested() -> Result<bool> {
+pub fn run_internal_updater_command_if_requested() -> Result<bool> {
     let mut arguments = std::env::args_os();
     let _program = arguments.next();
     let Some(flag) = arguments.next() else {
         return Ok(false);
     };
+    if flag == INTERNAL_UPDATE_RESTART_FLAG {
+        if arguments.next().is_some() {
+            bail!("internal updater restart received unexpected arguments");
+        }
+        recover_interrupted_update_on_startup()?;
+        return Ok(true);
+    }
     if flag != apply::INTERNAL_HELPER_FLAG {
         return Ok(false);
     }
@@ -289,10 +324,20 @@ pub fn run_internal_update_helper_if_requested() -> Result<bool> {
         .next()
         .and_then(|value| value.into_string().ok())
         .context("internal updater helper start token is missing or invalid")?;
+    let restart_mode = arguments
+        .next()
+        .and_then(|value| value.into_string().ok())
+        .context("internal updater helper restart mode is missing or invalid")?;
+    let restart_mode = UpdateRestartMode::from_helper_argument(&restart_mode)?;
     if arguments.next().is_some() {
         bail!("internal updater helper received unexpected arguments");
     }
-    transaction::run_internal_helper(Path::new(&marker), &transaction_id, &start_token)?;
+    transaction::run_internal_helper(
+        Path::new(&marker),
+        &transaction_id,
+        &start_token,
+        restart_mode,
+    )?;
     Ok(true)
 }
 

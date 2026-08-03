@@ -14,7 +14,7 @@ use tracing_subscriber::EnvFilter;
 
 use flist_walker::ignore_list::ensure_ignore_list_sample;
 use flist_walker::runtime_config::initialize_runtime_config;
-use flist_walker::updater::run_internal_update_helper_if_requested;
+use flist_walker::updater::run_internal_updater_command_if_requested;
 
 fn init_tracing() {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off"));
@@ -28,7 +28,7 @@ fn init_tracing() {
 
 fn main() -> Result<ExitCode> {
     init_tracing();
-    if run_internal_update_helper_if_requested()? {
+    if run_internal_updater_command_if_requested()? {
         return Ok(ExitCode::SUCCESS);
     }
 

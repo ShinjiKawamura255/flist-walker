@@ -6,7 +6,8 @@ use std::process::ExitCode;
 
 use flist_walker::updater::{
     check_for_update, current_version_string, prepare_and_start_update,
-    recover_interrupted_update_on_startup, self_update_disabled, UpdateCandidate, UpdateSupport,
+    recover_interrupted_update_on_startup, self_update_disabled, UpdateCandidate,
+    UpdateRestartMode, UpdateSupport,
 };
 
 pub(crate) use args::{parse_args, validate_args, Args};
@@ -48,9 +49,13 @@ pub(crate) fn run_update_command(install: bool) -> Result<ExitCode> {
 
     match &candidate.support {
         UpdateSupport::Auto => {
-            prepare_and_start_update(&candidate, &std::env::current_exe()?)
-                .context("Update installation failed")?;
-            println!("Update started. FlistWalker will restart when installation is complete.");
+            prepare_and_start_update(
+                &candidate,
+                &std::env::current_exe()?,
+                UpdateRestartMode::Headless,
+            )
+            .context("Update installation failed")?;
+            println!("Update started. Installation will complete in the background.");
             Ok(ExitCode::SUCCESS)
         }
         UpdateSupport::ManualOnly { message } => {

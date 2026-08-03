@@ -176,10 +176,10 @@
 - asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary、対応する `*.README.txt` / `*.LICENSE.txt` / `*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS` / `SHA256SUMS.sig` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
 - TUI は専用の短命 update-check worker を起動し、candidate だけを channel で event loop へ渡す。event loop は candidate を永続的な英語 status notice に変換するだけで、download/apply を dispatch しない。check error と up-to-date は通常の TUI state を変更しない。
-- `--check-update` / `--update` は GUI/TUI dispatch より前の排他的 CLI 分岐で処理する。`--update` の明示指定だけが既存の `prepare_and_start_update` を呼び、manual-only candidate は release URL を返して apply しない。
+- `--check-update` / `--update` は GUI/TUI dispatch より前の独立 CLI 分岐で処理する。引数正規化は、この2操作がある場合に限り alias 由来の `--cli` を除去し、それ以外の引数は clap の排他検証へ残す。`--update` の明示指定だけが `prepare_and_start_update` を headless restart mode で呼び、manual-only candidate は release URL を返して apply しない。
 - 起動時の update check 失敗は worker からエラー文字列つきで返し、GUI 側は通常操作を継続したまま軽量ダイアログで理由を表示する。利用者が「今後この種の起動時エラーを表示しない」を選んだ場合は UI state へ永続化し、次回以降の startup check failure dialog を抑止する。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
-- restart 時は現在 executable path を置換対象とし、起動引数は最小化して通常 GUI 起動へ戻す。セッション復元は既存 UI state に委譲する。
+- restart 時は現在 executable path を置換対象とする。GUI worker から開始した更新は引数なしで通常 GUI 起動へ戻し、セッション復元を既存 UI state に委譲する。CLI から開始した更新は内部 restart flag だけを渡し、display server に接続せず transaction recovery を完了して終了する。更新後バイナリの起動失敗で rollback した場合は、旧バイナリが内部 flag を解釈できない可能性があるため引数なしで再起動する。
 - production activation logic に test bypass を置かず、filesystem/restart/clock/failure injection seam へ inert dummy bundle を渡して成功・rollback・中断 recovery を検証する。Windows/Linux の実 filesystem 証跡は同一 filesystem の一時 directory に限定し、FlistWalker 本体または外部 application は起動しない。
 - update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
 - 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。

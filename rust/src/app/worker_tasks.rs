@@ -789,7 +789,11 @@ pub(super) fn spawn_update_worker(
                 UpdateRequestKind::DownloadAndApply {
                     candidate,
                     current_exe,
-                } => match prepare_and_start_update(candidate.as_ref(), &current_exe) {
+                } => match prepare_and_start_update(
+                    candidate.as_ref(),
+                    &current_exe,
+                    crate::updater::UpdateRestartMode::Gui,
+                ) {
                     Ok(()) => UpdateResponse::ApplyStarted {
                         request_id: req.request_id,
                         target_version: candidate.target_version.clone(),

@@ -84,6 +84,7 @@ struct TestProcessControl {
     parent_exited: bool,
     restart_results: Vec<Result<()>>,
     restart_calls: usize,
+    restart_modes: Vec<UpdateRestartMode>,
 }
 
 impl TestProcessControl {
@@ -92,6 +93,7 @@ impl TestProcessControl {
             parent_exited: true,
             restart_results: vec![Ok(())],
             restart_calls: 0,
+            restart_modes: Vec::new(),
         }
     }
 
@@ -100,6 +102,7 @@ impl TestProcessControl {
             parent_exited: false,
             restart_results: Vec::new(),
             restart_calls: 0,
+            restart_modes: Vec::new(),
         }
     }
 
@@ -108,11 +111,16 @@ impl TestProcessControl {
             parent_exited: true,
             restart_results: vec![Err(anyhow::anyhow!("injected restart failure")), Ok(())],
             restart_calls: 0,
+            restart_modes: Vec::new(),
         }
     }
 
     fn restart_calls(&self) -> usize {
         self.restart_calls
+    }
+
+    fn restart_modes(&self) -> &[UpdateRestartMode] {
+        &self.restart_modes
     }
 }
 
@@ -121,8 +129,9 @@ impl ProcessControl for TestProcessControl {
         Ok(self.parent_exited)
     }
 
-    fn restart(&mut self, _target: &Path) -> Result<()> {
+    fn restart(&mut self, _target: &Path, mode: UpdateRestartMode) -> Result<()> {
         self.restart_calls += 1;
+        self.restart_modes.push(mode);
         if self.restart_results.is_empty() {
             return Ok(());
         }
@@ -490,6 +499,7 @@ fn tc158_success_commits_sidecars_before_binary_and_records_restart() {
         Phase::BinaryCommitted
     );
     assert_eq!(process.restart_calls(), 1);
+    assert_eq!(process.restart_modes(), &[UpdateRestartMode::Headless]);
 }
 
 #[test]
@@ -530,6 +540,10 @@ fn tc159_restart_failure_restores_old_bundle_and_restarts_old_binary() {
         Phase::RolledBack
     );
     assert_eq!(process.restart_calls(), 2);
+    assert_eq!(
+        process.restart_modes(),
+        &[UpdateRestartMode::Headless, UpdateRestartMode::Gui]
+    );
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::updater::VerifiedUpdateBundle;
+use crate::updater::{UpdateRestartMode, VerifiedUpdateBundle};
 use anyhow::{bail, Result};
 use std::path::Path;
 
@@ -23,10 +23,11 @@ pub(crate) const INTERNAL_HELPER_FLAG: &str = "--flistwalker-internal-update-hel
 pub(super) fn spawn_update_helper(
     current_exe: &Path,
     bundle: &mut VerifiedUpdateBundle,
+    restart_mode: UpdateRestartMode,
 ) -> Result<()> {
     #[cfg(target_os = "macos")]
     {
-        let _ = (current_exe, bundle);
+        let _ = (current_exe, bundle, restart_mode);
         bail!("macOS auto-update is unsupported");
     }
     #[cfg(not(target_os = "macos"))]
@@ -44,6 +45,7 @@ pub(super) fn spawn_update_helper(
             prepared.marker_path().as_os_str(),
             OsStr::new(prepared.transaction_id()),
             OsStr::new(&start_token),
+            OsStr::new(restart_mode.helper_argument()),
         );
         let mut command = Command::new(prepared.helper_path());
         command.args(&arguments).current_dir(prepared.install_dir());
@@ -69,12 +71,18 @@ pub(super) fn spawn_update_helper(
 }
 
 #[cfg(any(not(target_os = "macos"), test))]
-fn helper_arguments(marker: &OsStr, transaction_id: &OsStr, start_token: &OsStr) -> [OsString; 4] {
+fn helper_arguments(
+    marker: &OsStr,
+    transaction_id: &OsStr,
+    start_token: &OsStr,
+    restart_mode: &OsStr,
+) -> [OsString; 5] {
     [
         INTERNAL_HELPER_FLAG.into(),
         marker.to_os_string(),
         transaction_id.to_os_string(),
         start_token.to_os_string(),
+        restart_mode.to_os_string(),
     ]
 }
 
@@ -120,6 +128,7 @@ mod tests {
             OsStr::new("marker"),
             OsStr::new("00112233445566778899aabbccddeeff"),
             OsStr::new("start-token-0123456789"),
+            OsStr::new("headless"),
         );
 
         assert_eq!(
@@ -128,7 +137,8 @@ mod tests {
                 OsString::from(INTERNAL_HELPER_FLAG),
                 OsString::from("marker"),
                 OsString::from("00112233445566778899aabbccddeeff"),
-                OsString::from("start-token-0123456789")
+                OsString::from("start-token-0123456789"),
+                OsString::from("headless")
             ]
         );
     }
