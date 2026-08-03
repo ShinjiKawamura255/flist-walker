@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.21.0] - 2026-08-04
+### Added
+- GUI に `Help` 操作と `F1` ショートカットで開けるモーダルのショートカット一覧を追加した。表示中は背景のショートカットを受け付けず、OS の primary modifier と Emacs keybinding 設定を反映する。
+- CLI に `--color auto|always|never` を追加した。既定の `auto` は対話端末だけで色を出力し、pipe/redirect の path-only 出力を維持する。
+
+### Changed
+- GUI 実装を eframe 0.35 API へ移行し、描画と入力の既存操作契約を維持した。
+- GitHub Actions の cache と artifact download action、および Rust の serde 依存を更新し、関連する OSS notice と release/CI 証跡を追従させた。
+
+### Fixed
+- `flistwalker --update` をヘッドレス環境で実行した場合に GUI restart mode を要求して失敗する問題を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 自己更新の署名・checksum 検証、sidecars-first/binary-last、rollback/recovery の既存保護契約を維持した。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.20.1] - 2026-08-01
 ### Added
 - なし。
@@ -1671,7 +1695,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.1...v0.21.0
 [0.20.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.0...v0.19.1
