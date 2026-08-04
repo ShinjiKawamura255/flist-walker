@@ -1323,7 +1323,7 @@ fn tc_006_explicit_ignore_file_and_no_ignore_are_supported_and_conflict() {
     fs::write(root.join("visible.txt"), "visible").expect("write visible");
     fs::write(root.join("hidden.tmp"), "hidden").expect("write hidden");
     let ignore = root.join("custom.ignore");
-    fs::write(&ignore, "tmp\n").expect("write ignore");
+    fs::write(&ignore, "\u{feff}tmp\r\n").expect("write ignore");
 
     let filtered = cli_command("ignore-file")
         .args([
@@ -1354,6 +1354,79 @@ fn tc_006_explicit_ignore_file_and_no_ignore_are_supported_and_conflict() {
     assert!(!conflict.status.success());
 
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_176_default_sidecar_filters_walker_and_filelist_and_rejects_invalid_utf8() {
+    let stage = test_root("default-ignore-stage");
+    let root = stage.join("root");
+    let settings = stage.join("settings");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&settings).expect("create settings");
+    fs::write(root.join("visible.txt"), "visible").expect("write visible");
+    fs::write(root.join("hidden.tmp"), "hidden").expect("write hidden");
+    fs::write(root.join("FileList.txt"), "visible.txt\nhidden.tmp\n").expect("write FileList");
+
+    let source_exe = bin_path();
+    let staged_exe = stage.join(source_exe.file_name().expect("binary filename"));
+    fs::copy(&source_exe, &staged_exe).expect("stage CLI binary");
+    let ignore = stage.join("flistwalker.ignore.txt");
+    fs::write(&ignore, "\u{feff}hidden\r\n").expect("write default ignore sidecar");
+
+    let command = || {
+        let mut command = Command::new(&staged_exe);
+        command
+            .env_remove("RUST_LOG")
+            .env("HOME", &settings)
+            .env("USERPROFILE", &settings)
+            .env("LOCALAPPDATA", &settings)
+            .env("APPDATA", &settings);
+        command
+    };
+
+    for (source, query) in [("walker", ""), ("filelist", "txt|tmp")] {
+        let output = command()
+            .args([
+                "--cli",
+                query,
+                "--root",
+                root.to_string_lossy().as_ref(),
+                "--source",
+                source,
+                "--type",
+                "file",
+            ])
+            .output()
+            .unwrap_or_else(|error| panic!("run staged {source}: {error}"));
+        assert!(
+            output.status.success(),
+            "{source}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("visible.txt"), "{source}: {stdout}");
+        assert!(!stdout.contains("hidden.tmp"), "{source}: {stdout}");
+    }
+
+    fs::write(&ignore, [0xff, 0xfe, 0xfd]).expect("write invalid UTF-8 sidecar");
+    let invalid = command()
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+        ])
+        .output()
+        .expect("run invalid sidecar");
+    assert!(!invalid.status.success());
+    assert!(
+        String::from_utf8_lossy(&invalid.stderr).contains("failed to read ignore file"),
+        "{}",
+        String::from_utf8_lossy(&invalid.stderr)
+    );
+
+    let _ = fs::remove_dir_all(stage);
 }
 
 #[test]

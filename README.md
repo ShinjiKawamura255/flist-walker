@@ -155,6 +155,7 @@ In CLI mode:
 - `--type all|file|folder`, `--regex`, and `--case-sensitive` control matching.
 - `--source auto|filelist|walker` controls indexing. `filelist` fails if no root FileList exists; `auto` prefers it and falls back to the walker.
 - `--ignore-file PATH` replaces the executable-side ignore list; `--no-ignore` disables ignore filtering. These options conflict.
+- Ignore files are UTF-8 and may start with a UTF-8 BOM or use CRLF. `/` and `\\` path separators are equivalent in ignore rules. A missing default sidecar means no rules; a present unreadable or invalid UTF-8 file is an explicit CLI/TUI error.
 - In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
 - Named roots and pure search presets are managed with explicit options such as `--add-named-root NAME=PATH`, `--list-named-roots`, `--save-preset NAME`, `--list-presets`, and `--preset NAME`. Quote the complete query argument. Presets store search state only and never store an action or external command.

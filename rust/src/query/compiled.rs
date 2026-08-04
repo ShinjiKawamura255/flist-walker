@@ -202,7 +202,7 @@ impl CompiledIgnoreTerms {
     pub fn matches(&self, candidate: &PreparedCandidate) -> bool {
         self.terms
             .iter()
-            .any(|term| matches_alternative_set(term, &candidate.name, &candidate.full))
+            .any(|term| matches_alternative_set(term, &candidate.name, &candidate.path))
     }
 
     pub fn matches_path(&self, path: &Path, scope: QueryScope<'_>) -> bool {
@@ -401,7 +401,7 @@ fn compile_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet {
 }
 
 fn compile_raw_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet {
-    let normalized = normalize_text(term, ignore_case);
+    let normalized = normalize_field_path(term, ignore_case);
     AlternativeSet {
         alternatives: include_alternatives(&normalized)
             .into_iter()
