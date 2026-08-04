@@ -5,8 +5,8 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use super::{
-    ActionRequest, FileListRequest, FlistWalkerApp, IndexRequest, KindResolveRequest,
-    PreviewRequest, SearchRequest, SortMetadataRequest, UpdateRequest,
+    ActionRequest, CatalogRequest, FileListRequest, FlistWalkerApp, IndexRequest,
+    KindResolveRequest, PreviewRequest, SearchRequest, SortMetadataRequest, UpdateRequest,
 };
 use crate::app::process_shutdown_requested;
 use eframe::egui;
@@ -120,6 +120,7 @@ impl FlistWalkerApp {
             super::worker_channel::bounded_request_channel::<KindResolveRequest>(1);
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
+        let (dummy_catalog_tx, _) = mpsc::channel::<CatalogRequest>();
         let (dummy_index_tx, _) = super::worker_channel::bounded_request_channel::<IndexRequest>(1);
         let old_search_tx = std::mem::replace(&mut self.shell.search.tx, dummy_search_tx);
         let old_preview_tx =
@@ -132,6 +133,8 @@ impl FlistWalkerApp {
             std::mem::replace(&mut self.shell.worker_bus.filelist.tx, dummy_filelist_tx);
         let old_update_tx =
             std::mem::replace(&mut self.shell.worker_bus.update.tx, dummy_update_tx);
+        let old_catalog_tx =
+            std::mem::replace(&mut self.shell.worker_bus.catalog.tx, dummy_catalog_tx);
         let old_index_tx = std::mem::replace(&mut self.shell.indexing.tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
@@ -140,6 +143,7 @@ impl FlistWalkerApp {
         drop(old_kind_tx);
         drop(old_filelist_tx);
         drop(old_update_tx);
+        drop(old_catalog_tx);
         drop(old_index_tx);
     }
 
@@ -253,5 +257,6 @@ impl FlistWalkerApp {
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
         self.poll_update_response();
+        self.poll_catalog_response();
     }
 }

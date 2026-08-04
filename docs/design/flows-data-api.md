@@ -39,5 +39,11 @@
 - CLI: `flistwalker [query] [--root PATH] [--limit N] [--cli]`
 - `sort_all_matches(matches, mode) -> sorted matches`
 - `execute_authorized_action(request, backend) -> ActionReport`
+
+## DES-020 Named-root and preset catalog
+- `.flistwalker_search_catalog.json` は legacy `.flistwalker_roots.txt` と分離した version 1 document とし、named roots、pure search presets、unknown fields を保持する。
+- mutation は sidecar lock 内で read/validate/mutate/atomic-write する。newer/malformed document は read-only failure とし、同時 writer の lost update と downgrade 時の legacy data loss を防ぐ。
+- CLI adapter は明示 catalog option を先に処理し、`--preset` を effective search args へ変換して既存 batch/TUI pipeline へ渡す。
+- GUI は catalog worker request/response を request ID で相関し、disk commit 後だけ in-memory catalog を置換する。preset apply は root/source/type 差分なら existing index transition、その他なら current snapshot search transition を使う。
 - `plan_filelist_write(options, filesystem) -> FileListWritePlan`; `settle_filelist_plan(plan, cancel) -> FileListTransactionReport`
 - `enqueue_persistence(patch, history_delta)`; `flush_persistence_bounded() -> CommitOutcome`

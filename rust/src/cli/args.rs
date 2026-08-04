@@ -99,7 +99,7 @@ impl From<CliSortMode> for RuntimeSortMode {
     }
 }
 
-#[derive(Parser, Debug)]
+#[derive(Clone, Parser, Debug)]
 #[command(name = "flistwalker")]
 #[command(about = "Find files and folders with fuzzy search")]
 #[command(version)]
@@ -120,7 +120,7 @@ pub(crate) struct Args {
     #[arg(
         long,
         value_name = "PATH",
-        conflicts_with_all = ["use_default_root", "saved_root", "list_saved_roots"]
+        conflicts_with_all = ["use_default_root", "saved_root", "named_root", "preset", "list_saved_roots"]
     )]
     pub(super) root: Option<PathBuf>,
 
@@ -129,7 +129,7 @@ pub(crate) struct Args {
         long,
         default_value_t = false,
         requires = "cli",
-        conflicts_with_all = ["root", "saved_root", "list_saved_roots"]
+        conflicts_with_all = ["root", "saved_root", "named_root", "preset", "list_saved_roots"]
     )]
     pub(super) use_default_root: bool,
 
@@ -138,9 +138,31 @@ pub(crate) struct Args {
         long,
         value_name = "INDEX",
         requires = "cli",
-        conflicts_with_all = ["root", "use_default_root", "list_saved_roots"]
+        conflicts_with_all = ["root", "use_default_root", "named_root", "preset", "list_saved_roots"]
     )]
     pub(super) saved_root: Option<usize>,
+
+    /// Search using a configured named root.
+    #[arg(
+        long,
+        value_name = "NAME",
+        requires = "cli",
+        conflicts_with_all = ["root", "use_default_root", "saved_root", "preset", "list_saved_roots"]
+    )]
+    pub(super) named_root: Option<String>,
+
+    /// Apply a saved pure-search preset in batch or interactive CLI mode.
+    #[arg(
+        long,
+        value_name = "NAME",
+        requires = "cli",
+        conflicts_with_all = [
+            "root", "use_default_root", "saved_root", "named_root", "entry_type", "regex",
+            "case_sensitive", "source", "ignore_file", "no_ignore", "sort", "create_filelist",
+            "list_saved_roots"
+        ]
+    )]
+    pub(super) preset: Option<String>,
 
     /// Maximum number of paths to return.
     #[arg(long, default_value_t = 1000)]
@@ -314,6 +336,30 @@ pub(crate) struct Args {
         ]
     )]
     pub(super) list_saved_roots: bool,
+
+    /// List configured named roots without indexing.
+    #[arg(long, default_value_t = false, requires = "cli")]
+    pub(super) list_named_roots: bool,
+
+    /// Add a named root as NAME=PATH and exit without indexing.
+    #[arg(long, value_name = "NAME=PATH", requires = "cli")]
+    pub(super) add_named_root: Option<String>,
+
+    /// Remove a named root and exit without indexing.
+    #[arg(long, value_name = "NAME", requires = "cli")]
+    pub(super) remove_named_root: Option<String>,
+
+    /// List configured search preset names without indexing.
+    #[arg(long, default_value_t = false, requires = "cli")]
+    pub(super) list_presets: bool,
+
+    /// Save the current pure search options as NAME and exit without indexing.
+    #[arg(long, value_name = "NAME", requires = "cli")]
+    pub(super) save_preset: Option<String>,
+
+    /// Remove a search preset and exit without indexing.
+    #[arg(long, value_name = "NAME", requires = "cli")]
+    pub(super) remove_preset: Option<String>,
 }
 
 impl Args {
@@ -384,6 +430,56 @@ pub(crate) fn validate_args(args: &Args) -> std::result::Result<(), String> {
         if args.list_saved_roots {
             validate_list_saved_roots_args(args).map_err(str::to_owned)?;
         }
+    }
+    validate_catalog_args(args)?;
+    if args.preset.is_some() && !args.query.is_empty() {
+        return Err("--preset cannot be combined with an explicit QUERY".to_string());
+    }
+    Ok(())
+}
+
+fn validate_catalog_args(args: &Args) -> std::result::Result<(), String> {
+    let management_count = usize::from(args.list_named_roots)
+        + usize::from(args.add_named_root.is_some())
+        + usize::from(args.remove_named_root.is_some())
+        + usize::from(args.list_presets)
+        + usize::from(args.save_preset.is_some())
+        + usize::from(args.remove_preset.is_some());
+    if management_count > 1 {
+        return Err("catalog management options are mutually exclusive".to_string());
+    }
+    if args.preset.is_some() && management_count > 0 {
+        return Err("--preset cannot be combined with catalog management options".to_string());
+    }
+    if let Some(spec) = args.add_named_root.as_deref() {
+        let Some((name, path)) = spec.split_once('=') else {
+            return Err("--add-named-root requires NAME=PATH".to_string());
+        };
+        if name.trim().is_empty() || path.trim().is_empty() {
+            return Err("--add-named-root requires non-empty NAME and PATH".to_string());
+        }
+    }
+    if management_count > 0 && args.interactive {
+        return Err("catalog management options cannot be combined with --interactive".to_string());
+    }
+    if management_count > 0
+        && (args.exec_command.is_some()
+            || args.create_filelist
+            || args.list_saved_roots
+            || args.action != CliAction::Print
+            || args.action_all
+            || args.absolute
+            || args.print0
+            || args.progress
+            || args.fail_no_match)
+    {
+        return Err(
+            "catalog management options cannot be combined with output, action, or FileList operations"
+                .to_string(),
+        );
+    }
+    if management_count > 0 && args.save_preset.is_none() && !args.query.is_empty() {
+        return Err("this catalog management option cannot be combined with QUERY".to_string());
     }
     Ok(())
 }

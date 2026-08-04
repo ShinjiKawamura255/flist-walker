@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::io::{self, BufWriter, IsTerminal, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -29,11 +29,15 @@ use flist_walker::path_utils::{normalize_path_for_display, output_path_bytes};
 use flist_walker::persistence::load_persisted_roots_and_history;
 use flist_walker::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
 use flist_walker::search::{rank_search_results, SearchPrefixCache, SearchSortScope};
+use flist_walker::search_catalog::{
+    load_search_catalog, search_catalog_file_path, update_search_catalog, PresetEntryType,
+    PresetSortMode, PresetSource, SearchPreset,
+};
 use flist_walker::ui_model::{display_path_with_mode, match_positions_for_path_with_compiled};
 
 use super::args::{
     parse_exec_template, validate_list_saved_roots_args, Args, CliAction, CliColorMode,
-    CliIndexSource,
+    CliEntryType, CliIndexSource, CliSortMode,
 };
 use crate::launch_path::resolve_root;
 
@@ -48,6 +52,17 @@ enum BatchOutcome {
 }
 
 pub(super) fn run_cli_mode(args: &Args) -> Result<ExitCode> {
+    if let Some(exit_code) = run_catalog_management(args)? {
+        return Ok(exit_code);
+    }
+    let mut effective_args = args.clone();
+    if let Some(name) = args.preset.as_deref() {
+        if let Err(error) = apply_search_preset(&mut effective_args, name) {
+            eprintln!("error: {error}");
+            return Ok(ExitCode::from(1));
+        }
+    }
+    let args = &effective_args;
     if !args.interactive && args.list_saved_roots {
         list_saved_roots(args)?;
         return Ok(ExitCode::SUCCESS);
@@ -85,6 +100,172 @@ pub(super) fn run_cli_mode(args: &Args) -> Result<ExitCode> {
             run_cli(args, &root, &cancelled)?,
             args.fail_no_match,
         ))
+    }
+}
+
+fn run_catalog_management(args: &Args) -> Result<Option<ExitCode>> {
+    let requested = args.list_named_roots
+        || args.add_named_root.is_some()
+        || args.remove_named_root.is_some()
+        || args.list_presets
+        || args.save_preset.is_some()
+        || args.remove_preset.is_some();
+    if !requested {
+        return Ok(None);
+    }
+    let result = run_catalog_management_inner(args);
+    match result {
+        Ok(()) => Ok(Some(ExitCode::SUCCESS)),
+        Err(error) => {
+            eprintln!("error: {error}");
+            Ok(Some(ExitCode::from(1)))
+        }
+    }
+}
+
+fn run_catalog_management_inner(args: &Args) -> Result<()> {
+    if args.list_named_roots {
+        let catalog = load_search_catalog()?;
+        let stdout = io::stdout();
+        let mut output = BufWriter::new(stdout.lock());
+        for root in catalog.named_roots {
+            writeln!(
+                output,
+                "{}\t{}",
+                root.name,
+                normalize_path_for_display(&root.path)
+            )?;
+        }
+        output.flush()?;
+        return Ok(());
+    }
+    if args.list_presets {
+        let catalog = load_search_catalog()?;
+        let stdout = io::stdout();
+        let mut output = BufWriter::new(stdout.lock());
+        for preset in catalog.presets {
+            writeln!(output, "{}", preset.name)?;
+        }
+        output.flush()?;
+        return Ok(());
+    }
+
+    let path = search_catalog_file_path()?;
+    if let Some(spec) = args.add_named_root.as_deref() {
+        let (name, raw_path) = spec
+            .split_once('=')
+            .ok_or_else(|| anyhow::anyhow!("--add-named-root requires NAME=PATH"))?;
+        let root = resolve_root(Path::new(raw_path.trim()))?;
+        update_search_catalog(&path, |catalog| catalog.add_named_root(name, root))?;
+        return Ok(());
+    }
+    if let Some(name) = args.remove_named_root.as_deref() {
+        update_search_catalog(&path, |catalog| catalog.remove_named_root(name))?;
+        return Ok(());
+    }
+    if let Some(name) = args.remove_preset.as_deref() {
+        update_search_catalog(&path, |catalog| catalog.remove_preset(name))?;
+        return Ok(());
+    }
+    if let Some(name) = args.save_preset.as_deref() {
+        let root = resolve_cli_root(args).map_err(anyhow::Error::msg)?;
+        let preset = SearchPreset {
+            name: name.to_string(),
+            root_name: args.named_root.clone(),
+            root_path: root,
+            query: args.query.clone(),
+            entry_type: preset_entry_type(args.entry_type),
+            source: preset_source(args.source),
+            regex: args.regex,
+            ignore_case: !args.case_sensitive,
+            ignore_enabled: !args.no_ignore,
+            sort: preset_sort(args.sort),
+            extra: BTreeMap::new(),
+        };
+        update_search_catalog(&path, |catalog| catalog.save_preset(preset))?;
+        return Ok(());
+    }
+    Ok(())
+}
+
+fn apply_search_preset(args: &mut Args, name: &str) -> Result<()> {
+    let catalog = load_search_catalog()?;
+    let preset = catalog
+        .preset(name)
+        .cloned()
+        .ok_or_else(|| anyhow::anyhow!("search preset is not configured: {name}"))?;
+    args.root = Some(catalog.resolve_preset_root(&preset));
+    args.use_default_root = false;
+    args.saved_root = None;
+    args.named_root = None;
+    args.query = preset.query;
+    args.entry_type = cli_entry_type(preset.entry_type);
+    args.source = cli_source(preset.source);
+    args.regex = preset.regex;
+    args.case_sensitive = !preset.ignore_case;
+    args.no_ignore = !preset.ignore_enabled;
+    args.sort = cli_sort(preset.sort);
+    args.preset = None;
+    Ok(())
+}
+
+fn preset_entry_type(value: CliEntryType) -> PresetEntryType {
+    match value {
+        CliEntryType::All => PresetEntryType::All,
+        CliEntryType::File => PresetEntryType::File,
+        CliEntryType::Folder => PresetEntryType::Folder,
+    }
+}
+
+fn cli_entry_type(value: PresetEntryType) -> CliEntryType {
+    match value {
+        PresetEntryType::All => CliEntryType::All,
+        PresetEntryType::File => CliEntryType::File,
+        PresetEntryType::Folder => CliEntryType::Folder,
+    }
+}
+
+fn preset_source(value: CliIndexSource) -> PresetSource {
+    match value {
+        CliIndexSource::Auto => PresetSource::Auto,
+        CliIndexSource::Filelist => PresetSource::Filelist,
+        CliIndexSource::Walker => PresetSource::Walker,
+    }
+}
+
+fn cli_source(value: PresetSource) -> CliIndexSource {
+    match value {
+        PresetSource::Auto => CliIndexSource::Auto,
+        PresetSource::Filelist => CliIndexSource::Filelist,
+        PresetSource::Walker => CliIndexSource::Walker,
+    }
+}
+
+fn preset_sort(value: CliSortMode) -> PresetSortMode {
+    match value {
+        CliSortMode::Score => PresetSortMode::Score,
+        CliSortMode::NameAsc => PresetSortMode::NameAsc,
+        CliSortMode::NameDesc => PresetSortMode::NameDesc,
+        CliSortMode::ModifiedDesc => PresetSortMode::ModifiedDesc,
+        CliSortMode::ModifiedAsc => PresetSortMode::ModifiedAsc,
+        CliSortMode::CreatedDesc => PresetSortMode::CreatedDesc,
+        CliSortMode::CreatedAsc => PresetSortMode::CreatedAsc,
+        CliSortMode::SizeDesc => PresetSortMode::SizeDesc,
+        CliSortMode::SizeAsc => PresetSortMode::SizeAsc,
+    }
+}
+
+fn cli_sort(value: PresetSortMode) -> CliSortMode {
+    match value {
+        PresetSortMode::Score => CliSortMode::Score,
+        PresetSortMode::NameAsc => CliSortMode::NameAsc,
+        PresetSortMode::NameDesc => CliSortMode::NameDesc,
+        PresetSortMode::ModifiedDesc => CliSortMode::ModifiedDesc,
+        PresetSortMode::ModifiedAsc => CliSortMode::ModifiedAsc,
+        PresetSortMode::CreatedDesc => CliSortMode::CreatedDesc,
+        PresetSortMode::CreatedAsc => CliSortMode::CreatedAsc,
+        PresetSortMode::SizeDesc => CliSortMode::SizeDesc,
+        PresetSortMode::SizeAsc => CliSortMode::SizeAsc,
     }
 }
 
@@ -568,6 +749,13 @@ fn resolve_cli_root(args: &Args) -> std::result::Result<PathBuf, String> {
             .filter(|_| index != 0)
             .ok_or_else(|| format!("saved root index {index} is not configured"))?;
         return resolve_root(root).map_err(|error| error.to_string());
+    }
+    if let Some(name) = args.named_root.as_deref() {
+        let catalog = load_search_catalog().map_err(|error| error.to_string())?;
+        let root = catalog
+            .named_root(name)
+            .ok_or_else(|| format!("named root is not configured: {name}"))?;
+        return resolve_root(&root.path).map_err(|error| error.to_string());
     }
     resolve_root(args.root.as_deref().unwrap_or(Path::new("."))).map_err(|error| error.to_string())
 }
