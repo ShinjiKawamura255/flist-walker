@@ -29,6 +29,11 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) history_search_active: bool,
     pub(super) show_preview: bool,
     pub(super) preview_panel_width: u32,
+    pub(super) preset_names: Vec<String>,
+    pub(super) selected_preset: Option<String>,
+    pub(super) preset_name_input: String,
+    pub(super) root_name_input: String,
+    pub(super) preset_actions: Vec<String>,
     pub(super) top_actions: Vec<String>,
     pub(super) status_line: String,
     pub(super) help_dialogs: Vec<DialogSnapshot>,
@@ -178,6 +183,24 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         history_search_active: app.shell.runtime.query_state.history_search_active,
         show_preview: app.shell.ui.show_preview(),
         preview_panel_width: preview_width_px(app.shell.ui.preview_panel_width()),
+        preset_names: app
+            .shell
+            .features
+            .presets
+            .catalog
+            .presets
+            .iter()
+            .map(|preset| preset.name.clone())
+            .collect(),
+        selected_preset: app.shell.features.presets.selected_name.clone(),
+        preset_name_input: app.shell.features.presets.name_input.clone(),
+        root_name_input: app.shell.features.presets.root_name_input.clone(),
+        preset_actions: vec![
+            "Apply".to_string(),
+            "Delete".to_string(),
+            "Save current".to_string(),
+            "Name root".to_string(),
+        ],
         top_actions: app
             .top_action_labels()
             .into_iter()

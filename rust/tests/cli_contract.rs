@@ -40,6 +40,17 @@ fn cli_command(name: &str) -> Command {
     cli_command_with_settings(name).0
 }
 
+fn cli_command_in_settings(settings_root: &std::path::Path) -> Command {
+    let mut command = Command::new(bin_path());
+    command
+        .env_remove("RUST_LOG")
+        .env("HOME", settings_root)
+        .env("USERPROFILE", settings_root)
+        .env("LOCALAPPDATA", settings_root)
+        .env("APPDATA", settings_root);
+    command
+}
+
 fn write_persisted_roots(
     settings_dir: &std::path::Path,
     default_root: Option<&std::path::Path>,
@@ -84,6 +95,83 @@ fn cli_prints_version_with_long_flag() {
         stdout.trim(),
         format!("flistwalker {}", env!("CARGO_PKG_VERSION"))
     );
+}
+
+#[test]
+fn tc_174_named_roots_and_search_presets_round_trip_without_reserving_query_words() {
+    let root = test_root("named-preset");
+    let settings_root = test_root("named-preset-settings");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&settings_root).expect("create settings root");
+    fs::write(root.join("alpha.rs"), "alpha").expect("write alpha");
+    fs::write(root.join("preset.txt"), "reserved word").expect("write preset");
+
+    let added = cli_command_in_settings(&settings_root)
+        .args([
+            "--cli",
+            "--add-named-root",
+            &format!("repo={}", root.display()),
+        ])
+        .output()
+        .expect("add named root");
+    assert!(
+        added.status.success(),
+        "{}",
+        String::from_utf8_lossy(&added.stderr)
+    );
+
+    let saved = cli_command_in_settings(&settings_root)
+        .args([
+            "--cli",
+            "alpha",
+            "--named-root",
+            "repo",
+            "--type",
+            "file",
+            "--save-preset",
+            "rust",
+        ])
+        .output()
+        .expect("save preset");
+    assert!(
+        saved.status.success(),
+        "{}",
+        String::from_utf8_lossy(&saved.stderr)
+    );
+
+    let applied = cli_command_in_settings(&settings_root)
+        .args(["--cli", "--preset", "rust"])
+        .output()
+        .expect("apply preset");
+    assert!(
+        applied.status.success(),
+        "{}",
+        String::from_utf8_lossy(&applied.stderr)
+    );
+    let applied_stdout = String::from_utf8_lossy(&applied.stdout);
+    assert!(applied_stdout.contains("alpha.rs"), "{applied_stdout}");
+    assert!(!applied_stdout.contains("preset.txt"), "{applied_stdout}");
+
+    let named = cli_command_in_settings(&settings_root)
+        .args(["--cli", "--list-named-roots"])
+        .output()
+        .expect("list named roots");
+    assert!(String::from_utf8_lossy(&named.stdout).starts_with("repo\t"));
+    let presets = cli_command_in_settings(&settings_root)
+        .args(["--cli", "--list-presets"])
+        .output()
+        .expect("list presets");
+    assert_eq!(String::from_utf8_lossy(&presets.stdout).trim(), "rust");
+
+    let ordinary_query = cli_command_in_settings(&settings_root)
+        .args(["--cli", "preset", "--root", root.to_string_lossy().as_ref()])
+        .output()
+        .expect("search reserved-looking word");
+    assert!(ordinary_query.status.success());
+    assert!(String::from_utf8_lossy(&ordinary_query.stdout).contains("preset.txt"));
+
+    let _ = fs::remove_dir_all(root);
+    let _ = fs::remove_dir_all(settings_root);
 }
 
 #[test]

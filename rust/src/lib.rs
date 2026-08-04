@@ -17,6 +17,7 @@ pub mod persistence {
 pub mod query;
 pub mod runtime_config;
 pub mod search;
+pub mod search_catalog;
 pub mod ui_model;
 pub mod update_security;
 pub mod updater;

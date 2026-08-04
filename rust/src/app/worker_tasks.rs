@@ -2,9 +2,10 @@ use super::worker_channel::{
     bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
 };
 use super::worker_protocol::{
-    ActionRequest, ActionResponse, FileListRequest, FileListResponse, KindResolveRequest,
-    KindResolveResponse, PreviewRequest, PreviewResponse, SearchRequest, SearchResponse,
-    SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
+    ActionRequest, ActionResponse, CatalogMutation, CatalogRequest, CatalogResponse,
+    FileListRequest, FileListResponse, KindResolveRequest, KindResolveResponse, PreviewRequest,
+    PreviewResponse, SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse,
+    UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
 use super::worker_support::action_notice_for_targets;
 use super::SortMetadata;
@@ -20,6 +21,7 @@ use crate::indexer::{
     FileListWriteStatus,
 };
 use crate::search::{rank_search_results, SearchPrefixCache};
+use crate::search_catalog::{search_catalog_file_path, update_search_catalog};
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
 use crate::walker_runtime::resolve_entry_kind;
@@ -156,6 +158,45 @@ pub(super) fn spawn_preview_worker(
         }
     });
 
+    (tx_req, rx_res, handle)
+}
+
+pub(super) fn spawn_catalog_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<CatalogRequest>,
+    Receiver<CatalogResponse>,
+    thread::JoinHandle<()>,
+) {
+    let (tx_req, rx_req) = mpsc::channel::<CatalogRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<CatalogResponse>();
+    let handle = thread::spawn(move || {
+        while let Ok(req) = rx_req.recv() {
+            if shutdown.load(Ordering::Relaxed) {
+                break;
+            }
+            let result = search_catalog_file_path()
+                .and_then(|path| {
+                    update_search_catalog(&path, |catalog| match req.mutation {
+                        CatalogMutation::AddNamedRoot { name, path } => {
+                            catalog.add_named_root(&name, path)
+                        }
+                        CatalogMutation::SavePreset { preset } => catalog.save_preset(preset),
+                        CatalogMutation::RemovePreset { name } => catalog.remove_preset(&name),
+                    })
+                })
+                .map_err(|error| error.to_string());
+            if tx_res
+                .send(CatalogResponse {
+                    request_id: req.request_id,
+                    result,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
     (tx_req, rx_res, handle)
 }
 

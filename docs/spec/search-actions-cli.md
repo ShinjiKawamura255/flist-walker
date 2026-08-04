@@ -165,3 +165,19 @@
 ### Preconditions / Postconditions
 - Preconditions: モジュール境界が定義済み。
 - Postconditions: 主要仕様を unit/integration で検証可能。
+## SP-019 Named roots and search presets
+
+### Requirements
+- MUST: catalog 管理は positional subcommand を予約せず、`--list-named-roots`、`--add-named-root NAME=PATH`、`--remove-named-root NAME`、`--list-presets`、`--save-preset NAME`、`--remove-preset NAME`、`--preset NAME` の明示 long option で提供する。
+- MUST: `--preset` は batch/TUI で利用でき、preset が所有する root/query/type/source/regex/case/ignore/sort の明示指定とは競合する。limit、color、output framing、明示 action は invocation が所有する。
+- MUST: preset は pure search state だけを保持し、exec/open/reveal/update/FileList mutation を保存しない。
+- MUST: GUI の catalog write は worker で実行し、成功 response 後だけ committed catalog を置換する。root/source/type の適用は既存 reindex、その他は既存 search/sort 経路を利用する。
+- MUST: catalog management success は exit 0、lookup/storage failure は exit 1、argument contract failure は exit 2 とする。
+
+### Preconditions / Postconditions
+- Preconditions: runtime settings directory が解決でき、名前は trim 後に非空で制御文字と `=` を含まない。
+- Postconditions: 成功した mutation は atomic catalog へ反映され、旧 saved-root file と action state は変更されない。
+
+### Edge / Error
+- malformed/newer catalog、lock timeout、write failure は既存 catalog を上書きせず明示失敗する。
+- named root 削除後も preset は保存済み absolute snapshot で解決可能とする。
