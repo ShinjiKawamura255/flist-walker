@@ -1,6 +1,6 @@
 use super::{
     config::{search_parallel_chunk_size, with_search_thread_pool},
-    match_eval::{evaluate_candidate, SearchContext},
+    match_eval::{evaluate_candidate, evaluate_entry_candidate, SearchContext},
     SearchCandidateScore, SearchScoredMatches,
 };
 use crate::entry::Entry;
@@ -65,7 +65,7 @@ pub(super) fn collect_entries_sequential(
             .enumerate()
             .filter_map(|(ordinal, index)| {
                 entries.get(index).and_then(|entry| {
-                    evaluate_candidate(entry.path(), index, ordinal, compiled, ctx, &matcher)
+                    evaluate_entry_candidate(entry, index, ordinal, compiled, ctx, &matcher)
                 })
             })
             .collect(),
@@ -73,7 +73,7 @@ pub(super) fn collect_entries_sequential(
             .iter()
             .enumerate()
             .filter_map(|(index, entry)| {
-                evaluate_candidate(entry.path(), index, index, compiled, ctx, &matcher)
+                evaluate_entry_candidate(entry, index, index, compiled, ctx, &matcher)
             })
             .collect(),
     };
@@ -171,8 +171,8 @@ pub(super) fn collect_entries_parallel(
                         .enumerate()
                         .filter_map(|(offset, index)| {
                             entries.get(index).and_then(|entry| {
-                                evaluate_candidate(
-                                    entry.path(),
+                                evaluate_entry_candidate(
+                                    entry,
                                     index,
                                     base_ordinal + offset,
                                     compiled,
@@ -194,8 +194,8 @@ pub(super) fn collect_entries_parallel(
                 .fold(
                     || (SkimMatcherV2::default(), Vec::<SearchCandidateScore>::new()),
                     |(matcher, mut scored), index| {
-                        if let Some(item) = evaluate_candidate(
-                            entries[index].path(),
+                        if let Some(item) = evaluate_entry_candidate(
+                            &entries[index],
                             index,
                             index,
                             compiled,

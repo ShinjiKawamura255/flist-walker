@@ -181,3 +181,22 @@
 ### Edge / Error
 - malformed/newer catalog、lock timeout、write failure は既存 catalog を上書きせず明示失敗する。
 - named root 削除後も preset は保存済み absolute snapshot で解決可能とする。
+
+## SP-020 Field-scoped query terms
+
+### Requirements
+- MUST: field指定のないtermは既存どおりfilename優先かつvisible path全体を対象にする。
+- MUST: positive/exact/exclusion termは、先頭の任意の `!` の後に `name:`、`path:`、`dir:`、`ext:` を1つ指定できる。field markerの後へ既存の `'`、`^`、`$`、token内 `|` を適用し、OR alternativeは同じfieldを継承する。
+- MUST: `name:` はbasename、`path:` はroot相対visible path、`dir:` はその親pathまたは空、`ext:` はdotなしの最終suffixを対象とする。既知directoryとdotfileはextensionなし、`foo.tar.gz` は `gz` とする。
+- MUST: field pathのseparatorは照合時だけ `/` へ正規化し、表示pathと既存の非field query契約は変更しない。
+- MUST: `name:` など既知fieldの空値はcompile errorとし、未知の `prefix:` はfield指定ではない通常termとして扱う。
+- MUST: regex判定はfield markerを除いたvalueへ適用し、scoreにfield markerを含めない。highlightはfield内の一致位置をvisible path上の文字位置へ写像する。
+- SHOULD: shellでoperatorや空白が解釈されることを避けるため、CLI利用例はQUERY全体を引用符で囲む。
+
+### Preconditions / Postconditions
+- Preconditions: queryはGUI、batch CLI、TUIの共有compiled queryへ渡される。
+- Postconditions: field指定はterm単位で閉じ、fieldなしtermと併用できる。
+
+### Edge / Error
+- 空の既知fieldは検索結果0件へ黙って変換せず、利用者へcompile errorを返す。
+- directory kindが既知の候補は名前にdotがあっても `ext:` に一致させない。

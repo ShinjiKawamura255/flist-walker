@@ -184,6 +184,7 @@ CLI では:
 - batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
 - 名前付き root と純粋な検索 preset は `--add-named-root NAME=PATH`、`--list-named-roots`、`--save-preset NAME`、`--list-presets`、`--preset NAME` などの明示 option で管理します。query 全体は引用符で囲んでください。preset は検索状態だけを保存し、action や外部 command は保存しません。
+- termごとに `name:`、`path:`、`dir:`、`ext:` で対象fieldを限定できます。fieldなしtermは従来どおりvisible path全体を検索します。fieldは `!`、`'`、`^`、`$`、token内 `|`、regex modeと併用できます。shell解釈を安定させるため、1 tokenだけでもQUERY全体を引用符で囲む運用を推奨します。
 - `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
 - `-x` / `--exec` は以後の引数を command template として受け取り、独立した `{}` 引数1個を post-limit の全結果へ展開します。各パスは正規化済み絶対パスの独立 argv とし、実行環境の command-line 上限まで貪欲にまとめて直列実行します。`--exec-max-args N` で1 batch のパス数をさらに制限でき、`--dry-run` は command を起動せず件数だけを表示します。結果0件では command を起動しません。shell は暗黙起動せず、FlistWalker 側の option はすべて `-x` より前に指定します。
 - child process は FlistWalker のユーザ権限、環境変数、標準 stream を継承します。Windows では暗黙の shell 起動を防ぐため `.bat` / `.cmd` の直接指定を拒否します。shell interpreter と batch script は独自の引数解釈を持つため、`sh -c`、`cmd.exe /C script.cmd`、PowerShell command string の指定はその解釈への明示的な opt-in です。
@@ -198,6 +199,9 @@ flistwalker --cli --root . --create-filelist --overwrite-filelist
 
 # post-limit の全一致を明示して開く（標準出力は空）。
 flistwalker --cli "report" --root . --limit 10 --action open --action-all
+
+# src配下のRustファイルを検索し、generated directoryを除外する。
+flistwalker --cli "dir:src ext:rs !dir:generated" --root .
 
 # post-limit の全一致を実行環境の上限までまとめて外部 command へ渡す。
 flistwalker --cli "report" --root . --exec-max-args 100 -x archive-tool -- {}

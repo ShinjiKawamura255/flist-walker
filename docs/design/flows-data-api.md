@@ -47,3 +47,9 @@
 - GUI は catalog worker request/response を request ID で相関し、disk commit 後だけ in-memory catalog を置換する。preset apply は root/source/type 差分なら existing index transition、その他なら current snapshot search transition を使う。
 - `plan_filelist_write(options, filesystem) -> FileListWritePlan`; `settle_filelist_plan(plan, cancel) -> FileListTransactionReport`
 - `enqueue_persistence(patch, history_delta)`; `flush_persistence_bounded() -> CommitOutcome`
+
+## DES-021 Field-scoped compiled query
+- parserは各termを `QueryField + value` に正規化し、fieldなしと未知prefixを `Any` として既存matcherへ渡す。
+- `PreparedCandidate` はbasename、visible path、parent directory、最終extensionの正規化viewとvisible文字offsetを検索request内で一度だけ構築する。known Entry kindがdirectoryならextension viewを空にする。
+- compiled exact/include/exclude/regex/bonus matcherは同じfield selectorを共有し、highlightだけがfield-local positionをvisible path positionへ変換する。
+- field queryはscopeが変わるprefix拡張を避けるためprefix cache対象外とする。非field queryのcache、matching、rankingは既存経路を維持する。

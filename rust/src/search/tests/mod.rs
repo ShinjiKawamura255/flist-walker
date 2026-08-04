@@ -823,6 +823,7 @@ fn perf_search_100k_cold_warm_query_shapes() {
         ("inverse", "module_099 !vendor", false),
         ("anchor", "^module_099", false),
         ("or", "module_099|module_098", false),
+        ("field-and", "dir:group_01 ext:rs", false),
         ("regex", r"module_09[0-9]{4}", true),
     ];
 

@@ -158,6 +158,7 @@ In CLI mode:
 - In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
 - Named roots and pure search presets are managed with explicit options such as `--add-named-root NAME=PATH`, `--list-named-roots`, `--save-preset NAME`, `--list-presets`, and `--preset NAME`. Quote the complete query argument. Presets store search state only and never store an action or external command.
+- Scope individual terms with `name:`, `path:`, `dir:`, or `ext:`. Existing unscoped terms still search the full visible path. Fields compose with `!`, `'`, `^`, `$`, token-local `|`, and regex mode; quote the complete QUERY even when it is a single token so shell parsing stays predictable.
 - `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
 - `-x` / `--exec` consumes the remaining command template and replaces exactly one standalone `{}` argument with every post-limit result as separate absolute argv values. Results are packed greedily up to the current platform command-line limit and run sequentially; `--exec-max-args N` adds a per-batch path cap and `--dry-run` reports counts without starting the command. Zero results start no command. Exec mode rejects output framing and built-in non-print action options and never invokes a shell implicitly; put all FlistWalker options before `-x`.
 - The child inherits FlistWalker's user privileges, environment, and standard streams. On Windows, direct `.bat` / `.cmd` programs are rejected to prevent an implicit shell launch. Shell interpreters and batch scripts have their own parsing rules; using `sh -c`, `cmd.exe /C script.cmd`, or PowerShell command strings explicitly opts into those rules.
@@ -172,6 +173,9 @@ flistwalker --cli --root . --create-filelist --overwrite-filelist
 
 # Explicitly open every post-limit match (stdout remains empty).
 flistwalker --cli "report" --root . --limit 10 --action open --action-all
+
+# Match Rust files under a src directory while excluding generated directories.
+flistwalker --cli "dir:src ext:rs !dir:generated" --root .
 
 # Pass every post-limit match to an external command in platform-sized batches.
 flistwalker --cli "report" --root . --exec-max-args 100 -x archive-tool -- {}
