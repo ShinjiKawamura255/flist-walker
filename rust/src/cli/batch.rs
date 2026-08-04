@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::collections::HashSet;
 use std::io::{self, BufWriter, IsTerminal, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
@@ -26,8 +27,9 @@ use flist_walker::indexer::{
 };
 use flist_walker::path_utils::{normalize_path_for_display, output_path_bytes};
 use flist_walker::persistence::load_persisted_roots_and_history;
-use flist_walker::query::{CompiledIgnoreTerms, QueryScope};
+use flist_walker::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
 use flist_walker::search::{rank_search_results, SearchPrefixCache, SearchSortScope};
+use flist_walker::ui_model::{display_path_with_mode, match_positions_for_path_with_compiled};
 
 use super::args::{
     parse_exec_template, validate_list_saved_roots_args, Args, CliAction, CliColorMode,
@@ -117,7 +119,7 @@ fn run_interactive(args: &Args) -> Result<ExitCode> {
                     &root,
                     args.absolute,
                     args.print0,
-                    false,
+                    None,
                     &AtomicBool::new(false),
                 )?;
                 ExitCode::SUCCESS
@@ -306,16 +308,29 @@ fn run_cli_with_backend(
     }
 
     if args.action == CliAction::Print {
+        let color_enabled = cli_output_color_enabled(
+            args.color_mode(),
+            io::stdout().is_terminal(),
+            no_color_is_set(),
+        );
+        let color_query = color_enabled
+            .then(|| {
+                CompiledQuery::compile(
+                    args.query.trim(),
+                    QueryOptions {
+                        use_regex: args.regex,
+                        ignore_case,
+                    },
+                )
+            })
+            .transpose()
+            .map_err(anyhow::Error::msg)?;
         write_cli_paths(
             &paths,
             root,
             args.absolute,
             args.print0,
-            cli_output_color_enabled(
-                args.color_mode(),
-                io::stdout().is_terminal(),
-                no_color_is_set(),
-            ),
+            color_query.as_ref(),
             cancelled.as_ref(),
         )?;
         if cancelled.load(Ordering::Relaxed) {
@@ -366,7 +381,7 @@ fn write_cli_paths(
     root: &Path,
     absolute: bool,
     print0: bool,
-    color_enabled: bool,
+    color_query: Option<&CompiledQuery>,
     cancelled: &AtomicBool,
 ) -> Result<()> {
     let stdout = io::stdout();
@@ -375,7 +390,10 @@ fn write_cli_paths(
         if cancelled.load(Ordering::Relaxed) {
             return Ok(());
         }
-        write_cli_path_record(&mut output, path, root, absolute, print0, color_enabled)?;
+        let positions = color_query
+            .map(|query| match_positions_for_path_with_compiled(path, root, query, !absolute))
+            .unwrap_or_default();
+        write_cli_path_record(&mut output, path, root, absolute, print0, &positions)?;
     }
     if cancelled.load(Ordering::Relaxed) {
         return Ok(());
@@ -402,16 +420,40 @@ fn write_cli_path_record<W: Write>(
     root: &Path,
     absolute: bool,
     print0: bool,
-    color_enabled: bool,
+    positions: &HashSet<usize>,
 ) -> io::Result<()> {
-    if color_enabled {
-        output.write_all(b"\x1b[38;5;11m")?;
-    }
-    output.write_all(&output_path_bytes(path, root, !absolute, print0))?;
-    if color_enabled {
-        output.write_all(b"\x1b[0m")?;
+    let path_bytes = output_path_bytes(path, root, !absolute, print0);
+    let display = display_path_with_mode(path, root, !absolute);
+    if !positions.is_empty() && path_bytes == display.as_bytes() {
+        write_highlighted_path(output, &display, positions)?;
+    } else {
+        output.write_all(&path_bytes)?;
     }
     output.write_all(if print0 { b"\0" } else { b"\n" })
+}
+
+fn write_highlighted_path<W: Write>(
+    output: &mut W,
+    text: &str,
+    positions: &HashSet<usize>,
+) -> io::Result<()> {
+    let mut highlighted = false;
+    let mut chunk_start = 0;
+    for (index, (byte_index, _)) in text.char_indices().enumerate() {
+        let next = positions.contains(&index);
+        if next == highlighted {
+            continue;
+        }
+        output.write_all(&text.as_bytes()[chunk_start..byte_index])?;
+        output.write_all(if next { b"\x1b[38;5;11m" } else { b"\x1b[0m" })?;
+        chunk_start = byte_index;
+        highlighted = next;
+    }
+    output.write_all(&text.as_bytes()[chunk_start..])?;
+    if highlighted {
+        output.write_all(b"\x1b[0m")?;
+    }
+    Ok(())
 }
 
 struct CliActionGuard;
@@ -667,6 +709,7 @@ fn batch_exit_code(outcome: BatchOutcome, fail_no_match: bool) -> ExitCode {
 #[cfg(test)]
 mod tests {
     use clap::Parser;
+    use std::collections::HashSet;
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::process::ExitCode;
@@ -830,10 +873,10 @@ mod tests {
             Path::new("root"),
             false,
             false,
-            true,
+            &[1, 2].into_iter().collect(),
         )
         .expect("write colored path");
-        assert_eq!(output, b"\x1b[38;5;11mmatch.txt\x1b[0m\n");
+        assert_eq!(output, b"m\x1b[38;5;11mat\x1b[0mch.txt\n");
 
         let mut piped_output = Vec::new();
         write_cli_path_record(
@@ -842,7 +885,7 @@ mod tests {
             Path::new("root"),
             false,
             false,
-            false,
+            &HashSet::new(),
         )
         .expect("write plain path");
         assert_eq!(piped_output, b"match.txt\n");
