@@ -38,3 +38,4 @@
 - FR-035: ツールは TUI で新しい配布版を非同期検知した場合に英語の通知と終了後に実行する手動更新コマンドを表示し、通知だけで更新を開始してはならない。また、GUI を起動せず更新確認または明示的な更新開始を行う CLI 操作を提供しなければならない。
 - FR-036: ツールは GUI で現在利用可能なキーボードショートカットを確認できるヘルプを提供し、OS の primary modifier と runtime config による Emacs 風ショートカットの有効状態を正しく反映しなければならない。
 - FR-037: ツールは path に安定した名前を付ける named root と、root/query/type/source/regex/case/ignore/sort だけを保存する検索 preset を GUI/CLI で管理・適用できなければならない。preset は action、外部 command、更新、FileList 変更を保存または暗黙実行してはならない。
+- FR-038: ツールは従来の path 全体を対象とする query を変更せず、各 query term を filename、root 相対 path、親 directory、最終 extension のいずれかへ限定できなければならない。

@@ -1,4 +1,5 @@
 use super::SearchCandidateScore;
+use crate::entry::Entry;
 use crate::query::{CompiledQuery, EvidenceLevel, QueryOptions};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use std::path::Path;
@@ -32,6 +33,29 @@ pub(super) fn evaluate_candidate(
     matcher: &SkimMatcherV2,
 ) -> Option<SearchCandidateScore> {
     let prepared = compiled.prepare_candidate(path, ctx.root, ctx.prefer_relative);
+    compiled
+        .evaluate_with_matcher(&prepared, EvidenceLevel::RankOnly, matcher)
+        .map(|evaluation| SearchCandidateScore {
+            index,
+            score: evaluation.score,
+            ordinal,
+        })
+}
+
+pub(super) fn evaluate_entry_candidate(
+    entry: &Entry,
+    index: usize,
+    ordinal: usize,
+    compiled: &CompiledQuery,
+    ctx: SearchContext<'_>,
+    matcher: &SkimMatcherV2,
+) -> Option<SearchCandidateScore> {
+    let prepared = compiled.prepare_candidate_with_kind(
+        entry.path(),
+        ctx.root,
+        ctx.prefer_relative,
+        entry.kind.and_then(|kind| kind.is_dir),
+    );
     compiled
         .evaluate_with_matcher(&prepared, EvidenceLevel::RankOnly, matcher)
         .map(|evaluation| SearchCandidateScore {

@@ -175,6 +175,52 @@ fn tc_174_named_roots_and_search_presets_round_trip_without_reserving_query_word
 }
 
 #[test]
+fn tc_175_cli_applies_field_scoped_query_without_changing_plain_query_behavior() {
+    let root = test_root("field-query");
+    fs::create_dir_all(root.join("src/config")).expect("create fixture");
+    fs::write(root.join("src/config/archive.tar.gz"), "archive").expect("write archive");
+    fs::write(root.join("src/config/main.rs"), "main").expect("write main");
+    fs::write(root.join("src/readme.txt"), "readme").expect("write readme");
+
+    let run = |query: &str| {
+        cli_command("field-query")
+            .args([
+                "--cli",
+                query,
+                "--root",
+                root.to_string_lossy().as_ref(),
+                "--source",
+                "walker",
+                "--type",
+                "file",
+            ])
+            .output()
+            .unwrap_or_else(|error| panic!("run {query}: {error}"))
+    };
+
+    let field = run("dir:config ext:rs");
+    assert!(
+        field.status.success(),
+        "{}",
+        String::from_utf8_lossy(&field.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&field.stdout);
+    assert!(stdout.contains("main.rs"), "{stdout}");
+    assert!(!stdout.contains("archive.tar.gz"), "{stdout}");
+    assert!(!stdout.contains("readme.txt"), "{stdout}");
+
+    let plain = run("main");
+    assert!(
+        plain.status.success(),
+        "{}",
+        String::from_utf8_lossy(&plain.stderr)
+    );
+    assert!(String::from_utf8_lossy(&plain.stdout).contains("main.rs"));
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn cli_prints_version_with_short_flag() {
     let output = cli_command("version-short")
         .arg("-V")

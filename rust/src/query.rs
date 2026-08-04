@@ -11,9 +11,25 @@ pub use compiled::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuerySpec {
-    pub include_terms: Vec<String>,
-    pub exact_terms: Vec<String>,
-    pub exclude_terms: Vec<String>,
+    pub include_terms: Vec<QueryTerm>,
+    pub exact_terms: Vec<QueryTerm>,
+    pub exclude_terms: Vec<QueryTerm>,
+    pub invalid_terms: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum QueryField {
+    Any,
+    Name,
+    Path,
+    Dir,
+    Ext,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct QueryTerm {
+    pub field: QueryField,
+    pub value: String,
 }
 
 pub fn include_alternatives(term: &str) -> Vec<&str> {
@@ -75,28 +91,38 @@ pub fn parse_query(query: &str) -> QuerySpec {
     let mut include_terms = Vec::new();
     let mut exact_terms = Vec::new();
     let mut exclude_terms = Vec::new();
+    let mut invalid_terms = Vec::new();
 
     for token in query.split_whitespace() {
         if token.is_empty() || token == "!" || token == "'" {
             continue;
         }
         if let Some(stripped) = token.strip_prefix('!') {
-            if !stripped.is_empty() {
-                exclude_terms.push(normalize_quoted_term(stripped));
+            if let Some(term) = parse_field_term(stripped, token, &mut invalid_terms) {
+                exclude_terms.push(QueryTerm {
+                    field: term.field,
+                    value: normalize_quoted_term(&term.value),
+                });
             }
             continue;
         }
-        if token.contains('|') {
-            include_terms.push(token.to_string());
+        let Some(term) = parse_field_term(token, token, &mut invalid_terms) else {
+            continue;
+        };
+        if term.value.contains('|') {
+            include_terms.push(term);
             continue;
         }
-        if token.starts_with('\'') || token.starts_with("^'") {
-            let normalized = normalize_quoted_term(token);
+        if term.value.starts_with('\'') || term.value.starts_with("^'") {
+            let normalized = normalize_quoted_term(&term.value);
             if !normalized.is_empty() {
-                exact_terms.push(normalized);
+                exact_terms.push(QueryTerm {
+                    field: term.field,
+                    value: normalized,
+                });
             }
         } else {
-            include_terms.push(token.to_string());
+            include_terms.push(term);
         }
     }
 
@@ -104,7 +130,34 @@ pub fn parse_query(query: &str) -> QuerySpec {
         include_terms,
         exact_terms,
         exclude_terms,
+        invalid_terms,
     }
+}
+
+fn parse_field_term(
+    token: &str,
+    original: &str,
+    invalid_terms: &mut Vec<String>,
+) -> Option<QueryTerm> {
+    let (field, value) = if let Some(value) = token.strip_prefix("name:") {
+        (QueryField::Name, value)
+    } else if let Some(value) = token.strip_prefix("path:") {
+        (QueryField::Path, value)
+    } else if let Some(value) = token.strip_prefix("dir:") {
+        (QueryField::Dir, value)
+    } else if let Some(value) = token.strip_prefix("ext:") {
+        (QueryField::Ext, value)
+    } else {
+        (QueryField::Any, token)
+    };
+    if field != QueryField::Any && value.is_empty() {
+        invalid_terms.push(original.to_string());
+        return None;
+    }
+    (!value.is_empty()).then(|| QueryTerm {
+        field,
+        value: value.to_string(),
+    })
 }
 
 pub fn token_uses_regex_syntax(token: &str) -> bool {
@@ -165,7 +218,7 @@ mod tests {
     use super::{
         has_visible_match, parse_include_alternative, parse_query, path_matches_ignore_terms,
         query_compile_count, reset_compile_counts, split_anchor, token_uses_regex_syntax,
-        CompiledQuery, EvidenceLevel, QueryOptions, QuerySpec,
+        CompiledQuery, EvidenceLevel, QueryField, QueryOptions, QuerySpec, QueryTerm,
     };
     use std::path::PathBuf;
 
@@ -177,12 +230,28 @@ mod tests {
             spec,
             QuerySpec {
                 include_terms: vec![
-                    "main".to_string(),
-                    "abc|'xyz".to_string(),
-                    "^foo".to_string(),
+                    QueryTerm {
+                        field: QueryField::Any,
+                        value: "main".to_string()
+                    },
+                    QueryTerm {
+                        field: QueryField::Any,
+                        value: "abc|'xyz".to_string()
+                    },
+                    QueryTerm {
+                        field: QueryField::Any,
+                        value: "^foo".to_string()
+                    },
                 ],
-                exact_terms: vec!["file".to_string()],
-                exclude_terms: vec!["readme".to_string()],
+                exact_terms: vec![QueryTerm {
+                    field: QueryField::Any,
+                    value: "file".to_string()
+                }],
+                exclude_terms: vec![QueryTerm {
+                    field: QueryField::Any,
+                    value: "readme".to_string()
+                }],
+                invalid_terms: Vec::new(),
             }
         );
     }
@@ -341,5 +410,182 @@ mod tests {
         assert!(highlighted_text.contains("テスト"));
         assert!(highlighted_text.contains("main"));
         assert_eq!(query_compile_count(), 1);
+    }
+
+    #[test]
+    fn tc_175_field_terms_filter_name_path_dir_and_extension_independently() {
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("src/config/archive.tar.gz");
+
+        for query in [
+            "name:archive",
+            "path:^src/",
+            "dir:config",
+            "ext:gz",
+            "ext:rs|gz",
+            "name:'archive",
+        ] {
+            let compiled = CompiledQuery::compile(
+                query,
+                QueryOptions {
+                    use_regex: false,
+                    ignore_case: true,
+                },
+            )
+            .unwrap_or_else(|error| panic!("compile {query}: {error}"));
+            let candidate = compiled.prepare_candidate(&path, Some(&root), true);
+            assert!(
+                compiled
+                    .evaluate(&candidate, EvidenceLevel::RankOnly)
+                    .is_some(),
+                "query should match: {query}"
+            );
+        }
+
+        for query in ["name:src", "dir:archive", "ext:tar", "!dir:config"] {
+            let compiled = CompiledQuery::compile(
+                query,
+                QueryOptions {
+                    use_regex: false,
+                    ignore_case: true,
+                },
+            )
+            .unwrap_or_else(|error| panic!("compile {query}: {error}"));
+            let candidate = compiled.prepare_candidate(&path, Some(&root), true);
+            assert!(
+                compiled
+                    .evaluate(&candidate, EvidenceLevel::RankOnly)
+                    .is_none(),
+                "query should not match: {query}"
+            );
+        }
+    }
+
+    #[test]
+    fn tc_175_unknown_prefix_stays_unscoped_and_empty_known_field_is_invalid() {
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("docs/tag:value.txt");
+        let compiled = CompiledQuery::compile(
+            "tag:value",
+            QueryOptions {
+                use_regex: false,
+                ignore_case: true,
+            },
+        )
+        .expect("unknown prefix remains a normal query term");
+        let candidate = compiled.prepare_candidate(&path, Some(&root), true);
+        assert!(compiled
+            .evaluate(&candidate, EvidenceLevel::RankOnly)
+            .is_some());
+
+        for query in ["name:", "!path:", "dir:", "ext:"] {
+            assert!(
+                CompiledQuery::compile(
+                    query,
+                    QueryOptions {
+                        use_regex: false,
+                        ignore_case: true,
+                    },
+                )
+                .is_err(),
+                "empty known field should fail: {query}"
+            );
+        }
+    }
+
+    #[test]
+    fn tc_175_extension_uses_only_the_final_file_suffix_and_excludes_directories() {
+        let root = PathBuf::from("/tmp/root");
+        let compiled = CompiledQuery::compile(
+            "ext:gz",
+            QueryOptions {
+                use_regex: false,
+                ignore_case: true,
+            },
+        )
+        .expect("compile extension query");
+        let file = compiled.prepare_candidate_with_kind(
+            &root.join("archive.tar.gz"),
+            Some(&root),
+            true,
+            Some(false),
+        );
+        let directory = compiled.prepare_candidate_with_kind(
+            &root.join("archive.gz"),
+            Some(&root),
+            true,
+            Some(true),
+        );
+        assert!(compiled.evaluate(&file, EvidenceLevel::RankOnly).is_some());
+        assert!(compiled
+            .evaluate(&directory, EvidenceLevel::RankOnly)
+            .is_none());
+
+        let tar = CompiledQuery::compile(
+            "ext:tar",
+            QueryOptions {
+                use_regex: false,
+                ignore_case: true,
+            },
+        )
+        .expect("compile extension query");
+        let file = tar.prepare_candidate_with_kind(
+            &root.join("archive.tar.gz"),
+            Some(&root),
+            true,
+            Some(false),
+        );
+        assert!(tar.evaluate(&file, EvidenceLevel::RankOnly).is_none());
+
+        let dotfile =
+            compiled.prepare_candidate_with_kind(&root.join(".gz"), Some(&root), true, Some(false));
+        assert!(compiled
+            .evaluate(&dotfile, EvidenceLevel::RankOnly)
+            .is_none());
+    }
+
+    #[test]
+    fn tc_175_regex_is_compiled_from_the_field_value() {
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("src/Archive-01.RS");
+        let compiled = CompiledQuery::compile(
+            r"name:^archive-[0-9]+\.rs$ ext:^rs$",
+            QueryOptions {
+                use_regex: true,
+                ignore_case: true,
+            },
+        )
+        .expect("compile field regex");
+        let candidate = compiled.prepare_candidate_with_kind(&path, Some(&root), true, Some(false));
+        assert!(compiled
+            .evaluate(&candidate, EvidenceLevel::WithSpans)
+            .is_some());
+    }
+
+    #[test]
+    fn tc_175_field_highlights_map_back_to_the_visible_path() {
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("日本語/config-main.rs");
+        let compiled = CompiledQuery::compile(
+            "dir:日本語 ext:rs name:main",
+            QueryOptions {
+                use_regex: false,
+                ignore_case: true,
+            },
+        )
+        .expect("compile field query");
+        let candidate = compiled.prepare_candidate(&path, Some(&root), true);
+        let result = compiled
+            .evaluate(&candidate, EvidenceLevel::WithSpans)
+            .expect("field query match");
+        let visible = candidate.visible_text().chars().collect::<Vec<_>>();
+        let highlighted = result
+            .spans
+            .iter()
+            .filter_map(|position| visible.get(*position))
+            .collect::<String>();
+        assert!(highlighted.contains("日本語"), "{highlighted}");
+        assert!(highlighted.contains("main"), "{highlighted}");
+        assert!(highlighted.contains("rs"), "{highlighted}");
     }
 }

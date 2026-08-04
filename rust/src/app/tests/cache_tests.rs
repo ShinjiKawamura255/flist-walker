@@ -325,6 +325,7 @@ fn search_prefix_cache_accepts_only_plain_single_token_queries() {
     assert!(!SearchPrefixCache::is_cacheable_query("!abc"));
     assert!(!SearchPrefixCache::is_cacheable_query("^abc"));
     assert!(!SearchPrefixCache::is_cacheable_query("abc$"));
+    assert!(!SearchPrefixCache::is_cacheable_query("name:abc"));
     assert!(SearchPrefixCache::is_safe_prefix_extension("abc", "abcd"));
     assert!(!SearchPrefixCache::is_safe_prefix_extension("abc", "ab"));
 }

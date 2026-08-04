@@ -104,7 +104,7 @@ impl From<CliSortMode> for RuntimeSortMode {
 #[command(about = "Find files and folders with fuzzy search")]
 #[command(version)]
 pub(crate) struct Args {
-    /// Query using fuzzy matching and the supported fzf-style operators.
+    /// Query using fuzzy matching, fzf-style operators, and name:/path:/dir:/ext: fields. Quote the complete QUERY in a shell.
     #[arg(default_value = "", value_name = "QUERY")]
     pub(super) query: String,
 

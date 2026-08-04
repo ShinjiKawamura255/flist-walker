@@ -51,7 +51,7 @@ impl SearchPrefixCache {
         if q.contains(char::is_whitespace) {
             return false;
         }
-        !q.contains(['|', '!', '\'', '^', '$'])
+        !q.contains(['|', '!', '\'', '^', '$', ':'])
     }
 
     pub(crate) fn is_safe_prefix_extension(prefix: &str, query: &str) -> bool {

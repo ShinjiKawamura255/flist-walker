@@ -1,6 +1,6 @@
 use super::{
     include_alternatives, parse_include_alternative, parse_query, split_anchor,
-    token_uses_regex_syntax,
+    token_uses_regex_syntax, QueryField, QueryTerm,
 };
 use crate::path_utils::{display_path_with_mode, normalize_windows_path};
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -60,13 +60,19 @@ pub struct QueryEvaluation {
 pub struct PreparedCandidate {
     name: String,
     full: String,
+    path: String,
+    dir: String,
+    extension: String,
+    extension_visible: String,
     visible: String,
     filename: String,
     filename_start: usize,
+    directory_visible: String,
+    extension_start: usize,
 }
 
 impl PreparedCandidate {
-    fn from_path(path: &Path, scope: QueryScope<'_>) -> Self {
+    fn from_path(path: &Path, scope: QueryScope<'_>, is_dir: Option<bool>) -> Self {
         let normalized_path = normalize_windows_path(path);
         let filename = normalized_path
             .file_name()
@@ -83,12 +89,34 @@ impl PreparedCandidate {
             .chars()
             .count()
             .saturating_sub(filename.chars().count());
+        let directory_visible = visible
+            .rfind(['/', '\\'])
+            .map_or_else(String::new, |index| visible[..index].to_string());
+        let extension = if is_dir == Some(true) {
+            String::new()
+        } else {
+            normalized_path
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_string()
+        };
+        let extension_start = visible
+            .chars()
+            .count()
+            .saturating_sub(extension.chars().count());
         Self {
             name: normalize_text(&filename, scope.ignore_case),
             full: normalize_text(&visible, scope.ignore_case),
+            path: normalize_field_path(&visible, scope.ignore_case),
+            dir: normalize_field_path(&directory_visible, scope.ignore_case),
+            extension: normalize_text(&extension, scope.ignore_case),
+            extension_visible: extension,
             visible,
             filename,
             filename_start,
+            directory_visible,
+            extension_start,
         }
     }
 
@@ -114,6 +142,7 @@ struct AlternativeSet {
 
 #[derive(Debug, Clone)]
 struct ExactTermMatcher {
+    field: QueryField,
     set: AlternativeSet,
     required_unanchored_count: usize,
 }
@@ -131,12 +160,24 @@ enum IncludeMatcher {
 }
 
 #[derive(Debug, Clone)]
+struct ScopedAlternativeSet {
+    field: QueryField,
+    set: AlternativeSet,
+}
+
+#[derive(Debug, Clone)]
+struct ScopedIncludeMatcher {
+    field: QueryField,
+    matcher: IncludeMatcher,
+}
+
+#[derive(Debug, Clone)]
 pub struct CompiledQuery {
     exact_terms: Vec<ExactTermMatcher>,
-    exclude_terms: Vec<AlternativeSet>,
-    include_terms: Vec<IncludeMatcher>,
-    include_literal_bonus_terms: Vec<AlternativeSet>,
-    include_exact_bonus_terms: Vec<LiteralPattern>,
+    exclude_terms: Vec<ScopedAlternativeSet>,
+    include_terms: Vec<ScopedIncludeMatcher>,
+    include_literal_bonus_terms: Vec<ScopedAlternativeSet>,
+    include_exact_bonus_terms: Vec<(QueryField, LiteralPattern)>,
     score_query: String,
     ignore_case: bool,
 }
@@ -165,7 +206,7 @@ impl CompiledIgnoreTerms {
     }
 
     pub fn matches_path(&self, path: &Path, scope: QueryScope<'_>) -> bool {
-        self.matches(&PreparedCandidate::from_path(path, scope))
+        self.matches(&PreparedCandidate::from_path(path, scope, None))
     }
 }
 
@@ -174,28 +215,43 @@ impl CompiledQuery {
         #[cfg(test)]
         QUERY_COMPILE_COUNT.set(QUERY_COMPILE_COUNT.get().saturating_add(1));
         let spec = parse_query(query);
+        if !spec.invalid_terms.is_empty() {
+            return Err(format!(
+                "field query requires a value: {}",
+                spec.invalid_terms.join(", ")
+            ));
+        }
         let exact_terms = compile_exact_term_matchers(&spec.exact_terms, options.ignore_case);
         let exclude_terms = spec
             .exclude_terms
             .iter()
-            .map(|term| compile_alternative_set(term, options.ignore_case))
+            .map(|term| ScopedAlternativeSet {
+                field: term.field,
+                set: compile_alternative_set(&term.value, options.ignore_case),
+            })
             .collect::<Vec<_>>();
         let mut include_terms = Vec::with_capacity(spec.include_terms.len());
         let mut include_literal_bonus_terms = Vec::new();
         let mut include_exact_bonus_terms = Vec::new();
         for term in &spec.include_terms {
-            include_terms.push(compile_include_matcher(
-                term,
-                options.use_regex,
-                options.ignore_case,
-            )?);
+            include_terms.push(ScopedIncludeMatcher {
+                field: term.field,
+                matcher: compile_include_matcher(
+                    &term.value,
+                    options.use_regex,
+                    options.ignore_case,
+                )?,
+            });
             if !options.use_regex {
                 let literal_bonus_set =
-                    compile_non_exact_alternative_set(term, options.ignore_case);
+                    compile_non_exact_alternative_set(&term.value, options.ignore_case);
                 if !literal_bonus_set.alternatives.is_empty() {
-                    include_literal_bonus_terms.push(literal_bonus_set);
+                    include_literal_bonus_terms.push(ScopedAlternativeSet {
+                        field: term.field,
+                        set: literal_bonus_set,
+                    });
                 }
-                for candidate in include_alternatives(term) {
+                for candidate in include_alternatives(&term.value) {
                     let Some((exact, parsed)) = parse_include_alternative(candidate) else {
                         continue;
                     };
@@ -204,7 +260,7 @@ impl CompiledQuery {
                     }
                     let (_, _, core) = split_anchor(&parsed);
                     if let Some(pattern) = compile_literal_pattern(core, options.ignore_case) {
-                        include_exact_bonus_terms.push(pattern);
+                        include_exact_bonus_terms.push((term.field, pattern));
                     }
                 }
             }
@@ -246,6 +302,25 @@ impl CompiledQuery {
                 prefer_relative,
                 ignore_case: self.ignore_case,
             },
+            None,
+        )
+    }
+
+    pub fn prepare_candidate_with_kind(
+        &self,
+        path: &Path,
+        root: Option<&Path>,
+        prefer_relative: bool,
+        is_dir: Option<bool>,
+    ) -> PreparedCandidate {
+        PreparedCandidate::from_path(
+            path,
+            QueryScope {
+                root,
+                prefer_relative,
+                ignore_case: self.ignore_case,
+            },
+            is_dir,
         )
     }
 
@@ -292,6 +367,10 @@ fn normalize_text(text: &str, ignore_case: bool) -> String {
     }
 }
 
+fn normalize_field_path(text: &str, ignore_case: bool) -> String {
+    normalize_text(&text.replace('\\', "/"), ignore_case)
+}
+
 fn compile_literal_pattern(term: &str, ignore_case: bool) -> Option<LiteralPattern> {
     let normalized = normalize_text(term, ignore_case);
     let (anchored_start, anchored_end, core) = split_anchor(&normalized);
@@ -331,20 +410,21 @@ fn compile_raw_alternative_set(term: &str, ignore_case: bool) -> AlternativeSet 
     }
 }
 
-fn compile_exact_term_matchers(terms: &[String], ignore_case: bool) -> Vec<ExactTermMatcher> {
-    let mut counts = BTreeMap::<String, usize>::new();
+fn compile_exact_term_matchers(terms: &[QueryTerm], ignore_case: bool) -> Vec<ExactTermMatcher> {
+    let mut counts = BTreeMap::<QueryTerm, usize>::new();
     for term in terms {
         *counts.entry(term.clone()).or_default() += 1;
     }
     counts
         .into_iter()
         .map(|(term, count)| {
-            let set = compile_alternative_set(&term, ignore_case);
+            let set = compile_alternative_set(&term.value, ignore_case);
             let unanchored = set
                 .alternatives
                 .first()
                 .is_some_and(|pattern| !pattern.anchored_start && !pattern.anchored_end);
             ExactTermMatcher {
+                field: term.field,
                 set,
                 required_unanchored_count: if unanchored { count } else { 1 },
             }
@@ -392,13 +472,13 @@ fn compile_include_matcher(
 }
 
 fn build_score_query(
-    include_terms: &[String],
-    exact_terms: &[String],
+    include_terms: &[QueryTerm],
+    exact_terms: &[QueryTerm],
     ignore_case: bool,
 ) -> String {
     let mut score_query = include_terms
         .iter()
-        .flat_map(|term| include_alternatives(term))
+        .flat_map(|term| include_alternatives(&term.value))
         .filter_map(|term| {
             let (_, candidate) = parse_include_alternative(term)?;
             let (_, _, core) = split_anchor(&candidate);
@@ -408,7 +488,7 @@ fn build_score_query(
         .join(" ");
     if score_query.is_empty() {
         if let Some(first_exact) = exact_terms.first() {
-            score_query = normalize_text(first_exact, ignore_case);
+            score_query = normalize_text(&first_exact.value, ignore_case);
         }
     }
     score_query
@@ -442,6 +522,16 @@ fn matches_alternative_set(set: &AlternativeSet, name: &str, full: &str) -> bool
     })
 }
 
+fn candidate_field_texts(candidate: &PreparedCandidate, field: QueryField) -> (&str, &str) {
+    match field {
+        QueryField::Any => (&candidate.name, &candidate.full),
+        QueryField::Name => (&candidate.name, &candidate.name),
+        QueryField::Path => (&candidate.path, &candidate.path),
+        QueryField::Dir => (&candidate.dir, &candidate.dir),
+        QueryField::Ext => (&candidate.extension, &candidate.extension),
+    }
+}
+
 fn literal_occurrence_count(text: &str, needle: &str) -> usize {
     if needle.is_empty() {
         return 0;
@@ -455,7 +545,8 @@ fn literal_occurrence_count(text: &str, needle: &str) -> usize {
     count
 }
 
-fn matches_exact_term(term: &ExactTermMatcher, name: &str, full: &str) -> bool {
+fn matches_exact_term(term: &ExactTermMatcher, candidate: &PreparedCandidate) -> bool {
+    let (name, full) = candidate_field_texts(candidate, term.field);
     if term.required_unanchored_count <= 1 {
         return matches_alternative_set(&term.set, name, full);
     }
@@ -483,8 +574,9 @@ fn matches_include_literal(pattern: &LiteralPattern, name: &str, full: &str) -> 
         || is_subsequence(&pattern.core_chars, full)
 }
 
-fn matches_include_matcher(matcher: &IncludeMatcher, name: &str, full: &str) -> bool {
-    match matcher {
+fn matches_include_matcher(matcher: &ScopedIncludeMatcher, candidate: &PreparedCandidate) -> bool {
+    let (name, full) = candidate_field_texts(candidate, matcher.field);
+    match &matcher.matcher {
         IncludeMatcher::Regex(regex) => regex.is_match(name) || regex.is_match(full),
         IncludeMatcher::Alternatives(alternatives) => alternatives.iter().any(|alternative| {
             if alternative.exact {
@@ -498,22 +590,21 @@ fn matches_include_matcher(matcher: &IncludeMatcher, name: &str, full: &str) -> 
 }
 
 fn matches_compiled_query(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> bool {
-    !compiled
-        .exclude_terms
-        .iter()
-        .any(|term| matches_alternative_set(term, &candidate.name, &candidate.full))
-        && matches_positive_terms(compiled, candidate)
+    !compiled.exclude_terms.iter().any(|term| {
+        let (name, full) = candidate_field_texts(candidate, term.field);
+        matches_alternative_set(&term.set, name, full)
+    }) && matches_positive_terms(compiled, candidate)
 }
 
 fn matches_positive_terms(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> bool {
     compiled
         .exact_terms
         .iter()
-        .all(|term| matches_exact_term(term, &candidate.name, &candidate.full))
+        .all(|term| matches_exact_term(term, candidate))
         && compiled
             .include_terms
             .iter()
-            .all(|matcher| matches_include_matcher(matcher, &candidate.name, &candidate.full))
+            .all(|matcher| matches_include_matcher(matcher, candidate))
 }
 
 fn fallback_score(query: &str, text: &str) -> f64 {
@@ -530,18 +621,19 @@ fn fallback_score(query: &str, text: &str) -> f64 {
     score + query.len().min(text.len()) as f64
 }
 
-fn bonus_for_alternative_set(set: &AlternativeSet, candidate: &PreparedCandidate) -> f64 {
+fn bonus_for_alternative_set(set: &ScopedAlternativeSet, candidate: &PreparedCandidate) -> f64 {
+    let (name, full) = candidate_field_texts(candidate, set.field);
     let mut bonus = 0.0;
-    if set.alternatives.iter().any(|pattern| {
-        matches_anchored_literal(pattern, &candidate.name)
-            || matches_anchored_literal(pattern, &candidate.full)
+    if set.set.alternatives.iter().any(|pattern| {
+        matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full)
     }) {
         bonus += 150.0;
     }
     if set
+        .set
         .alternatives
         .iter()
-        .any(|pattern| candidate.name == pattern.core || candidate.full == pattern.core)
+        .any(|pattern| name == pattern.core || full == pattern.core)
     {
         bonus += 150.0;
     }
@@ -567,19 +659,18 @@ fn score_entry(
         score += 900.0;
     }
     for term in &compiled.exact_terms {
-        if matches_exact_term(term, &candidate.name, &candidate.full) {
+        if matches_exact_term(term, candidate) {
             score += 800.0;
         }
     }
     for term in &compiled.include_literal_bonus_terms {
         score += bonus_for_alternative_set(term, candidate);
     }
-    for pattern in &compiled.include_exact_bonus_terms {
-        if matches_anchored_literal(pattern, &candidate.name)
-            || matches_anchored_literal(pattern, &candidate.full)
-        {
+    for (field, pattern) in &compiled.include_exact_bonus_terms {
+        let (name, full) = candidate_field_texts(candidate, *field);
+        if matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full) {
             score += 300.0;
-            if candidate.name == pattern.core {
+            if name == pattern.core {
                 score += 300.0;
             }
         }
@@ -677,10 +768,30 @@ fn regex_positions(text: &str, regex: &Regex) -> Vec<usize> {
 fn add_pattern_positions(
     spans: &mut BTreeSet<usize>,
     candidate: &PreparedCandidate,
+    field: QueryField,
     pattern: &LiteralPattern,
     exact: bool,
     ignore_case: bool,
 ) {
+    if field != QueryField::Any {
+        let (text, offset) = match field {
+            QueryField::Any => unreachable!(),
+            QueryField::Name => (candidate.filename.clone(), candidate.filename_start),
+            QueryField::Path => (candidate.visible.replace('\\', "/"), 0),
+            QueryField::Dir => (candidate.directory_visible.replace('\\', "/"), 0),
+            QueryField::Ext => (
+                candidate.extension_visible.clone(),
+                candidate.extension_start,
+            ),
+        };
+        let hits = if exact {
+            exact_positions(&text, pattern, ignore_case)
+        } else {
+            fuzzy_positions(&text, pattern, ignore_case)
+        };
+        spans.extend(hits.into_iter().map(|position| offset + position));
+        return;
+    }
     let filename_hits = if exact {
         exact_positions(&candidate.filename, pattern, ignore_case)
     } else {
@@ -705,43 +816,66 @@ fn add_pattern_positions(
 fn collect_spans(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> Vec<usize> {
     let mut spans = BTreeSet::new();
     for term in &compiled.exact_terms {
+        let (name, full) = candidate_field_texts(candidate, term.field);
         if let Some(pattern) = term.set.alternatives.iter().find(|pattern| {
-            matches_anchored_literal(pattern, &candidate.name)
-                || matches_anchored_literal(pattern, &candidate.full)
+            matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full)
         }) {
-            add_pattern_positions(&mut spans, candidate, pattern, true, compiled.ignore_case);
+            add_pattern_positions(
+                &mut spans,
+                candidate,
+                term.field,
+                pattern,
+                true,
+                compiled.ignore_case,
+            );
         }
     }
     for matcher in &compiled.include_terms {
-        match matcher {
+        let (name, full) = candidate_field_texts(candidate, matcher.field);
+        match &matcher.matcher {
             IncludeMatcher::Regex(regex) => {
-                let filename_hits = regex_positions(&candidate.filename, regex);
-                if filename_hits.is_empty() {
-                    spans.extend(regex_positions(&candidate.visible, regex));
+                if matcher.field == QueryField::Any {
+                    let filename_hits = regex_positions(&candidate.filename, regex);
+                    if filename_hits.is_empty() {
+                        spans.extend(regex_positions(&candidate.visible, regex));
+                    } else {
+                        spans.extend(
+                            filename_hits
+                                .into_iter()
+                                .map(|position| candidate.filename_start + position),
+                        );
+                    }
                 } else {
+                    let (text, offset) = match matcher.field {
+                        QueryField::Any => unreachable!(),
+                        QueryField::Name => (candidate.filename.clone(), candidate.filename_start),
+                        QueryField::Path => (candidate.visible.replace('\\', "/"), 0),
+                        QueryField::Dir => (candidate.directory_visible.replace('\\', "/"), 0),
+                        QueryField::Ext => (
+                            candidate.extension_visible.clone(),
+                            candidate.extension_start,
+                        ),
+                    };
                     spans.extend(
-                        filename_hits
+                        regex_positions(&text, regex)
                             .into_iter()
-                            .map(|position| candidate.filename_start + position),
+                            .map(|position| offset + position),
                     );
                 }
             }
             IncludeMatcher::Alternatives(alternatives) => {
                 if let Some(alternative) = alternatives.iter().find(|alternative| {
                     if alternative.exact {
-                        matches_anchored_literal(&alternative.literal, &candidate.name)
-                            || matches_anchored_literal(&alternative.literal, &candidate.full)
+                        matches_anchored_literal(&alternative.literal, name)
+                            || matches_anchored_literal(&alternative.literal, full)
                     } else {
-                        matches_include_literal(
-                            &alternative.literal,
-                            &candidate.name,
-                            &candidate.full,
-                        )
+                        matches_include_literal(&alternative.literal, name, full)
                     }
                 }) {
                     add_pattern_positions(
                         &mut spans,
                         candidate,
+                        matcher.field,
                         &alternative.literal,
                         alternative.exact,
                         compiled.ignore_case,
