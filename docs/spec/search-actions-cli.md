@@ -98,7 +98,7 @@
 - MUST: exec mode は inherited environment と固定 argv の使用量を差し引いた実行環境の command-line 上限まで path を順序どおり貪欲にまとめ、batch を直列実行する。起動時に OS が argument-list-too-long を返した batch は順序を保って細分化し、単一 path でも起動できない場合だけ失敗とする。`--exec-max-args N` は1 batch の path 数へ追加上限を設定し、`--dry-run` は認可と batch 計画だけを行って command を起動せず、対象数と batch 数を stderr へ出力する。
 - MUST: exec mode は全 target を root 配下として事前認可し、各 batch 起動直前に再認可する。spawn failure、child 非ゼロ、認可変更、cancel を観測した場合は後続 batch を起動せず、完了 path 数と全 path 数を stderr へ報告する。success/dry-run は exit 0、失敗は exit 1、cancel は exit 130 とする。
 - MUST: exec mode は `--absolute`、`--print0`、`--action open|reveal`、`--action-all` と同時指定できない。`--fail-no-match` は exec の結果0件にも既存どおり適用する。
-- MUST: `print` は既定の `auto`、非 TTY の `auto`、および `never` で既存 path-only stdout framing を維持する。明示的な `--color always` は ANSI 色エスケープを含めてよい。non-print action は stdout に result path を書かず、progress、diagnostic、partial summary を stderr に書く。non-print action と `--absolute` または `--print0` の組合せは argument error とする。
+- MUST: `print` は `--color` 未指定、非 TTY の `--color`/`--color auto`、および `--color never` で既存 path-only stdout framing を維持する。色が有効な場合は GUI/TUI と同じクエリ解釈による一致文字列だけを ANSI でハイライトし、非一致部分を装飾してはならない。`--color always` は TTY 判定を上書きする。non-print action は stdout に result path を書かず、progress、diagnostic、partial summary を stderr に書く。non-print action と `--absolute` または `--print0` の組合せは argument error とする。
 - MUST: action/root option の argument または組合せ error は exit 2、authorization/executor/partial failure は exit 1、cancellation は exit 130 とする。no match は既存どおり exit 0、`--fail-no-match` 指定時だけ exit 1 とする。preflight authorization failure は backend 呼び出し 0 件とする。
 - MUST: root selector は `--root PATH`、`--use-default-root`、`--saved-root INDEX` の高々 1 つとする。saved-root index は `--list-saved-roots` の one-based order とし、selector 無しは current-directory behavior を維持する。無効 default/index は indexing 前に exit 2 とする。
 - MUST: `--list-saved-roots` は exclusive batch operation とし、indexing/action/write を行わない。通常は one-based index と absolute stored path を newline で、`--print0` では path-only record を NUL で出力する。
@@ -112,7 +112,7 @@
 - MAY: `--cli --interactive` でインタラクティブ CLI を起動する。
 - MUST: interactive CLI は `--root`、`--use-default-root`、`--saved-root` を起動 root として受理し、`--sort` を初期 sort、`--no-ignore` を初期 Ignore 無効状態として反映する。`--no-ignore` でも読み込んだ ignore terms は保持し、TUI で Ignore を再度有効化したときに再読込なしで適用する。batch 専用の `--progress` と `--fail-no-match` は interactive との組合せを引数エラーにする。
 - MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
-- MUST: CLI は `--color auto|always|never` を受理する。既定の `auto` は batch CLI の stdout が TTY かつ空でない `NO_COLOR` 環境変数がない場合だけ色を有効化し、pipe/redirect 時は path-only stdout framing を維持する。`always` はこの自動判定を上書き、`never` は ANSI 色エスケープを出力しない。interactive CLI では画面描画に同じ色モードを適用する。
+- MUST: CLI は `--color[=auto|always|never]` を受理する。未指定は `never` として ANSI 色エスケープを出力せず、値を省略した `--color` は `auto` とする。`auto` は batch CLI の stdout が TTY かつ空でない `NO_COLOR` 環境変数がない場合だけ色を有効化し、pipe/redirect 時は path-only stdout framing を維持する。`always` はこの自動判定を上書き、`never` は ANSI 色エスケープを出力しない。interactive CLI では画面描画に同じ色モードを適用する。
 - MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、terminal 復旧後に選択結果を標準出力へ出力するか、exec mode の外部 command へ渡す。外部 command は terminal guard 解放前に起動してはならない。
 - MUST: interactive CLI は更新確認を入力ループ外で非同期実行し、新しい version を検知した場合に `Update available: v<version> — Run flistwalker --update after exiting` を英語で表示する。この通知は更新を開始せず、更新確認失敗も検索、入力、終了を妨げてはならない。
 - MUST: インタラクティブ CLI は query 入力、上下移動、`Enter` による選択結果の標準出力、`Esc` / `Ctrl-C` による終了を提供する。

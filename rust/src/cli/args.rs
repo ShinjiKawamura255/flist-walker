@@ -35,9 +35,9 @@ pub(super) enum CliIndexSource {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
 pub(super) enum CliColorMode {
-    #[default]
     Auto,
     Always,
+    #[default]
     Never,
 }
 
@@ -154,8 +154,14 @@ pub(crate) struct Args {
     #[arg(long, default_value_t = false, requires = "cli")]
     pub(super) interactive: bool,
 
-    /// Control colors in CLI result output.
-    #[arg(long, value_enum, requires = "cli")]
+    /// Highlight matched text in CLI output (auto, always, or never).
+    #[arg(
+        long,
+        value_enum,
+        num_args = 0..=1,
+        default_missing_value = "auto",
+        requires = "cli"
+    )]
     pub(super) color: Option<CliColorMode>,
 
     /// Print absolute paths instead of paths relative to the root.
@@ -478,10 +484,14 @@ mod tests {
     }
 
     #[test]
-    fn tc_172_color_option_accepts_standard_modes_for_batch_cli() {
+    fn tc_172_color_option_defaults_to_never_and_accepts_grep_style_auto() {
         let default_args =
             Args::try_parse_from(["flistwalker", "--cli"]).expect("parse default color mode");
-        assert!(matches!(default_args.color_mode(), CliColorMode::Auto));
+        assert!(matches!(default_args.color_mode(), CliColorMode::Never));
+
+        let auto = Args::try_parse_from(["flistwalker", "--cli", "--color"])
+            .expect("parse bare color option");
+        assert!(matches!(auto.color_mode(), CliColorMode::Auto));
 
         let always = Args::try_parse_from(["flistwalker", "--cli", "--color", "always"])
             .expect("parse always color mode");

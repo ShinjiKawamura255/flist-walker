@@ -938,7 +938,7 @@ fn tc_172_color_help_and_batch_output_control_are_explicit() {
         .expect("run CLI help");
     assert!(help.status.success());
     let stdout = String::from_utf8_lossy(&help.stdout);
-    assert!(stdout.contains("--color <COLOR>"), "{stdout}");
+    assert!(stdout.contains("--color [<COLOR>]"), "{stdout}");
     assert!(stdout.contains("auto, always, never"), "{stdout}");
 
     let root = test_root("color-batch");
@@ -948,6 +948,7 @@ fn tc_172_color_help_and_batch_output_control_are_explicit() {
     let always = cli_command("color-always")
         .args([
             "--cli",
+            "at",
             "--root",
             root.to_string_lossy().as_ref(),
             "--source",
@@ -958,7 +959,7 @@ fn tc_172_color_help_and_batch_output_control_are_explicit() {
         .output()
         .expect("run forced-color batch");
     assert!(always.status.success());
-    assert_eq!(always.stdout, b"\x1b[38;5;11mmatch.txt\x1b[0m\n");
+    assert_eq!(always.stdout, b"m\x1b[38;5;11mat\x1b[0mch.txt\n");
 
     let auto = cli_command("color-auto")
         .args([
@@ -972,6 +973,20 @@ fn tc_172_color_help_and_batch_output_control_are_explicit() {
         .expect("run auto-color batch");
     assert!(auto.status.success());
     assert_eq!(auto.stdout, b"match.txt\n");
+
+    let default = cli_command("color-default")
+        .args([
+            "--cli",
+            "at",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+        ])
+        .output()
+        .expect("run default-color batch");
+    assert!(default.status.success());
+    assert_eq!(default.stdout, b"match.txt\n");
 
     let _ = fs::remove_dir_all(root);
 }
