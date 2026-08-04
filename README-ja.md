@@ -181,6 +181,7 @@ CLI では:
 - `--type all|file|folder`、`--regex`、`--case-sensitive` で検索対象と照合方法を指定できます。
 - `--source auto|filelist|walker` でインデックス元を指定できます。`filelist` は root FileList がなければ失敗し、`auto` は FileList 優先で walker へフォールバックします。
 - `--ignore-file PATH` は実行ファイル横の ignore list を置き換え、`--no-ignore` は ignore を無効化します。両者は同時指定できません。
+- ignore fileはUTF-8で、先頭UTF-8 BOMとCRLFを許容します。rule内の `/` と `\\` は同じpath separatorとして扱います。既定sidecarが無ければruleなしで継続し、存在するfileが読めない／UTF-8不正ならCLI/TUIは明示errorにします。
 - batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
 - 名前付き root と純粋な検索 preset は `--add-named-root NAME=PATH`、`--list-named-roots`、`--save-preset NAME`、`--list-presets`、`--preset NAME` などの明示 option で管理します。query 全体は引用符で囲んでください。preset は検索状態だけを保存し、action や外部 command は保存しません。

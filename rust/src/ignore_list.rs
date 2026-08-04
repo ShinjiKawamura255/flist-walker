@@ -36,17 +36,32 @@ pub fn ensure_ignore_list_sample_at(path: &Path) -> Result<bool> {
 }
 
 pub fn load_ignore_terms_from_current_exe() -> Vec<String> {
-    current_exe_ignore_list_path()
-        .as_deref()
-        .map(load_ignore_terms_from_path)
-        .unwrap_or_default()
+    load_ignore_terms_from_current_exe_result().unwrap_or_default()
 }
 
 pub fn load_ignore_terms_from_path(path: &Path) -> Vec<String> {
-    let Ok(text) = fs::read_to_string(path) else {
-        return Vec::new();
-    };
-    parse_ignore_terms(&text)
+    load_ignore_terms_from_path_result(path).unwrap_or_default()
+}
+
+pub fn load_ignore_terms_from_path_result(path: &Path) -> Result<Vec<String>> {
+    let text = fs::read_to_string(path)
+        .with_context(|| format!("failed to read ignore file: {}", path.display()))?;
+    Ok(parse_ignore_terms(&text))
+}
+
+pub fn load_ignore_terms_from_current_exe_result() -> Result<Vec<String>> {
+    let exe = std::env::current_exe().context("failed to resolve current executable")?;
+    let parent = exe
+        .parent()
+        .context("current executable has no parent directory")?;
+    let path = parent.join(IGNORE_LIST_FILE_NAME);
+    match fs::read_to_string(&path) {
+        Ok(text) => Ok(parse_ignore_terms(&text)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(error) => {
+            Err(error).with_context(|| format!("failed to read ignore file: {}", path.display()))
+        }
+    }
 }
 
 fn normalize_ignore_term(term: &str) -> Option<String> {
@@ -59,6 +74,7 @@ fn normalize_ignore_term(term: &str) -> Option<String> {
 }
 
 pub fn parse_ignore_terms(text: &str) -> Vec<String> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let mut terms = Vec::new();
     for line in text.lines() {
         let trimmed = line.trim();
@@ -99,6 +115,13 @@ mod tests {
         );
 
         assert_eq!(terms, vec!["old", "~", "backup", "tmp"]);
+    }
+
+    #[test]
+    fn tc_176_parse_ignore_terms_accepts_utf8_bom_and_crlf() {
+        let terms = parse_ignore_terms("\u{feff}!generated\\cache\r\n# comment\r\n~temp\r\n");
+
+        assert_eq!(terms, vec!["generated\\cache", "~temp"]);
     }
 
     #[test]

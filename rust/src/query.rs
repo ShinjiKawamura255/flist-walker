@@ -323,6 +323,20 @@ mod tests {
     }
 
     #[test]
+    fn tc_176_ignore_terms_match_across_path_separator_styles() {
+        let root = PathBuf::from("/tmp/root");
+        let ignored = root.join("src/generated/cache.txt");
+
+        assert!(path_matches_ignore_terms(
+            &ignored,
+            &root,
+            &[r"src\generated".to_string()],
+            true,
+            true,
+        ));
+    }
+
+    #[test]
     fn tc_155_ignore_terms_preserve_literal_quote_behavior() {
         let root = PathBuf::from("/tmp/root");
         let terms = vec!["'old".to_string()];

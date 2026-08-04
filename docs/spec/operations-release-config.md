@@ -76,26 +76,27 @@
 ### Requirements
 - MUST: 実行中 binary と同じフォルダにある `flistwalker.ignore.txt` を ignore list ファイルとして読み取れる。
 - MUST: ignore list ファイルは 1 行 1 ルールを基本とし、空行と `#` コメント行を無視しなければならない。
+- MUST: ignore list は UTF-8 と任意の先頭 UTF-8 BOM、LF/CRLFを同じterm列として解釈し、path separatorの `/` と `\\` をplatform間で同じliteral pathとして比較しなければならない。
 - MUST: 検索クエリの `!` 除外は fuzzy fallback を使わず、literal substring / `^` 先頭 / `$` 末尾の一致で候補を除外しなければならない。
 - MUST: ignore list の各ルールは、検索クエリの `!` 除外と同じ非 fuzzy の比較ルールで候補を除外しなければならない。
 - MUST: GUI は `Use Ignore List` チェックボックスを提供し、既定で有効にしなければならない。
 - MUST: チェックボックス有効時は、ignore list に一致する候補を検索結果と空クエリ表示から除外しなければならない。
 - MUST: チェックボックス無効時は、ignore list の除外を適用してはならない。
-- SHOULD: CLI モードでも同じ ignore list ファイルを適用できる。
+- MUST: batch CLI とTUIは既定sidecarと `--ignore-file` の同じdecoder/matcherを使い、FileList/Walker、空query/非空queryのどの経路でも除外を適用しなければならない。
 
 ### Preconditions / Postconditions
 - Preconditions: 実行中 binary のフォルダに ignore list ファイルが存在する、または空/未存在である。
 - Postconditions: ignore list に一致する候補は、既定有効時に一覧から除外される。
 
 ### Edge / Error
-- ignore list ファイルが存在しない、読み取りできない、または空でも正常終了する。
+- ignore list ファイルが存在しない、または空なら空termとして正常継続する。CLI/TUIでは、存在する既定sidecarまたは明示fileが読めない、もしくはUTF-8不正なら除外なしで続行せず明示errorにする。
 - 1 つのルールが他のルールにマッチしなくても、残りのルールは継続して評価する。
 
 ### Regression Guard
 - 発生条件: `Use Ignore List` が有効で、`Files` / `Folders` が両方有効な既定状態のまま `all_entries` の高速経路を通ると、ignore 判定が省略されて `old` や `~` を含む候補が結果へ戻る。
 - 期待動作: ignore list は空クエリ表示と検索結果の両方で維持され、`Files` / `Folders` 両有効でも literal に一致する除外候補は表示されない。fuzzy でだけ一致する候補は除外しない。
 - 非対象範囲: `Use Ignore List` を無効化した場合の候補除外。
-- 関連テストID: TC-110, TC-112, TC-117.
+- 関連テストID: TC-110, TC-112, TC-117, TC-176.
 
 ## SP-016 Runtime Config Bootstrap
 ### Requirements

@@ -18,7 +18,8 @@ use flist_walker::cli_tui::{run_cli_tui, CliTuiOptions, CliTuiOutcome};
 use flist_walker::command_exec::{execute_external_command, ExecOptions, ExecOutcome, ExecReport};
 use flist_walker::entry::Entry;
 use flist_walker::ignore_list::{
-    ensure_ignore_list_sample, load_ignore_terms_from_current_exe, parse_ignore_terms,
+    ensure_ignore_list_sample, load_ignore_terms_from_current_exe_result,
+    load_ignore_terms_from_path_result,
 };
 use flist_walker::indexer::{
     build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
@@ -320,11 +321,9 @@ fn install_cli_signal_handler() -> Result<Arc<AtomicBool>> {
 
 fn read_cli_ignore_terms(args: &Args) -> Result<Vec<String>> {
     if let Some(path) = args.ignore_file.as_deref() {
-        let text = std::fs::read_to_string(path)
-            .with_context(|| format!("failed to read ignore file: {}", path.display()))?;
-        Ok(parse_ignore_terms(&text))
+        load_ignore_terms_from_path_result(path)
     } else {
-        Ok(load_ignore_terms_from_current_exe())
+        load_ignore_terms_from_current_exe_result()
     }
 }
 
@@ -1023,7 +1022,7 @@ mod tests {
         let ignore_root = action_test_root("interactive-ignore-terms");
         fs::create_dir_all(&ignore_root).expect("create ignore root");
         let ignore_file = ignore_root.join("ignore-list.txt");
-        fs::write(&ignore_file, "ignored\n").expect("write ignore fixture");
+        fs::write(&ignore_file, "\u{feff}ignored\r\n").expect("write ignore fixture");
         args.ignore_file = Some(ignore_file);
 
         let options = cli_tui_options(
