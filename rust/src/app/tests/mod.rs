@@ -65,7 +65,6 @@ mod app_core;
 mod cache_tests;
 mod index_pipeline;
 mod pipeline_tests;
-mod presets;
 mod query_history;
 mod render_tests;
 mod root_list_manager;

@@ -184,12 +184,38 @@ CLI では:
 - ignore fileはUTF-8で、先頭UTF-8 BOMとCRLFを許容します。rule内の `/` と `\\` は同じpath separatorとして扱います。既定sidecarが無ければruleなしで継続し、存在するfileが読めない／UTF-8不正ならCLI/TUIは明示errorにします。
 - batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
-- 名前付き root と純粋な検索 preset は `--add-named-root NAME=PATH`、`--list-named-roots`、`--save-preset NAME`、`--list-presets`、`--preset NAME` などの明示 option で管理します。query 全体は引用符で囲んでください。preset は検索状態だけを保存し、action や外部 command は保存しません。
+- 名前付き root と純粋な検索 preset は CLI/TUI で利用できます。作成から適用までの手順は[名前付き root と検索 preset](#名前付き-root-と検索-preset)を参照してください。
 - termごとに `name:`、`path:`、`dir:`、`ext:` で対象fieldを限定できます。fieldなしtermは従来どおりvisible path全体を検索します。fieldは `!`、`'`、`^`、`$`、token内 `|`、regex modeと併用できます。shell解釈を安定させるため、1 tokenだけでもQUERY全体を引用符で囲む運用を推奨します。
 - `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
 - `-x` / `--exec` は以後の引数を command template として受け取り、独立した `{}` 引数1個を post-limit の全結果へ展開します。各パスは正規化済み絶対パスの独立 argv とし、実行環境の command-line 上限まで貪欲にまとめて直列実行します。`--exec-max-args N` で1 batch のパス数をさらに制限でき、`--dry-run` は command を起動せず件数だけを表示します。結果0件では command を起動しません。shell は暗黙起動せず、FlistWalker 側の option はすべて `-x` より前に指定します。
 - child process は FlistWalker のユーザ権限、環境変数、標準 stream を継承します。Windows では暗黙の shell 起動を防ぐため `.bat` / `.cmd` の直接指定を拒否します。shell interpreter と batch script は独自の引数解釈を持つため、`sh -c`、`cmd.exe /C script.cmd`、PowerShell command string の指定はその解釈への明示的な opt-in です。
 - `--create-filelist` は prompt を出さず walker ベースで root の FileList を作成し、標準出力には書き込みません。既存 root FileList の置換には `--overwrite-filelist`、既存 ancestor FileList の更新には `--propagate-ancestors` が必要です。作成時は query/search/output/action の指定を拒否し、成功は exit 0、完全 rollback を伴う clean cancel は 130、read/write/rollback failure は 1 です。
+
+### 名前付き root と検索 preset
+
+名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。この catalog は CLI/TUI 専用で、GUI は既存の root list、tab、query history を引き続き利用します。
+
+```bash
+# 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。
+flistwalker --cli --add-named-root "work=./my-project"
+
+# 現在の純粋な検索条件を保存し、検索は実行せず終了する。
+flistwalker --cli "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
+
+# 保存済みの名前を確認する。
+flistwalker --cli --list-named-roots
+flistwalker --cli --list-presets
+
+# batch モードで適用するか、適用した状態で TUI を起動する。
+flistwalker --cli --preset rust-src
+flistwalker --cli --interactive --preset rust-src
+
+# 不要になった catalog entry を削除する。
+flistwalker --cli --remove-preset rust-src
+flistwalker --cli --remove-named-root work
+```
+
+query が1 termだけの場合も、query 引数全体を引用してください。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
 
 例:
 

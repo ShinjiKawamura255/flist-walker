@@ -1,13 +1,12 @@
 use super::{
-    spawn_action_worker, spawn_catalog_worker, spawn_filelist_worker, spawn_index_worker,
-    spawn_kind_resolver_worker, spawn_preview_worker, spawn_search_worker,
-    spawn_sort_metadata_worker, spawn_update_worker, ActionWorkerBus, AppRuntimeState,
-    AppShellState, CacheStateBundle, CatalogWorkerBus, EntryKindCacheState, FeatureStateBundle,
-    FileListManager, FileListWorkerBus, FlistWalkerApp, HashSet, HighlightCacheState,
-    IgnoreMatcherCacheState, IndexBuildResult, IndexCoordinator, IndexRequest, IndexResponse,
-    IndexSource, KindWorkerBus, LaunchSettings, PresetManagerState, PreviewCacheState,
-    PreviewWorkerBus, QueryState, Receiver, ResultSortMode, ResultSortScope, RootBrowserState,
-    RuntimeUiState, SavedTabState, SearchCoordinator, SearchRequest, SearchResponse, Sender,
+    spawn_action_worker, spawn_filelist_worker, spawn_index_worker, spawn_kind_resolver_worker,
+    spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
+    ActionWorkerBus, AppRuntimeState, AppShellState, CacheStateBundle, EntryKindCacheState,
+    FeatureStateBundle, FileListManager, FileListWorkerBus, FlistWalkerApp, HashSet,
+    HighlightCacheState, IgnoreMatcherCacheState, IndexBuildResult, IndexCoordinator, IndexRequest,
+    IndexResponse, IndexSource, KindWorkerBus, LaunchSettings, PreviewCacheState, PreviewWorkerBus,
+    QueryState, Receiver, ResultSortMode, ResultSortScope, RootBrowserState, RuntimeUiState,
+    SavedTabState, SearchCoordinator, SearchRequest, SearchResponse, Sender,
     SortMetadataCacheState, SortWorkerBus, TabSessionState, UpdateWorkerBus, WorkerBus,
     WorkerRuntime,
 };
@@ -16,7 +15,6 @@ use crate::app::worker_channel::BoundedSender;
 use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::current_runtime_config;
-use crate::search_catalog::load_search_catalog;
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -173,9 +171,6 @@ impl FlistWalkerApp {
         let (update_tx, update_rx, update_handle) =
             spawn_update_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("update", update_handle);
-        let (catalog_tx, catalog_rx, catalog_handle) =
-            spawn_catalog_worker(Arc::clone(&worker_shutdown));
-        worker_runtime.push("search-catalog", catalog_handle);
         let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
         let (index_tx, index_rx, index_handles) = spawn_index_worker(
             Arc::clone(&worker_shutdown),
@@ -221,13 +216,6 @@ impl FlistWalkerApp {
                 update: UpdateWorkerBus {
                     tx: update_tx,
                     rx: update_rx,
-                },
-                catalog: CatalogWorkerBus {
-                    tx: catalog_tx,
-                    rx: catalog_rx,
-                    next_request_id: 1,
-                    pending_request_id: None,
-                    in_progress: false,
                 },
             },
             index_tx,
@@ -355,10 +343,6 @@ impl FlistWalkerApp {
                         saved_roots,
                         default_root,
                         manage_list: Default::default(),
-                    },
-                    presets: PresetManagerState {
-                        catalog: load_search_catalog().unwrap_or_default(),
-                        ..PresetManagerState::default()
                     },
                     filelist: FileListManager::default(),
                     update: UpdateManager::from_state(update_state),

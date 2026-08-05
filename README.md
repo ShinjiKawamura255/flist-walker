@@ -158,12 +158,38 @@ In CLI mode:
 - Ignore files are UTF-8 and may start with a UTF-8 BOM or use CRLF. `/` and `\\` path separators are equivalent in ignore rules. A missing default sidecar means no rules; a present unreadable or invalid UTF-8 file is an explicit CLI/TUI error.
 - In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
-- Named roots and pure search presets are managed with explicit options such as `--add-named-root NAME=PATH`, `--list-named-roots`, `--save-preset NAME`, `--list-presets`, and `--preset NAME`. Quote the complete query argument. Presets store search state only and never store an action or external command.
+- Named roots and pure search presets are available in CLI/TUI. See [Named Roots and Search Presets](#named-roots-and-search-presets) for the complete workflow.
 - Scope individual terms with `name:`, `path:`, `dir:`, or `ext:`. Existing unscoped terms still search the full visible path. Fields compose with `!`, `'`, `^`, `$`, token-local `|`, and regex mode; quote the complete QUERY even when it is a single token so shell parsing stays predictable.
 - `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
 - `-x` / `--exec` consumes the remaining command template and replaces exactly one standalone `{}` argument with every post-limit result as separate absolute argv values. Results are packed greedily up to the current platform command-line limit and run sequentially; `--exec-max-args N` adds a per-batch path cap and `--dry-run` reports counts without starting the command. Zero results start no command. Exec mode rejects output framing and built-in non-print action options and never invokes a shell implicitly; put all FlistWalker options before `-x`.
 - The child inherits FlistWalker's user privileges, environment, and standard streams. On Windows, direct `.bat` / `.cmd` programs are rejected to prevent an implicit shell launch. Shell interpreters and batch scripts have their own parsing rules; using `sh -c`, `cmd.exe /C script.cmd`, or PowerShell command strings explicitly opts into those rules.
 - `--create-filelist` builds a fresh walker-based root FileList without prompting and writes no stdout. `--overwrite-filelist` is required to replace an existing root FileList; `--propagate-ancestors` is an explicit opt-in for existing ancestor FileLists. Creation rejects query/search/output/action options, returns 0 on success, 130 on clean cancellation, and 1 for read/write/rollback failures.
+
+### Named Roots and Search Presets
+
+Named roots assign a stable name to a search root. Presets save a named root or root snapshot together with the query, entry type, source, regex, case-sensitivity, ignore, and sort settings. They never save an action or external command. This catalog is available in CLI/TUI only; the GUI continues to use its existing root list, tabs, and query history.
+
+```bash
+# Register a named root. Quote the complete NAME=PATH value when the path may contain spaces.
+flistwalker --cli --add-named-root "work=./my-project"
+
+# Save the current pure-search options and exit without running the search.
+flistwalker --cli "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
+
+# Inspect the saved names.
+flistwalker --cli --list-named-roots
+flistwalker --cli --list-presets
+
+# Apply the preset in batch mode or start the TUI with it.
+flistwalker --cli --preset rust-src
+flistwalker --cli --interactive --preset rust-src
+
+# Remove catalog entries when they are no longer needed.
+flistwalker --cli --remove-preset rust-src
+flistwalker --cli --remove-named-root work
+```
+
+Quote the complete query argument even when it contains only one term. `--preset` cannot be combined with an explicit query or with root, entry-type, source, regex, case, ignore, or sort selectors because those values come from the preset. Invocation-specific options such as `--limit`, output framing, and explicit actions remain available when applying it.
 
 Examples:
 

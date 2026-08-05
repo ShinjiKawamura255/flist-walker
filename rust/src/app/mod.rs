@@ -38,7 +38,6 @@ mod result_flow;
 mod result_reducer;
 mod root_browser;
 mod search_coordinator;
-mod search_presets;
 mod session;
 mod state;
 mod tab_state;
@@ -74,26 +73,26 @@ use state::{
     AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, ClosedTabState,
     FeatureStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
     PendingActiveIndexFinish, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, PresetManagerState,
-    ResultSortMode, ResultSortScope, RootBrowserState, SortMetadata, TabAccentPalette,
-    TabDragState, TabSessionState,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, ResultSortMode,
+    ResultSortScope, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
+    TabSessionState,
 };
 use tab_state::AppTabState;
 use ui_state::RuntimeUiState;
 use worker_bus::{
-    ActionWorkerBus, CatalogWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus,
-    SortWorkerBus, UpdateWorkerBus, WorkerBus,
+    ActionWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus, SortWorkerBus,
+    UpdateWorkerBus, WorkerBus,
 };
 use worker_protocol::{
-    ActionRequest, ActionResponse, CatalogMutation, CatalogRequest, FileListRequest,
-    FileListResponse, IndexEntry, IndexRequest, IndexResponse, KindResolveRequest, PreviewRequest,
-    PreviewResponse, SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse,
-    UpdateRequest, UpdateRequestKind, UpdateResponse,
+    ActionRequest, ActionResponse, FileListRequest, FileListResponse, IndexEntry, IndexRequest,
+    IndexResponse, KindResolveRequest, PreviewRequest, PreviewResponse, SearchRequest,
+    SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind,
+    UpdateResponse,
 };
 use worker_runtime::WorkerRuntime;
 use workers::{
-    spawn_action_worker, spawn_catalog_worker, spawn_filelist_worker, spawn_kind_resolver_worker,
-    spawn_preview_worker, spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
+    spawn_action_worker, spawn_filelist_worker, spawn_kind_resolver_worker, spawn_preview_worker,
+    spawn_search_worker, spawn_sort_metadata_worker, spawn_update_worker,
 };
 mod shell_support;
 #[cfg(test)]

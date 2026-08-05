@@ -1,9 +1,9 @@
 use super::worker_bus_lifecycle;
 use super::worker_channel::BoundedSender;
 use super::worker_protocol::{
-    ActionRequest, ActionResponse, CatalogRequest, CatalogResponse, FileListRequest,
-    FileListResponse, KindResolveRequest, KindResolveResponse, PreviewRequest, PreviewResponse,
-    SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateResponse,
+    ActionRequest, ActionResponse, FileListRequest, FileListResponse, KindResolveRequest,
+    KindResolveResponse, PreviewRequest, PreviewResponse, SortMetadataRequest,
+    SortMetadataResponse, UpdateRequest, UpdateResponse,
 };
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -89,28 +89,6 @@ pub(super) struct UpdateWorkerBus {
     pub(super) rx: Receiver<UpdateResponse>,
 }
 
-pub(super) struct CatalogWorkerBus {
-    pub(super) tx: Sender<CatalogRequest>,
-    pub(super) rx: Receiver<CatalogResponse>,
-    pub(super) next_request_id: u64,
-    pub(super) pending_request_id: Option<u64>,
-    pub(super) in_progress: bool,
-}
-
-impl CatalogWorkerBus {
-    pub(super) fn begin_request(&mut self) -> u64 {
-        worker_bus_lifecycle::begin_request(
-            &mut self.next_request_id,
-            &mut self.pending_request_id,
-            &mut self.in_progress,
-        )
-    }
-
-    pub(super) fn clear_request(&mut self) {
-        worker_bus_lifecycle::clear_request(&mut self.pending_request_id, &mut self.in_progress);
-    }
-}
-
 pub(super) struct WorkerBus {
     pub(super) preview: PreviewWorkerBus,
     pub(super) action: ActionWorkerBus,
@@ -118,5 +96,4 @@ pub(super) struct WorkerBus {
     pub(super) kind: KindWorkerBus,
     pub(super) filelist: FileListWorkerBus,
     pub(super) update: UpdateWorkerBus,
-    pub(super) catalog: CatalogWorkerBus,
 }
