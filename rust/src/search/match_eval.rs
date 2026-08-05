@@ -32,7 +32,16 @@ pub(super) fn evaluate_candidate(
     ctx: SearchContext<'_>,
     matcher: &SkimMatcherV2,
 ) -> Option<SearchCandidateScore> {
-    let prepared = compiled.prepare_candidate(path, ctx.root, ctx.prefer_relative);
+    let prepared = if compiled.requires_file_kind() {
+        compiled.prepare_candidate_with_kind(
+            path,
+            ctx.root,
+            ctx.prefer_relative,
+            Some(path.is_dir()),
+        )
+    } else {
+        compiled.prepare_candidate(path, ctx.root, ctx.prefer_relative)
+    };
     compiled
         .evaluate_with_matcher(&prepared, EvidenceLevel::RankOnly, matcher)
         .map(|evaluation| SearchCandidateScore {
@@ -50,12 +59,12 @@ pub(super) fn evaluate_entry_candidate(
     ctx: SearchContext<'_>,
     matcher: &SkimMatcherV2,
 ) -> Option<SearchCandidateScore> {
-    let prepared = compiled.prepare_candidate_with_kind(
-        entry.path(),
-        ctx.root,
-        ctx.prefer_relative,
-        entry.kind.and_then(|kind| kind.is_dir),
-    );
+    let is_dir = entry
+        .kind
+        .and_then(|kind| kind.is_dir)
+        .or_else(|| compiled.requires_file_kind().then(|| entry.path().is_dir()));
+    let prepared =
+        compiled.prepare_candidate_with_kind(entry.path(), ctx.root, ctx.prefer_relative, is_dir);
     compiled
         .evaluate_with_matcher(&prepared, EvidenceLevel::RankOnly, matcher)
         .map(|evaluation| SearchCandidateScore {

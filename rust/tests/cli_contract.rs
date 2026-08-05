@@ -221,6 +221,36 @@ fn tc_175_cli_applies_field_scoped_query_without_changing_plain_query_behavior()
 }
 
 #[test]
+fn tc_175_cli_ext_query_excludes_extension_named_directories() {
+    let root = test_root("field-extension-directory");
+    fs::create_dir_all(root.join("generated.rs")).expect("create extension-named directory");
+    fs::write(root.join("main.rs"), "main").expect("write Rust fixture");
+
+    let output = cli_command("field-extension-directory")
+        .args([
+            "--cli",
+            "ext:rs",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+        ])
+        .output()
+        .expect("run extension query");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("main.rs"), "{stdout}");
+    assert!(!stdout.contains("generated.rs"), "{stdout}");
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn cli_prints_version_with_short_flag() {
     let output = cli_command("version-short")
         .arg("-V")
