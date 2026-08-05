@@ -180,6 +180,7 @@ pub struct CompiledQuery {
     include_exact_bonus_terms: Vec<(QueryField, LiteralPattern)>,
     score_query: String,
     ignore_case: bool,
+    requires_file_kind: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -278,6 +279,12 @@ impl CompiledQuery {
                 options.ignore_case,
             ),
             ignore_case: options.ignore_case,
+            requires_file_kind: spec
+                .include_terms
+                .iter()
+                .chain(spec.exact_terms.iter())
+                .chain(spec.exclude_terms.iter())
+                .any(|term| term.field == QueryField::Ext),
         })
     }
 
@@ -356,6 +363,10 @@ impl CompiledQuery {
 
     pub fn has_positive_terms(&self) -> bool {
         !self.exact_terms.is_empty() || !self.include_terms.is_empty()
+    }
+
+    pub(crate) fn requires_file_kind(&self) -> bool {
+        self.requires_file_kind
     }
 }
 
