@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.22.0] - 2026-08-05
+### Added
+- CLI / TUI の保存済み root 選択と、`name:`、`path:`、`dir:`、`ext:` によるフィールド指定検索を追加した。
+
+### Changed
+- CLI の色付き出力を検索ハイライトと同じ一致範囲に揃えた。
+- GUI から検索プリセット操作を削除し、検索画面を簡素化した。
+
+### Fixed
+- CLI / TUI の検索で ignore ファイルを適用するよう修正した。
+- `ext:` 検索の対象をファイルに限定し、同名拡張子のディレクトリを結果から除外した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は未 notarized の場合がある。
+
 ## [0.21.0] - 2026-08-04
 ### Added
 - GUI に `Help` 操作と `F1` ショートカットで開けるモーダルのショートカット一覧を追加した。表示中は背景のショートカットを受け付けず、OS の primary modifier と Emacs keybinding 設定を反映する。
@@ -1695,7 +1719,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.1...v0.21.0
 [0.20.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.19.1...v0.20.0
