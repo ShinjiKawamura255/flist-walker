@@ -171,7 +171,7 @@
 - MUST: catalog 管理は positional subcommand を予約せず、`--list-named-roots`、`--add-named-root NAME=PATH`、`--remove-named-root NAME`、`--list-presets`、`--save-preset NAME`、`--remove-preset NAME`、`--preset NAME` の明示 long option で提供する。
 - MUST: `--preset` は batch/TUI で利用でき、preset が所有する root/query/type/source/regex/case/ignore/sort の明示指定とは競合する。limit、color、output framing、明示 action は invocation が所有する。
 - MUST: preset は pure search state だけを保持し、exec/open/reveal/update/FileList mutation を保存しない。
-- MUST: GUI の catalog write は worker で実行し、成功 response 後だけ committed catalog を置換する。root/source/type の適用は既存 reindex、その他は既存 search/sort 経路を利用する。
+- MUST: named-root/preset catalog は CLI/TUI 専用とし、GUI は catalog を load せず、管理・適用 control を公開しない。
 - MUST: catalog management success は exit 0、lookup/storage failure は exit 1、argument contract failure は exit 2 とする。
 
 ### Preconditions / Postconditions

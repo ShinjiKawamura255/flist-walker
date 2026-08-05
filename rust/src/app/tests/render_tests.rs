@@ -500,11 +500,6 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             "history_search_active": false,
             "show_preview": true,
             "preview_panel_width": 440,
-            "preset_names": [],
-            "selected_preset": null,
-            "preset_name_input": "",
-            "root_name_input": "",
-            "preset_actions": ["Apply", "Delete", "Save current", "Name root"],
             "top_actions": [
                 "Open / Execute",
                 "Copy Path(s)",
@@ -519,6 +514,26 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             "update_dialogs": [],
         })
     );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn gui_surface_snapshot_does_not_expose_cli_only_presets() {
+    let root = test_root("render-snapshot-no-presets");
+    fs::create_dir_all(&root).expect("create dir");
+    let app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    for key in [
+        "preset_names",
+        "selected_preset",
+        "preset_name_input",
+        "root_name_input",
+        "preset_actions",
+    ] {
+        assert!(snapshot.get(key).is_none(), "GUI still exposes {key}");
+    }
+
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -567,11 +582,6 @@ fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     assert_eq!(snapshot["pinned_count"], json!(1));
     assert_eq!(snapshot["tab_count"], json!(2));
     assert_eq!(snapshot["active_tab"], json!(1));
-    assert_eq!(snapshot["preset_names"], json!([]));
-    assert_eq!(
-        snapshot["preset_actions"],
-        json!(["Apply", "Delete", "Save current", "Name root"])
-    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -633,11 +643,6 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             "history_search_active": false,
             "show_preview": true,
             "preview_panel_width": 440,
-            "preset_names": [],
-            "selected_preset": null,
-            "preset_name_input": "",
-            "root_name_input": "",
-            "preset_actions": ["Apply", "Delete", "Save current", "Name root"],
             "top_actions": [
                 "Open / Execute",
                 "Copy Path(s)",
