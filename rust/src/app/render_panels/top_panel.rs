@@ -204,7 +204,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                     .to_string_lossy()
                                     .to_string();
                                 let is_selected = app.shell.ui.root_dropdown_highlight() == Some(index);
-                                if ui.selectable_label(is_selected, text).clicked() {
+                                if FlistWalkerApp::selectable_row(ui, is_selected, &text).clicked() {
                                     next_root = Some(path.clone());
                                 }
                             }
