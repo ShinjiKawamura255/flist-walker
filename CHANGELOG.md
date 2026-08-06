@@ -24,6 +24,30 @@
 ### Known issues
 -
 
+## [0.22.1] - 2026-08-07
+### Added
+- GUI に、`Help` 操作と F1 から開ける検索構文の案内を追加した。
+
+### Changed
+-
+
+### Fixed
+- Windows の通常 CLI 起動が呼び出し元コンソールへ接続したまま完了するように修正した。
+- Windows の TUI でパス表記を正規化し、表示と選択結果の不整合を修正した。
+- GUI の保存済み root ドロップダウンで行全体をクリックして選択できるように修正した。
+
+### Breaking
+-
+
+### Deprecated
+-
+
+### Security
+-
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.22.0] - 2026-08-06
 ### Added
 - CLI / TUI の保存済み root 選択と、`name:`、`path:`、`dir:`、`ext:` によるフィールド指定検索を追加した。
@@ -1719,7 +1743,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.1...HEAD
+[0.22.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.1...v0.21.0
 [0.20.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.0...v0.20.1
