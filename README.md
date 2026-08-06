@@ -225,6 +225,8 @@ Interactive CLI mode:
 cargo run -- --cli --interactive --root ..
 ```
 
+The Windows release uses the same `FlistWalker.exe` for GUI, batch CLI, and interactive TUI operation. PowerShell and cmd wait for CLI/TUI completion and receive its exit code normally; GUI mode detaches from the console before the native window starts.
+
 The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style editing in both the normal query and history filter. The contextual help reflects whether these shortcuts are enabled. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
 
 The TUI Walker uses the same adaptive traversal limits and `walker_max_entries` cap as the GUI. When the cap is reached, the status line reports the applied limit. FileList creation still builds a complete fresh Walker snapshot and is not truncated by the display-index cap.

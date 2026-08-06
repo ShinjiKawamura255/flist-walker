@@ -1,11 +1,7 @@
-#![cfg_attr(
-    all(not(debug_assertions), target_os = "windows"),
-    windows_subsystem = "windows"
-)]
-
 mod cli;
 mod gui_launch;
 mod launch_path;
+mod windows_console;
 
 use anyhow::Result;
 use std::process::ExitCode;
@@ -41,11 +37,13 @@ fn main() -> Result<ExitCode> {
         return Ok(ExitCode::from(2));
     }
 
-    let _runtime_config = initialize_runtime_config();
     if args.is_cli() {
+        let _runtime_config = initialize_runtime_config();
         return cli::run(&args);
     }
 
+    windows_console::detach_from_console_for_gui();
+    let _runtime_config = initialize_runtime_config();
     if let Err(err) = ensure_ignore_list_sample() {
         warn!("failed to materialize ignore list sample: {}", err);
     }

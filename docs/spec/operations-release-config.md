@@ -157,7 +157,7 @@
 
 ### Preconditions / Postconditions
 - Preconditions: Windows PowerShell 5.1 または PowerShell 7 で repository checkout を利用し、既存依存を使うか、利用者が不足依存の導入を承認する。
-- Postconditions: build 成功時は Windows icon/resource、`asInvoker` manifest、GUI subsystem を持ち、意図しない MSYS2 runtime DLL に依存しない release EXE が 2 名で存在する。
+- Postconditions: build 成功時は Windows icon/resource、`asInvoker` manifest、console subsystem を持ち、意図しない MSYS2 runtime DLL に依存しない byte-identical release EXE が 2 名で存在する。単一 EXE の GUI mode は runtime に console から切り離される。
 
 ### Edge / Error
 - `winget` 不在、承認拒否、install 失敗、install 後の再検出失敗、build/strip 失敗では後続 build を実行せず、原因と再実行または手動導入コマンドを表示する。
