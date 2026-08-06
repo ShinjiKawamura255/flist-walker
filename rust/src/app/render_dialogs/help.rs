@@ -25,6 +25,16 @@ impl FlistWalkerApp {
             format!("{primary}+O / {primary}+Shift+O — Browse for a root here / in a new tab"),
             format!("{primary}+Shift+R — Open the saved-root selector"),
             "".to_string(),
+            "Query syntax".to_string(),
+            "TERM — Search the name first, then the visible path".to_string(),
+            "name:TERM — Match the file or folder name".to_string(),
+            "path:TERM — Match the root-relative path".to_string(),
+            "dir:TERM — Match the parent directory path".to_string(),
+            "ext:EXT — Match the final extension without the dot (files only)".to_string(),
+            "Combine terms: dir:src ext:rs !dir:target".to_string(),
+            "Operators after a field: ' exact, ! exclude, ^ start, $ end, | alternatives"
+                .to_string(),
+            "".to_string(),
         ];
         if emacs_keybindings_enabled {
             lines.extend([
@@ -71,8 +81,8 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     let lines = FlistWalkerApp::gui_help_lines(app.shell.runtime.emacs_keybindings_enabled);
     egui::Modal::new(egui::Id::new("gui-help-modal")).show(ctx, |ui| {
         ui.set_min_width(560.0);
-        ui.heading("Keyboard Shortcuts");
-        ui.label("Available shortcuts for the current runtime configuration.");
+        ui.heading("Help");
+        ui.label("Keyboard shortcuts and query syntax for the current runtime configuration.");
         ui.add_space(6.0);
         egui::ScrollArea::vertical()
             .max_height(460.0)
@@ -85,6 +95,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         "Search and navigation"
                             | "Selection and actions"
                             | "Tabs and roots"
+                            | "Query syntax"
                             | "Emacs-style shortcuts"
                             | "Help"
                     ) {

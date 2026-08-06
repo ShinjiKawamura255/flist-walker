@@ -43,7 +43,7 @@ fn preview_width_px(width: f32) -> u32 {
 pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
     let help_dialogs = if app.shell.ui.help_open {
         vec![DialogSnapshot {
-            title: "Keyboard Shortcuts".to_string(),
+            title: "Help".to_string(),
             lines: FlistWalkerApp::gui_help_lines(app.shell.runtime.emacs_keybindings_enabled),
             buttons: vec!["Close".to_string()],
         }]
