@@ -53,13 +53,13 @@ fn top_panel_checkbox_icon_and_label_share_center_axis() {
 }
 
 #[test]
-fn manage_root_list_selectable_row_uses_full_available_width() {
+fn selectable_row_uses_full_available_width() {
     let ctx = egui::Context::default();
     let mut measured = None;
 
     let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
         let available_width = ui.available_width();
-        let response = FlistWalkerApp::manage_root_list_selectable_row(ui, false, "C:\\saved-root");
+        let response = FlistWalkerApp::selectable_row(ui, false, "C:\\saved-root");
         measured = Some((response.rect.width(), available_width));
     });
 

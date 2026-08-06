@@ -247,9 +247,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             let selected =
                                 app.shell.features.root_browser.manage_list.selected_index
                                     == Some(index);
-                            let response = FlistWalkerApp::manage_root_list_selectable_row(
-                                ui, selected, &label,
-                            );
+                            let response = FlistWalkerApp::selectable_row(ui, selected, &label);
                             if response.double_clicked() {
                                 if app.select_manage_root_list_item(index) {
                                     start_edit = true;

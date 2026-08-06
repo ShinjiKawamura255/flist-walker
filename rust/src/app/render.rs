@@ -132,11 +132,7 @@ impl FlistWalkerApp {
         ]
     }
 
-    pub(super) fn manage_root_list_selectable_row(
-        ui: &mut egui::Ui,
-        selected: bool,
-        label: &str,
-    ) -> egui::Response {
+    pub(super) fn selectable_row(ui: &mut egui::Ui, selected: bool, label: &str) -> egui::Response {
         let desired_size = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
         if ui.is_rect_visible(rect) {
