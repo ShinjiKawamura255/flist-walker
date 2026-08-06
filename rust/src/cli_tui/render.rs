@@ -2,7 +2,7 @@ use super::state::{
     FileListConfirmation, HelpContext, HistoryOverlay, OptionsOverlay, RootPicker, SortPicker,
     TuiState, SORT_MODES,
 };
-use super::{preview_visible_for_size, CliTuiOptions};
+use super::{preview_visible_for_size, tui_path_label, CliTuiOptions};
 use crate::query::{CompiledQuery, QueryOptions};
 use crate::ui_model::display_path_with_mode;
 use anyhow::Result;
@@ -311,7 +311,7 @@ pub(super) fn render_root_picker<W: Write>(
             terminal_output,
             MoveTo(0, (row + 2) as u16),
             Print(clip_to_width(
-                &format!("{marker}{}", root.display()),
+                &format!("{marker}{}", tui_path_label(root)),
                 width as usize
             )),
         )?;

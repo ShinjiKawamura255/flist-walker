@@ -31,6 +31,7 @@
 - DES-005 CLI Adapter
 - 役割: `clap` 引数を typed CLI options へ変換し、GUI、batch CLI、interactive CLI を明示 dispatch する。legacy `--cli` 契約を維持し、CLI-only option の依存/競合と mode-specific initialization/exit status を所有する。
 - 役割補足: Windows の単一 release EXE は console subsystem を使って shell の同期実行と標準 handle を確立し、CLI/TUI/update/help/version は console を維持する。GUI dispatch だけが `windows_console` owner を通じて native window 起動前に console から切り離される。
+- 役割補足: TUIが所有するuser-facing path文字列化は `tui_path_label` を唯一の境界とし、options summary、status、picker、errorがWindows extended prefixを直接表示しない。TUI本番sourceの直接 `Path::display` / `to_string_lossy` はTC-177の静的guardで拒否する。
 - 役割補足: batch adapter は cancellable index/search、source/type/ignore/search option、relative/absolute path、newline/NUL framing を構成し、結果だけを stdout、進捗/診断を stderr へ送る。
 - 役割補足: batch adapter は shared full-match sort の後に limit を適用し、print/open/reveal/exec、root selector、saved-root listing、FileList operation の引数整合性と exit status を所有する。`command_exec` は standalone placeholder、canonical root authorization、OS argv budget、optional path cap、stable greedy batch、direct spawn、stop-on-failure/cancel を所有し、adapter は report を exit/status へ変換する。
 - 役割補足: interactive adapter は request identity を持つ index/search worker、cursor-aware editor、ordered pin、dynamic viewport、stderr renderer を分離する。renderer は complete frame をメモリ上へ構築して terminal synchronized update で一括送信し、全画面 clear と再描画の中間状態を表示させない。terminal session guard は raw/alternate/cursor/bracketed-paste の成立状態を所有して逆順復旧し、guard 解放後だけ selected path/root を main adapter へ返して stdout writer または external executor を呼ぶ。

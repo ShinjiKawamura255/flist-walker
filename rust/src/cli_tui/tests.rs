@@ -22,6 +22,67 @@ fn tc_169_tui_update_notice_is_english_and_manual_only() {
         "Update available: v0.20.0 — Run flistwalker --update after exiting"
     );
 }
+
+#[test]
+fn tc_177_regression_tui_path_rendering_never_uses_raw_os_strings() {
+    let source_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut production_sources = vec![source_root.join("cli_tui.rs")];
+    production_sources.extend(
+        fs::read_dir(source_root.join("cli_tui"))
+            .expect("read cli_tui source directory")
+            .map(|entry| entry.expect("read cli_tui source entry").path())
+            .filter(|path| {
+                path.extension().is_some_and(|extension| extension == "rs")
+                    && path.file_name().is_some_and(|name| name != "tests.rs")
+            }),
+    );
+
+    for path in production_sources {
+        let source = fs::read_to_string(&path).expect("read production TUI source");
+        assert!(
+            !source.contains(".display()") && !source.contains("to_string_lossy()"),
+            "{} bypasses the shared TUI path display boundary",
+            path.display()
+        );
+    }
+}
+
+#[test]
+#[cfg(target_os = "windows")]
+fn tc_177_regression_tui_root_surfaces_strip_drive_and_unc_extended_prefixes() {
+    let drive_root = PathBuf::from(r"\\?\D:\work\flistwalker");
+    let unc_root = PathBuf::from(r"\\?\UNC\server\share\project");
+    let freshness = TuiActionFreshness::new();
+    let mut state = TuiState::new("");
+    state.root = drive_root.clone();
+
+    assert_eq!(
+        missing_required_filelist_message(&drive_root),
+        r"FileList was required but none was found in D:\work\flistwalker"
+    );
+    assert!(state
+        .current_options_summary()
+        .contains(r"Root: D:\work\flistwalker"));
+    state.prepare_refresh();
+    assert_eq!(state.status, r"Refreshing D:\work\flistwalker...");
+    state.prepare_root_switch(&freshness, unc_root.clone());
+    assert_eq!(state.status, r"Switching root to \\server\share\project...");
+
+    let mut output = Vec::new();
+    render_root_picker(
+        &mut output,
+        &RootPicker { selected: 1 },
+        &[drive_root, unc_root],
+        true,
+        120,
+        8,
+    )
+    .expect("render roots");
+    let rendered = String::from_utf8_lossy(&output);
+    assert!(rendered.contains(r"  D:\work\flistwalker"));
+    assert!(rendered.contains(r"> \\server\share\project"));
+    assert!(!rendered.contains(r"\\?\"));
+}
 use crate::runtime_config::{DeveloperRuntimeConfig, RuntimeConfig};
 use std::cell::RefCell;
 use std::fs;

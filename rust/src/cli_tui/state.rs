@@ -3,6 +3,7 @@ use super::protocol::{
     TuiActionFreshness, TuiActionRequest, TuiFileListRequest, TuiIndexFreshness, TuiRuntimeOptions,
     TuiSource,
 };
+use super::tui_path_label;
 use crate::actions::{AuthorizedActionMode, AuthorizedActionRequest};
 use crate::search::SearchSortMode;
 use crate::walker_runtime::walker_truncated_notice;
@@ -230,14 +231,14 @@ impl TuiState {
         self.sort_mode = SearchSortMode::Score;
         self.active_action_request = None;
         action_freshness.activate(0, &root);
-        self.status = format!("Switching root to {}...", root.display());
+        self.status = format!("Switching root to {}...", tui_path_label(&root));
         self.dirty = true;
     }
 
     pub(super) fn prepare_refresh(&mut self) {
         self.sort_mode = SearchSortMode::Score;
         self.active_search_request_id = None;
-        self.status = format!("Refreshing {}...", self.root.display());
+        self.status = format!("Refreshing {}...", tui_path_label(&self.root));
         self.dirty = true;
     }
 
@@ -414,7 +415,7 @@ impl TuiState {
     pub(super) fn current_options_summary(&self) -> String {
         format!(
             "Root: {} | Sort: {} | Source: {} | Files: {} | Folders: {} | Regex: {} | Ignore Case: {} | Ignore: {}",
-            self.root.display(),
+            tui_path_label(&self.root),
             self.sort_mode.label(),
             self.runtime_options.source.label(),
             if self.runtime_options.include_files { "on" } else { "off" },
