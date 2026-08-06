@@ -58,6 +58,12 @@ fn gui_help_lines_follow_platform_and_emacs_settings() {
 
     assert!(enabled.contains(&format!("{primary}+T")));
     assert!(enabled.contains("Ctrl+N / Ctrl+P"));
+    assert!(enabled.contains("Query syntax"));
+    assert!(enabled.contains("name:TERM"));
+    assert!(enabled.contains("path:TERM"));
+    assert!(enabled.contains("dir:TERM"));
+    assert!(enabled.contains("ext:EXT"));
+    assert!(enabled.contains("dir:src ext:rs !dir:target"));
     if cfg!(target_os = "macos") {
         assert!(enabled.contains("Ctrl+W / Ctrl+K"));
     } else {

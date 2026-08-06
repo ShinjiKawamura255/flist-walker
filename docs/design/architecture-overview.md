@@ -43,6 +43,7 @@
 - 役割補足: Preview worker は File/Directory の header に取得可能な size、`Created` / `Updated`、条件付き属性、シンボリックリンクの `Target` を付加する。symlink では size/日時を `Target ...` としてリンク先、属性をリンク自身へ分ける。日時は依存追加なしの UTC 表示とし、metadata の取得失敗は該当行を省略して本文表示を継続する。
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
+- 役割補足: ヘルプモーダルはキーボードショートカットに加え、共有compiled queryのfield指定（`name:`、`path:`、`dir:`、`ext:`）、fieldへ適用する演算子、複合例を静的な利用案内として表示する。検索要求やworkerを起動せず、表示中は既存の入力遮断契約を維持する。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
 - 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist/mod.rs`、`app/update.rs`、`app/render.rs`、`app/input/mod.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs`、`app/result_reducer.rs`、`app/result_flow.rs`、`app/preview_flow.rs`、`app/response_flow.rs`、`app/root_browser.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
 - 役割補足: saved roots の `Manage list` は `RootListManagerState` に保存済み list とは分離した draft roots/default root、通常時の単一選択、編集中の index/path、削除モードと複数選択を保持する。`app/render_dialogs/root_list.rs` は通常・編集・削除モードを描画し、検証、正規化、重複排除、default root 追従、Apply/Cancel 境界は `app/root_browser.rs` が担当する。

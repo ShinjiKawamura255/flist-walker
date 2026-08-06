@@ -44,7 +44,7 @@ cargo run --bin flistwalker -- --root ..
 
 ### Main Shortcuts
 
-- `F1`: open or close the in-app keyboard shortcut help (also available from `Help`)
+- `F1`: open or close the in-app help for keyboard shortcuts and query syntax (also available from `Help`)
 - `Up` / `Down` or `Ctrl+P` / `Ctrl+N`: move the current row
 - `Ctrl+V` / `Alt+V`: page navigation
 - `Enter` / `Ctrl+J` / `Ctrl+M`: open or execute

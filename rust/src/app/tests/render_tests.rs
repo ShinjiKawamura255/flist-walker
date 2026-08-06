@@ -764,10 +764,7 @@ fn gui_surface_snapshot_exposes_contextual_help_dialog() {
     app.shell.ui.help_open = true;
 
     let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
-    assert_eq!(
-        snapshot["help_dialogs"][0]["title"],
-        json!("Keyboard Shortcuts")
-    );
+    assert_eq!(snapshot["help_dialogs"][0]["title"], json!("Help"));
     assert_eq!(snapshot["help_dialogs"][0]["buttons"], json!(["Close"]));
     let lines = snapshot["help_dialogs"][0]["lines"]
         .as_array()
