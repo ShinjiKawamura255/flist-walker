@@ -112,6 +112,7 @@
 - MAY: `--cli --interactive` でインタラクティブ CLI を起動する。
 - MUST: interactive CLI は `--root`、`--use-default-root`、`--saved-root` を起動 root として受理し、`--sort` を初期 sort、`--no-ignore` を初期 Ignore 無効状態として反映する。`--no-ignore` でも読み込んだ ignore terms は保持し、TUI で Ignore を再度有効化したときに再読込なしで適用する。batch 専用の `--progress` と `--fail-no-match` は interactive との組合せを引数エラーにする。
 - MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
+- MUST: interactive CLI が root path を options summary、切替・refresh status、root picker、error に表示するときは共有 display normalization を通し、Windows の `\\?\` / `\\?\UNC\` extended prefix を利用者向け文字列へ露出してはならない。
 - MUST: Windows release は単一の console-subsystem EXE とし、PowerShell / cmd から起動した batch CLI と interactive CLI が呼出元 console、同期完了、終了 code、標準 handle を維持しなければならない。GUI mode だけは native window 起動前に console から切り離し、CLI/TUI と GUI のために別 EXE を要求してはならない。
 - MUST: CLI は `--color[=auto|always|never]` を受理する。未指定は `never` として ANSI 色エスケープを出力せず、値を省略した `--color` は `auto` とする。`auto` は batch CLI の stdout が TTY かつ空でない `NO_COLOR` 環境変数がない場合だけ色を有効化し、pipe/redirect 時は path-only stdout framing を維持する。`always` はこの自動判定を上書き、`never` は ANSI 色エスケープを出力しない。interactive CLI では画面描画に同じ色モードを適用する。
 - MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、terminal 復旧後に選択結果を標準出力へ出力するか、exec mode の外部 command へ渡す。外部 command は terminal guard 解放前に起動してはならない。

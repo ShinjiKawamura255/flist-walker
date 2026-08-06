@@ -69,15 +69,26 @@ use state::*;
 use terminal_io::*;
 use workers::*;
 
+// Regression guard: every TUI-owned user-facing path must cross this boundary so
+// Windows extended prefixes never leak. Do not replace it with Path::display or
+// to_string_lossy without updating the paired tc_177_regression_tui tests.
+fn tui_path_label(path: &Path) -> String {
+    crate::path_utils::normalize_path_for_display(path)
+}
+
+fn missing_required_filelist_message(root: &Path) -> String {
+    format!(
+        "FileList was required but none was found in {}",
+        tui_path_label(root)
+    )
+}
+
 pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome> {
     if !interactive_terminal_supported(io::stdin().is_terminal(), io::stderr().is_terminal()) {
         anyhow::bail!("--interactive requires terminal stdin and stderr");
     }
     if options.require_filelist && find_filelist_in_first_level(root).is_none() {
-        anyhow::bail!(
-            "FileList was required but none was found in {}",
-            root.display()
-        );
+        anyhow::bail!(missing_required_filelist_message(root));
     }
 
     let persisted_roots_and_history = load_persisted_roots_and_history();

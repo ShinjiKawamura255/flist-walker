@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: TUI Windows extended-path display
+
+- Scenario: Windows で canonical root が `\\?\D:\...` または `\\?\UNC\...` になり、TUI の options summary など一部表示だけが raw `Path::display` を使うと extended prefix が露出する。
+- Expected Behavior: TUI が所有する全ユーザー向け root path は共有表示境界を通り、drive path は `D:\...`、UNC path は `\\server\share\...` と表示される。
+- Non-goals: filesystem I/O、path identity、認可、CLI stdout のmachine-readable framingは変更しない。
+- Related Tests: `tc_177_regression_tui_root_surfaces_strip_drive_and_unc_extended_prefixes`, `tc_177_regression_tui_path_rendering_never_uses_raw_os_strings`.
+- Notes for Future Changes: `rust/src/cli_tui.rs` と `rust/src/cli_tui/` の本番コードでは user-facing path を `.display()` / `to_string_lossy()` で直接文字列化せず、TUI共有表示境界を使う。
+
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
 - 期待動作: current row はユーザ操作なしで別の行へ移動せず、保持できる場合は同じ行番号を維持し、縮小した場合のみ末尾へ丸める。未選択状態は自動選択に変換しない。
 - 非対象範囲: 手動の Arrow キー移動、Sort 切替、Root 変更による既存 selection 破棄。
