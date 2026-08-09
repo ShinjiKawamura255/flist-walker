@@ -14,7 +14,7 @@
 - 検索要求は query を1回だけ `CompiledQuery` に変換し、各 path を1回だけ `PreparedCandidate` に変換する。rank-only 評価は match/score だけを返し、UI は query/options scope に保持した同じ compiled representation から可視行だけ span 付き評価する。
 - prefix cache は raw query の単調延長だけでなく、`ignore_case`、`prefer_relative`、正規化 root、live snapshot identity が一致する場合だけ候補 index を再利用する。
 - unknown-kind の `ext:` query は candidate を file/directory projection の両方で評価し、match/score が異なる候補だけ `is_dir` を解決する。同値の候補では filesystem probe を行わない。
-- 10万件検索は TC-156 の fixed fixture、release mode、5回以上の sample で compile/cold/warm/query-shape/unknown-kind-ext/evaluated-candidate を分離計測し、100ms median target と PR/weekly CI の 250ms hard ceiling を別々に扱う。
+- 10万件検索は TC-156 の fixed fixture、release mode、5回以上の sample で compile/cold/warm/query-shape/unknown-kind-ext/evaluated-candidate を分離計測し、100ms median target と weekly CI の 250ms hard ceiling を別々に扱う。
 - インデックス再読込開始時は保留中の検索 request_id を破棄し、旧スナップショット由来の検索応答が UI 結果を上書きしないようにする。
 - 非空クエリ時は再読込後の最初のインデックスバッチで検索を即時再開し、中断後の復帰遅延を最小化する。
 - 非空クエリで indexing 中の自動再検索は、差分件数と時間の両閾値（既定: 2048件・1500ms）を満たす場合のみ実行し、indexing スループット低下を抑える。
