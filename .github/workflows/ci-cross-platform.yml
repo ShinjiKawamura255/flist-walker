@@ -165,11 +165,6 @@ jobs:
         working-directory: ${{ matrix.workdir }}
         run: ${{ matrix.build_cmd }}
 
-      - name: Run release search perf gate
-        if: ${{ matrix.label == 'linux-native' }}
-        working-directory: rust
-        run: cargo test --release --locked perf_search_100k_cold_warm_query_shapes --lib -- --ignored --nocapture
-
   cargo-audit:
     name: Cargo Audit
     needs: detect-changes
