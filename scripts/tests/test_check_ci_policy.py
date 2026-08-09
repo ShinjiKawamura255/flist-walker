@@ -20,6 +20,17 @@ class CiPolicyTests(unittest.TestCase):
     def test_repository_satisfies_ci_policy(self) -> None:
         self.assertEqual([], POLICY.collect_violations(ROOT))
 
+    def test_pr_ci_runs_release_search_performance_gate(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual(
+            1,
+            workflow.count(
+                "cargo test --release --locked perf_search_100k_cold_warm_query_shapes --lib -- --ignored --nocapture"
+            ),
+        )
+
     def test_mutable_required_workflow_is_rejected(self) -> None:
         workflow = """
 name: Example

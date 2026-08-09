@@ -47,10 +47,10 @@ impl<'a> PipelineOwner<'a> {
     pub(super) fn enqueue_search_request(&mut self) {
         self.app.commit_query_history_if_needed(false);
         let current_tab_id = self.app.current_tab_id();
-        let request_id = self.app.shell.search.begin_active_request(current_tab_id);
+        let (request_id, cancel) = self.app.shell.search.begin_active_request(current_tab_id);
         self.app.refresh_status_line();
 
-        let req = self.build_active_search_request(request_id);
+        let req = self.build_active_search_request(request_id, cancel);
         if self.app.shell.search.tx.send(req).is_err() {
             self.app.shell.search.clear_active_request_state();
             self.app.set_notice("Search worker is unavailable");
@@ -253,6 +253,7 @@ impl<'a> PipelineOwner<'a> {
         tab: &AppTabState,
         request_id: u64,
         limit: usize,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
     ) -> SearchRequest {
         SearchRequest {
             request_id,
@@ -267,10 +268,15 @@ impl<'a> PipelineOwner<'a> {
             ),
             sort_mode: tab.result_state.result_sort_mode,
             sort_scope: tab.result_state.result_sort_scope,
+            cancel,
         }
     }
 
-    fn build_active_search_request(&self, request_id: u64) -> SearchRequest {
+    fn build_active_search_request(
+        &self,
+        request_id: u64,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    ) -> SearchRequest {
         SearchRequest {
             request_id,
             query: self.app.shell.runtime.query_state.query.clone(),
@@ -282,6 +288,7 @@ impl<'a> PipelineOwner<'a> {
             prefer_relative: self.app.prefer_relative_display(),
             sort_mode: self.app.shell.runtime.result_sort_mode,
             sort_scope: self.app.shell.runtime.result_sort_scope,
+            cancel,
         }
     }
 
@@ -320,11 +327,15 @@ impl<'a> PipelineOwner<'a> {
             let Some(tab) = tabs.get_mut(tab_index) else {
                 return;
             };
-            let request_id = search.begin_tab_request(tab);
-            let req = Self::build_search_request_for_tab(tab, request_id, limit);
+            let (request_id, cancel) = search.begin_tab_request(tab);
+            let req = Self::build_search_request_for_tab(tab, request_id, limit, cancel);
             (request_id, req)
         };
         if self.app.shell.search.tx.send(req).is_err() {
+            let tab_id = self.app.shell.tabs.get(tab_index).map(|tab| tab.id);
+            if let Some(tab_id) = tab_id {
+                self.app.shell.search.clear_for_tab(tab_id);
+            }
             let Some(tab) = self.app.shell.tabs.get_mut(tab_index) else {
                 return;
             };

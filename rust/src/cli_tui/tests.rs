@@ -1445,8 +1445,10 @@ fn tc_162_tui_search_applies_ignore_in_worker_snapshot_and_sorts_before_limit() 
             sort_mode: SearchSortMode::NameAsc,
         },
         ignore_terms: Arc::new(vec!["ignored".to_string()]),
+        cancel: Arc::new(AtomicBool::new(false)),
     };
-    let (results, error) = search(&request, &mut cache);
+    let mut snapshot_cache = TuiSearchSnapshotCache::default();
+    let (results, error) = search(&request, &mut cache, &mut snapshot_cache);
     assert!(error.is_none());
     assert_eq!(
         results.iter().map(|(path, _)| path).collect::<Vec<_>>(),
@@ -1464,12 +1466,128 @@ fn tc_162_tui_search_applies_ignore_in_worker_snapshot_and_sorts_before_limit() 
         },
         ..request
     };
-    let (results, error) = search(&unignored, &mut cache);
+    let (results, error) = search(&unignored, &mut cache, &mut snapshot_cache);
     assert!(error.is_none());
     assert_eq!(results.len(), 2);
     assert!(results
         .iter()
         .any(|(path, _)| path.ends_with("ignored.txt")));
+}
+
+#[test]
+fn tui_search_reuses_candidate_projection_and_warms_prefix_cache_for_same_snapshot() {
+    let paths = (0..1_000)
+        .map(|index| {
+            if index < 25 {
+                PathBuf::from(format!("root/abcde-item-{index:04}.rs"))
+            } else {
+                PathBuf::from(format!("root/zzzz-item-{index:04}.rs"))
+            }
+        })
+        .collect::<Vec<_>>();
+    let entries = Arc::new(vec![Arc::from(paths)]);
+    let make_request = |request_id, query: &str| SearchRequest {
+        request_id,
+        query: query.to_string(),
+        entries: Arc::clone(&entries),
+        root: PathBuf::from("root"),
+        limit: 100,
+        options: SearchOptions {
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: false,
+            sort_mode: SearchSortMode::Score,
+        },
+        ignore_terms: Arc::new(Vec::new()),
+        cancel: Arc::new(AtomicBool::new(false)),
+    };
+    let mut prefix_cache = SearchPrefixCache::default();
+    let mut snapshot_cache = TuiSearchSnapshotCache::default();
+
+    let (seed, seed_error) = search_with_stats(
+        &make_request(1, "abc"),
+        &mut prefix_cache,
+        &mut snapshot_cache,
+    );
+    assert!(seed_error.is_none());
+    assert_eq!(seed.evaluated_candidate_count, 1_000);
+
+    let (warm, warm_error) = search_with_stats(
+        &make_request(2, "abcd"),
+        &mut prefix_cache,
+        &mut snapshot_cache,
+    );
+    assert!(warm_error.is_none());
+    assert_eq!(
+        warm.results.iter().map(|item| &item.0).collect::<Vec<_>>(),
+        seed.results.iter().map(|item| &item.0).collect::<Vec<_>>()
+    );
+    assert_eq!(warm.evaluated_candidate_count, 25);
+    assert_eq!(snapshot_cache.build_count(), 1);
+}
+
+#[test]
+fn newer_tui_search_request_cancels_the_previous_request() {
+    let mut state = TuiState::new("first");
+    let first = state.next_search_request(PathBuf::from("root"), 100);
+    state.query = "second".to_string();
+    let second = state.next_search_request(PathBuf::from("root"), 100);
+
+    assert!(first.cancel.load(Ordering::Acquire));
+    assert!(!second.cancel.load(Ordering::Acquire));
+}
+
+#[test]
+fn canceled_tui_candidate_projection_is_stopped_and_not_cached() {
+    let request = SearchRequest {
+        request_id: 1,
+        query: "module".to_string(),
+        entries: Arc::new(vec![Arc::from(
+            (0..10_000)
+                .map(|index| PathBuf::from(format!("root/module-{index:05}.rs")))
+                .collect::<Vec<_>>(),
+        )]),
+        root: PathBuf::from("root"),
+        limit: 100,
+        options: SearchOptions {
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: false,
+            sort_mode: SearchSortMode::Score,
+        },
+        ignore_terms: Arc::new(Vec::new()),
+        cancel: Arc::new(AtomicBool::new(false)),
+    };
+    let checks = std::sync::atomic::AtomicUsize::new(0);
+    let cancellation = || checks.fetch_add(1, Ordering::Relaxed) >= 1;
+    let mut prefix_cache = SearchPrefixCache::default();
+    let mut snapshot_cache = TuiSearchSnapshotCache::default();
+
+    let result = search_with_stats_cancellable(
+        &request,
+        &mut prefix_cache,
+        &mut snapshot_cache,
+        &cancellation,
+    );
+
+    assert!(result.is_none());
+    assert_eq!(snapshot_cache.build_count(), 0);
+}
+
+#[test]
+fn request_cancel_skips_only_that_tui_search_while_shutdown_stops_the_worker() {
+    let shutdown = AtomicBool::new(false);
+    let request_cancel = AtomicBool::new(true);
+    assert_eq!(
+        search_publish_decision(&shutdown, &request_cancel),
+        SearchPublishDecision::SkipRequest
+    );
+
+    shutdown.store(true, Ordering::Release);
+    assert_eq!(
+        search_publish_decision(&shutdown, &request_cancel),
+        SearchPublishDecision::StopWorker
+    );
 }
 
 #[test]
@@ -1505,9 +1623,14 @@ fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
         limit: 10,
         options: runtime.search_options(SearchSortMode::Score),
         ignore_terms: Arc::new(startup.ignore_terms),
+        cancel: Arc::new(AtomicBool::new(false)),
     };
 
-    let (results, error) = search(&request, &mut SearchPrefixCache::default());
+    let (results, error) = search(
+        &request,
+        &mut SearchPrefixCache::default(),
+        &mut TuiSearchSnapshotCache::default(),
+    );
 
     assert!(error.is_none());
     assert_eq!(results.len(), 1);

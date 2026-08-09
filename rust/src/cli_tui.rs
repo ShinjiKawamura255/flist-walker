@@ -585,6 +585,7 @@ fn apply_search_response(
         && query == state.query
         && options == state.runtime_options.search_options(state.sort_mode)
     {
+        state.finish_search_request(request_id);
         state.set_results(results, error);
     }
 }

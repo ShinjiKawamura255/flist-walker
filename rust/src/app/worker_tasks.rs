@@ -19,7 +19,7 @@ use crate::indexer::{
     execute_filelist_write_plan, plan_filelist_write_cancellable, FileListWriteOptions,
     FileListWriteStatus,
 };
-use crate::search::{rank_search_results, SearchPrefixCache};
+use crate::search::{rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome};
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
 use crate::walker_runtime::resolve_entry_kind;
@@ -64,15 +64,14 @@ pub(super) fn spawn_search_worker(
 
     let handle = thread::spawn(move || {
         let mut prefix_cache = SearchPrefixCache::default();
-        while let Ok(mut req) = rx_req.recv() {
+        while let Ok(req) = rx_req.recv() {
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
-            while let Ok(newer) = rx_req.try_recv() {
-                req = newer;
-            }
             trace_worker_started("search", req.request_id);
-            let (result_set, error) = rank_search_results(
+            let cancellation_requested =
+                || shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Acquire);
+            let SearchRunOutcome::Completed(result_set, error) = rank_search_results_cancellable(
                 &req.entries,
                 &req.query,
                 &req.root,
@@ -83,7 +82,25 @@ pub(super) fn spawn_search_worker(
                 &mut prefix_cache,
                 req.sort_mode,
                 req.sort_scope,
-            );
+                &cancellation_requested,
+            ) else {
+                info!(
+                    flow = "search",
+                    event = "canceled",
+                    request_id = req.request_id,
+                    "worker request canceled"
+                );
+                continue;
+            };
+            if cancellation_requested() {
+                info!(
+                    flow = "search",
+                    event = "canceled",
+                    request_id = req.request_id,
+                    "worker request canceled before response publication"
+                );
+                continue;
+            }
             info!(
                 flow = "search",
                 event = "finished",
