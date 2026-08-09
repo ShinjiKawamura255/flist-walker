@@ -156,7 +156,7 @@ pub(super) fn handle_options_key(state: &mut TuiState, key: KeyEvent) -> KeyActi
             state.runtime_options = overlay.draft;
             if changed {
                 state.sort_mode = SearchSortMode::Score;
-                state.active_search_request_id = None;
+                state.cancel_active_search();
                 state.source_changed_on_apply = source_changed;
             }
             if reindex {

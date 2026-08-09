@@ -361,6 +361,39 @@ impl CompiledQuery {
         })
     }
 
+    pub(crate) fn evaluate_unknown_kind_with_matcher<F>(
+        &self,
+        path: &Path,
+        root: Option<&Path>,
+        prefer_relative: bool,
+        evidence: EvidenceLevel,
+        matcher: &SkimMatcherV2,
+        resolve_is_dir: F,
+    ) -> Option<QueryEvaluation>
+    where
+        F: FnOnce() -> bool,
+    {
+        let mut candidate =
+            self.prepare_candidate_with_kind(path, root, prefer_relative, Some(false));
+        let file_evaluation = self.evaluate_with_matcher(&candidate, evidence, matcher);
+        if candidate.extension.is_empty() {
+            return file_evaluation;
+        }
+
+        candidate.extension.clear();
+        candidate.extension_visible.clear();
+        let directory_evaluation = self.evaluate_with_matcher(&candidate, evidence, matcher);
+        if file_evaluation == directory_evaluation {
+            return file_evaluation;
+        }
+
+        if resolve_is_dir() {
+            directory_evaluation
+        } else {
+            file_evaluation
+        }
+    }
+
     pub fn has_positive_terms(&self) -> bool {
         !self.exact_terms.is_empty() || !self.include_terms.is_empty()
     }

@@ -10,7 +10,9 @@ use crate::indexer::{
 };
 use crate::query::{CompiledIgnoreTerms, QueryScope};
 use crate::runtime_config::{current_runtime_config, RuntimeConfig};
-use crate::search::{rank_search_results, SearchPrefixCache, SearchSortScope};
+use crate::search::{
+    rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome, SearchSortScope,
+};
 use crate::ui_model::build_preview_text_with_kind;
 #[cfg(not(test))]
 use crate::updater::check_for_update;
@@ -21,8 +23,30 @@ use crate::walker_runtime::{
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, Weak};
 use std::thread;
+
+const SEARCH_CANCELLATION_CHECK_INTERVAL: usize = 256;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum SearchPublishDecision {
+    Publish,
+    SkipRequest,
+    StopWorker,
+}
+
+pub(super) fn search_publish_decision(
+    shutdown: &AtomicBool,
+    request_cancel: &AtomicBool,
+) -> SearchPublishDecision {
+    if shutdown.load(Ordering::Relaxed) {
+        SearchPublishDecision::StopWorker
+    } else if request_cancel.load(Ordering::Acquire) {
+        SearchPublishDecision::SkipRequest
+    } else {
+        SearchPublishDecision::Publish
+    }
+}
 
 #[cfg(not(test))]
 pub(super) fn spawn_tui_update_check() -> mpsc::Receiver<Option<UpdateCandidate>> {
@@ -74,6 +98,7 @@ impl TuiWorkerSet {
             .name("flistwalker-cli-search".to_string())
             .spawn(move || {
                 let mut prefix_cache = SearchPrefixCache::default();
+                let mut snapshot_cache = TuiSearchSnapshotCache::default();
                 while !search_cancelled.load(Ordering::Relaxed) {
                     let mut request = match search_rx.recv_timeout(EVENT_POLL) {
                         Ok(request) => request,
@@ -83,18 +108,34 @@ impl TuiWorkerSet {
                     while let Ok(newer) = search_rx.try_recv() {
                         request = newer;
                     }
-                    let (results, error) = search(&request, &mut prefix_cache);
-                    if search_cancelled.load(Ordering::Relaxed)
-                        || search_response_tx
-                            .send(WorkerResponse::Searched {
-                                request_id: request.request_id,
-                                root: request.root,
-                                query: request.query,
-                                options: request.options,
-                                results,
-                                error,
-                            })
-                            .is_err()
+                    let cancellation_requested = || {
+                        search_cancelled.load(Ordering::Relaxed)
+                            || request.cancel.load(Ordering::Acquire)
+                    };
+                    let Some((result_set, error)) = search_with_stats_cancellable(
+                        &request,
+                        &mut prefix_cache,
+                        &mut snapshot_cache,
+                        &cancellation_requested,
+                    ) else {
+                        continue;
+                    };
+                    let results = result_set.results;
+                    match search_publish_decision(&search_cancelled, &request.cancel) {
+                        SearchPublishDecision::StopWorker => break,
+                        SearchPublishDecision::SkipRequest => continue,
+                        SearchPublishDecision::Publish => {}
+                    }
+                    if search_response_tx
+                        .send(WorkerResponse::Searched {
+                            request_id: request.request_id,
+                            root: request.root,
+                            query: request.query,
+                            options: request.options,
+                            results,
+                            error,
+                        })
+                        .is_err()
                     {
                         break;
                     }
@@ -497,36 +538,118 @@ pub(super) fn finish_worker(handle: thread::JoinHandle<()>, done: mpsc::Receiver
     }
 }
 
+#[cfg(test)]
 pub(super) fn search(
     request: &SearchRequest,
     prefix_cache: &mut SearchPrefixCache,
+    snapshot_cache: &mut TuiSearchSnapshotCache,
 ) -> (Vec<(PathBuf, f64)>, Option<String>) {
-    let compiled_ignore = request
-        .options
-        .ignore_enabled
-        .then(|| CompiledIgnoreTerms::compile(&request.ignore_terms, request.options.ignore_case));
-    let entries = Arc::new(
-        request
+    let (result_set, error) = search_with_stats(request, prefix_cache, snapshot_cache);
+    (result_set.results, error)
+}
+
+#[derive(Default)]
+pub(super) struct TuiSearchSnapshotCache {
+    source: Weak<Vec<Arc<[PathBuf]>>>,
+    root: PathBuf,
+    ignore_case: bool,
+    ignore_enabled: bool,
+    ignore_terms: Arc<Vec<String>>,
+    projected_entries: Option<Arc<Vec<Entry>>>,
+    #[cfg(test)]
+    build_count: usize,
+}
+
+impl TuiSearchSnapshotCache {
+    fn entries_for(
+        &mut self,
+        request: &SearchRequest,
+        cancellation: &(dyn Fn() -> bool + Sync),
+    ) -> Option<Arc<Vec<Entry>>> {
+        let same_source = self
+            .source
+            .upgrade()
+            .is_some_and(|source| Arc::ptr_eq(&source, &request.entries));
+        let reusable = same_source
+            && self.root == request.root
+            && self.ignore_case == request.options.ignore_case
+            && self.ignore_enabled == request.options.ignore_enabled
+            && self.ignore_terms.as_ref() == request.ignore_terms.as_ref();
+        if reusable {
+            if let Some(entries) = &self.projected_entries {
+                return Some(Arc::clone(entries));
+            }
+        }
+
+        if cancellation() {
+            return None;
+        }
+
+        let compiled_ignore = request.options.ignore_enabled.then(|| {
+            CompiledIgnoreTerms::compile(&request.ignore_terms, request.options.ignore_case)
+        });
+        let mut projected = Vec::new();
+        for (ordinal, path) in request
             .entries
             .iter()
             .flat_map(|batch| batch.iter())
-            .filter(|path| {
-                compiled_ignore.as_ref().is_none_or(|compiled| {
-                    !compiled.matches_path(
-                        path,
-                        QueryScope {
-                            root: Some(&request.root),
-                            prefer_relative: true,
-                            ignore_case: request.options.ignore_case,
-                        },
-                    )
-                })
-            })
-            .cloned()
-            .map(Entry::from)
-            .collect(),
-    );
-    let (result_set, error) = rank_search_results(
+            .enumerate()
+        {
+            if ordinal.is_multiple_of(SEARCH_CANCELLATION_CHECK_INTERVAL) && cancellation() {
+                return None;
+            }
+            let ignored = compiled_ignore.as_ref().is_some_and(|compiled| {
+                compiled.matches_path(
+                    path,
+                    QueryScope {
+                        root: Some(&request.root),
+                        prefer_relative: true,
+                        ignore_case: request.options.ignore_case,
+                    },
+                )
+            });
+            if !ignored {
+                projected.push(Entry::from(path.clone()));
+            }
+        }
+        let projected_entries = Arc::new(projected);
+        self.source = Arc::downgrade(&request.entries);
+        self.root.clone_from(&request.root);
+        self.ignore_case = request.options.ignore_case;
+        self.ignore_enabled = request.options.ignore_enabled;
+        self.ignore_terms = Arc::clone(&request.ignore_terms);
+        self.projected_entries = Some(Arc::clone(&projected_entries));
+        #[cfg(test)]
+        {
+            self.build_count = self.build_count.saturating_add(1);
+        }
+        Some(projected_entries)
+    }
+
+    #[cfg(test)]
+    pub(super) fn build_count(&self) -> usize {
+        self.build_count
+    }
+}
+
+#[cfg(test)]
+pub(super) fn search_with_stats(
+    request: &SearchRequest,
+    prefix_cache: &mut SearchPrefixCache,
+    snapshot_cache: &mut TuiSearchSnapshotCache,
+) -> (crate::search::SearchResultSet, Option<String>) {
+    search_with_stats_cancellable(request, prefix_cache, snapshot_cache, &|| false)
+        .expect("non-cancellable TUI search was canceled")
+}
+
+pub(super) fn search_with_stats_cancellable(
+    request: &SearchRequest,
+    prefix_cache: &mut SearchPrefixCache,
+    snapshot_cache: &mut TuiSearchSnapshotCache,
+    cancellation: &(dyn Fn() -> bool + Sync),
+) -> Option<(crate::search::SearchResultSet, Option<String>)> {
+    let entries = snapshot_cache.entries_for(request, cancellation)?;
+    match rank_search_results_cancellable(
         &entries,
         &request.query,
         &request.root,
@@ -537,6 +660,9 @@ pub(super) fn search(
         prefix_cache,
         request.options.sort_mode,
         SearchSortScope::AllMatches,
-    );
-    (result_set.results, error)
+        cancellation,
+    ) {
+        SearchRunOutcome::Completed(result_set, error) => Some((result_set, error)),
+        SearchRunOutcome::Canceled => None,
+    }
 }

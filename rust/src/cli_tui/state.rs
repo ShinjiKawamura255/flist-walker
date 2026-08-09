@@ -46,6 +46,7 @@ pub(super) struct TuiState {
     pub(super) viewport_rows: usize,
     pub(super) next_search_request_id: u64,
     pub(super) active_search_request_id: Option<u64>,
+    pub(super) active_search_cancel: Option<Arc<AtomicBool>>,
     pub(super) last_incremental_search: Option<Instant>,
     pub(super) preview_preferred: bool,
     pub(super) preview_visible: bool,
@@ -227,7 +228,7 @@ impl TuiState {
         self.root = root.clone();
         self.pinned.clear();
         self.clear_preview();
-        self.active_search_request_id = None;
+        self.cancel_active_search();
         self.sort_mode = SearchSortMode::Score;
         self.active_action_request = None;
         action_freshness.activate(0, &root);
@@ -237,7 +238,7 @@ impl TuiState {
 
     pub(super) fn prepare_refresh(&mut self) {
         self.sort_mode = SearchSortMode::Score;
-        self.active_search_request_id = None;
+        self.cancel_active_search();
         self.status = format!("Refreshing {}...", tui_path_label(&self.root));
         self.dirty = true;
     }
@@ -281,6 +282,7 @@ impl TuiState {
             viewport_rows: 1,
             next_search_request_id: 0,
             active_search_request_id: None,
+            active_search_cancel: None,
             last_incremental_search: None,
             preview_preferred: true,
             preview_visible: false,
@@ -335,9 +337,14 @@ impl TuiState {
     }
 
     pub(super) fn next_search_request(&mut self, root: PathBuf, limit: usize) -> SearchRequest {
+        if let Some(cancel) = self.active_search_cancel.take() {
+            cancel.store(true, Ordering::Release);
+        }
         self.next_search_request_id = self.next_search_request_id.wrapping_add(1);
         let request_id = self.next_search_request_id;
+        let cancel = Arc::new(AtomicBool::new(false));
         self.active_search_request_id = Some(request_id);
+        self.active_search_cancel = Some(Arc::clone(&cancel));
         SearchRequest {
             request_id,
             query: self.query.clone(),
@@ -346,6 +353,21 @@ impl TuiState {
             limit,
             options: self.runtime_options.search_options(self.sort_mode),
             ignore_terms: Arc::clone(&self.ignore_terms),
+            cancel,
+        }
+    }
+
+    pub(super) fn cancel_active_search(&mut self) {
+        if let Some(cancel) = self.active_search_cancel.take() {
+            cancel.store(true, Ordering::Release);
+        }
+        self.active_search_request_id = None;
+    }
+
+    pub(super) fn finish_search_request(&mut self, request_id: u64) {
+        if self.active_search_request_id == Some(request_id) {
+            self.active_search_request_id = None;
+            self.active_search_cancel = None;
         }
     }
 
@@ -362,7 +384,7 @@ impl TuiState {
         self.selected = 0;
         self.offset = 0;
         self.clear_preview();
-        self.active_search_request_id = None;
+        self.cancel_active_search();
         self.status = "Indexing...".to_string();
         self.dirty = true;
         IndexRequest {

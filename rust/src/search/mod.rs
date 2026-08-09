@@ -14,6 +14,7 @@ pub use cache::SearchPrefixCache;
 use config::{resolve_execution_mode, SearchExecutionMode};
 use execute::{
     collect_entries_parallel, collect_entries_sequential, collect_parallel, collect_sequential,
+    CANCELLATION_CHECK_INTERVAL,
 };
 use match_eval::{compile_query, SearchContext};
 #[cfg(test)]
@@ -112,6 +113,16 @@ impl SearchSortScope {
 pub type SearchResultSortMode = SearchSortMode;
 pub type SearchResultSortScope = SearchSortScope;
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum SearchRunOutcome {
+    Completed(SearchResultSet, Option<String>),
+    Canceled,
+}
+
+fn never_cancel() -> bool {
+    false
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn rank_search_results(
     entries: &Arc<Vec<Entry>>,
@@ -125,6 +136,41 @@ pub fn rank_search_results(
     sort_mode: SearchSortMode,
     sort_scope: SearchSortScope,
 ) -> (SearchResultSet, Option<String>) {
+    match rank_search_results_cancellable(
+        entries,
+        query,
+        root,
+        limit,
+        use_regex,
+        ignore_case,
+        prefer_relative,
+        prefix_cache,
+        sort_mode,
+        sort_scope,
+        &never_cancel,
+    ) {
+        SearchRunOutcome::Completed(result_set, error) => (result_set, error),
+        SearchRunOutcome::Canceled => unreachable!("non-cancellable search was canceled"),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn rank_search_results_cancellable(
+    entries: &Arc<Vec<Entry>>,
+    query: &str,
+    root: &Path,
+    limit: usize,
+    use_regex: bool,
+    ignore_case: bool,
+    prefer_relative: bool,
+    prefix_cache: &mut SearchPrefixCache,
+    sort_mode: SearchSortMode,
+    sort_scope: SearchSortScope,
+    cancellation: &(dyn Fn() -> bool + Sync),
+) -> SearchRunOutcome {
+    if cancellation() {
+        return SearchRunOutcome::Canceled;
+    }
     let query_trimmed = query.trim().to_string();
     let cached_candidates = if use_regex {
         None
@@ -139,19 +185,20 @@ pub fn rank_search_results(
             .map_or(entries.len(), |candidates| candidates.len())
     };
     let scored_matches = if query_trimmed.is_empty() {
-        SearchScoredMatches {
-            scored: entries
-                .iter()
-                .enumerate()
-                .map(|(index, _)| SearchCandidateScore {
-                    index,
-                    score: 0.0,
-                    ordinal: index,
-                })
-                .collect(),
+        let mut scored = Vec::with_capacity(entries.len());
+        for (index, _) in entries.iter().enumerate() {
+            if index.is_multiple_of(CANCELLATION_CHECK_INTERVAL) && cancellation() {
+                return SearchRunOutcome::Canceled;
+            }
+            scored.push(SearchCandidateScore {
+                index,
+                score: 0.0,
+                ordinal: index,
+            });
         }
+        SearchScoredMatches { scored }
     } else {
-        match try_collect_entry_matches(
+        match try_collect_entry_matches_cancellable(
             query,
             entries,
             use_regex,
@@ -159,11 +206,18 @@ pub fn rank_search_results(
             Some(root),
             prefer_relative,
             cached_candidates.as_ref().map(|items| items.as_slice()),
+            cancellation,
         ) {
-            Ok(scored_matches) => scored_matches,
-            Err(err) => return (SearchResultSet::default(), Some(err)),
+            Ok(Some(scored_matches)) => scored_matches,
+            Ok(None) => return SearchRunOutcome::Canceled,
+            Err(err) => {
+                return SearchRunOutcome::Completed(SearchResultSet::default(), Some(err));
+            }
         }
     };
+    if cancellation() {
+        return SearchRunOutcome::Canceled;
+    }
     let total_match_count = scored_matches.scored.len();
     if SearchPrefixCache::is_cacheable_query(&query_trimmed)
         && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
@@ -187,12 +241,24 @@ pub fn rank_search_results(
             top_name_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
         }
         _ if sort_scope.sorts_all_matches_before_limit(sort_mode) => {
-            top_metadata_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
+            let Some(ranked) = top_metadata_sorted_scores(
+                entries,
+                scored_matches.scored,
+                limit,
+                sort_mode,
+                cancellation,
+            ) else {
+                return SearchRunOutcome::Canceled;
+            };
+            ranked
         }
         _ => top_ranked_scores(scored_matches.scored, limit),
     };
     let results = scored_indices_to_paths(entries, &ranked, limit);
-    (
+    if cancellation() {
+        return SearchRunOutcome::Canceled;
+    }
+    SearchRunOutcome::Completed(
         SearchResultSet {
             results,
             total_match_count,
@@ -255,15 +321,18 @@ fn top_metadata_sorted_scores(
     scored: Vec<SearchCandidateScore>,
     limit: usize,
     mode: SearchSortMode,
-) -> Vec<IndexedScore> {
+    cancellation: &(dyn Fn() -> bool + Sync),
+) -> Option<Vec<IndexedScore>> {
     let desc = matches!(
         mode,
         SearchSortMode::ModifiedDesc | SearchSortMode::CreatedDesc | SearchSortMode::SizeDesc
     );
-    let mut items = scored
-        .into_iter()
-        .filter_map(|item| {
-            let entry = entries.get(item.index)?;
+    let mut items = Vec::with_capacity(scored.len());
+    for (ordinal, item) in scored.into_iter().enumerate() {
+        if ordinal.is_multiple_of(CANCELLATION_CHECK_INTERVAL) && cancellation() {
+            return None;
+        }
+        if let Some(entry) = entries.get(item.index) {
             let metadata = std::fs::metadata(entry.path()).ok();
             let timestamp = match mode {
                 SearchSortMode::ModifiedDesc | SearchSortMode::ModifiedAsc => {
@@ -281,15 +350,15 @@ fn top_metadata_sorted_scores(
                     .map(|meta| meta.len()),
                 _ => None,
             };
-            Some((
+            items.push((
                 item,
                 entry_name_key(entry),
                 entry_path_key(entry),
                 timestamp,
                 size_bytes,
-            ))
-        })
-        .collect::<Vec<_>>();
+            ));
+        }
+    }
     items.sort_unstable_by(|a, b| {
         let value_cmp = if matches!(mode, SearchSortMode::SizeDesc | SearchSortMode::SizeAsc) {
             compare_optional_sort_value(a.4, b.4, desc)
@@ -301,14 +370,16 @@ fn top_metadata_sorted_scores(
             .then_with(|| a.2.cmp(&b.2))
             .then_with(|| a.0.ordinal.cmp(&b.0.ordinal))
     });
-    items
-        .into_iter()
-        .take(limit)
-        .map(|(item, _, _, _, _)| IndexedScore {
-            index: item.index,
-            score: item.score,
-        })
-        .collect()
+    Some(
+        items
+            .into_iter()
+            .take(limit)
+            .map(|(item, _, _, _, _)| IndexedScore {
+                index: item.index,
+                score: item.score,
+            })
+            .collect(),
+    )
 }
 
 fn compare_optional_sort_value<T: Ord>(
@@ -330,7 +401,8 @@ fn compare_optional_sort_value<T: Ord>(
     }
 }
 
-fn try_collect_entry_matches(
+#[allow(clippy::too_many_arguments)]
+fn try_collect_entry_matches_cancellable(
     query: &str,
     entries: &[Entry],
     use_regex: bool,
@@ -338,8 +410,9 @@ fn try_collect_entry_matches(
     root: Option<&Path>,
     prefer_relative: bool,
     candidate_indices: Option<&[usize]>,
-) -> Result<SearchScoredMatches, String> {
-    try_collect_entry_matches_with_mode(
+    cancellation: &(dyn Fn() -> bool + Sync),
+) -> Result<Option<SearchScoredMatches>, String> {
+    try_collect_entry_matches_with_mode_cancellable(
         query,
         entries,
         SearchCollectOptions {
@@ -350,6 +423,7 @@ fn try_collect_entry_matches(
             candidate_indices,
             mode: SearchExecutionMode::Auto,
         },
+        cancellation,
     )
 }
 
@@ -376,14 +450,15 @@ pub(crate) fn try_collect_search_matches(
     )
 }
 
-fn try_collect_entry_matches_with_mode(
+fn try_collect_entry_matches_with_mode_cancellable(
     query: &str,
     entries: &[Entry],
     options: SearchCollectOptions<'_>,
-) -> Result<SearchScoredMatches, String> {
+    cancellation: &(dyn Fn() -> bool + Sync),
+) -> Result<Option<SearchScoredMatches>, String> {
     let query = query.trim();
     if query.is_empty() {
-        return Ok(SearchScoredMatches::default());
+        return Ok(Some(SearchScoredMatches::default()));
     }
 
     let compiled = compile_query(query, options.use_regex, options.ignore_case)?;
@@ -396,12 +471,20 @@ fn try_collect_entry_matches_with_mode(
         .map_or(entries.len(), |items| items.len());
     let execution = resolve_execution_mode(options.mode, candidate_count);
     Ok(match execution {
-        SearchExecutionMode::Sequential => {
-            collect_entries_sequential(entries, &compiled, ctx, options.candidate_indices)
-        }
-        SearchExecutionMode::Parallel => {
-            collect_entries_parallel(entries, &compiled, ctx, options.candidate_indices)
-        }
+        SearchExecutionMode::Sequential => collect_entries_sequential(
+            entries,
+            &compiled,
+            ctx,
+            options.candidate_indices,
+            cancellation,
+        ),
+        SearchExecutionMode::Parallel => collect_entries_parallel(
+            entries,
+            &compiled,
+            ctx,
+            options.candidate_indices,
+            cancellation,
+        ),
         SearchExecutionMode::Auto => unreachable!(),
     })
 }
@@ -436,12 +519,22 @@ fn try_collect_search_matches_with_mode(
         .map_or(entries.len(), |items| items.len());
     let execution = resolve_execution_mode(options.mode, candidate_count);
     Ok(match execution {
-        SearchExecutionMode::Sequential => {
-            collect_sequential(entries, &compiled, ctx, options.candidate_indices)
-        }
-        SearchExecutionMode::Parallel => {
-            collect_parallel(entries, &compiled, ctx, options.candidate_indices)
-        }
+        SearchExecutionMode::Sequential => collect_sequential(
+            entries,
+            &compiled,
+            ctx,
+            options.candidate_indices,
+            &never_cancel,
+        )
+        .expect("non-cancellable path collection was canceled"),
+        SearchExecutionMode::Parallel => collect_parallel(
+            entries,
+            &compiled,
+            ctx,
+            options.candidate_indices,
+            &never_cancel,
+        )
+        .expect("non-cancellable path collection was canceled"),
         SearchExecutionMode::Auto => unreachable!(),
     })
 }

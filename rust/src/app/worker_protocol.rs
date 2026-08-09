@@ -17,6 +17,7 @@ pub(super) struct SearchRequest {
     pub(super) prefer_relative: bool,
     pub(super) sort_mode: ResultSortMode,
     pub(super) sort_scope: ResultSortScope,
+    pub(super) cancel: Arc<AtomicBool>,
 }
 
 pub(super) struct SearchResponse {

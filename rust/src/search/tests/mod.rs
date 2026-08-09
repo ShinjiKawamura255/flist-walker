@@ -1,6 +1,7 @@
 use super::*;
 use crate::ui_model::has_visible_match;
 use std::fs;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 #[test]
@@ -92,6 +93,64 @@ fn tc_155_regression_authoritative_search_still_applies_exclusion() {
 
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].0, PathBuf::from("/tmp/docs/main.rs"));
+}
+
+#[test]
+fn cancellable_rank_search_stops_before_publishing_partial_results() {
+    let entries = Arc::new(
+        (0..10_000)
+            .map(|index| Entry::file(PathBuf::from(format!("/tmp/module-{index:05}.rs"))))
+            .collect(),
+    );
+    let checks = AtomicUsize::new(0);
+    let cancel_after_first_check = || checks.fetch_add(1, Ordering::Relaxed) >= 1;
+    let mut cache = SearchPrefixCache::default();
+
+    let outcome = rank_search_results_cancellable(
+        &entries,
+        "module",
+        Path::new("/tmp"),
+        100,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::ShownResults,
+        &cancel_after_first_check,
+    );
+
+    assert_eq!(outcome, SearchRunOutcome::Canceled);
+    assert!(checks.load(Ordering::Relaxed) >= 2);
+}
+
+#[test]
+fn cancellable_empty_query_checks_during_materialization_and_metadata_sort() {
+    let entries = Arc::new(
+        (0..10_000)
+            .map(|index| Entry::unknown(PathBuf::from(format!("/tmp/item-{index:05}.rs"))))
+            .collect(),
+    );
+    let checks = AtomicUsize::new(0);
+    let cancel_during_metadata = || checks.fetch_add(1, Ordering::Relaxed) >= 45;
+    let mut cache = SearchPrefixCache::default();
+
+    let outcome = rank_search_results_cancellable(
+        &entries,
+        "",
+        Path::new("/tmp"),
+        100,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::SizeDesc,
+        SearchSortScope::AllMatches,
+        &cancel_during_metadata,
+    );
+
+    assert_eq!(outcome, SearchRunOutcome::Canceled);
+    assert!(checks.load(Ordering::Relaxed) >= 46);
 }
 
 #[test]
@@ -887,6 +946,54 @@ fn perf_search_100k_cold_warm_query_shapes() {
             HARD_SAMPLE_LIMIT
         );
     }
+
+    let unknown_kind_entries = Arc::new(
+        (0..100_000)
+            .map(|index| {
+                let extension = if index % 100 == 0 { "rs" } else { "txt" };
+                Entry::unknown(PathBuf::from(format!(
+                    "/tmp/unknown/group_{:02}/module_{index:06}.{extension}",
+                    index % 32
+                )))
+            })
+            .collect::<Vec<_>>(),
+    );
+    let mut unknown_samples = Vec::with_capacity(SAMPLE_COUNT);
+    let mut unknown_result = None;
+    for _ in 0..SAMPLE_COUNT {
+        let mut cache = SearchPrefixCache::default();
+        let started = Instant::now();
+        let (result, error) = rank_search_results(
+            &unknown_kind_entries,
+            "ext:rs",
+            &root,
+            100,
+            false,
+            true,
+            true,
+            &mut cache,
+            SearchResultSortMode::Score,
+            SearchResultSortScope::ShownResults,
+        );
+        unknown_samples.push(started.elapsed());
+        assert!(error.is_none());
+        assert_eq!(result.total_match_count, 1_000);
+        unknown_result = Some(result);
+    }
+    unknown_samples.sort_unstable();
+    let unknown_median = unknown_samples[SAMPLE_COUNT / 2];
+    let unknown_maximum = *unknown_samples.last().expect("unknown-kind sample");
+    let unknown_result = unknown_result.expect("unknown-kind result");
+    eprintln!(
+        "tc_156 shape=unknown-kind-ext candidates={} evaluated={} matches={} median_ms={} max_ms={}",
+        unknown_kind_entries.len(),
+        unknown_result.evaluated_candidate_count,
+        unknown_result.total_match_count,
+        unknown_median.as_millis(),
+        unknown_maximum.as_millis()
+    );
+    assert!(unknown_median < HARD_SAMPLE_LIMIT);
+    assert!(unknown_maximum < HARD_SAMPLE_LIMIT);
 
     let mut cold_cache = SearchPrefixCache::default();
     let (cold, cold_error) = rank_search_results(

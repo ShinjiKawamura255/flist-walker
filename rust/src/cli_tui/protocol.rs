@@ -80,6 +80,7 @@ pub(super) struct SearchRequest {
     pub(super) limit: usize,
     pub(super) options: SearchOptions,
     pub(super) ignore_terms: Arc<Vec<String>>,
+    pub(super) cancel: Arc<AtomicBool>,
 }
 
 #[derive(Clone, Debug, Default)]
