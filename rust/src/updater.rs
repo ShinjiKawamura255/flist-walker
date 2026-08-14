@@ -19,6 +19,7 @@ pub enum UpdateRestartMode {
 }
 
 impl UpdateRestartMode {
+    #[cfg(not(target_os = "macos"))]
     fn helper_argument(self) -> &'static str {
         match self {
             Self::Gui => "gui",
