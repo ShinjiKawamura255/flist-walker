@@ -1,4 +1,6 @@
-use crate::updater::{UpdateRestartMode, INTERNAL_UPDATE_RESTART_FLAG};
+use crate::updater::UpdateRestartMode;
+#[cfg(not(target_os = "macos"))]
+use crate::updater::INTERNAL_UPDATE_RESTART_FLAG;
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use anyhow::bail;
 #[cfg(not(target_os = "macos"))]
