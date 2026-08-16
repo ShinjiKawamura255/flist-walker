@@ -10,6 +10,7 @@ use crate::search::SearchSortMode;
 use crate::walker_runtime::walker_truncated_notice;
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyEventKind};
+use crossterm::style::Colored;
 use crossterm::terminal;
 use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
@@ -83,6 +84,14 @@ fn missing_required_filelist_message(root: &Path) -> String {
     )
 }
 
+// `--color always` must override NO_COLOR for the interactive renderer too.
+// crossterm memoizes that environment setting separately from our CLI mode.
+fn force_tui_color_output(color_enabled: bool) {
+    if color_enabled {
+        Colored::set_ansi_color_disabled(false);
+    }
+}
+
 pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome> {
     if !interactive_terminal_supported(io::stdin().is_terminal(), io::stderr().is_terminal()) {
         anyhow::bail!("--interactive requires terminal stdin and stderr");
@@ -90,6 +99,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
     if options.require_filelist && find_filelist_in_first_level(root).is_none() {
         anyhow::bail!(missing_required_filelist_message(root));
     }
+    force_tui_color_output(options.color_enabled);
 
     let persisted_roots_and_history = load_persisted_roots_and_history();
     let history_enabled = history_persistence_enabled();

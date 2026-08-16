@@ -97,7 +97,8 @@ Additional notice-bearing components
   libloading 0.8.9, self_cell 1.2.2, bytemuck 1.25.0,
   bytemuck_derive 1.10.2, foldhash 0.2.0, miniz_oxide 0.8.9,
   slotmap 1.1.1, tinyvec 1.10.0, and platform-specific windowing crates
-  such as dispatch2 / objc2-* on macOS and xkeysym on Linux.
+  such as dispatch2 / objc2-* on macOS, webbrowser 1.2.2, and xkeysym on
+  Linux.
 
 - native-dialog 0.9.7 backend dependencies
   Licenses: MIT or MIT OR Apache-2.0
