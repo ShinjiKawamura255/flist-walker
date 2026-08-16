@@ -310,7 +310,7 @@ fn saving_a_preset_draft_queues_an_atomic_replace_without_applying_it() {
             assert!(!preset.ignore_enabled);
             assert_eq!(preset.sort, PresetSortMode::SizeAsc);
         }
-        CatalogRequestKind::Load => panic!("expected replace request"),
+        _ => panic!("expected replace request"),
     }
     assert!(app.shell.worker_bus.catalog.in_progress);
     assert_eq!(app.shell.runtime.query_state.query, "current query");
@@ -439,5 +439,225 @@ fn failed_preset_edit_response_keeps_the_draft_for_correction() {
         .error
         .contains("already exists"));
     assert!(!app.shell.worker_bus.catalog.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn named_root_manager_adds_an_absolute_root_without_changing_the_current_search() {
+    use crate::app::worker_protocol::CatalogRequestKind;
+
+    let root = test_root("named-root-manager-add");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".to_string());
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+    app.start_add_named_root();
+    app.shell.features.presets.picker.named_roots.editor.name = "work".to_string();
+    app.shell.features.presets.picker.named_roots.editor.path =
+        root.join("workspace").display().to_string();
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.tx = tx;
+
+    app.request_save_named_root();
+
+    let request = rx.try_recv().expect("add named root request");
+    match request.kind {
+        CatalogRequestKind::AddNamedRoot { name, path } => {
+            assert_eq!(name, "work");
+            assert_eq!(path, root.join("workspace"));
+        }
+        _ => panic!("expected add named root request"),
+    }
+    assert!(app.shell.worker_bus.catalog.in_progress);
+    assert_eq!(app.shell.runtime.query_state.query, "current query");
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn named_root_manager_edits_and_deletes_the_selected_root_through_catalog_requests() {
+    use crate::app::worker_protocol::CatalogRequestKind;
+
+    let root = test_root("named-root-manager-edit-delete");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .add_named_root("work", root.join("old"))
+        .expect("add named root");
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+    app.start_selected_named_root_edit();
+    app.shell.features.presets.picker.named_roots.editor.name = "workspace".to_string();
+    app.shell.features.presets.picker.named_roots.editor.path =
+        root.join("new").display().to_string();
+    let (edit_tx, edit_rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.tx = edit_tx;
+
+    app.request_save_named_root();
+
+    match edit_rx.try_recv().expect("replace named root request").kind {
+        CatalogRequestKind::ReplaceNamedRoot {
+            original_name,
+            name,
+            path,
+        } => {
+            assert_eq!(original_name, "work");
+            assert_eq!(name, "workspace");
+            assert_eq!(path, root.join("new"));
+        }
+        _ => panic!("expected replace named root request"),
+    }
+
+    app.shell.worker_bus.catalog.clear_request();
+    app.shell.features.presets.picker.named_roots.editor = Default::default();
+    app.shell.features.presets.picker.named_roots.selected_index = Some(0);
+    let (delete_tx, delete_rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.tx = delete_tx;
+    app.start_selected_named_root_delete();
+    assert!(app.shell.features.presets.picker.named_roots.confirm_delete);
+
+    app.confirm_delete_named_root();
+
+    match delete_rx
+        .try_recv()
+        .expect("remove named root request")
+        .kind
+    {
+        CatalogRequestKind::RemoveNamedRoot { name } => assert_eq!(name, "work"),
+        _ => panic!("expected remove named root request"),
+    }
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn named_root_manager_rejects_relative_paths_without_starting_the_worker() {
+    let root = test_root("named-root-manager-invalid");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+    app.start_add_named_root();
+    app.shell.features.presets.picker.named_roots.editor.name = "work".to_string();
+    app.shell.features.presets.picker.named_roots.editor.path = "relative/path".to_string();
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.tx = tx;
+
+    app.request_save_named_root();
+
+    assert!(rx.try_recv().is_err());
+    assert!(!app.shell.worker_bus.catalog.in_progress);
+    assert!(app
+        .shell
+        .features
+        .presets
+        .picker
+        .named_roots
+        .editor
+        .error
+        .contains("absolute"));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn successful_named_root_rename_updates_an_open_preset_draft_reference() {
+    use crate::app::state::PendingNamedRootOperation;
+    use crate::app::worker_protocol::CatalogResponse;
+
+    let root = test_root("named-root-manager-success");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .add_named_root("work", root.join("old"))
+        .expect("add root");
+    let mut linked = preset("Rust", &root.join("snapshot"), "ext:rs");
+    linked.root_name = Some("work".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(linked)
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.start_selected_preset_edit();
+    app.open_named_root_manager();
+    app.shell
+        .features
+        .presets
+        .picker
+        .named_roots
+        .pending_operation = Some(PendingNamedRootOperation::Save {
+        original_name: Some("work".to_string()),
+        saved_name: "workspace".to_string(),
+    });
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.rx = rx;
+    app.shell.worker_bus.catalog.pending_request_id = Some(9);
+    app.shell.worker_bus.catalog.in_progress = true;
+    let mut updated = app.shell.features.presets.catalog.clone();
+    updated
+        .replace_named_root("work", "workspace", root.join("new"))
+        .expect("rename root");
+    tx.send(CatalogResponse {
+        request_id: 9,
+        result: Ok(updated),
+    })
+    .expect("send response");
+
+    app.poll_catalog_response();
+
+    assert_eq!(
+        app.shell
+            .features
+            .presets
+            .picker
+            .editor
+            .root_name
+            .as_deref(),
+        Some("workspace")
+    );
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.selected_index,
+        Some(0)
+    );
+    assert!(!app.shell.features.presets.picker.named_roots.editor.open);
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Saved named root: workspace"));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn escape_unwinds_named_root_editor_then_manager_without_closing_the_picker() {
+    let root = test_root("named-root-manager-escape");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+    app.start_add_named_root();
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::Escape, egui::Modifiers::NONE)],
+    );
+    assert!(app.shell.features.presets.picker.named_roots.open);
+    assert!(!app.shell.features.presets.picker.named_roots.editor.open);
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::Escape, egui::Modifiers::NONE)],
+    );
+    assert!(app.shell.features.presets.picker.open);
+    assert!(!app.shell.features.presets.picker.named_roots.open);
     let _ = fs::remove_dir_all(root);
 }

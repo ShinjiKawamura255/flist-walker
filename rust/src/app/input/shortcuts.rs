@@ -45,6 +45,60 @@ impl FlistWalkerApp {
             return false;
         }
 
+        if self.shell.features.presets.picker.named_roots.open {
+            if self.shell.features.presets.picker.named_roots.editor.open {
+                if ctx
+                    .input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+                {
+                    self.cancel_named_root_edit();
+                    return true;
+                }
+                if Self::consume_gui_shortcut(ctx, egui::Key::Enter, false) {
+                    self.request_save_named_root();
+                    return true;
+                }
+                return true;
+            }
+            if self
+                .shell
+                .features
+                .presets
+                .picker
+                .named_roots
+                .confirm_delete
+            {
+                if ctx
+                    .input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+                {
+                    self.cancel_delete_named_root();
+                    return true;
+                }
+                return true;
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+                self.close_named_root_manager();
+                return true;
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+            {
+                self.move_named_root_selection(1);
+                return true;
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+                self.move_named_root_selection(-1);
+                return true;
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::F2)) {
+                self.start_selected_named_root_edit();
+                return true;
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Delete)) {
+                self.start_selected_named_root_delete();
+                return true;
+            }
+            return true;
+        }
+
         if self.shell.features.presets.picker.editor.open {
             if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
                 self.cancel_preset_edit();

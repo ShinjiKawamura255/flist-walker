@@ -335,6 +335,7 @@ pub(super) struct PresetPickerState {
     pub(super) focus_requested: bool,
     pub(super) error: String,
     pub(super) editor: PresetEditorState,
+    pub(super) named_roots: NamedRootManagerState,
 }
 
 #[derive(Default)]
@@ -355,6 +356,36 @@ pub(super) struct PresetEditorState {
     pub(super) focus_requested: bool,
     pub(super) error: String,
     pub(super) pending_saved_name: Option<String>,
+}
+
+#[derive(Default)]
+pub(super) struct NamedRootManagerState {
+    pub(super) open: bool,
+    pub(super) selected_index: Option<usize>,
+    pub(super) confirm_delete: bool,
+    pub(super) error: String,
+    pub(super) editor: NamedRootEditorState,
+    pub(super) pending_operation: Option<PendingNamedRootOperation>,
+}
+
+#[derive(Default)]
+pub(super) struct NamedRootEditorState {
+    pub(super) open: bool,
+    pub(super) original_name: Option<String>,
+    pub(super) name: String,
+    pub(super) path: String,
+    pub(super) focus_requested: bool,
+    pub(super) error: String,
+}
+
+pub(super) enum PendingNamedRootOperation {
+    Save {
+        original_name: Option<String>,
+        saved_name: String,
+    },
+    Delete {
+        name: String,
+    },
 }
 
 #[derive(Default)]

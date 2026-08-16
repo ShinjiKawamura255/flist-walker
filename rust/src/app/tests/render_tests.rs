@@ -640,6 +640,55 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
 }
 
 #[test]
+fn gui_surface_snapshot_exposes_named_root_manager_and_editor() {
+    let root = test_root("render-snapshot-named-root-manager");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .add_named_root("work", root.join("workspace"))
+        .expect("add named root");
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["title"],
+        json!("Named roots")
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["lines"],
+        json!([format!("work — {}", root.join("workspace").display())])
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["buttons"],
+        json!(["Add", "Edit", "Delete", "Back"])
+    );
+
+    app.start_selected_named_root_edit();
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["title"],
+        json!("Edit named root")
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["lines"],
+        json!([
+            "Name: work",
+            format!("Path: {}", root.join("workspace").display())
+        ])
+    );
+
+    let ctx = egui::Context::default();
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    assert!(app.shell.features.presets.picker.named_roots.editor.open);
+    assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     let root = test_root("render-snapshot-rich-state");
     fs::create_dir_all(&root).expect("create dir");

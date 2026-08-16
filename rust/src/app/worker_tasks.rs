@@ -26,7 +26,7 @@ use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
 use crate::updater::{check_for_update, prepare_and_start_update};
 use crate::walker_runtime::resolve_entry_kind;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -35,6 +35,19 @@ use tracing::{info, warn};
 
 pub(crate) type SharedKindResolver = Arc<dyn Fn(&Path) -> Option<EntryKind> + Send + Sync>;
 pub(crate) type SharedActionExecutor = Arc<dyn Fn(&Path) -> anyhow::Result<()> + Send + Sync>;
+
+fn resolve_named_root_path(root: &Path) -> anyhow::Result<PathBuf> {
+    let root = root.canonicalize().map_err(|error| {
+        anyhow::anyhow!(
+            "failed to canonicalize named root {}: {error}",
+            root.display()
+        )
+    })?;
+    if !root.is_dir() {
+        anyhow::bail!("named root is not a directory: {}", root.display());
+    }
+    Ok(root)
+}
 
 fn trace_worker_started(flow: &'static str, request_id: u64) {
     info!(
@@ -197,6 +210,36 @@ pub(super) fn spawn_catalog_worker(
                 trace_worker_started("search_catalog", req.request_id);
                 let result = match req.kind {
                     CatalogRequestKind::Load => load_search_catalog(),
+                    CatalogRequestKind::AddNamedRoot { name, path } => {
+                        resolve_named_root_path(&path)
+                            .and_then(|path| {
+                                search_catalog_file_path().map(|catalog_path| (path, catalog_path))
+                            })
+                            .and_then(|(path, catalog_path)| {
+                                update_search_catalog(&catalog_path, |catalog| {
+                                    catalog.add_named_root(&name, path)
+                                })
+                            })
+                    }
+                    CatalogRequestKind::ReplaceNamedRoot {
+                        original_name,
+                        name,
+                        path,
+                    } => resolve_named_root_path(&path)
+                        .and_then(|path| {
+                            search_catalog_file_path().map(|catalog_path| (path, catalog_path))
+                        })
+                        .and_then(|(path, catalog_path)| {
+                            update_search_catalog(&catalog_path, |catalog| {
+                                catalog.replace_named_root(&original_name, &name, path)
+                            })
+                        }),
+                    CatalogRequestKind::RemoveNamedRoot { name } => search_catalog_file_path()
+                        .and_then(|catalog_path| {
+                            update_search_catalog(&catalog_path, |catalog| {
+                                catalog.remove_named_root(&name)
+                            })
+                        }),
                     CatalogRequestKind::ReplacePreset {
                         original_name,
                         preset,

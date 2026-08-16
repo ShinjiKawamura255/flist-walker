@@ -136,6 +136,43 @@ impl SearchCatalog {
         Ok(())
     }
 
+    pub fn replace_named_root(
+        &mut self,
+        original_name: &str,
+        name: &str,
+        path: PathBuf,
+    ) -> Result<()> {
+        let Some(original_index) = self
+            .named_roots
+            .iter()
+            .position(|root| names_equal(&root.name, original_name))
+        else {
+            return Err(anyhow!("named root is not configured: {original_name}"));
+        };
+        let name = validate_catalog_name(name)?;
+        if self
+            .named_roots
+            .iter()
+            .enumerate()
+            .any(|(index, root)| index != original_index && names_equal(&root.name, &name))
+        {
+            return Err(anyhow!("named root already exists: {name}"));
+        }
+        let previous_name = self.named_roots[original_index].name.clone();
+        self.named_roots[original_index].name = name.clone();
+        self.named_roots[original_index].path = path;
+        for preset in &mut self.presets {
+            if preset
+                .root_name
+                .as_deref()
+                .is_some_and(|candidate| names_equal(candidate, &previous_name))
+            {
+                preset.root_name = Some(name.clone());
+            }
+        }
+        Ok(())
+    }
+
     pub fn remove_named_root(&mut self, name: &str) -> Result<()> {
         let Some(index) = self
             .named_roots
@@ -484,6 +521,96 @@ mod tests {
         assert!(loaded.preset("Rust").is_none());
         assert_eq!(
             loaded.preset("Rust source").expect("renamed preset").extra["future_preset"]["keep"],
+            Value::Bool(true)
+        );
+        assert_eq!(loaded.extra["future_catalog"]["keep"], Value::Bool(true));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn replacing_named_root_renames_preset_references_and_preserves_unknown_fields() {
+        let root = test_root("replace-named-root");
+        let mut catalog = SearchCatalog::default();
+        catalog
+            .add_named_root("work", root.join("old"))
+            .expect("add work root");
+        catalog.named_roots[0]
+            .extra
+            .insert("future".to_string(), Value::String("keep".to_string()));
+        catalog
+            .add_named_root("docs", root.join("docs"))
+            .expect("add docs root");
+        let mut linked = preset("Rust", &root.join("snapshot"));
+        linked.root_name = Some("work".to_string());
+        catalog.save_preset(linked).expect("save linked preset");
+
+        catalog
+            .replace_named_root("work", "workspace", root.join("new"))
+            .expect("replace named root");
+
+        assert_eq!(
+            catalog
+                .named_roots
+                .iter()
+                .map(|root| root.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["workspace", "docs"]
+        );
+        assert_eq!(
+            catalog.named_root("workspace").expect("renamed root").path,
+            root.join("new")
+        );
+        assert_eq!(
+            catalog.named_root("workspace").expect("renamed root").extra["future"],
+            Value::String("keep".to_string())
+        );
+        assert_eq!(
+            catalog
+                .preset("Rust")
+                .expect("linked preset")
+                .root_name
+                .as_deref(),
+            Some("workspace")
+        );
+
+        let before_collision = catalog.clone();
+        assert!(catalog
+            .replace_named_root("workspace", "DOCS", root.join("collision"))
+            .is_err());
+        assert_eq!(catalog, before_collision);
+    }
+
+    #[test]
+    fn atomic_named_root_replace_preserves_latest_unknown_fields() {
+        let root = test_root("atomic-replace-named-root");
+        fs::create_dir_all(&root).expect("create root");
+        let catalog_path = root.join(SEARCH_CATALOG_FILE_NAME);
+        fs::write(
+            &catalog_path,
+            format!(
+                r#"{{"version":1,"named_roots":[{{"name":"work","path":{},"future_root":{{"keep":true}}}}],"presets":[{{"name":"Rust","root_name":"work","root_path":{},"query":"","future_preset":{{"keep":true}}}}],"future_catalog":{{"keep":true}}}}"#,
+                serde_json::to_string(&root.join("old")).expect("serialize old root"),
+                serde_json::to_string(&root.join("snapshot")).expect("serialize snapshot")
+            ),
+        )
+        .expect("write catalog");
+
+        update_search_catalog(&catalog_path, |catalog| {
+            catalog.replace_named_root("work", "workspace", root.join("new"))
+        })
+        .expect("replace named root atomically");
+
+        let loaded = load_search_catalog_from_path(&catalog_path).expect("load updated catalog");
+        assert_eq!(
+            loaded.named_root("workspace").expect("renamed root").extra["future_root"]["keep"],
+            Value::Bool(true)
+        );
+        assert_eq!(
+            loaded.preset("Rust").expect("preset").root_name.as_deref(),
+            Some("workspace")
+        );
+        assert_eq!(
+            loaded.preset("Rust").expect("preset").extra["future_preset"]["keep"],
             Value::Bool(true)
         );
         assert_eq!(loaded.extra["future_catalog"]["keep"], Value::Bool(true));

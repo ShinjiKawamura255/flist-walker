@@ -205,6 +205,18 @@ pub(super) struct CatalogRequest {
 
 pub(super) enum CatalogRequestKind {
     Load,
+    AddNamedRoot {
+        name: String,
+        path: PathBuf,
+    },
+    ReplaceNamedRoot {
+        original_name: String,
+        name: String,
+        path: PathBuf,
+    },
+    RemoveNamedRoot {
+        name: String,
+    },
     ReplacePreset {
         original_name: String,
         preset: SearchPreset,
