@@ -174,6 +174,28 @@ impl SearchCatalog {
         Ok(())
     }
 
+    pub fn replace_preset(&mut self, original_name: &str, mut preset: SearchPreset) -> Result<()> {
+        let Some(original_index) = self
+            .presets
+            .iter()
+            .position(|candidate| names_equal(&candidate.name, original_name))
+        else {
+            return Err(anyhow!("search preset is not configured: {original_name}"));
+        };
+        preset.name = validate_catalog_name(&preset.name)?;
+        if let Some(root_name) = preset.root_name.as_deref() {
+            preset.root_name = Some(validate_catalog_name(root_name)?);
+        }
+        if self.presets.iter().enumerate().any(|(index, candidate)| {
+            index != original_index && names_equal(&candidate.name, &preset.name)
+        }) {
+            return Err(anyhow!("search preset already exists: {}", preset.name));
+        }
+        preset.extra = self.presets[original_index].extra.clone();
+        self.presets[original_index] = preset;
+        Ok(())
+    }
+
     pub fn remove_preset(&mut self, name: &str) -> Result<()> {
         let Some(index) = self
             .presets
@@ -390,5 +412,81 @@ mod tests {
             catalog.resolve_preset_root(catalog.preset("search").unwrap()),
             root.join("snapshot")
         );
+    }
+
+    #[test]
+    fn replacing_preset_supports_rename_in_place_and_rejects_name_collisions() {
+        let root = test_root("replace-preset");
+        let mut catalog = SearchCatalog::default();
+        let mut rust = preset("Rust", &root);
+        rust.extra
+            .insert("future".to_string(), Value::String("keep".to_string()));
+        catalog.save_preset(rust).expect("save rust preset");
+        catalog
+            .save_preset(preset("Docs", &root))
+            .expect("save docs preset");
+
+        let mut edited = catalog.preset("Rust").cloned().expect("rust preset");
+        edited.name = "Rust source".to_string();
+        edited.query = "ext:rs dir:src".to_string();
+        catalog
+            .replace_preset("Rust", edited)
+            .expect("rename preset");
+
+        assert_eq!(
+            catalog
+                .presets
+                .iter()
+                .map(|preset| preset.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Rust source", "Docs"]
+        );
+        assert_eq!(
+            catalog.preset("Rust source").expect("renamed preset").query,
+            "ext:rs dir:src"
+        );
+        assert_eq!(
+            catalog.preset("Rust source").expect("renamed preset").extra["future"],
+            Value::String("keep".to_string())
+        );
+
+        let before_collision = catalog.clone();
+        let mut collision = catalog
+            .preset("Rust source")
+            .cloned()
+            .expect("renamed preset");
+        collision.name = "docs".to_string();
+        assert!(catalog.replace_preset("Rust source", collision).is_err());
+        assert_eq!(catalog, before_collision);
+    }
+
+    #[test]
+    fn atomic_preset_replace_preserves_latest_unknown_fields() {
+        let root = test_root("atomic-replace-preset");
+        fs::create_dir_all(&root).expect("create root");
+        let catalog_path = root.join(SEARCH_CATALOG_FILE_NAME);
+        fs::write(
+            &catalog_path,
+            format!(
+                r#"{{"version":1,"named_roots":[],"presets":[{{"name":"Rust","root_path":{},"query":"old","future_preset":{{"keep":true}}}}],"future_catalog":{{"keep":true}}}}"#,
+                serde_json::to_string(&root).expect("serialize root")
+            ),
+        )
+        .expect("write catalog");
+        let edited = preset("Rust source", &root);
+
+        update_search_catalog(&catalog_path, |catalog| {
+            catalog.replace_preset("Rust", edited)
+        })
+        .expect("replace preset atomically");
+
+        let loaded = load_search_catalog_from_path(&catalog_path).expect("load updated catalog");
+        assert!(loaded.preset("Rust").is_none());
+        assert_eq!(
+            loaded.preset("Rust source").expect("renamed preset").extra["future_preset"]["keep"],
+            Value::Bool(true)
+        );
+        assert_eq!(loaded.extra["future_catalog"]["keep"], Value::Bool(true));
+        let _ = fs::remove_dir_all(root);
     }
 }

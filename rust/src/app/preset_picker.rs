@@ -1,6 +1,6 @@
 use super::{FlistWalkerApp, ResultSortMode};
 use crate::path_utils::path_key;
-use crate::search_catalog::{PresetSortMode, PresetSource, SearchPreset};
+use crate::search_catalog::{validate_catalog_name, PresetSortMode, PresetSource, SearchPreset};
 use eframe::egui;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
@@ -31,6 +31,7 @@ impl FlistWalkerApp {
         picker.restore_query_focus = restore_query_focus;
         picker.query.clear();
         picker.error.clear();
+        picker.editor = Default::default();
         picker.focus_requested = true;
         self.refresh_preset_picker_matches();
         ctx.memory_mut(|memory| {
@@ -49,6 +50,7 @@ impl FlistWalkerApp {
         picker.selected_match = None;
         picker.focus_requested = false;
         picker.error.clear();
+        picker.editor = Default::default();
         if restore_query_focus {
             self.request_focus_query();
             self.clear_unfocus_query_request();
@@ -62,7 +64,10 @@ impl FlistWalkerApp {
             .worker_bus
             .catalog
             .tx
-            .send(super::CatalogRequest { request_id })
+            .send(super::CatalogRequest {
+                request_id,
+                kind: super::CatalogRequestKind::Load,
+            })
             .is_err()
         {
             self.shell.worker_bus.catalog.clear_request();
@@ -77,13 +82,34 @@ impl FlistWalkerApp {
                 continue;
             }
             self.shell.worker_bus.catalog.clear_request();
+            let pending_saved_name = self
+                .shell
+                .features
+                .presets
+                .picker
+                .editor
+                .pending_saved_name
+                .take();
             match response.result {
                 Ok(catalog) => {
                     self.shell.features.presets.catalog = catalog;
                     self.shell.features.presets.picker.error.clear();
+                    if let Some(saved_name) = pending_saved_name {
+                        self.shell.features.presets.picker.editor = Default::default();
+                        self.shell.features.presets.picker.query.clear();
+                        self.refresh_preset_picker_matches();
+                        self.select_preset_picker_name(&saved_name);
+                        self.shell.features.presets.picker.focus_requested = true;
+                        self.set_notice(format!("Saved preset: {saved_name}"));
+                        continue;
+                    }
                     self.refresh_preset_picker_matches();
                 }
                 Err(error) => {
+                    if pending_saved_name.is_some() {
+                        self.shell.features.presets.picker.editor.error = error;
+                        continue;
+                    }
                     self.shell.features.presets.picker.error = error;
                     self.shell
                         .features
@@ -146,6 +172,18 @@ impl FlistWalkerApp {
         }
     }
 
+    fn select_preset_picker_name(&mut self, name: &str) {
+        let picker = &mut self.shell.features.presets.picker;
+        picker.selected_match = picker
+            .matched_catalog_indices
+            .iter()
+            .position(|catalog_index| {
+                self.shell.features.presets.catalog.presets[*catalog_index]
+                    .name
+                    .eq_ignore_ascii_case(name)
+            });
+    }
+
     fn selected_preset(&self) -> Option<SearchPreset> {
         let picker = &self.shell.features.presets.picker;
         let catalog_index = picker
@@ -158,6 +196,116 @@ impl FlistWalkerApp {
             .presets
             .get(*catalog_index)
             .cloned()
+    }
+
+    pub(in crate::app) fn start_selected_preset_edit(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let Some(preset) = self.selected_preset() else {
+            return;
+        };
+        self.shell.features.presets.picker.editor = super::state::PresetEditorState {
+            open: true,
+            original_name: preset.name.clone(),
+            name: preset.name,
+            root_name: preset.root_name,
+            root_path: preset.root_path.display().to_string(),
+            query: preset.query,
+            entry_type: preset.entry_type,
+            source: preset.source,
+            regex: preset.regex,
+            ignore_case: preset.ignore_case,
+            ignore_enabled: preset.ignore_enabled,
+            sort: preset.sort,
+            extra: preset.extra,
+            focus_requested: true,
+            error: String::new(),
+            pending_saved_name: None,
+        };
+    }
+
+    pub(in crate::app) fn cancel_preset_edit(&mut self) {
+        if self
+            .shell
+            .features
+            .presets
+            .picker
+            .editor
+            .pending_saved_name
+            .is_some()
+        {
+            return;
+        }
+        self.shell.features.presets.picker.editor = Default::default();
+        self.shell.features.presets.picker.focus_requested = true;
+    }
+
+    pub(in crate::app) fn request_save_preset_edit(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            self.shell.features.presets.picker.editor.error =
+                "Catalog update already in progress".to_string();
+            return;
+        }
+        let editor = &self.shell.features.presets.picker.editor;
+        if !editor.open {
+            return;
+        }
+        let name = match validate_catalog_name(&editor.name) {
+            Ok(name) => name,
+            Err(error) => {
+                self.shell.features.presets.picker.editor.error = error.to_string();
+                return;
+            }
+        };
+        let root_path = editor.root_path.trim();
+        if root_path.is_empty() {
+            self.shell.features.presets.picker.editor.error =
+                "Preset root must not be empty".to_string();
+            return;
+        }
+        let root_path = std::path::PathBuf::from(root_path);
+        if !root_path.is_absolute() {
+            self.shell.features.presets.picker.editor.error =
+                "Preset root must be an absolute path".to_string();
+            return;
+        }
+        let preset = SearchPreset {
+            name: name.clone(),
+            root_name: editor.root_name.clone(),
+            root_path,
+            query: editor.query.clone(),
+            entry_type: editor.entry_type,
+            source: editor.source,
+            regex: editor.regex,
+            ignore_case: editor.ignore_case,
+            ignore_enabled: editor.ignore_enabled,
+            sort: editor.sort,
+            extra: editor.extra.clone(),
+        };
+        let original_name = editor.original_name.clone();
+        let request_id = self.shell.worker_bus.catalog.begin_request();
+        self.shell.features.presets.picker.editor.pending_saved_name = Some(name);
+        self.shell.features.presets.picker.editor.error.clear();
+        if self
+            .shell
+            .worker_bus
+            .catalog
+            .tx
+            .send(super::CatalogRequest {
+                request_id,
+                kind: super::CatalogRequestKind::ReplacePreset {
+                    original_name,
+                    preset,
+                },
+            })
+            .is_err()
+        {
+            self.shell.worker_bus.catalog.clear_request();
+            self.shell.features.presets.picker.editor.pending_saved_name = None;
+            self.shell.features.presets.picker.editor.error =
+                "Preset catalog worker is unavailable".to_string();
+        }
     }
 
     pub(in crate::app) fn apply_selected_preset(&mut self) {

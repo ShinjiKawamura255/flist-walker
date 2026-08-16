@@ -173,9 +173,10 @@
 - MUST: catalog 管理は positional subcommand を予約せず、`--list-named-roots`、`--add-named-root NAME=PATH`、`--remove-named-root NAME`、`--list-presets`、`--save-preset NAME`、`--remove-preset NAME`、`--preset NAME` の明示 long option で提供する。
 - MUST: `--preset` は batch/TUI で利用でき、preset が所有する root/query/type/source/regex/case/ignore/sort の明示指定とは競合する。limit、color、output framing、明示 action は invocation が所有する。
 - MUST: preset は pure search state だけを保持し、exec/open/reveal/update/FileList mutation を保存しない。
-- MUST: named-root/preset catalog の mutation は CLI/TUI に限定する。GUI はメイン画面へ preset control を常設せず、OS primary modifier の `Primary+Shift+P` で read-only picker を開き、preset 名の fuzzy filter、`Up` / `Down` 選択、`Enter` 適用、`Esc` cancel を提供する。
+- MUST: named-root管理とpresetの作成・削除はCLI/TUIに限定する。GUIはメイン画面へpreset controlを常設せず、OS primary modifierの`Primary+Shift+P`でpickerを開き、preset名のfuzzy filter、`Up` / `Down`選択、`Enter`適用、`F2` / `Edit`編集、`Esc` cancelを提供する。
 - MUST: GUI picker は catalog を worker で読み込み、最新 request の response だけを採用する。loading/error/empty/no-match を modal 内で区別し、表示中の入力を背後の検索・選択・copy・実行へ漏らしてはならない。
-- MUST: GUI の preset 適用は root/query/type/source/regex/case/ignore/sort を現在 tab へ反映し、root/source/type が変わる場合だけ既存 index refresh 経路を使う。適用自体は結果の open/execute/reveal や FileList mutation を開始してはならない。
+- MUST: GUI editor は選択中 preset の name/root/query/type/source/regex/case/ignore/sort を draft として編集し、`Primary+Enter` / `Save` で専用 worker による lock付き read-modify-write を行う。rename は元の位置を維持し、他 preset との case-insensitive name collision を拒否し、保存時点の unknown fields を保持する。保存失敗時は draft と error を残し、`Esc` / `Cancel` は未保存 draft を破棄して picker へ戻る。
+- MUST: GUI の preset 適用は root/query/type/source/regex/case/ignore/sort を現在 tab へ反映し、root/source/type が変わる場合だけ既存 index refresh 経路を使う。適用自体は結果の open/execute/reveal や FileList mutation を開始してはならない。editor保存はcatalogだけを更新し、現在tabの検索状態または副作用actionを変更してはならない。
 - MUST: catalog management success は exit 0、lookup/storage failure は exit 1、argument contract failure は exit 2 とする。
 
 ### Preconditions / Postconditions

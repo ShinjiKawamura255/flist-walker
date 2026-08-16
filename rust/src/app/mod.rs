@@ -85,10 +85,10 @@ use worker_bus::{
     SortWorkerBus, UpdateWorkerBus, WorkerBus,
 };
 use worker_protocol::{
-    ActionRequest, ActionResponse, CatalogRequest, FileListRequest, FileListResponse, IndexEntry,
-    IndexRequest, IndexResponse, KindResolveRequest, PreviewRequest, PreviewResponse,
-    SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
-    UpdateRequestKind, UpdateResponse,
+    ActionRequest, ActionResponse, CatalogRequest, CatalogRequestKind, FileListRequest,
+    FileListResponse, IndexEntry, IndexRequest, IndexResponse, KindResolveRequest, PreviewRequest,
+    PreviewResponse, SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse,
+    UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
 use worker_runtime::WorkerRuntime;
 use workers::{

@@ -23,6 +23,9 @@ pub(super) enum RenderHelpDialogCommand {
 #[derive(Clone, Copy)]
 pub(super) enum RenderPresetPickerCommand {
     Apply,
+    StartEdit,
+    SaveEdit,
+    CancelEdit,
     Close,
 }
 
@@ -370,6 +373,15 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::Apply) => {
                     self.apply_selected_preset();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::StartEdit) => {
+                    self.start_selected_preset_edit();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::SaveEdit) => {
+                    self.request_save_preset_edit();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::CancelEdit) => {
+                    self.cancel_preset_edit();
                 }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::Close) => {
                     self.close_preset_picker();

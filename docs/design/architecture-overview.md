@@ -44,7 +44,7 @@
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: ヘルプモーダルはキーボードショートカットに加え、共有compiled queryのfield指定（`name:`、`path:`、`dir:`、`ext:`）、fieldへ適用する演算子、複合例を静的な利用案内として表示する。検索要求やworkerを起動せず、表示中は既存の入力遮断契約を維持する。
-- 役割補足: preset picker は OS primary modifier の `Primary+Shift+P` から開く read-only modal とし、catalog を専用 worker で非同期 load して名前を fuzzy filter する。Enter は pure search state だけを現在 tab へ適用し、背景 action を起動しない。メイン panel へ preset control は常設しない。
+- 役割補足: preset picker は OS primary modifier の `Primary+Shift+P` から開く modal とし、catalog を専用 worker で非同期 load して名前を fuzzy filter する。Enter は pure search state だけを現在 tab へ適用し、F2は選択中presetのdraft editorへ遷移する。editor保存はworker経由でcatalogだけをatomic更新し、背景actionや現在tabを変更しない。メインpanelへpreset controlは常設しない。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
 - 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist/mod.rs`、`app/update.rs`、`app/preset_picker.rs`、`app/render.rs`、`app/input/mod.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs`、`app/result_reducer.rs`、`app/result_flow.rs`、`app/preview_flow.rs`、`app/response_flow.rs`、`app/root_browser.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
 - 役割補足: saved roots の `Manage list` は `RootListManagerState` に保存済み list とは分離した draft roots/default root、通常時の単一選択、編集中の index/path、削除モードと複数選択を保持する。`app/render_dialogs/root_list.rs` は通常・編集・削除モードを描画し、検証、正規化、重複排除、default root 追従、Apply/Cancel 境界は `app/root_browser.rs` が担当する。

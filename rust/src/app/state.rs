@@ -14,10 +14,10 @@ use crate::indexer::{IndexBuildResult, IndexSource};
 pub(super) use crate::search::{
     SearchSortMode as ResultSortMode, SearchSortScope as ResultSortScope,
 };
-use crate::search_catalog::SearchCatalog;
+use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource, SearchCatalog};
 use crate::updater::UpdateCandidate;
 use eframe::egui;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -334,6 +334,27 @@ pub(super) struct PresetPickerState {
     pub(super) selected_match: Option<usize>,
     pub(super) focus_requested: bool,
     pub(super) error: String,
+    pub(super) editor: PresetEditorState,
+}
+
+#[derive(Default)]
+pub(super) struct PresetEditorState {
+    pub(super) open: bool,
+    pub(super) original_name: String,
+    pub(super) name: String,
+    pub(super) root_name: Option<String>,
+    pub(super) root_path: String,
+    pub(super) query: String,
+    pub(super) entry_type: PresetEntryType,
+    pub(super) source: PresetSource,
+    pub(super) regex: bool,
+    pub(super) ignore_case: bool,
+    pub(super) ignore_enabled: bool,
+    pub(super) sort: PresetSortMode,
+    pub(super) extra: BTreeMap<String, serde_json::Value>,
+    pub(super) focus_requested: bool,
+    pub(super) error: String,
+    pub(super) pending_saved_name: Option<String>,
 }
 
 #[derive(Default)]

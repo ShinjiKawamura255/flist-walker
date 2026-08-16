@@ -52,28 +52,40 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         Vec::new()
     };
     let preset_picker_dialogs = if app.shell.features.presets.picker.open {
-        let lines = app
-            .shell
-            .features
-            .presets
-            .picker
-            .matched_catalog_indices
-            .iter()
-            .filter_map(|index| {
-                app.shell
-                    .features
-                    .presets
-                    .catalog
-                    .presets
-                    .get(*index)
-                    .map(|preset| preset.name.clone())
-            })
-            .collect();
-        vec![DialogSnapshot {
-            title: "Presets".to_string(),
-            lines,
-            buttons: vec!["Close".to_string()],
-        }]
+        if app.shell.features.presets.picker.editor.open {
+            let editor = &app.shell.features.presets.picker.editor;
+            vec![DialogSnapshot {
+                title: "Edit preset".to_string(),
+                lines: vec![
+                    format!("Name: {}", editor.name),
+                    format!("Query: {}", editor.query),
+                ],
+                buttons: vec!["Save".to_string(), "Cancel".to_string()],
+            }]
+        } else {
+            let lines = app
+                .shell
+                .features
+                .presets
+                .picker
+                .matched_catalog_indices
+                .iter()
+                .filter_map(|index| {
+                    app.shell
+                        .features
+                        .presets
+                        .catalog
+                        .presets
+                        .get(*index)
+                        .map(|preset| preset.name.clone())
+                })
+                .collect();
+            vec![DialogSnapshot {
+                title: "Presets".to_string(),
+                lines,
+                buttons: vec!["Edit".to_string(), "Close".to_string()],
+            }]
+        }
     } else {
         Vec::new()
     };

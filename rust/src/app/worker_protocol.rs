@@ -1,7 +1,7 @@
 use super::{ResultSortMode, ResultSortScope, SortMetadata};
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::IndexSource;
-use crate::search_catalog::SearchCatalog;
+use crate::search_catalog::{SearchCatalog, SearchPreset};
 use crate::updater::UpdateCandidate;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -200,6 +200,15 @@ pub(super) enum FileListResponse {
 
 pub(super) struct CatalogRequest {
     pub(super) request_id: u64,
+    pub(super) kind: CatalogRequestKind,
+}
+
+pub(super) enum CatalogRequestKind {
+    Load,
+    ReplacePreset {
+        original_name: String,
+        preset: SearchPreset,
+    },
 }
 
 pub(super) struct CatalogResponse {

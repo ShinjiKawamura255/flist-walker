@@ -45,7 +45,7 @@ cargo run --bin flistwalker -- --root ..
 ### Main Shortcuts
 
 - `F1`: open or close the in-app help for keyboard shortcuts and query syntax (also available from `Help`)
-- `Ctrl+Shift+P`: open the preset picker, fuzzy-filter preset names, and apply the selected pure-search preset with `Enter` (`Cmd+Shift+P` on macOS)
+- `Ctrl+Shift+P`: open the preset picker, fuzzy-filter names, apply with `Enter`, or edit the selected preset with `F2` (`Cmd+Shift+P` on macOS)
 - `Up` / `Down` or `Ctrl+P` / `Ctrl+N`: move the current row
 - `Ctrl+V` / `Alt+V`: page navigation
 - `Enter` / `Ctrl+J` / `Ctrl+M`: open or execute
@@ -169,7 +169,7 @@ In CLI mode:
 
 ### Named Roots and Search Presets
 
-Named roots assign a stable name to a search root. Presets save a named root or root snapshot together with the query, entry type, source, regex, case-sensitivity, ignore, and sort settings. They never save an action or external command. Create, edit, and remove catalog entries through CLI/TUI. In the GUI, press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS), type to fuzzy-filter preset names, use `Up` / `Down`, and press `Enter` to apply the selected preset to the current tab or `Esc` to close without changing the current search. The GUI picker never opens or executes a search result and adds no permanent control to the main panel.
+Named roots assign a stable name to a search root. Presets save a named root or root snapshot together with the query, entry type, source, regex, case-sensitivity, ignore, and sort settings. They never save an action or external command. Create and remove catalog entries and manage named roots through CLI/TUI. In the GUI, press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS), type to fuzzy-filter preset names, use `Up` / `Down`, and press `Enter` to apply the selected preset to the current tab or `Esc` to close without changing the current search. Press `F2` or use `Edit` to open a draft editor for the selected preset's name, root/query/type/source/regex/case/ignore/sort fields. `Ctrl+Enter` (`Cmd+Enter` on macOS) or `Save` updates only the catalog and does not apply the preset; `Esc` / `Cancel` discards the draft. The GUI picker never opens or executes a search result and adds no permanent control to the main panel.
 
 ```bash
 # Register a named root. Quote the complete NAME=PATH value when the path may contain spaces.
