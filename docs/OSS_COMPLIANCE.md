@@ -77,6 +77,18 @@
 
 ## Resolved audit warnings
 
+### RUSTSEC-2026-0257: `webbrowser` Unix `BROWSER` handling argument injection
+- Status: resolved on 2026-08-17.
+- Resolution: refreshed `rust/Cargo.lock` from `webbrowser 1.2.0` to the
+  fixed `1.2.2` release required by the advisory.
+- Previous observed path from `cargo audit`: `webbrowser 1.2.0 -> egui-winit
+  0.35.0 -> eframe 0.35.0 -> flist-walker`.
+- Current lockfile check: `rust/Cargo.lock` contains `webbrowser 1.2.2`.
+- Packaging impact: the updated transitive browser integration and its macOS
+  backend remain permissively licensed; `THIRD_PARTY_NOTICES.txt` records the
+  current version and the existing archive, sidecar, bundle, and self-update
+  notice paths are unchanged.
+
 ### RUSTSEC-2026-0204: `crossbeam-epoch 0.9.18` invalid pointer dereference in pointer formatting
 - Status: resolved on 2026-07-09.
 - Resolution: refreshed `Cargo.lock` to `crossbeam-epoch 0.9.20`.

@@ -2205,6 +2205,7 @@ fn tc_162_tui_frame_is_wrapped_in_synchronized_terminal_update() {
 
 #[test]
 fn tc_172_color_never_omits_highlight_escape_sequences() {
+    force_tui_color_output(true);
     let positions = [0].into_iter().collect();
     let mut colored = Vec::new();
     print_highlighted(&mut colored, 0, "> ", "match", &positions, 20, true)
