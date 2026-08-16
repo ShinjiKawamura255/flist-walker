@@ -45,6 +45,18 @@ impl FlistWalkerApp {
             return false;
         }
 
+        if self.shell.features.presets.picker.editor.open {
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+                self.cancel_preset_edit();
+                return true;
+            }
+            if Self::consume_gui_shortcut(ctx, egui::Key::Enter, false) {
+                self.request_save_preset_edit();
+                return true;
+            }
+            return true;
+        }
+
         if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
             self.close_preset_picker();
             return true;
@@ -59,6 +71,10 @@ impl FlistWalkerApp {
         }
         if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
             self.apply_selected_preset();
+            return true;
+        }
+        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::F2)) {
+            self.start_selected_preset_edit();
             return true;
         }
 

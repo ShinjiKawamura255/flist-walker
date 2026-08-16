@@ -60,6 +60,8 @@ fn gui_help_lines_follow_platform_and_emacs_settings() {
     assert!(enabled.contains(&format!("{primary}+Shift+P")));
     assert!(enabled.contains("Type to filter preset names"));
     assert!(enabled.contains("Enter to apply"));
+    assert!(enabled.contains("F2 — Edit the selected preset"));
+    assert!(enabled.contains(&format!("{primary}+Enter — Save the preset draft")));
     assert!(enabled.contains("Ctrl+N / Ctrl+P"));
     assert!(enabled.contains("Query syntax"));
     assert!(enabled.contains("name:TERM"));

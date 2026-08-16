@@ -42,7 +42,7 @@ cargo run -- --root ..
 ### 主なショートカット
 
 - `F1`: キーボードショートカットと query 構文のアプリ内 help を開閉（`Help` からも利用可能）
-- `Ctrl+Shift+P`: preset picker を開き、preset 名を fuzzy filter して `Enter` で pure-search preset を適用（macOS は `Cmd+Shift+P`）
+- `Ctrl+Shift+P`: preset picker を開き、preset 名を fuzzy filter して `Enter` で適用、`F2` で選択中 preset を編集（macOS は `Cmd+Shift+P`）
 - `Up` / `Down` または `Ctrl+P` / `Ctrl+N`: 現在行を移動
 - `Ctrl+V` / `Alt+V`: ページ移動
 - `Enter` / `Ctrl+J` / `Ctrl+M`: 開く / 実行
@@ -196,7 +196,7 @@ CLI では:
 
 ### 名前付き root と検索 preset
 
-名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。catalog entry の作成・編集・削除は CLI/TUI で行います。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。
+名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。catalog entry の作成・削除と named root 管理は CLI/TUI で行います。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort を編集できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。editor の `Esc` / `Cancel` は未保存 draft を破棄します。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。
 
 ```bash
 # 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。

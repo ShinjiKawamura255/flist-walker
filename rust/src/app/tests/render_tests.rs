@@ -591,6 +591,55 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
 }
 
 #[test]
+fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
+    let root = test_root("render-snapshot-preset-editor");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(SearchPreset {
+            name: "Rust sources".to_string(),
+            root_name: None,
+            root_path: root.clone(),
+            query: "ext:rs".to_string(),
+            entry_type: PresetEntryType::File,
+            source: PresetSource::Walker,
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: true,
+            sort: PresetSortMode::Score,
+            extra: BTreeMap::new(),
+        })
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.start_selected_preset_edit();
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["title"],
+        json!("Edit preset")
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["lines"],
+        json!(["Name: Rust sources", "Query: ext:rs"])
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["buttons"],
+        json!(["Save", "Cancel"])
+    );
+    assert_eq!(app.shell.runtime.query_state.query, "current");
+
+    let ctx = egui::Context::default();
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    assert!(app.shell.features.presets.picker.editor.open);
+    assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     let root = test_root("render-snapshot-rich-state");
     fs::create_dir_all(&root).expect("create dir");
