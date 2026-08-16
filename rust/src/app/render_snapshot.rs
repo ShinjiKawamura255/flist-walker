@@ -32,6 +32,7 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) top_actions: Vec<String>,
     pub(super) status_line: String,
     pub(super) help_dialogs: Vec<DialogSnapshot>,
+    pub(super) preset_picker_dialogs: Vec<DialogSnapshot>,
     pub(super) filelist_dialogs: Vec<DialogSnapshot>,
     pub(super) update_dialogs: Vec<DialogSnapshot>,
 }
@@ -45,6 +46,32 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         vec![DialogSnapshot {
             title: "Help".to_string(),
             lines: FlistWalkerApp::gui_help_lines(app.shell.runtime.emacs_keybindings_enabled),
+            buttons: vec!["Close".to_string()],
+        }]
+    } else {
+        Vec::new()
+    };
+    let preset_picker_dialogs = if app.shell.features.presets.picker.open {
+        let lines = app
+            .shell
+            .features
+            .presets
+            .picker
+            .matched_catalog_indices
+            .iter()
+            .filter_map(|index| {
+                app.shell
+                    .features
+                    .presets
+                    .catalog
+                    .presets
+                    .get(*index)
+                    .map(|preset| preset.name.clone())
+            })
+            .collect();
+        vec![DialogSnapshot {
+            title: "Presets".to_string(),
+            lines,
             buttons: vec!["Close".to_string()],
         }]
     } else {
@@ -185,6 +212,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             .collect(),
         status_line: app.shell.runtime.status_line.clone(),
         help_dialogs,
+        preset_picker_dialogs,
         filelist_dialogs,
         update_dialogs,
     }

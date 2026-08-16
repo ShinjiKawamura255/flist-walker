@@ -14,6 +14,7 @@ use crate::indexer::{IndexBuildResult, IndexSource};
 pub(super) use crate::search::{
     SearchSortMode as ResultSortMode, SearchSortScope as ResultSortScope,
 };
+use crate::search_catalog::SearchCatalog;
 use crate::updater::UpdateCandidate;
 use eframe::egui;
 use std::collections::{HashMap, HashSet};
@@ -313,8 +314,26 @@ pub(super) struct RootListManagerState {
 
 pub(crate) struct FeatureStateBundle {
     pub(super) root_browser: RootBrowserState,
+    pub(super) presets: PresetManagerState,
     pub(super) filelist: FileListManager,
     pub(super) update: UpdateManager,
+}
+
+#[derive(Default)]
+pub(super) struct PresetManagerState {
+    pub(super) catalog: SearchCatalog,
+    pub(super) picker: PresetPickerState,
+}
+
+#[derive(Default)]
+pub(super) struct PresetPickerState {
+    pub(super) open: bool,
+    pub(super) restore_query_focus: bool,
+    pub(super) query: String,
+    pub(super) matched_catalog_indices: Vec<usize>,
+    pub(super) selected_match: Option<usize>,
+    pub(super) focus_requested: bool,
+    pub(super) error: String,
 }
 
 #[derive(Default)]

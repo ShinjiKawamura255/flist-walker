@@ -1,5 +1,6 @@
 pub(super) mod filelist;
 pub(super) mod help;
+pub(super) mod preset_picker;
 mod root_list;
 pub(super) mod update;
 
@@ -20,6 +21,10 @@ pub(super) fn render_update_check_failure_dialog(app: &mut FlistWalkerApp, ctx: 
 
 pub(super) fn render_help_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     help::render(app, ctx);
+}
+
+pub(super) fn render_preset_picker_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    preset_picker::render(app, ctx);
 }
 
 pub(super) fn render_manage_root_list_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {

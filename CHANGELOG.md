@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 ### Added
--
+- GUI に `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で開く検索 preset picker を追加した。preset 名を fuzzy filter して現在 tab の pure search state へ適用でき、メイン画面への常設 control と副作用 action は追加しない。
 
 ### Changed
 -

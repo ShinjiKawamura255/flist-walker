@@ -21,6 +21,12 @@ pub(super) enum RenderHelpDialogCommand {
 }
 
 #[derive(Clone, Copy)]
+pub(super) enum RenderPresetPickerCommand {
+    Apply,
+    Close,
+}
+
+#[derive(Clone, Copy)]
 pub(super) enum RenderFileListDialogCommand {
     ConfirmOverwrite,
     CancelOverwrite,
@@ -76,6 +82,7 @@ pub(super) enum RenderCommand {
     TopAction(RenderTopActionCommand),
     OpenRuntimeConfig,
     HelpDialog(RenderHelpDialogCommand),
+    PresetPicker(RenderPresetPickerCommand),
     FileListDialog(RenderFileListDialogCommand),
     UpdateDialog(RenderUpdateDialogCommand),
     RootListDialog(RenderRootListDialogCommand),
@@ -296,6 +303,7 @@ impl FlistWalkerApp {
             || self.shell.indexing.kind_resolution_in_progress
             || self.shell.features.filelist.workflow.in_progress
             || self.shell.features.update.state.in_progress
+            || self.shell.worker_bus.catalog.in_progress
             || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
@@ -311,6 +319,7 @@ impl FlistWalkerApp {
         // Register the modal layer before background widgets so first-frame input cannot leak.
         render_dialogs::render_update_check_failure_dialog(self, &ctx);
         render_dialogs::render_help_dialog(self, &ctx);
+        render_dialogs::render_preset_picker_dialog(self, &ctx);
 
         render_panels::render_top_panel(self, ui);
         render_panels::render_status_panel(self, ui);
@@ -358,6 +367,12 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::HelpDialog(RenderHelpDialogCommand::Close) => {
                     self.shell.ui.help_open = false;
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::Apply) => {
+                    self.apply_selected_preset();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::Close) => {
+                    self.close_preset_picker();
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::ApplyHistory) => {
                     self.accept_history_search();

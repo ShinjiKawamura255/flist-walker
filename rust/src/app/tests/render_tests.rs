@@ -7,8 +7,10 @@ use crate::app::render::{
 use crate::app::render_theme;
 use crate::app::{render_dialogs, render_panels};
 use crate::entry::EntryDisplayKind;
+use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource, SearchPreset};
 use crate::updater::UpdateCandidate;
 use serde_json::json;
+use std::collections::BTreeMap;
 
 fn unmodified_key_event(key: egui::Key) -> egui::Event {
     egui::Event::Key {
@@ -510,6 +512,7 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             ],
             "status_line": "idle status",
             "help_dialogs": [],
+            "preset_picker_dialogs": [],
             "filelist_dialogs": [],
             "update_dialogs": [],
         })
@@ -518,12 +521,13 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
 }
 
 #[test]
-fn gui_surface_snapshot_does_not_expose_cli_only_presets() {
+fn gui_surface_snapshot_does_not_expose_permanent_preset_controls() {
     let root = test_root("render-snapshot-no-presets");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
     let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(snapshot["preset_picker_dialogs"], json!([]));
     for key in [
         "preset_names",
         "selected_preset",
@@ -534,6 +538,55 @@ fn gui_surface_snapshot_does_not_expose_cli_only_presets() {
         assert!(snapshot.get(key).is_none(), "GUI still exposes {key}");
     }
 
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
+    let root = test_root("render-snapshot-preset-picker");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(SearchPreset {
+            name: "Rust sources".to_string(),
+            root_name: None,
+            root_path: root.clone(),
+            query: "ext:rs".to_string(),
+            entry_type: PresetEntryType::File,
+            source: PresetSource::Walker,
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: true,
+            sort: PresetSortMode::Score,
+            extra: BTreeMap::new(),
+        })
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["title"],
+        json!("Presets")
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["lines"],
+        json!(["Rust sources"])
+    );
+    assert_eq!(
+        snapshot["top_actions"],
+        json!([
+            "Open / Execute",
+            "Copy Path(s)",
+            "Clear Selected",
+            "Create File List",
+            "Refresh Index",
+            "Help"
+        ])
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -653,6 +706,7 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             ],
             "status_line": "dialog status",
             "help_dialogs": [],
+            "preset_picker_dialogs": [],
             "filelist_dialogs": [
                 {
                     "title": "Overwrite FileList?",
