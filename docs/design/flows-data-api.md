@@ -44,8 +44,8 @@
 - `.flistwalker_search_catalog.json` は legacy `.flistwalker_roots.txt` と分離した version 1 document とし、named roots、pure search presets、unknown fields を保持する。
 - mutation は sidecar lock 内で read/validate/mutate/atomic-write する。newer/malformed document は read-only failure とし、同時 writer の lost update と downgrade 時の legacy data loss を防ぐ。
 - CLI adapter は明示 catalog option を先に処理し、`--preset` を effective search args へ変換して既存 batch/TUI pipeline へ渡す。
-- GUI は `PresetManagerState` に worker から受理した catalog snapshot と ephemeral picker/editor state を保持する。picker open ごとに catalog load request を送り、request-id freshness を満たす response だけで snapshot を置換する。name filter は UI memory 上で行い、適用は既存 root/index/search/sort/tab state transition を再利用する。
-- GUI picker/editor は modal として背景 input を遮断し、メイン panel へ control を追加しない。editor保存は元preset名とdraftをworkerへ渡し、最新catalogをlock内で再読込してin-place replace/atomic-writeする。rename collisionやwrite failureではcatalogを上書きせずdraftを維持し、保存時点のpreset unknown fieldsとversion 1 documentのunknown fieldsを保持する。
+- GUI は `PresetManagerState` に worker から受理した catalog snapshot と ephemeral picker/preset editor/named-root manager state を保持する。picker open ごとに catalog load request を送り、request-id freshness を満たす response だけで snapshot を置換する。name filter は UI memory 上で行い、適用は既存 root/index/search/sort/tab state transition を再利用する。
+- GUI picker/editor/Named Root manager は同じ modal 内で背景 input を遮断し、メイン panel へ control を追加しない。mutationは元entry名とdraftまたは削除対象名をworkerへ渡し、最新catalogをlock内で再読込してin-place mutation/atomic-writeする。named-root renameは参照presetを新名称へ追従させ、deleteは参照を解除してsnapshot fallbackを維持する。collisionやwrite failureではcatalogを上書きせずdraftまたは確認状態を維持し、保存時点のentry unknown fieldsとversion 1 documentのunknown fieldsを保持する。
 - `plan_filelist_write(options, filesystem) -> FileListWritePlan`; `settle_filelist_plan(plan, cancel) -> FileListTransactionReport`
 - `enqueue_persistence(patch, history_delta)`; `flush_persistence_bounded() -> CommitOutcome`
 

@@ -1,6 +1,8 @@
 use super::{FlistWalkerApp, ResultSortMode};
 use crate::path_utils::path_key;
-use crate::search_catalog::{validate_catalog_name, PresetSortMode, PresetSource, SearchPreset};
+use crate::search_catalog::{
+    validate_catalog_name, NamedRoot, PresetSortMode, PresetSource, SearchPreset,
+};
 use eframe::egui;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
@@ -32,6 +34,7 @@ impl FlistWalkerApp {
         picker.query.clear();
         picker.error.clear();
         picker.editor = Default::default();
+        picker.named_roots = Default::default();
         picker.focus_requested = true;
         self.refresh_preset_picker_matches();
         ctx.memory_mut(|memory| {
@@ -51,6 +54,7 @@ impl FlistWalkerApp {
         picker.focus_requested = false;
         picker.error.clear();
         picker.editor = Default::default();
+        picker.named_roots = Default::default();
         if restore_query_focus {
             self.request_focus_query();
             self.clear_unfocus_query_request();
@@ -82,6 +86,14 @@ impl FlistWalkerApp {
                 continue;
             }
             self.shell.worker_bus.catalog.clear_request();
+            let pending_named_root_operation = self
+                .shell
+                .features
+                .presets
+                .picker
+                .named_roots
+                .pending_operation
+                .take();
             let pending_saved_name = self
                 .shell
                 .features
@@ -94,6 +106,10 @@ impl FlistWalkerApp {
                 Ok(catalog) => {
                     self.shell.features.presets.catalog = catalog;
                     self.shell.features.presets.picker.error.clear();
+                    if let Some(operation) = pending_named_root_operation {
+                        self.complete_named_root_operation(operation);
+                        continue;
+                    }
                     if let Some(saved_name) = pending_saved_name {
                         self.shell.features.presets.picker.editor = Default::default();
                         self.shell.features.presets.picker.query.clear();
@@ -106,6 +122,17 @@ impl FlistWalkerApp {
                     self.refresh_preset_picker_matches();
                 }
                 Err(error) => {
+                    if let Some(operation) = pending_named_root_operation {
+                        match operation {
+                            super::state::PendingNamedRootOperation::Save { .. } => {
+                                self.shell.features.presets.picker.named_roots.editor.error = error;
+                            }
+                            super::state::PendingNamedRootOperation::Delete { .. } => {
+                                self.shell.features.presets.picker.named_roots.error = error;
+                            }
+                        }
+                        continue;
+                    }
                     if pending_saved_name.is_some() {
                         self.shell.features.presets.picker.editor.error = error;
                         continue;
@@ -119,6 +146,59 @@ impl FlistWalkerApp {
                         .clear();
                     self.shell.features.presets.picker.selected_match = None;
                 }
+            }
+        }
+    }
+
+    fn complete_named_root_operation(
+        &mut self,
+        operation: super::state::PendingNamedRootOperation,
+    ) {
+        let manager = &mut self.shell.features.presets.picker.named_roots;
+        manager.error.clear();
+        manager.confirm_delete = false;
+        match operation {
+            super::state::PendingNamedRootOperation::Save {
+                original_name,
+                saved_name,
+            } => {
+                if let Some(original_name) = original_name {
+                    let preset_editor = &mut self.shell.features.presets.picker.editor;
+                    if preset_editor
+                        .root_name
+                        .as_deref()
+                        .is_some_and(|name| name.eq_ignore_ascii_case(&original_name))
+                    {
+                        preset_editor.root_name = Some(saved_name.clone());
+                    }
+                }
+                manager.editor = Default::default();
+                manager.selected_index = self
+                    .shell
+                    .features
+                    .presets
+                    .catalog
+                    .named_roots
+                    .iter()
+                    .position(|root| root.name.eq_ignore_ascii_case(&saved_name));
+                self.set_notice(format!("Saved named root: {saved_name}"));
+            }
+            super::state::PendingNamedRootOperation::Delete { name } => {
+                let preset_editor = &mut self.shell.features.presets.picker.editor;
+                if preset_editor
+                    .root_name
+                    .as_deref()
+                    .is_some_and(|candidate| candidate.eq_ignore_ascii_case(&name))
+                {
+                    preset_editor.root_name = None;
+                }
+                let count = self.shell.features.presets.catalog.named_roots.len();
+                manager.selected_index = if count == 0 {
+                    None
+                } else {
+                    Some(manager.selected_index.unwrap_or(0).min(count - 1))
+                };
+                self.set_notice(format!("Deleted named root: {name}"));
             }
         }
     }
@@ -305,6 +385,232 @@ impl FlistWalkerApp {
             self.shell.features.presets.picker.editor.pending_saved_name = None;
             self.shell.features.presets.picker.editor.error =
                 "Preset catalog worker is unavailable".to_string();
+        }
+    }
+
+    pub(in crate::app) fn open_named_root_manager(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let manager = &mut self.shell.features.presets.picker.named_roots;
+        manager.open = true;
+        manager.selected_index =
+            (!self.shell.features.presets.catalog.named_roots.is_empty()).then_some(0);
+        manager.confirm_delete = false;
+        manager.error.clear();
+        manager.editor = Default::default();
+    }
+
+    pub(in crate::app) fn close_named_root_manager(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        self.shell.features.presets.picker.named_roots = Default::default();
+        if self.shell.features.presets.picker.editor.open {
+            self.shell.features.presets.picker.editor.focus_requested = true;
+        } else {
+            self.shell.features.presets.picker.focus_requested = true;
+        }
+    }
+
+    pub(in crate::app) fn move_named_root_selection(&mut self, delta: isize) {
+        let manager = &mut self.shell.features.presets.picker.named_roots;
+        let count = self.shell.features.presets.catalog.named_roots.len();
+        if count == 0 {
+            manager.selected_index = None;
+            return;
+        }
+        let current = manager.selected_index.unwrap_or(0) as isize;
+        manager.selected_index = Some((current + delta).rem_euclid(count as isize) as usize);
+        manager.confirm_delete = false;
+        manager.error.clear();
+    }
+
+    fn selected_named_root(&self) -> Option<NamedRoot> {
+        let manager = &self.shell.features.presets.picker.named_roots;
+        let index = manager.selected_index?;
+        self.shell
+            .features
+            .presets
+            .catalog
+            .named_roots
+            .get(index)
+            .cloned()
+    }
+
+    pub(in crate::app) fn start_add_named_root(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let path = self.shell.runtime.root.display().to_string();
+        self.shell.features.presets.picker.named_roots.editor =
+            super::state::NamedRootEditorState {
+                open: true,
+                original_name: None,
+                name: String::new(),
+                path,
+                focus_requested: true,
+                error: String::new(),
+            };
+        self.shell
+            .features
+            .presets
+            .picker
+            .named_roots
+            .confirm_delete = false;
+    }
+
+    pub(in crate::app) fn start_selected_named_root_edit(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let Some(root) = self.selected_named_root() else {
+            return;
+        };
+        self.shell.features.presets.picker.named_roots.editor =
+            super::state::NamedRootEditorState {
+                open: true,
+                original_name: Some(root.name.clone()),
+                name: root.name,
+                path: root.path.display().to_string(),
+                focus_requested: true,
+                error: String::new(),
+            };
+        self.shell
+            .features
+            .presets
+            .picker
+            .named_roots
+            .confirm_delete = false;
+    }
+
+    pub(in crate::app) fn cancel_named_root_edit(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        self.shell.features.presets.picker.named_roots.editor = Default::default();
+    }
+
+    pub(in crate::app) fn request_save_named_root(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let editor = &self.shell.features.presets.picker.named_roots.editor;
+        if !editor.open {
+            return;
+        }
+        let name = match validate_catalog_name(&editor.name) {
+            Ok(name) => name,
+            Err(error) => {
+                self.shell.features.presets.picker.named_roots.editor.error = error.to_string();
+                return;
+            }
+        };
+        let path = std::path::PathBuf::from(editor.path.trim());
+        if editor.path.trim().is_empty() {
+            self.shell.features.presets.picker.named_roots.editor.error =
+                "Named root path must not be empty".to_string();
+            return;
+        }
+        if !path.is_absolute() {
+            self.shell.features.presets.picker.named_roots.editor.error =
+                "Named root path must be an absolute path".to_string();
+            return;
+        }
+        let original_name = editor.original_name.clone();
+        let kind = match original_name.as_ref() {
+            Some(original_name) => super::CatalogRequestKind::ReplaceNamedRoot {
+                original_name: original_name.clone(),
+                name: name.clone(),
+                path,
+            },
+            None => super::CatalogRequestKind::AddNamedRoot {
+                name: name.clone(),
+                path,
+            },
+        };
+        let request_id = self.shell.worker_bus.catalog.begin_request();
+        self.shell
+            .features
+            .presets
+            .picker
+            .named_roots
+            .pending_operation = Some(super::state::PendingNamedRootOperation::Save {
+            original_name,
+            saved_name: name,
+        });
+        self.shell
+            .features
+            .presets
+            .picker
+            .named_roots
+            .editor
+            .error
+            .clear();
+        if self
+            .shell
+            .worker_bus
+            .catalog
+            .tx
+            .send(super::CatalogRequest { request_id, kind })
+            .is_err()
+        {
+            self.shell.worker_bus.catalog.clear_request();
+            let manager = &mut self.shell.features.presets.picker.named_roots;
+            manager.pending_operation = None;
+            manager.editor.error = "Preset catalog worker is unavailable".to_string();
+        }
+    }
+
+    pub(in crate::app) fn start_selected_named_root_delete(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress || self.selected_named_root().is_none() {
+            return;
+        }
+        let manager = &mut self.shell.features.presets.picker.named_roots;
+        manager.confirm_delete = true;
+        manager.error.clear();
+    }
+
+    pub(in crate::app) fn cancel_delete_named_root(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let manager = &mut self.shell.features.presets.picker.named_roots;
+        manager.confirm_delete = false;
+        manager.error.clear();
+    }
+
+    pub(in crate::app) fn confirm_delete_named_root(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let Some(root) = self.selected_named_root() else {
+            return;
+        };
+        let request_id = self.shell.worker_bus.catalog.begin_request();
+        self.shell
+            .features
+            .presets
+            .picker
+            .named_roots
+            .pending_operation = Some(super::state::PendingNamedRootOperation::Delete {
+            name: root.name.clone(),
+        });
+        if self
+            .shell
+            .worker_bus
+            .catalog
+            .tx
+            .send(super::CatalogRequest {
+                request_id,
+                kind: super::CatalogRequestKind::RemoveNamedRoot { name: root.name },
+            })
+            .is_err()
+        {
+            self.shell.worker_bus.catalog.clear_request();
+            let manager = &mut self.shell.features.presets.picker.named_roots;
+            manager.pending_operation = None;
+            manager.error = "Preset catalog worker is unavailable".to_string();
         }
     }
 

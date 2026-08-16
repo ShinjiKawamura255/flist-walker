@@ -26,6 +26,15 @@ pub(super) enum RenderPresetPickerCommand {
     StartEdit,
     SaveEdit,
     CancelEdit,
+    OpenNamedRoots,
+    CloseNamedRoots,
+    AddNamedRoot,
+    EditNamedRoot,
+    SaveNamedRoot,
+    CancelNamedRootEdit,
+    StartDeleteNamedRoot,
+    ConfirmDeleteNamedRoot,
+    CancelDeleteNamedRoot,
     Close,
 }
 
@@ -382,6 +391,33 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::CancelEdit) => {
                     self.cancel_preset_edit();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::OpenNamedRoots) => {
+                    self.open_named_root_manager();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::CloseNamedRoots) => {
+                    self.close_named_root_manager();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::AddNamedRoot) => {
+                    self.start_add_named_root();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::EditNamedRoot) => {
+                    self.start_selected_named_root_edit();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::SaveNamedRoot) => {
+                    self.request_save_named_root();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::CancelNamedRootEdit) => {
+                    self.cancel_named_root_edit();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::StartDeleteNamedRoot) => {
+                    self.start_selected_named_root_delete();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::ConfirmDeleteNamedRoot) => {
+                    self.confirm_delete_named_root();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::CancelDeleteNamedRoot) => {
+                    self.cancel_delete_named_root();
                 }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::Close) => {
                     self.close_preset_picker();

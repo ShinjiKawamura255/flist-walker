@@ -52,7 +52,54 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         Vec::new()
     };
     let preset_picker_dialogs = if app.shell.features.presets.picker.open {
-        if app.shell.features.presets.picker.editor.open {
+        if app.shell.features.presets.picker.named_roots.open {
+            let manager = &app.shell.features.presets.picker.named_roots;
+            if manager.editor.open {
+                vec![DialogSnapshot {
+                    title: if manager.editor.original_name.is_some() {
+                        "Edit named root".to_string()
+                    } else {
+                        "Add named root".to_string()
+                    },
+                    lines: vec![
+                        format!("Name: {}", manager.editor.name),
+                        format!("Path: {}", manager.editor.path),
+                    ],
+                    buttons: vec!["Save".to_string(), "Cancel".to_string()],
+                }]
+            } else if manager.confirm_delete {
+                let name = manager
+                    .selected_index
+                    .and_then(|index| app.shell.features.presets.catalog.named_roots.get(index))
+                    .map(|root| root.name.clone())
+                    .unwrap_or_default();
+                vec![DialogSnapshot {
+                    title: "Delete named root?".to_string(),
+                    lines: vec![name],
+                    buttons: vec!["Delete root".to_string(), "Cancel".to_string()],
+                }]
+            } else {
+                let lines = app
+                    .shell
+                    .features
+                    .presets
+                    .catalog
+                    .named_roots
+                    .iter()
+                    .map(|root| format!("{} — {}", root.name, root.path.display()))
+                    .collect();
+                vec![DialogSnapshot {
+                    title: "Named roots".to_string(),
+                    lines,
+                    buttons: vec![
+                        "Add".to_string(),
+                        "Edit".to_string(),
+                        "Delete".to_string(),
+                        "Back".to_string(),
+                    ],
+                }]
+            }
+        } else if app.shell.features.presets.picker.editor.open {
             let editor = &app.shell.features.presets.picker.editor;
             vec![DialogSnapshot {
                 title: "Edit preset".to_string(),
@@ -83,7 +130,11 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             vec![DialogSnapshot {
                 title: "Presets".to_string(),
                 lines,
-                buttons: vec!["Edit".to_string(), "Close".to_string()],
+                buttons: vec![
+                    "Named roots...".to_string(),
+                    "Edit".to_string(),
+                    "Close".to_string(),
+                ],
             }]
         }
     } else {

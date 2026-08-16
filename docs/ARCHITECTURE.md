@@ -155,7 +155,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [update.rs](../rust/src/app/update.rs)
   - self-update dialog と update state transition。request_id-correlated な update trace を supportability 用に橋渡しし、update dialog dispatch owner として振る舞う。
 - [state.rs](../rust/src/app/state.rs)
-  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` / catalog snapshot・picker・editor draftを持つ`PresetManagerState`を束ねる`FeatureStateBundle`、live tab/session registryを束ねる`TabSessionState`、cache/request routingなどbundle inventoryの受け皿として扱う。`AppRuntimeState`は`FlistWalkerApp`のapp-global / active-result live stateを束ねるruntime bundleとして扱う。
+  - GUI 横断 state 型。`FileListManager` / `UpdateManager` / `RootBrowserState` / catalog snapshot・picker・preset editor・Named Root manager draftを持つ`PresetManagerState`を束ねる`FeatureStateBundle`、live tab/session registryを束ねる`TabSessionState`、cache/request routingなどbundle inventoryの受け皿として扱う。`AppRuntimeState`は`FlistWalkerApp`のapp-global / active-result live stateを束ねるruntime bundleとして扱う。
   - `FileListManager` と `UpdateManager` は内部 bundle を透明に露出せず、`workflow` / `state` を明示的に触る boundary として扱う。
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。

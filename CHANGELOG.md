@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 ### Added
-- GUI に `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で開く検索 preset picker を追加した。preset 名を fuzzy filter して現在 tab へ適用でき、選択中 preset は `F2` / `Edit` の draft editor からcatalogへ非同期保存できる。メイン画面への常設 control と副作用 actionは追加しない。
+- GUI に `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で開く検索 preset picker を追加した。preset 名を fuzzy filter して現在 tab へ適用でき、選択中 preset は `F2` / `Edit` の draft editor からcatalogへ非同期保存できる。picker内ではNamed Rootの追加・編集・削除も行え、rename時のpreset参照追従とdelete時のsnapshot fallbackを維持する。メイン画面への常設 control と副作用 actionは追加しない。
 
 ### Changed
 -
