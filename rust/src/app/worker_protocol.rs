@@ -1,6 +1,7 @@
 use super::{ResultSortMode, ResultSortScope, SortMetadata};
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::IndexSource;
+use crate::search_catalog::SearchCatalog;
 use crate::updater::UpdateCandidate;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
@@ -195,4 +196,13 @@ pub(super) enum FileListResponse {
         request_id: u64,
         root: PathBuf,
     },
+}
+
+pub(super) struct CatalogRequest {
+    pub(super) request_id: u64,
+}
+
+pub(super) struct CatalogResponse {
+    pub(super) request_id: u64,
+    pub(super) result: Result<SearchCatalog, String>,
 }

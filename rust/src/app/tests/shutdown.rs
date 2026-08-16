@@ -62,6 +62,7 @@ fn tc_153_runtime_registers_direct_bounded_worker_handles() {
     assert!(names.contains(&"action-1".to_string()));
     assert!(names.contains(&"index-0".to_string()));
     assert!(names.contains(&"index-1".to_string()));
+    assert!(names.contains(&"search-catalog".to_string()));
     assert!(!names.contains(&"action".to_string()));
 
     let summary = app

@@ -45,6 +45,7 @@ cargo run --bin flistwalker -- --root ..
 ### Main Shortcuts
 
 - `F1`: open or close the in-app help for keyboard shortcuts and query syntax (also available from `Help`)
+- `Ctrl+Shift+P`: open the preset picker, fuzzy-filter preset names, and apply the selected pure-search preset with `Enter` (`Cmd+Shift+P` on macOS)
 - `Up` / `Down` or `Ctrl+P` / `Ctrl+N`: move the current row
 - `Ctrl+V` / `Alt+V`: page navigation
 - `Enter` / `Ctrl+J` / `Ctrl+M`: open or execute
@@ -65,6 +66,7 @@ On macOS, the following primary shortcuts are mapped from `Ctrl` to `Cmd`:
 - `Ctrl+T` / `Ctrl+W`
 - `Ctrl+L`
 - `Ctrl+Shift+C`
+- `Ctrl+Shift+P`
 
 Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
@@ -158,7 +160,7 @@ In CLI mode:
 - Ignore files are UTF-8 and may start with a UTF-8 BOM or use CRLF. `/` and `\\` path separators are equivalent in ignore rules. A missing default sidecar means no rules; a present unreadable or invalid UTF-8 file is an explicit CLI/TUI error.
 - In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
-- Named roots and pure search presets are available in CLI/TUI. See [Named Roots and Search Presets](#named-roots-and-search-presets) for the complete workflow.
+- Named roots and pure search preset management are available in CLI/TUI; the GUI can apply existing presets from its keyboard-only picker. See [Named Roots and Search Presets](#named-roots-and-search-presets) for the complete workflow.
 - Scope individual terms with `name:`, `path:`, `dir:`, or `ext:`. Existing unscoped terms still search the full visible path. Fields compose with `!`, `'`, `^`, `$`, token-local `|`, and regex mode; quote the complete QUERY even when it is a single token so shell parsing stays predictable.
 - `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
 - `-x` / `--exec` consumes the remaining command template and replaces exactly one standalone `{}` argument with every post-limit result as separate absolute argv values. Results are packed greedily up to the current platform command-line limit and run sequentially; `--exec-max-args N` adds a per-batch path cap and `--dry-run` reports counts without starting the command. Zero results start no command. Exec mode rejects output framing and built-in non-print action options and never invokes a shell implicitly; put all FlistWalker options before `-x`.
@@ -167,7 +169,7 @@ In CLI mode:
 
 ### Named Roots and Search Presets
 
-Named roots assign a stable name to a search root. Presets save a named root or root snapshot together with the query, entry type, source, regex, case-sensitivity, ignore, and sort settings. They never save an action or external command. This catalog is available in CLI/TUI only; the GUI continues to use its existing root list, tabs, and query history.
+Named roots assign a stable name to a search root. Presets save a named root or root snapshot together with the query, entry type, source, regex, case-sensitivity, ignore, and sort settings. They never save an action or external command. Create, edit, and remove catalog entries through CLI/TUI. In the GUI, press `Ctrl+Shift+P` (`Cmd+Shift+P` on macOS), type to fuzzy-filter preset names, use `Up` / `Down`, and press `Enter` to apply the selected preset to the current tab or `Esc` to close without changing the current search. The GUI picker never opens or executes a search result and adds no permanent control to the main panel.
 
 ```bash
 # Register a named root. Quote the complete NAME=PATH value when the path may contain spaces.

@@ -25,6 +25,13 @@ impl FlistWalkerApp {
             format!("{primary}+O / {primary}+Shift+O — Browse for a root here / in a new tab"),
             format!("{primary}+Shift+R — Open the saved-root selector"),
             "".to_string(),
+            "Presets".to_string(),
+            format!("{primary}+Shift+P — Open the preset picker"),
+            "Type to filter preset names; Up / Down to select; Enter to apply; Esc to close"
+                .to_string(),
+            "Applying a preset updates search state only; it never opens or executes a result"
+                .to_string(),
+            "".to_string(),
             "Query syntax".to_string(),
             "TERM — Search the name first, then the visible path".to_string(),
             "name:TERM — Match the file or folder name".to_string(),
@@ -95,6 +102,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         "Search and navigation"
                             | "Selection and actions"
                             | "Tabs and roots"
+                            | "Presets"
                             | "Query syntax"
                             | "Emacs-style shortcuts"
                             | "Help"

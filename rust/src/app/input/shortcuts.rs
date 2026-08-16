@@ -20,11 +20,51 @@ impl FlistWalkerApp {
         if self.handle_filelist_dialog_shortcuts(ctx) {
             return;
         }
+        if self.shell.ui.help_open && self.handle_help_dialog_shortcuts(ctx) {
+            return;
+        }
+        if self.shell.features.presets.picker.open && self.handle_preset_picker_shortcuts(ctx) {
+            return;
+        }
         if self.handle_help_dialog_shortcuts(ctx) {
+            return;
+        }
+        if self.handle_preset_picker_shortcuts(ctx) {
             return;
         }
         let query_focused = ctx.memory(|m| m.has_focus(self.shell.ui.query_input_id));
         self.handle_shortcuts_with_focus(ctx, query_focused);
+    }
+
+    fn handle_preset_picker_shortcuts(&mut self, ctx: &egui::Context) -> bool {
+        if !self.shell.features.presets.picker.open {
+            if Self::consume_gui_shortcut(ctx, egui::Key::P, true) {
+                self.open_preset_picker(ctx);
+                return true;
+            }
+            return false;
+        }
+
+        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            self.close_preset_picker();
+            return true;
+        }
+        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
+            self.move_preset_picker_selection(1);
+            return true;
+        }
+        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+            self.move_preset_picker_selection(-1);
+            return true;
+        }
+        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
+            self.apply_selected_preset();
+            return true;
+        }
+
+        // The picker text field may keep ordinary text/editing events, while application
+        // shortcuts must not leak to the search/results view behind the modal.
+        true
     }
 
     pub(in crate::app) fn consume_gui_shortcut(

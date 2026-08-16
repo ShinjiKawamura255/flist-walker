@@ -41,6 +41,8 @@ cargo run -- --root ..
 
 ### 主なショートカット
 
+- `F1`: キーボードショートカットと query 構文のアプリ内 help を開閉（`Help` からも利用可能）
+- `Ctrl+Shift+P`: preset picker を開き、preset 名を fuzzy filter して `Enter` で pure-search preset を適用（macOS は `Cmd+Shift+P`）
 - `Up` / `Down` または `Ctrl+P` / `Ctrl+N`: 現在行を移動
 - `Ctrl+V` / `Alt+V`: ページ移動
 - `Enter` / `Ctrl+J` / `Ctrl+M`: 開く / 実行
@@ -61,6 +63,7 @@ macOS では次の「主要ショートカット」を `Ctrl` から `Cmd` に�
 - `Ctrl+T` / `Ctrl+W`
 - `Ctrl+L`
 - `Ctrl+Shift+C`
+- `Ctrl+Shift+P`
 
 タブ切り替えだけはブラウザなどと同様に、macOS でも `Ctrl+Tab` / `Ctrl+Shift+Tab` を使います。
 
@@ -184,7 +187,7 @@ CLI では:
 - ignore fileはUTF-8で、先頭UTF-8 BOMとCRLFを許容します。rule内の `/` と `\\` は同じpath separatorとして扱います。既定sidecarが無ければruleなしで継続し、存在するfileが読めない／UTF-8不正ならCLI/TUIは明示errorにします。
 - batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
 - `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
-- 名前付き root と純粋な検索 preset は CLI/TUI で利用できます。作成から適用までの手順は[名前付き root と検索 preset](#名前付き-root-と検索-preset)を参照してください。
+- 名前付き root と純粋な検索 preset の管理は CLI/TUI で利用でき、GUI はキーボード専用 picker から既存 preset を適用できます。作成から適用までの手順は[名前付き root と検索 preset](#名前付き-root-と検索-preset)を参照してください。
 - termごとに `name:`、`path:`、`dir:`、`ext:` で対象fieldを限定できます。fieldなしtermは従来どおりvisible path全体を検索します。fieldは `!`、`'`、`^`、`$`、token内 `|`、regex modeと併用できます。shell解釈を安定させるため、1 tokenだけでもQUERY全体を引用符で囲む運用を推奨します。
 - `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
 - `-x` / `--exec` は以後の引数を command template として受け取り、独立した `{}` 引数1個を post-limit の全結果へ展開します。各パスは正規化済み絶対パスの独立 argv とし、実行環境の command-line 上限まで貪欲にまとめて直列実行します。`--exec-max-args N` で1 batch のパス数をさらに制限でき、`--dry-run` は command を起動せず件数だけを表示します。結果0件では command を起動しません。shell は暗黙起動せず、FlistWalker 側の option はすべて `-x` より前に指定します。
@@ -193,7 +196,7 @@ CLI では:
 
 ### 名前付き root と検索 preset
 
-名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。この catalog は CLI/TUI 専用で、GUI は既存の root list、tab、query history を引き続き利用します。
+名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。catalog entry の作成・編集・削除は CLI/TUI で行います。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。
 
 ```bash
 # 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。

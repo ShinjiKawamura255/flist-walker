@@ -120,7 +120,7 @@ The shell owns:
 - `RuntimeUiState`: focus, scrolling, preview panel, drag state, UI flags.
 - `CacheStateBundle`: preview, highlight, entry kind, and sort metadata caches.
 - `TabSessionState`: persisted/background tabs and request-tab routing maps.
-- `FeatureStateBundle`: root browser, FileList manager, update manager.
+- `FeatureStateBundle`: root browser, preset manager/picker, FileList manager, update manager.
 - `WorkerRuntime`: shutdown signal and join handles.
 
 Rationale: the shell makes ownership explicit. Active-tab live state is separate from persisted/background tab snapshots, which prevents background worker responses from overwriting the visible tab.
@@ -156,7 +156,7 @@ Responsibility: rendering modules collect UI intent and produce commands; owner 
 Key design:
 
 - [app/render.rs](../../rust/src/app/render.rs) owns the `run_ui_frame()` facade and `RenderCommand` dispatcher.
-- [app/render_panels.rs](../../rust/src/app/render_panels.rs) owns results/status and delegates top controls to `app/render_panels/top_panel.rs`; [app/render_dialogs.rs](../../rust/src/app/render_dialogs.rs) delegates FileList/update/root management and contextual shortcut help to private owners under `app/render_dialogs/`. The help owner derives platform/runtime-dependent labels without I/O, keeps only ephemeral open state in `RuntimeUiState`, and relies on `app/input/dialogs.rs` to consume background keyboard events while modal. [app/render_tabs.rs](../../rust/src/app/render_tabs.rs), [app/render_snapshot.rs](../../rust/src/app/render_snapshot.rs), and [app/render_theme.rs](../../rust/src/app/render_theme.rs) own tabs, snapshots, and theme colors. Render owners mutate through existing owner methods or queued `RenderCommand` values and do not import filesystem/network/process/worker implementations.
+- [app/render_panels.rs](../../rust/src/app/render_panels.rs) owns results/status and delegates top controls to `app/render_panels/top_panel.rs`; [app/render_dialogs.rs](../../rust/src/app/render_dialogs.rs) delegates FileList/update/root management, contextual shortcut help, and the read-only preset picker to private owners under `app/render_dialogs/`. The help owner derives platform/runtime-dependent labels without I/O and keeps only ephemeral open state in `RuntimeUiState`. The preset owner keeps catalog/picker state under `FeatureStateBundle`, loads the catalog through a worker on open, filters the accepted snapshot in memory, and applies through existing root/index/search/sort transitions. Modal input handlers prevent background command leakage. [app/render_tabs.rs](../../rust/src/app/render_tabs.rs), [app/render_snapshot.rs](../../rust/src/app/render_snapshot.rs), and [app/render_theme.rs](../../rust/src/app/render_theme.rs) own tabs, snapshots, and theme colors. Render owners mutate through existing owner methods or queued `RenderCommand` values and do not import filesystem/network/process/worker implementations.
 - `RenderCommand` boundaries prevent immediate complex state mutation from inside UI painting code.
 - [app/input/mod.rs](../../rust/src/app/input/mod.rs), [app/input/history.rs](../../rust/src/app/input/history.rs), and [app/query_state.rs](../../rust/src/app/query_state.rs) handle shortcuts, IME fallback, query editing, and shared history.
 
