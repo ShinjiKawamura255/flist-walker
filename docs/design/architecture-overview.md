@@ -101,7 +101,7 @@
 - 実装: `docs/TESTPLAN.md` の GUI 手順節
 
 - DES-012 CI / Release Hygiene
-- 役割: version-addressed required CI と集約 `CI Gate`、trusted-base `CI Policy Guardian`、Cargo-change detector付き audit、scheduled security intelligence、latest canary、machine-PR rebase auto-merge、release検証を責務分離する。agent/workflowは正確なrebase登録を担い、repository設定は他merge methodを無効化し、branch protectionはlinear historyとnon-bypass gateを担う。
+- 役割: version-addressed required CI と集約 `CI Gate`、trusted-base `CI Policy Guardian`、Cargo-change detector付き audit、scheduled security intelligence、latest canary、machine-PR rebase auto-merge、release検証を責務分離する。agent/workflowは正確なrebase登録と、clean かつ同期済み `master` からの feature-branch開始、rebase 後の限定的な local branch cleanup を担い、repository設定は他merge methodを無効化し、branch protectionはlinear historyとnon-bypass gateを担う。
 - 実装: `.github/workflows/ci-cross-platform.yml`, `.github/workflows/ci-policy-guardian.yml`, `.github/workflows/security-audit.yml`, `.github/workflows/ci-canary.yml`, `.github/workflows/dependabot-auto-merge.yml`, `.github/workflows/perf-regression.yml`, `.github/workflows/release-tagged.yml`, `.github/dependabot.yml`, `scripts/check_ci_policy.py`, `scripts/tests/test_check_ci_policy.py`, `rust/rust-toolchain.toml`, `rust/.cargo/audit.toml`, `docs/CI_OPERATIONS.md`, `docs/OSS_COMPLIANCE.md`
 - 役割補足: required CI は product/change correctness を判定し、Cargo 関連変更時だけ mutable advisory database を merge gate に接続する。scheduled audit は後日 advisory、canary は latest compatibility を観測するため branch protection の required context にしない。
 - 役割補足: numbered hosted runner label でも image 内容は更新されるため、各 job は `ImageOS` / `ImageVersion` を evidence とし、policy checker が full SHA、pin、permissions、timeout、cache、conditional audit/gate contract を検査する。
