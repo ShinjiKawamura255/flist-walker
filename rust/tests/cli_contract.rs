@@ -14,6 +14,17 @@ fn test_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("fff-rs-cli-{name}-{nonce}"))
 }
 
+fn workspace_test_root(name: &str) -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target")
+        .join("cli-contract-fixtures")
+        .join(format!("fff-rs-cli-{name}-{nonce}"))
+}
+
 fn bin_path() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_flistwalker"))
 }
@@ -790,7 +801,10 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
 
 #[test]
 fn tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots() {
-    let parent = test_root("create-filelist-ancestor");
+    // Regression guard: the real CLI intentionally walks to the filesystem root.
+    // Keep this subprocess fixture under the workspace so coverage/sandbox runs
+    // never enumerate a developer's profile directory.
+    let parent = workspace_test_root("create-filelist-ancestor");
     let root = parent.join("child");
     fs::create_dir_all(&root).expect("create root");
     fs::write(root.join("alpha.txt"), "alpha").expect("write file");

@@ -428,6 +428,39 @@ pub fn plan_filelist_write_cancellable<C>(
 where
     C: Fn() -> bool,
 {
+    plan_filelist_write_cancellable_inner(root, entries, options, None, should_cancel)
+}
+
+#[cfg(test)]
+pub(crate) fn plan_filelist_write_cancellable_with_ancestor_boundary<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    options: FileListWriteOptions,
+    exclusive_ancestor_boundary: &Path,
+    should_cancel: &C,
+) -> std::result::Result<FileListWritePlan, Box<FileListWriteReport>>
+where
+    C: Fn() -> bool,
+{
+    plan_filelist_write_cancellable_inner(
+        root,
+        entries,
+        options,
+        Some(exclusive_ancestor_boundary),
+        should_cancel,
+    )
+}
+
+fn plan_filelist_write_cancellable_inner<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    options: FileListWriteOptions,
+    exclusive_ancestor_boundary: Option<&Path>,
+    should_cancel: &C,
+) -> std::result::Result<FileListWritePlan, Box<FileListWriteReport>>
+where
+    C: Fn() -> bool,
+{
     let fallback_target = root.join("FileList.txt");
     if should_cancel() {
         return Err(Box::new(FileListWriteReport::canceled(fallback_target)));
@@ -490,6 +523,12 @@ where
     if options.propagate_to_ancestors {
         let mut ancestor = root.parent();
         while let Some(directory) = ancestor {
+            // Regression guard: tests inject an exclusive fixture boundary so
+            // ancestor discovery cannot observe or mutate a developer's real
+            // FileList. Production callers pass no boundary and keep full traversal.
+            if exclusive_ancestor_boundary.is_some_and(|boundary| directory == boundary) {
+                break;
+            }
             if should_cancel() {
                 return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
             }
@@ -837,13 +876,56 @@ pub fn write_filelist_cancellable<C>(
 where
     C: Fn() -> bool,
 {
+    write_filelist_cancellable_inner(
+        root,
+        entries,
+        filename,
+        propagate_to_ancestors,
+        None,
+        should_cancel,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn write_filelist_cancellable_with_ancestor_boundary<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    filename: &str,
+    propagate_to_ancestors: bool,
+    exclusive_ancestor_boundary: &Path,
+    should_cancel: &C,
+) -> Result<PathBuf>
+where
+    C: Fn() -> bool,
+{
+    write_filelist_cancellable_inner(
+        root,
+        entries,
+        filename,
+        propagate_to_ancestors,
+        Some(exclusive_ancestor_boundary),
+        should_cancel,
+    )
+}
+
+fn write_filelist_cancellable_inner<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    filename: &str,
+    propagate_to_ancestors: bool,
+    exclusive_ancestor_boundary: Option<&Path>,
+    should_cancel: &C,
+) -> Result<PathBuf>
+where
+    C: Fn() -> bool,
+{
     if filename != "FileList.txt" && filename != "filelist.txt" {
         anyhow::bail!("unsupported FileList filename {filename}");
     }
     if should_cancel() {
         anyhow::bail!("filelist creation canceled");
     }
-    let plan = plan_filelist_write_cancellable(
+    let plan = plan_filelist_write_cancellable_inner(
         root,
         entries,
         FileListWriteOptions {
@@ -852,6 +934,7 @@ where
             allow_root_overwrite: true,
             propagate_to_ancestors,
         },
+        exclusive_ancestor_boundary,
         should_cancel,
     )
     .map_err(|report| anyhow::anyhow!(report.summary()))?;

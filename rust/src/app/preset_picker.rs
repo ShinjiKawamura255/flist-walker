@@ -1,4 +1,4 @@
-use super::{FlistWalkerApp, ResultSortMode};
+use super::{FlistWalkerApp, ResultSortMode, ResultSortScope};
 use crate::path_utils::{normalize_path_for_display, normalize_windows_path_buf, path_key};
 use crate::search_catalog::{
     validate_catalog_name, NamedRoot, PresetSortMode, PresetSource, SearchPreset,
@@ -6,6 +6,7 @@ use crate::search_catalog::{
 use eframe::egui;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
+use std::path::PathBuf;
 
 fn preset_name_score(query: &str, candidate: &str, catalog_index: usize) -> Option<i64> {
     if query.trim().is_empty() {
@@ -676,32 +677,56 @@ impl FlistWalkerApp {
             .presets
             .catalog
             .resolve_preset_root(&preset);
+        self.close_preset_picker();
+        self.apply_preset_runtime_transition(&preset, new_root);
+        self.sync_active_tab_state();
+        self.set_notice(format!("Applied preset: {}", preset.name));
+    }
+
+    fn apply_preset_runtime_transition(&mut self, preset: &SearchPreset, new_root: PathBuf) {
         let (include_files, include_dirs) = preset.entry_type.include_flags();
         let use_filelist = !matches!(preset.source, PresetSource::Walker);
-        let requires_reindex = path_key(&new_root) != path_key(&self.shell.runtime.root)
+        let root_changed = path_key(&new_root) != path_key(&self.shell.runtime.root);
+        let requires_reindex = root_changed
             || self.shell.runtime.use_filelist != use_filelist
             || self.shell.runtime.include_files != include_files
             || self.shell.runtime.include_dirs != include_dirs;
+        let sort_mode = runtime_sort_mode(preset.sort);
+        let sort_scope = self.shell.runtime.result_sort_scope;
 
-        self.close_preset_picker();
-        self.shell.runtime.query_state.query = preset.query;
+        self.shell.runtime.query_state.query = preset.query.clone();
         self.shell.runtime.use_filelist = use_filelist;
         self.shell.runtime.use_regex = preset.regex;
         self.shell.runtime.ignore_case = preset.ignore_case;
         self.shell.runtime.include_files = include_files;
         self.shell.runtime.include_dirs = include_dirs;
         self.shell.ui.ignore_list_enabled = preset.ignore_enabled;
-        if path_key(&new_root) != path_key(&self.shell.runtime.root) {
+
+        // Regression guard: preset-owned state must be committed before exactly one
+        // reindex or filter/search transition. Do not dispatch search first or bypass
+        // entry filters; paired tests cover stale responses, Ignore List, and sort state.
+        if root_changed {
             self.apply_root_change_direct(new_root);
         } else if requires_reindex {
             self.request_index_refresh();
         } else {
-            self.invalidate_result_sort(false);
-            self.update_results();
+            self.shell.worker_bus.sort.clear_request();
+            self.shell.runtime.result_sort_mode = sort_mode;
+            self.shell.runtime.result_sort_scope = sort_scope;
+            self.apply_entry_filters(false);
+            if self.shell.runtime.query_state.query.trim().is_empty()
+                && sort_scope == ResultSortScope::ShownResults
+                && sort_mode != ResultSortMode::Score
+            {
+                self.apply_result_sort(false);
+            }
+            return;
         }
-        self.set_result_sort_mode(runtime_sort_mode(preset.sort));
-        self.sync_active_tab_state();
-        self.set_notice(format!("Applied preset: {}", preset.name));
+
+        // Index refresh clears result sort state; restore the preset-owned mode and
+        // the tab-owned scope before the refreshed index can resume searching.
+        self.shell.runtime.result_sort_mode = sort_mode;
+        self.shell.runtime.result_sort_scope = sort_scope;
     }
 
     #[cfg(test)]

@@ -115,6 +115,143 @@ fn enter_applies_selected_pure_search_preset_without_executing_results() {
 }
 
 #[test]
+fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
+    let root = test_root("preset-picker-same-root-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let ignored = root.join("old-result.txt");
+    let kept = root.join("kept-result.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.all_entries =
+        Arc::new(vec![file_entry(ignored.clone()), file_entry(kept.clone())]);
+    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["old".to_string()]);
+    app.shell.ui.ignore_list_enabled = false;
+    app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+
+    let mut selected = preset("Same root", &root, "result");
+    selected.ignore_enabled = true;
+    selected.sort = PresetSortMode::NameAsc;
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(selected)
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    let (request_tx, request_rx) = mpsc::channel::<SearchRequest>();
+    let (response_tx, response_rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search = SearchCoordinator::new(request_tx, response_rx);
+    let (stale_request_id, stale_cancel) =
+        app.shell.search.begin_active_request(app.current_tab_id());
+
+    app.apply_selected_preset();
+
+    let fresh = request_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("fresh search request");
+    assert!(stale_cancel.load(Ordering::Acquire));
+    assert_ne!(fresh.request_id, stale_request_id);
+    assert!(request_rx.try_recv().is_err(), "preset must enqueue once");
+    assert_eq!(fresh.sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(fresh.sort_scope, ResultSortScope::AllMatches);
+    assert_eq!(
+        fresh
+            .entries
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>(),
+        vec![kept.clone()]
+    );
+    assert!(!app.shell.indexing.in_progress);
+
+    response_tx
+        .send(SearchResponse {
+            request_id: stale_request_id,
+            results: vec![(ignored.clone(), 1.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        })
+        .expect("send stale response");
+    app.poll_search_response();
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+
+    response_tx
+        .send(SearchResponse {
+            request_id: fresh.request_id,
+            results: vec![(kept.clone(), 1.0)],
+            total_match_count: 1,
+            sort_mode: fresh.sort_mode,
+            sort_scope: fresh.sort_scope,
+            error: None,
+        })
+        .expect("send fresh response");
+    app.poll_search_response();
+    assert_eq!(app.shell.runtime.results, vec![(kept, 1.0)]);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_same_root_preset_disabling_ignore_restores_all_search_entries() {
+    let root = test_root("preset-picker-disable-ignore-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let ignored = root.join("old-result.txt");
+    let kept = root.join("kept-result.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.all_entries =
+        Arc::new(vec![file_entry(ignored.clone()), file_entry(kept.clone())]);
+    app.shell.runtime.entries = Arc::new(vec![file_entry(kept)]);
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["old".to_string()]);
+    app.shell.ui.ignore_list_enabled = true;
+
+    let mut selected = preset("Show ignored", &root, "result");
+    selected.ignore_enabled = false;
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(selected)
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    let (request_tx, request_rx) = mpsc::channel::<SearchRequest>();
+    let (_response_tx, response_rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search = SearchCoordinator::new(request_tx, response_rx);
+
+    app.apply_selected_preset();
+
+    let request = request_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("search request");
+    assert_eq!(request.entries.len(), 2);
+    assert!(request.entries.iter().any(|entry| entry.path == ignored));
+    assert!(request_rx.try_recv().is_err(), "preset must enqueue once");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn open_picker_consumes_background_shortcuts_and_escape_preserves_search() {
     let root = test_root("preset-picker-modal-input");
     fs::create_dir_all(&root).expect("create root");

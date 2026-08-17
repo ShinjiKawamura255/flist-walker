@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
     [string]$Version
@@ -38,7 +38,7 @@ try {
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $OutDir $ExeName) -Force
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ZipExeName) -Force
     $ReadmeSidePath = Join-Path $OutDir $ReadmeSideName
-    @"
+    $ReadmeContent = @"
 FlistWalker $Version
 
 Contents:
@@ -148,7 +148,8 @@ Runtime config:
 - walker_max_entries は runtime config で調整できます。
 - Use FileList はルート直下の FileList.txt / filelist.txt を優先使用します。
 - Refresh Index は現在Rootで再インデックスします。
-"@ | Set-Content -LiteralPath $ReadmeSidePath -Encoding UTF8
+"@
+    $ReadmeContent | Set-Content -LiteralPath $ReadmeSidePath -Encoding UTF8
     Copy-Item -LiteralPath $RootLicense -Destination (Join-Path $OutDir $LicenseSideName) -Force
     Copy-Item -LiteralPath $RootNotices -Destination (Join-Path $OutDir $NoticesSideName) -Force
     Copy-Item -LiteralPath $ReadmeSidePath -Destination (Join-Path $WorkDir 'README.txt') -Force
@@ -159,7 +160,9 @@ Runtime config:
     if (Test-Path -LiteralPath $ZipPath) {
         Remove-Item -LiteralPath $ZipPath -Force
     }
-    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), $ReadmeSidePath, (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
+    # Keep archive-local names stable. The release sidecar name belongs only to
+    # the flat GitHub asset set; installed archives always expose README.txt.
+    Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), (Join-Path $WorkDir 'README.txt'), (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()

@@ -178,7 +178,16 @@
 - MUST: GUI editor は選択中 preset の name/root/query/type/source/regex/case/ignore/sort を draft として編集し、root は absolute path のテキスト入力と folder picker の両方で指定できるようにする。folder picker の選択は draft の root だけを更新し、picker の cancel は手入力値を維持し、picker failure は draft と editor 内の error を残す。`Primary+Enter` / `Save` で専用 worker による lock付き read-modify-write を行う。rename は元の位置を維持し、他 preset との case-insensitive name collision を拒否し、保存時点の unknown fields を保持する。保存失敗時は draft と error を残し、`Esc` / `Cancel` は未保存 draft を破棄して picker へ戻る。
 - MUST: GUI picker と preset editor は同じ Named Root 管理画面への導線を提供する。管理画面は一覧選択、追加、名称・absolute path編集、削除確認をmodal内で行い、path はテキスト入力、folder picker、現在 root の採用を選べるようにする。folder picker の選択は draft の path だけを更新し、picker の cancel は手入力値を維持し、picker failure は draft と editor 内の error を残す。mutationを専用workerのlock付きread-modify-writeへ渡す。renameは元の位置とunknown fieldsを保持して参照presetの`root_name`を新名称へ更新し、case-insensitive collisionを拒否する。削除は参照presetの`root_name`を解除し、保存済みabsolute snapshotを残す。保存失敗時は入力とerrorを保持する。
 - MUST: GUI の preset 適用は root/query/type/source/regex/case/ignore/sort を現在 tab へ反映し、root/source/type が変わる場合だけ既存 index refresh 経路を使う。適用自体は結果の open/execute/reveal や FileList mutation を開始してはならない。editor保存はcatalogだけを更新し、現在tabの検索状態または副作用actionを変更してはならない。
+- MUST: GUI の preset 適用は preset 所有stateを検索要求より先に一度だけ確定し、index refreshが不要な場合もentry filterを再構築して最新requestを一度だけ発行する。適用前requestのresponseはrequest identityで破棄し、presetが所有しないtabのsort scopeは維持する。
 - MUST: catalog management success は exit 0、lookup/storage failure は exit 1、argument contract failure は exit 2 とする。
+
+### Regression Guard: atomic same-root preset application
+
+- Scenario: root/source/typeが同じpresetを非空queryへ適用し、Ignore Listとsortだけを切り替えると、旧entry snapshotで検索されるか、旧requestのresponseでpreset sortが巻き戻る。
+- Expected Behavior: preset所有stateを先に確定し、filter済みentriesとpreset sortを持つ最新requestを一度だけ発行する。旧requestをcancelしてresponseを破棄し、最新response後もpreset sortとtab所有sort scopeを維持する。
+- Non-goals: presetへsort scopeを追加すること、storage schema変更、root/source/type変更時のindex refresh省略。
+- Related Tests: TC-174; `regression_same_root_preset_applies_filters_and_sort_before_fresh_search`, `regression_same_root_preset_disabling_ignore_restores_all_search_entries`.
+- Notes for Future Changes: preset適用経路でfilter、sort、search dispatchを個別に並べ直さず、atomic runtime transitionとpaired regression testsを同時に更新する。
 
 ### Preconditions / Postconditions
 - Preconditions: runtime settings directory が解決でき、名前は trim 後に非空で制御文字と `=` を含まず、GUIで入力するnamed-root pathはabsoluteかつworkerで既存directoryとして解決できる。

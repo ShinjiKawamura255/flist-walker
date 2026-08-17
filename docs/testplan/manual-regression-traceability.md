@@ -105,6 +105,22 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 3. GSM-001..010 の該当 flowで startup/indexing、query operator、preview/selection、root/tab、FileList dialog、sort、theme、responsiveness を確認する。external action、clipboard、update activation は別途明示承認がない限り実行しない。
 4. Deterministic、Native interaction、Liveness を独立して記録する。required native axis が `NOT RUN` の場合は overall PASS にせず、理由と再現手順を残す。
 
+## Preset Application Manual Test (TC-174)
+
+1. current rootと同じroot、Walker、Files、非空query、Ignore List有効、Name (A-Z) sortのpresetを用意する。ignore termに一致するpathと一致しないpathを候補へ含める。
+2. GUIで`Primary+Shift+P`からpresetを適用し、rootの再index表示なしにignore対象が消え、Name sortが検索完了後も維持されることを確認する。
+3. 同じrootでIgnore List無効のpresetを適用し、除外されていた候補が戻り、検索完了後も指定sortと現在tabのsort scopeが維持されることを確認する。
+4. 高速に別queryまたはpresetへ切り替え、古い検索responseが最新の候補・sort・scopeを巻き戻さないことを確認する。
+5. GSM-008のNative interaction、GSM-009のvisual/layout、GSM-010の入力・スクロールlivenessへ、build SHA、OS、preset内容、期待/実結果、PASS/FAILを記録する。いずれかのrequired axisが未実行ならrelease readinessをPASSにしない。
+
+### Regression Guard: atomic same-root preset application
+
+- Scenario: 同一rootでIgnore Listまたはsortだけが変わるpresetを適用し、旧検索responseが遅れて到着する。
+- Expected Behavior: filter済み最新requestだけが採用され、Ignore Listとpreset sortが結果へ反映され、tabのsort scopeは維持される。
+- Non-goals: root/source/type変更時のindex refresh省略、presetによるsort scope保存、action実行。
+- Related Tests: TC-174; `regression_same_root_preset_applies_filters_and_sort_before_fresh_search`, `regression_same_root_preset_disabling_ignore_restores_all_search_entries`.
+- Notes for Future Changes: automated request-payload/freshness testとGSM-008/009/010の3軸を同じrelease候補で確認する。
+
 ## Entry / Exit criteria
 - Entry:
 - docs 4文書が揃い、FR/NFR/SP/DES/TC が対応付け済み。
@@ -265,7 +281,6 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-115 -> SP-016 -> DES-017 -> FR-026, AC-027
 - TC-116 -> SP-016 -> DES-017 -> FR-026, AC-028
 - TC-117 -> SP-015 -> DES-016 -> FR-025
-- TC-176 -> SP-015 -> DES-016 -> FR-025
 - TC-118 -> SP-004 -> DES-004 -> FR-022
 - TC-119 -> SP-014 -> DES-014 -> FR-020, FR-023
 - TC-120 -> SP-010, SP-014 -> DES-015, DES-014 -> FR-007, FR-019
@@ -312,3 +327,7 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-171 -> SP-014 -> DES-014 -> FR-033, NFR-010
 - TC-172 -> SP-006 -> DES-005 -> FR-006
 - TC-173 -> SP-010 -> DES-009 -> FR-036
+- TC-174 -> SP-019 -> DES-020 -> FR-037
+- TC-175 -> SP-020 -> DES-021 -> FR-038
+- TC-176 -> SP-015 -> DES-016 -> FR-025
+- TC-177 -> SP-006 -> DES-005 -> FR-006

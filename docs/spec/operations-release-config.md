@@ -12,6 +12,7 @@
 - MUST: canary failure/success、security notice、EOL/deprecation、dependency MSRV、hosted image drift を pin 更新検討 trigger とする。通常 promotion は scheduled canary 2 回連続成功と candidate `CI Gate` 成功を必要とし、security/EOL/deprecation 対応でも candidate gate を省略してはならない。
 - MUST: workflow は least privilege permissions、job timeout、branch/PR concurrency を定義し、untrusted code を `pull_request_target` で実行してはならない。`CI Policy Guardian` に限り read-only `pull_request_target` を許可し、default branch の trusted policy だけを実行して PR policy blob を data として検査し、PR head checkout/実行、secret、cache、artifact を禁止する。Cargo cache は download data に限定し、tool binary と `rust/target` を共有してはならない。
 - MUST: `x86_64-pc-windows-gnu` 向け release build は最終 `flistwalker.exe` に Windows icon resource を含み、Explorer 上で埋め込みアイコンを表示できなければならない。
+- MUST: Windows release ZIP のarchive rootは`flistwalker.exe`、`README.txt`、`LICENSE.txt`、`THIRD_PARTY_NOTICES.txt`の4項目だけを含み、flat GitHub Release asset用のversion付きsidecar名をarchive内へ流用してはならない。
 - MUST: draft release 作成後、macOS notarization は別工程で確認できる状態を維持する。
 - MUST: notarization 環境が未整備な当面の間は、macOS 配布物の notarization 確認を publish 前提条件にしてはならない。その場合 publish 時は GitHub Release 本文の `Security` または `Known issues` に未 notarized である旨を明記しなければならない。
 - SHOULD: release note / release template / release docs に checksum 検証手順と notarization の扱いを明記する。
