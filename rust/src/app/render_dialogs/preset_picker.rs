@@ -2,6 +2,14 @@ use crate::app::{render::RenderPresetPickerCommand, FlistWalkerApp};
 use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource};
 use eframe::egui;
 
+pub(in crate::app) const MANAGE_NAMED_ROOTS_LABEL: &str = "Manage named roots...";
+pub(in crate::app) const PRESET_PICKER_FOOTER_HINT: &str =
+    "Type to filter · Up/Down to select · Enter to apply · F2 to edit · Esc to close";
+
+pub(in crate::app) fn preset_picker_modal_width(available_width: f32) -> f32 {
+    (available_width - 24.0).clamp(600.0, 720.0)
+}
+
 fn preset_summary(app: &FlistWalkerApp, catalog_index: usize) -> Option<String> {
     let preset = app
         .shell
@@ -55,7 +63,22 @@ fn sort_label(value: PresetSortMode) -> &'static str {
 }
 
 fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
-    ui.heading("Presets");
+    ui.horizontal(|ui| {
+        ui.heading("Presets");
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui
+                .add_enabled(
+                    !app.shell.worker_bus.catalog.in_progress,
+                    egui::Button::new(MANAGE_NAMED_ROOTS_LABEL),
+                )
+                .clicked()
+            {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::OpenNamedRoots,
+                ));
+            }
+        });
+    });
     ui.label("Search saved pure-search presets. Applying one never opens or executes a result.");
     ui.add_space(6.0);
 
@@ -137,36 +160,24 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     }
 
     ui.add_space(6.0);
-    ui.horizontal(|ui| {
-        ui.label("Type to filter · Up/Down to select · Enter to apply · F2 to edit · Esc to close");
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.button("Close").clicked() {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::Close,
-                ));
-            }
-            let can_edit = !app.shell.worker_bus.catalog.in_progress
-                && app.shell.features.presets.picker.selected_match.is_some();
-            if ui
-                .add_enabled(can_edit, egui::Button::new("Edit"))
-                .clicked()
-            {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::StartEdit,
-                ));
-            }
-            if ui
-                .add_enabled(
-                    !app.shell.worker_bus.catalog.in_progress,
-                    egui::Button::new("Named roots..."),
-                )
-                .clicked()
-            {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::OpenNamedRoots,
-                ));
-            }
-        });
+    ui.label(PRESET_PICKER_FOOTER_HINT);
+    ui.add_space(4.0);
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        if ui.button("Close").clicked() {
+            app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                RenderPresetPickerCommand::Close,
+            ));
+        }
+        let can_edit = !app.shell.worker_bus.catalog.in_progress
+            && app.shell.features.presets.picker.selected_match.is_some();
+        if ui
+            .add_enabled(can_edit, egui::Button::new("Edit"))
+            .clicked()
+        {
+            app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                RenderPresetPickerCommand::StartEdit,
+            ));
+        }
     });
 }
 
@@ -583,8 +594,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         return;
     }
 
+    let available_width = ctx.input(|input| input.content_rect().width());
     egui::Modal::new(egui::Id::new("preset-picker-modal")).show(ctx, |ui| {
-        ui.set_min_width(620.0);
+        ui.set_min_width(preset_picker_modal_width(available_width));
         if app.shell.features.presets.picker.named_roots.open {
             render_named_root_manager(app, ui);
         } else if app.shell.features.presets.picker.editor.open {

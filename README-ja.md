@@ -196,7 +196,7 @@ CLI では:
 
 ### 名前付き root と検索 preset
 
-名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort を編集できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。picker の `Named roots...` または preset editor の `Manage...` から名前付き root の一覧、追加、名称・path編集、削除を行えます。名称変更は参照中presetも追従し、削除後は各presetの保存済みpath snapshotを利用します。editor の `Esc` / `Cancel` は未保存 draft を破棄します。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。presetの作成・削除は引き続きCLI/TUIで行います。
+名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort を編集できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。picker 見出しの `Manage named roots...` または preset editor の `Manage...` から名前付き root の一覧、追加、名称・path編集、削除を行えます。名称変更は参照中presetも追従し、削除後は各presetの保存済みpath snapshotを利用します。editor の `Esc` / `Cancel` は未保存 draft を破棄します。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。presetの作成・削除は引き続きCLI/TUIで行います。
 
 ```bash
 # 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。
