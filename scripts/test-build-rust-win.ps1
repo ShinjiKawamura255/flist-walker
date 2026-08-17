@@ -35,6 +35,7 @@ $scripts = @(
     (Join-Path $PSScriptRoot 'build-rust-win-clean.ps1'),
     (Join-Path $PSScriptRoot 'dev-check-windows.ps1')
     (Join-Path $PSScriptRoot 'test-windows-build-artifact.ps1')
+    (Join-Path $PSScriptRoot 'test-prepare-release-archive.ps1')
 )
 
 foreach ($script in $scripts) {

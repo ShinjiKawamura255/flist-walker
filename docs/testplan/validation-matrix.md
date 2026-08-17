@@ -9,6 +9,22 @@
 - Related Tests: `tc_177_regression_tui_root_surfaces_strip_drive_and_unc_extended_prefixes`, `tc_177_regression_tui_path_rendering_never_uses_raw_os_strings`.
 - Notes for Future Changes: `rust/src/cli_tui.rs` と `rust/src/cli_tui/` の本番コードでは user-facing path を `.display()` / `to_string_lossy()` で直接文字列化せず、TUI共有表示境界を使う。
 
+### Regression Guard: FileList test ancestor isolation
+
+- Scenario: FileList propagation testのrootをsystem tempへ置くと、production同様のancestor探索がfixtureを越え、developer profileのpermissionや実在FileListにtest結果が依存する。
+- Expected Behavior: unit testは明示的なexclusive ancestor boundaryでfixture内の複数FileListへの伝播を維持し、全plan targetをfixture内へ限定する。実binaryを使うCLI contract fixtureはworkspace内へ置き、developer profileを探索しない。
+- Non-goals: productionのancestor探索範囲、CLIの`--propagate-ancestors`契約、FileList更新順序の変更。
+- Related Tests: `regression_bounded_ancestor_plan_stays_inside_fixture_and_preserves_propagation`, `tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots`, TC-165, TC-166.
+- Notes for Future Changes: propagation testでsystem tempのrootをproduction APIへ直接渡さず、paired boundary helperとVM-006を維持する。
+
+### Regression Guard: Windows release archive-local names
+
+- Scenario: PowerShell packagingがflat release asset用の`FlistWalker-<version>-windows-x86_64.README.txt`をそのままZIPへ渡し、archive契約の`README.txt`が欠落する。
+- Expected Behavior: Windows ZIPのarchive rootは`flistwalker.exe`、`README.txt`、`LICENSE.txt`、`THIRD_PARTY_NOTICES.txt`の4項目だけを含む。
+- Non-goals: GitHub Release上のsidecar asset名、Linux/macOS archive形式、README本文の変更。
+- Related Tests: TC-178, `scripts/test-prepare-release-archive.ps1`.
+- Notes for Future Changes: `scripts/prepare-release.ps1`後に生成ZIPへTC-178を実行し、flat asset名とarchive-local名を別契約として維持する。
+
 - 発生条件: 検索結果の更新時に 100 行目へカーソルがある状態で結果数が 100 未満へ減る、または current row が未選択のまま再検索が走る。
 - 期待動作: current row はユーザ操作なしで別の行へ移動せず、保持できる場合は同じ行番号を維持し、縮小した場合のみ末尾へ丸める。未選択状態は自動選択に変換しない。
 - 非対象範囲: 手動の Arrow キー移動、Sort 切替、Root 変更による既存 selection 破棄。
@@ -128,6 +144,7 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - `cargo test`
 - release 前 warning gate: `cargo clippy --all-targets -- -D warnings` を実行し、release asset build logs に warning が残っていないことを確認する
 - `cargo audit`
+- Windows release ZIP regression: `powershell -ExecutionPolicy Bypass -File .\scripts\test-prepare-release-archive.ps1 -ArchivePath .\dist\vX.Y.Z\FlistWalker-X.Y.Z-windows-x86_64.zip`
 - audit warning posture: `docs/OSS_COMPLIANCE.md` の accepted transitive warning を確認し、release candidate ごとに `cd rust && cargo audit` を再実行する
 - coverage gate: first create `target/llvm-cov` (`mkdir -p target/llvm-cov` on Unix or `New-Item -ItemType Directory -Force target/llvm-cov` in PowerShell), then run `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`
 - coverage uplift target: 80% は release 直前の義務ではなく中期品質目標として扱う。80% へ上げる前に app/GUI owner seam の不足領域を追加 test で補強し、fresh baseline を再測定する。

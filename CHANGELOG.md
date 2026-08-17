@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 ### Added
-- GUI に `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で開く検索 preset picker を追加した。preset 名を fuzzy filter して現在 tab へ適用でき、選択中 preset は `F2` / `Edit` の draft editor からcatalogへ非同期保存できる。picker内ではNamed Rootの追加・編集・削除も行え、rename時のpreset参照追従とdelete時のsnapshot fallbackを維持する。メイン画面への常設 control と副作用 actionは追加しない。
+-
 
 ### Changed
 -
@@ -23,6 +23,36 @@
 
 ### Known issues
 -
+
+## [0.23.0] - 2026-08-17
+### Added
+- GUI に `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で開く検索 preset picker を追加した。preset 名の fuzzy filter と現在 tab への適用、`F2` / `Edit` からの編集、absolute path の直接入力と folder picker、Named Root の追加・編集・削除、rename時のpreset参照追従、delete時のsnapshot fallbackを提供する。メイン画面への常設 control と副作用 actionは追加しない。
+
+### Changed
+- 検索候補projectionとprefix cacheを再利用し、GUI/CLI/TUIの新しい検索要求が古い要求をcancelするようにして、10万件候補のquery-shape性能と最新request優先を強化した。
+- 検索性能回帰ゲートをrequired CIからweekly workflowへ移し、required CIの決定性を維持しながら定期性能監視を継続するようにした。
+- machine PRのrebase/auto-merge後にlocal feature branchを安全に同期・整理する運用条件を明確化した。
+- FileList writeのunit testへ明示的なancestor fixture境界を追加し、CLI integration fixtureをworkspace内へ限定して、coverage実行がユーザーprofileのfilesystem状態へ依存しないようにした。
+
+### Fixed
+- macOS以外のbuildでmacOS updater helper codeをコンパイル対象に含めないよう条件を修正した。
+- preset pickerのfooterが小さいviewportで切れる問題を修正した。
+- presetとNamed Rootの表示・保存時にWindows verbatim path prefixが露出する問題を修正した。
+- 同一rootのpreset適用でIgnore Listの切替が検索候補へ反映されず、非同期response後にpreset sortが失われる問題を修正した。preset所有stateをatomic transitionで適用し、tab所有のsort scopeとrequest freshnessを維持する。
+- Windows release ZIP内の案内ファイルがflat asset用のversion付き名称になる問題を修正し、archive契約どおり`README.txt`を同梱する。
+- Windows release packagingとarchive検証をfresh Windows PowerShell 5.1 processでも実行できるようにした。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- `webbrowser`を1.2.2へ更新し、RUSTSEC-2026-0257の監査失敗を解消した。許容済みのunmaintained transitive warningは`docs/OSS_COMPLIANCE.md`の管理条件を維持する。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.22.1] - 2026-08-07
 ### Added
@@ -1743,7 +1773,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.20.1...v0.21.0

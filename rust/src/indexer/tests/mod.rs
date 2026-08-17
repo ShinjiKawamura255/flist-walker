@@ -57,6 +57,86 @@ fn test_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("fff-rs-{name}-{nonce}"))
 }
 
+fn test_fixture_ancestor_boundary(root: &Path) -> PathBuf {
+    let fixture = root
+        .ancestors()
+        .find(|ancestor| {
+            ancestor
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name.starts_with("fff-rs-"))
+        })
+        .expect("FileList tests must run below an fff-rs fixture root");
+    fixture
+        .parent()
+        .expect("fixture root must have a parent")
+        .to_path_buf()
+}
+
+fn plan_filelist_write(
+    root: &Path,
+    entries: &[PathBuf],
+    options: FileListWriteOptions,
+) -> std::result::Result<FileListWritePlan, Box<FileListWriteReport>> {
+    let boundary = test_fixture_ancestor_boundary(root);
+    super::filelist_writer::plan_filelist_write_cancellable_with_ancestor_boundary(
+        root,
+        entries,
+        options,
+        &boundary,
+        &|| false,
+    )
+}
+
+fn plan_filelist_write_cancellable<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    options: FileListWriteOptions,
+    should_cancel: &C,
+) -> std::result::Result<FileListWritePlan, Box<FileListWriteReport>>
+where
+    C: Fn() -> bool,
+{
+    let boundary = test_fixture_ancestor_boundary(root);
+    super::filelist_writer::plan_filelist_write_cancellable_with_ancestor_boundary(
+        root,
+        entries,
+        options,
+        &boundary,
+        should_cancel,
+    )
+}
+
+fn write_filelist(
+    root: &Path,
+    entries: &[PathBuf],
+    filename: &str,
+    propagate_to_ancestors: bool,
+) -> anyhow::Result<PathBuf> {
+    write_filelist_cancellable(root, entries, filename, propagate_to_ancestors, &|| false)
+}
+
+fn write_filelist_cancellable<C>(
+    root: &Path,
+    entries: &[PathBuf],
+    filename: &str,
+    propagate_to_ancestors: bool,
+    should_cancel: &C,
+) -> anyhow::Result<PathBuf>
+where
+    C: Fn() -> bool,
+{
+    let boundary = test_fixture_ancestor_boundary(root);
+    super::filelist_writer::write_filelist_cancellable_with_ancestor_boundary(
+        root,
+        entries,
+        filename,
+        propagate_to_ancestors,
+        &boundary,
+        should_cancel,
+    )
+}
+
 fn sleep_for_timestamp_tick() {
     std::thread::sleep(Duration::from_millis(1100));
 }
@@ -328,6 +408,75 @@ fn write_filelist_writes_file() {
     let content = fs::read_to_string(&out).expect("read filelist");
     assert!(content.contains(&format!("x{}run.exe", std::path::MAIN_SEPARATOR)));
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_bounded_ancestor_plan_stays_inside_fixture_and_preserves_propagation() {
+    let outer = test_root("bounded-ancestor-regression");
+    let fixture = outer.join("fixture");
+    let parent = fixture.join("parent");
+    let root = parent.join("child");
+    fs::create_dir_all(&root).expect("create child root");
+
+    let outside_filelist = outer.join("FileList.txt");
+    let fixture_filelist = fixture.join("FileList.txt");
+    let parent_filelist = parent.join("FileList.txt");
+    fs::write(&outside_filelist, b"outside-sentinel\n").expect("write outside sentinel");
+    fs::write(&fixture_filelist, b"fixture-existing.txt\n").expect("write fixture filelist");
+    fs::write(&parent_filelist, b"parent-existing.txt\n").expect("write parent filelist");
+    let outside_before = fs::read(&outside_filelist).expect("read outside sentinel");
+    let outside_mtime = fs::metadata(&outside_filelist)
+        .and_then(|metadata| metadata.modified())
+        .expect("outside mtime");
+
+    let entry = root.join("src/main.rs");
+    fs::create_dir_all(entry.parent().expect("entry parent")).expect("create src");
+    fs::write(&entry, b"fn main() {}\n").expect("write entry");
+
+    let plan = super::filelist_writer::plan_filelist_write_cancellable_with_ancestor_boundary(
+        &root,
+        &[entry],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: true,
+        },
+        &outer,
+        &|| false,
+    )
+    .expect("bounded plan");
+
+    assert!(plan
+        .targets()
+        .iter()
+        .all(|target| target.path.starts_with(&fixture)));
+    assert!(plan
+        .targets()
+        .iter()
+        .any(|target| target.path == fixture_filelist));
+    assert!(plan
+        .targets()
+        .iter()
+        .any(|target| target.path == parent_filelist));
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+    assert_eq!(report.status, FileListWriteStatus::Completed);
+    assert!(fs::read_to_string(&fixture_filelist)
+        .expect("read fixture filelist")
+        .contains("child"));
+    assert!(fs::read_to_string(&parent_filelist)
+        .expect("read parent filelist")
+        .contains("child"));
+    assert_eq!(
+        fs::read(&outside_filelist).expect("read outside after"),
+        outside_before
+    );
+    assert_eq!(
+        fs::metadata(&outside_filelist)
+            .and_then(|metadata| metadata.modified())
+            .expect("outside mtime after"),
+        outside_mtime
+    );
+    let _ = fs::remove_dir_all(&outer);
 }
 
 #[test]
