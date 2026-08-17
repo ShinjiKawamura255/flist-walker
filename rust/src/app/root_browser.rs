@@ -30,6 +30,19 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn select_root_for_path_input(
+        &mut self,
+        input: &str,
+    ) -> Result<Option<PathBuf>, String> {
+        let input = input.trim();
+        let start = if input.is_empty() {
+            Self::browse_dialog_start_location(&self.shell.runtime.root)
+        } else {
+            Self::browse_dialog_start_location(Path::new(input))
+        };
+        self.select_root_via_dialog(&start)
+    }
+
     pub(super) fn open_manage_root_list(&mut self) {
         let root_browser = &mut self.shell.features.root_browser;
         root_browser.manage_list.open = true;
@@ -252,13 +265,8 @@ impl FlistWalkerApp {
             .root_browser
             .manage_list
             .input_path
-            .trim();
-        let start = if input.is_empty() {
-            Self::browse_dialog_start_location(&self.shell.runtime.root)
-        } else {
-            Self::browse_dialog_start_location(Path::new(input))
-        };
-        match self.select_root_via_dialog(&start) {
+            .clone();
+        match self.select_root_for_path_input(&input) {
             Ok(Some(dir)) => {
                 let root = normalize_windows_path_buf(dir);
                 self.shell.features.root_browser.manage_list.input_path =

@@ -24,12 +24,14 @@ pub(super) enum RenderHelpDialogCommand {
 pub(super) enum RenderPresetPickerCommand {
     Apply,
     StartEdit,
+    BrowsePresetRoot,
     SaveEdit,
     CancelEdit,
     OpenNamedRoots,
     CloseNamedRoots,
     AddNamedRoot,
     EditNamedRoot,
+    BrowseNamedRoot,
     SaveNamedRoot,
     CancelNamedRootEdit,
     StartDeleteNamedRoot,
@@ -386,6 +388,9 @@ impl FlistWalkerApp {
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::StartEdit) => {
                     self.start_selected_preset_edit();
                 }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::BrowsePresetRoot) => {
+                    self.browse_for_preset_editor_root();
+                }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::SaveEdit) => {
                     self.request_save_preset_edit();
                 }
@@ -403,6 +408,9 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::EditNamedRoot) => {
                     self.start_selected_named_root_edit();
+                }
+                RenderCommand::PresetPicker(RenderPresetPickerCommand::BrowseNamedRoot) => {
+                    self.browse_for_named_root_editor_path();
                 }
                 RenderCommand::PresetPicker(RenderPresetPickerCommand::SaveNamedRoot) => {
                     self.request_save_named_root();

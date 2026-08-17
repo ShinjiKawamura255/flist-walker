@@ -227,6 +227,133 @@ fn f2_opens_selected_preset_as_a_draft_without_applying_it() {
     let _ = fs::remove_dir_all(root);
 }
 
+#[test]
+fn preset_root_browse_updates_only_the_draft_and_uses_its_existing_parent() {
+    let root = test_root("preset-editor-browse-root");
+    let selected = root.join("selected");
+    fs::create_dir_all(&selected).expect("create selected root");
+    let snapshot = root.join("missing").join("child");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("Rust", &snapshot, "ext:rs"))
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.start_selected_preset_edit();
+    app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(selected.clone())));
+
+    app.browse_for_preset_editor_root();
+
+    assert_eq!(
+        app.shell.features.root_browser.last_browse_dialog_root,
+        Some(root.clone())
+    );
+    assert_eq!(
+        app.shell.features.presets.picker.editor.root_path,
+        selected.display().to_string()
+    );
+    assert_eq!(
+        app.shell
+            .features
+            .presets
+            .catalog
+            .preset("Rust")
+            .expect("preset")
+            .root_path,
+        snapshot
+    );
+    assert_eq!(app.shell.runtime.root, root);
+    assert_eq!(app.shell.runtime.query_state.query, "current query");
+    assert!(!app.shell.worker_bus.catalog.in_progress);
+
+    let manual = root.join("manual");
+    fs::create_dir_all(&manual).expect("create manual root");
+    app.shell.features.presets.picker.editor.root_path = manual.display().to_string();
+    app.shell.features.root_browser.browse_dialog_result = Some(Ok(None));
+    app.browse_for_preset_editor_root();
+    assert_eq!(
+        app.shell.features.presets.picker.editor.root_path,
+        manual.display().to_string()
+    );
+
+    app.shell.features.root_browser.browse_dialog_result =
+        Some(Err("dialog unavailable".to_string()));
+    app.browse_for_preset_editor_root();
+    assert_eq!(
+        app.shell.features.presets.picker.editor.root_path,
+        manual.display().to_string()
+    );
+    assert!(app
+        .shell
+        .features
+        .presets
+        .picker
+        .editor
+        .error
+        .contains("Browse failed: dialog unavailable"));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn named_root_browse_supports_selection_cancel_and_local_error() {
+    let root = test_root("named-root-editor-browse-root");
+    let selected = root.join("selected");
+    let manual = root.join("manual");
+    fs::create_dir_all(&selected).expect("create selected root");
+    fs::create_dir_all(&manual).expect("create manual root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+    app.start_add_named_root();
+    app.shell.features.presets.picker.named_roots.editor.name = "work".to_string();
+    app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(selected.clone())));
+
+    app.browse_for_named_root_editor_path();
+
+    assert_eq!(
+        app.shell.features.root_browser.last_browse_dialog_root,
+        Some(root.clone())
+    );
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.editor.path,
+        selected.display().to_string()
+    );
+    assert!(app.shell.features.presets.catalog.named_roots.is_empty());
+
+    app.shell.features.presets.picker.named_roots.editor.path = manual.display().to_string();
+    app.shell.features.root_browser.browse_dialog_result = Some(Ok(None));
+    app.browse_for_named_root_editor_path();
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.editor.path,
+        manual.display().to_string()
+    );
+
+    app.shell.features.root_browser.browse_dialog_result =
+        Some(Err("dialog unavailable".to_string()));
+    app.browse_for_named_root_editor_path();
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.editor.path,
+        manual.display().to_string()
+    );
+    assert!(app
+        .shell
+        .features
+        .presets
+        .picker
+        .named_roots
+        .editor
+        .error
+        .contains("Browse failed: dialog unavailable"));
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.editor.name,
+        "work"
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
 #[cfg(target_os = "windows")]
 #[test]
 fn preset_catalog_surfaces_hide_windows_verbatim_prefixes_from_existing_entries() {
