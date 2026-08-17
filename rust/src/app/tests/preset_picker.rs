@@ -118,7 +118,9 @@ fn enter_applies_selected_pure_search_preset_without_executing_results() {
 fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
     let root = test_root("preset-picker-same-root-regression");
     fs::create_dir_all(&root).expect("create root");
-    let ignored = root.join("old-result.txt");
+    // Regression guard: the ignore sentinel must not occur in platform-owned temp
+    // ancestors (for example macOS `/var/folders`); keep it filename-specific.
+    let ignored = root.join("preset-ignore-sentinel-result.txt");
     let kept = root.join("kept-result.txt");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
     reset_index_request_state_for_test(&mut app);
@@ -128,7 +130,7 @@ fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
     app.shell.runtime.all_entries =
         Arc::new(vec![file_entry(ignored.clone()), file_entry(kept.clone())]);
     app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
-    app.shell.runtime.ignore_list_terms = Arc::new(vec!["old".to_string()]);
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["preset-ignore-sentinel".to_string()]);
     app.shell.ui.ignore_list_enabled = false;
     app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
     app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
@@ -212,7 +214,7 @@ fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
 fn regression_same_root_preset_disabling_ignore_restores_all_search_entries() {
     let root = test_root("preset-picker-disable-ignore-regression");
     fs::create_dir_all(&root).expect("create root");
-    let ignored = root.join("old-result.txt");
+    let ignored = root.join("preset-ignore-sentinel-result.txt");
     let kept = root.join("kept-result.txt");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
     reset_index_request_state_for_test(&mut app);
@@ -222,7 +224,7 @@ fn regression_same_root_preset_disabling_ignore_restores_all_search_entries() {
     app.shell.runtime.all_entries =
         Arc::new(vec![file_entry(ignored.clone()), file_entry(kept.clone())]);
     app.shell.runtime.entries = Arc::new(vec![file_entry(kept)]);
-    app.shell.runtime.ignore_list_terms = Arc::new(vec!["old".to_string()]);
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["preset-ignore-sentinel".to_string()]);
     app.shell.ui.ignore_list_enabled = true;
 
     let mut selected = preset("Show ignored", &root, "result");
