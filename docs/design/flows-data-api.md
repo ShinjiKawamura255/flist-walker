@@ -46,6 +46,7 @@
 - CLI adapter は明示 catalog option を先に処理し、`--preset` を effective search args へ変換して既存 batch/TUI pipeline へ渡す。
 - GUI は `PresetManagerState` に worker から受理した catalog snapshot と ephemeral picker/preset editor/named-root manager state を保持する。picker open ごとに catalog load request を送り、request-id freshness を満たす response だけで snapshot を置換する。name filter は UI memory 上で行い、適用は既存 root/index/search/sort/tab state transition を再利用する。
 - GUI picker/editor/Named Root manager は同じ modal 内で背景 input を遮断し、メイン panel へ control を追加しない。mutationは元entry名とdraftまたは削除対象名をworkerへ渡し、最新catalogをlock内で再読込してin-place mutation/atomic-writeする。named-root renameは参照presetを新名称へ追従させ、deleteは参照を解除してsnapshot fallbackを維持する。collisionやwrite failureではcatalogを上書きせずdraftまたは確認状態を維持し、保存時点のentry unknown fieldsとversion 1 documentのunknown fieldsを保持する。
+- preset root と Named Root path の browse は既存 root browser の folder picker 境界と、現在のテキスト値から既存 ancestor を求める開始位置解決を再利用する。render は browse command だけを収集し、dispatch 後に dialog を開く。選択結果は表示用に正規化して対象 editor draft だけへ反映し、cancel は no-op、dialog failure は対象 editor の error として保持する。
 - `plan_filelist_write(options, filesystem) -> FileListWritePlan`; `settle_filelist_plan(plan, cancel) -> FileListTransactionReport`
 - `enqueue_persistence(patch, history_delta)`; `flush_persistence_bounded() -> CommitOutcome`
 

@@ -628,7 +628,7 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
     );
     assert_eq!(
         snapshot["preset_picker_dialogs"][0]["buttons"],
-        json!(["Save", "Cancel"])
+        json!(["Browse...", "Save", "Cancel"])
     );
     assert_eq!(app.shell.runtime.query_state.query, "current");
 
@@ -679,6 +679,10 @@ fn gui_surface_snapshot_exposes_named_root_manager_and_editor() {
             "Name: work",
             format!("Path: {}", root.join("workspace").display())
         ])
+    );
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["buttons"],
+        json!(["Browse...", "Use current root", "Save", "Cancel"])
     );
 
     let ctx = egui::Context::default();

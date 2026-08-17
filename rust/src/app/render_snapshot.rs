@@ -66,7 +66,12 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                         format!("Name: {}", manager.editor.name),
                         format!("Path: {}", manager.editor.path),
                     ],
-                    buttons: vec!["Save".to_string(), "Cancel".to_string()],
+                    buttons: vec![
+                        "Browse...".to_string(),
+                        "Use current root".to_string(),
+                        "Save".to_string(),
+                        "Cancel".to_string(),
+                    ],
                 }]
             } else if manager.confirm_delete {
                 let name = manager
@@ -110,7 +115,11 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                     format!("Name: {}", editor.name),
                     format!("Query: {}", editor.query),
                 ],
-                buttons: vec!["Save".to_string(), "Cancel".to_string()],
+                buttons: vec![
+                    "Browse...".to_string(),
+                    "Save".to_string(),
+                    "Cancel".to_string(),
+                ],
             }]
         } else {
             let lines = app

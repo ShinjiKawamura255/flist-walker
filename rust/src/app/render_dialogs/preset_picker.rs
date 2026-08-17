@@ -202,6 +202,8 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         .map(|root| root.name.clone())
         .collect::<Vec<_>>();
     let mut manage_named_roots = false;
+    let mut browse_root = false;
+    let busy = app.shell.worker_bus.catalog.in_progress;
     let editor = &mut app.shell.features.presets.picker.editor;
     egui::Grid::new("preset-editor-fields")
         .num_columns(2)
@@ -244,11 +246,19 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             } else {
                 "Root"
             });
-            ui.add(
-                egui::TextEdit::singleline(&mut editor.root_path)
-                    .desired_width(430.0)
-                    .hint_text("Absolute path"),
-            );
+            ui.horizontal(|ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut editor.root_path)
+                        .desired_width(345.0)
+                        .hint_text("Absolute path"),
+                );
+                if ui
+                    .add_enabled(!busy, egui::Button::new("Browse..."))
+                    .clicked()
+                {
+                    browse_root = true;
+                }
+            });
             ui.end_row();
 
             ui.label("Query");
@@ -323,7 +333,6 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     }
 
     ui.add_space(8.0);
-    let busy = app.shell.worker_bus.catalog.in_progress;
     ui.horizontal(|ui| {
         ui.label(if busy {
             "Saving preset...".to_string()
@@ -348,6 +357,11 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             RenderPresetPickerCommand::OpenNamedRoots,
         ));
     }
+    if browse_root {
+        app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+            RenderPresetPickerCommand::BrowsePresetRoot,
+        ));
+    }
 }
 
 fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
@@ -369,7 +383,9 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.label("A named root gives one or more presets a reusable search location.");
     ui.add_space(6.0);
 
-    let current_root = app.shell.runtime.root.display().to_string();
+    let current_root = normalize_path_for_display(&app.shell.runtime.root);
+    let busy = app.shell.worker_bus.catalog.in_progress;
+    let mut browse_path = false;
     let editor = &mut app.shell.features.presets.picker.named_roots.editor;
     egui::Grid::new("named-root-editor-fields")
         .num_columns(2)
@@ -391,9 +407,15 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut editor.path)
-                        .desired_width(330.0)
+                        .desired_width(245.0)
                         .hint_text("Absolute path"),
                 );
+                if ui
+                    .add_enabled(!busy, egui::Button::new("Browse..."))
+                    .clicked()
+                {
+                    browse_path = true;
+                }
                 if ui.button("Use current root").clicked() {
                     editor.path.clone_from(&current_root);
                 }
@@ -409,7 +431,6 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         );
     }
     ui.add_space(8.0);
-    let busy = app.shell.worker_bus.catalog.in_progress;
     ui.horizontal(|ui| {
         ui.label(if busy {
             "Saving named root...".to_string()
@@ -429,6 +450,11 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             }
         });
     });
+    if browse_path {
+        app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+            RenderPresetPickerCommand::BrowseNamedRoot,
+        ));
+    }
 }
 
 fn render_named_root_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
