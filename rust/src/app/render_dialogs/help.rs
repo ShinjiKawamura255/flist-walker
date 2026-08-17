@@ -31,7 +31,8 @@ impl FlistWalkerApp {
                 .to_string(),
             "F2 — Edit the selected preset".to_string(),
             format!("{primary}+Enter — Save the preset draft; Esc — Discard it"),
-            "Named roots... / Manage... — Add, edit, or delete reusable preset roots".to_string(),
+            "Manage named roots... / Manage... — Add, edit, or delete reusable preset roots"
+                .to_string(),
             "In Named roots, use Up / Down to select, F2 to edit and Delete to remove".to_string(),
             "Applying a preset updates search state only; it never opens or executes a result"
                 .to_string(),

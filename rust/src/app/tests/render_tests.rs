@@ -689,6 +689,22 @@ fn gui_surface_snapshot_exposes_named_root_manager_and_editor() {
 }
 
 #[test]
+fn preset_picker_layout_uses_responsive_width_and_separate_management_copy() {
+    use crate::app::render_dialogs::preset_picker::{
+        preset_picker_modal_width, MANAGE_NAMED_ROOTS_LABEL, PRESET_PICKER_FOOTER_HINT,
+    };
+
+    assert_eq!(preset_picker_modal_width(634.0), 610.0);
+    assert_eq!(preset_picker_modal_width(1000.0), 720.0);
+    assert_eq!(preset_picker_modal_width(500.0), 600.0);
+    assert_eq!(MANAGE_NAMED_ROOTS_LABEL, "Manage named roots...");
+    assert_eq!(
+        PRESET_PICKER_FOOTER_HINT,
+        "Type to filter · Up/Down to select · Enter to apply · F2 to edit · Esc to close"
+    );
+}
+
+#[test]
 fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     let root = test_root("render-snapshot-rich-state");
     fs::create_dir_all(&root).expect("create dir");

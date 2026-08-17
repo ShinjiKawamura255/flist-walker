@@ -131,7 +131,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                 title: "Presets".to_string(),
                 lines,
                 buttons: vec![
-                    "Named roots...".to_string(),
+                    "Manage named roots...".to_string(),
                     "Edit".to_string(),
                     "Close".to_string(),
                 ],
