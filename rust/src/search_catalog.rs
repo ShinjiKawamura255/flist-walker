@@ -1,4 +1,5 @@
 use crate::fs_atomic::{acquire_sidecar_lock, write_text_atomic};
+use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::settings_base_dir;
 use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -130,7 +131,7 @@ impl SearchCatalog {
         }
         self.named_roots.push(NamedRoot {
             name,
-            path,
+            path: normalize_windows_path_buf(path),
             extra: BTreeMap::new(),
         });
         Ok(())
@@ -160,7 +161,7 @@ impl SearchCatalog {
         }
         let previous_name = self.named_roots[original_index].name.clone();
         self.named_roots[original_index].name = name.clone();
-        self.named_roots[original_index].path = path;
+        self.named_roots[original_index].path = normalize_windows_path_buf(path);
         for preset in &mut self.presets {
             if preset
                 .root_name
@@ -196,6 +197,7 @@ impl SearchCatalog {
 
     pub fn save_preset(&mut self, mut preset: SearchPreset) -> Result<()> {
         preset.name = validate_catalog_name(&preset.name)?;
+        preset.root_path = normalize_windows_path_buf(preset.root_path);
         if let Some(root_name) = preset.root_name.as_deref() {
             preset.root_name = Some(validate_catalog_name(root_name)?);
         }
@@ -220,6 +222,7 @@ impl SearchCatalog {
             return Err(anyhow!("search preset is not configured: {original_name}"));
         };
         preset.name = validate_catalog_name(&preset.name)?;
+        preset.root_path = normalize_windows_path_buf(preset.root_path);
         if let Some(root_name) = preset.root_name.as_deref() {
             preset.root_name = Some(validate_catalog_name(root_name)?);
         }
@@ -449,6 +452,34 @@ mod tests {
             catalog.resolve_preset_root(catalog.preset("search").unwrap()),
             root.join("snapshot")
         );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn catalog_mutations_strip_windows_verbatim_prefixes_from_stored_paths() {
+        let extended_path = PathBuf::from(r"\\?\C:\Users\tester\Documents");
+        let expected_path = PathBuf::from(r"C:\Users\tester\Documents");
+        let mut catalog = SearchCatalog::default();
+
+        catalog
+            .add_named_root("docs", extended_path.clone())
+            .expect("add named root");
+        assert_eq!(catalog.named_root("docs").unwrap().path, expected_path);
+
+        catalog
+            .replace_named_root("docs", "documents", extended_path.clone())
+            .expect("replace named root");
+        assert_eq!(catalog.named_root("documents").unwrap().path, expected_path);
+
+        catalog
+            .save_preset(preset("saved", &extended_path))
+            .expect("save preset");
+        assert_eq!(catalog.preset("saved").unwrap().root_path, expected_path);
+
+        catalog
+            .replace_preset("saved", preset("edited", &extended_path))
+            .expect("replace preset");
+        assert_eq!(catalog.preset("edited").unwrap().root_path, expected_path);
     }
 
     #[test]

@@ -227,6 +227,60 @@ fn f2_opens_selected_preset_as_a_draft_without_applying_it() {
     let _ = fs::remove_dir_all(root);
 }
 
+#[cfg(target_os = "windows")]
+#[test]
+fn preset_catalog_surfaces_hide_windows_verbatim_prefixes_from_existing_entries() {
+    use crate::app::render_dialogs::preset_picker::preset_summary;
+    use crate::search_catalog::NamedRoot;
+    use std::path::PathBuf;
+
+    let root = test_root("preset-catalog-verbatim-prefix-display");
+    fs::create_dir_all(&root).expect("create root");
+    let extended_path = PathBuf::from(r"\\?\C:\Users\tester\Documents");
+    let expected_path = r"C:\Users\tester\Documents";
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .named_roots
+        .push(NamedRoot {
+            name: "Documents".to_string(),
+            path: extended_path.clone(),
+            extra: BTreeMap::new(),
+        });
+    let mut saved = preset("documents", &extended_path, "");
+    saved.root_name = Some("Documents".to_string());
+    app.shell.features.presets.catalog.presets.push(saved);
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    assert_eq!(
+        preset_summary(&app, 0),
+        Some(format!("{expected_path}  —  (empty query)"))
+    );
+
+    app.start_selected_preset_edit();
+    assert_eq!(
+        app.shell.features.presets.picker.editor.root_path,
+        expected_path
+    );
+
+    app.open_named_root_manager();
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["lines"],
+        serde_json::json!([format!("Documents — {expected_path}")])
+    );
+
+    app.start_selected_named_root_edit();
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.editor.path,
+        expected_path
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
 #[test]
 fn escape_discards_the_preset_draft_and_returns_to_the_picker() {
     let root = test_root("preset-editor-cancel");

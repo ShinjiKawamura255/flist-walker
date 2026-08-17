@@ -1,5 +1,5 @@
 use super::{FlistWalkerApp, ResultSortMode};
-use crate::path_utils::path_key;
+use crate::path_utils::{normalize_path_for_display, normalize_windows_path_buf, path_key};
 use crate::search_catalog::{
     validate_catalog_name, NamedRoot, PresetSortMode, PresetSource, SearchPreset,
 };
@@ -290,7 +290,7 @@ impl FlistWalkerApp {
             original_name: preset.name.clone(),
             name: preset.name,
             root_name: preset.root_name,
-            root_path: preset.root_path.display().to_string(),
+            root_path: normalize_path_for_display(&preset.root_path),
             query: preset.query,
             entry_type: preset.entry_type,
             source: preset.source,
@@ -344,7 +344,7 @@ impl FlistWalkerApp {
                 "Preset root must not be empty".to_string();
             return;
         }
-        let root_path = std::path::PathBuf::from(root_path);
+        let root_path = normalize_windows_path_buf(std::path::PathBuf::from(root_path));
         if !root_path.is_absolute() {
             self.shell.features.presets.picker.editor.error =
                 "Preset root must be an absolute path".to_string();
@@ -442,7 +442,7 @@ impl FlistWalkerApp {
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
-        let path = self.shell.runtime.root.display().to_string();
+        let path = normalize_path_for_display(&self.shell.runtime.root);
         self.shell.features.presets.picker.named_roots.editor =
             super::state::NamedRootEditorState {
                 open: true,
@@ -472,7 +472,7 @@ impl FlistWalkerApp {
                 open: true,
                 original_name: Some(root.name.clone()),
                 name: root.name,
-                path: root.path.display().to_string(),
+                path: normalize_path_for_display(&root.path),
                 focus_requested: true,
                 error: String::new(),
             };
@@ -506,7 +506,7 @@ impl FlistWalkerApp {
                 return;
             }
         };
-        let path = std::path::PathBuf::from(editor.path.trim());
+        let path = normalize_windows_path_buf(std::path::PathBuf::from(editor.path.trim()));
         if editor.path.trim().is_empty() {
             self.shell.features.presets.picker.named_roots.editor.error =
                 "Named root path must not be empty".to_string();

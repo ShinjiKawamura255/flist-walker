@@ -1,4 +1,5 @@
 use super::{FlistWalkerApp, UpdateSupport};
+use crate::ui_model::normalize_path_for_display;
 use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -86,7 +87,9 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                     .catalog
                     .named_roots
                     .iter()
-                    .map(|root| format!("{} — {}", root.name, root.path.display()))
+                    .map(|root| {
+                        format!("{} — {}", root.name, normalize_path_for_display(&root.path))
+                    })
                     .collect();
                 vec![DialogSnapshot {
                     title: "Named roots".to_string(),

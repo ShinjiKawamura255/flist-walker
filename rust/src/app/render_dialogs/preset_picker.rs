@@ -1,5 +1,6 @@
 use crate::app::{render::RenderPresetPickerCommand, FlistWalkerApp};
 use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource};
+use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
 
 pub(in crate::app) const MANAGE_NAMED_ROOTS_LABEL: &str = "Manage named roots...";
@@ -10,7 +11,7 @@ pub(in crate::app) fn preset_picker_modal_width(available_width: f32) -> f32 {
     (available_width - 24.0).clamp(600.0, 720.0)
 }
 
-fn preset_summary(app: &FlistWalkerApp, catalog_index: usize) -> Option<String> {
+pub(in crate::app) fn preset_summary(app: &FlistWalkerApp, catalog_index: usize) -> Option<String> {
     let preset = app
         .shell
         .features
@@ -29,7 +30,11 @@ fn preset_summary(app: &FlistWalkerApp, catalog_index: usize) -> Option<String> 
     } else {
         &preset.query
     };
-    Some(format!("{}  —  {}", root.display(), query))
+    Some(format!(
+        "{}  —  {}",
+        normalize_path_for_display(&root),
+        query
+    ))
 }
 
 fn entry_type_label(value: PresetEntryType) -> &'static str {
@@ -433,7 +438,7 @@ fn render_named_root_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui
         .and_then(|index| app.shell.features.presets.catalog.named_roots.get(index));
     let name = root.map(|root| root.name.as_str()).unwrap_or("(missing)");
     let path = root
-        .map(|root| root.path.display().to_string())
+        .map(|root| normalize_path_for_display(&root.path))
         .unwrap_or_default();
     let linked_count = app
         .shell
@@ -503,7 +508,7 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         .catalog
         .named_roots
         .iter()
-        .map(|root| (root.name.clone(), root.path.display().to_string()))
+        .map(|root| (root.name.clone(), normalize_path_for_display(&root.path)))
         .collect::<Vec<_>>();
     let selected = app.shell.features.presets.picker.named_roots.selected_index;
     egui::ScrollArea::vertical()
