@@ -187,7 +187,7 @@
 - Expected Behavior: preset所有stateを先に確定し、filter済みentriesとpreset sortを持つ最新requestを一度だけ発行する。旧requestをcancelしてresponseを破棄し、最新response後もpreset sortとtab所有sort scopeを維持する。
 - Non-goals: presetへsort scopeを追加すること、storage schema変更、root/source/type変更時のindex refresh省略。
 - Related Tests: TC-174; `regression_same_root_preset_applies_filters_and_sort_before_fresh_search`, `regression_same_root_preset_disabling_ignore_restores_all_search_entries`.
-- Notes for Future Changes: preset適用経路でfilter、sort、search dispatchを個別に並べ直さず、atomic runtime transitionとpaired regression testsを同時に更新する。
+- Notes for Future Changes: preset適用経路でfilter、sort、search dispatchを個別に並べ直さず、atomic runtime transitionとpaired regression testsを同時に更新する。Ignore Listのtest fixtureはplatform所有のtemp ancestor（macOSの`/var/folders`など）に偶然一致しないfilename固有sentinelを使い、候補path全体に対するfilter契約を検証する。
 
 ### Preconditions / Postconditions
 - Preconditions: runtime settings directory が解決でき、名前は trim 後に非空で制御文字と `=` を含まず、GUIで入力するnamed-root pathはabsoluteかつworkerで既存directoryとして解決できる。

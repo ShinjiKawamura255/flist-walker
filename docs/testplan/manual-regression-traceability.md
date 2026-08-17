@@ -119,6 +119,7 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - Expected Behavior: filter済み最新requestだけが採用され、Ignore Listとpreset sortが結果へ反映され、tabのsort scopeは維持される。
 - Non-goals: root/source/type変更時のindex refresh省略、presetによるsort scope保存、action実行。
 - Related Tests: TC-174; `regression_same_root_preset_applies_filters_and_sort_before_fresh_search`, `regression_same_root_preset_disabling_ignore_restores_all_search_entries`.
+- Notes for Future Changes: automated fixtureのignore termはplatform temp ancestorと衝突しないfilename固有sentinelにし、macOSの`/var/folders`のような親path一致で保持対象まで除外しないことを維持する。
 - Notes for Future Changes: automated request-payload/freshness testとGSM-008/009/010の3軸を同じrelease候補で確認する。
 
 ## Entry / Exit criteria
