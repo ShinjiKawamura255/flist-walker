@@ -577,6 +577,10 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
         json!(["Rust sources"])
     );
     assert_eq!(
+        snapshot["preset_picker_dialogs"][0]["buttons"],
+        json!(["Manage named roots...", "Add", "Edit", "Delete", "Close"])
+    );
+    assert_eq!(
         snapshot["top_actions"],
         json!([
             "Open / Execute",
@@ -636,6 +640,55 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
     let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
     assert!(app.shell.features.presets.picker.editor.open);
     assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn gui_surface_snapshot_exposes_preset_add_and_delete_confirmation_states() {
+    let root = test_root("render-snapshot-preset-add-delete");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "ext:rs".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(SearchPreset {
+            name: "Rust sources".to_string(),
+            root_name: None,
+            root_path: root.clone(),
+            query: "ext:rs".to_string(),
+            entry_type: PresetEntryType::File,
+            source: PresetSource::Walker,
+            regex: false,
+            ignore_case: true,
+            ignore_enabled: true,
+            sort: PresetSortMode::Score,
+            extra: BTreeMap::new(),
+        })
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    app.start_add_preset();
+    let add_snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("add snapshot");
+    assert_eq!(
+        add_snapshot["preset_picker_dialogs"][0]["title"],
+        json!("Add preset")
+    );
+    app.cancel_preset_edit();
+
+    app.start_selected_preset_delete();
+    let delete_snapshot =
+        serde_json::to_value(app.gui_surface_snapshot()).expect("delete snapshot");
+    assert_eq!(
+        delete_snapshot["preset_picker_dialogs"][0]["title"],
+        json!("Delete preset?")
+    );
+    assert_eq!(
+        delete_snapshot["preset_picker_dialogs"][0]["buttons"],
+        json!(["Delete preset", "Cancel"])
+    );
+    assert_eq!(app.shell.runtime.query_state.query, "ext:rs");
     let _ = fs::remove_dir_all(root);
 }
 

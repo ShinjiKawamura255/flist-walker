@@ -111,6 +111,13 @@ impl FlistWalkerApp {
             return true;
         }
 
+        if self.shell.features.presets.picker.confirm_delete {
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+                self.cancel_delete_preset();
+            }
+            return true;
+        }
+
         if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
             self.close_preset_picker();
             return true;
@@ -131,7 +138,6 @@ impl FlistWalkerApp {
             self.start_selected_preset_edit();
             return true;
         }
-
         // The picker text field may keep ordinary text/editing events, while application
         // shortcuts must not leak to the search/results view behind the modal.
         true

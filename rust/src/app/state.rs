@@ -334,6 +334,8 @@ pub(super) struct PresetPickerState {
     pub(super) selected_match: Option<usize>,
     pub(super) focus_requested: bool,
     pub(super) error: String,
+    pub(super) confirm_delete: bool,
+    pub(super) pending_deleted_name: Option<String>,
     pub(super) editor: PresetEditorState,
     pub(super) named_roots: NamedRootManagerState,
 }

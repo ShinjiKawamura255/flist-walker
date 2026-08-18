@@ -240,6 +240,10 @@ pub(super) fn spawn_catalog_worker(
                                 catalog.remove_named_root(&name)
                             })
                         }),
+                    CatalogRequestKind::AddPreset { preset } => search_catalog_file_path()
+                        .and_then(|path| {
+                            update_search_catalog(&path, |catalog| catalog.add_preset(preset))
+                        }),
                     CatalogRequestKind::ReplacePreset {
                         original_name,
                         preset,
@@ -248,6 +252,10 @@ pub(super) fn spawn_catalog_worker(
                             catalog.replace_preset(&original_name, preset)
                         })
                     }),
+                    CatalogRequestKind::RemovePreset { name } => search_catalog_file_path()
+                        .and_then(|path| {
+                            update_search_catalog(&path, |catalog| catalog.remove_preset(&name))
+                        }),
                 }
                 .map_err(|error| error.to_string());
                 if tx_res

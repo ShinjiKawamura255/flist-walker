@@ -217,9 +217,15 @@ pub(super) enum CatalogRequestKind {
     RemoveNamedRoot {
         name: String,
     },
+    AddPreset {
+        preset: SearchPreset,
+    },
     ReplacePreset {
         original_name: String,
         preset: SearchPreset,
+    },
+    RemovePreset {
+        name: String,
     },
 }
 

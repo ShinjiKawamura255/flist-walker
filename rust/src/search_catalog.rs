@@ -213,6 +213,23 @@ impl SearchCatalog {
         Ok(())
     }
 
+    pub fn add_preset(&mut self, mut preset: SearchPreset) -> Result<()> {
+        preset.name = validate_catalog_name(&preset.name)?;
+        preset.root_path = normalize_windows_path_buf(preset.root_path);
+        if let Some(root_name) = preset.root_name.as_deref() {
+            preset.root_name = Some(validate_catalog_name(root_name)?);
+        }
+        if self
+            .presets
+            .iter()
+            .any(|candidate| names_equal(&candidate.name, &preset.name))
+        {
+            return Err(anyhow!("search preset already exists: {}", preset.name));
+        }
+        self.presets.push(preset);
+        Ok(())
+    }
+
     pub fn replace_preset(&mut self, original_name: &str, mut preset: SearchPreset) -> Result<()> {
         let Some(original_index) = self
             .presets
@@ -525,6 +542,19 @@ mod tests {
             .expect("renamed preset");
         collision.name = "docs".to_string();
         assert!(catalog.replace_preset("Rust source", collision).is_err());
+        assert_eq!(catalog, before_collision);
+    }
+
+    #[test]
+    fn adding_preset_rejects_name_collisions_without_overwriting_existing_entries() {
+        let root = test_root("add-preset");
+        let mut catalog = SearchCatalog::default();
+        catalog
+            .add_preset(preset("Rust", &root))
+            .expect("add rust preset");
+        let before_collision = catalog.clone();
+
+        assert!(catalog.add_preset(preset("rust", &root)).is_err());
         assert_eq!(catalog, before_collision);
     }
 

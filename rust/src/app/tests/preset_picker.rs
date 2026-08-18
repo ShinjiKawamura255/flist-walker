@@ -639,6 +639,191 @@ fn saving_a_preset_draft_queues_an_atomic_replace_without_applying_it() {
 }
 
 #[test]
+fn adding_a_preset_starts_a_draft_from_the_current_pure_search_state() {
+    let root = test_root("preset-editor-add-draft");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "dir:src ext:rs".to_string());
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.use_regex = true;
+    app.shell.runtime.ignore_case = false;
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.ignore_list_enabled = false;
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeAsc;
+    app.shell.features.presets.picker.open = true;
+
+    app.start_add_preset();
+
+    let editor = &app.shell.features.presets.picker.editor;
+    assert!(editor.open);
+    assert!(editor.original_name.is_empty());
+    assert!(editor.name.is_empty());
+    assert_eq!(editor.root_path, normalize_path_for_display(&root));
+    assert_eq!(editor.query, "dir:src ext:rs");
+    assert_eq!(editor.entry_type, PresetEntryType::Folder);
+    assert_eq!(editor.source, PresetSource::Walker);
+    assert!(editor.regex);
+    assert!(!editor.ignore_case);
+    assert!(!editor.ignore_enabled);
+    assert_eq!(editor.sort, PresetSortMode::SizeAsc);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn saving_a_new_preset_draft_queues_an_atomic_add_without_applying_it() {
+    use crate::app::worker_protocol::CatalogRequestKind;
+
+    let root = test_root("preset-editor-add-request");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".to_string());
+    app.shell.features.presets.picker.open = true;
+    app.start_add_preset();
+    app.shell.features.presets.picker.editor.name = "Current search".to_string();
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.tx = tx;
+
+    app.request_save_preset_edit();
+
+    let request = rx.try_recv().expect("catalog add request");
+    match request.kind {
+        CatalogRequestKind::AddPreset { preset } => {
+            assert_eq!(preset.name, "Current search");
+            assert_eq!(preset.query, "current query");
+            assert_eq!(preset.root_path, root);
+        }
+        _ => panic!("expected add request"),
+    }
+    assert!(app.shell.worker_bus.catalog.in_progress);
+    assert_eq!(app.shell.runtime.query_state.query, "current query");
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn deleting_a_selected_preset_requires_confirmation_and_queues_atomic_remove() {
+    use crate::app::worker_protocol::CatalogRequestKind;
+
+    let root = test_root("preset-delete-request");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("Rust", &root, "ext:rs"))
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.tx = tx;
+
+    app.start_selected_preset_delete();
+    assert!(app.shell.features.presets.picker.confirm_delete);
+    assert!(rx.try_recv().is_err());
+
+    app.confirm_delete_preset();
+
+    let request = rx.try_recv().expect("catalog remove request");
+    match request.kind {
+        CatalogRequestKind::RemovePreset { name } => assert_eq!(name, "Rust"),
+        _ => panic!("expected remove request"),
+    }
+    assert!(app.shell.worker_bus.catalog.in_progress);
+    assert!(app.shell.features.presets.catalog.preset("Rust").is_some());
+    assert_eq!(app.shell.runtime.query_state.query, "current query");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn successful_preset_delete_response_updates_the_picker_without_changing_the_current_search() {
+    use crate::app::worker_protocol::CatalogResponse;
+
+    let root = test_root("preset-delete-success");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("Rust", &root, "ext:rs"))
+        .expect("save rust preset");
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("Docs", &root, "ext:md"))
+        .expect("save docs preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.shell.features.presets.picker.confirm_delete = true;
+    app.shell.features.presets.picker.pending_deleted_name = Some("Rust".to_string());
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.rx = rx;
+    app.shell.worker_bus.catalog.pending_request_id = Some(9);
+    app.shell.worker_bus.catalog.in_progress = true;
+    let mut updated = SearchCatalog::default();
+    updated
+        .save_preset(preset("Docs", &root, "ext:md"))
+        .expect("save remaining preset");
+    tx.send(CatalogResponse {
+        request_id: 9,
+        result: Ok(updated),
+    })
+    .expect("send response");
+
+    app.poll_catalog_response();
+
+    assert!(!app.shell.features.presets.picker.confirm_delete);
+    assert_eq!(app.preset_picker_match_names(), vec!["Docs"]);
+    assert_eq!(app.shell.runtime.query_state.query, "current query");
+    assert!(app.shell.runtime.notice.contains("Deleted preset: Rust"));
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn failed_preset_delete_response_keeps_confirmation_and_surfaces_the_error() {
+    use crate::app::worker_protocol::CatalogResponse;
+
+    let root = test_root("preset-delete-failure");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("Rust", &root, "ext:rs"))
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.shell.features.presets.picker.confirm_delete = true;
+    app.shell.features.presets.picker.pending_deleted_name = Some("Rust".to_string());
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.catalog.rx = rx;
+    app.shell.worker_bus.catalog.pending_request_id = Some(10);
+    app.shell.worker_bus.catalog.in_progress = true;
+    tx.send(CatalogResponse {
+        request_id: 10,
+        result: Err("catalog is read-only".to_string()),
+    })
+    .expect("send response");
+
+    app.poll_catalog_response();
+
+    assert!(app.shell.features.presets.picker.confirm_delete);
+    assert!(app.shell.features.presets.catalog.preset("Rust").is_some());
+    assert!(app
+        .shell
+        .features
+        .presets
+        .picker
+        .error
+        .contains("read-only"));
+    assert!(!app.shell.worker_bus.catalog.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn invalid_preset_draft_stays_local_and_does_not_start_the_worker() {
     let root = test_root("preset-editor-invalid");
     fs::create_dir_all(&root).expect("create root");
