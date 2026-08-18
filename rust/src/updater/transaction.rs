@@ -36,6 +36,7 @@ pub(super) struct PreparedTransaction {
 
 #[cfg(any(not(target_os = "macos"), test))]
 impl PreparedTransaction {
+    #[cfg(test)]
     pub(super) fn install_dir(&self) -> &Path {
         &self.install_dir
     }

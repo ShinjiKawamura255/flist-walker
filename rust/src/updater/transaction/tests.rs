@@ -306,6 +306,37 @@ fn tc158_prepare_is_confined_exclusive_and_binary_last() {
 }
 
 #[test]
+fn tc179_regression_failed_helper_launch_cleanup_allows_a_fresh_prepare() {
+    let fixture = Fixture::new();
+    let current_exe = fixture.current_exe();
+    let first = prepare_transaction_with_id(
+        &current_exe,
+        fixture.sources(),
+        "00112233445566778899aabbccddeeff",
+        42,
+    )
+    .expect("first prepare");
+    let first_helper = first.helper_path().to_path_buf();
+    let first_paths = first.new_paths();
+
+    // A spawn error returns while the parent still owns the prepared transaction, so dropping it
+    // must remove only those owned artifacts and leave the installation eligible for a retry.
+    drop(first);
+
+    assert!(!fixture.root.join(LOCK_FILE_NAME).exists());
+    assert!(!fixture.root.join(MARKER_FILE_NAME).exists());
+    assert!(!first_helper.exists());
+    assert!(first_paths.iter().all(|path| !path.exists()));
+    let second = prepare_transaction_with_id(
+        &current_exe,
+        fixture.sources(),
+        "ffeeddccbbaa99887766554433221100",
+        42,
+    );
+    assert!(second.is_ok(), "cleanup must allow the next update attempt");
+}
+
+#[test]
 fn tc158_prepare_rejects_existing_or_non_file_derived_paths_without_cleanup() {
     let fixture = Fixture::new();
     let current_exe = fixture.current_exe();
