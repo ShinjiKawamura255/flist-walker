@@ -37,6 +37,8 @@ impl FlistWalkerApp {
         picker.editor = Default::default();
         picker.named_roots = Default::default();
         picker.focus_requested = true;
+        picker.confirm_delete = false;
+        picker.pending_deleted_name = None;
         self.refresh_preset_picker_matches();
         ctx.memory_mut(|memory| {
             memory.request_focus(egui::Id::new(Self::PRESET_PICKER_QUERY_ID));
@@ -54,6 +56,8 @@ impl FlistWalkerApp {
         picker.selected_match = None;
         picker.focus_requested = false;
         picker.error.clear();
+        picker.confirm_delete = false;
+        picker.pending_deleted_name = None;
         picker.editor = Default::default();
         picker.named_roots = Default::default();
         if restore_query_focus {
@@ -103,6 +107,13 @@ impl FlistWalkerApp {
                 .editor
                 .pending_saved_name
                 .take();
+            let pending_deleted_name = self
+                .shell
+                .features
+                .presets
+                .picker
+                .pending_deleted_name
+                .take();
             match response.result {
                 Ok(catalog) => {
                     self.shell.features.presets.catalog = catalog;
@@ -118,6 +129,13 @@ impl FlistWalkerApp {
                         self.select_preset_picker_name(&saved_name);
                         self.shell.features.presets.picker.focus_requested = true;
                         self.set_notice(format!("Saved preset: {saved_name}"));
+                        continue;
+                    }
+                    if let Some(deleted_name) = pending_deleted_name {
+                        self.shell.features.presets.picker.confirm_delete = false;
+                        self.refresh_preset_picker_matches();
+                        self.shell.features.presets.picker.focus_requested = true;
+                        self.set_notice(format!("Deleted preset: {deleted_name}"));
                         continue;
                     }
                     self.refresh_preset_picker_matches();
@@ -136,6 +154,10 @@ impl FlistWalkerApp {
                     }
                     if pending_saved_name.is_some() {
                         self.shell.features.presets.picker.editor.error = error;
+                        continue;
+                    }
+                    if pending_deleted_name.is_some() {
+                        self.shell.features.presets.picker.error = error;
                         continue;
                     }
                     self.shell.features.presets.picker.error = error;
@@ -226,6 +248,7 @@ impl FlistWalkerApp {
             .map(|(catalog_index, _)| catalog_index)
             .collect();
         picker.selected_match = (!picker.matched_catalog_indices.is_empty()).then_some(0);
+        picker.confirm_delete = false;
     }
 
     pub(in crate::app) fn move_preset_picker_selection(&mut self, delta: isize) {
@@ -237,6 +260,8 @@ impl FlistWalkerApp {
         }
         let current = picker.selected_match.unwrap_or(0) as isize;
         picker.selected_match = Some((current + delta).rem_euclid(count as isize) as usize);
+        picker.confirm_delete = false;
+        picker.error.clear();
     }
 
     pub(in crate::app) fn select_preset_picker_match(&mut self, match_index: usize) {
@@ -250,6 +275,8 @@ impl FlistWalkerApp {
                 .len()
         {
             self.shell.features.presets.picker.selected_match = Some(match_index);
+            self.shell.features.presets.picker.confirm_delete = false;
+            self.shell.features.presets.picker.error.clear();
         }
     }
 
@@ -304,6 +331,37 @@ impl FlistWalkerApp {
             error: String::new(),
             pending_saved_name: None,
         };
+        self.shell.features.presets.picker.confirm_delete = false;
+    }
+
+    pub(in crate::app) fn start_add_preset(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let runtime = &self.shell.runtime;
+        self.shell.features.presets.picker.editor = super::state::PresetEditorState {
+            open: true,
+            original_name: String::new(),
+            name: String::new(),
+            root_name: None,
+            root_path: normalize_path_for_display(&runtime.root),
+            query: runtime.query_state.query.clone(),
+            entry_type: preset_entry_type(runtime.include_files, runtime.include_dirs),
+            source: if runtime.use_filelist {
+                PresetSource::Auto
+            } else {
+                PresetSource::Walker
+            },
+            regex: runtime.use_regex,
+            ignore_case: runtime.ignore_case,
+            ignore_enabled: self.shell.ui.ignore_list_enabled,
+            sort: preset_sort_mode(runtime.result_sort_mode),
+            extra: Default::default(),
+            focus_requested: true,
+            error: String::new(),
+            pending_saved_name: None,
+        };
+        self.shell.features.presets.picker.confirm_delete = false;
     }
 
     pub(in crate::app) fn cancel_preset_edit(&mut self) {
@@ -385,6 +443,14 @@ impl FlistWalkerApp {
             extra: editor.extra.clone(),
         };
         let original_name = editor.original_name.clone();
+        let kind = if original_name.is_empty() {
+            super::CatalogRequestKind::AddPreset { preset }
+        } else {
+            super::CatalogRequestKind::ReplacePreset {
+                original_name,
+                preset,
+            }
+        };
         let request_id = self.shell.worker_bus.catalog.begin_request();
         self.shell.features.presets.picker.editor.pending_saved_name = Some(name);
         self.shell.features.presets.picker.editor.error.clear();
@@ -393,19 +459,62 @@ impl FlistWalkerApp {
             .worker_bus
             .catalog
             .tx
-            .send(super::CatalogRequest {
-                request_id,
-                kind: super::CatalogRequestKind::ReplacePreset {
-                    original_name,
-                    preset,
-                },
-            })
+            .send(super::CatalogRequest { request_id, kind })
             .is_err()
         {
             self.shell.worker_bus.catalog.clear_request();
             self.shell.features.presets.picker.editor.pending_saved_name = None;
             self.shell.features.presets.picker.editor.error =
                 "Preset catalog worker is unavailable".to_string();
+        }
+    }
+
+    pub(in crate::app) fn start_selected_preset_delete(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress || self.selected_preset().is_none() {
+            return;
+        }
+        let picker = &mut self.shell.features.presets.picker;
+        picker.confirm_delete = true;
+        picker.error.clear();
+    }
+
+    pub(in crate::app) fn cancel_delete_preset(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let picker = &mut self.shell.features.presets.picker;
+        picker.confirm_delete = false;
+        picker.error.clear();
+        picker.focus_requested = true;
+    }
+
+    pub(in crate::app) fn confirm_delete_preset(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress {
+            return;
+        }
+        let Some(preset) = self.selected_preset() else {
+            self.shell.features.presets.picker.confirm_delete = false;
+            return;
+        };
+        let name = preset.name;
+        let request_id = self.shell.worker_bus.catalog.begin_request();
+        self.shell.features.presets.picker.pending_deleted_name = Some(name.clone());
+        self.shell.features.presets.picker.error.clear();
+        if self
+            .shell
+            .worker_bus
+            .catalog
+            .tx
+            .send(super::CatalogRequest {
+                request_id,
+                kind: super::CatalogRequestKind::RemovePreset { name },
+            })
+            .is_err()
+        {
+            self.shell.worker_bus.catalog.clear_request();
+            let picker = &mut self.shell.features.presets.picker;
+            picker.pending_deleted_name = None;
+            picker.error = "Preset catalog worker is unavailable".to_string();
         }
     }
 
@@ -761,5 +870,30 @@ fn runtime_sort_mode(value: PresetSortMode) -> ResultSortMode {
         PresetSortMode::CreatedAsc => ResultSortMode::CreatedAsc,
         PresetSortMode::SizeDesc => ResultSortMode::SizeDesc,
         PresetSortMode::SizeAsc => ResultSortMode::SizeAsc,
+    }
+}
+
+fn preset_entry_type(
+    include_files: bool,
+    include_dirs: bool,
+) -> crate::search_catalog::PresetEntryType {
+    match (include_files, include_dirs) {
+        (true, false) => crate::search_catalog::PresetEntryType::File,
+        (false, true) => crate::search_catalog::PresetEntryType::Folder,
+        _ => crate::search_catalog::PresetEntryType::All,
+    }
+}
+
+fn preset_sort_mode(value: ResultSortMode) -> PresetSortMode {
+    match value {
+        ResultSortMode::Score => PresetSortMode::Score,
+        ResultSortMode::NameAsc => PresetSortMode::NameAsc,
+        ResultSortMode::NameDesc => PresetSortMode::NameDesc,
+        ResultSortMode::ModifiedDesc => PresetSortMode::ModifiedDesc,
+        ResultSortMode::ModifiedAsc => PresetSortMode::ModifiedAsc,
+        ResultSortMode::CreatedDesc => PresetSortMode::CreatedDesc,
+        ResultSortMode::CreatedAsc => PresetSortMode::CreatedAsc,
+        ResultSortMode::SizeDesc => PresetSortMode::SizeDesc,
+        ResultSortMode::SizeAsc => PresetSortMode::SizeAsc,
     }
 }

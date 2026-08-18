@@ -110,7 +110,11 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         } else if app.shell.features.presets.picker.editor.open {
             let editor = &app.shell.features.presets.picker.editor;
             vec![DialogSnapshot {
-                title: "Edit preset".to_string(),
+                title: if editor.original_name.is_empty() {
+                    "Add preset".to_string()
+                } else {
+                    "Edit preset".to_string()
+                },
                 lines: vec![
                     format!("Name: {}", editor.name),
                     format!("Query: {}", editor.query),
@@ -120,6 +124,36 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                     "Save".to_string(),
                     "Cancel".to_string(),
                 ],
+            }]
+        } else if app.shell.features.presets.picker.confirm_delete {
+            let name = app
+                .shell
+                .features
+                .presets
+                .picker
+                .selected_match
+                .and_then(|match_index| {
+                    app.shell
+                        .features
+                        .presets
+                        .picker
+                        .matched_catalog_indices
+                        .get(match_index)
+                })
+                .and_then(|catalog_index| {
+                    app.shell
+                        .features
+                        .presets
+                        .catalog
+                        .presets
+                        .get(*catalog_index)
+                })
+                .map(|preset| preset.name.clone())
+                .unwrap_or_default();
+            vec![DialogSnapshot {
+                title: "Delete preset?".to_string(),
+                lines: vec![name],
+                buttons: vec!["Delete preset".to_string(), "Cancel".to_string()],
             }]
         } else {
             let lines = app
@@ -144,7 +178,9 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                 lines,
                 buttons: vec![
                     "Manage named roots...".to_string(),
+                    "Add".to_string(),
                     "Edit".to_string(),
+                    "Delete".to_string(),
                     "Close".to_string(),
                 ],
             }]

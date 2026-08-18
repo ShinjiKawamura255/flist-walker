@@ -183,13 +183,44 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 RenderPresetPickerCommand::StartEdit,
             ));
         }
+        if ui
+            .add_enabled(can_edit, egui::Button::new("Delete"))
+            .clicked()
+        {
+            app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                RenderPresetPickerCommand::StartDelete,
+            ));
+        }
+        if ui
+            .add_enabled(
+                !app.shell.worker_bus.catalog.in_progress,
+                egui::Button::new("Add"),
+            )
+            .clicked()
+        {
+            app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                RenderPresetPickerCommand::Add,
+            ));
+        }
     });
 }
 
 fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     let primary = FlistWalkerApp::primary_shortcut_label();
-    ui.heading("Edit preset");
-    ui.label("Changes are saved to the preset catalog and are not applied to the current tab.");
+    let is_new = app
+        .shell
+        .features
+        .presets
+        .picker
+        .editor
+        .original_name
+        .is_empty();
+    ui.heading(if is_new { "Add preset" } else { "Edit preset" });
+    ui.label(if is_new {
+        "Save the current pure-search state as a preset without applying or executing anything."
+    } else {
+        "Changes are saved to the preset catalog and are not applied to the current tab."
+    });
     ui.add_space(6.0);
 
     let named_roots = app
@@ -362,6 +393,73 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             RenderPresetPickerCommand::BrowsePresetRoot,
         ));
     }
+}
+
+fn render_preset_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
+    let preset = app
+        .shell
+        .features
+        .presets
+        .picker
+        .selected_match
+        .and_then(|match_index| {
+            app.shell
+                .features
+                .presets
+                .picker
+                .matched_catalog_indices
+                .get(match_index)
+        })
+        .and_then(|catalog_index| {
+            app.shell
+                .features
+                .presets
+                .catalog
+                .presets
+                .get(*catalog_index)
+        });
+    let name = preset
+        .map(|preset| preset.name.as_str())
+        .unwrap_or("(missing)");
+
+    ui.heading("Delete preset?");
+    ui.label(name);
+    ui.add_space(6.0);
+    ui.label(
+        "This removes only the saved preset. The current tab and search results are unchanged.",
+    );
+    let picker = &app.shell.features.presets.picker;
+    if !picker.error.is_empty() {
+        ui.add_space(6.0);
+        ui.colored_label(
+            ui.visuals().error_fg_color,
+            format!("Error: {}", picker.error),
+        );
+    }
+    ui.add_space(8.0);
+    let busy = app.shell.worker_bus.catalog.in_progress;
+    ui.horizontal(|ui| {
+        ui.label(if busy {
+            "Deleting preset..."
+        } else {
+            "Esc to cancel"
+        });
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if ui
+                .add_enabled(!busy, egui::Button::new("Delete preset"))
+                .clicked()
+            {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::ConfirmDelete,
+                ));
+            }
+            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::CancelDelete,
+                ));
+            }
+        });
+    });
 }
 
 fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
@@ -632,6 +730,8 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             render_named_root_manager(app, ui);
         } else if app.shell.features.presets.picker.editor.open {
             render_editor(app, ui);
+        } else if app.shell.features.presets.picker.confirm_delete {
+            render_preset_delete_confirmation(app, ui);
         } else {
             render_picker(app, ui);
         }
