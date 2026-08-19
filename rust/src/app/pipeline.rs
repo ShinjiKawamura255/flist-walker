@@ -807,6 +807,10 @@ impl FlistWalkerApp {
                 self.shell.indexing.search_rerun_pending = false;
                 if self.shell.runtime.query_state.query.trim().is_empty() {
                     self.shell.search.clear_active_request_state();
+                    // The incremental snapshot replaces the previous result set at
+                    // index completion, so its denominator must replace any count
+                    // left by the search that was active before the refresh.
+                    self.shell.runtime.total_match_count = self.shell.runtime.entries.len();
                     let results = self
                         .shell
                         .runtime
@@ -830,6 +834,9 @@ impl FlistWalkerApp {
             self.shell.indexing.search_rerun_pending = false;
             if self.shell.runtime.query_state.query.trim().is_empty() {
                 self.shell.search.clear_active_request_state();
+                // The index refresh supersedes the previous result snapshot;
+                // keep the Results denominator aligned with the final index.
+                self.shell.runtime.total_match_count = self.shell.runtime.entries.len();
                 let results = self
                     .shell
                     .runtime
