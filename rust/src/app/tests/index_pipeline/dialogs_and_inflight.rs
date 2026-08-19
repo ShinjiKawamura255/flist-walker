@@ -328,7 +328,7 @@ fn filelist_use_walker_dialog_text_describes_background_execution() {
 }
 
 #[test]
-fn preempt_background_when_active_index_is_queued() {
+fn preempt_all_background_requests_when_active_index_is_queued() {
     let root = test_root("index-preempt-active-priority");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -372,9 +372,8 @@ fn preempt_background_when_active_index_is_queued() {
         .latest_request_ids
         .lock()
         .expect("lock latest");
-    let preempted =
-        latest.get(&bg_tab_a).copied() == Some(0) || latest.get(&bg_tab_b).copied() == Some(0);
-    assert!(preempted);
+    assert_eq!(latest.get(&bg_tab_a).copied(), Some(0));
+    assert_eq!(latest.get(&bg_tab_b).copied(), Some(0));
     let _ = fs::remove_dir_all(&root);
 }
 
