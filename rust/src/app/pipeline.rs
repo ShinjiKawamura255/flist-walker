@@ -336,49 +336,41 @@ impl FlistWalkerApp {
             return false;
         }
 
-        let victim_request_id =
-            self.shell
-                .indexing
-                .inflight_requests
-                .iter()
-                .copied()
-                .find(|request_id| {
-                    self.shell
-                        .indexing
-                        .request_tabs
-                        .get(request_id)
-                        .is_some_and(|tab_id| *tab_id != active_tab_id)
-                });
-        let Some(victim_request_id) = victim_request_id else {
-            return false;
-        };
-        let Some(victim_tab_id) = self
+        let victims: Vec<(u64, u64)> = self
             .shell
             .indexing
-            .request_tabs
-            .get(&victim_request_id)
-            .copied()
-        else {
-            return false;
-        };
-        let replacement_request_id = self
-            .shell
-            .indexing
-            .pending_queue
+            .inflight_requests
             .iter()
-            .rev()
-            .find(|req| req.tab_id == victim_tab_id)
-            .map(|req| req.request_id)
-            .unwrap_or(0);
+            .filter_map(|request_id| {
+                let tab_id = self.shell.indexing.request_tabs.get(request_id).copied()?;
+                if tab_id == active_tab_id {
+                    return None;
+                }
+                let replacement_request_id = self
+                    .shell
+                    .indexing
+                    .pending_queue
+                    .iter()
+                    .rev()
+                    .find(|req| req.tab_id == tab_id)
+                    .map(|req| req.request_id)
+                    .unwrap_or(0);
+                Some((tab_id, replacement_request_id))
+            })
+            .collect();
 
-        if let Ok(mut latest) = self.shell.indexing.latest_request_ids.lock() {
-            if latest.get(&victim_tab_id).copied() == Some(replacement_request_id) {
-                return false;
+        let Ok(mut latest) = self.shell.indexing.latest_request_ids.lock() else {
+            return false;
+        };
+        let mut preempted = false;
+        for (tab_id, replacement_request_id) in victims {
+            if latest.get(&tab_id).copied() == Some(replacement_request_id) {
+                continue;
             }
-            latest.insert(victim_tab_id, replacement_request_id);
-            return true;
+            latest.insert(tab_id, replacement_request_id);
+            preempted = true;
         }
-        false
+        preempted
     }
 
     pub(super) fn dispatch_index_queue(&mut self) {
