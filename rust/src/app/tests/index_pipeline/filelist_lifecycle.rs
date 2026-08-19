@@ -360,6 +360,7 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
     let root = test_root("empty-query-finished-priority");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.total_match_count = 99;
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
     app.shell.indexing.pending_request_id = Some(31);
@@ -385,6 +386,7 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
 
     assert_eq!(app.shell.runtime.entries.len(), 1);
     assert_eq!(app.shell.runtime.results.len(), 1);
+    assert_eq!(app.shell.runtime.total_match_count, 1);
     assert_eq!(app.shell.runtime.entries[0], path);
     let _ = fs::remove_dir_all(&root);
 }
@@ -738,6 +740,7 @@ fn finished_index_with_filters_reuses_incremental_snapshot_without_full_rescan()
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.ignore_list_enabled = false;
+    app.shell.runtime.total_match_count = 99;
 
     let kept = dir_entry(root.join("kept"));
     let other = dir_entry(root.join("other"));
@@ -761,6 +764,7 @@ fn finished_index_with_filters_reuses_incremental_snapshot_without_full_rescan()
     );
     assert_eq!(app.shell.runtime.entries.as_ref(), &vec![kept.clone()]);
     assert_eq!(app.shell.runtime.results, vec![(kept.path, 0.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 1);
     assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
 
     let _ = fs::remove_dir_all(&root);
