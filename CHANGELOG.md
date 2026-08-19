@@ -24,6 +24,29 @@
 ### Known issues
 -
 
+## [0.24.0] - 2026-08-19
+### Added
+- GUI の検索 preset picker から現在の検索状態を preset として追加し、選択した preset を確認付きで削除できるようにした。
+- GUI / CLI / TUI の検索で `--max-depth N` と同等の最大深度を設定できるようにし、Walker と FileList の候補検索、preset、tab state に反映した。FileList 作成は従来どおり完全走査する。
+
+### Changed
+- Windows の updater helper 起動を、verbatim path の失敗時に正規化パスへ再試行できるように整理し、install directory を current directory に強制しないようにした。
+
+### Fixed
+- 長い Windows パスや UNC パスで updater helper の起動に失敗するケースと、失敗時のエラーメッセージに verbatim prefix が露出する問題を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.23.0] - 2026-08-17
 ### Added
 - GUI に `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で開く検索 preset picker を追加した。preset 名の fuzzy filter と現在 tab への適用、`F2` / `Edit` からの編集、absolute path の直接入力と folder picker、Named Root の追加・編集・削除、rename時のpreset参照追従、delete時のsnapshot fallbackを提供する。メイン画面への常設 control と副作用 actionは追加しない。
@@ -1773,7 +1796,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.21.0...v0.22.0
