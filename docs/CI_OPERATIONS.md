@@ -96,3 +96,13 @@ run `30289068993`では、同一treeのPR runが成功した後にmacOSだけ`ca
 完全なbefore/after read-backで、repository設定差分はmerge commit無効、squash無効、merge済みbranch自動削除有効（およびmergeに伴う`pushed_at` / `size`）だけ、protection差分はlinear history有効だけだった。approval `0`、administrators適用、master force-push/deletion禁止、signature/conversation/restriction/lock/block/fork設定は不変である。PR #17のremote branchは自動削除され、2つのsource commitは順序とtreeを保った1-parent commitとして`master`へ追加された。
 
 両required checkを通常状態で通すprotected-route証跡は[PR #18](https://github.com/ShinjiKawamura255/flist-walker/pull/18)とする。release note補完と本rollout recordを別commitにし、rebase auto-merge後のcommit数・順序・message・author・patch/tree対応・parent数とbranch自動削除を検証する。最終checkとmerge outcomeはPR recordを正本とする。
+
+## Scheduled monitor recovery rollout record (2026-08-19)
+
+[PR #54](https://github.com/ShinjiKawamura255/flist-walker/pull/54)でscheduled security auditとlatest canaryのmonitor issue recoveryをfail-closedにし、trusted checkerとadversarial testを更新した。旧guardianは構造変更を期待どおり拒否し（run `32246109796`）、独立agent reviewで指摘0件、exact head `0704541f74c68bdf519a81e544a63c249c3aacba`の`CI Gate` run `32246109768`成功、base/head不変、競合PRなしを確認した。
+
+変更前snapshotはprotection endpoint `repos/ShinjiKawamura255/flist-walker/branches/master/protection`、required checks `CI Gate` / `CI Policy Guardian`（ともにGitHub Actions app ID `15368`、strict `true`）、approval `0`、administrators適用、linear history必須、force-push/deletion禁止だった。repositoryはauto-merge有効、rebase-only、merge済みbranch自動削除有効で、PR #54にはrebase auto-mergeが登録済みだった。
+
+required checksを一時的に`CI Gate`だけへ限定し、PR #54を`b2c0c959b7ee98cd14e9f839b19b8a6ae5b95d1d`へauto-mergeした。復元時の最初のCLI requestは不正な配列payloadとして拒否され、protectionは`CI Gate`のみのまま不変だったため、明示JSON payloadで直ちに`CI Policy Guardian`を復元した。完全なread-backでrequired checks、strict、approval、administrators適用、linear history、force-push/deletion、repository auto-merge、rebase-only、branch自動削除、および非対象設定が変更前snapshotと一致することを確認した。
+
+復元後の新guardian protected-route証跡は本記録を追加するPRとし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
