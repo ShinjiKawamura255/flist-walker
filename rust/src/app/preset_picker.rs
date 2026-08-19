@@ -326,6 +326,7 @@ impl FlistWalkerApp {
             ignore_case: preset.ignore_case,
             ignore_enabled: preset.ignore_enabled,
             sort: preset.sort,
+            max_depth: preset.max_depth,
             extra: preset.extra,
             focus_requested: true,
             error: String::new(),
@@ -356,6 +357,7 @@ impl FlistWalkerApp {
             ignore_case: runtime.ignore_case,
             ignore_enabled: self.shell.ui.ignore_list_enabled,
             sort: preset_sort_mode(runtime.result_sort_mode),
+            max_depth: runtime.max_depth,
             extra: Default::default(),
             focus_requested: true,
             error: String::new(),
@@ -440,6 +442,7 @@ impl FlistWalkerApp {
             ignore_case: editor.ignore_case,
             ignore_enabled: editor.ignore_enabled,
             sort: editor.sort,
+            max_depth: editor.max_depth,
             extra: editor.extra.clone(),
         };
         let original_name = editor.original_name.clone();
@@ -799,7 +802,8 @@ impl FlistWalkerApp {
         let requires_reindex = root_changed
             || self.shell.runtime.use_filelist != use_filelist
             || self.shell.runtime.include_files != include_files
-            || self.shell.runtime.include_dirs != include_dirs;
+            || self.shell.runtime.include_dirs != include_dirs
+            || self.shell.runtime.max_depth != preset.max_depth;
         let sort_mode = runtime_sort_mode(preset.sort);
         let sort_scope = self.shell.runtime.result_sort_scope;
 
@@ -809,6 +813,7 @@ impl FlistWalkerApp {
         self.shell.runtime.ignore_case = preset.ignore_case;
         self.shell.runtime.include_files = include_files;
         self.shell.runtime.include_dirs = include_dirs;
+        self.shell.runtime.max_depth = preset.max_depth;
         self.shell.ui.ignore_list_enabled = preset.ignore_enabled;
 
         // Regression guard: preset-owned state must be committed before exactly one

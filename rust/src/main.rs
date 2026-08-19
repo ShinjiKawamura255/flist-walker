@@ -48,6 +48,6 @@ fn main() -> Result<ExitCode> {
         warn!("failed to materialize ignore list sample: {}", err);
     }
     gui_launch::initialize()?;
-    gui_launch::run(args.root(), args.query(), args.limit())?;
+    gui_launch::run(args.root(), args.query(), args.limit(), args.max_depth())?;
     Ok(ExitCode::SUCCESS)
 }

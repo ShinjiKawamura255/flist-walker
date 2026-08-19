@@ -73,6 +73,7 @@ pub(crate) struct AppTabState {
     pub(super) ignore_case: bool,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
+    pub(super) max_depth: crate::indexer::MaxDepth,
     pub(super) index_state: TabIndexState,
     pub(super) query_state: TabQueryState,
     pub(super) result_state: TabResultState,
@@ -423,6 +424,7 @@ impl AppTabState {
             ignore_case: shell.shell.runtime.ignore_case,
             include_files: shell.shell.runtime.include_files,
             include_dirs: shell.shell.runtime.include_dirs,
+            max_depth: shell.shell.runtime.max_depth,
             index_state: TabIndexState::from_shell(shell),
             query_state: TabQueryState::from_shell(shell),
             result_state: TabResultState::from_shell(shell),
@@ -447,6 +449,7 @@ impl AppTabState {
             ignore_case: saved.ignore_case,
             include_files: saved.include_files,
             include_dirs: saved.include_dirs,
+            max_depth: saved.max_depth,
             index_state: TabIndexState {
                 index: IndexBuildResult {
                     entries: Vec::new(),
@@ -530,6 +533,7 @@ impl AppTabState {
             ignore_case: shell.shell.runtime.ignore_case,
             include_files: shell.shell.runtime.include_files,
             include_dirs: shell.shell.runtime.include_dirs,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
             index_state: TabIndexState {
                 index: IndexBuildResult {
                     entries: Vec::new(),
@@ -596,6 +600,7 @@ impl AppTabState {
         self.ignore_case = shell.shell.runtime.ignore_case;
         self.include_files = shell.shell.runtime.include_files;
         self.include_dirs = shell.shell.runtime.include_dirs;
+        self.max_depth = shell.shell.runtime.max_depth;
     }
 
     pub(super) fn apply_small_fields_to_shell(&self, shell: &mut FlistWalkerApp) {
@@ -605,6 +610,7 @@ impl AppTabState {
         shell.shell.runtime.ignore_case = self.ignore_case;
         shell.shell.runtime.include_files = self.include_files;
         shell.shell.runtime.include_dirs = self.include_dirs;
+        shell.shell.runtime.max_depth = self.max_depth;
     }
 
     pub(super) fn swap_payload_with_shell(&mut self, shell: &mut FlistWalkerApp) {
@@ -653,6 +659,7 @@ impl AppTabState {
         shell.shell.runtime.ignore_case = self.ignore_case;
         shell.shell.runtime.include_files = self.include_files;
         shell.shell.runtime.include_dirs = self.include_dirs;
+        shell.shell.runtime.max_depth = self.max_depth;
         self.index_state.apply_shell(shell);
         self.query_state.apply_shell(shell);
         self.result_state.apply_shell(shell);
@@ -677,6 +684,7 @@ impl AppTabState {
             ignore_case: self.ignore_case,
             include_files: self.include_files,
             include_dirs: self.include_dirs,
+            max_depth: self.max_depth,
             query: self.query_state.query.clone(),
             query_history: if history_persist_disabled {
                 Vec::new()
@@ -698,6 +706,7 @@ impl AppTabState {
             ignore_case: shell.shell.runtime.ignore_case,
             include_files: shell.shell.runtime.include_files,
             include_dirs: shell.shell.runtime.include_dirs,
+            max_depth: shell.shell.runtime.max_depth,
             query: shell.shell.runtime.query_state.query.clone(),
             query_history: if history_persist_disabled {
                 Vec::new()

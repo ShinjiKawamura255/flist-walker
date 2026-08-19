@@ -192,8 +192,14 @@ impl FlistWalkerApp {
     }
 
     /// 永続化済み launch 設定と保存 tab を考慮して起動する。
-    pub fn from_launch(root: PathBuf, limit: usize, query: String, root_explicit: bool) -> Self {
-        Self::build_from_launch(root, limit, query, root_explicit)
+    pub fn from_launch(
+        root: PathBuf,
+        limit: usize,
+        query: String,
+        root_explicit: bool,
+        max_depth: crate::indexer::MaxDepth,
+    ) -> Self {
+        Self::build_from_launch(root, limit, query, root_explicit, max_depth)
     }
 }
 

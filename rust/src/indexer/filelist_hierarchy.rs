@@ -1,5 +1,6 @@
-use super::filelist_reader::parse_filelist_collect;
+use super::filelist_reader::parse_filelist_collect_with_max_depth;
 use super::filelist_writer::filelist_modified_time;
+use super::MaxDepth;
 use anyhow::Result;
 use std::cmp::Reverse;
 use std::collections::{HashMap, HashSet};
@@ -11,14 +12,15 @@ pub(super) fn apply_nested_filelist_overrides<C>(
     root: &Path,
     root_modified: Option<SystemTime>,
     entries: &mut Vec<PathBuf>,
-    include_files: bool,
-    include_dirs: bool,
+    entry_types: (bool, bool),
+    max_depth: MaxDepth,
     should_cancel: &C,
 ) -> Result<bool>
 where
     C: Fn() -> bool,
 {
     type PendingFileList = (Reverse<usize>, u64, PathBuf);
+    let (include_files, include_dirs) = entry_types;
 
     let mut changed = false;
     let mut active_filelist_modified: HashMap<PathBuf, Option<SystemTime>> = HashMap::new();
@@ -50,11 +52,12 @@ where
         if !is_filelist_newer(child_modified, active_modified) {
             continue;
         }
-        let child_entries = parse_filelist_collect(
+        let child_entries = parse_filelist_collect_with_max_depth(
             &child_filelist,
             root,
             include_files,
             include_dirs,
+            max_depth,
             should_cancel,
         )?;
         enqueue_nested_filelists_from_entries(

@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::MaxDepth;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WalkCancelled;
 
@@ -12,14 +14,20 @@ impl std::fmt::Display for WalkCancelled {
 
 impl std::error::Error for WalkCancelled {}
 
-fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
+fn walk(root: &Path, max_depth: MaxDepth) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
-    walk_into(root, &mut files, &mut dirs);
+    walk_into(root, 0, max_depth, &mut files, &mut dirs);
     (files, dirs)
 }
 
-fn walk_into(root: &Path, files: &mut Vec<PathBuf>, dirs: &mut Vec<PathBuf>) {
+fn walk_into(
+    root: &Path,
+    current_depth: usize,
+    max_depth: MaxDepth,
+    files: &mut Vec<PathBuf>,
+    dirs: &mut Vec<PathBuf>,
+) {
     let Ok(read_dir) = fs::read_dir(root) else {
         return;
     };
@@ -28,10 +36,11 @@ fn walk_into(root: &Path, files: &mut Vec<PathBuf>, dirs: &mut Vec<PathBuf>) {
             continue;
         };
         let path = child.path();
+        let depth = current_depth.saturating_add(1);
         if file_type.is_dir() {
             dirs.push(path.clone());
-            if !file_type.is_symlink() {
-                walk_into(&path, files, dirs);
+            if !file_type.is_symlink() && max_depth.should_descend_from(depth) {
+                walk_into(&path, depth, max_depth, files, dirs);
             }
         } else {
             files.push(path);
@@ -40,15 +49,24 @@ fn walk_into(root: &Path, files: &mut Vec<PathBuf>, dirs: &mut Vec<PathBuf>) {
 }
 
 pub fn walk_files(root: &Path) -> Vec<PathBuf> {
-    walk(root).0
+    walk(root, MaxDepth::unlimited()).0
 }
 
 pub fn walk_dirs(root: &Path) -> Vec<PathBuf> {
-    walk(root).1
+    walk(root, MaxDepth::unlimited()).1
 }
 
 pub fn walk_entries(root: &Path, include_files: bool, include_dirs: bool) -> Vec<PathBuf> {
-    let (files, dirs) = walk(root);
+    walk_entries_with_max_depth(root, include_files, include_dirs, MaxDepth::unlimited())
+}
+
+pub fn walk_entries_with_max_depth(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+) -> Vec<PathBuf> {
+    let (files, dirs) = walk(root, max_depth);
     let mut out = Vec::new();
     if include_files {
         out.extend(files);
@@ -68,8 +86,29 @@ pub fn walk_entries_cancellable<C>(
 where
     C: Fn() -> bool,
 {
+    walk_entries_cancellable_with_max_depth(
+        root,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+    )
+}
+
+pub fn walk_entries_cancellable_with_max_depth<C>(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    should_cancel: C,
+) -> Result<Vec<PathBuf>, WalkCancelled>
+where
+    C: Fn() -> bool,
+{
     fn visit<C>(
         root: &Path,
+        current_depth: usize,
+        max_depth: MaxDepth,
         files: &mut Vec<PathBuf>,
         dirs: &mut Vec<PathBuf>,
         should_cancel: &C,
@@ -91,10 +130,11 @@ where
                 continue;
             };
             let path = child.path();
+            let depth = current_depth.saturating_add(1);
             if file_type.is_dir() {
                 dirs.push(path.clone());
-                if !file_type.is_symlink() {
-                    visit(&path, files, dirs, should_cancel)?;
+                if !file_type.is_symlink() && max_depth.should_descend_from(depth) {
+                    visit(&path, depth, max_depth, files, dirs, should_cancel)?;
                 }
             } else {
                 files.push(path);
@@ -108,7 +148,7 @@ where
 
     let mut files = Vec::new();
     let mut dirs = Vec::new();
-    visit(root, &mut files, &mut dirs, &should_cancel)?;
+    visit(root, 0, max_depth, &mut files, &mut dirs, &should_cancel)?;
     let mut out = Vec::new();
     if include_files {
         out.extend(files);
@@ -128,10 +168,52 @@ where
     debug_assert_eq!(result, Ok(()));
 }
 
+pub fn walk_entries_stream_with_max_depth<F>(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    mut on_entry: F,
+) where
+    F: FnMut(PathBuf),
+{
+    let result = walk_entries_stream_cancellable_with_max_depth(
+        root,
+        include_files,
+        include_dirs,
+        max_depth,
+        || false,
+        &mut on_entry,
+    );
+    debug_assert_eq!(result, Ok(()));
+}
+
 pub fn walk_entries_stream_cancellable<F, C>(
     root: &Path,
     include_files: bool,
     include_dirs: bool,
+    should_cancel: C,
+    on_entry: F,
+) -> Result<(), WalkCancelled>
+where
+    F: FnMut(PathBuf),
+    C: Fn() -> bool,
+{
+    walk_entries_stream_cancellable_with_max_depth(
+        root,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+        on_entry,
+    )
+}
+
+pub fn walk_entries_stream_cancellable_with_max_depth<F, C>(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
     should_cancel: C,
     mut on_entry: F,
 ) -> Result<(), WalkCancelled>
@@ -141,6 +223,8 @@ where
 {
     fn visit<F, C>(
         root: &Path,
+        current_depth: usize,
+        max_depth: MaxDepth,
         include_files: bool,
         include_dirs: bool,
         should_cancel: &C,
@@ -164,6 +248,7 @@ where
                 continue;
             };
             let path = child.path();
+            let depth = current_depth.saturating_add(1);
             if file_type.is_dir() {
                 if include_dirs {
                     if should_cancel() {
@@ -171,8 +256,16 @@ where
                     }
                     on_entry(path.clone());
                 }
-                if !file_type.is_symlink() {
-                    visit(&path, include_files, include_dirs, should_cancel, on_entry)?;
+                if !file_type.is_symlink() && max_depth.should_descend_from(depth) {
+                    visit(
+                        &path,
+                        depth,
+                        max_depth,
+                        include_files,
+                        include_dirs,
+                        should_cancel,
+                        on_entry,
+                    )?;
                 }
             } else if include_files {
                 if should_cancel() {
@@ -189,6 +282,8 @@ where
 
     visit(
         root,
+        0,
+        max_depth,
         include_files,
         include_dirs,
         &should_cancel,

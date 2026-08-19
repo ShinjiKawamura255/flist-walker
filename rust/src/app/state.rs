@@ -240,6 +240,7 @@ pub(super) struct CacheStateBundle {
 pub struct AppRuntimeState {
     pub(super) root: PathBuf,
     pub(super) limit: usize,
+    pub(super) max_depth: crate::indexer::MaxDepth,
     pub(super) query_state: QueryState,
     pub(super) use_filelist: bool,
     pub(super) use_regex: bool,
@@ -354,6 +355,7 @@ pub(super) struct PresetEditorState {
     pub(super) ignore_case: bool,
     pub(super) ignore_enabled: bool,
     pub(super) sort: PresetSortMode,
+    pub(super) max_depth: crate::indexer::MaxDepth,
     pub(super) extra: BTreeMap<String, serde_json::Value>,
     pub(super) focus_requested: bool,
     pub(super) error: String,

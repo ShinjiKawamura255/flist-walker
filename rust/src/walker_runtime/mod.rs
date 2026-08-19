@@ -6,8 +6,10 @@ use std::fs::FileType;
 use std::path::Path;
 
 #[cfg(test)]
-pub(crate) use adaptive::{next_limit_from_throughput, LimitDirection};
-pub(crate) use adaptive::{walk_adaptive, AdaptiveWalkerEntry, AdaptiveWalkerMetrics};
+pub(crate) use adaptive::{next_limit_from_throughput, walk_adaptive, LimitDirection};
+pub(crate) use adaptive::{
+    walk_adaptive_with_max_depth, AdaptiveWalkerEntry, AdaptiveWalkerMetrics,
+};
 
 const ADAPTIVE_WALKER_MAX_LIMIT_CAP: usize = 64;
 const ADAPTIVE_WALKER_MAX_LIMIT_DEFAULT_CAP: usize = 8;

@@ -23,6 +23,7 @@ fn queued_request_for_tab_exists_is_true_for_matching_tab() {
         use_filelist: true,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     });
 
     assert!(app.queued_request_for_tab_exists(tab_id));

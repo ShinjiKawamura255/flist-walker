@@ -4,6 +4,7 @@ use crate::actions::{
     AuthorizedActionReport, AuthorizedActionRequest,
 };
 use crate::indexer::FileListWriteReport;
+use crate::indexer::MaxDepth;
 use crate::persistence::AsyncHistoryPersistence;
 use crate::search::SearchSortMode;
 use anyhow::Result;
@@ -190,6 +191,7 @@ pub(super) struct IndexRequest {
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) source: TuiSource,
+    pub(super) max_depth: MaxDepth,
 }
 
 pub(super) struct TuiIndexFreshness {

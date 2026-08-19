@@ -1,6 +1,7 @@
 use super::{ResultSortMode, ResultSortScope, SortMetadata};
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::IndexSource;
+use crate::indexer::MaxDepth;
 use crate::search_catalog::{SearchCatalog, SearchPreset};
 use crate::updater::UpdateCandidate;
 use std::path::PathBuf;
@@ -55,6 +56,7 @@ pub(super) struct IndexRequest {
     pub(super) use_filelist: bool,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
+    pub(super) max_depth: MaxDepth,
 }
 
 pub(super) enum IndexResponse {

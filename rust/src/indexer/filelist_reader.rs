@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use super::filelist_hierarchy::apply_nested_filelist_overrides;
 use super::filelist_writer::filelist_modified_time;
+use super::MaxDepth;
 
 const FILELIST_READ_BUFFER_BYTES: usize = 1024 * 1024;
 const FILELIST_VALIDATION_CHUNK_BYTES: usize = 64 * 1024;
@@ -47,7 +48,30 @@ pub fn parse_filelist(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<Vec<PathBuf>> {
-    parse_filelist_collect(filelist_path, root, include_files, include_dirs, &|| false)
+    parse_filelist_with_max_depth(
+        filelist_path,
+        root,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+    )
+}
+
+pub fn parse_filelist_with_max_depth(
+    filelist_path: &Path,
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+) -> Result<Vec<PathBuf>> {
+    parse_filelist_collect_with_max_depth(
+        filelist_path,
+        root,
+        include_files,
+        include_dirs,
+        max_depth,
+        &|| false,
+    )
 }
 
 pub fn build_entries_from_filelist_hierarchy<C>(
@@ -60,13 +84,35 @@ pub fn build_entries_from_filelist_hierarchy<C>(
 where
     C: Fn() -> bool,
 {
-    let root_modified = filelist_modified_time(filelist_path);
-    let mut entries = Vec::new();
-    parse_filelist_stream(
+    build_entries_from_filelist_hierarchy_with_max_depth(
         filelist_path,
         root,
         include_files,
         include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+    )
+}
+
+pub fn build_entries_from_filelist_hierarchy_with_max_depth<C>(
+    filelist_path: &Path,
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    should_cancel: C,
+) -> Result<Vec<PathBuf>>
+where
+    C: Fn() -> bool,
+{
+    let root_modified = filelist_modified_time(filelist_path);
+    let mut entries = Vec::new();
+    parse_filelist_stream_with_max_depth(
+        filelist_path,
+        root,
+        include_files,
+        include_dirs,
+        max_depth,
         &should_cancel,
         |path, _is_dir| entries.push(path),
     )?;
@@ -75,8 +121,8 @@ where
         root,
         root_modified,
         &mut entries,
-        include_files,
-        include_dirs,
+        (include_files, include_dirs),
+        max_depth,
         &should_cancel,
     )?;
     Ok(entries)
@@ -93,34 +139,59 @@ pub fn apply_filelist_hierarchy_overrides<C>(
 where
     C: Fn() -> bool,
 {
+    apply_filelist_hierarchy_overrides_with_max_depth(
+        filelist_path,
+        root,
+        entries,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+    )
+}
+
+pub fn apply_filelist_hierarchy_overrides_with_max_depth<C>(
+    filelist_path: &Path,
+    root: &Path,
+    entries: &mut Vec<PathBuf>,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    should_cancel: C,
+) -> Result<bool>
+where
+    C: Fn() -> bool,
+{
     let root_modified = filelist_modified_time(filelist_path);
     apply_nested_filelist_overrides(
         filelist_path,
         root,
         root_modified,
         entries,
-        include_files,
-        include_dirs,
+        (include_files, include_dirs),
+        max_depth,
         &should_cancel,
     )
 }
 
-pub(super) fn parse_filelist_collect<C>(
+pub(super) fn parse_filelist_collect_with_max_depth<C>(
     filelist_path: &Path,
     root: &Path,
     include_files: bool,
     include_dirs: bool,
+    max_depth: MaxDepth,
     should_cancel: &C,
 ) -> Result<Vec<PathBuf>>
 where
     C: Fn() -> bool,
 {
     let mut out = Vec::new();
-    parse_filelist_stream(
+    parse_filelist_stream_with_max_depth(
         filelist_path,
         root,
         include_files,
         include_dirs,
+        max_depth,
         should_cancel,
         |path, _is_dir| out.push(path),
     )?;
@@ -397,6 +468,30 @@ pub fn parse_filelist_stream<F, C>(
     include_files: bool,
     include_dirs: bool,
     should_cancel: C,
+    on_entry: F,
+) -> Result<()>
+where
+    F: FnMut(PathBuf, Option<bool>),
+    C: Fn() -> bool,
+{
+    parse_filelist_stream_with_max_depth(
+        filelist_path,
+        root,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+        on_entry,
+    )
+}
+
+pub fn parse_filelist_stream_with_max_depth<F, C>(
+    filelist_path: &Path,
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    should_cancel: C,
     mut on_entry: F,
 ) -> Result<()>
 where
@@ -434,7 +529,9 @@ where
         if line.is_empty() || line.starts_with('#') {
             continue;
         }
-        let candidates = resolve_filelist_entry_candidates(line, filelist_base, root);
+        let candidates = resolve_filelist_entry_candidates(line, filelist_base, root)
+            .into_iter()
+            .filter(|path| max_depth.includes_path(root, path));
         if include_files && include_dirs {
             // Keep FileList indexing on the current control fast path: choose the
             // platform-preferred lexical candidate and avoid per-line existence probes

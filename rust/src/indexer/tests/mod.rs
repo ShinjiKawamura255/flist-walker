@@ -1679,6 +1679,71 @@ fn build_index_applies_newest_filelist_per_depth() {
 }
 
 #[test]
+fn tc_180_max_depth_matches_walker_and_filelist_boundaries() {
+    let root = test_root("max-depth-sources");
+    let child = root.join("child");
+    let grand = child.join("grand");
+    fs::create_dir_all(&grand).expect("create nested dirs");
+    let top = root.join("top.txt");
+    let child_file = child.join("child.txt");
+    let grand_file = grand.join("grand.txt");
+    for file in [&top, &child_file, &grand_file] {
+        fs::write(file, "x").expect("write fixture file");
+    }
+    fs::write(
+        root.join("FileList.txt"),
+        "top.txt\nchild\nchild/child.txt\nchild/grand\nchild/grand/grand.txt\n",
+    )
+    .expect("write FileList");
+
+    let depth = MaxDepth::limited(2).expect("valid depth");
+    let walker = build_index_with_max_depth(&root, false, true, true, depth)
+        .expect("build depth-limited walker");
+    let filelist = build_index_with_max_depth(&root, true, true, true, depth)
+        .expect("build depth-limited FileList");
+
+    for entries in [&walker, &filelist] {
+        assert!(contains_path(entries, &top));
+        assert!(contains_path(entries, &child));
+        assert!(contains_path(entries, &child_file));
+        assert!(contains_path(entries, &grand));
+        assert!(!contains_path(entries, &grand_file));
+    }
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_180_limited_filelist_excludes_undefined_root_relative_depth() {
+    let root = test_root("max-depth-root-escape");
+    let outside = root.with_file_name("max-depth-outside.txt");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("inside.txt"), "x").expect("write inside");
+    fs::write(&outside, "x").expect("write outside");
+    fs::write(
+        root.join("FileList.txt"),
+        format!(
+            "inside.txt\n{}\n../max-depth-outside.txt\n",
+            outside.display()
+        ),
+    )
+    .expect("write FileList");
+
+    let entries = build_index_with_max_depth(
+        &root,
+        true,
+        true,
+        true,
+        MaxDepth::limited(3).expect("valid depth"),
+    )
+    .expect("build depth-limited FileList");
+
+    assert!(contains_path(&entries, &root.join("inside.txt")));
+    assert!(!contains_path(&entries, &outside));
+    let _ = fs::remove_file(outside);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn apply_overrides_can_cancel_during_nested_filelist_parse() {
     let root = test_root("nested-filelist-cancel");
     let child = root.join("child");

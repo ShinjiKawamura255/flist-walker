@@ -564,6 +564,7 @@ impl FlistWalkerApp {
 
     pub(super) fn create_new_tab(&mut self) {
         self.commit_query_history_if_needed(true);
+        let requires_unlimited_reindex = !self.shell.runtime.max_depth.is_unlimited();
         let id = self.shell.tabs.take_next_tab_id();
         let tab = AppTabState::new_tab_from_shell(self, id);
         self.deactivate_active_tab_for_transition();
@@ -574,6 +575,9 @@ impl FlistWalkerApp {
         let active_tab = self.shell.tabs.active_tab_index();
         let results_compacted = self.load_tab_payload(active_tab);
         self.activate_tab_after_transition(results_compacted, false, true, false);
+        if requires_unlimited_reindex {
+            self.request_index_refresh();
+        }
     }
 
     pub(super) fn close_active_tab(&mut self) {

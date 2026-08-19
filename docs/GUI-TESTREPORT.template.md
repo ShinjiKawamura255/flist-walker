@@ -33,6 +33,7 @@ Each axis cell uses `STATUS — reason — evidence — reproduction`.
 | GSM-008 | NOT RUN — run deterministic wrapper | NOT RUN — help, preset picker/editor, Named Root manager, and local/forced dialogs only | NOT RUN — supporting only | Help/picker/editor/manager/dialog cancel/failure |
 | GSM-009 | NOT RUN — run deterministic wrapper | NOT RUN — light/dark visual pass | NOT RUN — supporting only | Theme/contrast |
 | GSM-010 | NOT RUN — run deterministic wrapper/perf gates | NOT RUN — responsiveness during native input | NOT RUN — run isolated headful smoke | Responsiveness |
+| GSM-011 | NOT RUN — run deterministic wrapper and TC-180 | NOT RUN — limited-to-Unlimited Apply, popup/editor checkbox alignment, preset reset, and tab-local interaction | NOT RUN — supporting only | Maximum depth and presets |
 
 ## Native Residuals
 | Case | Status | Reason | Evidence | Reproduction |

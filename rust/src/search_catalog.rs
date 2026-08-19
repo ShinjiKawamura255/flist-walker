@@ -1,4 +1,5 @@
 use crate::fs_atomic::{acquire_sidecar_lock, write_text_atomic};
+use crate::indexer::MaxDepth;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::settings_base_dir;
 use anyhow::{anyhow, Context, Result};
@@ -84,6 +85,8 @@ pub struct SearchPreset {
     pub ignore_enabled: bool,
     #[serde(default)]
     pub sort: PresetSortMode,
+    #[serde(default, skip_serializing_if = "max_depth_is_unlimited")]
+    pub max_depth: MaxDepth,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -279,6 +282,10 @@ fn default_true() -> bool {
     true
 }
 
+fn max_depth_is_unlimited(value: &MaxDepth) -> bool {
+    value.is_unlimited()
+}
+
 fn catalog_version() -> u32 {
     SEARCH_CATALOG_VERSION
 }
@@ -398,6 +405,7 @@ mod tests {
             ignore_case: true,
             ignore_enabled: true,
             sort: PresetSortMode::Score,
+            max_depth: MaxDepth::unlimited(),
             extra: BTreeMap::new(),
         }
     }
@@ -435,6 +443,25 @@ mod tests {
         assert_eq!(loaded.extra["future"]["kept"], Value::Bool(true));
         assert_eq!(fs::read_to_string(&legacy_path).unwrap(), "legacy-root\n");
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn tc_180_preset_max_depth_is_backward_compatible_and_round_trips() {
+        let legacy: SearchPreset =
+            serde_json::from_str(r#"{"name":"legacy","root_path":"root","query":""}"#)
+                .expect("deserialize legacy preset");
+        assert!(legacy.max_depth.is_unlimited());
+
+        let mut limited = preset("limited", Path::new("root"));
+        limited.max_depth = MaxDepth::limited(4).expect("valid depth");
+        let json = serde_json::to_string(&limited).expect("serialize limited preset");
+        assert!(json.contains("\"max_depth\":4"));
+        let restored: SearchPreset = serde_json::from_str(&json).expect("restore preset");
+        assert_eq!(restored.max_depth.value(), Some(4));
+
+        let unlimited = serde_json::to_string(&preset("all", Path::new("root")))
+            .expect("serialize unlimited preset");
+        assert!(!unlimited.contains("max_depth"));
     }
 
     #[test]

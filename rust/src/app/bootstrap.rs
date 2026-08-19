@@ -112,7 +112,14 @@ impl FlistWalkerApp {
             preview_panel_width: Self::DEFAULT_PREVIEW_PANEL_WIDTH,
             ..LaunchSettings::default()
         };
-        Self::new_with_launch(root, limit, query, launch, None)
+        Self::new_with_launch(
+            root,
+            limit,
+            query,
+            launch,
+            None,
+            crate::indexer::MaxDepth::unlimited(),
+        )
     }
 
     pub(super) fn build_from_launch(
@@ -120,12 +127,17 @@ impl FlistWalkerApp {
         limit: usize,
         query: String,
         root_explicit: bool,
+        max_depth: crate::indexer::MaxDepth,
     ) -> Self {
         let launch = Self::load_launch_settings();
         let restore_tabs_enabled = Self::restore_tabs_enabled();
         let saved_last_root = launch.last_root.clone().map(normalize_windows_path_buf);
         let saved_default = launch.default_root.clone().map(normalize_windows_path_buf);
-        let restore_session = if restore_tabs_enabled && !root_explicit && query.trim().is_empty() {
+        let restore_session = if restore_tabs_enabled
+            && !root_explicit
+            && query.trim().is_empty()
+            && max_depth.is_unlimited()
+        {
             Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
         } else {
             None
@@ -138,7 +150,14 @@ impl FlistWalkerApp {
             saved_last_root,
             saved_default,
         );
-        let mut app = Self::new_with_launch(chosen_root, limit, query, launch, restore_session);
+        let mut app = Self::new_with_launch(
+            chosen_root,
+            limit,
+            query,
+            launch,
+            restore_session,
+            max_depth,
+        );
         app.request_startup_update_check();
         app
     }
@@ -270,6 +289,7 @@ impl FlistWalkerApp {
         query: String,
         launch: LaunchSettings,
         restore_session: Option<(Vec<SavedTabState>, usize)>,
+        max_depth: crate::indexer::MaxDepth,
     ) -> Self {
         let (
             search_tx,
@@ -302,6 +322,7 @@ impl FlistWalkerApp {
                 runtime: AppRuntimeState {
                     root,
                     limit,
+                    max_depth,
                     query_state: QueryState::new(query, query_history),
                     use_filelist: true,
                     use_regex: false,

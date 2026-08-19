@@ -5,6 +5,7 @@ use super::protocol::{
 };
 use super::tui_path_label;
 use crate::actions::{AuthorizedActionMode, AuthorizedActionRequest};
+use crate::indexer::MaxDepth;
 use crate::search::SearchSortMode;
 use crate::walker_runtime::walker_truncated_notice;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -33,6 +34,7 @@ pub(super) struct TuiState {
     pub(super) saved_roots: Vec<PathBuf>,
     pub(super) root_picker: Option<RootPicker>,
     pub(super) runtime_options: TuiRuntimeOptions,
+    pub(super) max_depth: MaxDepth,
     pub(super) ignore_terms: Arc<Vec<String>>,
     pub(super) sort_mode: SearchSortMode,
     pub(super) source_changed_on_apply: bool,
@@ -269,6 +271,7 @@ impl TuiState {
                 ignore_enabled: true,
                 source: TuiSource::Auto,
             },
+            max_depth: MaxDepth::unlimited(),
             ignore_terms: Arc::new(Vec::new()),
             sort_mode: SearchSortMode::Score,
             source_changed_on_apply: false,
@@ -393,6 +396,7 @@ impl TuiState {
             include_files: self.runtime_options.include_files,
             include_dirs: self.runtime_options.include_dirs,
             source: self.runtime_options.source,
+            max_depth: self.max_depth,
         }
     }
 

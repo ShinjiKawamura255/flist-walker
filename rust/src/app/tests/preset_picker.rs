@@ -16,6 +16,7 @@ fn preset(name: &str, root: &Path, query: &str) -> SearchPreset {
         ignore_case: true,
         ignore_enabled: true,
         sort: PresetSortMode::Score,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
         extra: BTreeMap::new(),
     }
 }
@@ -207,6 +208,97 @@ fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
         app.shell.runtime.result_sort_scope,
         ResultSortScope::AllMatches
     );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_180_preset_max_depth_is_tab_local_persistent_and_new_tabs_start_unlimited() {
+    let root = test_root("preset-picker-max-depth-tab-local");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+
+    let mut selected = preset("Depth three", &root, "");
+    selected.max_depth = crate::indexer::MaxDepth::limited(3).expect("valid depth");
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(selected)
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    app.apply_selected_preset();
+
+    assert_eq!(app.shell.runtime.max_depth.value(), Some(3));
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("first tab")
+        .max_depth
+        .is_unlimited());
+    assert_eq!(
+        app.shell.tabs.get(1).expect("active tab").max_depth.value(),
+        Some(3)
+    );
+
+    app.switch_to_tab_index(0);
+    assert!(app.shell.runtime.max_depth.is_unlimited());
+    app.switch_to_tab_index(1);
+    assert_eq!(app.shell.runtime.max_depth.value(), Some(3));
+
+    app.create_new_tab();
+    assert!(app.shell.runtime.max_depth.is_unlimited());
+    assert_eq!(
+        app.shell.tabs.get(1).expect("preset tab").max_depth.value(),
+        Some(3)
+    );
+    assert!(app
+        .shell
+        .tabs
+        .get(2)
+        .expect("new tab")
+        .max_depth
+        .is_unlimited());
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_180_unlimited_preset_restores_all_only_on_the_active_tab() {
+    let root = test_root("preset-picker-unlimited-depth-tab-local");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.max_depth = crate::indexer::MaxDepth::limited(2).expect("valid depth");
+    app.sync_active_tab_state();
+    app.create_new_tab();
+    app.shell.runtime.max_depth = crate::indexer::MaxDepth::limited(5).expect("valid depth");
+    app.sync_active_tab_state();
+
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("All depths", &root, ""))
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    app.apply_selected_preset();
+
+    assert!(app.shell.runtime.max_depth.is_unlimited());
+    assert_eq!(
+        app.shell.tabs.get(0).expect("other tab").max_depth.value(),
+        Some(2)
+    );
+    assert!(app
+        .shell
+        .tabs
+        .get(1)
+        .expect("active tab")
+        .max_depth
+        .is_unlimited());
     let _ = fs::remove_dir_all(root);
 }
 
@@ -523,7 +615,7 @@ fn preset_catalog_surfaces_hide_windows_verbatim_prefixes_from_existing_entries(
 
     assert_eq!(
         preset_summary(&app, 0),
-        Some(format!("{expected_path}  —  (empty query)"))
+        Some(format!("{expected_path}  —  (empty query)  —  Depth: All"))
     );
 
     app.start_selected_preset_edit();

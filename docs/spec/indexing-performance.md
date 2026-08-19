@@ -91,3 +91,25 @@
 ### Preconditions / Postconditions
 - Preconditions: 候補集合が利用可能。
 - Postconditions: 計測可能な遅延特性を示せる。
+
+## SP-021 候補収集の最大深度
+
+### Requirements
+- MUST: `max_depth` は検索 root 自体を depth 0、root 直下のファイルまたはフォルダを depth 1 とする root 相対 path component 数の上限として解釈する。root 自体は通常の候補に含めない。
+- MUST: 上限未指定は無制限とし、既存の候補集合を変更しない。明示値は 1 以上の整数とし、0、負数、整数以外は CLI では indexing 前の引数エラーにする。
+- MUST: depth N のフォルダ自体は候補条件を満たす場合に含められるが、Walker はその配下へ再帰してはならない。結果生成後の除外だけで済ませず、不要な `read_dir` を開始しない。
+- MUST: FileList は root FileList と有効な nested FileList の各候補を同じ root 基準で字句的に判定し、上限を超える候補を stream callback、種別解決、nested override discovery より前に除外する。depth 判定のために canonicalize、metadata、existence probe を追加してはならない。
+- MUST: 明示上限があるとき、root 相対深度を字句的に定義できない absolute path、root 外 path、または `..` により root 外へ出る FileList entry は候補から除外する。上限未指定時の既存 FileList 解釈は維持する。
+- MUST: `--source auto|filelist|walker` は同じ深度境界を使用する。深度制限は ignore/query/sort/`--limit` より先に候補収集へ適用する。
+- MUST: `--max-depth N` は batch CLI と interactive CLI の起動条件として利用でき、GUI 起動時は active tab の初期値として利用できる。`--max-depth` は `--create-filelist` と競合し、FileList 作成用 fresh Walker snapshot を部分化してはならない。
+- MUST: GUI は active tab の現在値を上部検索オプション行の `Folders` と `Preview` の間に `Depth: All` または `Depth: ≤ N` として常時表示する。control は popup draft を `Apply` したときだけ active tab の値を変更して非同期再indexを開始し、古い response は request identity で破棄する。
+- MUST: GUI の max depth は tab-local pure-search state として query変更、refresh、root変更、source変更、tab切替を越えて維持する。既存他タブを変更せず、新規タブは無制限で開始する。session tab restore が有効な場合は保存・復元する。
+- MUST: preset は max depth を所有し、GUI editor と picker detail で `All` または上限値を表示する。適用は active tab へ値をコピーし、他タブを変更しない。別 preset 適用または UI 変更まで値を維持し、preset の後続編集・削除で適用済み tab を変更しない。旧 preset の欠落 field は無制限として扱う。
+
+### Preconditions / Postconditions
+- Preconditions: 検索 root と候補 source が確定している。
+- Postconditions: 収集された全候補の root 相対 depth は明示上限以下であり、上限未指定時は従来どおりである。
+
+### Edge / Error
+- symlink、junction、reparse point 自体の depth は字句 path で数え、既存の非再帰 policy を変更しない。
+- 権限不足や消失 path の扱いは SP-001 / SP-002 の既存契約を維持する。

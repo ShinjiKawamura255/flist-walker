@@ -7,6 +7,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::indexer::MaxDepth;
+
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 
@@ -35,8 +37,14 @@ pub(crate) struct AdaptiveWalkerMetrics {
 }
 
 struct SharedState {
-    queue: VecDeque<PathBuf>,
+    queue: VecDeque<QueuedDirectory>,
     active: usize,
+}
+
+#[derive(Clone, Debug)]
+struct QueuedDirectory {
+    path: PathBuf,
+    depth: usize,
 }
 
 struct Shared {
@@ -48,6 +56,7 @@ struct Shared {
     sample_size: usize,
     control: Mutex<LimitControlState>,
     metrics: AdaptiveAtomicMetrics,
+    max_depth: MaxDepth,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -335,7 +344,7 @@ fn worker_loop(shared: Arc<Shared>, tx: SyncSender<AdaptiveWalkerEntry>) {
 
         let started = Instant::now();
         let mut child_dirs = Vec::new();
-        match fs::read_dir(&dir) {
+        match fs::read_dir(&dir.path) {
             Ok(read_dir) => {
                 for child in read_dir {
                     if shared.stop.load(Ordering::Relaxed) {
@@ -360,8 +369,15 @@ fn worker_loop(shared: Arc<Shared>, tx: SyncSender<AdaptiveWalkerEntry>) {
                         continue;
                     }
                     let path = child.path();
-                    if file_type.is_dir() && policy.recurse {
-                        child_dirs.push(path.clone());
+                    let depth = dir.depth.saturating_add(1);
+                    if file_type.is_dir()
+                        && policy.recurse
+                        && shared.max_depth.should_descend_from(depth)
+                    {
+                        child_dirs.push(QueuedDirectory {
+                            path: path.clone(),
+                            depth,
+                        });
                     }
                     if tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
                         shared.stop.store(true, Ordering::Relaxed);
@@ -441,21 +457,43 @@ fn adaptive_entry_policy_from_attrs(windows_attrs: Option<u32>) -> AdaptiveEntry
     }
 }
 
+#[cfg(test)]
 pub(crate) fn walk_adaptive(
     root: &Path,
     max_workers: usize,
     initial_limit: usize,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth(
+        root,
+        max_workers,
+        initial_limit,
+        MaxDepth::unlimited(),
+        on_entry,
+        should_stop,
+    )
+}
+
+pub(crate) fn walk_adaptive_with_max_depth(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    max_depth: MaxDepth,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
     let max_workers = max_workers.max(1);
     if max_workers == 1 {
-        return walk_adaptive_serial(root, on_entry, should_stop);
+        return walk_adaptive_serial(root, max_depth, on_entry, should_stop);
     }
     let initial_limit = initial_limit.clamp(1, max_workers);
     let shared = Arc::new(Shared {
         state: Mutex::new(SharedState {
-            queue: VecDeque::from([root.to_path_buf()]),
+            queue: VecDeque::from([QueuedDirectory {
+                path: root.to_path_buf(),
+                depth: 0,
+            }]),
             active: 0,
         }),
         cv: Condvar::new(),
@@ -472,6 +510,7 @@ pub(crate) fn walk_adaptive(
             change_count: 0,
         }),
         metrics: AdaptiveAtomicMetrics::new(initial_limit),
+        max_depth,
     });
     let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
     let (tx, rx) = mpsc::sync_channel(entry_queue_capacity);
@@ -522,6 +561,7 @@ pub(crate) fn walk_adaptive(
 
 fn walk_adaptive_serial(
     root: &Path,
+    max_depth: MaxDepth,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
@@ -533,7 +573,10 @@ fn walk_adaptive_serial(
         adaptive_limit_avg: 1.0,
         ..AdaptiveWalkerMetrics::default()
     };
-    let mut queue = VecDeque::from([root.to_path_buf()]);
+    let mut queue = VecDeque::from([QueuedDirectory {
+        path: root.to_path_buf(),
+        depth: 0,
+    }]);
 
     while let Some(dir) = queue.pop_front() {
         if should_stop() {
@@ -542,7 +585,7 @@ fn walk_adaptive_serial(
         metrics.max_inflight_read_dirs = metrics.max_inflight_read_dirs.max(1);
         let started = Instant::now();
         let mut stop = false;
-        match fs::read_dir(&dir) {
+        match fs::read_dir(&dir.path) {
             Ok(read_dir) => {
                 for child in read_dir {
                     if should_stop() {
@@ -562,8 +605,13 @@ fn walk_adaptive_serial(
                         continue;
                     }
                     let path = child.path();
-                    if file_type.is_dir() && policy.recurse {
-                        queue.push_back(path.clone());
+                    let depth = dir.depth.saturating_add(1);
+                    if file_type.is_dir() && policy.recurse && max_depth.should_descend_from(depth)
+                    {
+                        queue.push_back(QueuedDirectory {
+                            path: path.clone(),
+                            depth,
+                        });
                     }
                     if !on_entry(AdaptiveWalkerEntry { path, file_type }) {
                         stop = true;

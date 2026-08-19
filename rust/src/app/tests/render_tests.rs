@@ -55,6 +55,20 @@ fn top_panel_checkbox_icon_and_label_share_center_axis() {
 }
 
 #[test]
+fn tc_180_unlimited_toggle_restores_all_and_reenables_at_depth_one() {
+    let mut draft = 4;
+
+    render_panels::update_max_depth_draft_for_unlimited(&mut draft, true);
+    assert_eq!(draft, 0, "Unlimited must keep the all-depth sentinel");
+    assert!(crate::indexer::MaxDepth::limited(draft)
+        .unwrap_or_default()
+        .is_unlimited());
+
+    render_panels::update_max_depth_draft_for_unlimited(&mut draft, false);
+    assert_eq!(draft, 1, "leaving Unlimited starts at the minimum depth");
+}
+
+#[test]
 fn selectable_row_uses_full_available_width() {
     let ctx = egui::Context::default();
     let mut measured = None;
@@ -491,6 +505,7 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             "ignore_list_enabled": true,
             "include_files": true,
             "include_dirs": true,
+            "max_depth": "Depth: All",
             "result_sort_mode": "Score",
             "result_sort_scope": "Shown results",
             "result_count": 0,
@@ -518,6 +533,18 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
         })
     );
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_180_gui_surface_snapshot_exposes_active_tab_max_depth() {
+    let root = test_root("render-snapshot-max-depth");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.max_depth = crate::indexer::MaxDepth::limited(4).expect("valid depth");
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(snapshot["max_depth"], json!("Depth: ≤ 4"));
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]
@@ -561,6 +588,7 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
             ignore_case: true,
             ignore_enabled: true,
             sort: PresetSortMode::Score,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
             extra: BTreeMap::new(),
         })
         .expect("save preset");
@@ -614,6 +642,7 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
             ignore_case: true,
             ignore_enabled: true,
             sort: PresetSortMode::Score,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
             extra: BTreeMap::new(),
         })
         .expect("save preset");
@@ -628,7 +657,7 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
     );
     assert_eq!(
         snapshot["preset_picker_dialogs"][0]["lines"],
-        json!(["Name: Rust sources", "Query: ext:rs"])
+        json!(["Name: Rust sources", "Query: ext:rs", "Max depth: All"])
     );
     assert_eq!(
         snapshot["preset_picker_dialogs"][0]["buttons"],
@@ -663,6 +692,7 @@ fn gui_surface_snapshot_exposes_preset_add_and_delete_confirmation_states() {
             ignore_case: true,
             ignore_enabled: true,
             sort: PresetSortMode::Score,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
             extra: BTreeMap::new(),
         })
         .expect("save preset");
@@ -856,6 +886,7 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             "ignore_list_enabled": true,
             "include_files": true,
             "include_dirs": true,
+            "max_depth": "Depth: All",
             "result_sort_mode": "Score",
             "result_sort_scope": "Shown results",
             "result_count": 0,

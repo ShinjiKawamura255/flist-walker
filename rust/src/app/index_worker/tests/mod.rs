@@ -188,6 +188,7 @@ fn walker_metrics_summary_can_be_written_to_file() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let mut metrics = WalkerMetrics::new(WalkerBackend::Adaptive);
     metrics.entries_emitted = 11;
@@ -411,6 +412,7 @@ fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id + 1)]));
@@ -438,6 +440,7 @@ fn filelist_stream_returns_superseded_when_canceled_before_entry() {
         use_filelist: true,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id + 1)]));
@@ -474,6 +477,7 @@ fn filelist_stream_uses_larger_batches() {
         use_filelist: true,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
@@ -534,6 +538,7 @@ fn filelist_stream_applies_nested_override_after_initial_batches() {
         use_filelist: true,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
@@ -589,6 +594,7 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     })
     .expect("send stale index request");
     assert!(matches!(
@@ -637,6 +643,7 @@ fn tc_152_index_workers_bound_total_to_four() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     tx.send(request(1)).expect("send first index request");
     tx.send(request(2)).expect("send second index request");
@@ -690,6 +697,7 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
             use_filelist: false,
             include_files: true,
             include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
         })
         .expect("accept index request before channel close");
     }
@@ -739,6 +747,7 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
             use_filelist: false,
             include_files: true,
             include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
         })
         .expect("send request");
 

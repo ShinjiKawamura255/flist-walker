@@ -157,7 +157,7 @@ pub(crate) struct Args {
         value_name = "NAME",
         requires = "cli",
         conflicts_with_all = [
-            "root", "use_default_root", "saved_root", "named_root", "entry_type", "regex",
+            "root", "use_default_root", "saved_root", "named_root", "entry_type", "max_depth", "regex",
             "case_sensitive", "source", "ignore_file", "no_ignore", "sort", "create_filelist",
             "list_saved_roots"
         ]
@@ -167,6 +167,10 @@ pub(crate) struct Args {
     /// Maximum number of paths to return.
     #[arg(long, default_value_t = 1000)]
     pub(super) limit: usize,
+
+    /// Maximum candidate depth below the search root (root children are depth 1).
+    #[arg(long, value_name = "N", conflicts_with = "create_filelist")]
+    pub(super) max_depth: Option<NonZeroUsize>,
 
     /// Print paths without opening the GUI.
     #[arg(long, default_value_t = false)]
@@ -387,6 +391,10 @@ impl Args {
         self.limit
     }
 
+    pub(crate) fn max_depth(&self) -> flist_walker::indexer::MaxDepth {
+        self.max_depth.map(Into::into).unwrap_or_default()
+    }
+
     pub(super) fn color_mode(&self) -> CliColorMode {
         self.color.unwrap_or_default()
     }
@@ -487,6 +495,7 @@ fn validate_catalog_args(args: &Args) -> std::result::Result<(), String> {
 pub(super) fn validate_list_saved_roots_args(args: &Args) -> std::result::Result<(), &'static str> {
     if !args.query.is_empty()
         || args.limit != 1000
+        || args.max_depth.is_some()
         || args.absolute
         || args.fail_no_match
         || !matches!(args.entry_type, CliEntryType::All)
@@ -529,6 +538,7 @@ fn validate_create_filelist_args(args: &Args) -> std::result::Result<(), &'stati
     }
     if !args.query.is_empty()
         || args.limit != 1000
+        || args.max_depth.is_some()
         || args.absolute
         || args.print0
         || args.fail_no_match
@@ -577,6 +587,28 @@ mod tests {
         assert!(!args.interactive);
         assert!(matches!(args.entry_type, CliEntryType::All));
         assert!(matches!(args.source, CliIndexSource::Auto));
+        assert!(args.max_depth().is_unlimited());
+    }
+
+    #[test]
+    fn tc_180_max_depth_accepts_positive_gui_and_cli_values_and_rejects_zero() {
+        let gui =
+            Args::try_parse_from(["flistwalker", "--max-depth", "3"]).expect("parse GUI max depth");
+        assert_eq!(gui.max_depth().value(), Some(3));
+
+        let cli = Args::try_parse_from(["flistwalker", "--cli", "--max-depth", "1"])
+            .expect("parse CLI max depth");
+        assert_eq!(cli.max_depth().value(), Some(1));
+
+        assert!(Args::try_parse_from(["flistwalker", "--max-depth", "0"]).is_err());
+        assert!(Args::try_parse_from([
+            "flistwalker",
+            "--cli",
+            "--create-filelist",
+            "--max-depth",
+            "2",
+        ])
+        .is_err());
     }
 
     #[test]
