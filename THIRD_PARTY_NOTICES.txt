@@ -19,21 +19,6 @@ release targets currently packaged by this repository:
 The components below require explicit notice handling or are otherwise called
 out because their license family is not simply MIT or Apache-2.0.
 
-MPL-2.0 components
-------------------
-
-The following crates are used in the current packaged builds and are licensed
-under Mozilla Public License 2.0:
-
-- resvg 0.43.0
-  Source: https://github.com/RazrFalcon/resvg
-- usvg 0.43.0
-  Source: https://github.com/RazrFalcon/resvg
-
-For these components, corresponding source code is available from the listed
-upstream repositories and from the crates.io source archives matching the above
-crate names and versions.
-
 Additional notice-bearing components
 ------------------------------------
 
@@ -47,9 +32,9 @@ Additional notice-bearing components
   https://github.com/dalek-cryptography/curve25519-dalek
   https://github.com/dalek-cryptography/subtle
 
-- tiny-skia 0.11.4 / tiny-skia-path 0.11.4
+- tiny-skia 0.12.0 / tiny-skia-path 0.12.0
   License: BSD-3-Clause
-  Source: https://github.com/RazrFalcon/tiny-skia
+  Source: https://github.com/linebender/tiny-skia
 
 - eframe 0.35.0 / egui 0.35.0 / egui_glow 0.35.0 / egui-winit 0.35.0
   Primary license: MIT OR Apache-2.0
@@ -116,13 +101,12 @@ The main direct dependencies currently used by FlistWalker are under the
 following license families:
 
 - MIT OR Apache-2.0: anyhow, clap, eframe, libc, memory-stats, rand_core, rayon,
-  regex, semver, serde, serde_json, sha2, unicode-width, ureq
+  regex, resvg, semver, serde, serde_json, sha2, unicode-width, ureq
 - MIT/Apache-2.0: ctrlc
 - MIT: crossterm, fuzzy-matcher, ico, native-dialog, tracing,
   tracing-subscriber, winres
 - (Apache-2.0 OR MIT) AND BSD-3-Clause: encoding_rs
 - BSD-3-Clause: ed25519-dalek
-- MPL-2.0: resvg
 
 Distribution policy in this repository
 --------------------------------------

@@ -228,6 +228,159 @@ jobs:
         self.assertTrue(POLICY.audit_result_is_acceptable(False, "skipped"))
         self.assertFalse(POLICY.audit_result_is_acceptable(False, "success"))
 
+    def test_monitor_workflows_reconcile_only_exact_bot_owned_issues(self) -> None:
+        cases = {
+            "security-audit.yml": "[security] Scheduled cargo audit failed",
+            "ci-canary.yml": "[ci-canary] Latest environment compatibility failed",
+        }
+        for name, title in cases.items():
+            with self.subTest(name=name):
+                text = (ROOT / ".github" / "workflows" / name).read_text(
+                    encoding="utf-8"
+                )
+                self.assertEqual(
+                    [], POLICY.validate_monitor_issue_contract(name, text, title)
+                )
+
+    def test_monitor_issue_contract_rejects_tokens_moved_outside_recovery_job(self) -> None:
+        name = "security-audit.yml"
+        title = "[security] Scheduled cargo audit failed"
+        text = (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
+        success_condition = (
+            "    if: ${{ success() && github.ref_name == "
+            "github.event.repository.default_branch }}"
+        )
+        safe_selector = (
+            '[.[] | select(.title == \\"$TITLE\\" and '
+            '.author.login == \\"app/github-actions\\")] | first | .number // empty'
+        )
+        mutated = text.replace(
+            success_condition,
+            "    if: ${{ failure() }}",
+            1,
+        )
+        head, separator, tail = mutated.rpartition(safe_selector)
+        self.assertTrue(separator)
+        mutated = head + ".[0].number // empty" + tail
+        mutated += f"\n# {success_condition}\n# {safe_selector}\n"
+
+        violations = POLICY.validate_monitor_issue_contract(name, mutated, title)
+        self.assertTrue(
+            any("success-only default-branch condition" in item for item in violations)
+        )
+        self.assertTrue(
+            any(
+                "safe exact-title bot-owner issue assignment" in item
+                for item in violations
+            )
+        )
+
+    def test_monitor_issue_contract_rejects_non_default_branch_mutation(self) -> None:
+        cases = {
+            "security-audit.yml": "[security] Scheduled cargo audit failed",
+            "ci-canary.yml": "[ci-canary] Latest environment compatibility failed",
+        }
+        for name, title in cases.items():
+            with self.subTest(name=name):
+                text = (ROOT / ".github" / "workflows" / name).read_text(
+                    encoding="utf-8"
+                )
+                mutated = text.replace(
+                    "    if: ${{ success() && github.ref_name == "
+                    "github.event.repository.default_branch }}",
+                    "    if: ${{ success() }}",
+                    1,
+                )
+                violations = POLICY.validate_monitor_issue_contract(
+                    name, mutated, title
+                )
+                self.assertTrue(
+                    any(
+                        "success-only default-branch condition" in item
+                        for item in violations
+                    )
+                )
+
+    def test_monitor_issue_contract_rejects_recovery_tokens_hidden_in_comments(self) -> None:
+        name = "security-audit.yml"
+        title = "[security] Scheduled cargo audit failed"
+        text = (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
+
+        def replace_last(source: str, old: str, new: str) -> str:
+            head, separator, tail = source.rpartition(old)
+            self.assertTrue(separator)
+            return head + new + tail
+
+        needs = "    needs: audit"
+        permission = "    permissions:\n      issues: write"
+        title_line = f'          TITLE: "{title}"'
+        close_line = next(
+            line
+            for line in text.splitlines()
+            if line.lstrip().startswith("gh issue close")
+        )
+        mutated = replace_last(text, needs, "    # needs moved out of the job")
+        mutated = replace_last(
+            mutated, permission, "    permissions:\n      contents: read"
+        )
+        mutated = replace_last(mutated, title_line, "          # title removed")
+        mutated = replace_last(mutated, close_line, "            # close removed")
+        mutated += (
+            f"\n# {needs}\n# {permission}\n# {title_line}\n# {close_line}\n"
+        )
+
+        violations = POLICY.validate_monitor_issue_contract(name, mutated, title)
+        for expected in (
+            "monitor dependency",
+            "least-privilege issue permission",
+            "exact issue title",
+            "exactly one issue close command",
+        ):
+            with self.subTest(expected=expected):
+                self.assertTrue(any(expected in item for item in violations))
+
+    def test_monitor_issue_contract_rejects_query_override_wrong_close_and_extra_permission(
+        self,
+    ) -> None:
+        name = "security-audit.yml"
+        title = "[security] Scheduled cargo audit failed"
+        text = (ROOT / ".github" / "workflows" / name).read_text(encoding="utf-8")
+        close_line = next(
+            line
+            for line in text.splitlines()
+            if line.lstrip().startswith("gh issue close")
+        )
+        mutated = text.replace(
+            close_line,
+            close_line.replace('"$issue_number"', '"$victim"'),
+            1,
+        )
+        assignment = next(
+            line
+            for line in reversed(mutated.splitlines())
+            if line.lstrip().startswith('issue_number="$(gh issue list')
+        )
+        head, separator, tail = mutated.rpartition(assignment)
+        self.assertTrue(separator)
+        mutated = head + assignment + "; issue_number=1" + tail
+        recovery_permission = "    permissions:\n      issues: write\n    steps:"
+        head, separator, tail = mutated.rpartition(recovery_permission)
+        self.assertTrue(separator)
+        mutated = (
+            head
+            + "    permissions:\n      issues: write\n      actions: read\n    steps:"
+            + tail
+        )
+
+        violations = POLICY.validate_monitor_issue_contract(name, mutated, title)
+        for expected in (
+            "safe exact-title bot-owner issue assignment",
+            "issue-number recovery close target",
+            "least-privilege issue permission",
+        ):
+            with self.subTest(expected=expected):
+                self.assertTrue(any(expected in item for item in violations))
+
 
 if __name__ == "__main__":
     unittest.main()

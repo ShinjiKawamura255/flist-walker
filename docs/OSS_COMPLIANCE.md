@@ -55,6 +55,13 @@
 - self-update 後も配置先ディレクトリに `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が残る必要がある。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## resvg 0.48 dependency review (2026-08-19)
+
+- Direct and build dependency: `resvg` / `usvg` move from `0.43.0` to `0.48.1`. The current releases are `Apache-2.0 OR MIT`, so the previous MPL-2.0 notice section is no longer part of the packaged resolve graph.
+- The refresh removes unmaintained `rustybuzz 0.18.0` and `ttf-parser 0.24.1`; text shaping and font parsing now use maintained `harfrust 0.12.0`, `skrifa 0.44.0`, `read-fonts 0.41.0`, and `font-types 0.12.3` through `usvg`.
+- Updated rendering dependencies include `fontdb 0.24.0`, `gif 0.14.2`, `image-webp 0.2.4`, `imagesize 0.15.0`, `svgtypes 0.16.1`, and BSD-3-Clause `tiny-skia` / `tiny-skia-path 0.12.0`. Metadata review found no new copyleft family or standalone notice requirement.
+- `cargo metadata --locked` resolves for all four packaged targets, and `cargo audit` exits successfully with no warning output. Release archive, standalone sidecar, macOS bundle, and self-update notice paths are unchanged.
+
 ## eframe 0.35 dependency review (2026-08-01)
 
 - Direct dependency: `eframe` and the selected `egui` / `egui_glow` / `egui-winit` stack move from `0.34.3` to `0.35.0`; `epaint_default_fonts` moves to `0.35.0` and retains its existing `(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0` notice requirement.
@@ -76,6 +83,13 @@
 - 配布物の構成は変更しない。release archive、standalone sidecar、macOS app bundle、self-update 後の `LICENSE` / `THIRD_PARTY_NOTICES` 同梱導線を既存 script/workflowで再検証する。
 
 ## Resolved audit warnings
+
+### RUSTSEC-2026-0192 / RUSTSEC-2026-0206: unmaintained `ttf-parser` / `rustybuzz`
+- Status: resolved on 2026-08-19.
+- Resolution: upgraded `resvg` / `usvg` from `0.43.0` to `0.48.1`, replacing `ttf-parser 0.24.1` and `rustybuzz 0.18.0` with the maintained `skrifa` / `harfrust` stack.
+- Previous observed path: `ttf-parser 0.24.1` via `fontdb 0.21.0` / `rustybuzz 0.18.0` -> `usvg 0.43.0` -> `resvg 0.43.0` -> `flist-walker`.
+- Current lockfile check: `rust/Cargo.lock` no longer contains `ttf-parser` or `rustybuzz`; `cargo audit` exits successfully without warnings.
+- Packaging impact: `resvg` / `usvg` are now `Apache-2.0 OR MIT`; `THIRD_PARTY_NOTICES.txt` removes the obsolete MPL-2.0 section and records `tiny-skia 0.12.0` under BSD-3-Clause.
 
 ### RUSTSEC-2026-0257: `webbrowser` Unix `BROWSER` handling argument injection
 - Status: resolved on 2026-08-17.
@@ -130,21 +144,3 @@
 - Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
 - Re-evaluation trigger: `wayland-scanner` updates to a `quick-xml >=0.41.0` dependency, `eframe` / `winit` / Wayland stack refresh, or any new runtime exposure.
 - Central configuration: cargo-auditのproject-local探索規則に従う`rust/.cargo/audit.toml` contains only `RUSTSEC-2026-0194` and `RUSTSEC-2026-0195`; the required command is `cd rust && cargo audit`.
-
-### RUSTSEC-2026-0192: `ttf-parser 0.24.1` unmaintained
-- Status: accepted on 2026-07-09 as a transitive unmaintained warning surfaced by `cargo audit`.
-- Observed path: `ttf-parser 0.24.1` via `fontdb 0.21.0` / `rustybuzz 0.18.0` -> `usvg 0.43.0` -> `resvg 0.43.0` -> `flist-walker`.
-- Exposure note: this path is used for icon/SVG rendering support rather than network or command execution; no direct replacement is available without a broader `resvg` / `usvg` dependency refresh.
-- Owner: Rust dependency maintainer for release preflight.
-- Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
-- Re-evaluation trigger: `resvg` / `usvg` / `fontdb` refresh, maintained `ttf-parser` successor, or any new font parsing input surface.
-- Current `cargo audit` behavior: reports this and `RUSTSEC-2026-0206` as allowed warnings and exits successfully when the accepted `quick-xml` vulnerabilities are ignored.
-
-### RUSTSEC-2026-0206: `rustybuzz 0.18.0` unmaintained
-- Status: accepted on 2026-07-15 as a transitive unmaintained warning surfaced by `cargo audit`.
-- Observed path: `rustybuzz 0.18.0 -> usvg 0.43.0 -> resvg 0.43.0 -> flist-walker`.
-- Exposure note: this path is used for local icon/SVG rendering; FlistWalker does not expose a network-fed font parsing service through this dependency.
-- Owner: Rust dependency maintainer for release preflight.
-- Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
-- Re-evaluation trigger: `resvg` / `usvg` / `rustybuzz` refresh, a maintained successor, or any new untrusted font/SVG input surface.
-- Current `cargo audit` behavior: allowed warning; it must remain visible in audit output and must not be added to the vulnerability ignore list.

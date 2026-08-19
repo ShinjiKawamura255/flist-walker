@@ -1,7 +1,7 @@
 pub(super) mod filelist;
 pub(super) mod help;
 pub(super) mod preset_picker;
-mod root_list;
+pub(in crate::app) mod root_list;
 pub(super) mod update;
 
 use crate::app::FlistWalkerApp;

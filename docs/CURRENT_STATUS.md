@@ -31,6 +31,14 @@ This document is the short current-state snapshot for maintainers. It does not o
 - `main.rs` is a thin startup router. Typed CLI validation and batch behavior live in `cli/`, while native window bootstrap lives in `gui_launch.rs`.
 - GUI dialog and top-panel rendering have private owners whose mutation seams remain existing owner methods and queued `RenderCommand` values; deterministic GUI groups pass, while native interaction and liveness remain separate release-candidate evidence axes.
 
+## Project Issue Hardening (2026-08-19)
+
+- The cancelled default-branch CI run for `4195e4f` was rerun successfully: Windows GNU cross-build and the aggregate `CI Gate` passed on attempt 2.
+- Scheduled security-audit and latest-canary monitors now reconcile their lifecycle on the default branch: a successful recovery closes only the exact-title issue previously created by `app/github-actions`. Policy tests reject missing exact-title/bot-owner post-filters, misplaced job conditions, or multiple close operations.
+- GUI owner coverage now exercises every root-list render intent and every persisted preset option label. Total line coverage is 77.28%; `render_dialogs/root_list.rs` improved from 1.18% to 12.18%, while the deterministic GUI suite remains green.
+- `resvg` / `usvg` 0.48.1 replace the unmaintained `rustybuzz` / `ttf-parser` path with `harfrust` / `skrifa`; `cargo audit` completes with no warning output and packaged-target metadata resolves for Windows, Linux, and both macOS architectures.
+- Native Japanese IME, alternate DPI, multi-display, real UNC, and explicitly authorized external-action axes remain `NOT RUN`; macOS release artifacts may remain unnotarized until signing infrastructure is available.
+
 ## Quality Posture
 
 - Cross-platform native tests, Windows GNU cross-build coverage, clippy, coverage, audit, and performance checks are maintained in GitHub Actions.
@@ -43,7 +51,7 @@ This document is the short current-state snapshot for maintainers. It does not o
 
 1. Preserve asynchronous UI and request-ID response routing.
 2. Keep pinned-toolchain warnings visible through the configured clippy gate and review latest canary drift.
-3. Improve low-covered GUI owner seams, especially native root-list rendering, without weakening the existing threshold.
+3. Continue improving low-covered GUI owner seams, especially native rendering and launch boundaries, without weakening the existing threshold.
 4. Keep FileList and walker performance guards aligned with indexing-path changes.
 5. Record concrete GUI evidence when the validation matrix requires it.
 

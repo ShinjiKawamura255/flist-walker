@@ -32,8 +32,8 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 ## Security and latest-version signals
 
 - Cargo 関連 path は任意階層の `Cargo.toml` / `Cargo.lock`、`rust/.cargo/audit.toml`、required/security audit workflow、CI policy checker/test とする。該当 PR は required gate 内で `cargo audit` を実行する。
-- scheduled security audit は毎日実行し、後日公開された advisory も検知する。失敗時は dedicated issue を同じ run で作成または更新し、agent は 24 時間以内に原因を分類する。
-- latest canary は週次で `ubuntu-latest` / `windows-latest` / `macos-latest` と Rust stable を検証する。失敗時は dedicated issue を同じ run で作成または更新し、agent は 7 日以内に原因を分類する。
+- scheduled security audit は毎日実行し、後日公開された advisory も検知する。default branch の失敗時だけ dedicated issue を同じ run で作成または更新し、agent は 24 時間以内に原因を分類する。default branch の後続 run が成功した場合は、完全一致タイトルかつ `github-actions` bot 所有の open issue だけを recovery run URL 付きで自動 close する。
+- latest canary は週次で `ubuntu-latest` / `windows-latest` / `macos-latest` と Rust stable を検証する。default branch の失敗時だけ dedicated issue を同じ run で作成または更新し、agent は 7 日以内に原因を分類する。default branch の後続 run が成功した場合は security audit と同じ bot 所有・完全一致タイトル条件で dedicated issue を自動 close する。
 - canary と scheduled audit は branch protection の required check に追加しない。前者は将来互換性、後者は時間経過で変化する security intelligence を観測する。
 
 ## Pin update triggers and promotion
@@ -51,6 +51,7 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 ## Failure handling and rollback
 
 - `CI Gate` / `CI Policy Guardian` failure は最小の failed job とログを特定し、product regression、policy violation、security advisory、hosted image drift、external transient に分類する。
+- monitor issue の自動 close は workflow 本体の成功にだけ連動させる。別タイトル、利用者作成 issue、失敗継続中の issue は close せず、復旧確認後も open のままなら workflow の exact-title / bot-owner query と `issues: write` permission を確認する。
 - version promotion が失敗した場合は candidate PR を閉じ、required pin を維持する。既に merge 済みなら、直前の version table と full action SHA へ戻す revert PR を作る。
 - branch protection 変更前は repository 設定と protection 全体を取得し、変更後は merge method、linear history、feature branch自動削除、PR requirement、approval count、required context/source、force-push/deletion、auto-merge、および非対象フィールドを read back する。
 - repository policy の rollout record はこの文書へ残す。record には変更前後の要点、protection/ruleset identifier、旧 auto-merge 値、復元方法、protected auto-merge PR を含める。
