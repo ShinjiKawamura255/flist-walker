@@ -22,9 +22,9 @@ use flist_walker::ignore_list::{
     load_ignore_terms_from_path_result,
 };
 use flist_walker::indexer::{
-    build_index_cancellable, execute_filelist_write_plan, find_filelist_in_first_level,
-    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
-    FileListWriteReport,
+    build_index_cancellable, build_index_cancellable_with_max_depth, execute_filelist_write_plan,
+    find_filelist_in_first_level, is_index_build_cancelled, plan_filelist_write_cancellable,
+    FileListWriteOptions, FileListWriteReport,
 };
 use flist_walker::path_utils::{normalize_path_for_display, output_path_bytes};
 use flist_walker::persistence::load_persisted_roots_and_history;
@@ -181,6 +181,7 @@ fn run_catalog_management_inner(args: &Args) -> Result<()> {
             ignore_case: !args.case_sensitive,
             ignore_enabled: !args.no_ignore,
             sort: preset_sort(args.sort),
+            max_depth: args.max_depth(),
             extra: BTreeMap::new(),
         };
         update_search_catalog(&path, |catalog| catalog.save_preset(preset))?;
@@ -206,6 +207,7 @@ fn apply_search_preset(args: &mut Args, name: &str) -> Result<()> {
     args.case_sensitive = !preset.ignore_case;
     args.no_ignore = !preset.ignore_enabled;
     args.sort = cli_sort(preset.sort);
+    args.max_depth = preset.max_depth.value().and_then(NonZeroUsize::new);
     args.preset = None;
     Ok(())
 }
@@ -344,6 +346,7 @@ fn cli_tui_options(args: &Args, ignore_terms: Vec<String>) -> CliTuiOptions {
     CliTuiOptions {
         initial_query: args.query.clone(),
         limit: args.limit,
+        max_depth: args.max_depth(),
         absolute: args.absolute,
         print0: args.print0,
         include_files,
@@ -396,14 +399,18 @@ fn run_cli_with_backend(
     if args.progress {
         eprintln!("Indexing {}...", root.display());
     }
-    let indexed_entries =
-        match build_index_cancellable(root, use_filelist, include_files, include_dirs, || {
-            cancelled.load(Ordering::Relaxed)
-        }) {
-            Ok(entries) => entries,
-            Err(error) if is_index_build_cancelled(&error) => return Ok(BatchOutcome::Cancelled),
-            Err(error) => return Err(error),
-        };
+    let indexed_entries = match build_index_cancellable_with_max_depth(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        args.max_depth(),
+        || cancelled.load(Ordering::Relaxed),
+    ) {
+        Ok(entries) => entries,
+        Err(error) if is_index_build_cancelled(&error) => return Ok(BatchOutcome::Cancelled),
+        Err(error) => return Err(error),
+    };
     if cancelled.load(Ordering::Relaxed) {
         return Ok(BatchOutcome::Cancelled);
     }

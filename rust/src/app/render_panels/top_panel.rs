@@ -82,7 +82,11 @@ pub(super) fn centered_checkbox_layout(
     (checkbox_rect, text_pos)
 }
 
-fn centered_checkbox(ui: &mut egui::Ui, checked: &mut bool, label: &str) -> egui::Response {
+pub(super) fn centered_checkbox(
+    ui: &mut egui::Ui,
+    checked: &mut bool,
+    label: &str,
+) -> egui::Response {
     let font_id = egui::TextStyle::Button.resolve(ui.style());
     let galley = ui
         .painter()
@@ -145,6 +149,10 @@ fn centered_checkbox(ui: &mut egui::Ui, checked: &mut bool, label: &str) -> egui
     }
 
     response
+}
+
+pub(super) fn update_max_depth_draft_for_unlimited(draft: &mut usize, unlimited: bool) {
+    *draft = if unlimited { 0 } else { (*draft).max(1) };
 }
 
 pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
@@ -291,6 +299,73 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     centered_checkbox(ui, &mut app.shell.runtime.include_dirs, "Folders").changed(),
                 )
             };
+            let depth_label = app
+                .shell
+                .runtime
+                .max_depth
+                .value()
+                .map_or_else(|| "Depth: All".to_string(), |depth| format!("Depth: ≤ {depth}"));
+            let depth_popup_id = egui::Id::new("max-depth-popup");
+            let depth_response = ui.button(depth_label);
+            if depth_response.clicked() {
+                app.shell.ui.max_depth_draft = app.shell.runtime.max_depth.value().unwrap_or(0);
+                egui::Popup::open_id(ui.ctx(), depth_popup_id);
+            }
+            let mut apply_depth = false;
+            let mut cancel_depth = false;
+            egui::Popup::from_response(&depth_response)
+                .id(depth_popup_id)
+                .open_memory(None)
+                .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                .width(220.0)
+                .show(|ui: &mut egui::Ui| {
+                    let mut unlimited = app.shell.ui.max_depth_draft == 0;
+                    if centered_checkbox(ui, &mut unlimited, "Unlimited").changed() {
+                        update_max_depth_draft_for_unlimited(
+                            &mut app.shell.ui.max_depth_draft,
+                            unlimited,
+                        );
+                    }
+                    ui.horizontal(|ui| {
+                        ui.label("Maximum depth");
+                        if unlimited {
+                            let mut disabled_depth = 1_usize;
+                            ui.add_enabled(
+                                false,
+                                egui::DragValue::new(&mut disabled_depth)
+                                    .range(1..=u32::MAX as usize),
+                            );
+                        } else {
+                            ui.add(
+                                egui::DragValue::new(&mut app.shell.ui.max_depth_draft)
+                                    .range(1..=u32::MAX as usize),
+                            );
+                        }
+                    });
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if ui.button("Apply").clicked() {
+                            apply_depth = true;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            cancel_depth = true;
+                        }
+                    });
+                });
+            if apply_depth {
+                let next_depth = crate::indexer::MaxDepth::limited(app.shell.ui.max_depth_draft)
+                    .unwrap_or_default();
+                egui::Popup::close_id(ui.ctx(), depth_popup_id);
+                if next_depth != app.shell.runtime.max_depth {
+                    app.shell.runtime.max_depth = next_depth;
+                    app.sync_active_tab_state();
+                    app.mark_ui_state_dirty();
+                    app.persist_ui_state_now();
+                    app.request_index_refresh();
+                }
+            } else if cancel_depth {
+                egui::Popup::close_id(ui.ctx(), depth_popup_id);
+            }
             let mut show_preview = app.shell.ui.show_preview();
             if centered_checkbox(ui, &mut show_preview, "Preview").changed() {
                 app.shell.ui.set_show_preview(show_preview);

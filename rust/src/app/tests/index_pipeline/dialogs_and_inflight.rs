@@ -351,6 +351,7 @@ fn preempt_background_when_active_index_is_queued() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     });
     {
         let mut latest = app
@@ -529,6 +530,7 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     });
 
     assert!(app.pop_next_index_request().is_none());
@@ -556,6 +558,7 @@ fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
             use_filelist: false,
             include_files: true,
             include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
         })
         .expect("fill worker queue");
     }
@@ -567,6 +570,7 @@ fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
         use_filelist: false,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     app.shell
         .indexing
@@ -608,6 +612,7 @@ fn tc_152_dispatch_keeps_coordinator_inflight_at_two() {
             use_filelist: false,
             include_files: true,
             include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
         });
     }
 

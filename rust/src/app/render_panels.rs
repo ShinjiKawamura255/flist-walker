@@ -8,6 +8,14 @@ use super::{
 use eframe::egui;
 use std::path::Path;
 
+pub(super) fn centered_checkbox(
+    ui: &mut egui::Ui,
+    checked: &mut bool,
+    label: &str,
+) -> egui::Response {
+    top_panel::centered_checkbox(ui, checked, label)
+}
+
 #[cfg(test)]
 pub(super) fn centered_checkbox_layout(
     rect: egui::Rect,
@@ -25,6 +33,11 @@ pub(super) fn centered_checkbox_layout(
         label_y_offset,
         checkbox_y_offset,
     )
+}
+
+#[cfg(test)]
+pub(super) fn update_max_depth_draft_for_unlimited(draft: &mut usize, unlimited: bool) {
+    top_panel::update_max_depth_draft_for_unlimited(draft, unlimited);
 }
 
 pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {

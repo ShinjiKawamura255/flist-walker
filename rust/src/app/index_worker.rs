@@ -4,13 +4,13 @@ use super::worker_channel::{
 use super::worker_protocol::{IndexEntry, IndexRequest, IndexResponse};
 use crate::entry::EntryKind;
 use crate::indexer::{
-    apply_filelist_hierarchy_overrides, find_filelist_in_first_level, parse_filelist_stream,
-    IndexSource,
+    apply_filelist_hierarchy_overrides_with_max_depth, find_filelist_in_first_level,
+    parse_filelist_stream_with_max_depth, IndexSource, MaxDepth,
 };
 use crate::runtime_config::current_runtime_config;
 use crate::walker_runtime::{
-    classify_walker_entry, walk_adaptive, walker_runtime_settings, AdaptiveWalkerEntry,
-    AdaptiveWalkerMetrics, WalkerBackend,
+    classify_walker_entry, walk_adaptive_with_max_depth, walker_runtime_settings,
+    AdaptiveWalkerEntry, AdaptiveWalkerMetrics, WalkerBackend,
 };
 use std::collections::HashMap;
 use std::fs::FileType;
@@ -217,14 +217,16 @@ fn collect_filelist_entries_with_cancel(
     root: &Path,
     include_files: bool,
     include_dirs: bool,
+    max_depth: MaxDepth,
     should_cancel: impl Fn() -> bool,
 ) -> Result<Vec<PathBuf>, String> {
     let mut entries = Vec::new();
-    parse_filelist_stream(
+    parse_filelist_stream_with_max_depth(
         filelist,
         root,
         include_files,
         include_dirs,
+        max_depth,
         should_cancel,
         |path, _is_dir| entries.push(path),
     )
@@ -274,11 +276,12 @@ fn stream_filelist_index(
     let mut last_flush = Instant::now();
     let mut stream_err: Option<String> = None;
     let mut has_nested_filelist_candidate = false;
-    parse_filelist_stream(
+    parse_filelist_stream_with_max_depth(
         &filelist,
         root,
         req.include_files,
         req.include_dirs,
+        req.max_depth,
         || {
             if shutdown.load(Ordering::Relaxed) {
                 return true;
@@ -351,6 +354,7 @@ fn stream_filelist_index(
             root,
             req.include_files,
             req.include_dirs,
+            req.max_depth,
             || {
                 if shutdown.load(Ordering::Relaxed) {
                     return true;
@@ -363,12 +367,13 @@ fn stream_filelist_index(
             },
         )?
     };
-    let replaced = apply_filelist_hierarchy_overrides(
+    let replaced = apply_filelist_hierarchy_overrides_with_max_depth(
         &filelist,
         root,
         &mut final_entries,
         req.include_files,
         req.include_dirs,
+        req.max_depth,
         || {
             if shutdown.load(Ordering::Relaxed) {
                 return true;
@@ -520,10 +525,11 @@ fn stream_walker_index(
             .and_then(|m| m.get(&req.tab_id).copied())
             != Some(req.request_id)
     };
-    let adaptive_metrics = walk_adaptive(
+    let adaptive_metrics = walk_adaptive_with_max_depth(
         root,
         settings.adaptive_max_limit,
         settings.adaptive_initial_limit,
+        req.max_depth,
         |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
         should_cancel_for_walk,
     );

@@ -215,3 +215,7 @@
 ### Edge / Error
 - 空の既知fieldは検索結果0件へ黙って変換せず、利用者へcompile errorを返す。
 - directory kindが既知の候補は名前にdotがあっても `ext:` に一致させない。
+
+## SP-021 参照
+
+候補収集の `--max-depth`、GUI tab、preset、FileList / Walker 間の共通契約は [SP-021 候補収集の最大深度](indexing-performance.md#sp-021-候補収集の最大深度) を正本とする。

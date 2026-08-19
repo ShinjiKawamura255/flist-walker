@@ -1,4 +1,4 @@
-use crate::app::{render::RenderPresetPickerCommand, FlistWalkerApp};
+use crate::app::{render::RenderPresetPickerCommand, render_panels, FlistWalkerApp};
 use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource};
 use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
@@ -30,10 +30,15 @@ pub(in crate::app) fn preset_summary(app: &FlistWalkerApp, catalog_index: usize)
     } else {
         &preset.query
     };
+    let depth = preset.max_depth.value().map_or_else(
+        || "Depth: All".to_string(),
+        |depth| format!("Depth: ≤ {depth}"),
+    );
     Some(format!(
-        "{}  —  {}",
+        "{}  —  {}  —  {}",
         normalize_path_for_display(&root),
-        query
+        query,
+        depth
     ))
 }
 
@@ -346,6 +351,29 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         ui.selectable_value(&mut editor.sort, value, sort_label(value));
                     }
                 });
+            ui.end_row();
+
+            ui.label("Max depth");
+            ui.horizontal(|ui| {
+                let mut unlimited = editor.max_depth.is_unlimited();
+                if render_panels::centered_checkbox(ui, &mut unlimited, "Unlimited").changed() {
+                    editor.max_depth = if unlimited {
+                        crate::indexer::MaxDepth::unlimited()
+                    } else {
+                        crate::indexer::MaxDepth::limited(1).expect("one is a valid depth")
+                    };
+                }
+                if !unlimited {
+                    let mut depth = editor.max_depth.value().unwrap_or(1);
+                    if ui
+                        .add(egui::DragValue::new(&mut depth).range(1..=u32::MAX as usize))
+                        .changed()
+                    {
+                        editor.max_depth = crate::indexer::MaxDepth::limited(depth)
+                            .expect("drag value is clamped to a positive depth");
+                    }
+                }
+            });
             ui.end_row();
         });
 

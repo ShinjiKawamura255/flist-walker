@@ -1,3 +1,4 @@
+mod depth;
 mod filelist_hierarchy;
 mod filelist_reader;
 mod filelist_writer;
@@ -9,9 +10,12 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tracing::info;
 
+pub use depth::MaxDepth;
 pub use filelist_reader::{
-    apply_filelist_hierarchy_overrides, build_entries_from_filelist_hierarchy, find_filelist,
-    find_filelist_in_first_level, parse_filelist, parse_filelist_stream,
+    apply_filelist_hierarchy_overrides, apply_filelist_hierarchy_overrides_with_max_depth,
+    build_entries_from_filelist_hierarchy, build_entries_from_filelist_hierarchy_with_max_depth,
+    find_filelist, find_filelist_in_first_level, parse_filelist, parse_filelist_stream,
+    parse_filelist_stream_with_max_depth, parse_filelist_with_max_depth,
 };
 pub use filelist_writer::{
     ancestor_filelist_propagation_needed, build_filelist_text, build_filelist_text_cancellable,
@@ -21,8 +25,10 @@ pub use filelist_writer::{
     FileListWriteStatus, FileListWriteTarget, FileListWriteTargetKind,
 };
 pub use walker::{
-    walk_dirs, walk_entries, walk_entries_cancellable, walk_entries_stream,
-    walk_entries_stream_cancellable, walk_files, WalkCancelled,
+    walk_dirs, walk_entries, walk_entries_cancellable, walk_entries_cancellable_with_max_depth,
+    walk_entries_stream, walk_entries_stream_cancellable,
+    walk_entries_stream_cancellable_with_max_depth, walk_entries_stream_with_max_depth,
+    walk_entries_with_max_depth, walk_files, WalkCancelled,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,7 +65,30 @@ pub fn build_index_with_metadata(
     include_files: bool,
     include_dirs: bool,
 ) -> Result<IndexBuildResult> {
-    build_index_with_metadata_cancellable(root, use_filelist, include_files, include_dirs, || false)
+    build_index_with_metadata_and_max_depth(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+    )
+}
+
+pub fn build_index_with_metadata_and_max_depth(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+) -> Result<IndexBuildResult> {
+    build_index_with_metadata_cancellable_and_max_depth(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        max_depth,
+        || false,
+    )
 }
 
 pub fn build_index_with_metadata_cancellable<C>(
@@ -67,6 +96,27 @@ pub fn build_index_with_metadata_cancellable<C>(
     use_filelist: bool,
     include_files: bool,
     include_dirs: bool,
+    should_cancel: C,
+) -> Result<IndexBuildResult>
+where
+    C: Fn() -> bool,
+{
+    build_index_with_metadata_cancellable_and_max_depth(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+    )
+}
+
+pub fn build_index_with_metadata_cancellable_and_max_depth<C>(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
     should_cancel: C,
 ) -> Result<IndexBuildResult>
 where
@@ -86,11 +136,12 @@ where
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let result = if use_filelist {
         if let Some(filelist) = find_filelist_in_first_level(&root) {
-            let entries = build_entries_from_filelist_hierarchy(
+            let entries = build_entries_from_filelist_hierarchy_with_max_depth(
                 &filelist,
                 &root,
                 include_files,
                 include_dirs,
+                max_depth,
                 &should_cancel,
             )
             .map_err(|error| {
@@ -106,10 +157,11 @@ where
             }
         } else {
             IndexBuildResult {
-                entries: walk_entries_cancellable(
+                entries: walk_entries_cancellable_with_max_depth(
                     &root,
                     include_files,
                     include_dirs,
+                    max_depth,
                     &should_cancel,
                 )
                 .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
@@ -121,11 +173,17 @@ where
         }
     } else {
         IndexBuildResult {
-            entries: walk_entries_cancellable(&root, include_files, include_dirs, &should_cancel)
-                .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
-                .into_iter()
-                .map(Entry::from)
-                .collect(),
+            entries: walk_entries_cancellable_with_max_depth(
+                &root,
+                include_files,
+                include_dirs,
+                max_depth,
+                &should_cancel,
+            )
+            .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
+            .into_iter()
+            .map(Entry::from)
+            .collect(),
             source: IndexSource::Walker,
         }
     };
@@ -137,6 +195,7 @@ where
         use_filelist,
         include_files,
         include_dirs,
+        max_depth = ?max_depth.value(),
         entry_count = result.entries.len(),
         source = ?result.source,
         elapsed_ms = started_at.elapsed().as_millis(),
@@ -154,6 +213,23 @@ pub fn build_index(
     build_index_cancellable(root, use_filelist, include_files, include_dirs, || false)
 }
 
+pub fn build_index_with_max_depth(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+) -> Result<Vec<PathBuf>> {
+    build_index_cancellable_with_max_depth(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        max_depth,
+        || false,
+    )
+}
+
 pub fn build_index_cancellable<C>(
     root: &Path,
     use_filelist: bool,
@@ -164,11 +240,33 @@ pub fn build_index_cancellable<C>(
 where
     C: Fn() -> bool,
 {
-    Ok(build_index_with_metadata_cancellable(
+    build_index_cancellable_with_max_depth(
         root,
         use_filelist,
         include_files,
         include_dirs,
+        MaxDepth::unlimited(),
+        should_cancel,
+    )
+}
+
+pub fn build_index_cancellable_with_max_depth<C>(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    should_cancel: C,
+) -> Result<Vec<PathBuf>>
+where
+    C: Fn() -> bool,
+{
+    Ok(build_index_with_metadata_cancellable_and_max_depth(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        max_depth,
         should_cancel,
     )?
     .entries

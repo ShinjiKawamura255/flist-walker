@@ -1361,6 +1361,85 @@ fn tc_006_source_controls_filelist_and_walker_selection() {
 }
 
 #[test]
+fn tc_180_cli_max_depth_limits_walker_and_filelist_and_rejects_zero() {
+    let root = test_root("max-depth");
+    let settings = test_root("max-depth-preset-settings");
+    let child = root.join("child");
+    let grand = child.join("grand");
+    fs::create_dir_all(&grand).expect("create nested dirs");
+    fs::write(root.join("top.txt"), "x").expect("write top");
+    fs::write(child.join("child.txt"), "x").expect("write child");
+    fs::write(grand.join("deep.txt"), "x").expect("write deep");
+    fs::write(
+        root.join("FileList.txt"),
+        "top.txt\nchild/child.txt\nchild/grand/deep.txt\n",
+    )
+    .expect("write FileList");
+
+    for source in ["walker", "filelist", "auto"] {
+        let output = cli_command(&format!("max-depth-{source}"))
+            .args([
+                "--cli",
+                "--root",
+                root.to_string_lossy().as_ref(),
+                "--source",
+                source,
+                "--max-depth",
+                "2",
+            ])
+            .output()
+            .expect("run max-depth CLI");
+        assert!(output.status.success(), "source={source}: {output:?}");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("top.txt"), "source={source}: {stdout}");
+        assert!(stdout.contains("child.txt"), "source={source}: {stdout}");
+        assert!(!stdout.contains("deep.txt"), "source={source}: {stdout}");
+    }
+
+    let zero = cli_command("max-depth-zero")
+        .args(["--cli", "--max-depth", "0"])
+        .output()
+        .expect("run invalid max-depth CLI");
+    assert_eq!(zero.status.code(), Some(2));
+    assert!(String::from_utf8_lossy(&zero.stderr).contains("--max-depth"));
+
+    fs::create_dir_all(&settings).expect("create preset settings");
+    let saved = cli_command_in_settings(&settings)
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--max-depth",
+            "2",
+            "--save-preset",
+            "depth-two",
+        ])
+        .output()
+        .expect("save max-depth preset");
+    assert!(saved.status.success(), "{saved:?}");
+
+    let applied = cli_command_in_settings(&settings)
+        .args(["--cli", "--preset", "depth-two"])
+        .output()
+        .expect("apply max-depth preset");
+    assert!(applied.status.success(), "{applied:?}");
+    let applied_stdout = String::from_utf8_lossy(&applied.stdout);
+    assert!(applied_stdout.contains("child.txt"));
+    assert!(!applied_stdout.contains("deep.txt"));
+
+    let conflict = cli_command_in_settings(&settings)
+        .args(["--cli", "--preset", "depth-two", "--max-depth", "3"])
+        .output()
+        .expect("reject preset max-depth override");
+    assert_eq!(conflict.status.code(), Some(2));
+
+    let _ = fs::remove_dir_all(root);
+    let _ = fs::remove_dir_all(settings);
+}
+
+#[test]
 fn tc_006_explicit_ignore_file_and_no_ignore_are_supported_and_conflict() {
     let root = test_root("ignore-options");
     fs::create_dir_all(&root).expect("create root");

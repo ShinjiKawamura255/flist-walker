@@ -1,5 +1,5 @@
 use crate::actions::{AuthorizedActionOutcome, AuthorizedActionReport};
-use crate::indexer::find_filelist_in_first_level;
+use crate::indexer::{find_filelist_in_first_level, MaxDepth};
 #[cfg(test)]
 use crate::path_utils::output_path_bytes;
 use crate::persistence::{
@@ -33,6 +33,7 @@ fn format_tui_update_notice(target_version: &str) -> String {
 pub struct CliTuiOptions {
     pub initial_query: String,
     pub limit: usize,
+    pub max_depth: MaxDepth,
     pub absolute: bool,
     pub print0: bool,
     pub include_files: bool,
@@ -184,6 +185,7 @@ fn run_event_loop<W: Write>(
     state.root = root.clone();
     state.saved_roots = saved_roots;
     state.runtime_options = TuiRuntimeOptions::from_startup(options);
+    state.max_depth = options.max_depth;
     state.sort_mode = options.sort_mode;
     state.ignore_terms = Arc::new(options.ignore_terms.clone());
     state.history_enabled = history_enabled;

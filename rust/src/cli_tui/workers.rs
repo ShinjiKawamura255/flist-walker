@@ -6,7 +6,7 @@ use super::protocol::{
 use crate::actions::execute_authorized_action_request;
 use crate::entry::Entry;
 use crate::indexer::{
-    build_index_cancellable, find_filelist_in_first_level, is_index_build_cancelled,
+    build_index_cancellable_with_max_depth, find_filelist_in_first_level, is_index_build_cancelled,
 };
 use crate::query::{CompiledIgnoreTerms, QueryScope};
 use crate::runtime_config::{current_runtime_config, RuntimeConfig};
@@ -18,7 +18,8 @@ use crate::ui_model::build_preview_text_with_kind;
 use crate::updater::check_for_update;
 use crate::updater::UpdateCandidate;
 use crate::walker_runtime::{
-    classify_walker_entry, walk_adaptive, walker_runtime_settings, AdaptiveWalkerEntry,
+    classify_walker_entry, walk_adaptive_with_max_depth, walker_runtime_settings,
+    AdaptiveWalkerEntry,
 };
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -434,11 +435,12 @@ pub(super) fn process_index_request_with_config<C, S>(
     }
 
     if use_filelist {
-        match build_index_cancellable(
+        match build_index_cancellable_with_max_depth(
             &request.root,
             true,
             request.include_files,
             request.include_dirs,
+            request.max_depth,
             should_cancel,
         ) {
             Ok(paths) => {
@@ -469,10 +471,11 @@ pub(super) fn process_index_request_with_config<C, S>(
         let mut batch = Vec::with_capacity(256);
         let mut emitted_entries = 0usize;
         let mut truncated = false;
-        walk_adaptive(
+        walk_adaptive_with_max_depth(
             &request.root,
             settings.adaptive_max_limit,
             settings.adaptive_initial_limit,
+            request.max_depth,
             |entry: AdaptiveWalkerEntry| {
                 if should_cancel() {
                     return false;

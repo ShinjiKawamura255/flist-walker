@@ -515,6 +515,7 @@ fn tc_162_walker_failure_emits_index_failed_without_finished() {
         include_files: true,
         include_dirs: true,
         source: TuiSource::Walker,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let mut responses = Vec::new();
 
@@ -538,6 +539,7 @@ fn tc_162_tui_walker_uses_runtime_adaptive_limits_and_reports_cap_before_finish(
         include_files: true,
         include_dirs: false,
         source: TuiSource::Walker,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let config = RuntimeConfig {
         walker_max_entries: 1,
@@ -586,6 +588,38 @@ fn tc_162_tui_walker_uses_runtime_adaptive_limits_and_reports_cap_before_finish(
 
     assert_eq!(emitted, 1);
     assert!(truncated < finished);
+}
+
+#[test]
+fn tc_180_tui_index_request_applies_max_depth() {
+    let temp = TestTempDir::new("max-depth");
+    let child = temp.path.join("child");
+    let grandchild = child.join("grandchild");
+    fs::create_dir_all(&grandchild).expect("create depth fixture");
+    fs::write(child.join("visible.txt"), "visible").expect("write visible");
+    fs::write(grandchild.join("hidden.txt"), "hidden").expect("write hidden");
+    let request = IndexRequest {
+        request_id: 180,
+        root: temp.path.clone(),
+        include_files: true,
+        include_dirs: true,
+        source: TuiSource::Walker,
+        max_depth: crate::indexer::MaxDepth::limited(2).expect("valid depth"),
+    };
+    let mut responses = Vec::new();
+
+    process_index_request(request, &|| false, |response| responses.push(response));
+
+    let emitted = responses
+        .iter()
+        .filter_map(|response| match response {
+            WorkerResponse::IndexedBatch { entries, .. } => Some(entries),
+            _ => None,
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+    assert!(emitted.iter().any(|path| path.ends_with("visible.txt")));
+    assert!(!emitted.iter().any(|path| path.ends_with("hidden.txt")));
 }
 
 #[test]
@@ -1298,6 +1332,7 @@ fn tc_162_tui_options_reindex_only_for_scope_or_source_changes() {
     let base = TuiRuntimeOptions::from_startup(&CliTuiOptions {
         initial_query: String::new(),
         limit: 10,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
         absolute: false,
         print0: false,
         include_files: true,
@@ -1595,6 +1630,7 @@ fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
     let startup = CliTuiOptions {
         initial_query: String::new(),
         limit: 10,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
         absolute: false,
         print0: false,
         include_files: true,
@@ -1820,6 +1856,7 @@ fn tc_162_options_overlay_keeps_headings_and_renders_items_below_them() {
         draft: TuiRuntimeOptions::from_startup(&CliTuiOptions {
             initial_query: String::new(),
             limit: 1,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
             absolute: false,
             print0: false,
             include_files: true,
@@ -1929,6 +1966,7 @@ fn tc_162_small_overlays_keep_source_and_size_selection_visible() {
         draft: TuiRuntimeOptions::from_startup(&CliTuiOptions {
             initial_query: String::new(),
             limit: 1,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
             absolute: false,
             print0: false,
             include_files: true,

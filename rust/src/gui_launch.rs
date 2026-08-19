@@ -46,7 +46,12 @@ pub(crate) fn initialize() -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn run(root: Option<&Path>, query: String, limit: usize) -> Result<()> {
+pub(crate) fn run(
+    root: Option<&Path>,
+    query: String,
+    limit: usize,
+    max_depth: flist_walker::indexer::MaxDepth,
+) -> Result<()> {
     let startup_start = Instant::now();
     trace_startup_phase(startup_start, "run_gui_enter");
     configure_windows_dpi_mode();
@@ -83,7 +88,7 @@ pub(crate) fn run(root: Option<&Path>, query: String, limit: usize) -> Result<()
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
             trace_startup_phase(startup_start, "fonts_configured");
-            let app = FlistWalkerApp::from_launch(root, limit, query, root_explicit);
+            let app = FlistWalkerApp::from_launch(root, limit, query, root_explicit, max_depth);
             trace_startup_phase(startup_start, "app_created");
             Ok(Box::new(app))
         }),

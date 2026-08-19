@@ -26,6 +26,7 @@ pub(super) struct RuntimeUiState {
     pub(super) tab_drag_state: Option<TabDragState>,
     pub(super) pending_render_commands: Vec<super::render::RenderCommand>,
     pub(super) cjk_font_applied: bool,
+    pub(super) max_depth_draft: usize,
 }
 
 impl RuntimeUiState {
@@ -58,6 +59,7 @@ impl RuntimeUiState {
             pending_render_commands: Vec::new(),
             ignore_list_enabled,
             cjk_font_applied: false,
+            max_depth_draft: 0,
         }
     }
 

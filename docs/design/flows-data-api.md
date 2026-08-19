@@ -25,6 +25,7 @@
 - `AuthorizedActionRequest`: trusted root、current-row snapshot、request identity、cancellation token、action kind。
 - `FileListWritePlan`: ordered root/ancestor targets、expected prior contents、new contents、consent scope。`FileListTransactionReport` は committed/failed/rolled-back/rollback-failed display paths と settlement reason を保持する。
 - `UiStatePatch`: named non-history JSON leaf patch と ordered history deltas。worker generation は commit に含めた enqueue range を記録する。
+- `MaxDepth`: 無制限または 1 以上の上限。Walker queue は root からの depth を path と一緒に保持し、FileList は filesystem I/O を行わない root 相対 lexical depth helper を共有する。
 
 ## API contract (Rust)
 - `build_index(root, use_filelist, include_files, include_dirs)`
@@ -56,3 +57,10 @@
 - `PreparedCandidate` はbasename、visible path、parent directory、最終extensionの正規化viewとvisible文字offsetを検索request内で一度だけ構築する。known Entry kindがdirectoryならextension viewを空にする。
 - compiled exact/include/exclude/regex/bonus matcherは同じfield selectorを共有し、highlightだけがfield-local positionをvisible path positionへ変換する。
 - field queryはscopeが変わるprefix拡張を避けるためprefix cache対象外とする。非field queryのcache、matching、rankingは既存経路を維持する。
+
+## DES-022 Shared max-depth indexing scope
+- `MaxDepth` は index domain が所有し、既存 public index/FileList/Walker API は無制限 wrapper を維持しつつ、depth-aware API を batch、GUI、TUI adapter へ提供する。
+- recursive walker と adaptive walker は directory queue/再帰 frame に depth を保持し、depth上限のdirectoryをemitした後は子directoryをqueueへ入れない。FileList parser と nested hierarchy は resolved lexical candidate を callbackまたはoverride discoveryへ渡す前に同じ `MaxDepth` で除外する。
+- GUI `AppRuntimeState`、`AppTabState`、`SavedTabState`、GUI/TUI `IndexRequest`、`SearchPreset` は同じ値を伝播する。active tab preset transition は max depth を他の preset-owned state と同時に確定し、値が変われば1回だけ reindexする。
+- main panel は `Folders` と `Preview` の間に現在値buttonを描画し、popup draft と live値を分離する。`Apply` は live値更新、active-tab同期、session dirty化、request-id付きreindexを順に行い、`Cancel` は no-op とする。
+- preset catalog と saved tab は欠落 field を無制限として deserializeし、既存versionを維持する。新規tabは無制限とし、FileList作成workerは表示indexのmax depthを再利用しない。

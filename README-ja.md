@@ -179,6 +179,7 @@ CLI では:
 - query 未指定時は候補一覧を `limit` 件まで表示します。
 - query 指定時は一致したパスを1行ずつ表示します。
 - `--limit` は内部で 1000 件に丸めず、そのまま上限件数として扱います。
+- `--max-depth N` は root 直下を深さ `1` として候補を `N` 階層までに制限します。深さ `N` の folder 自体は候補に含めますが、その配下へは降りません。省略時は無制限で、`0` は拒否します。Walker / FileList、batch CLI、TUI 起動、GUI 起動に共通で適用し、FileList 作成だけは常に完全・無制限です。
 - 既定出力は root 相対・改行区切り・スコア/ANSIなしです。スクリプトでは `--absolute` と `--print0` を利用できます。
 - 互換性: query 指定時も、旧来の `[score] absolute-path` ではなく空query時と同じpath専用形式になりました。旧出力の絶対pathを利用していた場合は `--absolute` へ移行してください。score文字列は出力しません。
 - `--type all|file|folder`、`--regex`、`--case-sensitive` で検索対象と照合方法を指定できます。
@@ -196,7 +197,7 @@ CLI では:
 
 ### 名前付き root と検索 preset
 
-名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort の設定を保存します。action や外部 command は保存しません。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort を編集できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。picker 見出しの `Manage named roots...` または preset editor の `Manage...` から名前付き root の一覧、追加、名称・path編集、削除を行えます。名称変更は参照中presetも追従し、削除後は各presetの保存済みpath snapshotを利用します。editor の `Esc` / `Cancel` は未保存 draft を破棄します。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。presetの作成・削除は引き続きCLI/TUIで行います。
+名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort、最大深さの設定を保存します。action や外部 command は保存しません。GUI では `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）を押し、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。preset 適用で変わるのは active tab だけで、深さは2行目の `Depth: All` / `Depth: ≤ N` control または別 preset で変更するまで維持されます。他 tab へは波及せず、新規 tab は `All` で始まり、session 復元でも tab ごとに保持されます。depth control は `Folders` の後、`Preview` の前です。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort/max depth を編集できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。picker 見出しの `Manage named roots...` または preset editor の `Manage...` から名前付き root の一覧、追加、名称・path編集、削除を行えます。名称変更は参照中presetも追従し、削除後は各presetの保存済みpath snapshotを利用します。editor の `Esc` / `Cancel` は未保存 draft を破棄します。GUI picker は検索結果を開く／実行することはなく、メイン panel に preset control を常設しません。presetの作成・削除は引き続きCLI/TUIで行います。
 
 ```bash
 # 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。
@@ -218,7 +219,7 @@ flistwalker --cli --remove-preset rust-src
 flistwalker --cli --remove-named-root work
 ```
 
-query が1 termだけの場合も、query 引数全体を引用してください。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
+query が1 termだけの場合も、query 引数全体を引用してください。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort、`--max-depth` の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
 
 例:
 
@@ -253,6 +254,8 @@ flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 ```bash
 cargo run -- --cli --interactive --root ..
 ```
+
+`--max-depth` は起動時または preset の深さとして TUI session 中固定され、F2 options overlay からは変更しません。
 
 軽量な TUI が起動します。`--root`、`--use-default-root`、`--saved-root` で起動 root を選択でき、`--sort` は初期並び順、`--no-ignore` は Ignore が無効と表示される初期状態へ反映されます。`--color auto|always|never` で CLI の色を制御できます。batch の既定 `auto` は stdout が TTY のときだけ色を出し、空でない `NO_COLOR` 環境変数を尊重するため、pipe/redirect のパス出力はそのままです。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を確定します。`F2` は Files、Folders、Regex、Ignore Case、起動時に読み込んだ Ignore terms、Source（`Auto` / `FileList` / `Walker`）を確定/取消できる options overlay を開きます。Source と Files/Folders の変更は再インデックスし、検索だけに関わる変更は現在の snapshot を再利用します。`F3` は Score、名前、更新日時、作成日時、サイズの並び順（該当する昇順/降順）を選択し、Score 以外は limit 適用前に全 match を並べ替えます。`F4` は保存済みrootを開いて強調行へ切り替え、`F5` は現在rootを更新します。`F6` は root のみ／ancestor までの作成範囲を選んで FileList を作成し、root に既存 FileList がある場合は別途上書き確認を要求します。作成はバックグラウンドで行われ、選択・終了・root 切替の要求は commit/cancel/rollback の完了後にだけ反映されます。root切替では旧選択とpinを消去しますが、query・履歴・optionsは維持し、更新時はpinを維持します。`Ctrl+O` は現在行だけを開く/実行し、`Shift+Enter` は現在行の格納フォルダだけを開きます。pin された行がこれらの副作用操作に含まれることはありません。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴、help、options、sort、root、FileList の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけを使い、端末復旧後に選択パスを標準出力へ書くか、明示した `-x` command へ渡します。
 

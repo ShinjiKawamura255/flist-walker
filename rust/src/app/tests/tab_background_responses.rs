@@ -488,6 +488,7 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         use_filelist: true,
         include_files: true,
         include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     app.shell
         .indexing
