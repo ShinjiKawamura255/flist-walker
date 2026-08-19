@@ -7,11 +7,34 @@
 - なし。
 
 ### Changed
-- 定期 security audit / latest canary が成功へ復帰した際、同じタイトルで GitHub Actions が作成した障害 issue だけを自動クローズするようにした。
-- SVG 描画依存を `resvg 0.48.1` へ更新し、保守終了した `rustybuzz` / `ttf-parser` を依存グラフから除去した。
+- なし。
 
 ### Fixed
-- 復元したタブを選択した際、バックグラウンドの古い要求よりアクティブタブのインデクシングを優先するよう修正した。
+- なし。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- なし。
+
+## [0.24.1] - 2026-08-19
+### Added
+- CI policy guardian の検査スクリプトと unit test を追加し、workflow の権限・runner・action pin・監査設定を検証できるようにした。
+
+### Changed
+- 定期 security audit / latest canary が成功へ復帰した際、同じタイトルで GitHub Actions が作成した障害 issue だけを自動クローズするようにした。
+- SVG 描画依存を `resvg 0.48.1` へ更新し、保守終了した `rustybuzz` / `ttf-parser` を依存グラフから除去した。
+- 復元したタブを選択した際、バックグラウンドの古い要求よりアクティブタブのインデクシングを優先するようにした。
+
+### Fixed
+- CI recovery と project quality の運用・検証を強化した。
 
 ### Breaking
 - なし。
@@ -1797,7 +1820,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.1...HEAD
+[0.24.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.0...v0.22.1
