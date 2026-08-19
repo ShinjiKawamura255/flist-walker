@@ -387,6 +387,63 @@ fn dispatch_render_commands_consumes_root_list_cancel_queue() {
 }
 
 #[test]
+fn root_list_render_actions_map_every_ui_intent_to_one_command() {
+    use crate::app::render_dialogs::root_list::{root_list_commands, RootListRenderActions};
+
+    let commands = root_list_commands(RootListRenderActions {
+        add_input: true,
+        browse_and_add: true,
+        start_edit: true,
+        save_edit: true,
+        cancel_edit: true,
+        enter_remove_mode: true,
+        remove_selected: true,
+        cancel_remove_mode: true,
+        apply: true,
+        ok: true,
+        cancel: true,
+    });
+
+    assert_eq!(commands.len(), 11);
+    assert!(matches!(
+        commands[0],
+        RenderRootListDialogCommand::BrowseAndAdd
+    ));
+    assert!(matches!(commands[1], RenderRootListDialogCommand::AddInput));
+    assert!(matches!(
+        commands[2],
+        RenderRootListDialogCommand::StartEdit
+    ));
+    assert!(matches!(commands[3], RenderRootListDialogCommand::SaveEdit));
+    assert!(matches!(
+        commands[4],
+        RenderRootListDialogCommand::CancelEdit
+    ));
+    assert!(matches!(
+        commands[5],
+        RenderRootListDialogCommand::EnterRemoveMode
+    ));
+    assert!(matches!(
+        commands[6],
+        RenderRootListDialogCommand::RemoveSelected
+    ));
+    assert!(matches!(
+        commands[7],
+        RenderRootListDialogCommand::CancelRemoveMode
+    ));
+    assert!(matches!(commands[8], RenderRootListDialogCommand::Apply));
+    assert!(matches!(commands[9], RenderRootListDialogCommand::Ok));
+    assert!(matches!(commands[10], RenderRootListDialogCommand::Cancel));
+
+    let commands = root_list_commands(RootListRenderActions {
+        cancel: true,
+        ..RootListRenderActions::default()
+    });
+    assert_eq!(commands.len(), 1);
+    assert!(matches!(commands[0], RenderRootListDialogCommand::Cancel));
+}
+
+#[test]
 fn dispatch_render_commands_consumes_tab_bar_close_queue() {
     let root = test_root("render-command-tab-bar-close");
     fs::create_dir_all(&root).expect("create dir");
@@ -789,6 +846,33 @@ fn preset_picker_layout_uses_responsive_width_and_separate_management_copy() {
         PRESET_PICKER_FOOTER_HINT,
         "Type to filter · Up/Down to select · Enter to apply · F2 to edit · Esc to close"
     );
+}
+
+#[test]
+fn preset_picker_option_labels_cover_every_persisted_variant() {
+    use crate::app::render_dialogs::preset_picker::{entry_type_label, sort_label, source_label};
+
+    assert_eq!(entry_type_label(PresetEntryType::All), "Files and folders");
+    assert_eq!(entry_type_label(PresetEntryType::File), "Files");
+    assert_eq!(entry_type_label(PresetEntryType::Folder), "Folders");
+    assert_eq!(source_label(PresetSource::Auto), "Auto");
+    assert_eq!(source_label(PresetSource::Filelist), "FileList");
+    assert_eq!(source_label(PresetSource::Walker), "Walker");
+
+    let labels = [
+        (PresetSortMode::Score, "Score"),
+        (PresetSortMode::NameAsc, "Name ascending"),
+        (PresetSortMode::NameDesc, "Name descending"),
+        (PresetSortMode::ModifiedDesc, "Modified newest"),
+        (PresetSortMode::ModifiedAsc, "Modified oldest"),
+        (PresetSortMode::CreatedDesc, "Created newest"),
+        (PresetSortMode::CreatedAsc, "Created oldest"),
+        (PresetSortMode::SizeDesc, "Size largest"),
+        (PresetSortMode::SizeAsc, "Size smallest"),
+    ];
+    for (value, expected) in labels {
+        assert_eq!(sort_label(value), expected);
+    }
 }
 
 #[test]

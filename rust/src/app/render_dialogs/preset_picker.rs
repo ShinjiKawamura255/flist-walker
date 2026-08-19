@@ -42,7 +42,7 @@ pub(in crate::app) fn preset_summary(app: &FlistWalkerApp, catalog_index: usize)
     ))
 }
 
-fn entry_type_label(value: PresetEntryType) -> &'static str {
+pub(in crate::app) fn entry_type_label(value: PresetEntryType) -> &'static str {
     match value {
         PresetEntryType::All => "Files and folders",
         PresetEntryType::File => "Files",
@@ -50,7 +50,7 @@ fn entry_type_label(value: PresetEntryType) -> &'static str {
     }
 }
 
-fn source_label(value: PresetSource) -> &'static str {
+pub(in crate::app) fn source_label(value: PresetSource) -> &'static str {
     match value {
         PresetSource::Auto => "Auto",
         PresetSource::Filelist => "FileList",
@@ -58,7 +58,7 @@ fn source_label(value: PresetSource) -> &'static str {
     }
 }
 
-fn sort_label(value: PresetSortMode) -> &'static str {
+pub(in crate::app) fn sort_label(value: PresetSortMode) -> &'static str {
     match value {
         PresetSortMode::Score => "Score",
         PresetSortMode::NameAsc => "Name ascending",

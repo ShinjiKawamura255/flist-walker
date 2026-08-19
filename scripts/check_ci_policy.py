@@ -27,6 +27,14 @@ ALLOWED_WRITE_PERMISSIONS = {
     "release-tagged.yml": {"contents"},
     "security-audit.yml": {"issues"},
 }
+MONITOR_ISSUE_TITLES = {
+    "ci-canary.yml": "[ci-canary] Latest environment compatibility failed",
+    "security-audit.yml": "[security] Scheduled cargo audit failed",
+}
+MONITOR_NEEDS = {
+    "ci-canary.yml": "latest-compatibility",
+    "security-audit.yml": "audit",
+}
 LATEST_RUNNER_RE = re.compile(r"\b(?:ubuntu|windows|macos)-latest\b")
 ACTION_RE = re.compile(r"^\s*(?:-\s*)?uses:\s*([^@\s]+)@([^\s#]+)", re.MULTILINE)
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -303,6 +311,112 @@ def validate_ci_contract(text: str) -> list[str]:
     return violations
 
 
+def validate_monitor_issue_contract(name: str, text: str, title: str) -> list[str]:
+    violations: list[str] = []
+    blocks = _job_blocks(text)
+    report_blocks = [block for job, block in blocks if job == "report-failure"]
+    recovery_blocks = [
+        block for job, block in blocks if job == "resolve-recovered-issue"
+    ]
+    if len(report_blocks) != 1:
+        violations.append(f"{name}: exactly one report-failure job is required")
+    if len(recovery_blocks) != 1:
+        violations.append(f"{name}: exactly one resolve-recovered-issue job is required")
+    if len(report_blocks) != 1 or len(recovery_blocks) != 1:
+        return violations
+
+    report = report_blocks[0]
+    recovery = recovery_blocks[0]
+    needs = MONITOR_NEEDS[name]
+    safe_query = (
+        '--json number,title,author --jq "[.[] | select(.title == '
+        '\\"$TITLE\\" and .author.login == \\"app/github-actions\\")] '
+        '| first | .number // empty"'
+    )
+    default_branch_guard = (
+        "github.ref_name == github.event.repository.default_branch"
+    )
+    def exact_line(value: str) -> str:
+        return rf"(?m)^{re.escape(value)}$"
+
+    safe_assignment = (
+        '          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" '
+        '--state open --search "in:title $TITLE" --limit 100 '
+        + safe_query
+        + ')"'
+    )
+    issue_only_permissions = (
+        r"(?m)^    permissions:\n      issues: write\n    steps:$"
+    )
+    required_by_job = {
+        "report-failure": (
+            report,
+            {
+                "monitor dependency": exact_line(f"    needs: {needs}"),
+                "failure-only default-branch condition": exact_line(
+                    "    if: ${{ failure() && " + default_branch_guard + " }}"
+                ),
+                "least-privilege issue permission": issue_only_permissions,
+                "exact issue title": exact_line(f'          TITLE: "{title}"'),
+                "safe exact-title bot-owner issue assignment": exact_line(
+                    safe_assignment
+                ),
+                "failure issue-number comment target": exact_line(
+                    '            gh issue comment "$issue_number" --repo '
+                    '"$GITHUB_REPOSITORY" --body "$body"'
+                ),
+                "failure issue creation": exact_line(
+                    '            gh issue create --repo "$GITHUB_REPOSITORY" '
+                    '--title "$TITLE" --body "$body"'
+                ),
+            },
+        ),
+        "resolve-recovered-issue": (
+            recovery,
+            {
+                "monitor dependency": exact_line(f"    needs: {needs}"),
+                "success-only default-branch condition": exact_line(
+                    "    if: ${{ success() && " + default_branch_guard + " }}"
+                ),
+                "least-privilege issue permission": issue_only_permissions,
+                "exact issue title": exact_line(f'          TITLE: "{title}"'),
+                "safe exact-title bot-owner issue assignment": exact_line(
+                    safe_assignment
+                ),
+                "issue-number recovery close target": exact_line(
+                    '            gh issue close "$issue_number" --repo '
+                    '"$GITHUB_REPOSITORY" --reason completed '
+                    '--comment "Recovered: $RUN_URL"'
+                ),
+            },
+        ),
+    }
+    for job, (block, required_patterns) in required_by_job.items():
+        for label, pattern in required_patterns.items():
+            if re.search(pattern, block) is None:
+                violations.append(f"{name}: {job} missing {label}")
+        if len(re.findall(r"(?m)^\s+issue_number=", block)) != 1:
+            violations.append(
+                f"{name}: {job} must contain exactly one issue_number assignment"
+            )
+        if len(re.findall(r"(?m)^    permissions:$", block)) != 1:
+            violations.append(
+                f"{name}: {job} must contain exactly one permissions block"
+            )
+
+    if re.search(r"(?m)^\s+gh issue close ", report):
+        violations.append(f"{name}: report-failure must not close issues")
+    if len(re.findall(r"(?m)^\s+gh issue close ", recovery)) != 1:
+        violations.append(
+            f"{name}: resolve-recovered-issue must contain exactly one issue close command"
+        )
+    if re.search(r"(?m)^\s+gh issue (?:create|comment) ", recovery):
+        violations.append(
+            f"{name}: resolve-recovered-issue must not create or separately comment on issues"
+        )
+    return violations
+
+
 def collect_violations(root: Path) -> list[str]:
     workflows = root / ".github" / "workflows"
     violations: list[str] = []
@@ -321,6 +435,12 @@ def collect_violations(root: Path) -> list[str]:
             violations.extend(validate_guardian_contract(text))
         elif path.name == "dependabot-auto-merge.yml":
             violations.extend(validate_dependabot_contract(text))
+        if path.name in MONITOR_ISSUE_TITLES:
+            violations.extend(
+                validate_monitor_issue_contract(
+                    path.name, text, MONITOR_ISSUE_TITLES[path.name]
+                )
+            )
 
         if path.name != "ci-cross-platform.yml" and "name: CI Gate" in text:
             violations.append(f"{path.name}: CI Gate name is reserved")

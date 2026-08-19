@@ -49,11 +49,10 @@ jobs:
   report-failure:
     name: Track Security Audit Failure
     needs: audit
-    if: ${{ failure() }}
+    if: ${{ failure() && github.ref_name == github.event.repository.default_branch }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
-      contents: read
       issues: write
     steps:
       - name: Record runner image
@@ -70,10 +69,38 @@ jobs:
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" --json number --jq '.[0].number // empty')"
+          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" --limit 100 --json number,title,author --jq "[.[] | select(.title == \"$TITLE\" and .author.login == \"app/github-actions\")] | first | .number // empty")"
           body="Scheduled cargo audit failed: $RUN_URL. Triage within 24 hours; an advisory, database/tool failure, or accepted-risk change may require an immediate candidate PR."
           if [[ -n "$issue_number" ]]; then
             gh issue comment "$issue_number" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$body"
+          fi
+
+  resolve-recovered-issue:
+    name: Resolve Recovered Security Audit Issue
+    needs: audit
+    if: ${{ success() && github.ref_name == github.event.repository.default_branch }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      issues: write
+    steps:
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Close recovered security issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "[security] Scheduled cargo audit failed"
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue_number="$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" --limit 100 --json number,title,author --jq "[.[] | select(.title == \"$TITLE\" and .author.login == \"app/github-actions\")] | first | .number // empty")"
+          if [[ -n "$issue_number" ]]; then
+            gh issue close "$issue_number" --repo "$GITHUB_REPOSITORY" --reason completed --comment "Recovered: $RUN_URL"
           fi

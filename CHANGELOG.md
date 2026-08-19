@@ -4,25 +4,26 @@
 
 ## [Unreleased]
 ### Added
--
+- なし。
 
 ### Changed
--
+- 定期 security audit / latest canary が成功へ復帰した際、同じタイトルで GitHub Actions が作成した障害 issue だけを自動クローズするようにした。
+- SVG 描画依存を `resvg 0.48.1` へ更新し、保守終了した `rustybuzz` / `ttf-parser` を依存グラフから除去した。
 
 ### Fixed
--
+- 復元したタブを選択した際、バックグラウンドの古い要求よりアクティブタブのインデクシングを優先するよう修正した。
 
 ### Breaking
--
+- なし。
 
 ### Deprecated
--
+- なし。
 
 ### Security
--
+- `RUSTSEC-2026-0192` / `RUSTSEC-2026-0206` の保守終了警告を、SVG・フォント処理依存の更新によって解消した。
 
 ### Known issues
--
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
 
 ## [0.24.0] - 2026-08-19
 ### Added

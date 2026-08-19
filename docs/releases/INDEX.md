@@ -15,7 +15,7 @@ This directory contains records and evidence from specific release or candidate 
 
 | Collection | Contents |
 | --- | --- |
-| `evidence/v0.20.1/` | Release-body draft evidence for the current release candidate |
+| `evidence/v0.20.1/` | Historical release-body draft evidence retained for reference |
 | `evidence/v0.18.9/` | GUI reports, headful smoke evidence, logs, and release-body draft |
 | `evidence/v0.18.10/` | GUI report and release-body draft |
 | `evidence/v0.18.11/` | Release-body draft evidence only; no release record is stored here |

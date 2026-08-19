@@ -1,22 +1,61 @@
-use crate::app::FlistWalkerApp;
+use crate::app::{render::RenderRootListDialogCommand, FlistWalkerApp};
 use eframe::egui;
+
+#[derive(Default)]
+pub(in crate::app) struct RootListRenderActions {
+    pub(in crate::app) add_input: bool,
+    pub(in crate::app) browse_and_add: bool,
+    pub(in crate::app) start_edit: bool,
+    pub(in crate::app) save_edit: bool,
+    pub(in crate::app) cancel_edit: bool,
+    pub(in crate::app) enter_remove_mode: bool,
+    pub(in crate::app) remove_selected: bool,
+    pub(in crate::app) cancel_remove_mode: bool,
+    pub(in crate::app) apply: bool,
+    pub(in crate::app) ok: bool,
+    pub(in crate::app) cancel: bool,
+}
+
+pub(in crate::app) fn root_list_commands(
+    actions: RootListRenderActions,
+) -> Vec<RenderRootListDialogCommand> {
+    let candidates = [
+        (
+            actions.browse_and_add,
+            RenderRootListDialogCommand::BrowseAndAdd,
+        ),
+        (actions.add_input, RenderRootListDialogCommand::AddInput),
+        (actions.start_edit, RenderRootListDialogCommand::StartEdit),
+        (actions.save_edit, RenderRootListDialogCommand::SaveEdit),
+        (actions.cancel_edit, RenderRootListDialogCommand::CancelEdit),
+        (
+            actions.enter_remove_mode,
+            RenderRootListDialogCommand::EnterRemoveMode,
+        ),
+        (
+            actions.remove_selected,
+            RenderRootListDialogCommand::RemoveSelected,
+        ),
+        (
+            actions.cancel_remove_mode,
+            RenderRootListDialogCommand::CancelRemoveMode,
+        ),
+        (actions.apply, RenderRootListDialogCommand::Apply),
+        (actions.ok, RenderRootListDialogCommand::Ok),
+        (actions.cancel, RenderRootListDialogCommand::Cancel),
+    ];
+    candidates
+        .into_iter()
+        .filter_map(|(enabled, command)| enabled.then_some(command))
+        .collect()
+}
 
 pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     if !app.shell.features.root_browser.manage_list.open {
         return;
     }
 
-    let mut add_input = false;
-    let mut browse_and_add = false;
-    let mut start_edit = false;
-    let mut save_edit = false;
-    let mut cancel_edit = false;
-    let mut enter_remove_mode = false;
-    let mut remove_selected = false;
-    let mut cancel_remove_mode = false;
-    let mut apply = false;
-    let mut ok = false;
-    let mut cancel = false;
+    let mut actions = RootListRenderActions::default();
     let viewport_id = FlistWalkerApp::manage_root_list_viewport_id();
     let parent_rect = ctx.input(|input| input.viewport().outer_rect);
     let viewport_builder = FlistWalkerApp::manage_root_list_viewport_builder(parent_rect);
@@ -28,7 +67,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 .events
                 .contains(&egui::ViewportEvent::Close)
         }) {
-            cancel = true;
+            actions.cancel = true;
         }
 
         egui::CentralPanel::default().show(ui, |ui| {
@@ -62,13 +101,13 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     .add_sized([browse_width, row_height], egui::Button::new("Browse..."))
                     .clicked()
                 {
-                    browse_and_add = true;
+                    actions.browse_and_add = true;
                 }
                 if ui
                     .add_sized([add_width, row_height], egui::Button::new("Add"))
                     .clicked()
                 {
-                    add_input = true;
+                    actions.add_input = true;
                 }
             });
             if let Some(response) = add_response {
@@ -108,7 +147,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if manage.remove_mode {
                         if ui.button("Cancel").clicked() {
-                            cancel_remove_mode = true;
+                            actions.cancel_remove_mode = true;
                         }
                         if ui
                             .add_enabled(
@@ -117,7 +156,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             )
                             .clicked()
                         {
-                            remove_selected = true;
+                            actions.remove_selected = true;
                         }
                     } else {
                         if ui
@@ -127,7 +166,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             )
                             .clicked()
                         {
-                            enter_remove_mode = true;
+                            actions.enter_remove_mode = true;
                         }
                         if ui
                             .add_enabled(
@@ -136,7 +175,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             )
                             .clicked()
                         {
-                            start_edit = true;
+                            actions.start_edit = true;
                         }
                     }
                 });
@@ -208,17 +247,17 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                                     }
                                     if response.has_focus() {
                                         if ui.input(|input| input.key_pressed(egui::Key::Enter)) {
-                                            save_edit = true;
+                                            actions.save_edit = true;
                                         }
                                         if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
-                                            cancel_edit = true;
+                                            actions.cancel_edit = true;
                                         }
                                     }
                                     if ui.button("Save").clicked() {
-                                        save_edit = true;
+                                        actions.save_edit = true;
                                     }
                                     if ui.button("Cancel").clicked() {
-                                        cancel_edit = true;
+                                        actions.cancel_edit = true;
                                     }
                                     edit_response = Some(response);
                                 });
@@ -250,7 +289,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             let response = FlistWalkerApp::selectable_row(ui, selected, &label);
                             if response.double_clicked() {
                                 if app.select_manage_root_list_item(index) {
-                                    start_edit = true;
+                                    actions.start_edit = true;
                                 }
                             } else if response.clicked() {
                                 app.select_manage_root_list_item(index);
@@ -278,71 +317,19 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 style.visuals.widgets.open.expansion = 0.0;
                 ui.set_style(style);
                 if ui.put(apply_rect, egui::Button::new("Apply")).clicked() {
-                    apply = true;
+                    actions.apply = true;
                 }
                 if ui.put(ok_rect, egui::Button::new("OK")).clicked() {
-                    ok = true;
+                    actions.ok = true;
                 }
                 if ui.put(cancel_rect, egui::Button::new("Cancel")).clicked() {
-                    cancel = true;
+                    actions.cancel = true;
                 }
             });
         });
     });
 
-    if browse_and_add {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::BrowseAndAdd,
-        ));
-    }
-    if add_input {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::AddInput,
-        ));
-    }
-    if start_edit {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::StartEdit,
-        ));
-    }
-    if save_edit {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::SaveEdit,
-        ));
-    }
-    if cancel_edit {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::CancelEdit,
-        ));
-    }
-    if enter_remove_mode {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::EnterRemoveMode,
-        ));
-    }
-    if remove_selected {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::RemoveSelected,
-        ));
-    }
-    if cancel_remove_mode {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::CancelRemoveMode,
-        ));
-    }
-    if apply {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::Apply,
-        ));
-    }
-    if ok {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::Ok,
-        ));
-    }
-    if cancel {
-        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(
-            crate::app::render::RenderRootListDialogCommand::Cancel,
-        ));
+    for command in root_list_commands(actions) {
+        app.queue_render_command(crate::app::render::RenderCommand::RootListDialog(command));
     }
 }
