@@ -1,4 +1,4 @@
-use super::events::{Event, IndexData, TerminalOutcome};
+use super::events::{Event, IndexData, TerminalOutcome, WorkerOutcome};
 use super::invariants::{validate, SemanticSnapshot, TabSemanticSnapshot};
 use crate::app::tests::*;
 use crate::app::worker_channel::BoundedReceiver;
@@ -147,13 +147,13 @@ impl StatefulHarness {
             } else if let Some(request) = self.pending_searches.pop_front() {
                 self.respond_to_search(request);
             } else if let Some(request) = self.pending_previews.pop_front() {
-                self.respond_to_preview(request);
+                self.respond_to_preview(request, WorkerOutcome::Finished);
             } else if let Some(request) = self.pending_actions.pop_front() {
-                self.respond_to_action(request);
+                self.respond_to_action(request, WorkerOutcome::Finished);
             } else if let Some(request) = self.pending_sorts.pop_front() {
-                self.respond_to_sort(request);
+                self.respond_to_sort(request, WorkerOutcome::Finished);
             } else if let Some(request) = self.pending_filelists.pop_front() {
-                self.respond_to_filelist(request);
+                self.respond_to_filelist(request, TerminalOutcome::Canceled);
             } else {
                 self.app
                     .poll_index_response_with_budget_for_test(Duration::from_millis(20));
@@ -255,27 +255,27 @@ impl StatefulHarness {
                 }
             }
             Event::RequestPreview => self.request_preview(),
-            Event::CompleteOldestPreview => {
+            Event::CompleteOldestPreview(outcome) => {
                 if let Some(request) = self.pending_previews.pop_front() {
-                    self.respond_to_preview(request);
+                    self.respond_to_preview(request, outcome);
                 }
             }
             Event::RequestAction => self.request_action(),
-            Event::CompleteOldestAction => {
+            Event::CompleteOldestAction(outcome) => {
                 if let Some(request) = self.pending_actions.pop_front() {
-                    self.respond_to_action(request);
+                    self.respond_to_action(request, outcome);
                 }
             }
             Event::RequestSort => self.request_sort(),
-            Event::CompleteOldestSort => {
+            Event::CompleteOldestSort(outcome) => {
                 if let Some(request) = self.pending_sorts.pop_front() {
-                    self.respond_to_sort(request);
+                    self.respond_to_sort(request, outcome);
                 }
             }
             Event::RequestFileList => self.request_filelist(),
-            Event::CompleteOldestFileList => {
+            Event::CompleteOldestFileList(outcome) => {
                 if let Some(request) = self.pending_filelists.pop_front() {
-                    self.respond_to_filelist(request);
+                    self.respond_to_filelist(request, outcome);
                 }
             }
             Event::DeliverStaleIndex => self.deliver_stale_index(),
@@ -315,22 +315,25 @@ impl StatefulHarness {
                         (request_id == request.request_id).then_some(tab_id)
                     })
             }),
-            Event::CompleteOldestPreview => self
+            Event::CompleteOldestPreview(_) => self
                 .pending_previews
                 .front()
                 .and_then(|request| self.app.preview_request_tab(request.request_id)),
-            Event::CompleteOldestAction => self
+            Event::CompleteOldestAction(_) => self
                 .pending_actions
                 .front()
                 .and_then(|request| self.app.action_request_tab(request.request_id)),
-            Event::CompleteOldestSort => self
+            Event::CompleteOldestSort(_) => self
                 .pending_sorts
                 .front()
                 .and_then(|request| self.app.sort_request_tab(request.request_id)),
-            Event::CompleteOldestFileList => self.pending_filelists.front().and_then(|request| {
-                let workflow = &self.app.shell.features.filelist.workflow;
-                (workflow.pending_request_id == Some(request.request_id)).then_some(request.tab_id)
-            }),
+            Event::CompleteOldestFileList(_) => {
+                self.pending_filelists.front().and_then(|request| {
+                    let workflow = &self.app.shell.features.filelist.workflow;
+                    (workflow.pending_request_id == Some(request.request_id))
+                        .then_some(request.tab_id)
+                })
+            }
             Event::DeliverStaleIndex | Event::DeliverStaleSearch => None,
             _ => return None,
         };
@@ -496,12 +499,16 @@ impl StatefulHarness {
         self.app.request_preview_for_current();
     }
 
-    fn respond_to_preview(&mut self, request: PreviewRequest) {
+    fn respond_to_preview(&mut self, request: PreviewRequest, outcome: WorkerOutcome) {
+        let preview = match outcome {
+            WorkerOutcome::Finished => "controlled endurance preview",
+            WorkerOutcome::Failed => "Preview failed: controlled endurance failure",
+        };
         self.preview_responses
             .send(PreviewResponse {
                 request_id: request.request_id,
                 path: request.path,
-                preview: "controlled endurance preview".to_string(),
+                preview: preview.to_string(),
             })
             .expect("send preview response");
         self.app.poll_preview_response();
@@ -514,11 +521,15 @@ impl StatefulHarness {
         self.app.execute_selected();
     }
 
-    fn respond_to_action(&mut self, request: ActionRequest) {
+    fn respond_to_action(&mut self, request: ActionRequest, outcome: WorkerOutcome) {
+        let notice = match outcome {
+            WorkerOutcome::Finished => "controlled endurance action",
+            WorkerOutcome::Failed => "Action failed: controlled endurance failure",
+        };
         self.action_responses
             .send(ActionResponse {
                 request_id: request.request_id,
-                notice: "controlled endurance action".to_string(),
+                notice: notice.to_string(),
             })
             .expect("send action response");
         self.app.poll_action_response();
@@ -532,18 +543,19 @@ impl StatefulHarness {
         self.app.set_result_sort_mode(ResultSortMode::SizeDesc);
     }
 
-    fn respond_to_sort(&mut self, request: SortMetadataRequest) {
+    fn respond_to_sort(&mut self, request: SortMetadataRequest, outcome: WorkerOutcome) {
         let entries = request
             .paths
             .into_iter()
             .map(|path| {
-                (
-                    path,
-                    SortMetadata {
+                let metadata = match outcome {
+                    WorkerOutcome::Finished => SortMetadata {
                         size_bytes: Some(1),
                         ..SortMetadata::default()
                     },
-                )
+                    WorkerOutcome::Failed => SortMetadata::default(),
+                };
+                (path, metadata)
             })
             .collect();
         self.sort_responses
@@ -570,12 +582,26 @@ impl StatefulHarness {
         );
     }
 
-    fn respond_to_filelist(&mut self, request: FileListRequest) {
-        self.filelist_responses
-            .send(FileListResponse::Canceled {
+    fn respond_to_filelist(&mut self, request: FileListRequest, outcome: TerminalOutcome) {
+        let response = match outcome {
+            TerminalOutcome::Finished => FileListResponse::Finished {
+                request_id: request.request_id,
+                path: request.root.join("FileList.txt"),
+                root: request.root,
+                count: request.entries.len(),
+            },
+            TerminalOutcome::Failed => FileListResponse::Failed {
                 request_id: request.request_id,
                 root: request.root,
-            })
+                error: "controlled endurance failure".to_string(),
+            },
+            TerminalOutcome::Canceled => FileListResponse::Canceled {
+                request_id: request.request_id,
+                root: request.root,
+            },
+        };
+        self.filelist_responses
+            .send(response)
             .expect("send filelist response");
         self.app.poll_filelist_response();
     }
