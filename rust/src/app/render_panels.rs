@@ -44,6 +44,13 @@ pub(super) fn render_top_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     top_panel::render(app, ui);
 }
 
+pub(super) fn preview_text_style() -> egui::TextStyle {
+    // The proportional family has the asynchronously loaded CJK font first.
+    // Using the monospace fallback made Japanese glyphs and Latin text use
+    // different vertical metrics, which visibly shifted mixed-language lines.
+    egui::TextStyle::Body
+}
+
 pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     egui::Panel::bottom("status")
         .resizable(false)
@@ -140,7 +147,7 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                                     egui::vec2(preview_width, preview_height),
                                     egui::TextEdit::multiline(&mut app.shell.runtime.preview)
                                         .interactive(false)
-                                        .font(egui::TextStyle::Monospace)
+                                        .font(preview_text_style())
                                         .desired_width(f32::INFINITY)
                                         .desired_rows(1),
                                 );
