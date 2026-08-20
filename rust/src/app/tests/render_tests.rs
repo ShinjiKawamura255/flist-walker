@@ -497,6 +497,15 @@ fn results_scroll_enabled_is_false_when_preview_resize_is_active() {
 }
 
 #[test]
+fn preview_uses_proportional_text_style_for_cjk_baseline() {
+    assert_eq!(
+        render_panels::preview_text_style(),
+        egui::TextStyle::Body,
+        "preview must use the CJK-primary proportional family so mixed Japanese/Latin lines share font metrics"
+    );
+}
+
+#[test]
 fn result_row_text_pos_is_left_aligned_and_vertically_centered() {
     let inner = egui::Rect::from_min_max(egui::pos2(8.0, 10.0), egui::pos2(208.0, 34.0));
     let galley_size = egui::vec2(120.0, 14.0);
