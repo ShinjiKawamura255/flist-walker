@@ -115,6 +115,18 @@ impl TestProcessControl {
         }
     }
 
+    fn new_and_old_restart_fail() -> Self {
+        Self {
+            parent_exited: true,
+            restart_results: vec![
+                Err(anyhow::anyhow!("injected new restart failure")),
+                Err(anyhow::anyhow!("injected old restart failure")),
+            ],
+            restart_calls: 0,
+            restart_modes: Vec::new(),
+        }
+    }
+
     fn restart_calls(&self) -> usize {
         self.restart_calls
     }
@@ -575,6 +587,49 @@ fn tc159_restart_failure_restores_old_bundle_and_restarts_old_binary() {
         process.restart_modes(),
         &[UpdateRestartMode::Headless, UpdateRestartMode::Gui]
     );
+}
+
+#[test]
+fn tc186_regression_new_and_old_restart_failures_are_both_reported() {
+    let fixture = Fixture::new();
+    let current_exe = fixture.current_exe();
+    let mut prepared = prepare_transaction_with_id(
+        &current_exe,
+        fixture.sources(),
+        "00112233445566778899aabbccddeeff",
+        42,
+    )
+    .expect("prepare");
+    prepared
+        .register_helper(77, "matching-start-token")
+        .expect("register");
+    acknowledge_registered_helper(
+        prepared.marker_path(),
+        77,
+        "matching-start-token",
+        prepared.helper_path(),
+    )
+    .expect("ack");
+    let mut process = TestProcessControl::new_and_old_restart_fail();
+    let mut failures = NoFailure;
+
+    let error = execute_registered_transaction(
+        prepared.marker_path(),
+        "matching-start-token",
+        &mut process,
+        &mut failures,
+    )
+    .expect_err("both restart failures must surface");
+    let message = format!("{error:#}");
+
+    assert_old_bundle(&fixture.root, &current_exe);
+    assert_eq!(
+        read_marker(prepared.marker_path()).unwrap().phase,
+        Phase::RolledBack
+    );
+    assert_eq!(process.restart_calls(), 2);
+    assert!(message.contains("injected new restart failure"));
+    assert!(message.contains("injected old restart failure"));
 }
 
 #[test]
@@ -1239,4 +1294,17 @@ fn tc160_linux_synced_rename_preserves_the_old_dummy_file_as_backup() {
     assert_eq!(fs::read(&backup).expect("backup"), b"old");
     assert!(!source.exists());
     fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn regression_manual_self_update_helper_requests_visible_gui() {
+    let helper = include_str!("../../../../scripts/manual-self-update-test.ps1");
+
+    assert!(helper.contains("$psi.CreateNoWindow = $false"));
+    assert!(helper.contains(
+        "$psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal"
+    ));
+    assert!(helper.contains("$psi.EnvironmentVariables['LOCALAPPDATA'] = $LocalAppDataDir"));
+    assert!(helper.contains("$psi.EnvironmentVariables['APPDATA'] = $RoamingAppDataDir"));
+    assert!(helper.contains("$psi.EnvironmentVariables['USERPROFILE'] = $UserProfileDir"));
 }

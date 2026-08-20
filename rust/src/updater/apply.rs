@@ -16,6 +16,8 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 #[cfg(target_os = "windows")]
+use crate::path_utils::windows_non_verbatim_path;
+#[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
 #[cfg(target_os = "windows")]
@@ -109,36 +111,6 @@ fn attempt_helper_launch<T>(
             ))
         }
     }
-}
-
-#[cfg(target_os = "windows")]
-fn windows_non_verbatim_path(path: &Path) -> Option<std::path::PathBuf> {
-    use std::os::windows::ffi::{OsStrExt, OsStringExt};
-
-    const VERBATIM_PREFIX: &[u16] = &[b'\\' as u16, b'\\' as u16, b'?' as u16, b'\\' as u16];
-    const VERBATIM_UNC_PREFIX: &[u16] = &[
-        b'\\' as u16,
-        b'\\' as u16,
-        b'?' as u16,
-        b'\\' as u16,
-        b'U' as u16,
-        b'N' as u16,
-        b'C' as u16,
-        b'\\' as u16,
-    ];
-
-    let wide = path.as_os_str().encode_wide().collect::<Vec<_>>();
-    let normalized = if let Some(rest) = wide.strip_prefix(VERBATIM_UNC_PREFIX) {
-        [b'\\' as u16, b'\\' as u16]
-            .into_iter()
-            .chain(rest.iter().copied())
-            .collect::<Vec<_>>()
-    } else {
-        wide.strip_prefix(VERBATIM_PREFIX)?.to_vec()
-    };
-    Some(std::path::PathBuf::from(std::ffi::OsString::from_wide(
-        &normalized,
-    )))
 }
 
 #[cfg(any(not(target_os = "macos"), test))]

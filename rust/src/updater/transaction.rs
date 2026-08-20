@@ -312,7 +312,11 @@ fn execute_registered_transaction_with_restart_mode(
     let binary = target_path(&install_dir, &marker, TargetRole::Binary);
     if let Err(err) = process.restart(&binary, restart_mode) {
         rollback_transaction(&install_dir, marker_path, &mut marker)?;
-        let _ = process.restart(&binary, UpdateRestartMode::Gui);
+        if let Err(rollback_restart_error) = process.restart(&binary, UpdateRestartMode::Gui) {
+            return Err(anyhow::anyhow!(
+                "failed to restart updated application: {err:#}; old bundle restored but its restart also failed: {rollback_restart_error:#}"
+            ));
+        }
         return Err(err).context("failed to restart updated application; old bundle restored");
     }
     Ok(())
