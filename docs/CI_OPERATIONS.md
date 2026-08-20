@@ -123,4 +123,4 @@ required checksを一時的に`CI Gate`だけへ限定し、PR #54を`b2c0c959b7
 
 required checksを一時的に`CI Gate`だけへ限定し、PR #58を`a2b4e3de1debdfd751541d6c22685428d74f3b92`へauto-mergeした。同じ制御処理の`finally`で直ちに`CI Policy Guardian`を復元し、required checksが`CI Gate` / `CI Policy Guardian`（app ID `15368`、strict `true`）であることをread backした。続く完全なread-backでapproval、administrators適用、linear history、force-push/deletion、signature/conversation/restriction/lock/block/fork設定、repository auto-merge、rebase-only、branch自動削除が変更前snapshotと一致し、remote feature branchの自動削除も確認した。
 
-復元後の新guardian protected-route証跡は本記録を追加する後続PRとし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
+復元後の新guardian protected-route証跡は本記録を追加する[PR #59](https://github.com/ShinjiKawamura255/flist-walker/pull/59)とし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
