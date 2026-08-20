@@ -27,6 +27,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | How is a release built and published? | [RELEASE.md](RELEASE.md) |
 | How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | What evidence exists for a previous release? | [releases/INDEX.md](releases/INDEX.md) |
+| What native GUI residual evidence exists outside a release record? | [gui-test-results/2026-08-20-native-residuals.md](gui-test-results/2026-08-20-native-residuals.md) |
 | Where is active or completed task context? | [TASKS.md](TASKS.md) |
 
 ## Choose By Change Type
@@ -78,6 +79,7 @@ Root SDD files are concise entrypoints. Topic content remains grouped by SDD res
 | Active-task boundary and task routing | [TASKS.md](TASKS.md) |
 | Completed maintenance history | [history/INDEX.md](history/INDEX.md) |
 | Release records, rejected candidates, and evidence | [releases/INDEX.md](releases/INDEX.md) |
+| Sanitized native GUI residual results | [gui-test-results/2026-08-20-native-residuals.md](gui-test-results/2026-08-20-native-residuals.md) |
 
 ## Ownership Rules
 
