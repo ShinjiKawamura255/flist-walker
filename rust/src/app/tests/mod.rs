@@ -76,6 +76,7 @@ mod shortcut_navigation;
 mod shortcut_pin_focus;
 mod shortcut_root_history;
 mod shutdown;
+mod stateful_endurance;
 mod tab_background_responses;
 mod tab_contract;
 mod tab_drag;

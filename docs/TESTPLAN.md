@@ -27,6 +27,7 @@ ID-bearing tables and normative sections SHOULD be kept in ascending ID order to
 - VM-007 Supportability docs/templates: affected doc/template diff review and support wording checks.
 - VM-008 Runtime config bootstrap: `cd rust && cargo test` plus first-run/config precedence checks when relevant.
 - VM-009 CI reliability / pins / merge policy: CI policy unit tests, guardian fail-closed mode, workflow parse, Rust/audit regression, PR `CI Gate` / `CI Policy Guardian`, and repository-settings/protected-auto-merge evidence.
+- VM-010 Stateful endurance: deterministic fixed corpus/seed replay, invariant self-tests, quiescence, full Rust regression; add VM-002/003/009 when production orchestration/index/CI surfaces change.
 
 ## Docs-only Validation
 For documentation-only restructuring, apply VM-001:
@@ -78,6 +79,7 @@ For documentation-only restructuring, apply VM-001:
 - TC-177 -> SP-006 -> DES-005 -> FR-006
 - TC-178 -> SP-012 -> DES-012 -> NFR-005
 - TC-180 -> SP-021 -> DES-022 -> FR-039
+- TC-181, TC-182, TC-183, TC-184 -> SP-022 -> DES-023 -> NFR-013
 - TC-050, TC-051 -> SP-004 -> DES-004, DES-007 -> FR-009
 - TC-056 -> SP-012 -> DES-012 -> NFR-005
 - TC-074 -> SP-014 -> DES-014 -> FR-019

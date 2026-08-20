@@ -187,3 +187,10 @@
 - 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。
 - `FLISTWALKER_DISABLE_SELF_UPDATE` が truthy、または実行中バイナリと同一ディレクトリに同名ファイルがある場合は GUI 側で起動時 update request 自体を送らず、update install 側でも同じ判定で最終ガードする。
 - 手動試験用 override として `FLISTWALKER_UPDATE_FEED_URL`, `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION=1`, `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE=1`, `FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE` を読み取り、通常運用の GitHub latest 比較や startup failure dialog を内部検証用に再現できるようにする。
+
+- DES-023 Stateful endurance harness
+- `rust/src/app/tests/stateful_endurance/` は production の tab/root/query/index/search transition を呼ぶ test-only harness、論理 event generator、semantic snapshot/invariant checker、quiescence driver を所有する。
+- deterministic profile は request channel を test 側で制御し、worker completion の順序、stale、cancel、failure を sleep なしで注入する。generator は repository 内の小さな固定 PRNG を使い、第三者 dependency を追加しない。
+- semantic snapshot は実装 container の容量やアドレスではなく、live tab identity、active owner、root/query/result counts、request routing、queue/in-flight/progress state を記録する。ただし NFR-008 の固定 queue 上限は内部 contract として直接検証する。
+- quiescence は harness が観測した要求を terminal response へ進め、poll/dispatch を固定回数で反復する。未収束は timeout による flaky 判定ではなく、残存 owner/request と event trace を伴う deterministic failure とする。
+- required profile は通常の unit test に含め、scheduled profile は `#[ignore]` entrypoint と専用 workflow で実行する。実 worker profile は一時 root のみを使い、外部 action、updater、network、利用者設定を対象にしない。

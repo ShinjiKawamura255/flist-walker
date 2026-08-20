@@ -612,6 +612,20 @@ impl TabSessionState {
     pub(super) fn clear_action_request_routing(&mut self) {
         self.request_tab_routing.clear_action();
     }
+
+    #[cfg(test)]
+    pub(super) fn routed_tab_ids_for_test(&self) -> Vec<u64> {
+        let mut tab_ids = self
+            .request_tab_routing
+            .preview
+            .values()
+            .chain(self.request_tab_routing.action.values())
+            .chain(self.request_tab_routing.sort.values())
+            .copied()
+            .collect::<Vec<_>>();
+        tab_ids.sort_unstable();
+        tab_ids
+    }
 }
 
 impl<'a> IntoIterator for &'a TabSessionState {

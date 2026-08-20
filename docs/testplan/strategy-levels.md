@@ -8,6 +8,7 @@
 - P1: NFR-001（TC-156 weekly release-mode regression ceiling）
 - P0: FR-033, NFR-010（TC-157〜TC-160, TC-171 updater trust/transaction/recovery safety）
 - P0: FR-034（TC-161 FileList encoding/line-bound determinism）
+- P0: NFR-013（TC-181〜TC-184 stateful sequence safety / convergence / replay）
 
 ## Test levels
 - Unit:
@@ -20,6 +21,7 @@
 - 一時ディレクトリで index -> search -> action 連携を確認。
 - CLI 実行で出力契約を確認。
 - App test module policy:
+- stateful endurance は `rust/src/app/tests/stateful_endurance/` に generator、harness、invariants を分離し、通常 owner test を置き換えず sequence composition の責務だけを持たせる。
 - app-level regression は owner/command seam ごとに module を分けて保守する。update は `rust/src/app/tests/update_commands.rs`、session restore は `rust/src/app/tests/session_restore.rs`、tab/background routing は `rust/src/app/tests/tab_lifecycle.rs` / `rust/src/app/tests/tab_drag.rs` / `rust/src/app/tests/tab_background_responses.rs`、tab snapshot contract は `rust/src/app/tests/tab_contract.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を主対象にし、`app_core.rs` へ unrelated fixture regression を増やし続けない。
 - `rust/src/app/tests/tab_contract.rs` の `tab_state_contract_round_trip_pins_field_layout` は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout を固定する contract regression として扱う。
 - routing / cleanup の確認は `rust/src/app/response_flow.rs`、`rust/src/app/result_reducer.rs`、`rust/src/app/index_coordinator.rs`、`rust/src/app/pipeline.rs`、`rust/src/app/tab_state.rs`、`rust/src/app/worker_bus.rs` を owner seam として扱い、background response の stale discard は `tab_background_responses.rs`、tab close cleanup は `tab_lifecycle.rs` / `tab_result_cache.rs`、index lifecycle cleanup は `index_pipeline/filelist_lifecycle.rs` へ寄せる。

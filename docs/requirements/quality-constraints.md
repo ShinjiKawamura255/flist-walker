@@ -13,6 +13,7 @@
 - NFR-010: 自己更新の release metadata、署名済み manifest、署名、binary、sidecar は接続・無通信・要求・全体時間と decoded byte 数に固定上限を持ち、署名済み manifest を信頼する前に配布 asset を取得してはならない。失敗時はこの要求が作成した partial staging だけを削除し、既存 path や別 transaction の証跡を変更してはならない。
 - NFR-011: interactive CLI の index/search は入力ループをブロックせず、同一 query を含む古い応答を request identity で破棄し、結果更新中も利用者の選択を可能な限り維持しなければならない。worker 応答の反映は iteration ごとの固定件数上限を持ち、増分候補の追加で既存候補 path 全件を入力ループ上で複製してはならない。端末描画はフレーム途中の全画面消去状態を利用者へ表示してはならない。正常終了、cancel、setup 途中失敗、描画/入力エラー、unwind の各経路で terminal mode・alternate screen・cursor・bracketed paste を開始前相当へ復旧しなければならない。
 - NFR-012: FileList transaction と history persistence は UI frame / terminal event loop をブロックせず、FileList の未 settle な worker は selection 出力・root 切替・terminal 終了より先に完了または失敗として確定しなければならない。
+- NFR-013: GUI coordinator の非同期状態遷移は、決定論的に再生できる長い操作列で継続検証しなければならない。各操作後は tab identity、request routing、result/selection、bounded queue の安全不変条件を満たし、入力停止後は pending / in-flight / routing / progress state が有限 step で終端状態へ収束しなければならない。失敗証跡は seed、step、event、意味論的 state digest を含み、同じ revision で再生可能でなければならない。
 
 ### Constraints (CON)
 - CON-001: 本実装は Rust で行う。
@@ -33,3 +34,4 @@
 - R-010: runtime config file の自動生成や seed-only 挙動が不明瞭だと、環境変数での一時的な変更が効かず、起動時設定の期待が外れる。軽減策: 初回生成と既存ファイル優先、Windows での `%LocalAppData%\flistwalker\` と Linux/macOS の `~/.flistwalker/` を README / release README / SPEC に明記し、起動時に file が source of truth であることを固定する。UI state、saved roots、window trace も同じ保存先ルールに揃える。旧保存先からの移行は transition period に限って維持し、後続版で削除できるようにする。
 - R-011: sample ignore list を release asset にのみ依存させると、自己更新時や特殊な配布形態で sample が欠落しうる。軽減策: sample を埋め込み、起動時に local 実体を自動生成し、既存 ignore list は上書きしない。
 - R-012: updater helper または本体が置換途中で停止すると binary と sidecar の版が分離しうる。軽減策: 同一ディレクトリの create-new 準備、固定 lock、per-target write-ahead marker、backup、binary-last commit、hash 検証付き recovery を用い、曖昧な状態では自動 cleanup/再更新を停止する。
+- R-013: 個別の非同期回帰テストだけでは、tab 操作、root/query 変更、stale completion、cancel が長い順序で重なった場合の orphan state や別 tab 汚染を見逃しうる。軽減策: production transition API と controlled response channel を使う決定論的 state-sequence test を required PR test とし、実 worker と一時 root を使う長時間 profile を non-required scheduled workflow で補完する。

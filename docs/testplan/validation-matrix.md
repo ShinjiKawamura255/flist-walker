@@ -120,6 +120,11 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - Verify first-run config creation, existing-config precedence, and startup/session path behavior.
 - Update release/config docs when user-facing settings locations or defaults change.
 
+### Stateful Endurance Harness or Scheduled Soak Changes
+- Apply: VM-010. Production app orchestrationを変更した場合は VM-002、index dispatch/worker pathを変更した場合は VM-003、workflow/policyを変更した場合は VM-009も併用する。
+- deterministic profile は sleep、外部 action、updater、network、利用者設定へ依存させず、失敗に seed/step/event/state digest/replay command を含める。
+- fixed corpus、seeded profile、invariant self-test、quiescence、ignored extended/real-worker profileを対象に応じて実行する。
+
 ## Runner and commands
 - Runner: `cargo test`
 - Runner: `cargo test`, `cargo audit`
@@ -135,6 +140,7 @@ Use this checklist before selecting runner commands. The VM table below remains 
 | VM-007 Supportability docs/templates | `.github/ISSUE_TEMPLATE/*`, `docs/SUPPORT.md`, README support links | affected doc/template diff review; `rg` で redaction / telemetry wording and forbidden internal update override names を確認 | Rust 実装に触れない限り `cargo test` は不要 |
 | VM-008 Runtime config bootstrap | `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/session.rs`, persistence worker, `rust/src/updater.rs` | persistence/history変更は TC-167、TC-168 と contention/frame-latency fixture; `cd rust && cargo test` | 初回起動で config file が生成されること、既存 file が env より優先されること、seed-only 挙動を manual smoke で確認する |
 | VM-009 CI reliability / pins / merge policy | `.github/workflows/*`, `.github/dependabot.yml`, `rust/rust-toolchain.toml`, `rust/.cargo/audit.toml`, `scripts/check_ci_policy.py`, `scripts/tests/test_check_ci_policy.py`, `docs/CI_OPERATIONS.md`, `skills/flistwalker-pr-lifecycle/`, repository branch protection/auto-merge settings | `python -m unittest scripts.tests.test_check_ci_policy`; `python scripts/check_ci_policy.py --guardian .`; PyYAML parse of all workflow files; `cd rust && cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`, `cargo audit`; TC-056B audit skip negative/safe-skip contract review; PR `CI Gate` / `CI Policy Guardian`; repository/protection全体のbefore/after read-back; disposable Git repo で、clean な `master == origin/master` からのbranch開始と、PR identity・同期済みmaster・unused worktree・feature branchのmerge commitなし・patch等価性を満たすrebase相当branchの限定cleanupを確認し、dirty state・divergent master・PR不一致・patch差分・merge commit・`master`対象・worktree使用が停止することを確認する; 2commit以上のproof PRと`git log`/patch-tree比較 | guardianのtrusted-base checkout、API blob allowlist、immutable policy、read-only/no-secret/no-PR-code契約、scheduled audit/canary issue、Dependabotの正確なrebase auto-merge、required check source、approval 0、master force/delete禁止、rebase-only、linear history、remote feature branch自動削除、cleanなmasterからのfeature branch開始、マージ済み local branch の通常削除および厳格照合済みrebase branchの限定cleanup、clean worktreeのみのfast-forward同期、commit境界/order/message/author/patch-tree対応、各1 parent、merge commitなしをunit/API/PR evidenceで確認する |
+| VM-010 Stateful endurance | `rust/src/app/tests/stateful_endurance/`, test-only request-routing diagnostics, `.github/workflows/stateful-endurance.yml`, endurance sections in SDD/Testplan/CI operations | `cd rust && cargo test --locked stateful_endurance --lib`; `cargo test --locked`; `cargo fmt --check`; `cargo clippy --locked --all-targets -- -D warnings`; scheduled/ignored profile変更時は記載された extended と real-worker command。workflow変更時は VM-009を追加 | normal profile の追加時間を slowest hosted runner で10秒以内に保つ。native GUI interaction PASSの代替にはしない。real-worker profileはtemporary root限定、外部 action/updater/network禁止 |
 - 大規模 docs cleanup や plan 撤去のような docs-only 変更では、doc diff review と `rg` 参照整合確認を必須にする。Rust 実装に触れない限り `cargo test` は不要だが、変更対象が docs と `AGENTS.md` に限定されることを `git diff --stat` でも確認する。
 - app architecture のような構造改善後も、恒久的な検証基準は VM-001 / VM-002 / VM-003 を直接適用する。
 - `ui_model/` は display/highlight/preview concern に限定し、action decision は `actions.rs` 側の unit test と `TC-107` で固定する。
@@ -153,6 +159,7 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - GUI 手動試験（生成 fixture / isolated staged executable）: 操作時間を確保して `scripts/gui-headful-smoke.sh --duration 300`、または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 300` を実行し、スクリプトが表示・記録する staged window だけを操作する。workspace debug executable を直接起動しない。
 - GUI headful smoke: `scripts/gui-headful-smoke.sh --duration 10` または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 10`
 - GUI deterministic scenarios: `scripts/gui-deterministic-scenarios.sh` または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-deterministic-scenarios.ps1`
+- Stateful endurance required profile: `cd rust && cargo test --locked stateful_endurance --lib`
 - VM-005 self-update 手動試験は通常の GUI smoke / closure validation では実行しない。`scripts/manual-self-update-test.ps1` が作る private sandbox の copied executable と loopback inert feed だけを対象にし、production executable、production feed、外部 network endpoint を指定しない。`Download and Restart` は明示承認がある場合だけ実行する。
 - VM-005 GUI 手動試験:
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-self-update-test.ps1 -Mode SameVersion`
