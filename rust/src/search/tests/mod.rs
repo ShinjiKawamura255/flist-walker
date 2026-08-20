@@ -1,8 +1,65 @@
 use super::*;
 use crate::ui_model::has_visible_match;
+use memory_stats::memory_stats;
 use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 use std::time::{Duration, Instant};
+
+fn nearest_rank_percentile(samples: &[Duration], percentile: usize) -> Duration {
+    assert!(!samples.is_empty(), "percentile samples must not be empty");
+    assert!(
+        (1..=100).contains(&percentile),
+        "percentile must be in 1..=100"
+    );
+    let mut ordered = samples.to_vec();
+    ordered.sort_unstable();
+    let rank = ordered.len().saturating_mul(percentile).div_ceil(100);
+    ordered[rank.saturating_sub(1)]
+}
+
+fn physical_rss_bytes() -> Option<u64> {
+    memory_stats().map(|stats| stats.physical_mem as u64)
+}
+
+fn log_tc_185_rss(phase: &str, value: Option<u64>) {
+    match value {
+        Some(bytes) => eprintln!("tc_185 rss_phase={phase} physical_bytes={bytes}"),
+        None => eprintln!("tc_185 rss_phase={phase} physical_bytes=unavailable"),
+    }
+}
+
+fn update_peak_rss(peak: &mut Option<u64>) {
+    if let Some(current) = physical_rss_bytes() {
+        *peak = Some(peak.map_or(current, |previous| previous.max(current)));
+    }
+}
+
+#[test]
+fn tc_185_nearest_rank_percentiles_use_sorted_ceiling_rank() {
+    let samples = [
+        Duration::from_millis(70),
+        Duration::from_millis(10),
+        Duration::from_millis(50),
+        Duration::from_millis(30),
+        Duration::from_millis(20),
+        Duration::from_millis(60),
+        Duration::from_millis(40),
+    ];
+
+    assert_eq!(
+        nearest_rank_percentile(&samples, 50),
+        Duration::from_millis(40)
+    );
+    assert_eq!(
+        nearest_rank_percentile(&samples, 95),
+        Duration::from_millis(70)
+    );
+    assert_eq!(
+        nearest_rank_percentile(&samples, 99),
+        Duration::from_millis(70)
+    );
+}
 
 #[test]
 fn orders_by_score_and_limit() {
@@ -1061,6 +1118,97 @@ fn perf_search_100k_cold_warm_query_shapes() {
     assert!(warm.evaluated_candidate_count < cold.evaluated_candidate_count);
     assert!(warm_median < HARD_SAMPLE_LIMIT);
     assert!(warm_maximum < HARD_SAMPLE_LIMIT);
+
+    const SCALE_CANDIDATES: usize = 1_000_000;
+    const SCALE_SAMPLE_COUNT: usize = 7;
+    let before_fixture_rss = physical_rss_bytes();
+    log_tc_185_rss("before_fixture", before_fixture_rss);
+
+    let (after_fixture_rss, peak_search_rss) = {
+        let scale_entries = Arc::new(
+            (0..SCALE_CANDIDATES)
+                .map(|index| {
+                    Entry::file(PathBuf::from(format!(
+                        "/tmp/scale/group_{:03}/module_{index:07}.rs",
+                        index % 256
+                    )))
+                })
+                .collect::<Vec<_>>(),
+        );
+        assert_eq!(scale_entries.len(), SCALE_CANDIDATES);
+        let after_fixture_rss = physical_rss_bytes();
+        log_tc_185_rss("after_fixture", after_fixture_rss);
+        let mut peak_search_rss = after_fixture_rss;
+
+        for (label, query) in [
+            ("selective-fuzzy", "module_9999"),
+            ("dense-fuzzy", "module"),
+        ] {
+            let mut samples = Vec::with_capacity(SCALE_SAMPLE_COUNT);
+            let mut baseline = None;
+            for _ in 0..SCALE_SAMPLE_COUNT {
+                let mut cache = SearchPrefixCache::default();
+                let started = Instant::now();
+                let (result, error) = rank_search_results(
+                    &scale_entries,
+                    query,
+                    &root,
+                    100,
+                    false,
+                    true,
+                    true,
+                    &mut cache,
+                    SearchResultSortMode::Score,
+                    SearchResultSortScope::ShownResults,
+                );
+                samples.push(started.elapsed());
+                assert!(error.is_none(), "tc_185 {label}: {error:?}");
+                assert!(result.total_match_count > 0, "tc_185 {label} must match");
+                let signature = (
+                    result.total_match_count,
+                    result.evaluated_candidate_count,
+                    result.results.clone(),
+                );
+                if let Some(expected) = &baseline {
+                    assert_eq!(
+                        &signature, expected,
+                        "tc_185 {label} count/order changed across repetitions"
+                    );
+                } else {
+                    baseline = Some(signature);
+                }
+                update_peak_rss(&mut peak_search_rss);
+            }
+
+            let baseline = baseline.expect("tc_185 baseline result");
+            let p50 = nearest_rank_percentile(&samples, 50);
+            let p95 = nearest_rank_percentile(&samples, 95);
+            let p99 = nearest_rank_percentile(&samples, 99);
+            eprintln!(
+                "tc_185 shape={label} candidates={} samples={} evaluated={} matches={} results={} p50_ms={} p95_ms={} p99_ms={}",
+                scale_entries.len(),
+                samples.len(),
+                baseline.1,
+                baseline.0,
+                baseline.2.len(),
+                p50.as_millis(),
+                p95.as_millis(),
+                p99.as_millis()
+            );
+        }
+
+        (after_fixture_rss, peak_search_rss)
+    };
+    log_tc_185_rss("peak_search", peak_search_rss);
+    thread::sleep(Duration::from_secs(1));
+    let after_drop_quiescence_rss = physical_rss_bytes();
+    log_tc_185_rss("after_drop_quiescence", after_drop_quiescence_rss);
+    std::hint::black_box((
+        before_fixture_rss,
+        after_fixture_rss,
+        peak_search_rss,
+        after_drop_quiescence_rss,
+    ));
 }
 
 #[test]

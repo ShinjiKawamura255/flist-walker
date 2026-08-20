@@ -81,11 +81,13 @@
 - SHOULD: 正規表現クエリはクエリ単位でコンパイルし、候補ごとの再コンパイルを避ける。
 - MUST: TC-156 の 10万件 fixture は計測区間外で構築し、release mode で cold（空 prefix cache）と warm（cacheable query を seed 後に単調延長）を5回以上計測して median と maximum を報告する。
 - MUST: TC-156 は selective fuzzy、multi-token AND、exact、inverse/exclusion、anchor、OR、regex の sparse/dense shape と unknown-kind `ext:` shape を含め、cold/warm の path・score・order 一致と warm の評価候補削減を検証し、各 shape の maximum が 250ms 未満であることを weekly regression ceiling として検証する。
+- MUST: TC-185 は計測区間外で生成した exactly 1,000,000 件の固定 `Entry::file` 候補に対し、selective-fuzzy と dense-fuzzy の固定 query を空 cache から各 7 回実行する。nearest-rank の p50/p95/p99、候補・評価・match・result 件数を stable `tc_185` label で記録し、各 repetition の件数・path・score・order 一致を検証する。
+- MUST: TC-185 の RSS は `before_fixture`、`after_fixture`、`peak_search`、候補・result・cache drop 後の最大 1 秒 quiescence を経た `after_drop_quiescence` を記録する。取得不能は明示し、値は hosted baseline 蓄積中の observational signal として扱い hard threshold を設定しない。
 - MUST: prefix cache は候補 snapshot の live identity と、`ignore_case`、`prefer_relative`、正規化 root を key に含め、異なる検索意味論の候補集合を再利用してはならない。
 - MUST: unknown-kind 候補の `ext:` 評価は file projection と directory projection が異なる候補だけ filesystem kind を解決し、両 projection が同じ候補へ per-candidate probe を行ってはならない。
 - MUST: interactive CLI は candidate batch snapshot と root/ignore scope が同一の連続検索で同じ projected entry snapshot を再利用し、prefix cache の live identity を維持する。scope 変更時は再構築する。
 - MUST: GUI/TUI の新しい同一対象検索 request は旧 request を supersede し、候補評価中も最大 256 候補間隔で協調キャンセルを確認する。cancel 済みの partial result を publish してはならない。
-- MUST: weekly perf workflow は TC-156 を明示実行する。
+- MUST: weekly perf workflow は TC-156 と TC-185 を同じ固定 entrypoint から明示実行する。
 - SHOULD: プレビューキャッシュは上限管理し、長時間利用でメモリが無制限に増加しない。
 
 ### Preconditions / Postconditions
