@@ -168,7 +168,11 @@ impl StatefulHarness {
         }
 
         panic!(
-            "stateful endurance did not quiesce: seed={seed:#x}; phase=quiescence; max_steps={max_steps}; state={}; replay={}",
+            "stateful endurance did not quiesce: seed={seed:#x}; phase=quiescence; max_steps={max_steps}; index_routes={:?}; search_routes={:?}; response_routes={:?}; filelist_route={:?}; state={}; replay={}",
+            self.app.shell.indexing.request_tabs,
+            self.app.shell.search.request_routes_for_test(),
+            self.app.shell.tabs.routed_tab_ids_for_test(),
+            self.app.shell.features.filelist.workflow.pending_request_tab_id,
             self.snapshot().digest(),
             self.replay_command(seed),
         );
@@ -282,10 +286,24 @@ impl StatefulHarness {
     fn response_owner(&self, event: &Event) -> Option<Option<u64>> {
         let owner = match event {
             Event::DeliverOldestIndexData(_) | Event::CompleteOldestIndex(_) => {
-                self.pending_indexes.front().map(|request| request.tab_id)
+                self.pending_indexes.front().and_then(|request| {
+                    self.app
+                        .shell
+                        .indexing
+                        .request_tabs
+                        .get(&request.request_id)
+                        .copied()
+                })
             }
             Event::DeliverNewestIndexData(_) | Event::CompleteNewestIndex(_) => {
-                self.pending_indexes.back().map(|request| request.tab_id)
+                self.pending_indexes.back().and_then(|request| {
+                    self.app
+                        .shell
+                        .indexing
+                        .request_tabs
+                        .get(&request.request_id)
+                        .copied()
+                })
             }
             Event::CompleteOldestSearch => self.pending_searches.front().and_then(|request| {
                 self.app
@@ -309,6 +327,10 @@ impl StatefulHarness {
                 .pending_sorts
                 .front()
                 .and_then(|request| self.app.sort_request_tab(request.request_id)),
+            Event::CompleteOldestFileList => self.pending_filelists.front().and_then(|request| {
+                let workflow = &self.app.shell.features.filelist.workflow;
+                (workflow.pending_request_id == Some(request.request_id)).then_some(request.tab_id)
+            }),
             Event::DeliverStaleIndex | Event::DeliverStaleSearch => None,
             _ => return None,
         };
@@ -642,7 +664,7 @@ impl StatefulHarness {
             && self.app.shell.indexing.pending_finish.is_none()
             && self.app.shell.search.pending_request_id().is_none()
             && !self.app.shell.search.in_progress()
-            && self.app.shell.search.request_routes_for_test().is_empty()
+            && snapshot.routed_tab_ids.is_empty()
             && !snapshot.preview_pending
             && !snapshot.action_pending
             && !snapshot.sort_pending
@@ -667,6 +689,7 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
         .map(|(_, tab_id)| tab_id)
         .chain(app.shell.indexing.request_tabs.values().copied())
         .chain(app.shell.tabs.routed_tab_ids_for_test())
+        .chain(app.shell.features.filelist.workflow.pending_request_tab_id)
         .collect::<Vec<_>>();
     routed_tab_ids.sort_unstable();
 
@@ -766,6 +789,22 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
             .workflow
             .pending_request_id
             .is_some()
+            || app
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_request_tab_id
+                .is_some()
+            || app.shell.features.filelist.workflow.pending_root.is_some()
+            || app
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_cancel
+                .is_some()
+            || app.shell.features.filelist.workflow.cancel_requested
             || app
                 .shell
                 .features

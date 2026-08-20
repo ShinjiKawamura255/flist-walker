@@ -220,7 +220,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn enqueue_index_request(&mut self, req: IndexRequest) {
+    pub(super) fn enqueue_index_request(&mut self, req: IndexRequest) {
         self.shell
             .features
             .filelist
@@ -247,10 +247,21 @@ impl FlistWalkerApp {
             self.shell.indexing.request_tabs.remove(&request_id);
             self.shell.indexing.background_states.remove(&request_id);
         }
+        let stale_queued = self
+            .shell
+            .indexing
+            .pending_queue
+            .iter()
+            .filter_map(|queued| (queued.tab_id == req.tab_id).then_some(queued.request_id))
+            .collect::<Vec<_>>();
         self.shell
             .indexing
             .pending_queue
             .retain(|queued| queued.tab_id != req.tab_id);
+        for request_id in stale_queued {
+            self.discard_filelist_index_completion_notice(request_id);
+            self.shell.indexing.cleanup_request(request_id);
+        }
         self.shell.indexing.pending_queue.push_back(req);
 
         while self.shell.indexing.pending_queue.len() > Self::INDEX_MAX_QUEUE {

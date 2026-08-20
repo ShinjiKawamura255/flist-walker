@@ -218,6 +218,22 @@ fn tc_184_stateful_endurance_real_worker_soak() {
                 .features
                 .filelist
                 .workflow
+                .pending_request_tab_id
+                .is_none()
+            && app.shell.features.filelist.workflow.pending_root.is_none()
+            && app
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_cancel
+                .is_none()
+            && !app.shell.features.filelist.workflow.cancel_requested
+            && app
+                .shell
+                .features
+                .filelist
+                .workflow
                 .pending_after_index
                 .is_none()
             && !app.shell.features.filelist.workflow.in_progress
