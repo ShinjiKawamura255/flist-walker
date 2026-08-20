@@ -13,6 +13,7 @@
   - after structural refactoring that touches GUI-adjacent app orchestration
 - Evidence location: `rust/target/gui-smoke/evidence/`.
 - Evidence rule: release-candidate and VM-002 GUI-adjacent checks must record a dated report with environment and separate Deterministic, Native interaction, and Liveness statuses for every required `GSM-*` case. Use `docs/GUI-TESTREPORT.template.md`; a PASS on one axis never implies PASS on another. Chat-only confirmation is acceptable only for exploratory development smoke and must not be used as release-candidate evidence.
+- Evidence history is append-only. A later residual run adds a dated addendum or a new result record; it does not rewrite the status or reason observed by an earlier run.
 - Fixture command: `scripts/gui-smoke-fixture.sh`.
 - Deterministic scenario commands:
   - Linux/macOS/WSL: `scripts/gui-deterministic-scenarios.sh`
@@ -48,7 +49,7 @@
 | GSM-001 | Startup and indexing | Launch with the fixture root. Wait for indexing to settle. | Result list appears, status is understandable, first row is selected when candidates exist, and query input accepts typing immediately. |
 | GSM-002 | Search and highlight | Search `alpha`, `'alpha`, `!old`, `^README`, `end$`, and `alpha|beta`. | Non-matches hide, operators behave consistently with CLI/unit contract, and highlights are visible on matched text. |
 | GSM-003 | Preview and selection | Move current row with arrows, page keys, mouse selection, and preview visibility toggle if available. | Preview follows current row without blocking list movement; binary/unreadable placeholder is not shown for text fixture files. |
-| GSM-004 | Open/copy action routing | Use TC-050/051 recording/authorization seams by default. Exercise native open/copy/open-folder only with explicit authorization and only against fixture targets. | Deterministic evidence records resolved/display paths and backend call count without an OS action. If authorized natively, paths with spaces remain intact and notices/errors do not freeze the GUI. |
+| GSM-004 | Open/copy action routing | Use TC-050/051 recording/authorization seams by default. Treat external open/reveal and Copy Path as separate native axes. Exercise external open/reveal only against fixture targets in a disposable owned handler/session that cannot update a real default application's MRU or reuse an existing window. Exercise Copy Path only through the clipboard safety gate below. | Deterministic evidence records resolved/display paths and backend call count without an OS action. Native PASS requires the axis-specific safety gate, intact spaces, exact target attribution, and a responsive GUI; one native axis never promotes the other. |
 | GSM-005 | Sort modes | Switch `Score`, `Name`, `Modified`, and `Created`; type a query while date sorting is active. | Sorting changes order without losing input responsiveness; returning to `Score` produces a coherent ranked list. |
 | GSM-006 | FileList and dialogs | Confirm the fixture is loaded from `FileList.txt`; run Create File List and exercise confirm/cancel paths. | FileList source is visible, dialogs describe the action, cancel leaves state clean, and completion notice is understandable. |
 | GSM-007 | Tabs | Set `Depth: ≤ 2` from the second-row control between `Folders` and `Preview`, create a new tab, switch roots/queries/depth per tab, close a tab, and reorder tabs when supported by the environment. | Each tab keeps its root/query/results/depth; the limited tab continues to show `Depth: ≤ 2`, other existing tabs are unchanged, a new tab starts at `Depth: All`, and closing/reordering does not swap active tab identity. |
@@ -68,13 +69,23 @@
 - Pull-request CI does not require native GUI launch unless a deterministic platform harness is explicitly added later.
 - CI continues to own `cargo test`, clippy, coverage, audit, and performance gates.
 
+## Native Residual Safety Gates
+- Axis statuses remain `PASS`, `FAIL`, `SKIPPED`, or `NOT RUN`. Environment or authorization prerequisites are recorded as `NOT RUN — <exact prerequisite>`; `blocked` is workflow state, not a GUI axis status.
+- Japanese literal text and Japanese IME composition are separate evidence. Literal injection proves committed Unicode rendering only. Composition PASS additionally requires composition events plus identifier-only record/restore/read-back of a staged-window-scoped input profile and IME mode; otherwise composition remains NOT RUN.
+- Multi-display PASS requires before/cross-display/return window coordinates and a responsive interaction after crossing. Alternate-DPI PASS additionally requires at least two observed display scale factors; two displays at one scale leave alternate DPI NOT RUN.
+- Copy Path must not read pre-existing clipboard content. First check format count and sequence number only. If nonempty, leave it untouched and record NOT RUN. If empty, compare only the test-generated known fixture value in memory, emit no content, stop without clearing on an unexpected sequence change, otherwise clear and read back zero formats.
+- External open/reveal requires a disposable owned handler/session. Without one, do not invoke the real default application, change associations, close a reused window, or promote deterministic routing to native PASS.
+- Real UNC requires an existing, authorized, reachable fixture share. Do not create a share, enumerate unrelated network paths, or disclose an unmasked server/share name merely to remove NOT RUN.
+- Updater/network native evidence uses only an isolated staged target and literal `127.0.0.1` or `::1` listener/feed/asset/redirect URLs. Record production-env absence, canonical staged path, pre/post target hash, updater-artifact count, timeout, process/server cleanup, and rollback. If signing material is absent, a 404/no-redirect failure-path PASS may coexist with signed apply/restart NOT RUN.
+- User-settings persistence is exercised only under isolated `LOCALAPPDATA`/`APPDATA`/`USERPROFILE`. Record the isolated path class, a harmless state change, staged restart read-back, and zero use of the real profile.
+
 ## Deterministic Scenario Map
 | GSM | Canonical group(s) | Deterministic claim | Native residual |
 | --- | --- | --- | --- |
 | GSM-001 | `surface-dialog-theme`, `bounded-index`, `stale-routing` | Startup surface, status, render frame, and latest index response state. | Native focus/typing and visible indexing still need direct observation. |
 | GSM-002 | `surface-dialog-theme`, `stale-routing` plus VM-004 | Query/result/highlight surface and stale search rejection. | Visual highlight quality and actual typing remain native. |
 | GSM-003 | `surface-dialog-theme`, `stale-routing` | Selection/preview state and render behavior. | Mouse/key feel and preview latency remain native. |
-| GSM-004 | `action-guard`, `stale-routing` | Root confinement, recording-executor calls, display/execution paths, stale completion rejection. | External action and clipboard are NOT RUN without explicit authorization; real UNC is separate. |
+| GSM-004 | `action-guard`, `stale-routing` | Root confinement, recording-executor calls, display/execution paths, stale completion rejection. | External open/reveal remains NOT RUN without a disposable owned handler/session; Copy Path remains NOT RUN unless its clipboard safety gate passes. Real UNC is separate. |
 | GSM-005 | `surface-dialog-theme`, `stale-routing` | Sort controls/result state and stale response behavior. | Perceived responsiveness while typing remains native. |
 | GSM-006 | `surface-dialog-theme`, `bounded-index`, `stale-routing` | FileList/dialog command and latest-response state. | Visible source label and fixture-local dialog interaction remain native. |
 | GSM-007 | `tab-ownership`, `background-routing`, `stale-routing` | Large payload ownership, tab identity, background response isolation. | Visible drag/reorder and keyboard interaction remain native. |
