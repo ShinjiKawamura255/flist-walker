@@ -20,6 +20,12 @@ use std::os::windows::process::CommandExt;
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(target_os = "windows")]
+const WINDOWS_RESTART_ROUNDS: usize = 3;
+#[cfg(target_os = "windows")]
+const WINDOWS_RESTART_RETRY_DELAY: Duration = Duration::from_millis(100);
+#[cfg(target_os = "windows")]
+const WINDOWS_GUI_STARTUP_GRACE: Duration = Duration::from_millis(500);
 
 pub(in crate::updater) trait ProcessControl {
     fn wait_for_exit(&mut self, pid: u32, timeout: Duration) -> Result<bool>;
@@ -241,18 +247,76 @@ pub(super) fn wait_for_process_exit(_pid: u32, _timeout: Duration) -> Result<boo
 
 #[cfg(target_os = "windows")]
 pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<()> {
+    // Regression guard: a one-shot CreateProcessW failure used to leave the application closed
+    // after rollback. Keep bounded retries, non-verbatim fallback, and the GUI startup grace in
+    // sync with the TC-186 regression tests.
+    attempt_windows_restart_launch(
+        target,
+        |launch_path| launch_windows_restart_once(launch_path, mode),
+        std::thread::sleep,
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn launch_windows_restart_once(target: &Path, mode: UpdateRestartMode) -> std::io::Result<()> {
     let mut command = Command::new(target);
     if mode == UpdateRestartMode::Headless {
         command.arg(INTERNAL_UPDATE_RESTART_FLAG);
     }
     // The updater must not surface a console even if a Windows build temporarily uses the
-    // console subsystem. The restart mode determines whether the child opens the GUI or only
-    // completes transaction recovery.
+    // console subsystem. Headless restart is allowed to exit immediately after recovery, while
+    // GUI restart must remain alive long enough to reject an immediate startup failure.
     command.creation_flags(CREATE_NO_WINDOW);
-    command
-        .spawn()
-        .with_context(|| format!("failed to restart {}", target.display()))?;
+    let mut child = command.spawn()?;
+    if mode == UpdateRestartMode::Gui {
+        std::thread::sleep(WINDOWS_GUI_STARTUP_GRACE);
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                return Err(std::io::Error::other(format!(
+                    "restarted GUI exited during startup: {status}"
+                )));
+            }
+            Ok(None) => {}
+            Err(error) => {
+                // Do not retry while an unobserved child may still be alive; duplicate GUI
+                // processes would race the same recovery marker.
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+        }
+    }
     Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn attempt_windows_restart_launch(
+    target: &Path,
+    mut launch: impl FnMut(&Path) -> std::io::Result<()>,
+    mut pause: impl FnMut(Duration),
+) -> Result<()> {
+    let fallback = crate::path_utils::windows_non_verbatim_path(target);
+    let mut failures = Vec::new();
+    for attempt in 1..=WINDOWS_RESTART_ROUNDS {
+        for candidate in std::iter::once(target).chain(fallback.as_deref()) {
+            match launch(candidate) {
+                Ok(()) => return Ok(()),
+                Err(error) => failures.push(format!(
+                    "attempt {attempt} via {} failed: {error}",
+                    crate::path_utils::normalize_path_for_display(candidate)
+                )),
+            }
+        }
+        if attempt < WINDOWS_RESTART_ROUNDS {
+            pause(WINDOWS_RESTART_RETRY_DELAY);
+        }
+    }
+    Err(anyhow::anyhow!(
+        "failed to restart {} after {} rounds: {}",
+        crate::path_utils::normalize_path_for_display(target),
+        WINDOWS_RESTART_ROUNDS,
+        failures.join("; ")
+    ))
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
@@ -269,4 +333,98 @@ pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<(
 #[cfg(target_os = "macos")]
 pub(super) fn restart_target(_target: &Path, _mode: UpdateRestartMode) -> Result<()> {
     bail!("macOS auto-update is unsupported")
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod restart_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn tc186_regression_windows_restart_retries_a_transient_spawn_failure() {
+        let target = Path::new(r"C:\tools\flistwalker.exe");
+        let mut attempted = Vec::new();
+        let mut pauses = Vec::new();
+
+        attempt_windows_restart_launch(
+            target,
+            |path| {
+                attempted.push(path.to_path_buf());
+                if attempted.len() == 1 {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        "transient launch rejection",
+                    ))
+                } else {
+                    Ok(())
+                }
+            },
+            |delay| pauses.push(delay),
+        )
+        .expect("bounded retry should recover a transient launch failure");
+
+        assert_eq!(attempted, vec![target.to_path_buf(), target.to_path_buf()]);
+        assert_eq!(pauses, vec![WINDOWS_RESTART_RETRY_DELAY]);
+    }
+
+    #[test]
+    fn tc186_regression_windows_restart_retries_without_verbatim_prefix() {
+        let target = Path::new(r"\\?\C:\very-long\flistwalker.exe");
+        let mut attempted = Vec::new();
+
+        attempt_windows_restart_launch(
+            target,
+            |path| {
+                attempted.push(path.to_path_buf());
+                if attempted.len() == 1 {
+                    Err(std::io::Error::new(
+                        std::io::ErrorKind::PermissionDenied,
+                        "verbatim launch rejection",
+                    ))
+                } else {
+                    Ok(())
+                }
+            },
+            |_| {},
+        )
+        .expect("normalized-path fallback should launch the same target");
+
+        assert_eq!(
+            attempted,
+            vec![
+                target.to_path_buf(),
+                PathBuf::from(r"C:\very-long\flistwalker.exe")
+            ]
+        );
+    }
+
+    #[test]
+    fn tc186_regression_windows_restart_exhaustion_is_bounded_and_diagnostic() {
+        let target = Path::new(r"C:\tools\flistwalker.exe");
+        let mut attempts = 0;
+        let mut pauses = Vec::new();
+
+        let error = attempt_windows_restart_launch(
+            target,
+            |_| {
+                attempts += 1;
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    format!("launch rejection {attempts}"),
+                ))
+            },
+            |delay| pauses.push(delay),
+        )
+        .expect_err("persistent failure must stop after the bounded retries");
+
+        assert_eq!(attempts, WINDOWS_RESTART_ROUNDS);
+        assert_eq!(
+            pauses,
+            vec![WINDOWS_RESTART_RETRY_DELAY; WINDOWS_RESTART_ROUNDS - 1]
+        );
+        let message = error.to_string();
+        assert!(message.contains("after 3 rounds"));
+        assert!(message.contains("launch rejection 1"));
+        assert!(message.contains("launch rejection 3"));
+    }
 }

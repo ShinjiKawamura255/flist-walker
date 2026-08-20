@@ -42,6 +42,7 @@
 - MUST: helper は acknowledgement 後に旧 process の終了を最大 30 秒待ち、timeout を binary commit 前失敗として扱わなければならない。
 - MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の native `ReplaceFileW(target, new, backup, 0, null, null)` を updater process 内で使い、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は同一 directory の no-overwrite hard-link promotion と source unlink を使わなければならない。
 - MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
+- MUST: Windows の更新後 process 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical target が verbatim drive/UNC形式なら各ラウンドで同一 path の非verbatim表現も試さなければならない。GUI restart は生成後500ms以内に終了した process を起動失敗として扱い、新版起動失敗時は旧 bundle へ rollback して同じ起動契約で旧GUIを再起動しなければならない。新版と旧版の起動が両方失敗した場合は、両方の診断を失わず helper failure として終了しなければならない。
 - MUST: 起動時 recovery は marker phase と旧新 hash から precommit rollback、完全な committed bundle、rolled-back bundle のいずれかへ収束させなければならない。live 登録 helper が存在する transaction と同時に回復してはならず、欠落 backup、hash 不一致、不正 state 遷移、path/type 変化は ambiguous として証跡を保持し、新しい update を開始してはならない。
 - MUST: 検証では Windows/Linux の同一 filesystem 上にある inert dummy file だけを使い、実行中 FlistWalker binary の置換または外部 application の起動を行ってはならない。
 - SHOULD: 署名公開鍵が埋め込まれていない開発用ビルドでは、自動更新を manual-only として扱える。
@@ -80,6 +81,13 @@
 - Non-goals: directory の実行権限不足、antivirus/WDAC による executable block、別 process の file lock を迂回すること。
 - Related Tests: TC-179; `tc179_regression_helper_launch_does_not_force_install_directory_as_current_dir`, `tc179_regression_windows_helper_launch_retries_without_verbatim_prefix`, `tc179_regression_windows_helper_spawn_error_hides_verbatim_prefix`, `tc179_regression_windows_normal_helper_path_is_not_retried`, `tc179_regression_failed_helper_launch_cleanup_allows_a_fresh_prepare`.
 - Notes for Future Changes: helper の working directory、Windows path spelling、または spawn error の組み立てを変更するときは TC-179 と VM-005 の sandbox self-update を同一変更で確認する。
+
+### Regression Guard: windows-updater-restart-handoff
+- Scenario: Windows の更新で新版 process の生成が一過性に失敗し、旧 bundle への rollback 後に行う旧GUIの単発再起動も失敗すると、installation は安全に旧版へ戻っていても画面が再表示されず、利用者が手動起動するまで停止する。
+- Expected Behavior: 新版とrollback後の旧版は、最大3ラウンド・100ms間隔、verbatim path時の非verbatim代替を含む同じbounded restart契約を使う。GUI childが500ms以内に終了した場合も再試行し、全試行失敗時は新版と旧版の両エラーを保持する。
+- Non-goals: antivirus/WDACや権限設定を迂回すること、500ms経過後の任意時点のGUI crashを完全検出すること、production binaryを置換する自動試験。
+- Related Tests: TC-159, TC-160, TC-186; `tc186_regression_windows_restart_retries_a_transient_spawn_failure`, `tc186_regression_windows_restart_retries_without_verbatim_prefix`, `tc186_regression_windows_restart_exhaustion_is_bounded_and_diagnostic`, `tc186_regression_new_and_old_restart_failures_are_both_reported`.
+- Notes for Future Changes: restart attempt数、待機時間、path表現、GUI startup grace、rollback後の再起動error処理を変更するときはTC-186とVM-005を同一変更で確認し、旧版復旧を単発・silent failureへ戻さない。
 
 ## SP-015 Ignore List フィルタ
 ### Requirements

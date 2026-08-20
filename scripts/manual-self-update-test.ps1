@@ -192,6 +192,10 @@ if (-not $RootPath) {
 
 $AppSandboxDir = Join-Path $SandboxDir 'app'
 $FeedDir = Join-Path $SandboxDir 'feed'
+$ProfileDir = Join-Path $SandboxDir 'profile'
+$LocalAppDataDir = Join-Path $ProfileDir 'LocalAppData'
+$RoamingAppDataDir = Join-Path $ProfileDir 'RoamingAppData'
+$UserProfileDir = Join-Path $ProfileDir 'UserProfile'
 $SandboxExe = Join-Path $AppSandboxDir 'flistwalker.exe'
 $AssetName = "FlistWalker-$FeedVersion-windows-x86_64.exe"
 $AssetPath = Join-Path $FeedDir $AssetName
@@ -209,6 +213,9 @@ $ReleaseUrl = "http://127.0.0.1:$Port/"
 
 New-Item -ItemType Directory -Path $AppSandboxDir -Force | Out-Null
 New-Item -ItemType Directory -Path $FeedDir -Force | Out-Null
+New-Item -ItemType Directory -Path $LocalAppDataDir -Force | Out-Null
+New-Item -ItemType Directory -Path $RoamingAppDataDir -Force | Out-Null
+New-Item -ItemType Directory -Path $UserProfileDir -Force | Out-Null
 
 Copy-Item -LiteralPath $AppPath -Destination $SandboxExe -Force
 Copy-Item -LiteralPath $UpdateBinaryPath -Destination $AssetPath -Force
@@ -288,7 +295,12 @@ try {
     $psi.FileName = $SandboxExe
     $psi.WorkingDirectory = Split-Path -Parent $SandboxExe
     $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $false
+    $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
     $psi.Arguments = '--root ' + (New-QuotedArgument -Value $RootPath)
+    $psi.EnvironmentVariables['LOCALAPPDATA'] = $LocalAppDataDir
+    $psi.EnvironmentVariables['APPDATA'] = $RoamingAppDataDir
+    $psi.EnvironmentVariables['USERPROFILE'] = $UserProfileDir
     $psi.EnvironmentVariables['FLISTWALKER_UPDATE_FEED_URL'] = $FeedUrl
     if ($Mode -eq 'SameVersion') {
         $psi.EnvironmentVariables['FLISTWALKER_UPDATE_ALLOW_SAME_VERSION'] = '1'
