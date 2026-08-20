@@ -138,6 +138,16 @@ impl StatefulHarness {
         }
     }
 
+    pub(super) fn pending_worker_request_counts(&mut self) -> (usize, usize, usize, usize) {
+        self.capture_requests();
+        (
+            self.pending_previews.len(),
+            self.pending_actions.len(),
+            self.pending_sorts.len(),
+            self.pending_filelists.len(),
+        )
+    }
+
     pub(super) fn quiesce(&mut self, seed: u64) {
         let max_steps = self.replay_steps.saturating_mul(3).saturating_add(256);
         for step in 0..max_steps {

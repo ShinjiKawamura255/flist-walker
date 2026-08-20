@@ -2,7 +2,7 @@ use super::*;
 use crate::ui_model::has_visible_match;
 use memory_stats::memory_stats;
 use std::fs;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -29,9 +29,61 @@ fn log_tc_185_rss(phase: &str, value: Option<u64>) {
     }
 }
 
-fn update_peak_rss(peak: &mut Option<u64>) {
+fn record_peak_rss(peak: &AtomicU64, observed: &AtomicBool) {
     if let Some(current) = physical_rss_bytes() {
-        *peak = Some(peak.map_or(current, |previous| previous.max(current)));
+        observed.store(true, Ordering::Release);
+        peak.fetch_max(current, Ordering::AcqRel);
+    }
+}
+
+struct RssPeakSampler {
+    stop: Arc<AtomicBool>,
+    peak: Arc<AtomicU64>,
+    observed: Arc<AtomicBool>,
+    worker: Option<thread::JoinHandle<()>>,
+}
+
+impl RssPeakSampler {
+    fn start(initial: Option<u64>) -> Self {
+        let stop = Arc::new(AtomicBool::new(false));
+        let peak = Arc::new(AtomicU64::new(initial.unwrap_or(0)));
+        let observed = Arc::new(AtomicBool::new(initial.is_some()));
+        let worker_stop = Arc::clone(&stop);
+        let worker_peak = Arc::clone(&peak);
+        let worker_observed = Arc::clone(&observed);
+        let worker = thread::spawn(move || loop {
+            record_peak_rss(&worker_peak, &worker_observed);
+            if worker_stop.load(Ordering::Acquire) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        });
+        Self {
+            stop,
+            peak,
+            observed,
+            worker: Some(worker),
+        }
+    }
+
+    fn finish(mut self) -> Option<u64> {
+        self.stop_and_join();
+        self.observed
+            .load(Ordering::Acquire)
+            .then(|| self.peak.load(Ordering::Acquire))
+    }
+
+    fn stop_and_join(&mut self) {
+        self.stop.store(true, Ordering::Release);
+        if let Some(worker) = self.worker.take() {
+            worker.join().expect("tc_185 RSS sampler must join");
+        }
+    }
+}
+
+impl Drop for RssPeakSampler {
+    fn drop(&mut self) {
+        self.stop_and_join();
     }
 }
 
@@ -1138,7 +1190,7 @@ fn perf_search_100k_cold_warm_query_shapes() {
         assert_eq!(scale_entries.len(), SCALE_CANDIDATES);
         let after_fixture_rss = physical_rss_bytes();
         log_tc_185_rss("after_fixture", after_fixture_rss);
-        let mut peak_search_rss = after_fixture_rss;
+        let peak_sampler = RssPeakSampler::start(after_fixture_rss);
 
         for (label, query) in [
             ("selective-fuzzy", "module_9999"),
@@ -1177,7 +1229,6 @@ fn perf_search_100k_cold_warm_query_shapes() {
                 } else {
                     baseline = Some(signature);
                 }
-                update_peak_rss(&mut peak_search_rss);
             }
 
             let baseline = baseline.expect("tc_185 baseline result");
@@ -1197,7 +1248,7 @@ fn perf_search_100k_cold_warm_query_shapes() {
             );
         }
 
-        (after_fixture_rss, peak_search_rss)
+        (after_fixture_rss, peak_sampler.finish())
     };
     log_tc_185_rss("peak_search", peak_search_rss);
     thread::sleep(Duration::from_secs(1));

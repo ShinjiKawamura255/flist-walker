@@ -95,24 +95,40 @@ fn tc_183_seeded_state_sequences_converge() {
 
 #[test]
 fn tc_183_interleaved_worker_failures_converge() {
-    let events = vec![
-        Event::CreateTab,
+    let mut harness = StatefulHarness::new("stateful-worker-failures");
+    let request_events = vec![
+        Event::RefreshIndex,
+        Event::DeliverOldestIndexData(IndexData::Batch),
+        Event::CompleteOldestIndex(TerminalOutcome::Finished),
         Event::RequestPreview,
         Event::RequestAction,
-        Event::SwitchTab(0),
-        Event::CompleteOldestPreview(WorkerOutcome::Failed),
-        Event::ReorderTab { from: 0, to: 1 },
-        Event::CompleteOldestAction(WorkerOutcome::Failed),
         Event::RequestSort,
         Event::RequestFileList,
+    ];
+    harness.run(0x0183_fa11, &request_events);
+    let (preview_count, action_count, sort_count, filelist_count) =
+        harness.pending_worker_request_counts();
+    assert!(preview_count > 0, "preview request must be enqueued");
+    assert_eq!((action_count, sort_count, filelist_count), (1, 1, 1));
+
+    let mut failure_events = vec![Event::CreateTab];
+    for _ in 0..preview_count {
+        failure_events.push(Event::CompleteOldestPreview(WorkerOutcome::Failed));
+    }
+    failure_events.extend([
+        Event::ReorderTab { from: 0, to: 1 },
+        Event::CompleteOldestAction(WorkerOutcome::Failed),
         Event::SwitchTab(1),
         Event::CompleteOldestSort(WorkerOutcome::Failed),
         Event::CompleteOldestFileList(TerminalOutcome::Failed),
-        Event::RequestFileList,
-        Event::CompleteOldestFileList(TerminalOutcome::Canceled),
-    ];
-    let mut harness = StatefulHarness::new("stateful-worker-failures");
-    harness.run(0x0183_fa11, &events);
+    ]);
+    harness.run(0x0183_fa11, &failure_events);
+    harness.run(0x0183_fa11, &[Event::RequestFileList]);
+    assert_eq!(harness.pending_worker_request_counts(), (0, 0, 0, 1));
+    harness.run(
+        0x0183_fa11,
+        &[Event::CompleteOldestFileList(TerminalOutcome::Canceled)],
+    );
     harness.quiesce(0x0183_fa11);
     harness.cleanup();
 }
