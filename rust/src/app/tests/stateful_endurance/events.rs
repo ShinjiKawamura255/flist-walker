@@ -1,9 +1,14 @@
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum TerminalOutcome {
     Finished,
-    Replaced,
     Failed,
     Canceled,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum IndexData {
+    Batch,
+    ReplaceAll,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,9 +21,19 @@ pub(super) enum Event {
     ChangeQuery(u8),
     ChangeRoot(usize),
     RefreshIndex,
+    DeliverOldestIndexData(IndexData),
+    DeliverNewestIndexData(IndexData),
     CompleteOldestIndex(TerminalOutcome),
     CompleteNewestIndex(TerminalOutcome),
     CompleteOldestSearch,
+    RequestPreview,
+    CompleteOldestPreview,
+    RequestAction,
+    CompleteOldestAction,
+    RequestSort,
+    CompleteOldestSort,
+    RequestFileList,
+    CompleteOldestFileList,
     DeliverStaleIndex,
     DeliverStaleSearch,
 }
@@ -49,10 +64,9 @@ impl SplitMix64 {
     }
 
     fn outcome(&mut self) -> TerminalOutcome {
-        match self.next() % 4 {
+        match self.next() % 3 {
             0 => TerminalOutcome::Finished,
-            1 => TerminalOutcome::Replaced,
-            2 => TerminalOutcome::Failed,
+            1 => TerminalOutcome::Failed,
             _ => TerminalOutcome::Canceled,
         }
     }
@@ -61,7 +75,7 @@ impl SplitMix64 {
 pub(super) fn generate(seed: u64, steps: usize) -> Vec<Event> {
     let mut rng = SplitMix64::new(seed);
     (0..steps)
-        .map(|_| match rng.next() % 14 {
+        .map(|_| match rng.next() % 24 {
             0 => Event::CreateTab,
             1 => Event::CloseTab(rng.index(7)),
             2 => Event::RestoreTab,
@@ -73,12 +87,22 @@ pub(super) fn generate(seed: u64, steps: usize) -> Vec<Event> {
             5 => Event::ChangeQuery(rng.index(6) as u8),
             6 => Event::ChangeRoot(rng.index(3)),
             7 => Event::RefreshIndex,
-            8 => Event::CompleteOldestIndex(rng.outcome()),
-            9 => Event::CompleteNewestIndex(rng.outcome()),
-            10 => Event::CompleteOldestSearch,
-            11 => Event::DeliverStaleIndex,
-            12 => Event::DeliverStaleSearch,
-            _ => Event::SwitchTab(rng.index(7)),
+            8 => Event::DeliverOldestIndexData(IndexData::Batch),
+            9 => Event::DeliverNewestIndexData(IndexData::ReplaceAll),
+            10 => Event::CompleteOldestIndex(rng.outcome()),
+            11 => Event::CompleteNewestIndex(rng.outcome()),
+            12 => Event::CompleteOldestSearch,
+            13 => Event::RequestPreview,
+            14 => Event::CompleteOldestPreview,
+            15 => Event::RequestAction,
+            16 => Event::CompleteOldestAction,
+            17 => Event::RequestSort,
+            18 => Event::CompleteOldestSort,
+            19 => Event::RequestFileList,
+            20 => Event::CompleteOldestFileList,
+            21 => Event::DeliverStaleIndex,
+            22 => Event::DeliverStaleSearch,
+            _ => Event::DeliverOldestIndexData(IndexData::ReplaceAll),
         })
         .collect()
 }

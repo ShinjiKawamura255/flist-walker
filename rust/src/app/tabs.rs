@@ -1,6 +1,6 @@
 use super::{
     result_reducer, AppTabState, ClosedTabState, Entry, FlistWalkerApp, IndexResponse, IndexSource,
-    ResultSortMode, SavedTabState, SearchResponse, TabAccentColor,
+    ResultSortMode, ResultSortScope, SavedTabState, SearchResponse, TabAccentColor,
 };
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
@@ -251,14 +251,20 @@ impl FlistWalkerApp {
                 }
 
                 if tab.query_state.query.trim().is_empty() {
-                    tab.result_state.results = tab
+                    let results = tab
                         .index_state
                         .entries
                         .iter()
                         .take(limit)
                         .cloned()
                         .map(|entry| (entry.path, 0.0))
-                        .collect();
+                        .collect::<Vec<_>>();
+                    tab.result_state.clear_sort_request_state();
+                    tab.result_state.result_sort_mode = ResultSortMode::Score;
+                    tab.result_state.result_sort_scope = ResultSortScope::ShownResults;
+                    tab.result_state.base_results = results.clone();
+                    tab.result_state.results = results;
+                    tab.result_state.results_compacted = false;
                     tab.result_state.total_match_count = tab.index_state.entries.len();
                     if tab.result_state.results.is_empty() {
                         tab.result_state.current_row = None;
@@ -451,21 +457,24 @@ impl FlistWalkerApp {
             return;
         }
 
+        if self.shell.runtime.query_state.query.trim().is_empty() {
+            let total_match_count = self.shell.runtime.entries.len();
+            let results = self
+                .shell
+                .runtime
+                .entries
+                .iter()
+                .take(self.shell.runtime.limit)
+                .cloned()
+                .map(|entry| (entry.path, 0.0))
+                .collect();
+            self.replace_results_snapshot(results, true);
+            self.shell.runtime.total_match_count = total_match_count;
+            return;
+        }
+
         if self.shell.runtime.base_results.is_empty() {
-            if self.shell.runtime.query_state.query.trim().is_empty() {
-                let results = self
-                    .shell
-                    .runtime
-                    .entries
-                    .iter()
-                    .take(self.shell.runtime.limit)
-                    .cloned()
-                    .map(|entry| (entry.path, 0.0))
-                    .collect();
-                self.replace_results_snapshot(results, true);
-            } else {
-                self.refresh_status_line();
-            }
+            self.refresh_status_line();
             return;
         }
 

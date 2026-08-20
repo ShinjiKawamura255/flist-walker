@@ -106,8 +106,13 @@ fn closing_active_tab_compacts_restorable_tab_results() {
     let path_b = root.join("b.txt");
 
     app.create_new_tab();
+    app.shell.runtime.entries = Arc::new(vec![
+        unknown_entry(path_a.clone()),
+        unknown_entry(path_b.clone()),
+    ]);
     app.shell.runtime.base_results = vec![(path_a.clone(), 2.0), (path_b.clone(), 1.0)];
     app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.total_match_count = 2;
     app.shell.runtime.preview = "preview body".to_string();
     app.sync_active_tab_state();
 

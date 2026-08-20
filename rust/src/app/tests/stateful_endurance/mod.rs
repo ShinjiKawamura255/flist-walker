@@ -3,7 +3,7 @@ mod harness;
 mod invariants;
 
 use crate::app::tests::*;
-use events::{generate, Event, TerminalOutcome};
+use events::{generate, Event, IndexData, TerminalOutcome};
 use harness::{snapshot_for_app, StatefulHarness};
 
 fn parse_u64_setting(name: &str, default: u64) -> u64 {
@@ -15,6 +15,15 @@ fn parse_u64_setting(name: &str, default: u64) -> u64 {
         .map(|hex| u64::from_str_radix(hex, 16))
         .unwrap_or_else(|| raw.parse());
     parsed.unwrap_or_else(|error| panic!("invalid {name}={raw:?}: {error}"))
+}
+
+fn parse_usize_setting(name: &str, default: usize, maximum: usize) -> usize {
+    let value = parse_u64_setting(name, default as u64);
+    let value = usize::try_from(value)
+        .unwrap_or_else(|_| panic!("{name}={value} does not fit this platform"));
+    assert!(value > 0, "{name} must be positive");
+    assert!(value <= maximum, "{name} must not exceed {maximum}");
+    value
 }
 
 fn run_generated_profile(base_seed: u64, seed_count: usize, steps: usize, label: &str) {
@@ -43,8 +52,19 @@ fn tc_182_curated_state_sequence_preserves_app_invariants() {
         Event::ChangeQuery(1),
         Event::SwitchTab(0),
         Event::ChangeRoot(1),
+        Event::DeliverNewestIndexData(IndexData::Batch),
         Event::CompleteNewestIndex(TerminalOutcome::Finished),
-        Event::CompleteOldestIndex(TerminalOutcome::Replaced),
+        Event::DeliverOldestIndexData(IndexData::ReplaceAll),
+        Event::CompleteOldestIndex(TerminalOutcome::Finished),
+        Event::RequestPreview,
+        Event::RequestAction,
+        Event::RequestSort,
+        Event::RequestFileList,
+        Event::SwitchTab(1),
+        Event::CompleteOldestPreview,
+        Event::CompleteOldestAction,
+        Event::CompleteOldestSort,
+        Event::CompleteOldestFileList,
         Event::DeliverStaleSearch,
         Event::ReorderTab { from: 0, to: 2 },
         Event::CloseTab(1),
@@ -77,10 +97,8 @@ fn tc_183_seeded_state_sequences_converge() {
 #[ignore = "extended deterministic endurance profile; run explicitly"]
 fn tc_184_stateful_endurance_extended() {
     let base_seed = parse_u64_setting("FLISTWALKER_ENDURANCE_BASE_SEED", 0x1840_0000);
-    let seed_count = parse_u64_setting("FLISTWALKER_ENDURANCE_SEED_COUNT", 256) as usize;
-    let steps = parse_u64_setting("FLISTWALKER_ENDURANCE_STEPS", 1_000) as usize;
-    assert!(seed_count > 0, "seed count must be positive");
-    assert!(steps > 0, "step count must be positive");
+    let seed_count = parse_usize_setting("FLISTWALKER_ENDURANCE_SEED_COUNT", 256, 10_000);
+    let steps = parse_usize_setting("FLISTWALKER_ENDURANCE_STEPS", 1_000, 100_000);
     run_generated_profile(base_seed, seed_count, steps, "stateful-extended");
 }
 
@@ -88,8 +106,7 @@ fn tc_184_stateful_endurance_extended() {
 #[ignore = "single-seed replay entrypoint; set FLISTWALKER_ENDURANCE_SEED"]
 fn stateful_endurance_replay() {
     let seed = parse_u64_setting("FLISTWALKER_ENDURANCE_SEED", 0x1830);
-    let steps = parse_u64_setting("FLISTWALKER_ENDURANCE_STEPS", 1_000) as usize;
-    assert!(steps > 0, "step count must be positive");
+    let steps = parse_usize_setting("FLISTWALKER_ENDURANCE_STEPS", 1_000, 100_000);
     run_generated_profile(seed, 1, steps, "stateful-replay");
 }
 
@@ -98,6 +115,10 @@ fn stateful_endurance_replay() {
 fn tc_184_stateful_endurance_real_worker_soak() {
     let duration_secs = parse_u64_setting("FLISTWALKER_ENDURANCE_SOAK_SECONDS", 10);
     assert!(duration_secs > 0, "soak duration must be positive");
+    assert!(
+        duration_secs <= 1_800,
+        "soak duration must not exceed 1800 seconds"
+    );
 
     let base = test_root("stateful-real-worker-soak");
     let roots = vec![base.join("root-0"), base.join("root-1")];
@@ -165,6 +186,12 @@ fn tc_184_stateful_endurance_real_worker_soak() {
                 || tab.index_state.pending_index_request_id.is_some()
                 || tab.search_in_progress
                 || tab.pending_request_id.is_some()
+                || tab.preview_in_progress
+                || tab.pending_preview_request_id.is_some()
+                || tab.action_in_progress
+                || tab.pending_action_request_id.is_some()
+                || tab.result_state.sort_in_progress
+                || tab.result_state.pending_sort_request_id.is_some()
         });
         let settled = app.shell.indexing.pending_queue.is_empty()
             && app.shell.indexing.inflight_requests.is_empty()
@@ -173,6 +200,27 @@ fn tc_184_stateful_endurance_real_worker_soak() {
             && app.shell.search.pending_request_id().is_none()
             && !app.shell.search.in_progress()
             && app.shell.search.request_routes_for_test().is_empty()
+            && app.shell.worker_bus.preview.pending_request_id.is_none()
+            && !app.shell.worker_bus.preview.in_progress
+            && app.shell.worker_bus.action.pending_request_id.is_none()
+            && !app.shell.worker_bus.action.in_progress
+            && app.shell.worker_bus.sort.pending_request_id.is_none()
+            && !app.shell.worker_bus.sort.in_progress
+            && app
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_request_id
+                .is_none()
+            && app
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_after_index
+                .is_none()
+            && !app.shell.features.filelist.workflow.in_progress
             && !background_busy;
         if settled {
             break;

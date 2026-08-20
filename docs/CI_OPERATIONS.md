@@ -39,7 +39,7 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 ## Stateful endurance signal
 
 - `.github/workflows/stateful-endurance.yml` は水曜 19:00 UTC の週次実行と手動 dispatch で、拡張 deterministic corpus と実 worker soak を実行する。通常 PR は `CI Cross Platform` 内の短い fixed/seeded profile を gate とし、この workflow は required check に追加しない。
-- 週次既定値は deterministic `base_seed=0x18400000`、`seed_count=1000`、`steps=1000`、実 worker soak `1200` 秒とする。手動 dispatch では全値を上書きできる。
+- 週次既定値は deterministic `base_seed=0x18400000`、`seed_count=1000`、`steps=1000`、実 worker soak `1200` 秒とする。手動 dispatch では seed count 10,000、steps 100,000、soak 1,800 秒の安全上限内で上書きできる。
 - deterministic 失敗は log の seed と replay command を使って `FLISTWALKER_ENDURANCE_SEED=<seed> cargo test --locked stateful_endurance_replay --lib -- --ignored --nocapture` で再現する。artifact `stateful-endurance-<run_id>` は deterministic / real-worker log を 14 日保持する。
 - real-worker profile は runner の temporary root だけを使用し、外部 action、updater、network endpoint を呼ばない。失敗時は artifact と runner image を確認し、product regression、hosted image drift、resource exhaustion、external transient に分類して 7 日以内に追跡する。
 - workflow/checker は Guardian の immutable trusted policy set に属する。新設または構造変更の merge は通常 PR の Guardian 失敗を期待値とし、設定 snapshot、独立 review、exact head の `CI Gate` 成功、競合 PR と base/head 不変、一時的 required-check 変更、merge 直後の完全復元/read-back、通常保護経路の後続 PR を一体で実施する。
