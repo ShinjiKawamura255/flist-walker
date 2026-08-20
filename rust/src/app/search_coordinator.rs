@@ -115,6 +115,17 @@ impl SearchCoordinator {
         self.latest_tab_requests.remove(&tab_id);
     }
 
+    #[cfg(test)]
+    pub(super) fn request_routes_for_test(&self) -> Vec<(u64, u64)> {
+        let mut routes = self
+            .request_tabs
+            .iter()
+            .map(|(request_id, tab_id)| (*request_id, *tab_id))
+            .collect::<Vec<_>>();
+        routes.sort_unstable();
+        routes
+    }
+
     fn register_request(&mut self, request_id: u64, tab_id: Option<u64>) -> Arc<AtomicBool> {
         if let Some(tab_id) = tab_id {
             if let Some(previous) = self.latest_tab_requests.insert(tab_id, request_id) {

@@ -143,3 +143,13 @@
 - 検索結果が空のときはソート要求を無視する。
 - path が削除済み・権限不足などで属性取得に失敗した場合はその項目だけ `None` 扱いで継続する。
 - 保留中ソート応答が古い query / root / tab に属する場合は破棄する。
+
+## SP-022 Stateful endurance 検証仕様
+### Requirements
+- MUST: app-level endurance test は同じ seed と profile から同じ論理 event 列を生成し、wall-clock sleep や host 固有 path 表現を順序決定へ使用してはならない。
+- MUST: event 列は tab create/close/restore/switch/reorder、query/root 変更、index/search dispatch、batch/replace/finish/fail/cancel、stale または out-of-order completion を含められなければならない。
+- MUST: 各 event 後に tab が1件以上、tab ID が一意、active index が範囲内、request routing が live tab だけを参照、`results.len() <= total_match_count`、current row が結果範囲内または空結果の既定位置、index pending queue が4以下、coordinator in-flight が2以下であることを検証しなければならない。
+- MUST: closed tab または stale request の応答は、active tab と別の live tab の root/query/result/noticeを巻き戻してはならない。
+- MUST: quiescence phase は既知 request を terminal response へ進め、規定 step 以内に search/index/preview/action/sort/FileList の pending、routing、in-flight、progress state が解放されることを検証しなければならない。
+- MUST: required PR profile は固定 regression corpus と複数の固定 seed を通常の `cargo test` で3 OS継続実行し、失敗時に seed、step、event、state digest と再生コマンドを表示しなければならない。
+- SHOULD: non-required scheduled profile は大きな seed/event budget と一時 root 上の実 worker soak を実行し、ログを artifact として保持する。
