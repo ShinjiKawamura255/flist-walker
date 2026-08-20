@@ -157,6 +157,86 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 }
 
 #[test]
+fn background_index_finish_invalidates_older_sort_snapshot() {
+    let root = test_root("background-index-invalidates-sort");
+    fs::create_dir_all(&root).expect("create dir");
+    let stale = root.join("stale.txt");
+    let current = root.join("current.txt");
+    fs::write(&stale, "stale").expect("write stale");
+    fs::write(&current, "current").expect("write current");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = index_req_tx;
+    app.shell.indexing.rx = index_res_rx;
+    app.request_index_refresh();
+    let index_req = index_req_rx.try_recv().expect("index request");
+
+    app.shell.runtime.entries = Arc::new(vec![file_entry(stale.clone())]);
+    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.base_results = vec![(stale.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.total_match_count = 1;
+    app.shell.runtime.current_row = Some(0);
+    let (sort_req_tx, sort_req_rx) = mpsc::channel::<SortMetadataRequest>();
+    let (sort_res_tx, sort_res_rx) = mpsc::channel::<SortMetadataResponse>();
+    app.shell.worker_bus.sort.tx = sort_req_tx;
+    app.shell.worker_bus.sort.rx = sort_res_rx;
+    app.set_result_sort_mode(ResultSortMode::SizeDesc);
+    let sort_req = sort_req_rx.try_recv().expect("sort request");
+
+    app.create_new_tab();
+    index_res_tx
+        .send(IndexResponse::ReplaceAll {
+            request_id: index_req.request_id,
+            entries: vec![IndexEntry {
+                path: current.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send replace");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_req.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send finish");
+    app.poll_index_response();
+
+    sort_res_tx
+        .send(SortMetadataResponse {
+            request_id: sort_req.request_id,
+            entries: vec![(
+                stale,
+                SortMetadata {
+                    size_bytes: Some(5),
+                    ..SortMetadata::default()
+                },
+            )],
+            mode: ResultSortMode::SizeDesc,
+        })
+        .expect("send stale sort");
+    app.poll_sort_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(
+        background.result_state.result_sort_mode,
+        ResultSortMode::Score
+    );
+    assert_eq!(background.result_state.total_match_count, 1);
+    assert_eq!(
+        background.result_state.base_results,
+        vec![(current.clone(), 0.0)]
+    );
+    assert_eq!(background.result_state.results, vec![(current, 0.0)]);
+    assert!(background.result_state.pending_sort_request_id.is_none());
+    assert!(!background.result_state.sort_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn active_index_progress_before_tab_switch_is_preserved_on_background_finish() {
     let root = test_root("active-index-progress-before-tab-switch");
     fs::create_dir_all(&root).expect("create dir");

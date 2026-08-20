@@ -1,8 +1,26 @@
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct TabSemanticSnapshot {
+    pub(super) id: u64,
+    pub(super) root: usize,
+    pub(super) query: String,
+    pub(super) results_len: usize,
+    pub(super) total_match_count: usize,
+    pub(super) current_row: Option<usize>,
+    pub(super) results_digest: u64,
+    pub(super) notice: String,
+    pub(super) index_pending: bool,
+    pub(super) search_pending: bool,
+    pub(super) preview_pending: bool,
+    pub(super) action_pending: bool,
+    pub(super) sort_pending: bool,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct SemanticSnapshot {
     pub(super) tab_ids: Vec<u64>,
+    pub(super) tabs: Vec<TabSemanticSnapshot>,
     pub(super) active_tab: usize,
     pub(super) active_root: usize,
     pub(super) active_query: String,
@@ -14,13 +32,17 @@ pub(super) struct SemanticSnapshot {
     pub(super) routed_tab_ids: Vec<u64>,
     pub(super) active_index_pending: bool,
     pub(super) active_search_pending: bool,
+    pub(super) preview_pending: bool,
+    pub(super) action_pending: bool,
+    pub(super) sort_pending: bool,
+    pub(super) filelist_pending: bool,
 }
 
 impl SemanticSnapshot {
     pub(super) fn digest(&self) -> String {
         format!(
-            "tabs={:?};active={};root={};query={:?};results={}/{};row={:?};index={}/{};routes={:?};pending={}/{}",
-            self.tab_ids,
+            "tabs={:?};tab_states={:?};active={};root={};query={:?};results={}/{};row={:?};index={}/{};routes={:?};pending={}/{}/{}/{}/{}/{}",
+            self.tab_ids, self.tabs,
             self.active_tab,
             self.active_root,
             self.active_query,
@@ -32,6 +54,10 @@ impl SemanticSnapshot {
             self.routed_tab_ids,
             self.active_index_pending,
             self.active_search_pending,
+            self.preview_pending,
+            self.action_pending,
+            self.sort_pending,
+            self.filelist_pending,
         )
     }
 }
@@ -47,9 +73,41 @@ pub(super) fn validate(snapshot: &SemanticSnapshot) -> Result<(), String> {
             snapshot.tab_ids.len()
         ));
     }
+    if snapshot.active_root == usize::MAX {
+        return Err("active root must belong to the endurance profile".to_string());
+    }
     let unique = snapshot.tab_ids.iter().copied().collect::<HashSet<_>>();
     if unique.len() != snapshot.tab_ids.len() {
         return Err("tab ids must be unique".to_string());
+    }
+    if snapshot.tabs.len() != snapshot.tab_ids.len() {
+        return Err("tab semantic states must cover every live tab".to_string());
+    }
+    for (index, tab) in snapshot.tabs.iter().enumerate() {
+        if tab.id != snapshot.tab_ids[index] {
+            return Err("tab semantic state order must match live tab ids".to_string());
+        }
+        if tab.root == usize::MAX {
+            return Err(format!(
+                "tab {} root is outside the endurance profile",
+                tab.id
+            ));
+        }
+        if tab.results_len > tab.total_match_count {
+            return Err(format!(
+                "tab {} results {} exceed total {}",
+                tab.id, tab.results_len, tab.total_match_count
+            ));
+        }
+        if let Some(row) = tab.current_row {
+            let valid = row < tab.results_len || (tab.results_len == 0 && row == 0);
+            if !valid {
+                return Err(format!(
+                    "tab {} current row {row} is outside {} results",
+                    tab.id, tab.results_len
+                ));
+            }
+        }
     }
     if snapshot.results_len > snapshot.total_match_count {
         return Err(format!(
@@ -95,6 +153,21 @@ mod tests {
     fn valid_snapshot() -> SemanticSnapshot {
         SemanticSnapshot {
             tab_ids: vec![1],
+            tabs: vec![TabSemanticSnapshot {
+                id: 1,
+                root: 0,
+                query: String::new(),
+                results_len: 1,
+                total_match_count: 1,
+                current_row: Some(0),
+                results_digest: 0,
+                notice: String::new(),
+                index_pending: false,
+                search_pending: false,
+                preview_pending: false,
+                action_pending: false,
+                sort_pending: false,
+            }],
             active_tab: 0,
             active_root: 0,
             active_query: String::new(),
@@ -106,6 +179,10 @@ mod tests {
             routed_tab_ids: Vec::new(),
             active_index_pending: false,
             active_search_pending: false,
+            preview_pending: false,
+            action_pending: false,
+            sort_pending: false,
+            filelist_pending: false,
         }
     }
 
@@ -124,6 +201,20 @@ mod tests {
         let mut corrupt = valid_snapshot();
         corrupt.active_tab = 1;
         assert!(validate(&corrupt).unwrap_err().contains("outside"));
+
+        let mut corrupt = valid_snapshot();
+        corrupt.active_root = usize::MAX;
+        assert!(validate(&corrupt).unwrap_err().contains("active root"));
+
+        let mut corrupt = valid_snapshot();
+        corrupt.tabs[0].root = usize::MAX;
+        assert!(validate(&corrupt).unwrap_err().contains("tab 1 root"));
+
+        let mut corrupt = valid_snapshot();
+        corrupt.tabs[0].current_row = Some(2);
+        assert!(validate(&corrupt)
+            .unwrap_err()
+            .contains("tab 1 current row"));
 
         let mut corrupt = valid_snapshot();
         corrupt.results_len = 2;

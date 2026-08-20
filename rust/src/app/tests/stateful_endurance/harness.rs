@@ -1,7 +1,9 @@
-use super::events::{Event, TerminalOutcome};
-use super::invariants::{validate, SemanticSnapshot};
+use super::events::{Event, IndexData, TerminalOutcome};
+use super::invariants::{validate, SemanticSnapshot, TabSemanticSnapshot};
 use crate::app::tests::*;
 use crate::app::worker_channel::BoundedReceiver;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub(super) struct StatefulHarness {
     app: FlistWalkerApp,
@@ -13,7 +15,21 @@ pub(super) struct StatefulHarness {
     search_requests: mpsc::Receiver<SearchRequest>,
     search_responses: mpsc::Sender<SearchResponse>,
     pending_searches: VecDeque<SearchRequest>,
+    preview_requests: mpsc::Receiver<PreviewRequest>,
+    preview_responses: mpsc::Sender<PreviewResponse>,
+    pending_previews: VecDeque<PreviewRequest>,
+    action_requests: BoundedReceiver<ActionRequest>,
+    action_responses: mpsc::Sender<ActionResponse>,
+    pending_actions: VecDeque<ActionRequest>,
+    sort_requests: mpsc::Receiver<SortMetadataRequest>,
+    sort_responses: mpsc::Sender<SortMetadataResponse>,
+    pending_sorts: VecDeque<SortMetadataRequest>,
+    filelist_requests: mpsc::Receiver<FileListRequest>,
+    filelist_responses: mpsc::Sender<FileListResponse>,
+    pending_filelists: VecDeque<FileListRequest>,
     next_stale_request_id: u64,
+    next_index_entry_id: u64,
+    replay_steps: usize,
 }
 
 impl StatefulHarness {
@@ -31,6 +47,8 @@ impl StatefulHarness {
                 )
                 .expect("write endurance fixture");
             }
+            fs::write(root.join("fixture.txt"), format!("fixture {root_index}"))
+                .expect("write shared endurance fixture");
         }
 
         let mut app = FlistWalkerApp::new(roots[0].clone(), 20, String::new());
@@ -44,6 +62,29 @@ impl StatefulHarness {
         let (search_tx, search_requests) = mpsc::channel::<SearchRequest>();
         let (search_responses, search_rx) = mpsc::channel::<SearchResponse>();
         app.shell.search = SearchCoordinator::new(search_tx, search_rx);
+
+        let (preview_tx, preview_requests) = mpsc::channel::<PreviewRequest>();
+        let (preview_responses, preview_rx) = mpsc::channel::<PreviewResponse>();
+        app.shell.worker_bus.preview.tx = preview_tx;
+        app.shell.worker_bus.preview.rx = preview_rx;
+        app.shell.worker_bus.preview.clear_request();
+
+        let (action_tx, action_requests) = bounded_request_channel::<ActionRequest>(8);
+        let (action_responses, action_rx) = mpsc::channel::<ActionResponse>();
+        app.shell.worker_bus.action.tx = action_tx;
+        app.shell.worker_bus.action.rx = action_rx;
+        app.shell.worker_bus.action.clear_request();
+
+        let (sort_tx, sort_requests) = mpsc::channel::<SortMetadataRequest>();
+        let (sort_responses, sort_rx) = mpsc::channel::<SortMetadataResponse>();
+        app.shell.worker_bus.sort.tx = sort_tx;
+        app.shell.worker_bus.sort.rx = sort_rx;
+        app.shell.worker_bus.sort.clear_request();
+
+        let (filelist_tx, filelist_requests) = mpsc::channel::<FileListRequest>();
+        let (filelist_responses, filelist_rx) = mpsc::channel::<FileListResponse>();
+        app.shell.worker_bus.filelist.tx = filelist_tx;
+        app.shell.worker_bus.filelist.rx = filelist_rx;
         app.sync_active_tab_state();
 
         Self {
@@ -56,27 +97,63 @@ impl StatefulHarness {
             search_requests,
             search_responses,
             pending_searches: VecDeque::new(),
+            preview_requests,
+            preview_responses,
+            pending_previews: VecDeque::new(),
+            action_requests,
+            action_responses,
+            pending_actions: VecDeque::new(),
+            sort_requests,
+            sort_responses,
+            pending_sorts: VecDeque::new(),
+            filelist_requests,
+            filelist_responses,
+            pending_filelists: VecDeque::new(),
             next_stale_request_id: 1_000_000,
+            next_index_entry_id: 1,
+            replay_steps: 0,
         }
     }
 
     pub(super) fn run(&mut self, seed: u64, events: &[Event]) {
+        self.replay_steps = events.len();
         self.capture_requests();
         self.assert_invariants(seed, 0, &Event::RefreshIndex);
         for (step, event) in events.iter().enumerate() {
+            let before = self.snapshot();
+            let response_owner = self.response_owner(event);
             self.apply(event);
             self.capture_requests();
+            if let Some(owner) = response_owner {
+                self.assert_other_tab_content_unchanged(
+                    &before,
+                    &self.snapshot(),
+                    owner,
+                    seed,
+                    step + 1,
+                    event,
+                );
+            }
             self.assert_invariants(seed, step + 1, event);
         }
     }
 
     pub(super) fn quiesce(&mut self, seed: u64) {
-        for step in 0..128 {
+        let max_steps = self.replay_steps.saturating_mul(3).saturating_add(256);
+        for step in 0..max_steps {
             self.capture_requests();
             if let Some(request) = self.pending_indexes.pop_front() {
                 self.respond_to_index(request, TerminalOutcome::Canceled);
             } else if let Some(request) = self.pending_searches.pop_front() {
                 self.respond_to_search(request);
+            } else if let Some(request) = self.pending_previews.pop_front() {
+                self.respond_to_preview(request);
+            } else if let Some(request) = self.pending_actions.pop_front() {
+                self.respond_to_action(request);
+            } else if let Some(request) = self.pending_sorts.pop_front() {
+                self.respond_to_sort(request);
+            } else if let Some(request) = self.pending_filelists.pop_front() {
+                self.respond_to_filelist(request);
             } else {
                 self.app
                     .poll_index_response_with_budget_for_test(Duration::from_millis(20));
@@ -91,8 +168,9 @@ impl StatefulHarness {
         }
 
         panic!(
-            "stateful endurance did not quiesce: seed={seed:#x}; state={}",
-            self.snapshot().digest()
+            "stateful endurance did not quiesce: seed={seed:#x}; phase=quiescence; max_steps={max_steps}; state={}; replay={}",
+            self.snapshot().digest(),
+            self.replay_command(seed),
         );
     }
 
@@ -139,6 +217,24 @@ impl StatefulHarness {
                     .apply_root_change_direct(self.roots[index % self.roots.len()].clone());
             }
             Event::RefreshIndex => self.app.request_index_refresh(),
+            Event::DeliverOldestIndexData(data) => {
+                if let Some((request_id, root)) = self
+                    .pending_indexes
+                    .front()
+                    .map(|request| (request.request_id, request.root.clone()))
+                {
+                    self.respond_with_index_data(request_id, &root, data);
+                }
+            }
+            Event::DeliverNewestIndexData(data) => {
+                if let Some((request_id, root)) = self
+                    .pending_indexes
+                    .back()
+                    .map(|request| (request.request_id, request.root.clone()))
+                {
+                    self.respond_with_index_data(request_id, &root, data);
+                }
+            }
             Event::CompleteOldestIndex(outcome) => {
                 if let Some(request) = self.pending_indexes.pop_front() {
                     self.respond_to_index(request, outcome);
@@ -154,8 +250,101 @@ impl StatefulHarness {
                     self.respond_to_search(request);
                 }
             }
+            Event::RequestPreview => self.request_preview(),
+            Event::CompleteOldestPreview => {
+                if let Some(request) = self.pending_previews.pop_front() {
+                    self.respond_to_preview(request);
+                }
+            }
+            Event::RequestAction => self.request_action(),
+            Event::CompleteOldestAction => {
+                if let Some(request) = self.pending_actions.pop_front() {
+                    self.respond_to_action(request);
+                }
+            }
+            Event::RequestSort => self.request_sort(),
+            Event::CompleteOldestSort => {
+                if let Some(request) = self.pending_sorts.pop_front() {
+                    self.respond_to_sort(request);
+                }
+            }
+            Event::RequestFileList => self.request_filelist(),
+            Event::CompleteOldestFileList => {
+                if let Some(request) = self.pending_filelists.pop_front() {
+                    self.respond_to_filelist(request);
+                }
+            }
             Event::DeliverStaleIndex => self.deliver_stale_index(),
             Event::DeliverStaleSearch => self.deliver_stale_search(),
+        }
+    }
+
+    fn response_owner(&self, event: &Event) -> Option<Option<u64>> {
+        let owner = match event {
+            Event::DeliverOldestIndexData(_) | Event::CompleteOldestIndex(_) => {
+                self.pending_indexes.front().map(|request| request.tab_id)
+            }
+            Event::DeliverNewestIndexData(_) | Event::CompleteNewestIndex(_) => {
+                self.pending_indexes.back().map(|request| request.tab_id)
+            }
+            Event::CompleteOldestSearch => self.pending_searches.front().and_then(|request| {
+                self.app
+                    .shell
+                    .search
+                    .request_routes_for_test()
+                    .into_iter()
+                    .find_map(|(request_id, tab_id)| {
+                        (request_id == request.request_id).then_some(tab_id)
+                    })
+            }),
+            Event::CompleteOldestPreview => self
+                .pending_previews
+                .front()
+                .and_then(|request| self.app.preview_request_tab(request.request_id)),
+            Event::CompleteOldestAction => self
+                .pending_actions
+                .front()
+                .and_then(|request| self.app.action_request_tab(request.request_id)),
+            Event::CompleteOldestSort => self
+                .pending_sorts
+                .front()
+                .and_then(|request| self.app.sort_request_tab(request.request_id)),
+            Event::DeliverStaleIndex | Event::DeliverStaleSearch => None,
+            _ => return None,
+        };
+        Some(owner)
+    }
+
+    fn assert_other_tab_content_unchanged(
+        &self,
+        before: &SemanticSnapshot,
+        after: &SemanticSnapshot,
+        owner: Option<u64>,
+        seed: u64,
+        step: usize,
+        event: &Event,
+    ) {
+        for before_tab in before.tabs.iter().filter(|tab| Some(tab.id) != owner) {
+            let Some(after_tab) = after.tabs.iter().find(|tab| tab.id == before_tab.id) else {
+                panic!(
+                    "stateful response removed unrelated tab {}; {}",
+                    before_tab.id,
+                    self.failure_context(seed, step, event, after)
+                );
+            };
+            let content_unchanged = before_tab.root == after_tab.root
+                && before_tab.query == after_tab.query
+                && before_tab.results_len == after_tab.results_len
+                && before_tab.total_match_count == after_tab.total_match_count
+                && before_tab.current_row == after_tab.current_row
+                && before_tab.results_digest == after_tab.results_digest
+                && before_tab.notice == after_tab.notice;
+            assert!(
+                content_unchanged,
+                "stateful response changed unrelated tab {}; before={before_tab:?}; after={after_tab:?}; {}",
+                before_tab.id,
+                self.failure_context(seed, step, event, after)
+            );
         }
     }
 
@@ -166,31 +355,24 @@ impl StatefulHarness {
         while let Ok(request) = self.search_requests.try_recv() {
             self.pending_searches.push_back(request);
         }
+        while let Ok(request) = self.preview_requests.try_recv() {
+            self.pending_previews.push_back(request);
+        }
+        while let Ok(request) = self.action_requests.try_recv() {
+            self.pending_actions.push_back(request);
+        }
+        while let Ok(request) = self.sort_requests.try_recv() {
+            self.pending_sorts.push_back(request);
+        }
+        while let Ok(request) = self.filelist_requests.try_recv() {
+            self.pending_filelists.push_back(request);
+        }
     }
 
     fn respond_to_index(&mut self, request: IndexRequest, outcome: TerminalOutcome) {
         let request_id = request.request_id;
         match outcome {
-            TerminalOutcome::Finished | TerminalOutcome::Replaced => {
-                let entry = IndexEntry {
-                    path: request.root.join(format!("request-{request_id}.txt")),
-                    kind: EntryKind::file(),
-                    kind_known: true,
-                };
-                let response = if outcome == TerminalOutcome::Replaced {
-                    IndexResponse::ReplaceAll {
-                        request_id,
-                        entries: vec![entry],
-                    }
-                } else {
-                    IndexResponse::Batch {
-                        request_id,
-                        entries: vec![entry],
-                    }
-                };
-                self.index_responses
-                    .send(response)
-                    .expect("send index data");
+            TerminalOutcome::Finished => {
                 self.index_responses
                     .send(IndexResponse::Finished {
                         request_id,
@@ -210,6 +392,38 @@ impl StatefulHarness {
                 .send(IndexResponse::Canceled { request_id })
                 .expect("send index cancel"),
         }
+        self.app
+            .poll_index_response_with_budget_for_test(Duration::from_millis(20));
+        self.app.poll_search_response();
+        self.app.dispatch_index_queue();
+    }
+
+    fn respond_with_index_data(&mut self, request_id: u64, root: &Path, data: IndexData) {
+        let entry_path = root.join(format!(
+            "request-{request_id}-entry-{}.txt",
+            self.next_index_entry_id
+        ));
+        self.next_index_entry_id = self.next_index_entry_id.saturating_add(1);
+        fs::write(&entry_path, "controlled endurance index entry")
+            .expect("write controlled index entry");
+        let entry = IndexEntry {
+            path: entry_path,
+            kind: EntryKind::file(),
+            kind_known: true,
+        };
+        let response = match data {
+            IndexData::Batch => IndexResponse::Batch {
+                request_id,
+                entries: vec![entry],
+            },
+            IndexData::ReplaceAll => IndexResponse::ReplaceAll {
+                request_id,
+                entries: vec![entry],
+            },
+        };
+        self.index_responses
+            .send(response)
+            .expect("send index data");
         self.app
             .poll_index_response_with_budget_for_test(Duration::from_millis(20));
         self.app.poll_search_response();
@@ -245,8 +459,106 @@ impl StatefulHarness {
         self.app.poll_search_response();
     }
 
+    fn prepare_current_result(&mut self) -> Option<PathBuf> {
+        let path = self.app.shell.runtime.results.first()?.0.clone();
+        self.app.shell.runtime.current_row = Some(0);
+        self.app.set_entry_kind(&path, EntryKind::file());
+        Some(path)
+    }
+
+    fn request_preview(&mut self) {
+        if self.prepare_current_result().is_none() {
+            return;
+        }
+        self.app.clear_preview_cache();
+        self.app.request_preview_for_current();
+    }
+
+    fn respond_to_preview(&mut self, request: PreviewRequest) {
+        self.preview_responses
+            .send(PreviewResponse {
+                request_id: request.request_id,
+                path: request.path,
+                preview: "controlled endurance preview".to_string(),
+            })
+            .expect("send preview response");
+        self.app.poll_preview_response();
+    }
+
+    fn request_action(&mut self) {
+        if self.prepare_current_result().is_none() {
+            return;
+        }
+        self.app.execute_selected();
+    }
+
+    fn respond_to_action(&mut self, request: ActionRequest) {
+        self.action_responses
+            .send(ActionResponse {
+                request_id: request.request_id,
+                notice: "controlled endurance action".to_string(),
+            })
+            .expect("send action response");
+        self.app.poll_action_response();
+    }
+
+    fn request_sort(&mut self) {
+        if self.prepare_current_result().is_none() {
+            return;
+        }
+        self.app.clear_sort_metadata_cache();
+        self.app.set_result_sort_mode(ResultSortMode::SizeDesc);
+    }
+
+    fn respond_to_sort(&mut self, request: SortMetadataRequest) {
+        let entries = request
+            .paths
+            .into_iter()
+            .map(|path| {
+                (
+                    path,
+                    SortMetadata {
+                        size_bytes: Some(1),
+                        ..SortMetadata::default()
+                    },
+                )
+            })
+            .collect();
+        self.sort_responses
+            .send(SortMetadataResponse {
+                request_id: request.request_id,
+                entries,
+                mode: request.mode,
+            })
+            .expect("send sort response");
+        self.app.poll_sort_response();
+    }
+
+    fn request_filelist(&mut self) {
+        if self.app.shell.features.filelist.workflow.in_progress {
+            return;
+        }
+        let tab_id = self.app.current_tab_id().expect("active endurance tab");
+        let root = self.app.shell.runtime.root.clone();
+        self.app.start_filelist_creation(
+            tab_id,
+            root.clone(),
+            vec![root.join("fixture.txt")],
+            false,
+        );
+    }
+
+    fn respond_to_filelist(&mut self, request: FileListRequest) {
+        self.filelist_responses
+            .send(FileListResponse::Canceled {
+                request_id: request.request_id,
+                root: request.root,
+            })
+            .expect("send filelist response");
+        self.app.poll_filelist_response();
+    }
+
     fn deliver_stale_index(&mut self) {
-        let before = self.snapshot();
         let request_id = self.take_stale_request_id();
         self.index_responses
             .send(IndexResponse::Finished {
@@ -256,15 +568,9 @@ impl StatefulHarness {
             .expect("send stale index");
         self.app
             .poll_index_response_with_budget_for_test(Duration::from_millis(20));
-        assert_eq!(
-            before,
-            self.snapshot(),
-            "stale index changed semantic state"
-        );
     }
 
     fn deliver_stale_search(&mut self) {
-        let before = self.snapshot();
         let request_id = self.take_stale_request_id();
         self.search_responses
             .send(SearchResponse {
@@ -277,11 +583,6 @@ impl StatefulHarness {
             })
             .expect("send stale search");
         self.app.poll_search_response();
-        assert_eq!(
-            before,
-            self.snapshot(),
-            "stale search changed semantic state"
-        );
     }
 
     fn take_stale_request_id(&mut self) -> u64 {
@@ -298,15 +599,41 @@ impl StatefulHarness {
         let snapshot = self.snapshot();
         if let Err(error) = validate(&snapshot) {
             panic!(
-                "stateful endurance invariant failed: {error}; seed={seed:#x}; step={step}; event={event:?}; state={}; replay=cargo test --locked stateful_endurance_replay --lib -- --ignored --nocapture",
-                snapshot.digest()
+                "stateful endurance invariant failed: {error}; {}",
+                self.failure_context(seed, step, event, &snapshot)
             );
         }
     }
 
+    fn replay_command(&self, seed: u64) -> String {
+        format!(
+            "FLISTWALKER_ENDURANCE_SEED={seed:#x} FLISTWALKER_ENDURANCE_STEPS={} cargo test --locked stateful_endurance_replay --lib -- --ignored --nocapture",
+            self.replay_steps
+        )
+    }
+
+    fn failure_context(
+        &self,
+        seed: u64,
+        step: usize,
+        event: &Event,
+        snapshot: &SemanticSnapshot,
+    ) -> String {
+        format!(
+            "seed={seed:#x}; step={step}; event={event:?}; state={}; replay={}",
+            snapshot.digest(),
+            self.replay_command(seed)
+        )
+    }
+
     fn is_quiescent(&self) -> bool {
+        let snapshot = self.snapshot();
         self.pending_indexes.is_empty()
             && self.pending_searches.is_empty()
+            && self.pending_previews.is_empty()
+            && self.pending_actions.is_empty()
+            && self.pending_sorts.is_empty()
+            && self.pending_filelists.is_empty()
             && self.app.shell.indexing.pending_queue.is_empty()
             && self.app.shell.indexing.inflight_requests.is_empty()
             && self.app.shell.indexing.pending_request_id.is_none()
@@ -316,6 +643,17 @@ impl StatefulHarness {
             && self.app.shell.search.pending_request_id().is_none()
             && !self.app.shell.search.in_progress()
             && self.app.shell.search.request_routes_for_test().is_empty()
+            && !snapshot.preview_pending
+            && !snapshot.action_pending
+            && !snapshot.sort_pending
+            && !snapshot.filelist_pending
+            && snapshot.tabs.iter().all(|tab| {
+                !tab.index_pending
+                    && !tab.search_pending
+                    && !tab.preview_pending
+                    && !tab.action_pending
+                    && !tab.sort_pending
+            })
     }
 }
 
@@ -332,14 +670,77 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
         .collect::<Vec<_>>();
     routed_tab_ids.sort_unstable();
 
-    let active_root = roots
+    let root_index = |candidate: &PathBuf| {
+        roots
+            .iter()
+            .position(|root| path_key(root) == path_key(candidate))
+            .unwrap_or(usize::MAX)
+    };
+    let active_tab = app.shell.tabs.active_tab_index();
+    let active_root = root_index(&app.shell.runtime.root);
+    let results_digest = |results: &[(PathBuf, f64)]| {
+        let mut hasher = DefaultHasher::new();
+        for (path, score) in results {
+            path.hash(&mut hasher);
+            score.to_bits().hash(&mut hasher);
+        }
+        hasher.finish()
+    };
+    let tabs = app
+        .shell
+        .tabs
         .iter()
-        .position(|root| path_key(root) == path_key(&app.shell.runtime.root))
-        .unwrap_or(usize::MAX);
+        .enumerate()
+        .map(|(index, tab)| {
+            if index == active_tab {
+                TabSemanticSnapshot {
+                    id: tab.id,
+                    root: active_root,
+                    query: app.shell.runtime.query_state.query.clone(),
+                    results_len: app.shell.runtime.results.len(),
+                    total_match_count: app.shell.runtime.total_match_count,
+                    current_row: app.shell.runtime.current_row,
+                    results_digest: results_digest(&app.shell.runtime.results),
+                    notice: app.shell.runtime.notice.clone(),
+                    index_pending: app.shell.indexing.pending_request_id.is_some()
+                        || app.shell.indexing.in_progress,
+                    search_pending: app.shell.search.pending_request_id().is_some()
+                        || app.shell.search.in_progress(),
+                    preview_pending: app.shell.worker_bus.preview.pending_request_id.is_some()
+                        || app.shell.worker_bus.preview.in_progress,
+                    action_pending: app.shell.worker_bus.action.pending_request_id.is_some()
+                        || app.shell.worker_bus.action.in_progress,
+                    sort_pending: app.shell.worker_bus.sort.pending_request_id.is_some()
+                        || app.shell.worker_bus.sort.in_progress,
+                }
+            } else {
+                TabSemanticSnapshot {
+                    id: tab.id,
+                    root: root_index(&tab.root),
+                    query: tab.query_state.query.clone(),
+                    results_len: tab.result_state.results.len(),
+                    total_match_count: tab.result_state.total_match_count,
+                    current_row: tab.result_state.current_row,
+                    results_digest: results_digest(&tab.result_state.results),
+                    notice: tab.notice.clone(),
+                    index_pending: tab.index_state.pending_index_request_id.is_some()
+                        || tab.index_state.index_in_progress,
+                    search_pending: tab.pending_request_id.is_some() || tab.search_in_progress,
+                    preview_pending: tab.pending_preview_request_id.is_some()
+                        || tab.preview_in_progress,
+                    action_pending: tab.pending_action_request_id.is_some()
+                        || tab.action_in_progress,
+                    sort_pending: tab.result_state.pending_sort_request_id.is_some()
+                        || tab.result_state.sort_in_progress,
+                }
+            }
+        })
+        .collect();
 
     SemanticSnapshot {
         tab_ids,
-        active_tab: app.shell.tabs.active_tab_index(),
+        tabs,
+        active_tab,
         active_root,
         active_query: app.shell.runtime.query_state.query.clone(),
         results_len: app.shell.runtime.results.len(),
@@ -352,5 +753,26 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
             || app.shell.indexing.in_progress,
         active_search_pending: app.shell.search.pending_request_id().is_some()
             || app.shell.search.in_progress(),
+        preview_pending: app.shell.worker_bus.preview.pending_request_id.is_some()
+            || app.shell.worker_bus.preview.in_progress,
+        action_pending: app.shell.worker_bus.action.pending_request_id.is_some()
+            || app.shell.worker_bus.action.in_progress,
+        sort_pending: app.shell.worker_bus.sort.pending_request_id.is_some()
+            || app.shell.worker_bus.sort.in_progress,
+        filelist_pending: app
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_request_id
+            .is_some()
+            || app
+                .shell
+                .features
+                .filelist
+                .workflow
+                .pending_after_index
+                .is_some()
+            || app.shell.features.filelist.workflow.in_progress,
     }
 }

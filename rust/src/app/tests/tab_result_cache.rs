@@ -245,6 +245,34 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
 }
 
 #[test]
+fn empty_query_compacted_restore_rebuilds_results_from_current_entries() {
+    let root = test_root("empty-query-compacted-restore-current-index");
+    fs::create_dir_all(&root).expect("create dir");
+    let current = root.join("current.txt");
+    let stale = root.join("stale.txt");
+    fs::write(&current, "current").expect("write current");
+    fs::write(&stale, "stale").expect("write stale");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = false;
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![unknown_entry(current.clone())]);
+    app.shell.runtime.base_results = vec![(current.clone(), 10.0), (stale, 5.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.total_match_count = 1;
+    app.shell.runtime.current_row = Some(0);
+
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+
+    assert_eq!(app.shell.runtime.results, vec![(current, 0.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 1);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn non_score_sorted_inactive_tab_keeps_results_for_fast_activation() {
     let root = test_root("inactive-tab-keeps-sorted-results");
     fs::create_dir_all(&root).expect("create dir");
