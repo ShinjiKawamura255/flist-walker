@@ -112,8 +112,8 @@ fn tc_183_interleaved_worker_failures_converge() {
         Event::CompleteOldestFileList(TerminalOutcome::Canceled),
     ];
     let mut harness = StatefulHarness::new("stateful-worker-failures");
-    harness.run(0x183f_a11, &events);
-    harness.quiesce(0x183f_a11);
+    harness.run(0x0183_fa11, &events);
+    harness.quiesce(0x0183_fa11);
     harness.cleanup();
 }
 
