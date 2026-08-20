@@ -3,7 +3,7 @@ mod harness;
 mod invariants;
 
 use crate::app::tests::*;
-use events::{generate, Event, IndexData, TerminalOutcome};
+use events::{generate, Event, IndexData, TerminalOutcome, WorkerOutcome};
 use harness::{snapshot_for_app, StatefulHarness};
 
 fn parse_u64_setting(name: &str, default: u64) -> u64 {
@@ -61,10 +61,10 @@ fn tc_182_curated_state_sequence_preserves_app_invariants() {
         Event::RequestSort,
         Event::RequestFileList,
         Event::SwitchTab(1),
-        Event::CompleteOldestPreview,
-        Event::CompleteOldestAction,
-        Event::CompleteOldestSort,
-        Event::CompleteOldestFileList,
+        Event::CompleteOldestPreview(WorkerOutcome::Finished),
+        Event::CompleteOldestAction(WorkerOutcome::Finished),
+        Event::CompleteOldestSort(WorkerOutcome::Finished),
+        Event::CompleteOldestFileList(TerminalOutcome::Finished),
         Event::DeliverStaleSearch,
         Event::ReorderTab { from: 0, to: 2 },
         Event::CloseTab(1),
@@ -91,6 +91,30 @@ fn tc_183_seeded_state_sequences_converge() {
         harness.quiesce(seed);
         harness.cleanup();
     }
+}
+
+#[test]
+fn tc_183_interleaved_worker_failures_converge() {
+    let events = vec![
+        Event::CreateTab,
+        Event::RequestPreview,
+        Event::RequestAction,
+        Event::SwitchTab(0),
+        Event::CompleteOldestPreview(WorkerOutcome::Failed),
+        Event::ReorderTab { from: 0, to: 1 },
+        Event::CompleteOldestAction(WorkerOutcome::Failed),
+        Event::RequestSort,
+        Event::RequestFileList,
+        Event::SwitchTab(1),
+        Event::CompleteOldestSort(WorkerOutcome::Failed),
+        Event::CompleteOldestFileList(TerminalOutcome::Failed),
+        Event::RequestFileList,
+        Event::CompleteOldestFileList(TerminalOutcome::Canceled),
+    ];
+    let mut harness = StatefulHarness::new("stateful-worker-failures");
+    harness.run(0x183f_a11, &events);
+    harness.quiesce(0x183f_a11);
+    harness.cleanup();
 }
 
 #[test]

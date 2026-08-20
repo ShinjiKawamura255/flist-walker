@@ -6,6 +6,12 @@ pub(super) enum TerminalOutcome {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum WorkerOutcome {
+    Finished,
+    Failed,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum IndexData {
     Batch,
     ReplaceAll,
@@ -27,13 +33,13 @@ pub(super) enum Event {
     CompleteNewestIndex(TerminalOutcome),
     CompleteOldestSearch,
     RequestPreview,
-    CompleteOldestPreview,
+    CompleteOldestPreview(WorkerOutcome),
     RequestAction,
-    CompleteOldestAction,
+    CompleteOldestAction(WorkerOutcome),
     RequestSort,
-    CompleteOldestSort,
+    CompleteOldestSort(WorkerOutcome),
     RequestFileList,
-    CompleteOldestFileList,
+    CompleteOldestFileList(TerminalOutcome),
     DeliverStaleIndex,
     DeliverStaleSearch,
 }
@@ -70,6 +76,14 @@ impl SplitMix64 {
             _ => TerminalOutcome::Canceled,
         }
     }
+
+    fn worker_outcome(&mut self) -> WorkerOutcome {
+        if self.next().is_multiple_of(2) {
+            WorkerOutcome::Finished
+        } else {
+            WorkerOutcome::Failed
+        }
+    }
 }
 
 pub(super) fn generate(seed: u64, steps: usize) -> Vec<Event> {
@@ -93,13 +107,13 @@ pub(super) fn generate(seed: u64, steps: usize) -> Vec<Event> {
             11 => Event::CompleteNewestIndex(rng.outcome()),
             12 => Event::CompleteOldestSearch,
             13 => Event::RequestPreview,
-            14 => Event::CompleteOldestPreview,
+            14 => Event::CompleteOldestPreview(rng.worker_outcome()),
             15 => Event::RequestAction,
-            16 => Event::CompleteOldestAction,
+            16 => Event::CompleteOldestAction(rng.worker_outcome()),
             17 => Event::RequestSort,
-            18 => Event::CompleteOldestSort,
+            18 => Event::CompleteOldestSort(rng.worker_outcome()),
             19 => Event::RequestFileList,
-            20 => Event::CompleteOldestFileList,
+            20 => Event::CompleteOldestFileList(rng.outcome()),
             21 => Event::DeliverStaleIndex,
             22 => Event::DeliverStaleSearch,
             _ => Event::DeliverOldestIndexData(IndexData::ReplaceAll),
@@ -119,5 +133,25 @@ mod tests {
 
         assert_eq!(first, second);
         assert_ne!(first, different);
+    }
+
+    #[test]
+    fn tc_181_generator_covers_representative_worker_outcomes() {
+        let events = (0..16)
+            .flat_map(|seed| generate(0x1810 + seed, 512))
+            .collect::<Vec<_>>();
+
+        for expected in [WorkerOutcome::Finished, WorkerOutcome::Failed] {
+            assert!(events.contains(&Event::CompleteOldestPreview(expected)));
+            assert!(events.contains(&Event::CompleteOldestAction(expected)));
+            assert!(events.contains(&Event::CompleteOldestSort(expected)));
+        }
+        for expected in [
+            TerminalOutcome::Finished,
+            TerminalOutcome::Failed,
+            TerminalOutcome::Canceled,
+        ] {
+            assert!(events.contains(&Event::CompleteOldestFileList(expected)));
+        }
     }
 }
