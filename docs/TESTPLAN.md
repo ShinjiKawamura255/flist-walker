@@ -63,6 +63,7 @@ For documentation-only restructuring, apply VM-001:
 - TC-150, TC-151, TC-152, TC-153 -> SP-010 -> DES-006, DES-007, DES-009 -> FR-007, NFR-008
 - TC-154 -> SP-010 -> DES-009 -> FR-007, NFR-009
 - TC-156 -> SP-007 -> DES-006 -> NFR-001
+- TC-185 -> SP-007 -> DES-006 -> NFR-001
 - TC-157 -> SP-014 -> DES-014 -> NFR-010
 - TC-158, TC-159, TC-160, TC-171 -> SP-014 -> DES-014 -> FR-033
 - TC-159, TC-160, TC-171 -> SP-014 -> DES-014 -> NFR-010

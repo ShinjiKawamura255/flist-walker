@@ -1,7 +1,7 @@
 ﻿# Quality, Constraints, and Risks
 
 ### Non-functional (NFR)
-- NFR-001: 10万件候補での検索処理は、固定 fixture と release mode の代表的な cold/warm query で median 100ms 未満を目標（SHOULD）とする。hosted CI の weekly regression gate は環境差を吸収するため、全定義 shape の各測定 sample と maximum が 250ms 未満であることを MUST とし、候補数、評価件数、match 件数、compile 時間、median、maximum を記録する。
+- NFR-001: 10万件候補での検索処理は、固定 fixture と release mode の代表的な cold/warm query で median 100ms 未満を目標（SHOULD）とする。hosted CI の weekly regression gate は環境差を吸収するため、全定義 shape の各測定 sample と maximum が 250ms 未満であることを MUST とし、候補数、評価件数、match 件数、compile 時間、median、maximum を記録する。加えて、100万件の固定候補に対する代表 query の p50/p95/p99 と RSS lifecycle を同じ weekly signal で観測可能にし、安定した hosted baseline が蓄積するまでは RSS を hard gate にしてはならない。
 - NFR-002: 例外時はユーザ向けに原因を表示し、非ゼロ終了コードを返すこと。
 - NFR-003: モジュールはテスト可能に分離され、主要機能に unit test を持つこと。query の operator truth、score、visibility、highlight span は共有 evaluator で検証可能とし、公開 adapter 間の互換性を characterization test で固定する。
 - NFR-004: GUI の主要フロー（検索、選択、アクション、再読込）は回帰手順を定義すること。

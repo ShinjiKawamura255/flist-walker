@@ -39,6 +39,13 @@ This document is the short current-state snapshot for maintainers. It does not o
 - `resvg` / `usvg` 0.48.1 replace the unmaintained `rustybuzz` / `ttf-parser` path with `harfrust` / `skrifa`; `cargo audit` completes with no warning output and packaged-target metadata resolves for Windows, Linux, and both macOS architectures.
 - Native Japanese IME, alternate DPI, multi-display, real UNC, and explicitly authorized external-action axes remain `NOT RUN`; macOS release artifacts may remain unnotarized until signing infrastructure is available.
 
+## Stateful Endurance Baseline (2026-08-20)
+
+- The first hosted Stateful Endurance run succeeded on default-branch `f1800aa9`: deterministic 1,000 seeds x 1,000 steps and the 1,200-second real-worker soak completed, and the 14-day artifact metadata was read back.
+- Controlled state sequences now include preview/action success and failure, resolved/unavailable sort metadata, and FileList finish/fail/cancel interleavings. The normal profile remains below its 10-second execution budget, and the 256 x 1,000-step extended profile converges.
+- The existing weekly search perf entrypoint now also emits TC-185 for exactly 1,000,000 fixed candidates: two fixed query shapes, seven repetitions, nearest-rank p50/p95/p99, deterministic result consistency, and RSS before/after fixture, at search peak, and after drop plus one-second quiescence. RSS remains observational-only.
+- An isolated staged Windows process passed 300-second liveness plus startup/render, literal query typing, result filtering/highlight, preview, and responsive repaint. The tab read-back raced the planned harness shutdown; Japanese IME, alternate DPI, multi-display, external open/copy/clipboard, real UNC, updater/network, and user-setting axes remain explicit `NOT RUN` rather than inferred PASS.
+
 ## Quality Posture
 
 - Cross-platform native tests, Windows GNU cross-build coverage, clippy, coverage, audit, and performance checks are maintained in GitHub Actions.

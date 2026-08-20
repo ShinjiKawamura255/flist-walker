@@ -44,6 +44,12 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 - real-worker profile は runner の temporary root だけを使用し、外部 action、updater、network endpoint を呼ばない。失敗時は artifact と runner image を確認し、product regression、hosted image drift、resource exhaustion、external transient に分類して 7 日以内に追跡する。
 - workflow/checker は Guardian の immutable trusted policy set に属する。新設または構造変更の merge は通常 PR の Guardian 失敗を期待値とし、設定 snapshot、独立 review、exact head の `CI Gate` 成功、競合 PR と base/head 不変、一時的 required-check 変更、merge 直後の完全復元/read-back、通常保護経路の後続 PR を一体で実施する。
 
+### First hosted proof and scale baseline (2026-08-20)
+
+- Default branch `f1800aa9` の manual dispatch [run 32340613009](https://github.com/ShinjiKawamura255/flist-walker/actions/runs/32340613009) は 23分42秒で成功した。deterministic 1,000 seeds x 1,000 steps、real-worker 1,200秒 soak、artifact upload、post処理がすべて成功した。
+- Artifact `stateful-endurance-32340613009` は 5,873 bytes、14日保持（expiry `2026-09-03T07:04:41Z`）として API read-back 済みである。初回 hosted proof は workflow が required check ではないという運用を変更しない。
+- TC-185 は既存 heavy weekly perf command の一部として、exactly 1,000,000 candidates、selective/dense の2 shape x 7 samples、nearest-rank p50/p95/p99、4 RSS phaseを stable `tc_185` labelで出力する。RSSは allocator/host差を観測する baselineであり、十分なhosted履歴が蓄積するまで閾値違反として扱わない。
+
 ## Pin update triggers and promotion
 
 次のいずれかで pin 更新を検討する。
