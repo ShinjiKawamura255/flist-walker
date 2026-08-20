@@ -1,0 +1,105 @@
+# Weekly stateful endurance coverage. The deterministic PR gate remains in CI Cross Platform.
+name: Stateful Endurance
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_seed:
+        description: First deterministic seed (decimal or 0x-prefixed)
+        required: false
+        default: "0x18400000"
+        type: string
+      seed_count:
+        description: Number of deterministic seeds
+        required: false
+        default: "1000"
+        type: string
+      steps:
+        description: Events generated for each deterministic seed
+        required: false
+        default: "1000"
+        type: string
+      soak_seconds:
+        description: Real-worker soak duration in seconds
+        required: false
+        default: "1200"
+        type: string
+  schedule:
+    - cron: "0 19 * * 3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_VERSION: 1.97.1
+
+jobs:
+  stateful-endurance:
+    name: Stateful Endurance Checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: rust
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Record runner image
+        shell: bash
+        working-directory: .
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
+        with:
+          toolchain: 1.97.1
+
+      - name: Cache Cargo downloads
+        continue-on-error: true
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-stateful-endurance-rust-${{ env.RUST_VERSION }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+
+      - name: Prepare endurance evidence
+        run: mkdir -p target/stateful-endurance
+
+      - name: Run extended deterministic endurance profile
+        env:
+          FLISTWALKER_ENDURANCE_BASE_SEED: ${{ inputs.base_seed || '0x18400000' }}
+          FLISTWALKER_ENDURANCE_SEED_COUNT: ${{ inputs.seed_count || '1000' }}
+          FLISTWALKER_ENDURANCE_STEPS: ${{ inputs.steps || '1000' }}
+        run: |
+          set -o pipefail
+          cargo test --locked tc_184_stateful_endurance_extended --lib -- --ignored --nocapture \
+            2>&1 | tee target/stateful-endurance/deterministic.log
+
+      - name: Run bounded real-worker soak
+        env:
+          FLISTWALKER_ENDURANCE_SOAK_SECONDS: ${{ inputs.soak_seconds || '1200' }}
+        run: |
+          set -o pipefail
+          cargo test --locked tc_184_stateful_endurance_real_worker_soak --lib -- --ignored --nocapture \
+            2>&1 | tee target/stateful-endurance/real-worker.log
+
+      - name: Upload endurance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.0
+        with:
+          name: stateful-endurance-${{ github.run_id }}
+          path: rust/target/stateful-endurance
+          if-no-files-found: warn
+          retention-days: 14

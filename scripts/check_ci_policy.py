@@ -18,6 +18,7 @@ REQUIRED_WORKFLOWS = {
     "dependabot-auto-merge.yml",
     "security-audit.yml",
     "perf-regression.yml",
+    "stateful-endurance.yml",
     "release-tagged.yml",
 }
 REQUIRED_FILES = {".github/dependabot.yml"}

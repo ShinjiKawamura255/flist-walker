@@ -291,47 +291,7 @@ impl StatefulHarness {
     }
 
     fn snapshot(&self) -> SemanticSnapshot {
-        let tab_ids = self
-            .app
-            .shell
-            .tabs
-            .iter()
-            .map(|tab| tab.id)
-            .collect::<Vec<_>>();
-        let mut routed_tab_ids = self
-            .app
-            .shell
-            .search
-            .request_routes_for_test()
-            .into_iter()
-            .map(|(_, tab_id)| tab_id)
-            .chain(self.app.shell.indexing.request_tabs.values().copied())
-            .chain(self.app.shell.tabs.routed_tab_ids_for_test())
-            .collect::<Vec<_>>();
-        routed_tab_ids.sort_unstable();
-
-        let active_root = self
-            .roots
-            .iter()
-            .position(|root| path_key(root) == path_key(&self.app.shell.runtime.root))
-            .unwrap_or(usize::MAX);
-
-        SemanticSnapshot {
-            tab_ids,
-            active_tab: self.app.shell.tabs.active_tab_index(),
-            active_root,
-            active_query: self.app.shell.runtime.query_state.query.clone(),
-            results_len: self.app.shell.runtime.results.len(),
-            total_match_count: self.app.shell.runtime.total_match_count,
-            current_row: self.app.shell.runtime.current_row,
-            index_pending: self.app.shell.indexing.pending_queue.len(),
-            index_inflight: self.app.shell.indexing.inflight_requests.len(),
-            routed_tab_ids,
-            active_index_pending: self.app.shell.indexing.pending_request_id.is_some()
-                || self.app.shell.indexing.in_progress,
-            active_search_pending: self.app.shell.search.pending_request_id().is_some()
-                || self.app.shell.search.in_progress(),
-        }
+        snapshot_for_app(&self.app, &self.roots)
     }
 
     fn assert_invariants(&self, seed: u64, step: usize, event: &Event) {
@@ -356,5 +316,41 @@ impl StatefulHarness {
             && self.app.shell.search.pending_request_id().is_none()
             && !self.app.shell.search.in_progress()
             && self.app.shell.search.request_routes_for_test().is_empty()
+    }
+}
+
+pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> SemanticSnapshot {
+    let tab_ids = app.shell.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>();
+    let mut routed_tab_ids = app
+        .shell
+        .search
+        .request_routes_for_test()
+        .into_iter()
+        .map(|(_, tab_id)| tab_id)
+        .chain(app.shell.indexing.request_tabs.values().copied())
+        .chain(app.shell.tabs.routed_tab_ids_for_test())
+        .collect::<Vec<_>>();
+    routed_tab_ids.sort_unstable();
+
+    let active_root = roots
+        .iter()
+        .position(|root| path_key(root) == path_key(&app.shell.runtime.root))
+        .unwrap_or(usize::MAX);
+
+    SemanticSnapshot {
+        tab_ids,
+        active_tab: app.shell.tabs.active_tab_index(),
+        active_root,
+        active_query: app.shell.runtime.query_state.query.clone(),
+        results_len: app.shell.runtime.results.len(),
+        total_match_count: app.shell.runtime.total_match_count,
+        current_row: app.shell.runtime.current_row,
+        index_pending: app.shell.indexing.pending_queue.len(),
+        index_inflight: app.shell.indexing.inflight_requests.len(),
+        routed_tab_ids,
+        active_index_pending: app.shell.indexing.pending_request_id.is_some()
+            || app.shell.indexing.in_progress,
+        active_search_pending: app.shell.search.pending_request_id().is_some()
+            || app.shell.search.in_progress(),
     }
 }
