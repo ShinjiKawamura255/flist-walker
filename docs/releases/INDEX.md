@@ -19,5 +19,6 @@ This directory contains records and evidence from specific release or candidate 
 | `evidence/v0.18.9/` | GUI reports, headful smoke evidence, logs, and release-body draft |
 | `evidence/v0.18.10/` | GUI report and release-body draft |
 | `evidence/v0.18.11/` | Release-body draft evidence only; no release record is stored here |
+| `evidence/v0.24.2/` | Release-candidate body draft and validation evidence for the current preparation run |
 
 Use [RELEASE.md](../RELEASE.md) for the current release process, [OSS_COMPLIANCE.md](../OSS_COMPLIANCE.md) for license and notice checks, and the repository root [CHANGELOG.md](../../CHANGELOG.md) for the consolidated user-facing change history.
