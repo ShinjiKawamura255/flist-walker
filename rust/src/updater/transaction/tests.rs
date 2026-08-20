@@ -1301,9 +1301,7 @@ fn regression_manual_self_update_helper_requests_visible_gui() {
     let helper = include_str!("../../../../scripts/manual-self-update-test.ps1");
 
     assert!(helper.contains("$psi.CreateNoWindow = $false"));
-    assert!(helper.contains(
-        "$psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal"
-    ));
+    assert!(helper.contains("$psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal"));
     assert!(helper.contains("$psi.EnvironmentVariables['LOCALAPPDATA'] = $LocalAppDataDir"));
     assert!(helper.contains("$psi.EnvironmentVariables['APPDATA'] = $RoamingAppDataDir"));
     assert!(helper.contains("$psi.EnvironmentVariables['USERPROFILE'] = $UserProfileDir"));
