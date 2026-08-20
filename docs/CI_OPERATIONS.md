@@ -114,3 +114,13 @@ run `30289068993`では、同一treeのPR runが成功した後にmacOSだけ`ca
 required checksを一時的に`CI Gate`だけへ限定し、PR #54を`b2c0c959b7ee98cd14e9f839b19b8a6ae5b95d1d`へauto-mergeした。復元時の最初のCLI requestは不正な配列payloadとして拒否され、protectionは`CI Gate`のみのまま不変だったため、明示JSON payloadで直ちに`CI Policy Guardian`を復元した。完全なread-backでrequired checks、strict、approval、administrators適用、linear history、force-push/deletion、repository auto-merge、rebase-only、branch自動削除、および非対象設定が変更前snapshotと一致することを確認した。
 
 復元後の新guardian protected-route証跡は本記録を追加するPRとし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
+
+## Stateful endurance Guardian rollout record (2026-08-20)
+
+[PR #58](https://github.com/ShinjiKawamura255/flist-walker/pull/58)でstateful endurance workflowを追加し、workflow/checkerをimmutable trusted policy setへ登録した。旧guardianは構造変更を期待どおり拒否し（runs `32336410588` / `32336458555`）、独立agentの最終reviewで未解決P1/P2が0件、exact head `268e490d84430428c899272699e9d9c3855d749e`の`CI Gate` run `32336410209`成功、base/head不変、競合PRなしを確認した。
+
+変更前snapshotはprotection endpoint `repos/ShinjiKawamura255/flist-walker/branches/master/protection`、required checks `CI Gate` / `CI Policy Guardian`（ともにGitHub Actions app ID `15368`、strict `true`）、approval `0`、administrators適用、linear history必須、force-push/deletion禁止だった。repositoryはauto-merge有効、rebase-only、merge済みbranch自動削除有効で、PR #58にはrebase auto-mergeが登録済みだった。
+
+required checksを一時的に`CI Gate`だけへ限定し、PR #58を`a2b4e3de1debdfd751541d6c22685428d74f3b92`へauto-mergeした。同じ制御処理の`finally`で直ちに`CI Policy Guardian`を復元し、required checksが`CI Gate` / `CI Policy Guardian`（app ID `15368`、strict `true`）であることをread backした。続く完全なread-backでapproval、administrators適用、linear history、force-push/deletion、signature/conversation/restriction/lock/block/fork設定、repository auto-merge、rebase-only、branch自動削除が変更前snapshotと一致し、remote feature branchの自動削除も確認した。
+
+復元後の新guardian protected-route証跡は本記録を追加する後続PRとし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
