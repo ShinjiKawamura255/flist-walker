@@ -14,6 +14,13 @@ impl FlistWalkerApp {
         }
     }
 
+    fn set_filelist_notice_for_tab_id(&mut self, tab_id: Option<u64>, notice: String) {
+        let Some(tab_index) = tab_id.and_then(|tab_id| self.find_tab_index_by_id(tab_id)) else {
+            return;
+        };
+        self.set_filelist_completion_notice_for_tab(tab_index, notice);
+    }
+
     fn track_filelist_completion_notice_for_reindex(
         &mut self,
         tab_index: usize,
@@ -141,16 +148,20 @@ impl FlistWalkerApp {
     }
 
     fn handle_filelist_failed_response(&mut self, context: FileListResponseContext, error: String) {
+        let tab_id = context.tab_id;
         match context.root_scope {
             FileListResponseScope::StaleRequestedRoot => {}
             FileListResponseScope::PreviousRoot => {
-                self.set_notice(format!(
-                    "Create File List failed for previous root: {}",
-                    error
-                ));
+                self.set_filelist_notice_for_tab_id(
+                    tab_id,
+                    format!("Create File List failed for previous root: {}", error),
+                );
             }
             FileListResponseScope::CurrentRoot => {
-                self.set_notice(format!("Create File List failed: {}", error));
+                self.set_filelist_notice_for_tab_id(
+                    tab_id,
+                    format!("Create File List failed: {}", error),
+                );
             }
         }
     }
@@ -160,7 +171,10 @@ impl FlistWalkerApp {
             context.root_scope,
             FileListResponseScope::StaleRequestedRoot
         ) {
-            self.set_notice("Create File List canceled");
+            self.set_filelist_notice_for_tab_id(
+                context.tab_id,
+                "Create File List canceled".to_string(),
+            );
         }
     }
 

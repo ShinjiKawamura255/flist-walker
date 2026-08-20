@@ -63,6 +63,12 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         source_tab_id: removed_tab_id,
         root: root.clone(),
     });
+    let filelist_cancel = Arc::new(AtomicBool::new(false));
+    app.shell.features.filelist.workflow.pending_request_id = Some(61);
+    app.shell.features.filelist.workflow.pending_request_tab_id = Some(removed_tab_id);
+    app.shell.features.filelist.workflow.pending_root = Some(root.clone());
+    app.shell.features.filelist.workflow.pending_cancel = Some(Arc::clone(&filelist_cancel));
+    app.shell.features.filelist.workflow.in_progress = true;
 
     app.shell.indexing.request_tabs.insert(11, removed_tab_id);
     app.shell.indexing.request_tabs.insert(12, survivor_tab_id);
@@ -137,6 +143,29 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         .filelist
         .workflow
         .pending_use_walker_confirmation
+        .is_none());
+    assert!(filelist_cancel.load(Ordering::Relaxed));
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_request_id
+        .is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_request_tab_id
+        .is_none());
+    assert!(app.shell.features.filelist.workflow.pending_root.is_none());
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_cancel
         .is_none());
     assert_eq!(app.shell.indexing.request_tabs.get(&11), None);
     assert_eq!(

@@ -31,6 +31,34 @@ fn queued_request_for_tab_exists_is_true_for_matching_tab() {
 }
 
 #[test]
+fn superseded_queued_index_request_releases_its_route() {
+    let root = test_root("pipeline-superseded-route");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let request = |request_id| IndexRequest {
+        request_id,
+        tab_id,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    };
+    app.shell.indexing.request_tabs.insert(7, tab_id);
+    app.shell.indexing.request_tabs.insert(8, tab_id);
+    app.shell.indexing.pending_queue.push_back(request(7));
+
+    app.enqueue_index_request(request(8));
+
+    assert_eq!(app.shell.indexing.pending_queue.len(), 1);
+    assert_eq!(app.shell.indexing.pending_queue[0].request_id, 8);
+    assert_eq!(app.shell.indexing.request_tabs.get(&7), None);
+    assert_eq!(app.shell.indexing.request_tabs.get(&8), Some(&tab_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn has_inflight_for_tab_uses_request_tab_mapping() {
     let root = test_root("pipeline-inflight");
     fs::create_dir_all(&root).expect("create dir");

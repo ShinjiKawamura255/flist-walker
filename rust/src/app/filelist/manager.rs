@@ -5,7 +5,7 @@ use crate::app::state::{
 };
 use crate::path_utils::path_key;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 impl FileListManager {
     pub(in crate::app::filelist) fn start_request_commands(
@@ -187,6 +187,12 @@ impl FileListManager {
     }
 
     pub(in crate::app) fn clear_pending_for_tab(&mut self, tab_id: u64) {
+        if self.workflow.pending_request_tab_id == Some(tab_id) {
+            if let Some(cancel) = self.workflow.pending_cancel.as_ref() {
+                cancel.store(true, Ordering::Relaxed);
+            }
+            self.clear_request();
+        }
         self.workflow
             .pending_index_completion_notices
             .retain(|_, pending| pending.tab_id != tab_id);
