@@ -102,7 +102,7 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 
 1. Windows は `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-deterministic-scenarios.ps1`、Linux/macOS/WSL は `scripts/gui-deterministic-scenarios.sh` を実行し、canonical 10 group と zero ignored を確認する。
 2. Native observation が必要な場合は `scripts/gui-headful-smoke.sh --duration 300` または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 300` を実行し、helper が表示した isolated staged window だけを操作する。workspace debug executable は直接起動しない。
-3. GSM-001..010 の該当 flowで startup/indexing、query operator、preview/selection、root/tab、FileList dialog、sort、theme、responsiveness を確認する。external action、clipboard、update activation は別途明示承認がない限り実行しない。
+3. GSM-001..011 の該当 flowで startup/indexing、query operator、preview/selection、root/tab、FileList dialog、sort、theme、responsiveness、最大深度/preset を確認する。external action、clipboard、update activation は別途明示承認がない限り実行しない。
 4. Deterministic、Native interaction、Liveness を独立して記録する。required native axis が `NOT RUN` の場合は overall PASS にせず、理由と再現手順を残す。
 
 ## Preset Application Manual Test (TC-174)
@@ -323,7 +323,6 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-165 -> SP-001, SP-006 -> DES-005, DES-007 -> FR-010
 - TC-166 -> SP-001, SP-006 -> DES-005, DES-007 -> FR-006, FR-010, NFR-012
 - TC-167, TC-168 -> SP-016 -> DES-017 -> FR-011, FR-026, NFR-012
-- TC-181, TC-182, TC-183, TC-184 -> SP-022 -> DES-023 -> NFR-013
 - TC-169 -> SP-006, SP-014 -> DES-005, DES-014 -> FR-035
 - TC-170 -> SP-006, SP-008, SP-009 -> DES-004, DES-005, DES-007, DES-008 -> FR-006, NFR-002, NFR-003
 - TC-171 -> SP-014 -> DES-014 -> FR-033, NFR-010
@@ -333,3 +332,9 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-175 -> SP-020 -> DES-021 -> FR-038
 - TC-176 -> SP-015 -> DES-016 -> FR-025
 - TC-177 -> SP-006 -> DES-005 -> FR-006
+- TC-178 -> SP-012 -> DES-012 -> NFR-005
+- TC-179 -> SP-014 -> DES-014 -> FR-033, NFR-010
+- TC-180 -> SP-021 -> DES-022 -> FR-039
+- TC-181, TC-182, TC-183, TC-184 -> SP-022 -> DES-023 -> NFR-013
+- TC-185 -> SP-007 -> DES-006 -> NFR-001
+- TC-186 -> SP-014 -> DES-014 -> FR-033, NFR-010

@@ -24,6 +24,31 @@
 ### Known issues
 - なし。
 
+## [0.24.2] - 2026-08-21
+### Added
+- 非同期 worker の状態遷移を固定 seed で再生する stateful endurance 検証と、実 worker の scheduled soak 検証を追加した。
+
+### Changed
+- tab identity、active owner、request routing を非同期イベントの interleaving 後も維持し、古い応答が別 tab の状態を巻き戻さないようにした。
+- FileList/index 完了時の結果件数 settlement と、release/CI の stateful endurance・大規模検索・GUI 証跡の検証導線を強化した。
+
+### Fixed
+- index 完了後に表示される結果件数が古い値のまま残る問題を修正した。
+- 混在した日本語 preview 文が不自然に分割・表示される問題を修正した。
+- Windows self-update の restart failure recovery を bounded retry と旧 bundle の検証付き再起動へ強化した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- self-update は従来どおり `SHA256SUMS.sig` の署名検証後に `SHA256SUMS` の checksum を照合する。今回の変更範囲に依存関係の追加・更新はない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.24.1] - 2026-08-19
 ### Added
 - CI policy guardian の検査スクリプトと unit test を追加し、workflow の権限・runner・action pin・監査設定を検証できるようにした。
@@ -1820,7 +1845,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.2...HEAD
+[0.24.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.22.1...v0.23.0
