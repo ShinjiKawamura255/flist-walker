@@ -160,6 +160,9 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - GUI headful smoke: `scripts/gui-headful-smoke.sh --duration 10` または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 10`
 - GUI deterministic scenarios: `scripts/gui-deterministic-scenarios.sh` または `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-deterministic-scenarios.ps1`
 - Stateful endurance required profile: `cd rust && cargo test --locked stateful_endurance --lib`
+- Stateful endurance extended profile: `cd rust && cargo test --locked tc_184_stateful_endurance_extended --lib -- --ignored --nocapture`
+- Stateful endurance single-seed replay: `cd rust && FLISTWALKER_ENDURANCE_SEED=<seed> cargo test --locked stateful_endurance_replay --lib -- --ignored --nocapture`
+- Stateful endurance real-worker soak: `cd rust && FLISTWALKER_ENDURANCE_SOAK_SECONDS=10 cargo test --locked tc_184_stateful_endurance_real_worker_soak --lib -- --ignored --nocapture`（closure では 10 秒、scheduled workflow では既定 1200 秒）
 - VM-005 self-update 手動試験は通常の GUI smoke / closure validation では実行しない。`scripts/manual-self-update-test.ps1` が作る private sandbox の copied executable と loopback inert feed だけを対象にし、production executable、production feed、外部 network endpoint を指定しない。`Download and Restart` は明示承認がある場合だけ実行する。
 - VM-005 GUI 手動試験:
   `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\manual-self-update-test.ps1 -Mode SameVersion`

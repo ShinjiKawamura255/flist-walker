@@ -44,6 +44,7 @@ jobs:
     def test_guardian_and_dependabot_automation_are_required(self) -> None:
         self.assertIn("ci-policy-guardian.yml", POLICY.REQUIRED_WORKFLOWS)
         self.assertIn("dependabot-auto-merge.yml", POLICY.REQUIRED_WORKFLOWS)
+        self.assertIn("stateful-endurance.yml", POLICY.REQUIRED_WORKFLOWS)
         self.assertIn(".github/dependabot.yml", POLICY.REQUIRED_FILES)
         trusted_paths = POLICY.trusted_policy_paths(ROOT)
         self.assertIn("rust/.cargo/audit.toml", trusted_paths)
