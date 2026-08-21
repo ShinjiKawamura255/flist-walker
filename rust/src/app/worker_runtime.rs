@@ -6,7 +6,8 @@ use std::time::{Duration, Instant};
 
 use super::{
     ActionRequest, CatalogRequest, FileListRequest, FlistWalkerApp, IndexRequest,
-    KindResolveRequest, PreviewRequest, SearchRequest, SortMetadataRequest, UpdateRequest,
+    KindResolveRequest, PreviewRequest, RootValidationRequest, SearchRequest, SortMetadataRequest,
+    UpdateRequest,
 };
 use crate::app::process_shutdown_requested;
 use eframe::egui;
@@ -121,6 +122,7 @@ impl FlistWalkerApp {
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_catalog_tx, _) = mpsc::channel::<CatalogRequest>();
+        let (dummy_root_validation_tx, _) = mpsc::channel::<RootValidationRequest>();
         let (dummy_index_tx, _) = super::worker_channel::bounded_request_channel::<IndexRequest>(1);
         let old_search_tx = std::mem::replace(&mut self.shell.search.tx, dummy_search_tx);
         let old_preview_tx =
@@ -135,6 +137,10 @@ impl FlistWalkerApp {
             std::mem::replace(&mut self.shell.worker_bus.update.tx, dummy_update_tx);
         let old_catalog_tx =
             std::mem::replace(&mut self.shell.worker_bus.catalog.tx, dummy_catalog_tx);
+        let old_root_validation_tx = std::mem::replace(
+            &mut self.shell.worker_bus.root_validation.tx,
+            dummy_root_validation_tx,
+        );
         let old_index_tx = std::mem::replace(&mut self.shell.indexing.tx, dummy_index_tx);
         drop(old_search_tx);
         drop(old_preview_tx);
@@ -144,6 +150,7 @@ impl FlistWalkerApp {
         drop(old_filelist_tx);
         drop(old_update_tx);
         drop(old_catalog_tx);
+        drop(old_root_validation_tx);
         drop(old_index_tx);
     }
 
@@ -237,10 +244,24 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_viewport_close_if_needed(&mut self, ctx: &egui::Context) -> bool {
-        if process_shutdown_requested() {
-            self.set_notice("Shutdown requested by signal");
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-            return true;
+        let signal_close = process_shutdown_requested();
+        let native_close = ctx.input(|input| input.viewport().close_requested());
+        if signal_close || native_close {
+            if self.shell.features.update.defer_close_and_cancel() {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.set_notice(if signal_close {
+                    "Canceling update before signal shutdown..."
+                } else {
+                    "Canceling update before closing..."
+                });
+                ctx.request_repaint();
+                return false;
+            }
+            if signal_close {
+                self.set_notice("Shutdown requested by signal");
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                return true;
+            }
         }
         if self.shell.features.update.state.close_requested_for_install {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -258,5 +279,6 @@ impl FlistWalkerApp {
         self.poll_filelist_response();
         self.poll_update_response();
         self.poll_catalog_response();
+        self.poll_root_validation_response();
     }
 }

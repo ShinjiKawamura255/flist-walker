@@ -189,9 +189,10 @@ def validate_workflow(name: str, text: str) -> list[str]:
         if "runs-on:" in block and "timeout-minutes:" not in block:
             violations.append(f"{name}: job {job_name} needs timeout-minutes")
 
-    for cache_block in re.findall(
-        r"(?ms)^\s*- name:.*?\n.*?uses:\s*actions/cache@.*?(?=^\s*- name:|\Z)",
-        text,
+    for cache_block in (
+        block
+        for block in re.split(r"(?m)^[ \t]*- name:", text)
+        if re.search(r"(?m)^\s*uses:\s*actions/cache@", block)
     ):
         if "~/.cargo/bin" in cache_block:
             violations.append(f"{name}: cache must not include ~/.cargo/bin")
@@ -298,6 +299,13 @@ def validate_ci_contract(text: str) -> list[str]:
         "pull request trigger": "  pull_request:",
         "policy gate dependency": "      - ci-policy",
         "test gate dependency": "      - rust-test-build",
+        "Windows GNU updater E2E job": "windows-gnu-update-e2e:",
+        "Windows GNU updater gate dependency": "      - windows-gnu-update-e2e",
+        "Windows GNU updater gate result": "WINDOWS_GNU_UPDATE_RESULT",
+        "test-channel public key": "FLISTWALKER_UPDATE_TEST_CHANNEL",
+        "sandbox updater invocation": "-Automated -CleanupSandbox",
+        "distinct updater payload marker": "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
+        "distinct updater payload invocation": "-AppPath $artifact -UpdateBinaryPath $updatePayload",
         "audit gate dependency": "      - cargo-audit",
         "lint gate dependency": "      - lint-and-coverage",
     }
@@ -309,6 +317,26 @@ def validate_ci_contract(text: str) -> list[str]:
             violations.append(f"ci-cross-platform.yml: missing {family} runner generation")
     if "cargo-audit:" not in text or "needs: detect-changes" not in text:
         violations.append("ci-cross-platform.yml: Cargo audit must depend on change detection")
+    if text.count("WINDOWS_GNU_UPDATE_RESULT") != 2:
+        violations.append(
+            "ci-cross-platform.yml: Windows GNU updater gate result must be wired into env and assertion"
+        )
+    release_block = text.split("windows-gnu-update-e2e:", 1)[0]
+    if "FLISTWALKER_UPDATE_SIGNING_KEY_HEX" in release_block:
+        violations.append("ci-cross-platform.yml: test signing key must not enter build jobs")
+    return violations
+
+
+def validate_release_contract(text: str) -> list[str]:
+    violations: list[str] = []
+    forbidden_test_material = {
+        "test-channel compile flag": "FLISTWALKER_UPDATE_TEST_CHANNEL",
+        "test-channel public key": "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+        "test-channel signing key": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+    }
+    for label, token in forbidden_test_material.items():
+        if token in text:
+            violations.append(f"release-tagged.yml: contains forbidden {label}")
     return violations
 
 
@@ -432,6 +460,8 @@ def collect_violations(root: Path) -> list[str]:
         violations.extend(validate_workflow(path.name, text))
         if path.name == "ci-cross-platform.yml":
             violations.extend(validate_ci_contract(text))
+        elif path.name == "release-tagged.yml":
+            violations.extend(validate_release_contract(text))
         elif path.name == "ci-policy-guardian.yml":
             violations.extend(validate_guardian_contract(text))
         elif path.name == "dependabot-auto-merge.yml":

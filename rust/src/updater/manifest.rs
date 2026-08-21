@@ -18,16 +18,26 @@ pub(super) fn verify_checksum_manifest_signature(
         .context("failed to verify update checksum signature")
 }
 
+#[cfg(test)]
 pub(super) fn verify_download(
     downloaded_file: &Path,
     checksum_file: &Path,
     asset_name: &str,
 ) -> Result<()> {
+    verify_download_with_cancel(downloaded_file, checksum_file, asset_name, &|| false)
+}
+
+pub(super) fn verify_download_with_cancel(
+    downloaded_file: &Path,
+    checksum_file: &Path,
+    asset_name: &str,
+    should_cancel: &dyn Fn() -> bool,
+) -> Result<()> {
     let checksums = parse_sha256sums_file(checksum_file)?;
     let expected = checksums
         .get(asset_name)
         .with_context(|| format!("missing checksum for {asset_name}"))?;
-    let actual = sha256_file(downloaded_file)?;
+    let actual = sha256_file_with_cancel(downloaded_file, should_cancel)?;
     if &actual != expected {
         bail!("checksum mismatch for {asset_name}: expected {expected}, got {actual}");
     }
@@ -86,12 +96,20 @@ fn parse_checksum_line(line: &str) -> Result<(&str, &str)> {
     Ok((hash, name))
 }
 
+#[cfg(test)]
 fn sha256_file(path: &Path) -> Result<String> {
+    sha256_file_with_cancel(path, &|| false)
+}
+
+fn sha256_file_with_cancel(path: &Path, should_cancel: &dyn Fn() -> bool) -> Result<String> {
     let mut file =
         fs::File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
     loop {
+        if should_cancel() {
+            bail!("update canceled");
+        }
         let read = file
             .read(&mut buf)
             .with_context(|| format!("failed to read {}", path.display()))?;
@@ -113,6 +131,28 @@ mod tests {
         "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
     const TEST_PUBLIC_KEY_HEX: &str =
         "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664";
+
+    #[test]
+    fn tc188_download_verification_checks_cancel_between_hash_chunks() {
+        let dir = staging::test_unique_update_temp_dir().expect("temp dir");
+        let asset_name = "FlistWalker-1.0.0-linux-x86_64";
+        let file_path = dir.join(asset_name);
+        let sums_path = dir.join("SHA256SUMS");
+        let contents = vec![b'x'; 32 * 1024];
+        fs::write(&file_path, &contents).expect("write sample");
+        let hash = sha256_file(&file_path).expect("hash");
+        fs::write(&sums_path, format!("{hash}  {asset_name}\n")).expect("write sums");
+        let calls = std::cell::Cell::new(0usize);
+
+        let error = verify_download_with_cancel(&file_path, &sums_path, asset_name, &|| {
+            calls.set(calls.get() + 1);
+            calls.get() > 1
+        })
+        .expect_err("verification must observe cancellation");
+
+        assert!(error.to_string().contains("update canceled"));
+        let _ = fs::remove_dir_all(dir);
+    }
 
     #[test]
     fn parse_checksum_line_supports_sha256sum_format() {

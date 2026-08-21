@@ -163,7 +163,58 @@ jobs:
 
       - name: Build release
         working-directory: ${{ matrix.workdir }}
+        env:
+          FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: ${{ matrix.label == 'windows-gnu-cross' && '79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664' || '' }}
+          FLISTWALKER_UPDATE_TEST_CHANNEL: ${{ matrix.label == 'windows-gnu-cross' && '1' || '' }}
         run: ${{ matrix.build_cmd }}
+
+      - name: Upload Windows GNU test-channel artifact
+        if: ${{ matrix.label == 'windows-gnu-cross' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-gnu-updater-test-channel
+          path: rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
+          if-no-files-found: error
+
+  windows-gnu-update-e2e:
+    name: Windows GNU Updater E2E
+    needs: rust-test-build
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Record runner image
+        shell: pwsh
+        run: |
+          "runner_image_os=$env:ImageOS" >> $env:GITHUB_STEP_SUMMARY
+          "runner_image_version=$env:ImageVersion" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Install Rust for manifest signer
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
+        with:
+          toolchain: 1.97.1
+
+      - name: Download Windows GNU test-channel artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: windows-gnu-updater-test-channel
+          path: updater-test-artifact
+
+      - name: Execute sandbox self-update
+        shell: pwsh
+        env:
+          FLISTWALKER_UPDATE_SIGNING_KEY_HEX: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
+        run: |
+          $artifact = (Resolve-Path -LiteralPath 'updater-test-artifact/FlistWalker.exe').Path
+          $updatePayload = Join-Path $env:RUNNER_TEMP 'FlistWalker-update-payload.exe'
+          Copy-Item -LiteralPath $artifact -Destination $updatePayload
+          $overlay = [System.Text.Encoding]::ASCII.GetBytes('FLISTWALKER_UPDATE_E2E_PAYLOAD_V1')
+          $stream = [System.IO.File]::Open($updatePayload, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+          try { $stream.Write($overlay, 0, $overlay.Length); $stream.Flush($true) } finally { $stream.Dispose() }
+          & ./scripts/manual-self-update-test.ps1 -AppPath $artifact -UpdateBinaryPath $updatePayload -Mode SameVersion -Automated -CleanupSandbox
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   cargo-audit:
     name: Cargo Audit
@@ -260,6 +311,7 @@ jobs:
       - detect-changes
       - ci-policy
       - rust-test-build
+      - windows-gnu-update-e2e
       - cargo-audit
       - lint-and-coverage
     runs-on: ubuntu-24.04
@@ -277,6 +329,7 @@ jobs:
           DETECT_RESULT: ${{ needs.detect-changes.result }}
           POLICY_RESULT: ${{ needs.ci-policy.result }}
           TEST_RESULT: ${{ needs.rust-test-build.result }}
+          WINDOWS_GNU_UPDATE_RESULT: ${{ needs.windows-gnu-update-e2e.result }}
           LINT_RESULT: ${{ needs.lint-and-coverage.result }}
           AUDIT_RESULT: ${{ needs.cargo-audit.result }}
           CARGO_CHANGED: ${{ needs.detect-changes.outputs.cargo_changed }}
@@ -285,6 +338,7 @@ jobs:
           [[ "$DETECT_RESULT" == "success" ]]
           [[ "$POLICY_RESULT" == "success" ]]
           [[ "$TEST_RESULT" == "success" ]]
+          [[ "$WINDOWS_GNU_UPDATE_RESULT" == "success" ]]
           [[ "$LINT_RESULT" == "success" ]]
           if [[ "$CARGO_CHANGED" == "true" ]]; then
             [[ "$AUDIT_RESULT" == "success" ]]

@@ -316,12 +316,15 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 style.visuals.widgets.active.expansion = 0.0;
                 style.visuals.widgets.open.expansion = 0.0;
                 ui.set_style(style);
-                if ui.put(apply_rect, egui::Button::new("Apply")).clicked() {
-                    actions.apply = true;
-                }
-                if ui.put(ok_rect, egui::Button::new("OK")).clicked() {
-                    actions.ok = true;
-                }
+                let validation_pending = app.shell.worker_bus.root_validation.in_progress;
+                ui.add_enabled_ui(!validation_pending, |ui| {
+                    if ui.put(apply_rect, egui::Button::new("Apply")).clicked() {
+                        actions.apply = true;
+                    }
+                    if ui.put(ok_rect, egui::Button::new("OK")).clicked() {
+                        actions.ok = true;
+                    }
+                });
                 if ui.put(cancel_rect, egui::Button::new("Cancel")).clicked() {
                     actions.cancel = true;
                 }

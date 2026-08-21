@@ -47,7 +47,13 @@ fn main() -> Result<ExitCode> {
     if let Err(err) = ensure_ignore_list_sample() {
         warn!("failed to materialize ignore list sample: {}", err);
     }
-    gui_launch::initialize()?;
-    gui_launch::run(args.root(), args.query(), args.limit(), args.max_depth())?;
+    let previous_update_failure = gui_launch::initialize()?;
+    gui_launch::run(
+        args.root(),
+        args.query(),
+        args.limit(),
+        args.max_depth(),
+        previous_update_failure,
+    )?;
     Ok(ExitCode::SUCCESS)
 }

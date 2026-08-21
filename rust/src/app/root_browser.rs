@@ -5,6 +5,7 @@ use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
 use eframe::egui;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::TryRecvError;
 
 impl FlistWalkerApp {
     /// ダイアログで選んだ root を現在 tab に適用する。
@@ -45,6 +46,8 @@ impl FlistWalkerApp {
 
     pub(super) fn open_manage_root_list(&mut self) {
         let root_browser = &mut self.shell.features.root_browser;
+        root_browser.manage_list.dialog_generation =
+            root_browser.manage_list.dialog_generation.saturating_add(1);
         root_browser.manage_list.open = true;
         root_browser.manage_list.draft_roots = root_browser.saved_roots.clone();
         root_browser.manage_list.draft_default_root = root_browser.default_root.clone();
@@ -64,6 +67,8 @@ impl FlistWalkerApp {
         root_browser.manage_list.add_focus_requested = false;
         root_browser.manage_list.add_select_all_requested = false;
         root_browser.manage_list.notice.clear();
+        root_browser.manage_list.pending_validation_intent = None;
+        self.shell.worker_bus.root_validation.clear_request();
         self.clear_focus_query_request();
         self.request_unfocus_query();
     }
@@ -77,19 +82,11 @@ impl FlistWalkerApp {
             .input_path
             .trim()
             .to_string();
-        match Self::normalize_manage_root_list_path(&input) {
-            Ok(root) => self.add_manage_root_list_path(root),
-            Err(message) => {
-                let manage = &mut self.shell.features.root_browser.manage_list;
-                manage.add_error = format!("Couldn't add the root. {}", message);
-                manage.add_focus_requested = true;
-                manage.add_select_all_requested = true;
-                manage.notice.clear();
-            }
-        }
+        self.request_manage_root_validation(super::RootValidationIntent::Add, input);
     }
 
     pub(super) fn clear_manage_root_list_add_error(&mut self) {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.add_error.clear();
         manage.add_focus_requested = false;
@@ -97,6 +94,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn clear_manage_root_list_edit_error(&mut self) {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.edit_error.clear();
         manage.edit_focus_requested = false;
@@ -104,6 +102,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn select_manage_root_list_item(&mut self, index: usize) -> bool {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage.remove_mode || index >= manage.draft_roots.len() {
             return false;
@@ -133,6 +132,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn start_editing_manage_root_list_item(&mut self) {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         let Some(index) = manage.selected_index else {
             manage.notice = "Select a root to edit".to_string();
@@ -152,6 +152,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn cancel_manage_root_list_edit(&mut self) {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.editing_index = None;
         manage.edit_path.clear();
@@ -169,35 +170,16 @@ impl FlistWalkerApp {
             };
             (index, manage.edit_path.trim().to_string())
         };
-        let replacement = match Self::normalize_manage_root_list_path(&input) {
-            Ok(root) => root,
-            Err(message) => {
-                let manage = &mut self.shell.features.root_browser.manage_list;
-                manage.edit_error = format!("Couldn't update the root. {}", message);
-                manage.edit_focus_requested = true;
-                manage.edit_select_all_requested = true;
-                manage.notice.clear();
-                return;
-            }
-        };
-        let replacement_key = Self::manage_root_list_path_key(&replacement);
+        self.request_manage_root_validation(super::RootValidationIntent::Edit { index }, input);
+    }
+
+    fn apply_validated_manage_root_edit(
+        &mut self,
+        index: usize,
+        replacement: PathBuf,
+        replacement_key: String,
+    ) {
         let manage = &mut self.shell.features.root_browser.manage_list;
-        if manage
-            .draft_roots
-            .iter()
-            .enumerate()
-            .any(|(candidate_index, candidate)| {
-                candidate_index != index
-                    && Self::manage_root_list_path_key(candidate) == replacement_key
-            })
-        {
-            manage.edit_error =
-                "Couldn't update the root. This folder is already in the list.".to_string();
-            manage.edit_focus_requested = true;
-            manage.edit_select_all_requested = true;
-            manage.notice.clear();
-            return;
-        }
         let Some(original) = manage.draft_roots.get(index).cloned() else {
             manage.editing_index = None;
             manage.edit_path.clear();
@@ -235,6 +217,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn enter_manage_root_list_remove_mode(&mut self) {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage.draft_roots.is_empty() {
             manage.notice = "There are no roots to remove".to_string();
@@ -271,7 +254,10 @@ impl FlistWalkerApp {
                 let root = normalize_windows_path_buf(dir);
                 self.shell.features.root_browser.manage_list.input_path =
                     root.to_string_lossy().to_string();
-                self.add_manage_root_list_path(root);
+                self.request_manage_root_validation(
+                    super::RootValidationIntent::Add,
+                    root.to_string_lossy().to_string(),
+                );
             }
             Ok(None) => {}
             Err(err) => {
@@ -282,6 +268,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn remove_selected_manage_root_list_items(&mut self) {
+        self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage.selected_indices.is_empty() {
             manage.notice = "Select one or more roots to remove".to_string();
@@ -315,6 +302,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_manage_root_list_changes(&mut self) {
+        if self.shell.worker_bus.root_validation.in_progress {
+            self.shell.features.root_browser.manage_list.notice =
+                "Wait for folder validation to finish".to_string();
+            return;
+        }
         let (draft_roots, draft_default_root) = {
             let manage = &self.shell.features.root_browser.manage_list;
             (
@@ -346,6 +338,11 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn confirm_manage_root_list_changes(&mut self) {
+        if self.shell.worker_bus.root_validation.in_progress {
+            self.shell.features.root_browser.manage_list.notice =
+                "Wait for folder validation to finish".to_string();
+            return;
+        }
         self.apply_manage_root_list_changes();
         self.close_manage_root_list();
     }
@@ -373,29 +370,17 @@ impl FlistWalkerApp {
         manage.edit_focus_requested = false;
         manage.edit_select_all_requested = false;
         manage.notice.clear();
-    }
-
-    fn normalize_manage_root_list_path(input: &str) -> Result<PathBuf, String> {
-        if input.is_empty() {
-            return Err("Enter a folder path.".to_string());
-        }
-        let path = normalize_windows_path_buf(PathBuf::from(input));
-        if !path.is_dir() {
-            return Err(format!("Folder not found: {}", path.display()));
-        }
-        Ok(normalize_windows_path_buf(
-            path.canonicalize().unwrap_or(path),
-        ))
+        manage.dialog_generation = manage.dialog_generation.saturating_add(1);
+        manage.pending_validation_intent = None;
+        self.shell.worker_bus.root_validation.clear_request();
     }
 
     fn manage_root_list_path_key(path: &Path) -> String {
-        let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-        path_key(&normalize_windows_path_buf(canonical))
+        path_key(&normalize_windows_path_buf(path.to_path_buf()))
     }
 
-    fn add_manage_root_list_path(&mut self, root: PathBuf) {
+    fn add_manage_root_list_path(&mut self, root: PathBuf, key: String) {
         let root = normalize_windows_path_buf(root);
-        let key = Self::manage_root_list_path_key(&root);
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage
             .draft_roots
@@ -423,7 +408,145 @@ impl FlistWalkerApp {
         manage.notice = format!("Added root to draft list: {}", root.display());
     }
 
+    fn request_manage_root_validation(
+        &mut self,
+        intent: super::RootValidationIntent,
+        input: String,
+    ) {
+        let (dialog_generation, draft_roots) = {
+            let manage = &self.shell.features.root_browser.manage_list;
+            (manage.dialog_generation, manage.draft_roots.clone())
+        };
+        let request_id = self.shell.worker_bus.root_validation.begin_request();
+        self.shell
+            .features
+            .root_browser
+            .manage_list
+            .pending_validation_intent = Some(intent);
+        let request = super::RootValidationRequest {
+            request_id,
+            dialog_generation,
+            intent,
+            input,
+            draft_roots,
+        };
+        if self
+            .shell
+            .worker_bus
+            .root_validation
+            .tx
+            .send(request)
+            .is_err()
+        {
+            self.shell.worker_bus.root_validation.clear_request();
+            self.shell
+                .features
+                .root_browser
+                .manage_list
+                .pending_validation_intent = None;
+            self.apply_root_validation_error(
+                intent,
+                "Validation worker is unavailable".to_string(),
+            );
+            return;
+        }
+        self.shell.features.root_browser.manage_list.notice = "Validating folder...".to_string();
+    }
+
+    fn cancel_manage_root_validation(&mut self) {
+        if self.shell.worker_bus.root_validation.in_progress {
+            self.shell.worker_bus.root_validation.clear_request();
+            let manage = &mut self.shell.features.root_browser.manage_list;
+            manage.pending_validation_intent = None;
+            if manage.notice == "Validating folder..." {
+                manage.notice.clear();
+            }
+        }
+    }
+
+    fn apply_root_validation_error(
+        &mut self,
+        intent: super::RootValidationIntent,
+        message: String,
+    ) {
+        let manage = &mut self.shell.features.root_browser.manage_list;
+        manage.notice.clear();
+        match intent {
+            super::RootValidationIntent::Add => {
+                manage.add_error = format!("Couldn't add the root. {message}");
+                manage.add_focus_requested = true;
+                manage.add_select_all_requested = true;
+            }
+            super::RootValidationIntent::Edit { .. } => {
+                manage.edit_error = format!("Couldn't update the root. {message}");
+                manage.edit_focus_requested = true;
+                manage.edit_select_all_requested = true;
+            }
+        }
+    }
+
+    pub(super) fn poll_root_validation_response(&mut self) {
+        loop {
+            let response = match self.shell.worker_bus.root_validation.rx.try_recv() {
+                Ok(response) => response,
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    if self.shell.worker_bus.root_validation.in_progress {
+                        let intent = self
+                            .shell
+                            .features
+                            .root_browser
+                            .manage_list
+                            .pending_validation_intent;
+                        self.shell.worker_bus.root_validation.clear_request();
+                        self.shell
+                            .features
+                            .root_browser
+                            .manage_list
+                            .pending_validation_intent = None;
+                        if let Some(intent) = intent {
+                            self.apply_root_validation_error(
+                                intent,
+                                "Validation worker disconnected unexpectedly".to_string(),
+                            );
+                        }
+                    }
+                    break;
+                }
+            };
+            let manage = &self.shell.features.root_browser.manage_list;
+            if !manage.open
+                || self.shell.worker_bus.root_validation.pending_request_id
+                    != Some(response.request_id)
+                || manage.dialog_generation != response.dialog_generation
+                || manage.pending_validation_intent != Some(response.intent)
+            {
+                continue;
+            }
+            self.shell.worker_bus.root_validation.clear_request();
+            self.shell
+                .features
+                .root_browser
+                .manage_list
+                .pending_validation_intent = None;
+            match response.result {
+                Ok(validated) => match response.intent {
+                    super::RootValidationIntent::Add => {
+                        self.add_manage_root_list_path(validated.path, validated.key)
+                    }
+                    super::RootValidationIntent::Edit { index } => {
+                        self.apply_validated_manage_root_edit(index, validated.path, validated.key)
+                    }
+                },
+                Err(message) => self.apply_root_validation_error(response.intent, message),
+            }
+        }
+    }
+
     fn browse_dialog_start_location(root: &Path) -> PathBuf {
+        // This runs only at the explicit native-picker command boundary, not during frame
+        // rendering. Preserve the established fallback so a stale saved path cannot make the
+        // platform picker fail before it opens.
         let normalized = normalize_windows_path_buf(root.to_path_buf());
         if normalized.is_dir() {
             return normalized;

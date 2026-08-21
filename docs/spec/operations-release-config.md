@@ -27,6 +27,7 @@
 - MUST: CLI からの更新適用は利用者が `--update` を明示した場合だけ開始し、`--check-update` と TUI 通知は installation state を変更してはならない。alias 由来の `--cli` は更新承認を追加も取消もしない。
 - MUST: 現在 version より新しい release が存在する場合、利用者へ更新承認ダイアログを表示する。
 - MUST: Windows/Linux の自動更新対象は、現在実行中バイナリに対応する standalone asset と `SHA256SUMS` / `SHA256SUMS.sig` に限定する。
+- MUST: OS/CPU architecture の自動更新可否は asset lookup より前に判定し、対応外 architecture と macOS の candidate は release metadata と手動更新案内だけを持ち、download URL/name を含む install payload を持ってはならない。対応外 CPU を x86_64 asset 名へ仮装してはならない。
 - MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.LICENSE.txt` と `*.THIRD_PARTY_NOTICES.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` として配置しなければならない。
 - MUST: Windows/Linux の自動更新では、standalone asset に対応する sidecar `*.README.txt` も取得し、更新後の実行バイナリと同一ディレクトリへ `README.txt` として配置しなければならない。
 - MUST: release metadata は 2 MiB、`SHA256SUMS` は 1 MiB、`SHA256SUMS.sig` は 64 KiB、standalone binary は 512 MiB、各 sidecar は 16 MiB の decoded byte 上限を持ち、`Content-Length` の有無や値にかかわらず streaming reader が実受信 byte 数を強制しなければならない。
@@ -38,12 +39,15 @@
 - MUST: activation 準備は現在 executable の canonical parent 内の固定派生名を使い、target、`.new`、backup、lock、marker が directory、symlink、Windows reparse point、または parent 外である場合は更新を開始してはならない。
 - MUST: 1 個の create-new active lock と versioned durable marker で transaction を排他し、marker は transaction/parent/helper identity、global phase、各 target の存在・旧新 hash・`prepared|intent|applied|rolled_back` 状態を write-ahead で記録しなければならない。
 - MUST: helper は parent が durable `helper_registered` phase と helper identity を記録したことを確認し、create-new acknowledgement を同期するまで filesystem mutation を行ってはならない。parent は acknowledgement を検証するまで適用開始を通知せず、本体終了を許可してはならない。
+- MUST: GUI の native close または signal shutdown が update check/staging 中に要求された場合、同じ per-request cancellation token を設定して root viewport close を保留しなければならない。install state は `CancelableStaging`、`CommitHandoff`、`Terminal` を区別し、`prepare_transaction` 直前に `CommitHandoff` へ入った後は cancellation を無視して helper acknowledgement まで完遂し、`ApplyStarted`、pre-handoff `Canceled`、または `Failed` の terminal 応答後だけ close を再送しなければならない。強制終了・電源断は durable recovery の対象とする。
 - MUST: helper 起動は installation directory を child current directory に固定してはならない。Windows の hidden updater child は stdin/stdout/stderr を `NUL` へ固定し、GUI が console detach 後に保持しうる標準 handle を継承してはならない。helper 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical helper path が `\\?\` / `\\?\UNC\` 形式なら各ラウンドで同一 path の非 verbatim 表現も試さなければならない。全試行失敗の通知は各 OS error を保持しつつ利用者向け path から `\\?\` を除去しなければならない。
 - MUST: helper は acknowledgement 後に旧 process の終了を最大 30 秒待ち、timeout を binary commit 前失敗として扱わなければならない。
 - MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の native `ReplaceFileW(target, new, backup, 0, null, null)` を updater process 内で使い、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は同一 directory の no-overwrite hard-link promotion と source unlink を使わなければならない。
 - MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
 - MUST: Windows の更新後 process 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical target が verbatim drive/UNC形式なら各ラウンドで同一 path の非verbatim表現も試さなければならない。GUI restart は生成後500ms以内に終了した process を起動失敗として扱い、新版起動失敗時は旧 bundle へ rollback して同じ起動契約で旧GUIを再起動しなければならない。新版と旧版の起動が両方失敗した場合は、両方の診断を失わず helper failure として終了しなければならない。
 - MUST: 起動時 recovery は marker phase と旧新 hash から precommit rollback、完全な committed bundle、rolled-back bundle のいずれかへ収束させなければならない。live 登録 helper が存在する transaction と同時に回復してはならず、欠落 backup、hash 不一致、不正 state 遷移、path/type 変化は ambiguous として証跡を保持し、新しい update を開始してはならない。
+- MUST: hidden helper の transaction/restart failure は、marker、transaction ID、helper PID/token/path/hash を検証済みの transaction context からだけ固定 basename の versioned diagnostic record として最大 16 KiB で永続化してよい。control character を sanitize し、create-new temporary file と atomic no-overwrite promotion を使い、symlink/reparse/wrong type を拒否し、診断記録失敗で rollback または元 error を置き換えてはならない。rollback 後に旧 binary を再起動する場合は、その process が起動診断を読むより前に record を publish しなければならない。信頼済み install directory を確定する前の failure は永続化対象外とする。
+- MUST: 起動時は diagnostic record を bounded read して一度だけ消費し、通常の抑止可能な update-check failure と分離した `Previous Update Failed` modal へ表示しなければならない。
 - MUST: 検証では Windows/Linux の同一 filesystem 上にある inert dummy file だけを使い、実行中 FlistWalker binary の置換または外部 application の起動を行ってはならない。
 - SHOULD: 署名公開鍵が埋め込まれていない開発用ビルドでは、自動更新を manual-only として扱える。
 - MUST: macOS では新しい release を検知しても自動置換を試みず、手動更新が必要であることを通知する。

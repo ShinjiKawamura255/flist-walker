@@ -1,6 +1,7 @@
 use crate::update_security::CHECKSUM_SIGNATURE_NAME;
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU8, Ordering};
 
 mod apply;
 mod manifest;
@@ -11,6 +12,61 @@ mod transaction;
 const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 const FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
 const INTERNAL_UPDATE_RESTART_FLAG: &str = "--flistwalker-internal-update-restart";
+
+const INSTALL_CANCEL_REQUESTED: u8 = 1;
+const INSTALL_COMMIT_HANDOFF: u8 = 2;
+const INSTALL_TERMINAL: u8 = 4;
+
+/// Shared by the GUI and update worker so close/cancel can interrupt staging
+/// without introducing an mpsc request that sits behind the active download.
+pub(crate) struct UpdateInstallControl {
+    state: AtomicU8,
+}
+
+impl Default for UpdateInstallControl {
+    fn default() -> Self {
+        Self {
+            state: AtomicU8::new(0),
+        }
+    }
+}
+
+impl UpdateInstallControl {
+    pub(crate) fn request_cancel(&self) -> bool {
+        self.state
+            .compare_exchange(
+                0,
+                INSTALL_CANCEL_REQUESTED,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+
+    pub(crate) fn cancel_requested(&self) -> bool {
+        self.state.load(Ordering::Acquire) == INSTALL_CANCEL_REQUESTED
+    }
+
+    fn begin_commit_handoff(&self) -> bool {
+        self.state
+            .compare_exchange(
+                0,
+                INSTALL_COMMIT_HANDOFF,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+
+    fn mark_terminal(&self) {
+        self.state.store(INSTALL_TERMINAL, Ordering::Release);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn commit_handoff_started(&self) -> bool {
+        self.state.load(Ordering::Acquire) == INSTALL_COMMIT_HANDOFF
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UpdateRestartMode {
@@ -43,10 +99,7 @@ pub enum UpdateSupport {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct UpdateCandidate {
-    pub current_version: String,
-    pub target_version: String,
-    pub release_url: String,
+pub struct AutoUpdateAssets {
     pub asset_name: String,
     pub asset_url: String,
     pub readme_asset_name: String,
@@ -57,7 +110,25 @@ pub struct UpdateCandidate {
     pub notices_asset_url: String,
     pub checksum_url: String,
     pub checksum_signature_url: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UpdateCandidate {
+    pub current_version: String,
+    pub target_version: String,
+    pub release_url: String,
     pub support: UpdateSupport,
+    pub auto_assets: Option<AutoUpdateAssets>,
+}
+
+impl UpdateCandidate {
+    fn auto_assets(&self) -> Result<&AutoUpdateAssets> {
+        match (&self.support, &self.auto_assets) {
+            (UpdateSupport::Auto, Some(assets)) => Ok(assets),
+            (UpdateSupport::ManualOnly { message }, None) => bail!("{message}"),
+            _ => bail!("invalid update candidate support/payload combination"),
+        }
+    }
 }
 
 pub fn current_version_string() -> String {
@@ -101,6 +172,12 @@ fn self_update_disabled_by_sentinel_file(current_exe: Option<&Path>) -> bool {
 }
 
 pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
+    check_for_update_with_control(&UpdateInstallControl::default())
+}
+
+pub(crate) fn check_for_update_with_control(
+    control: &UpdateInstallControl,
+) -> Result<Option<UpdateCandidate>> {
     if self_update_disabled() {
         return Ok(None);
     }
@@ -108,7 +185,13 @@ pub fn check_for_update() -> Result<Option<UpdateCandidate>> {
         bail!("{message}");
     }
     let current_version = release::parse_version(env!("CARGO_PKG_VERSION"))?;
-    let latest_release = release::fetch_latest_release()?;
+    if control.cancel_requested() {
+        bail!("update canceled");
+    }
+    let latest_release = release::fetch_latest_release(&|| control.cancel_requested())?;
+    if control.cancel_requested() {
+        bail!("update canceled");
+    }
     release::resolve_update_candidate_from_release(&current_version, &latest_release)
 }
 
@@ -117,6 +200,20 @@ pub fn prepare_and_start_update(
     current_exe: &Path,
     restart_mode: UpdateRestartMode,
 ) -> Result<()> {
+    prepare_and_start_update_with_control(
+        candidate,
+        current_exe,
+        restart_mode,
+        &UpdateInstallControl::default(),
+    )
+}
+
+pub(crate) fn prepare_and_start_update_with_control(
+    candidate: &UpdateCandidate,
+    current_exe: &Path,
+    restart_mode: UpdateRestartMode,
+    control: &UpdateInstallControl,
+) -> Result<()> {
     if self_update_disabled() {
         bail!(
             "self-update is disabled by {} environment variable or sentinel file",
@@ -124,13 +221,20 @@ pub fn prepare_and_start_update(
         );
     }
     match &candidate.support {
-        UpdateSupport::Auto => {}
+        UpdateSupport::Auto => {
+            candidate.auto_assets()?;
+        }
         UpdateSupport::ManualOnly { message } => bail!("{message}"),
     }
 
-    let staged = staging::stage_update_assets(candidate)?;
-    let mut verified = verify_staged_update(candidate, staged)?;
-    apply::spawn_update_helper(current_exe, &mut verified, restart_mode)
+    let staged = staging::stage_update_assets_with_control(candidate, control)?;
+    let mut verified = verify_staged_update(candidate, staged, control)?;
+    if !control.begin_commit_handoff() {
+        bail!("update canceled");
+    }
+    let result = apply::spawn_update_helper(current_exe, &mut verified, restart_mode);
+    control.mark_terminal();
+    result
 }
 
 pub fn should_skip_update_prompt(target_version: &str, skipped_version: Option<&str>) -> bool {
@@ -162,17 +266,18 @@ pub(super) struct StagedUpdatePaths {
 }
 
 impl StagedUpdatePaths {
-    fn new(temp_dir: PathBuf, candidate: &UpdateCandidate) -> Self {
-        Self {
-            staged_path: temp_dir.join(&candidate.asset_name),
-            staged_readme_path: temp_dir.join(&candidate.readme_asset_name),
-            staged_license_path: temp_dir.join(&candidate.license_asset_name),
-            staged_notices_path: temp_dir.join(&candidate.notices_asset_name),
+    fn new(temp_dir: PathBuf, candidate: &UpdateCandidate) -> Result<Self> {
+        let assets = candidate.auto_assets()?;
+        Ok(Self {
+            staged_path: temp_dir.join(&assets.asset_name),
+            staged_readme_path: temp_dir.join(&assets.readme_asset_name),
+            staged_license_path: temp_dir.join(&assets.license_asset_name),
+            staged_notices_path: temp_dir.join(&assets.notices_asset_name),
             checksum_path: temp_dir.join("SHA256SUMS"),
             signature_path: temp_dir.join(CHECKSUM_SIGNATURE_NAME),
             temp_dir,
             cleanup_armed: true,
-        }
+        })
     }
 
     fn cleanup_now(&mut self) -> Result<()> {
@@ -256,32 +361,44 @@ impl Drop for VerifiedUpdateBundle {
 fn verify_staged_update(
     candidate: &UpdateCandidate,
     mut staged: StagedUpdatePaths,
+    control: &UpdateInstallControl,
 ) -> Result<VerifiedUpdateBundle> {
+    let assets = candidate.auto_assets()?;
     let verification = (|| {
+        if control.cancel_requested() {
+            bail!("update canceled");
+        }
         manifest::verify_checksum_manifest_signature(
             &staged.checksum_path,
             &staged.signature_path,
         )?;
-        manifest::verify_download(
+        manifest::verify_download_with_cancel(
             &staged.staged_path,
             &staged.checksum_path,
-            &candidate.asset_name,
+            &assets.asset_name,
+            &|| control.cancel_requested(),
         )?;
-        manifest::verify_download(
+        manifest::verify_download_with_cancel(
             &staged.staged_readme_path,
             &staged.checksum_path,
-            &candidate.readme_asset_name,
+            &assets.readme_asset_name,
+            &|| control.cancel_requested(),
         )?;
-        manifest::verify_download(
+        manifest::verify_download_with_cancel(
             &staged.staged_license_path,
             &staged.checksum_path,
-            &candidate.license_asset_name,
+            &assets.license_asset_name,
+            &|| control.cancel_requested(),
         )?;
-        manifest::verify_download(
+        manifest::verify_download_with_cancel(
             &staged.staged_notices_path,
             &staged.checksum_path,
-            &candidate.notices_asset_name,
+            &assets.notices_asset_name,
+            &|| control.cancel_requested(),
         )?;
+        if control.cancel_requested() {
+            bail!("update canceled");
+        }
         staging::make_staged_binary_executable(&staged.staged_path)
     })();
     if let Err(err) = verification {
@@ -348,11 +465,126 @@ pub fn recover_interrupted_update_on_startup() -> Result<Option<String>> {
         .map(|outcome| outcome.map(|value| format!("{value:?}")))
 }
 
+pub fn take_previous_update_failure_on_startup() -> Result<Option<String>> {
+    let current_exe = std::env::current_exe().context("failed to resolve current executable")?;
+    transaction::take_failure_record(&current_exe)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn tc188_cancel_wins_before_commit_handoff() {
+        let control = UpdateInstallControl::default();
+
+        assert!(control.request_cancel());
+        assert!(control.cancel_requested());
+        assert!(!control.begin_commit_handoff());
+    }
+
+    #[test]
+    fn tc188_commit_handoff_ignores_late_cancel() {
+        let control = UpdateInstallControl::default();
+
+        assert!(control.begin_commit_handoff());
+        assert!(control.commit_handoff_started());
+        assert!(!control.request_cancel());
+        assert!(!control.cancel_requested());
+    }
+
+    #[test]
+    fn tc189_failure_record_is_bounded_sanitized_and_consumed_once() {
+        let base = std::env::temp_dir().join(format!(
+            "flistwalker-update-failure-record-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        fs::create_dir(&base).expect("base");
+        let transaction_id = "00112233445566778899aabbccddeeff";
+
+        transaction::write_failure_record(
+            &base,
+            transaction_id,
+            &anyhow::anyhow!("restart failed\u{7}: detail"),
+        )
+        .expect("write failure record");
+
+        let message = transaction::take_failure_record_from_install_dir(&base)
+            .expect("take failure record")
+            .expect("failure message");
+        assert_eq!(message, "restart failed : detail");
+        assert!(transaction::take_failure_record_from_install_dir(&base)
+            .expect("take second time")
+            .is_none());
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn tc189_failure_record_rejects_oversize_and_wrong_type_without_consuming() {
+        let base = std::env::temp_dir().join(format!(
+            "flistwalker-update-failure-record-invalid-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        fs::create_dir(&base).expect("base");
+        let path = base.join(".flistwalker-update-failure.json");
+
+        fs::write(&path, vec![b'x'; 16 * 1024 + 1]).expect("oversize record");
+        let error = transaction::take_failure_record_from_install_dir(&base)
+            .expect_err("oversize record must fail closed");
+        assert!(error.to_string().contains("size limit"));
+        assert!(path.is_file(), "invalid record must not be consumed");
+
+        fs::remove_file(&path).expect("remove oversize fixture");
+        fs::create_dir(&path).expect("wrong-type record");
+        assert!(transaction::take_failure_record_from_install_dir(&base).is_err());
+        assert!(path.is_dir(), "wrong-type record must not be consumed");
+
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn tc189_failure_record_rejects_symbolic_links() {
+        let base = std::env::temp_dir().join(format!(
+            "flistwalker-update-failure-record-link-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        fs::create_dir(&base).expect("base");
+        let target = base.join("outside-record.json");
+        fs::write(&target, b"do not consume").expect("target");
+        let link = base.join(".flistwalker-update-failure.json");
+        #[cfg(unix)]
+        let link_result = std::os::unix::fs::symlink(&target, &link);
+        #[cfg(windows)]
+        let link_result = std::os::windows::fs::symlink_file(&target, &link);
+        if link_result.is_err() {
+            // Windows can disable unprivileged symlink creation. The wrong-type case above still
+            // exercises the same fail-closed reader path on such hosts; Unix CI covers the link.
+            let _ = fs::remove_dir_all(base);
+            return;
+        }
+
+        assert!(transaction::take_failure_record_from_install_dir(&base).is_err());
+        assert_eq!(
+            fs::read(&target).expect("target retained"),
+            b"do not consume"
+        );
+        assert!(fs::symlink_metadata(&link)
+            .expect("link retained")
+            .file_type()
+            .is_symlink());
+        let _ = fs::remove_dir_all(base);
+    }
 
     #[test]
     fn tc157_explicit_cleanup_failure_reports_and_retains_the_owned_path() {

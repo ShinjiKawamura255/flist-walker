@@ -4,6 +4,8 @@ use super::{
 use crate::app::state::{UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState};
 use eframe::egui;
 use std::path::PathBuf;
+use std::sync::mpsc::TryRecvError;
+use std::sync::Arc;
 
 // Update reducer command surface. Update-specific state transitions live in
 // UpdateManager; this module bridges those commands back into FlistWalkerApp.
@@ -41,11 +43,12 @@ impl UpdateManager {
             self.clear_for_disabled_update();
             return Vec::new();
         }
-        let request_id = self.begin_request();
+        let (request_id, control) = self.begin_request();
         vec![
             UpdateCommand::Worker(UpdateWorkerCommand::Start(UpdateRequest {
                 request_id,
                 kind: UpdateRequestKind::Check,
+                control,
             })),
             UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                 event: "update_check_requested",
@@ -68,7 +71,7 @@ impl UpdateManager {
         if let Some(prompt) = self.state.prompt.as_mut() {
             prompt.install_started = true;
         }
-        let request_id = self.begin_request();
+        let (request_id, control) = self.begin_request();
         Ok(vec![
             UpdateCommand::Worker(UpdateWorkerCommand::Start(UpdateRequest {
                 request_id,
@@ -76,6 +79,7 @@ impl UpdateManager {
                     candidate: Box::new(candidate.clone()),
                     current_exe,
                 },
+                control,
             })),
             UpdateCommand::Ui(UpdateUiCommand::SetNotice(format!(
                 "Downloading update {}...",
@@ -99,6 +103,28 @@ impl UpdateManager {
         vec![UpdateCommand::Ui(UpdateUiCommand::SetNotice(
             "Update worker is unavailable".to_string(),
         ))]
+    }
+
+    pub(super) fn worker_disconnected_commands(&mut self) -> Vec<UpdateCommand> {
+        if !self.state.in_progress {
+            return Vec::new();
+        }
+        let request_id = self.state.pending_request_id;
+        self.clear_request();
+        if let Some(prompt) = self.state.prompt.as_mut() {
+            prompt.install_started = false;
+        }
+        let mut commands = vec![
+            UpdateCommand::Ui(UpdateUiCommand::SetNotice(
+                "Update worker disconnected unexpectedly".to_string(),
+            )),
+            UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
+                event: "update_worker_disconnected",
+                details: format!("request_id={request_id:?}"),
+            }),
+        ];
+        self.append_deferred_close_command(&mut commands);
+        commands
     }
 
     pub(super) fn dismiss_prompt(&mut self) {
@@ -163,10 +189,12 @@ impl UpdateManager {
                 if !self.settle_response(request_id) {
                     return Vec::new();
                 }
-                vec![UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
+                let mut commands = vec![UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                     event: "update_up_to_date",
                     details: format!("request_id={request_id}"),
-                })]
+                })];
+                self.append_deferred_close_command(&mut commands);
+                commands
             }
             UpdateResponse::CheckFailed { request_id, error } => {
                 if !self.settle_response(request_id) {
@@ -184,6 +212,8 @@ impl UpdateManager {
                         suppress_future_errors: false,
                     });
                 }
+                let mut commands = commands;
+                self.append_deferred_close_command(&mut commands);
                 commands
             }
             UpdateResponse::Available {
@@ -204,10 +234,12 @@ impl UpdateManager {
                         install_started: false,
                     });
                 }
-                vec![UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
+                let mut commands = vec![UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                     event: "update_available",
                     details: format!("request_id={request_id} target_version={target_version}"),
-                })]
+                })];
+                self.append_deferred_close_command(&mut commands);
+                commands
             }
             UpdateResponse::ApplyStarted {
                 request_id,
@@ -238,13 +270,34 @@ impl UpdateManager {
                 if let Some(prompt) = self.state.prompt.as_mut() {
                     prompt.install_started = false;
                 }
-                vec![
+                let mut commands = vec![
                     UpdateCommand::Ui(UpdateUiCommand::SetNotice(error)),
                     UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                         event: "update_failed",
                         details: format!("request_id={request_id} error={details_error}"),
                     }),
-                ]
+                ];
+                self.append_deferred_close_command(&mut commands);
+                commands
+            }
+            UpdateResponse::Canceled { request_id } => {
+                if !self.settle_response(request_id) {
+                    return Vec::new();
+                }
+                if let Some(prompt) = self.state.prompt.as_mut() {
+                    prompt.install_started = false;
+                }
+                let mut commands = vec![
+                    UpdateCommand::Ui(UpdateUiCommand::SetNotice(
+                        "Update canceled; closing safely...".to_string(),
+                    )),
+                    UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
+                        event: "update_canceled",
+                        details: format!("request_id={request_id}"),
+                    }),
+                ];
+                self.append_deferred_close_command(&mut commands);
+                commands
             }
         }
     }
@@ -252,18 +305,21 @@ impl UpdateManager {
     pub(super) fn clear_request(&mut self) {
         self.state.pending_request_id = None;
         self.state.in_progress = false;
+        self.state.active_control = None;
     }
 
     pub(super) fn clear_for_disabled_update(&mut self) {
         self.clear_request();
     }
 
-    pub(super) fn begin_request(&mut self) -> u64 {
+    pub(super) fn begin_request(&mut self) -> (u64, Arc<crate::updater::UpdateInstallControl>) {
         let request_id = self.state.next_request_id;
         self.state.next_request_id = self.state.next_request_id.saturating_add(1);
         self.state.pending_request_id = Some(request_id);
         self.state.in_progress = true;
-        request_id
+        let control = Arc::new(crate::updater::UpdateInstallControl::default());
+        self.state.active_control = Some(Arc::clone(&control));
+        (request_id, control)
     }
 
     pub(super) fn settle_response(&mut self, request_id: u64) -> bool {
@@ -273,9 +329,36 @@ impl UpdateManager {
         self.clear_request();
         true
     }
+
+    pub(super) fn defer_close_and_cancel(&mut self) -> bool {
+        if !self.state.in_progress {
+            return false;
+        }
+        self.state.close_after_update_terminal = true;
+        if let Some(control) = &self.state.active_control {
+            let _ = control.request_cancel();
+        }
+        true
+    }
+
+    fn append_deferred_close_command(&mut self, commands: &mut Vec<UpdateCommand>) {
+        if self.state.close_after_update_terminal {
+            self.state.close_after_update_terminal = false;
+            self.state.close_requested_for_install = true;
+            commands.push(UpdateCommand::App(UpdateAppCommand::RequestViewportClose));
+        }
+    }
 }
 
 impl FlistWalkerApp {
+    pub fn set_previous_update_failure(&mut self, message: String) {
+        self.shell.features.update.state.previous_update_failure = Some(message);
+    }
+
+    pub(super) fn dismiss_previous_update_failure(&mut self) {
+        self.shell.features.update.state.previous_update_failure = None;
+    }
+
     fn dispatch_update_commands(
         &mut self,
         ctx: Option<&egui::Context>,
@@ -380,13 +463,23 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_update_response(&mut self) {
-        while let Ok(response) = self.shell.worker_bus.update.rx.try_recv() {
-            let commands = self
-                .shell
-                .features
-                .update
-                .handle_response_commands(response);
-            self.dispatch_update_commands(None, commands);
+        loop {
+            match self.shell.worker_bus.update.rx.try_recv() {
+                Ok(response) => {
+                    let commands = self
+                        .shell
+                        .features
+                        .update
+                        .handle_response_commands(response);
+                    self.dispatch_update_commands(None, commands);
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    let commands = self.shell.features.update.worker_disconnected_commands();
+                    self.dispatch_update_commands(None, commands);
+                    break;
+                }
+            }
         }
     }
 }

@@ -4,8 +4,9 @@ use super::worker_channel::{
 use super::worker_protocol::{
     ActionRequest, ActionResponse, CatalogRequest, CatalogRequestKind, CatalogResponse,
     FileListRequest, FileListResponse, KindResolveRequest, KindResolveResponse, PreviewRequest,
-    PreviewResponse, SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse,
-    UpdateRequest, UpdateRequestKind, UpdateResponse,
+    PreviewResponse, RootValidationIntent, RootValidationRequest, RootValidationResponse,
+    SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
+    UpdateRequestKind, UpdateResponse, ValidatedRoot,
 };
 use super::worker_support::action_notice_for_targets;
 use super::SortMetadata;
@@ -20,10 +21,10 @@ use crate::indexer::{
     execute_filelist_write_plan, plan_filelist_write_cancellable, FileListWriteOptions,
     FileListWriteStatus,
 };
+use crate::path_utils::{normalize_windows_path_buf, path_key};
 use crate::search::{rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome};
 use crate::search_catalog::{load_search_catalog, search_catalog_file_path, update_search_catalog};
 use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
-use crate::updater::{check_for_update, prepare_and_start_update};
 use crate::walker_runtime::resolve_entry_kind;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -47,6 +48,71 @@ fn resolve_named_root_path(root: &Path) -> anyhow::Result<PathBuf> {
         anyhow::bail!("named root is not a directory: {}", root.display());
     }
     Ok(root)
+}
+
+fn validate_root_request(req: &RootValidationRequest) -> anyhow::Result<ValidatedRoot> {
+    let input = req.input.trim();
+    if input.is_empty() {
+        anyhow::bail!("Enter a folder path.");
+    }
+    let path = normalize_windows_path_buf(PathBuf::from(input));
+    if !path.is_dir() {
+        anyhow::bail!("Folder not found: {}", path.display());
+    }
+    let canonical = normalize_windows_path_buf(path.canonicalize().map_err(|error| {
+        anyhow::anyhow!("Failed to resolve folder {}: {error}", path.display())
+    })?);
+    let key = path_key(&canonical);
+    let duplicate = req
+        .draft_roots
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| !matches!(req.intent, RootValidationIntent::Edit { index: edit } if *index == edit))
+        .any(|(_, candidate)| {
+            candidate
+                .canonicalize()
+                .ok()
+                .map(normalize_windows_path_buf)
+                .is_some_and(|candidate| path_key(&candidate) == key)
+        });
+    if duplicate {
+        anyhow::bail!("This folder is already in the list.");
+    }
+    Ok(ValidatedRoot {
+        path: canonical,
+        key,
+    })
+}
+
+pub(super) fn spawn_root_validation_worker(
+    shutdown: Arc<AtomicBool>,
+) -> (
+    Sender<RootValidationRequest>,
+    Receiver<RootValidationResponse>,
+    thread::JoinHandle<()>,
+) {
+    let (tx_req, rx_req) = mpsc::channel::<RootValidationRequest>();
+    let (tx_res, rx_res) = mpsc::channel::<RootValidationResponse>();
+    let handle = thread::Builder::new()
+        .name("flistwalker-root-validation".to_string())
+        .spawn(move || {
+            while let Ok(req) = rx_req.recv() {
+                if shutdown.load(Ordering::Relaxed) {
+                    break;
+                }
+                let response = RootValidationResponse {
+                    request_id: req.request_id,
+                    dialog_generation: req.dialog_generation,
+                    intent: req.intent,
+                    result: validate_root_request(&req).map_err(|error| error.to_string()),
+                };
+                if tx_res.send(response).is_err() {
+                    break;
+                }
+            }
+        })
+        .expect("spawn root validation worker");
+    (tx_req, rx_res, handle)
 }
 
 fn trace_worker_started(flow: &'static str, request_id: u64) {
@@ -888,30 +954,39 @@ pub(super) fn spawn_update_worker(
             }
 
             let response = match req.kind {
-                UpdateRequestKind::Check => match check_for_update() {
-                    Ok(Some(candidate)) => UpdateResponse::Available {
-                        request_id: req.request_id,
-                        candidate: Box::new(candidate),
-                    },
-                    Ok(None) => UpdateResponse::UpToDate {
-                        request_id: req.request_id,
-                    },
-                    Err(err) => UpdateResponse::CheckFailed {
-                        request_id: req.request_id,
-                        error: format!("Update check failed: {err}"),
-                    },
-                },
+                UpdateRequestKind::Check => {
+                    match crate::updater::check_for_update_with_control(req.control.as_ref()) {
+                        Ok(Some(candidate)) => UpdateResponse::Available {
+                            request_id: req.request_id,
+                            candidate: Box::new(candidate),
+                        },
+                        Ok(None) => UpdateResponse::UpToDate {
+                            request_id: req.request_id,
+                        },
+                        Err(_) if req.control.cancel_requested() => UpdateResponse::Canceled {
+                            request_id: req.request_id,
+                        },
+                        Err(err) => UpdateResponse::CheckFailed {
+                            request_id: req.request_id,
+                            error: format!("Update check failed: {err}"),
+                        },
+                    }
+                }
                 UpdateRequestKind::DownloadAndApply {
                     candidate,
                     current_exe,
-                } => match prepare_and_start_update(
+                } => match crate::updater::prepare_and_start_update_with_control(
                     candidate.as_ref(),
                     &current_exe,
                     crate::updater::UpdateRestartMode::Gui,
+                    req.control.as_ref(),
                 ) {
                     Ok(()) => UpdateResponse::ApplyStarted {
                         request_id: req.request_id,
                         target_version: candidate.target_version.clone(),
+                    },
+                    Err(_) if req.control.cancel_requested() => UpdateResponse::Canceled {
+                        request_id: req.request_id,
                     },
                     Err(err) => UpdateResponse::Failed {
                         request_id: req.request_id,
@@ -969,6 +1044,14 @@ pub(super) fn spawn_update_worker(
                         request_id = *request_id,
                         error = %error,
                         "worker request failed"
+                    );
+                }
+                UpdateResponse::Canceled { request_id } => {
+                    info!(
+                        flow = "update",
+                        event = "canceled",
+                        request_id = *request_id,
+                        "worker request finished"
                     );
                 }
             }

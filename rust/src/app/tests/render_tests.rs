@@ -1,4 +1,26 @@
 use super::*;
+use crate::updater::AutoUpdateAssets;
+
+fn test_render_update_candidate() -> UpdateCandidate {
+    UpdateCandidate {
+        current_version: "0.16.1".to_string(),
+        target_version: "0.16.2".to_string(),
+        release_url: "https://example.invalid/release".to_string(),
+        support: UpdateSupport::Auto,
+        auto_assets: Some(AutoUpdateAssets {
+            asset_name: "flistwalker".to_string(),
+            asset_url: "https://example.invalid/bin".to_string(),
+            readme_asset_name: "README.txt".to_string(),
+            readme_asset_url: "https://example.invalid/readme".to_string(),
+            license_asset_name: "LICENSE.txt".to_string(),
+            license_asset_url: "https://example.invalid/license".to_string(),
+            notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
+            notices_asset_url: "https://example.invalid/notices".to_string(),
+            checksum_url: "https://example.invalid/sums".to_string(),
+            checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
+        }),
+    }
+}
 use crate::app::render::{
     RenderCommand, RenderFileListDialogCommand, RenderHelpDialogCommand,
     RenderRootListDialogCommand, RenderTabBarCommand, RenderTopActionCommand,
@@ -242,6 +264,36 @@ fn regression_update_check_failure_enter_closes_without_executing_selection() {
     });
 
     assert!(app.shell.features.update.state.check_failure.is_none());
+    assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc189_previous_update_failure_enter_closes_without_executing_selection() {
+    let root = test_root("previous-update-failure-enter-owns-input");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "fixture").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    app.set_previous_update_failure("helper restart failed".to_string());
+
+    let ctx = egui::Context::default();
+    let input = egui::RawInput {
+        events: vec![unmodified_key_event(egui::Key::Enter)],
+        ..Default::default()
+    };
+    let _ = ctx.run_ui(input, |ui| app.run_ui_frame(ui));
+
+    assert!(app
+        .shell
+        .features
+        .update
+        .state
+        .previous_update_failure
+        .is_none());
     assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
     assert!(!app.shell.worker_bus.action.in_progress);
     let _ = fs::remove_dir_all(&root);
@@ -947,22 +999,7 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
         existing_path: root.join("FileList.txt"),
     });
     app.shell.features.update.state.prompt = Some(UpdatePromptState {
-        candidate: UpdateCandidate {
-            current_version: "0.16.1".to_string(),
-            target_version: "0.16.2".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "flistwalker".to_string(),
-            asset_url: "https://example.invalid/bin".to_string(),
-            readme_asset_name: "README.txt".to_string(),
-            readme_asset_url: "https://example.invalid/readme".to_string(),
-            license_asset_name: "LICENSE.txt".to_string(),
-            license_asset_url: "https://example.invalid/license".to_string(),
-            notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
-            notices_asset_url: "https://example.invalid/notices".to_string(),
-            checksum_url: "https://example.invalid/sums".to_string(),
-            checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_render_update_candidate(),
         skip_until_next_version: false,
         install_started: false,
     });
@@ -1067,22 +1104,7 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
         root: root.clone(),
     });
     app.shell.features.update.state.prompt = Some(UpdatePromptState {
-        candidate: UpdateCandidate {
-            current_version: "0.16.1".to_string(),
-            target_version: "0.16.2".to_string(),
-            release_url: "https://example.invalid/release".to_string(),
-            asset_name: "flistwalker".to_string(),
-            asset_url: "https://example.invalid/bin".to_string(),
-            readme_asset_name: "README.txt".to_string(),
-            readme_asset_url: "https://example.invalid/readme".to_string(),
-            license_asset_name: "LICENSE.txt".to_string(),
-            license_asset_url: "https://example.invalid/license".to_string(),
-            notices_asset_name: "THIRD_PARTY_NOTICES.txt".to_string(),
-            notices_asset_url: "https://example.invalid/notices".to_string(),
-            checksum_url: "https://example.invalid/sums".to_string(),
-            checksum_signature_url: "https://example.invalid/sums.sig".to_string(),
-            support: UpdateSupport::Auto,
-        },
+        candidate: test_render_update_candidate(),
         skip_until_next_version: false,
         install_started: false,
     });

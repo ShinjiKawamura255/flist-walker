@@ -3,7 +3,7 @@ use crate::entry::{Entry, EntryKind};
 use crate::indexer::IndexSource;
 use crate::indexer::MaxDepth;
 use crate::search_catalog::{SearchCatalog, SearchPreset};
-use crate::updater::UpdateCandidate;
+use crate::updater::{UpdateCandidate, UpdateInstallControl};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -124,6 +124,7 @@ pub(super) enum UpdateRequestKind {
 pub(super) struct UpdateRequest {
     pub(super) request_id: u64,
     pub(super) kind: UpdateRequestKind,
+    pub(super) control: Arc<UpdateInstallControl>,
 }
 
 pub(super) enum UpdateResponse {
@@ -145,6 +146,9 @@ pub(super) enum UpdateResponse {
     Failed {
         request_id: u64,
         error: String,
+    },
+    Canceled {
+        request_id: u64,
     },
 }
 
@@ -234,4 +238,31 @@ pub(super) enum CatalogRequestKind {
 pub(super) struct CatalogResponse {
     pub(super) request_id: u64,
     pub(super) result: Result<SearchCatalog, String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum RootValidationIntent {
+    Add,
+    Edit { index: usize },
+}
+
+pub(super) struct RootValidationRequest {
+    pub(super) request_id: u64,
+    pub(super) dialog_generation: u64,
+    pub(super) intent: RootValidationIntent,
+    pub(super) input: String,
+    pub(super) draft_roots: Vec<PathBuf>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct ValidatedRoot {
+    pub(super) path: PathBuf,
+    pub(super) key: String,
+}
+
+pub(super) struct RootValidationResponse {
+    pub(super) request_id: u64,
+    pub(super) dialog_generation: u64,
+    pub(super) intent: RootValidationIntent,
+    pub(super) result: Result<ValidatedRoot, String>,
 }

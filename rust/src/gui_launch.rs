@@ -3,7 +3,9 @@ use std::path::Path;
 use std::time::Instant;
 
 use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
-use flist_walker::updater::recover_interrupted_update_on_startup;
+use flist_walker::updater::{
+    recover_interrupted_update_on_startup, take_previous_update_failure_on_startup,
+};
 use resvg::{tiny_skia, usvg};
 use tracing::warn;
 
@@ -29,7 +31,17 @@ fn configure_windows_dpi_mode() {
 #[cfg(not(target_os = "windows"))]
 fn configure_windows_dpi_mode() {}
 
-pub(crate) fn initialize() -> Result<()> {
+fn merge_update_diagnostic(target: &mut Option<String>, message: String) {
+    if let Some(existing) = target.as_mut() {
+        existing.push_str("\n\n");
+        existing.push_str(&message);
+    } else {
+        *target = Some(message);
+    }
+}
+
+pub(crate) fn initialize() -> Result<Option<String>> {
+    let mut previous_update_failure = None;
     match recover_interrupted_update_on_startup() {
         Ok(Some(outcome)) => {
             warn!("startup updater recovery completed: {outcome}");
@@ -37,13 +49,30 @@ pub(crate) fn initialize() -> Result<()> {
         Ok(None) => {}
         Err(err) => {
             warn!("startup updater recovery requires operator attention: {err}");
+            merge_update_diagnostic(
+                &mut previous_update_failure,
+                format!("Startup recovery requires attention: {err}"),
+            );
+        }
+    }
+    match take_previous_update_failure_on_startup() {
+        Ok(Some(message)) => merge_update_diagnostic(
+            &mut previous_update_failure,
+            format!("Previous update failed: {message}"),
+        ),
+        Ok(None) => {}
+        Err(err) => {
+            warn!("failed to consume previous updater failure record: {err}");
+            previous_update_failure.get_or_insert_with(|| {
+                format!("Previous update diagnostics require attention: {err}")
+            });
         }
     }
     ctrlc::set_handler(|| {
         request_process_shutdown();
     })
     .context("failed to install signal handler")?;
-    Ok(())
+    Ok(previous_update_failure)
 }
 
 pub(crate) fn run(
@@ -51,6 +80,7 @@ pub(crate) fn run(
     query: String,
     limit: usize,
     max_depth: flist_walker::indexer::MaxDepth,
+    previous_update_failure: Option<String>,
 ) -> Result<()> {
     let startup_start = Instant::now();
     trace_startup_phase(startup_start, "run_gui_enter");
@@ -88,7 +118,10 @@ pub(crate) fn run(
         Box::new(move |cc| {
             configure_egui_fonts(&cc.egui_ctx);
             trace_startup_phase(startup_start, "fonts_configured");
-            let app = FlistWalkerApp::from_launch(root, limit, query, root_explicit, max_depth);
+            let mut app = FlistWalkerApp::from_launch(root, limit, query, root_explicit, max_depth);
+            if let Some(message) = previous_update_failure {
+                app.set_previous_update_failure(message);
+            }
             trace_startup_phase(startup_start, "app_created");
             Ok(Box::new(app))
         }),
@@ -218,7 +251,22 @@ fn premultiplied_to_unmultiplied_rgba(src: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_root_viewport, APP_ID, APP_TITLE, DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE};
+    use super::{
+        build_root_viewport, merge_update_diagnostic, APP_ID, APP_TITLE, DEFAULT_WINDOW_SIZE,
+        MIN_WINDOW_SIZE,
+    };
+
+    #[test]
+    fn startup_update_diagnostics_preserve_recovery_and_helper_failures() {
+        let mut message = None;
+        merge_update_diagnostic(&mut message, "recovery failure".to_string());
+        merge_update_diagnostic(&mut message, "helper failure".to_string());
+
+        assert_eq!(
+            message.as_deref(),
+            Some("recovery failure\n\nhelper failure")
+        );
+    }
 
     #[test]
     fn build_root_viewport_applies_defaults() {

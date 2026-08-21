@@ -208,6 +208,78 @@ jobs:
         self.assertTrue(any("audit result in gate" in item for item in violations))
         self.assertTrue(any("Cargo safe-skip gate" in item for item in violations))
 
+    def test_ci_contract_requires_windows_gnu_updater_e2e_gate(self) -> None:
+        text = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
+            encoding="utf-8"
+        )
+        for token in (
+            "windows-gnu-update-e2e:",
+            "      - windows-gnu-update-e2e",
+            "WINDOWS_GNU_UPDATE_RESULT",
+            "-Automated -CleanupSandbox",
+            "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
+            "-AppPath $artifact -UpdateBinaryPath $updatePayload",
+        ):
+            with self.subTest(token=token):
+                mutated = text.replace(token, "removed-contract", 1)
+                violations = POLICY.validate_ci_contract(mutated)
+                self.assertTrue(
+                    any(
+                        "Windows GNU" in item
+                        or "sandbox updater" in item
+                        or "updater payload" in item
+                        for item in violations
+                    )
+                )
+
+    def test_release_contract_rejects_test_channel_material(self) -> None:
+        release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual([], POLICY.validate_release_contract(release_text))
+        for token in (
+            "FLISTWALKER_UPDATE_TEST_CHANNEL",
+            "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+            "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        ):
+            with self.subTest(token=token):
+                violations = POLICY.validate_release_contract(release_text + "\n" + token)
+                self.assertTrue(any("forbidden" in item for item in violations))
+
+    def test_manual_self_update_cleanup_is_sentinel_owned_and_fail_closed(self) -> None:
+        text = (ROOT / "scripts" / "manual-self-update-test.ps1").read_text(
+            encoding="utf-8-sig"
+        )
+        required = (
+            "SandboxDir must not already exist",
+            ".flistwalker-update-sandbox-owner",
+            "Assert-OwnedSandboxForCleanup",
+            "Test-PathIsSameOrAncestor",
+            "sandbox ownership sentinel does not match this run",
+            "sandbox contains unexpected entries",
+            "refusing cleanup of reparse-point sandbox",
+            "sandbox contains reparse points",
+            "Get-ProcessesForExecutablePath",
+            "[switch]$Automated",
+            "installed sandbox binary hash mismatch",
+            "update transaction artifacts did not settle",
+            "request escaped content root",
+            "Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX",
+            "automated update payload must differ from the initial sandbox binary",
+            "[System.Collections.Generic.Stack[string]]::new()",
+            "elseif ($entry.PSIsContainer)",
+        )
+        for token in required:
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+        cleanup = "Remove-Item -LiteralPath $cleanupPath -Recurse -Force"
+        self.assertEqual(1, text.count(cleanup))
+        self.assertLess(text.index("Assert-OwnedSandboxForCleanup"), text.rindex(cleanup))
+        self.assertLess(
+            text.index("Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX"),
+            text.index("[System.Diagnostics.Process]::Start($psi)"),
+        )
+
     def test_audit_change_paths_cover_nested_workspace_and_policy(self) -> None:
         relevant = [
             "rust/Cargo.toml",
