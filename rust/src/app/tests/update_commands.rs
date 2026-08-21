@@ -1,24 +1,27 @@
 use super::*;
 use crate::app::update::{UpdateAppCommand, UpdateCommand, UpdateWorkerCommand};
+use crate::updater::AutoUpdateAssets;
 
 fn test_update_candidate(target_version: &str) -> UpdateCandidate {
     UpdateCandidate {
         current_version: "0.13.0".to_string(),
         target_version: target_version.to_string(),
         release_url: "https://example.invalid/release".to_string(),
-        asset_name: format!("FlistWalker-{target_version}-linux-x86_64"),
-        asset_url: "https://example.invalid/asset".to_string(),
-        readme_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.README.txt"),
-        readme_asset_url: "https://example.invalid/readme".to_string(),
-        license_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.LICENSE.txt"),
-        license_asset_url: "https://example.invalid/license".to_string(),
-        notices_asset_name: format!(
-            "FlistWalker-{target_version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
-        ),
-        notices_asset_url: "https://example.invalid/notices".to_string(),
-        checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
-        checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
         support: UpdateSupport::Auto,
+        auto_assets: Some(AutoUpdateAssets {
+            asset_name: format!("FlistWalker-{target_version}-linux-x86_64"),
+            asset_url: "https://example.invalid/asset".to_string(),
+            readme_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.README.txt"),
+            readme_asset_url: "https://example.invalid/readme".to_string(),
+            license_asset_name: format!("FlistWalker-{target_version}-linux-x86_64.LICENSE.txt"),
+            license_asset_url: "https://example.invalid/license".to_string(),
+            notices_asset_name: format!(
+                "FlistWalker-{target_version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
+            ),
+            notices_asset_url: "https://example.invalid/notices".to_string(),
+            checksum_url: "https://example.invalid/SHA256SUMS".to_string(),
+            checksum_signature_url: "https://example.invalid/SHA256SUMS.sig".to_string(),
+        }),
     }
 }
 
@@ -437,6 +440,81 @@ fn start_update_install_emits_trace_command() {
             details,
         }) if details.contains("request_id=") && details.contains("target_version=0.13.1")
     )));
+}
+
+#[test]
+fn tc188_close_deferral_cancels_the_active_update_control() {
+    let mut manager = UpdateManager::default();
+    let (_request_id, control) = manager.begin_request();
+
+    assert!(manager.defer_close_and_cancel());
+    assert!(control.cancel_requested());
+    assert!(manager.state.close_after_update_terminal);
+}
+
+#[test]
+fn tc188_canceled_update_response_releases_deferred_close() {
+    let mut manager = UpdateManager::default();
+    let (request_id, _control) = manager.begin_request();
+    assert!(manager.defer_close_and_cancel());
+
+    let commands = manager.handle_response_commands(UpdateResponse::Canceled { request_id });
+
+    assert!(commands.iter().any(|command| matches!(
+        command,
+        UpdateCommand::App(UpdateAppCommand::RequestViewportClose)
+    )));
+    assert!(manager.state.close_requested_for_install);
+    assert!(!manager.state.in_progress);
+    assert!(!manager.state.close_after_update_terminal);
+}
+
+#[test]
+fn tc188_update_worker_disconnect_releases_deferred_close() {
+    let mut manager = UpdateManager::default();
+    let (_request_id, _control) = manager.begin_request();
+    assert!(manager.defer_close_and_cancel());
+
+    let commands = manager.worker_disconnected_commands();
+
+    assert!(commands.iter().any(|command| matches!(
+        command,
+        UpdateCommand::App(UpdateAppCommand::RequestViewportClose)
+    )));
+    assert!(!manager.state.in_progress);
+    assert!(!manager.state.close_after_update_terminal);
+}
+
+#[test]
+fn tc189_previous_failure_is_not_suppressed_with_startup_check_failures() {
+    let root = test_root("previous-update-failure-separation");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.set_previous_update_failure("helper restart failed".to_string());
+    app.shell
+        .features
+        .update
+        .state
+        .suppress_check_failure_dialog = true;
+
+    assert_eq!(
+        app.shell
+            .features
+            .update
+            .state
+            .previous_update_failure
+            .as_deref(),
+        Some("helper restart failed")
+    );
+    app.dismiss_previous_update_failure();
+    assert!(app
+        .shell
+        .features
+        .update
+        .state
+        .previous_update_failure
+        .is_none());
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]

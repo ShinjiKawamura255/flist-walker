@@ -19,6 +19,10 @@ pub(super) fn render_update_check_failure_dialog(app: &mut FlistWalkerApp, ctx: 
     update::render_check_failure(app, ctx);
 }
 
+pub(super) fn render_previous_update_failure_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    update::render_previous_failure(app, ctx);
+}
+
 pub(super) fn render_help_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     help::render(app, ctx);
 }

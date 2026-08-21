@@ -1,5 +1,7 @@
 use crate::update_security;
-use crate::updater::{current_version_string, StagedUpdatePaths, UpdateCandidate};
+use crate::updater::{
+    current_version_string, StagedUpdatePaths, UpdateCandidate, UpdateInstallControl,
+};
 use anyhow::{anyhow, bail, Context, Result};
 use rand_core::{OsRng, RngCore};
 use sha2::{Digest, Sha256};
@@ -49,17 +51,28 @@ struct FetchResponse {
     reader: Box<dyn Read + Send + Sync>,
 }
 
-pub(super) fn stage_update_assets(candidate: &UpdateCandidate) -> Result<StagedUpdatePaths> {
+pub(super) fn stage_update_assets_with_control(
+    candidate: &UpdateCandidate,
+    control: &UpdateInstallControl,
+) -> Result<StagedUpdatePaths> {
+    stage_update_assets_with_cancel(candidate, || control.cancel_requested())
+}
+
+fn stage_update_assets_with_cancel(
+    candidate: &UpdateCandidate,
+    should_cancel: impl Fn() -> bool,
+) -> Result<StagedUpdatePaths> {
     let limits = StagingLimits::default();
     let allow_loopback = update_feed_override_is_set();
     let mut fetch =
         |url: &str, timeout: Duration| fetch_with_ureq(url, allow_loopback, timeout, limits);
-    stage_update_assets_with(
+    stage_update_assets_with_cancel_and_fetch(
         candidate,
         &std::env::temp_dir(),
         limits,
         allow_loopback,
         &mut fetch,
+        &should_cancel,
         |message, signature| {
             update_security::verify_embedded_signature(message, signature)
                 .context("failed to verify update checksum signature")
@@ -67,6 +80,7 @@ pub(super) fn stage_update_assets(candidate: &UpdateCandidate) -> Result<StagedU
     )
 }
 
+#[cfg(test)]
 fn stage_update_assets_with<F, V>(
     candidate: &UpdateCandidate,
     base_dir: &Path,
@@ -79,28 +93,57 @@ where
     F: FnMut(&str, Duration) -> Result<FetchResponse>,
     V: Fn(&[u8], &[u8]) -> Result<()>,
 {
+    stage_update_assets_with_cancel_and_fetch(
+        candidate,
+        base_dir,
+        limits,
+        allow_loopback,
+        fetch,
+        &|| false,
+        verify_signature,
+    )
+}
+
+fn stage_update_assets_with_cancel_and_fetch<F, V>(
+    candidate: &UpdateCandidate,
+    base_dir: &Path,
+    limits: StagingLimits,
+    allow_loopback: bool,
+    fetch: &mut F,
+    should_cancel: &dyn Fn() -> bool,
+    verify_signature: V,
+) -> Result<StagedUpdatePaths>
+where
+    F: FnMut(&str, Duration) -> Result<FetchResponse>,
+    V: Fn(&[u8], &[u8]) -> Result<()>,
+{
+    ensure_not_canceled(should_cancel)?;
+    let assets = candidate.auto_assets()?;
     let deadline = Instant::now()
         .checked_add(limits.total_timeout)
         .context("update staging deadline overflow")?;
     let temp_dir = unique_update_temp_dir_in(base_dir, random_update_suffix)?;
-    let mut paths = StagedUpdatePaths::new(temp_dir, candidate);
+    let mut paths = StagedUpdatePaths::new(temp_dir, candidate)?;
 
     let staging = (|| -> Result<()> {
+        ensure_not_canceled(should_cancel)?;
         let manifest = fetch_small_body(
-            &candidate.checksum_url,
+            &assets.checksum_url,
             limits.manifest_bytes,
             deadline,
             limits.request_timeout,
             allow_loopback,
             fetch,
+            should_cancel,
         )?;
         let signature = fetch_small_body(
-            &candidate.checksum_signature_url,
+            &assets.checksum_signature_url,
             limits.signature_bytes,
             deadline,
             limits.request_timeout,
             allow_loopback,
             fetch,
+            should_cancel,
         )?;
         write_new_staged_bytes(&paths.checksum_path, &manifest)?;
         write_new_staged_bytes(&paths.signature_path, &signature)?;
@@ -109,26 +152,26 @@ where
         let checksums = super::manifest::parse_sha256sums_bytes(&manifest)?;
         let required = [
             (
-                candidate.asset_name.as_str(),
-                candidate.asset_url.as_str(),
+                assets.asset_name.as_str(),
+                assets.asset_url.as_str(),
                 paths.staged_path.as_path(),
                 limits.binary_bytes,
             ),
             (
-                candidate.readme_asset_name.as_str(),
-                candidate.readme_asset_url.as_str(),
+                assets.readme_asset_name.as_str(),
+                assets.readme_asset_url.as_str(),
                 paths.staged_readme_path.as_path(),
                 limits.sidecar_bytes,
             ),
             (
-                candidate.license_asset_name.as_str(),
-                candidate.license_asset_url.as_str(),
+                assets.license_asset_name.as_str(),
+                assets.license_asset_url.as_str(),
                 paths.staged_license_path.as_path(),
                 limits.sidecar_bytes,
             ),
             (
-                candidate.notices_asset_name.as_str(),
-                candidate.notices_asset_url.as_str(),
+                assets.notices_asset_name.as_str(),
+                assets.notices_asset_url.as_str(),
                 paths.staged_notices_path.as_path(),
                 limits.sidecar_bytes,
             ),
@@ -154,6 +197,7 @@ where
                 limits.request_timeout,
                 allow_loopback,
                 fetch,
+                should_cancel,
             )?;
         }
         Ok(())
@@ -170,6 +214,13 @@ where
         return Err(err);
     }
     Ok(paths)
+}
+
+fn ensure_not_canceled(should_cancel: &dyn Fn() -> bool) -> Result<()> {
+    if should_cancel() {
+        bail!("update canceled");
+    }
+    Ok(())
 }
 
 fn random_update_suffix() -> [u8; UPDATE_TEMP_DIR_RANDOM_BYTES] {
@@ -198,17 +249,25 @@ fn fetch_small_body<F>(
     request_timeout: Duration,
     allow_loopback: bool,
     fetch: &mut F,
+    should_cancel: &dyn Fn() -> bool,
 ) -> Result<Vec<u8>>
 where
     F: FnMut(&str, Duration) -> Result<FetchResponse>,
 {
+    ensure_not_canceled(should_cancel)?;
     validate_update_url(url, allow_loopback)?;
     let timeout = remaining_request_timeout(deadline, request_timeout)?;
     let mut response = fetch(url, timeout)?;
     reject_oversized_content_length(response.content_length, byte_limit, url)?;
     let mut body = Vec::new();
-    copy_bounded_and_hash(&mut response.reader, &mut body, byte_limit, deadline)
-        .with_context(|| format!("failed to read update body {url}"))?;
+    copy_bounded_and_hash_with_cancel(
+        &mut response.reader,
+        &mut body,
+        byte_limit,
+        deadline,
+        should_cancel,
+    )
+    .with_context(|| format!("failed to read update body {url}"))?;
     Ok(body)
 }
 
@@ -223,17 +282,25 @@ fn download_verified_asset<F>(
     request_timeout: Duration,
     allow_loopback: bool,
     fetch: &mut F,
+    should_cancel: &dyn Fn() -> bool,
 ) -> Result<()>
 where
     F: FnMut(&str, Duration) -> Result<FetchResponse>,
 {
+    ensure_not_canceled(should_cancel)?;
     validate_update_url(url, allow_loopback)?;
     let timeout = remaining_request_timeout(deadline, request_timeout)?;
     let mut response = fetch(url, timeout)?;
     reject_oversized_content_length(response.content_length, byte_limit, asset_name)?;
     let mut file = open_new_staged_file(out)?;
-    let actual = copy_bounded_and_hash(&mut response.reader, &mut file, byte_limit, deadline)
-        .with_context(|| format!("failed to write {}", out.display()))?;
+    let actual = copy_bounded_and_hash_with_cancel(
+        &mut response.reader,
+        &mut file,
+        byte_limit,
+        deadline,
+        should_cancel,
+    )
+    .with_context(|| format!("failed to write {}", out.display()))?;
     file.sync_all()
         .with_context(|| format!("failed to sync {}", out.display()))?;
     if !actual.eq_ignore_ascii_case(expected_digest) {
@@ -253,16 +320,28 @@ fn reject_oversized_content_length(
     Ok(())
 }
 
+#[cfg(test)]
 fn copy_bounded_and_hash(
     reader: &mut dyn Read,
     writer: &mut dyn Write,
     byte_limit: u64,
     deadline: Instant,
 ) -> Result<String> {
+    copy_bounded_and_hash_with_cancel(reader, writer, byte_limit, deadline, &|| false)
+}
+
+fn copy_bounded_and_hash_with_cancel(
+    reader: &mut dyn Read,
+    writer: &mut dyn Write,
+    byte_limit: u64,
+    deadline: Instant,
+    should_cancel: &dyn Fn() -> bool,
+) -> Result<String> {
     let mut hasher = Sha256::new();
     let mut total = 0u64;
     let mut buffer = [0u8; 64 * 1024];
     loop {
+        ensure_not_canceled(should_cancel)?;
         if Instant::now() >= deadline {
             bail!("update staging total deadline exceeded");
         }
@@ -393,7 +472,11 @@ pub(super) fn write_new_staged_file(path: &Path, contents: &str) -> Result<()> {
         .with_context(|| format!("failed to write {}", path.display()))
 }
 
-pub(super) fn fetch_release_json(url: &str, allow_loopback: bool) -> Result<Vec<u8>> {
+pub(super) fn fetch_release_json_with_cancel(
+    url: &str,
+    allow_loopback: bool,
+    should_cancel: &dyn Fn() -> bool,
+) -> Result<Vec<u8>> {
     let limits = StagingLimits::default();
     let deadline = Instant::now()
         .checked_add(limits.total_timeout)
@@ -407,16 +490,39 @@ pub(super) fn fetch_release_json(url: &str, allow_loopback: bool) -> Result<Vec<
         limits.request_timeout,
         allow_loopback,
         &mut fetch,
+        should_cancel,
     )
 }
 
-fn validate_update_url(url: &str, allow_loopback: bool) -> Result<()> {
+fn parse_update_url(url: &str) -> Result<(String, String)> {
     let request = ureq::get(url);
     let parsed = request
         .request_url()
         .map_err(|err| anyhow!("invalid update URL: {err}"))?;
-    let scheme = parsed.scheme();
-    let host = parsed.host().to_ascii_lowercase();
+    Ok((
+        parsed.scheme().to_string(),
+        parsed.host().to_ascii_lowercase(),
+    ))
+}
+
+fn is_loopback_http_url(url: &str) -> Result<bool> {
+    let (scheme, host) = parse_update_url(url)?;
+    let loopback = matches!(host.as_str(), "localhost" | "127.0.0.1" | "::1" | "[::1]");
+    Ok(loopback && scheme == "http")
+}
+
+pub(super) fn validate_test_channel_feed(url: &str) -> Result<()> {
+    if !is_loopback_http_url(url)? {
+        bail!("test-channel updater accepts only loopback HTTP URLs");
+    }
+    Ok(())
+}
+
+fn validate_update_url(url: &str, allow_loopback: bool) -> Result<()> {
+    if option_env!("FLISTWALKER_UPDATE_TEST_CHANNEL") == Some("1") {
+        return validate_test_channel_feed(url);
+    }
+    let (scheme, host) = parse_update_url(url)?;
     let loopback = matches!(host.as_str(), "localhost" | "127.0.0.1" | "::1" | "[::1]");
     if allow_loopback && loopback && scheme == "http" {
         return Ok(());
@@ -594,18 +700,20 @@ mod tests {
             current_version: "1.0.0".to_string(),
             target_version: "1.0.1".to_string(),
             release_url: "http://127.0.0.1/release".to_string(),
-            asset_name: "FlistWalker-1.0.1-linux-x86_64".to_string(),
-            asset_url: "http://127.0.0.1/binary".to_string(),
-            readme_asset_name: "FlistWalker-1.0.1-linux-x86_64.README.txt".to_string(),
-            readme_asset_url: "http://127.0.0.1/readme".to_string(),
-            license_asset_name: "FlistWalker-1.0.1-linux-x86_64.LICENSE.txt".to_string(),
-            license_asset_url: "http://127.0.0.1/license".to_string(),
-            notices_asset_name: "FlistWalker-1.0.1-linux-x86_64.THIRD_PARTY_NOTICES.txt"
-                .to_string(),
-            notices_asset_url: "http://127.0.0.1/notices".to_string(),
-            checksum_url: "http://127.0.0.1/SHA256SUMS".to_string(),
-            checksum_signature_url: "http://127.0.0.1/SHA256SUMS.sig".to_string(),
             support: UpdateSupport::Auto,
+            auto_assets: Some(crate::updater::AutoUpdateAssets {
+                asset_name: "FlistWalker-1.0.1-linux-x86_64".to_string(),
+                asset_url: "http://127.0.0.1/binary".to_string(),
+                readme_asset_name: "FlistWalker-1.0.1-linux-x86_64.README.txt".to_string(),
+                readme_asset_url: "http://127.0.0.1/readme".to_string(),
+                license_asset_name: "FlistWalker-1.0.1-linux-x86_64.LICENSE.txt".to_string(),
+                license_asset_url: "http://127.0.0.1/license".to_string(),
+                notices_asset_name: "FlistWalker-1.0.1-linux-x86_64.THIRD_PARTY_NOTICES.txt"
+                    .to_string(),
+                notices_asset_url: "http://127.0.0.1/notices".to_string(),
+                checksum_url: "http://127.0.0.1/SHA256SUMS".to_string(),
+                checksum_signature_url: "http://127.0.0.1/SHA256SUMS.sig".to_string(),
+            }),
         }
     }
 
@@ -613,7 +721,12 @@ mod tests {
         format!("{:x}", Sha256::digest(bytes))
     }
 
+    fn tc157_assets(candidate: &UpdateCandidate) -> &crate::updater::AutoUpdateAssets {
+        candidate.auto_assets.as_ref().expect("auto assets")
+    }
+
     fn tc157_bodies(candidate: &UpdateCandidate) -> HashMap<String, Vec<u8>> {
+        let candidate = tc157_assets(candidate);
         let assets = [
             (
                 &candidate.asset_name,
@@ -713,8 +826,51 @@ mod tests {
     }
 
     #[test]
+    fn tc191_test_channel_feed_accepts_only_loopback_http() {
+        for url in [
+            "http://127.0.0.1:8080/feed",
+            "http://localhost:8080/feed",
+            "http://[::1]:8080/feed",
+        ] {
+            validate_test_channel_feed(url).expect("loopback test feed");
+        }
+        for url in [
+            "https://127.0.0.1/feed",
+            "http://example.invalid/feed",
+            "https://api.github.com/repos/x",
+        ] {
+            assert!(validate_test_channel_feed(url).is_err(), "accepted {url}");
+        }
+    }
+
+    #[test]
+    fn tc188_invalid_candidate_does_not_create_a_staging_directory() {
+        let mut candidate = tc157_candidate();
+        candidate.auto_assets = None;
+        let base = unique_update_temp_dir().expect("base");
+        let mut fetch = |_url: &str, _timeout: Duration| {
+            panic!("invalid candidate must fail before network access")
+        };
+
+        let error = stage_update_assets_with(
+            &candidate,
+            &base,
+            StagingLimits::default(),
+            true,
+            &mut fetch,
+            |_message, _signature| Ok(()),
+        )
+        .expect_err("invalid candidate must fail closed");
+
+        assert!(error.to_string().contains("invalid update candidate"));
+        assert_eq!(fs::read_dir(&base).expect("read base").count(), 0);
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
     fn tc157_staging_fetches_trust_material_before_assets() {
         let candidate = tc157_candidate();
+        let assets = tc157_assets(&candidate).clone();
         let bodies = tc157_bodies(&candidate);
         let base = unique_update_temp_dir().expect("base");
         let mut order = Vec::new();
@@ -740,11 +896,11 @@ mod tests {
         assert_eq!(
             &order[..2],
             [
-                candidate.checksum_url.clone(),
-                candidate.checksum_signature_url.clone()
+                assets.checksum_url.clone(),
+                assets.checksum_signature_url.clone()
             ]
         );
-        assert_eq!(order[2], candidate.asset_url);
+        assert_eq!(order[2], assets.asset_url);
         drop(staged);
         assert_eq!(fs::read_dir(&base).expect("read base").count(), 0);
         let _ = fs::remove_dir_all(&base);
@@ -753,6 +909,7 @@ mod tests {
     #[test]
     fn tc157_signature_failure_prevents_asset_requests_and_cleans_staging() {
         let candidate = tc157_candidate();
+        let assets = tc157_assets(&candidate).clone();
         let bodies = tc157_bodies(&candidate);
         let base = unique_update_temp_dir().expect("base");
         let mut order = Vec::new();
@@ -779,8 +936,8 @@ mod tests {
         assert_eq!(
             order,
             [
-                candidate.checksum_url.clone(),
-                candidate.checksum_signature_url.clone()
+                assets.checksum_url.clone(),
+                assets.checksum_signature_url.clone()
             ]
         );
         assert_eq!(fs::read_dir(&base).expect("read base").count(), 0);
@@ -790,10 +947,11 @@ mod tests {
     #[test]
     fn tc157_all_required_digests_are_validated_before_any_asset_request() {
         let candidate = tc157_candidate();
+        let assets = tc157_assets(&candidate).clone();
         let mut bodies = tc157_bodies(&candidate);
         bodies.insert(
-            candidate.checksum_url.clone(),
-            format!("{}  {}\n", sha256_hex(b"binary"), candidate.asset_name).into_bytes(),
+            assets.checksum_url.clone(),
+            format!("{}  {}\n", sha256_hex(b"binary"), assets.asset_name).into_bytes(),
         );
         let base = unique_update_temp_dir().expect("base");
         let mut order = Vec::new();
@@ -820,8 +978,8 @@ mod tests {
         assert_eq!(
             order,
             [
-                candidate.checksum_url.clone(),
-                candidate.checksum_signature_url.clone()
+                assets.checksum_url.clone(),
+                assets.checksum_signature_url.clone()
             ]
         );
         assert_eq!(fs::read_dir(&base).expect("read base").count(), 0);
@@ -831,8 +989,9 @@ mod tests {
     #[test]
     fn tc157_failed_staging_cleans_only_owned_partial_directory() {
         let candidate = tc157_candidate();
+        let assets = tc157_assets(&candidate).clone();
         let mut bodies = tc157_bodies(&candidate);
-        bodies.insert(candidate.asset_url.clone(), b"tampered".to_vec());
+        bodies.insert(assets.asset_url.clone(), b"tampered".to_vec());
         let base = unique_update_temp_dir().expect("base");
         let unrelated = base.join("unrelated");
         fs::write(&unrelated, b"keep").expect("write unrelated");
@@ -878,11 +1037,12 @@ mod tests {
         }
 
         let candidate = tc157_candidate();
+        let assets = tc157_assets(&candidate).clone();
         let bodies = tc157_bodies(&candidate);
         let base = unique_update_temp_dir().expect("base");
         let mut fetch = |url: &str, _timeout: Duration| {
             let body = bodies.get(url).expect("scripted body").clone();
-            let reader: Box<dyn Read + Send + Sync> = if url == candidate.asset_url {
+            let reader: Box<dyn Read + Send + Sync> = if url == assets.asset_url {
                 Box::new(FailingReader {
                     first: Some(body[..3].to_vec()),
                 })

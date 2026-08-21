@@ -587,6 +587,10 @@ fn tc159_restart_failure_restores_old_bundle_and_restarts_old_binary() {
         process.restart_modes(),
         &[UpdateRestartMode::Headless, UpdateRestartMode::Gui]
     );
+    let diagnostic = take_failure_record_from_install_dir(&fixture.root)
+        .expect("read restart diagnostic")
+        .expect("restart diagnostic");
+    assert!(diagnostic.contains("injected restart failure"));
 }
 
 #[test]

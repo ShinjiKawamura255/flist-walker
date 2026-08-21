@@ -10,6 +10,43 @@ fn filelist_dialog_button_count(kind: FileListDialogKind) -> usize {
 }
 
 impl FlistWalkerApp {
+    pub(in crate::app) fn handle_previous_update_failure_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+    ) -> bool {
+        if self
+            .shell
+            .features
+            .update
+            .state
+            .previous_update_failure
+            .is_none()
+        {
+            return false;
+        }
+        let close = ctx.input_mut(|input| {
+            input.consume_key(egui::Modifiers::NONE, egui::Key::Enter)
+                || input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
+        });
+        ctx.input_mut(|input| {
+            input.events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::Copy
+                        | egui::Event::Cut
+                        | egui::Event::Paste(_)
+                        | egui::Event::Text(_)
+                        | egui::Event::Key { .. }
+                        | egui::Event::Ime(_)
+                )
+            });
+        });
+        if close {
+            self.dismiss_previous_update_failure();
+        }
+        true
+    }
+
     pub(in crate::app) fn handle_help_dialog_shortcuts(&mut self, ctx: &egui::Context) -> bool {
         if !self.shell.ui.help_open {
             if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::F1)) {

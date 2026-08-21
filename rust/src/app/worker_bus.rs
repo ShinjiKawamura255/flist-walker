@@ -3,7 +3,8 @@ use super::worker_channel::BoundedSender;
 use super::worker_protocol::{
     ActionRequest, ActionResponse, CatalogRequest, CatalogResponse, FileListRequest,
     FileListResponse, KindResolveRequest, KindResolveResponse, PreviewRequest, PreviewResponse,
-    SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateResponse,
+    RootValidationRequest, RootValidationResponse, SortMetadataRequest, SortMetadataResponse,
+    UpdateRequest, UpdateResponse,
 };
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -97,6 +98,28 @@ pub(super) struct CatalogWorkerBus {
     pub(super) in_progress: bool,
 }
 
+pub(super) struct RootValidationWorkerBus {
+    pub(super) tx: Sender<RootValidationRequest>,
+    pub(super) rx: Receiver<RootValidationResponse>,
+    pub(super) next_request_id: u64,
+    pub(super) pending_request_id: Option<u64>,
+    pub(super) in_progress: bool,
+}
+
+impl RootValidationWorkerBus {
+    pub(super) fn begin_request(&mut self) -> u64 {
+        worker_bus_lifecycle::begin_request(
+            &mut self.next_request_id,
+            &mut self.pending_request_id,
+            &mut self.in_progress,
+        )
+    }
+
+    pub(super) fn clear_request(&mut self) {
+        worker_bus_lifecycle::clear_request(&mut self.pending_request_id, &mut self.in_progress);
+    }
+}
+
 impl CatalogWorkerBus {
     pub(super) fn begin_request(&mut self) -> u64 {
         worker_bus_lifecycle::begin_request(
@@ -119,4 +142,5 @@ pub(super) struct WorkerBus {
     pub(super) filelist: FileListWorkerBus,
     pub(super) update: UpdateWorkerBus,
     pub(super) catalog: CatalogWorkerBus,
+    pub(super) root_validation: RootValidationWorkerBus,
 }

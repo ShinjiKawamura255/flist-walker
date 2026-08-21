@@ -139,3 +139,43 @@ pub(super) fn render_check_failure(app: &mut FlistWalkerApp, ctx: &egui::Context
         }
     }
 }
+
+pub(super) fn render_previous_failure(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    let Some(message) = app
+        .shell
+        .features
+        .update
+        .state
+        .previous_update_failure
+        .clone()
+    else {
+        return;
+    };
+    let mut close = false;
+    egui::Modal::new(egui::Id::new("previous-update-failure-modal")).show(ctx, |ui| {
+        ui.heading("Previous Update Failed");
+        ui.label("A previous update needs attention.");
+        ui.label(
+            "Update evidence was preserved when recovery could not be verified; see details below.",
+        );
+        ui.add_space(6.0);
+        ui.separator();
+        ui.label("Details");
+        egui::ScrollArea::vertical()
+            .max_height(240.0)
+            .show(ui, |ui| {
+                ui.add(
+                    egui::Label::new(egui::RichText::new(message).monospace())
+                        .wrap()
+                        .selectable(true),
+                );
+            });
+        ui.add_space(6.0);
+        if ui.button("Close").clicked() {
+            close = true;
+        }
+    });
+    if close {
+        app.dismiss_previous_update_failure();
+    }
+}

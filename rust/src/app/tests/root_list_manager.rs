@@ -1,5 +1,6 @@
 use super::*;
-use std::sync::{Mutex, OnceLock};
+use crate::app::worker_protocol::{RootValidationIntent, RootValidationResponse, ValidatedRoot};
+use std::sync::{mpsc, Mutex, OnceLock};
 
 static SAVED_ROOTS_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
@@ -29,6 +30,213 @@ fn saved_roots_test_scope(name: &str) -> SavedRootsTestScope {
         _guard: guard,
         settings_base: base,
     }
+}
+
+fn settle_root_validation(app: &mut FlistWalkerApp) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while app.shell.worker_bus.root_validation.in_progress {
+        app.poll_root_validation_response();
+        assert!(
+            std::time::Instant::now() < deadline,
+            "root validation worker did not settle"
+        );
+        std::thread::yield_now();
+    }
+}
+
+#[test]
+fn tc192_stale_root_validation_response_cannot_mutate_reopened_dialog() {
+    let root = test_root("root-validation-stale-generation");
+    fs::create_dir_all(&root).expect("root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.open_manage_root_list();
+    let stale_generation = app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .dialog_generation;
+    app.cancel_manage_root_list();
+    app.open_manage_root_list();
+    let current_generation = app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .dialog_generation;
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.root_validation.rx = rx;
+    app.shell.worker_bus.root_validation.pending_request_id = Some(42);
+    app.shell.worker_bus.root_validation.in_progress = true;
+    app.shell
+        .features
+        .root_browser
+        .manage_list
+        .pending_validation_intent = Some(RootValidationIntent::Add);
+    let initial_drafts = app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .draft_roots
+        .clone();
+
+    tx.send(RootValidationResponse {
+        request_id: 42,
+        dialog_generation: stale_generation,
+        intent: RootValidationIntent::Add,
+        result: Ok(ValidatedRoot {
+            path: root.join("stale"),
+            key: "stale".to_string(),
+        }),
+    })
+    .expect("stale response");
+    app.poll_root_validation_response();
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.draft_roots,
+        initial_drafts
+    );
+    assert!(app.shell.worker_bus.root_validation.in_progress);
+
+    tx.send(RootValidationResponse {
+        request_id: 42,
+        dialog_generation: current_generation,
+        intent: RootValidationIntent::Add,
+        result: Ok(ValidatedRoot {
+            path: root.clone(),
+            key: crate::path_utils::path_key(&normalize_windows_path_buf(root.clone())),
+        }),
+    })
+    .expect("current response");
+    app.poll_root_validation_response();
+    let mut expected_drafts = initial_drafts;
+    expected_drafts.push(normalize_windows_path_buf(root.clone()));
+    expected_drafts.sort_by_key(|path| path.to_string_lossy().to_ascii_lowercase());
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.draft_roots,
+        expected_drafts
+    );
+    assert!(!app.shell.worker_bus.root_validation.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc192_root_validation_disconnect_clears_pending_state() {
+    let root = test_root("root-validation-disconnect");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.open_manage_root_list();
+    app.shell.worker_bus.root_validation.in_progress = true;
+    app.shell.worker_bus.root_validation.pending_request_id = Some(42);
+    app.shell
+        .features
+        .root_browser
+        .manage_list
+        .pending_validation_intent = Some(RootValidationIntent::Add);
+    let (tx, rx) = mpsc::channel::<RootValidationResponse>();
+    drop(tx);
+    app.shell.worker_bus.root_validation.rx = rx;
+
+    app.poll_root_validation_response();
+
+    assert!(!app.shell.worker_bus.root_validation.in_progress);
+    assert!(app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .pending_validation_intent
+        .is_none());
+    assert!(app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .add_error
+        .contains("disconnected"));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc192_input_change_invalidates_pending_root_validation() {
+    let root = test_root("root-validation-input-change");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.open_manage_root_list();
+    let initial_drafts = app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .draft_roots
+        .clone();
+    let generation = app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .dialog_generation;
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.root_validation.rx = rx;
+    app.shell.worker_bus.root_validation.pending_request_id = Some(42);
+    app.shell.worker_bus.root_validation.in_progress = true;
+    app.shell
+        .features
+        .root_browser
+        .manage_list
+        .pending_validation_intent = Some(RootValidationIntent::Add);
+
+    app.clear_manage_root_list_add_error();
+    tx.send(RootValidationResponse {
+        request_id: 42,
+        dialog_generation: generation,
+        intent: RootValidationIntent::Add,
+        result: Ok(ValidatedRoot {
+            path: root.clone(),
+            key: crate::path_utils::path_key(&normalize_windows_path_buf(root.clone())),
+        }),
+    })
+    .expect("stale response");
+    app.poll_root_validation_response();
+
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.draft_roots,
+        initial_drafts
+    );
+    assert!(!app.shell.worker_bus.root_validation.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc192_apply_and_ok_wait_for_pending_root_validation() {
+    let _scope = saved_roots_test_scope("root-validation-apply-pending-settings");
+    let root = test_root("root-validation-apply-pending");
+    let initial = root.join("initial");
+    let draft = root.join("draft");
+    fs::create_dir_all(&initial).expect("initial");
+    fs::create_dir_all(&draft).expect("draft");
+    let mut app = FlistWalkerApp::new(initial.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![initial.clone()];
+    app.open_manage_root_list();
+    app.shell.features.root_browser.manage_list.draft_roots = vec![draft];
+    app.shell.worker_bus.root_validation.in_progress = true;
+    app.shell.worker_bus.root_validation.pending_request_id = Some(42);
+    app.shell
+        .features
+        .root_browser
+        .manage_list
+        .pending_validation_intent = Some(RootValidationIntent::Add);
+
+    app.apply_manage_root_list_changes();
+    app.confirm_manage_root_list_changes();
+
+    assert_eq!(app.shell.features.root_browser.saved_roots, vec![initial]);
+    assert!(app.shell.features.root_browser.manage_list.open);
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.notice,
+        "Wait for folder validation to finish"
+    );
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]
@@ -73,6 +281,7 @@ fn manage_root_list_cancel_discards_draft_changes() {
     app.open_manage_root_list();
     app.shell.features.root_browser.manage_list.input_path = added.to_string_lossy().to_string();
     app.add_manage_root_list_input();
+    settle_root_validation(&mut app);
     app.cancel_manage_root_list();
 
     assert_eq!(app.shell.features.root_browser.saved_roots, vec![saved]);
@@ -105,6 +314,7 @@ fn manage_root_list_apply_commits_added_and_removed_roots() {
     app.remove_selected_manage_root_list_items();
     app.shell.features.root_browser.manage_list.input_path = added.to_string_lossy().to_string();
     app.add_manage_root_list_input();
+    settle_root_validation(&mut app);
     app.apply_manage_root_list_changes();
 
     let saved_roots = &app.shell.features.root_browser.saved_roots;
@@ -138,6 +348,7 @@ fn manage_root_list_ok_applies_and_closes() {
     app.open_manage_root_list();
     app.shell.features.root_browser.manage_list.input_path = added.to_string_lossy().to_string();
     app.add_manage_root_list_input();
+    settle_root_validation(&mut app);
     app.confirm_manage_root_list_changes();
 
     assert!(app
@@ -196,6 +407,7 @@ fn manage_root_list_edit_replaces_selected_draft_root_only() {
     app.shell.features.root_browser.manage_list.edit_path =
         replacement.to_string_lossy().to_string();
     app.save_manage_root_list_edit();
+    settle_root_validation(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.manage_list.draft_roots,
@@ -326,6 +538,7 @@ fn manage_root_list_edit_rejects_duplicate_and_keeps_editor_open() {
     app.start_editing_manage_root_list_item();
     app.shell.features.root_browser.manage_list.edit_path = second.to_string_lossy().to_string();
     app.save_manage_root_list_edit();
+    settle_root_validation(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.manage_list.draft_roots,
@@ -367,6 +580,7 @@ fn manage_root_list_add_invalid_path_uses_field_error_and_refocuses_input() {
     app.open_manage_root_list();
     app.shell.features.root_browser.manage_list.input_path = invalid.to_string_lossy().to_string();
     app.add_manage_root_list_input();
+    settle_root_validation(&mut app);
 
     let manage = &app.shell.features.root_browser.manage_list;
     assert_eq!(
@@ -455,6 +669,7 @@ fn manage_root_list_editing_default_root_follows_replacement_on_apply() {
     app.shell.features.root_browser.manage_list.edit_path =
         replacement.to_string_lossy().to_string();
     app.save_manage_root_list_edit();
+    settle_root_validation(&mut app);
     app.apply_manage_root_list_changes();
 
     assert_eq!(

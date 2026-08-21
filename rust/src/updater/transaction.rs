@@ -21,8 +21,20 @@ use anyhow::{bail, Context, Result};
 #[cfg(not(target_os = "macos"))]
 use rand_core::{OsRng, RngCore};
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+
+const FAILURE_RECORD_FILE_NAME: &str = ".flistwalker-update-failure.json";
+const FAILURE_RECORD_VERSION: u32 = 1;
+const FAILURE_RECORD_MAX_BYTES: u64 = 16 * 1024;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct UpdateFailureRecord {
+    version: u32,
+    transaction_id: String,
+    message: String,
+}
 
 #[cfg(any(not(target_os = "macos"), test))]
 pub(super) struct PreparedTransaction {
@@ -314,12 +326,18 @@ fn execute_registered_transaction_with_restart_mode(
     let binary = target_path(&install_dir, &marker, TargetRole::Binary);
     if let Err(err) = process.restart(&binary, restart_mode) {
         rollback_transaction(&install_dir, marker_path, &mut marker)?;
+        let restart_error =
+            anyhow::anyhow!("failed to restart updated application; old bundle restored: {err:#}");
+        // Persist before launching the restored binary. The restarted process can reach startup
+        // diagnostics immediately after spawn, so writing only after restart returns would race
+        // and defer the message until a later application launch.
+        let _ = write_failure_record(&install_dir, &marker.transaction_id, &restart_error);
         if let Err(rollback_restart_error) = process.restart(&binary, UpdateRestartMode::Gui) {
             return Err(anyhow::anyhow!(
                 "failed to restart updated application: {err:#}; old bundle restored but its restart also failed: {rollback_restart_error:#}"
             ));
         }
-        return Err(err).context("failed to restart updated application; old bundle restored");
+        return Err(restart_error);
     }
     Ok(())
 }
@@ -594,7 +612,7 @@ pub(super) fn run_internal_helper(
                 {
                     bail!("durable helper registration identity mismatch");
                 }
-                acknowledge_registered_helper(
+                let acknowledgement = acknowledge_registered_helper(
                     marker_path,
                     std::process::id(),
                     start_token,
@@ -602,13 +620,22 @@ pub(super) fn run_internal_helper(
                 )?;
                 let mut process = RealProcessControl;
                 let mut failures = NoFailure;
-                return execute_registered_transaction_with_restart_mode(
+                let result = execute_registered_transaction_with_restart_mode(
                     marker_path,
                     start_token,
                     &mut process,
                     &mut failures,
                     restart_mode,
                 );
+                if let Err(error) = &result {
+                    if let Some(install_dir) = acknowledgement.parent() {
+                        // The acknowledgement path is derived only after marker, transaction,
+                        // helper PID/token, executable identity, and helper hash validation.
+                        // Diagnostic persistence is best-effort and must never mask rollback.
+                        let _ = write_failure_record(install_dir, transaction_id, error);
+                    }
+                }
+                return result;
             }
             _ => bail!("helper observed an invalid pre-ack transaction phase"),
         }
@@ -617,6 +644,101 @@ pub(super) fn run_internal_helper(
         }
         std::thread::sleep(Duration::from_millis(25));
     }
+}
+
+fn sanitize_failure_message(error: &anyhow::Error) -> String {
+    let source = format!("{error:#}");
+    let mut sanitized = String::new();
+    for ch in source.chars() {
+        let ch = if ch.is_control() && ch != '\n' && ch != '\t' {
+            ' '
+        } else {
+            ch
+        };
+        if sanitized.len() + ch.len_utf8() > 8 * 1024 {
+            break;
+        }
+        sanitized.push(ch);
+    }
+    sanitized
+}
+
+pub(super) fn write_failure_record(
+    install_dir: &Path,
+    transaction_id: &str,
+    error: &anyhow::Error,
+) -> Result<()> {
+    validate_transaction_id(transaction_id)?;
+    validate_directory(install_dir, "diagnostic installation directory")?;
+    let record = UpdateFailureRecord {
+        version: FAILURE_RECORD_VERSION,
+        transaction_id: transaction_id.to_string(),
+        message: sanitize_failure_message(error),
+    };
+    let bytes =
+        serde_json::to_vec(&record).context("failed to serialize updater failure record")?;
+    if bytes.len() as u64 > FAILURE_RECORD_MAX_BYTES {
+        bail!("updater failure record exceeds size limit");
+    }
+    let target = install_dir.join(FAILURE_RECORD_FILE_NAME);
+    reject_existing(&target, "updater failure record")?;
+    let temp = install_dir.join(format!(".flistwalker-update-failure-{transaction_id}.tmp"));
+    reject_existing(&temp, "updater failure record temporary file")?;
+    create_new_synced(&temp, &bytes)?;
+    if let Err(error) = promote_absent_no_overwrite(&temp, &target, install_dir) {
+        let _ = fs::remove_file(&temp);
+        return Err(error).context("failed to publish updater failure record");
+    }
+    Ok(())
+}
+
+pub(super) fn take_failure_record(current_exe: &Path) -> Result<Option<String>> {
+    validate_regular_file(current_exe, "current executable")?;
+    let canonical = current_exe
+        .canonicalize()
+        .with_context(|| format!("failed to canonicalize {}", current_exe.display()))?;
+    let install_dir = canonical
+        .parent()
+        .context("current executable has no parent")?
+        .canonicalize()
+        .context("failed to canonicalize executable directory")?;
+    validate_directory(&install_dir, "executable directory")?;
+    take_failure_record_from_install_dir(&install_dir)
+}
+
+pub(super) fn take_failure_record_from_install_dir(install_dir: &Path) -> Result<Option<String>> {
+    let path = install_dir.join(FAILURE_RECORD_FILE_NAME);
+    match fs::symlink_metadata(&path) {
+        Ok(_) => validate_regular_file(&path, "updater failure record")?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(error).with_context(|| format!("failed to inspect {}", path.display()))
+        }
+    }
+    let mut bytes = Vec::new();
+    fs::File::open(&path)?
+        .take(FAILURE_RECORD_MAX_BYTES + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > FAILURE_RECORD_MAX_BYTES {
+        bail!("updater failure record exceeds size limit");
+    }
+    let record: UpdateFailureRecord =
+        serde_json::from_slice(&bytes).context("failed to parse updater failure record")?;
+    if record.version != FAILURE_RECORD_VERSION {
+        bail!("unsupported updater failure record version");
+    }
+    validate_transaction_id(&record.transaction_id)?;
+    if record.message.is_empty() || record.message.len() > 8 * 1024 {
+        bail!("invalid updater failure record message");
+    }
+    fs::remove_file(&path).with_context(|| {
+        format!(
+            "failed to consume updater failure record {}",
+            path.display()
+        )
+    })?;
+    sync_parent(install_dir)?;
+    Ok(Some(record.message))
 }
 
 pub(super) fn recover_current_installation(current_exe: &Path) -> Result<Option<RecoveryOutcome>> {

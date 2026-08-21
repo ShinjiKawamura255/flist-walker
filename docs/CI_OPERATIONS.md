@@ -6,7 +6,7 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 
 - すべての変更は PR にし、required check は `CI Gate` と `CI Policy Guardian` とする。
 - required approving review は 0 件とする。PR を作成した agent は `gh pr merge --auto --rebase --delete-branch` 相当を1回だけ登録する。merge commit と squash merge は許可せず、`master` は linear history を維持する。
-- `CI Gate` は change detection、CI policy、Windows/macOS/Linux test/build、clippy/coverage、および条件付き Cargo audit を集約する。Cargo 関連変更で audit が skipped の場合は gate を失敗させ、非 Cargo 変更での skipped だけを正常とする。
+- `CI Gate` は change detection、CI policy、Windows/macOS/Linux test/build、Windows GNU test-channel artifact の Windows 上 headless sandbox self-update、clippy/coverage、および条件付き Cargo audit を集約する。GNU updater E2E は loopback feed、test-only key、使い捨て sentinel-owned sandbox に限定し、production release workflow/鍵へ混入させない。Cargo 関連変更で audit が skipped の場合は gate を失敗させ、非 Cargo 変更での skipped だけを正常とする。
 - `CI Policy Guardian` は `pull_request_target` で default branch の trusted checker を checkoutし、PR head の workflow/pin/Dependabot policy blob だけを GitHub API から一時領域へ取得して data として検査する。PR head の checkout/実行、secret、cache、artifact、write permission は使用しない。
 - workflow一式、Dependabot設定、toolchain定義、audit exception設定、checker本体とtestはfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更やaccepted advisory変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
 - ローカルの意味あるコミット境界・順序・message・author は rebase merge で保持する。GitHub が新しい commit SHA と committer metadata を生成することは許容する。
@@ -130,3 +130,9 @@ required checksを一時的に`CI Gate`だけへ限定し、PR #54を`b2c0c959b7
 required checksを一時的に`CI Gate`だけへ限定し、PR #58を`a2b4e3de1debdfd751541d6c22685428d74f3b92`へauto-mergeした。同じ制御処理の`finally`で直ちに`CI Policy Guardian`を復元し、required checksが`CI Gate` / `CI Policy Guardian`（app ID `15368`、strict `true`）であることをread backした。続く完全なread-backでapproval、administrators適用、linear history、force-push/deletion、signature/conversation/restriction/lock/block/fork設定、repository auto-merge、rebase-only、branch自動削除が変更前snapshotと一致し、remote feature branchの自動削除も確認した。
 
 復元後の新guardian protected-route証跡は本記録を追加する[PR #59](https://github.com/ShinjiKawamura255/flist-walker/pull/59)とし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
+
+## Windows GNU updater E2E Guardian rollout requirement (pending)
+
+Windows GNU updater E2E の required-job 追加は `.github/workflows/ci-cross-platform.yml` と immutable trusted checker/test の構造変更を含むため、現行 `CI Policy Guardian` は通常 PR を意図どおり fail-closed にする。この変更を統合するときは、既存 controlled rollout と同じく、旧 Guardian の期待失敗、独立最終レビューで未解決 major なし、exact head の `CI Gate` 成功、base/head 不変、競合 PR なしを確認する。repository/protection の完全な before snapshot を保存してから、required checks を一時的に `CI Gate` のみに限定し、review 済み exact head を rebase auto-merge した直後、同じ制御処理の `finally` で `CI Policy Guardian` を復元する。
+
+復元後は required checks が `CI Gate` / `CI Policy Guardian`（GitHub Actions app ID `15368`、`strict: true`）であることに加え、approval `0`、administrators 適用、linear history、force-push/deletion 禁止、auto-merge、rebase-only、merge 済み branch 自動削除、および非対象保護設定を完全 read-back する。権限変更、PR 作成・merge、protection 更新は本ローカル変更には含めず、明示承認された rollout 作業として別途実施し、その PR/run/SHA/read-back をこの節の完了記録へ置き換える。

@@ -1,5 +1,5 @@
 use crate::update_security::{self, CHECKSUM_SIGNATURE_NAME};
-use crate::updater::{env_flag, UpdateCandidate, UpdateSupport};
+use crate::updater::{env_flag, AutoUpdateAssets, UpdateCandidate, UpdateSupport};
 use anyhow::{Context, Result};
 use semver::Version;
 use serde::Deserialize;
@@ -39,13 +39,17 @@ struct GitHubAsset {
     browser_download_url: String,
 }
 
-pub(super) fn fetch_latest_release() -> Result<GitHubRelease> {
+pub(super) fn fetch_latest_release(should_cancel: &dyn Fn() -> bool) -> Result<GitHubRelease> {
     let feed_url = release_feed_url();
     let allow_loopback = std::env::var("FLISTWALKER_UPDATE_FEED_URL")
         .ok()
         .is_some_and(|value| !value.trim().is_empty());
-    let body = super::staging::fetch_release_json(&feed_url, allow_loopback)
-        .context("failed to query latest release")?;
+    if option_env!("FLISTWALKER_UPDATE_TEST_CHANNEL") == Some("1") {
+        super::staging::validate_test_channel_feed(&feed_url)?;
+    }
+    let body =
+        super::staging::fetch_release_json_with_cancel(&feed_url, allow_loopback, should_cancel)
+            .context("failed to query latest release")?;
     serde_json::from_slice(&body).context("failed to parse latest release response")
 }
 
@@ -99,10 +103,29 @@ fn update_allow_downgrade() -> bool {
 }
 
 pub(super) fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTarget>> {
+    platform_target_for(version, std::env::consts::OS, std::env::consts::ARCH)
+}
+
+fn manual_only_target(message: &str) -> PlatformReleaseTarget {
+    PlatformReleaseTarget {
+        asset_name: String::new(),
+        readme_asset_name: String::new(),
+        license_asset_name: String::new(),
+        notices_asset_name: String::new(),
+        support: UpdateSupport::ManualOnly {
+            message: message.to_string(),
+        },
+    }
+}
+
+pub(super) fn platform_target_for(
+    version: &Version,
+    os: &str,
+    arch: &str,
+) -> Result<Option<PlatformReleaseTarget>> {
     let version = version.to_string();
-    #[cfg(target_os = "windows")]
-    {
-        return Ok(Some(PlatformReleaseTarget {
+    match (os, arch) {
+        ("windows", "x86_64") => Ok(Some(PlatformReleaseTarget {
             asset_name: format!("FlistWalker-{version}-windows-x86_64.exe"),
             readme_asset_name: format!("FlistWalker-{version}-windows-x86_64.README.txt"),
             license_asset_name: format!("FlistWalker-{version}-windows-x86_64.LICENSE.txt"),
@@ -110,11 +133,8 @@ pub(super) fn current_platform_target(version: &Version) -> Result<Option<Platfo
                 "FlistWalker-{version}-windows-x86_64.THIRD_PARTY_NOTICES.txt"
             ),
             support: UpdateSupport::Auto,
-        }));
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        return Ok(Some(PlatformReleaseTarget {
+        })),
+        ("linux", "x86_64") => Ok(Some(PlatformReleaseTarget {
             asset_name: format!("FlistWalker-{version}-linux-x86_64"),
             readme_asset_name: format!("FlistWalker-{version}-linux-x86_64.README.txt"),
             license_asset_name: format!("FlistWalker-{version}-linux-x86_64.LICENSE.txt"),
@@ -122,16 +142,14 @@ pub(super) fn current_platform_target(version: &Version) -> Result<Option<Platfo
                 "FlistWalker-{version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
             ),
             support: UpdateSupport::Auto,
-        }));
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let suffix = if cfg!(target_arch = "aarch64") {
+        })),
+        ("macos", "aarch64" | "x86_64") => {
+            let suffix = if arch == "aarch64" {
             "macos-arm64"
         } else {
             "macos-x86_64"
         };
-        return Ok(Some(PlatformReleaseTarget {
+            Ok(Some(PlatformReleaseTarget {
             asset_name: format!("FlistWalker-{version}-{suffix}"),
             readme_asset_name: format!("FlistWalker-{version}-{suffix}.README.txt"),
             license_asset_name: format!("FlistWalker-{version}-{suffix}.LICENSE.txt"),
@@ -140,10 +158,18 @@ pub(super) fn current_platform_target(version: &Version) -> Result<Option<Platfo
                 message: "macOS の自動更新は未対応です。GitHub Releases から手動更新してください。"
                     .to_string(),
             },
-        }));
+            }))
+        }
+        ("windows", _) => Ok(Some(manual_only_target(
+            "この Windows CPU architecture は自動更新に未対応です。GitHub Releases から手動更新してください。",
+        ))),
+        ("linux", _) => Ok(Some(manual_only_target(
+            "この Linux CPU architecture は自動更新に未対応です。GitHub Releases から手動更新してください。",
+        ))),
+        _ => Ok(Some(manual_only_target(
+            "この OS/CPU architecture は自動更新に未対応です。GitHub Releases から手動更新してください。",
+        ))),
     }
-    #[allow(unreachable_code)]
-    Ok(None)
 }
 
 pub(super) fn resolve_update_candidate_from_release(
@@ -158,24 +184,31 @@ pub(super) fn resolve_update_candidate_from_release(
     let Some(platform_target) = current_platform_target(&target_version)? else {
         return Ok(None);
     };
-    let assets = select_release_assets(release, &platform_target)?;
-    let support = effective_update_support(platform_target.support);
+    let support = effective_update_support(platform_target.support.clone());
+    let auto_assets = if support == UpdateSupport::Auto {
+        let assets = select_release_assets(release, &platform_target)?;
+        Some(AutoUpdateAssets {
+            asset_name: assets.asset.name,
+            asset_url: assets.asset.browser_download_url,
+            readme_asset_name: assets.readme_asset.name,
+            readme_asset_url: assets.readme_asset.browser_download_url,
+            license_asset_name: assets.license_asset.name,
+            license_asset_url: assets.license_asset.browser_download_url,
+            notices_asset_name: assets.notices_asset.name,
+            notices_asset_url: assets.notices_asset.browser_download_url,
+            checksum_url: assets.checksum.browser_download_url,
+            checksum_signature_url: assets.checksum_signature.browser_download_url,
+        })
+    } else {
+        None
+    };
 
     Ok(Some(UpdateCandidate {
         current_version: current_version.to_string(),
         target_version: target_version.to_string(),
         release_url: release.html_url.clone(),
-        asset_name: assets.asset.name,
-        asset_url: assets.asset.browser_download_url,
-        readme_asset_name: assets.readme_asset.name,
-        readme_asset_url: assets.readme_asset.browser_download_url,
-        license_asset_name: assets.license_asset.name,
-        license_asset_url: assets.license_asset.browser_download_url,
-        notices_asset_name: assets.notices_asset.name,
-        notices_asset_url: assets.notices_asset.browser_download_url,
-        checksum_url: assets.checksum.browser_download_url,
-        checksum_signature_url: assets.checksum_signature.browser_download_url,
         support,
+        auto_assets,
     }))
 }
 
@@ -219,6 +252,57 @@ fn release_asset_by_name(release: &GitHubRelease, name: &str) -> Result<GitHubAs
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc190_supported_x86_64_target_is_auto_with_real_asset_family() {
+        let target = platform_target_for(&Version::new(1, 2, 3), "windows", "x86_64")
+            .expect("target")
+            .expect("supported target");
+
+        assert_eq!(target.support, UpdateSupport::Auto);
+        assert_eq!(target.asset_name, "FlistWalker-1.2.3-windows-x86_64.exe");
+    }
+
+    #[test]
+    fn tc190_unsupported_architecture_is_manual_without_spoofed_assets() {
+        for (os, arch) in [
+            ("windows", "aarch64"),
+            ("linux", "aarch64"),
+            ("freebsd", "x86_64"),
+        ] {
+            let target = platform_target_for(&Version::new(1, 2, 3), os, arch)
+                .expect("target")
+                .expect("manual target");
+            assert!(matches!(target.support, UpdateSupport::ManualOnly { .. }));
+            assert!(target.asset_name.is_empty());
+            assert!(target.readme_asset_name.is_empty());
+            assert!(target.license_asset_name.is_empty());
+            assert!(target.notices_asset_name.is_empty());
+        }
+    }
+
+    #[test]
+    fn tc190_manual_platform_candidate_does_not_require_install_assets() {
+        let release = GitHubRelease {
+            tag_name: "v1.2.3".to_string(),
+            html_url: "https://example.invalid/release".to_string(),
+            assets: Vec::new(),
+        };
+        let target = platform_target_for(&Version::new(1, 2, 3), "linux", "aarch64")
+            .expect("target")
+            .expect("manual target");
+        let support = effective_update_support(target.support);
+
+        assert!(matches!(support, UpdateSupport::ManualOnly { .. }));
+        let candidate = UpdateCandidate {
+            current_version: "1.2.2".to_string(),
+            target_version: "1.2.3".to_string(),
+            release_url: release.html_url,
+            support,
+            auto_assets: None,
+        };
+        assert!(candidate.auto_assets.is_none());
+    }
 
     #[test]
     fn parse_version_accepts_tag_prefix() {
@@ -370,26 +454,18 @@ mod tests {
         assert_eq!(candidate.current_version, "0.13.0");
         assert_eq!(candidate.target_version, "0.13.1");
         assert_eq!(candidate.release_url, "https://example.invalid/release");
-        assert_eq!(candidate.asset_name, target.asset_name);
-        assert_eq!(
-            candidate.checksum_signature_url,
-            "https://example.invalid/SHA256SUMS.sig"
-        );
-
-        if update_security::has_embedded_public_key() {
-            #[cfg(target_os = "macos")]
-            assert!(matches!(
-                candidate.support,
-                UpdateSupport::ManualOnly { .. }
-            ));
-
-            #[cfg(not(target_os = "macos"))]
-            assert_eq!(candidate.support, UpdateSupport::Auto);
-        } else {
-            assert!(matches!(
-                candidate.support,
-                UpdateSupport::ManualOnly { .. }
-            ));
+        match candidate.support {
+            UpdateSupport::Auto => {
+                let auto_assets = candidate.auto_assets.expect("auto assets");
+                assert_eq!(auto_assets.asset_name, target.asset_name);
+                assert_eq!(
+                    auto_assets.checksum_signature_url,
+                    "https://example.invalid/SHA256SUMS.sig"
+                );
+            }
+            UpdateSupport::ManualOnly { .. } => {
+                assert!(candidate.auto_assets.is_none());
+            }
         }
     }
 
@@ -417,11 +493,11 @@ mod tests {
             .expect("platform target")
             .expect("target");
         release.assets.push(GitHubAsset {
-            name: target.asset_name,
+            name: target.asset_name.clone(),
             browser_download_url: "https://example.invalid/duplicate".to_string(),
         });
 
-        let err = resolve_update_candidate_from_release(&Version::new(0, 13, 0), &release)
+        let err = select_release_assets(&release, &target)
             .expect_err("duplicate required release asset must fail closed");
 
         assert!(
