@@ -304,6 +304,7 @@ def validate_ci_contract(text: str) -> list[str]:
         "Windows GNU updater gate result": "WINDOWS_GNU_UPDATE_RESULT",
         "Windows GNU artifact directory": "artifact_dir: rust",
         "Windows GNU artifact path": "path: ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+        "manifest signer public key": "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
         "test-channel public key": "FLISTWALKER_UPDATE_TEST_CHANNEL",
         "sandbox updater invocation": "-Automated -CleanupSandbox",
         "distinct updater payload marker": "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
