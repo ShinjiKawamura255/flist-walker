@@ -131,8 +131,12 @@ required checksを一時的に`CI Gate`だけへ限定し、PR #58を`a2b4e3de1d
 
 復元後の新guardian protected-route証跡は本記録を追加する[PR #59](https://github.com/ShinjiKawamura255/flist-walker/pull/59)とし、`CI Policy Guardian`と`CI Gate`の両方をrequiredにした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
 
-## Windows GNU updater E2E Guardian rollout requirement (pending)
+## Windows GNU updater E2E Guardian rollout record (2026-08-22)
 
-Windows GNU updater E2E の required-job 追加は `.github/workflows/ci-cross-platform.yml` と immutable trusted checker/test の構造変更を含むため、現行 `CI Policy Guardian` は通常 PR を意図どおり fail-closed にする。この変更を統合するときは、既存 controlled rollout と同じく、旧 Guardian の期待失敗、独立最終レビューで未解決 major なし、exact head の `CI Gate` 成功、base/head 不変、競合 PR なしを確認する。repository/protection の完全な before snapshot を保存してから、required checks を一時的に `CI Gate` のみに限定し、review 済み exact head を rebase auto-merge した直後、同じ制御処理の `finally` で `CI Policy Guardian` を復元する。
+[PR #66](https://github.com/ShinjiKawamura255/flist-walker/pull/66) で updater lifecycle、配布 asset 検証、Windows GNU updater E2E、immutable trusted checker/test を更新した。exact head `a3f0b36cc068740409327f1d8b5ef103e8247b6a` / base `316a91b35a2dcc01eb1cfd3999cb073b58ed6f65` に対し、旧 Guardian は `.github/workflows/ci-cross-platform.yml`、`scripts/check_ci_policy.py`、`scripts/tests/test_check_ci_policy.py` の構造変更だけを期待どおり拒否した（run `32500802857`）。同じ head の Cross Platform run `32500805033` では `CI Gate` job `96834642077` と Windows GNU Updater E2E job `96832657034` を含む全 job が成功した。PR #66 は唯一の open master PR で auto-merge 未登録、独立 pre-mutation review は有限時間 control と recovery を確認して blocking / major / minor 0 の GO とした。
 
-復元後は required checks が `CI Gate` / `CI Policy Guardian`（GitHub Actions app ID `15368`、`strict: true`）であることに加え、approval `0`、administrators 適用、linear history、force-push/deletion 禁止、auto-merge、rebase-only、merge 済み branch 自動削除、および非対象保護設定を完全 read-back する。権限変更、PR 作成・merge、protection 更新は本ローカル変更には含めず、明示承認された rollout 作業として別途実施し、その PR/run/SHA/read-back をこの節の完了記録へ置き換える。
+変更前 snapshot は required checks が `CI Gate` / `CI Policy Guardian`（ともに GitHub Actions app ID `15368`、`strict: true`）、approval `0`、administrators 適用、linear history 必須、force-push/deletion 禁止だった。signature/conversation/lock/block/fork 設定は無効で、repository は auto-merge 有効、rebase-only、merge 済み branch 自動削除有効だった。
+
+review 済み control で PR #66 の rebase auto-merge を1回だけ登録し、required checks を一時的に `CI Gate` のみに限定した。PR は4.5秒後に `d13c71ebca6b6518e8f5b25279f9e3f9e3ad117f` へ merge され、同じ `finally` の最初の restore で `CI Policy Guardian` を復元した。完全な read-back で required checks、strict、approval、administrators 適用、linear history、force-push/deletion、signature/conversation/lock/block/fork 設定、repository auto-merge、rebase-only、branch 自動削除が変更前 snapshot と一致し、remote feature branch の自動削除も確認した。
+
+rebase audit では source / merged が各5 commit で順序・message・author・stable patch ID が一致し、最初の rebased commit の parent は exact base、merge commit は0件、最終 tree は source / master ともに `806e860208399e5d0d32032bf3d93524854bc818` だった。復元後の新 Guardian protected-route 証跡は本記録を追加する通常 PR とし、`CI Gate` と `CI Policy Guardian` の両方を required にした状態で rebase auto-mergeする。最終 check と merge outcome はその PR record を正本とする。
