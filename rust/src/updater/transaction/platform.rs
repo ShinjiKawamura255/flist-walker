@@ -13,6 +13,8 @@ use std::path::Path;
 use std::path::PathBuf;
 #[cfg(not(target_os = "macos"))]
 use std::process::Command;
+#[cfg(target_os = "windows")]
+use std::process::Stdio;
 use std::time::Duration;
 
 #[cfg(target_os = "windows")]
@@ -26,6 +28,20 @@ const WINDOWS_RESTART_ROUNDS: usize = 3;
 const WINDOWS_RESTART_RETRY_DELAY: Duration = Duration::from_millis(100);
 #[cfg(target_os = "windows")]
 const WINDOWS_GUI_STARTUP_GRACE: Duration = Duration::from_millis(500);
+
+#[cfg(target_os = "windows")]
+pub(in crate::updater) fn windows_hidden_child_command(target: &Path) -> Command {
+    // Regression guard: the GUI path detaches from its console before updater work starts, so
+    // inherited standard handles may be stale. Keep all hidden updater children on explicit NUL
+    // handles; do not restore implicit stdio inheritance without the TC-187 native probe.
+    let mut command = Command::new(target);
+    command
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    command.creation_flags(CREATE_NO_WINDOW);
+    command
+}
 
 pub(in crate::updater) trait ProcessControl {
     fn wait_for_exit(&mut self, pid: u32, timeout: Duration) -> Result<bool>;
@@ -259,14 +275,13 @@ pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<(
 
 #[cfg(target_os = "windows")]
 fn launch_windows_restart_once(target: &Path, mode: UpdateRestartMode) -> std::io::Result<()> {
-    let mut command = Command::new(target);
+    let mut command = windows_hidden_child_command(target);
     if mode == UpdateRestartMode::Headless {
         command.arg(INTERNAL_UPDATE_RESTART_FLAG);
     }
     // The updater must not surface a console even if a Windows build temporarily uses the
     // console subsystem. Headless restart is allowed to exit immediately after recovery, while
     // GUI restart must remain alive long enough to reject an immediate startup failure.
-    command.creation_flags(CREATE_NO_WINDOW);
     let mut child = command.spawn()?;
     if mode == UpdateRestartMode::Gui {
         std::thread::sleep(WINDOWS_GUI_STARTUP_GRACE);
