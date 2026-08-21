@@ -218,6 +218,7 @@ jobs:
             "WINDOWS_GNU_UPDATE_RESULT",
             "artifact_dir: rust",
             "path: ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+            "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
             "-Automated -CleanupSandbox",
             "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
             "-AppPath $artifact -UpdateBinaryPath $updatePayload",
@@ -229,6 +230,7 @@ jobs:
                     any(
                         "Windows GNU" in item
                         or "artifact" in item
+                        or "manifest signer" in item
                         or "sandbox updater" in item
                         or "updater payload" in item
                         for item in violations
