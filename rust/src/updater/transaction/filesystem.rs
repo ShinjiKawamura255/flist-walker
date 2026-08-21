@@ -641,7 +641,6 @@ pub(super) fn validate_target_if_present(path: &Path, label: &str) -> Result<()>
         Err(err) => Err(err).with_context(|| format!("failed to inspect {}", path.display())),
     }
 }
-#[cfg(any(not(target_os = "macos"), test))]
 pub(super) fn reject_existing(path: &Path, label: &str) -> Result<()> {
     match fs::symlink_metadata(path) {
         Ok(_) => bail!("{label} already exists"),
