@@ -12,6 +12,8 @@ pub(super) use model::TransactionSources;
 use model::{Phase, TargetRole, TargetState, TransactionMarker};
 #[cfg(any(not(target_os = "macos"), test))]
 use model::{TargetRecord, MARKER_VERSION};
+#[cfg(target_os = "windows")]
+pub(super) use platform::windows_hidden_child_command;
 use platform::*;
 
 use crate::updater::UpdateRestartMode;

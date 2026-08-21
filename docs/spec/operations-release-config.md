@@ -38,7 +38,7 @@
 - MUST: activation 準備は現在 executable の canonical parent 内の固定派生名を使い、target、`.new`、backup、lock、marker が directory、symlink、Windows reparse point、または parent 外である場合は更新を開始してはならない。
 - MUST: 1 個の create-new active lock と versioned durable marker で transaction を排他し、marker は transaction/parent/helper identity、global phase、各 target の存在・旧新 hash・`prepared|intent|applied|rolled_back` 状態を write-ahead で記録しなければならない。
 - MUST: helper は parent が durable `helper_registered` phase と helper identity を記録したことを確認し、create-new acknowledgement を同期するまで filesystem mutation を行ってはならない。parent は acknowledgement を検証するまで適用開始を通知せず、本体終了を許可してはならない。
-- MUST: helper 起動は installation directory を child current directory に固定してはならない。Windows で canonical helper path が `\\?\` / `\\?\UNC\` 形式の場合、最初の起動失敗時だけ同一 path の非 verbatim 表現でも再試行し、両方失敗した通知では OS error を保持しつつ利用者向け path から `\\?\` を除去しなければならない。
+- MUST: helper 起動は installation directory を child current directory に固定してはならない。Windows の hidden updater child は stdin/stdout/stderr を `NUL` へ固定し、GUI が console detach 後に保持しうる標準 handle を継承してはならない。helper 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical helper path が `\\?\` / `\\?\UNC\` 形式なら各ラウンドで同一 path の非 verbatim 表現も試さなければならない。全試行失敗の通知は各 OS error を保持しつつ利用者向け path から `\\?\` を除去しなければならない。
 - MUST: helper は acknowledgement 後に旧 process の終了を最大 30 秒待ち、timeout を binary commit 前失敗として扱わなければならない。
 - MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の native `ReplaceFileW(target, new, backup, 0, null, null)` を updater process 内で使い、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は同一 directory の no-overwrite hard-link promotion と source unlink を使わなければならない。
 - MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
@@ -77,10 +77,17 @@
 
 ### Regression Guard: windows-updater-helper-spawn-path
 - Scenario: Windows の長い installation directory で canonical path が `\\?\` 形式になり、helper 起動時に同じ長い directory を child current directory に指定すると、実行ファイル自体は有効でも `CreateProcessW` が失敗する。
-- Expected Behavior: helper は parent の current directory を継承して起動し、verbatim path での起動失敗時は非 verbatim の同一 path を 1 回だけ試す。起動失敗で parent 所有 transaction を破棄して次回試行を妨げず、最終エラーには OS error を含めるが `\\?\` / `\\?\UNC\` を表示しない。
+- Expected Behavior: helper は parent の current directory を継承して起動し、最大3ラウンドの各ラウンドで verbatim path と非 verbatim の同一 path を順に試す。起動失敗で parent 所有 transaction を破棄して次回試行を妨げず、最終エラーには全ラウンドの OS error を含めるが `\\?\` / `\\?\UNC\` を表示しない。
 - Non-goals: directory の実行権限不足、antivirus/WDAC による executable block、別 process の file lock を迂回すること。
-- Related Tests: TC-179; `tc179_regression_helper_launch_does_not_force_install_directory_as_current_dir`, `tc179_regression_windows_helper_launch_retries_without_verbatim_prefix`, `tc179_regression_windows_helper_spawn_error_hides_verbatim_prefix`, `tc179_regression_windows_normal_helper_path_is_not_retried`, `tc179_regression_failed_helper_launch_cleanup_allows_a_fresh_prepare`.
-- Notes for Future Changes: helper の working directory、Windows path spelling、または spawn error の組み立てを変更するときは TC-179 と VM-005 の sandbox self-update を同一変更で確認する。
+- Related Tests: TC-179, TC-187; `tc179_regression_helper_launch_does_not_force_install_directory_as_current_dir`, `tc179_regression_windows_helper_launch_retries_without_verbatim_prefix`, `tc179_regression_windows_helper_spawn_error_hides_verbatim_prefix`, `tc179_regression_failed_helper_launch_cleanup_allows_a_fresh_prepare`, `tc187_regression_windows_helper_retry_rounds_include_verbatim_fallback`.
+- Notes for Future Changes: helper の working directory、Windows path spelling、retry、または spawn error の組み立てを変更するときは TC-179、TC-187、VM-005 の sandbox self-update を同一変更で確認する。
+
+### Regression Guard: windows-updater-detached-gui-spawn
+- Scenario: console subsystem の Windows GUI が `FreeConsole()` した後、既定の stdio 継承で copied helper を起動すると、起動元によって残った stale standard handle の複製に失敗し、GUI の自己更新だけが一過性または継続的に失敗する。
+- Expected Behavior: helper と更新後/rollback後 process の hidden `Command` は stdin/stdout/stderr を明示的に `NUL` へ接続する。通常 helper path の一過性起動失敗は最大3ラウンド・100ms間隔で再試行し、GUI/CLI の restart mode と transaction acknowledgement 順序は維持する。
+- Non-goals: antivirus/WDAC の永続的な executable block の迂回、外部 application の標準入出力変更、production binary を置換する自動試験。
+- Related Tests: TC-187; `tc187_regression_detached_gui_helper_does_not_inherit_stale_stdio`, `tc187_regression_windows_helper_retries_transient_normal_path_failure`, `tc187_regression_windows_helper_retry_rounds_include_verbatim_fallback`.
+- Notes for Future Changes: Windows GUI の console subsystem、`FreeConsole()`、hidden updater child の stdio、または helper retry を変更するときは TC-187 の native subprocess probe と VM-005 を同一変更で確認する。
 
 ### Regression Guard: windows-updater-restart-handoff
 - Scenario: Windows の更新で新版 process の生成が一過性に失敗し、旧 bundle への rollback 後に行う旧GUIの単発再起動も失敗すると、installation は安全に旧版へ戻っていても画面が再表示されず、利用者が手動起動するまで停止する。
