@@ -216,6 +216,8 @@ jobs:
             "windows-gnu-update-e2e:",
             "      - windows-gnu-update-e2e",
             "WINDOWS_GNU_UPDATE_RESULT",
+            "artifact_dir: rust",
+            "path: ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
             "-Automated -CleanupSandbox",
             "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
             "-AppPath $artifact -UpdateBinaryPath $updatePayload",
@@ -226,6 +228,7 @@ jobs:
                 self.assertTrue(
                     any(
                         "Windows GNU" in item
+                        or "artifact" in item
                         or "sandbox updater" in item
                         or "updater payload" in item
                         for item in violations
