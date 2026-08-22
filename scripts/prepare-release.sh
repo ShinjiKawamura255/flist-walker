@@ -10,13 +10,14 @@ Example:
   scripts/prepare-release.sh v0.1.0
 
 Notes:
-  - Requires rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
+  - Requires rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe and fw.exe
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-windows-x86_64.exe
     - FlistWalker-<version>-windows-x86_64.zip
     - FlistWalker-<version>-windows-x86_64.README.txt
     - FlistWalker-<version>-windows-x86_64.LICENSE.txt
     - FlistWalker-<version>-windows-x86_64.THIRD_PARTY_NOTICES.txt
+    - fw-<version>-windows-x86_64.exe
     - SHA256SUMS
     - SHA256SUMS.sig (when FLISTWALKER_UPDATE_SIGNING_KEY_HEX is set)
 USAGE
@@ -33,9 +34,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 TARGET="x86_64-pc-windows-gnu"
 SOURCE_EXE="${REPO_DIR}/rust/target/${TARGET}/release/FlistWalker.exe"
+SOURCE_FW_EXE="${REPO_DIR}/rust/target/${TARGET}/release/fw.exe"
 OUT_DIR="${REPO_DIR}/dist/${VERSION}"
 ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-windows-x86_64"
 EXE_NAME="${ASSET_BASENAME}.exe"
+FW_EXE_NAME="fw-${SAFE_VERSION}-windows-x86_64.exe"
 ZIP_NAME="${ASSET_BASENAME}.zip"
 ZIP_EXE_NAME="flistwalker.exe"
 README_SIDE_NAME="${ASSET_BASENAME}.README.txt"
@@ -44,8 +47,8 @@ NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
 ROOT_LICENSE="${REPO_DIR}/LICENSE"
 ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
 
-if [[ ! -f "${SOURCE_EXE}" ]]; then
-  echo "EXE が見つかりません: ${SOURCE_EXE}" >&2
+if [[ ! -f "${SOURCE_EXE}" || ! -f "${SOURCE_FW_EXE}" ]]; then
+  echo "EXE が見つかりません: ${SOURCE_EXE} / ${SOURCE_FW_EXE}" >&2
   echo "先に scripts/build-rust-win.sh を実行してください。" >&2
   exit 1
 fi
@@ -59,6 +62,7 @@ WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_EXE}" "${OUT_DIR}/${EXE_NAME}"
+cp -f "${SOURCE_FW_EXE}" "${OUT_DIR}/${FW_EXE_NAME}"
 cp -f "${SOURCE_EXE}" "${WORK_DIR}/${ZIP_EXE_NAME}"
 cat > "${OUT_DIR}/${README_SIDE_NAME}" <<README
 FlistWalker ${VERSION}
@@ -72,6 +76,10 @@ Contents:
 Run:
 - PowerShell: .\\${ZIP_EXE_NAME}
 - CMD: ${ZIP_EXE_NAME}
+
+CLI-only standalone:
+- Download ${FW_EXE_NAME} for the short fw command path; run the versioned filename directly or rename it to fw.exe.
+- It shares these versioned README/LICENSE/THIRD_PARTY_NOTICES release assets. Self-update installs its local copies as fw.README.txt, fw.LICENSE.txt, and fw.THIRD_PARTY_NOTICES.txt so a co-located FlistWalker version is preserved.
 
 English:
 - Type in the search box to narrow files and folders.
@@ -140,6 +148,7 @@ Index options:
 Walker tuning is controlled by the runtime config keys above after the config file exists.
 
 日本語:
+- CLI 専用版は ${FW_EXE_NAME} です。version 付きの名前で直接実行するか fw.exe に変更できます。自己更新時の文書は fw.README.txt / fw.LICENSE.txt / fw.THIRD_PARTY_NOTICES.txt に分離されます。
 - 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
 - Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
 - Root は左上の Browse... から切り替え可能です。
@@ -185,12 +194,12 @@ cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 if command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    sha256sum "${EXE_NAME}" "${FW_EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    shasum -a 256 "${EXE_NAME}" "${FW_EXE_NAME}" "${ZIP_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "sha256sum/shasum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -204,6 +213,7 @@ fi
 
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${EXE_NAME}"
+echo "- ${FW_EXE_NAME}"
 echo "- ${ZIP_NAME}"
 echo "- ${README_SIDE_NAME}"
 echo "- ${LICENSE_SIDE_NAME}"

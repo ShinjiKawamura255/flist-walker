@@ -29,6 +29,25 @@ fn bin_path() -> PathBuf {
     PathBuf::from(env!("CARGO_BIN_EXE_flistwalker"))
 }
 
+fn fw_bin_path() -> PathBuf {
+    let mut path = bin_path();
+    path.set_file_name(if cfg!(windows) { "fw.exe" } else { "fw" });
+    path
+}
+
+fn fw_command_with_settings(name: &str) -> Command {
+    let settings_root = test_root(&format!("{name}-settings"));
+    fs::create_dir_all(&settings_root).expect("create fw settings root");
+    let mut command = Command::new(fw_bin_path());
+    command
+        .env_remove("RUST_LOG")
+        .env("HOME", &settings_root)
+        .env("USERPROFILE", &settings_root)
+        .env("LOCALAPPDATA", &settings_root)
+        .env("APPDATA", &settings_root);
+    command
+}
+
 fn cli_command_with_settings(name: &str) -> (Command, PathBuf) {
     let settings_root = test_root(&format!("{name}-settings"));
     fs::create_dir_all(&settings_root).expect("create settings root");
@@ -105,6 +124,85 @@ fn cli_prints_version_with_long_flag() {
     assert_eq!(
         stdout.trim(),
         format!("flistwalker {}", env!("CARGO_PKG_VERSION"))
+    );
+}
+
+#[test]
+fn tc_193_fw_uses_short_command_name_and_implicit_cli_mode() {
+    let version = fw_command_with_settings("fw-version")
+        .arg("--version")
+        .output()
+        .expect("run fw version");
+    assert!(version.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&version.stdout).trim(),
+        format!("fw {}", env!("CARGO_PKG_VERSION"))
+    );
+
+    let root = test_root("fw-implicit-cli");
+    fs::create_dir_all(&root).expect("create fw fixture root");
+    fs::write(root.join("main.rs"), "main").expect("write fw fixture");
+    fs::write(root.join("other.txt"), "other").expect("write fw fixture");
+
+    let fw = fw_command_with_settings("fw-implicit-cli")
+        .args([
+            "main",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--type",
+            "file",
+        ])
+        .output()
+        .expect("run implicit fw CLI");
+    let universal = cli_command("fw-universal-parity")
+        .args([
+            "--cli",
+            "main",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--type",
+            "file",
+        ])
+        .output()
+        .expect("run universal CLI parity");
+
+    assert!(
+        fw.status.success(),
+        "{}",
+        String::from_utf8_lossy(&fw.stderr)
+    );
+    assert_eq!(fw.stdout, universal.stdout);
+    assert_eq!(fw.stderr, universal.stderr);
+    assert_eq!(fw.status.code(), universal.status.code());
+
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_193_fw_dispatches_hidden_restart_before_cli_argument_parsing() {
+    let restart = fw_command_with_settings("fw-hidden-restart")
+        .env_remove("DISPLAY")
+        .env_remove("WAYLAND_DISPLAY")
+        .arg("--flistwalker-internal-update-restart")
+        .output()
+        .expect("run fw internal restart");
+    assert!(restart.status.success());
+    assert!(restart.stdout.is_empty());
+    assert!(restart.stderr.is_empty());
+
+    let disabled_update = fw_command_with_settings("fw-disabled-update")
+        .env("FLISTWALKER_DISABLE_SELF_UPDATE", "1")
+        .arg("--update")
+        .output()
+        .expect("run disabled fw update");
+    assert_eq!(disabled_update.status.code(), Some(1));
+    assert_eq!(
+        String::from_utf8_lossy(&disabled_update.stderr).trim(),
+        "Automatic updates are disabled."
     );
 }
 
@@ -1596,6 +1694,21 @@ fn regression_gnu_build_links_windows_icon_into_final_exe() {
             build_dir.join("resource.o").display()
         )
     );
+}
+
+#[test]
+fn tc_193_gnu_build_links_windows_resources_into_both_executables() {
+    let build_dir = std::path::Path::new("/tmp/flistwalker-build");
+    let directives =
+        windows_resource_build::cargo_directives_for_all_windows_bins("gnu", build_dir);
+
+    assert_eq!(directives.len(), 2);
+    assert!(directives
+        .iter()
+        .any(|directive| directive.contains("-bin=flistwalker=")));
+    assert!(directives
+        .iter()
+        .any(|directive| directive.contains("-bin=fw=")));
 }
 
 #[test]

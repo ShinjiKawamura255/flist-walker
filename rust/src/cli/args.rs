@@ -1,11 +1,11 @@
-use clap::{Parser, ValueEnum};
+use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum};
 use std::ffi::OsString;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
-use flist_walker::actions::AuthorizedActionMode;
-use flist_walker::command_exec::CommandTemplate;
-use flist_walker::search::SearchSortMode as RuntimeSortMode;
+use crate::actions::AuthorizedActionMode;
+use crate::command_exec::CommandTemplate;
+use crate::search::SearchSortMode as RuntimeSortMode;
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub(super) enum CliEntryType {
@@ -103,7 +103,7 @@ impl From<CliSortMode> for RuntimeSortMode {
 #[command(name = "flistwalker")]
 #[command(about = "Find files and folders with fuzzy search")]
 #[command(version)]
-pub(crate) struct Args {
+pub struct Args {
     /// Query using fuzzy matching, fzf-style operators, and name:/path:/dir:/ext: fields. Quote the complete QUERY in a shell.
     #[arg(default_value = "", value_name = "QUERY")]
     pub(super) query: String,
@@ -367,31 +367,31 @@ pub(crate) struct Args {
 }
 
 impl Args {
-    pub(crate) fn requests_update_command(&self) -> bool {
+    pub fn requests_update_command(&self) -> bool {
         self.check_update || self.update
     }
 
-    pub(crate) fn update_requested(&self) -> bool {
+    pub fn update_requested(&self) -> bool {
         self.update
     }
 
-    pub(crate) fn is_cli(&self) -> bool {
+    pub fn is_cli(&self) -> bool {
         self.cli
     }
 
-    pub(crate) fn root(&self) -> Option<&Path> {
+    pub fn root(&self) -> Option<&Path> {
         self.root.as_deref()
     }
 
-    pub(crate) fn query(&self) -> String {
+    pub fn query(&self) -> String {
         self.query.clone()
     }
 
-    pub(crate) fn limit(&self) -> usize {
+    pub fn limit(&self) -> usize {
         self.limit
     }
 
-    pub(crate) fn max_depth(&self) -> flist_walker::indexer::MaxDepth {
+    pub fn max_depth(&self) -> crate::indexer::MaxDepth {
         self.max_depth.map(Into::into).unwrap_or_default()
     }
 
@@ -400,8 +400,23 @@ impl Args {
     }
 }
 
-pub(crate) fn parse_args() -> Args {
-    Args::parse_from(normalize_update_args(std::env::args_os()))
+pub fn parse_args() -> Args {
+    parse_args_from(normalize_update_args(std::env::args_os()), "flistwalker")
+}
+
+pub(super) fn parse_dedicated_args() -> Args {
+    let mut arguments = std::env::args_os().collect::<Vec<_>>();
+    if !arguments.iter().any(|argument| argument == "--cli") {
+        arguments.insert(1, OsString::from("--cli"));
+    }
+    parse_args_from(normalize_update_args(arguments), "fw")
+}
+
+fn parse_args_from(arguments: Vec<OsString>, command_name: &'static str) -> Args {
+    let matches = Args::command()
+        .name(command_name)
+        .get_matches_from(arguments);
+    Args::from_arg_matches(&matches).expect("clap validated CLI arguments")
 }
 
 fn normalize_update_args(arguments: impl IntoIterator<Item = OsString>) -> Vec<OsString> {
@@ -428,7 +443,7 @@ pub(super) fn parse_exec_template(
         .map_err(|error| error.to_string())
 }
 
-pub(crate) fn validate_args(args: &Args) -> std::result::Result<(), String> {
+pub fn validate_args(args: &Args) -> std::result::Result<(), String> {
     if args.cli {
         validate_exec_args(args)?;
     }

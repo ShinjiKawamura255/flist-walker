@@ -11,7 +11,7 @@ Examples:
   scripts/prepare-release-macos.sh v0.8.0 aarch64-apple-darwin
 
 Notes:
-  - Requires rust/target/.../release/flistwalker
+  - Requires rust/target/.../release/flistwalker and fw
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-macos-<arch>
     - FlistWalker-<version>-macos-<arch>.app
@@ -20,6 +20,7 @@ Notes:
     - FlistWalker-<version>-macos-<arch>.README.txt
     - FlistWalker-<version>-macos-<arch>.LICENSE.txt
     - FlistWalker-<version>-macos-<arch>.THIRD_PARTY_NOTICES.txt
+    - fw-<version>-macos-<arch>
     - SHA256SUMS
     - SHA256SUMS.sig (when FLISTWALKER_UPDATE_SIGNING_KEY_HEX is set)
 USAGE
@@ -38,9 +39,11 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 if [[ -n "${TARGET}" ]]; then
   SOURCE_BIN="${REPO_DIR}/rust/target/${TARGET}/release/flistwalker"
+  SOURCE_FW_BIN="${REPO_DIR}/rust/target/${TARGET}/release/fw"
   TARGET_ARCH="${TARGET%%-*}"
 else
   SOURCE_BIN="${REPO_DIR}/rust/target/release/flistwalker"
+  SOURCE_FW_BIN="${REPO_DIR}/rust/target/release/fw"
   TARGET_ARCH="$(uname -m)"
 fi
 
@@ -59,6 +62,7 @@ esac
 OUT_DIR="${REPO_DIR}/dist/${VERSION}"
 ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-macos-${ARCH_LABEL}"
 BIN_NAME="${ASSET_BASENAME}"
+FW_BIN_NAME="fw-${SAFE_VERSION}-macos-${ARCH_LABEL}"
 APP_NAME="${ASSET_BASENAME}.app"
 APP_ZIP_NAME="${ASSET_BASENAME}-app.zip"
 TAR_NAME="${ASSET_BASENAME}.tar.gz"
@@ -73,8 +77,8 @@ ICON_SVG="${REPO_DIR}/rust/assets/flistwalker-icon.svg"
 ROOT_LICENSE="${REPO_DIR}/LICENSE"
 ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
 
-if [[ ! -f "${SOURCE_BIN}" ]]; then
-  echo "バイナリが見つかりません: ${SOURCE_BIN}" >&2
+if [[ ! -f "${SOURCE_BIN}" || ! -f "${SOURCE_FW_BIN}" ]]; then
+  echo "バイナリが見つかりません: ${SOURCE_BIN} / ${SOURCE_FW_BIN}" >&2
   echo "先に scripts/build-rust-macos.sh を実行してください。" >&2
   exit 1
 fi
@@ -101,6 +105,8 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_BIN}" "${OUT_DIR}/${BIN_NAME}"
 chmod +x "${OUT_DIR}/${BIN_NAME}"
+cp -f "${SOURCE_FW_BIN}" "${OUT_DIR}/${FW_BIN_NAME}"
+chmod +x "${OUT_DIR}/${FW_BIN_NAME}"
 cat > "${OUT_DIR}/${README_SIDE_NAME}" <<'README'
 FlistWalker __VERSION__
 
@@ -113,6 +119,10 @@ Contents:
 Run:
 - chmod +x ./__TAR_BIN_NAME__
 - ./__TAR_BIN_NAME__
+
+CLI-only standalone:
+- Download __FW_BIN_NAME__ for the short fw command path, then run chmod +x ./__FW_BIN_NAME__ and ./__FW_BIN_NAME__; you may rename it to fw.
+- It shares these versioned README/LICENSE/THIRD_PARTY_NOTICES release assets. Self-update installs its local copies as fw.README.txt, fw.LICENSE.txt, and fw.THIRD_PARTY_NOTICES.txt so a co-located FlistWalker version is preserved.
 
 English:
 - Type in the search box to narrow files and folders.
@@ -179,6 +189,7 @@ Index options:
 Walker tuning is controlled by the runtime config keys above after the config file exists.
 
 日本語:
+- CLI 専用版は __FW_BIN_NAME__ です。実行権限を付け、version 付きの名前で直接実行するか fw に変更できます。自己更新時の文書は fw.README.txt / fw.LICENSE.txt / fw.THIRD_PARTY_NOTICES.txt に分離されます。
 - 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
 - Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Cmd+Shift+C でパスコピー。
 - Root は左上の Browse... から切り替え可能です。
@@ -212,6 +223,7 @@ Runtime config:
 README
 sed -i '' \
   -e "s#__VERSION__#${VERSION}#g" \
+  -e "s#__FW_BIN_NAME__#${FW_BIN_NAME}#g" \
   -e "s#__TAR_BIN_NAME__#${TAR_BIN_NAME}#g" \
   "${OUT_DIR}/${README_SIDE_NAME}"
 cp -f "${ROOT_LICENSE}" "${OUT_DIR}/${LICENSE_SIDE_NAME}"
@@ -294,12 +306,12 @@ cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 if command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    shasum -a 256 "${BIN_NAME}" "${FW_BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    sha256sum "${BIN_NAME}" "${FW_BIN_NAME}" "${APP_ZIP_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "shasum/sha256sum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -313,6 +325,7 @@ fi
 
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${BIN_NAME}"
+echo "- ${FW_BIN_NAME}"
 echo "- ${APP_NAME}"
 echo "- ${APP_ZIP_NAME}"
 echo "- ${TAR_NAME}"

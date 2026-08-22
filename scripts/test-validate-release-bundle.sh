@@ -19,6 +19,7 @@ make_sidecars() {
 
 windows_base="FlistWalker-${version}-windows-x86_64"
 printf 'windows binary\n' >"${bundle}/${windows_base}.exe"
+printf 'windows cli binary\n' >"${bundle}/fw-${version}-windows-x86_64.exe"
 make_sidecars "${windows_base}"
 windows_archive="${work_dir}/windows"
 mkdir -p "${windows_archive}"
@@ -30,6 +31,7 @@ printf 'notices\n' >"${windows_archive}/THIRD_PARTY_NOTICES.txt"
 
 linux_base="FlistWalker-${version}-linux-x86_64"
 printf 'linux binary\n' >"${bundle}/${linux_base}"
+printf 'linux cli binary\n' >"${bundle}/fw-${version}-linux-x86_64"
 make_sidecars "${linux_base}"
 linux_archive="${work_dir}/linux"
 mkdir -p "${linux_archive}"
@@ -42,6 +44,7 @@ printf 'notices\n' >"${linux_archive}/THIRD_PARTY_NOTICES.txt"
 for arch in arm64 x86_64; do
   mac_base="FlistWalker-${version}-macos-${arch}"
   printf 'mac binary\n' >"${bundle}/${mac_base}"
+  printf 'mac cli binary\n' >"${bundle}/fw-${version}-macos-${arch}"
   make_sidecars "${mac_base}"
 
   mac_archive="${work_dir}/mac-${arch}"
@@ -60,8 +63,51 @@ for arch in arm64 x86_64; do
   (cd "${work_dir}" && zip -qr "${bundle}/${mac_base}-app.zip" "${app_name}")
 done
 
-(cd "${bundle}" && sha256sum FlistWalker-* >SHA256SUMS)
+(cd "${bundle}" && sha256sum FlistWalker-* fw-* >SHA256SUMS)
 printf 'test signature\n' >"${bundle}/SHA256SUMS.sig"
+
+bash "${repo_dir}/scripts/validate-release-bundle.sh" "${tag}" "${bundle}"
+
+refresh_checksums() {
+  (cd "${bundle}" && sha256sum FlistWalker-* fw-* >SHA256SUMS)
+}
+
+assert_archive_rejects_extra_member() {
+  local archive="$1"
+  local label="$2"
+  local backup="$3"
+  if bash "${repo_dir}/scripts/validate-release-bundle.sh" "${tag}" "${bundle}" >/dev/null 2>&1; then
+    echo "validator accepted an extra fw member in ${label}" >&2
+    exit 1
+  fi
+  cp "${backup}" "${archive}"
+  refresh_checksums
+}
+
+windows_backup="${work_dir}/windows-zip.backup"
+cp "${bundle}/${windows_base}.zip" "${windows_backup}"
+printf 'unexpected cli binary\n' >"${windows_archive}/fw.exe"
+(cd "${windows_archive}" && zip -q -u "${bundle}/${windows_base}.zip" fw.exe)
+refresh_checksums
+assert_archive_rejects_extra_member "${bundle}/${windows_base}.zip" windows-zip "${windows_backup}"
+
+linux_backup="${work_dir}/linux-tar.backup"
+cp "${bundle}/${linux_base}.tar.gz" "${linux_backup}"
+printf 'unexpected cli binary\n' >"${linux_archive}/fw"
+(cd "${linux_archive}" && tar -czf "${bundle}/${linux_base}.tar.gz" ./*)
+refresh_checksums
+assert_archive_rejects_extra_member "${bundle}/${linux_base}.tar.gz" linux-tar "${linux_backup}"
+
+for arch in arm64 x86_64; do
+  mac_base="FlistWalker-${version}-macos-${arch}"
+  mac_archive="${work_dir}/mac-${arch}"
+  mac_backup="${work_dir}/mac-${arch}-tar.backup"
+  cp "${bundle}/${mac_base}.tar.gz" "${mac_backup}"
+  printf 'unexpected cli binary\n' >"${mac_archive}/fw"
+  (cd "${mac_archive}" && tar -czf "${bundle}/${mac_base}.tar.gz" ./*)
+  refresh_checksums
+  assert_archive_rejects_extra_member "${bundle}/${mac_base}.tar.gz" "mac-${arch}-tar" "${mac_backup}"
+done
 
 bash "${repo_dir}/scripts/validate-release-bundle.sh" "${tag}" "${bundle}"
 

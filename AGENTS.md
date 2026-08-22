@@ -43,6 +43,7 @@
 - 当面の暫定運用として、macOS 配布物の notarization 確認は本リリース publish の前提条件にしない。notarization 環境が整うまでは publish を許容する。
 - release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。
 - 配布アーカイブと standalone バイナリ向け sidecar asset には `LICENSE` / `THIRD_PARTY_NOTICES` を同梱し、依存ライセンス notice の欠落を防ぐ。
+- release bundle は universal binary/archive/sidecar に CLI 専用 `fw` standalone 4 asset を加えた 28 asset、統合 `SHA256SUMS` は 26 entry を正規 inventory とする。既存 archive に `fw` を混在させない。
 - macOS の `.app` bundle は notarization 用に `dist/` へ生成してよいが、GitHub Release へ添付する asset には含めない。
 - release/tag/publish 作業に入る前に、`skills/flistwalker-release-preflight/` を release readiness gate として使い、version 整合だけでなく docs 追従、Validation Matrix、OSS notice、release asset 名、GUI 証跡、CI/release build warning を確認し、必要な更新を先に完了させる。
 

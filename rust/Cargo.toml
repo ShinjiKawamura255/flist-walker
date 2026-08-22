@@ -14,6 +14,10 @@ name = "flistwalker"
 path = "src/main.rs"
 
 [[bin]]
+name = "fw"
+path = "src/bin/fw.rs"
+
+[[bin]]
 name = "generate_update_keypair"
 path = "src/bin/generate_update_keypair.rs"
 test = false

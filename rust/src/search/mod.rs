@@ -136,7 +136,7 @@ pub fn rank_search_results(
     sort_mode: SearchSortMode,
     sort_scope: SearchSortScope,
 ) -> (SearchResultSet, Option<String>) {
-    match rank_search_results_cancellable(
+    match rank_search_results_cancellable_with_cache(
         entries,
         query,
         root,
@@ -144,7 +144,37 @@ pub fn rank_search_results(
         use_regex,
         ignore_case,
         prefer_relative,
-        prefix_cache,
+        Some(prefix_cache),
+        sort_mode,
+        sort_scope,
+        &never_cancel,
+    ) {
+        SearchRunOutcome::Completed(result_set, error) => (result_set, error),
+        SearchRunOutcome::Canceled => unreachable!("non-cancellable search was canceled"),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn rank_search_results_uncached(
+    entries: &Arc<Vec<Entry>>,
+    query: &str,
+    root: &Path,
+    limit: usize,
+    use_regex: bool,
+    ignore_case: bool,
+    prefer_relative: bool,
+    sort_mode: SearchSortMode,
+    sort_scope: SearchSortScope,
+) -> (SearchResultSet, Option<String>) {
+    match rank_search_results_cancellable_with_cache(
+        entries,
+        query,
+        root,
+        limit,
+        use_regex,
+        ignore_case,
+        prefer_relative,
+        None,
         sort_mode,
         sort_scope,
         &never_cancel,
@@ -168,6 +198,35 @@ pub(crate) fn rank_search_results_cancellable(
     sort_scope: SearchSortScope,
     cancellation: &(dyn Fn() -> bool + Sync),
 ) -> SearchRunOutcome {
+    rank_search_results_cancellable_with_cache(
+        entries,
+        query,
+        root,
+        limit,
+        use_regex,
+        ignore_case,
+        prefer_relative,
+        Some(prefix_cache),
+        sort_mode,
+        sort_scope,
+        cancellation,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn rank_search_results_cancellable_with_cache(
+    entries: &Arc<Vec<Entry>>,
+    query: &str,
+    root: &Path,
+    limit: usize,
+    use_regex: bool,
+    ignore_case: bool,
+    prefer_relative: bool,
+    mut prefix_cache: Option<&mut SearchPrefixCache>,
+    sort_mode: SearchSortMode,
+    sort_scope: SearchSortScope,
+    cancellation: &(dyn Fn() -> bool + Sync),
+) -> SearchRunOutcome {
     if cancellation() {
         return SearchRunOutcome::Canceled;
     }
@@ -175,7 +234,9 @@ pub(crate) fn rank_search_results_cancellable(
     let cached_candidates = if use_regex {
         None
     } else {
-        prefix_cache.lookup_candidates(entries, root, ignore_case, prefer_relative, &query_trimmed)
+        prefix_cache.as_deref_mut().and_then(|cache| {
+            cache.lookup_candidates(entries, root, ignore_case, prefer_relative, &query_trimmed)
+        })
     };
     let evaluated_candidate_count = if query_trimmed.is_empty() {
         0
@@ -219,20 +280,22 @@ pub(crate) fn rank_search_results_cancellable(
         return SearchRunOutcome::Canceled;
     }
     let total_match_count = scored_matches.scored.len();
-    if SearchPrefixCache::is_cacheable_query(&query_trimmed)
-        && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
-    {
-        let mut ranked = scored_matches.scored.clone();
-        sort_scored_matches(&mut ranked);
-        let matched_indices = ranked.iter().map(|item| item.index).collect();
-        prefix_cache.maybe_store(
-            entries,
-            root,
-            ignore_case,
-            prefer_relative,
-            &query_trimmed,
-            matched_indices,
-        );
+    if let Some(prefix_cache) = prefix_cache {
+        if SearchPrefixCache::is_cacheable_query(&query_trimmed)
+            && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
+        {
+            let mut ranked = scored_matches.scored.clone();
+            sort_scored_matches(&mut ranked);
+            let matched_indices = ranked.iter().map(|item| item.index).collect();
+            prefix_cache.maybe_store(
+                entries,
+                root,
+                ignore_case,
+                prefer_relative,
+                &query_trimmed,
+                matched_indices,
+            );
+        }
     }
     let ranked = match sort_mode {
         SearchSortMode::NameAsc | SearchSortMode::NameDesc

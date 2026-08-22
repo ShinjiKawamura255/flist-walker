@@ -10,9 +10,11 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoDir = Split-Path -Parent $ScriptDir
 $Target = 'x86_64-pc-windows-gnu'
 $SourceExe = Join-Path $RepoDir "rust\target\$Target\release\FlistWalker.exe"
+$SourceFwExe = Join-Path $RepoDir "rust\target\$Target\release\fw.exe"
 $SafeVersion = if ($Version.StartsWith('v')) { $Version.Substring(1) } else { $Version }
 $AssetBaseName = "FlistWalker-$SafeVersion-windows-x86_64"
 $ExeName = "$AssetBaseName.exe"
+$FwExeName = "fw-$SafeVersion-windows-x86_64.exe"
 $ZipName = "$AssetBaseName.zip"
 $ZipExeName = "flistwalker.exe"
 $ReadmeSideName = "$AssetBaseName.README.txt"
@@ -22,8 +24,8 @@ $OutDir = Join-Path $RepoDir "dist\$Version"
 $RootLicense = Join-Path $RepoDir 'LICENSE'
 $RootNotices = Join-Path $RepoDir 'THIRD_PARTY_NOTICES.txt'
 
-if (-not (Test-Path -LiteralPath $SourceExe)) {
-    Write-Error "EXE not found: $SourceExe`nRun scripts/build-rust-win.sh first."
+if (-not (Test-Path -LiteralPath $SourceExe) -or -not (Test-Path -LiteralPath $SourceFwExe)) {
+    Write-Error "EXE not found: $SourceExe / $SourceFwExe`nRun scripts/build-rust-win.sh first."
     exit 1
 }
 if (-not (Test-Path -LiteralPath $RootLicense) -or -not (Test-Path -LiteralPath $RootNotices)) {
@@ -36,6 +38,7 @@ New-Item -ItemType Directory -Path $WorkDir -Force | Out-Null
 
 try {
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $OutDir $ExeName) -Force
+    Copy-Item -LiteralPath $SourceFwExe -Destination (Join-Path $OutDir $FwExeName) -Force
     Copy-Item -LiteralPath $SourceExe -Destination (Join-Path $WorkDir $ZipExeName) -Force
     $ReadmeSidePath = Join-Path $OutDir $ReadmeSideName
     $ReadmeContent = @"
@@ -50,6 +53,10 @@ Contents:
 Run:
 - PowerShell: .\$ZipExeName
 - CMD: $ZipExeName
+
+CLI-only standalone:
+- Download $FwExeName for the short fw command path; run the versioned filename directly or rename it to fw.exe.
+- It shares these versioned README/LICENSE/THIRD_PARTY_NOTICES release assets. Self-update installs its local copies as fw.README.txt, fw.LICENSE.txt, and fw.THIRD_PARTY_NOTICES.txt so a co-located FlistWalker version is preserved.
 
 English:
 - Type in the search box to narrow files and folders.
@@ -118,6 +125,7 @@ Index options:
 Walker tuning is controlled by the runtime config keys above after the config file exists.
 
 日本語:
+- CLI 専用版は $FwExeName です。version 付きの名前で直接実行するか fw.exe に変更できます。自己更新時の文書は fw.README.txt / fw.LICENSE.txt / fw.THIRD_PARTY_NOTICES.txt に分離されます。
 - 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
 - Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
 - Root は左上の Browse... から切り替え可能です。
@@ -165,6 +173,7 @@ Runtime config:
     Compress-Archive -Path (Join-Path $WorkDir $ZipExeName), (Join-Path $WorkDir 'README.txt'), (Join-Path $WorkDir 'LICENSE.txt'), (Join-Path $WorkDir 'THIRD_PARTY_NOTICES.txt') -DestinationPath $ZipPath -CompressionLevel Optimal
 
     $ExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $ExeName)).Hash.ToLowerInvariant()
+    $FwExeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $FwExeName)).Hash.ToLowerInvariant()
     $ZipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
     $ReadmeHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ReadmeSidePath).Hash.ToLowerInvariant()
     $LicenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $OutDir $LicenseSideName)).Hash.ToLowerInvariant()
@@ -173,6 +182,7 @@ Runtime config:
 
     @(
         "$ExeHash  $ExeName"
+        "$FwExeHash  $FwExeName"
         "$ZipHash  $ZipName"
         "$ReadmeHash  $ReadmeSideName"
         "$LicenseHash  $LicenseSideName"
@@ -196,6 +206,7 @@ finally {
 
 Write-Host "Release assets created: $OutDir"
 Write-Host "- $ExeName"
+Write-Host "- $FwExeName"
 Write-Host "- $ZipName"
 Write-Host "- $ReadmeSideName"
 Write-Host "- $LicenseSideName"

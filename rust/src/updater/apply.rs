@@ -41,7 +41,11 @@ pub(super) fn spawn_update_helper(
             license: &bundle.staged_license_path,
             notices: &bundle.staged_notices_path,
         };
-        let mut prepared = transaction::prepare_transaction(current_exe, sources)?;
+        let mut prepared = transaction::prepare_transaction(
+            current_exe,
+            sources,
+            crate::updater::running_binary_variant(),
+        )?;
         bundle.cleanup_staging()?;
         let start_token = transaction::new_start_token();
         let arguments = helper_arguments(

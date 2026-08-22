@@ -11,13 +11,14 @@ Examples:
   scripts/prepare-release-linux.sh v0.9.0 x86_64-unknown-linux-gnu
 
 Notes:
-  - Requires rust/target/.../release/flistwalker
+  - Requires rust/target/.../release/flistwalker and fw
   - Produces dist/<version>/ with:
     - FlistWalker-<version>-linux-<arch>
     - FlistWalker-<version>-linux-<arch>.tar.gz
     - FlistWalker-<version>-linux-<arch>.README.txt
     - FlistWalker-<version>-linux-<arch>.LICENSE.txt
     - FlistWalker-<version>-linux-<arch>.THIRD_PARTY_NOTICES.txt
+    - fw-<version>-linux-<arch>
     - SHA256SUMS
     - SHA256SUMS.sig (when FLISTWALKER_UPDATE_SIGNING_KEY_HEX is set)
 USAGE
@@ -36,9 +37,11 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 if [[ -n "${TARGET}" ]]; then
   SOURCE_BIN="${REPO_DIR}/rust/target/${TARGET}/release/flistwalker"
+  SOURCE_FW_BIN="${REPO_DIR}/rust/target/${TARGET}/release/fw"
   TARGET_ARCH="${TARGET%%-*}"
 else
   SOURCE_BIN="${REPO_DIR}/rust/target/release/flistwalker"
+  SOURCE_FW_BIN="${REPO_DIR}/rust/target/release/fw"
   TARGET_ARCH="$(uname -m)"
 fi
 
@@ -57,6 +60,7 @@ esac
 OUT_DIR="${REPO_DIR}/dist/${VERSION}"
 ASSET_BASENAME="FlistWalker-${SAFE_VERSION}-linux-${ARCH_LABEL}"
 BIN_NAME="${ASSET_BASENAME}"
+FW_BIN_NAME="fw-${SAFE_VERSION}-linux-${ARCH_LABEL}"
 TAR_NAME="${ASSET_BASENAME}.tar.gz"
 TAR_BIN_NAME="flistwalker"
 README_SIDE_NAME="${ASSET_BASENAME}.README.txt"
@@ -65,8 +69,8 @@ NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
 ROOT_LICENSE="${REPO_DIR}/LICENSE"
 ROOT_NOTICES="${REPO_DIR}/THIRD_PARTY_NOTICES.txt"
 
-if [[ ! -f "${SOURCE_BIN}" ]]; then
-  echo "バイナリが見つかりません: ${SOURCE_BIN}" >&2
+if [[ ! -f "${SOURCE_BIN}" || ! -f "${SOURCE_FW_BIN}" ]]; then
+  echo "バイナリが見つかりません: ${SOURCE_BIN} / ${SOURCE_FW_BIN}" >&2
   echo "先に Linux 向け release build を実行してください。" >&2
   exit 1
 fi
@@ -80,6 +84,8 @@ trap 'rm -rf "${WORK_DIR}"' EXIT
 
 cp -f "${SOURCE_BIN}" "${OUT_DIR}/${BIN_NAME}"
 chmod +x "${OUT_DIR}/${BIN_NAME}"
+cp -f "${SOURCE_FW_BIN}" "${OUT_DIR}/${FW_BIN_NAME}"
+chmod +x "${OUT_DIR}/${FW_BIN_NAME}"
 cat > "${OUT_DIR}/${README_SIDE_NAME}" <<README
 FlistWalker ${VERSION}
 
@@ -92,6 +98,10 @@ Contents:
 Run:
 - chmod +x ./${TAR_BIN_NAME}
 - ./${TAR_BIN_NAME}
+
+CLI-only standalone:
+- Download ${FW_BIN_NAME} for the short fw command path, then run chmod +x ./${FW_BIN_NAME} and ./${FW_BIN_NAME}; you may rename it to fw.
+- It shares these versioned README/LICENSE/THIRD_PARTY_NOTICES release assets. Self-update installs its local copies as fw.README.txt, fw.LICENSE.txt, and fw.THIRD_PARTY_NOTICES.txt so a co-located FlistWalker version is preserved.
 
 English:
 - Type in the search box to narrow files and folders.
@@ -159,6 +169,7 @@ Index options:
 Walker tuning is controlled by the runtime config keys above after the config file exists.
 
 日本語:
+- CLI 専用版は ${FW_BIN_NAME} です。実行権限を付け、version 付きの名前で直接実行するか fw に変更できます。自己更新時の文書は fw.README.txt / fw.LICENSE.txt / fw.THIRD_PARTY_NOTICES.txt に分離されます。
 - 起動後に検索窓へ文字を入力すると、ファイル/フォルダを絞り込みます。
 - Enter で開く/実行、Shift+Enter で格納フォルダを開く（同一フォルダは1回のみ）、Tab でピン留め複数選択、Ctrl+Shift+C でパスコピー。
 - Root は左上の Browse... から切り替え可能です。
@@ -207,12 +218,12 @@ cp -f "${ROOT_NOTICES}" "${WORK_DIR}/THIRD_PARTY_NOTICES.txt"
 if command -v sha256sum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    sha256sum "${BIN_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    sha256sum "${BIN_NAME}" "${FW_BIN_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 elif command -v shasum >/dev/null 2>&1; then
   (
     cd "${OUT_DIR}"
-    shasum -a 256 "${BIN_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
+    shasum -a 256 "${BIN_NAME}" "${FW_BIN_NAME}" "${TAR_NAME}" "${README_SIDE_NAME}" "${LICENSE_SIDE_NAME}" "${NOTICES_SIDE_NAME}" > SHA256SUMS
   )
 else
   echo "sha256sum/shasum が見つかりません。SHA256SUMS を生成できませんでした。" >&2
@@ -226,6 +237,7 @@ fi
 
 echo "Release assets created: ${OUT_DIR}"
 echo "- ${BIN_NAME}"
+echo "- ${FW_BIN_NAME}"
 echo "- ${TAR_NAME}"
 echo "- ${README_SIDE_NAME}"
 echo "- ${LICENSE_SIDE_NAME}"

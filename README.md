@@ -4,7 +4,8 @@ FlistWalker is a Rust GUI/CLI tool that provides an `fzf --walker`-style experie
 
 - Display name: `FlistWalker`
 - GitHub repository: `flist-walker`
-- CLI binary name: `flistwalker` (`FlistWalker.exe` on Windows release assets)
+- Universal binary: `flistwalker` (`FlistWalker.exe` on Windows release assets), providing GUI, batch CLI, and TUI
+- Fast CLI-only binary: `fw` (`fw.exe` on Windows), using the same CLI/TUI contract without `--cli`
 
 Language docs:
 
@@ -142,10 +143,14 @@ cargo run --bin flistwalker -- --root ..
 CLI mode:
 
 ```bash
-cd rust
-source ~/.cargo/env
-cargo run -- --cli "main" --root .. --limit 1000
+# Recommended short command from a release asset:
+fw "main" --root .. --limit 1000
+
+# The universal binary remains compatible:
+flistwalker --cli "main" --root .. --limit 1000
 ```
+
+`fw` excludes the GUI entry path and is optimized for short one-shot invocations. All CLI examples below may replace `flistwalker --cli` with `fw`.
 
 In CLI mode:
 
@@ -225,10 +230,10 @@ flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 Interactive CLI mode:
 
 ```bash
-cargo run -- --cli --interactive --root ..
+fw --interactive --root ..
 ```
 
-The Windows release uses the same `FlistWalker.exe` for GUI, batch CLI, and interactive TUI operation. PowerShell and cmd wait for CLI/TUI completion and receive its exit code normally; GUI mode detaches from the console before the native window starts.
+The Windows release keeps `FlistWalker.exe` for GUI, batch CLI, and interactive TUI compatibility and adds `fw.exe` as a CLI-only standalone asset. PowerShell and cmd wait for CLI/TUI completion and receive its exit code normally; only the universal GUI mode detaches from the console before the native window starts.
 
 The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style editing in both the normal query and history filter. The contextual help reflects whether these shortcuts are enabled. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
 

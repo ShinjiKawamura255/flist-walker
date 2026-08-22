@@ -11,23 +11,27 @@
 - `FlistWalker-X.Y.Z-linux-x86_64.README.txt`
 - `FlistWalker-X.Y.Z-linux-x86_64.LICENSE.txt`
 - `FlistWalker-X.Y.Z-linux-x86_64.THIRD_PARTY_NOTICES.txt`
+- `fw-X.Y.Z-linux-x86_64`
 - `FlistWalker-X.Y.Z-windows-x86_64.exe`
 - `FlistWalker-X.Y.Z-windows-x86_64.zip`
 - `FlistWalker-X.Y.Z-windows-x86_64.README.txt`
 - `FlistWalker-X.Y.Z-windows-x86_64.LICENSE.txt`
 - `FlistWalker-X.Y.Z-windows-x86_64.THIRD_PARTY_NOTICES.txt`
+- `fw-X.Y.Z-windows-x86_64.exe`
 - `FlistWalker-X.Y.Z-macos-x86_64`
 - `FlistWalker-X.Y.Z-macos-x86_64-app.zip`
 - `FlistWalker-X.Y.Z-macos-x86_64.tar.gz`
 - `FlistWalker-X.Y.Z-macos-x86_64.README.txt`
 - `FlistWalker-X.Y.Z-macos-x86_64.LICENSE.txt`
 - `FlistWalker-X.Y.Z-macos-x86_64.THIRD_PARTY_NOTICES.txt`
+- `fw-X.Y.Z-macos-x86_64`
 - `FlistWalker-X.Y.Z-macos-arm64`
 - `FlistWalker-X.Y.Z-macos-arm64-app.zip`
 - `FlistWalker-X.Y.Z-macos-arm64.tar.gz`
 - `FlistWalker-X.Y.Z-macos-arm64.README.txt`
 - `FlistWalker-X.Y.Z-macos-arm64.LICENSE.txt`
 - `FlistWalker-X.Y.Z-macos-arm64.THIRD_PARTY_NOTICES.txt`
+- `fw-X.Y.Z-macos-arm64`
 - `SHA256SUMS`
 - `SHA256SUMS.sig`
 
