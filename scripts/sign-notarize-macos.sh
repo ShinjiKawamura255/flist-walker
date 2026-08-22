@@ -77,12 +77,23 @@ APP_ZIP_NAME="${ASSET_BASENAME}-app.zip"
 APP_ZIP_PATH="${OUT_DIR}/${APP_ZIP_NAME}"
 BIN_NAME="${ASSET_BASENAME}"
 BIN_PATH="${OUT_DIR}/${BIN_NAME}"
+FW_BIN_NAME="fw-${SAFE_VERSION}-macos-${ARCH_LABEL}"
+FW_BIN_PATH="${OUT_DIR}/${FW_BIN_NAME}"
 TAR_NAME="${ASSET_BASENAME}.tar.gz"
+README_SIDE_NAME="${ASSET_BASENAME}.README.txt"
+LICENSE_SIDE_NAME="${ASSET_BASENAME}.LICENSE.txt"
+NOTICES_SIDE_NAME="${ASSET_BASENAME}.THIRD_PARTY_NOTICES.txt"
 
 if [[ ! -d "${APP_PATH}" ]]; then
   echo ".app が見つかりません: ${APP_PATH}" >&2
   echo "先に scripts/prepare-release-macos.sh ${VERSION} を実行してください。" >&2
   exit 1
+fi
+if [[ -f "${FW_BIN_PATH}" ]]; then
+  echo "==> Sign CLI standalone binary"
+  xattr -cr "${FW_BIN_PATH}" || true
+  codesign --force --options runtime --timestamp --sign "${SIGN_IDENTITY}" "${FW_BIN_PATH}"
+  codesign --verify --strict --verbose=2 "${FW_BIN_PATH}"
 fi
 
 TMP_DIR="$(mktemp -d)"
@@ -119,8 +130,12 @@ echo "==> Refresh SHA256SUMS"
   cd "${OUT_DIR}"
   files=()
   [[ -f "${BIN_NAME}" ]] && files+=("${BIN_NAME}")
+  [[ -f "${FW_BIN_NAME}" ]] && files+=("${FW_BIN_NAME}")
   [[ -f "${APP_ZIP_NAME}" ]] && files+=("${APP_ZIP_NAME}")
   [[ -f "${TAR_NAME}" ]] && files+=("${TAR_NAME}")
+  [[ -f "${README_SIDE_NAME}" ]] && files+=("${README_SIDE_NAME}")
+  [[ -f "${LICENSE_SIDE_NAME}" ]] && files+=("${LICENSE_SIDE_NAME}")
+  [[ -f "${NOTICES_SIDE_NAME}" ]] && files+=("${NOTICES_SIDE_NAME}")
   if [[ ${#files[@]} -eq 0 ]]; then
     echo "hash 対象ファイルがありません。" >&2
     exit 1

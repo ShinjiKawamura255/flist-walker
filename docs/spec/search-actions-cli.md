@@ -219,3 +219,18 @@
 ## SP-021 参照
 
 候補収集の `--max-depth`、GUI tab、preset、FileList / Walker 間の共通契約は [SP-021 候補収集の最大深度](indexing-performance.md#sp-021-候補収集の最大深度) を正本とする。
+
+## SP-023 CLI 専用 executable と高速一回検索
+
+### Requirements
+- MUST: Cargo package は universal executable `flistwalker` と CLI 専用 executable `fw` を生成する。`flistwalker` の GUI/CLI/TUI 契約は変更しない。
+- MUST: `fw` は引数解析前に hidden updater restart を処理し、その後 `--cli` を内部注入して既存 CLI/TUI parser・validation・実行経路を共有する。help の program name は `fw` とする。
+- MUST: batch CLI は metadata 付き index entry を path へ戻して再分類せず、一回限りの検索で prefix cache の lookup/store と cache 用 full-result clone/sort を行わない。検索結果、score、order、filter、limit は従来経路と一致させる。
+- MUST: updater は process entrypoint で universal/CLI variant を明示し、同じ variant の standalone binary asset のみを選択する。variant 間の version skew は許容する。release 上の version 付き README/LICENSE/THIRD_PARTY_NOTICES asset は共有するが、自己更新後のローカル配置は universal の `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.README.txt` / `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` に分離する。
+- MUST: release は既存 archive と macOS app asset を universal-only のまま維持し、Windows/Linux/macOS x86_64/macOS arm64 の `fw` standalone asset を追加する。統合集約後は厳密に 28 asset、`SHA256SUMS` は 26 distribution entry とする。
+- MUST: NFR-014 の性能測定を満たす。2回目の全測定でも未達の場合は release を停止する。
+- MUST: Windows `fw.exe` は CLI の open/reveal 契約に必要な Shell32/User32 を許容する一方、GUI framework/rendering/window 系 import（GDI32、OpenGL32、imm32、psapi、dwmapi、uxtheme）を持たない。
+
+### Edge / Error
+- 対象 release に `fw` asset がない場合、`fw` updater は universal binary へフォールバックせず fail closed とする。
+- `fw` と `flistwalker --cli` の同じ invocation は stdout、stderr、exit code を一致させる。ただし help/program name と updater の手動実行案内は実行 variant の command 名を使う。

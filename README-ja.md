@@ -169,10 +169,14 @@ cargo run -- --root ..
 CLI モード:
 
 ```bash
-cd rust
-source ~/.cargo/env
-cargo run -- --cli "main" --root .. --limit 1000
+# release の短い CLI 専用コマンド（推奨）
+fw "main" --root .. --limit 1000
+
+# GUI/CLI 共用バイナリも従来互換
+flistwalker --cli "main" --root .. --limit 1000
 ```
+
+`fw` は GUI 起動経路を含めない CLI 専用 executable で、短い一回検索向けに起動を軽量化しています。以下の CLI 例はすべて `flistwalker --cli` を `fw` に置き換えられます。
 
 CLI では:
 
@@ -252,7 +256,7 @@ flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 インタラクティブ CLI モード:
 
 ```bash
-cargo run -- --cli --interactive --root ..
+fw --interactive --root ..
 ```
 
 `--max-depth` は起動時または preset の深さとして TUI session 中固定され、F2 options overlay からは変更しません。

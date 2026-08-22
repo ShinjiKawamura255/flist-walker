@@ -14,12 +14,13 @@
 - NFR-011: interactive CLI の index/search は入力ループをブロックせず、同一 query を含む古い応答を request identity で破棄し、結果更新中も利用者の選択を可能な限り維持しなければならない。worker 応答の反映は iteration ごとの固定件数上限を持ち、増分候補の追加で既存候補 path 全件を入力ループ上で複製してはならない。端末描画はフレーム途中の全画面消去状態を利用者へ表示してはならない。正常終了、cancel、setup 途中失敗、描画/入力エラー、unwind の各経路で terminal mode・alternate screen・cursor・bracketed paste を開始前相当へ復旧しなければならない。
 - NFR-012: FileList transaction と history persistence は UI frame / terminal event loop をブロックせず、FileList の未 settle な worker は selection 出力・root 切替・terminal 終了より先に完了または失敗として確定しなければならない。
 - NFR-013: GUI coordinator の非同期状態遷移は、決定論的に再生できる長い操作列で継続検証しなければならない。各操作後は tab identity、request routing、result/selection、bounded queue の安全不変条件を満たし、入力停止後は pending / in-flight / routing / progress state が有限 step で終端状態へ収束しなければならない。失敗証跡は seed、step、event、意味論的 state digest を含み、同じ revision で再生可能でなければならない。
+- NFR-014: Windows の固定 shallow 200-file fixture では、同一 release build・同一 host で 5 warmup 後に標準出力を破棄して 25 回測定した `fw` batch 検索の median が、従来 `flistwalker --cli` の median の 70% 以下でなければならない。1 回だけ全測定を再実行でき、再度未達なら release を停止する。
 
 ### Constraints (CON)
 - CON-001: 本実装は Rust で行う。
 - CON-002: 外部コマンド実行は配列引数で呼び出し、シェル展開依存を避ける。
 - CON-003: root 配下判定はインデクシング経路へ導入せず、実行/オープン直前に行う。
-- CON-004: 自己更新は既存 release asset 命名規則（`FlistWalker-<version>-<platform>-<arch>` と `SHA256SUMS`）を前提とし、追加の常駐 updater 事前配置を要求してはならない。
+- CON-004: 自己更新は universal の `FlistWalker-<version>-<platform>-<arch>`、CLI 専用の `fw-<version>-<platform>-<arch>`、共有 sidecar と `SHA256SUMS` を前提とし、追加の常駐 updater 事前配置を要求してはならない。
 
 ## Risks
 - R-001: OS ごとのオープン/実行差異により挙動不一致が発生する。軽減策: 実行/オープン分岐を抽象化しテストで検証する。

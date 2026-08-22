@@ -1,5 +1,8 @@
 use crate::update_security::{self, CHECKSUM_SIGNATURE_NAME};
-use crate::updater::{env_flag, AutoUpdateAssets, UpdateCandidate, UpdateSupport};
+use crate::updater::{
+    env_flag, running_binary_variant, AutoUpdateAssets, BinaryVariant, UpdateCandidate,
+    UpdateSupport,
+};
 use anyhow::{Context, Result};
 use semver::Version;
 use serde::Deserialize;
@@ -103,7 +106,12 @@ fn update_allow_downgrade() -> bool {
 }
 
 pub(super) fn current_platform_target(version: &Version) -> Result<Option<PlatformReleaseTarget>> {
-    platform_target_for(version, std::env::consts::OS, std::env::consts::ARCH)
+    platform_target_for_variant(
+        version,
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+        running_binary_variant(),
+    )
 }
 
 fn manual_only_target(message: &str) -> PlatformReleaseTarget {
@@ -118,29 +126,40 @@ fn manual_only_target(message: &str) -> PlatformReleaseTarget {
     }
 }
 
+#[cfg(test)]
 pub(super) fn platform_target_for(
     version: &Version,
     os: &str,
     arch: &str,
 ) -> Result<Option<PlatformReleaseTarget>> {
+    platform_target_for_variant(version, os, arch, BinaryVariant::Universal)
+}
+
+pub(super) fn platform_target_for_variant(
+    version: &Version,
+    os: &str,
+    arch: &str,
+    variant: BinaryVariant,
+) -> Result<Option<PlatformReleaseTarget>> {
     let version = version.to_string();
+    let binary_stem = match variant {
+        BinaryVariant::Universal => format!("FlistWalker-{version}"),
+        BinaryVariant::Cli => format!("fw-{version}"),
+    };
+    let sidecar_stem = format!("FlistWalker-{version}");
     match (os, arch) {
         ("windows", "x86_64") => Ok(Some(PlatformReleaseTarget {
-            asset_name: format!("FlistWalker-{version}-windows-x86_64.exe"),
-            readme_asset_name: format!("FlistWalker-{version}-windows-x86_64.README.txt"),
-            license_asset_name: format!("FlistWalker-{version}-windows-x86_64.LICENSE.txt"),
-            notices_asset_name: format!(
-                "FlistWalker-{version}-windows-x86_64.THIRD_PARTY_NOTICES.txt"
-            ),
+            asset_name: format!("{binary_stem}-windows-x86_64.exe"),
+            readme_asset_name: format!("{sidecar_stem}-windows-x86_64.README.txt"),
+            license_asset_name: format!("{sidecar_stem}-windows-x86_64.LICENSE.txt"),
+            notices_asset_name: format!("{sidecar_stem}-windows-x86_64.THIRD_PARTY_NOTICES.txt"),
             support: UpdateSupport::Auto,
         })),
         ("linux", "x86_64") => Ok(Some(PlatformReleaseTarget {
-            asset_name: format!("FlistWalker-{version}-linux-x86_64"),
-            readme_asset_name: format!("FlistWalker-{version}-linux-x86_64.README.txt"),
-            license_asset_name: format!("FlistWalker-{version}-linux-x86_64.LICENSE.txt"),
-            notices_asset_name: format!(
-                "FlistWalker-{version}-linux-x86_64.THIRD_PARTY_NOTICES.txt"
-            ),
+            asset_name: format!("{binary_stem}-linux-x86_64"),
+            readme_asset_name: format!("{sidecar_stem}-linux-x86_64.README.txt"),
+            license_asset_name: format!("{sidecar_stem}-linux-x86_64.LICENSE.txt"),
+            notices_asset_name: format!("{sidecar_stem}-linux-x86_64.THIRD_PARTY_NOTICES.txt"),
             support: UpdateSupport::Auto,
         })),
         ("macos", "aarch64" | "x86_64") => {
@@ -150,10 +169,10 @@ pub(super) fn platform_target_for(
             "macos-x86_64"
         };
             Ok(Some(PlatformReleaseTarget {
-            asset_name: format!("FlistWalker-{version}-{suffix}"),
-            readme_asset_name: format!("FlistWalker-{version}-{suffix}.README.txt"),
-            license_asset_name: format!("FlistWalker-{version}-{suffix}.LICENSE.txt"),
-            notices_asset_name: format!("FlistWalker-{version}-{suffix}.THIRD_PARTY_NOTICES.txt"),
+            asset_name: format!("{binary_stem}-{suffix}"),
+            readme_asset_name: format!("{sidecar_stem}-{suffix}.README.txt"),
+            license_asset_name: format!("{sidecar_stem}-{suffix}.LICENSE.txt"),
+            notices_asset_name: format!("{sidecar_stem}-{suffix}.THIRD_PARTY_NOTICES.txt"),
             support: UpdateSupport::ManualOnly {
                 message: "macOS の自動更新は未対応です。GitHub Releases から手動更新してください。"
                     .to_string(),
@@ -252,6 +271,73 @@ fn release_asset_by_name(release: &GitHubRelease, name: &str) -> Result<GitHubAs
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc193_cli_target_uses_fw_asset_and_shared_sidecars() {
+        let version = Version::new(1, 2, 3);
+        let universal = platform_target_for_variant(
+            &version,
+            "windows",
+            "x86_64",
+            crate::updater::BinaryVariant::Universal,
+        )
+        .expect("universal target")
+        .expect("supported universal target");
+        let cli = platform_target_for_variant(
+            &version,
+            "windows",
+            "x86_64",
+            crate::updater::BinaryVariant::Cli,
+        )
+        .expect("cli target")
+        .expect("supported cli target");
+
+        assert_eq!(universal.asset_name, "FlistWalker-1.2.3-windows-x86_64.exe");
+        assert_eq!(cli.asset_name, "fw-1.2.3-windows-x86_64.exe");
+        assert_eq!(cli.readme_asset_name, universal.readme_asset_name);
+        assert_eq!(cli.license_asset_name, universal.license_asset_name);
+        assert_eq!(cli.notices_asset_name, universal.notices_asset_name);
+    }
+
+    #[test]
+    fn tc193_cli_target_rejects_release_missing_fw_asset() {
+        let release = test_release("v0.13.1");
+        let target = platform_target_for_variant(
+            &Version::new(0, 13, 1),
+            "windows",
+            "x86_64",
+            crate::updater::BinaryVariant::Cli,
+        )
+        .expect("cli target")
+        .expect("supported cli target");
+
+        let err = select_release_assets(&release, &target)
+            .expect_err("a universal-only release must not update fw with the GUI binary");
+
+        assert!(err.to_string().contains("fw-0.13.1-windows-x86_64.exe"));
+    }
+
+    #[test]
+    fn tc193_cli_target_selects_fw_asset_when_present() {
+        let mut release = test_release("v0.13.1");
+        release.assets.push(GitHubAsset {
+            name: "fw-0.13.1-windows-x86_64.exe".to_string(),
+            browser_download_url: "https://example.invalid/windows-fw".to_string(),
+        });
+        let target = platform_target_for_variant(
+            &Version::new(0, 13, 1),
+            "windows",
+            "x86_64",
+            crate::updater::BinaryVariant::Cli,
+        )
+        .expect("cli target")
+        .expect("supported cli target");
+
+        let assets = select_release_assets(&release, &target).expect("CLI release assets");
+
+        assert_eq!(assets.asset.name, "fw-0.13.1-windows-x86_64.exe");
+        assert_eq!(assets.readme_asset.name, target.readme_asset_name);
+    }
 
     #[test]
     fn tc190_supported_x86_64_target_is_auto_with_real_asset_family() {

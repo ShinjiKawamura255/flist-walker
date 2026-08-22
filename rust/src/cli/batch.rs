@@ -9,32 +9,31 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::warn;
 
-use flist_walker::actions::{
+use crate::actions::{
     execute_authorized_action_request, execute_or_open, AuthorizedActionBackend,
     AuthorizedActionGuard, AuthorizedActionOutcome, AuthorizedActionReport,
     AuthorizedActionRequest,
 };
-use flist_walker::cli_tui::{run_cli_tui, CliTuiOptions, CliTuiOutcome};
-use flist_walker::command_exec::{execute_external_command, ExecOptions, ExecOutcome, ExecReport};
-use flist_walker::entry::Entry;
-use flist_walker::ignore_list::{
+use crate::cli_tui::{run_cli_tui, CliTuiOptions, CliTuiOutcome};
+use crate::command_exec::{execute_external_command, ExecOptions, ExecOutcome, ExecReport};
+use crate::ignore_list::{
     ensure_ignore_list_sample, load_ignore_terms_from_current_exe_result,
     load_ignore_terms_from_path_result,
 };
-use flist_walker::indexer::{
-    build_index_cancellable, build_index_cancellable_with_max_depth, execute_filelist_write_plan,
-    find_filelist_in_first_level, is_index_build_cancelled, plan_filelist_write_cancellable,
-    FileListWriteOptions, FileListWriteReport,
+use crate::indexer::{
+    build_index_cancellable, build_index_with_metadata_cancellable_and_max_depth,
+    execute_filelist_write_plan, find_filelist_in_first_level, is_index_build_cancelled,
+    plan_filelist_write_cancellable, FileListWriteOptions, FileListWriteReport,
 };
-use flist_walker::path_utils::{normalize_path_for_display, output_path_bytes};
-use flist_walker::persistence::load_persisted_roots_and_history;
-use flist_walker::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
-use flist_walker::search::{rank_search_results, SearchPrefixCache, SearchSortScope};
-use flist_walker::search_catalog::{
+use crate::path_utils::{normalize_path_for_display, output_path_bytes};
+use crate::persistence::load_persisted_roots_and_history;
+use crate::query::{CompiledIgnoreTerms, CompiledQuery, QueryOptions, QueryScope};
+use crate::search::{rank_search_results_uncached, SearchSortScope};
+use crate::search_catalog::{
     load_search_catalog, search_catalog_file_path, update_search_catalog, PresetEntryType,
     PresetSortMode, PresetSource, SearchPreset,
 };
-use flist_walker::ui_model::{display_path_with_mode, match_positions_for_path_with_compiled};
+use crate::ui_model::{display_path_with_mode, match_positions_for_path_with_compiled};
 
 use super::args::{
     parse_exec_template, validate_list_saved_roots_args, Args, CliAction, CliColorMode,
@@ -399,7 +398,7 @@ fn run_cli_with_backend(
     if args.progress {
         eprintln!("Indexing {}...", root.display());
     }
-    let indexed_entries = match build_index_cancellable_with_max_depth(
+    let indexed_entries = match build_index_with_metadata_cancellable_and_max_depth(
         root,
         use_filelist,
         include_files,
@@ -407,7 +406,7 @@ fn run_cli_with_backend(
         args.max_depth(),
         || cancelled.load(Ordering::Relaxed),
     ) {
-        Ok(entries) => entries,
+        Ok(result) => result.entries,
         Err(error) if is_index_build_cancelled(&error) => return Ok(BatchOutcome::Cancelled),
         Err(error) => return Err(error),
     };
@@ -422,28 +421,27 @@ fn run_cli_with_backend(
         );
     }
     let mut entries = Vec::with_capacity(indexed_entries.len());
-    for path in indexed_entries {
+    for entry in indexed_entries {
         if cancelled.load(Ordering::Relaxed) {
             return Ok(BatchOutcome::Cancelled);
         }
         if !compiled_ignore_terms.matches_path(
-            &path,
+            entry.path(),
             QueryScope {
                 root: Some(root),
                 prefer_relative: true,
                 ignore_case,
             },
         ) {
-            entries.push(path);
+            entries.push(entry);
         }
     }
     if cancelled.load(Ordering::Relaxed) {
         return Ok(BatchOutcome::Cancelled);
     }
-    let entries = Arc::new(entries.into_iter().map(Entry::from).collect());
-    let mut prefix_cache = SearchPrefixCache::default();
+    let entries = Arc::new(entries);
     let search_started = Instant::now();
-    let (search_results, search_error) = rank_search_results(
+    let (search_results, search_error) = rank_search_results_uncached(
         &entries,
         args.query.trim(),
         root,
@@ -451,7 +449,6 @@ fn run_cli_with_backend(
         args.regex,
         ignore_case,
         true,
-        &mut prefix_cache,
         args.sort.into(),
         SearchSortScope::AllMatches,
     );
@@ -911,13 +908,13 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use anyhow::Result;
-    use flist_walker::actions::{
+    use crate::actions::{
         AuthorizedActionBackend, AuthorizedActionMode, AuthorizedActionOutcome,
         AuthorizedActionReport,
     };
-    use flist_walker::path_utils::normalize_path_for_display;
-    use flist_walker::search::SearchSortMode;
+    use crate::path_utils::normalize_path_for_display;
+    use crate::search::SearchSortMode;
+    use anyhow::Result;
 
     use super::{
         batch_exit_code, cli_filelist_exit_code, cli_output_color_enabled, cli_tui_options,
@@ -1255,21 +1252,21 @@ mod tests {
     #[test]
     fn tc_165_cli_filelist_exit_mapping_preserves_clean_cancel_and_rollback_failure() {
         let root_target = PathBuf::from("FileList.txt");
-        let clean_cancel = flist_walker::indexer::FileListWriteReport {
-            status: flist_walker::indexer::FileListWriteStatus::Canceled,
+        let clean_cancel = crate::indexer::FileListWriteReport {
+            status: crate::indexer::FileListWriteStatus::Canceled,
             root_target: root_target.clone(),
             committed: vec![root_target.clone()],
             failed: Vec::new(),
             rolled_back: vec![root_target.clone()],
             rollback_failed: Vec::new(),
         };
-        let rollback_failure = flist_walker::indexer::FileListWriteReport {
-            status: flist_walker::indexer::FileListWriteStatus::Canceled,
+        let rollback_failure = crate::indexer::FileListWriteReport {
+            status: crate::indexer::FileListWriteStatus::Canceled,
             root_target: root_target.clone(),
             committed: vec![root_target.clone()],
             failed: Vec::new(),
             rolled_back: Vec::new(),
-            rollback_failed: vec![flist_walker::indexer::FileListWriteFailure {
+            rollback_failed: vec![crate::indexer::FileListWriteFailure {
                 path: root_target,
                 error: "rollback injection".to_string(),
             }],

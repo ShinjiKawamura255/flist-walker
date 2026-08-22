@@ -452,6 +452,13 @@ pub(super) fn validate_marker(marker: &TransactionMarker) -> Result<()> {
     if !is_safe_basename(&marker.binary_name) {
         bail!("invalid marker binary name");
     }
+    if marker
+        .sidecar_prefix
+        .as_deref()
+        .is_some_and(|prefix| prefix != "fw.")
+    {
+        bail!("invalid marker sidecar prefix");
+    }
     if marker.targets.len() != TargetRole::ORDER.len()
         || marker
             .targets
@@ -781,5 +788,5 @@ pub(super) fn marker_temp_path(dir: &Path, transaction_id: &str) -> PathBuf {
     dir.join(format!(".flistwalker-update-{transaction_id}.marker.tmp"))
 }
 pub(super) fn target_path(dir: &Path, marker: &TransactionMarker, role: TargetRole) -> PathBuf {
-    dir.join(role.target_name(&marker.binary_name))
+    dir.join(role.target_name(&marker.binary_name, marker.sidecar_prefix.as_deref()))
 }

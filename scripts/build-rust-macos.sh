@@ -52,8 +52,11 @@ echo "==> Build macOS binary"
 
 if [[ -n "${TARGET}" ]]; then
   BIN_PATH="${RUST_DIR}/target/${TARGET}/release/flistwalker"
+  FW_BIN_PATH="${RUST_DIR}/target/${TARGET}/release/fw"
 else
   BIN_PATH="${RUST_DIR}/target/release/flistwalker"
+  FW_BIN_PATH="${RUST_DIR}/target/release/fw"
 fi
 
 echo "Built: ${BIN_PATH}"
+echo "Built: ${FW_BIN_PATH}"

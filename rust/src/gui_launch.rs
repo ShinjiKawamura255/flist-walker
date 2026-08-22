@@ -9,7 +9,7 @@ use flist_walker::updater::{
 use resvg::{tiny_skia, usvg};
 use tracing::warn;
 
-use crate::launch_path::resolve_root;
+use flist_walker::launch_path::resolve_root;
 
 const APP_TITLE: &str = "FlistWalker";
 const APP_ID: &str = "flistwalker";

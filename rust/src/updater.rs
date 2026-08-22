@@ -16,6 +16,39 @@ const INTERNAL_UPDATE_RESTART_FLAG: &str = "--flistwalker-internal-update-restar
 const INSTALL_CANCEL_REQUESTED: u8 = 1;
 const INSTALL_COMMIT_HANDOFF: u8 = 2;
 const INSTALL_TERMINAL: u8 = 4;
+const BINARY_VARIANT_UNIVERSAL: u8 = 0;
+const BINARY_VARIANT_CLI: u8 = 1;
+
+static RUNNING_BINARY_VARIANT: AtomicU8 = AtomicU8::new(BINARY_VARIANT_UNIVERSAL);
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BinaryVariant {
+    #[default]
+    Universal,
+    Cli,
+}
+
+pub fn set_running_binary_variant(variant: BinaryVariant) {
+    let value = match variant {
+        BinaryVariant::Universal => BINARY_VARIANT_UNIVERSAL,
+        BinaryVariant::Cli => BINARY_VARIANT_CLI,
+    };
+    RUNNING_BINARY_VARIANT.store(value, Ordering::Release);
+}
+
+pub fn running_binary_variant() -> BinaryVariant {
+    match RUNNING_BINARY_VARIANT.load(Ordering::Acquire) {
+        BINARY_VARIANT_CLI => BinaryVariant::Cli,
+        _ => BinaryVariant::Universal,
+    }
+}
+
+pub fn running_binary_command_name() -> &'static str {
+    match running_binary_variant() {
+        BinaryVariant::Universal => "flistwalker",
+        BinaryVariant::Cli => "fw",
+    }
+}
 
 /// Shared by the GUI and update worker so close/cancel can interrupt staging
 /// without introducing an mpsc request that sits behind the active download.

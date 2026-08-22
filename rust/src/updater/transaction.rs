@@ -16,7 +16,7 @@ use model::{TargetRecord, MARKER_VERSION};
 pub(super) use platform::windows_hidden_child_command;
 use platform::*;
 
-use crate::updater::UpdateRestartMode;
+use crate::updater::{BinaryVariant, UpdateRestartMode};
 use anyhow::{bail, Context, Result};
 #[cfg(not(target_os = "macos"))]
 use rand_core::{OsRng, RngCore};
@@ -106,12 +106,29 @@ impl Drop for PreparedTransaction {
     }
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(test)]
 pub(super) fn prepare_transaction_with_id(
     current_exe: &Path,
     sources: TransactionSources<'_>,
     transaction_id: &str,
     parent_pid: u32,
+) -> Result<PreparedTransaction> {
+    prepare_transaction_with_id_for_variant(
+        current_exe,
+        sources,
+        transaction_id,
+        parent_pid,
+        BinaryVariant::Universal,
+    )
+}
+
+#[cfg(any(not(target_os = "macos"), test))]
+pub(super) fn prepare_transaction_with_id_for_variant(
+    current_exe: &Path,
+    sources: TransactionSources<'_>,
+    transaction_id: &str,
+    parent_pid: u32,
+    variant: BinaryVariant,
 ) -> Result<PreparedTransaction> {
     validate_transaction_id(transaction_id)?;
     validate_regular_file(current_exe, "current executable")?;
@@ -130,6 +147,10 @@ pub(super) fn prepare_transaction_with_id(
         .filter(|value| is_safe_basename(value))
         .context("current executable filename is not a safe basename")?
         .to_string();
+    let sidecar_prefix = match variant {
+        BinaryVariant::Universal => None,
+        BinaryVariant::Cli => Some("fw.".to_string()),
+    };
     let marker_path = install_dir.join(MARKER_FILE_NAME);
     let lock_path = install_dir.join(LOCK_FILE_NAME);
     reject_existing(&marker_path, "transaction marker")?;
@@ -153,7 +174,7 @@ pub(super) fn prepare_transaction_with_id(
     for role in TargetRole::ORDER {
         let source = sources.for_role(role);
         validate_regular_file(source, "verified update source")?;
-        let target = install_dir.join(role.target_name(&binary_name));
+        let target = install_dir.join(role.target_name(&binary_name, sidecar_prefix.as_deref()));
         validate_target_if_present(&target, "installation target")?;
         let prepared_path = new_path(&install_dir, transaction_id, role);
         let backup = backup_path(&install_dir, transaction_id, role);
@@ -183,6 +204,7 @@ pub(super) fn prepare_transaction_with_id(
         version: MARKER_VERSION,
         transaction_id: transaction_id.to_string(),
         binary_name: binary_name.clone(),
+        sidecar_prefix,
         parent_pid,
         helper_pid: None,
         helper_start_token: None,
@@ -556,10 +578,17 @@ pub(super) fn recover_transaction(
 pub(super) fn prepare_transaction(
     current_exe: &Path,
     sources: TransactionSources<'_>,
+    variant: BinaryVariant,
 ) -> Result<PreparedTransaction> {
     let mut bytes = [0u8; 16];
     OsRng.fill_bytes(&mut bytes);
-    prepare_transaction_with_id(current_exe, sources, &hex_bytes(&bytes), std::process::id())
+    prepare_transaction_with_id_for_variant(
+        current_exe,
+        sources,
+        &hex_bytes(&bytes),
+        std::process::id(),
+        variant,
+    )
 }
 
 #[cfg(not(target_os = "macos"))]

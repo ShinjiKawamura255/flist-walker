@@ -25,12 +25,13 @@ impl TargetRole {
         }
     }
 
-    pub(super) fn target_name(self, binary_name: &str) -> &str {
+    pub(super) fn target_name(self, binary_name: &str, sidecar_prefix: Option<&str>) -> String {
+        let sidecar_prefix = sidecar_prefix.unwrap_or_default();
         match self {
-            Self::Readme => "README.txt",
-            Self::License => "LICENSE.txt",
-            Self::Notices => "THIRD_PARTY_NOTICES.txt",
-            Self::Binary => binary_name,
+            Self::Readme => format!("{sidecar_prefix}README.txt"),
+            Self::License => format!("{sidecar_prefix}LICENSE.txt"),
+            Self::Notices => format!("{sidecar_prefix}THIRD_PARTY_NOTICES.txt"),
+            Self::Binary => binary_name.to_string(),
         }
     }
 }
@@ -70,6 +71,8 @@ pub(in crate::updater) struct TransactionMarker {
     pub(super) version: u32,
     pub(super) transaction_id: String,
     pub(super) binary_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) sidecar_prefix: Option<String>,
     pub(super) parent_pid: u32,
     pub(super) helper_pid: Option<u32>,
     pub(super) helper_start_token: Option<String>,

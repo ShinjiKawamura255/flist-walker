@@ -4,13 +4,14 @@ mod batch;
 use anyhow::{Context, Result};
 use std::process::ExitCode;
 
-use flist_walker::updater::{
+use crate::runtime_config::initialize_runtime_config;
+use crate::updater::{
     check_for_update, current_version_string, prepare_and_start_update,
-    recover_interrupted_update_on_startup, self_update_disabled, UpdateCandidate,
-    UpdateRestartMode, UpdateSupport,
+    recover_interrupted_update_on_startup, running_binary_command_name, self_update_disabled,
+    set_running_binary_variant, BinaryVariant, UpdateCandidate, UpdateRestartMode, UpdateSupport,
 };
 
-pub(crate) use args::{parse_args, validate_args, Args};
+pub use args::{parse_args, validate_args, Args};
 use batch::run_cli_mode;
 
 fn update_available_message(candidate: &UpdateCandidate) -> String {
@@ -20,7 +21,7 @@ fn update_available_message(candidate: &UpdateCandidate) -> String {
     )
 }
 
-pub(crate) fn run_update_command(install: bool) -> Result<ExitCode> {
+pub fn run_update_command(install: bool) -> Result<ExitCode> {
     if self_update_disabled() {
         if install {
             eprintln!("Automatic updates are disabled.");
@@ -43,7 +44,10 @@ pub(crate) fn run_update_command(install: bool) -> Result<ExitCode> {
 
     println!("{}", update_available_message(&candidate));
     if !install {
-        println!("Run flistwalker --update to install it.");
+        println!(
+            "Run {} --update to install it.",
+            running_binary_command_name()
+        );
         return Ok(ExitCode::SUCCESS);
     }
 
@@ -66,6 +70,20 @@ pub(crate) fn run_update_command(install: bool) -> Result<ExitCode> {
     }
 }
 
-pub(crate) fn run(args: &Args) -> Result<ExitCode> {
+pub fn run(args: &Args) -> Result<ExitCode> {
     run_cli_mode(args)
+}
+
+pub fn run_dedicated() -> Result<ExitCode> {
+    set_running_binary_variant(BinaryVariant::Cli);
+    let args = args::parse_dedicated_args();
+    if args.requests_update_command() {
+        return run_update_command(args.update_requested());
+    }
+    if let Err(error) = validate_args(&args) {
+        eprintln!("error: {error}");
+        return Ok(ExitCode::from(2));
+    }
+    let _runtime_config = initialize_runtime_config();
+    run(&args)
 }

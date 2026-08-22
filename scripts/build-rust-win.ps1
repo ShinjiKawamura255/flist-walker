@@ -23,10 +23,12 @@ $rustDir = Join-Path $repoRoot 'rust'
 $releaseDir = Join-Path $rustDir 'target\x86_64-pc-windows-gnu\release'
 $sourceExe = Join-Path $releaseDir 'flistwalker.exe'
 $displayExe = Join-Path $releaseDir 'FlistWalker.exe'
+$fwExe = Join-Path $releaseDir 'fw.exe'
 $sourceFull = [System.IO.Path]::GetFullPath($sourceExe)
 $displayFull = [System.IO.Path]::GetFullPath($displayExe)
 
 Remove-FlistWalkerBuildArtifact -Path $sourceExe
+Remove-FlistWalkerBuildArtifact -Path $fwExe
 if (-not $sourceFull.Equals($displayFull, [System.StringComparison]::OrdinalIgnoreCase)) {
     Remove-FlistWalkerBuildArtifact -Path $displayExe
 }
@@ -44,6 +46,9 @@ try {
 if (-not (Test-Path -LiteralPath $sourceExe -PathType Leaf)) {
     throw "Build completed without the expected executable: $sourceExe"
 }
+if (-not (Test-Path -LiteralPath $fwExe -PathType Leaf)) {
+    throw "Build completed without the expected CLI executable: $fwExe"
+}
 
 if (-not $sourceFull.Equals($displayFull, [System.StringComparison]::OrdinalIgnoreCase)) {
     Copy-Item -LiteralPath $sourceExe -Destination $displayExe -Force
@@ -52,6 +57,7 @@ if (-not $sourceFull.Equals($displayFull, [System.StringComparison]::OrdinalIgno
 $stripTarget = if (Test-Path -LiteralPath $displayExe) { $displayExe } else { $sourceExe }
 Write-Host '==> Stripping Windows executable'
 Invoke-FlistWalkerChecked -FilePath $environment.Tools.Strip -ArgumentList @($stripTarget)
+Invoke-FlistWalkerChecked -FilePath $environment.Tools.Strip -ArgumentList @($fwExe)
 
 if (-not $sourceFull.Equals($displayFull, [System.StringComparison]::OrdinalIgnoreCase)) {
     Copy-Item -LiteralPath $stripTarget -Destination $sourceExe -Force
@@ -67,3 +73,4 @@ if ($sourceHash -ne $displayHash) {
 }
 
 Write-Host "Windows build complete: $displayExe"
+Write-Host "Windows CLI build complete: $fwExe"

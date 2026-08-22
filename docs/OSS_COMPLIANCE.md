@@ -52,7 +52,8 @@
 
 ## Repository-specific notes
 - release asset と standalone 配布では `LICENSE` / `THIRD_PARTY_NOTICES` の sidecar を必須とする。
-- self-update 後も配置先ディレクトリに `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` が残る必要がある。
+- CLI 専用 `fw` standalone は同一 platform の version 付き README/LICENSE/THIRD_PARTY_NOTICES release asset を universal binary と共有し、既存 archive の内容は変更しない。
+- self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
 ## resvg 0.48 dependency review (2026-08-19)

@@ -1,30 +1,17 @@
-mod cli;
 mod gui_launch;
-mod launch_path;
 mod windows_console;
 
 use anyhow::Result;
 use std::process::ExitCode;
 use tracing::warn;
-use tracing_subscriber::EnvFilter;
 
+use flist_walker::cli;
 use flist_walker::ignore_list::ensure_ignore_list_sample;
+use flist_walker::process_entry::initialize_process_entry;
 use flist_walker::runtime_config::initialize_runtime_config;
-use flist_walker::updater::run_internal_updater_command_if_requested;
-
-fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("off"));
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .with_target(true)
-        .without_time()
-        .compact()
-        .try_init();
-}
 
 fn main() -> Result<ExitCode> {
-    init_tracing();
-    if run_internal_updater_command_if_requested()? {
+    if initialize_process_entry()? {
         return Ok(ExitCode::SUCCESS);
     }
 

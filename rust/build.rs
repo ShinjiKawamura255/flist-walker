@@ -93,11 +93,9 @@ fn main() {
                 .expect("failed to embed Windows icon resource with windres");
             // cargo:rustc-link-lib reaches only this package's library target, so GNU builds
             // must also link the generated resource object into the final GUI EXE explicitly.
-            for directive in windows_resource_build::cargo_directives_for_windows_resource_bin(
-                &target_env,
-                windows_resource_build::WINDOWS_GUI_BIN_NAME,
-                &out_dir,
-            ) {
+            for directive in
+                windows_resource_build::cargo_directives_for_all_windows_bins(&target_env, &out_dir)
+            {
                 println!("{directive}");
             }
         } else {

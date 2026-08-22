@@ -192,6 +192,46 @@ fn tc_155_regression_rank_search_compiles_query_once_per_request() {
 }
 
 #[test]
+fn tc_193_uncached_one_shot_ranking_matches_cached_results_without_cache_population() {
+    let root = PathBuf::from("/tmp");
+    let entries = Arc::new(vec![
+        Entry::file(root.join("src/main.rs")),
+        Entry::file(root.join("src/domain.rs")),
+        Entry::file(root.join("tests/main_test.rs")),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+    let (cached, cached_error) = rank_search_results(
+        &entries,
+        "main",
+        &root,
+        10,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::AllMatches,
+    );
+    assert!(cached_error.is_none());
+    assert!(!cache.entries.is_empty());
+
+    let (uncached, uncached_error) = rank_search_results_uncached(
+        &entries,
+        "main",
+        &root,
+        10,
+        false,
+        true,
+        true,
+        SearchSortMode::Score,
+        SearchSortScope::AllMatches,
+    );
+
+    assert!(uncached_error.is_none());
+    assert_eq!(uncached, cached);
+}
+
+#[test]
 fn tc_155_regression_authoritative_search_still_applies_exclusion() {
     let entries = vec![
         PathBuf::from("/tmp/src/main.rs"),

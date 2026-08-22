@@ -37,7 +37,8 @@
 - `stage_update_assets(candidate, transport, limits) -> VerifiedUpdateBundle`
 - `prepare_update_transaction(bundle, current_executable) -> PreparedUpdateTransaction`
 - `recover_update_transaction(marker, filesystem) -> RecoveryOutcome`
-- CLI: `flistwalker [query] [--root PATH] [--limit N] [--cli]`
+- Universal CLI: `flistwalker --cli [query] [--root PATH] [--limit N]`
+- Dedicated CLI: `fw [query] [--root PATH] [--limit N]`
 - `sort_all_matches(matches, mode) -> sorted matches`
 - `execute_authorized_action(request, backend) -> ActionReport`
 
@@ -64,3 +65,10 @@
 - GUI `AppRuntimeState`、`AppTabState`、`SavedTabState`、GUI/TUI `IndexRequest`、`SearchPreset` は同じ値を伝播する。active tab preset transition は max depth を他の preset-owned state と同時に確定し、値が変われば1回だけ reindexする。
 - main panel は `Folders` と `Preview` の間に現在値buttonを描画し、popup draft と live値を分離する。`Apply` は live値更新、active-tab同期、session dirty化、request-id付きreindexを順に行い、`Cancel` は no-op とする。
 - preset catalog と saved tab は欠落 field を無制限として deserializeし、既存versionを維持する。新規tabは無制限とし、FileList作成workerは表示indexのmax depthを再利用しない。
+
+## DES-024 Dual executable entrypoints and one-shot fast path
+- `src/main.rs` と `src/bin/fw.rs` は最小 entrypoint とし、両方が `process_entry::initialize_process_entry` で optional tracing と hidden updater restart を argument parsing より先に処理する。universal は既存 GUI/CLI dispatch、`fw` は `cli::run_dedicated` へ進む。
+- `cli::run_dedicated` は `BinaryVariant::Cli` を process-global entry context へ設定し、`args::parse_dedicated_args` が先頭へ `--cli` を注入して共有 Clap command を `fw` 名で解析する。実行・TUI・query・action の実装は複製しない。
+- batch indexing は `build_index_with_metadata_cancellable_and_max_depth` の `Entry` を直接 filter/search へ渡す。一回検索用 `rank_search_results_uncached` は共有 ranking evaluator を使い、prefix cache の lookup/store と cache population 用の clone/full-sort だけを省く。
+- updater asset resolver は `BinaryVariant` を platform target へ明示し、binary stem だけを `FlistWalker-*` / `fw-*` に分ける。remote sidecar stem と署名済み checksum は共有し、対象 variant asset の欠落を別 variant で補完しない。transaction marker は実行ファイル名から推測せず CLI variant に `fw.` sidecar prefix を記録し、version 付き/rename 済み executable と helper process をまたいで universal sidecar と競合しないローカル target を復元する。旧 marker は prefix 欠落を universal として読む。
+- build/resource/release scripts は両 executable を生成する。既存 archive と `.app` は universal のみ、`fw` は standalone のみとし、release bundle validator が 28 asset / 26 checksum entry を fail closed で確認する。

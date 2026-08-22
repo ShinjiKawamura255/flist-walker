@@ -51,6 +51,16 @@ fn tc159_legacy_marker_v1_json_contract_survives_internal_refactors() {
     );
 }
 
+#[test]
+fn tc193_marker_rejects_unrecognized_sidecar_prefix() {
+    let mut marker: TransactionMarker =
+        serde_json::from_str(LEGACY_MARKER_V1_JSON).expect("decode legacy marker v1");
+    marker.sidecar_prefix = Some("../".to_string());
+
+    let error = validate_marker(&marker).expect_err("reject unsafe variant prefix");
+    assert!(error.to_string().contains("sidecar prefix"));
+}
+
 #[cfg(target_os = "windows")]
 struct PathEnvGuard {
     original: Option<std::ffi::OsString>,
@@ -543,6 +553,69 @@ fn tc158_success_commits_sidecars_before_binary_and_records_restart() {
     );
     assert_eq!(process.restart_calls(), 1);
     assert_eq!(process.restart_modes(), &[UpdateRestartMode::Headless]);
+}
+
+#[test]
+fn tc193_fw_update_preserves_universal_sidecars_during_version_skew() {
+    let fixture = Fixture::new();
+    let universal_exe = fixture.current_exe();
+    let fw_exe = fixture.root.join(if cfg!(target_os = "windows") {
+        "fw-0.24.2.exe"
+    } else {
+        "fw-0.24.2"
+    });
+    fs::write(&fw_exe, b"old-fw-binary").expect("old fw binary");
+    let mut prepared = prepare_transaction_with_id_for_variant(
+        &fw_exe,
+        fixture.sources(),
+        "19312233445566778899aabbccddeeff",
+        42,
+        crate::updater::BinaryVariant::Cli,
+    )
+    .expect("prepare fw update");
+    prepared
+        .register_helper(77, "matching-start-token")
+        .expect("register");
+    acknowledge_registered_helper(
+        prepared.marker_path(),
+        77,
+        "matching-start-token",
+        prepared.helper_path(),
+    )
+    .expect("ack");
+    let mut process = TestProcessControl::parent_exited_and_restart_ok();
+    let mut failures = NoFailure;
+
+    execute_registered_transaction(
+        prepared.marker_path(),
+        "matching-start-token",
+        &mut process,
+        &mut failures,
+    )
+    .expect("commit fw update");
+
+    assert_eq!(fs::read(&fw_exe).unwrap(), b"new-binary");
+    assert_eq!(fs::read(&universal_exe).unwrap(), b"old-binary");
+    assert_eq!(
+        fs::read(fixture.root.join("README.txt")).unwrap(),
+        b"old-readme"
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("THIRD_PARTY_NOTICES.txt")).unwrap(),
+        b"old-notices"
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("fw.README.txt")).unwrap(),
+        b"new-readme"
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("fw.LICENSE.txt")).unwrap(),
+        b"new-license"
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("fw.THIRD_PARTY_NOTICES.txt")).unwrap(),
+        b"new-notices"
+    );
 }
 
 #[test]

@@ -8,6 +8,7 @@ source "${SCRIPT_DIR}/common-win-gnu.sh"
 TARGET="$(flistwalker_windows_target)"
 BUILT_EXE_PATH="${RUST_DIR}/target/${TARGET}/release/flistwalker.exe"
 EXE_PATH="${RUST_DIR}/target/${TARGET}/release/FlistWalker.exe"
+FW_EXE_PATH="${RUST_DIR}/target/${TARGET}/release/fw.exe"
 
 same_file_identity() {
   local left="$1"
@@ -40,6 +41,9 @@ fi
 if [[ -f "${BUILT_EXE_PATH}" && "${BUILT_EXE_PATH}" != "${EXE_PATH}" ]]; then
   rm -f "${BUILT_EXE_PATH}"
 fi
+if [[ -f "${FW_EXE_PATH}" ]]; then
+  rm -f "${FW_EXE_PATH}"
+fi
 
 echo "==> Build (release): ${TARGET}"
 (
@@ -55,12 +59,18 @@ if [[ ! -f "${EXE_PATH}" ]]; then
   echo "Build finished but artifact not found: ${EXE_PATH}" >&2
   exit 1
 fi
+if [[ ! -f "${FW_EXE_PATH}" ]]; then
+  echo "Build finished but CLI artifact not found: ${FW_EXE_PATH}" >&2
+  exit 1
+fi
 
 echo "==> Strip Windows GNU executable"
 "${FLISTWALKER_WINDOWS_STRIP}" "${EXE_PATH}"
+"${FLISTWALKER_WINDOWS_STRIP}" "${FW_EXE_PATH}"
 if [[ -f "${BUILT_EXE_PATH}" && "${BUILT_EXE_PATH}" != "${EXE_PATH}" ]] \
   && ! same_file_identity "${BUILT_EXE_PATH}" "${EXE_PATH}"; then
   cp -f "${EXE_PATH}" "${BUILT_EXE_PATH}"
 fi
 
 echo "==> Built: ${EXE_PATH}"
+echo "==> Built: ${FW_EXE_PATH}"

@@ -26,7 +26,10 @@ const PREVIEW_MIN_WIDTH: u16 = 100;
 const PREVIEW_MIN_HEIGHT: u16 = 8;
 
 fn format_tui_update_notice(target_version: &str) -> String {
-    format!("Update available: v{target_version} — Run flistwalker --update after exiting")
+    format!(
+        "Update available: v{target_version} — Run {} --update after exiting",
+        crate::updater::running_binary_command_name()
+    )
 }
 
 #[derive(Clone, Debug)]
