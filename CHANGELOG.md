@@ -24,6 +24,30 @@
 ### Known issues
 - なし。
 
+## [0.24.3] - 2026-08-23
+### Added
+- GUI 起動経路を含まない高速な CLI 専用 standalone バイナリ `fw` を追加し、短い一回検索や TUI 起動を簡潔に実行できるようにした。
+
+### Changed
+- updater のライフサイクル、helper 起動、再起動復旧、E2E 検証導線を強化し、古い guardian cache や Windows artifact path による誤判定を防ぐようにした。
+- CI の updater guardian 運用、署名 manifest 設定、macOS 診断コンパイル、rollout 記録を更新した。
+
+### Fixed
+- Windows updater E2E の署名 manifest と artifact 連携が安定して実行されない問題を修正した。
+- macOS で updater transaction の診断コードがコンパイルできない問題を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- updater は従来どおり `SHA256SUMS.sig` の署名検証後に `SHA256SUMS` の checksum を照合する。今回の変更範囲に依存関係の追加・更新はない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.24.2] - 2026-08-21
 ### Added
 - 非同期 worker の状態遷移を固定 seed で再生する stateful endurance 検証と、実 worker の scheduled soak 検証を追加した。
@@ -1845,7 +1869,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.2...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.3...HEAD
+[0.24.3]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.23.0...v0.24.0
