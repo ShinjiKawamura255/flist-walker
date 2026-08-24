@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::render_panels;
 use crate::search_catalog::{
     PresetEntryType, PresetSortMode, PresetSource, SearchCatalog, SearchPreset,
 };
@@ -112,6 +113,58 @@ fn enter_applies_selected_pure_search_preset_without_executing_results() {
     assert!(app.shell.indexing.in_progress);
     assert!(app.shell.runtime.notice.contains("Applied preset: Rust"));
     assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn applying_preset_moves_query_cursor_to_end() {
+    let root = test_root("preset-picker-query-cursor");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(preset("After", &root, "after"))
+        .expect("save preset");
+    app.shell.features.presets.picker.open = true;
+    app.shell.features.presets.picker.restore_query_focus = true;
+    app.refresh_preset_picker_matches();
+
+    let ctx = egui::Context::default();
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        ui.ctx()
+            .memory_mut(|memory| memory.request_focus(app.shell.ui.query_input_id));
+        render_panels::render_top_panel(&mut app, ui);
+    });
+    let mut query_state =
+        egui::widgets::text_edit::TextEditState::load(&ctx, app.shell.ui.query_input_id)
+            .expect("query text edit state");
+    query_state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(0),
+        )));
+    query_state.store(&ctx, app.shell.ui.query_input_id);
+
+    app.apply_selected_preset();
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        render_panels::render_top_panel(&mut app, ui);
+    });
+    let query_state =
+        egui::widgets::text_edit::TextEditState::load(&ctx, app.shell.ui.query_input_id)
+            .expect("query text edit state after preset");
+    assert_eq!(
+        query_state
+            .cursor
+            .char_range()
+            .expect("query cursor")
+            .primary
+            .index,
+        egui::text::CharIndex("after".chars().count())
+    );
+
     let _ = fs::remove_dir_all(root);
 }
 

@@ -426,6 +426,17 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             output.response.surrender_focus();
             app.clear_unfocus_query_request();
         }
+        if !editing_history_search && app.query_cursor_to_end_requested() {
+            let end = FlistWalkerApp::char_count(&app.shell.runtime.query_state.query);
+            output
+                .state
+                .cursor
+                .set_char_range(Some(egui::text::CCursorRange::one(
+                    egui::text::CCursor::new(end),
+                )));
+            output.state.clone().store(&ctx, output.response.id);
+            app.clear_query_cursor_to_end_request();
+        }
         let events = ctx.input(|i| i.events.clone());
         if !editing_history_search {
             let (query_event_changed, query_cursor_after_fallback) = app.process_query_input_events(
