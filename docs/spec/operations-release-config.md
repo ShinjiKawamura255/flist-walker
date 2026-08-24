@@ -33,7 +33,7 @@
 - MUST: release metadata は 2 MiB、`SHA256SUMS` は 1 MiB、`SHA256SUMS.sig` は 64 KiB、standalone binary は 512 MiB、各 sidecar は 16 MiB の decoded byte 上限を持ち、`Content-Length` の有無や値にかかわらず streaming reader が実受信 byte 数を強制しなければならない。
 - MUST: 接続 timeout は 10 秒、無通信 timeout は 30 秒、1 request の deadline は 5 分、update staging 全体の monotonic deadline は 10 分とし、timeout/deadline 到達時は更新を中止しなければならない。
 - MUST: redirect は最大 3 hop を明示処理し、production は HTTPS かつ `api.github.com`、`github.com`、または `*.githubusercontent.com` のみに制限しなければならない。開発・自動試験だけは loopback HTTP を許可してよい。
-- MUST: 先に `SHA256SUMS` と `SHA256SUMS.sig` だけを取得し、埋め込み公開鍵で署名を検証してから配布 asset を取得しなければならない。manifest は空白区切りの SHA-256 と単一 filename からなる厳密な行文法を使い、必須 asset の欠落、重複、未知 filename、無効 digest を拒否しなければならない。
+- MUST: 先に `SHA256SUMS` と `SHA256SUMS.sig` だけを取得し、埋め込み公開鍵で署名を検証してから配布 asset を取得しなければならない。manifest は空白区切りの SHA-256 と単一 filename からなる厳密な行文法を使い、`FlistWalker-` または `fw-` で始まる release asset basename 以外の未知 filename、必須 asset の欠落、重複、無効 digest を拒否しなければならない。
 - MUST: 署名検証通過後、対象 binary と全 sidecar を private create-new file へ streaming download しながら SHA-256 を計算し、manifest と一致した完全な bundle だけを `VerifiedUpdateBundle` として activation へ渡さなければならない。
 - MUST: staging 失敗時は main process がこの要求で create-new した partial file と staging directory だけを helper 起動前に削除し、既存 path を cleanup 対象にしてはならない。
 - MUST: activation 準備は現在 executable の canonical parent 内の固定派生名を使い、target、`.new`、backup、lock、marker が directory、symlink、Windows reparse point、または parent 外である場合は更新を開始してはならない。

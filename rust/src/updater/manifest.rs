@@ -83,13 +83,16 @@ fn parse_checksum_line(line: &str) -> Result<(&str, &str)> {
         bail!("checksum digest and filename must use the two-space text separator");
     }
     let name = &line[66..];
+    // This allowlist prevents a signed manifest from naming arbitrary files;
+    // both prefixes are required because releases contain GUI and CLI assets.
+    let is_allowed_release_asset = name.starts_with("FlistWalker-") || name.starts_with("fw-");
     if name.is_empty()
         || name == "."
         || name == ".."
         || name.bytes().any(|byte| byte.is_ascii_whitespace())
         || name.contains('/')
         || name.contains('\\')
-        || !name.starts_with("FlistWalker-")
+        || !is_allowed_release_asset
     {
         bail!("checksum filename is not an allowed release asset basename");
     }
@@ -161,6 +164,33 @@ mod tests {
         let (hash, name) = parse_checksum_line(&line).expect("checksum");
         assert_eq!(hash, digest);
         assert_eq!(name, "FlistWalker-0.12.3-linux-x86_64");
+    }
+
+    #[test]
+    fn tc194_regression_manifest_accepts_cli_asset_family() {
+        let digest = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        let manifest = format!(
+            "{digest}  FlistWalker-0.24.3-windows-x86_64.exe\n{digest}  fw-0.24.3-windows-x86_64.exe\n"
+        );
+
+        let checksums = parse_sha256sums_bytes(manifest.as_bytes()).expect("checksum manifest");
+
+        assert_eq!(
+            checksums.get("FlistWalker-0.24.3-windows-x86_64.exe"),
+            Some(&digest.to_string())
+        );
+        assert_eq!(
+            checksums.get("fw-0.24.3-windows-x86_64.exe"),
+            Some(&digest.to_string())
+        );
+    }
+
+    #[test]
+    fn tc194_regression_manifest_rejects_nearby_cli_prefix() {
+        let digest = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+        let line = format!("{digest}  fwx-0.24.3-windows-x86_64.exe");
+
+        assert!(parse_checksum_line(&line).is_err());
     }
 
     #[test]
