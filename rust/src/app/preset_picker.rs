@@ -791,7 +791,7 @@ impl FlistWalkerApp {
             .resolve_preset_root(&preset);
         self.close_preset_picker();
         self.apply_preset_runtime_transition(&preset, new_root);
-        self.request_query_cursor_to_end();
+        self.finish_programmatic_query_replacement();
         self.sync_active_tab_state();
         self.set_notice(format!("Applied preset: {}", preset.name));
     }

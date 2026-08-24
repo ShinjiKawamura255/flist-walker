@@ -751,7 +751,11 @@ fn spawn_index_worker_with(
                 let result = if !request_is_current() {
                     Err("superseded".to_string())
                 } else if req.use_filelist {
-                    match find_filelist_in_first_level_cancellable(&root, request_is_current) {
+                    // Regression guard: discovery's callback means "cancel now",
+                    // whereas request_is_current reports the inverse freshness state.
+                    // Passing it through directly cancels every healthy startup/refresh.
+                    match find_filelist_in_first_level_cancellable(&root, || !request_is_current())
+                    {
                         Err(_) => Err("superseded".to_string()),
                         Ok(Some(filelist)) => stream_filelist_index(
                             &tx_res_worker,

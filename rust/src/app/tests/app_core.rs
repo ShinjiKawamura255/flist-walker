@@ -39,8 +39,12 @@ fn startup_requests_query_focus() {
 fn startup_defaults_current_row_to_first_row_regression() {
     let root = test_root("startup-default-row");
     fs::create_dir_all(&root).expect("create dir");
-    let app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
+    // Startup has no visible candidates yet, so the Results invariant requires
+    // no cursor until the first snapshot arrives.
+    assert_eq!(app.shell.runtime.current_row, None);
+    app.replace_results_snapshot(vec![(root.join("first.txt"), 1.0)], false);
     assert_eq!(app.shell.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }

@@ -144,6 +144,12 @@
 - 関連テストID: TC-194.
 - 将来変更時の注意: CLI standalone asset family を追加・変更する場合は、release validator と updater parser の許可条件および回帰テストを同一変更で更新する。
 
+### Regression Guard: public N-1 updater compatibility
+- 発生条件: 公開済みv0.24.3のupdaterは`fw-*`行を含むchecksum manifest全体を拒否するため、v0.24.4へ自己更新できない。
+- 期待動作: v0.24.3からv0.24.4へは一度だけ手動でbinaryを置き換える。v0.24.4以降のreleaseは直前の公開版contractとcandidate manifestを`check-updater-n-minus-one-compatibility.py`で検証し、未承認の非互換をpublishしない。公開済みtagやassetは修正目的でも削除・上書きしない。
+- 非対象範囲: v0.24.3 assetの差し替え、既存archiveへの`fw`混在、1transactionで両variantを置換する更新。
+- 関連テストID: TC-194, TC-196.
+
 ## リリース手順（macOS アセット）
 1. macOS 向けバイナリをビルドする。
 - bash: `./scripts/build-rust-macos.sh`
@@ -189,6 +195,7 @@
 - `SHA256SUMS.sig` を生成する release 作業では、`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` が package / draft release 作成時に設定されていること。
 - signing stepで公開鍵secretが64桁hexであり、署名秘密鍵から導出した公開鍵および配布buildへ埋め込む公開鍵と一致すること。
 - `scripts/validate-release-bundle.sh vX.Y.Z <bundle-dir>` が成功し、期待28 asset、26 checksum entry、既存archive不変、archive/sidecarのlicense/noticeが揃うこと。
+- 直前の公開release versionとcandidate `SHA256SUMS`を`check-updater-n-minus-one-compatibility.py`へ渡して成功すること。v0.24.3→v0.24.4だけは上記の手動更新bridgeを明示承認し、release noteのKnown issuesへ案内すること。
 - Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。

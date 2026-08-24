@@ -259,6 +259,14 @@ impl FlistWalkerApp {
         self.shell.ui.query_cursor_to_end_requested = true;
     }
 
+    pub(super) fn finish_programmatic_query_replacement(&mut self) {
+        // Regression guard: replacing query text outside TextEdit must also replace
+        // its retained cursor state, or the caret can remain beyond/inside old text.
+        self.request_query_cursor_to_end();
+        self.request_focus_query();
+        self.clear_unfocus_query_request();
+    }
+
     pub(super) fn query_cursor_to_end_requested(&self) -> bool {
         self.shell.ui.query_cursor_to_end_requested
     }

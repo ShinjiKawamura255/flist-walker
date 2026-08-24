@@ -458,7 +458,10 @@ pub fn run_internal_updater_command_if_requested() -> Result<bool> {
         if arguments.next().is_some() {
             bail!("internal updater restart received unexpected arguments");
         }
-        recover_interrupted_update_on_startup()?;
+        let outcome = recover_interrupted_update_after_headless_restart()?;
+        if outcome == Some(transaction::RecoveryOutcome::Deferred) {
+            bail!("internal updater restart did not reach terminal recovery state");
+        }
         return Ok(true);
     }
     if flag != apply::INTERNAL_HELPER_FLAG {
@@ -496,6 +499,12 @@ pub fn recover_interrupted_update_on_startup() -> Result<Option<String>> {
     let current_exe = std::env::current_exe().context("failed to resolve current executable")?;
     transaction::recover_current_installation(&current_exe)
         .map(|outcome| outcome.map(|value| format!("{value:?}")))
+}
+
+fn recover_interrupted_update_after_headless_restart(
+) -> Result<Option<transaction::RecoveryOutcome>> {
+    let current_exe = std::env::current_exe().context("failed to resolve current executable")?;
+    transaction::recover_current_installation_after_headless_restart(&current_exe)
 }
 
 pub fn take_previous_update_failure_on_startup() -> Result<Option<String>> {

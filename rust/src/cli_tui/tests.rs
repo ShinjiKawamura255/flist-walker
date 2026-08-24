@@ -15,6 +15,24 @@ use std::sync::Mutex;
 use std::thread;
 use unicode_width::UnicodeWidthChar;
 
+fn settle_filelist_discovery_for_test(
+    state: &mut TuiState,
+    request_id: u64,
+    root: &Path,
+    settlement: FileListDiscoverySettlement,
+) -> Option<TuiExit> {
+    let (index_tx, _index_rx) = mpsc::channel();
+    settle_filelist_discovery(
+        state,
+        request_id,
+        root,
+        settlement,
+        &index_tx,
+        &TuiIndexFreshness::new(),
+        &TuiActionFreshness::new(),
+    )
+}
+
 #[test]
 fn tc_169_tui_update_notice_is_english_and_manual_only() {
     assert_eq!(
@@ -515,6 +533,7 @@ fn tc_162_walker_failure_emits_index_failed_without_finished() {
         include_files: true,
         include_dirs: true,
         source: TuiSource::Walker,
+        filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let mut responses = Vec::new();
@@ -525,6 +544,153 @@ fn tc_162_walker_failure_emits_index_failed_without_finished() {
         responses.as_slice(),
         [WorkerResponse::IndexFailed { request_id: 7, .. }]
     ));
+}
+
+#[test]
+fn tc_162_stale_filelist_discovery_emits_no_response_and_latest_request_proceeds_regression() {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let temp = TestTempDir::new("stale-filelist-discovery");
+    fs::write(temp.path.join("neighbor.txt"), "neighbor").expect("write fixture");
+    let request = |request_id| IndexRequest {
+        request_id,
+        root: temp.path.clone(),
+        include_files: true,
+        include_dirs: false,
+        source: TuiSource::Auto,
+        filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    };
+    let checks = AtomicUsize::new(0);
+    let mut stale_responses = Vec::new();
+
+    process_index_request(
+        request(70),
+        &|| checks.fetch_add(1, Ordering::SeqCst) > 1,
+        |response| stale_responses.push(response),
+    );
+
+    assert!(stale_responses.is_empty());
+
+    let mut latest_responses = Vec::new();
+    process_index_request(request(71), &|| false, |response| {
+        latest_responses.push(response)
+    });
+    assert!(latest_responses.iter().any(|response| matches!(
+        response,
+        WorkerResponse::IndexedFinished { request_id: 71, .. }
+    )));
+}
+
+#[test]
+fn tc_162_initial_filelist_discovery_is_consumed_without_rescan_regression() {
+    let temp = TestTempDir::new("initial-filelist-discovery-owned");
+    fs::write(temp.path.join("listed.txt"), "listed").expect("write listed fixture");
+    let discovered = temp.path.join("startup-discovered.txt");
+    fs::write(&discovered, "listed.txt\n").expect("write injected FileList");
+    let request = IndexRequest {
+        request_id: 72,
+        root: temp.path.clone(),
+        include_files: true,
+        include_dirs: false,
+        source: TuiSource::FileList,
+        filelist_discovery: FileListDiscoveryOwnership::Completed(Some(discovered)),
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    };
+    let mut responses = Vec::new();
+
+    process_index_request(request, &|| false, |response| responses.push(response));
+
+    assert!(responses.iter().any(|response| matches!(
+        response,
+        WorkerResponse::IndexedBatch { entries, .. }
+            if entries.iter().any(|path| path.ends_with("listed.txt"))
+    )));
+    assert!(responses.iter().any(|response| matches!(
+        response,
+        WorkerResponse::IndexedFinished {
+            request_id: 72,
+            has_root_filelist: true,
+            ..
+        }
+    )));
+}
+
+#[test]
+fn tc_162_startup_discovery_ownership_is_source_specific_regression() {
+    use std::cell::Cell;
+
+    let root = Path::new("fixture");
+    for source in [TuiSource::Auto, TuiSource::Walker] {
+        let calls = Cell::new(0);
+        let ownership = initial_filelist_discovery_with(root, source, |_| {
+            calls.set(calls.get() + 1);
+            None
+        })
+        .expect("worker-owned source");
+        assert!(matches!(ownership, FileListDiscoveryOwnership::WorkerOwned));
+        assert_eq!(calls.get(), 0, "{source:?} must not discover on main");
+    }
+
+    let expected = root.join("FileList.txt");
+    let calls = Cell::new(0);
+    let ownership = initial_filelist_discovery_with(root, TuiSource::FileList, |_| {
+        calls.set(calls.get() + 1);
+        Some(expected.clone())
+    })
+    .expect("required FileList preflight");
+    assert!(matches!(
+        ownership,
+        FileListDiscoveryOwnership::Completed(Some(path)) if path == expected
+    ));
+    assert_eq!(calls.get(), 1);
+
+    let error = initial_filelist_discovery_with(root, TuiSource::FileList, |_| None)
+        .expect_err("required FileList must fail before terminal ownership");
+    assert!(error.to_string().contains("FileList was required"));
+}
+
+#[test]
+fn tc_162_explicit_walker_performs_zero_filelist_discovery_regression() {
+    let temp = TestTempDir::new("explicit-walker-no-filelist-discovery");
+    fs::write(temp.path.join("walked.txt"), "walked").expect("write walker fixture");
+    fs::write(temp.path.join("FileList.txt"), "walked.txt\n").expect("write ignored FileList");
+    let request = IndexRequest {
+        request_id: 73,
+        root: temp.path.clone(),
+        include_files: true,
+        include_dirs: false,
+        source: TuiSource::Walker,
+        filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    };
+    let mut responses = Vec::new();
+
+    process_index_request(request, &|| false, |response| responses.push(response));
+
+    assert!(responses.iter().any(|response| matches!(
+        response,
+        WorkerResponse::IndexedFinished {
+            request_id: 73,
+            has_root_filelist: false,
+            ..
+        }
+    )));
+
+    let mut state = TuiState::new("");
+    state.root = temp.path.clone();
+    state.runtime_options.source = TuiSource::Walker;
+    state.active_index_request = Some((73, temp.path.clone()));
+    apply_worker_response(
+        &mut state,
+        WorkerResponse::IndexedFinished {
+            request_id: 73,
+            root: temp.path.clone(),
+            has_root_filelist: false,
+        },
+    )
+    .expect("apply explicit Walker finish");
+    assert!(!state.root_filelist_known);
 }
 
 #[test]
@@ -539,6 +705,7 @@ fn tc_162_tui_walker_uses_runtime_adaptive_limits_and_reports_cap_before_finish(
         include_files: true,
         include_dirs: false,
         source: TuiSource::Walker,
+        filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::unlimited(),
     };
     let config = RuntimeConfig {
@@ -604,6 +771,7 @@ fn tc_180_tui_index_request_applies_max_depth() {
         include_files: true,
         include_dirs: true,
         source: TuiSource::Walker,
+        filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::limited(2).expect("valid depth"),
     };
     let mut responses = Vec::new();
@@ -2485,14 +2653,21 @@ fn tc_166_filelist_fresh_walk_cancellation_is_a_clean_report() {
 #[test]
 fn tc_166_filelist_requires_completed_index_and_intent_priority_is_sticky() {
     let mut state = TuiState::new("");
-    state.open_filelist_if_ready();
+    let discovery = state
+        .open_filelist_if_ready()
+        .expect("unknown existence starts lazy discovery");
     assert!(state.filelist_confirmation.is_none());
-    assert_eq!(
-        state.status,
-        "Wait for indexing to finish before creating FileList"
+    assert_eq!(state.status, "Checking FileList...");
+    settle_filelist_discovery_for_test(
+        &mut state,
+        discovery.request_id,
+        &discovery.root,
+        FileListDiscoverySettlement::Canceled,
     );
+    assert!(state.active_filelist.is_none());
+    assert!(!state.root_filelist_known);
     state.root_filelist_known = true;
-    state.open_filelist_if_ready();
+    assert!(state.open_filelist_if_ready().is_none());
     assert!(state.filelist_confirmation.is_some());
     state.filelist_confirmation = None;
     let request = state.next_filelist_request(false, false);
@@ -2530,6 +2705,272 @@ fn tc_166_filelist_requires_completed_index_and_intent_priority_is_sticky() {
         Some(PendingFileListIntent::CancelExit)
     );
     assert!(request.cancel.load(Ordering::Acquire));
+}
+
+#[test]
+fn tc_166_walker_f6_lazy_discovery_confirms_before_snapshot_regression() {
+    let temp = TestTempDir::new("walker-f6-lazy-discovery");
+    let filelist = temp.path.join("FileList.txt");
+    fs::write(&filelist, "kept.txt\n").expect("write existing FileList");
+    let mut state = TuiState::new("");
+    state.root = temp.path.clone();
+    state.runtime_options.source = TuiSource::Walker;
+
+    let request = state
+        .open_filelist_if_ready()
+        .expect("unknown Walker state starts discovery");
+    let worker = spawn_filelist_discovery_worker(request).expect("spawn discovery");
+    let result = worker.result.recv().expect("discovery result");
+    worker.join();
+    let FileListWorkerResult::DiscoveryFinished {
+        request_id,
+        root,
+        discovered,
+        canceled,
+    } = result
+    else {
+        panic!("expected discovery result");
+    };
+    let settlement = if canceled {
+        FileListDiscoverySettlement::Canceled
+    } else {
+        FileListDiscoverySettlement::Completed(discovered)
+    };
+    settle_filelist_discovery_for_test(&mut state, request_id, &root, settlement);
+    assert!(state.root_filelist_exists);
+    assert!(matches!(
+        state.filelist_confirmation,
+        Some(FileListConfirmation::Mode { .. })
+    ));
+    assert_eq!(
+        fs::read_to_string(&filelist).expect("existing FileList remains untouched"),
+        "kept.txt\n"
+    );
+    assert!(matches!(
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+        ),
+        KeyAction::Continue
+    ));
+    assert!(matches!(
+        state.filelist_confirmation,
+        Some(FileListConfirmation::Overwrite { .. })
+    ));
+}
+
+#[test]
+fn tc_166_walker_f6_absent_and_canceled_discovery_settle_regression() {
+    let temp = TestTempDir::new("walker-f6-lazy-absent");
+    let mut state = TuiState::new("");
+    state.root = temp.path.clone();
+    state.runtime_options.source = TuiSource::Walker;
+    let request = state.open_filelist_if_ready().expect("start discovery");
+    settle_filelist_discovery_for_test(
+        &mut state,
+        request.request_id,
+        &request.root,
+        FileListDiscoverySettlement::Completed(None),
+    );
+    assert!(state.root_filelist_known);
+    assert!(!state.root_filelist_exists);
+    assert!(matches!(
+        handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+        ),
+        KeyAction::StartFileList {
+            allow_root_overwrite: false,
+            ..
+        }
+    ));
+
+    state.root_filelist_known = false;
+    let request = state.open_filelist_if_ready().expect("restart discovery");
+    state.cancel_active_filelist();
+    assert!(request.cancel.load(Ordering::Acquire));
+    let worker = spawn_filelist_discovery_worker(request).expect("spawn canceled discovery");
+    let result = worker.result.recv().expect("canceled discovery result");
+    worker.join();
+    let FileListWorkerResult::DiscoveryFinished {
+        request_id,
+        root,
+        discovered,
+        canceled,
+    } = result
+    else {
+        panic!("expected canceled discovery result");
+    };
+    assert!(canceled);
+    let settlement = if canceled {
+        FileListDiscoverySettlement::Canceled
+    } else {
+        FileListDiscoverySettlement::Completed(discovered)
+    };
+    settle_filelist_discovery_for_test(&mut state, request_id, &root, settlement);
+    assert!(state.active_filelist.is_none());
+    assert!(!state.root_filelist_known);
+    assert_eq!(state.status, "FileList check canceled");
+}
+
+#[test]
+fn tc_166_f4_root_switch_intent_settles_discovery_once_for_all_outcomes_regression() {
+    for outcome in ["success", "cancel", "failure"] {
+        let mut state = TuiState::new("");
+        state.root = PathBuf::from("before");
+        let next_root = PathBuf::from(format!("after-{outcome}"));
+        state.saved_roots = vec![next_root.clone()];
+        let discovery = state.open_filelist_if_ready().expect("start discovery");
+
+        assert!(matches!(
+            handle_key(&mut state, KeyEvent::new(KeyCode::F(4), KeyModifiers::NONE)),
+            KeyAction::Continue
+        ));
+        assert!(state.root_picker.is_some());
+        let KeyAction::SwitchRoot(selected_root) = handle_key(
+            &mut state,
+            KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE),
+        ) else {
+            panic!("root picker must select a root");
+        };
+        assert_eq!(selected_root, next_root);
+        state.record_filelist_intent(PendingFileListIntent::SwitchRoot(selected_root));
+        assert!(discovery.cancel.load(Ordering::Acquire));
+
+        let settlement = match outcome {
+            "success" => {
+                FileListDiscoverySettlement::Completed(Some(discovery.root.join("FileList.txt")))
+            }
+            "cancel" => FileListDiscoverySettlement::Canceled,
+            _ => FileListDiscoverySettlement::Failed("injected failure".to_string()),
+        };
+        let (index_tx, index_rx) = mpsc::channel();
+        let exit = settle_filelist_discovery(
+            &mut state,
+            discovery.request_id,
+            &discovery.root,
+            settlement,
+            &index_tx,
+            &TuiIndexFreshness::new(),
+            &TuiActionFreshness::new(),
+        );
+        assert!(exit.is_none());
+        assert_eq!(state.root, next_root);
+        assert_eq!(index_rx.try_recv().expect("root reindex").root, next_root);
+        assert!(index_rx.try_recv().is_err());
+        assert!(state.active_filelist.is_none());
+        assert!(state.pending_filelist_intent.is_none());
+        assert!(state.filelist_confirmation.is_none());
+
+        // A later creation settlement must not replay the consumed root switch.
+        assert!(settle_filelist(
+            &mut state,
+            FileListSettlement::Canceled,
+            &index_tx,
+            &TuiIndexFreshness::new(),
+            &TuiActionFreshness::new(),
+        )
+        .is_none());
+        assert_eq!(state.root, next_root);
+        assert!(index_rx.try_recv().is_err());
+    }
+}
+
+#[test]
+fn tc_166_select_output_intent_never_leaks_past_discovery_regression() {
+    for outcome in ["success", "cancel", "failure"] {
+        let mut state = TuiState::new("query");
+        state.root = PathBuf::from("root");
+        state.results = vec![(PathBuf::from("picked.txt"), 1.0)];
+        let discovery = state.open_filelist_if_ready().expect("start discovery");
+        assert!(matches!(
+            handle_key(
+                &mut state,
+                KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)
+            ),
+            KeyAction::Select
+        ));
+        state.record_filelist_intent(PendingFileListIntent::SelectOutput);
+
+        let settlement = match outcome {
+            "success" => FileListDiscoverySettlement::Completed(None),
+            "cancel" => FileListDiscoverySettlement::Canceled,
+            _ => FileListDiscoverySettlement::Failed("injected failure".to_string()),
+        };
+        let selected = settle_filelist_discovery_for_test(
+            &mut state,
+            discovery.request_id,
+            &discovery.root,
+            settlement,
+        );
+        assert!(matches!(
+            selected,
+            Some(TuiExit::Selected { paths, .. }) if paths == vec![PathBuf::from("picked.txt")]
+        ));
+        assert!(state.pending_filelist_intent.is_none());
+        assert!(state.active_filelist.is_none());
+        assert!(state.filelist_confirmation.is_none());
+
+        let (index_tx, _index_rx) = mpsc::channel::<IndexRequest>();
+        assert!(settle_filelist(
+            &mut state,
+            FileListSettlement::Canceled,
+            &index_tx,
+            &TuiIndexFreshness::new(),
+            &TuiActionFreshness::new(),
+        )
+        .is_none());
+    }
+}
+
+#[test]
+fn tc_166_stale_discovery_response_preserves_new_request_and_intent_regression() {
+    let mut state = TuiState::new("");
+    state.root = PathBuf::from("first");
+    let stale = state.open_filelist_if_ready().expect("first discovery");
+    state.active_filelist = None;
+    let current = state
+        .open_filelist_if_ready()
+        .expect("replacement discovery");
+    let next_root = PathBuf::from("next");
+    state.record_filelist_intent(PendingFileListIntent::SwitchRoot(next_root.clone()));
+
+    assert!(settle_filelist_discovery_for_test(
+        &mut state,
+        stale.request_id,
+        &stale.root,
+        FileListDiscoverySettlement::Canceled,
+    )
+    .is_none());
+    assert_eq!(
+        state
+            .active_filelist
+            .as_ref()
+            .map(|active| active.request_id),
+        Some(current.request_id)
+    );
+    assert_eq!(
+        state.pending_filelist_intent,
+        Some(PendingFileListIntent::SwitchRoot(next_root.clone()))
+    );
+
+    let (index_tx, index_rx) = mpsc::channel();
+    assert!(settle_filelist_discovery(
+        &mut state,
+        current.request_id,
+        &current.root,
+        FileListDiscoverySettlement::Canceled,
+        &index_tx,
+        &TuiIndexFreshness::new(),
+        &TuiActionFreshness::new(),
+    )
+    .is_none());
+    assert_eq!(state.root, next_root);
+    assert_eq!(
+        index_rx.try_recv().expect("replacement root request").root,
+        next_root
+    );
+    assert!(state.pending_filelist_intent.is_none());
 }
 
 #[test]

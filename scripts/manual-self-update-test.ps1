@@ -1,5 +1,8 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('Universal', 'Fw')]
+    [string]$Variant = 'Universal',
+
     [ValidateSet('SameVersion', 'Downgrade', 'Custom')]
     [string]$Mode = 'SameVersion',
 
@@ -91,56 +94,77 @@ function Start-StaticHttpServerJob {
         $ErrorActionPreference = 'Stop'
         $serveRootFull = [System.IO.Path]::GetFullPath($ServeRoot).TrimEnd('\', '/')
         $serveRootPrefix = $serveRootFull + [System.IO.Path]::DirectorySeparatorChar
-        $listener = [System.Net.HttpListener]::new()
-        $listener.Prefixes.Add($ListenPrefix)
+        $listenUri = [Uri]$ListenPrefix
+        $listener = [System.Net.Sockets.TcpListener]::new(
+            [System.Net.IPAddress]::Loopback,
+            $listenUri.Port
+        )
         $listener.Start()
         try {
-            while ($listener.IsListening) {
-                $context = $listener.GetContext()
+            while ($true) {
+                $client = $listener.AcceptTcpClient()
+                $reader = $null
+                $stream = $null
+                $relative = $null
                 try {
-                    $relative = [Uri]::UnescapeDataString($context.Request.Url.AbsolutePath.TrimStart('/'))
-                    if ([string]::IsNullOrWhiteSpace($relative)) {
-                        $relative = 'latest.json'
+                    $stream = $client.GetStream()
+                    $reader = [System.IO.StreamReader]::new(
+                        $stream,
+                        [System.Text.Encoding]::ASCII,
+                        $false,
+                        1024,
+                        $true
+                    )
+                    $requestLine = $reader.ReadLine()
+                    while (($headerLine = $reader.ReadLine()) -ne $null -and $headerLine.Length -gt 0) {}
+                    $requestParts = @($requestLine -split ' ')
+                    $status = '400 Bad Request'
+                    $contentType = 'text/plain; charset=utf-8'
+                    $payload = [System.Text.Encoding]::UTF8.GetBytes('invalid request')
+                    if ($requestParts.Count -ge 2 -and $requestParts[0] -eq 'GET') {
+                        try {
+                            $requestUri = [Uri]::new($listenUri, $requestParts[1])
+                            $relative = [Uri]::UnescapeDataString($requestUri.AbsolutePath.TrimStart('/'))
+                            if ([string]::IsNullOrWhiteSpace($relative)) {
+                                $relative = 'latest.json'
+                            }
+                            $target = [System.IO.Path]::GetFullPath((Join-Path $serveRootFull $relative))
+                            if (-not $target.StartsWith($serveRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+                                $payload = [System.Text.Encoding]::UTF8.GetBytes('request escaped content root')
+                            }
+                            elseif (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
+                                $status = '404 Not Found'
+                                $payload = [System.Text.Encoding]::UTF8.GetBytes("not found: $relative")
+                            }
+                            else {
+                                $ext = [System.IO.Path]::GetExtension($target).ToLowerInvariant()
+                                switch ($ext) {
+                                    '.json' { $contentType = 'application/json; charset=utf-8' }
+                                    '.txt' { $contentType = 'text/plain; charset=utf-8' }
+                                    '.exe' { $contentType = 'application/octet-stream' }
+                                    default { $contentType = 'application/octet-stream' }
+                                }
+                                $status = '200 OK'
+                                $payload = [System.IO.File]::ReadAllBytes($target)
+                            }
+                        }
+                        catch {}
                     }
-                    $target = [System.IO.Path]::GetFullPath((Join-Path $serveRootFull $relative))
-                    if (-not $target.StartsWith($serveRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-                        $context.Response.StatusCode = 400
-                        $payload = [System.Text.Encoding]::UTF8.GetBytes('request escaped content root')
-                        $context.Response.ContentType = 'text/plain; charset=utf-8'
-                        $context.Response.OutputStream.Write($payload, 0, $payload.Length)
-                        continue
-                    }
-                    if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
-                        $context.Response.StatusCode = 404
-                        $payload = [System.Text.Encoding]::UTF8.GetBytes("not found: $relative")
-                        $context.Response.ContentType = 'text/plain; charset=utf-8'
-                        $context.Response.OutputStream.Write($payload, 0, $payload.Length)
-                        continue
-                    }
-
-                    $ext = [System.IO.Path]::GetExtension($target).ToLowerInvariant()
-                    switch ($ext) {
-                        '.json' { $contentType = 'application/json; charset=utf-8' }
-                        '.txt' { $contentType = 'text/plain; charset=utf-8' }
-                        '.exe' { $contentType = 'application/octet-stream' }
-                        default { $contentType = 'application/octet-stream' }
-                    }
-
-                    $bytes = [System.IO.File]::ReadAllBytes($target)
-                    $context.Response.StatusCode = 200
-                    $context.Response.ContentType = $contentType
-                    $context.Response.ContentLength64 = $bytes.Length
-                    $context.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+                    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($payload.Length)`r`nConnection: close`r`n`r`n"
+                    $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
+                    $stream.Write($headerBytes, 0, $headerBytes.Length)
+                    $stream.Write($payload, 0, $payload.Length)
+                    $stream.Flush()
                 }
                 finally {
-                    $context.Response.OutputStream.Close()
-                    $context.Response.Close()
+                    if ($reader) { $reader.Dispose() }
+                    if ($stream) { $stream.Dispose() }
+                    $client.Dispose()
                 }
             }
         }
         finally {
             $listener.Stop()
-            $listener.Close()
         }
     }
 
@@ -226,10 +250,14 @@ function Assert-OwnedSandboxForCleanup {
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoDir = Split-Path -Parent $ScriptDir
 $CargoTomlPath = Join-Path $RepoDir 'rust\Cargo.toml'
-$DefaultExeCandidates = @(
-    (Join-Path $RepoDir 'rust\target\x86_64-pc-windows-gnu\release\flistwalker.exe'),
-    (Join-Path $RepoDir 'rust\target\x86_64-pc-windows-gnu\release\FlistWalker.exe')
-)
+$DefaultExeCandidates = if ($Variant -eq 'Fw') {
+    @((Join-Path $RepoDir 'rust\target\x86_64-pc-windows-gnu\release\fw.exe'))
+} else {
+    @(
+        (Join-Path $RepoDir 'rust\target\x86_64-pc-windows-gnu\release\flistwalker.exe'),
+        (Join-Path $RepoDir 'rust\target\x86_64-pc-windows-gnu\release\FlistWalker.exe')
+    )
+}
 
 if (-not $AppPath) {
     $AppPath = $DefaultExeCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
@@ -284,9 +312,15 @@ $ProfileDir = Join-Path $SandboxDir 'profile'
 $LocalAppDataDir = Join-Path $ProfileDir 'LocalAppData'
 $RoamingAppDataDir = Join-Path $ProfileDir 'RoamingAppData'
 $UserProfileDir = Join-Path $ProfileDir 'UserProfile'
-$SandboxExe = Join-Path $AppSandboxDir 'flistwalker.exe'
-$AssetName = "FlistWalker-$FeedVersion-windows-x86_64.exe"
+$SandboxBinaryName = if ($Variant -eq 'Fw') { 'fw.exe' } else { 'flistwalker.exe' }
+$SandboxExe = Join-Path $AppSandboxDir $SandboxBinaryName
+$CounterpartBinaryName = if ($Variant -eq 'Fw') { 'flistwalker.exe' } else { 'fw.exe' }
+$CounterpartExe = Join-Path $AppSandboxDir $CounterpartBinaryName
+$CounterpartSidecarPrefix = if ($Variant -eq 'Fw') { '' } else { 'fw.' }
+$AssetName = if ($Variant -eq 'Fw') { "fw-$FeedVersion-windows-x86_64.exe" } else { "FlistWalker-$FeedVersion-windows-x86_64.exe" }
+$OtherAssetName = if ($Variant -eq 'Fw') { "FlistWalker-$FeedVersion-windows-x86_64.exe" } else { "fw-$FeedVersion-windows-x86_64.exe" }
 $AssetPath = Join-Path $FeedDir $AssetName
+$OtherAssetPath = Join-Path $FeedDir $OtherAssetName
 $ReadmeAssetName = "FlistWalker-$FeedVersion-windows-x86_64.README.txt"
 $ReadmeAssetPath = Join-Path $FeedDir $ReadmeAssetName
 $LicenseAssetName = "FlistWalker-$FeedVersion-windows-x86_64.LICENSE.txt"
@@ -314,7 +348,34 @@ New-Item -ItemType Directory -Path $RoamingAppDataDir -Force | Out-Null
 New-Item -ItemType Directory -Path $UserProfileDir -Force | Out-Null
 
 Copy-Item -LiteralPath $AppPath -Destination $SandboxExe -Force
+Copy-Item -LiteralPath $AppPath -Destination $CounterpartExe -Force
 Copy-Item -LiteralPath $UpdateBinaryPath -Destination $AssetPath -Force
+Copy-Item -LiteralPath $UpdateBinaryPath -Destination $OtherAssetPath -Force
+# Regression guard: the mixed-family feed must contain two independently valid PE
+# payloads with different hashes. Otherwise selecting the wrong family can pass the
+# final installed-hash assertion and leave the asset discriminator untested.
+$OtherAssetMarker = [System.Text.Encoding]::ASCII.GetBytes("FLISTWALKER_UPDATE_E2E_OTHER_FAMILY_${Variant}_V1")
+$OtherAssetStream = [System.IO.File]::Open($OtherAssetPath, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+try {
+    $OtherAssetStream.Write($OtherAssetMarker, 0, $OtherAssetMarker.Length)
+    $OtherAssetStream.Flush($true)
+}
+finally {
+    $OtherAssetStream.Dispose()
+}
+
+# Seed the non-target family in every fresh sandbox. Its binary and local sidecars
+# are sentinels proving that a family-specific update never mutates its counterpart.
+$CounterpartPaths = @($CounterpartExe)
+foreach ($name in @('README.txt', 'LICENSE.txt', 'THIRD_PARTY_NOTICES.txt')) {
+    $path = Join-Path $AppSandboxDir ($CounterpartSidecarPrefix + $name)
+    Set-Content -LiteralPath $path -Value "counterpart family sentinel: $CounterpartBinaryName/$name" -Encoding ASCII
+    $CounterpartPaths += $path
+}
+$CounterpartHashes = @{}
+foreach ($path in $CounterpartPaths) {
+    $CounterpartHashes[$path] = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+}
 # Regression guard:
 # This manual feed must mirror production self-update assets, including README/LICENSE/notices sidecars.
 # Do not simplify/remove without updating the paired regression tests: docs/TESTPLAN.md manual self-update Regression Guard.
@@ -327,6 +388,11 @@ Set-Content -LiteralPath $LicenseAssetPath -Value "manual self-update license st
 Set-Content -LiteralPath $NoticesAssetPath -Value "manual self-update notices stub for v$FeedVersion" -Encoding UTF8
 
 $AssetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $AssetPath).Hash.ToLowerInvariant()
+$OtherAssetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $OtherAssetPath).Hash.ToLowerInvariant()
+$MixedFamilyPayloadsAreDistinct = $AssetHash -ne $OtherAssetHash
+if (-not $MixedFamilyPayloadsAreDistinct) {
+    throw 'mixed-family updater payload discriminator requires different valid payload hashes'
+}
 $InitialSandboxHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $SandboxExe).Hash.ToLowerInvariant()
 if ($Automated -and $InitialSandboxHash -eq $AssetHash) {
     throw 'automated update payload must differ from the initial sandbox binary'
@@ -336,6 +402,7 @@ $LicenseHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $LicenseAssetPath).H
 $NoticesHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $NoticesAssetPath).Hash.ToLowerInvariant()
 @(
     "$AssetHash  $AssetName"
+    "$OtherAssetHash  $OtherAssetName"
     "$ReadmeHash  $ReadmeAssetName"
     "$LicenseHash  $LicenseAssetName"
     "$NoticesHash  $NoticesAssetName"
@@ -344,15 +411,8 @@ $NoticesHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $NoticesAssetPath).H
 if (-not $env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX) {
     throw "FLISTWALKER_UPDATE_SIGNING_KEY_HEX is required for manual self-update tests."
 }
-try {
-    cargo run --manifest-path (Join-Path (Split-Path -Parent $PSScriptRoot) 'rust\Cargo.toml') --quiet --bin sign_update_manifest -- $ChecksumPath $ChecksumSigPath
-    $signExitCode = $LASTEXITCODE
-}
-finally {
-    # The signer is the only child that may receive signing material. In particular, keep the
-    # sandbox application, updater helper, and restarted process from inheriting this variable.
-    Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX -ErrorAction SilentlyContinue
-}
+cargo run --manifest-path (Join-Path (Split-Path -Parent $PSScriptRoot) 'rust\Cargo.toml') --quiet --bin sign_update_manifest -- $ChecksumPath $ChecksumSigPath
+$signExitCode = $LASTEXITCODE
 if ($signExitCode -ne 0) {
     throw "failed to sign SHA256SUMS for manual self-update test"
 }
@@ -364,6 +424,10 @@ $release = [ordered]@{
         @{
             name = $AssetName
             browser_download_url = "$ReleaseUrl$AssetName"
+        },
+        @{
+            name = $OtherAssetName
+            browser_download_url = "$ReleaseUrl$OtherAssetName"
         },
         @{
             name = $ReadmeAssetName
@@ -392,11 +456,24 @@ $release | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $LatestJsonPath -E
 $job = $null
 try {
     $job = Start-StaticHttpServerJob -Prefix $ReleaseUrl -ContentRoot $FeedDir
-    Start-Sleep -Milliseconds 300
-    $jobState = (Get-Job -Id $job.Id).State
-    if ($jobState -ne 'Running') {
-        $jobOutput = Receive-Job -Id $job.Id -Keep | Out-String
-        throw "failed to start local feed server: $jobState`n$jobOutput"
+    $serverReady = $false
+    $serverReadyDeadline = [DateTime]::UtcNow.AddSeconds(5)
+    do {
+        $jobState = (Get-Job -Id $job.Id).State
+        if ($jobState -ne 'Running') {
+            $jobOutput = Receive-Job -Id $job.Id -Keep | Out-String
+            throw "failed to start local feed server: $jobState`n$jobOutput"
+        }
+        try {
+            $probe = Invoke-WebRequest -Uri $FeedUrl -UseBasicParsing -TimeoutSec 1
+            $serverReady = $probe.StatusCode -eq 200
+        }
+        catch {
+            Start-Sleep -Milliseconds 50
+        }
+    } while (-not $serverReady -and [DateTime]::UtcNow -lt $serverReadyDeadline)
+    if (-not $serverReady) {
+        throw 'loopback update feed did not become ready within 5 seconds'
     }
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
@@ -409,6 +486,7 @@ try {
         $psi.Arguments = '--update'
         $psi.CreateNoWindow = $true
         $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
+        $psi.RedirectStandardError = $true
     }
     else {
         $psi.Arguments = '--root ' + (New-QuotedArgument -Value $RootPath)
@@ -417,6 +495,10 @@ try {
     $psi.EnvironmentVariables['APPDATA'] = $RoamingAppDataDir
     $psi.EnvironmentVariables['USERPROFILE'] = $UserProfileDir
     $psi.EnvironmentVariables['FLISTWALKER_UPDATE_FEED_URL'] = $FeedUrl
+    # Regression guard: consecutive Universal/Fw invocations share the caller process, so keep
+    # its signing key intact. Remove it only from the sandbox child's copied environment; helper
+    # and restarted descendants then inherit the same key-free boundary.
+    [void]$psi.EnvironmentVariables.Remove('FLISTWALKER_UPDATE_SIGNING_KEY_HEX')
     if ($Mode -eq 'SameVersion') {
         $psi.EnvironmentVariables['FLISTWALKER_UPDATE_ALLOW_SAME_VERSION'] = '1'
     }
@@ -425,9 +507,11 @@ try {
     }
 
     $process = [System.Diagnostics.Process]::Start($psi)
+    $standardErrorTask = if ($Automated) { $process.StandardError.ReadToEndAsync() } else { $null }
 
     Write-Host "Started sandbox self-update test."
     Write-Host "Mode: $Mode"
+    Write-Host "Variant: $Variant"
     Write-Host "Current version: $CurrentVersion"
     Write-Host "Feed version: $FeedVersion"
     Write-Host "App under test: $SandboxExe"
@@ -445,8 +529,9 @@ try {
     else {
         Write-Host '- 起動時に指定 version を使った更新ダイアログが表示される'
     }
-    Write-Host '- Download and Restart を押すと sandbox 内の flistwalker.exe が置換されて再起動する'
-    Write-Host '- sandbox 内の README.txt / LICENSE.txt / THIRD_PARTY_NOTICES.txt も feed の sidecar へ更新される'
+    Write-Host "- Download and Restart を押すと sandbox 内の $SandboxBinaryName が置換されて再起動する"
+    $LocalSidecarPrefix = if ($Variant -eq 'Fw') { 'fw.' } else { '' }
+    Write-Host "- sandbox 内の ${LocalSidecarPrefix}README.txt / ${LocalSidecarPrefix}LICENSE.txt / ${LocalSidecarPrefix}THIRD_PARTY_NOTICES.txt も feed の sidecar へ更新される"
     Write-Host '- 元の build 出力は変更されない'
     Write-Host ''
     if (-not $Automated) {
@@ -455,16 +540,18 @@ try {
 
     $process.WaitForExit()
     if ($Automated -and $process.ExitCode -ne 0) {
-        throw "headless update command failed with exit code $($process.ExitCode)"
+        $standardError = $standardErrorTask.GetAwaiter().GetResult().Trim()
+        throw "headless update command failed with exit code $($process.ExitCode): $standardError"
     }
 
     $settleDeadline = [DateTime]::UtcNow.AddSeconds(45)
     do {
         $transactionArtifacts = @(Get-ChildItem -LiteralPath $AppSandboxDir -Force -ErrorAction SilentlyContinue |
             Where-Object { $_.Name -like '.flistwalker-update*' })
-        $sidecarsReady = (Test-Path -LiteralPath (Join-Path $AppSandboxDir 'README.txt') -PathType Leaf) -and
-            (Test-Path -LiteralPath (Join-Path $AppSandboxDir 'LICENSE.txt') -PathType Leaf) -and
-            (Test-Path -LiteralPath (Join-Path $AppSandboxDir 'THIRD_PARTY_NOTICES.txt') -PathType Leaf)
+        $LocalSidecarPrefix = if ($Variant -eq 'Fw') { 'fw.' } else { '' }
+        $sidecarsReady = (Test-Path -LiteralPath (Join-Path $AppSandboxDir "${LocalSidecarPrefix}README.txt") -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $AppSandboxDir "${LocalSidecarPrefix}LICENSE.txt") -PathType Leaf) -and
+            (Test-Path -LiteralPath (Join-Path $AppSandboxDir "${LocalSidecarPrefix}THIRD_PARTY_NOTICES.txt") -PathType Leaf)
         if ($transactionArtifacts.Count -eq 0 -and ($sidecarsReady -or -not $Automated)) { break }
         Start-Sleep -Milliseconds 100
     } while ([DateTime]::UtcNow -lt $settleDeadline)
@@ -478,6 +565,12 @@ try {
         $installedHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $SandboxExe).Hash.ToLowerInvariant()
         if ($installedHash -ne $AssetHash) {
             throw "installed sandbox binary hash mismatch: expected $AssetHash, got $installedHash"
+        }
+        foreach ($path in $CounterpartPaths) {
+            $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+            if ($actualHash -ne $CounterpartHashes[$path]) {
+                throw "counterpart family changed during $Variant update: $path"
+            }
         }
     }
 
@@ -494,6 +587,9 @@ try {
                 $child.WaitForExit()
             }
         }
+    }
+    if ($Automated -and @(Get-ProcessesForExecutablePath -ExecutablePath $SandboxExe).Count -ne 0) {
+        throw "$Variant restarted process did not settle after headless update"
     }
 }
 finally {

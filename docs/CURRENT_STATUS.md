@@ -48,6 +48,9 @@ This document is the short current-state snapshot for maintainers. It does not o
 
 ## Quality Posture
 
+- Public v0.24.3 included `fw` assets but its updater accepts only `FlistWalker-*` manifest rows. Updating from v0.24.3 to v0.24.4 therefore requires one manual binary replacement; published tags/assets remain immutable. The v0.24.4 parser accepts both families, and release preflight now gates later candidates against the previous public updater contract.
+- Universal and `fw` Windows updater E2E use separate fresh sandboxes against the same signed mixed-family loopback manifest. Each transaction replaces only its running variant and installs normal or `fw.`-prefixed local sidecars respectively.
+
 - Cross-platform native tests, Windows GNU cross-build coverage, clippy, coverage, audit, and performance checks are maintained in GitHub Actions.
 - The enforced line-coverage gate is 75%; 80% remains an improvement target rather than a release prerequisite.
 - Native headful GUI launch is not a normal pull-request gate. GUI-adjacent changes and release candidates use the documented `GSM-*` evidence path.

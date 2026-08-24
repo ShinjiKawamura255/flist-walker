@@ -39,14 +39,15 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 10. release / updater / asset / workflow / packaging を変えた差分では、`docs/RELEASE.md`、`.github/release-template.md`、`.github/workflows/release-tagged.yml`、`scripts/prepare-release*.sh|ps1` の asset 名、対象 OS、sidecar、`SHA256SUMS` / `SHA256SUMS.sig` の記述が一致しているか確認する。
 11. 依存関係、release script、workflow、updater、sidecar、archive 同梱物を変えた差分では、`docs/OSS_COMPLIANCE.md` に従い `THIRD_PARTY_NOTICES.txt` と配布導線を確認する。
 12. 公開向け文書へ開発・手動試験専用 update override 名が混入していないことを確認する。
-13. `cargo test --locked` を実行し、少なくとも version 更新と release 対象差分で壊れていないことを確認する。
-14. `cargo clippy --all-targets -- -D warnings` を実行し、Rust warning / clippy warning が残っていないことを確認する。
-15. `cargo audit` を実行し、accepted transitive warning が出る場合は `docs/OSS_COMPLIANCE.md` の owner / review cadence / re-evaluation trigger と一致しているか確認する。
-16. release candidate では coverage gate と GUI headful smoke / `GSM-*` 証跡の要否を確認し、必要な PASS / FAIL / SKIPPED と証跡パスを残す。
-17. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。warning が残る場合は publish 前に修正するか、release blocker ではない理由と follow-up を明記する。
-18. tag 名 `vX.Y.Z`、`CHANGELOG.md`、`rust/Cargo.toml`、`rust/Cargo.lock` の version が一致していることを確認する。
-19. この確認が終わるまで tag 作成・push・draft release publish を行わない。
-20. release 本文が必要なら `skills/flistwalker-release-notes/SKILL.md` を続けて使う。
+13. `python scripts/test-updater-n-minus-one-compatibility.py` を実行し、candidate `SHA256SUMS` を直前の公開版 updater contractでも確認する。v0.24.4に限り、v0.24.3から一度だけ手動更新が必要な既知bridgeを明示承認できる。それ以外の非互換はrelease blockerとする。
+14. `cargo test --locked` を実行し、少なくとも version 更新と release 対象差分で壊れていないことを確認する。
+15. `cargo clippy --all-targets -- -D warnings` を実行し、Rust warning / clippy warning が残っていないことを確認する。
+16. `cargo audit` を実行し、accepted transitive warning が出る場合は `docs/OSS_COMPLIANCE.md` の owner / review cadence / re-evaluation trigger と一致しているか確認する。
+17. release candidate では coverage gate と GUI headful smoke / `GSM-*` 証跡の要否を確認し、必要な PASS / FAIL / SKIPPED と証跡パスを残す。
+18. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。warning が残る場合は publish 前に修正するか、release blocker ではない理由と follow-up を明記する。
+19. tag 名 `vX.Y.Z`、`CHANGELOG.md`、`rust/Cargo.toml`、`rust/Cargo.lock` の version が一致していることを確認する。
+20. この確認が終わるまで tag 作成・push・draft release publish を行わない。
+21. release 本文が必要なら `skills/flistwalker-release-notes/SKILL.md` を続けて使う。
 
 ## 必須 grep
 - 公開向け文書の禁止 update override 名:

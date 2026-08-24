@@ -1,12 +1,13 @@
 use super::protocol::{
-    IndexRequest, PreviewRequest, SearchRequest, TuiActionBackend, TuiActionFreshness,
-    TuiActionRequest, TuiIndexFreshness, TuiSource, WorkerResponse, EVENT_POLL,
+    FileListDiscoveryOwnership, IndexRequest, PreviewRequest, SearchRequest, TuiActionBackend,
+    TuiActionFreshness, TuiActionRequest, TuiIndexFreshness, TuiSource, WorkerResponse, EVENT_POLL,
     WORKER_JOIN_TIMEOUT,
 };
 use crate::actions::execute_authorized_action_request;
 use crate::entry::Entry;
 use crate::indexer::{
-    build_index_cancellable_with_max_depth, find_filelist_in_first_level, is_index_build_cancelled,
+    build_index_with_metadata_from_discovery_cancellable_and_max_depth,
+    find_filelist_in_first_level_cancellable, is_index_build_cancelled,
 };
 use crate::query::{CompiledIgnoreTerms, QueryScope};
 use crate::runtime_config::{current_runtime_config, RuntimeConfig};
@@ -416,7 +417,19 @@ pub(super) fn process_index_request_with_config<C, S>(
             return;
         }
     }
-    let has_filelist = find_filelist_in_first_level(&request.root).is_some();
+    let discovered_filelist = match request.source {
+        TuiSource::Walker => None,
+        TuiSource::Auto | TuiSource::FileList => match request.filelist_discovery {
+            FileListDiscoveryOwnership::Completed(discovered) => discovered,
+            FileListDiscoveryOwnership::WorkerOwned => {
+                match find_filelist_in_first_level_cancellable(&request.root, should_cancel) {
+                    Ok(discovered) => discovered,
+                    Err(_) => return,
+                }
+            }
+        },
+    };
+    let has_filelist = discovered_filelist.is_some();
     let use_filelist = match request.source {
         TuiSource::Auto => has_filelist,
         TuiSource::FileList => true,
@@ -435,15 +448,21 @@ pub(super) fn process_index_request_with_config<C, S>(
     }
 
     if use_filelist {
-        match build_index_cancellable_with_max_depth(
+        match build_index_with_metadata_from_discovery_cancellable_and_max_depth(
             &request.root,
             true,
+            discovered_filelist,
             request.include_files,
             request.include_dirs,
             request.max_depth,
             should_cancel,
         ) {
-            Ok(paths) => {
+            Ok(result) => {
+                let paths = result
+                    .entries
+                    .into_iter()
+                    .map(|entry| entry.path)
+                    .collect::<Vec<_>>();
                 if !paths.is_empty() && !should_cancel() {
                     send(WorkerResponse::IndexedBatch {
                         request_id: request.request_id,

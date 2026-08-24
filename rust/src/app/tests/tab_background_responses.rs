@@ -76,6 +76,322 @@ fn background_tab_search_and_preview_responses_are_retained() {
 }
 
 #[test]
+fn background_search_selection_change_invalidates_old_preview_and_reloads_on_activation_regression()
+{
+    let root = test_root("background-search-preview-ownership");
+    fs::create_dir_all(&root).expect("create dir");
+    let old_path = root.join("old.txt");
+    let new_path = root.join("new.txt");
+    fs::write(&old_path, "old").expect("write old");
+    fs::write(&new_path, "new").expect("write new");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "new".to_string());
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![
+        file_entry(old_path.clone()),
+        file_entry(new_path.clone()),
+    ]);
+    app.shell.runtime.results = vec![(old_path.clone(), 1.0)];
+    app.shell.runtime.base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.set_entry_kind(&old_path, EntryKind::file());
+    app.set_entry_kind(&new_path, EntryKind::file());
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+    app.request_preview_for_current();
+    let old_request = preview_rx.try_recv().expect("old preview request");
+    let background_tab_id = app.current_tab_id().expect("background tab id");
+
+    app.create_new_tab();
+    while preview_rx.try_recv().is_ok() {}
+    app.apply_background_search_response(
+        background_tab_id,
+        SearchResponse {
+            request_id: 91,
+            results: vec![(new_path.clone(), 9.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        },
+    );
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert!(background.result_state.preview.is_empty());
+    assert!(background.pending_preview_request_id.is_none());
+    assert!(background.preview_reload_pending);
+    assert_eq!(app.preview_request_tab(old_request.request_id), None);
+    app.apply_background_preview_response(PreviewResponse {
+        request_id: old_request.request_id,
+        path: old_path,
+        preview: "late old preview".to_string(),
+    });
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("background tab")
+        .entry_kind_cache
+        .set(new_path.clone(), EntryKind::file());
+
+    app.switch_to_tab_index(0);
+    let activated_requests = preview_rx.try_iter().collect::<Vec<_>>();
+    assert!(
+        activated_requests
+            .iter()
+            .any(|request| request.path == new_path),
+        "activation must request the background tab's new selected path; results={:?}, preview={}",
+        app.shell.runtime.results,
+        app.shell.runtime.preview
+    );
+    assert_eq!(app.shell.runtime.preview, "Loading preview...");
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .expect("activated tab slot")
+            .preview_reload_pending
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tab_activation_without_background_selection_change_does_not_request_preview_regression() {
+    let root = test_root("tab-activation-preview-noop");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.set_entry_kind(&selected, EntryKind::file());
+    // Keep this fixture non-compacting so it isolates activation from the
+    // separate result-restoration path, which intentionally refreshes preview.
+    app.shell.search.set_pending_request_id(Some(801));
+    app.shell.search.set_in_progress(true);
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+
+    app.create_new_tab();
+    let create_requests = preview_rx
+        .try_iter()
+        .map(|request| request.path)
+        .collect::<Vec<_>>();
+    assert!(
+        create_requests.is_empty(),
+        "ordinary tab creation must not request preview: {create_requests:?}"
+    );
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .expect("ordinary background tab")
+            .preview_reload_pending
+    );
+    app.switch_to_tab_index(0);
+
+    let unexpected = preview_rx
+        .try_iter()
+        .map(|request| request.path)
+        .collect::<Vec<_>>();
+    assert!(
+        unexpected.is_empty(),
+        "ordinary activation must not request preview: {unexpected:?}"
+    );
+    assert!(app.shell.runtime.preview.is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn sizedesc_inactive_completed_preview_roundtrips_via_explicit_reload_regression() {
+    let root = test_root("sizedesc-preview-roundtrip");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.preview = "completed preview".to_string();
+    app.set_entry_kind(&selected, EntryKind::file());
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+
+    app.create_new_tab();
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert!(!background.result_state.results_compacted);
+    assert!(background.result_state.preview.is_empty());
+    assert!(background.preview_reload_pending);
+    while preview_rx.try_recv().is_ok() {}
+
+    app.switch_to_tab_index(0);
+    assert_eq!(
+        preview_rx
+            .try_recv()
+            .expect("activation preview reload")
+            .path,
+        selected
+    );
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .expect("active tab")
+            .preview_reload_pending
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression() {
+    let root = test_root("background-none-some-preview");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "selected".to_string());
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.results.clear();
+    app.shell.runtime.base_results.clear();
+    app.shell.runtime.current_row = None;
+    let background_tab_id = app.current_tab_id().expect("background tab id");
+    app.shell.worker_bus.preview.pending_request_id = Some(711);
+    app.shell.worker_bus.preview.in_progress = true;
+    app.bind_preview_request_to_tab(711, background_tab_id);
+
+    app.create_new_tab();
+    app.apply_background_search_response(
+        background_tab_id,
+        SearchResponse {
+            request_id: 712,
+            results: vec![(selected.clone(), 9.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        },
+    );
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert!(background.preview_reload_pending);
+    assert!(background.pending_preview_request_id.is_none());
+    assert_eq!(app.preview_request_tab(711), None);
+    app.apply_background_preview_response(PreviewResponse {
+        request_id: 711,
+        path: selected.clone(),
+        preview: "late preview".to_string(),
+    });
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("background tab")
+        .result_state
+        .preview
+        .is_empty());
+
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("background tab")
+        .entry_kind_cache
+        .set(selected.clone(), EntryKind::file());
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+    app.switch_to_tab_index(0);
+    assert_eq!(
+        preview_rx
+            .try_recv()
+            .expect("activation preview request")
+            .path,
+        selected
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn background_sort_reorder_invalidates_old_preview_request_regression() {
+    let root = test_root("background-sort-preview-ownership");
+    fs::create_dir_all(&root).expect("create dir");
+    let old_path = root.join("old.txt");
+    let new_path = root.join("new.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "item".to_string());
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell.runtime.base_results = vec![(old_path.clone(), 2.0), (new_path.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.preview = "old preview".to_string();
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.worker_bus.sort.pending_request_id = Some(93);
+    app.shell.worker_bus.sort.in_progress = true;
+    app.shell.worker_bus.preview.pending_request_id = Some(94);
+    app.shell.worker_bus.preview.in_progress = true;
+    let background_tab_id = app.current_tab_id().expect("background tab id");
+    app.bind_sort_request_to_tab(93, background_tab_id);
+    app.bind_preview_request_to_tab(94, background_tab_id);
+    app.cache_sort_metadata(
+        old_path.clone(),
+        SortMetadata {
+            size_bytes: Some(1),
+            ..SortMetadata::default()
+        },
+    );
+    app.cache_sort_metadata(
+        new_path.clone(),
+        SortMetadata {
+            size_bytes: Some(2),
+            ..SortMetadata::default()
+        },
+    );
+
+    app.create_new_tab();
+    app.apply_background_sort_response(SortMetadataResponse {
+        request_id: 93,
+        entries: Vec::new(),
+        mode: ResultSortMode::SizeDesc,
+    });
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(background.result_state.base_results[0].0, old_path);
+    assert_eq!(background.result_state.results[0].0, new_path);
+    assert!(background.result_state.preview.is_empty());
+    assert!(background.pending_preview_request_id.is_none());
+    assert!(background.preview_reload_pending);
+    assert_eq!(app.preview_request_tab(94), None);
+
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("background tab")
+        .entry_kind_cache
+        .set(new_path.clone(), EntryKind::file());
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+    app.switch_to_tab_index(0);
+    assert_eq!(
+        preview_rx.try_recv().expect("sort activation preview").path,
+        new_path
+    );
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .expect("activated tab slot")
+            .preview_reload_pending
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn background_tab_switch_does_not_stop_indexing_progress() {
     let root = test_root("background-tab-indexing-progress");
     fs::create_dir_all(&root).expect("create dir");

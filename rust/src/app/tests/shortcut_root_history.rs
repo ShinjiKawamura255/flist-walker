@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::render_panels;
 
 #[test]
 fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
@@ -245,6 +246,51 @@ fn history_search_escape_and_ctrl_g_cancel_and_restore_original_query() {
         assert!(!app.shell.runtime.query_state.history_search_active);
         assert_eq!(app.shell.runtime.query_state.query, "draft");
         assert_eq!(app.shell.runtime.notice, "Canceled history search");
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn history_programmatic_accept_and_cancel_move_text_cursor_to_query_end_regression() {
+    for (name, accept, expected) in [
+        ("history-cursor-accept", true, "beta"),
+        ("history-cursor-cancel", false, "draft"),
+    ] {
+        let root = test_root(name);
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "draft".to_string());
+        app.shell.runtime.query_state.query_history =
+            VecDeque::from(["alpha".to_string(), "beta".to_string()]);
+        let ctx = egui::Context::default();
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+            render_panels::render_top_panel(&mut app, ui);
+        });
+
+        app.start_history_search();
+        app.shell.runtime.query_state.history_search_query = "be".to_string();
+        app.refresh_history_search_results();
+        if accept {
+            app.accept_history_search();
+        } else {
+            app.cancel_history_search();
+        }
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+            render_panels::render_top_panel(&mut app, ui);
+        });
+
+        let state =
+            egui::widgets::text_edit::TextEditState::load(&ctx, app.shell.ui.query_input_id)
+                .expect("query text edit state");
+        assert_eq!(app.shell.runtime.query_state.query, expected);
+        assert_eq!(
+            state
+                .cursor
+                .char_range()
+                .expect("query cursor")
+                .primary
+                .index,
+            egui::text::CharIndex(expected.chars().count())
+        );
         let _ = fs::remove_dir_all(&root);
     }
 }

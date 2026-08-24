@@ -174,7 +174,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-gnu-updater-test-channel
-          path: ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
+          path: |
+            ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
+            ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/fw.exe
           if-no-files-found: error
 
   windows-gnu-update-e2e:
@@ -209,14 +211,22 @@ jobs:
           FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664
           FLISTWALKER_UPDATE_SIGNING_KEY_HEX: 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20
         run: |
-          $artifact = (Resolve-Path -LiteralPath 'updater-test-artifact/FlistWalker.exe').Path
-          $updatePayload = Join-Path $env:RUNNER_TEMP 'FlistWalker-update-payload.exe'
-          Copy-Item -LiteralPath $artifact -Destination $updatePayload
-          $overlay = [System.Text.Encoding]::ASCII.GetBytes('FLISTWALKER_UPDATE_E2E_PAYLOAD_V1')
-          $stream = [System.IO.File]::Open($updatePayload, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
-          try { $stream.Write($overlay, 0, $overlay.Length); $stream.Flush($true) } finally { $stream.Dispose() }
-          & ./scripts/manual-self-update-test.ps1 -AppPath $artifact -UpdateBinaryPath $updatePayload -Mode SameVersion -Automated -CleanupSandbox
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $callerSigningKey = $env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX
+          if ([string]::IsNullOrWhiteSpace($callerSigningKey)) { throw 'test signing key is missing before updater variants' }
+          foreach ($case in @(
+            @{ Variant = 'Universal'; File = 'FlistWalker.exe'; Marker = 'FLISTWALKER_UPDATE_E2E_PAYLOAD_Universal_V1' },
+            @{ Variant = 'Fw'; File = 'fw.exe'; Marker = 'FLISTWALKER_UPDATE_E2E_PAYLOAD_Fw_V1' }
+          )) {
+            $artifact = (Resolve-Path -LiteralPath (Join-Path 'updater-test-artifact' $case.File)).Path
+            $updatePayload = Join-Path $env:RUNNER_TEMP ($case.Variant + '-update-payload.exe')
+            Copy-Item -LiteralPath $artifact -Destination $updatePayload
+            $overlay = [System.Text.Encoding]::ASCII.GetBytes($case.Marker)
+            $stream = [System.IO.File]::Open($updatePayload, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try { $stream.Write($overlay, 0, $overlay.Length); $stream.Flush($true) } finally { $stream.Dispose() }
+            & ./scripts/manual-self-update-test.ps1 -Variant $case.Variant -AppPath $artifact -UpdateBinaryPath $updatePayload -Mode SameVersion -Automated -CleanupSandbox
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX -cne $callerSigningKey) { throw "$($case.Variant) updater test mutated the caller signing key" }
+          }
 
   cargo-audit:
     name: Cargo Audit

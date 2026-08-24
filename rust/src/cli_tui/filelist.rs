@@ -1,7 +1,7 @@
 use super::input::selected_paths;
 use super::protocol::{
-    FileListWorkerResult, IndexRequest, TuiActionFreshness, TuiExit, TuiFileListRequest,
-    TuiIndexFreshness,
+    FileListWorkerResult, IndexRequest, TuiActionFreshness, TuiExit, TuiFileListDiscoveryRequest,
+    TuiFileListRequest, TuiIndexFreshness,
 };
 use super::state::{ActiveFileListWorker, PendingFileListIntent, TuiState};
 use crate::indexer::{
@@ -14,6 +14,53 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 use std::sync::{mpsc, Arc};
 use std::thread;
+
+pub(super) fn spawn_filelist_discovery_worker(
+    request: TuiFileListDiscoveryRequest,
+) -> Result<ActiveFileListWorker> {
+    let cancel = Arc::clone(&request.cancel);
+    let (done_tx, done) = mpsc::channel();
+    let (result_tx, result) = mpsc::channel();
+    let handle = thread::Builder::new()
+        .name("flistwalker-cli-filelist-discovery".to_string())
+        .spawn(move || {
+            let request_id = request.request_id;
+            let root = request.root.clone();
+            let response = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                match crate::indexer::find_filelist_in_first_level_cancellable(
+                    &request.root,
+                    || request.cancel.load(Ordering::Acquire),
+                ) {
+                    Ok(discovered) => FileListWorkerResult::DiscoveryFinished {
+                        request_id,
+                        root: root.clone(),
+                        discovered,
+                        canceled: false,
+                    },
+                    Err(_) => FileListWorkerResult::DiscoveryFinished {
+                        request_id,
+                        root: root.clone(),
+                        discovered: None,
+                        canceled: true,
+                    },
+                }
+            }))
+            .unwrap_or_else(|_| FileListWorkerResult::Failed {
+                request_id,
+                root,
+                error: "FileList discovery worker panicked".to_string(),
+            });
+            let _ = result_tx.send(response);
+            let _ = done_tx.send(());
+        })
+        .context("failed to start CLI FileList discovery worker")?;
+    Ok(ActiveFileListWorker {
+        cancel,
+        result,
+        done,
+        handle: Some(handle),
+    })
+}
 
 pub(super) fn spawn_filelist_worker(request: TuiFileListRequest) -> Result<ActiveFileListWorker> {
     let cancel = Arc::clone(&request.cancel);
@@ -133,6 +180,73 @@ pub(super) enum FileListSettlement {
     Completed,
     Canceled,
     Failed(String),
+}
+
+pub(super) enum FileListDiscoverySettlement {
+    Completed(Option<PathBuf>),
+    Canceled,
+    Failed(String),
+}
+
+pub(super) fn settle_filelist_discovery(
+    state: &mut TuiState,
+    request_id: u64,
+    root: &Path,
+    settlement: FileListDiscoverySettlement,
+    index_tx: &mpsc::Sender<IndexRequest>,
+    index_freshness: &TuiIndexFreshness,
+    action_freshness: &TuiActionFreshness,
+) -> Option<TuiExit> {
+    let active = state.active_filelist.as_ref()?;
+    if active.request_id != request_id
+        || active.root.as_path() != root
+        || active.kind != super::state::ActiveFileListKind::Discovery
+    {
+        return None;
+    }
+    // Regression guard: discovery owns the same deferred user intents as creation,
+    // but must consume them at this boundary so none can leak into a later write.
+    state.active_filelist = None;
+    state.filelist_confirmation = None;
+    let intent = state.pending_filelist_intent.take();
+    match intent {
+        Some(PendingFileListIntent::SelectOutput) => {
+            return Some(TuiExit::Selected {
+                paths: selected_paths(state),
+                query: state.query.clone(),
+                root: state.root.clone(),
+            });
+        }
+        Some(PendingFileListIntent::SwitchRoot(root)) => {
+            state.prepare_root_switch(action_freshness, root);
+            if state
+                .dispatch_current_index(index_tx, index_freshness)
+                .is_err()
+            {
+                state.status = "Index worker unavailable".to_string();
+                state.dirty = true;
+            }
+            return None;
+        }
+        Some(PendingFileListIntent::CancelExit) => return Some(TuiExit::Cancelled),
+        None => {}
+    }
+    match settlement {
+        FileListDiscoverySettlement::Completed(discovered) => {
+            state.root_filelist_known = true;
+            state.root_filelist_exists = discovered.is_some();
+            state.open_filelist_confirmation();
+        }
+        FileListDiscoverySettlement::Canceled => {
+            state.status = "FileList check canceled".to_string();
+            state.dirty = true;
+        }
+        FileListDiscoverySettlement::Failed(error) => {
+            state.status = format!("FileList check failed: {error}");
+            state.dirty = true;
+        }
+    }
+    None
 }
 
 pub(super) fn filelist_settlement_from_report(

@@ -343,6 +343,9 @@ impl FlistWalkerApp {
         self.shell.runtime.base_results.shrink_to_fit();
         self.shell.runtime.results.clear();
         self.shell.runtime.results.shrink_to_fit();
+        // Regression guard: an empty Results snapshot has no valid cursor.
+        self.shell.runtime.current_row = None;
+        self.shell.runtime.preview.clear();
         self.shell.runtime.total_match_count = 0;
         self.shell.indexing.incremental_filtered_entries.clear();
         self.shell

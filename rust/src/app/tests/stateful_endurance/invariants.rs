@@ -6,6 +6,8 @@ pub(super) struct TabSemanticSnapshot {
     pub(super) root: usize,
     pub(super) query: String,
     pub(super) results_len: usize,
+    pub(super) retained_results_len: usize,
+    pub(super) results_compacted: bool,
     pub(super) total_match_count: usize,
     pub(super) current_row: Option<usize>,
     pub(super) results_digest: u64,
@@ -99,12 +101,19 @@ pub(super) fn validate(snapshot: &SemanticSnapshot) -> Result<(), String> {
                 tab.id, tab.results_len, tab.total_match_count
             ));
         }
+        let selectable_len = if tab.results_compacted {
+            tab.retained_results_len
+        } else {
+            tab.results_len
+        };
+        if selectable_len > 0 && tab.current_row.is_none() {
+            return Err(format!("tab {} has results without a current row", tab.id));
+        }
         if let Some(row) = tab.current_row {
-            let valid = row < tab.results_len || (tab.results_len == 0 && row == 0);
-            if !valid {
+            if row >= selectable_len {
                 return Err(format!(
-                    "tab {} current row {row} is outside {} results",
-                    tab.id, tab.results_len
+                    "tab {} current row {row} is outside {} selectable results",
+                    tab.id, selectable_len
                 ));
             }
         }
@@ -115,9 +124,14 @@ pub(super) fn validate(snapshot: &SemanticSnapshot) -> Result<(), String> {
             snapshot.results_len, snapshot.total_match_count
         ));
     }
+    if snapshot.results_len > 0 && snapshot.current_row.is_none() {
+        return Err("active results have no current row".to_string());
+    }
+    if snapshot.results_len == 0 && snapshot.current_row.is_some() {
+        return Err("empty active results retain a current row".to_string());
+    }
     if let Some(row) = snapshot.current_row {
-        let valid = row < snapshot.results_len || (snapshot.results_len == 0 && row == 0);
-        if !valid {
+        if row >= snapshot.results_len {
             return Err(format!(
                 "current row {row} is outside {} results",
                 snapshot.results_len
@@ -158,6 +172,8 @@ mod tests {
                 root: 0,
                 query: String::new(),
                 results_len: 1,
+                retained_results_len: 1,
+                results_compacted: false,
                 total_match_count: 1,
                 current_row: Some(0),
                 results_digest: 0,

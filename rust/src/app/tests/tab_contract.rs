@@ -134,6 +134,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         pending_action_request_id: Some(33),
         search_in_progress: true,
         preview_in_progress: false,
+        preview_reload_pending: false,
         action_in_progress: true,
     };
 
