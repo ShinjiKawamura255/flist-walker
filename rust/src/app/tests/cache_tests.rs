@@ -115,7 +115,7 @@ fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression(
 }
 
 #[test]
-fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regression() {
+fn search_result_refresh_selects_first_row_when_previous_selection_is_missing_regression() {
     let root = test_root("search-refresh-keep-none");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
@@ -130,7 +130,7 @@ fn search_result_refresh_does_not_auto_select_first_row_without_user_action_regr
 
     app.replace_results_snapshot(results, false);
 
-    assert_eq!(app.shell.runtime.current_row, None);
+    assert_eq!(app.shell.runtime.current_row, Some(0));
     assert!(app.shell.runtime.preview.is_empty());
     let _ = fs::remove_dir_all(&root);
 }

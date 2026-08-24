@@ -66,9 +66,9 @@ Windows は `scripts/manual-self-update-test.ps1 -Mode SameVersion` を使い、
 2. downgrade 表示確認:
 Windows は `scripts/manual-self-update-test.ps1 -Mode Downgrade` を使い、旧 version の release JSON を自動生成して downgrade 候補でもダイアログが出ることを確認する。patch が `0` の場合は `-FeedVersion` を明示する。
 3. ローカル feed 確認:
-PowerShell helper が private sandbox、`latest.json`、inert 対象 binary、sidecar 文書（`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`）、`SHA256SUMS`、`SHA256SUMS.sig`、loopback HTTP server をまとめて用意する。外部 URL や手作業の production-like feed へ切り替えない。
+PowerShell helper を`-Variant Universal`と`-Variant Fw`で別々に実行し、各fresh private sandbox、`latest.json`、両binary familyを含むinert manifest、共有remote sidecar文書（`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`）、`SHA256SUMS`、`SHA256SUMS.sig`、loopback HTTP serverを確認する。外部URLや手作業のproduction-like feedへ切り替えない。
 4. update 適用確認:
-明示承認を得た Windows/Linux の test environment で、helper が表示した sandbox copy に限って `Download and Restart` を押し、新 binary の再起動と sandbox 内 `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を確認する。元の build 出力の hash と timestamp が変わっていないことを確認する。
+明示承認を得たWindows/Linuxのtest environmentで、helperが表示したsandbox copyに限って適用し、Universalは通常名、Fwは`fw.README.txt` / `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt`を更新すること、headless再起動が終了してhelper/transaction artifactを残さないことを確認する。元のbuild出力のhashとtimestampが変わっていないことを確認する。
 5. suppress 確認:
 更新ダイアログで `Don't show again until the next version` をチェックして Later を押し、同じ feed version では次回起動しても再表示されず、feed version を 1 つ上げると再表示されることを確認する。
 6. startup check failure dialog 確認:
@@ -176,6 +176,14 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - Non-goals: GitHub Releases 本番 asset の内容妥当性確認、README 本文そのものの文言レビュー。
 - Related Tests: Self Update Manual Test step 3, step 4.
 - Notes for Future Changes: 自己更新 asset 名や sidecar 種別を増減させた場合は、この helper script と manual test 手順を同一変更で更新すること。
+
+## Regression Guard: sequential updater signing environment
+
+- Scenario: 同一PowerShell processのCI loopでUniversal試験後にmanual updater scriptがcallerのsigning key環境変数を削除し、続くFw試験がmanifest署名前に失敗する。
+- Expected Behavior: signer processだけがcallerからsigning keyを継承し、manual updater scriptはcaller環境を変更しない。sandbox app用`ProcessStartInfo`の環境コピーからはkeyを明示除外し、helperとrestarted childにも継承させない。CIは各variant実行後にcaller keyの完全一致を検証する。
+- Non-goals: production signing keyの生成・表示・永続化、sandbox child内でのmanifest署名、variant間でのsandbox共有。
+- Related Tests: TC-191、`regression_manual_self_update_process_environment_contract`、`test_manual_self_update_cleanup_and_signing_environment_are_fail_closed`。
+- Notes for Future Changes: signer起動、sandbox process環境、またはCI variant loopを変更するときは、連続Universal/Fw invocationとchild key非継承を同一変更で検証する。
 
 ## Regression Guard: windows-updater-in-process-replace
 

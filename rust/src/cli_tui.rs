@@ -97,11 +97,11 @@ fn force_tui_color_output(color_enabled: bool) {
 }
 
 pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome> {
+    let initial_source = TuiRuntimeOptions::from_startup(options).source;
+    let initial_filelist_discovery =
+        initial_filelist_discovery_with(root, initial_source, find_filelist_in_first_level)?;
     if !interactive_terminal_supported(io::stdin().is_terminal(), io::stderr().is_terminal()) {
         anyhow::bail!("--interactive requires terminal stdin and stderr");
-    }
-    if options.require_filelist && find_filelist_in_first_level(root).is_none() {
-        anyhow::bail!(missing_required_filelist_message(root));
     }
     force_tui_color_output(options.color_enabled);
 
@@ -131,6 +131,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
                 action_tx: workers.action_tx(),
                 rx: workers.response_rx(),
                 root: root.clone(),
+                initial_filelist_discovery,
                 saved_roots,
                 options,
                 history_enabled,
@@ -161,6 +162,27 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
     }
 }
 
+fn initial_filelist_discovery_with<F>(
+    root: &Path,
+    source: TuiSource,
+    discover: F,
+) -> Result<FileListDiscoveryOwnership>
+where
+    F: FnOnce(&Path) -> Option<PathBuf>,
+{
+    // Regression guard: Auto discovery belongs to the cancellable index worker.
+    // Only required FileList may perform this bounded first-level fail-fast check
+    // before terminal ownership; it cannot receive terminal cancellation yet.
+    if source != TuiSource::FileList {
+        return Ok(FileListDiscoveryOwnership::WorkerOwned);
+    }
+    let discovered = discover(root);
+    if discovered.is_none() {
+        anyhow::bail!(missing_required_filelist_message(root));
+    }
+    Ok(FileListDiscoveryOwnership::Completed(discovered))
+}
+
 fn run_event_loop<W: Write>(
     terminal_output: &mut W,
     context: EventLoopContext<'_>,
@@ -173,6 +195,7 @@ fn run_event_loop<W: Write>(
         action_tx,
         rx,
         root,
+        initial_filelist_discovery,
         saved_roots,
         options,
         history_enabled,
@@ -194,10 +217,10 @@ fn run_event_loop<W: Write>(
     state.history_enabled = history_enabled;
     state.history_entries = history_entries;
     let update_rx = spawn_tui_update_check();
-    if state
-        .dispatch_current_index(index_tx, index_freshness.as_ref())
-        .is_err()
-    {
+    let mut initial_request = state.next_index_request(state.root.clone());
+    initial_request.filelist_discovery = initial_filelist_discovery;
+    index_freshness.activate(initial_request.request_id);
+    if index_tx.send(initial_request).is_err() {
         anyhow::bail!("index worker unavailable");
     }
     let mut filelist_worker: Option<ActiveFileListWorker> = None;
@@ -233,7 +256,67 @@ fn run_event_loop<W: Write>(
                     request_id,
                     root,
                     error,
-                }) => filelist_worker_failure(&mut state, request_id, &root, error),
+                }) => {
+                    if state.active_filelist_is_discovery() {
+                        if let Some(exit) = settle_filelist_discovery(
+                            &mut state,
+                            request_id,
+                            &root,
+                            FileListDiscoverySettlement::Failed(error),
+                            index_tx,
+                            index_freshness.as_ref(),
+                            action_freshness.as_ref(),
+                        ) {
+                            return Ok(exit);
+                        }
+                        None
+                    } else {
+                        filelist_worker_failure(&mut state, request_id, &root, error)
+                    }
+                }
+                Ok(FileListWorkerResult::DiscoveryFinished {
+                    request_id,
+                    root,
+                    discovered,
+                    canceled,
+                }) => {
+                    let discovery_settlement = if canceled {
+                        FileListDiscoverySettlement::Canceled
+                    } else {
+                        FileListDiscoverySettlement::Completed(discovered)
+                    };
+                    if let Some(exit) = settle_filelist_discovery(
+                        &mut state,
+                        request_id,
+                        &root,
+                        discovery_settlement,
+                        index_tx,
+                        index_freshness.as_ref(),
+                        action_freshness.as_ref(),
+                    ) {
+                        return Ok(exit);
+                    }
+                    None
+                }
+                Err(error) if state.active_filelist_is_discovery() => {
+                    if let Some((request_id, root)) = state.active_filelist.as_ref().map(|active| {
+                        debug_assert_eq!(active.kind, ActiveFileListKind::Discovery);
+                        (active.request_id, active.root.clone())
+                    }) {
+                        if let Some(exit) = settle_filelist_discovery(
+                            &mut state,
+                            request_id,
+                            &root,
+                            FileListDiscoverySettlement::Failed(error),
+                            index_tx,
+                            index_freshness.as_ref(),
+                            action_freshness.as_ref(),
+                        ) {
+                            return Ok(exit);
+                        }
+                    }
+                    None
+                }
                 Err(error) => state
                     .active_filelist
                     .take()
@@ -294,6 +377,10 @@ fn run_event_loop<W: Write>(
                     match handle_key(&mut state, key) {
                         KeyAction::Cancel => {
                             if state.active_filelist.is_some() {
+                                if state.active_filelist_is_discovery() {
+                                    state.cancel_active_filelist();
+                                    continue;
+                                }
                                 state.record_filelist_intent(PendingFileListIntent::CancelExit);
                                 continue;
                             }
@@ -393,7 +480,17 @@ fn run_event_loop<W: Write>(
                             }
                         }
                         KeyAction::OpenFileList => {
-                            state.open_filelist_if_ready();
+                            if let Some(request) = state.open_filelist_if_ready() {
+                                match spawn_filelist_discovery_worker(request) {
+                                    Ok(worker) => filelist_worker = Some(worker),
+                                    Err(error) => {
+                                        state.active_filelist = None;
+                                        state.status =
+                                            format!("FileList discovery unavailable: {error}");
+                                        state.dirty = true;
+                                    }
+                                }
+                            }
                         }
                         KeyAction::StartFileList {
                             propagate_to_ancestors,
@@ -477,8 +574,10 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
                 return Ok(());
             }
             state.indexed = true;
-            state.root_filelist_known = true;
-            state.root_filelist_exists = has_root_filelist;
+            // Explicit Walker intentionally performs no discovery while indexing;
+            // F6 owns the cancellable lazy existence check instead.
+            state.root_filelist_known = state.runtime_options.source != TuiSource::Walker;
+            state.root_filelist_exists = state.root_filelist_known && has_root_filelist;
             state.status = state
                 .index_truncated_limit
                 .map(walker_truncated_notice)
@@ -511,8 +610,8 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
             if state.active_index_request.as_ref() == Some(&(request_id, root)) {
                 state.active_index_request = None;
                 state.indexed = false;
-                state.root_filelist_known = true;
-                state.root_filelist_exists = has_root_filelist;
+                state.root_filelist_known = state.runtime_options.source != TuiSource::Walker;
+                state.root_filelist_exists = state.root_filelist_known && has_root_filelist;
                 state.status = format!("Indexing failed: {error}. Adjust options in F2 and retry.");
                 state.dirty = true;
             }

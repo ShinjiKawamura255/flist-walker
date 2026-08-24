@@ -1,6 +1,7 @@
 use super::protocol::{
-    CandidateBatches, FileListWorkerResult, IndexRequest, PreviewRequest, SearchRequest,
-    TuiActionFreshness, TuiActionRequest, TuiFileListRequest, TuiIndexFreshness, TuiRuntimeOptions,
+    CandidateBatches, FileListDiscoveryOwnership, FileListWorkerResult, IndexRequest,
+    PreviewRequest, SearchRequest, TuiActionFreshness, TuiActionRequest,
+    TuiFileListDiscoveryRequest, TuiFileListRequest, TuiIndexFreshness, TuiRuntimeOptions,
     TuiSource,
 };
 use super::tui_path_label;
@@ -144,6 +145,13 @@ pub(super) struct ActiveFileList {
     pub(super) request_id: u64,
     pub(super) root: PathBuf,
     pub(super) cancel: Arc<AtomicBool>,
+    pub(super) kind: ActiveFileListKind,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ActiveFileListKind {
+    Discovery,
+    Creation,
 }
 
 pub(super) struct ActiveFileListWorker {
@@ -396,6 +404,7 @@ impl TuiState {
             include_files: self.runtime_options.include_files,
             include_dirs: self.runtime_options.include_dirs,
             source: self.runtime_options.source,
+            filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
             max_depth: self.max_depth,
         }
     }
@@ -479,15 +488,30 @@ impl TuiState {
         self.dirty = true;
     }
 
-    pub(super) fn open_filelist_if_ready(&mut self) {
+    pub(super) fn open_filelist_if_ready(&mut self) -> Option<TuiFileListDiscoveryRequest> {
         if self.active_filelist.is_some() {
-            return;
+            return None;
         }
         if self.root_filelist_known {
             self.open_filelist_confirmation();
+            None
         } else {
-            self.status = "Wait for indexing to finish before creating FileList".to_string();
+            self.next_filelist_request_id = self.next_filelist_request_id.wrapping_add(1);
+            let request_id = self.next_filelist_request_id;
+            let cancel = Arc::new(AtomicBool::new(false));
+            self.active_filelist = Some(ActiveFileList {
+                request_id,
+                root: self.root.clone(),
+                cancel: Arc::clone(&cancel),
+                kind: ActiveFileListKind::Discovery,
+            });
+            self.status = "Checking FileList...".to_string();
             self.dirty = true;
+            Some(TuiFileListDiscoveryRequest {
+                request_id,
+                root: self.root.clone(),
+                cancel,
+            })
         }
     }
 
@@ -503,6 +527,7 @@ impl TuiState {
             request_id,
             root: self.root.clone(),
             cancel: Arc::clone(&cancel),
+            kind: ActiveFileListKind::Creation,
         });
         self.status = "Creating FileList...".to_string();
         self.dirty = true;
@@ -516,10 +541,20 @@ impl TuiState {
         }
     }
 
+    pub(super) fn active_filelist_is_discovery(&self) -> bool {
+        self.active_filelist
+            .as_ref()
+            .is_some_and(|active| active.kind == ActiveFileListKind::Discovery)
+    }
+
     pub(super) fn cancel_active_filelist(&mut self) {
         if let Some(active) = self.active_filelist.as_ref() {
             active.cancel.store(true, Ordering::Release);
-            self.status = "Canceling FileList creation...".to_string();
+            self.status = if active.kind == ActiveFileListKind::Discovery {
+                "Canceling FileList check...".to_string()
+            } else {
+                "Canceling FileList creation...".to_string()
+            };
             self.dirty = true;
         }
     }

@@ -1,5 +1,49 @@
 use super::*;
 
+fn wait_for_filelist_index_settlement(app: &mut FlistWalkerApp, deadline: Instant) {
+    while app.shell.indexing.pending_request_id.is_some() {
+        assert!(
+            Instant::now() < deadline,
+            "tiny local FileList index must settle before the GUI liveness deadline"
+        );
+        app.poll_index_response_with_budget_for_test(Duration::from_millis(10));
+        thread::yield_now();
+    }
+    assert!(matches!(
+        app.shell.runtime.index.source,
+        IndexSource::FileList(_)
+    ));
+}
+
+#[test]
+fn tc_152_startup_and_refresh_settle_filelist_source_and_entries_regression() {
+    let root = test_root("pipeline-native-filelist-settlement");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("first.txt"), "first").expect("write first entry");
+    fs::write(root.join("second.txt"), "second").expect("write second entry");
+    fs::write(root.join("FileList.txt"), "first.txt\n").expect("write startup FileList");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    wait_for_filelist_index_settlement(&mut app, Instant::now() + Duration::from_secs(2));
+    assert_eq!(app.shell.runtime.all_entries.len(), 1);
+    assert!(app.shell.runtime.all_entries.iter().any(|entry| entry
+        .path
+        .file_name()
+        .is_some_and(|name| name == "first.txt")));
+
+    fs::write(root.join("FileList.txt"), "first.txt\nsecond.txt\n")
+        .expect("update refresh FileList");
+    app.request_index_refresh();
+    wait_for_filelist_index_settlement(&mut app, Instant::now() + Duration::from_secs(2));
+    assert_eq!(app.shell.runtime.all_entries.len(), 2);
+    assert!(app.shell.runtime.all_entries.iter().any(|entry| entry
+        .path
+        .file_name()
+        .is_some_and(|name| name == "second.txt")));
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn queued_request_for_tab_exists_is_false_when_queue_is_empty() {
     let root = test_root("pipeline-queue-empty");

@@ -110,7 +110,7 @@ impl FlistWalkerApp {
         }
         self.update_results();
         self.ensure_results_cursor_visible();
-        self.request_focus_query();
+        self.finish_programmatic_query_replacement();
         self.set_notice("Canceled history search");
     }
 
@@ -126,7 +126,7 @@ impl FlistWalkerApp {
         };
         self.update_results();
         self.ensure_results_cursor_visible();
-        self.request_focus_query();
+        self.finish_programmatic_query_replacement();
         self.set_notice("Loaded query from history");
     }
 

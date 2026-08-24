@@ -19,6 +19,25 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 static TEMP_DIR_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
 
+#[test]
+fn empty_kind_scope_returns_before_filelist_discovery_regression() {
+    let temp = TempDir::new("empty-scope-no-discovery");
+    fs::write(temp.path().join("FileList.txt"), "candidate.txt\n").expect("write FileList fixture");
+
+    let result = build_index_with_metadata_cancellable_and_max_depth(
+        temp.path(),
+        true,
+        false,
+        false,
+        MaxDepth::unlimited(),
+        || panic!("empty scope must not enter discovery or cancellation"),
+    )
+    .expect("empty scope result");
+
+    assert!(result.entries.is_empty());
+    assert_eq!(result.source, IndexSource::None);
+}
+
 struct TempDir {
     path: PathBuf,
 }
@@ -1609,7 +1628,7 @@ fn find_filelist_cancellable_regression_stops_when_request_is_stale() {
 }
 
 #[test]
-fn build_index_overrides_subtree_with_newer_nested_filelist() {
+fn build_index_overrides_subtree_with_newer_nested_filelist_regression() {
     let root = test_root("nested-filelist-newer");
     let child = root.join("child");
     fs::create_dir_all(&child).expect("create child");
@@ -1657,7 +1676,7 @@ fn build_index_ignores_older_nested_filelist() {
 }
 
 #[test]
-fn build_index_applies_newest_filelist_per_depth() {
+fn build_index_applies_newest_filelist_per_depth_regression() {
     let root = test_root("nested-filelist-depth");
     let child = root.join("child");
     let grand = child.join("grand");

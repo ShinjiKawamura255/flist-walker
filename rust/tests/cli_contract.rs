@@ -1454,6 +1454,25 @@ fn tc_006_source_controls_filelist_and_walker_selection() {
     assert!(!required.status.success());
     assert!(String::from_utf8_lossy(&required.stderr).contains("FileList"));
 
+    let interactive_required = cli_command("interactive-source-filelist-missing-regression")
+        .args([
+            "--cli",
+            "--interactive",
+            "--root",
+            missing_root.to_string_lossy().as_ref(),
+            "--source",
+            "filelist",
+        ])
+        .output()
+        .expect("run interactive required FileList preflight");
+    assert!(!interactive_required.status.success());
+    let stderr = String::from_utf8_lossy(&interactive_required.stderr);
+    assert!(stderr.contains("FileList"), "stderr={stderr}");
+    assert!(
+        !stderr.contains("terminal stdin and stderr"),
+        "required FileList must fail before terminal setup: {stderr}"
+    );
+
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&missing_root);
 }

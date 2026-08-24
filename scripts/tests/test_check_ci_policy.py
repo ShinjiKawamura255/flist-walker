@@ -208,22 +208,31 @@ jobs:
         self.assertTrue(any("audit result in gate" in item for item in violations))
         self.assertTrue(any("Cargo safe-skip gate" in item for item in violations))
 
-    def test_ci_contract_requires_windows_gnu_updater_e2e_gate(self) -> None:
+    def test_ci_contract_requires_both_windows_gnu_updater_variants_regression(self) -> None:
         text = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
             encoding="utf-8"
         )
+        self.assertEqual([], POLICY.validate_ci_contract(text))
         for token in (
             "windows-gnu-update-e2e:",
             "      - windows-gnu-update-e2e",
             "WINDOWS_GNU_UPDATE_RESULT",
             "artifact_dir: rust",
-            "path: ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+            "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+            "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/fw.exe",
             "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
+            "Variant = 'Universal'",
+            "Variant = 'Fw'",
+            "FLISTWALKER_UPDATE_E2E_PAYLOAD_Universal_V1",
+            "FLISTWALKER_UPDATE_E2E_PAYLOAD_Fw_V1",
+            "-Variant $case.Variant",
             "-Automated -CleanupSandbox",
-            "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
             "-AppPath $artifact -UpdateBinaryPath $updatePayload",
+            "$callerSigningKey = $env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX",
+            "if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX -cne $callerSigningKey)",
         ):
             with self.subTest(token=token):
+                self.assertIn(token, text)
                 mutated = text.replace(token, "removed-contract", 1)
                 violations = POLICY.validate_ci_contract(mutated)
                 self.assertTrue(
@@ -251,7 +260,38 @@ jobs:
                 violations = POLICY.validate_release_contract(release_text + "\n" + token)
                 self.assertTrue(any("forbidden" in item for item in violations))
 
-    def test_manual_self_update_cleanup_is_sentinel_owned_and_fail_closed(self) -> None:
+    def test_release_contract_requires_n_minus_one_latest_release_and_checker_regression(self) -> None:
+        release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual([], POLICY.validate_release_contract(release_text))
+        invocation_at = release_text.index(
+            "./scripts/check-updater-n-minus-one-compatibility.py"
+        )
+        for token in (
+            'releases/latest" --jq .tag_name',
+            "./scripts/check-updater-n-minus-one-compatibility.py",
+            "--previous-version",
+            "--candidate-version",
+            "--manifest",
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, release_text)
+                if token.startswith("--"):
+                    before = release_text[:invocation_at]
+                    after = release_text[invocation_at:].replace(
+                        token, "removed-n-minus-one-contract", 1
+                    )
+                    mutated = before + after
+                else:
+                    mutated = release_text.replace(token, "removed-n-minus-one-contract", 1)
+                violations = POLICY.validate_release_contract(mutated)
+                self.assertTrue(
+                    any("N-1" in item or "latest published release" in item for item in violations),
+                    violations,
+                )
+
+    def test_manual_self_update_cleanup_and_signing_environment_are_fail_closed(self) -> None:
         text = (ROOT / "scripts" / "manual-self-update-test.ps1").read_text(
             encoding="utf-8-sig"
         )
@@ -269,8 +309,18 @@ jobs:
             "installed sandbox binary hash mismatch",
             "update transaction artifacts did not settle",
             "request escaped content root",
-            "Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX",
+            "[System.Net.Sockets.TcpListener]::new",
+            "$requestParts.Count -ge 2 -and $requestParts[0] -eq 'GET'",
+            "[System.Text.Encoding]::UTF8.GetBytes('invalid request')",
+            "$client.Dispose()",
+            "$listener.Stop()",
+            "$psi.EnvironmentVariables.Remove('FLISTWALKER_UPDATE_SIGNING_KEY_HEX')",
             "automated update payload must differ from the initial sandbox binary",
+            "mixed-family updater payload discriminator requires different valid payload hashes",
+            "counterpart family changed during $Variant update",
+            "FLISTWALKER_UPDATE_E2E_OTHER_FAMILY_${Variant}_V1",
+            "loopback update feed did not become ready within 5 seconds",
+            "$psi.RedirectStandardError = $true",
             "[System.Collections.Generic.Stack[string]]::new()",
             "elseif ($entry.PSIsContainer)",
         )
@@ -279,10 +329,22 @@ jobs:
                 self.assertIn(token, text)
         cleanup = "Remove-Item -LiteralPath $cleanupPath -Recurse -Force"
         self.assertEqual(1, text.count(cleanup))
+        self.assertNotIn("Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX", text)
+        self.assertNotIn("[System.Net.HttpListener]", text)
         self.assertLess(text.index("Assert-OwnedSandboxForCleanup"), text.rindex(cleanup))
         self.assertLess(
-            text.index("Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX"),
+            text.index(
+                "$psi.EnvironmentVariables.Remove('FLISTWALKER_UPDATE_SIGNING_KEY_HEX')"
+            ),
             text.index("[System.Diagnostics.Process]::Start($psi)"),
+        )
+        self.assertLess(
+            text.index("$MixedFamilyPayloadsAreDistinct = $AssetHash -ne $OtherAssetHash"),
+            text.index("[System.Diagnostics.Process]::Start($psi)"),
+        )
+        self.assertLess(
+            text.index("installed sandbox binary hash mismatch"),
+            text.index("counterpart family changed during $Variant update"),
         )
 
     def test_audit_change_paths_cover_nested_workspace_and_policy(self) -> None:

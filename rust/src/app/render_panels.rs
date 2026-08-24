@@ -6,7 +6,80 @@ use super::{
     render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode, ResultSortScope,
 };
 use eframe::egui;
+#[cfg(test)]
+use std::cell::RefCell;
 use std::path::Path;
+
+#[cfg(test)]
+#[derive(Clone, Copy)]
+pub(super) enum TestResultRowInteraction {
+    None,
+    Click(usize),
+    DoubleClick(usize),
+}
+
+#[cfg(test)]
+#[derive(Default)]
+pub(super) struct ResultRenderProbe {
+    pub(super) rendered_rows: Vec<usize>,
+    pub(super) action_rows: Vec<usize>,
+}
+
+#[cfg(test)]
+struct ActiveResultRenderProbe {
+    interaction: TestResultRowInteraction,
+    result: ResultRenderProbe,
+}
+
+#[cfg(test)]
+thread_local! {
+    static RESULT_RENDER_PROBE: RefCell<Option<ActiveResultRenderProbe>> = const { RefCell::new(None) };
+}
+
+#[cfg(test)]
+pub(super) fn begin_result_render_probe(interaction: TestResultRowInteraction) {
+    RESULT_RENDER_PROBE.with(|probe| {
+        *probe.borrow_mut() = Some(ActiveResultRenderProbe {
+            interaction,
+            result: ResultRenderProbe::default(),
+        });
+    });
+}
+
+#[cfg(test)]
+pub(super) fn take_result_render_probe() -> ResultRenderProbe {
+    RESULT_RENDER_PROBE.with(|probe| {
+        probe
+            .borrow_mut()
+            .take()
+            .map(|active| active.result)
+            .unwrap_or_default()
+    })
+}
+
+#[cfg(test)]
+fn record_rendered_result_row(index: usize) -> TestResultRowInteraction {
+    RESULT_RENDER_PROBE.with(|probe| {
+        let mut probe = probe.borrow_mut();
+        let Some(active) = probe.as_mut() else {
+            return TestResultRowInteraction::None;
+        };
+        active.result.rendered_rows.push(index);
+        active.interaction
+    })
+}
+
+#[cfg(test)]
+fn record_result_action(index: usize) -> bool {
+    RESULT_RENDER_PROBE.with(|probe| {
+        let mut probe = probe.borrow_mut();
+        let Some(active) = probe.as_mut() else {
+            return false;
+        };
+        active.result.action_rows.push(index);
+        true
+    })
+}
 
 pub(super) fn centered_checkbox(
     ui: &mut egui::Ui,
@@ -251,50 +324,78 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     } else {
         egui::scroll_area::ScrollSource::NONE
     };
-    egui::ScrollArea::both()
+    let mut clicked_row: Option<usize> = None;
+    let mut execute_row: Option<usize> = None;
+    let prefer_relative = app.prefer_relative_display();
+    app.ensure_highlight_cache_scope(prefer_relative);
+    let row_height = result_row_height(ui);
+    let total_rows = app.shell.runtime.results.len();
+    let mut scroll_area = egui::ScrollArea::both()
         .scroll_source(scroll_source)
-        .auto_shrink([false, false])
-        .show(ui, |ui| {
-            let mut clicked_row: Option<usize> = None;
-            let mut execute_row: Option<usize> = None;
-            let prefer_relative = app.prefer_relative_display();
-            app.ensure_highlight_cache_scope(prefer_relative);
-            let clip_rect = ui.clip_rect();
-            let row_width = ui.available_width().max(0.0);
-            let row_height = result_row_height(ui);
-
-            for i in 0..app.shell.runtime.results.len() {
-                let Some((path, _score)) = app.shell.runtime.results.get(i) else {
-                    continue;
-                };
-                let path = path.clone();
-                let is_current = app.shell.runtime.current_row == Some(i);
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
-                if is_current && app.shell.ui.scroll_to_current() {
-                    ui.scroll_to_rect(rect, None);
-                }
-                if clip_rect.intersects(rect) {
-                    render_result_row(app, ui, rect, &path, is_current, prefer_relative);
-                }
-                if response.clicked() {
-                    clicked_row = Some(i);
-                }
-                if response.double_clicked() {
-                    execute_row = Some(i);
-                }
+        .auto_shrink([false, false]);
+    if app.shell.ui.scroll_to_current() {
+        if let Some(current) = app
+            .shell
+            .runtime
+            .current_row
+            .filter(|row| *row < total_rows)
+        {
+            // Regression guard: show_rows only creates the current viewport. Set the
+            // virtual offset before row allocation so an offscreen cursor is materialized.
+            let row_stride = row_height + ui.spacing().item_spacing.y;
+            scroll_area = scroll_area.vertical_scroll_offset(current as f32 * row_stride);
+        }
+    }
+    scroll_area.show_rows(ui, row_height, total_rows, |ui, visible_rows| {
+        let row_width = ui.available_width().max(0.0);
+        // Regression guard: only visible rows may clone paths or allocate widgets;
+        // iterating the full result set here makes every frame O(total results).
+        for i in visible_rows {
+            let Some((path, _score)) = app.shell.runtime.results.get(i) else {
+                continue;
+            };
+            let path = path.clone();
+            let is_current = app.shell.runtime.current_row == Some(i);
+            let (rect, response) =
+                ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
+            render_result_row(app, ui, rect, &path, is_current, prefer_relative);
+            #[cfg(test)]
+            let test_interaction = record_rendered_result_row(i);
+            #[cfg(test)]
+            let test_clicked =
+                matches!(test_interaction, TestResultRowInteraction::Click(row) if row == i);
+            #[cfg(not(test))]
+            let test_clicked = false;
+            #[cfg(test)]
+            let test_double_clicked = matches!(
+                test_interaction,
+                TestResultRowInteraction::DoubleClick(row) if row == i
+            );
+            #[cfg(not(test))]
+            let test_double_clicked = false;
+            if response.clicked() || test_clicked {
+                clicked_row = Some(i);
             }
-            if let Some(i) = clicked_row {
-                app.set_current_row(Some(i));
-                app.request_preview_for_current();
-                app.refresh_status_line();
+            if response.double_clicked() || test_double_clicked {
+                execute_row = Some(i);
             }
-            if let Some(i) = execute_row {
-                app.set_current_row(Some(i));
-                let open_parent_for_files = ui.input(|i| i.modifiers.shift);
-                app.execute_selected_for_activation(open_parent_for_files);
-            }
-        });
+        }
+    });
+    if let Some(i) = clicked_row {
+        app.set_current_row(Some(i));
+        app.request_preview_for_current();
+        app.refresh_status_line();
+    }
+    if let Some(i) = execute_row {
+        app.set_current_row(Some(i));
+        let open_parent_for_files = ui.input(|i| i.modifiers.shift);
+        #[cfg(test)]
+        if !record_result_action(i) {
+            app.execute_selected_for_activation(open_parent_for_files);
+        }
+        #[cfg(not(test))]
+        app.execute_selected_for_activation(open_parent_for_files);
+    }
 }
 
 pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {

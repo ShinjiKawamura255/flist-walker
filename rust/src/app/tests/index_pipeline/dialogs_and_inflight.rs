@@ -624,3 +624,123 @@ fn tc_152_dispatch_keeps_coordinator_inflight_at_two() {
     assert!(rx.try_recv().is_err());
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn tc_152_full_index_queue_retries_after_capacity_returns_regression() {
+    let root = test_root("tc-152-full-retry");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("active tab");
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    for request_id in 1..=2 {
+        tx.send(IndexRequest {
+            request_id,
+            tab_id,
+            root: root.clone(),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
+        })
+        .expect("fill queue");
+    }
+    app.shell.indexing.tx = tx;
+    app.shell.indexing.pending_queue.clear();
+    app.shell.indexing.inflight_requests.clear();
+    app.shell.indexing.request_tabs.clear();
+    app.shell.indexing.pending_queue.push_back(IndexRequest {
+        request_id: 3,
+        tab_id,
+        root: root.clone(),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    });
+
+    app.dispatch_index_queue();
+    assert_eq!(app.shell.indexing.pending_queue.len(), 1);
+    let _ = rx.try_recv().expect("free one worker slot");
+    app.dispatch_index_queue();
+
+    assert!(app.shell.indexing.pending_queue.is_empty());
+    let _ = rx.try_recv().expect("remaining filler request");
+    assert_eq!(rx.try_recv().expect("retried request").request_id, 3);
+    assert!(app.shell.indexing.inflight_requests.contains(&3));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_152_disconnected_index_dispatch_settles_active_request_regression() {
+    let root = test_root("tc-152-disconnected-settlement");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    drop(rx);
+    app.shell.indexing.tx = tx;
+
+    app.request_index_refresh();
+
+    assert_eq!(app.shell.indexing.pending_request_id, None);
+    assert!(!app.shell.indexing.in_progress);
+    assert!(app.shell.indexing.pending_queue.is_empty());
+    assert!(app.shell.indexing.request_tabs.is_empty());
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Index worker is unavailable"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_152_restored_active_tab_dispatches_in_same_terminal_poll_regression() {
+    let root = test_root("tc-152-restore-priority");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    let closed_id = app.current_tab_id().expect("tab to restore");
+    app.mark_pending_restore_refresh_for_tab(closed_id);
+    app.close_active_tab();
+    let background_ids = [
+        app.shell.tabs.get(0).expect("tab 0").id,
+        app.shell.tabs.get(1).expect("tab 1").id,
+    ];
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = request_tx;
+    app.shell.indexing.rx = response_rx;
+    app.shell.indexing.pending_queue.clear();
+    app.shell.indexing.inflight_requests = [11, 12].into_iter().collect();
+    for (index, (request_id, tab_id)) in [11, 12].into_iter().zip(background_ids).enumerate() {
+        app.shell.indexing.request_tabs.insert(request_id, tab_id);
+        let tab = app.shell.tabs.get_mut(index).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.next_request_id = 100;
+
+    app.restore_recently_closed_tab();
+    let restored_id = app.current_tab_id().expect("restored active tab");
+    assert!(app
+        .shell
+        .indexing
+        .pending_queue
+        .iter()
+        .any(|request| request.tab_id == restored_id));
+
+    response_tx
+        .send(IndexResponse::Canceled { request_id: 11 })
+        .expect("send background terminal response");
+    app.poll_index_response();
+
+    let dispatched = request_rx.try_recv().expect("same-poll active dispatch");
+    assert_eq!(dispatched.tab_id, restored_id);
+    assert!(app
+        .shell
+        .indexing
+        .inflight_requests
+        .contains(&dispatched.request_id));
+    let _ = fs::remove_dir_all(&root);
+}

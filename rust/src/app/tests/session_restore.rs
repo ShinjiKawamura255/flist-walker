@@ -278,7 +278,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
 }
 
 #[test]
-fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
+fn initialize_tabs_from_saved_keeps_current_row_empty_until_results_exist_regression() {
     let root = test_root("restore-tabs-default-row");
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -302,7 +302,7 @@ fn initialize_tabs_from_saved_defaults_current_row_to_first_row_regression() {
         0,
     );
 
-    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert_eq!(app.shell.runtime.current_row, None);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -416,10 +416,14 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
         .search
         .bind_request_tab(search_request_id, background_tab_id);
 
-    let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
+    let (preview_tx_req, preview_rx_req) = mpsc::channel::<PreviewRequest>();
     let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
     app.shell.worker_bus.preview.tx = preview_tx_req;
     app.shell.worker_bus.preview.rx = preview_rx_res;
+    let (kind_tx_req, kind_rx_req) = bounded_request_channel::<KindResolveRequest>(4);
+    let (kind_tx_res, kind_rx_res) = mpsc::channel::<KindResolveResponse>();
+    app.shell.worker_bus.kind.tx = kind_tx_req;
+    app.shell.worker_bus.kind.rx = kind_rx_res;
     let preview_request_id = 41;
     app.bind_preview_request_to_tab(preview_request_id, background_tab_id);
 
@@ -481,10 +485,10 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
 
     assert_eq!(app.shell.tabs.active_tab, 1);
     assert_eq!(app.shell.runtime.root, root_b);
-    assert_eq!(
-        app.shell.tabs.get(0).expect("tab 0").result_state.preview,
-        "preview-body"
-    );
+    let background = app.shell.tabs.get(0).expect("tab 0");
+    assert!(background.result_state.preview.is_empty());
+    assert!(background.preview_reload_pending);
+    assert_eq!(app.preview_request_tab(preview_request_id), None);
     assert_eq!(
         app.shell
             .tabs
@@ -510,9 +514,36 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_a);
     assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
-    assert_eq!(app.shell.runtime.preview, "preview-body");
     assert_eq!(app.shell.runtime.results.len(), 1);
     assert_eq!(app.shell.runtime.results[0].0, indexed_file);
+
+    let kind_request = kind_rx_req
+        .try_recv()
+        .expect("restore refresh resolves current kind before preview reload");
+    assert_eq!(kind_request.path, indexed_file);
+    assert_eq!(app.shell.runtime.preview, "Resolving entry type...");
+    kind_tx_res
+        .send(KindResolveResponse {
+            tab_id: app.current_tab_id().expect("active tab id"),
+            epoch: kind_request.epoch,
+            path: indexed_file.clone(),
+            kind: Some(EntryKind::file()),
+        })
+        .expect("send restored kind response");
+    app.poll_kind_response();
+    let reload_request = preview_rx_req
+        .try_recv()
+        .expect("resolved current kind dispatches preview reload");
+    assert_eq!(reload_request.path, indexed_file);
+    preview_tx_res
+        .send(PreviewResponse {
+            request_id: reload_request.request_id,
+            path: indexed_file.clone(),
+            preview: "preview-body".to_string(),
+        })
+        .expect("send activation preview response");
+    app.poll_preview_response();
+    assert_eq!(app.shell.runtime.preview, "preview-body");
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);

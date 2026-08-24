@@ -46,6 +46,30 @@
 - 利用者が Create File List をキャンセルした場合、進行中 request は `Canceled` として扱い、成功/失敗通知や再インデックスを発生させない。
 - transaction panic は worker-owned report を使って rollback を試行し、成功として扱わない。force-kill/crash 後の cross-file atomicity は本仕様の対象外とする。
 
+### Regression Guard: single-discovery nested FileList path basis
+
+- Scenario: root直下のFileListをcancel可能な探索で一度だけ検出した後、rootだけをcanonicalizeすると、Windowsでは通常pathとverbatim pathが混在し、nested FileListがroot配下と判定されない。
+- Expected Behavior: 検出済みFileListとrootを同じcanonical path basisへ正規化し、新しいnested FileListによるsubtree置換とdepthごとのoverrideを維持する。
+- Non-goals: FileList discoveryの再実行、候補行ごとのcanonicalize、nested FileListのmtime優先規則の変更。
+- Related Tests: TC-030、`build_index_overrides_subtree_with_newer_nested_filelist_regression`、`build_index_applies_newest_filelist_per_depth_regression`。
+- Notes for Future Changes: caller-owned discovery結果をbuild APIへ渡す場合、rootとの比較前に両者のpath basisを一致させる。
+
+### Regression Guard: startup/refresh FileList discovery freshness polarity
+
+- Scenario: index worker の freshness callback（`true=current`）を FileList discovery の cancellation callback（`true=cancel`）へ極性変換せず渡すと、正常な最新 startup/refresh request が discovery 前に superseded となり、GUI は応答したまま Source None / Entries 0 に留まる。
+- Expected Behavior: 明示 root の小規模な local FileList は production worker から bounded time 内に `Started(FileList)`、実 entry、`Finished(FileList)` を返し、app startup と Refresh Index の双方が Source と Entries を終端状態へ反映する。
+- Non-goals: UI thread での同期 discovery、正常な stale request の cancel 緩和、network root 向けの完了時間保証。
+- Related Tests: TC-152、`tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression`、`tc_152_startup_and_refresh_settle_filelist_source_and_entries_regression`。
+- Notes for Future Changes: freshness predicate を cancellation API へ渡す境界では極性を明示し、liveness だけでなく Source と Entries の settlement を検証する。
+
+### Regression Guard: TUI initial FileList discovery ownership
+
+- Scenario: interactive CLIがterminalを所有してからrequired FileListの不存在を検出すると非TTY環境では契約errorよりterminal errorが先に出る。また、Autoをmain threadで探索するとUI cancellationが届かず、preflightと初回workerが同じrootを重複探索する。明示Walkerがindex完了時にFileList有無を既知扱いすると、F6のoverwrite判定も誤る。
+- Expected Behavior: 既定Autoは初回から`WorkerOwned`とし、index worker内のcancel predicateで単一discoveryを行う。`--source filelist`だけはfail-fastのためterminal/event loop開始前にroot直下を同期確認する。この限定preflightはterminal cancellationをまだ受け取れないbounded例外であり、成功結果を最初のworker requestへ移譲して再探索しない。`--source walker`は初回index前のFileList discoveryを0回とし、index後も存在状態をunknownに保つ。F6時はcancel可能な専用workerで遅延discoveryし、既存ならoverwrite確認を完了するまでfresh snapshotを生成せず、未存在ならcreateへ進む。discovery中のroot switch/output確定はworkerをcancelし、success/cancel/failureのいずれでもrequest identity確認後に一度だけ適用してpending intentとconfirmationをclearする。stale responseは新しいactive requestとintentを変更してはならない。
+- Non-goals: Auto/FileListの後続refreshにおけるfresh discovery、F6実行時のFileList作成確認、GUI indexing ownershipの変更。
+- Related Tests: TC-162、TC-166、`tc_162_startup_discovery_ownership_is_source_specific_regression`、`tc_162_initial_filelist_discovery_is_consumed_without_rescan_regression`、`tc_162_explicit_walker_performs_zero_filelist_discovery_regression`、`tc_166_walker_f6_lazy_discovery_confirms_before_snapshot_regression`、`tc_006_source_controls_filelist_and_walker_selection`。
+- Notes for Future Changes: preflight結果はfirst requestだけが消費し、後続requestはworker-owned discoveryへ戻す。
+
 ## SP-002 Walker 走査
 ### Requirements
 - MUST: FileList 未使用時にルート以下を再帰走査し候補化する。

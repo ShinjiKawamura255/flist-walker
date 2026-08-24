@@ -84,6 +84,7 @@ pub(crate) struct AppTabState {
     pub(super) pending_action_request_id: Option<u64>,
     pub(super) search_in_progress: bool,
     pub(super) preview_in_progress: bool,
+    pub(super) preview_reload_pending: bool,
     pub(super) action_in_progress: bool,
 }
 
@@ -404,6 +405,18 @@ impl AppTabState {
         self.preview_in_progress = false;
     }
 
+    pub(super) fn mark_preview_reload_pending(&mut self) {
+        self.preview_reload_pending = true;
+    }
+
+    pub(super) fn take_preview_reload_pending(&mut self) -> bool {
+        mem::take(&mut self.preview_reload_pending)
+    }
+
+    pub(super) fn clear_preview_reload_pending(&mut self) {
+        self.preview_reload_pending = false;
+    }
+
     pub(super) fn clear_action_request_state(&mut self) {
         self.pending_action_request_id = None;
         self.action_in_progress = false;
@@ -435,6 +448,7 @@ impl AppTabState {
             pending_action_request_id: shell.shell.worker_bus.action.pending_request_id,
             search_in_progress: shell.shell.search.in_progress(),
             preview_in_progress: shell.shell.worker_bus.preview.in_progress,
+            preview_reload_pending: false,
             action_in_progress: shell.shell.worker_bus.action.in_progress,
         }
     }
@@ -494,7 +508,7 @@ impl AppTabState {
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pinned_paths: HashSet::new(),
-                current_row: Some(0),
+                current_row: None,
                 preview: String::new(),
                 results_compacted: false,
             },
@@ -505,6 +519,7 @@ impl AppTabState {
             pending_action_request_id: None,
             search_in_progress: false,
             preview_in_progress: false,
+            preview_reload_pending: false,
             action_in_progress: false,
         }
     }
@@ -524,6 +539,7 @@ impl AppTabState {
             .cloned()
             .map(|entry| (entry.path, 0.0))
             .collect::<Vec<_>>();
+        let current_row = (!base_results.is_empty()).then_some(0);
         Self {
             id,
             root: shell.shell.runtime.root.clone(),
@@ -578,7 +594,7 @@ impl AppTabState {
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pinned_paths: HashSet::new(),
-                current_row: None,
+                current_row,
                 preview: String::new(),
                 results_compacted: false,
             },
@@ -589,6 +605,7 @@ impl AppTabState {
             pending_action_request_id: None,
             search_in_progress: false,
             preview_in_progress: false,
+            preview_reload_pending: false,
             action_in_progress: false,
         }
     }

@@ -123,6 +123,48 @@ pub fn build_index_with_metadata_cancellable_and_max_depth<C>(
 where
     C: Fn() -> bool,
 {
+    // Regression guard: an empty kind scope has no observable source and must
+    // avoid even the cancellable FileList discovery wrapper.
+    if !include_files && !include_dirs {
+        return Ok(IndexBuildResult {
+            entries: Vec::new(),
+            source: IndexSource::None,
+        });
+    }
+    let discovered_filelist = if use_filelist {
+        find_filelist_in_first_level_cancellable(root, &should_cancel)
+            .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
+    } else {
+        None
+    };
+    build_index_with_metadata_from_discovery_cancellable_and_max_depth(
+        root,
+        use_filelist,
+        discovered_filelist,
+        include_files,
+        include_dirs,
+        max_depth,
+        should_cancel,
+    )
+}
+
+/// Builds an index from a FileList discovery result owned by the caller.
+///
+/// Regression guard: callers that must inspect whether FileList is required
+/// pass that same result here; rediscovering it can duplicate directory I/O and
+/// let an obsolete TUI request continue after freshness changed.
+pub fn build_index_with_metadata_from_discovery_cancellable_and_max_depth<C>(
+    root: &Path,
+    use_filelist: bool,
+    discovered_filelist: Option<PathBuf>,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    should_cancel: C,
+) -> Result<IndexBuildResult>
+where
+    C: Fn() -> bool,
+{
     let started_at = Instant::now();
     if !include_files && !include_dirs {
         return Ok(IndexBuildResult {
@@ -134,9 +176,27 @@ where
         return Err(IndexBuildCancelled.into());
     }
 
-    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    let requested_root = root;
+    let root = requested_root
+        .canonicalize()
+        .unwrap_or_else(|_| requested_root.to_path_buf());
+    let discovered_filelist = discovered_filelist.map(|filelist| {
+        // Regression guard: discovery runs before root canonicalization so it can
+        // be canceled once. Keep its result on the same canonical path basis as
+        // root; mixed Windows verbatim/non-verbatim paths break nested overrides.
+        match filelist.canonicalize() {
+            Ok(canonical) => canonical,
+            Err(_) => {
+                if let Ok(relative) = filelist.strip_prefix(requested_root) {
+                    root.join(relative)
+                } else {
+                    filelist
+                }
+            }
+        }
+    });
     let result = if use_filelist {
-        if let Some(filelist) = find_filelist_in_first_level(&root) {
+        if let Some(filelist) = discovered_filelist {
             let entries = build_entries_from_filelist_hierarchy_with_max_depth(
                 &filelist,
                 &root,

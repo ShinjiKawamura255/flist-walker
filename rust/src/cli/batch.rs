@@ -21,9 +21,10 @@ use crate::ignore_list::{
     load_ignore_terms_from_path_result,
 };
 use crate::indexer::{
-    build_index_cancellable, build_index_with_metadata_cancellable_and_max_depth,
-    execute_filelist_write_plan, find_filelist_in_first_level, is_index_build_cancelled,
-    plan_filelist_write_cancellable, FileListWriteOptions, FileListWriteReport,
+    build_index_cancellable, build_index_with_metadata_from_discovery_cancellable_and_max_depth,
+    execute_filelist_write_plan, find_filelist_in_first_level_cancellable,
+    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
+    FileListWriteReport,
 };
 use crate::path_utils::{normalize_path_for_display, output_path_bytes};
 use crate::persistence::load_persisted_roots_and_history;
@@ -381,9 +382,15 @@ fn run_cli_with_backend(
         CliIndexSource::Auto | CliIndexSource::Filelist => true,
         CliIndexSource::Walker => false,
     };
-    if matches!(args.source, CliIndexSource::Filelist)
-        && find_filelist_in_first_level(root).is_none()
-    {
+    let discovered_filelist = if use_filelist {
+        match find_filelist_in_first_level_cancellable(root, || cancelled.load(Ordering::Relaxed)) {
+            Ok(discovered) => discovered,
+            Err(_) => return Ok(BatchOutcome::Cancelled),
+        }
+    } else {
+        None
+    };
+    if matches!(args.source, CliIndexSource::Filelist) && discovered_filelist.is_none() {
         anyhow::bail!(
             "FileList was required but none was found in {}",
             root.display()
@@ -398,9 +405,10 @@ fn run_cli_with_backend(
     if args.progress {
         eprintln!("Indexing {}...", root.display());
     }
-    let indexed_entries = match build_index_with_metadata_cancellable_and_max_depth(
+    let indexed_entries = match build_index_with_metadata_from_discovery_cancellable_and_max_depth(
         root,
         use_filelist,
+        discovered_filelist,
         include_files,
         include_dirs,
         args.max_depth(),

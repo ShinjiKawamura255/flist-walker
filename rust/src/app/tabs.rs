@@ -49,8 +49,18 @@ impl FlistWalkerApp {
         self.request_index_refresh();
     }
 
-    fn activate_background_tab_after_transition(&mut self, results_compacted: bool) {
-        self.activate_tab_after_transition(results_compacted, true, true, true);
+    fn activate_background_tab_after_transition(
+        &mut self,
+        results_compacted: bool,
+        preview_reload_pending: bool,
+    ) {
+        self.activate_tab_after_transition(
+            results_compacted,
+            preview_reload_pending,
+            true,
+            true,
+            true,
+        );
     }
 
     fn clear_closed_tab_state(&mut self, tab_id: u64) {
@@ -82,6 +92,7 @@ impl FlistWalkerApp {
     fn activate_tab_after_transition(
         &mut self,
         results_compacted: bool,
+        preview_reload_pending: bool,
         restore_results: bool,
         request_focus: bool,
         trigger_restore_refresh: bool,
@@ -90,12 +101,18 @@ impl FlistWalkerApp {
             self.restore_results_from_compacted_tab(results_compacted);
         }
         self.ensure_results_cursor_visible();
+        if trigger_restore_refresh {
+            // Regression guard: restore refresh resets preview request ownership.
+            // Schedule it before consuming a tab-scoped reload flag so the new
+            // async preview request remains live and can settle.
+            self.trigger_pending_restore_refresh();
+        }
+        if preview_reload_pending {
+            self.request_preview_for_current();
+        }
         if request_focus {
             self.request_focus_query();
             self.clear_unfocus_query_request();
-        }
-        if trigger_restore_refresh {
-            self.trigger_pending_restore_refresh();
         }
     }
 
@@ -386,7 +403,7 @@ impl FlistWalkerApp {
             .set_active_tab_index(active_tab.min(self.shell.tabs.len().saturating_sub(1)));
         if self.shell.tabs.len() != 0 {
             let active_tab = self.shell.tabs.active_tab_index();
-            let results_compacted = self.load_tab_payload(active_tab);
+            let (results_compacted, _) = self.load_tab_payload(active_tab);
             self.restore_results_from_compacted_tab(results_compacted);
             self.ensure_results_cursor_visible();
             self.request_focus_query();
@@ -441,12 +458,18 @@ impl FlistWalkerApp {
             && tab.result_state.result_sort_mode == ResultSortMode::Score
             && tab.pending_request_id.is_none()
             && tab.result_state.pending_sort_request_id.is_none();
-        if can_compact_results && !tab.result_state.results.is_empty() {
+        let results_compacted = can_compact_results && !tab.result_state.results.is_empty();
+        if results_compacted {
             tab.result_state.results.clear();
             tab.result_state.results.shrink_to_fit();
             tab.result_state.results_compacted = true;
         }
         if !tab.preview_in_progress {
+            // Regression guard: noncompacted inactive tabs retain result identity
+            // but discard preview bytes, so activation needs an explicit reload.
+            if !results_compacted && !tab.result_state.preview.is_empty() {
+                tab.mark_preview_reload_pending();
+            }
             tab.result_state.preview.clear();
         }
         Self::shrink_tab_checkpoint_buffers(tab);
@@ -530,16 +553,17 @@ impl FlistWalkerApp {
         self.shell.tabs.insert(active_tab, slot);
     }
 
-    fn load_tab_payload(&mut self, index: usize) -> bool {
+    fn load_tab_payload(&mut self, index: usize) -> (bool, bool) {
         let mut slot = self.shell.tabs.remove(index);
         let results_compacted = slot.result_state.results_compacted;
+        let preview_reload_pending = slot.take_preview_reload_pending();
         slot.apply_small_fields_to_shell(self);
         slot.swap_payload_with_shell(self);
         slot.result_state.results_compacted = false;
         slot.sync_small_fields_from_shell(self);
         self.shell.tabs.insert(index, slot);
         self.finish_tab_payload_load();
-        results_compacted
+        (results_compacted, preview_reload_pending)
     }
 
     pub(super) fn find_tab_index_by_id(&self, tab_id: u64) -> Option<usize> {
@@ -555,8 +579,8 @@ impl FlistWalkerApp {
             Self::shrink_tab_checkpoint_buffers(next_tab);
         }
         self.shell.tabs.set_active_tab_index(next_index);
-        let results_compacted = self.load_tab_payload(next_index);
-        self.activate_background_tab_after_transition(results_compacted);
+        let (results_compacted, preview_reload_pending) = self.load_tab_payload(next_index);
+        self.activate_background_tab_after_transition(results_compacted, preview_reload_pending);
     }
 
     pub(super) fn set_tab_accent(&mut self, index: usize, accent: Option<TabAccentColor>) {
@@ -582,8 +606,14 @@ impl FlistWalkerApp {
             .tabs
             .set_active_tab_index(self.shell.tabs.len().saturating_sub(1));
         let active_tab = self.shell.tabs.active_tab_index();
-        let results_compacted = self.load_tab_payload(active_tab);
-        self.activate_tab_after_transition(results_compacted, false, true, false);
+        let (results_compacted, preview_reload_pending) = self.load_tab_payload(active_tab);
+        self.activate_tab_after_transition(
+            results_compacted,
+            preview_reload_pending,
+            false,
+            true,
+            false,
+        );
         if requires_unlimited_reindex {
             self.request_index_refresh();
         }
@@ -597,6 +627,7 @@ impl FlistWalkerApp {
         tab.id = id;
         tab.clear_search_request_state();
         tab.clear_preview_request_state();
+        tab.clear_preview_reload_pending();
         tab.clear_action_request_state();
         tab.index_state.clear_index_request_state();
         tab.index_state.clear_kind_resolution_state();
@@ -643,8 +674,14 @@ impl FlistWalkerApp {
         }
         if closing_active {
             let active_tab = self.shell.tabs.active_tab_index();
-            let results_compacted = self.load_tab_payload(active_tab);
-            self.activate_tab_after_transition(results_compacted, true, false, true);
+            let (results_compacted, preview_reload_pending) = self.load_tab_payload(active_tab);
+            self.activate_tab_after_transition(
+                results_compacted,
+                preview_reload_pending,
+                true,
+                false,
+                true,
+            );
         } else {
             self.reapply_active_tab_state();
         }
@@ -666,8 +703,14 @@ impl FlistWalkerApp {
         let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
         self.shell.tabs.insert(restore_index, tab);
         self.shell.tabs.set_active_tab_index(restore_index);
-        let results_compacted = self.load_tab_payload(restore_index);
-        self.activate_tab_after_transition(results_compacted, true, true, true);
+        let (results_compacted, preview_reload_pending) = self.load_tab_payload(restore_index);
+        self.activate_tab_after_transition(
+            results_compacted,
+            preview_reload_pending,
+            true,
+            true,
+            true,
+        );
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {

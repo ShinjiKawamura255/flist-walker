@@ -33,7 +33,7 @@
 - MUST: release metadata は 2 MiB、`SHA256SUMS` は 1 MiB、`SHA256SUMS.sig` は 64 KiB、standalone binary は 512 MiB、各 sidecar は 16 MiB の decoded byte 上限を持ち、`Content-Length` の有無や値にかかわらず streaming reader が実受信 byte 数を強制しなければならない。
 - MUST: 接続 timeout は 10 秒、無通信 timeout は 30 秒、1 request の deadline は 5 分、update staging 全体の monotonic deadline は 10 分とし、timeout/deadline 到達時は更新を中止しなければならない。
 - MUST: redirect は最大 3 hop を明示処理し、production は HTTPS かつ `api.github.com`、`github.com`、または `*.githubusercontent.com` のみに制限しなければならない。開発・自動試験だけは loopback HTTP を許可してよい。
-- MUST: 先に `SHA256SUMS` と `SHA256SUMS.sig` だけを取得し、埋め込み公開鍵で署名を検証してから配布 asset を取得しなければならない。manifest は空白区切りの SHA-256 と単一 filename からなる厳密な行文法を使い、`FlistWalker-` または `fw-` で始まる release asset basename 以外の未知 filename、必須 asset の欠落、重複、無効 digest を拒否しなければならない。
+- MUST: 先に `SHA256SUMS` と `SHA256SUMS.sig` だけを取得し、埋め込み公開鍵で署名を検証してから配布 asset を取得しなければならない。manifest はASCIIの64桁hex digest、正確に2つのspace、単一の安全なfilenameからなる厳密な行文法を使い、`FlistWalker-` または `fw-` で始まる release asset basename 以外の未知/近似prefix、空manifest、path separator、空白、重複、無効digestを拒否しなければならない。
 - MUST: 署名検証通過後、対象 binary と全 sidecar を private create-new file へ streaming download しながら SHA-256 を計算し、manifest と一致した完全な bundle だけを `VerifiedUpdateBundle` として activation へ渡さなければならない。
 - MUST: staging 失敗時は main process がこの要求で create-new した partial file と staging directory だけを helper 起動前に削除し、既存 path を cleanup 対象にしてはならない。
 - MUST: activation 準備は現在 executable の canonical parent 内の固定派生名を使い、target、`.new`、backup、lock、marker が directory、symlink、Windows reparse point、または parent 外である場合は更新を開始してはならない。
@@ -46,6 +46,7 @@
 - MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
 - MUST: Windows の更新後 process 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical target が verbatim drive/UNC形式なら各ラウンドで同一 path の非verbatim表現も試さなければならない。GUI restart は生成後500ms以内に終了した process を起動失敗として扱い、新版起動失敗時は旧 bundle へ rollback して同じ起動契約で旧GUIを再起動しなければならない。新版と旧版の起動が両方失敗した場合は、両方の診断を失わず helper failure として終了しなければならない。
 - MUST: 起動時 recovery は marker phase と旧新 hash から precommit rollback、完全な committed bundle、rolled-back bundle のいずれかへ収束させなければならない。live 登録 helper が存在する transaction と同時に回復してはならず、欠落 backup、hash 不一致、不正 state 遷移、path/type 変化は ambiguous として証跡を保持し、新しい update を開始してはならない。
+- MUST: 通常のGUI/CLI起動時recoveryは最大5秒で`Deferred`を返して起動を長時間ブロックしてはならず、live helperのexecutable identityを確認できない場合は`Ambiguous`として証跡を保持しなければならない。一方、helperが起動する内部Headless restart childはcleanup handoffの唯一のownerとして、validated terminal markerのhelper PIDだけを対象にartifact無変更で最大30秒のbounded exit waitを行い、live中の一時的なidentity照会失敗でhandoffを中断してはならない。helper終了後はmarker identity/phaseを再検証し、通常のhash/classification recoveryでcommitted/rolled-back transactionをterminal cleanupへ収束させなければならない。30秒後も`Deferred`なら正常終了として扱ってはならない。この契約はUniversalと`fw`で共通とする。
 - MUST: hidden helper の transaction/restart failure は、marker、transaction ID、helper PID/token/path/hash を検証済みの transaction context からだけ固定 basename の versioned diagnostic record として最大 16 KiB で永続化してよい。control character を sanitize し、create-new temporary file と atomic no-overwrite promotion を使い、symlink/reparse/wrong type を拒否し、診断記録失敗で rollback または元 error を置き換えてはならない。rollback 後に旧 binary を再起動する場合は、その process が起動診断を読むより前に record を publish しなければならない。信頼済み install directory を確定する前の failure は永続化対象外とする。
 - MUST: 起動時は diagnostic record を bounded read して一度だけ消費し、通常の抑止可能な update-check failure と分離した `Previous Update Failed` modal へ表示しなければならない。
 - MUST: 検証では Windows/Linux の同一 filesystem 上にある inert dummy file だけを使い、実行中 FlistWalker binary の置換または外部 application の起動を行ってはならない。
@@ -95,10 +96,26 @@
 
 ### Regression Guard: windows-updater-restart-handoff
 - Scenario: Windows の更新で新版 process の生成が一過性に失敗し、旧 bundle への rollback 後に行う旧GUIの単発再起動も失敗すると、installation は安全に旧版へ戻っていても画面が再表示されず、利用者が手動起動するまで停止する。
-- Expected Behavior: 新版とrollback後の旧版は、最大3ラウンド・100ms間隔、verbatim path時の非verbatim代替を含む同じbounded restart契約を使う。GUI childが500ms以内に終了した場合も再試行し、全試行失敗時は新版と旧版の両エラーを保持する。
+- Expected Behavior: 新版とrollback後の旧版は、最大3ラウンド・100ms間隔、verbatim path時の非verbatim代替を含む同じbounded restart契約を使い、起動元のrestart modeを維持する。Universal GUIはGUI、`fw --update`はHeadlessとして旧版を再起動する。GUI childが500ms以内に終了した場合も再試行し、全試行失敗時は新版と旧版の両エラーを保持する。
 - Non-goals: antivirus/WDACや権限設定を迂回すること、500ms経過後の任意時点のGUI crashを完全検出すること、production binaryを置換する自動試験。
 - Related Tests: TC-159, TC-160, TC-186; `tc186_regression_windows_restart_retries_a_transient_spawn_failure`, `tc186_regression_windows_restart_retries_without_verbatim_prefix`, `tc186_regression_windows_restart_exhaustion_is_bounded_and_diagnostic`, `tc186_regression_new_and_old_restart_failures_are_both_reported`.
 - Notes for Future Changes: restart attempt数、待機時間、path表現、GUI startup grace、rollback後の再起動error処理を変更するときはTC-186とVM-005を同一変更で確認し、旧版復旧を単発・silent failureへ戻さない。
+
+### Regression Guard: headless-restart-cleanup-handoff
+
+- Scenario: helperが全targetを`binary_committed/applied`へ更新して内部Headless restart childを生成した直後、childからlive helperへのexecutable identity照会が一時的に失敗して`Ambiguous`で即終了する。または`Deferred`のまま通常startupの5秒deadlineで終了する。その後helperも終了するとcleanup ownerが消え、helper/ack/lock/marker/backupが残る。
+- Expected Behavior: 通常startupの5秒上限とidentity mismatch時の`Ambiguous`契約は維持する。内部Headless restart childだけはvalidated terminal markerのhelper PID終了をartifact無変更で最大30秒待ち、終了観測後にmarkerと完全な新版bundleを再検証してtransaction artifactsをcleanupする。live helperのidentity APIはhandoff waitの判定に使わず、Universalと`fw`は同じ共通経路を使う。
+- Non-goals: 通常GUI startupの待機延長、live helperとの同時artifact変更、30秒を超えて停止したhelperの強制終了。
+- Related Tests: TC-159、TC-191、`tc159_headless_restart_handoff_outlives_normal_startup_deadline_regression`、`tc159_headless_handoff_waits_through_transient_helper_identity_failure_regression`。
+- Notes for Future Changes: internal restart flag、startup recovery deadline、helper process lifetime、またはtransaction cleanup ownerを変更するときはfocused unit testとWindows GNU Universal/Fw E2Eを同一変更で実行する。
+
+### Regression Guard: mixed-family updater feed isolation
+
+- Scenario: Universalと`fw`のloopback feed assetが同一payload/hashだとwrong-family asset selectionでも最終hash検証が成功し、family discriminatorの回帰を検出できない。また対象外familyのbinary/sidecarがsandboxに無いとcross-family mutationを検出できない。
+- Expected Behavior: 各fresh sandboxは対象assetとcounterpart assetに異なる有効PE overlay/hashを持ち、installed binaryは対象hashとだけ一致する。対象外familyのbinaryと3 sidecarをsentinelとしてseedし、更新後も全hashが不変であることをUniversal→Fwの連続signed E2Eで確認する。
+- Non-goals: 1transactionで両familyを更新すること、公開release assetの変更、test signing keyをsandbox childへ渡すこと。
+- Related Tests: TC-191、`test_manual_self_update_cleanup_and_signing_environment_are_fail_closed`、Windows GNU updater E2E。
+- Notes for Future Changes: mixed feedの両assetを同一copyへ戻さず、wrong-family選択が必ずinstalled hash mismatchになる識別力を維持する。
 
 ## SP-015 Ignore List フィルタ
 ### Requirements

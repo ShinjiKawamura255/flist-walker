@@ -211,6 +211,43 @@ impl ProcessProbe for TestProcessProbe {
     }
 }
 
+struct TimedHelperProbe<'a> {
+    helper_pid: u32,
+    clock_tick: &'a std::cell::Cell<u64>,
+    helper_exits_at_tick: u64,
+}
+
+impl ProcessProbe for TimedHelperProbe<'_> {
+    fn is_alive(&self, pid: u32) -> bool {
+        pid == self.helper_pid && self.clock_tick.get() < self.helper_exits_at_tick
+    }
+
+    fn executable_matches(&self, pid: u32, _expected: &Path) -> bool {
+        pid == self.helper_pid && self.clock_tick.get() < self.helper_exits_at_tick
+    }
+}
+
+struct TransientHelperIdentityProbe<'a> {
+    helper_pid: u32,
+    clock_tick: &'a std::cell::Cell<u64>,
+    helper_exits_at_tick: u64,
+    identity_queries: &'a std::cell::Cell<usize>,
+}
+
+impl ProcessProbe for TransientHelperIdentityProbe<'_> {
+    fn is_alive(&self, pid: u32) -> bool {
+        pid == self.helper_pid && self.clock_tick.get() < self.helper_exits_at_tick
+    }
+
+    fn executable_matches(&self, pid: u32, _expected: &Path) -> bool {
+        if pid == self.helper_pid {
+            self.identity_queries
+                .set(self.identity_queries.get().saturating_add(1));
+        }
+        false
+    }
+}
+
 struct Fixture {
     root: PathBuf,
     sources_dir: PathBuf,
@@ -286,6 +323,26 @@ fn assert_old_bundle(root: &Path, current_exe: &Path) {
         fs::read(root.join("THIRD_PARTY_NOTICES.txt")).expect("notices"),
         b"old-notices"
     );
+}
+
+fn commit_prepared_transaction(prepared: &PreparedTransaction) -> TransactionMarker {
+    let mut marker = read_marker(prepared.marker_path()).expect("marker");
+    marker.phase = Phase::ApplyingSidecars;
+    write_marker_atomic(prepared.marker_path(), &marker).expect("applying sidecars");
+    for index in 0..marker.targets.len() {
+        if marker.targets[index].role == TargetRole::Binary {
+            marker.phase = Phase::BinaryIntent;
+            write_marker_atomic(prepared.marker_path(), &marker).expect("binary intent");
+        }
+        marker.targets[index].state = TargetState::Intent;
+        write_marker_atomic(prepared.marker_path(), &marker).expect("intent");
+        apply_one_target(prepared.install_dir(), &marker, index).expect("apply");
+        marker.targets[index].state = TargetState::Applied;
+        write_marker_atomic(prepared.marker_path(), &marker).expect("applied");
+    }
+    marker.phase = Phase::BinaryCommitted;
+    write_marker_atomic(prepared.marker_path(), &marker).expect("committed");
+    marker
 }
 
 #[test]
@@ -619,7 +676,7 @@ fn tc193_fw_update_preserves_universal_sidecars_during_version_skew() {
 }
 
 #[test]
-fn tc159_restart_failure_restores_old_bundle_and_restarts_old_binary() {
+fn tc159_restart_failure_restores_old_bundle_and_preserves_headless_mode_regression() {
     let fixture = Fixture::new();
     let current_exe = fixture.current_exe();
     let mut prepared = prepare_transaction_with_id(
@@ -658,12 +715,52 @@ fn tc159_restart_failure_restores_old_bundle_and_restarts_old_binary() {
     assert_eq!(process.restart_calls(), 2);
     assert_eq!(
         process.restart_modes(),
-        &[UpdateRestartMode::Headless, UpdateRestartMode::Gui]
+        &[UpdateRestartMode::Headless, UpdateRestartMode::Headless]
     );
     let diagnostic = take_failure_record_from_install_dir(&fixture.root)
         .expect("read restart diagnostic")
         .expect("restart diagnostic");
     assert!(diagnostic.contains("injected restart failure"));
+}
+
+#[test]
+fn tc159_restart_failure_restores_old_bundle_and_preserves_gui_mode_regression() {
+    let fixture = Fixture::new();
+    let current_exe = fixture.current_exe();
+    let mut prepared = prepare_transaction_with_id(
+        &current_exe,
+        fixture.sources(),
+        "10112233445566778899aabbccddeeff",
+        42,
+    )
+    .expect("prepare");
+    prepared
+        .register_helper(77, "matching-start-token")
+        .expect("register");
+    acknowledge_registered_helper(
+        prepared.marker_path(),
+        77,
+        "matching-start-token",
+        prepared.helper_path(),
+    )
+    .expect("ack");
+    let mut process = TestProcessControl::restart_fails_then_old_succeeds();
+    let mut failures = NoFailure;
+
+    let result = execute_registered_transaction_with_restart_mode(
+        prepared.marker_path(),
+        "matching-start-token",
+        &mut process,
+        &mut failures,
+        UpdateRestartMode::Gui,
+    );
+
+    assert!(result.is_err());
+    assert_old_bundle(&fixture.root, &current_exe);
+    assert_eq!(
+        process.restart_modes(),
+        &[UpdateRestartMode::Gui, UpdateRestartMode::Gui]
+    );
 }
 
 #[test]
@@ -723,22 +820,7 @@ fn tc159_recovery_resumes_an_interrupted_postcommit_rollback() {
     prepared
         .register_helper(77, "registered-start-token")
         .expect("register helper");
-    let mut marker = read_marker(prepared.marker_path()).expect("marker");
-    marker.phase = Phase::ApplyingSidecars;
-    write_marker_atomic(prepared.marker_path(), &marker).expect("applying sidecars");
-    for index in 0..marker.targets.len() {
-        if marker.targets[index].role == TargetRole::Binary {
-            marker.phase = Phase::BinaryIntent;
-            write_marker_atomic(prepared.marker_path(), &marker).expect("binary intent");
-        }
-        marker.targets[index].state = TargetState::Intent;
-        write_marker_atomic(prepared.marker_path(), &marker).expect("intent");
-        apply_one_target(prepared.install_dir(), &marker, index).expect("apply");
-        marker.targets[index].state = TargetState::Applied;
-        write_marker_atomic(prepared.marker_path(), &marker).expect("applied");
-    }
-    marker.phase = Phase::BinaryCommitted;
-    write_marker_atomic(prepared.marker_path(), &marker).expect("committed");
+    let mut marker = commit_prepared_transaction(&prepared);
 
     marker.phase = Phase::RollingBack;
     write_marker_atomic(prepared.marker_path(), &marker).expect("rolling back");
@@ -823,6 +905,178 @@ fn tc159_recovery_defers_while_registered_helper_is_live() {
     assert_eq!(outcome, RecoveryOutcome::Deferred);
     assert!(!prepared.ack_path().exists());
     assert_old_bundle(&fixture.root, &current_exe);
+}
+
+#[test]
+fn tc159_headless_restart_handoff_outlives_normal_startup_deadline_regression() {
+    let fixture = Fixture::new();
+    let current_exe = fixture.current_exe();
+    let mut prepared = prepare_transaction_with_id(
+        &current_exe,
+        fixture.sources(),
+        "00112233445566778899aabbccddeeff",
+        42,
+    )
+    .expect("prepare");
+    prepared
+        .register_helper(77, "matching-start-token")
+        .expect("register");
+    acknowledge_registered_helper(
+        prepared.marker_path(),
+        77,
+        "matching-start-token",
+        prepared.helper_path(),
+    )
+    .expect("ack");
+    let mut marker = read_marker(prepared.marker_path()).expect("marker");
+    marker.phase = Phase::ApplyingSidecars;
+    write_marker_atomic(prepared.marker_path(), &marker).expect("applying sidecars");
+    for index in 0..marker.targets.len() {
+        if marker.targets[index].role == TargetRole::Binary {
+            marker.phase = Phase::BinaryIntent;
+            write_marker_atomic(prepared.marker_path(), &marker).expect("binary intent");
+        }
+        marker.targets[index].state = TargetState::Intent;
+        write_marker_atomic(prepared.marker_path(), &marker).expect("intent");
+        apply_one_target(prepared.install_dir(), &marker, index).expect("apply");
+        marker.targets[index].state = TargetState::Applied;
+        write_marker_atomic(prepared.marker_path(), &marker).expect("applied");
+    }
+    marker.phase = Phase::BinaryCommitted;
+    write_marker_atomic(prepared.marker_path(), &marker).expect("committed");
+
+    let tick = std::cell::Cell::new(0u64);
+    let probe = TimedHelperProbe {
+        helper_pid: 77,
+        clock_tick: &tick,
+        helper_exits_at_tick: 6,
+    };
+    let started = std::time::Instant::now();
+    let normal = recover_transaction_until_deadline(
+        prepared.marker_path(),
+        &probe,
+        STARTUP_RECOVERY_WAIT,
+        || {
+            let current = tick.get();
+            tick.set(current + 1);
+            started + Duration::from_secs(current)
+        },
+        |_| {},
+    )
+    .expect("bounded normal startup recovery");
+
+    assert_eq!(normal, RecoveryOutcome::Deferred);
+    assert!(prepared.marker_path().exists());
+    assert!(prepared.lock_path().exists());
+
+    tick.set(0);
+    let handoff = recover_headless_restart_handoff_until_deadline(
+        prepared.marker_path(),
+        &probe,
+        HEADLESS_RESTART_RECOVERY_WAIT,
+        || {
+            let current = tick.get();
+            tick.set(current + 1);
+            started + Duration::from_secs(current)
+        },
+        |_| {},
+    )
+    .expect("headless restart handoff recovery");
+
+    assert_eq!(handoff, RecoveryOutcome::Committed);
+    assert_eq!(
+        fs::read(&current_exe).expect("updated binary"),
+        b"new-binary"
+    );
+    assert!(!prepared.marker_path().exists());
+    assert!(!prepared.lock_path().exists());
+    assert!(!prepared.ack_path().exists());
+    assert!(!prepared.helper_path().exists());
+}
+
+#[test]
+fn tc159_headless_handoff_waits_through_transient_helper_identity_failure_regression() {
+    let fixture = Fixture::new();
+    let current_exe = fixture.current_exe();
+    let mut prepared = prepare_transaction_with_id(
+        &current_exe,
+        fixture.sources(),
+        "10112233445566778899aabbccddeeff",
+        42,
+    )
+    .expect("prepare");
+    prepared
+        .register_helper(77, "matching-start-token")
+        .expect("register");
+    acknowledge_registered_helper(
+        prepared.marker_path(),
+        77,
+        "matching-start-token",
+        prepared.helper_path(),
+    )
+    .expect("ack");
+    let marker = commit_prepared_transaction(&prepared);
+    let marker_before = fs::read(prepared.marker_path()).expect("marker evidence");
+    let binary_backup = backup_path(
+        prepared.install_dir(),
+        &marker.transaction_id,
+        TargetRole::Binary,
+    );
+
+    let tick = std::cell::Cell::new(0u64);
+    let identity_queries = std::cell::Cell::new(0usize);
+    let probe = TransientHelperIdentityProbe {
+        helper_pid: 77,
+        clock_tick: &tick,
+        helper_exits_at_tick: 4,
+        identity_queries: &identity_queries,
+    };
+
+    let normal = recover_transaction(prepared.marker_path(), &probe).expect("normal recovery");
+    assert_eq!(normal, RecoveryOutcome::Ambiguous);
+    assert_eq!(identity_queries.get(), 1);
+    assert_eq!(
+        fs::read(prepared.marker_path()).expect("preserved marker"),
+        marker_before
+    );
+    assert!(binary_backup.exists());
+
+    tick.set(0);
+    identity_queries.set(0);
+    let started = std::time::Instant::now();
+    let handoff = recover_headless_restart_handoff_until_deadline(
+        prepared.marker_path(),
+        &probe,
+        HEADLESS_RESTART_RECOVERY_WAIT,
+        || {
+            let current = tick.get();
+            tick.set(current + 1);
+            started + Duration::from_secs(current)
+        },
+        |_| {
+            assert_eq!(
+                fs::read(prepared.marker_path()).expect("handoff marker unchanged"),
+                marker_before
+            );
+            assert!(prepared.lock_path().exists());
+            assert!(prepared.ack_path().exists());
+            assert!(prepared.helper_path().exists());
+            assert!(binary_backup.exists());
+        },
+    )
+    .expect("headless handoff recovery");
+
+    assert_eq!(handoff, RecoveryOutcome::Committed);
+    assert_eq!(identity_queries.get(), 0);
+    assert_eq!(
+        fs::read(&current_exe).expect("updated binary"),
+        b"new-binary"
+    );
+    assert!(!prepared.marker_path().exists());
+    assert!(!prepared.lock_path().exists());
+    assert!(!prepared.ack_path().exists());
+    assert!(!prepared.helper_path().exists());
+    assert!(!binary_backup.exists());
 }
 
 #[test]
@@ -1374,7 +1628,7 @@ fn tc160_linux_synced_rename_preserves_the_old_dummy_file_as_backup() {
 }
 
 #[test]
-fn regression_manual_self_update_helper_requests_visible_gui() {
+fn regression_manual_self_update_process_environment_contract() {
     let helper = include_str!("../../../../scripts/manual-self-update-test.ps1");
 
     assert!(helper.contains("$psi.CreateNoWindow = $false"));
@@ -1382,4 +1636,12 @@ fn regression_manual_self_update_helper_requests_visible_gui() {
     assert!(helper.contains("$psi.EnvironmentVariables['LOCALAPPDATA'] = $LocalAppDataDir"));
     assert!(helper.contains("$psi.EnvironmentVariables['APPDATA'] = $RoamingAppDataDir"));
     assert!(helper.contains("$psi.EnvironmentVariables['USERPROFILE'] = $UserProfileDir"));
+    assert!(!helper.contains("Remove-Item Env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX"));
+    assert!(
+        helper.contains("$psi.EnvironmentVariables.Remove('FLISTWALKER_UPDATE_SIGNING_KEY_HEX')")
+    );
+    assert!(
+        helper.find("$psi.EnvironmentVariables.Remove('FLISTWALKER_UPDATE_SIGNING_KEY_HEX')")
+            < helper.find("[System.Diagnostics.Process]::Start($psi)")
+    );
 }

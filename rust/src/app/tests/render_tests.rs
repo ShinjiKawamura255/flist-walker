@@ -1,6 +1,69 @@
 use super::*;
 use crate::updater::AutoUpdateAssets;
 
+#[test]
+fn results_renderer_processes_only_visible_rows_regression() {
+    let root = test_root("visible-result-rows");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 20_000, String::new());
+    app.shell.runtime.results = (0..10_000)
+        .map(|index| (root.join(format!("item-{index:05}.txt")), 0.0))
+        .collect();
+    app.shell.runtime.total_match_count = app.shell.runtime.results.len();
+    app.shell.runtime.current_row = Some(9_999);
+    app.request_scroll_to_current();
+    let ctx = egui::Context::default();
+    let input = || egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(800.0, 600.0),
+        )),
+        ..Default::default()
+    };
+
+    render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+    let _ = ctx.run_ui(input(), |ui| {
+        render_panels::render_results_list(&mut app, ui)
+    });
+    let first_frame = render_panels::take_result_render_probe();
+    assert!(first_frame.rendered_rows.len() < 100);
+
+    render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+    let _ = ctx.run_ui(input(), |ui| {
+        render_panels::render_results_list(&mut app, ui)
+    });
+    let second_frame = render_panels::take_result_render_probe();
+    assert!(!second_frame.rendered_rows.is_empty());
+    assert!(second_frame.rendered_rows.len() < 100);
+    assert!(
+        second_frame.rendered_rows.contains(&9_999),
+        "offscreen current row must be rendered after the scroll frame: {:?}",
+        second_frame.rendered_rows
+    );
+
+    let visible_absolute_index = second_frame.rendered_rows[0];
+    render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::Click(
+        visible_absolute_index,
+    ));
+    let _ = ctx.run_ui(input(), |ui| {
+        render_panels::render_results_list(&mut app, ui)
+    });
+    let click_frame = render_panels::take_result_render_probe();
+    assert_eq!(app.shell.runtime.current_row, Some(visible_absolute_index));
+    assert!(click_frame.action_rows.is_empty());
+
+    render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::DoubleClick(
+        visible_absolute_index,
+    ));
+    let _ = ctx.run_ui(input(), |ui| {
+        render_panels::render_results_list(&mut app, ui)
+    });
+    let double_click_frame = render_panels::take_result_render_probe();
+    assert_eq!(double_click_frame.action_rows, vec![visible_absolute_index]);
+    assert_eq!(app.shell.runtime.current_row, Some(visible_absolute_index));
+    let _ = fs::remove_dir_all(&root);
+}
+
 fn test_render_update_candidate() -> UpdateCandidate {
     UpdateCandidate {
         current_version: "0.16.1".to_string(),

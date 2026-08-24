@@ -7,8 +7,8 @@
 - MUST: フッター右端に現在 version を常時表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: ハイライトは search と同じ query interpretation を用い、検索結果と表示が一致するようにする。
-- MUST: 検索結果の再適用時は current row の行番号を維持し、結果数が減った場合のみ末尾へ丸める。未選択状態は自動選択に変換しない。
-- MUST: GUI 起動直後および `Ctrl+G` / `Esc` による検索キャンセル後は、候補が存在する場合 current row を 1 行目へ既定化して表示する。
+- MUST: 表示中の Results が空なら current row は `None`、1件以上なら常に範囲内の `Some(row)` とする。検索・sort・filter・preset・tab/session restore・非同期応答による結果再適用では、従来の行番号を結果末尾へ丸め、従来行がなければ0行目を選択する。非active tabで結果配列をcompactionした間だけ、再表示用のbase resultsに対するselection保持を許す。
+- MUST: GUI 起動直後および `Ctrl+G` / `Esc` による検索キャンセル後も、上記 Results/current row invariantを次の描画までに満たす。
 - MUST: 複数選択と一括アクションを提供する。
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
 - MUST: 本文プレビューは拡張子で制限せず、UTF-8、BOM 付き UTF-16、および主要 OS で一般的なレガシー文字コードを順に解釈して、テキストとして安全に復号できた内容を表示する。
@@ -29,6 +29,7 @@
 - MUST: `Ctrl+R` で履歴検索モードを開始し、同じ検索欄で query history をファジー検索できる。
 - MUST: 履歴検索モード中は履歴検索中であることがわかる表記を行い、結果一覧は履歴候補一覧へ切り替える。
 - MUST: 履歴検索モード中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして開始前 query へ戻す。
+- MUST: preset適用、履歴検索の確定・キャンセルなどがquery文字列をprogrammaticに置換した場合、検索欄へfocusを戻し、TextEditのcursorを置換後query末尾へ移動する。
 - MUST: 検索オプションに `Ignore Case` チェックボックスを表示し、既定で有効にする。無効化時は検索結果とハイライトの両方を case-sensitive に切り替える。
 - SHOULD: query 履歴は打鍵ごとではなく、一定時間の無入力または結果移動開始を契機に確定する。
 - SHOULD: IME 合成中の未確定文字列は query 履歴へ保存せず、変換確定後の query のみ履歴対象とする。
@@ -37,6 +38,7 @@
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除を実行する。runtime config の `tab_pin_moves_to_next_row` が `false` または未指定のときは選択行移動を行わず、`true` のときは PIN 固定/解除後に選択行を次行へ進める。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
 - MUST: search / index の非同期応答は、active request_id または request-tab routing で結び付いた background tab に対してのみ適用し、stale 応答で現在の root / tab / result state を巻き戻してはならない。
+- MUST: background tab の search/sort 応答で選択中 path が変わった場合は、`None`から`Some(path)`への遷移も含め、その tab の旧 preview と pending preview routing を無効化する。非compactionのinactive化で完了済みpreview本文を破棄する場合もtab scoped reload pendingを記録する。tab activation時はcompaction復元または明示reload pendingの場合だけ、新しいcurrent pathのpreviewを既存の非同期/cache worker経路へ要求し、通常activationで無条件要求してはならず、無効化前の遅延`PreviewResponse`も採用してはならない。session restoreのlazy index refreshとreloadが重なる場合は、preview request ownershipをrefreshで消さないようrefreshを先にdispatchし、必要ならkind resolutionを経てpreviewを要求する。
 - MUST: active indexing 中にタブ切替で request が background tab に移った場合、GUI は切替前に active tab 側へ取り込み済みの entries、未 drain の pending entries、切替後の background batches を同じ request_id の完了 snapshot として統合しなければならない。ただし同じ request_id で `ReplaceAll` を受けた場合は、切替前の部分 snapshot を混ぜず置換 snapshot のみで確定しなければならない。
 - MUST: 通常のタブ切替では、active tab の index entries、pending index entries、kind resolution collections、incremental filtered entries、base results、results、entry-kind cache を要素単位で複製または全件再構築してはならない。active tab の live payload と inactive tab の保持 payload は ownership transfer で入れ替えなければならない。
 - MUST: active tab の root、検索オプション、query/history、result/selection/preview、notice、pending request、index/search/sort/action/preview の進行状態は、切替、並べ替え、新規作成、close、closed-tab restore、session restore の前後で tab identity と対応し続けなければならない。新規タブ生成前に未確定の共有 query history を確定し、active request の応答は live state、background request の応答は対応する inactive tab state だけを更新しなければならない。request routing が active tab ID を返しても live pending request_id と一致しない応答を active slot の scratch payload へ適用してはならない。
@@ -51,6 +53,7 @@
 - MUST: `Finished` 応答後の内部後処理 drain は、探索中の表示更新より小さい件数上限を用い、完了速度より入力応答性を優先しなければならない。
 - MUST: Walker が上限打ち切り（`Truncated`）に到達した場合でも、GUI は終端直前の大きな batch backlog を過小な固定件数で長時間 drain し続けてはならない。frame budget を応答性の上限として維持しつつ、`Indexing...` の終端尾を短く保てる件数を 1 frame 内で吸収しなければならない。
 - MUST: indexing 中の空クエリ・フィルタなし表示では、表示更新のたびに全候補の表示用スナップショットを複製してはならない。表示に必要な上位件数だけを更新し、全件 snapshot は terminal state で確定させなければならない。
+- MUST: Results描画はviewport内の行だけをwidget化し、offscreen pathのclone、highlight/layout、widget allocationを行ってはならない。offscreen current rowへのscroll、click/double-clickの絶対index、横方向layout、highlight、preview要求は維持する。描画回帰計測はprocess-global stateを使わずthread-localかつ1描画呼出し単位で隔離し、外部actionを起動せず絶対indexだけを記録する。
 - MUST: active indexing 中に空クエリ・フィルタなし状態へ戻す場合、表示更新のために蓄積済み index entries を `runtime.entries` へ全件 clone してはならない。
 - MUST: indexing 中にフィルタ適用済みの増分 snapshot を保持している場合、`Finished` 後の terminal state 確定はその snapshot を再利用し、全候補を UI thread で再フィルタしてはならない。
 - MUST: kind filter 用の unknown path queue 構築は、対象 entry 全件の `PathBuf` 中間配列を UI thread 上で作ってはならない。entry 自体または cache で kind が既知の path と、既存 queue / in-flight の path を除外しながら直接 queue へ積まなければならない。

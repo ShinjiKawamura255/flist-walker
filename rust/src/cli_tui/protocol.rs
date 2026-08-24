@@ -61,6 +61,12 @@ pub(super) enum WorkerResponse {
 }
 
 pub(super) enum FileListWorkerResult {
+    DiscoveryFinished {
+        request_id: u64,
+        root: PathBuf,
+        discovered: Option<PathBuf>,
+        canceled: bool,
+    },
     Finished {
         request_id: u64,
         root: PathBuf,
@@ -185,12 +191,19 @@ impl TuiRuntimeOptions {
 }
 
 #[derive(Clone, Debug)]
+pub(super) enum FileListDiscoveryOwnership {
+    WorkerOwned,
+    Completed(Option<PathBuf>),
+}
+
+#[derive(Clone, Debug)]
 pub(super) struct IndexRequest {
     pub(super) request_id: u64,
     pub(super) root: PathBuf,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) source: TuiSource,
+    pub(super) filelist_discovery: FileListDiscoveryOwnership,
     pub(super) max_depth: MaxDepth,
 }
 
@@ -230,6 +243,12 @@ pub(super) struct TuiFileListRequest {
     pub(super) root: PathBuf,
     pub(super) propagate_to_ancestors: bool,
     pub(super) allow_root_overwrite: bool,
+    pub(super) cancel: Arc<AtomicBool>,
+}
+
+pub(super) struct TuiFileListDiscoveryRequest {
+    pub(super) request_id: u64,
+    pub(super) root: PathBuf,
     pub(super) cancel: Arc<AtomicBool>,
 }
 
@@ -284,6 +303,7 @@ pub(super) struct EventLoopContext<'a> {
     pub(super) action_tx: &'a mpsc::Sender<TuiActionRequest>,
     pub(super) rx: &'a mpsc::Receiver<WorkerResponse>,
     pub(super) root: PathBuf,
+    pub(super) initial_filelist_discovery: FileListDiscoveryOwnership,
     pub(super) saved_roots: Vec<PathBuf>,
     pub(super) options: &'a CliTuiOptions,
     pub(super) history_enabled: bool,

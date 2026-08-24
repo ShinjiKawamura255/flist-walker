@@ -23,11 +23,20 @@ use rand_core::{OsRng, RngCore};
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const FAILURE_RECORD_FILE_NAME: &str = ".flistwalker-update-failure.json";
 const FAILURE_RECORD_VERSION: u32 = 1;
 const FAILURE_RECORD_MAX_BYTES: u64 = 16 * 1024;
+const RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(25);
+const STARTUP_RECOVERY_WAIT: Duration = Duration::from_secs(5);
+const HEADLESS_RESTART_RECOVERY_WAIT: Duration = Duration::from_secs(30);
+
+#[derive(Clone, Copy)]
+enum RecoveryWaitMode {
+    Startup,
+    HeadlessRestartHandoff,
+}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct UpdateFailureRecord {
@@ -354,7 +363,9 @@ fn execute_registered_transaction_with_restart_mode(
         // diagnostics immediately after spawn, so writing only after restart returns would race
         // and defer the message until a later application launch.
         let _ = write_failure_record(&install_dir, &marker.transaction_id, &restart_error);
-        if let Err(rollback_restart_error) = process.restart(&binary, UpdateRestartMode::Gui) {
+        // Regression guard: rollback must preserve the invoking variant's launch mode;
+        // restarting `fw` as GUI can run an unintended headless search with no arguments.
+        if let Err(rollback_restart_error) = process.restart(&binary, restart_mode) {
             return Err(anyhow::anyhow!(
                 "failed to restart updated application: {err:#}; old bundle restored but its restart also failed: {rollback_restart_error:#}"
             ));
@@ -771,6 +782,31 @@ pub(super) fn take_failure_record_from_install_dir(install_dir: &Path) -> Result
 }
 
 pub(super) fn recover_current_installation(current_exe: &Path) -> Result<Option<RecoveryOutcome>> {
+    recover_current_installation_with_wait(
+        current_exe,
+        STARTUP_RECOVERY_WAIT,
+        RecoveryWaitMode::Startup,
+    )
+}
+
+pub(super) fn recover_current_installation_after_headless_restart(
+    current_exe: &Path,
+) -> Result<Option<RecoveryOutcome>> {
+    // Regression guard: the hidden restart child is the only cleanup owner after
+    // spawn. It must outlive a slow helper exit instead of returning Deferred at
+    // the normal GUI startup deadline and orphaning a committed transaction.
+    recover_current_installation_with_wait(
+        current_exe,
+        HEADLESS_RESTART_RECOVERY_WAIT,
+        RecoveryWaitMode::HeadlessRestartHandoff,
+    )
+}
+
+fn recover_current_installation_with_wait(
+    current_exe: &Path,
+    recovery_wait: Duration,
+    mode: RecoveryWaitMode,
+) -> Result<Option<RecoveryOutcome>> {
     validate_regular_file(current_exe, "current executable")?;
     let canonical = current_exe
         .canonicalize()
@@ -790,24 +826,168 @@ pub(super) fn recover_current_installation(current_exe: &Path) -> Result<Option<
         }
         return Ok(None);
     }
-    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    match mode {
+        RecoveryWaitMode::Startup => recover_transaction_until_deadline(
+            &marker_path,
+            &probe,
+            recovery_wait,
+            Instant::now,
+            std::thread::sleep,
+        ),
+        RecoveryWaitMode::HeadlessRestartHandoff => {
+            recover_headless_restart_handoff_until_deadline(
+                &marker_path,
+                &probe,
+                recovery_wait,
+                Instant::now,
+                std::thread::sleep,
+            )
+        }
+    }
+    .map(Some)
+}
+
+fn recover_transaction_until_deadline<N, S>(
+    marker_path: &Path,
+    process_probe: &impl ProcessProbe,
+    recovery_wait: Duration,
+    mut now: N,
+    mut pause: S,
+) -> Result<RecoveryOutcome>
+where
+    N: FnMut() -> Instant,
+    S: FnMut(Duration),
+{
+    let deadline = now()
+        .checked_add(recovery_wait)
+        .context("updater recovery deadline overflow")?;
+    recover_transaction_until_instant(marker_path, process_probe, deadline, &mut now, &mut pause)
+}
+
+fn recover_transaction_until_instant<N, S>(
+    marker_path: &Path,
+    process_probe: &impl ProcessProbe,
+    deadline: Instant,
+    now: &mut N,
+    pause: &mut S,
+) -> Result<RecoveryOutcome>
+where
+    N: FnMut() -> Instant,
+    S: FnMut(Duration),
+{
     loop {
-        let outcome = recover_transaction(&marker_path, &probe)?;
+        let outcome = recover_transaction(marker_path, process_probe)?;
         if outcome == RecoveryOutcome::Ambiguous {
             bail!(
                 "ambiguous updater transaction preserved for operator recovery: marker={}, lock={}",
                 marker_path.display(),
-                install_dir.join(LOCK_FILE_NAME).display()
+                marker_path
+                    .parent()
+                    .context("transaction marker has no parent")?
+                    .join(LOCK_FILE_NAME)
+                    .display()
             );
         }
         if outcome != RecoveryOutcome::Deferred {
-            return Ok(Some(outcome));
+            return Ok(outcome);
         }
-        if std::time::Instant::now() >= deadline {
-            return Ok(Some(RecoveryOutcome::Deferred));
+        if now() >= deadline {
+            return Ok(RecoveryOutcome::Deferred);
         }
-        std::thread::sleep(Duration::from_millis(25));
+        pause(RECOVERY_RETRY_INTERVAL);
     }
+}
+
+struct ExitedHelperProbe<'a, P> {
+    inner: &'a P,
+    helper_pid: u32,
+}
+
+impl<P: ProcessProbe> ProcessProbe for ExitedHelperProbe<'_, P> {
+    fn is_alive(&self, pid: u32) -> bool {
+        pid != self.helper_pid && self.inner.is_alive(pid)
+    }
+
+    fn executable_matches(&self, pid: u32, expected: &Path) -> bool {
+        pid != self.helper_pid && self.inner.executable_matches(pid, expected)
+    }
+
+    fn is_current_process(&self, pid: u32) -> bool {
+        self.inner.is_current_process(pid)
+    }
+}
+
+fn recover_headless_restart_handoff_until_deadline<N, S>(
+    marker_path: &Path,
+    process_probe: &impl ProcessProbe,
+    recovery_wait: Duration,
+    mut now: N,
+    mut pause: S,
+) -> Result<RecoveryOutcome>
+where
+    N: FnMut() -> Instant,
+    S: FnMut(Duration),
+{
+    let deadline = now()
+        .checked_add(recovery_wait)
+        .context("updater recovery deadline overflow")?;
+    let marker = read_marker(marker_path)?;
+    let _install_dir = validated_marker_parent(marker_path, &marker)?;
+    let terminal_handoff = matches!(marker.phase, Phase::BinaryCommitted | Phase::RolledBack);
+    let Some(helper_pid) = marker.helper_pid.filter(|_| terminal_handoff) else {
+        return recover_transaction_until_instant(
+            marker_path,
+            process_probe,
+            deadline,
+            &mut now,
+            &mut pause,
+        );
+    };
+    if marker.parent_pid == helper_pid {
+        return recover_transaction_until_instant(
+            marker_path,
+            process_probe,
+            deadline,
+            &mut now,
+            &mut pause,
+        );
+    }
+    if process_probe.is_current_process(helper_pid) {
+        return recover_transaction_until_instant(
+            marker_path,
+            process_probe,
+            deadline,
+            &mut now,
+            &mut pause,
+        );
+    }
+
+    // Regression guard: QueryFullProcessImageNameW can transiently fail for the
+    // live helper immediately after restart spawn. This internal, terminal-phase
+    // handoff waits without mutating artifacts or weakening normal startup's
+    // fail-closed identity check, then re-runs full hash/classification recovery.
+    while process_probe.is_alive(helper_pid) {
+        if now() >= deadline {
+            return Ok(RecoveryOutcome::Deferred);
+        }
+        pause(RECOVERY_RETRY_INTERVAL);
+    }
+    let settled_marker = read_marker(marker_path)?;
+    let _install_dir = validated_marker_parent(marker_path, &settled_marker)?;
+    if settled_marker.transaction_id != marker.transaction_id
+        || settled_marker.helper_pid != Some(helper_pid)
+        || !matches!(
+            settled_marker.phase,
+            Phase::BinaryCommitted | Phase::RolledBack
+        )
+    {
+        bail!("updater transaction changed during headless restart handoff");
+    }
+    let exited_helper = ExitedHelperProbe {
+        inner: process_probe,
+        helper_pid,
+    };
+    recover_transaction_until_instant(marker_path, &exited_helper, deadline, &mut now, &mut pause)
 }
 
 fn recover_orphan_preparation(

@@ -15,6 +15,14 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - Dependabot PR は CI 成功後に `.github/workflows/dependabot-auto-merge.yml` が同じ rebase auto-merge を1回だけ登録する。
 - 失敗を再実行だけで消してはならない。runner/network/cache など外部一時障害と判断できる証跡がある場合に限り、run URL と判断を残して再実行する。
 
+### Regression Guard: updater E2E variant completeness
+
+- Scenario: updater E2EをUniversal単独からUniversal/Fwへ拡張した後もtrusted checkerが旧single-artifact pathと単一payload markerを要求し、新workflowを拒否する一方でfw側の欠落を検出できない。
+- Expected Behavior: VM-009はUniversal/Fw両方のexact artifact path、別々のpayload marker、両variant定義、`-Variant`付きsandbox invocationのいずれか1つでも欠ければ失敗する。
+- Non-goals: production release feedへの接続、test-channel keyのrelease workflowへの導入、同一sandboxのvariant間共有。
+- Related Tests: `test_ci_contract_requires_both_windows_gnu_updater_variants_regression`。
+- Notes for Future Changes: updater variantを追加または改名する場合はworkflow、trusted checker、各tokenのnegative testを同一変更で更新する。
+
 ## Version-addressed required environment
 
 | Surface | Required value |

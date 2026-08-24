@@ -611,6 +611,94 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
 }
 
 #[test]
+fn tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression() {
+    let root = test_root("native-filelist-terminal-deadline");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    std::fs::write(root.join("entry.txt"), "entry").expect("write entry");
+    std::fs::write(root.join("FileList.txt"), "entry.txt\n").expect("write FileList");
+
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let request_id = 1;
+    let tab_id = 7;
+    let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(tab_id, request_id)])));
+    let (tx, rx, handles) = spawn_index_worker(Arc::clone(&shutdown), latest_request_ids);
+    tx.send(IndexRequest {
+        request_id,
+        tab_id,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    })
+    .expect("send FileList index request");
+
+    let deadline = Instant::now() + Duration::from_secs(2);
+    let mut started = false;
+    let mut finished = false;
+    let mut indexed_entry = false;
+    while !finished {
+        let remaining = deadline
+            .checked_duration_since(Instant::now())
+            .expect("tiny local FileList request exceeded terminal deadline");
+        match rx
+            .recv_timeout(remaining)
+            .expect("tiny local FileList request must settle")
+        {
+            IndexResponse::Started {
+                request_id: response_id,
+                source: IndexSource::FileList(_),
+            } => {
+                assert_eq!(response_id, request_id);
+                started = true;
+            }
+            IndexResponse::Batch {
+                request_id: response_id,
+                entries,
+            } => {
+                assert_eq!(response_id, request_id);
+                indexed_entry |= entries.iter().any(|entry| {
+                    entry
+                        .path
+                        .file_name()
+                        .is_some_and(|name| name == "entry.txt")
+                });
+            }
+            IndexResponse::Finished {
+                request_id: response_id,
+                source: IndexSource::FileList(_),
+            } => {
+                assert_eq!(response_id, request_id);
+                finished = true;
+            }
+            IndexResponse::Started { source, .. } => {
+                panic!("unexpected start source: {}", index_source_kind(&source))
+            }
+            IndexResponse::Finished { source, .. } => {
+                panic!("unexpected finish source: {}", index_source_kind(&source))
+            }
+            IndexResponse::Canceled { .. } => panic!("FileList request was canceled"),
+            IndexResponse::Failed { error, .. } => panic!("FileList request failed: {error}"),
+            IndexResponse::ReplaceAll { .. } => panic!("unexpected replacement response"),
+            IndexResponse::Truncated { .. } => panic!("unexpected truncation response"),
+        }
+    }
+    assert!(started, "FileList source must be visible before completion");
+    assert!(
+        indexed_entry,
+        "FileList entry must be emitted before completion"
+    );
+
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    for handle in handles {
+        handle.join().expect("join index worker");
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_152_filelist_restore_index_regression_cancels_before_filelist_start() {
     let root = test_root("filelist-restore-stale-after-root-resolution");
     let _ = std::fs::remove_dir_all(&root);

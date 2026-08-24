@@ -13,16 +13,48 @@ fn clear_tab_result_selection(tab: &mut AppTabState) {
     tab.clear_preview_request_state();
 }
 
+fn normalized_result_row(current_row: Option<usize>, results_len: usize) -> Option<usize> {
+    if results_len == 0 {
+        return None;
+    }
+    // Regression guard: a visible non-empty Results snapshot must never lose its
+    // cursor; programmatic replacement selects row zero when no prior row exists.
+    Some(current_row.unwrap_or(0).min(results_len - 1))
+}
+
 fn clamp_tab_result_selection(tab: &mut AppTabState) {
     if tab.result_state.results.is_empty() {
         clear_tab_result_selection(tab);
         return;
     }
-    let max_index = tab.result_state.results.len().saturating_sub(1);
-    tab.result_state.current_row = tab
-        .result_state
+    tab.result_state.current_row =
+        normalized_result_row(tab.result_state.current_row, tab.result_state.results.len());
+}
+
+fn selected_tab_path(tab: &AppTabState) -> Option<&PathBuf> {
+    let results = if tab.result_state.results_compacted {
+        &tab.result_state.base_results
+    } else {
+        &tab.result_state.results
+    };
+    tab.result_state
         .current_row
-        .map(|row: usize| row.min(max_index));
+        .and_then(|row| results.get(row).map(|(path, _)| path))
+}
+
+fn invalidate_background_preview_if_selection_changed(
+    tab: &mut AppTabState,
+    previous_path: Option<&PathBuf>,
+) -> bool {
+    if selected_tab_path(tab) == previous_path {
+        return false;
+    }
+    // Regression guard: an inactive tab may receive search/sort after its preview.
+    // Never carry that old path's preview or request ownership into activation.
+    tab.result_state.preview.clear();
+    tab.clear_preview_request_state();
+    tab.mark_preview_reload_pending();
+    true
 }
 
 pub(super) fn apply_results_with_selection_policy(
@@ -31,10 +63,6 @@ pub(super) fn apply_results_with_selection_policy(
     keep_scroll_position: bool,
     preserve_selected_path: bool,
 ) {
-    fn clamp_row(current_row: Option<usize>, results_len: usize) -> Option<usize> {
-        current_row.map(|row| row.min(results_len.saturating_sub(1)))
-    }
-
     let selected_path = preserve_selected_path
         .then(|| {
             app.shell.runtime.current_row.and_then(|row| {
@@ -53,7 +81,7 @@ pub(super) fn apply_results_with_selection_policy(
         app.shell.runtime.preview.clear();
         app.shell.worker_bus.preview.clear_request();
     } else {
-        let previous_row = clamp_row(previous_row, app.shell.runtime.results.len());
+        let previous_row = normalized_result_row(previous_row, app.shell.runtime.results.len());
         app.set_current_row(
             selected_path
                 .and_then(|selected| {
@@ -87,6 +115,7 @@ pub(super) fn apply_background_search_response(
     let Some(tab) = app.shell.tabs.get_mut(tab_index) else {
         return;
     };
+    let previous_path = selected_tab_path(tab).cloned();
     tab.clear_search_request_state();
     tab.notice = response
         .error
@@ -100,7 +129,14 @@ pub(super) fn apply_background_search_response(
     tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
     clamp_tab_result_selection(tab);
+    let preview_invalidated =
+        invalidate_background_preview_if_selection_changed(tab, previous_path.as_ref());
     FlistWalkerApp::compact_inactive_tab_state(tab);
+    if preview_invalidated {
+        app.shell
+            .tabs
+            .clear_preview_response_routing_for_tab(tab_id);
+    }
 }
 
 pub(super) fn apply_active_search_response(
@@ -323,6 +359,7 @@ pub(super) fn apply_background_sort_response(
     }
     tab.result_state.clear_sort_request_state();
     if response.mode == tab.result_state.result_sort_mode {
+        let previous_path = selected_tab_path(tab).cloned();
         tab.result_state.results = FlistWalkerApp::build_sorted_results_from(
             &tab.result_state.base_results,
             tab.result_state.result_sort_mode,
@@ -334,13 +371,17 @@ pub(super) fn apply_background_sort_response(
             tab.result_state.preview.clear();
             tab.clear_preview_request_state();
         } else {
-            let max_index = tab.result_state.results.len().saturating_sub(1);
-            tab.result_state.current_row = tab
-                .result_state
-                .current_row
-                .map(|row: usize| row.min(max_index));
+            tab.result_state.current_row =
+                normalized_result_row(tab.result_state.current_row, tab.result_state.results.len());
         }
+        let preview_invalidated =
+            invalidate_background_preview_if_selection_changed(tab, previous_path.as_ref());
         FlistWalkerApp::compact_inactive_tab_state(tab);
+        if preview_invalidated {
+            app.shell
+                .tabs
+                .clear_preview_response_routing_for_tab(tab_id);
+        }
     }
 }
 

@@ -617,6 +617,10 @@ impl TabSessionState {
         self.request_tab_routing.clear_for_tab(tab_id);
     }
 
+    pub(super) fn clear_preview_response_routing_for_tab(&mut self, tab_id: u64) {
+        self.request_tab_routing.clear_preview_for_tab(tab_id);
+    }
+
     pub(super) fn clear_action_request_routing(&mut self) {
         self.request_tab_routing.clear_action();
     }

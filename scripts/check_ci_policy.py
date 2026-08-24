@@ -303,12 +303,21 @@ def validate_ci_contract(text: str) -> list[str]:
         "Windows GNU updater gate dependency": "      - windows-gnu-update-e2e",
         "Windows GNU updater gate result": "WINDOWS_GNU_UPDATE_RESULT",
         "Windows GNU artifact directory": "artifact_dir: rust",
-        "Windows GNU artifact path": "path: ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+        # Regression guard: Universal and fw are independently self-updatable;
+        # dropping either artifact, marker, or loop variant must fail VM-009.
+        "Windows GNU Universal artifact path": "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+        "Windows GNU fw artifact path": "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/fw.exe",
         "manifest signer public key": "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
         "test-channel public key": "FLISTWALKER_UPDATE_TEST_CHANNEL",
+        "Windows GNU Universal updater variant": "Variant = 'Universal'",
+        "Windows GNU fw updater variant": "Variant = 'Fw'",
         "sandbox updater invocation": "-Automated -CleanupSandbox",
-        "distinct updater payload marker": "FLISTWALKER_UPDATE_E2E_PAYLOAD_V1",
+        "Universal updater payload marker": "FLISTWALKER_UPDATE_E2E_PAYLOAD_Universal_V1",
+        "fw updater payload marker": "FLISTWALKER_UPDATE_E2E_PAYLOAD_Fw_V1",
+        "sandbox updater variant argument": "-Variant $case.Variant",
         "distinct updater payload invocation": "-AppPath $artifact -UpdateBinaryPath $updatePayload",
+        "Windows GNU caller signing key snapshot": "$callerSigningKey = $env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX",
+        "Windows GNU caller signing key preservation": "if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX -cne $callerSigningKey)",
         "audit gate dependency": "      - cargo-audit",
         "lint gate dependency": "      - lint-and-coverage",
     }
@@ -340,6 +349,24 @@ def validate_release_contract(text: str) -> list[str]:
     for label, token in forbidden_test_material.items():
         if token in text:
             violations.append(f"release-tagged.yml: contains forbidden {label}")
+    required_n_minus_one = {
+        "latest published release lookup": (
+            'previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" '
+            "--jq .tag_name)\""
+        ),
+        # Regression guard: validate the contiguous trusted invocation, not loose
+        # argument tokens that may occur in unrelated release steps.
+        "N-1 compatibility checker invocation": (
+            "python3 ./scripts/check-updater-n-minus-one-compatibility.py \\\n"
+            '            --previous-version "$previous_version" \\\n'
+            '            --candidate-version "$candidate_version" \\\n'
+            "            --manifest release-bundle/SHA256SUMS \\\n"
+            '            "${bridge[@]}"'
+        ),
+    }
+    for label, token in required_n_minus_one.items():
+        if token not in text:
+            violations.append(f"release-tagged.yml: missing {label}")
     return violations
 
 

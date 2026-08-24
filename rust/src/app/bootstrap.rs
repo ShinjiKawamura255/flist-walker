@@ -352,7 +352,7 @@ impl FlistWalkerApp {
                     result_sort_scope: ResultSortScope::ShownResults,
                     total_match_count: 0,
                     pinned_paths: HashSet::new(),
-                    current_row: Some(0),
+                    current_row: None,
                     emacs_keybindings_enabled,
                     tab_pin_moves_to_next_row,
                     preview: String::new(),
