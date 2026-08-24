@@ -1593,6 +1593,22 @@ fn find_filelist_in_first_level_only_checks_root() {
 }
 
 #[test]
+fn find_filelist_cancellable_regression_stops_when_request_is_stale() {
+    let root = test_root("find-filelist-cancellable-regression");
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("neighbor.txt"), "neighbor").expect("write neighbor");
+
+    let checks = AtomicUsize::new(0);
+    let result = find_filelist_in_first_level_cancellable(&root, || {
+        checks.fetch_add(1, Ordering::SeqCst) > 1
+    });
+
+    assert_eq!(result, Err(FileListDiscoveryCanceled));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn build_index_overrides_subtree_with_newer_nested_filelist() {
     let root = test_root("nested-filelist-newer");
     let child = root.join("child");

@@ -4,7 +4,7 @@ use super::worker_channel::{
 use super::worker_protocol::{IndexEntry, IndexRequest, IndexResponse};
 use crate::entry::EntryKind;
 use crate::indexer::{
-    apply_filelist_hierarchy_overrides_with_max_depth, find_filelist_in_first_level,
+    apply_filelist_hierarchy_overrides_with_max_depth, find_filelist_in_first_level_cancellable,
     parse_filelist_stream_with_max_depth, IndexSource, MaxDepth,
 };
 use crate::runtime_config::current_runtime_config;
@@ -737,24 +737,38 @@ fn spawn_index_worker_with(
                 }
 
                 let root = resolve_root_worker(&req.root);
-                let result = if req.use_filelist {
-                    if let Some(filelist) = find_filelist_in_first_level(&root) {
-                        stream_filelist_index(
+                let request_is_current = || {
+                    !shutdown_worker.load(Ordering::Relaxed)
+                        && latest_request_ids_worker
+                            .lock()
+                            .ok()
+                            .and_then(|latest| latest.get(&req.tab_id).copied())
+                            == Some(req.request_id)
+                };
+                // Restore-tab prioritization can stale a background request while root
+                // resolution is returning; do not enter FileList discovery because a
+                // large root scan would otherwise delay the newly active tab.
+                let result = if !request_is_current() {
+                    Err("superseded".to_string())
+                } else if req.use_filelist {
+                    match find_filelist_in_first_level_cancellable(&root, request_is_current) {
+                        Err(_) => Err("superseded".to_string()),
+                        Ok(Some(filelist)) => stream_filelist_index(
                             &tx_res_worker,
                             &req,
                             &root,
                             filelist,
                             shutdown_worker.as_ref(),
                             latest_request_ids_worker.as_ref(),
-                        )
-                    } else {
-                        stream_walker_index(
+                        ),
+                        Ok(None) if !request_is_current() => Err("superseded".to_string()),
+                        Ok(None) => stream_walker_index(
                             &tx_res_worker,
                             &req,
                             &root,
                             shutdown_worker.as_ref(),
                             latest_request_ids_worker.as_ref(),
-                        )
+                        ),
                     }
                 } else {
                     stream_walker_index(
