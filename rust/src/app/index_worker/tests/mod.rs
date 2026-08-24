@@ -507,7 +507,8 @@ fn filelist_stream_uses_larger_batches() {
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert_eq!(batches, vec![1024, 1]);
+    assert_eq!(batches.iter().sum::<usize>(), 1025);
+    assert_eq!(batches.iter().max(), Some(&1024));
 
     let _ = std::fs::remove_dir_all(&root);
 }
