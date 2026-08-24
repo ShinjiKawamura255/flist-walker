@@ -24,6 +24,31 @@
 ### Known issues
 - なし。
 
+## [0.24.4] - 2026-08-25
+### Added
+- なし。
+
+### Changed
+- GUI / CLI の非同期 worker と tab / session 状態の応答 routing を強化し、古い応答や FileList discovery が現在の操作状態を巻き戻さないようにした。
+- updater の transaction、helper 起動、再起動復旧と CI の rollout 検証導線を強化した。
+
+### Fixed
+- preset 適用後の検索クエリカーソルが末尾へ移動しない問題を修正した。
+- FileList discovery の stale request が後続のインデックス状態へ影響する問題を修正した。
+- CLI 専用 `fw` asset を含む checksum manifest を updater が受け入れられない問題を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- updater は従来どおり `SHA256SUMS.sig` の署名検証後に `SHA256SUMS` の checksum を照合する。今回の変更範囲に依存関係の追加・更新はない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+
 ## [0.24.3] - 2026-08-23
 ### Added
 - GUI 起動経路を含まない高速な CLI 専用 standalone バイナリ `fw` を追加し、短い一回検索や TUI 起動を簡潔に実行できるようにした。
@@ -1869,7 +1894,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.3...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.4...HEAD
+[0.24.4]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.3...v0.24.4
 [0.24.3]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.0...v0.24.1
