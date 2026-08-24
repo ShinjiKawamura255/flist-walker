@@ -255,6 +255,18 @@ impl FlistWalkerApp {
         self.shell.ui.unfocus_query_requested = false;
     }
 
+    pub(super) fn request_query_cursor_to_end(&mut self) {
+        self.shell.ui.query_cursor_to_end_requested = true;
+    }
+
+    pub(super) fn query_cursor_to_end_requested(&self) -> bool {
+        self.shell.ui.query_cursor_to_end_requested
+    }
+
+    pub(super) fn clear_query_cursor_to_end_request(&mut self) {
+        self.shell.ui.query_cursor_to_end_requested = false;
+    }
+
     pub(super) fn set_query_history_dirty_since(&mut self, value: Option<Instant>) {
         self.shell.runtime.query_state.query_history_dirty_since = value;
     }
