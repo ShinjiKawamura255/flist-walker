@@ -137,6 +137,13 @@
 - 非対象範囲: 実行中ウィンドウのランタイムアイコン変更、ショートカット `.lnk` 側の個別アイコン設定。
 - 関連テストID: TC-090, TC-147, TC-148.
 
+### Regression Guard: checksum manifest asset families
+- 発生条件: `SHA256SUMS` に CLI standalone の `fw-*` asset が含まれる release を、`FlistWalker-*` だけを許可していた updater が検証する。
+- 期待動作: `FlistWalker-*` と `fw-*` の両 asset family を strict parser が受け入れ、`fwx-*` などの近似 prefix や任意 basename は拒否する。
+- 非対象範囲: checksum digest の計算、detached signature の検証、release asset の生成内容そのもの。
+- 関連テストID: TC-194.
+- 将来変更時の注意: CLI standalone asset family を追加・変更する場合は、release validator と updater parser の許可条件および回帰テストを同一変更で更新する。
+
 ## リリース手順（macOS アセット）
 1. macOS 向けバイナリをビルドする。
 - bash: `./scripts/build-rust-macos.sh`
