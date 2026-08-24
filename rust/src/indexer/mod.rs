@@ -14,8 +14,9 @@ pub use depth::MaxDepth;
 pub use filelist_reader::{
     apply_filelist_hierarchy_overrides, apply_filelist_hierarchy_overrides_with_max_depth,
     build_entries_from_filelist_hierarchy, build_entries_from_filelist_hierarchy_with_max_depth,
-    find_filelist, find_filelist_in_first_level, parse_filelist, parse_filelist_stream,
-    parse_filelist_stream_with_max_depth, parse_filelist_with_max_depth,
+    find_filelist, find_filelist_in_first_level, find_filelist_in_first_level_cancellable,
+    parse_filelist, parse_filelist_stream, parse_filelist_stream_with_max_depth,
+    parse_filelist_with_max_depth, FileListDiscoveryCanceled,
 };
 pub use filelist_writer::{
     ancestor_filelist_propagation_needed, build_filelist_text, build_filelist_text_cancellable,

@@ -611,6 +611,50 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
 }
 
 #[test]
+fn tc_152_filelist_restore_index_regression_cancels_before_filelist_start() {
+    let root = test_root("filelist-restore-stale-after-root-resolution");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    std::fs::write(root.join("FileList.txt"), "entry.txt\n").expect("write FileList");
+
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(7, 1)])));
+    let latest_for_resolver = Arc::clone(&latest_request_ids);
+    let resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync> = Arc::new(move |path| {
+        latest_for_resolver
+            .lock()
+            .expect("lock latest request ids")
+            .insert(7, 2);
+        path.to_path_buf()
+    });
+    let (tx, rx, handles) =
+        spawn_index_worker_with(Arc::clone(&shutdown), latest_request_ids, resolve_root);
+    tx.send(IndexRequest {
+        request_id: 1,
+        tab_id: 7,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    })
+    .expect("send stale FileList request");
+
+    assert!(matches!(
+        rx.recv_timeout(Duration::from_secs(1))
+            .expect("stale FileList terminal response"),
+        IndexResponse::Canceled { request_id: 1 }
+    ));
+
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    for handle in handles {
+        handle.join().expect("join index worker");
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_152_index_workers_bound_total_to_four() {
     let shutdown = Arc::new(AtomicBool::new(false));
     let latest_request_ids = Arc::new(Mutex::new(HashMap::from([

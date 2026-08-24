@@ -263,3 +263,11 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 - Non-goals: Walker 自身の遅延解決以外の部分（メタデータ取得そのものの OS I/O 遅延）は Background スレッドに閉じるため本件の責務ではない。
 - Related Tests: `poll_kind_response_does_not_clone_arc_shared_entries_regression` (in `kind_resolution.rs`)
 - Notes for Future Changes: `app.entries` および他のエントリリスト(`all_entries`, `incremental_filtered_entries`, `index.entries`) に対して、チャンク処理中のループ内で一括更新を目的に `mut` 参照を要求・上書きしてはいけない。常に Cache (辞書) を更新し、描画やフィルタリング時は Cache を `Entry` より優先して参照すること。
+
+### FileList Restore Discovery Cancellation
+
+- Scenario: Restore tabs で FileList を使う background tab の index request が進行中に、その tab を active にして新しい request を発行する。旧 request が root 解決後の FileList discovery（特に大量の root-level directory scan）へ進む。
+- Expected Behavior: stale request は FileList discovery/parse を開始せず `Canceled` へ収束し、active tab の indexing request が obsolete discovery によって待たされない。既存の `FileList.txt` 優先順と root 直下限定の検出範囲は維持する。
+- Non-goals: FileList の候補解釈、nested FileList の hierarchy override、Walker の走査順、filesystem metadata 自体の OS I/O latency は本 guard の対象外。
+- Related Tests: `tc_152_filelist_restore_index_regression_cancels_before_filelist_start` (in `app/index_worker/tests/mod.rs`), `find_filelist_cancellable_regression_stops_when_request_is_stale` (in `indexer/tests/mod.rs`)
+- Notes for Future Changes: index worker の source selection 前に request freshness を再確認し、root-level FileList discovery を非キャンセルの `read_dir` scan に戻してはならない。検出 API の変更時は TC-152 と VM-003 の FileList/Walker perf guards を再実行すること。

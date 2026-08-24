@@ -15,27 +15,65 @@ const FILELIST_MAX_LINE_PAYLOAD_BYTES: usize = 1024 * 1024;
 const FILELIST_MAX_RAW_LINE_BYTES: usize = FILELIST_MAX_LINE_PAYLOAD_BYTES + 5;
 const UTF8_BOM: &[u8; 3] = b"\xEF\xBB\xBF";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FileListDiscoveryCanceled;
+
 pub fn find_filelist(root: &Path) -> Option<PathBuf> {
+    find_filelist_in_first_level_cancellable(root, || false)
+        .ok()
+        .flatten()
+}
+
+pub fn find_filelist_in_first_level_cancellable<C>(
+    root: &Path,
+    should_cancel: C,
+) -> Result<Option<PathBuf>, FileListDiscoveryCanceled>
+where
+    C: Fn() -> bool,
+{
+    if should_cancel() {
+        return Err(FileListDiscoveryCanceled);
+    }
     let upper = root.join("FileList.txt");
     if upper.is_file() {
-        return Some(upper);
+        return Ok(Some(upper));
+    }
+    if should_cancel() {
+        return Err(FileListDiscoveryCanceled);
     }
     let lower = root.join("filelist.txt");
     if lower.is_file() {
-        return Some(lower);
+        return Ok(Some(lower));
     }
 
-    fs::read_dir(root)
-        .ok()?
-        .flatten()
-        .map(|e| e.path())
-        .find(|p| {
-            p.is_file()
-                && p.file_name()
-                    .and_then(|s| s.to_str())
-                    .map(|s| s.eq_ignore_ascii_case("filelist.txt"))
-                    == Some(true)
-        })
+    let Ok(entries) = fs::read_dir(root) else {
+        return Ok(None);
+    };
+    // Restored-tab prioritization can supersede this scan while it is reading a
+    // large root; check freshness per entry so obsolete discovery never holds
+    // an index worker until the entire directory has been inspected.
+    for entry in entries {
+        if should_cancel() {
+            return Err(FileListDiscoveryCanceled);
+        }
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let path = entry.path();
+        if path.is_file()
+            && path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .map(|s| s.eq_ignore_ascii_case("filelist.txt"))
+                == Some(true)
+        {
+            return Ok(Some(path));
+        }
+    }
+    if should_cancel() {
+        return Err(FileListDiscoveryCanceled);
+    }
+    Ok(None)
 }
 
 pub fn find_filelist_in_first_level(root: &Path) -> Option<PathBuf> {
