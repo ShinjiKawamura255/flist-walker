@@ -169,6 +169,7 @@
 
 - CI / Release Hygiene details
 - 通常 CI matrix に Linux を追加し、release 対象 OS と同じ観点で `cargo test --locked` を継続実行する。
+- heavy PR CIはLinuxのclippy/coverage jobに加えてmacOS/Windows native jobでもlocked clippyを実行し、tag release preflightはLinux/macOS/Windows nativeの各jobでlocked test/clippyを再実行する。OS条件付きwarningをtag作成前とasset build前の両方で停止する。
 - 依存脆弱性は `cargo audit` を CI で必須実行し、既知 CVE の流入を早期検知する。
 - `x86_64-pc-windows-gnu` では `windres` が生成する `resource.o` を `flistwalker` バイナリへ直接リンクし、ライブラリターゲットだけに閉じた resource link で Explorer アイコンが欠落しないようにする。
 - macOS notarization は現段階では手動ゲートとして維持し、draft release 作成後に docs / template で確認手順を明示する。

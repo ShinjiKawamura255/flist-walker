@@ -187,7 +187,7 @@
 
 ## GitHub Actions 自動リリース
 1. `vX.Y.Z` 形式の新規 tag を push する。
-2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked`、Linux の `cargo clippy --all-targets -- -D warnings`、`cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
+2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo clippy --locked --all-targets -- -D warnings`、および `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
 3. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。同一tagのreleaseが既に存在する場合は停止し、既存assetを上書きしない。
 5. draft release には各 OS 向け universal 実行バイナリ、CLI 専用 `fw` standalone、既存配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内と`fw` standaloneの実行手順を続ける。remoteのversion付きsidecar assetは両variantで共有し、自己更新後のローカル文書はuniversalの通常名とCLIの`fw.` prefix付き名へ分離する。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は署名秘密鍵から導出した公開鍵、build時の公開鍵、署名検証鍵が一致する場合だけ生成する。`scripts/validate-release-bundle.sh` で期待28 asset、26 checksum entry、既存archiveのmember完全一致、archive/sidecarの `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を検証する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
@@ -209,6 +209,7 @@
 - Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
+- tag workflowのLinux/macOS/Windows native preflightでlocked clippyがすべて実行され、OS条件付きunused/dead code warningがasset build前に失敗すること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
 - notarization 環境が未整備な当面の間は、macOS を publish 対象に含める場合でも notarization 完了を必須条件にしない。その代わり release note に未 notarized である旨を記載すること。

@@ -401,6 +401,84 @@ jobs:
                 mutated = text.replace(token, "removed-heavy-ci-contract", 1)
                 self.assertTrue(POLICY.validate_ci_contract(mutated))
 
+    def test_ci_contract_requires_non_linux_native_clippy_before_merge_regression(
+        self,
+    ) -> None:
+        text = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
+            encoding="utf-8"
+        )
+        required_step = (
+            "      - name: Run platform clippy\n"
+            "        if: ${{ matrix.label != 'linux-native' }}\n"
+            "        working-directory: ${{ matrix.workdir }}\n"
+            "        shell: bash\n"
+            "        run: cargo clippy --locked --all-targets -- -D warnings"
+        )
+
+        self.assertIn(required_step, text)
+        self.assertEqual([], POLICY.validate_ci_contract(text))
+
+        for token in (
+            "matrix.label != 'linux-native'",
+            "cargo clippy --locked --all-targets -- -D warnings",
+        ):
+            with self.subTest(token=token):
+                mutated = text.replace(token, "removed-platform-clippy-contract", 1)
+                violations = POLICY.validate_ci_contract(mutated)
+                self.assertTrue(
+                    any("clippy" in item and "native" in item for item in violations),
+                    violations,
+                )
+
+        non_blocking = text.replace(
+            required_step,
+            required_step + "\n        continue-on-error: true",
+            1,
+        )
+        ignored_failure = text.replace(
+            "cargo clippy --locked --all-targets -- -D warnings",
+            "cargo clippy --locked --all-targets -- -D warnings || true",
+            1,
+        )
+        disabled_condition = text.replace(
+            "matrix.label != 'linux-native'",
+            "matrix.label != 'linux-native' && false",
+            1,
+        )
+        custom_shell = text.replace(
+            required_step,
+            required_step.replace(
+                "        shell: bash", "        shell: bash {0} || true"
+            ),
+            1,
+        )
+        custom_env = text.replace(
+            required_step,
+            required_step + "\n        env:\n          RUSTC_WRAPPER: 'true'",
+            1,
+        )
+        duplicate = text.replace(required_step, required_step + "\n\n" + required_step, 1)
+        without_step = text.replace(required_step, "", 1)
+        prefix, lint_job = without_step.split("  lint-and-coverage:", 1)
+        moved = prefix + "  lint-and-coverage:" + lint_job.replace(
+            "    steps:\n", "    steps:\n" + required_step + "\n", 1
+        )
+        for label, mutated in (
+            ("non-blocking", non_blocking),
+            ("ignored failure", ignored_failure),
+            ("disabled condition", disabled_condition),
+            ("custom shell", custom_shell),
+            ("custom env", custom_env),
+            ("duplicate", duplicate),
+            ("wrong job", moved),
+        ):
+            with self.subTest(label=label):
+                violations = POLICY.validate_ci_contract(mutated)
+                self.assertTrue(
+                    any("clippy" in item and "native" in item for item in violations),
+                    violations,
+                )
+
     def test_release_contract_rejects_test_channel_material(self) -> None:
         release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
             encoding="utf-8"
@@ -414,6 +492,80 @@ jobs:
             with self.subTest(token=token):
                 violations = POLICY.validate_release_contract(release_text + "\n" + token)
                 self.assertTrue(any("forbidden" in item for item in violations))
+
+    def test_release_contract_requires_clippy_on_every_native_preflight_platform_regression(
+        self,
+    ) -> None:
+        release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
+            encoding="utf-8"
+        )
+        required_step = (
+            "      - name: Run clippy\n"
+            "        working-directory: ${{ matrix.workdir }}\n"
+            "        shell: bash\n"
+            "        run: cargo clippy --locked --all-targets -- -D warnings"
+        )
+
+        self.assertIn(required_step, release_text)
+        self.assertEqual([], POLICY.validate_release_contract(release_text))
+
+        linux_only = required_step.replace(
+            "        working-directory:",
+            "        if: ${{ matrix.label == 'linux-native' }}\n"
+            "        working-directory:",
+        )
+        mutated = release_text.replace(required_step, linux_only, 1)
+        violations = POLICY.validate_release_contract(mutated)
+
+        self.assertTrue(
+            any("clippy" in item and "native" in item for item in violations),
+            violations,
+        )
+
+        non_blocking = release_text.replace(
+            required_step,
+            required_step + "\n        continue-on-error: true",
+            1,
+        )
+        ignored_failure = release_text.replace(
+            "cargo clippy --locked --all-targets -- -D warnings",
+            "cargo clippy --locked --all-targets -- -D warnings || true",
+            1,
+        )
+        custom_shell = release_text.replace(
+            required_step,
+            required_step.replace(
+                "        shell: bash", "        shell: bash {0} || true"
+            ),
+            1,
+        )
+        custom_env = release_text.replace(
+            required_step,
+            required_step + "\n        env:\n          RUSTC_WRAPPER: 'true'",
+            1,
+        )
+        duplicate = release_text.replace(
+            required_step, required_step + "\n\n" + required_step, 1
+        )
+        without_step = release_text.replace(required_step, "", 1)
+        prefix, audit_job = without_step.split("  release-cargo-audit:", 1)
+        moved = prefix + "  release-cargo-audit:" + audit_job.replace(
+            "    steps:\n", "    steps:\n" + required_step + "\n", 1
+        )
+        for label, mutated in (
+            ("non-blocking", non_blocking),
+            ("ignored failure", ignored_failure),
+            ("custom shell", custom_shell),
+            ("custom env", custom_env),
+            ("duplicate", duplicate),
+            ("wrong job", moved),
+        ):
+            with self.subTest(label=label):
+                violations = POLICY.validate_release_contract(mutated)
+                self.assertTrue(
+                    any("clippy" in item and "native" in item for item in violations),
+                    violations,
+                )
 
     def test_release_contract_requires_n_minus_one_latest_release_and_checker_regression(self) -> None:
         release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(

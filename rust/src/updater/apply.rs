@@ -88,7 +88,7 @@ fn spawn_update_helper_process(helper_path: &Path, arguments: &[OsString]) -> Re
     })
 }
 
-#[cfg(any(not(target_os = "macos"), test))]
+#[cfg(not(target_os = "macos"))]
 fn attempt_helper_launch<T>(
     helper_path: &Path,
     launch: impl FnMut(&Path) -> std::io::Result<T>,

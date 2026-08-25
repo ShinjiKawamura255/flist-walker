@@ -107,6 +107,7 @@
 - 役割補足: Windows packagingはflat release sidecar名とarchive-local名を分離し、fresh Windows PowerShell processでTC-178を実行してZIP rootの4項目契約を固定する。
 - 役割補足: required CI は product/change correctness を判定し、Cargo 関連変更時だけ mutable advisory database を merge gate に接続する。scheduled audit は後日 advisory、canary は latest compatibility を観測するため branch protection の required context にしない。
 - 役割補足: numbered hosted runner label でも image 内容は更新されるため、各 job は `ImageOS` / `ImageVersion` を evidence とし、policy checker が full SHA、pin、permissions、timeout、cache、conditional audit/gate contract を検査する。
+- 役割補足: heavy PR CIはmacOS/Windows native jobでlocked clippyを実行してplatform cfg固有warningをtag作成前にblockし、tag release preflightはLinux/macOS/Windows nativeの全jobでlocked test/clippyを再実行する。trusted policy checker/testはこれらのplatform coverage退行を拒否する。
 - 役割補足: Guardian は default branch のworkflow一式、Dependabot設定、toolchain定義、audit exception設定、checker/testをtrusted policy setとし、PR headからAPI取得したallowlist policy blobだけを一時領域で検査する。通常変更はrunner/action/tool version pinに限定し、PR codeは実行しない。
 
 - DES-013 Result Sort Controller
