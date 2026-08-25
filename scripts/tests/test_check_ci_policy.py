@@ -295,9 +295,11 @@ jobs:
             "windows-gnu-update-e2e:",
             "      - windows-gnu-update-e2e",
             "WINDOWS_GNU_UPDATE_RESULT",
-            "artifact_dir: rust",
-            "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
-            "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/fw.exe",
+            "windows-gnu-updater-build:",
+            "      - windows-gnu-updater-build",
+            "needs: [detect-changes, windows-gnu-updater-build]",
+            "rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+            "rust/target/x86_64-pc-windows-gnu/release/fw.exe",
             "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
             "Variant = 'Universal'",
             "Variant = 'Fw'",
@@ -323,6 +325,81 @@ jobs:
                         for item in violations
                     )
                 )
+
+    def test_heavy_ci_change_classification_regression(self) -> None:
+        docs_changes = [
+            ("M", "docs/CI_OPERATIONS.md"),
+            ("A", "README.md"),
+            ("M", ".github/release-template.md"),
+        ]
+        self.assertFalse(POLICY.heavy_ci_required_for_changes(docs_changes))
+
+        for status, path in (
+            ("M", "rust/src/updater/manifest.rs"),
+            ("M", "scripts/check_ci_policy.py"),
+            ("M", ".github/workflows/ci-cross-platform.yml"),
+            ("M", "unknown-top-level.txt"),
+            ("D", "docs/obsolete.md"),
+            ("R100", "docs/renamed.md"),
+        ):
+            with self.subTest(status=status, path=path):
+                self.assertTrue(POLICY.heavy_ci_required_for_changes([(status, path)]))
+
+        self.assertTrue(POLICY.heavy_ci_required_for_changes([]))
+        self.assertTrue(
+            POLICY.heavy_ci_required_for_changes(docs_changes, base_known=False)
+        )
+        self.assertTrue(
+            POLICY.heavy_ci_required_for_changes(docs_changes, diff_succeeded=False)
+        )
+
+    def test_heavy_ci_result_truth_table_regression(self) -> None:
+        success = {
+            "rust-test-build": "success",
+            "windows-gnu-updater-build": "success",
+            "windows-gnu-update-e2e": "success",
+            "lint-and-coverage": "success",
+        }
+        skipped = {name: "skipped" for name in success}
+        self.assertTrue(POLICY.heavy_ci_results_are_acceptable(True, success))
+        self.assertTrue(POLICY.heavy_ci_results_are_acceptable(False, skipped))
+        for name in success:
+            with self.subTest(required_job=name):
+                mutated = dict(success)
+                mutated[name] = "skipped"
+                self.assertFalse(
+                    POLICY.heavy_ci_results_are_acceptable(True, mutated)
+                )
+            with self.subTest(skipped_job=name):
+                mutated = dict(skipped)
+                mutated[name] = "success"
+                self.assertFalse(
+                    POLICY.heavy_ci_results_are_acceptable(False, mutated)
+                )
+
+    def test_ci_contract_requires_fail_closed_heavy_ci_skip_regression(self) -> None:
+        text = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
+            encoding="utf-8"
+        )
+        required = (
+            "heavy_ci_required: ${{ steps.changes.outputs.heavy_ci_required }}",
+            "fetch-depth: 0",
+            "heavy_ci_required=true",
+            "heavy_ci_required=false",
+            'if [[ "$status" != "A" && "$status" != "M" ]]',
+            "needs: detect-changes",
+            "if: ${{ needs.detect-changes.outputs.heavy_ci_required == 'true' }}",
+            "HEAVY_CI_REQUIRED: ${{ needs.detect-changes.outputs.heavy_ci_required }}",
+            '[[ "$TEST_RESULT" == "skipped" ]]',
+            '[[ "$WINDOWS_GNU_BUILD_RESULT" == "skipped" ]]',
+            '[[ "$WINDOWS_GNU_UPDATE_RESULT" == "skipped" ]]',
+            '[[ "$LINT_RESULT" == "skipped" ]]',
+        )
+        for token in required:
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+                mutated = text.replace(token, "removed-heavy-ci-contract", 1)
+                self.assertTrue(POLICY.validate_ci_contract(mutated))
 
     def test_release_contract_rejects_test_channel_material(self) -> None:
         release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(

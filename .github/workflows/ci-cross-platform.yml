@@ -21,11 +21,12 @@ env:
 
 jobs:
   detect-changes:
-    name: Detect Cargo Changes
+    name: Detect Changes
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       cargo_changed: ${{ steps.changes.outputs.cargo_changed }}
+      heavy_ci_required: ${{ steps.changes.outputs.heavy_ci_required }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,7 +39,7 @@ jobs:
           echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
           echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Detect audit-relevant changes
+      - name: Classify changes fail closed
         id: changes
         shell: bash
         env:
@@ -47,22 +48,48 @@ jobs:
           PUSH_BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
+          heavy_ci_required=true
+          cargo_changed=true
           if [[ "$EVENT_NAME" == "pull_request" ]]; then
             base_sha="$PR_BASE_SHA"
           elif [[ -n "$PUSH_BEFORE_SHA" && ! "$PUSH_BEFORE_SHA" =~ ^0+$ ]]; then
             base_sha="$PUSH_BEFORE_SHA"
           else
-            echo "cargo_changed=true" >> "$GITHUB_OUTPUT"
+            echo "heavy_ci_required=$heavy_ci_required" >> "$GITHUB_OUTPUT"
+            echo "cargo_changed=$cargo_changed" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA")"
-          printf '%s\n' "$changed_files"
-          if printf '%s\n' "$changed_files" | grep -Eq '(^|/)Cargo\.(toml|lock)$|^rust/\.cargo/audit\.toml$|^\.github/workflows/ci-cross-platform\.yml$|^\.github/workflows/security-audit\.yml$|^scripts/check_ci_policy\.py$|^scripts/tests/test_check_ci_policy\.py$'; then
-            echo "cargo_changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "cargo_changed=false" >> "$GITHUB_OUTPUT"
+          if ! changed_rows="$(git diff --name-status "$base_sha" "$GITHUB_SHA")" ||
+             ! changed_files="$(git diff --name-only "$base_sha" "$GITHUB_SHA")"; then
+            echo "heavy_ci_required=$heavy_ci_required" >> "$GITHUB_OUTPUT"
+            echo "cargo_changed=$cargo_changed" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          printf '%s\n' "$changed_rows"
+          printf '%s\n' "$changed_files"
+          readonly DOCS_ONLY_RE='^(docs/.*|README\.md|README-ja\.md|CHANGELOG\.md|AGENTS\.md|LICENSE|THIRD_PARTY_NOTICES\.txt|\.github/ISSUE_TEMPLATE/.*|\.github/release-template\.md)$'
+          docs_only=true
+          if [[ -z "$changed_rows" ]]; then
+            docs_only=false
+          fi
+          while IFS=$'\t' read -r status path extra; do
+            if [[ "$status" != "A" && "$status" != "M" ]] ||
+               [[ -n "$extra" ]] || [[ ! "$path" =~ $DOCS_ONLY_RE ]]; then
+              docs_only=false
+            fi
+          done <<< "$changed_rows"
+          if [[ "$docs_only" == "true" ]]; then
+            heavy_ci_required=false
+          fi
+
+          if printf '%s\n' "$changed_files" | grep -Eq '(^|/)Cargo\.(toml|lock)$|^rust/\.cargo/audit\.toml$|^\.github/workflows/ci-cross-platform\.yml$|^\.github/workflows/security-audit\.yml$|^scripts/check_ci_policy\.py$|^scripts/tests/test_check_ci_policy\.py$'; then
+            cargo_changed=true
+          else
+            cargo_changed=false
+          fi
+          echo "heavy_ci_required=$heavy_ci_required" >> "$GITHUB_OUTPUT"
+          echo "cargo_changed=$cargo_changed" >> "$GITHUB_OUTPUT"
 
   ci-policy:
     name: CI Policy
@@ -84,6 +111,8 @@ jobs:
   rust-test-build:
     name: Rust Test and Build (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.heavy_ci_required == 'true' }}
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -104,13 +133,6 @@ jobs:
             workdir: rust
             run_tests: true
             build_cmd: cargo build --release --locked
-          - os: ubuntu-24.04
-            label: windows-gnu-cross
-            workdir: .
-            artifact_dir: rust
-            target: x86_64-pc-windows-gnu
-            run_tests: false
-            build_cmd: ./scripts/build-rust-win.sh --locked
 
     steps:
       - name: Checkout
@@ -123,17 +145,9 @@ jobs:
           echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install Rust
-        if: ${{ !matrix.target }}
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
         with:
           toolchain: 1.97.1
-
-      - name: Install Rust with target
-        if: ${{ matrix.target }}
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
-        with:
-          toolchain: 1.97.1
-          targets: ${{ matrix.target }}
 
       - name: Cache Cargo downloads
         continue-on-error: true
@@ -144,13 +158,6 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ matrix.label }}-rust-${{ env.RUST_VERSION }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
-
-      - name: Install mingw-w64
-        if: ${{ matrix.target }}
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64
 
       - name: Run tests
         if: ${{ matrix.run_tests }}
@@ -164,24 +171,66 @@ jobs:
 
       - name: Build release
         working-directory: ${{ matrix.workdir }}
-        env:
-          FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: ${{ matrix.label == 'windows-gnu-cross' && '79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664' || '' }}
-          FLISTWALKER_UPDATE_TEST_CHANNEL: ${{ matrix.label == 'windows-gnu-cross' && '1' || '' }}
         run: ${{ matrix.build_cmd }}
 
+  windows-gnu-updater-build:
+    name: Windows GNU Updater Build
+    runs-on: ubuntu-24.04
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.heavy_ci_required == 'true' }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Rust with target
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
+        with:
+          toolchain: 1.97.1
+          targets: x86_64-pc-windows-gnu
+
+      - name: Cache Cargo downloads
+        continue-on-error: true
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-windows-gnu-updater-rust-${{ env.RUST_VERSION }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+
+      - name: Install mingw-w64
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+
+      - name: Build updater test channel
+        shell: bash
+        env:
+          FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664
+          FLISTWALKER_UPDATE_TEST_CHANNEL: 1
+        run: ./scripts/build-rust-win.sh --locked
+
       - name: Upload Windows GNU test-channel artifact
-        if: ${{ matrix.label == 'windows-gnu-cross' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-gnu-updater-test-channel
           path: |
-            ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
-            ${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/fw.exe
+            rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe
+            rust/target/x86_64-pc-windows-gnu/release/fw.exe
           if-no-files-found: error
 
   windows-gnu-update-e2e:
     name: Windows GNU Updater E2E
-    needs: rust-test-build
+    needs: [detect-changes, windows-gnu-updater-build]
+    if: ${{ needs.detect-changes.outputs.heavy_ci_required == 'true' }}
     runs-on: windows-2025-vs2026
     timeout-minutes: 20
     steps:
@@ -263,6 +312,8 @@ jobs:
   lint-and-coverage:
     name: Clippy and Coverage
     runs-on: ubuntu-24.04
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.heavy_ci_required == 'true' }}
     timeout-minutes: 45
     defaults:
       run:
@@ -323,6 +374,7 @@ jobs:
       - detect-changes
       - ci-policy
       - rust-test-build
+      - windows-gnu-updater-build
       - windows-gnu-update-e2e
       - cargo-audit
       - lint-and-coverage
@@ -341,17 +393,28 @@ jobs:
           DETECT_RESULT: ${{ needs.detect-changes.result }}
           POLICY_RESULT: ${{ needs.ci-policy.result }}
           TEST_RESULT: ${{ needs.rust-test-build.result }}
+          WINDOWS_GNU_BUILD_RESULT: ${{ needs.windows-gnu-updater-build.result }}
           WINDOWS_GNU_UPDATE_RESULT: ${{ needs.windows-gnu-update-e2e.result }}
           LINT_RESULT: ${{ needs.lint-and-coverage.result }}
           AUDIT_RESULT: ${{ needs.cargo-audit.result }}
           CARGO_CHANGED: ${{ needs.detect-changes.outputs.cargo_changed }}
+          HEAVY_CI_REQUIRED: ${{ needs.detect-changes.outputs.heavy_ci_required }}
         run: |
           set -euo pipefail
           [[ "$DETECT_RESULT" == "success" ]]
           [[ "$POLICY_RESULT" == "success" ]]
-          [[ "$TEST_RESULT" == "success" ]]
-          [[ "$WINDOWS_GNU_UPDATE_RESULT" == "success" ]]
-          [[ "$LINT_RESULT" == "success" ]]
+          if [[ "$HEAVY_CI_REQUIRED" == "true" ]]; then
+            [[ "$TEST_RESULT" == "success" ]]
+            [[ "$WINDOWS_GNU_BUILD_RESULT" == "success" ]]
+            [[ "$WINDOWS_GNU_UPDATE_RESULT" == "success" ]]
+            [[ "$LINT_RESULT" == "success" ]]
+          else
+            [[ "$HEAVY_CI_REQUIRED" == "false" ]]
+            [[ "$TEST_RESULT" == "skipped" ]]
+            [[ "$WINDOWS_GNU_BUILD_RESULT" == "skipped" ]]
+            [[ "$WINDOWS_GNU_UPDATE_RESULT" == "skipped" ]]
+            [[ "$LINT_RESULT" == "skipped" ]]
+          fi
           if [[ "$CARGO_CHANGED" == "true" ]]; then
             [[ "$AUDIT_RESULT" == "success" ]]
           else

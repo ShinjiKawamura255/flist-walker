@@ -59,6 +59,11 @@ AUDIT_RELEVANT_PATH_RE = re.compile(
     r"^\.github/workflows/(ci-cross-platform|security-audit)\.yml$|"
     r"^scripts/(check_ci_policy\.py|tests/test_check_ci_policy\.py)$"
 )
+DOCS_ONLY_PATH_RE = re.compile(
+    r"^(?:docs/.*|README\.md|README-ja\.md|CHANGELOG\.md|AGENTS\.md|LICENSE|"
+    r"THIRD_PARTY_NOTICES\.txt|\.github/ISSUE_TEMPLATE/.*|"
+    r"\.github/release-template\.md)$"
+)
 
 
 def _job_blocks(text: str) -> list[tuple[str, str]]:
@@ -79,6 +84,37 @@ def is_audit_relevant_path(path: str) -> bool:
 def audit_result_is_acceptable(cargo_changed: bool, audit_result: str) -> bool:
     expected = "success" if cargo_changed else "skipped"
     return audit_result == expected
+
+
+def heavy_ci_required_for_changes(
+    changes: list[tuple[str, str]],
+    *,
+    base_known: bool = True,
+    diff_succeeded: bool = True,
+) -> bool:
+    if not base_known or not diff_succeeded or not changes:
+        return True
+    # Regression guard: skip is an allowlist of ordinary documentation edits.
+    # Renames, deletes, and unknown paths must run heavy CI rather than guessing.
+    return any(
+        status not in {"A", "M"} or DOCS_ONLY_PATH_RE.fullmatch(path) is None
+        for status, path in changes
+    )
+
+
+def heavy_ci_results_are_acceptable(
+    heavy_ci_required: bool, results: dict[str, str]
+) -> bool:
+    expected = "success" if heavy_ci_required else "skipped"
+    required_jobs = {
+        "rust-test-build",
+        "windows-gnu-updater-build",
+        "windows-gnu-update-e2e",
+        "lint-and-coverage",
+    }
+    return results.keys() == required_jobs and all(
+        result == expected for result in results.values()
+    )
 
 
 def normalize_trusted_policy(name: str, text: str) -> str:
@@ -286,6 +322,10 @@ def validate_ci_contract(text: str) -> list[str]:
         "CI Gate job": "name: CI Gate",
         "always aggregation": "if: ${{ always() }}",
         "Cargo change output": "cargo_changed",
+        "heavy CI change output": "heavy_ci_required: ${{ steps.changes.outputs.heavy_ci_required }}",
+        "heavy CI default": "heavy_ci_required=true",
+        "documentation-only skip": "heavy_ci_required=false",
+        "rename/delete fail closed": 'if [[ "$status" != "A" && "$status" != "M" ]]',
         "workspace Cargo manifests": "Cargo\\.(toml|lock)$",
         "audit configuration": r"rust/\.cargo/audit\.toml",
         "audit workflow": r".github/workflows/security-audit\.yml",
@@ -299,14 +339,17 @@ def validate_ci_contract(text: str) -> list[str]:
         "pull request trigger": "  pull_request:",
         "policy gate dependency": "      - ci-policy",
         "test gate dependency": "      - rust-test-build",
+        "Windows GNU producer job": "windows-gnu-updater-build:",
+        "Windows GNU producer gate dependency": "      - windows-gnu-updater-build",
+        "Windows GNU producer gate result": "WINDOWS_GNU_BUILD_RESULT",
         "Windows GNU updater E2E job": "windows-gnu-update-e2e:",
         "Windows GNU updater gate dependency": "      - windows-gnu-update-e2e",
         "Windows GNU updater gate result": "WINDOWS_GNU_UPDATE_RESULT",
-        "Windows GNU artifact directory": "artifact_dir: rust",
+        "Windows GNU producer dependency": "needs: [detect-changes, windows-gnu-updater-build]",
         # Regression guard: Universal and fw are independently self-updatable;
         # dropping either artifact, marker, or loop variant must fail VM-009.
-        "Windows GNU Universal artifact path": "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
-        "Windows GNU fw artifact path": "${{ matrix.artifact_dir }}/target/x86_64-pc-windows-gnu/release/fw.exe",
+        "Windows GNU Universal artifact path": "rust/target/x86_64-pc-windows-gnu/release/FlistWalker.exe",
+        "Windows GNU fw artifact path": "rust/target/x86_64-pc-windows-gnu/release/fw.exe",
         "manifest signer public key": "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: 79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664",
         "test-channel public key": "FLISTWALKER_UPDATE_TEST_CHANNEL",
         "Windows GNU Universal updater variant": "Variant = 'Universal'",
@@ -320,6 +363,11 @@ def validate_ci_contract(text: str) -> list[str]:
         "Windows GNU caller signing key preservation": "if ($env:FLISTWALKER_UPDATE_SIGNING_KEY_HEX -cne $callerSigningKey)",
         "audit gate dependency": "      - cargo-audit",
         "lint gate dependency": "      - lint-and-coverage",
+        "heavy CI gate input": "HEAVY_CI_REQUIRED: ${{ needs.detect-changes.outputs.heavy_ci_required }}",
+        "heavy test skip check": '[[ "$TEST_RESULT" == "skipped" ]]',
+        "heavy GNU build skip check": '[[ "$WINDOWS_GNU_BUILD_RESULT" == "skipped" ]]',
+        "heavy updater skip check": '[[ "$WINDOWS_GNU_UPDATE_RESULT" == "skipped" ]]',
+        "heavy lint skip check": '[[ "$LINT_RESULT" == "skipped" ]]',
     }
     for label, token in required_tokens.items():
         if token not in text:
@@ -327,11 +375,50 @@ def validate_ci_contract(text: str) -> list[str]:
     for family in ("ubuntu", "windows", "macos"):
         if re.search(rf"\b{family}-[0-9][A-Za-z0-9.-]*\b", text) is None:
             violations.append(f"ci-cross-platform.yml: missing {family} runner generation")
+    blocks = dict(_job_blocks(text))
+    detect_block = blocks.get("detect-changes", "")
+    if "fetch-depth: 0" not in detect_block:
+        violations.append(
+            "ci-cross-platform.yml: change detection must fetch the event base commit"
+        )
+    heavy_condition = (
+        "if: ${{ needs.detect-changes.outputs.heavy_ci_required == 'true' }}"
+    )
+    for job in ("rust-test-build", "windows-gnu-updater-build", "lint-and-coverage"):
+        block = blocks.get(job, "")
+        if "needs: detect-changes" not in block or heavy_condition not in block:
+            violations.append(
+                f"ci-cross-platform.yml: {job} must depend on fail-closed heavy CI detection"
+            )
+    e2e_block = blocks.get("windows-gnu-update-e2e", "")
+    if (
+        "needs: [detect-changes, windows-gnu-updater-build]" not in e2e_block
+        or heavy_condition not in e2e_block
+    ):
+        violations.append(
+            "ci-cross-platform.yml: Windows GNU updater E2E must depend only on its producer and change detection"
+        )
+    public_key = (
+        "FLISTWALKER_UPDATE_PUBLIC_KEY_HEX: "
+        "79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664"
+    )
+    if public_key not in blocks.get("windows-gnu-updater-build", ""):
+        violations.append(
+            "ci-cross-platform.yml: Windows GNU producer is missing the manifest signer public key"
+        )
+    if public_key not in e2e_block:
+        violations.append(
+            "ci-cross-platform.yml: Windows GNU updater E2E is missing the test public key"
+        )
     if "cargo-audit:" not in text or "needs: detect-changes" not in text:
         violations.append("ci-cross-platform.yml: Cargo audit must depend on change detection")
-    if text.count("WINDOWS_GNU_UPDATE_RESULT") != 2:
+    if text.count("WINDOWS_GNU_UPDATE_RESULT") != 3:
         violations.append(
             "ci-cross-platform.yml: Windows GNU updater gate result must be wired into env and assertion"
+        )
+    if text.count("WINDOWS_GNU_BUILD_RESULT") != 3:
+        violations.append(
+            "ci-cross-platform.yml: Windows GNU producer gate result must be wired into env and assertion"
         )
     release_block = text.split("windows-gnu-update-e2e:", 1)[0]
     if "FLISTWALKER_UPDATE_SIGNING_KEY_HEX" in release_block:
