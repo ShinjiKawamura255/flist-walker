@@ -5,6 +5,8 @@
 - MUST: required CI は Windows/macOS/Linux の release 対象 OS を version-addressed runner 世代、固定 Rust、full SHA Action、固定 CI tool version で継続検証し、hosted image version を run evidence に残す。番号付き hosted runner image 内の package drift は残存リスクとして扱う。
 - MUST: `master` 変更は PR と required `CI Gate` / `CI Policy Guardian` を経由し、required approving review は 0 件とする。PR ごとに rebase auto-merge と merge後branch削除を1回だけ登録し、merge commit と squash merge を禁止して linear history を要求する。ローカルcommitの境界・順序・message・authorは保持し、SHAとcommitter metadataの変更は許容する。各変更は、clean な local `master` で fetch、FF-only pull、current branch `master`、および `master == origin/master` を確認してから、最初のcommit前にfeature branchで開始しなければならない。auto-merge の実完了後は、active task が作業ツリーの clean 状態、記録済み PR 番号の `MERGED` 状態、`mergedAt`、base `master`、および削除候補と一致するhead branchを確認してから `origin/master` を fetch し、ローカル `master` を fast-forward 同期する。current branch `master` と `master == origin/master` を再確認した後、local feature branch は `master` に到達可能で他 worktree が使用していない場合だけ通常削除する。rebaseでSHAが書き換わり通常削除だけが拒否された場合に限り、対象が `master` 以外、同一PR identity、同期済みmaster、未使用worktree、`git rev-list --merges origin/master..refs/heads/<head-branch>` の空出力、および `git log --cherry-pick --right-only --no-merges origin/master...refs/heads/<head-branch>` の空出力を全て確認して、local feature branchだけを強制削除してよい。未マージ、dirty worktree、branch作成前または同期後の確認失敗、PR不一致、patch差分、feature branchのmerge commit、または branch 使用中では状態を変更せず停止する。feature branchは自由にpushでき、force-with-leaseは非保護feature branchに限る。`master` の直接push、force push、branch deletion、admin bypass、強制 reset、`master`へのrebase/merge、remote branch削除でgateまたは後処理を回避してはならない。
 - MUST: `CI Gate` は CI policy、release 対象 OS test/build、clippy/coverage を集約する。任意階層の `Cargo.toml` / `Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/test の変更では `cargo audit` も集約し、対象変更で audit が skipped の場合は失敗しなければならない。非対象変更の skipped は正常としてよい。
+- MUST: native platform matrix、Windows GNU updater producer/E2E、clippy/coverageをskipできるのは、change detectionが成功し、base SHAが既知で、全変更が明示allowlist内のdocumentation `A`/`M`である場合だけとする。rename/delete、unknown path、base不明、diff失敗はheavy CI実行へfail closedする。`CI Gate`はheavy実行時に全対象jobの`success`、safe skip時に全対象jobの`skipped`を要求する。
+- MUST: Windows GNU updater E2Eは専用`windows-gnu-updater-build` artifact producerにだけ依存し、無関係なnative matrix完了で直列化してはならない。platform test/build、coverage threshold、Universal/Fw E2E契約は維持する。
 - MUST: accepted vulnerability advisory はcargo-auditがproject-local configとして自動読込する`rust/.cargo/audit.toml`に限定し、根拠・owner・review cadence・再評価 trigger を `docs/OSS_COMPLIANCE.md` に保持する。unmaintained warning は出力上で可視のままにする。
 - MUST: workflow、Dependabot設定、toolchain、audit exception、CI policy checker/testはdefault branch版をimmutable trusted setとし、通常PRではrunner/action/tool version pinだけを変更可能にする。accepted advisoryを含む構造変更は設定snapshot、独立agent review、guardian requirementの一時解除と即時復元、protected-route再検証を伴うcontrolled rolloutでのみ行う。
 - MUST: scheduled security audit は後日公開 advisory を検知し、失敗 issue を同じ run で作成または更新する。agent は 24 時間以内に分類する。
@@ -16,6 +18,13 @@
 - MUST: draft release 作成後、macOS notarization は別工程で確認できる状態を維持する。
 - MUST: notarization 環境が未整備な当面の間は、macOS 配布物の notarization 確認を publish 前提条件にしてはならない。その場合 publish 時は GitHub Release 本文の `Security` または `Known issues` に未 notarized である旨を明記しなければならない。
 - SHOULD: release note / release template / release docs に checksum 検証手順と notarization の扱いを明記する。
+
+### Regression Guard: fail-closed heavy CI classification
+
+- Scenario: CI短縮のpath分類がdenylistまたは成功前提になると、rename/delete、unknown path、base SHA不明、diff failureでheavy CIを誤ってskipする。
+- Expected Behavior: allowlisted documentation `A`/`M`だけがsafe skipとなり、その他はheavy CIを実行する。GNU E2Eは専用producer完了後に開始し、native matrix全体を待たない。
+- Non-goals: test/coverage/audit/E2Eの削除、hosted runner queue時間の固定、trusted policy controlled rolloutの省略。
+- Related Tests: `test_heavy_ci_change_classification_regression`, `test_heavy_ci_result_truth_table_regression`, `test_ci_contract_requires_fail_closed_heavy_ci_skip_regression`.
 
 ### Preconditions / Postconditions
 - Preconditions: CI、release workflow、runner/Rust/Action/tool pin、または repository merge policy を更新する。

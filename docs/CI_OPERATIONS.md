@@ -6,7 +6,7 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 
 - すべての変更は PR にし、required check は `CI Gate` と `CI Policy Guardian` とする。
 - required approving review は 0 件とする。PR を作成した agent は `gh pr merge --auto --rebase --delete-branch` 相当を1回だけ登録する。merge commit と squash merge は許可せず、`master` は linear history を維持する。
-- `CI Gate` は change detection、CI policy、Windows/macOS/Linux test/build、Windows GNU test-channel artifact の Windows 上 headless sandbox self-update、clippy/coverage、および条件付き Cargo audit を集約する。GNU updater E2E は loopback feed、test-only key、使い捨て sentinel-owned sandbox に限定し、production release workflow/鍵へ混入させない。Cargo 関連変更で audit が skipped の場合は gate を失敗させ、非 Cargo 変更での skipped だけを正常とする。
+- `CI Gate` は change detection、CI policy、Windows/macOS/Linux test/build、Windows GNU test-channel artifact の Windows 上 headless sandbox self-update、clippy/coverage、および条件付き Cargo audit を集約する。heavy CIをskipできるのは、追加・変更（`A`/`M`）された全pathが`docs/**`、指定top-level文書、issue/release templateのallowlist内にある場合だけとする。rename/delete、unknown path、base SHA不明、diff失敗はheavy CI実行へfail closedする。GNU updater buildはnative matrixから独立させ、E2Eはそのproducerだけを待つ。GNU updater E2E は loopback feed、test-only key、使い捨て sentinel-owned sandbox に限定し、production release workflow/鍵へ混入させない。Cargo 関連変更で audit が skipped の場合は gate を失敗させ、非 Cargo 変更での skipped だけを正常とする。
 - `CI Policy Guardian` は `pull_request_target` で default branch の trusted checker を checkoutし、PR head の workflow/pin/Dependabot policy blob だけを GitHub API から一時領域へ取得して data として検査する。PR head の checkout/実行、secret、cache、artifact、write permission は使用しない。
 - workflow一式、Dependabot設定、toolchain定義、audit exception設定、checker本体とtestはfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更やaccepted advisory変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
 - ローカルの意味あるコミット境界・順序・message・author は rebase merge で保持する。GitHub が新しい commit SHA と committer metadata を生成することは許容する。
@@ -22,6 +22,21 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - Non-goals: production release feedへの接続、test-channel keyのrelease workflowへの導入、同一sandboxのvariant間共有。
 - Related Tests: `test_ci_contract_requires_both_windows_gnu_updater_variants_regression`。
 - Notes for Future Changes: updater variantを追加または改名する場合はworkflow、trusted checker、各tokenのnegative testを同一変更で更新する。
+
+### Regression Guard: fail-closed documentation skip and updater DAG
+
+- Scenario: docs-only変更でも全platform release buildとupdater E2Eが約18-19分走る一方、単純なRust path denylistへ置き換えるとunknown/rename/deleteを誤ってskipできる。またE2EがGNU artifactだけを使うのにnative matrix全体を待つとcritical pathが直列化する。
+- Expected Behavior: 通常のallowlisted documentation `A`/`M`だけはnative matrix、GNU producer/E2E、clippy/coverageをすべてskipし、`CI Gate`が全jobの`skipped`を確認する。それ以外は全jobの`success`を要求する。GNU E2Eは`windows-gnu-updater-build`だけをartifact producerとして待つ。
+- Non-goals: platform test、coverage threshold、Cargo audit、Universal/Fw E2Eの削除、unknown pathの推測skip、hosted queue時間の保証。
+- Related Tests: `test_heavy_ci_change_classification_regression`, `test_heavy_ci_result_truth_table_regression`, `test_ci_contract_requires_fail_closed_heavy_ci_skip_regression`, `test_ci_contract_requires_both_windows_gnu_updater_variants_regression`。updater N-1 checkerは、Guardianで不変化された`test_required_policy_regression_executes_updater_checker_golden_contract`が通常PRの`CI Policy`内で候補checkerを直接実行して保護する。
+- Notes for Future Changes: allowlist拡張はpathの実行可能性を確認し、classificationとjob-result truth tableのnegative testを同一変更で追加する。workflow/checker/testの構造変更は下記controlled rolloutを使う。
+
+### Timing baseline and hosted acceptance (2026-08-25)
+
+- PR runs `32772324004`, `32774669250`, `32788084487` は約18-19分で、GNU cross build自体は約3-4分だったが、E2Eは約11分のWindows native job完了後に開始して約7-8分を追加していた。
+- controlled rollout後のdocs-only proof PRはqueue待ちを除き3分未満で`CI Gate`まで完了し、4 heavy jobがすべて`skipped`であることを確認する。
+- Rust-impacting proof PRは全heavy jobを維持し、critical pathが`max(native matrix, GNU build + E2E) + 2分`以内であることを確認する。絶対時間だけでなくjob開始順と結果を証跡にする。
+- 本変更はtrusted policyの構造変更であるため、ローカル検証だけでは有効化しない。設定snapshot、独立final review、exact-head `CI Gate`、競合なし、一時的required-check変更、rebase merge、即時復元/read-back、docs-only/Rust-impacting proof PRを別途承認されたcontrolled rolloutで実施する。
 
 ## Version-addressed required environment
 
