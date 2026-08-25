@@ -164,6 +164,12 @@ jobs:
         working-directory: ${{ matrix.workdir }}
         run: cargo test --locked
 
+      - name: Run platform clippy
+        if: ${{ matrix.label != 'linux-native' }}
+        working-directory: ${{ matrix.workdir }}
+        shell: bash
+        run: cargo clippy --locked --all-targets -- -D warnings
+
       - name: Run lightweight perf gate
         if: ${{ matrix.label == 'linux-native' }}
         working-directory: rust

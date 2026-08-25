@@ -42,7 +42,7 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 13. `python scripts/test-updater-n-minus-one-compatibility.py` を実行し、旧/新 parser capability と公開生成順の exact 26-entry inventory の checker self-test を確認する。直前公開版をcheckerの明示的なshipped capability表へ登録し、未知versionの能力を大小比較で推測しない。互換性例外や acknowledgement は禁止し、非互換は常に release blocker とする。
 13a. candidate asset を生成した後、tag push 前に `python scripts/check-updater-n-minus-one-compatibility.py --previous-version <latest-public-version> --candidate-version <candidate-version> --manifest <candidate-SHA256SUMS>` を実行する。self-testだけをcandidate manifest検証の代用にしない。
 14. `cargo test --locked` を実行し、少なくとも version 更新と release 対象差分で壊れていないことを確認する。
-15. `cargo clippy --all-targets -- -D warnings` を実行し、Rust warning / clippy warning が残っていないことを確認する。
+15. `cargo clippy --locked --all-targets -- -D warnings` を実行し、Rust warning / clippy warning が残っていないことを確認する。tag workflowではLinux/macOS/Windows nativeの全preflight jobが同じlocked clippyを実行することも確認する。
 16. `cargo audit` を実行し、accepted transitive warning が出る場合は `docs/OSS_COMPLIANCE.md` の owner / review cadence / re-evaluation trigger と一致しているか確認する。
 17. release candidate では coverage gate と GUI headful smoke / `GSM-*` 証跡の要否を確認し、必要な PASS / FAIL / SKIPPED と証跡パスを残す。
 18. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。warning が残る場合は publish 前に修正するか、release blocker ではない理由と follow-up を明記する。

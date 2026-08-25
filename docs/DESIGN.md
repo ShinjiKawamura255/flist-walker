@@ -28,7 +28,7 @@ This file is the entry point for FlistWalker design. Detailed DES content is spl
 - DES-009 -> TC-154 (SP-010)
 - DES-009 -> TC-173 (SP-010)
 - DES-006 -> TC-007, TC-057B, TC-156, TC-161, TC-163, TC-185 (SP-007, SP-013)
-- DES-012 -> TC-056, TC-178 (SP-012)
+- DES-012 -> TC-056, TC-178, TC-198 (SP-012)
 - DES-014 -> TC-074, TC-075, TC-076, TC-077, TC-078, TC-081, TC-140, TC-157, TC-158, TC-159, TC-160, TC-169, TC-171, TC-186, TC-187 (SP-014)
 - DES-009 -> TC-192 (SP-010)
 - DES-009 -> TC-195, TC-197 (SP-010)

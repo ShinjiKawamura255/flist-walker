@@ -77,6 +77,64 @@ def _job_blocks(text: str) -> list[tuple[str, str]]:
     )
 
 
+def _named_step_blocks(job_block: str, step_name: str) -> list[str]:
+    return re.findall(
+        rf"(?ms)(^      - name: {re.escape(step_name)}\n.*?)(?=^      - |\Z)",
+        job_block,
+    )
+
+
+def _validate_blocking_clippy_step(
+    text: str,
+    *,
+    workflow_name: str,
+    job_name: str,
+    step_name: str,
+    expected_if: str | None,
+) -> list[str]:
+    violation = (
+        f"{workflow_name}: {job_name} must contain exactly one blocking native clippy step"
+    )
+    job_blocks = [block for name, block in _job_blocks(text) if name == job_name]
+    if len(job_blocks) != 1:
+        return [violation]
+
+    job_block = job_blocks[0]
+    steps = _named_step_blocks(job_block, step_name)
+    if len(steps) != 1:
+        return [violation]
+
+    step = steps[0]
+    required_properties = (
+        "        working-directory: ${{ matrix.workdir }}",
+        "        shell: bash",
+        "        run: cargo clippy --locked --all-targets -- -D warnings",
+    )
+    step_lines = step.splitlines()
+    if any(step_lines.count(line) != 1 for line in required_properties):
+        return [violation]
+    expected_property_keys = ["working-directory", "shell", "run"]
+    if expected_if is not None:
+        expected_property_keys.insert(0, "if")
+    actual_property_keys = re.findall(r"(?m)^        ([A-Za-z0-9_-]+):", step)
+    if actual_property_keys != expected_property_keys:
+        return [violation]
+
+    if expected_if is None:
+        if re.search(r"(?m)^        if:", step):
+            return [violation]
+    elif step_lines.count(f"        if: {expected_if}") != 1 or len(
+        re.findall(r"(?m)^        if:", step)
+    ) != 1:
+        return [violation]
+
+    if re.search(r"(?m)^    continue-on-error:", job_block) or re.search(
+        r"(?m)^        continue-on-error:", step
+    ):
+        return [violation]
+    return []
+
+
 def is_audit_relevant_path(path: str) -> bool:
     return AUDIT_RELEVANT_PATH_RE.search(path) is not None
 
@@ -376,6 +434,15 @@ def validate_ci_contract(text: str) -> list[str]:
         if re.search(rf"\b{family}-[0-9][A-Za-z0-9.-]*\b", text) is None:
             violations.append(f"ci-cross-platform.yml: missing {family} runner generation")
     blocks = dict(_job_blocks(text))
+    violations.extend(
+        _validate_blocking_clippy_step(
+            text,
+            workflow_name="ci-cross-platform.yml",
+            job_name="rust-test-build",
+            step_name="Run platform clippy",
+            expected_if="${{ matrix.label != 'linux-native' }}",
+        )
+    )
     detect_block = blocks.get("detect-changes", "")
     if "fetch-depth: 0" not in detect_block:
         violations.append(
@@ -436,6 +503,15 @@ def validate_release_contract(text: str) -> list[str]:
     for label, token in forbidden_test_material.items():
         if token in text:
             violations.append(f"release-tagged.yml: contains forbidden {label}")
+    violations.extend(
+        _validate_blocking_clippy_step(
+            text,
+            workflow_name="release-tagged.yml",
+            job_name="release-preflight",
+            step_name="Run clippy",
+            expected_if=None,
+        )
+    )
     required_n_minus_one = {
         "latest published release lookup": (
             'previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" '
