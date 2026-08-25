@@ -10,15 +10,25 @@ from pathlib import Path
 
 
 CHECKSUM_ROW_RE = re.compile(r"^([0-9A-Fa-f]{64})  (.+)$", re.ASCII)
+RELEASE_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$", re.ASCII)
+SHIPPED_FAMILY_CAPABILITIES: dict[str, tuple[str, ...]] = {
+    "0.24.3": ("FlistWalker-",),
+    "0.24.4": ("FlistWalker-", "fw-"),
+}
 
 
 def accepted_families(previous_version: str) -> tuple[str, ...]:
-    # v0.24.3 is the only public release that shipped fw while its updater still
-    # accepted only the universal family. Releases after the bridge carry the
-    # mixed-family parser guarded by TC-194.
-    if previous_version == "0.24.3":
-        return ("FlistWalker-",)
-    return ("FlistWalker-", "fw-")
+    if RELEASE_VERSION_RE.fullmatch(previous_version) is None:
+        raise ValueError(f"unsupported previous release version: {previous_version}")
+    # Regression guard: inferring parser behavior from version ordering let an
+    # unknown but well-formed release silently pass. Every shipped predecessor
+    # capability must be registered and covered by an exact-inventory test.
+    try:
+        return SHIPPED_FAMILY_CAPABILITIES[previous_version]
+    except KeyError as error:
+        raise ValueError(
+            f"unsupported previous release capability: {previous_version}"
+        ) from error
 
 
 def parse_legacy_manifest(path: Path) -> list[str]:
@@ -59,36 +69,31 @@ def main() -> int:
     parser.add_argument("--previous-version", required=True)
     parser.add_argument("--candidate-version", required=True)
     parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--acknowledge-v0243-manual-update", action="store_true")
     args = parser.parse_args()
 
-    families = accepted_families(args.previous_version)
     try:
+        families = accepted_families(args.previous_version)
+        if RELEASE_VERSION_RE.fullmatch(args.candidate_version) is None:
+            raise ValueError(
+                f"unsupported candidate release version: {args.candidate_version}"
+            )
         names = parse_legacy_manifest(args.manifest)
     except (OSError, ValueError) as error:
         print(error, file=sys.stderr)
         return 2
-    rejected = [name for name in names if not name.startswith(families)]
+    rejected = [
+        (row, name)
+        for row, name in enumerate(names, 1)
+        if not name.startswith(families)
+    ]
 
     if not rejected:
         print(f"N-1 manifest compatibility passed for v{args.previous_version}")
         return 0
 
-    bridge_acknowledged = (
-        args.previous_version == "0.24.3"
-        and args.candidate_version == "0.24.4"
-        and args.acknowledge_v0243_manual_update
-        and all(name.startswith("fw-") for name in rejected)
-    )
-    if bridge_acknowledged:
-        print(
-            "v0.24.3 requires the documented one-time manual update to v0.24.4; "
-            "the candidate manifest is intentionally not accepted by its old parser"
-        )
-        return 0
-
     print(
-        f"v{args.previous_version} rejects candidate manifest assets: {', '.join(rejected)}",
+        f"v{args.previous_version} rejects candidate manifest assets: "
+        + ", ".join(f"row {row}: {name}" for row, name in rejected),
         file=sys.stderr,
     )
     return 1
