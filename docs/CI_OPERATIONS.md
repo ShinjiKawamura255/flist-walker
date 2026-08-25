@@ -34,9 +34,9 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 ### Timing baseline and hosted acceptance (2026-08-25)
 
 - PR runs `32772324004`, `32774669250`, `32788084487` は約18-19分で、GNU cross build自体は約3-4分だったが、E2Eは約11分のWindows native job完了後に開始して約7-8分を追加していた。
-- controlled rollout後のdocs-only proof PRはqueue待ちを除き3分未満で`CI Gate`まで完了し、4 heavy jobがすべて`skipped`であることを確認する。
-- Rust-impacting proof PRは全heavy jobを維持し、critical pathが`max(native matrix, GNU build + E2E) + 2分`以内であることを確認する。絶対時間だけでなくjob開始順と結果を証跡にする。
-- 本変更はtrusted policyの構造変更であるため、ローカル検証だけでは有効化しない。設定snapshot、独立final review、exact-head `CI Gate`、競合なし、一時的required-check変更、rebase merge、即時復元/read-back、docs-only/Rust-impacting proof PRを別途承認されたcontrolled rolloutで実施する。
+- Rust-impacting proof [PR #76](https://github.com/ShinjiKawamura255/flist-walker/pull/76) のrun `32865822819`は、Windows native 11分02秒と、GNU build 3分32秒から直ちに開始したE2E 7分37秒を並列化し、開始から`CI Gate`成功まで11分27秒だった。全heavy jobを維持したまま旧baselineから約7分短縮し、`max(native matrix, GNU build + E2E) + 2分`以内を満たした。
+- controlled rollout後のdocs-only proofは本記録を追加するPRとし、queue待ちを除き3分未満で`CI Gate`まで完了し、native matrix、GNU producer/E2E、clippy/coverageの4 heavy jobがすべて`skipped`であることを確認する。最終結果はPR recordを正本とする。
+- trusted policy変更は下記recordのcontrolled rolloutで有効化した。今後の構造変更も、設定snapshot、独立final review、exact-head `CI Gate`、競合なし、一時的required-check変更、rebase merge、即時復元/read-back、通常保護経路のproof PRを省略しない。
 
 ## Version-addressed required environment
 
@@ -173,3 +173,13 @@ rebase audit では source / merged が各5 commit で順序・message・author�
 required checks を一時的に `CI Gate` のみに限定し、PR #73 を `e2c7f6b58870f236b53cfc129d04703b66c7cb12` へ auto-mergeした。merge 確認後に直ちに `CI Policy Guardian` を同じ app ID で復元した。完全な read-back で required checks、strict、approval、administrators 適用、linear history、force-push/deletion、conversation/restriction/lock/fork 設定、repository auto-merge、rebase-only、merge済み branch 自動削除が変更前 snapshot と一致し、remote feature branch の自動削除も確認した。
 
 rebase audit では source / merged は各1 commitで、parent、tree `e4712726d5ffae5cb12530612ecfe54176395532`、message、author、stable patch ID `f1c94a235851cb7ef6ad9bbf9dc16197fc004814` が一致し、merge commit は0件だった。復元後の新 Guardian protected-route 証跡は本記録を追加する[PR #74](https://github.com/ShinjiKawamura255/flist-walker/pull/74)とし、`CI Gate` と `CI Policy Guardian` の両方を required にした通常状態でrebase auto-mergeする。最終checkとmerge outcomeはGitHubのPR recordを正本とする。
+
+## Updater checksum and CI timing Guardian rollout record (2026-08-26)
+
+[PR #76](https://github.com/ShinjiKawamura255/flist-walker/pull/76)でN-1 checksum manifest gate、required immutable regression、fail-closed docs-only classification、Windows GNU updater producer/E2E DAGを更新した。exact head `afd8e48e814a1057d33655b0a3264e945a5f8942` / base `bb1ceabfd422414e241267a40b3981109f5d8587`に対し、旧Guardianはtrusted workflow/checker/testの構造変更を期待どおり拒否した（run `32865822752`）。独立final reviewは修正後blocking / major / minor 0件でGO、同じheadのCross Platform run `32865822819`はWindows GNU Updater E2E job `97861998391`、Windows native job `97860754959`、`CI Gate` job `97864639973`を含む全heavy jobが成功した。PR #76は唯一のopen master PRで、rebase auto-mergeは1回だけ登録済みだった。
+
+変更前snapshotはrequired checks `CI Gate` / `CI Policy Guardian`（ともにGitHub Actions app ID `15368`、strict `true`）、approval `0`、administrators適用、linear history必須、force-push/deletion禁止だった。signature/conversation/restriction/lock/block/fork設定は無効で、repositoryはauto-merge有効、rebase-only、merge済みbranch自動削除有効、merge commit / squash無効だった。
+
+ユーザの明示承認後、単一controlの`try/finally`でrequired checksを一時的に`CI Gate`だけへ限定し、PR #76を`010307b82e3ff7136469bcb066d37ddb28593fad`へauto-mergeした。同じcontrolの`finally`で直ちに`CI Policy Guardian`をapp ID `15368`で復元した。完全なafter read-backでrequired checks、strict、approval、administrators適用、linear history、force-push/deletion、signature/conversation/restriction/lock/block/fork設定、repository auto-merge、rebase-only、merge済みbranch自動削除が変更前snapshotと一致し、remote feature branchの自動削除も確認した。
+
+rebase auditではsource `300eb86a2369997fdf3c55ee1563838b11ac4f06` / `afd8e48e814a1057d33655b0a3264e945a5f8942`とmerged `ca33ddf4b32dd88507ec5f3a9381bc46bea4c1f1` / `010307b82e3ff7136469bcb066d37ddb28593fad`が各2 commitで順序、message、author、tree、stable patch ID `062f3784274113949c1ace7ee8d76d6264d42623` / `677b401634f7d67018e0c9a8c8d592bc7d4e6d79`を保持し、最初のparentはexact base、merge commitは0件だった。復元後の新Guardianとdocs-only skipのprotected-route証跡は本記録を追加するPRとし、両required checksが有効な通常状態でrebase auto-mergeする。最終check、skip結果、merge outcomeはGitHubのPR recordを正本とする。
