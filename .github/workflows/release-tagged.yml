@@ -326,15 +326,12 @@ jobs:
           previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
           previous_version="${previous_tag#v}"
           candidate_version="${GITHUB_REF_NAME#v}"
-          bridge=()
-          if [[ "$previous_version" == "0.24.3" && "$candidate_version" == "0.24.4" ]]; then
-            bridge=(--acknowledge-v0243-manual-update)
-          fi
+          # Regression guard: the updater that is already installed parses the
+          # candidate manifest, so candidate-side fixes cannot justify a bypass.
           python3 ./scripts/check-updater-n-minus-one-compatibility.py \
             --previous-version "$previous_version" \
             --candidate-version "$candidate_version" \
-            --manifest release-bundle/SHA256SUMS \
-            "${bridge[@]}"
+            --manifest release-bundle/SHA256SUMS
 
       - name: Create draft GitHub release
         env:

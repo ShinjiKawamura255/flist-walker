@@ -355,18 +355,27 @@ def validate_release_contract(text: str) -> list[str]:
             "--jq .tag_name)\""
         ),
         # Regression guard: validate the contiguous trusted invocation, not loose
-        # argument tokens that may occur in unrelated release steps.
+        # argument tokens or a compatibility acknowledgement that may occur in
+        # unrelated release steps. N-1 incompatibility is always release-blocking.
         "N-1 compatibility checker invocation": (
             "python3 ./scripts/check-updater-n-minus-one-compatibility.py \\\n"
             '            --previous-version "$previous_version" \\\n'
             '            --candidate-version "$candidate_version" \\\n'
-            "            --manifest release-bundle/SHA256SUMS \\\n"
-            '            "${bridge[@]}"'
+            "            --manifest release-bundle/SHA256SUMS"
         ),
     }
     for label, token in required_n_minus_one.items():
         if token not in text:
             violations.append(f"release-tagged.yml: missing {label}")
+    for forbidden_bridge in (
+        "acknowledge-v0243-manual-update",
+        "bridge=()",
+        '"${bridge[@]}"',
+    ):
+        if forbidden_bridge in text:
+            violations.append(
+                "release-tagged.yml: N-1 compatibility bypass is forbidden"
+            )
     return violations
 
 

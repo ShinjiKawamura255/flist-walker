@@ -57,6 +57,7 @@
 
 ## Known issues
 - notarization 環境が整うまで、macOS 配布物は未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じvariantのbinaryと`SHA256SUMS`を手動で取得・検証して一度置き換える必要がある。v0.24.4以降へ移行後は通常の自動更新を再利用できる。
 
 ## Verify checksum
 PowerShell:

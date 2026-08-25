@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +21,82 @@ SPEC.loader.exec_module(POLICY)
 class CiPolicyTests(unittest.TestCase):
     def test_repository_satisfies_ci_policy(self) -> None:
         self.assertEqual([], POLICY.collect_violations(ROOT))
+
+    def test_required_policy_regression_executes_updater_checker_golden_contract(
+        self,
+    ) -> None:
+        # This test file is immutable under CI Policy Guardian, while the normal
+        # pull_request CI job safely executes the proposed checker without secrets.
+        # Keep the fixture independent from the mutable updater self-test.
+        version = "0.24.4"
+        universal = [
+            f"FlistWalker-{version}-linux-x86_64",
+            f"FlistWalker-{version}-linux-x86_64.tar.gz",
+            f"FlistWalker-{version}-linux-x86_64.README.txt",
+            f"FlistWalker-{version}-linux-x86_64.LICENSE.txt",
+            f"FlistWalker-{version}-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+            f"FlistWalker-{version}-windows-x86_64.exe",
+            f"FlistWalker-{version}-windows-x86_64.zip",
+            f"FlistWalker-{version}-windows-x86_64.README.txt",
+            f"FlistWalker-{version}-windows-x86_64.LICENSE.txt",
+            f"FlistWalker-{version}-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+        ]
+        for arch in ("arm64", "x86_64"):
+            universal.extend(
+                [
+                    f"FlistWalker-{version}-macos-{arch}",
+                    f"FlistWalker-{version}-macos-{arch}-app.zip",
+                    f"FlistWalker-{version}-macos-{arch}.tar.gz",
+                    f"FlistWalker-{version}-macos-{arch}.README.txt",
+                    f"FlistWalker-{version}-macos-{arch}.LICENSE.txt",
+                    f"FlistWalker-{version}-macos-{arch}.THIRD_PARTY_NOTICES.txt",
+                ]
+            )
+        fw = [
+            f"fw-{version}-linux-x86_64",
+            f"fw-{version}-windows-x86_64.exe",
+            f"fw-{version}-macos-arm64",
+            f"fw-{version}-macos-x86_64",
+        ]
+        names = sorted(universal) + sorted(fw)
+        self.assertEqual(26, len(names))
+        self.assertTrue(names[22].startswith("fw-"))
+
+        checker = ROOT / "scripts" / "check-updater-n-minus-one-compatibility.py"
+        with tempfile.TemporaryDirectory() as temp:
+            manifest = Path(temp) / "SHA256SUMS"
+            manifest.write_text(
+                "".join(f"{'a' * 64}  {name}\n" for name in names),
+                encoding="ascii",
+            )
+
+            def run(previous: str, *extra: str) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    [
+                        sys.executable,
+                        str(checker),
+                        "--previous-version",
+                        previous,
+                        "--candidate-version",
+                        version,
+                        "--manifest",
+                        str(manifest),
+                        *extra,
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+
+            legacy = run("0.24.3")
+            self.assertEqual(1, legacy.returncode, legacy.stderr)
+            self.assertIn("row 23:", legacy.stderr)
+            self.assertEqual(0, run("0.24.4").returncode)
+            self.assertEqual(2, run("9.9.9").returncode)
+            self.assertEqual(
+                2,
+                run("0.24.3", "--acknowledge-v0243-manual-update").returncode,
+            )
 
     def test_mutable_required_workflow_is_rejected(self) -> None:
         workflow = """
@@ -290,6 +368,15 @@ jobs:
                     any("N-1" in item or "latest published release" in item for item in violations),
                     violations,
                 )
+
+    def test_regression_release_contract_forbids_n_minus_one_bridge_bypass(self) -> None:
+        release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("acknowledge-v0243-manual-update", release_text)
+        self.assertNotIn("bridge=()", release_text)
+        self.assertNotIn('"${bridge[@]}"', release_text)
 
     def test_manual_self_update_cleanup_and_signing_environment_are_fail_closed(self) -> None:
         text = (ROOT / "scripts" / "manual-self-update-test.ps1").read_text(
