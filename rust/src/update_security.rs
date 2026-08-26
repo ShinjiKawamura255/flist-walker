@@ -31,12 +31,6 @@ pub fn verify_signature(
         .context("update signature verification failed")
 }
 
-pub fn sign_with_env_key(message: &[u8]) -> Result<Vec<u8>> {
-    let key_hex = std::env::var(UPDATE_SIGNING_KEY_ENV)
-        .context("FLISTWALKER_UPDATE_SIGNING_KEY_HEX is not set")?;
-    sign_message(message, &key_hex)
-}
-
 pub fn sign_message(message: &[u8], signing_key_hex: &str) -> Result<Vec<u8>> {
     let signing_key = signing_key_from_hex(signing_key_hex)?;
     Ok(signing_key.sign(message).to_bytes().to_vec())

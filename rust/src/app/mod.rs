@@ -13,7 +13,6 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
-mod action_authorization;
 mod bootstrap;
 mod cache;
 mod config;
@@ -50,11 +49,9 @@ mod worker_bus_lifecycle;
 mod worker_channel;
 mod worker_protocol;
 mod worker_runtime;
-mod worker_support;
 mod worker_tasks;
-mod workers;
 
-use action_authorization::{lexical_action_path_precheck, ActionPathPrecheck};
+use crate::actions::{lexical_action_path_precheck, ActionPathPrecheck};
 use cache::{
     EntryKindCacheState, HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState,
     SortMetadataCacheState,
@@ -91,7 +88,7 @@ use worker_protocol::{
     SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
 use worker_runtime::WorkerRuntime;
-use workers::{
+use worker_tasks::{
     spawn_action_worker, spawn_catalog_worker, spawn_filelist_worker, spawn_kind_resolver_worker,
     spawn_preview_worker, spawn_root_validation_worker, spawn_search_worker,
     spawn_sort_metadata_worker, spawn_update_worker,

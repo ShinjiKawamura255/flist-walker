@@ -62,10 +62,6 @@ impl AuthorizedActionRequest {
             cancellation,
         }
     }
-
-    pub fn cancellation_token(&self) -> Arc<AtomicBool> {
-        Arc::clone(&self.cancellation)
-    }
 }
 
 /// Adapter-owned freshness state. A root or request switch makes the request non-current.

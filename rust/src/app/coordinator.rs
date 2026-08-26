@@ -373,7 +373,7 @@ impl Drop for FlistWalkerApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::action_authorization::{lexical_action_path_precheck, ActionPathPrecheck};
+    use crate::actions::{lexical_action_path_precheck, ActionPathPrecheck};
 
     #[test]
     fn build_status_line_includes_progress_and_notice() {

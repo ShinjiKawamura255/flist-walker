@@ -1,11 +1,11 @@
 use super::*;
-use crate::app::action_authorization::{
+use crate::actions::{
     action_target_path_for_open_in_folder, authorize_action_targets, lexical_action_path_precheck,
     ActionPathPrecheck,
 };
 use crate::app::worker_channel::bounded_request_channel;
 #[cfg(target_os = "windows")]
-use crate::app::worker_support::action_notice_for_targets;
+use crate::app::worker_tasks::action_notice_for_targets;
 use crate::app::worker_tasks::{
     process_action_request_with, process_action_request_with_outcome, spawn_action_worker_with,
     ActionTerminalOutcome, SharedActionExecutor,
