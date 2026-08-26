@@ -1,7 +1,10 @@
 use super::{
     self_update_disabled, FlistWalkerApp, UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
-use crate::app::state::{UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState};
+use crate::app::state::{
+    UpdateCheckFailureState, UpdateInstallFailureState, UpdateManager, UpdatePromptState,
+    UpdateState,
+};
 use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::TryRecvError;
@@ -135,6 +138,10 @@ impl UpdateManager {
         self.state.check_failure = None;
     }
 
+    pub(super) fn dismiss_install_failure(&mut self) {
+        self.state.install_failure = None;
+    }
+
     pub(super) fn set_prompt_skip_until_next_version(&mut self, skip: bool) {
         if let Some(prompt) = self.state.prompt.as_mut() {
             prompt.skip_until_next_version = skip;
@@ -228,6 +235,7 @@ impl UpdateManager {
                     &target_version,
                     self.state.skipped_target_version.as_deref(),
                 ) {
+                    self.state.install_failure = None;
                     self.state.prompt = Some(UpdatePromptState {
                         candidate: *candidate,
                         skip_until_next_version: false,
@@ -267,11 +275,13 @@ impl UpdateManager {
                     return Vec::new();
                 }
                 let details_error = error.clone();
-                if let Some(prompt) = self.state.prompt.as_mut() {
-                    prompt.install_started = false;
-                }
+                let candidate = self.state.prompt.take().map(|prompt| prompt.candidate);
+                self.state.install_failure = Some(UpdateInstallFailureState { candidate, error });
                 let mut commands = vec![
-                    UpdateCommand::Ui(UpdateUiCommand::SetNotice(error)),
+                    UpdateCommand::Ui(UpdateUiCommand::SetNotice(
+                        "Automatic update failed; manual update instructions are available"
+                            .to_string(),
+                    )),
                     UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                         event: "update_failed",
                         details: format!("request_id={request_id} error={details_error}"),
@@ -442,6 +452,10 @@ impl FlistWalkerApp {
 
     pub(super) fn dismiss_update_check_failure(&mut self) {
         self.shell.features.update.dismiss_check_failure();
+    }
+
+    pub(super) fn dismiss_update_install_failure(&mut self) {
+        self.shell.features.update.dismiss_install_failure();
     }
 
     pub(super) fn suppress_update_check_failures(&mut self) {

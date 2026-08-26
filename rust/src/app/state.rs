@@ -123,6 +123,12 @@ pub(super) struct UpdateCheckFailureState {
     pub(super) suppress_future_errors: bool,
 }
 
+#[derive(Clone, Debug)]
+pub(super) struct UpdateInstallFailureState {
+    pub(super) candidate: Option<UpdateCandidate>,
+    pub(super) error: String,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FileListDialogKind {
     Overwrite,
@@ -204,6 +210,7 @@ pub(super) struct UpdateState {
     pub(super) in_progress: bool,
     pub(super) prompt: Option<UpdatePromptState>,
     pub(super) check_failure: Option<UpdateCheckFailureState>,
+    pub(super) install_failure: Option<UpdateInstallFailureState>,
     pub(super) previous_update_failure: Option<String>,
     pub(super) skipped_target_version: Option<String>,
     pub(super) suppress_check_failure_dialog: bool,
@@ -220,6 +227,7 @@ impl Default for UpdateState {
             in_progress: false,
             prompt: None,
             check_failure: None,
+            install_failure: None,
             previous_update_failure: None,
             skipped_target_version: None,
             suppress_check_failure_dialog: false,

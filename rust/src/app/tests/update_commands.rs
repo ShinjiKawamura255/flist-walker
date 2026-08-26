@@ -156,7 +156,10 @@ fn failed_update_response_sets_notice_without_closing_app() {
 
     app.poll_update_response();
 
-    assert_eq!(app.shell.runtime.notice, "Update check failed: offline");
+    assert_eq!(
+        app.shell.runtime.notice,
+        "Automatic update failed; manual update instructions are available"
+    );
     assert_eq!(app.shell.features.update.state.pending_request_id, None);
     assert!(!app.shell.features.update.state.in_progress);
     assert!(!app.shell.features.update.state.close_requested_for_install);
@@ -549,7 +552,7 @@ fn update_failed_response_emits_trace_command() {
 }
 
 #[test]
-fn failed_update_response_reenables_update_prompt_actions() {
+fn failed_update_response_replaces_prompt_with_manual_recovery_state() {
     let root = test_root("failed-update-response-reenables-actions");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -571,16 +574,40 @@ fn failed_update_response_reenables_update_prompt_actions() {
 
     app.poll_update_response();
 
-    assert!(
-        !app.shell
-            .features
-            .update
-            .state
-            .prompt
+    assert!(app.shell.features.update.state.prompt.is_none());
+    let failure = app
+        .shell
+        .features
+        .update
+        .state
+        .install_failure
+        .as_ref()
+        .expect("update installation failure");
+    assert_eq!(failure.error, "Update failed: offline");
+    assert_eq!(
+        failure
+            .candidate
             .as_ref()
-            .expect("update prompt")
-            .install_started
+            .expect("failed candidate")
+            .release_url,
+        "https://example.invalid/release"
     );
-    assert_eq!(app.shell.runtime.notice, "Update failed: offline");
+    assert_eq!(
+        app.shell.runtime.notice,
+        "Automatic update failed; manual update instructions are available"
+    );
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn dismissing_update_install_failure_removes_manual_recovery_state() {
+    let mut manager = UpdateManager::default();
+    manager.state.install_failure = Some(crate::app::state::UpdateInstallFailureState {
+        candidate: None,
+        error: "invalid checksum manifest".to_string(),
+    });
+
+    manager.dismiss_install_failure();
+
+    assert!(manager.state.install_failure.is_none());
 }

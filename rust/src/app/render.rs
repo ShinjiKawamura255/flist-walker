@@ -342,21 +342,24 @@ impl FlistWalkerApp {
             .state
             .previous_update_failure
             .is_some();
+        let update_install_failure_visible =
+            self.shell.features.update.state.install_failure.is_some();
         render_dialogs::render_previous_update_failure_dialog(self, &ctx);
         if !previous_update_failure_visible {
             render_dialogs::render_update_check_failure_dialog(self, &ctx);
+            render_dialogs::render_update_install_failure_dialog(self, &ctx);
             render_dialogs::render_help_dialog(self, &ctx);
             render_dialogs::render_preset_picker_dialog(self, &ctx);
         }
 
         render_panels::render_top_panel(self, ui);
         render_panels::render_status_panel(self, ui);
-        if !previous_update_failure_visible {
+        if !previous_update_failure_visible && !update_install_failure_visible {
             render_dialogs::render_filelist_dialogs(self, &ctx);
             render_dialogs::render_update_dialog(self, &ctx);
         }
         self.render_central_panel(ui);
-        if !previous_update_failure_visible {
+        if !previous_update_failure_visible && !update_install_failure_visible {
             render_dialogs::render_manage_root_list_dialog(self, &ctx);
         }
         self.dispatch_render_commands(&ctx);

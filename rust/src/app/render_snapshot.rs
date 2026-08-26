@@ -298,6 +298,25 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             buttons: vec!["Close".to_string()],
         });
     }
+    if let Some(failure) = app.shell.features.update.state.install_failure.as_ref() {
+        let mut lines = vec![
+            "Automatic update could not be completed.".to_string(),
+            "Your current installation was not changed.".to_string(),
+            "Manual recovery".to_string(),
+            "Download the same binary variant and SHA256SUMS from the release page, verify the binary hash, then replace the executable manually.".to_string(),
+        ];
+        if let Some(candidate) = failure.candidate.as_ref() {
+            lines.push(format!("Release: v{}", candidate.target_version));
+            lines.push(format!("Open release page: {}", candidate.release_url));
+        }
+        lines.push("Details".to_string());
+        lines.push(failure.error.clone());
+        update_dialogs.push(DialogSnapshot {
+            title: "Update Installation Failed".to_string(),
+            lines,
+            buttons: vec!["Close".to_string()],
+        });
+    }
 
     GuiSurfaceSnapshot {
         root: app.shell.runtime.root.display().to_string(),

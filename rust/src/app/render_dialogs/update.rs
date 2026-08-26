@@ -140,6 +140,55 @@ pub(super) fn render_check_failure(app: &mut FlistWalkerApp, ctx: &egui::Context
     }
 }
 
+pub(super) fn render_install_failure(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    let Some(failure) = app
+        .shell
+        .features
+        .update
+        .state
+        .install_failure
+        .as_ref()
+        .cloned()
+    else {
+        return;
+    };
+    let mut close = false;
+    egui::Modal::new(egui::Id::new("update-install-failure-modal")).show(ctx, |ui| {
+        ui.heading("Update Installation Failed");
+        ui.label("Automatic update could not be completed.");
+        ui.label("Your current installation was not changed.");
+        ui.add_space(6.0);
+        ui.separator();
+        ui.label("Manual recovery");
+        ui.label(
+            "Download the same binary variant and SHA256SUMS from the release page, verify the binary hash, then replace the executable manually.",
+        );
+        if let Some(candidate) = &failure.candidate {
+            ui.label(format!("Release: v{}", candidate.target_version));
+            ui.hyperlink_to("Open release page", &candidate.release_url);
+        }
+        ui.add_space(6.0);
+        ui.separator();
+        ui.label("Details");
+        egui::ScrollArea::vertical()
+            .max_height(180.0)
+            .show(ui, |ui| {
+                ui.add(
+                    egui::Label::new(egui::RichText::new(&failure.error).monospace())
+                        .wrap()
+                        .selectable(true),
+                );
+            });
+        ui.add_space(6.0);
+        if ui.button("Close").clicked() {
+            close = true;
+        }
+    });
+    if close {
+        app.dismiss_update_install_failure();
+    }
+}
+
 pub(super) fn render_previous_failure(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     let Some(message) = app
         .shell

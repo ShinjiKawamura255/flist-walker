@@ -74,6 +74,7 @@
 - MUST: 更新ダイアログは、現在提示中の target version を「次のバージョンが出るまで表示しない」として抑止できなければならず、この抑止状態は起動間で保持されなければならない。
 - MUST: 抑止済み target version 以下の更新候補は次回起動以降も再表示してはならず、より新しい version を検知した場合のみ再び更新ダイアログを表示しなければならない。
 - MUST: 起動時の更新確認が失敗した場合、失敗理由を利用者へ確認できる軽量ダイアログを表示しなければならない。ただし通常の検索/操作は継続可能でなければならない。
+- MUST: 更新候補の承認後に staging、manifest、signature、checksum、network、または activation が失敗した場合、提示中の `Update Available` を閉じ、現在の installation が変更されていないこと、失敗詳細、候補 release URL、および可能な場合は同一 variant の binary と checksum manifest を使う手動復旧手順を専用ダイアログへ表示しなければならない。同じ失敗後に `Update Available` だけを再表示してはならない。
 - MUST: update worker 応答は request_id で相関し、stale 応答が新しい prompt / failure / install_started 状態を上書きしてはならない。
 - MUST: update check / install が失敗、抑止、または supersede された場合、pending / in_progress 状態は解放され、通常操作を継続できなければならない。
 - SHOULD: 上記の起動時更新確認失敗ダイアログは、「今後この種の起動時エラーを表示しない」として抑止でき、この設定は起動間で保持される。

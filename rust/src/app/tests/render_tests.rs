@@ -1267,6 +1267,40 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
 }
 
 #[test]
+fn tc_200_gui_surface_snapshot_exposes_install_failure_recovery() {
+    let root = test_root("render-snapshot-install-failure");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.update.state.install_failure = Some(UpdateInstallFailureState {
+        candidate: Some(test_render_update_candidate()),
+        error: "Update failed: invalid checksum manifest".to_string(),
+    });
+
+    let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
+    assert_eq!(
+        snapshot["update_dialogs"],
+        json!([
+            {
+                "title": "Update Installation Failed",
+                "lines": [
+                    "Automatic update could not be completed.",
+                    "Your current installation was not changed.",
+                    "Manual recovery",
+                    "Download the same binary variant and SHA256SUMS from the release page, verify the binary hash, then replace the executable manually.",
+                    "Release: v0.16.2",
+                    "Open release page: https://example.invalid/release",
+                    "Details",
+                    "Update failed: invalid checksum manifest"
+                ],
+                "buttons": ["Close"]
+            }
+        ])
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn render_panels_and_dialogs_execute_in_headless_frame() {
     let root = test_root("render-headless-frame");
     fs::create_dir_all(&root).expect("create dir");
