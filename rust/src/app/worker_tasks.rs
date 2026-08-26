@@ -8,7 +8,6 @@ use super::worker_protocol::{
     SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
     UpdateRequestKind, UpdateResponse, ValidatedRoot,
 };
-use super::worker_support::action_notice_for_targets;
 use super::SortMetadata;
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
@@ -36,6 +35,14 @@ use tracing::{info, warn};
 
 pub(crate) type SharedKindResolver = Arc<dyn Fn(&Path) -> Option<EntryKind> + Send + Sync>;
 pub(crate) type SharedActionExecutor = Arc<dyn Fn(&Path) -> anyhow::Result<()> + Send + Sync>;
+
+pub(crate) fn action_notice_for_targets(targets: &[PathBuf]) -> String {
+    if targets.len() == 1 {
+        format!("Action: {}", normalize_path_for_display(&targets[0]))
+    } else {
+        format!("Action: launched {} items", targets.len())
+    }
+}
 
 fn resolve_named_root_path(root: &Path) -> anyhow::Result<PathBuf> {
     let root = root.canonicalize().map_err(|error| {

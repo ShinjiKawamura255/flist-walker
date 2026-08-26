@@ -394,10 +394,6 @@ impl CompiledQuery {
         }
     }
 
-    pub fn has_positive_terms(&self) -> bool {
-        !self.exact_terms.is_empty() || !self.include_terms.is_empty()
-    }
-
     pub(crate) fn requires_file_kind(&self) -> bool {
         self.requires_file_kind
     }

@@ -811,11 +811,6 @@ impl FlistWalkerApp {
         ))
     }
 
-    pub fn startup_window_size() -> Option<egui::Vec2> {
-        let (_, size) = Self::startup_window_geometry()?;
-        Some(size)
-    }
-
     fn saved_roots_file_path() -> Option<PathBuf> {
         #[cfg(test)]
         if let Some(path) = SAVED_ROOTS_FILE_PATH_OVERRIDE

@@ -7,12 +7,6 @@ pub const IGNORE_LIST_FILE_NAME: &str = "flistwalker.ignore.txt";
 pub const IGNORE_LIST_SAMPLE_FILE_NAME: &str = "flistwalker.ignore.txt.example";
 pub const IGNORE_LIST_SAMPLE_TEMPLATE: &str = include_str!("../../flistwalker.ignore.txt.example");
 
-pub fn current_exe_ignore_list_path() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    exe.parent()
-        .map(|parent| parent.join(IGNORE_LIST_FILE_NAME))
-}
-
 pub fn current_exe_ignore_list_sample_path() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     exe.parent()
@@ -37,10 +31,6 @@ pub fn ensure_ignore_list_sample_at(path: &Path) -> Result<bool> {
 
 pub fn load_ignore_terms_from_current_exe() -> Vec<String> {
     load_ignore_terms_from_current_exe_result().unwrap_or_default()
-}
-
-pub fn load_ignore_terms_from_path(path: &Path) -> Vec<String> {
-    load_ignore_terms_from_path_result(path).unwrap_or_default()
 }
 
 pub fn load_ignore_terms_from_path_result(path: &Path) -> Result<Vec<String>> {
@@ -122,12 +112,6 @@ mod tests {
         let terms = parse_ignore_terms("\u{feff}!generated\\cache\r\n# comment\r\n~temp\r\n");
 
         assert_eq!(terms, vec!["generated\\cache", "~temp"]);
-    }
-
-    #[test]
-    fn load_ignore_terms_from_path_returns_empty_for_missing_file() {
-        let path = Path::new("/definitely/missing/flistwalker.ignore.txt");
-        assert!(load_ignore_terms_from_path(path).is_empty());
     }
 
     #[test]
