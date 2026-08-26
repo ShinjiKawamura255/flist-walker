@@ -395,7 +395,7 @@ fn process_query_input_events_does_not_override_widget_owned_ime_commit() {
         true,
         true,
         Some(egui::text::CCursorRange::one(egui::text::CCursor::new(
-            FlistWalkerApp::char_count(&app.shell.runtime.query_state.query),
+            crate::text_editing::char_count(&app.shell.runtime.query_state.query),
         ))),
     );
 

@@ -6,6 +6,7 @@ use super::state::{
 use crate::actions::AuthorizedActionMode;
 use crate::persistence::AsyncHistoryPersistence;
 use crate::search::SearchSortMode;
+use crate::text_editing::{apply_emacs_edit, char_to_byte_index, CursorRange, EmacsEdit};
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use std::path::PathBuf;
@@ -424,64 +425,23 @@ pub(super) fn apply_emacs_text_editing(
     let (KeyCode::Char(ch), KeyModifiers::CONTROL) = (key.code, key.modifiers) else {
         return None;
     };
-    let char_len = text.chars().count();
-    let mut changed = false;
-    match ch.to_ascii_lowercase() {
-        'a' => *cursor = 0,
-        'e' => *cursor = char_len,
-        'b' => *cursor = cursor.saturating_sub(1),
-        'f' => *cursor = (*cursor + 1).min(char_len),
-        'h' if *cursor > 0 => {
-            let start = char_to_byte_index(text, *cursor - 1);
-            let end = char_to_byte_index(text, *cursor);
-            text.replace_range(start..end, "");
-            *cursor -= 1;
-            changed = true;
-        }
-        'd' if *cursor < char_len => {
-            let start = char_to_byte_index(text, *cursor);
-            let end = char_to_byte_index(text, *cursor + 1);
-            text.replace_range(start..end, "");
-            changed = true;
-        }
-        'w' if *cursor > 0 => {
-            let chars: Vec<char> = text.chars().collect();
-            let mut start = *cursor;
-            while start > 0 && chars[start - 1].is_whitespace() {
-                start -= 1;
-            }
-            while start > 0 && !chars[start - 1].is_whitespace() {
-                start -= 1;
-            }
-            let start_byte = char_to_byte_index(text, start);
-            let end_byte = char_to_byte_index(text, *cursor);
-            *kill_buffer = text[start_byte..end_byte].to_string();
-            text.replace_range(start_byte..end_byte, "");
-            *cursor = start;
-            changed = true;
-        }
-        'k' if *cursor < char_len => {
-            let start = char_to_byte_index(text, *cursor);
-            *kill_buffer = text[start..].to_string();
-            text.truncate(start);
-            changed = true;
-        }
-        'y' if !kill_buffer.is_empty() => {
-            let byte_index = char_to_byte_index(text, *cursor);
-            text.insert_str(byte_index, kill_buffer);
-            *cursor += kill_buffer.chars().count();
-            changed = true;
-        }
-        'u' if *cursor > 0 => {
-            let end = char_to_byte_index(text, *cursor);
-            text.replace_range(..end, "");
-            *cursor = 0;
-            changed = true;
-        }
-        'd' | 'h' | 'k' | 'u' | 'w' | 'y' => {}
+    let edit = match ch.to_ascii_lowercase() {
+        'a' => EmacsEdit::MoveToStart,
+        'e' => EmacsEdit::MoveToEnd,
+        'b' => EmacsEdit::MoveBackward,
+        'f' => EmacsEdit::MoveForward,
+        'h' => EmacsEdit::DeleteBackward,
+        'd' => EmacsEdit::DeleteForward,
+        'w' => EmacsEdit::KillBackwardWord,
+        'k' => EmacsEdit::KillToEnd,
+        'y' => EmacsEdit::Yank,
+        'u' => EmacsEdit::KillToStart,
         _ => return None,
-    }
-    Some(changed)
+    };
+    let mut range = CursorRange::collapsed(*cursor);
+    let outcome = apply_emacs_edit(text, &mut range, kill_buffer, edit);
+    *cursor = range.primary;
+    Some(outcome.text_changed)
 }
 
 pub(super) fn apply_emacs_query_editing(state: &mut TuiState, key: KeyEvent) -> bool {
@@ -724,13 +684,6 @@ pub(super) fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     }
     state.dirty = true;
     KeyAction::Continue
-}
-
-pub(super) fn char_to_byte_index(text: &str, char_index: usize) -> usize {
-    text.char_indices()
-        .nth(char_index)
-        .map(|(index, _)| index)
-        .unwrap_or(text.len())
 }
 
 pub(super) fn insert_paste(state: &mut TuiState, pasted: &str) {

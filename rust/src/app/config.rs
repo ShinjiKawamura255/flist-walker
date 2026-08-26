@@ -1,4 +1,5 @@
 use super::FlistWalkerApp;
+use crate::query_history::MAX_QUERY_HISTORY_ENTRIES;
 use std::time::Duration;
 
 impl FlistWalkerApp {
@@ -6,7 +7,7 @@ impl FlistWalkerApp {
     pub(super) const HIGHLIGHT_CACHE_MAX: usize = 256;
     pub(super) const SORT_METADATA_CACHE_MAX: usize = 4096;
     pub(super) const TAB_DRAG_START_DISTANCE: f32 = 6.0;
-    pub(super) const QUERY_HISTORY_MAX: usize = 100;
+    pub(super) const QUERY_HISTORY_MAX: usize = MAX_QUERY_HISTORY_ENTRIES;
     pub(super) const QUERY_HISTORY_IDLE_DELAY: Duration = Duration::from_millis(400);
     pub(super) const INCREMENTAL_SEARCH_REFRESH_INTERVAL: Duration = Duration::from_millis(300);
     pub(super) const INCREMENTAL_SEARCH_REFRESH_INTERVAL_DURING_INDEX: Duration =

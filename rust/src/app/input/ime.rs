@@ -1,4 +1,5 @@
 use super::super::FlistWalkerApp;
+use crate::text_editing::{char_count, insert_at_char, remove_char_range, selected_char_range};
 use eframe::egui;
 
 impl FlistWalkerApp {
@@ -20,14 +21,12 @@ impl FlistWalkerApp {
         let mut cursor_changed = false;
         let initial_cursor = cursor_range
             .map(|range| range.primary.index.0)
-            .unwrap_or_else(|| Self::char_count(&self.shell.runtime.query_state.query));
+            .unwrap_or_else(|| char_count(&self.shell.runtime.query_state.query));
         let initial_anchor = cursor_range
             .map(|range| range.secondary.index.0)
             .unwrap_or(initial_cursor);
-        let mut cursor =
-            initial_cursor.min(Self::char_count(&self.shell.runtime.query_state.query));
-        let mut anchor =
-            initial_anchor.min(Self::char_count(&self.shell.runtime.query_state.query));
+        let mut cursor = initial_cursor.min(char_count(&self.shell.runtime.query_state.query));
+        let mut anchor = initial_anchor.min(char_count(&self.shell.runtime.query_state.query));
 
         for event in events {
             match event {
@@ -116,16 +115,16 @@ impl FlistWalkerApp {
 
         if let Some(commit_text) = composition_commit_text {
             if query_focused && !text_changed_by_widget {
-                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                    Self::remove_char_range(&mut self.shell.runtime.query_state.query, start, end);
+                if let Some((start, end)) = selected_char_range(cursor, anchor) {
+                    remove_char_range(&mut self.shell.runtime.query_state.query, start, end);
                     cursor = start;
                 }
-                Self::insert_at_char(
+                insert_at_char(
                     &mut self.shell.runtime.query_state.query,
                     cursor,
                     &commit_text,
                 );
-                cursor += Self::char_count(&commit_text);
+                cursor += char_count(&commit_text);
                 anchor = cursor;
                 changed = true;
                 cursor_changed = true;
@@ -150,12 +149,12 @@ impl FlistWalkerApp {
 
         if query_focused && !saw_text_space && !saw_composition_update {
             if let Some(space) = fallback_space {
-                if let Some((start, end)) = Self::selection_range(cursor, anchor) {
-                    Self::remove_char_range(&mut self.shell.runtime.query_state.query, start, end);
+                if let Some((start, end)) = selected_char_range(cursor, anchor) {
+                    remove_char_range(&mut self.shell.runtime.query_state.query, start, end);
                     cursor = start;
                 }
                 // Keep IME fallback insertion at the caret instead of forcing tail append.
-                Self::insert_at_char(
+                insert_at_char(
                     &mut self.shell.runtime.query_state.query,
                     cursor,
                     &space.to_string(),

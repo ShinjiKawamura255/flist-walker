@@ -7,10 +7,9 @@ use super::protocol::{
 use super::tui_path_label;
 use crate::actions::{AuthorizedActionMode, AuthorizedActionRequest};
 use crate::indexer::MaxDepth;
+use crate::query_history::{history_matches, history_with_query};
 use crate::search::SearchSortMode;
 use crate::walker_runtime::walker_truncated_notice;
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
@@ -70,40 +69,8 @@ pub(super) struct TuiState {
     pub(super) active_action_request: Option<(u64, PathBuf)>,
 }
 
-pub(super) fn history_search_score(
-    query: &str,
-    candidate: &str,
-    recency_rank: usize,
-) -> Option<i64> {
-    if query.trim().is_empty() {
-        return Some(recency_rank as i64);
-    }
-    let matcher = SkimMatcherV2::default();
-    matcher.fuzzy_match(candidate, query).or_else(|| {
-        let query_lower = query.to_ascii_lowercase();
-        let candidate_lower = candidate.to_ascii_lowercase();
-        candidate_lower
-            .contains(&query_lower)
-            .then_some((query_lower.len() as i64) * 100 + recency_rank as i64)
-    })
-}
-
 pub(super) fn refresh_history_results(history: &mut HistoryOverlay, entries: &[String]) {
-    let mut scored = entries
-        .iter()
-        .rev()
-        .enumerate()
-        .filter_map(|(index, entry)| {
-            history_search_score(
-                history.filter.trim(),
-                entry,
-                entries.len().saturating_sub(index),
-            )
-            .map(|score| (entry.clone(), score, index))
-        })
-        .collect::<Vec<_>>();
-    scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.2.cmp(&right.2)));
-    history.results = scored.into_iter().map(|(entry, _, _)| entry).collect();
+    history.results = history_matches(&history.filter, entries.iter());
     history.selected = 0;
     history.offset = 0;
 }
@@ -624,14 +591,7 @@ impl TuiState {
 
     pub(super) fn commit_query_to_history(&mut self) -> Option<String> {
         let query = self.query.trim().to_string();
-        if query.is_empty() {
-            return None;
-        }
-        self.history_entries.retain(|entry| entry != &query);
-        self.history_entries.push(query.clone());
-        while self.history_entries.len() > 100 {
-            self.history_entries.remove(0);
-        }
+        self.history_entries = history_with_query(self.history_entries.iter(), &query)?;
         Some(query)
     }
 
