@@ -187,7 +187,7 @@ Ignore List:
 - 各トークンは検索の除外条件として扱われるため、old や ~ は !old !~ と同じ挙動になります。
 - Use Ignore List チェックボックスで適用の ON/OFF を切り替えます。既定は ON です。
 - サンプルが無い場合は、起動時に実行ファイル横へ自動生成されます。
-- `flistwalker.ignore.txt.example` を実際の Ignore List として使う場合は、`flistwalker.ignore.txt` にリネームしてください。
+- \`flistwalker.ignore.txt.example\` を実際の Ignore List として使う場合は、\`flistwalker.ignore.txt\` にリネームしてください。
 
 Runtime config:
 - runtime settings は ~/.flistwalker/.flistwalker_config.json に保存されます。

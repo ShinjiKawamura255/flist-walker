@@ -24,6 +24,33 @@
 ### Known issues
 - なし。
 
+## [0.24.5] - 2026-08-26
+### Added
+- GUI の通常検索欄と履歴検索フィルターで、`emacs_keybindings_enabled` と `ctrl_w_deletes_word_in_query` を有効にした場合だけ `Ctrl+W` で直前の単語を削除できる opt-in 設定を追加した。TUI の既存動作と、設定無効時の GUI の tab 終了動作は維持する。
+
+### Changed
+- GUI / CLI の history と text editing policy を共有化し、検索入力の挙動と回帰テストの対応を一貫させた。
+- インデックス中の tab 切替・再有効化を応答性重視の routing に整理し、CI の変更範囲判定、native clippy、release warning gate を強化した。
+- 現行 Rust 実装に不要な内部 surface と、役割を終えた Python prototype を整理・撤去した。
+- Linux release packaging の README 生成で Markdown backtick が shell command substitution される warning を修正した。
+
+### Fixed
+- インデックス処理中の tab 遷移で、古い worker 応答が現在の状態を巻き戻したり、切替後の更新を遅延させたりする問題を修正した。
+- updater の N-1 compatibility checker が未知の公開版能力を version 大小比較で推測せず、未登録 capability や非増加 version を fail closed にするよう修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- updater は従来どおり `SHA256SUMS.sig` の署名検証後に `SHA256SUMS` の checksum を照合する。今回の変更範囲に依存関係の追加・更新はない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+
 ## [0.24.4] - 2026-08-25
 ### Added
 - なし。
