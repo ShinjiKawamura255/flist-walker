@@ -105,7 +105,7 @@
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。`egui-winit` が clipboard chord を `Event::Copy` に正規化して `Key::C` を出さない場合も、Shift 付き primary modifier のときだけ選択パスコピーへ流す。
 - Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。
 - プレビューデコーダは拡張子を見ず、先頭 64KiB を対象に UTF-8、BOM 付き UTF-16、その後に主要レガシー文字コードを順に試す。候補ごとに decode error と制御文字比率を評価し、妥当なテキストだけを preview に採用する。
-- query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。
+- query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。同一 query の再登録は exact duplicate を除去して最新位置へ移動し、GUI/TUI は同じ pure policy を使う。
 - query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
 - Emacs 風 keybindings は runtime config の `emacs_keybindings_enabled` で制御する。既定は `true` で既存操作を維持し、`false` のときは `consume_emacs_shortcut` と検索欄編集の Emacs 風処理を入口で無効化する。
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
@@ -132,7 +132,7 @@
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - GUI/TUI は `tab_pin_moves_to_next_row=true` のとき `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` による PIN トグル後に次行へ移動する。既定の `false` では current row を維持する。TUI event-loop state は process runtime config の両値を起動時に取り込む。
 - GUI/TUI は `emacs_keybindings_enabled=false` のときも `ArrowUp` / `ArrowDown` / `Enter` / `Tab` / `Shift+Tab` など非 Emacs 風の操作を維持し、無効化対象を `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` と検索欄編集の Emacs 風 chord に限定する。
-- TUI は normal query と history filter に同じ Emacs 風 text editing helper を適用し、runtime config が無効なら両方を処理しない。help と history/options/sort/root/FileList overlay renderer にも有効状態を渡し、無効な chord を操作案内へ表示しない。
+- GUI/TUI は Unicode character index と Emacs 風 text editing reducer を共有し、各 adapter は widget/terminal 固有の key event と selection の橋渡しだけを持つ。TUI は normal query と history filter に同じ reducer を適用し、runtime config が無効なら両方を処理しない。help と history/options/sort/root/FileList overlay renderer にも有効状態を渡し、無効な chord を操作案内へ表示しない。
 - Windows の一般 `.ps1` は検索結果からの既定操作では直接実行せず、既定アプリでオープンする。自己更新用の内部 PowerShell script は updater モジュールからのみ起動する。
 - 自己更新は release metadata、manifest、署名、binary、sidecar ごとの decoded-byte 上限と、接続 10 秒・無通信 30 秒・request 5 分・全体 10 分の deadline を transport/streaming reader の両層で強制する。
 - redirect は 3 hop まで手動追跡し、各 hop で scheme/host を検証する。production は HTTPS の GitHub 配布 origin だけを許可し、test transport だけが loopback HTTP を許可する。

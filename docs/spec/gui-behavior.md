@@ -23,7 +23,7 @@
 - MUST: GUI ヘルプは macOS では primary modifier を `Cmd`、その他の OS では `Ctrl` と表示し、runtime config の `emacs_keybindings_enabled` に応じて Emacs 風ショートカット一覧または無効状態を表示しなければならない。query syntax は非field term、`name:`、`path:`、`dir:`、`ext:` の対象と、fieldへ適用できる `'`、`!`、`^`、`$`、`|` および複合例を表示しなければならない。
 - MUST: GUI ヘルプ表示中は背後の検索入力、選択、PIN、コピー、実行などを起動するキーイベントを消費し、現在の検索状態を変更してはならない。
 - MUST: 選択パスコピーは Windows/Linux では `Ctrl+Shift+C`、macOS では `Cmd+Shift+C` を受理する。GUI backend がこの chord を `Event::Copy` として通知し、`Key::C` が来ない場合も同じ選択パスコピーとして扱う。
-- MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字と連続重複 query は履歴保存しない。
+- MUST: query 履歴は全タブ共通で最大 100 件まで保持し、空文字は保存しない。同一 query を再登録すると既存項目を除去して最新位置へ移動する。
 - MUST: query 履歴はセッション復元ファイルへ永続化し、後方互換を保ったまま復元できる。
 - MUST: runtime config の `history_persist_disabled` が有効なとき、query 履歴は読み込み・保存の両方を行わない。
 - MUST: `Ctrl+R` で履歴検索モードを開始し、同じ検索欄で query history をファジー検索できる。

@@ -5,7 +5,7 @@ This document is the short current-state snapshot for maintainers. It does not o
 ## Product Direction
 
 - The Rust GUI/CLI implementation under `rust/` is the canonical product path.
-- The Python implementation under `prototype/python/` is retained as a prototype, not as the feature-development target.
+- The Rust implementation is the only maintained product implementation. The retired Python prototype remains available only through Git history.
 - GUI responsiveness remains the primary implementation constraint: indexing, search, preview, and FileList creation stay off the UI thread and stale worker responses must not roll state backward.
 
 ## CLI/TUI Usability Baseline (2026-07-26)
