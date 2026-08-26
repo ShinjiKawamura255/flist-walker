@@ -126,6 +126,7 @@ fn filelist_finish_reindexes_original_tab_after_tab_switch() {
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListResponse>();
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.worker_bus.filelist.rx = filelist_rx;
     app.shell.features.filelist.workflow.pending_request_id = Some(1);
     app.shell.features.filelist.workflow.pending_request_tab_id = Some(source_tab_id);
@@ -231,7 +232,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     app.switch_to_tab_index(0);
     app.shell
         .tabs
-        .pending_restore_refresh_tabs
+        .pending_activation_refresh_tabs
         .insert(app.shell.tabs.get(0).expect("tab 0").id);
 
     let (_, rx) = bounded_request_channel::<IndexRequest>(2);
@@ -245,7 +246,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert!(!background_tab.index_state.index_in_progress);
     assert_eq!(background_tab.index_state.pending_index_request_id, None);
     assert!(background_tab.index_state.pending_index_entries.is_empty());
-    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
     assert!(background_tab
         .notice
         .contains("Index worker is unavailable"));

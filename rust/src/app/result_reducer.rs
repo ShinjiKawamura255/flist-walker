@@ -131,7 +131,7 @@ pub(super) fn apply_background_search_response(
     clamp_tab_result_selection(tab);
     let preview_invalidated =
         invalidate_background_preview_if_selection_changed(tab, previous_path.as_ref());
-    FlistWalkerApp::compact_inactive_tab_state(tab);
+    FlistWalkerApp::trim_inactive_tab_preview(tab);
     if preview_invalidated {
         app.shell
             .tabs
@@ -376,7 +376,7 @@ pub(super) fn apply_background_sort_response(
         }
         let preview_invalidated =
             invalidate_background_preview_if_selection_changed(tab, previous_path.as_ref());
-        FlistWalkerApp::compact_inactive_tab_state(tab);
+        FlistWalkerApp::trim_inactive_tab_preview(tab);
         if preview_invalidated {
             app.shell
                 .tabs

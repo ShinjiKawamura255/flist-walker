@@ -129,6 +129,7 @@ fn non_empty_query_resumes_search_immediately_on_first_index_batch() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     // Use a manual search channel so the test can inspect enqueued requests.
     let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
     app.shell.search.tx = search_tx_real;
@@ -172,6 +173,7 @@ fn filtered_out_batch_still_resumes_non_empty_query_search() {
     app.shell.runtime.include_dirs = true;
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     let (search_tx_real, search_rx_real) = mpsc::channel::<SearchRequest>();
     app.shell.search.tx = search_tx_real;
 

@@ -210,6 +210,111 @@ fn tc_154_tab_switch_transfers_large_payload_allocations_in_both_directions() {
 }
 
 #[test]
+fn tc_154_tab_switch_does_not_compact_sparse_payload_on_ui_path() {
+    let root = test_root("tc-154-tab-sparse-payload-transfer");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), PAYLOAD_LEN, String::new());
+    app.create_new_tab();
+
+    seed_live_payload(&mut app, "active-sparse", 1543);
+    seed_tab_payload(
+        app.shell.tabs.get_mut(0).expect("inactive tab"),
+        "inactive-sparse",
+        1542,
+    );
+    app.shell.runtime.index.entries.reserve(8_192);
+    app.shell.indexing.pending_entries.reserve(8_192);
+    app.shell.indexing.pending_kind_paths.reserve(8_192);
+    app.shell
+        .indexing
+        .incremental_filtered_entries
+        .reserve(8_192);
+    {
+        let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
+        inactive.index_state.index.entries.reserve(8_192);
+        inactive.index_state.pending_index_entries.reserve(8_192);
+        inactive.index_state.pending_kind_paths.reserve(8_192);
+        inactive
+            .index_state
+            .incremental_filtered_entries
+            .reserve(8_192);
+    }
+    let active_allocations = live_allocations(&app);
+    let inactive_allocations = tab_allocations(app.shell.tabs.get(0).expect("inactive tab"));
+
+    app.switch_to_tab_index(0);
+
+    assert_eq!(live_allocations(&app), inactive_allocations);
+    assert_eq!(
+        tab_allocations(app.shell.tabs.get(1).expect("outgoing tab")),
+        active_allocations
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+#[ignore = "release-mode tab transition latency guard"]
+fn perf_tc_154_tab_transition_coordinator_p95_stays_below_hard_ceiling() {
+    const ENTRY_COUNT: usize = 100_000;
+    const SAMPLE_COUNT: usize = 50;
+    const HARD_CEILING: Duration = Duration::from_millis(50);
+
+    let root = test_root("tc-154-tab-transition-perf");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 1_000, String::new());
+    app.create_new_tab();
+
+    app.shell.runtime.index.entries = (0..ENTRY_COUNT)
+        .map(|index| file_entry(PathBuf::from(format!("live-{index}.txt"))))
+        .collect();
+    app.shell.runtime.all_entries = Arc::new(app.shell.runtime.index.entries.clone());
+    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    {
+        let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
+        inactive.index_state.index.entries = (0..ENTRY_COUNT)
+            .map(|index| file_entry(PathBuf::from(format!("tab-{index}.txt"))))
+            .collect();
+        inactive.index_state.all_entries = Arc::new(inactive.index_state.index.entries.clone());
+        inactive.index_state.entries = Arc::clone(&inactive.index_state.all_entries);
+    }
+
+    for _ in 0..6 {
+        let next = if app.shell.tabs.active_tab_index() == 0 {
+            1
+        } else {
+            0
+        };
+        app.switch_to_tab_index(next);
+    }
+
+    let mut samples = Vec::with_capacity(SAMPLE_COUNT);
+    for _ in 0..SAMPLE_COUNT {
+        let next = if app.shell.tabs.active_tab_index() == 0 {
+            1
+        } else {
+            0
+        };
+        let started = Instant::now();
+        app.switch_to_tab_index(next);
+        samples.push(started.elapsed());
+    }
+    samples.sort_unstable();
+    let p95_index = ((samples.len() * 95).div_ceil(100)).saturating_sub(1);
+    let p95 = samples[p95_index];
+    eprintln!(
+        "TC-154 tab transition: entries={ENTRY_COUNT} samples={SAMPLE_COUNT} p95_ms={:.3}",
+        p95.as_secs_f64() * 1_000.0
+    );
+    assert!(
+        p95 < HARD_CEILING,
+        "tab transition p95 {:?} exceeded {:?}",
+        p95,
+        HARD_CEILING
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_154_active_request_state_moves_to_background_slot_and_back() {
     let root = test_root("tc-154-active-request-transfer");
     fs::create_dir_all(&root).expect("create dir");
@@ -299,27 +404,36 @@ fn tc_154_stale_background_routes_never_mutate_active_scratch() {
         scratch.result_state.pending_sort_request_id = Some(2004);
     }
 
-    for response in [
-        IndexResponse::Batch {
-            request_id: 2101,
-            entries: vec![IndexEntry {
-                path: stale_path.clone(),
-                kind: EntryKind::file(),
-                kind_known: true,
-            }],
-        },
-        IndexResponse::ReplaceAll {
-            request_id: 2102,
-            entries: vec![IndexEntry {
-                path: stale_path.clone(),
-                kind: EntryKind::file(),
-                kind_known: true,
-            }],
-        },
-        IndexResponse::Finished {
-            request_id: 2103,
-            source: IndexSource::Walker,
-        },
+    for (response, terminal) in [
+        (
+            IndexResponse::Batch {
+                request_id: 2101,
+                entries: vec![IndexEntry {
+                    path: stale_path.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            },
+            false,
+        ),
+        (
+            IndexResponse::ReplaceAll {
+                request_id: 2102,
+                entries: vec![IndexEntry {
+                    path: stale_path.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            },
+            false,
+        ),
+        (
+            IndexResponse::Finished {
+                request_id: 2103,
+                source: IndexSource::Walker,
+            },
+            true,
+        ),
     ] {
         let request_id = match &response {
             IndexResponse::Batch { request_id, .. }
@@ -328,7 +442,7 @@ fn tc_154_stale_background_routes_never_mutate_active_scratch() {
             _ => unreachable!("fixture only uses batch/replace-all/finished"),
         };
         let effect = app.apply_background_index_response(active_index, response);
-        assert_eq!(effect.cleanup_request_id, Some(request_id));
+        assert_eq!(effect.cleanup_request_id, terminal.then_some(request_id));
     }
 
     app.apply_background_search_response(

@@ -67,8 +67,8 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .iter()
         .find(|tab| tab.id == first_tab_id)
         .expect("first tab");
-    assert!(first_tab.result_state.results.is_empty());
-    assert!(first_tab.result_state.results_compacted);
+    assert_eq!(first_tab.result_state.results.len(), 1);
+    assert!(!first_tab.result_state.results_compacted);
     assert_eq!(first_tab.result_state.base_results.len(), 1);
     assert_eq!(first_tab.result_state.base_results[0].0, selected);
     assert_eq!(first_tab.result_state.preview, "preview-body");
@@ -429,6 +429,7 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
@@ -486,6 +487,7 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = index_req_tx;
     app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
 
@@ -566,6 +568,7 @@ fn active_index_progress_before_tab_switch_is_preserved_on_background_finish() {
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
@@ -640,6 +643,7 @@ fn active_index_handoff_preserves_pending_and_background_batches() {
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
@@ -713,6 +717,7 @@ fn background_replace_all_after_active_handoff_discards_prior_partial_index() {
     app.shell.indexing.tx = index_req_tx;
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");

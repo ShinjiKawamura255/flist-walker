@@ -5,7 +5,6 @@ use super::{
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
 use crate::walker_runtime::walker_truncated_notice;
-use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -42,8 +41,8 @@ impl FlistWalkerApp {
         self.shell.ui.tab_drag_state = None;
     }
 
-    fn trigger_pending_restore_refresh(&mut self) {
-        if !self.take_pending_restore_refresh_for_active_tab() {
+    fn trigger_pending_activation_refresh(&mut self) {
+        if !self.take_pending_activation_refresh_for_active_tab() {
             return;
         }
         self.request_index_refresh();
@@ -68,7 +67,7 @@ impl FlistWalkerApp {
         self.shell.indexing.clear_for_tab(tab_id);
         self.shell.search.clear_for_tab(tab_id);
         self.clear_response_routing_for_tab(tab_id);
-        self.clear_pending_restore_refresh_for_tab(tab_id);
+        self.clear_pending_activation_refresh_for_tab(tab_id);
         self.shell.ui.memory_usage_bytes = None;
     }
 
@@ -80,11 +79,10 @@ impl FlistWalkerApp {
 
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
         self.clear_tab_drag_state();
-        self.shrink_checkpoint_buffers();
         let previous_active = self.shell.tabs.active_tab_index();
         self.store_active_tab_payload();
         if let Some(previous_tab) = self.shell.tabs.get_mut(previous_active) {
-            Self::compact_inactive_tab_state(previous_tab);
+            Self::trim_inactive_tab_preview(previous_tab);
         }
         previous_active
     }
@@ -105,7 +103,7 @@ impl FlistWalkerApp {
             // Regression guard: restore refresh resets preview request ownership.
             // Schedule it before consuming a tab-scoped reload flag so the new
             // async preview request remains live and can settle.
-            self.trigger_pending_restore_refresh();
+            self.trigger_pending_activation_refresh();
         }
         if preview_reload_pending {
             self.request_preview_for_current();
@@ -122,9 +120,11 @@ impl FlistWalkerApp {
         msg: IndexResponse,
     ) -> BackgroundIndexResponseEffect {
         if tab_index == self.shell.tabs.active_tab_index() {
+            let request_id = super::IndexCoordinator::response_request_id(&msg);
             return BackgroundIndexResponseEffect {
                 trigger_search: false,
-                cleanup_request_id: Some(super::IndexCoordinator::response_request_id(&msg)),
+                cleanup_request_id: super::IndexCoordinator::is_terminal_response(&msg)
+                    .then_some(request_id),
                 deferred_filelist: None,
             };
         }
@@ -295,7 +295,6 @@ impl FlistWalkerApp {
                 } else {
                     effect.trigger_search = true;
                 }
-                Self::shrink_tab_checkpoint_buffers(tab);
                 effect.cleanup_request_id = Some(request_id);
             }
             IndexResponse::Failed { request_id, error } => {
@@ -396,7 +395,7 @@ impl FlistWalkerApp {
         self.shell.tabs.replace_all(restored_tabs);
         let restored_tab_ids = self.shell.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>();
         for tab_id in restored_tab_ids {
-            self.mark_pending_restore_refresh_for_tab(tab_id);
+            self.mark_pending_activation_refresh_for_tab(tab_id);
         }
         self.shell
             .tabs
@@ -408,7 +407,7 @@ impl FlistWalkerApp {
             self.ensure_results_cursor_visible();
             self.request_focus_query();
             self.clear_unfocus_query_request();
-            self.trigger_pending_restore_refresh();
+            self.trigger_pending_activation_refresh();
             self.shell.runtime.notice = "Restored tab session".to_string();
             self.refresh_status_line();
         }
@@ -421,58 +420,15 @@ impl FlistWalkerApp {
             .map(|tab| tab.id)
     }
 
-    fn shrink_vec_if_sparse<T>(vec: &mut Vec<T>) {
-        let cap = vec.capacity();
-        let len = vec.len();
-        if cap >= Self::SHRINK_MIN_CAPACITY && cap > len.saturating_mul(2) {
-            vec.shrink_to_fit();
-        }
-    }
-
-    fn shrink_deque_if_sparse<T>(deque: &mut VecDeque<T>) {
-        let cap = deque.capacity();
-        let len = deque.len();
-        if cap >= Self::SHRINK_MIN_CAPACITY && cap > len.saturating_mul(2) {
-            deque.shrink_to_fit();
-        }
-    }
-
-    pub(super) fn shrink_checkpoint_buffers(&mut self) {
-        Self::shrink_vec_if_sparse(&mut self.shell.runtime.index.entries);
-        Self::shrink_vec_if_sparse(&mut self.shell.indexing.incremental_filtered_entries);
-        Self::shrink_deque_if_sparse(&mut self.shell.indexing.pending_entries);
-        Self::shrink_deque_if_sparse(&mut self.shell.indexing.pending_kind_paths);
-    }
-
-    pub(super) fn shrink_tab_checkpoint_buffers(tab: &mut AppTabState) {
-        Self::shrink_vec_if_sparse(&mut tab.index_state.index.entries);
-        Self::shrink_vec_if_sparse(&mut tab.index_state.incremental_filtered_entries);
-        Self::shrink_deque_if_sparse(&mut tab.index_state.pending_index_entries);
-        Self::shrink_deque_if_sparse(&mut tab.index_state.pending_kind_paths);
-    }
-
-    pub(super) fn compact_inactive_tab_state(tab: &mut AppTabState) {
-        let can_compact_results = !tab.index_state.index_in_progress
-            && !tab.search_in_progress
-            && !tab.result_state.sort_in_progress
-            && tab.result_state.result_sort_mode == ResultSortMode::Score
-            && tab.pending_request_id.is_none()
-            && tab.result_state.pending_sort_request_id.is_none();
-        let results_compacted = can_compact_results && !tab.result_state.results.is_empty();
-        if results_compacted {
-            tab.result_state.results.clear();
-            tab.result_state.results.shrink_to_fit();
-            tab.result_state.results_compacted = true;
-        }
+    pub(super) fn trim_inactive_tab_preview(tab: &mut AppTabState) {
         if !tab.preview_in_progress {
-            // Regression guard: noncompacted inactive tabs retain result identity
-            // but discard preview bytes, so activation needs an explicit reload.
-            if !results_compacted && !tab.result_state.preview.is_empty() {
+            // Keep result and index allocations intact: tab activation is a latency-critical
+            // ownership transfer and must not perform O(n) drops or allocator compaction.
+            if !tab.result_state.preview.is_empty() {
                 tab.mark_preview_reload_pending();
             }
             tab.result_state.preview.clear();
         }
-        Self::shrink_tab_checkpoint_buffers(tab);
     }
 
     pub(super) fn restore_results_from_compacted_tab(&mut self, results_compacted: bool) {
@@ -575,9 +531,6 @@ impl FlistWalkerApp {
             return;
         }
         self.deactivate_active_tab_for_transition();
-        if let Some(next_tab) = self.shell.tabs.get_mut(next_index) {
-            Self::shrink_tab_checkpoint_buffers(next_tab);
-        }
         self.shell.tabs.set_active_tab_index(next_index);
         let (results_compacted, preview_reload_pending) = self.load_tab_payload(next_index);
         self.activate_background_tab_after_transition(results_compacted, preview_reload_pending);
@@ -651,16 +604,16 @@ impl FlistWalkerApp {
             self.sync_active_tab_state();
         }
         let mut removed = self.shell.tabs.remove(index);
-        let restore_refresh_pending = self
+        let activation_refresh_pending = self
             .shell
             .tabs
-            .has_pending_restore_refresh_for_tab(removed.id);
+            .has_pending_activation_refresh_for_tab(removed.id);
         self.clear_closed_tab_state(removed.id);
-        Self::compact_inactive_tab_state(&mut removed);
+        Self::trim_inactive_tab_preview(&mut removed);
         self.shell.tabs.push_closed_tab(ClosedTabState {
             tab: removed,
             original_index: index,
-            restore_refresh_pending,
+            activation_refresh_pending,
         });
         if !closing_active && index < self.shell.tabs.active_tab_index() {
             self.shell
@@ -697,8 +650,8 @@ impl FlistWalkerApp {
         self.deactivate_active_tab_for_transition();
         let id = self.shell.tabs.take_next_tab_id();
         Self::prepare_closed_tab_for_restore(&mut tab, id);
-        if closed_tab.restore_refresh_pending {
-            self.mark_pending_restore_refresh_for_tab(id);
+        if closed_tab.activation_refresh_pending {
+            self.mark_pending_activation_refresh_for_tab(id);
         }
         let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
         self.shell.tabs.insert(restore_index, tab);

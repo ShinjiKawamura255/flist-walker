@@ -112,15 +112,6 @@ impl IndexCoordinator {
         self.search_rerun_pending = false;
     }
 
-    pub(super) fn begin_active_refresh_with_inflight(
-        &mut self,
-        request_id: u64,
-        query_non_empty: bool,
-    ) {
-        self.begin_active_refresh(request_id, query_non_empty);
-        self.inflight_requests.insert(request_id);
-    }
-
     pub(super) fn begin_background_refresh(
         &mut self,
         tab: &mut AppTabState,
@@ -171,7 +162,7 @@ impl IndexCoordinator {
 
     pub(super) fn clear_active_request_state(&mut self, tabs: &mut TabSessionState) {
         self.settle_active_terminal_state();
-        tabs.clear_pending_restore_refresh_tabs();
+        tabs.clear_pending_activation_refresh_tabs();
     }
 
     pub(super) fn route_response(&mut self, request_id: u64) -> IndexResponseRoute {
@@ -194,6 +185,15 @@ impl IndexCoordinator {
             | IndexResponse::Canceled { request_id }
             | IndexResponse::Truncated { request_id, .. } => *request_id,
         }
+    }
+
+    pub(super) fn is_terminal_response(response: &IndexResponse) -> bool {
+        matches!(
+            response,
+            IndexResponse::Finished { .. }
+                | IndexResponse::Failed { .. }
+                | IndexResponse::Canceled { .. }
+        )
     }
 
     pub(super) fn complete_active_request(&mut self, request_id: u64) {

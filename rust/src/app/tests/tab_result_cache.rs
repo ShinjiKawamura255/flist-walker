@@ -197,8 +197,8 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
 }
 
 #[test]
-fn inactive_tab_results_are_compacted_and_restored_on_activation() {
-    let root = test_root("inactive-tab-results-compaction");
+fn inactive_tab_results_are_retained_for_immediate_activation() {
+    let root = test_root("inactive-tab-results-retained");
     fs::create_dir_all(&root).expect("create dir");
     let first = root.join("first.txt");
     let second = root.join("second.txt");
@@ -222,21 +222,23 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
 
     assert_eq!(app.shell.tabs.len(), 2);
     assert!(
-        app.shell
+        !app.shell
             .tabs
             .get(0)
             .expect("tab 0")
             .result_state
             .results_compacted
     );
-    assert!(app
-        .shell
-        .tabs
-        .get(0)
-        .expect("tab 0")
-        .result_state
-        .results
-        .is_empty());
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .results
+            .len(),
+        2
+    );
     assert_eq!(
         app.shell
             .tabs
@@ -274,7 +276,7 @@ fn inactive_tab_results_are_compacted_and_restored_on_activation() {
 }
 
 #[test]
-fn empty_query_compacted_restore_rebuilds_results_from_current_entries() {
+fn explicitly_compacted_empty_query_restore_rebuilds_results_from_current_entries() {
     let root = test_root("empty-query-compacted-restore-current-index");
     fs::create_dir_all(&root).expect("create dir");
     let current = root.join("current.txt");
@@ -293,6 +295,11 @@ fn empty_query_compacted_restore_rebuilds_results_from_current_entries() {
     app.shell.runtime.current_row = Some(0);
 
     app.create_new_tab();
+    {
+        let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
+        inactive.result_state.results.clear();
+        inactive.result_state.results_compacted = true;
+    }
     app.switch_to_tab_index(0);
 
     assert_eq!(app.shell.runtime.results, vec![(current, 0.0)]);

@@ -67,18 +67,11 @@ impl FlistWalkerApp {
         &mut self,
         request_id: u64,
         reset_kind_resolution: bool,
-        mark_inflight: bool,
     ) {
         let query_non_empty = !self.shell.runtime.query_state.query.trim().is_empty();
-        if mark_inflight {
-            self.shell
-                .indexing
-                .begin_active_refresh_with_inflight(request_id, query_non_empty);
-        } else {
-            self.shell
-                .indexing
-                .begin_active_refresh(request_id, query_non_empty);
-        }
+        self.shell
+            .indexing
+            .begin_active_refresh(request_id, query_non_empty);
         self.shell.search.set_pending_request_id(None);
         self.shell.search.set_in_progress(false);
         self.reset_active_index_refresh_state(reset_kind_resolution);
@@ -88,12 +81,12 @@ impl FlistWalkerApp {
         self.ensure_entry_filters();
         self.invalidate_result_sort(true);
         self.clear_sort_metadata_cache();
-        self.clear_pending_restore_refresh();
+        self.clear_pending_activation_refresh();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
         let request_id = self.shell.indexing.allocate_request_id(tab_id);
-        self.prepare_active_index_refresh_request(request_id, false, false);
+        self.prepare_active_index_refresh_request(request_id, false);
         self.refresh_status_line();
 
         let req = IndexRequest {
@@ -114,7 +107,7 @@ impl FlistWalkerApp {
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
         let request_id = self.shell.indexing.allocate_request_id(tab_id);
-        self.prepare_active_index_refresh_request(request_id, true, true);
+        self.prepare_active_index_refresh_request(request_id, true);
         self.refresh_status_line();
 
         let req = IndexRequest {
@@ -228,25 +221,10 @@ impl FlistWalkerApp {
             .pending_index_completion_notices
             .retain(|_, pending| pending.tab_id != req.tab_id);
         let active_tab_id = self.current_tab_id().unwrap_or_default();
-        let stale_inflight: Vec<u64> = self
-            .shell
-            .indexing
-            .inflight_requests
-            .iter()
-            .copied()
-            .filter(|request_id| {
-                self.shell
-                    .indexing
-                    .request_tabs
-                    .get(request_id)
-                    .is_some_and(|tab_id| *tab_id == req.tab_id)
-            })
-            .collect();
-        for request_id in stale_inflight {
-            self.shell.indexing.inflight_requests.remove(&request_id);
-            self.shell.indexing.request_tabs.remove(&request_id);
-            self.shell.indexing.background_states.remove(&request_id);
-        }
+        // Requests accepted by the worker channel remain physically queued or running until
+        // their terminal response arrives. Keep them in coordinator accounting even after a
+        // replacement becomes latest; otherwise later active-tab work can be accepted behind
+        // an invisible FIFO backlog and appear not to start for seconds.
         let stale_queued = self
             .shell
             .indexing
@@ -275,6 +253,19 @@ impl FlistWalkerApp {
             let dropped = self.shell.indexing.pending_queue.remove(drop_idx);
             if let Some(dropped) = dropped {
                 self.discard_filelist_index_completion_notice(dropped.request_id);
+                let dropped_is_latest = self
+                    .shell
+                    .indexing
+                    .latest_request_ids
+                    .lock()
+                    .map(|latest| latest.get(&dropped.tab_id).copied() == Some(dropped.request_id))
+                    .unwrap_or(true);
+                let has_queued_replacement = self
+                    .shell
+                    .indexing
+                    .pending_queue
+                    .iter()
+                    .any(|queued| queued.tab_id == dropped.tab_id);
                 if let Some(tab_index) = self.find_tab_index_by_id(dropped.tab_id) {
                     if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
                         if tab.index_state.pending_index_request_id == Some(dropped.request_id) {
@@ -283,6 +274,9 @@ impl FlistWalkerApp {
                             tab.notice = "Index request dropped due to queue limit".to_string();
                         }
                     }
+                }
+                if dropped.tab_id != active_tab_id && dropped_is_latest && !has_queued_replacement {
+                    self.mark_pending_activation_refresh_for_tab(dropped.tab_id);
                 }
                 self.shell.indexing.request_tabs.remove(&dropped.request_id);
                 self.shell
@@ -374,12 +368,20 @@ impl FlistWalkerApp {
             return false;
         };
         let mut preempted = false;
+        let mut activation_refresh_tabs = Vec::new();
         for (tab_id, replacement_request_id) in victims {
             if latest.get(&tab_id).copied() == Some(replacement_request_id) {
                 continue;
             }
             latest.insert(tab_id, replacement_request_id);
+            if replacement_request_id == 0 {
+                activation_refresh_tabs.push(tab_id);
+            }
             preempted = true;
+        }
+        drop(latest);
+        for tab_id in activation_refresh_tabs {
+            self.mark_pending_activation_refresh_for_tab(tab_id);
         }
         preempted
     }
@@ -463,12 +465,7 @@ impl FlistWalkerApp {
             &msg,
             IndexResponse::Finished { .. } | IndexResponse::Canceled { .. }
         );
-        let terminal = matches!(
-            &msg,
-            IndexResponse::Finished { .. }
-                | IndexResponse::Failed { .. }
-                | IndexResponse::Canceled { .. }
-        );
+        let terminal = IndexCoordinator::is_terminal_response(&msg);
         let BackgroundIndexResponseEffect {
             trigger_search,
             cleanup_request_id,
@@ -548,9 +545,11 @@ impl FlistWalkerApp {
                 }
                 IndexResponseRoute::Stale => {
                     self.discard_filelist_index_completion_notice(request_id);
-                    self.shell
-                        .indexing
-                        .cleanup_stale_terminal_response(request_id);
+                    if IndexCoordinator::is_terminal_response(&msg) {
+                        self.shell
+                            .indexing
+                            .cleanup_stale_terminal_response(request_id);
+                    }
                     continue;
                 }
                 IndexResponseRoute::Active => {}
@@ -588,7 +587,6 @@ impl FlistWalkerApp {
                 IndexResponse::Failed { request_id, error } => {
                     self.shell.features.filelist.workflow.pending_after_index = None;
                     self.discard_filelist_index_completion_notice(request_id);
-                    self.shrink_checkpoint_buffers();
                     self.set_notice(format!("Indexing failed: {}", error));
                     self.shell.indexing.complete_active_request(request_id);
                 }
@@ -603,7 +601,6 @@ impl FlistWalkerApp {
                             self.set_notice(notice);
                         }
                     }
-                    self.shrink_checkpoint_buffers();
                     self.shell.indexing.complete_active_request(request_id);
                 }
                 IndexResponse::Truncated { limit, .. } => {
