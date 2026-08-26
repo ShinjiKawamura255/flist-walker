@@ -98,8 +98,8 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
 }
 
 #[test]
-fn closing_active_tab_compacts_restorable_tab_results() {
-    let root = test_root("close-active-tab-compacts-closed-stack");
+fn closing_active_tab_retains_restorable_results_for_fast_restore() {
+    let root = test_root("close-active-tab-retains-closed-stack");
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let path_a = root.join("a.txt");
@@ -121,7 +121,7 @@ fn closing_active_tab_compacts_restorable_tab_results() {
     assert_eq!(app.shell.tabs.len(), 1);
     assert_eq!(
         app.shell.tabs.last_closed_tab_results_compacted(),
-        Some(true)
+        Some(false)
     );
     app.restore_recently_closed_tab();
     assert_eq!(app.shell.tabs.active_tab, 1);

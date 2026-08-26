@@ -7,6 +7,7 @@ fn create_filelist_waits_while_indexing() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
@@ -49,6 +50,7 @@ fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = false;
@@ -78,6 +80,7 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
@@ -109,6 +112,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
 
     assert!(app.shell.runtime.use_filelist);
     app.create_filelist();
@@ -341,6 +345,7 @@ fn filelist_finished_triggers_reindex_when_enabled() {
     app.shell.worker_bus.filelist.rx = filelist_rx;
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.features.filelist.workflow.pending_request_id = Some(12);
     app.shell.features.filelist.workflow.pending_request_tab_id = app.current_tab_id();
     app.shell.features.filelist.workflow.pending_root = Some(root.clone());
@@ -375,6 +380,7 @@ fn regression_filelist_completion_notice_survives_reindex_settlement() {
     app.shell.worker_bus.filelist.rx = filelist_rx;
     let (index_tx, index_request_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_response_rx;
     app.shell.features.filelist.workflow.pending_request_id = Some(13);
@@ -517,6 +523,7 @@ fn filelist_completion_notice_is_restored_after_background_reindex_finishes() {
     app.shell.worker_bus.filelist.rx = filelist_rx;
     let (index_tx, index_request_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_response_rx;
     app.shell.features.filelist.workflow.pending_request_id = Some(14);
@@ -576,6 +583,7 @@ fn filelist_completion_notice_follows_creator_when_tab_switch_precedes_response(
     app.shell.worker_bus.filelist.rx = filelist_rx;
     let (index_tx, index_request_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_response_rx;
     app.shell.features.filelist.workflow.pending_request_id = Some(15);

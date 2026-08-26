@@ -279,29 +279,33 @@ impl FlistWalkerApp {
         self.shell.runtime.query_state.query_history_dirty_since = value;
     }
 
-    pub(super) fn clear_pending_restore_refresh(&mut self) {
+    pub(super) fn clear_pending_activation_refresh(&mut self) {
         if let Some(tab_id) = self.current_tab_id() {
             self.shell
                 .tabs
-                .clear_pending_restore_refresh_for_tab(tab_id);
+                .clear_pending_activation_refresh_for_tab(tab_id);
         }
     }
 
-    pub(super) fn mark_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
-        self.shell.tabs.mark_pending_restore_refresh_for_tab(tab_id);
-    }
-
-    pub(super) fn clear_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
+    pub(super) fn mark_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
         self.shell
             .tabs
-            .clear_pending_restore_refresh_for_tab(tab_id);
+            .mark_pending_activation_refresh_for_tab(tab_id);
     }
 
-    pub(super) fn take_pending_restore_refresh_for_active_tab(&mut self) -> bool {
+    pub(super) fn clear_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
+        self.shell
+            .tabs
+            .clear_pending_activation_refresh_for_tab(tab_id);
+    }
+
+    pub(super) fn take_pending_activation_refresh_for_active_tab(&mut self) -> bool {
         let Some(tab_id) = self.current_tab_id() else {
             return false;
         };
-        self.shell.tabs.take_pending_restore_refresh_for_tab(tab_id)
+        self.shell
+            .tabs
+            .take_pending_activation_refresh_for_tab(tab_id)
     }
 
     /// action worker 実行中の進捗ラベルを返す。

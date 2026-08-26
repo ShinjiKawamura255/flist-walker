@@ -261,12 +261,12 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
     assert!(app
         .shell
         .tabs
-        .pending_restore_refresh_tabs
+        .pending_activation_refresh_tabs
         .contains(&app.shell.tabs.get(0).expect("tab 0").id));
     assert!(!app
         .shell
         .tabs
-        .pending_restore_refresh_tabs
+        .pending_activation_refresh_tabs
         .contains(&app.shell.tabs.get(1).expect("tab 1").id));
 
     let req = rx.try_recv().expect("active tab refresh");
@@ -352,14 +352,76 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
 
     let req = rx.try_recv().expect("background tab lazy refresh");
     assert_eq!(req.root, root_a);
-    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
 }
 
 #[test]
-fn background_tab_activation_consumes_pending_restore_refresh_once() {
+fn restored_tab_lazy_refresh_starts_for_query_and_source_matrix() {
+    for (use_filelist, query) in [(false, ""), (false, "needle"), (true, ""), (true, "needle")] {
+        let case = format!(
+            "restore-tabs-matrix-{}-{}",
+            if use_filelist { "filelist" } else { "walker" },
+            if query.is_empty() { "empty" } else { "query" }
+        );
+        let root_a = test_root(&format!("{case}-a"));
+        let root_b = test_root(&format!("{case}-b"));
+        fs::create_dir_all(&root_a).expect("create root a");
+        fs::create_dir_all(&root_b).expect("create root b");
+        let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+        let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+        app.shell.indexing.tx = tx;
+        reset_index_request_state_for_test(&mut app);
+
+        app.initialize_tabs_from_saved(
+            vec![
+                SavedTabState {
+                    root: root_a.to_string_lossy().to_string(),
+                    use_filelist,
+                    use_regex: false,
+                    ignore_case: true,
+                    include_files: true,
+                    include_dirs: true,
+                    max_depth: crate::indexer::MaxDepth::unlimited(),
+                    query: query.to_string(),
+                    query_history: Vec::new(),
+                    tab_accent: None,
+                },
+                SavedTabState {
+                    root: root_b.to_string_lossy().to_string(),
+                    use_filelist: false,
+                    use_regex: false,
+                    ignore_case: true,
+                    include_files: true,
+                    include_dirs: true,
+                    max_depth: crate::indexer::MaxDepth::unlimited(),
+                    query: String::new(),
+                    query_history: Vec::new(),
+                    tab_accent: None,
+                },
+            ],
+            1,
+        );
+        let _ = rx.try_recv().expect("initial active refresh");
+
+        app.switch_to_tab_index(0);
+
+        let request = rx.try_recv().expect("lazy refresh in transition");
+        assert_eq!(request.root, root_a);
+        assert_eq!(request.use_filelist, use_filelist);
+        assert_eq!(app.shell.runtime.query_state.query, query);
+        assert!(app.shell.indexing.in_progress);
+        assert!(app.shell.runtime.status_line.contains("Indexing..."));
+
+        let _ = fs::remove_dir_all(&root_a);
+        let _ = fs::remove_dir_all(&root_b);
+    }
+}
+
+#[test]
+fn background_tab_activation_consumes_pending_activation_refresh_once() {
     let root_a = test_root("background-activation-consumes-pending-a");
     let root_b = test_root("background-activation-consumes-pending-b");
     fs::create_dir_all(&root_a).expect("create root a");
@@ -513,7 +575,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
     assert!(index_req_rx.try_recv().is_err());
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_a);
-    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
     assert_eq!(app.shell.runtime.results.len(), 1);
     assert_eq!(app.shell.runtime.results[0].0, indexed_file);
 
@@ -550,7 +612,7 @@ fn background_tab_activation_consumes_pending_restore_refresh_once() {
 }
 
 #[test]
-fn close_tab_triggers_pending_restore_refresh_for_survivor() {
+fn close_tab_triggers_pending_activation_refresh_for_survivor() {
     let root_a = test_root("close-tab-pending-refresh-a");
     let root_b = test_root("close-tab-pending-refresh-b");
     fs::create_dir_all(&root_a).expect("create root a");
@@ -600,7 +662,7 @@ fn close_tab_triggers_pending_restore_refresh_for_survivor() {
         .try_recv()
         .expect("survivor pending restore refresh");
     assert_eq!(refresh_req.root, root_a);
-    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -653,7 +715,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
 
     app.close_tab_index(0);
     assert_eq!(app.shell.tabs.len(), 1);
-    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
 
     app.restore_recently_closed_tab();
 
@@ -664,7 +726,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
         .try_recv()
         .expect("restored closed startup tab refresh");
     assert_eq!(refresh_req.root, root_a);
-    assert!(app.shell.tabs.pending_restore_refresh_tabs.is_empty());
+    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);

@@ -25,7 +25,6 @@ impl FlistWalkerApp {
     // Regression guard: app close should not stall on background workers once
     // shutdown has been requested and all request senders have been dropped.
     pub(super) const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
-    pub(super) const SHRINK_MIN_CAPACITY: usize = 4096;
     pub(super) const SEARCH_HINTS_TOOLTIP: &'static str = "\
 Search hints:
 - トークンは AND 条件（例: main py）

@@ -12,6 +12,7 @@ fn root_change_clears_stale_selection_state() {
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.pinned_paths.insert(old_path);
     app.shell.runtime.current_row = Some(0);
     app.shell.runtime.preview = "stale preview".to_string();

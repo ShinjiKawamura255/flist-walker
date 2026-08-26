@@ -458,7 +458,7 @@ impl RequestTabRoutingState {
 pub(super) struct ClosedTabState {
     pub(super) tab: AppTabState,
     pub(super) original_index: usize,
-    pub(super) restore_refresh_pending: bool,
+    pub(super) activation_refresh_pending: bool,
 }
 
 pub(crate) struct TabSessionState {
@@ -466,7 +466,7 @@ pub(crate) struct TabSessionState {
     pub(super) active_tab: usize,
     next_tab_id: u64,
     closed_tabs: Vec<ClosedTabState>,
-    pub(super) pending_restore_refresh_tabs: HashSet<u64>,
+    pub(super) pending_activation_refresh_tabs: HashSet<u64>,
     request_tab_routing: RequestTabRoutingState,
 }
 
@@ -477,7 +477,7 @@ impl Default for TabSessionState {
             active_tab: 0,
             next_tab_id: 1,
             closed_tabs: Vec::new(),
-            pending_restore_refresh_tabs: HashSet::new(),
+            pending_activation_refresh_tabs: HashSet::new(),
             request_tab_routing: RequestTabRoutingState::default(),
         }
     }
@@ -546,8 +546,8 @@ impl TabSessionState {
             .map(|closed| closed.tab.result_state.results_compacted)
     }
 
-    pub(super) fn has_pending_restore_refresh_for_tab(&self, tab_id: u64) -> bool {
-        self.pending_restore_refresh_tabs.contains(&tab_id)
+    pub(super) fn has_pending_activation_refresh_for_tab(&self, tab_id: u64) -> bool {
+        self.pending_activation_refresh_tabs.contains(&tab_id)
     }
 
     pub(super) fn iter(&self) -> std::slice::Iter<'_, AppTabState> {
@@ -558,20 +558,20 @@ impl TabSessionState {
         self.tabs.iter_mut()
     }
 
-    pub(super) fn mark_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
-        self.pending_restore_refresh_tabs.insert(tab_id);
+    pub(super) fn mark_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
+        self.pending_activation_refresh_tabs.insert(tab_id);
     }
 
-    pub(super) fn clear_pending_restore_refresh_for_tab(&mut self, tab_id: u64) {
-        self.pending_restore_refresh_tabs.remove(&tab_id);
+    pub(super) fn clear_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
+        self.pending_activation_refresh_tabs.remove(&tab_id);
     }
 
-    pub(super) fn clear_pending_restore_refresh_tabs(&mut self) {
-        self.pending_restore_refresh_tabs.clear();
+    pub(super) fn clear_pending_activation_refresh_tabs(&mut self) {
+        self.pending_activation_refresh_tabs.clear();
     }
 
-    pub(super) fn take_pending_restore_refresh_for_tab(&mut self, tab_id: u64) -> bool {
-        self.pending_restore_refresh_tabs.remove(&tab_id)
+    pub(super) fn take_pending_activation_refresh_for_tab(&mut self, tab_id: u64) -> bool {
+        self.pending_activation_refresh_tabs.remove(&tab_id)
     }
 
     pub(super) fn bind_preview_request(&mut self, request_id: u64, tab_id: u64) {

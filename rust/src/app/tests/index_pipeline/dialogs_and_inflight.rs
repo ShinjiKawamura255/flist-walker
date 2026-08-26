@@ -7,6 +7,7 @@ fn request_index_refresh_reenables_files_when_both_filters_are_off() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = false;
 
@@ -27,6 +28,7 @@ fn request_index_refresh_uses_latest_toggle_state() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
@@ -47,6 +49,7 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.indexing.pending_entries.push_back(IndexEntry {
         path: root.join("stale.txt"),
         kind: EntryKind::file(),
@@ -98,6 +101,7 @@ fn files_toggle_change_requests_reindex() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
@@ -117,6 +121,7 @@ fn use_filelist_forces_type_filters_to_both_enabled() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
@@ -139,6 +144,7 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = false;
@@ -332,6 +338,11 @@ fn preempt_all_background_requests_when_active_index_is_queued() {
     let root = test_root("index-preempt-active-priority");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = response_rx;
+    reset_index_request_state_for_test(&mut app);
     app.create_new_tab();
     app.create_new_tab();
 
@@ -374,6 +385,91 @@ fn preempt_all_background_requests_when_active_index_is_queued() {
         .expect("lock latest");
     assert_eq!(latest.get(&bg_tab_a).copied(), Some(0));
     assert_eq!(latest.get(&bg_tab_b).copied(), Some(0));
+    drop(latest);
+    assert!(app
+        .shell
+        .tabs
+        .pending_activation_refresh_tabs
+        .contains(&bg_tab_a));
+    assert!(app
+        .shell
+        .tabs
+        .pending_activation_refresh_tabs
+        .contains(&bg_tab_b));
+
+    app.switch_to_tab_index(0);
+
+    let replacement_request_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("reactivation must establish a replacement request");
+    assert!(app.shell.indexing.in_progress);
+    assert!(app.shell.runtime.status_line.contains("Indexing..."));
+    assert!(!app
+        .shell
+        .tabs
+        .pending_activation_refresh_tabs
+        .contains(&bg_tab_a));
+    assert!(app
+        .shell
+        .indexing
+        .pending_queue
+        .iter()
+        .any(|request| request.request_id == replacement_request_id));
+
+    response_tx
+        .send(IndexResponse::Canceled { request_id: 100 })
+        .expect("send old cancellation");
+    app.poll_index_response();
+
+    let dispatched = request_rx
+        .try_recv()
+        .expect("replacement dispatches after old terminal response");
+    assert_eq!(dispatched.request_id, replacement_request_id);
+    assert_eq!(dispatched.tab_id, bg_tab_a);
+    assert_eq!(
+        app.shell.indexing.pending_request_id,
+        Some(replacement_request_id)
+    );
+    assert!(app.shell.indexing.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn stale_nonterminal_index_responses_keep_inflight_until_terminal_response() {
+    let root = test_root("stale-nonterminal-keeps-inflight");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    reset_index_request_state_for_test(&mut app);
+    let request_id = 776;
+    app.shell.indexing.inflight_requests.insert(request_id);
+
+    tx.send(IndexResponse::Started {
+        request_id,
+        source: IndexSource::Walker,
+    })
+    .expect("send stale started");
+    tx.send(IndexResponse::Batch {
+        request_id,
+        entries: vec![IndexEntry {
+            path: root.join("stale.txt"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }],
+    })
+    .expect("send stale batch");
+    app.poll_index_response();
+
+    assert!(app.shell.indexing.inflight_requests.contains(&request_id));
+
+    tx.send(IndexResponse::Canceled { request_id })
+        .expect("send stale terminal response");
+    app.poll_index_response();
+
+    assert!(!app.shell.indexing.inflight_requests.contains(&request_id));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -543,6 +639,134 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
 }
 
 #[test]
+fn replacement_request_keeps_real_inflight_accounting_until_terminal_response() {
+    let root = test_root("replacement-keeps-real-inflight-accounting");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("tab id");
+    let old_request_id = 41;
+    let replacement_request_id = 42;
+
+    app.shell.indexing.inflight_requests.insert(old_request_id);
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(old_request_id, tab_id);
+    app.shell
+        .indexing
+        .background_states
+        .insert(old_request_id, BackgroundIndexState::default());
+    if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
+        latest.insert(tab_id, replacement_request_id);
+    }
+
+    app.enqueue_index_request(IndexRequest {
+        request_id: replacement_request_id,
+        tab_id,
+        root: root.clone(),
+        use_filelist: true,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    });
+
+    assert!(app
+        .shell
+        .indexing
+        .inflight_requests
+        .contains(&old_request_id));
+    assert_eq!(
+        app.shell.indexing.request_tabs.get(&old_request_id),
+        Some(&tab_id)
+    );
+    assert!(app
+        .shell
+        .indexing
+        .background_states
+        .contains_key(&old_request_id));
+    assert!(app.pop_next_index_request().is_none());
+    assert_eq!(app.shell.indexing.pending_queue.len(), 1);
+    assert_eq!(
+        app.shell.indexing.pending_queue[0].request_id,
+        replacement_request_id
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
+    let root = test_root("pending-queue-eviction-reactivation");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    for _ in 0..5 {
+        app.create_new_tab();
+    }
+    let background_tab_ids = (0..5)
+        .map(|index| app.shell.tabs.get(index).expect("background tab").id)
+        .collect::<Vec<_>>();
+
+    for (offset, tab_id) in background_tab_ids.iter().copied().enumerate() {
+        let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+        app.shell
+            .tabs
+            .get_mut(offset)
+            .expect("background tab")
+            .index_state
+            .begin_index_request(request_id);
+        app.enqueue_index_request(IndexRequest {
+            request_id,
+            tab_id,
+            root: root.join(format!("tab-{offset}")),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
+        });
+    }
+
+    let evicted_tab_id = background_tab_ids[0];
+    assert_eq!(app.shell.indexing.pending_queue.len(), 4);
+    assert!(app
+        .shell
+        .tabs
+        .pending_activation_refresh_tabs
+        .contains(&evicted_tab_id));
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("evicted tab")
+            .index_state
+            .pending_index_request_id,
+        None
+    );
+
+    app.switch_to_tab_index(0);
+
+    let replacement_request_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("reactivation replacement request");
+    let dispatched = rx
+        .try_recv()
+        .expect("reactivated tab request must dispatch first");
+    assert_eq!(dispatched.tab_id, evicted_tab_id);
+    assert_eq!(dispatched.request_id, replacement_request_id);
+    assert!(app.shell.indexing.in_progress);
+    assert!(app.shell.runtime.status_line.contains("Indexing..."));
+    assert!(!app
+        .shell
+        .tabs
+        .pending_activation_refresh_tabs
+        .contains(&evicted_tab_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
     let root = test_root("tc-152-index-full-requeue");
     fs::create_dir_all(&root).expect("create root");
@@ -678,6 +902,7 @@ fn tc_152_disconnected_index_dispatch_settles_active_request_regression() {
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     drop(rx);
     app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
 
     app.request_index_refresh();
 
@@ -701,7 +926,7 @@ fn tc_152_restored_active_tab_dispatches_in_same_terminal_poll_regression() {
     app.create_new_tab();
     app.create_new_tab();
     let closed_id = app.current_tab_id().expect("tab to restore");
-    app.mark_pending_restore_refresh_for_tab(closed_id);
+    app.mark_pending_activation_refresh_for_tab(closed_id);
     app.close_active_tab();
     let background_ids = [
         app.shell.tabs.get(0).expect("tab 0").id,

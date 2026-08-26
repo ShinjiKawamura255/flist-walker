@@ -46,8 +46,8 @@ For documentation-only restructuring, apply VM-001:
 - Apply VM-002 to action/kind/runtime scheduling and VM-003 to index scheduling; TC-149 remains the independent background-index snapshot regression guard.
 
 ## Tab Ownership Transfer Verification
-- TC-154 fixes allocation-preserving active/inactive ownership transfer, lifecycle/routing compatibility, persisted-field projection, and native large-tab responsiveness.
-- Apply VM-002 with focused tab owner tests; use non-compacting/non-sparse fixtures for pointer/capacity identity and verify result compaction separately.
+- TC-154 fixes allocation-preserving active/inactive ownership transfer, sparse-capacity retention, restore refresh combinations, lifecycle/routing compatibility, persisted-field projection, and native large-tab responsiveness.
+- Apply VM-002 with focused tab owner tests; use both non-sparse and deliberately sparse fixtures for pointer/capacity identity, retain computed results across activation, and run the release-mode tab-transition latency fixture when the activation hot path changes.
 
 ## GUI Evidence Axes
 - `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..011. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.
