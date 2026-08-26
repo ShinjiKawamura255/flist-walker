@@ -577,10 +577,16 @@ impl FlistWalkerApp {
     }
 
     fn prepare_closed_tab_for_restore(tab: &mut AppTabState, id: u64) {
+        let preview_reload_pending = tab.preview_reload_pending || tab.preview_in_progress;
         tab.id = id;
         tab.clear_search_request_state();
         tab.clear_preview_request_state();
-        tab.clear_preview_reload_pending();
+        if preview_reload_pending {
+            tab.result_state.preview.clear();
+            tab.mark_preview_reload_pending();
+        } else {
+            tab.clear_preview_reload_pending();
+        }
         tab.clear_action_request_state();
         tab.index_state.clear_index_request_state();
         tab.index_state.clear_kind_resolution_state();
@@ -607,13 +613,18 @@ impl FlistWalkerApp {
         let activation_refresh_pending = self
             .shell
             .tabs
-            .has_pending_activation_refresh_for_tab(removed.id);
+            .has_pending_activation_refresh_for_tab(removed.id)
+            || removed.index_state.index_in_progress;
+        let search_refresh_pending = removed.search_in_progress;
+        let sort_refresh_pending = removed.result_state.sort_in_progress;
         self.clear_closed_tab_state(removed.id);
         Self::trim_inactive_tab_preview(&mut removed);
         self.shell.tabs.push_closed_tab(ClosedTabState {
             tab: removed,
             original_index: index,
             activation_refresh_pending,
+            search_refresh_pending,
+            sort_refresh_pending,
         });
         if !closing_active && index < self.shell.tabs.active_tab_index() {
             self.shell
@@ -646,11 +657,18 @@ impl FlistWalkerApp {
             self.set_notice("No closed tab to restore");
             return;
         };
+        let activation_refresh_pending = closed_tab.activation_refresh_pending;
+        let search_refresh_pending = closed_tab.search_refresh_pending;
+        let sort_refresh_pending = closed_tab.sort_refresh_pending;
         let mut tab = closed_tab.tab;
+        let interrupted_result_sort = (search_refresh_pending || sort_refresh_pending).then_some((
+            tab.result_state.result_sort_mode,
+            tab.result_state.result_sort_scope,
+        ));
         self.deactivate_active_tab_for_transition();
         let id = self.shell.tabs.take_next_tab_id();
         Self::prepare_closed_tab_for_restore(&mut tab, id);
-        if closed_tab.activation_refresh_pending {
+        if activation_refresh_pending {
             self.mark_pending_activation_refresh_for_tab(id);
         }
         let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
@@ -664,6 +682,19 @@ impl FlistWalkerApp {
             true,
             true,
         );
+        if let Some((mode, scope)) = interrupted_result_sort {
+            // A replacement index refresh resets sorting to Score. Restore the
+            // interrupted result request's intent before reissuing it so both
+            // the retained snapshot and the final index snapshot use the same
+            // user-selected ordering contract.
+            self.shell.runtime.result_sort_mode = mode;
+            self.shell.runtime.result_sort_scope = scope;
+        }
+        if search_refresh_pending {
+            self.enqueue_search_request();
+        } else if sort_refresh_pending {
+            self.apply_result_sort(false);
+        }
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {

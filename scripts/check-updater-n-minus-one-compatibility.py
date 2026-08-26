@@ -17,9 +17,15 @@ SHIPPED_FAMILY_CAPABILITIES: dict[str, tuple[str, ...]] = {
 }
 
 
+def parse_release_version(value: str, label: str) -> tuple[int, int, int]:
+    match = RELEASE_VERSION_RE.fullmatch(value)
+    if match is None:
+        raise ValueError(f"unsupported {label} release version: {value}")
+    return tuple(int(part) for part in match.groups())
+
+
 def accepted_families(previous_version: str) -> tuple[str, ...]:
-    if RELEASE_VERSION_RE.fullmatch(previous_version) is None:
-        raise ValueError(f"unsupported previous release version: {previous_version}")
+    parse_release_version(previous_version, "previous")
     # Regression guard: inferring parser behavior from version ordering let an
     # unknown but well-formed release silently pass. Every shipped predecessor
     # capability must be registered and covered by an exact-inventory test.
@@ -72,10 +78,13 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        previous_version = parse_release_version(args.previous_version, "previous")
         families = accepted_families(args.previous_version)
-        if RELEASE_VERSION_RE.fullmatch(args.candidate_version) is None:
+        candidate_version = parse_release_version(args.candidate_version, "candidate")
+        if candidate_version <= previous_version:
             raise ValueError(
-                f"unsupported candidate release version: {args.candidate_version}"
+                "candidate release version must be newer than previous release: "
+                f"{args.candidate_version} <= {args.previous_version}"
             )
         names = parse_legacy_manifest(args.manifest)
     except (OSError, ValueError) as error:

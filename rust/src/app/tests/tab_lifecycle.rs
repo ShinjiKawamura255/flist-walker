@@ -170,6 +170,13 @@ fn ctrl_shift_t_restores_most_recently_closed_tab_as_active() {
     fs::create_dir_all(&root_a).expect("create root a");
     fs::create_dir_all(&root_b).expect("create root b");
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    reset_index_request_state_for_test(&mut app);
+    let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
+    app.shell.search.tx = search_tx;
     let original_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
 
     app.create_new_tab();
@@ -182,6 +189,8 @@ fn ctrl_shift_t_restores_most_recently_closed_tab_as_active() {
     app.shell.search.set_in_progress(true);
     app.shell.indexing.pending_request_id = Some(32);
     app.shell.indexing.in_progress = true;
+    app.shell.indexing.request_tabs.insert(32, closed_tab_id);
+    app.shell.indexing.inflight_requests.insert(32);
     app.shell.worker_bus.preview.pending_request_id = Some(33);
     app.shell.worker_bus.preview.in_progress = true;
     app.shell.tabs.bind_preview_request(33, closed_tab_id);
@@ -219,10 +228,29 @@ fn ctrl_shift_t_restores_most_recently_closed_tab_as_active() {
         app.shell.tabs.get(1).expect("restored tab").id,
         closed_tab_id
     );
-    assert_eq!(app.shell.search.pending_request_id(), None);
-    assert!(!app.shell.search.in_progress());
-    assert_eq!(app.shell.indexing.pending_request_id, None);
-    assert!(!app.shell.indexing.in_progress);
+    let replacement_search = search_rx
+        .try_recv()
+        .expect("restored tab must replace interrupted search work during reindex");
+    assert_ne!(replacement_search.request_id, 31);
+    assert_eq!(replacement_search.query, "needle");
+    assert_eq!(
+        app.shell.search.pending_request_id(),
+        Some(replacement_search.request_id)
+    );
+    assert!(app.shell.search.in_progress());
+    let replacement = index_rx
+        .try_recv()
+        .expect("restored tab must replace interrupted index work");
+    assert_ne!(replacement.request_id, 32);
+    assert_eq!(
+        replacement.tab_id,
+        app.current_tab_id().expect("restored tab id")
+    );
+    assert_eq!(
+        app.shell.indexing.pending_request_id,
+        Some(replacement.request_id)
+    );
+    assert!(app.shell.indexing.in_progress);
     assert_eq!(app.shell.worker_bus.preview.pending_request_id, None);
     assert!(!app.shell.worker_bus.preview.in_progress);
     assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
@@ -236,10 +264,299 @@ fn ctrl_shift_t_restores_most_recently_closed_tab_as_active() {
     assert_eq!(app.shell.tabs.preview_request_tab(33), None);
     assert_eq!(app.shell.tabs.action_request_tab(34), None);
     assert_eq!(app.shell.tabs.sort_request_tab(35), None);
+    index_response_tx
+        .send(IndexResponse::Failed {
+            request_id: replacement.request_id,
+            error: "expected regression failure".to_string(),
+        })
+        .expect("send replacement index failure");
+    app.poll_index_response();
+    assert!(!app.shell.indexing.in_progress);
+    assert_eq!(
+        app.shell.search.pending_request_id(),
+        Some(replacement_search.request_id)
+    );
+    assert_eq!(
+        app.shell.search.request_routes_for_test(),
+        vec![(
+            replacement_search.request_id,
+            app.current_tab_id().expect("restored tab id")
+        )]
+    );
     assert!(app.shell.ui.focus_query_requested);
     assert!(!app.shell.ui.unfocus_query_requested);
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
+fn restoring_closed_tab_reissues_interrupted_search_without_reindex() {
+    let root = test_root("closed-tab-interrupted-search");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
+    let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
+    app.shell.search.tx = search_tx;
+    app.shell.runtime.query_state.query = "needle".to_string();
+    let closed_id = app.current_tab_id().expect("closed tab id");
+    app.shell.search.set_pending_request_id(Some(401));
+    app.shell.search.set_in_progress(true);
+    app.shell.search.bind_request_tab(401, closed_id);
+
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+
+    let replacement = search_rx
+        .try_recv()
+        .expect("restored tab must replace interrupted search work");
+    assert_ne!(replacement.request_id, 401);
+    assert_eq!(
+        app.shell.search.request_routes_for_test(),
+        vec![(
+            replacement.request_id,
+            app.current_tab_id().expect("restored tab id")
+        )]
+    );
+    assert_eq!(replacement.query, "needle");
+    assert!(
+        index_rx.try_recv().is_err(),
+        "search-only restore must not reindex"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn restoring_closed_tab_reissues_interrupted_sort_without_reindex() {
+    let root = test_root("closed-tab-interrupted-sort");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
+    let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
+    app.shell.worker_bus.sort.tx = sort_tx;
+    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.worker_bus.sort.pending_request_id = Some(402);
+    app.shell.worker_bus.sort.in_progress = true;
+    let closed_id = app.current_tab_id().expect("closed tab id");
+    app.bind_sort_request_to_tab(402, closed_id);
+
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+
+    let replacement = sort_rx
+        .try_recv()
+        .expect("restored tab must replace interrupted sort work");
+    assert_ne!(replacement.request_id, 402);
+    assert_eq!(replacement.mode, ResultSortMode::SizeDesc);
+    assert_eq!(replacement.paths, vec![selected]);
+    assert!(
+        index_rx.try_recv().is_err(),
+        "sort-only restore must not reindex"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn restoring_closed_tab_reissues_empty_all_matches_sort_after_index_restart() {
+    let root = test_root("closed-tab-index-all-matches-sort");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    reset_index_request_state_for_test(&mut app);
+    let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
+    app.shell.search.tx = search_tx;
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+    let closed_id = app.current_tab_id().expect("closed tab id");
+    app.shell.indexing.pending_request_id = Some(501);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.request_tabs.insert(501, closed_id);
+    app.shell.indexing.inflight_requests.insert(501);
+    app.shell.search.set_pending_request_id(Some(502));
+    app.shell.search.set_in_progress(true);
+    app.shell.search.bind_request_tab(502, closed_id);
+
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+
+    let replacement_index = index_rx
+        .try_recv()
+        .expect("restored tab must replace interrupted index work");
+    let immediate_search = search_rx
+        .try_recv()
+        .expect("restored tab must immediately replace all-matches search work");
+    assert_eq!(immediate_search.sort_mode, ResultSortMode::SizeDesc);
+    assert_eq!(immediate_search.sort_scope, ResultSortScope::AllMatches);
+    index_response_tx
+        .send(IndexResponse::Finished {
+            request_id: replacement_index.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send replacement index finish");
+    app.poll_index_response();
+
+    let final_search = search_rx
+        .try_recv()
+        .expect("completed replacement index must reapply all-matches sort");
+    assert_ne!(final_search.request_id, immediate_search.request_id);
+    assert_eq!(final_search.sort_mode, ResultSortMode::SizeDesc);
+    assert_eq!(final_search.sort_scope, ResultSortScope::AllMatches);
+    assert!(matches!(
+        app.shell.search.route_response(502),
+        SearchResponseRoute::Stale
+    ));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn restoring_closed_tab_reissues_shown_metadata_sort_after_index_restart() {
+    let root = test_root("closed-tab-index-shown-sort");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    reset_index_request_state_for_test(&mut app);
+    let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
+    app.shell.worker_bus.sort.tx = sort_tx;
+    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+    let closed_id = app.current_tab_id().expect("closed tab id");
+    app.shell.indexing.pending_request_id = Some(601);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.request_tabs.insert(601, closed_id);
+    app.shell.indexing.inflight_requests.insert(601);
+    app.shell.worker_bus.sort.pending_request_id = Some(602);
+    app.shell.worker_bus.sort.in_progress = true;
+    app.bind_sort_request_to_tab(602, closed_id);
+
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+
+    let replacement_index = index_rx
+        .try_recv()
+        .expect("restored tab must replace interrupted index work");
+    let immediate_sort = sort_rx
+        .try_recv()
+        .expect("restored tab must immediately replace shown-results sort work");
+    assert_eq!(immediate_sort.mode, ResultSortMode::SizeDesc);
+    index_response_tx
+        .send(IndexResponse::Batch {
+            request_id: replacement_index.request_id,
+            entries: vec![IndexEntry {
+                path: selected.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send replacement index batch");
+    index_response_tx
+        .send(IndexResponse::Finished {
+            request_id: replacement_index.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send replacement index finish");
+    for _ in 0..4 {
+        app.poll_index_response();
+    }
+
+    let final_sort = sort_rx
+        .try_recv()
+        .expect("completed replacement index must reapply shown-results sort");
+    assert_ne!(final_sort.request_id, immediate_sort.request_id);
+    assert_eq!(final_sort.mode, ResultSortMode::SizeDesc);
+    assert_eq!(final_sort.paths, vec![selected]);
+    assert_eq!(app.shell.tabs.sort_request_tab(602), None);
+    assert_eq!(
+        app.shell.tabs.sort_request_tab(final_sort.request_id),
+        app.current_tab_id()
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn restoring_closed_tab_reloads_preview_after_request_ownership_is_cleared() {
+    let root = test_root("closed-tab-interrupted-preview");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.set_entry_kind(&selected, EntryKind::file());
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+    app.request_preview_for_current();
+    let interrupted = preview_rx.try_recv().expect("interrupted preview request");
+
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+
+    let replacement = preview_rx
+        .try_recv()
+        .expect("restored tab must reload the selected preview");
+    assert_ne!(replacement.request_id, interrupted.request_id);
+    assert_eq!(replacement.path, selected);
+    assert_eq!(app.shell.runtime.preview, "Loading preview...");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn restoring_closed_tab_reloads_trimmed_completed_preview() {
+    let root = test_root("closed-tab-completed-preview");
+    fs::create_dir_all(&root).expect("create root");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.preview = "completed preview".to_string();
+    app.set_entry_kind(&selected, EntryKind::file());
+    let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
+    app.shell.worker_bus.preview.tx = preview_tx;
+
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+
+    let replacement = preview_rx
+        .try_recv()
+        .expect("restored tab must reload its trimmed completed preview");
+    assert_eq!(replacement.path, selected);
+    assert_eq!(app.shell.runtime.preview, "Loading preview...");
+    let _ = fs::remove_dir_all(&root);
 }
 
 #[test]

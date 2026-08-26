@@ -1,6 +1,6 @@
 use super::{
     AppTabState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, PendingActiveIndexFinish, PipelineOwner,
+    IndexSource, PendingActiveIndexFinish, PipelineOwner, ResultSortMode,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::tabs::BackgroundIndexResponseEffect;
@@ -858,6 +858,18 @@ impl FlistWalkerApp {
             } else {
                 self.update_results();
             }
+        }
+
+        if self.shell.runtime.query_state.query.trim().is_empty()
+            && self.shell.runtime.result_sort_mode != ResultSortMode::Score
+            && !self.shell.search.in_progress()
+            && !self.shell.worker_bus.sort.in_progress
+        {
+            // A closed-tab restore may restart interrupted index and result
+            // work together. The final index snapshot supersedes the retained
+            // snapshot, so reapply the preserved empty-query sort after the
+            // replacement index settles.
+            self.apply_result_sort(false);
         }
 
         if matches!(self.shell.runtime.index.source, IndexSource::Walker) {

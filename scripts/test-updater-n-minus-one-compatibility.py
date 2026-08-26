@@ -107,6 +107,16 @@ def test_regression_v0244_accepts_exact_v0245_inventory(
     assert result.returncode == 0, result.stderr
 
 
+def test_regression_candidate_must_be_newer_than_previous_release(
+    script: Path, manifest: Path, digest: str
+) -> None:
+    for candidate in ("0.24.4", "0.24.3"):
+        write_manifest(manifest, release_inventory(candidate), digest)
+        result = run(script, manifest, "0.24.4", candidate)
+        assert result.returncode == 2, (candidate, result.stderr)
+        assert "newer than previous" in result.stderr, result.stderr
+
+
 def test_regression_unknown_previous_capability_fails_closed(
     script: Path, manifest: Path, digest: str
 ) -> None:
@@ -127,6 +137,9 @@ def main() -> int:
             script, manifest, digest
         )
         test_regression_v0244_accepts_exact_v0245_inventory(script, manifest, digest)
+        test_regression_candidate_must_be_newer_than_previous_release(
+            script, manifest, digest
+        )
         test_regression_unknown_previous_capability_fails_closed(
             script, manifest, digest
         )

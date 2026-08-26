@@ -40,6 +40,7 @@
 - Postconditions: default branch の`scripts/check_ci_policy.py`を実行する`CI Policy Guardian`と`CI Gate`がrequired契約を検証し、security/latest driftは追跡issueへ接続される。
 ## SP-014 起動時自己更新
 ### Requirements
+- MUST: release tag の候補 version は直前の公開 release version より厳密に新しくなければならず、同一または古い version を N-1 compatibility gate で拒否する。
 - MUST: GUI 起動時に GitHub Releases の最新 version 確認を非同期 worker で実行し、UI スレッドをブロックしてはならない。
 - MUST: TUI 起動時にも最新 version 確認を非同期 worker で実行し、入力ループをブロックしてはならない。candidate の受信は英語の手動更新案内だけを表示し、download/apply を開始してはならない。
 - MUST: CLI からの更新適用は利用者が `--update` を明示した場合だけ開始し、`--check-update` と TUI 通知は installation state を変更してはならない。alias 由来の `--cli` は更新承認を追加も取消もしない。

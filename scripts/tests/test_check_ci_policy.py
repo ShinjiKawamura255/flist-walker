@@ -28,7 +28,9 @@ class CiPolicyTests(unittest.TestCase):
         # This test file is immutable under CI Policy Guardian, while the normal
         # pull_request CI job safely executes the proposed checker without secrets.
         # Keep the fixture independent from the mutable updater self-test.
-        version = "0.24.4"
+        previous_version = "0.24.4"
+        candidate_version = "0.24.5"
+        version = candidate_version
         universal = [
             f"FlistWalker-{version}-linux-x86_64",
             f"FlistWalker-{version}-linux-x86_64.tar.gz",
@@ -70,7 +72,9 @@ class CiPolicyTests(unittest.TestCase):
                 encoding="ascii",
             )
 
-            def run(previous: str, *extra: str) -> subprocess.CompletedProcess[str]:
+            def run(
+                previous: str, *extra: str, candidate: str = candidate_version
+            ) -> subprocess.CompletedProcess[str]:
                 return subprocess.run(
                     [
                         sys.executable,
@@ -78,7 +82,7 @@ class CiPolicyTests(unittest.TestCase):
                         "--previous-version",
                         previous,
                         "--candidate-version",
-                        version,
+                        candidate,
                         "--manifest",
                         str(manifest),
                         *extra,
@@ -91,12 +95,16 @@ class CiPolicyTests(unittest.TestCase):
             legacy = run("0.24.3")
             self.assertEqual(1, legacy.returncode, legacy.stderr)
             self.assertIn("row 23:", legacy.stderr)
-            self.assertEqual(0, run("0.24.4").returncode)
+            self.assertEqual(0, run(previous_version).returncode)
+            non_increasing = run(previous_version, candidate=previous_version)
+            self.assertEqual(2, non_increasing.returncode)
+            self.assertIn("newer than previous", non_increasing.stderr)
             self.assertEqual(2, run("9.9.9").returncode)
-            self.assertEqual(
-                2,
-                run("0.24.3", "--acknowledge-v0243-manual-update").returncode,
+            acknowledgement = run(
+                "0.24.3", "--acknowledge-v0243-manual-update"
             )
+            self.assertEqual(2, acknowledgement.returncode)
+            self.assertIn("unrecognized arguments", acknowledgement.stderr)
 
     def test_mutable_required_workflow_is_rejected(self) -> None:
         workflow = """

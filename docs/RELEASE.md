@@ -146,7 +146,7 @@
 
 ### Regression Guard: public N-1 updater compatibility
 - 発生条件: 公開済みv0.24.3のupdaterは`fw-*`行を含むchecksum manifest全体を拒否するため、v0.24.4へ自己更新できない。
-- 期待動作: v0.24.3からは一度だけ手動でbinaryを置き換える。以後のreleaseは直前の公開版contractとcandidateのexact 26-entry manifestを`check-updater-n-minus-one-compatibility.py`で検証し、例外・acknowledgementなしで互換な場合だけpublishする。公開済みtagやassetは修正目的でも削除・上書きしない。
+- 期待動作: v0.24.3からは一度だけ手動でbinaryを置き換える。以後のreleaseはcandidate versionが直前の公開版よりstrictに新しいことと、直前の公開版contractがcandidateのexact 26-entry manifestを受理することを`check-updater-n-minus-one-compatibility.py`で検証し、例外・acknowledgementなしで両方を満たす場合だけpublishする。公開済みtagやassetは修正目的でも削除・上書きしない。
 - 非対象範囲: v0.24.3 assetの差し替え、既存archiveへの`fw`混在、1transactionで両variantを置換する更新。
 - 関連テストID: TC-194, TC-196.
 - 将来変更時の注意: checker self-testと、生成したcandidate `SHA256SUMS`に対する直前公開版contractの実検証を別々に実行する。candidate側parserの修正を、更新前binaryの非互換を承認する理由にしてはならない。直前公開版はcheckerの明示的なshipped capability表に登録されていなければならず、version大小からparser能力を推測してはならない。
@@ -205,7 +205,7 @@
 - `SHA256SUMS.sig` を生成する release 作業では、`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` が package / draft release 作成時に設定されていること。
 - signing stepで公開鍵secretが64桁hexであり、署名秘密鍵から導出した公開鍵および配布buildへ埋め込む公開鍵と一致すること。
 - `scripts/validate-release-bundle.sh vX.Y.Z <bundle-dir>` が成功し、期待28 asset、26 checksum entry、既存archive不変、archive/sidecarのlicense/noticeが揃うこと。
-- checker self-testとは別に、直前の公開release versionと生成済みcandidate `SHA256SUMS`を`check-updater-n-minus-one-compatibility.py`へ渡して成功すること。非互換の例外・acknowledgementは禁止し、失敗時はrelease blockerとする。
+- checker self-testとは別に、直前の公開release versionと生成済みcandidate `SHA256SUMS`を`check-updater-n-minus-one-compatibility.py`へ渡し、candidateがstrictに新しくmanifest互換であること。非増加version、非互換の例外・acknowledgementは禁止し、失敗時はrelease blockerとする。
 - Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
