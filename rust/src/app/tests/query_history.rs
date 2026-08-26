@@ -47,7 +47,7 @@ fn ctrl_r_starts_history_search_with_recent_entries_first() {
 }
 
 #[test]
-fn query_history_skips_empty_and_consecutive_duplicates() {
+fn query_history_skips_empty_and_moves_exact_duplicates_to_the_back() {
     let root = test_root("query-history-dedup");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -72,6 +72,10 @@ fn query_history_skips_empty_and_consecutive_duplicates() {
     app.mark_query_edited();
     app.update_results();
     commit_query_history_for_test(&mut app);
+    app.shell.runtime.query_state.query = " same ".to_string();
+    app.mark_query_edited();
+    app.update_results();
+    commit_query_history_for_test(&mut app);
 
     assert_eq!(
         app.shell
@@ -81,7 +85,7 @@ fn query_history_skips_empty_and_consecutive_duplicates() {
             .iter()
             .cloned()
             .collect::<Vec<_>>(),
-        vec!["same".to_string(), "other".to_string()]
+        vec!["other".to_string(), "same".to_string()]
     );
     let _ = fs::remove_dir_all(&root);
 }

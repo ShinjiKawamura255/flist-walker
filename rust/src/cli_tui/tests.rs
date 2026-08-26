@@ -385,6 +385,15 @@ fn tc_162_tui_emacs_query_editing_uses_the_same_runtime_toggle() {
     );
     assert_eq!(enabled.query_cursor, enabled.query.chars().count());
 
+    enabled.query = "alpha/beta".to_string();
+    enabled.query_cursor = enabled.query.chars().count();
+    handle_key(
+        &mut enabled,
+        KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL),
+    );
+    assert_eq!(enabled.query, "alpha/");
+    assert_eq!(enabled.kill_buffer, "beta");
+
     let mut disabled = TuiState::new("alpha beta");
     disabled.emacs_keybindings_enabled = false;
     disabled.query_cursor = 5;

@@ -1,6 +1,7 @@
 use super::widgets::centered_top_panel_label;
 use crate::app::{render_tabs, FlistWalkerApp};
 use crate::path_utils::normalize_windows_path_buf;
+use crate::text_editing::char_count;
 use eframe::egui;
 use std::path::PathBuf;
 
@@ -427,7 +428,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             app.clear_unfocus_query_request();
         }
         if !editing_history_search && app.query_cursor_to_end_requested() {
-            let end = FlistWalkerApp::char_count(&app.shell.runtime.query_state.query);
+            let end = char_count(&app.shell.runtime.query_state.query);
             output
                 .state
                 .cursor
@@ -450,7 +451,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 app.mark_query_edited();
                 if output.response.has_focus() {
                     let end = query_cursor_after_fallback.unwrap_or_else(|| {
-                        FlistWalkerApp::char_count(&app.shell.runtime.query_state.query)
+                        char_count(&app.shell.runtime.query_state.query)
                     });
                     output
                         .state
@@ -470,7 +471,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 let normalized =
                     FlistWalkerApp::normalize_singleline_input(&mut app.shell.runtime.query_state.query);
                 if normalized && output.response.has_focus() {
-                    let end = FlistWalkerApp::char_count(&app.shell.runtime.query_state.query);
+                    let end = char_count(&app.shell.runtime.query_state.query);
                     output
                         .state
                         .cursor
@@ -496,8 +497,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 &mut app.shell.runtime.query_state.history_search_query,
             ) && output.response.has_focus()
             {
-                let end =
-                    FlistWalkerApp::char_count(&app.shell.runtime.query_state.history_search_query);
+                let end = char_count(&app.shell.runtime.query_state.history_search_query);
                 output
                     .state
                     .cursor

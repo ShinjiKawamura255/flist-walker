@@ -18,9 +18,11 @@ pub mod persistence {
 }
 pub mod process_entry;
 pub mod query;
+pub(crate) mod query_history;
 pub mod runtime_config;
 pub mod search;
 pub mod search_catalog;
+pub(crate) mod text_editing;
 pub mod ui_model;
 pub mod update_security;
 pub mod updater;

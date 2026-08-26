@@ -1,39 +1,6 @@
 use super::super::FlistWalkerApp;
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
-use std::collections::VecDeque;
+use crate::query_history::{history_matches, history_with_query};
 use std::time::Instant;
-
-fn history_search_score(query: &str, candidate: &str, recency_rank: usize) -> Option<i64> {
-    if query.trim().is_empty() {
-        return Some(recency_rank as i64);
-    }
-
-    let matcher = SkimMatcherV2::default();
-    matcher.fuzzy_match(candidate, query).or_else(|| {
-        let query_lower = query.to_ascii_lowercase();
-        let candidate_lower = candidate.to_ascii_lowercase();
-        if candidate_lower.contains(&query_lower) {
-            Some((query_lower.len() as i64) * 100 + recency_rank as i64)
-        } else {
-            None
-        }
-    })
-}
-
-fn push_query_history(history: &mut VecDeque<String>, query: &str) {
-    let trimmed = query.trim();
-    if trimmed.is_empty() {
-        return;
-    }
-    if history.back().is_some_and(|entry| entry == trimmed) {
-        return;
-    }
-    history.push_back(trimmed.to_string());
-    while history.len() > FlistWalkerApp::QUERY_HISTORY_MAX {
-        history.pop_front();
-    }
-}
 
 fn sync_shared_query_history_to_tabs(app: &mut FlistWalkerApp) {
     let history = app.shell.runtime.query_state.query_history.clone();
@@ -67,27 +34,17 @@ impl FlistWalkerApp {
             return;
         }
 
-        let mut scored = {
+        let results = {
             let query_state = &self.shell.runtime.query_state;
-            let query = query_state.history_search_query().trim();
-            query_state
-                .query_history()
-                .iter()
-                .rev()
-                .enumerate()
-                .filter_map(|(idx, entry)| {
-                    history_search_score(query, entry, FlistWalkerApp::QUERY_HISTORY_MAX - idx)
-                        .map(|score| (entry.clone(), score, idx))
-                })
-                .collect::<Vec<_>>()
+            history_matches(
+                query_state.history_search_query(),
+                query_state.query_history().iter(),
+            )
         };
-        scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.2.cmp(&b.2)));
         self.shell
             .runtime
             .query_state
-            .replace_history_search_results(
-                scored.into_iter().map(|(entry, _, _)| entry).collect(),
-            );
+            .replace_history_search_results(results);
         self.refresh_status_line();
     }
 
@@ -165,19 +122,22 @@ impl FlistWalkerApp {
         {
             return;
         }
-        let before_len = self.shell.runtime.query_state.query_history.len();
         let query = self.shell.runtime.query_state.query.clone();
-        push_query_history(&mut self.shell.runtime.query_state.query_history, &query);
         self.set_query_history_dirty_since(None);
-        if self.shell.runtime.query_state.query_history.len() != before_len
-            || self
-                .shell
-                .runtime
-                .query_state
-                .query_history
-                .back()
-                .is_some_and(|entry| entry == query.trim())
+        let Some(updated) =
+            history_with_query(self.shell.runtime.query_state.query_history.iter(), &query)
+        else {
+            return;
+        };
+        if self
+            .shell
+            .runtime
+            .query_state
+            .query_history
+            .iter()
+            .ne(updated.iter())
         {
+            self.shell.runtime.query_state.query_history = updated.into();
             sync_shared_query_history_to_tabs(self);
             self.mark_ui_state_dirty();
         }
