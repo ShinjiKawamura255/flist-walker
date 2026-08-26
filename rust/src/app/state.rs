@@ -459,6 +459,8 @@ pub(super) struct ClosedTabState {
     pub(super) tab: AppTabState,
     pub(super) original_index: usize,
     pub(super) activation_refresh_pending: bool,
+    pub(super) search_refresh_pending: bool,
+    pub(super) sort_refresh_pending: bool,
 }
 
 pub(crate) struct TabSessionState {
