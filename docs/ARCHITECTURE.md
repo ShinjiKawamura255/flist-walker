@@ -30,6 +30,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - walker ベースの file/dir 収集を担当する。
 - [query.rs](../rust/src/query.rs)
   - fzf 互換 query tokenization と演算子解釈を担当する。
+- [query_history.rs](../rust/src/query_history.rs)
+  - GUI/TUI 共通の query history 検索順位、重複除去、最新化、100 件上限を担当する。
+- [text_editing.rs](../rust/src/text_editing.rs)
+  - GUI/TUI 共通の Unicode 文字位置操作と Emacs 風編集 reducer を担当する。widget/terminal の key event 解釈は各 adapter に残す。
 - [search/mod.rs](../rust/src/search/mod.rs)
   - public search facade と high-level search orchestration の入口を担当する。
 - [search/match_eval.rs](../rust/src/search/match_eval.rs)
@@ -100,7 +104,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
     - owner: FileList flow は [filelist.rs](../rust/src/app/filelist/mod.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
   - `trace helper`
     - 残置: opt-in 診断の入口と egui lifecycle に紐づく top-level trace 発火。
-    - owner: worker protocol tracing は [workers.rs](../rust/src/app/workers.rs) の registry shim、[worker_tasks.rs](../rust/src/app/worker_tasks.rs) の worker body、[worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
+    - owner: worker protocol tracing は [worker_tasks.rs](../rust/src/app/worker_tasks.rs) の worker body と [worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
 
 - [bootstrap.rs](../rust/src/app/bootstrap.rs)
   - worker 起動と launch seed 構築。
@@ -126,8 +130,6 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - preview/action/sort/kind/filelist/update worker channel を束ねる。
 - [worker_runtime.rs](../rust/src/app/worker_runtime.rs)
   - worker shutdown signal と join timeout 管理を担当する。
-- [worker_support.rs](../rust/src/app/worker_support.rs)
-  - worker routing の共通 helper と action target helper を集約する。
 - [response_flow.rs](../rust/src/app/response_flow.rs)
   - preview/action/sort を中心に worker response の polling と routing を集約する。
 - [root_browser.rs](../rust/src/app/root_browser.rs)
@@ -149,7 +151,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [render_panels.rs](../rust/src/app/render_panels.rs), [render_panels/](../rust/src/app/render_panels/), [render_dialogs.rs](../rust/src/app/render_dialogs.rs), [render_dialogs/](../rust/src/app/render_dialogs/), [render_tabs.rs](../rust/src/app/render_tabs.rs), [render_snapshot.rs](../rust/src/app/render_snapshot.rs), [render_theme.rs](../rust/src/app/render_theme.rs)
   - facade/results/status、private top-panel、FileList/update/root-list dialog、tab/snapshot/theme の描画責務を分担する。render owner は既存 owner method と `RenderCommand` のみを mutation seam とし、filesystem/network/process/worker 実装へ依存しない。
 - [input.rs](../rust/src/app/input/mod.rs)
-  - shortcut、IME、history search。
+  - shortcut、IME、history search の GUI adapter。履歴 policy と Emacs 風文字編集は top-level shared module へ委譲する。
 - [filelist.rs](../rust/src/app/filelist/mod.rs)
   - FileList 作成フローと filelist dialog dispatch owner。
 - [update.rs](../rust/src/app/update.rs)
@@ -160,10 +162,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。
   - `rust/src/app/tests/tab_contract.rs` の contract test は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout をフルリテラルで固定し、field drift を compile-time で検出する。
-- [workers.rs](../rust/src/app/workers.rs)
-  - search/preview/action/sort/update/filelist/kind worker の registry shim を担当する。
 - [worker_tasks.rs](../rust/src/app/worker_tasks.rs)
-  - worker spawn/use-case の実体を担当する。
+  - search/preview/action/sort/update/filelist/kind worker の spawn registry、use-case 本体、共有 action notice formatting を担当する。
 
 ## App Test Boundaries
 - `rust/src/app/tests/update_commands.rs`

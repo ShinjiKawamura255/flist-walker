@@ -16,7 +16,6 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 - `rust/` is the canonical product implementation.
 - `docs/` separates current truth, SDD, validation, operations, and retained records.
 - `scripts/`, `.github/`, and `skills/` provide repeatable build, validation, release, and maintenance workflows.
-- `prototype/` retains the previous Python prototype and is not the primary implementation path.
 
 ## Directory Map
 
@@ -26,6 +25,7 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 | `rust/src/cli/` | Typed CLI arguments/validation and batch, TUI, FileList, action, exec, and reporting coordination | `rust/src/cli.rs`, then `rust/src/cli/args.rs` or `rust/src/cli/batch.rs` |
 | `rust/src/cli_tui/` | Interactive terminal protocol, state, workers, FileList flow, input, rendering, terminal guard, and owner tests | `rust/src/cli_tui.rs`, then the concern-specific module |
 | `rust/src/app/` | GUI coordination, rendering, state, worker routing, tabs, sessions, update, and FileList UI flows | `rust/src/app/mod.rs`, then the owner module named in `docs/ARCHITECTURE.md` |
+| `rust/src/query_history.rs`, `rust/src/text_editing.rs` | UI-agnostic query-history and Emacs-style text-edit policy shared by GUI/TUI adapters | Read the relevant module directly |
 | `rust/src/app/render_dialogs/` | Private FileList, update, and root-list dialog rendering owners | `rust/src/app/render_dialogs.rs` facade |
 | `rust/src/app/render_panels/` | Private top-panel owner and shared pure paint widgets | `rust/src/app/render_panels.rs` facade/results owner |
 | `rust/src/indexer/` | FileList detection/reading/writing and walker traversal | `rust/src/indexer/mod.rs` |
@@ -35,7 +35,6 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 | `rust/src/runtime_config/` | Runtime configuration parsing and support | `rust/src/runtime_config.rs` and this directory |
 | `rust/src/updater/` | Update discovery, validation, download, and apply support | `rust/src/updater.rs` and this directory |
 | `rust/src/updater/transaction/` | Transaction marker model, filesystem safety policy, OS process/replacement primitives, and characterization tests | `rust/src/updater/transaction.rs`, then the concern-specific module |
-| `prototype/python/` | Retained Python prototype | `prototype/python/pyproject.toml` |
 | `docs/` | Canonical documentation entrypoints and operational references | `docs/INDEX.md` |
 | `docs/requirements/` | Detailed FR/NFR/CON and acceptance-criteria content | `docs/REQUIREMENTS.md` |
 | `docs/spec/` | Normative SP behavior grouped by topic | `docs/SPEC.md` |

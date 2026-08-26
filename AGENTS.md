@@ -13,7 +13,7 @@
 - Windows 向けビルド運用（WSL/Linux から `x86_64-pc-windows-gnu` + mingw-w64 で完結）
 - `docs/` の SDD + TDD 文書保守
 - スコープ Out:
-- 旧プロトタイプの機能追加
+- Python 旧プロトタイプの再導入
 - ネットワークドライブ向け最適化
 - 配布インストーラ作成
 
@@ -21,7 +21,7 @@
 - Rust 本実装を主軸に機能拡張と品質改善を行う。
 - GUI/CLI の検索仕様・操作仕様の一貫性を維持する。
 - Windows 実行を重視し、WSL/Linux から完結する GNU ビルド導線を維持する。
-- 旧プロトタイプ資産は `prototype/python/` に保管し、原則として Rust 側へ集約する。
+- 旧 Python プロトタイプは Git 履歴だけを参照元とし、実装・テスト・文書を現行ツリーへ再導入しない。
 
 ## 3. UI 応答性ポリシー（最優先）
 - 最優先要件: UI を固めない。重い I/O や計算は UI スレッドで実行しない。
@@ -61,7 +61,7 @@
 - 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
 - 検証は `docs/TESTPLAN.md` の Validation Matrix に従って選択する。
 - Rust 実装を変更した場合は最低限 `cargo test` を実行してから完了報告する。docs-only 変更は matrix 上の docs 手順で代替してよい。
-- `rust/src/indexer.rs`、`rust/src/app/workers.rs`、`rust/src/app/mod.rs` のインデクシング経路を変更した場合は、Validation Matrix の VM-003 に従い、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
+- `rust/src/indexer/`、`rust/src/app/index_worker.rs`、`rust/src/app/mod.rs` のインデクシング経路を変更した場合は、Validation Matrix の VM-003 に従い、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
 - `cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture`
 - `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`
 - 上記 perf テストは、FileList / Walker の初期インデクシング速度が基準実装より悪化していないことを確認する目的で使う。
