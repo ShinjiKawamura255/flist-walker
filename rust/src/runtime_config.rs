@@ -45,6 +45,7 @@ pub struct RuntimeConfig {
     pub history_persist_disabled: bool,
     pub restore_tabs_enabled: bool,
     pub emacs_keybindings_enabled: bool,
+    pub ctrl_w_deletes_word_in_query: bool,
     pub tab_pin_moves_to_next_row: bool,
     pub update_feed_url: String,
     pub update_allow_same_version: bool,
@@ -91,6 +92,8 @@ struct RuntimeConfigSeed {
     #[serde(skip_serializing_if = "Option::is_none")]
     emacs_keybindings_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    ctrl_w_deletes_word_in_query: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     tab_pin_moves_to_next_row: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     update_feed_url: Option<String>,
@@ -134,6 +137,7 @@ impl Default for RuntimeConfig {
             history_persist_disabled: false,
             restore_tabs_enabled: false,
             emacs_keybindings_enabled: true,
+            ctrl_w_deletes_word_in_query: false,
             tab_pin_moves_to_next_row: false,
             update_feed_url: DEFAULT_UPDATE_FEED_URL.to_string(),
             update_allow_same_version: false,
@@ -474,6 +478,7 @@ impl RuntimeConfig {
             history_persist_disabled,
             restore_tabs_enabled,
             emacs_keybindings_enabled: true,
+            ctrl_w_deletes_word_in_query: false,
             tab_pin_moves_to_next_row: false,
             update_feed_url: update_feed_url
                 .as_ref()
@@ -500,6 +505,7 @@ impl RuntimeConfig {
             history_persist_disabled: Some(config.history_persist_disabled),
             restore_tabs_enabled: Some(config.restore_tabs_enabled),
             emacs_keybindings_enabled: Some(config.emacs_keybindings_enabled),
+            ctrl_w_deletes_word_in_query: Some(config.ctrl_w_deletes_word_in_query),
             tab_pin_moves_to_next_row: Some(config.tab_pin_moves_to_next_row),
             update_feed_url: update_feed_url.map(|_| config.update_feed_url.clone()),
             update_allow_same_version: update_allow_same_version_set
@@ -543,6 +549,11 @@ fn normalize_runtime_config_file(path: &Path, text: &str, config: &RuntimeConfig
         root,
         "emacs_keybindings_enabled",
         serde_json::json!(config.emacs_keybindings_enabled),
+    );
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "ctrl_w_deletes_word_in_query",
+        serde_json::json!(config.ctrl_w_deletes_word_in_query),
     );
     changed |= insert_missing_runtime_config_value(
         root,

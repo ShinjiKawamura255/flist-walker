@@ -56,7 +56,7 @@ cargo run --bin flistwalker -- --root ..
 - `Esc` / `Ctrl+G`: clear query and pinned items
 - `Ctrl+L`: focus the search box
 - `Ctrl+T`: new tab
-- `Ctrl+W`: close the current tab
+- `Ctrl+W`: close the current tab; when both `emacs_keybindings_enabled` and `ctrl_w_deletes_word_in_query` are enabled, a focused GUI search/history field uses it to delete the previous word instead
 - `Ctrl+Tab` / `Ctrl+Shift+Tab`: switch tabs
 - Drag and drop a tab to reorder tabs
 
@@ -101,6 +101,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - If you delete the file, the next launch will recreate it from the current environment values.
 - `walker_max_entries` is also exposed here because it caps large-root Walker scans in both the GUI and TUI.
 - Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and query editing chords in both the GUI and TUI. It is enabled by default.
+- Set `ctrl_w_deletes_word_in_query` to `true` to make `Ctrl+W` delete the previous word while the GUI search box or history filter is focused and Emacs keybindings are enabled. It is disabled by default, so `Ctrl+W` continues to close the current tab on Windows/Linux. The TUI has no tab conflict and keeps its existing Emacs `Ctrl+W` behavior.
 - Set `tab_pin_moves_to_next_row` to `true` to move to the next result after `Tab`, `Shift+Tab`, or enabled `Ctrl+I` pin toggles in both the GUI and TUI. It is disabled by default.
 
 Example:
@@ -111,6 +112,7 @@ Example:
   "history_persist_disabled": false,
   "restore_tabs_enabled": false,
   "emacs_keybindings_enabled": true,
+  "ctrl_w_deletes_word_in_query": false,
   "tab_pin_moves_to_next_row": false
 }
 ```

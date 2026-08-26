@@ -103,7 +103,7 @@ impl FlistWalkerApp {
         }
 
         let emacs_mods = egui::Modifiers {
-            command: true,
+            ctrl: true,
             ..Default::default()
         };
         let pressed = |key: egui::Key| ctx.input_mut(|i| i.consume_key(emacs_mods, key));
@@ -130,8 +130,6 @@ impl FlistWalkerApp {
             Some(EmacsEdit::DeleteBackward)
         } else if pressed(egui::Key::D) {
             Some(EmacsEdit::DeleteForward)
-        } else if pressed(egui::Key::W) {
-            Some(EmacsEdit::KillBackwardWord)
         } else if pressed(egui::Key::K) {
             Some(EmacsEdit::KillToEnd)
         } else if pressed(egui::Key::Y) {
@@ -178,6 +176,87 @@ impl FlistWalkerApp {
         }
 
         outcome.text_changed
+    }
+
+    pub(in crate::app) fn consume_ctrl_w_search_edit(
+        &mut self,
+        ctx: &egui::Context,
+        query_focused: bool,
+    ) -> bool {
+        if !self.shell.runtime.emacs_keybindings_enabled
+            || !self.shell.runtime.ctrl_w_deletes_word_in_query
+            || !query_focused
+        {
+            return false;
+        }
+        let ctrl_mods = egui::Modifiers {
+            ctrl: true,
+            ..Default::default()
+        };
+        if !ctx.input_mut(|input| input.consume_key(ctrl_mods, egui::Key::W)) {
+            return false;
+        }
+        if self.shell.ui.ime_composition_active {
+            return true;
+        }
+
+        let editing_history_search = self.shell.runtime.query_state.history_search_active;
+        let query_input_id = self.shell.ui.query_input_id();
+        let mut text_state =
+            egui::widgets::text_edit::TextEditState::load(ctx, query_input_id).unwrap_or_default();
+        let char_len = if editing_history_search {
+            self.shell
+                .runtime
+                .query_state
+                .history_search_query
+                .chars()
+                .count()
+        } else {
+            self.shell.runtime.query_state.query.chars().count()
+        };
+        let ccursor = text_state
+            .cursor
+            .char_range()
+            .unwrap_or_else(|| egui::text::CCursorRange::one(egui::text::CCursor::new(char_len)));
+        let mut cursor = CursorRange {
+            primary: ccursor.primary.index.0.min(char_len),
+            anchor: ccursor.secondary.index.0.min(char_len),
+        };
+        let query_state = &mut self.shell.runtime.query_state;
+        let outcome = if editing_history_search {
+            apply_emacs_edit(
+                &mut query_state.history_search_query,
+                &mut cursor,
+                &mut query_state.kill_buffer,
+                EmacsEdit::KillBackwardWord,
+            )
+        } else {
+            apply_emacs_edit(
+                &mut query_state.query,
+                &mut cursor,
+                &mut query_state.kill_buffer,
+                EmacsEdit::KillBackwardWord,
+            )
+        };
+        if outcome.cursor_changed || outcome.text_changed {
+            text_state
+                .cursor
+                .set_char_range(Some(egui::text::CCursorRange::two(
+                    egui::text::CCursor::new(cursor.anchor),
+                    egui::text::CCursor::new(cursor.primary),
+                )));
+            text_state.store(ctx, query_input_id);
+            ctx.request_repaint();
+        }
+        if outcome.text_changed {
+            if editing_history_search {
+                self.refresh_history_search_results();
+            } else {
+                self.mark_query_edited();
+                self.update_results();
+            }
+        }
+        true
     }
 
     pub(in crate::app) fn consume_disabled_emacs_query_edit_shortcuts(

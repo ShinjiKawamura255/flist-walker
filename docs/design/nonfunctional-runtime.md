@@ -107,7 +107,7 @@
 - プレビューデコーダは拡張子を見ず、先頭 64KiB を対象に UTF-8、BOM 付き UTF-16、その後に主要レガシー文字コードを順に試す。候補ごとに decode error と制御文字比率を評価し、妥当なテキストだけを preview に採用する。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。同一 query の再登録は exact duplicate を除去して最新位置へ移動し、GUI/TUI は同じ pure policy を使う。
 - query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
-- Emacs 風 keybindings は runtime config の `emacs_keybindings_enabled` で制御する。既定は `true` で既存操作を維持し、`false` のときは `consume_emacs_shortcut` と検索欄編集の Emacs 風処理を入口で無効化する。
+- Emacs 風 keybindings は runtime config の `emacs_keybindings_enabled` で制御する。既定は `true` で既存操作を維持し、`false` のときは `consume_emacs_shortcut` と検索欄編集の Emacs 風処理を入口で無効化する。GUI の `ctrl_w_deletes_word_in_query` は既定 `false` とし、両設定が有効な検索欄・履歴検索フィルターだけで `Ctrl+W` をタブ終了より先に共有 text editing reducer へ渡す。描画前 owner が key event の消費、TextEdit cursor 更新、query/history 再評価までを一度で完了し、後段 TextEdit との二重削除を防ぐ。IME 合成中の `Ctrl+W` は削除にも Windows/Linux のタブ終了にも流さない。macOS は `Ctrl+W` の編集と primary `Cmd+W` のタブ終了を分離する。TUI は競合がないため新設定に依存しない。
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。

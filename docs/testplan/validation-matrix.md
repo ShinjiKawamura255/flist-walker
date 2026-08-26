@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: focused Ctrl+W query editing priority
+
+- Scenario: GUI の application shortcut が TextEdit より先に `Ctrl+W` をタブ終了として消費し、opt-in した Emacs 単語削除が実行されない。または TextEdit と独自 reducer が同じ event を処理して2語削除する。
+- Expected Behavior: Emacs と `ctrl_w_deletes_word_in_query` が有効な通常検索欄・履歴検索フィルターでは `Ctrl+W` が直前単語だけを一度削除し、タブ数を変えない。検索欄外またはいずれかの設定が無効ならタブ終了を維持し、IME 合成中はどちらも起動しない。
+- Non-goals: TUI の既存 `Ctrl+W`、他の Emacs chord、タブ close ボタン、macOS の `Cmd+W`。
+- Related Tests: TC-199, `regression_opted_in_ctrl_w_deletes_query_word_without_closing_tab`, `regression_opted_in_ctrl_w_deletes_history_filter_word_without_closing_tab`, `regression_opted_in_ctrl_w_during_ime_changes_neither_query_nor_tabs`, `regression_ctrl_w_still_closes_tab_outside_opted_in_query_editing`, `regression_ctrl_w_does_not_close_tab_during_opted_in_ime_composition`.
+- Notes for Future Changes: `run_ui_frame`、shortcut ordering、TextEdit adapter を変更する際は Ctrl+W の owner を一つに保ち、同じ key event を global close と text reducer の双方へ渡さない。
+
 ### Regression Guard: TUI Windows extended-path display
 
 - Scenario: Windows で canonical root が `\\?\D:\...` または `\\?\UNC\...` になり、TUI の options summary など一部表示だけが raw `Path::display` を使うと extended prefix が露出する。

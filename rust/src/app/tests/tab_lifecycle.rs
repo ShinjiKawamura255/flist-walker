@@ -97,6 +97,91 @@ fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn regression_ctrl_w_keeps_tab_open_for_opted_in_focused_query_editing() {
+    let root = test_root("regression-ctrl-w-focused-query-editing");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "alpha beta".to_string());
+    app.create_new_tab();
+    app.shell.runtime.emacs_keybindings_enabled = true;
+    app.shell.runtime.ctrl_w_deletes_word_in_query = true;
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::W,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+    );
+
+    assert_eq!(app.shell.tabs.len(), 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn regression_ctrl_w_still_closes_tab_outside_opted_in_query_editing() {
+    for (name, emacs_enabled, option_enabled, query_focused) in [
+        ("option-disabled", true, false, true),
+        ("emacs-disabled", false, true, true),
+        ("query-unfocused", true, true, false),
+    ] {
+        let root = test_root(&format!("regression-ctrl-w-{name}"));
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "alpha beta".to_string());
+        app.create_new_tab();
+        app.shell.runtime.emacs_keybindings_enabled = emacs_enabled;
+        app.shell.runtime.ctrl_w_deletes_word_in_query = option_enabled;
+
+        run_shortcuts_frame(
+            &mut app,
+            query_focused,
+            vec![egui::Event::Key {
+                key: egui::Key::W,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: emacs_shortcut_modifiers(false),
+            }],
+        );
+
+        assert_eq!(app.shell.tabs.len(), 1, "case: {name}");
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn regression_ctrl_w_does_not_close_tab_during_opted_in_ime_composition() {
+    let root = test_root("regression-ctrl-w-ime-composition");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "変換中".to_string());
+    app.create_new_tab();
+    app.shell.runtime.emacs_keybindings_enabled = true;
+    app.shell.runtime.ctrl_w_deletes_word_in_query = true;
+    app.shell.ui.ime_composition_active = true;
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![egui::Event::Key {
+            key: egui::Key::W,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: emacs_shortcut_modifiers(false),
+        }],
+    );
+
+    assert_eq!(app.shell.tabs.len(), 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn closing_active_tab_retains_restorable_results_for_fast_restore() {
     let root = test_root("close-active-tab-retains-closed-stack");

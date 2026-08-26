@@ -128,6 +128,12 @@ fn seeds_and_writes_config_when_missing() {
     );
     assert_eq!(
         saved
+            .get("ctrl_w_deletes_word_in_query")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        saved
             .get("tab_pin_moves_to_next_row")
             .and_then(|value| value.as_bool()),
         Some(false)
@@ -217,11 +223,17 @@ fn seeds_default_user_config_values_when_missing() {
     );
     assert_eq!(
         saved
+            .get("ctrl_w_deletes_word_in_query")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        saved
             .get("tab_pin_moves_to_next_row")
             .and_then(|value| value.as_bool()),
         Some(false)
     );
-    assert_eq!(saved.len(), 5);
+    assert_eq!(saved.len(), 6);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -390,9 +402,24 @@ fn load_runtime_config_from_path_handles_missing_field_defaults() {
     );
     assert_eq!(loaded.walker_max_entries, WALKER_MAX_ENTRIES_DEFAULT);
     assert!(loaded.emacs_keybindings_enabled);
+    assert!(!loaded.ctrl_w_deletes_word_in_query);
     assert!(!loaded.tab_pin_moves_to_next_row);
     assert_eq!(loaded.developer, DeveloperRuntimeConfig::default());
 
+    let _ = fs::remove_dir_all(&home);
+}
+
+#[test]
+fn ctrl_w_query_word_delete_option_loads_when_explicitly_enabled() {
+    let _guard = locked_env();
+    let home = test_home("ctrl-w-query-word-delete-enabled");
+    fs::create_dir_all(&home).expect("create home");
+    let path = home.join(RUNTIME_CONFIG_FILE_NAME);
+    fs::write(&path, r#"{"ctrl_w_deletes_word_in_query":true}"#).expect("write config");
+
+    let loaded = load_runtime_config_from_path(&path).expect("load config");
+
+    assert!(loaded.ctrl_w_deletes_word_in_query);
     let _ = fs::remove_dir_all(&home);
 }
 
@@ -410,6 +437,7 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
     assert!(!loaded.history_persist_disabled);
     assert!(!loaded.restore_tabs_enabled);
     assert!(loaded.emacs_keybindings_enabled);
+    assert!(!loaded.ctrl_w_deletes_word_in_query);
     assert!(!loaded.tab_pin_moves_to_next_row);
     let text = fs::read_to_string(&path).expect("read backfilled config");
     let saved_json: serde_json::Value = serde_json::from_str(&text).expect("parse config");
@@ -440,11 +468,17 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
     );
     assert_eq!(
         saved
+            .get("ctrl_w_deletes_word_in_query")
+            .and_then(|value| value.as_bool()),
+        Some(false)
+    );
+    assert_eq!(
+        saved
             .get("tab_pin_moves_to_next_row")
             .and_then(|value| value.as_bool()),
         Some(false)
     );
-    assert_eq!(saved.len(), 5);
+    assert_eq!(saved.len(), 6);
 
     let _ = fs::remove_dir_all(&home);
 }

@@ -52,8 +52,9 @@ fn open_help_consumes_background_copy_shortcut() {
 
 #[test]
 fn gui_help_lines_follow_platform_and_emacs_settings() {
-    let enabled = FlistWalkerApp::gui_help_lines(true).join("\n");
-    let disabled = FlistWalkerApp::gui_help_lines(false).join("\n");
+    let enabled = FlistWalkerApp::gui_help_lines(true, true).join("\n");
+    let enabled_without_ctrl_w = FlistWalkerApp::gui_help_lines(true, false).join("\n");
+    let disabled = FlistWalkerApp::gui_help_lines(false, true).join("\n");
     let primary = FlistWalkerApp::primary_shortcut_label();
 
     assert!(enabled.contains(&format!("{primary}+T")));
@@ -72,12 +73,9 @@ fn gui_help_lines_follow_platform_and_emacs_settings() {
     assert!(enabled.contains("dir:TERM"));
     assert!(enabled.contains("ext:EXT"));
     assert!(enabled.contains("dir:src ext:rs !dir:target"));
-    if cfg!(target_os = "macos") {
-        assert!(enabled.contains("Ctrl+W / Ctrl+K"));
-    } else {
-        assert!(!enabled.contains("Ctrl+W / Ctrl+K"));
-        assert!(enabled.contains("Ctrl+K — Delete through the end"));
-    }
+    assert!(enabled.contains("Ctrl+W / Ctrl+K"));
+    assert!(!enabled_without_ctrl_w.contains("Ctrl+W / Ctrl+K"));
+    assert!(enabled_without_ctrl_w.contains("Ctrl+K — Delete through the end"));
     assert!(disabled.contains(&format!("{primary}+T")));
     assert!(!disabled.contains("Ctrl+N / Ctrl+P"));
     assert!(disabled.contains("Emacs-style shortcuts are disabled"));

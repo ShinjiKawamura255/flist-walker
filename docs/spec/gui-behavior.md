@@ -19,6 +19,7 @@
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR/LINK 表示を後追い更新できる。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+N` / `Ctrl+P` / `Ctrl+G` / `Esc` は検索窓フォーカス中でも有効である。
 - MUST: runtime config の `emacs_keybindings_enabled` が `false` のとき、Emacs 風の `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` および検索欄編集用 `Ctrl+A` / `Ctrl+E` / `Ctrl+B` / `Ctrl+F` / `Ctrl+H` / `Ctrl+D` / `Ctrl+W` / `Ctrl+K` / `Ctrl+Y` / `Ctrl+U` はアプリ側ショートカットとして消費してはならない。
+- MUST: runtime config の `ctrl_w_deletes_word_in_query` は既定 `false` とする。GUI は `emacs_keybindings_enabled=true` かつ同設定が `true` で、通常検索欄または履歴検索フィルターへフォーカス中の場合、IME 合成中を除いて `Ctrl+W` を Unicode character index に基づく直前単語の削除として描画前に一度だけ処理し、タブ終了へ流してはならない。IME 合成中の `Ctrl+W` は単語削除にも Windows/Linux のタブ終了にも流してはならない。検索欄外、Emacs 無効時、または同設定が `false` の場合は Windows/Linux の `Ctrl+W` と macOS の `Cmd+W` による従来のタブ終了を維持する。macOS では設定有効時も `Cmd+W` をタブ終了として維持する。TUI の `Ctrl+W` 単語削除はタブ競合がないため同設定へ依存させてはならない。
 - MUST: GUI は top action の `Help` と `F1` の両方から、キーボードショートカットと query syntax を示すモーダルヘルプを開き、`F1` / `Esc` / `Close` で閉じられなければならない。
 - MUST: GUI ヘルプは macOS では primary modifier を `Cmd`、その他の OS では `Ctrl` と表示し、runtime config の `emacs_keybindings_enabled` に応じて Emacs 風ショートカット一覧または無効状態を表示しなければならない。query syntax は非field term、`name:`、`path:`、`dir:`、`ext:` の対象と、fieldへ適用できる `'`、`!`、`^`、`$`、`|` および複合例を表示しなければならない。
 - MUST: GUI ヘルプ表示中は背後の検索入力、選択、PIN、コピー、実行などを起動するキーイベントを消費し、現在の検索状態を変更してはならない。
@@ -109,6 +110,10 @@
 - Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
 
 ### Regression Guard
+- 発生条件: GUI が application shortcut を TextEdit より先に処理する構成で、検索欄フォーカス中の `Ctrl+W` が Emacs 単語削除へ到達する前にタブ終了として消費される。または同じイベントを TextEdit と独自 reducer の双方が処理して2語削除する。
+- 期待動作: `emacs_keybindings_enabled=true` かつ `ctrl_w_deletes_word_in_query=true` の検索欄・履歴検索フィルターでは `Ctrl+W` を一度だけ直前単語削除として処理し、タブ数を変えない。設定無効、Emacs 無効、検索欄外では従来どおりタブを閉じ、IME 合成中はどちらも起動しない。
+- 非対象範囲: TUI の既存 `Ctrl+W`、`Ctrl+K` など他の Emacs 編集 chord、タブ close ボタン、macOS の `Cmd+W`。
+- 関連テストID: TC-199。
 - 発生条件: GUI backend が `Ctrl+Shift+C` / `Cmd+Shift+C` を通常の `Key::C` ではなく `Event::Copy` に変換し、検索窓フォーカス中に TextEdit 側のコピー経路だけが動く。
 - 期待動作: Shift 付き primary copy chord は選択中または PIN 済み path のコピーを優先し、Shift なしの通常コピーは path copy shortcut として扱わない。
 - 非対象範囲: TextEdit 内の通常 `Ctrl+C` / `Cmd+C` による query text コピー。

@@ -326,6 +326,7 @@ impl FlistWalkerApp {
         ) = Self::launch_seed(root, limit, query, &launch).into_parts();
         let runtime_config = current_runtime_config();
         let emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
+        let ctrl_w_deletes_word_in_query = runtime_config.ctrl_w_deletes_word_in_query;
         let tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
         let mut app = Self {
             shell: AppShellState {
@@ -354,6 +355,7 @@ impl FlistWalkerApp {
                     pinned_paths: HashSet::new(),
                     current_row: None,
                     emacs_keybindings_enabled,
+                    ctrl_w_deletes_word_in_query,
                     tab_pin_moves_to_next_row,
                     preview: String::new(),
                     notice: String::new(),

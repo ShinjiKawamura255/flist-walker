@@ -30,7 +30,7 @@ Each axis cell uses `STATUS — reason — evidence — reproduction`.
 | GSM-005 | NOT RUN — run deterministic wrapper | NOT RUN — sort modes/typing | NOT RUN — supporting only | Sort modes |
 | GSM-006 | NOT RUN — run deterministic wrapper | NOT RUN — fixture source/dialog interaction | NOT RUN — supporting only | FileList/dialogs |
 | GSM-007 | NOT RUN — run deterministic wrapper | NOT RUN — tabs/reorder | NOT RUN — supporting only | Tabs/per-tab state |
-| GSM-008 | NOT RUN — run deterministic wrapper | NOT RUN — help, preset picker/editor, Named Root manager, and local/forced dialogs only | NOT RUN — supporting only | Help/picker/editor/manager/dialog cancel/failure |
+| GSM-008 | NOT RUN — run deterministic wrapper | NOT RUN — help, configured Ctrl+W focus/IME behavior, preset picker/editor, Named Root manager, and local/forced dialogs only | NOT RUN — supporting only | Help/keyboard configuration/picker/editor/manager/dialog cancel/failure |
 | GSM-009 | NOT RUN — run deterministic wrapper | NOT RUN — light/dark visual pass | NOT RUN — supporting only | Theme/contrast |
 | GSM-010 | NOT RUN — run deterministic wrapper/perf gates | NOT RUN — responsiveness during native input | NOT RUN — run isolated headful smoke | Responsiveness |
 | GSM-011 | NOT RUN — run deterministic wrapper and TC-180 | NOT RUN — limited-to-Unlimited Apply, popup/editor checkbox alignment, preset reset, and tab-local interaction | NOT RUN — supporting only | Maximum depth and presets |
