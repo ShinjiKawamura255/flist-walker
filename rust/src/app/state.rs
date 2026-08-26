@@ -265,6 +265,7 @@ pub struct AppRuntimeState {
     pub(super) pinned_paths: HashSet<PathBuf>,
     pub(super) current_row: Option<usize>,
     pub(super) emacs_keybindings_enabled: bool,
+    pub(super) ctrl_w_deletes_word_in_query: bool,
     pub(super) tab_pin_moves_to_next_row: bool,
     pub(super) preview: String,
     pub(super) notice: String,

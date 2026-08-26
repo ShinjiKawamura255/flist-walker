@@ -319,7 +319,18 @@ impl FlistWalkerApp {
             self.create_new_tab();
             return;
         }
-        if Self::consume_gui_shortcut(ctx, egui::Key::W, false) {
+        // Regression guard: focused query editing owns Ctrl+W before the global tab
+        // shortcut. Do not reorder this below tab close or defer it to TextEdit, which
+        // can consume the same event twice. Keep it paired with regression_ctrl_w_*.
+        if self.consume_ctrl_w_search_edit(ctx, query_focused) {
+            return;
+        }
+        let ctrl_w_reserved_for_search_edit = query_focused
+            && self.shell.runtime.emacs_keybindings_enabled
+            && self.shell.runtime.ctrl_w_deletes_word_in_query
+            && !cfg!(target_os = "macos");
+        if !ctrl_w_reserved_for_search_edit && Self::consume_gui_shortcut(ctx, egui::Key::W, false)
+        {
             self.close_active_tab();
             return;
         }

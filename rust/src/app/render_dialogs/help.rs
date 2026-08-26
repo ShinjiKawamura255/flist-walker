@@ -2,8 +2,19 @@ use crate::app::{render::RenderHelpDialogCommand, FlistWalkerApp};
 use eframe::egui;
 
 impl FlistWalkerApp {
-    pub(in crate::app) fn gui_help_lines(emacs_keybindings_enabled: bool) -> Vec<String> {
+    pub(in crate::app) fn gui_help_lines(
+        emacs_keybindings_enabled: bool,
+        ctrl_w_deletes_word_in_query: bool,
+    ) -> Vec<String> {
         let primary = Self::primary_shortcut_label();
+        let tab_shortcuts = if cfg!(not(target_os = "macos"))
+            && emacs_keybindings_enabled
+            && ctrl_w_deletes_word_in_query
+        {
+            format!("{primary}+T — Create a tab; {primary}+W — Close a tab outside search editing")
+        } else {
+            format!("{primary}+T / {primary}+W — Create or close a tab")
+        };
         let mut lines = vec![
             "Search and navigation".to_string(),
             "Up / Down — Move the current row".to_string(),
@@ -18,7 +29,7 @@ impl FlistWalkerApp {
             "Esc — Clear the query and pinned items".to_string(),
             "".to_string(),
             "Tabs and roots".to_string(),
-            format!("{primary}+T / {primary}+W — Create or close a tab"),
+            tab_shortcuts,
             format!("{primary}+Shift+T — Restore the most recently closed tab"),
             "Ctrl+Tab / Ctrl+Shift+Tab — Switch tabs".to_string(),
             format!("{primary}+1 … {primary}+9 — Switch to a numbered tab"),
@@ -65,9 +76,10 @@ impl FlistWalkerApp {
                 "Ctrl+B / Ctrl+F — Move one character in the search text".to_string(),
                 "Ctrl+H / Ctrl+D — Delete backward / forward".to_string(),
             ]);
-            if cfg!(target_os = "macos") {
+            if ctrl_w_deletes_word_in_query {
                 lines.push(
-                    "Ctrl+W / Ctrl+K — Delete a word / through the end of the line".to_string(),
+                    "Ctrl+W / Ctrl+K — Delete a word / through the end of the search text"
+                        .to_string(),
                 );
             } else {
                 lines.push("Ctrl+K — Delete through the end of the search text".to_string());
@@ -94,7 +106,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         return;
     }
 
-    let lines = FlistWalkerApp::gui_help_lines(app.shell.runtime.emacs_keybindings_enabled);
+    let lines = FlistWalkerApp::gui_help_lines(
+        app.shell.runtime.emacs_keybindings_enabled,
+        app.shell.runtime.ctrl_w_deletes_word_in_query,
+    );
     egui::Modal::new(egui::Id::new("gui-help-modal")).show(ctx, |ui| {
         ui.set_min_width(560.0);
         ui.heading("Help");

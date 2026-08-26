@@ -1,6 +1,146 @@
 use super::*;
 use crate::updater::AutoUpdateAssets;
 
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn regression_opted_in_ctrl_w_deletes_query_word_without_closing_tab() {
+    let root = test_root("regression-ctrl-w-query-word-delete");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.runtime.query_state.query = "alpha beta".to_string();
+    app.shell.runtime.emacs_keybindings_enabled = true;
+    app.shell.runtime.ctrl_w_deletes_word_in_query = true;
+    let ctx = egui::Context::default();
+    let query_input_id = app.shell.ui.query_input_id;
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        ui.ctx()
+            .memory_mut(|memory| memory.request_focus(query_input_id));
+        app.run_ui_frame(ui);
+    });
+    assert_eq!(app.shell.runtime.query_state.query, "alpha beta");
+    let mut text_state = egui::widgets::text_edit::TextEditState::load(&ctx, query_input_id)
+        .expect("query text edit state");
+    text_state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new("alpha beta".chars().count()),
+        )));
+    text_state.store(&ctx, query_input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![egui::Event::Key {
+                key: egui::Key::W,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+
+    assert_eq!(app.shell.runtime.query_state.query, "alpha ");
+    assert_eq!(app.shell.runtime.query_state.kill_buffer, "beta");
+    assert_eq!(app.shell.tabs.len(), 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn regression_opted_in_ctrl_w_deletes_history_filter_word_without_closing_tab() {
+    let root = test_root("regression-ctrl-w-history-filter-word-delete");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.runtime.emacs_keybindings_enabled = true;
+    app.shell.runtime.ctrl_w_deletes_word_in_query = true;
+    app.start_history_search();
+    app.shell.runtime.query_state.history_search_query = "alpha beta".to_string();
+    let ctx = egui::Context::default();
+    let query_input_id = app.shell.ui.query_input_id;
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        ui.ctx()
+            .memory_mut(|memory| memory.request_focus(query_input_id));
+        app.run_ui_frame(ui);
+    });
+    let mut text_state = egui::widgets::text_edit::TextEditState::load(&ctx, query_input_id)
+        .expect("history filter text edit state");
+    text_state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new("alpha beta".chars().count()),
+        )));
+    text_state.store(&ctx, query_input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![egui::Event::Key {
+                key: egui::Key::W,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+
+    assert_eq!(app.shell.runtime.query_state.history_search_query, "alpha ");
+    assert_eq!(app.shell.runtime.query_state.kill_buffer, "beta");
+    assert_eq!(app.shell.tabs.len(), 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn regression_opted_in_ctrl_w_during_ime_changes_neither_query_nor_tabs() {
+    let root = test_root("regression-ctrl-w-ime-full-frame");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.runtime.query_state.query = "変換 中".to_string();
+    app.shell.runtime.emacs_keybindings_enabled = true;
+    app.shell.runtime.ctrl_w_deletes_word_in_query = true;
+    app.shell.ui.ime_composition_active = true;
+    let ctx = egui::Context::default();
+    let query_input_id = app.shell.ui.query_input_id;
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        ui.ctx()
+            .memory_mut(|memory| memory.request_focus(query_input_id));
+        app.run_ui_frame(ui);
+    });
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![egui::Event::Key {
+                key: egui::Key::W,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+
+    assert_eq!(app.shell.runtime.query_state.query, "変換 中");
+    assert_eq!(app.shell.tabs.len(), 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn results_renderer_processes_only_visible_rows_regression() {
     let root = test_root("visible-result-rows");
