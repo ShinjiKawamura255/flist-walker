@@ -75,6 +75,8 @@ PowerShell helper を`-Variant Universal`と`-Variant Fw`で別々に実行し�
 helper の loopback server を停止した sandbox、または deterministic failure injection を使い、外部 network へ接続せず `Update Check Failed` の状態遷移と抑止を確認する。
 7. startup check failure dialog 強制表示:
 `cargo test update_check_failure_opens_failure_dialog --lib` と `cargo test forced_update_check_failure_bypasses_suppression_flag --lib` を実行し、network access なしで failure dialog state と suppression bypass を確認する。native focus/visual confirmation が必要な場合は `GUI-TESTPLAN.md` の GSM-008 として staged window で記録し、専用の安全な staged launch route がなければ `NOT RUN` とする。
+8. install failure manual recovery dialog:
+`cargo test failed_update_response_replaces_prompt_with_manual_recovery_state --lib` を実行し、candidate の install failure が `Update Available` を残さず、manual recovery state と release URL を保持することを確認する。native 表示確認では GSM-008 の staged window を使い、`Update Installation Failed`、現行 installation 不変、manual recovery 案内、release link、details、`Close` を確認する。
 
 ## Diagnostics Trace Smoke Test
 1. worker-side trace:
@@ -347,4 +349,5 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-185 -> SP-007 -> DES-006 -> NFR-001
 - TC-186 -> SP-014 -> DES-014 -> FR-033, NFR-010
 - TC-187 -> SP-014 -> DES-014 -> FR-033, NFR-010
+- TC-200 -> SP-014 -> DES-014 -> FR-020, NFR-010
 - TC-193 -> SP-023 -> DES-024 -> FR-040, NFR-014

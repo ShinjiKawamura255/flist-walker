@@ -7,7 +7,8 @@ pub(super) use crate::app::state::{
     BackgroundIndexState, PendingActiveIndexFinish, PendingFileListAfterIndex,
     PendingFileListAncestorConfirmation, PendingFileListConfirmation,
     PendingFileListIndexCompletionNotice, PendingFileListUseWalkerConfirmation, SortMetadata,
-    UpdateCheckFailureState, UpdateManager, UpdatePromptState, UpdateState,
+    UpdateCheckFailureState, UpdateInstallFailureState, UpdateManager, UpdatePromptState,
+    UpdateState,
 };
 pub(super) use crate::app::worker_channel::bounded_request_channel;
 pub(super) use crate::app::worker_protocol::{
