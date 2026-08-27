@@ -1,9 +1,11 @@
 use super::*;
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
 use crate::walker_runtime::{
-    classify_walker_entry, default_adaptive_max_limit_from_logical_cores,
-    next_limit_from_throughput, resolve_entry_kind, walk_adaptive, walk_adaptive_filtered,
-    walk_adaptive_filtered_deferred, walker_runtime_settings, LimitDirection, WalkerBackend,
+    adaptive_shared_frontier_capacity, classify_walker_entry,
+    default_adaptive_max_limit_from_logical_cores, next_limit_from_throughput, resolve_entry_kind,
+    walk_adaptive, walk_adaptive_filtered, walk_adaptive_filtered_deferred,
+    walk_adaptive_filtered_unbounded, walk_adaptive_with_max_depth, walker_runtime_settings,
+    LimitDirection, WalkerBackend,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
@@ -198,6 +200,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     metrics.adaptive_limit_avg = 2.25;
     metrics.child_dir_publish_batches = 3;
     metrics.max_queued_dirs = 17;
+    metrics.shared_frontier_capacity = 256;
+    metrics.frontier_saturation_fallbacks = 4;
 
     let summary = walker_metrics_summary(&req, &metrics, "finished");
     write_walker_metrics_summary(&summary, &log_path.to_string_lossy());
@@ -210,6 +214,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     assert!(text.contains("adaptive_limit_change_count=7"));
     assert!(text.contains("child_dir_publish_batches=3"));
     assert!(text.contains("max_queued_dirs=17"));
+    assert!(text.contains("shared_frontier_capacity=256"));
+    assert!(text.contains("frontier_saturation_fallbacks=4"));
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -1084,6 +1090,117 @@ fn adaptive_walker_publishes_wide_child_frontier_in_batches() {
 }
 
 #[test]
+fn adaptive_walker_bounds_shared_frontier_for_wide_trees() {
+    const MAX_WORKERS: usize = 4;
+    const CHILD_COUNT: usize = 1024;
+
+    let root = test_root("adaptive-bounded-frontier");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..CHILD_COUNT {
+        std::fs::create_dir_all(root.join(format!("dir-{i:04}"))).expect("create child dir");
+    }
+
+    let mut count = 0usize;
+    let metrics = walk_adaptive(
+        &root,
+        MAX_WORKERS,
+        2,
+        |_entry| {
+            count = count.saturating_add(1);
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(count, CHILD_COUNT);
+    assert!(
+        metrics.max_queued_dirs <= adaptive_shared_frontier_capacity(MAX_WORKERS),
+        "shared frontier peak {} exceeded capacity {}",
+        metrics.max_queued_dirs,
+        adaptive_shared_frontier_capacity(MAX_WORKERS)
+    );
+    assert_eq!(
+        metrics.shared_frontier_capacity,
+        adaptive_shared_frontier_capacity(MAX_WORKERS)
+    );
+    assert!(metrics.frontier_saturation_fallbacks > 0);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_should_stop_after_frontier_saturation_returns_promptly() {
+    const MAX_WORKERS: usize = 4;
+    const CHILD_COUNT: usize = 1024;
+
+    let root = test_root("adaptive-saturated-should-stop");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..CHILD_COUNT {
+        std::fs::create_dir_all(root.join(format!("dir-{i:04}"))).expect("create child dir");
+    }
+
+    let stop = AtomicBool::new(false);
+    let started = Instant::now();
+    let mut count = 0usize;
+    let metrics = walk_adaptive(
+        &root,
+        MAX_WORKERS,
+        2,
+        |_entry| {
+            count = count.saturating_add(1);
+            if count == 400 {
+                stop.store(true, Ordering::Relaxed);
+            }
+            true
+        },
+        || stop.load(Ordering::Relaxed),
+    );
+
+    assert_eq!(count, 400);
+    assert!(metrics.frontier_saturation_fallbacks > 0);
+    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_capacity(MAX_WORKERS));
+    assert!(started.elapsed() < Duration::from_secs(5));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_frontier_saturation_preserves_max_depth() {
+    const MAX_WORKERS: usize = 4;
+    const TOP_DIR_COUNT: usize = 512;
+
+    let root = test_root("adaptive-saturated-max-depth");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..TOP_DIR_COUNT {
+        let nested = root.join(format!("dir-{i:04}")).join("nested");
+        std::fs::create_dir_all(&nested).expect("create nested dir");
+        std::fs::write(nested.join("too-deep.txt"), "x").expect("write deep file");
+    }
+
+    let mut paths = Vec::new();
+    let metrics = walk_adaptive_with_max_depth(
+        &root,
+        MAX_WORKERS,
+        2,
+        true,
+        true,
+        crate::indexer::MaxDepth::limited(2).expect("valid depth"),
+        |entry| {
+            paths.push(entry.path);
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(paths.len(), TOP_DIR_COUNT * 2);
+    assert!(paths.iter().all(|path| !path.ends_with("too-deep.txt")));
+    assert!(metrics.frontier_saturation_fallbacks > 0);
+    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_capacity(MAX_WORKERS));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 fn adaptive_walker_incremental_publish_emits_parent_before_child() {
     let root = test_root("adaptive-parent-before-child");
     let _ = std::fs::remove_dir_all(&root);
@@ -1279,6 +1396,7 @@ struct AdaptivePerfObservation {
 enum AdaptivePerfVariant {
     UnfilteredIncremental,
     FilteredIncremental,
+    FilteredIncrementalUnbounded,
     FilteredDeferred,
 }
 
@@ -1535,6 +1653,119 @@ fn perf_adaptive_walker_scheduling_release_matrix() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+#[test]
+#[ignore = "frontier perf measurement matrix; run explicitly with --release"]
+fn perf_adaptive_walker_frontier_release_matrix() {
+    const REPETITIONS: usize = 8;
+    const MAX_WORKERS: usize = 4;
+    const INITIAL_LIMIT: usize = 2;
+
+    let root = test_root("perf-adaptive-frontier");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create frontier root");
+    let cases = [
+        build_adaptive_perf_dir_heavy_case(&root),
+        build_adaptive_perf_mixed_case(&root),
+    ];
+    let modes = [("files", true, false), ("both", true, true)];
+
+    for (shape, dataset, expected_files, expected_dirs) in &cases {
+        for (mode, include_files, include_dirs) in modes {
+            let expected = usize::from(include_files)
+                .saturating_mul(*expected_files)
+                .saturating_add(usize::from(include_dirs).saturating_mul(*expected_dirs));
+            let _unbounded_warmup = measure_adaptive_perf_once(
+                dataset,
+                include_files,
+                include_dirs,
+                MAX_WORKERS,
+                INITIAL_LIMIT,
+                AdaptivePerfVariant::FilteredIncrementalUnbounded,
+            );
+            let _bounded_warmup = measure_adaptive_perf_once(
+                dataset,
+                include_files,
+                include_dirs,
+                MAX_WORKERS,
+                INITIAL_LIMIT,
+                AdaptivePerfVariant::FilteredIncremental,
+            );
+            let mut unbounded = Vec::with_capacity(REPETITIONS);
+            let mut bounded = Vec::with_capacity(REPETITIONS);
+            for iteration in 0..REPETITIONS {
+                let measure_unbounded = || {
+                    measure_adaptive_perf_once(
+                        dataset,
+                        include_files,
+                        include_dirs,
+                        MAX_WORKERS,
+                        INITIAL_LIMIT,
+                        AdaptivePerfVariant::FilteredIncrementalUnbounded,
+                    )
+                };
+                let measure_bounded = || {
+                    measure_adaptive_perf_once(
+                        dataset,
+                        include_files,
+                        include_dirs,
+                        MAX_WORKERS,
+                        INITIAL_LIMIT,
+                        AdaptivePerfVariant::FilteredIncremental,
+                    )
+                };
+                if iteration.is_multiple_of(2) {
+                    unbounded.push(measure_unbounded());
+                    bounded.push(measure_bounded());
+                } else {
+                    bounded.push(measure_bounded());
+                    unbounded.push(measure_unbounded());
+                }
+            }
+
+            for observation in unbounded.iter().chain(bounded.iter()) {
+                assert_eq!(observation.count, expected);
+                assert_eq!(observation.metrics.read_dir_errors, 0);
+            }
+            let capacity = adaptive_shared_frontier_capacity(MAX_WORKERS);
+            assert!(bounded
+                .iter()
+                .all(|observation| observation.metrics.max_queued_dirs <= capacity));
+            unbounded.sort_unstable_by_key(|observation| observation.elapsed);
+            bounded.sort_unstable_by_key(|observation| observation.elapsed);
+            let unbounded_median_seconds = median_elapsed_seconds(&unbounded);
+            let bounded_median_seconds = median_elapsed_seconds(&bounded);
+            let elapsed_speedup =
+                unbounded_median_seconds / bounded_median_seconds.max(f64::MIN_POSITIVE);
+            let unbounded_first_file_seconds = median_first_file_seconds(&unbounded);
+            let bounded_first_file_seconds = median_first_file_seconds(&bounded);
+            let first_file_speedup =
+                unbounded_first_file_seconds / bounded_first_file_seconds.max(f64::MIN_POSITIVE);
+            let unbounded_median = &unbounded[REPETITIONS / 2];
+            let bounded_median = &bounded[REPETITIONS / 2];
+
+            eprintln!(
+                "Adaptive frontier matrix profile={} shape={} mode={} repetitions={} entries={} capacity={} unbounded_peak={} bounded_peak={} unbounded_median_ms={:.3} bounded_median_ms={:.3} elapsed_speedup={:.3}x unbounded_first_file_us={:.0} bounded_first_file_us={:.0} first_file_speedup={:.3}x",
+                if cfg!(debug_assertions) { "debug" } else { "release" },
+                shape,
+                mode,
+                REPETITIONS,
+                bounded_median.count,
+                capacity,
+                unbounded_median.metrics.max_queued_dirs,
+                bounded_median.metrics.max_queued_dirs,
+                unbounded_median_seconds * 1000.0,
+                bounded_median_seconds * 1000.0,
+                elapsed_speedup,
+                unbounded_first_file_seconds * 1_000_000.0,
+                bounded_first_file_seconds * 1_000_000.0,
+                first_file_speedup,
+            );
+        }
+    }
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 fn median_elapsed_seconds(observations: &[AdaptivePerfObservation]) -> f64 {
     let upper = observations.len() / 2;
     if observations.len().is_multiple_of(2) {
@@ -1588,6 +1819,15 @@ fn measure_adaptive_perf_once(
             walk_adaptive(root, max_workers, initial_limit, &mut on_entry, || false)
         }
         AdaptivePerfVariant::FilteredIncremental => walk_adaptive_filtered(
+            root,
+            max_workers,
+            initial_limit,
+            include_files,
+            include_dirs,
+            &mut on_entry,
+            || false,
+        ),
+        AdaptivePerfVariant::FilteredIncrementalUnbounded => walk_adaptive_filtered_unbounded(
             root,
             max_workers,
             initial_limit,
