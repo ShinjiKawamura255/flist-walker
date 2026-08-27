@@ -2,8 +2,8 @@ use super::*;
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
 use crate::walker_runtime::{
     classify_walker_entry, default_adaptive_max_limit_from_logical_cores,
-    next_limit_from_throughput, resolve_entry_kind, walk_adaptive, walker_runtime_settings,
-    LimitDirection, WalkerBackend,
+    next_limit_from_throughput, resolve_entry_kind, walk_adaptive, walk_adaptive_filtered,
+    walker_runtime_settings, LimitDirection, WalkerBackend,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
@@ -988,6 +988,114 @@ fn adaptive_walker_classification_counts_match_include_modes() {
 }
 
 #[test]
+fn adaptive_walker_filter_suppresses_excluded_regular_entries_without_skipping_recursion() {
+    let root = test_root("adaptive-producer-filter");
+    let _ = std::fs::remove_dir_all(&root);
+    let dataset = root.join("dataset");
+    std::fs::create_dir_all(dataset.join("a").join("nested")).expect("create a/nested");
+    std::fs::create_dir_all(dataset.join("b")).expect("create b");
+    std::fs::write(dataset.join("root.txt"), "root").expect("write root file");
+    std::fs::write(dataset.join("a").join("a.txt"), "a").expect("write a file");
+    std::fs::write(
+        dataset.join("a").join("nested").join("nested.txt"),
+        "nested",
+    )
+    .expect("write nested file");
+
+    let mut file_paths = Vec::new();
+    walk_adaptive_filtered(
+        &dataset,
+        2,
+        2,
+        true,
+        false,
+        |entry| {
+            assert!(entry.file_type.is_file());
+            file_paths.push(entry.path);
+            true
+        },
+        || false,
+    );
+    assert_eq!(file_paths.len(), 3);
+    assert!(file_paths.iter().any(|path| path.ends_with("nested.txt")));
+
+    let mut dir_paths = Vec::new();
+    walk_adaptive_filtered(
+        &dataset,
+        2,
+        2,
+        false,
+        true,
+        |entry| {
+            assert!(entry.file_type.is_dir());
+            dir_paths.push(entry.path);
+            true
+        },
+        || false,
+    );
+    assert_eq!(dir_paths.len(), 3);
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_single_worker_filter_preserves_nested_file_recursion() {
+    let root = test_root("adaptive-serial-filter");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("nested")).expect("create nested dir");
+    std::fs::write(root.join("root.txt"), "root").expect("write root file");
+    std::fs::write(root.join("nested").join("nested.txt"), "nested")
+        .expect("write nested file");
+
+    let mut paths = Vec::new();
+    let metrics = walk_adaptive_filtered(
+        &root,
+        1,
+        1,
+        true,
+        false,
+        |entry| {
+            assert!(entry.file_type.is_file());
+            paths.push(entry.path);
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(paths.len(), 2);
+    assert!(paths.iter().any(|path| path.ends_with("nested.txt")));
+    assert_eq!(metrics.max_inflight_read_dirs, 1);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[cfg(windows)]
+#[test]
+fn adaptive_walker_folder_filter_keeps_shortcuts_for_deferred_kind_resolution() {
+    let root = test_root("adaptive-folder-shortcut");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    let shortcut = root.join("target.lnk");
+    std::fs::write(&shortcut, "shortcut fixture").expect("write shortcut fixture");
+
+    let mut emitted = Vec::new();
+    walk_adaptive_filtered(
+        &root,
+        2,
+        2,
+        false,
+        true,
+        |entry| {
+            emitted.push(entry.path);
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(emitted, vec![shortcut]);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 #[ignore = "perf measurement; run explicitly"]
 fn perf_adaptive_walker_reports_local_dataset_metrics() {
     let root = test_root("perf-adaptive-compare");
@@ -1053,6 +1161,7 @@ fn perf_adaptive_walker_reports_local_dataset_metrics() {
 struct AdaptivePerfObservation {
     elapsed: Duration,
     first_file: Option<Duration>,
+    callbacks: usize,
     count: usize,
     metrics: AdaptiveWalkerMetrics,
 }
@@ -1060,7 +1169,7 @@ struct AdaptivePerfObservation {
 #[test]
 #[ignore = "perf measurement matrix; run explicitly with --release"]
 fn perf_adaptive_walker_release_matrix() {
-    const REPETITIONS: usize = 5;
+    const REPETITIONS: usize = 8;
     const MAX_WORKERS: usize = 4;
     const INITIAL_LIMIT: usize = 2;
 
@@ -1085,64 +1194,121 @@ fn perf_adaptive_walker_release_matrix() {
                 .saturating_mul(*expected_files)
                 .saturating_add(usize::from(include_dirs).saturating_mul(*expected_dirs));
 
-            let _warmup = measure_adaptive_perf_once(
+            let _baseline_warmup = measure_adaptive_perf_once(
                 dataset,
                 include_files,
                 include_dirs,
                 MAX_WORKERS,
                 INITIAL_LIMIT,
+                false,
             );
-            let mut observations = (0..REPETITIONS)
-                .map(|_| {
+            let _filtered_warmup = measure_adaptive_perf_once(
+                dataset,
+                include_files,
+                include_dirs,
+                MAX_WORKERS,
+                INITIAL_LIMIT,
+                true,
+            );
+            let mut baseline_observations = Vec::with_capacity(REPETITIONS);
+            let mut filtered_observations = Vec::with_capacity(REPETITIONS);
+            for iteration in 0..REPETITIONS {
+                let measure_baseline = || {
                     measure_adaptive_perf_once(
                         dataset,
                         include_files,
                         include_dirs,
                         MAX_WORKERS,
                         INITIAL_LIMIT,
+                        false,
                     )
-                })
-                .collect::<Vec<_>>();
+                };
+                let measure_filtered = || {
+                    measure_adaptive_perf_once(
+                        dataset,
+                        include_files,
+                        include_dirs,
+                        MAX_WORKERS,
+                        INITIAL_LIMIT,
+                        true,
+                    )
+                };
+                if iteration.is_multiple_of(2) {
+                    baseline_observations.push(measure_baseline());
+                    filtered_observations.push(measure_filtered());
+                } else {
+                    filtered_observations.push(measure_filtered());
+                    baseline_observations.push(measure_baseline());
+                }
+            }
 
-            for observation in &observations {
+            for observation in baseline_observations
+                .iter()
+                .chain(filtered_observations.iter())
+            {
                 assert_eq!(
                     observation.count, expected,
                     "shape={shape} mode={mode} adaptive count mismatch"
                 );
                 assert_eq!(observation.metrics.read_dir_errors, 0);
             }
-            observations.sort_unstable_by_key(|observation| observation.elapsed);
-            let median = &observations[REPETITIONS / 2];
-            let min = observations[0].elapsed;
-            let max = observations[REPETITIONS - 1].elapsed;
+            for observation in &filtered_observations {
+                assert_eq!(
+                    observation.callbacks, expected,
+                    "shape={shape} mode={mode} producer emitted an excluded regular entry"
+                );
+            }
+            baseline_observations.sort_unstable_by_key(|observation| observation.elapsed);
+            filtered_observations.sort_unstable_by_key(|observation| observation.elapsed);
+            let baseline_median = &baseline_observations[REPETITIONS / 2];
+            let filtered_median = &filtered_observations[REPETITIONS / 2];
+            let baseline_median_seconds = median_elapsed_seconds(&baseline_observations);
+            let filtered_median_seconds = median_elapsed_seconds(&filtered_observations);
+            let filtered_min = filtered_observations[0].elapsed;
+            let filtered_max = filtered_observations[REPETITIONS - 1].elapsed;
+            let speedup = baseline_median_seconds / filtered_median_seconds.max(f64::MIN_POSITIVE);
 
             eprintln!(
-                "Adaptive walker matrix profile={} shape={} mode={} repetitions={} entries={} dirs_read={} median_ms={:.3} min_ms={:.3} max_ms={:.3} median_first_file_us={} max_inflight={} throttle_events={} limit_min={} limit_max={} limit_final={} limit_changes={} limit_avg={:.3}",
+                "Adaptive walker matrix profile={} shape={} mode={} repetitions={} entries={} dirs_read={} baseline_callbacks={} filtered_callbacks={} baseline_median_ms={:.3} filtered_median_ms={:.3} speedup={:.3}x filtered_min_ms={:.3} filtered_max_ms={:.3} filtered_first_file_us={} max_inflight={} throttle_events={} limit_min={} limit_max={} limit_final={} limit_changes={} limit_avg={:.3}",
                 if cfg!(debug_assertions) { "debug" } else { "release" },
                 shape,
                 mode,
                 REPETITIONS,
-                median.count,
-                median.metrics.dirs_read,
-                median.elapsed.as_secs_f64() * 1000.0,
-                min.as_secs_f64() * 1000.0,
-                max.as_secs_f64() * 1000.0,
-                median
+                filtered_median.count,
+                filtered_median.metrics.dirs_read,
+                baseline_median.callbacks,
+                filtered_median.callbacks,
+                baseline_median_seconds * 1000.0,
+                filtered_median_seconds * 1000.0,
+                speedup,
+                filtered_min.as_secs_f64() * 1000.0,
+                filtered_max.as_secs_f64() * 1000.0,
+                filtered_median
                     .first_file
                     .map(|elapsed| elapsed.as_micros().to_string())
                     .unwrap_or_else(|| "none".to_string()),
-                median.metrics.max_inflight_read_dirs,
-                median.metrics.throttle_events,
-                median.metrics.adaptive_limit_min,
-                median.metrics.adaptive_limit_max,
-                median.metrics.adaptive_limit_final,
-                median.metrics.adaptive_limit_change_count,
-                median.metrics.adaptive_limit_avg,
+                filtered_median.metrics.max_inflight_read_dirs,
+                filtered_median.metrics.throttle_events,
+                filtered_median.metrics.adaptive_limit_min,
+                filtered_median.metrics.adaptive_limit_max,
+                filtered_median.metrics.adaptive_limit_final,
+                filtered_median.metrics.adaptive_limit_change_count,
+                filtered_median.metrics.adaptive_limit_avg,
             );
         }
     }
 
     let _ = std::fs::remove_dir_all(&root);
+}
+
+fn median_elapsed_seconds(observations: &[AdaptivePerfObservation]) -> f64 {
+    let upper = observations.len() / 2;
+    if observations.len().is_multiple_of(2) {
+        (observations[upper - 1].elapsed.as_secs_f64() + observations[upper].elapsed.as_secs_f64())
+            / 2.0
+    } else {
+        observations[upper].elapsed.as_secs_f64()
+    }
 }
 
 fn measure_adaptive_perf_once(
@@ -1151,31 +1317,42 @@ fn measure_adaptive_perf_once(
     include_dirs: bool,
     max_workers: usize,
     initial_limit: usize,
+    producer_filter: bool,
 ) -> AdaptivePerfObservation {
     let started = Instant::now();
     let mut first_file = None;
+    let mut callbacks = 0usize;
     let mut count = 0usize;
-    let metrics = walk_adaptive(
-        root,
-        max_workers,
-        initial_limit,
-        |entry| {
-            if first_file.is_none() && entry.file_type.is_file() {
-                first_file = Some(started.elapsed());
-            }
-            if classify_walker_entry(&entry.path, entry.file_type, include_files, include_dirs)
-                .is_some()
-            {
-                count = count.saturating_add(1);
-            }
-            true
-        },
-        || false,
-    );
+    let mut on_entry = |entry: AdaptiveWalkerEntry| {
+        callbacks = callbacks.saturating_add(1);
+        if first_file.is_none() && entry.file_type.is_file() {
+            first_file = Some(started.elapsed());
+        }
+        if classify_walker_entry(&entry.path, entry.file_type, include_files, include_dirs)
+            .is_some()
+        {
+            count = count.saturating_add(1);
+        }
+        true
+    };
+    let metrics = if producer_filter {
+        walk_adaptive_filtered(
+            root,
+            max_workers,
+            initial_limit,
+            include_files,
+            include_dirs,
+            &mut on_entry,
+            || false,
+        )
+    } else {
+        walk_adaptive(root, max_workers, initial_limit, &mut on_entry, || false)
+    };
 
     AdaptivePerfObservation {
         elapsed: started.elapsed(),
         first_file,
+        callbacks,
         count,
         metrics,
     }

@@ -85,6 +85,7 @@
 - SHOULD: `walker_threads` と `walker_backend` が既存 runtime config file に残っている場合、読み込み時に削除して以後の起動へ持ち越してはならない。
 - SHOULD: `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張してはならない。
 - SHOULD: adaptive walker backend は最大 worker 数が 1 の場合、channel / condvar / 複数 worker を使わない serial fast path で走査できること。
+- SHOULD: adaptive walker backend は file-only / folder-only の候補種別を producer 側へ渡し、通常ファイルまたは通常ディレクトリが候補対象外なら entry channel へ送信してはならない。候補対象外のディレクトリも深度境界内では再帰対象に保ち、リンクや Windows shortcut のように target kind の遅延解決が必要な entry は consumer 側の分類へ渡すこと。file / folder の両方を含む場合は per-entry filter 判定を行わない fast path を使用できること。
 - MUST: adaptive walker backend は Windows の Explorer で通常非表示となる互換用 junction（Hidden + System + ReparsePoint）を候補化してはならない。また、reparse point directory はリンク自体を候補化できても、リンク先へ再帰してはならない。
 - SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
 - SHOULD: developer-only metrics の `walker_metrics_log_path` が手動指定された場合、Walker は release GUI build でも console/stderr に依存せず、同じ bounded summary を指定ファイルへ追記できる。

@@ -494,6 +494,8 @@ pub(super) fn process_index_request_with_config<C, S>(
             &request.root,
             settings.adaptive_max_limit,
             settings.adaptive_initial_limit,
+            request.include_files,
+            request.include_dirs,
             request.max_depth,
             |entry: AdaptiveWalkerEntry| {
                 if should_cancel() {
