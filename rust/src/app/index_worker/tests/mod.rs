@@ -7,7 +7,7 @@ use crate::walker_runtime::{
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tracing_subscriber::EnvFilter;
 
 fn init_test_tracing() {
@@ -1075,12 +1075,7 @@ fn adaptive_walker_single_worker_filter_preserves_nested_file_recursion() {
 fn adaptive_walker_publishes_wide_child_frontier_in_batches() {
     let root = test_root("adaptive-wide-frontier");
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).expect("create root");
-    for i in 0..128usize {
-        let dir = root.join(format!("dir-{i:03}"));
-        std::fs::create_dir_all(&dir).expect("create child dir");
-        std::fs::write(dir.join("entry.txt"), "x").expect("write child file");
-    }
+    create_wide_frontier_fixture(&root, 128);
 
     let metrics = walk_adaptive(&root, 2, 2, |_entry| true, || false);
 
@@ -1092,12 +1087,7 @@ fn adaptive_walker_publishes_wide_child_frontier_in_batches() {
 fn adaptive_walker_incremental_publish_emits_parent_before_child() {
     let root = test_root("adaptive-parent-before-child");
     let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).expect("create root");
-    for i in 0..64usize {
-        let dir = root.join(format!("dir-{i:03}"));
-        std::fs::create_dir_all(&dir).expect("create child dir");
-        std::fs::write(dir.join("entry.txt"), "x").expect("write child file");
-    }
+    create_wide_frontier_fixture(&root, 64);
 
     let mut emitted_dirs = std::collections::HashSet::new();
     walk_adaptive(
@@ -1122,6 +1112,69 @@ fn adaptive_walker_incremental_publish_emits_parent_before_child() {
 
     assert_eq!(emitted_dirs.len(), 64);
     let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_callback_cancel_after_batch_publish_returns_promptly() {
+    let root = test_root("adaptive-batched-callback-cancel");
+    let _ = std::fs::remove_dir_all(&root);
+    create_wide_frontier_fixture(&root, 96);
+
+    let started = Instant::now();
+    let mut count = 0usize;
+    let metrics = walk_adaptive(
+        &root,
+        4,
+        2,
+        |_entry| {
+            count = count.saturating_add(1);
+            count < 40
+        },
+        || false,
+    );
+
+    assert_eq!(count, 40);
+    assert!(metrics.child_dir_publish_batches >= 1);
+    assert!(started.elapsed() < Duration::from_secs(5));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_should_stop_after_batch_publish_returns_promptly() {
+    let root = test_root("adaptive-batched-should-stop");
+    let _ = std::fs::remove_dir_all(&root);
+    create_wide_frontier_fixture(&root, 96);
+
+    let stop = AtomicBool::new(false);
+    let started = Instant::now();
+    let mut count = 0usize;
+    let metrics = walk_adaptive(
+        &root,
+        4,
+        2,
+        |_entry| {
+            count = count.saturating_add(1);
+            if count == 40 {
+                stop.store(true, Ordering::Relaxed);
+            }
+            true
+        },
+        || stop.load(Ordering::Relaxed),
+    );
+
+    assert_eq!(count, 40);
+    assert!(metrics.child_dir_publish_batches >= 1);
+    assert!(started.elapsed() < Duration::from_secs(5));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+fn create_wide_frontier_fixture(root: &Path, child_count: usize) {
+    std::fs::create_dir_all(root).expect("create root");
+    for i in 0..child_count {
+        let dir = root.join(format!("dir-{i:03}"));
+        std::fs::create_dir_all(&dir).expect("create child dir");
+        std::fs::write(dir.join("entry.txt"), "x").expect("write child file");
+    }
 }
 
 #[cfg(windows)]
@@ -1330,9 +1383,17 @@ fn perf_adaptive_walker_release_matrix() {
             let filtered_min = filtered_observations[0].elapsed;
             let filtered_max = filtered_observations[REPETITIONS - 1].elapsed;
             let speedup = baseline_median_seconds / filtered_median_seconds.max(f64::MIN_POSITIVE);
+            let filtered_first_file_median = if include_files {
+                format!(
+                    "{:.0}",
+                    median_first_file_seconds(&filtered_observations) * 1_000_000.0
+                )
+            } else {
+                "none".to_string()
+            };
 
             eprintln!(
-                "Adaptive walker matrix profile={} shape={} mode={} repetitions={} entries={} dirs_read={} baseline_callbacks={} filtered_callbacks={} baseline_median_ms={:.3} filtered_median_ms={:.3} speedup={:.3}x filtered_min_ms={:.3} filtered_max_ms={:.3} filtered_first_file_us={} max_inflight={} throttle_events={} limit_min={} limit_max={} limit_final={} limit_changes={} limit_avg={:.3}",
+                "Adaptive walker matrix profile={} shape={} mode={} repetitions={} entries={} dirs_read={} baseline_callbacks={} filtered_callbacks={} baseline_median_ms={:.3} filtered_median_ms={:.3} speedup={:.3}x filtered_min_ms={:.3} filtered_max_ms={:.3} filtered_first_file_median_us={} max_inflight={} throttle_events={} limit_min={} limit_max={} limit_final={} limit_changes={} limit_avg={:.3}",
                 if cfg!(debug_assertions) { "debug" } else { "release" },
                 shape,
                 mode,
@@ -1346,10 +1407,7 @@ fn perf_adaptive_walker_release_matrix() {
                 speedup,
                 filtered_min.as_secs_f64() * 1000.0,
                 filtered_max.as_secs_f64() * 1000.0,
-                filtered_median
-                    .first_file
-                    .map(|elapsed| elapsed.as_micros().to_string())
-                    .unwrap_or_else(|| "none".to_string()),
+                filtered_first_file_median,
                 filtered_median.metrics.max_inflight_read_dirs,
                 filtered_median.metrics.throttle_events,
                 filtered_median.metrics.adaptive_limit_min,
