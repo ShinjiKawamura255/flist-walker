@@ -19,6 +19,12 @@ const CONTROL_SAMPLE_SIZE: usize = 64;
 const CONTROL_SAMPLE_STABILITY_PCT: u64 = 5;
 const CHILD_DIR_PUBLISH_BATCH_SIZE: usize = 32;
 
+pub(crate) fn adaptive_shared_frontier_capacity(max_workers: usize) -> usize {
+    max_workers
+        .max(1)
+        .saturating_mul(CHILD_DIR_PUBLISH_BATCH_SIZE * 2)
+}
+
 pub(crate) struct AdaptiveWalkerEntry {
     pub(crate) path: PathBuf,
     pub(crate) file_type: fs::FileType,
@@ -32,6 +38,8 @@ pub(crate) struct AdaptiveWalkerMetrics {
     pub(crate) throttle_events: usize,
     pub(crate) child_dir_publish_batches: usize,
     pub(crate) max_queued_dirs: usize,
+    pub(crate) shared_frontier_capacity: usize,
+    pub(crate) frontier_saturation_fallbacks: usize,
     pub(crate) adaptive_limit_min: usize,
     pub(crate) adaptive_limit_max: usize,
     pub(crate) adaptive_limit_final: usize,
@@ -65,6 +73,7 @@ struct Shared {
     include_files: bool,
     include_dirs: bool,
     publish_child_dirs_incrementally: bool,
+    frontier_capacity: Option<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -103,6 +112,8 @@ struct AdaptiveAtomicMetrics {
     throttle_events: AtomicUsize,
     child_dir_publish_batches: AtomicUsize,
     max_queued_dirs: AtomicUsize,
+    shared_frontier_capacity: AtomicUsize,
+    frontier_saturation_fallbacks: AtomicUsize,
     adaptive_limit_min: AtomicUsize,
     adaptive_limit_max: AtomicUsize,
     limit_sample_count: AtomicUsize,
@@ -111,11 +122,12 @@ struct AdaptiveAtomicMetrics {
 }
 
 impl AdaptiveAtomicMetrics {
-    fn new(initial_limit: usize) -> Self {
+    fn new(initial_limit: usize, frontier_capacity: Option<usize>) -> Self {
         Self {
             adaptive_limit_min: AtomicUsize::new(initial_limit),
             adaptive_limit_max: AtomicUsize::new(initial_limit),
             max_queued_dirs: AtomicUsize::new(1),
+            shared_frontier_capacity: AtomicUsize::new(frontier_capacity.unwrap_or(0)),
             ..Self::default()
         }
     }
@@ -150,6 +162,10 @@ impl AdaptiveAtomicMetrics {
             throttle_events: self.throttle_events.load(Ordering::Relaxed),
             child_dir_publish_batches: self.child_dir_publish_batches.load(Ordering::Relaxed),
             max_queued_dirs: self.max_queued_dirs.load(Ordering::Relaxed),
+            shared_frontier_capacity: self.shared_frontier_capacity.load(Ordering::Relaxed),
+            frontier_saturation_fallbacks: self
+                .frontier_saturation_fallbacks
+                .load(Ordering::Relaxed),
             adaptive_limit_min: self.adaptive_limit_min.load(Ordering::Relaxed),
             adaptive_limit_max: self.adaptive_limit_max.load(Ordering::Relaxed),
             adaptive_limit_final: final_limit,
@@ -319,6 +335,25 @@ pub(crate) fn next_limit_from_throughput(
     }
 }
 
+struct DirectoryFrame {
+    read_dir: fs::ReadDir,
+    depth: usize,
+    pending_child_dirs: Vec<QueuedDirectory>,
+    read_elapsed: Duration,
+}
+
+enum FrameAction {
+    Descend(QueuedDirectory),
+    Complete,
+    Stop,
+}
+
+enum PublishResult {
+    Published,
+    Saturated,
+    Stopped,
+}
+
 fn worker_loop<const FILTER_ENTRIES: bool>(
     shared: Arc<Shared>,
     tx: SyncSender<AdaptiveWalkerEntry>,
@@ -358,85 +393,9 @@ fn worker_loop<const FILTER_ENTRIES: bool>(
             }
         };
 
-        let started = Instant::now();
-        let mut child_dirs = Vec::new();
-        match fs::read_dir(&dir.path) {
-            Ok(read_dir) => {
-                for child in read_dir {
-                    if shared.stop.load(Ordering::Relaxed) {
-                        break;
-                    }
-                    let Ok(child) = child else {
-                        shared
-                            .metrics
-                            .read_dir_errors
-                            .fetch_add(1, Ordering::Relaxed);
-                        continue;
-                    };
-                    let Ok(file_type) = child.file_type() else {
-                        shared
-                            .metrics
-                            .read_dir_errors
-                            .fetch_add(1, Ordering::Relaxed);
-                        continue;
-                    };
-                    let policy = adaptive_entry_policy(&child, &file_type);
-                    if policy.skip {
-                        continue;
-                    }
-                    let depth = dir.depth.saturating_add(1);
-                    let should_recurse = file_type.is_dir()
-                        && policy.recurse
-                        && shared.max_depth.should_descend_from(depth);
-                    let should_emit = if FILTER_ENTRIES {
-                        should_emit_entry(
-                            &child,
-                            &file_type,
-                            shared.include_files,
-                            shared.include_dirs,
-                        )
-                    } else {
-                        true
-                    };
-                    if !should_recurse && !should_emit {
-                        continue;
-                    }
-                    let path = child.path();
-                    if should_recurse {
-                        child_dirs.push(QueuedDirectory {
-                            path: path.clone(),
-                            depth,
-                        });
-                    }
-                    if should_emit && tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
-                        shared.stop.store(true, Ordering::Relaxed);
-                        break;
-                    }
-                    if should_recurse
-                        && shared.publish_child_dirs_incrementally
-                        && child_dirs.len() >= CHILD_DIR_PUBLISH_BATCH_SIZE
-                        && !publish_child_dir_batch(&shared, &mut child_dirs)
-                    {
-                        break;
-                    }
-                }
-            }
-            Err(_) => {
-                shared
-                    .metrics
-                    .read_dir_errors
-                    .fetch_add(1, Ordering::Relaxed);
-            }
-        }
-        let elapsed = started.elapsed();
-        shared.metrics.record_read_dir(elapsed);
-        adjust_limit(&shared);
+        process_directory_task::<FILTER_ENTRIES>(&shared, &tx, dir);
 
         if let Ok(mut state) = shared.state.lock() {
-            if !shared.stop.load(Ordering::Relaxed) {
-                state.queue.extend(child_dirs);
-                fetch_max(&shared.metrics.max_queued_dirs, state.queue.len());
-            }
             state.active = state.active.saturating_sub(1);
             shared.cv.notify_all();
         } else {
@@ -445,26 +404,208 @@ fn worker_loop<const FILTER_ENTRIES: bool>(
     }
 }
 
-fn publish_child_dir_batch(shared: &Shared, child_dirs: &mut Vec<QueuedDirectory>) -> bool {
+fn process_directory_task<const FILTER_ENTRIES: bool>(
+    shared: &Shared,
+    tx: &SyncSender<AdaptiveWalkerEntry>,
+    dir: QueuedDirectory,
+) {
+    let mut frames = Vec::new();
+    if let Some(frame) = open_directory_frame(shared, dir) {
+        frames.push(frame);
+    }
+
+    while !frames.is_empty() {
+        if shared.stop.load(Ordering::Relaxed) {
+            record_partial_frames(shared, &mut frames);
+            return;
+        }
+
+        let action = {
+            let frame = frames.last_mut().expect("directory frame");
+            let segment_started = Instant::now();
+            let action = loop {
+                let Some(child) = frame.read_dir.next() else {
+                    if frame.pending_child_dirs.is_empty() {
+                        break FrameAction::Complete;
+                    }
+                    match publish_child_dir_batch(shared, &mut frame.pending_child_dirs, false) {
+                        PublishResult::Published => break FrameAction::Complete,
+                        PublishResult::Saturated => {
+                            break FrameAction::Descend(
+                                frame
+                                    .pending_child_dirs
+                                    .pop()
+                                    .expect("pending child directory"),
+                            );
+                        }
+                        PublishResult::Stopped => break FrameAction::Stop,
+                    }
+                };
+                if shared.stop.load(Ordering::Relaxed) {
+                    break FrameAction::Stop;
+                }
+                let Ok(child) = child else {
+                    shared
+                        .metrics
+                        .read_dir_errors
+                        .fetch_add(1, Ordering::Relaxed);
+                    continue;
+                };
+                let Ok(file_type) = child.file_type() else {
+                    shared
+                        .metrics
+                        .read_dir_errors
+                        .fetch_add(1, Ordering::Relaxed);
+                    continue;
+                };
+                let policy = adaptive_entry_policy(&child, &file_type);
+                if policy.skip {
+                    continue;
+                }
+                let depth = frame.depth.saturating_add(1);
+                let should_recurse = file_type.is_dir()
+                    && policy.recurse
+                    && shared.max_depth.should_descend_from(depth);
+                let should_emit = if FILTER_ENTRIES {
+                    should_emit_entry(
+                        &child,
+                        &file_type,
+                        shared.include_files,
+                        shared.include_dirs,
+                    )
+                } else {
+                    true
+                };
+                if !should_recurse && !should_emit {
+                    continue;
+                }
+                let path = child.path();
+                if should_recurse {
+                    frame.pending_child_dirs.push(QueuedDirectory {
+                        path: path.clone(),
+                        depth,
+                    });
+                }
+                if should_emit && tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
+                    shared.stop.store(true, Ordering::Relaxed);
+                    break FrameAction::Stop;
+                }
+                if should_recurse
+                    && shared.publish_child_dirs_incrementally
+                    && frame.pending_child_dirs.len() >= CHILD_DIR_PUBLISH_BATCH_SIZE
+                {
+                    match publish_child_dir_batch(shared, &mut frame.pending_child_dirs, true) {
+                        PublishResult::Published => {}
+                        PublishResult::Saturated => {
+                            break FrameAction::Descend(
+                                frame
+                                    .pending_child_dirs
+                                    .pop()
+                                    .expect("pending child directory"),
+                            );
+                        }
+                        PublishResult::Stopped => break FrameAction::Stop,
+                    }
+                }
+            };
+            frame.read_elapsed += segment_started.elapsed();
+            action
+        };
+
+        match action {
+            FrameAction::Descend(dir) => {
+                if let Some(frame) = open_directory_frame(shared, dir) {
+                    frames.push(frame);
+                }
+            }
+            FrameAction::Complete => {
+                let frame = frames.pop().expect("completed directory frame");
+                shared.metrics.record_read_dir(frame.read_elapsed);
+                adjust_limit(shared);
+            }
+            FrameAction::Stop => {
+                record_partial_frames(shared, &mut frames);
+                return;
+            }
+        }
+    }
+}
+
+fn open_directory_frame(shared: &Shared, dir: QueuedDirectory) -> Option<DirectoryFrame> {
+    let started = Instant::now();
+    match fs::read_dir(&dir.path) {
+        Ok(read_dir) => Some(DirectoryFrame {
+            read_dir,
+            depth: dir.depth,
+            pending_child_dirs: Vec::with_capacity(CHILD_DIR_PUBLISH_BATCH_SIZE),
+            read_elapsed: started.elapsed(),
+        }),
+        Err(_) => {
+            shared
+                .metrics
+                .read_dir_errors
+                .fetch_add(1, Ordering::Relaxed);
+            shared.metrics.record_read_dir(started.elapsed());
+            adjust_limit(shared);
+            None
+        }
+    }
+}
+
+fn record_partial_frames(shared: &Shared, frames: &mut Vec<DirectoryFrame>) {
+    for frame in frames.drain(..) {
+        shared.metrics.record_read_dir(frame.read_elapsed);
+    }
+}
+
+fn publish_child_dir_batch(
+    shared: &Shared,
+    child_dirs: &mut Vec<QueuedDirectory>,
+    count_incremental_batch: bool,
+) -> PublishResult {
     if child_dirs.is_empty() {
-        return true;
+        return PublishResult::Published;
     }
     let mut state = match shared.state.lock() {
         Ok(state) => state,
-        Err(_) => return false,
+        Err(_) => return PublishResult::Stopped,
     };
     if shared.stop.load(Ordering::Relaxed) {
         child_dirs.clear();
-        return false;
+        return PublishResult::Stopped;
     }
-    state.queue.extend(child_dirs.drain(..));
-    fetch_max(&shared.metrics.max_queued_dirs, state.queue.len());
-    shared
-        .metrics
-        .child_dir_publish_batches
-        .fetch_add(1, Ordering::Relaxed);
-    shared.cv.notify_all();
-    true
+    let available = shared
+        .frontier_capacity
+        .map(|capacity| capacity.saturating_sub(state.queue.len()))
+        .unwrap_or(child_dirs.len());
+    let publish_count = if count_incremental_batch
+        && available < CHILD_DIR_PUBLISH_BATCH_SIZE
+        && child_dirs.len() >= CHILD_DIR_PUBLISH_BATCH_SIZE
+    {
+        0
+    } else {
+        available.min(child_dirs.len())
+    };
+    if publish_count > 0 {
+        state.queue.extend(child_dirs.drain(..publish_count));
+        fetch_max(&shared.metrics.max_queued_dirs, state.queue.len());
+        if count_incremental_batch {
+            shared
+                .metrics
+                .child_dir_publish_batches
+                .fetch_add(1, Ordering::Relaxed);
+        }
+        shared.cv.notify_all();
+    }
+    if child_dirs.is_empty() {
+        PublishResult::Published
+    } else {
+        shared
+            .metrics
+            .frontier_saturation_fallbacks
+            .fetch_add(1, Ordering::Relaxed);
+        PublishResult::Saturated
+    }
 }
 
 struct AdaptiveEntryPolicy {
@@ -601,6 +742,31 @@ pub(crate) fn walk_adaptive_filtered_deferred(
         include_dirs,
         MaxDepth::unlimited(),
         false,
+        None,
+        on_entry,
+        should_stop,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn walk_adaptive_filtered_unbounded(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        true,
+        None,
         on_entry,
         should_stop,
     )
@@ -624,6 +790,7 @@ pub(crate) fn walk_adaptive_with_max_depth(
         include_dirs,
         max_depth,
         true,
+        Some(adaptive_shared_frontier_capacity(max_workers)),
         on_entry,
         should_stop,
     )
@@ -638,6 +805,7 @@ fn walk_adaptive_with_max_depth_mode(
     include_dirs: bool,
     max_depth: MaxDepth,
     publish_child_dirs_incrementally: bool,
+    frontier_capacity: Option<usize>,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
@@ -685,11 +853,12 @@ fn walk_adaptive_with_max_depth_mode(
             elapsed_us: 0,
             change_count: 0,
         }),
-        metrics: AdaptiveAtomicMetrics::new(initial_limit),
+        metrics: AdaptiveAtomicMetrics::new(initial_limit, frontier_capacity),
         max_depth,
         include_files,
         include_dirs,
         publish_child_dirs_incrementally,
+        frontier_capacity,
     });
     let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
     let (tx, rx) = mpsc::sync_channel(entry_queue_capacity);
