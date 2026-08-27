@@ -7,9 +7,9 @@ use std::path::Path;
 
 #[cfg(test)]
 pub(crate) use adaptive::{
-    adaptive_shared_frontier_capacity, next_limit_from_throughput, walk_adaptive,
+    adaptive_shared_frontier_soft_limit, next_limit_from_throughput, walk_adaptive,
     walk_adaptive_filtered, walk_adaptive_filtered_deferred, walk_adaptive_filtered_unbounded,
-    LimitDirection,
+    walk_adaptive_filtered_with_frontier_limits, LimitDirection,
 };
 pub(crate) use adaptive::{
     walk_adaptive_with_max_depth, AdaptiveWalkerEntry, AdaptiveWalkerMetrics,
