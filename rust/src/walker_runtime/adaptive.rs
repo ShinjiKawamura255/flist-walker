@@ -17,6 +17,7 @@ use std::os::windows::fs::MetadataExt;
 const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(50);
 const CONTROL_SAMPLE_SIZE: usize = 64;
 const CONTROL_SAMPLE_STABILITY_PCT: u64 = 5;
+const CHILD_DIR_PUBLISH_BATCH_SIZE: usize = 32;
 
 pub(crate) struct AdaptiveWalkerEntry {
     pub(crate) path: PathBuf,
@@ -29,6 +30,8 @@ pub(crate) struct AdaptiveWalkerMetrics {
     pub(crate) read_dir_errors: usize,
     pub(crate) max_inflight_read_dirs: usize,
     pub(crate) throttle_events: usize,
+    pub(crate) child_dir_publish_batches: usize,
+    pub(crate) max_queued_dirs: usize,
     pub(crate) adaptive_limit_min: usize,
     pub(crate) adaptive_limit_max: usize,
     pub(crate) adaptive_limit_final: usize,
@@ -61,6 +64,7 @@ struct Shared {
     max_depth: MaxDepth,
     include_files: bool,
     include_dirs: bool,
+    publish_child_dirs_incrementally: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -97,6 +101,8 @@ struct AdaptiveAtomicMetrics {
     read_dir_errors: AtomicUsize,
     max_inflight_read_dirs: AtomicUsize,
     throttle_events: AtomicUsize,
+    child_dir_publish_batches: AtomicUsize,
+    max_queued_dirs: AtomicUsize,
     adaptive_limit_min: AtomicUsize,
     adaptive_limit_max: AtomicUsize,
     limit_sample_count: AtomicUsize,
@@ -109,6 +115,7 @@ impl AdaptiveAtomicMetrics {
         Self {
             adaptive_limit_min: AtomicUsize::new(initial_limit),
             adaptive_limit_max: AtomicUsize::new(initial_limit),
+            max_queued_dirs: AtomicUsize::new(1),
             ..Self::default()
         }
     }
@@ -141,6 +148,8 @@ impl AdaptiveAtomicMetrics {
             read_dir_errors: self.read_dir_errors.load(Ordering::Relaxed),
             max_inflight_read_dirs: self.max_inflight_read_dirs.load(Ordering::Relaxed),
             throttle_events: self.throttle_events.load(Ordering::Relaxed),
+            child_dir_publish_batches: self.child_dir_publish_batches.load(Ordering::Relaxed),
+            max_queued_dirs: self.max_queued_dirs.load(Ordering::Relaxed),
             adaptive_limit_min: self.adaptive_limit_min.load(Ordering::Relaxed),
             adaptive_limit_max: self.adaptive_limit_max.load(Ordering::Relaxed),
             adaptive_limit_final: final_limit,
@@ -403,6 +412,13 @@ fn worker_loop<const FILTER_ENTRIES: bool>(
                         shared.stop.store(true, Ordering::Relaxed);
                         break;
                     }
+                    if should_recurse
+                        && shared.publish_child_dirs_incrementally
+                        && child_dirs.len() >= CHILD_DIR_PUBLISH_BATCH_SIZE
+                        && !publish_child_dir_batch(&shared, &mut child_dirs)
+                    {
+                        break;
+                    }
                 }
             }
             Err(_) => {
@@ -419,6 +435,7 @@ fn worker_loop<const FILTER_ENTRIES: bool>(
         if let Ok(mut state) = shared.state.lock() {
             if !shared.stop.load(Ordering::Relaxed) {
                 state.queue.extend(child_dirs);
+                fetch_max(&shared.metrics.max_queued_dirs, state.queue.len());
             }
             state.active = state.active.saturating_sub(1);
             shared.cv.notify_all();
@@ -426,6 +443,28 @@ fn worker_loop<const FILTER_ENTRIES: bool>(
             return;
         }
     }
+}
+
+fn publish_child_dir_batch(shared: &Shared, child_dirs: &mut Vec<QueuedDirectory>) -> bool {
+    if child_dirs.is_empty() {
+        return true;
+    }
+    let mut state = match shared.state.lock() {
+        Ok(state) => state,
+        Err(_) => return false,
+    };
+    if shared.stop.load(Ordering::Relaxed) {
+        child_dirs.clear();
+        return false;
+    }
+    state.queue.extend(child_dirs.drain(..));
+    fetch_max(&shared.metrics.max_queued_dirs, state.queue.len());
+    shared
+        .metrics
+        .child_dir_publish_batches
+        .fetch_add(1, Ordering::Relaxed);
+    shared.cv.notify_all();
+    true
 }
 
 struct AdaptiveEntryPolicy {
@@ -544,6 +583,29 @@ pub(crate) fn walk_adaptive_filtered(
     )
 }
 
+#[cfg(test)]
+pub(crate) fn walk_adaptive_filtered_deferred(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        false,
+        on_entry,
+        should_stop,
+    )
+}
+
 pub(crate) fn walk_adaptive_with_max_depth(
     root: &Path,
     max_workers: usize,
@@ -551,6 +613,31 @@ pub(crate) fn walk_adaptive_with_max_depth(
     include_files: bool,
     include_dirs: bool,
     max_depth: MaxDepth,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        max_depth,
+        true,
+        on_entry,
+        should_stop,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn walk_adaptive_with_max_depth_mode(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    publish_child_dirs_incrementally: bool,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
@@ -602,6 +689,7 @@ pub(crate) fn walk_adaptive_with_max_depth(
         max_depth,
         include_files,
         include_dirs,
+        publish_child_dirs_incrementally,
     });
     let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
     let (tx, rx) = mpsc::sync_channel(entry_queue_capacity);
@@ -668,6 +756,7 @@ fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
         adaptive_limit_final: 1,
         adaptive_limit_change_count: 0,
         adaptive_limit_avg: 1.0,
+        max_queued_dirs: 1,
         ..AdaptiveWalkerMetrics::default()
     };
     let mut queue = VecDeque::from([QueuedDirectory {
@@ -719,6 +808,7 @@ fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
                             path: path.clone(),
                             depth,
                         });
+                        metrics.max_queued_dirs = metrics.max_queued_dirs.max(queue.len());
                     }
                     if should_emit && !on_entry(AdaptiveWalkerEntry { path, file_type }) {
                         stop = true;

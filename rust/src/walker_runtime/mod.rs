@@ -7,7 +7,8 @@ use std::path::Path;
 
 #[cfg(test)]
 pub(crate) use adaptive::{
-    next_limit_from_throughput, walk_adaptive, walk_adaptive_filtered, LimitDirection,
+    next_limit_from_throughput, walk_adaptive, walk_adaptive_filtered,
+    walk_adaptive_filtered_deferred, LimitDirection,
 };
 pub(crate) use adaptive::{
     walk_adaptive_with_max_depth, AdaptiveWalkerEntry, AdaptiveWalkerMetrics,
