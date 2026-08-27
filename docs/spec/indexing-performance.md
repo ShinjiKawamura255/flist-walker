@@ -81,11 +81,12 @@
 - MUST: Walker backend は adaptive のみを使用し、jwalk backend への runtime config 切替口を持ってはならない。
 - SHOULD: adaptive walker backend は developer-only config の `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` により、初期同時 read_dir 数と最大同時 read_dir 数を別々に指定できる。未指定時の最大値は論理コア数の半分（端数切り上げ、最低 1、既定上限 8）とし、初期値は最大値の半分（端数切り上げ、最低 1）とする。
 - SHOULD: adaptive walker backend の自動調整は、単発の read_dir 遅延ではなく、短いサンプル窓の throughput を比較して行う。探索方向が未確定の場合は、窓内の完了件数 / 経過時間が前窓から有意に改善した場合に limit を 1 段増やし、悪化した場合に 1 段減らし、誤差帯では維持する。探索方向が確定した後は、改善または誤差帯では同方向へ 1 段進み、悪化した場合は方向を反転しなければならない。
-- SHOULD: Walker の summary metrics は `adaptive_limit_final` に加えて `adaptive_limit_avg` と `adaptive_limit_change_count` を出力し、再測定時に平均的な並列度と揺れ幅を確認できるようにしなければならない。`adaptive_limit_avg` は実ワーク中の時間加重平均を主対象としつつ、終了時の停止・join 尾を少量含みうることを明示しなければならない。
+- SHOULD: Walker の summary metrics は `adaptive_limit_final` に加えて `adaptive_limit_avg`、`adaptive_limit_change_count`、`child_dir_publish_batches`、`max_queued_dirs` を出力し、再測定時に平均的な並列度、揺れ幅、親列挙中の子 directory 公開回数、frontier peak を確認できるようにしなければならない。`adaptive_limit_avg` は実ワーク中の時間加重平均を主対象としつつ、終了時の停止・join 尾を少量含みうることを明示しなければならない。
 - SHOULD: `walker_threads` と `walker_backend` が既存 runtime config file に残っている場合、読み込み時に削除して以後の起動へ持ち越してはならない。
 - SHOULD: `walker_adaptive_initial_limit` と `walker_adaptive_max_limit` は developer-only tuning 項目として扱う。公開向け設定として拡張してはならない。
 - SHOULD: adaptive walker backend は最大 worker 数が 1 の場合、channel / condvar / 複数 worker を使わない serial fast path で走査できること。
 - SHOULD: adaptive walker backend は file-only / folder-only の候補種別を producer 側へ渡し、通常ファイルまたは通常ディレクトリが候補対象外なら entry channel へ送信してはならない。候補対象外のディレクトリも深度境界内では再帰対象に保ち、リンクや Windows shortcut のように target kind の遅延解決が必要な entry は consumer 側の分類へ渡すこと。file / folder の両方を含む場合は per-entry filter 判定を行わない fast path を使用できること。
+- SHOULD: 並列 adaptive walker は幅の広い親 directory の列挙完了を待たず、発見済み child directory を小さな batch で共有 frontier へ公開すること。候補として emit する親 directory は child の処理開始前に entry channel へ送信し、parent-before-child の逐次表示関係を保つこと。
 - MUST: adaptive walker backend は Windows の Explorer で通常非表示となる互換用 junction（Hidden + System + ReparsePoint）を候補化してはならない。また、reparse point directory はリンク自体を候補化できても、リンク先へ再帰してはならない。
 - SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
 - SHOULD: developer-only metrics の `walker_metrics_log_path` が手動指定された場合、Walker は release GUI build でも console/stderr に依存せず、同じ bounded summary を指定ファイルへ追記できる。

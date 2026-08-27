@@ -55,6 +55,8 @@ struct WalkerMetrics {
     read_dir_errors: usize,
     max_inflight_read_dirs: usize,
     throttle_events: usize,
+    child_dir_publish_batches: usize,
+    max_queued_dirs: usize,
     adaptive_limit_min: usize,
     adaptive_limit_max: usize,
     adaptive_limit_final: usize,
@@ -75,6 +77,8 @@ impl WalkerMetrics {
             read_dir_errors: 0,
             max_inflight_read_dirs: 0,
             throttle_events: 0,
+            child_dir_publish_batches: 0,
+            max_queued_dirs: 0,
             adaptive_limit_min: 0,
             adaptive_limit_max: 0,
             adaptive_limit_final: 0,
@@ -94,6 +98,8 @@ impl WalkerMetrics {
         self.read_dir_errors = metrics.read_dir_errors;
         self.max_inflight_read_dirs = metrics.max_inflight_read_dirs;
         self.throttle_events = metrics.throttle_events;
+        self.child_dir_publish_batches = metrics.child_dir_publish_batches;
+        self.max_queued_dirs = metrics.max_queued_dirs;
         self.adaptive_limit_min = metrics.adaptive_limit_min;
         self.adaptive_limit_max = metrics.adaptive_limit_max;
         self.adaptive_limit_final = metrics.adaptive_limit_final;
@@ -135,6 +141,8 @@ fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str
         read_dir_errors = metrics.read_dir_errors,
         max_inflight_read_dirs = metrics.max_inflight_read_dirs,
         throttle_events = metrics.throttle_events,
+        child_dir_publish_batches = metrics.child_dir_publish_batches,
+        max_queued_dirs = metrics.max_queued_dirs,
         adaptive_limit_min = metrics.adaptive_limit_min,
         adaptive_limit_max = metrics.adaptive_limit_max,
         adaptive_limit_final = metrics.adaptive_limit_final,
@@ -149,7 +157,7 @@ fn log_walker_metrics(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str
 
 fn walker_metrics_summary(req: &IndexRequest, metrics: &WalkerMetrics, outcome: &str) -> String {
     format!(
-        "flow=index source_kind=walker event=metrics request_id={} tab_id={} backend={} outcome={} elapsed_ms={} entries_emitted={} batches_sent={} dirs_read={} read_dir_errors={} max_inflight_read_dirs={} throttle_events={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_limit_change_count={} adaptive_limit_avg={:.3} read_dir_avg_us={} read_dir_max_us={}",
+        "flow=index source_kind=walker event=metrics request_id={} tab_id={} backend={} outcome={} elapsed_ms={} entries_emitted={} batches_sent={} dirs_read={} read_dir_errors={} max_inflight_read_dirs={} throttle_events={} child_dir_publish_batches={} max_queued_dirs={} adaptive_limit_min={} adaptive_limit_max={} adaptive_limit_final={} adaptive_limit_change_count={} adaptive_limit_avg={:.3} read_dir_avg_us={} read_dir_max_us={}",
         req.request_id,
         req.tab_id,
         walker_backend_label(metrics.backend),
@@ -161,6 +169,8 @@ fn walker_metrics_summary(req: &IndexRequest, metrics: &WalkerMetrics, outcome: 
         metrics.read_dir_errors,
         metrics.max_inflight_read_dirs,
         metrics.throttle_events,
+        metrics.child_dir_publish_batches,
+        metrics.max_queued_dirs,
         metrics.adaptive_limit_min,
         metrics.adaptive_limit_max,
         metrics.adaptive_limit_final,

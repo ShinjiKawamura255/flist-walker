@@ -3,7 +3,7 @@ use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, 
 use crate::walker_runtime::{
     classify_walker_entry, default_adaptive_max_limit_from_logical_cores,
     next_limit_from_throughput, resolve_entry_kind, walk_adaptive, walk_adaptive_filtered,
-    walker_runtime_settings, LimitDirection, WalkerBackend,
+    walk_adaptive_filtered_deferred, walker_runtime_settings, LimitDirection, WalkerBackend,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
@@ -196,6 +196,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     metrics.dirs_read = 5;
     metrics.adaptive_limit_change_count = 7;
     metrics.adaptive_limit_avg = 2.25;
+    metrics.child_dir_publish_batches = 3;
+    metrics.max_queued_dirs = 17;
 
     let summary = walker_metrics_summary(&req, &metrics, "finished");
     write_walker_metrics_summary(&summary, &log_path.to_string_lossy());
@@ -206,6 +208,8 @@ fn walker_metrics_summary_can_be_written_to_file() {
     assert!(text.contains("entries_emitted=11"));
     assert!(text.contains("adaptive_limit_avg=2.250"));
     assert!(text.contains("adaptive_limit_change_count=7"));
+    assert!(text.contains("child_dir_publish_batches=3"));
+    assert!(text.contains("max_queued_dirs=17"));
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -1044,8 +1048,7 @@ fn adaptive_walker_single_worker_filter_preserves_nested_file_recursion() {
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(root.join("nested")).expect("create nested dir");
     std::fs::write(root.join("root.txt"), "root").expect("write root file");
-    std::fs::write(root.join("nested").join("nested.txt"), "nested")
-        .expect("write nested file");
+    std::fs::write(root.join("nested").join("nested.txt"), "nested").expect("write nested file");
 
     let mut paths = Vec::new();
     let metrics = walk_adaptive_filtered(
@@ -1065,6 +1068,59 @@ fn adaptive_walker_single_worker_filter_preserves_nested_file_recursion() {
     assert_eq!(paths.len(), 2);
     assert!(paths.iter().any(|path| path.ends_with("nested.txt")));
     assert_eq!(metrics.max_inflight_read_dirs, 1);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_publishes_wide_child_frontier_in_batches() {
+    let root = test_root("adaptive-wide-frontier");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..128usize {
+        let dir = root.join(format!("dir-{i:03}"));
+        std::fs::create_dir_all(&dir).expect("create child dir");
+        std::fs::write(dir.join("entry.txt"), "x").expect("write child file");
+    }
+
+    let metrics = walk_adaptive(&root, 2, 2, |_entry| true, || false);
+
+    assert!(metrics.child_dir_publish_batches >= 1);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_incremental_publish_emits_parent_before_child() {
+    let root = test_root("adaptive-parent-before-child");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..64usize {
+        let dir = root.join(format!("dir-{i:03}"));
+        std::fs::create_dir_all(&dir).expect("create child dir");
+        std::fs::write(dir.join("entry.txt"), "x").expect("write child file");
+    }
+
+    let mut emitted_dirs = std::collections::HashSet::new();
+    walk_adaptive(
+        &root,
+        4,
+        2,
+        |entry| {
+            if entry.file_type.is_dir() {
+                emitted_dirs.insert(entry.path);
+            } else if entry.file_type.is_file() {
+                let parent = entry.path.parent().expect("file parent");
+                assert!(
+                    emitted_dirs.contains(parent),
+                    "child emitted before parent: {}",
+                    entry.path.display()
+                );
+            }
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(emitted_dirs.len(), 64);
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -1166,6 +1222,13 @@ struct AdaptivePerfObservation {
     metrics: AdaptiveWalkerMetrics,
 }
 
+#[derive(Clone, Copy, Debug)]
+enum AdaptivePerfVariant {
+    UnfilteredIncremental,
+    FilteredIncremental,
+    FilteredDeferred,
+}
+
 #[test]
 #[ignore = "perf measurement matrix; run explicitly with --release"]
 fn perf_adaptive_walker_release_matrix() {
@@ -1200,7 +1263,7 @@ fn perf_adaptive_walker_release_matrix() {
                 include_dirs,
                 MAX_WORKERS,
                 INITIAL_LIMIT,
-                false,
+                AdaptivePerfVariant::UnfilteredIncremental,
             );
             let _filtered_warmup = measure_adaptive_perf_once(
                 dataset,
@@ -1208,7 +1271,7 @@ fn perf_adaptive_walker_release_matrix() {
                 include_dirs,
                 MAX_WORKERS,
                 INITIAL_LIMIT,
-                true,
+                AdaptivePerfVariant::FilteredIncremental,
             );
             let mut baseline_observations = Vec::with_capacity(REPETITIONS);
             let mut filtered_observations = Vec::with_capacity(REPETITIONS);
@@ -1220,7 +1283,7 @@ fn perf_adaptive_walker_release_matrix() {
                         include_dirs,
                         MAX_WORKERS,
                         INITIAL_LIMIT,
-                        false,
+                        AdaptivePerfVariant::UnfilteredIncremental,
                     )
                 };
                 let measure_filtered = || {
@@ -1230,7 +1293,7 @@ fn perf_adaptive_walker_release_matrix() {
                         include_dirs,
                         MAX_WORKERS,
                         INITIAL_LIMIT,
-                        true,
+                        AdaptivePerfVariant::FilteredIncremental,
                     )
                 };
                 if iteration.is_multiple_of(2) {
@@ -1301,6 +1364,119 @@ fn perf_adaptive_walker_release_matrix() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+#[test]
+#[ignore = "scheduling perf measurement matrix; run explicitly with --release"]
+fn perf_adaptive_walker_scheduling_release_matrix() {
+    const REPETITIONS: usize = 8;
+    const MAX_WORKERS: usize = 4;
+    const INITIAL_LIMIT: usize = 2;
+
+    let root = test_root("perf-adaptive-scheduling");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create scheduling root");
+    let cases = [
+        build_adaptive_perf_dir_heavy_case(&root),
+        build_adaptive_perf_mixed_case(&root),
+    ];
+    let modes = [("files", true, false), ("both", true, true)];
+
+    for (shape, dataset, expected_files, expected_dirs) in &cases {
+        for (mode, include_files, include_dirs) in modes {
+            let expected = usize::from(include_files)
+                .saturating_mul(*expected_files)
+                .saturating_add(usize::from(include_dirs).saturating_mul(*expected_dirs));
+            let _deferred_warmup = measure_adaptive_perf_once(
+                dataset,
+                include_files,
+                include_dirs,
+                MAX_WORKERS,
+                INITIAL_LIMIT,
+                AdaptivePerfVariant::FilteredDeferred,
+            );
+            let _incremental_warmup = measure_adaptive_perf_once(
+                dataset,
+                include_files,
+                include_dirs,
+                MAX_WORKERS,
+                INITIAL_LIMIT,
+                AdaptivePerfVariant::FilteredIncremental,
+            );
+            let mut deferred = Vec::with_capacity(REPETITIONS);
+            let mut incremental = Vec::with_capacity(REPETITIONS);
+            for iteration in 0..REPETITIONS {
+                let measure_deferred = || {
+                    measure_adaptive_perf_once(
+                        dataset,
+                        include_files,
+                        include_dirs,
+                        MAX_WORKERS,
+                        INITIAL_LIMIT,
+                        AdaptivePerfVariant::FilteredDeferred,
+                    )
+                };
+                let measure_incremental = || {
+                    measure_adaptive_perf_once(
+                        dataset,
+                        include_files,
+                        include_dirs,
+                        MAX_WORKERS,
+                        INITIAL_LIMIT,
+                        AdaptivePerfVariant::FilteredIncremental,
+                    )
+                };
+                if iteration.is_multiple_of(2) {
+                    deferred.push(measure_deferred());
+                    incremental.push(measure_incremental());
+                } else {
+                    incremental.push(measure_incremental());
+                    deferred.push(measure_deferred());
+                }
+            }
+
+            for observation in deferred.iter().chain(incremental.iter()) {
+                assert_eq!(observation.count, expected);
+                assert_eq!(observation.metrics.read_dir_errors, 0);
+            }
+            assert!(deferred
+                .iter()
+                .all(|observation| observation.metrics.child_dir_publish_batches == 0));
+            assert!(incremental
+                .iter()
+                .all(|observation| observation.metrics.child_dir_publish_batches > 0));
+            deferred.sort_unstable_by_key(|observation| observation.elapsed);
+            incremental.sort_unstable_by_key(|observation| observation.elapsed);
+            let deferred_median_seconds = median_elapsed_seconds(&deferred);
+            let incremental_median_seconds = median_elapsed_seconds(&incremental);
+            let elapsed_speedup =
+                deferred_median_seconds / incremental_median_seconds.max(f64::MIN_POSITIVE);
+            let deferred_first_file_seconds = median_first_file_seconds(&deferred);
+            let incremental_first_file_seconds = median_first_file_seconds(&incremental);
+            let first_file_speedup =
+                deferred_first_file_seconds / incremental_first_file_seconds.max(f64::MIN_POSITIVE);
+            let incremental_median = &incremental[REPETITIONS / 2];
+
+            eprintln!(
+                "Adaptive scheduling matrix profile={} shape={} mode={} repetitions={} entries={} deferred_median_ms={:.3} incremental_median_ms={:.3} elapsed_speedup={:.3}x deferred_first_file_us={:.0} incremental_first_file_us={:.0} first_file_speedup={:.3}x publish_batches={} max_queued_dirs={}",
+                if cfg!(debug_assertions) { "debug" } else { "release" },
+                shape,
+                mode,
+                REPETITIONS,
+                incremental_median.count,
+                deferred_median_seconds * 1000.0,
+                incremental_median_seconds * 1000.0,
+                elapsed_speedup,
+                deferred_first_file_seconds * 1_000_000.0,
+                incremental_first_file_seconds * 1_000_000.0,
+                first_file_speedup,
+                incremental_median.metrics.child_dir_publish_batches,
+                incremental_median.metrics.max_queued_dirs,
+            );
+        }
+    }
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 fn median_elapsed_seconds(observations: &[AdaptivePerfObservation]) -> f64 {
     let upper = observations.len() / 2;
     if observations.len().is_multiple_of(2) {
@@ -1311,13 +1487,27 @@ fn median_elapsed_seconds(observations: &[AdaptivePerfObservation]) -> f64 {
     }
 }
 
+fn median_first_file_seconds(observations: &[AdaptivePerfObservation]) -> f64 {
+    let mut durations = observations
+        .iter()
+        .map(|observation| observation.first_file.expect("first file observation"))
+        .collect::<Vec<_>>();
+    durations.sort_unstable();
+    let upper = durations.len() / 2;
+    if durations.len().is_multiple_of(2) {
+        (durations[upper - 1].as_secs_f64() + durations[upper].as_secs_f64()) / 2.0
+    } else {
+        durations[upper].as_secs_f64()
+    }
+}
+
 fn measure_adaptive_perf_once(
     root: &Path,
     include_files: bool,
     include_dirs: bool,
     max_workers: usize,
     initial_limit: usize,
-    producer_filter: bool,
+    variant: AdaptivePerfVariant,
 ) -> AdaptivePerfObservation {
     let started = Instant::now();
     let mut first_file = None;
@@ -1335,8 +1525,11 @@ fn measure_adaptive_perf_once(
         }
         true
     };
-    let metrics = if producer_filter {
-        walk_adaptive_filtered(
+    let metrics = match variant {
+        AdaptivePerfVariant::UnfilteredIncremental => {
+            walk_adaptive(root, max_workers, initial_limit, &mut on_entry, || false)
+        }
+        AdaptivePerfVariant::FilteredIncremental => walk_adaptive_filtered(
             root,
             max_workers,
             initial_limit,
@@ -1344,9 +1537,16 @@ fn measure_adaptive_perf_once(
             include_dirs,
             &mut on_entry,
             || false,
-        )
-    } else {
-        walk_adaptive(root, max_workers, initial_limit, &mut on_entry, || false)
+        ),
+        AdaptivePerfVariant::FilteredDeferred => walk_adaptive_filtered_deferred(
+            root,
+            max_workers,
+            initial_limit,
+            include_files,
+            include_dirs,
+            &mut on_entry,
+            || false,
+        ),
     };
 
     AdaptivePerfObservation {
