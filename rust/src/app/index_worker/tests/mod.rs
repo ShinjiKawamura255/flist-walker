@@ -943,6 +943,51 @@ fn adaptive_walker_matches_std_read_dir_count_on_basic_tree() {
 }
 
 #[test]
+fn adaptive_walker_classification_counts_match_include_modes() {
+    let root = test_root("adaptive-include-modes");
+    let _ = std::fs::remove_dir_all(&root);
+    let dataset = root.join("dataset");
+    std::fs::create_dir_all(dataset.join("a").join("nested")).expect("create a/nested");
+    std::fs::create_dir_all(dataset.join("b")).expect("create b");
+    std::fs::write(dataset.join("root.txt"), "root").expect("write root file");
+    std::fs::write(dataset.join("a").join("a.txt"), "a").expect("write a file");
+    std::fs::write(
+        dataset.join("a").join("nested").join("nested.txt"),
+        "nested",
+    )
+    .expect("write nested file");
+
+    for (include_files, include_dirs, expected) in [
+        (true, false, 3usize),
+        (false, true, 3usize),
+        (true, true, 6usize),
+    ] {
+        let mut count = 0usize;
+        walk_adaptive(
+            &dataset,
+            2,
+            2,
+            |entry| {
+                if classify_walker_entry(&entry.path, entry.file_type, include_files, include_dirs)
+                    .is_some()
+                {
+                    count = count.saturating_add(1);
+                }
+                true
+            },
+            || false,
+        );
+
+        assert_eq!(
+            count, expected,
+            "include_files={include_files} include_dirs={include_dirs}"
+        );
+    }
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
 #[ignore = "perf measurement; run explicitly"]
 fn perf_adaptive_walker_reports_local_dataset_metrics() {
     let root = test_root("perf-adaptive-compare");
@@ -1002,6 +1047,199 @@ fn perf_adaptive_walker_reports_local_dataset_metrics() {
     assert!(adaptive_metrics.max_inflight_read_dirs <= 2);
 
     let _ = std::fs::remove_dir_all(&root);
+}
+
+#[derive(Clone, Debug)]
+struct AdaptivePerfObservation {
+    elapsed: Duration,
+    first_file: Option<Duration>,
+    count: usize,
+    metrics: AdaptiveWalkerMetrics,
+}
+
+#[test]
+#[ignore = "perf measurement matrix; run explicitly with --release"]
+fn perf_adaptive_walker_release_matrix() {
+    const REPETITIONS: usize = 5;
+    const MAX_WORKERS: usize = 4;
+    const INITIAL_LIMIT: usize = 2;
+
+    let root = test_root("perf-adaptive-matrix");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create matrix root");
+
+    let cases = [
+        build_adaptive_perf_dir_heavy_case(&root),
+        build_adaptive_perf_file_heavy_case(&root),
+        build_adaptive_perf_mixed_case(&root),
+    ];
+    let modes = [
+        ("files", true, false),
+        ("folders", false, true),
+        ("both", true, true),
+    ];
+
+    for (shape, dataset, expected_files, expected_dirs) in &cases {
+        for (mode, include_files, include_dirs) in modes {
+            let expected = usize::from(include_files)
+                .saturating_mul(*expected_files)
+                .saturating_add(usize::from(include_dirs).saturating_mul(*expected_dirs));
+
+            let _warmup = measure_adaptive_perf_once(
+                dataset,
+                include_files,
+                include_dirs,
+                MAX_WORKERS,
+                INITIAL_LIMIT,
+            );
+            let mut observations = (0..REPETITIONS)
+                .map(|_| {
+                    measure_adaptive_perf_once(
+                        dataset,
+                        include_files,
+                        include_dirs,
+                        MAX_WORKERS,
+                        INITIAL_LIMIT,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            for observation in &observations {
+                assert_eq!(
+                    observation.count, expected,
+                    "shape={shape} mode={mode} adaptive count mismatch"
+                );
+                assert_eq!(observation.metrics.read_dir_errors, 0);
+            }
+            observations.sort_unstable_by_key(|observation| observation.elapsed);
+            let median = &observations[REPETITIONS / 2];
+            let min = observations[0].elapsed;
+            let max = observations[REPETITIONS - 1].elapsed;
+
+            eprintln!(
+                "Adaptive walker matrix profile={} shape={} mode={} repetitions={} entries={} dirs_read={} median_ms={:.3} min_ms={:.3} max_ms={:.3} median_first_file_us={} max_inflight={} throttle_events={} limit_min={} limit_max={} limit_final={} limit_changes={} limit_avg={:.3}",
+                if cfg!(debug_assertions) { "debug" } else { "release" },
+                shape,
+                mode,
+                REPETITIONS,
+                median.count,
+                median.metrics.dirs_read,
+                median.elapsed.as_secs_f64() * 1000.0,
+                min.as_secs_f64() * 1000.0,
+                max.as_secs_f64() * 1000.0,
+                median
+                    .first_file
+                    .map(|elapsed| elapsed.as_micros().to_string())
+                    .unwrap_or_else(|| "none".to_string()),
+                median.metrics.max_inflight_read_dirs,
+                median.metrics.throttle_events,
+                median.metrics.adaptive_limit_min,
+                median.metrics.adaptive_limit_max,
+                median.metrics.adaptive_limit_final,
+                median.metrics.adaptive_limit_change_count,
+                median.metrics.adaptive_limit_avg,
+            );
+        }
+    }
+
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+fn measure_adaptive_perf_once(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    max_workers: usize,
+    initial_limit: usize,
+) -> AdaptivePerfObservation {
+    let started = Instant::now();
+    let mut first_file = None;
+    let mut count = 0usize;
+    let metrics = walk_adaptive(
+        root,
+        max_workers,
+        initial_limit,
+        |entry| {
+            if first_file.is_none() && entry.file_type.is_file() {
+                first_file = Some(started.elapsed());
+            }
+            if classify_walker_entry(&entry.path, entry.file_type, include_files, include_dirs)
+                .is_some()
+            {
+                count = count.saturating_add(1);
+            }
+            true
+        },
+        || false,
+    );
+
+    AdaptivePerfObservation {
+        elapsed: started.elapsed(),
+        first_file,
+        count,
+        metrics,
+    }
+}
+
+fn build_adaptive_perf_dir_heavy_case(root: &Path) -> (&'static str, PathBuf, usize, usize) {
+    let dataset = root.join("dir-heavy");
+    std::fs::create_dir_all(&dataset).expect("create dir-heavy dataset");
+    let dir_count = 2_048usize;
+    for i in 0..dir_count {
+        let dir = dataset.join(format!("dir-{i:04}"));
+        std::fs::create_dir_all(&dir).expect("create dir-heavy dir");
+        std::fs::write(dir.join("entry.txt"), "x").expect("write dir-heavy file");
+    }
+    ("dir-heavy", dataset, dir_count, dir_count)
+}
+
+fn build_adaptive_perf_file_heavy_case(root: &Path) -> (&'static str, PathBuf, usize, usize) {
+    let dataset = root.join("file-heavy");
+    std::fs::create_dir_all(&dataset).expect("create file-heavy dataset");
+    let dir_count = 64usize;
+    let files_per_dir = 128usize;
+    for i in 0..dir_count {
+        let dir = dataset.join(format!("dir-{i:02}"));
+        std::fs::create_dir_all(&dir).expect("create file-heavy dir");
+        for j in 0..files_per_dir {
+            std::fs::write(dir.join(format!("entry-{j:03}.txt")), "x")
+                .expect("write file-heavy file");
+        }
+    }
+    (
+        "file-heavy",
+        dataset,
+        dir_count.saturating_mul(files_per_dir),
+        dir_count,
+    )
+}
+
+fn build_adaptive_perf_mixed_case(root: &Path) -> (&'static str, PathBuf, usize, usize) {
+    let dataset = root.join("mixed");
+    std::fs::create_dir_all(&dataset).expect("create mixed dataset");
+    let top_dirs = 128usize;
+    let child_dirs = 8usize;
+    let files_per_child = 2usize;
+    for i in 0..top_dirs {
+        let top = dataset.join(format!("top-{i:03}"));
+        std::fs::create_dir_all(&top).expect("create mixed top dir");
+        for j in 0..child_dirs {
+            let child = top.join(format!("child-{j:02}"));
+            std::fs::create_dir_all(&child).expect("create mixed child dir");
+            for k in 0..files_per_child {
+                std::fs::write(child.join(format!("entry-{k}.txt")), "x")
+                    .expect("write mixed file");
+            }
+        }
+    }
+    (
+        "mixed",
+        dataset,
+        top_dirs
+            .saturating_mul(child_dirs)
+            .saturating_mul(files_per_child),
+        top_dirs.saturating_add(top_dirs.saturating_mul(child_dirs)),
+    )
 }
 
 #[test]
