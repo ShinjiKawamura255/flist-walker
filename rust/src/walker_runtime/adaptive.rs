@@ -567,11 +567,13 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
             }
             FrameAction::Complete => {
                 let frame = frames.pop().expect("completed directory frame");
+                let read_elapsed = frame.read_elapsed;
+                drop(frame);
                 shared
                     .metrics
                     .open_directory_frames
                     .fetch_sub(1, Ordering::Relaxed);
-                shared.metrics.record_read_dir(frame.read_elapsed);
+                shared.metrics.record_read_dir(read_elapsed);
                 adjust_limit(shared);
             }
             FrameAction::Stop => {
@@ -612,12 +614,14 @@ fn open_directory_frame(shared: &Shared, dir: QueuedDirectory) -> Option<Directo
 }
 
 fn record_partial_frames(shared: &Shared, frames: &mut Vec<DirectoryFrame>) {
-    shared
-        .metrics
-        .open_directory_frames
-        .fetch_sub(frames.len(), Ordering::Relaxed);
     for frame in frames.drain(..) {
-        shared.metrics.record_read_dir(frame.read_elapsed);
+        let read_elapsed = frame.read_elapsed;
+        drop(frame);
+        shared
+            .metrics
+            .open_directory_frames
+            .fetch_sub(1, Ordering::Relaxed);
+        shared.metrics.record_read_dir(read_elapsed);
     }
 }
 
@@ -882,13 +886,41 @@ pub(crate) fn walk_adaptive_filtered_with_frontier_limits(
     on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
-    walk_adaptive_with_max_depth_mode(
+    walk_adaptive_filtered_with_frontier_limits_and_max_depth(
         root,
         max_workers,
         initial_limit,
         include_files,
         include_dirs,
         MaxDepth::unlimited(),
+        frontier_soft_limit,
+        local_frame_limit,
+        on_entry,
+        should_stop,
+    )
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn walk_adaptive_filtered_with_frontier_limits_and_max_depth(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    max_depth: MaxDepth,
+    frontier_soft_limit: usize,
+    local_frame_limit: usize,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        max_depth,
         true,
         Some(frontier_soft_limit.max(1)),
         local_frame_limit.max(1),
