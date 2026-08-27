@@ -9,6 +9,8 @@ use std::time::{Duration, Instant};
 
 use crate::indexer::MaxDepth;
 
+use super::is_windows_shortcut;
+
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 
@@ -57,6 +59,8 @@ struct Shared {
     control: Mutex<LimitControlState>,
     metrics: AdaptiveAtomicMetrics,
     max_depth: MaxDepth,
+    include_files: bool,
+    include_dirs: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -306,7 +310,10 @@ pub(crate) fn next_limit_from_throughput(
     }
 }
 
-fn worker_loop(shared: Arc<Shared>, tx: SyncSender<AdaptiveWalkerEntry>) {
+fn worker_loop<const FILTER_ENTRIES: bool>(
+    shared: Arc<Shared>,
+    tx: SyncSender<AdaptiveWalkerEntry>,
+) {
     loop {
         let dir = {
             let mut state = match shared.state.lock() {
@@ -368,18 +375,31 @@ fn worker_loop(shared: Arc<Shared>, tx: SyncSender<AdaptiveWalkerEntry>) {
                     if policy.skip {
                         continue;
                     }
-                    let path = child.path();
                     let depth = dir.depth.saturating_add(1);
-                    if file_type.is_dir()
+                    let should_recurse = file_type.is_dir()
                         && policy.recurse
-                        && shared.max_depth.should_descend_from(depth)
-                    {
+                        && shared.max_depth.should_descend_from(depth);
+                    let should_emit = if FILTER_ENTRIES {
+                        should_emit_entry(
+                            &child,
+                            &file_type,
+                            shared.include_files,
+                            shared.include_dirs,
+                        )
+                    } else {
+                        true
+                    };
+                    if !should_recurse && !should_emit {
+                        continue;
+                    }
+                    let path = child.path();
+                    if should_recurse {
                         child_dirs.push(QueuedDirectory {
                             path: path.clone(),
                             depth,
                         });
                     }
-                    if tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
+                    if should_emit && tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
                         shared.stop.store(true, Ordering::Relaxed);
                         break;
                     }
@@ -422,6 +442,31 @@ fn adaptive_entry_policy(entry: &fs::DirEntry, file_type: &fs::FileType) -> Adap
     }
 
     adaptive_entry_policy_from_attrs(windows_reparse_file_attributes(entry))
+}
+
+fn should_emit_entry(
+    entry: &fs::DirEntry,
+    file_type: &fs::FileType,
+    include_files: bool,
+    include_dirs: bool,
+) -> bool {
+    if include_files && include_dirs {
+        return true;
+    }
+    if file_type.is_dir() {
+        return include_dirs;
+    }
+    if file_type.is_symlink() {
+        return include_files || include_dirs;
+    }
+    if file_type.is_file() {
+        if include_files {
+            return true;
+        }
+        let file_name = entry.file_name();
+        return include_dirs && is_windows_shortcut(Path::new(&file_name));
+    }
+    false
 }
 
 #[cfg(windows)]
@@ -469,6 +514,30 @@ pub(crate) fn walk_adaptive(
         root,
         max_workers,
         initial_limit,
+        true,
+        true,
+        MaxDepth::unlimited(),
+        on_entry,
+        should_stop,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn walk_adaptive_filtered(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
         MaxDepth::unlimited(),
         on_entry,
         should_stop,
@@ -479,13 +548,33 @@ pub(crate) fn walk_adaptive_with_max_depth(
     root: &Path,
     max_workers: usize,
     initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
     max_depth: MaxDepth,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
     let max_workers = max_workers.max(1);
     if max_workers == 1 {
-        return walk_adaptive_serial(root, max_depth, on_entry, should_stop);
+        return if include_files && include_dirs {
+            walk_adaptive_serial::<false>(
+                root,
+                max_depth,
+                include_files,
+                include_dirs,
+                on_entry,
+                should_stop,
+            )
+        } else {
+            walk_adaptive_serial::<true>(
+                root,
+                max_depth,
+                include_files,
+                include_dirs,
+                on_entry,
+                should_stop,
+            )
+        };
     }
     let initial_limit = initial_limit.clamp(1, max_workers);
     let shared = Arc::new(Shared {
@@ -511,6 +600,8 @@ pub(crate) fn walk_adaptive_with_max_depth(
         }),
         metrics: AdaptiveAtomicMetrics::new(initial_limit),
         max_depth,
+        include_files,
+        include_dirs,
     });
     let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
     let (tx, rx) = mpsc::sync_channel(entry_queue_capacity);
@@ -518,7 +609,11 @@ pub(crate) fn walk_adaptive_with_max_depth(
     for _ in 0..max_workers {
         let worker_shared = Arc::clone(&shared);
         let worker_tx = tx.clone();
-        handles.push(thread::spawn(move || worker_loop(worker_shared, worker_tx)));
+        handles.push(if include_files && include_dirs {
+            thread::spawn(move || worker_loop::<false>(worker_shared, worker_tx))
+        } else {
+            thread::spawn(move || worker_loop::<true>(worker_shared, worker_tx))
+        });
     }
     drop(tx);
 
@@ -559,9 +654,11 @@ pub(crate) fn walk_adaptive_with_max_depth(
     shared.metrics.snapshot(final_limit, control_snapshot)
 }
 
-fn walk_adaptive_serial(
+fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
     root: &Path,
     max_depth: MaxDepth,
+    include_files: bool,
+    include_dirs: bool,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
@@ -604,16 +701,26 @@ fn walk_adaptive_serial(
                     if policy.skip {
                         continue;
                     }
-                    let path = child.path();
                     let depth = dir.depth.saturating_add(1);
-                    if file_type.is_dir() && policy.recurse && max_depth.should_descend_from(depth)
-                    {
+                    let should_recurse = file_type.is_dir()
+                        && policy.recurse
+                        && max_depth.should_descend_from(depth);
+                    let should_emit = if FILTER_ENTRIES {
+                        should_emit_entry(&child, &file_type, include_files, include_dirs)
+                    } else {
+                        true
+                    };
+                    if !should_recurse && !should_emit {
+                        continue;
+                    }
+                    let path = child.path();
+                    if should_recurse {
                         queue.push_back(QueuedDirectory {
                             path: path.clone(),
                             depth,
                         });
                     }
-                    if !on_entry(AdaptiveWalkerEntry { path, file_type }) {
+                    if should_emit && !on_entry(AdaptiveWalkerEntry { path, file_type }) {
                         stop = true;
                         break;
                     }

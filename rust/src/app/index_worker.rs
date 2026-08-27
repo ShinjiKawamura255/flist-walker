@@ -529,6 +529,8 @@ fn stream_walker_index(
         root,
         settings.adaptive_max_limit,
         settings.adaptive_initial_limit,
+        req.include_files,
+        req.include_dirs,
         req.max_depth,
         |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
         should_cancel_for_walk,
