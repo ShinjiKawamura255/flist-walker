@@ -5,7 +5,8 @@ use crate::walker_runtime::{
     default_adaptive_max_limit_from_logical_cores, next_limit_from_throughput, resolve_entry_kind,
     walk_adaptive, walk_adaptive_filtered, walk_adaptive_filtered_deferred,
     walk_adaptive_filtered_unbounded, walk_adaptive_filtered_with_frontier_limits,
-    walk_adaptive_with_max_depth, walker_runtime_settings, LimitDirection, WalkerBackend,
+    walk_adaptive_filtered_with_frontier_limits_and_max_depth, walk_adaptive_with_max_depth,
+    walker_runtime_settings, LimitDirection, WalkerBackend,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
@@ -1253,6 +1254,93 @@ fn adaptive_walker_bounds_open_frames_and_bypasses_soft_limit_for_deep_wide_tree
         metrics.open_directory_frame_budget,
         MAX_WORKERS * LOCAL_FRAME_LIMIT
     );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_soft_limit_bypass_preserves_max_depth() {
+    const MAX_WORKERS: usize = 4;
+    const TOP_DIR_COUNT: usize = 32;
+    const NESTED_DIR_COUNT: usize = 32;
+
+    let root = test_root("adaptive-bypass-max-depth");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..TOP_DIR_COUNT {
+        let top = root.join(format!("top-{i:02}"));
+        for j in 0..NESTED_DIR_COUNT {
+            let nested = top.join(format!("nested-{j:02}"));
+            std::fs::create_dir_all(&nested).expect("create nested dir");
+            std::fs::write(nested.join("too-deep.txt"), "x").expect("write deep file");
+        }
+    }
+
+    let mut paths = Vec::new();
+    let metrics = walk_adaptive_filtered_with_frontier_limits_and_max_depth(
+        &root,
+        MAX_WORKERS,
+        2,
+        true,
+        true,
+        crate::indexer::MaxDepth::limited(2).expect("valid depth"),
+        8,
+        1,
+        |entry| {
+            paths.push(entry.path);
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(
+        paths.len(),
+        TOP_DIR_COUNT + TOP_DIR_COUNT * NESTED_DIR_COUNT
+    );
+    assert!(paths.iter().all(|path| !path.ends_with("too-deep.txt")));
+    assert!(metrics.frontier_soft_limit_bypasses > 0);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_should_stop_after_soft_limit_bypass_returns_promptly() {
+    const MAX_WORKERS: usize = 4;
+    const TOP_DIR_COUNT: usize = 32;
+    const NESTED_DIR_COUNT: usize = 32;
+
+    let root = test_root("adaptive-bypass-should-stop");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..TOP_DIR_COUNT {
+        let top = root.join(format!("top-{i:02}"));
+        for j in 0..NESTED_DIR_COUNT {
+            std::fs::create_dir_all(top.join(format!("nested-{j:02}"))).expect("create nested dir");
+        }
+    }
+
+    let stop = AtomicBool::new(false);
+    let started = Instant::now();
+    let mut count = 0usize;
+    let metrics = walk_adaptive_filtered_with_frontier_limits(
+        &root,
+        MAX_WORKERS,
+        2,
+        true,
+        true,
+        8,
+        1,
+        |_entry| {
+            count = count.saturating_add(1);
+            if count == 400 {
+                stop.store(true, Ordering::Relaxed);
+            }
+            true
+        },
+        || stop.load(Ordering::Relaxed),
+    );
+
+    assert_eq!(count, 400);
+    assert!(metrics.frontier_soft_limit_bypasses > 0);
+    assert!(started.elapsed() < Duration::from_secs(5));
     let _ = std::fs::remove_dir_all(&root);
 }
 
