@@ -18,11 +18,19 @@ const CONTROL_POLL_INTERVAL: Duration = Duration::from_millis(50);
 const CONTROL_SAMPLE_SIZE: usize = 64;
 const CONTROL_SAMPLE_STABILITY_PCT: u64 = 5;
 const CHILD_DIR_PUBLISH_BATCH_SIZE: usize = 32;
+const OPEN_DIRECTORY_FRAME_BUDGET: usize = 64;
 
-pub(crate) fn adaptive_shared_frontier_capacity(max_workers: usize) -> usize {
+pub(crate) fn adaptive_shared_frontier_soft_limit(max_workers: usize) -> usize {
     max_workers
         .max(1)
         .saturating_mul(CHILD_DIR_PUBLISH_BATCH_SIZE * 2)
+}
+
+fn adaptive_local_frame_limit(max_workers: usize) -> usize {
+    OPEN_DIRECTORY_FRAME_BUDGET
+        .checked_div(max_workers.max(1))
+        .unwrap_or(1)
+        .max(1)
 }
 
 pub(crate) struct AdaptiveWalkerEntry {
@@ -38,8 +46,11 @@ pub(crate) struct AdaptiveWalkerMetrics {
     pub(crate) throttle_events: usize,
     pub(crate) child_dir_publish_batches: usize,
     pub(crate) max_queued_dirs: usize,
-    pub(crate) shared_frontier_capacity: usize,
+    pub(crate) shared_frontier_soft_limit: usize,
     pub(crate) frontier_saturation_fallbacks: usize,
+    pub(crate) frontier_soft_limit_bypasses: usize,
+    pub(crate) open_directory_frame_budget: usize,
+    pub(crate) max_open_directory_frames: usize,
     pub(crate) adaptive_limit_min: usize,
     pub(crate) adaptive_limit_max: usize,
     pub(crate) adaptive_limit_final: usize,
@@ -73,7 +84,8 @@ struct Shared {
     include_files: bool,
     include_dirs: bool,
     publish_child_dirs_incrementally: bool,
-    frontier_capacity: Option<usize>,
+    frontier_soft_limit: Option<usize>,
+    local_frame_limit: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -112,8 +124,12 @@ struct AdaptiveAtomicMetrics {
     throttle_events: AtomicUsize,
     child_dir_publish_batches: AtomicUsize,
     max_queued_dirs: AtomicUsize,
-    shared_frontier_capacity: AtomicUsize,
+    shared_frontier_soft_limit: AtomicUsize,
     frontier_saturation_fallbacks: AtomicUsize,
+    frontier_soft_limit_bypasses: AtomicUsize,
+    open_directory_frames: AtomicUsize,
+    max_open_directory_frames: AtomicUsize,
+    open_directory_frame_budget: AtomicUsize,
     adaptive_limit_min: AtomicUsize,
     adaptive_limit_max: AtomicUsize,
     limit_sample_count: AtomicUsize,
@@ -122,12 +138,17 @@ struct AdaptiveAtomicMetrics {
 }
 
 impl AdaptiveAtomicMetrics {
-    fn new(initial_limit: usize, frontier_capacity: Option<usize>) -> Self {
+    fn new(
+        initial_limit: usize,
+        frontier_soft_limit: Option<usize>,
+        open_directory_frame_budget: usize,
+    ) -> Self {
         Self {
             adaptive_limit_min: AtomicUsize::new(initial_limit),
             adaptive_limit_max: AtomicUsize::new(initial_limit),
             max_queued_dirs: AtomicUsize::new(1),
-            shared_frontier_capacity: AtomicUsize::new(frontier_capacity.unwrap_or(0)),
+            shared_frontier_soft_limit: AtomicUsize::new(frontier_soft_limit.unwrap_or(0)),
+            open_directory_frame_budget: AtomicUsize::new(open_directory_frame_budget),
             ..Self::default()
         }
     }
@@ -162,10 +183,13 @@ impl AdaptiveAtomicMetrics {
             throttle_events: self.throttle_events.load(Ordering::Relaxed),
             child_dir_publish_batches: self.child_dir_publish_batches.load(Ordering::Relaxed),
             max_queued_dirs: self.max_queued_dirs.load(Ordering::Relaxed),
-            shared_frontier_capacity: self.shared_frontier_capacity.load(Ordering::Relaxed),
+            shared_frontier_soft_limit: self.shared_frontier_soft_limit.load(Ordering::Relaxed),
             frontier_saturation_fallbacks: self
                 .frontier_saturation_fallbacks
                 .load(Ordering::Relaxed),
+            frontier_soft_limit_bypasses: self.frontier_soft_limit_bypasses.load(Ordering::Relaxed),
+            open_directory_frame_budget: self.open_directory_frame_budget.load(Ordering::Relaxed),
+            max_open_directory_frames: self.max_open_directory_frames.load(Ordering::Relaxed),
             adaptive_limit_min: self.adaptive_limit_min.load(Ordering::Relaxed),
             adaptive_limit_max: self.adaptive_limit_max.load(Ordering::Relaxed),
             adaptive_limit_final: final_limit,
@@ -420,6 +444,7 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
             return;
         }
 
+        let can_descend = frames.len() < shared.local_frame_limit;
         let action = {
             let frame = frames.last_mut().expect("directory frame");
             let segment_started = Instant::now();
@@ -431,12 +456,23 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
                     match publish_child_dir_batch(shared, &mut frame.pending_child_dirs, false) {
                         PublishResult::Published => break FrameAction::Complete,
                         PublishResult::Saturated => {
-                            break FrameAction::Descend(
-                                frame
-                                    .pending_child_dirs
-                                    .pop()
-                                    .expect("pending child directory"),
-                            );
+                            if can_descend {
+                                break FrameAction::Descend(
+                                    frame
+                                        .pending_child_dirs
+                                        .pop()
+                                        .expect("pending child directory"),
+                                );
+                            }
+                            match publish_child_dirs_beyond_soft_limit(
+                                shared,
+                                &mut frame.pending_child_dirs,
+                                false,
+                            ) {
+                                PublishResult::Published => break FrameAction::Complete,
+                                PublishResult::Stopped => break FrameAction::Stop,
+                                PublishResult::Saturated => unreachable!("bypass cannot saturate"),
+                            }
                         }
                         PublishResult::Stopped => break FrameAction::Stop,
                     }
@@ -497,12 +533,23 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
                     match publish_child_dir_batch(shared, &mut frame.pending_child_dirs, true) {
                         PublishResult::Published => {}
                         PublishResult::Saturated => {
-                            break FrameAction::Descend(
-                                frame
-                                    .pending_child_dirs
-                                    .pop()
-                                    .expect("pending child directory"),
-                            );
+                            if can_descend {
+                                break FrameAction::Descend(
+                                    frame
+                                        .pending_child_dirs
+                                        .pop()
+                                        .expect("pending child directory"),
+                                );
+                            }
+                            match publish_child_dirs_beyond_soft_limit(
+                                shared,
+                                &mut frame.pending_child_dirs,
+                                true,
+                            ) {
+                                PublishResult::Published => {}
+                                PublishResult::Stopped => break FrameAction::Stop,
+                                PublishResult::Saturated => unreachable!("bypass cannot saturate"),
+                            }
                         }
                         PublishResult::Stopped => break FrameAction::Stop,
                     }
@@ -520,6 +567,10 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
             }
             FrameAction::Complete => {
                 let frame = frames.pop().expect("completed directory frame");
+                shared
+                    .metrics
+                    .open_directory_frames
+                    .fetch_sub(1, Ordering::Relaxed);
                 shared.metrics.record_read_dir(frame.read_elapsed);
                 adjust_limit(shared);
             }
@@ -534,12 +585,20 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
 fn open_directory_frame(shared: &Shared, dir: QueuedDirectory) -> Option<DirectoryFrame> {
     let started = Instant::now();
     match fs::read_dir(&dir.path) {
-        Ok(read_dir) => Some(DirectoryFrame {
-            read_dir,
-            depth: dir.depth,
-            pending_child_dirs: Vec::with_capacity(CHILD_DIR_PUBLISH_BATCH_SIZE),
-            read_elapsed: started.elapsed(),
-        }),
+        Ok(read_dir) => {
+            let open_frames = shared
+                .metrics
+                .open_directory_frames
+                .fetch_add(1, Ordering::Relaxed)
+                .saturating_add(1);
+            fetch_max(&shared.metrics.max_open_directory_frames, open_frames);
+            Some(DirectoryFrame {
+                read_dir,
+                depth: dir.depth,
+                pending_child_dirs: Vec::with_capacity(CHILD_DIR_PUBLISH_BATCH_SIZE),
+                read_elapsed: started.elapsed(),
+            })
+        }
         Err(_) => {
             shared
                 .metrics
@@ -553,6 +612,10 @@ fn open_directory_frame(shared: &Shared, dir: QueuedDirectory) -> Option<Directo
 }
 
 fn record_partial_frames(shared: &Shared, frames: &mut Vec<DirectoryFrame>) {
+    shared
+        .metrics
+        .open_directory_frames
+        .fetch_sub(frames.len(), Ordering::Relaxed);
     for frame in frames.drain(..) {
         shared.metrics.record_read_dir(frame.read_elapsed);
     }
@@ -575,8 +638,8 @@ fn publish_child_dir_batch(
         return PublishResult::Stopped;
     }
     let available = shared
-        .frontier_capacity
-        .map(|capacity| capacity.saturating_sub(state.queue.len()))
+        .frontier_soft_limit
+        .map(|soft_limit| soft_limit.saturating_sub(state.queue.len()))
         .unwrap_or(child_dirs.len());
     let publish_count = if count_incremental_batch
         && available < CHILD_DIR_PUBLISH_BATCH_SIZE
@@ -606,6 +669,38 @@ fn publish_child_dir_batch(
             .fetch_add(1, Ordering::Relaxed);
         PublishResult::Saturated
     }
+}
+
+fn publish_child_dirs_beyond_soft_limit(
+    shared: &Shared,
+    child_dirs: &mut Vec<QueuedDirectory>,
+    count_incremental_batch: bool,
+) -> PublishResult {
+    if child_dirs.is_empty() {
+        return PublishResult::Published;
+    }
+    let mut state = match shared.state.lock() {
+        Ok(state) => state,
+        Err(_) => return PublishResult::Stopped,
+    };
+    if shared.stop.load(Ordering::Relaxed) {
+        child_dirs.clear();
+        return PublishResult::Stopped;
+    }
+    state.queue.extend(child_dirs.drain(..));
+    fetch_max(&shared.metrics.max_queued_dirs, state.queue.len());
+    shared
+        .metrics
+        .frontier_soft_limit_bypasses
+        .fetch_add(1, Ordering::Relaxed);
+    if count_incremental_batch {
+        shared
+            .metrics
+            .child_dir_publish_batches
+            .fetch_add(1, Ordering::Relaxed);
+    }
+    shared.cv.notify_all();
+    PublishResult::Published
 }
 
 struct AdaptiveEntryPolicy {
@@ -742,7 +837,8 @@ pub(crate) fn walk_adaptive_filtered_deferred(
         include_dirs,
         MaxDepth::unlimited(),
         false,
-        None,
+        Some(adaptive_shared_frontier_soft_limit(max_workers)),
+        adaptive_local_frame_limit(max_workers),
         on_entry,
         should_stop,
     )
@@ -767,6 +863,35 @@ pub(crate) fn walk_adaptive_filtered_unbounded(
         MaxDepth::unlimited(),
         true,
         None,
+        usize::MAX,
+        on_entry,
+        should_stop,
+    )
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn walk_adaptive_filtered_with_frontier_limits(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    frontier_soft_limit: usize,
+    local_frame_limit: usize,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_max_depth_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        MaxDepth::unlimited(),
+        true,
+        Some(frontier_soft_limit.max(1)),
+        local_frame_limit.max(1),
         on_entry,
         should_stop,
     )
@@ -790,7 +915,8 @@ pub(crate) fn walk_adaptive_with_max_depth(
         include_dirs,
         max_depth,
         true,
-        Some(adaptive_shared_frontier_capacity(max_workers)),
+        Some(adaptive_shared_frontier_soft_limit(max_workers)),
+        adaptive_local_frame_limit(max_workers),
         on_entry,
         should_stop,
     )
@@ -805,7 +931,8 @@ fn walk_adaptive_with_max_depth_mode(
     include_dirs: bool,
     max_depth: MaxDepth,
     publish_child_dirs_incrementally: bool,
-    frontier_capacity: Option<usize>,
+    frontier_soft_limit: Option<usize>,
+    local_frame_limit: usize,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
@@ -832,6 +959,12 @@ fn walk_adaptive_with_max_depth_mode(
         };
     }
     let initial_limit = initial_limit.clamp(1, max_workers);
+    let local_frame_limit = local_frame_limit.max(1);
+    let open_directory_frame_budget = if frontier_soft_limit.is_some() {
+        max_workers.saturating_mul(local_frame_limit)
+    } else {
+        0
+    };
     let shared = Arc::new(Shared {
         state: Mutex::new(SharedState {
             queue: VecDeque::from([QueuedDirectory {
@@ -853,12 +986,17 @@ fn walk_adaptive_with_max_depth_mode(
             elapsed_us: 0,
             change_count: 0,
         }),
-        metrics: AdaptiveAtomicMetrics::new(initial_limit, frontier_capacity),
+        metrics: AdaptiveAtomicMetrics::new(
+            initial_limit,
+            frontier_soft_limit,
+            open_directory_frame_budget,
+        ),
         max_depth,
         include_files,
         include_dirs,
         publish_child_dirs_incrementally,
-        frontier_capacity,
+        frontier_soft_limit,
+        local_frame_limit,
     });
     let entry_queue_capacity = max_workers.saturating_mul(256).max(256);
     let (tx, rx) = mpsc::sync_channel(entry_queue_capacity);

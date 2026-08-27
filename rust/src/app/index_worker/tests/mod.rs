@@ -1,11 +1,11 @@
 use super::*;
 use crate::runtime_config::{set_process_runtime_config, DeveloperRuntimeConfig, RuntimeConfig};
 use crate::walker_runtime::{
-    adaptive_shared_frontier_capacity, classify_walker_entry,
+    adaptive_shared_frontier_soft_limit, classify_walker_entry,
     default_adaptive_max_limit_from_logical_cores, next_limit_from_throughput, resolve_entry_kind,
     walk_adaptive, walk_adaptive_filtered, walk_adaptive_filtered_deferred,
-    walk_adaptive_filtered_unbounded, walk_adaptive_with_max_depth, walker_runtime_settings,
-    LimitDirection, WalkerBackend,
+    walk_adaptive_filtered_unbounded, walk_adaptive_filtered_with_frontier_limits,
+    walk_adaptive_with_max_depth, walker_runtime_settings, LimitDirection, WalkerBackend,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
@@ -200,8 +200,11 @@ fn walker_metrics_summary_can_be_written_to_file() {
     metrics.adaptive_limit_avg = 2.25;
     metrics.child_dir_publish_batches = 3;
     metrics.max_queued_dirs = 17;
-    metrics.shared_frontier_capacity = 256;
+    metrics.shared_frontier_soft_limit = 256;
     metrics.frontier_saturation_fallbacks = 4;
+    metrics.frontier_soft_limit_bypasses = 2;
+    metrics.open_directory_frame_budget = 64;
+    metrics.max_open_directory_frames = 7;
 
     let summary = walker_metrics_summary(&req, &metrics, "finished");
     write_walker_metrics_summary(&summary, &log_path.to_string_lossy());
@@ -214,8 +217,11 @@ fn walker_metrics_summary_can_be_written_to_file() {
     assert!(text.contains("adaptive_limit_change_count=7"));
     assert!(text.contains("child_dir_publish_batches=3"));
     assert!(text.contains("max_queued_dirs=17"));
-    assert!(text.contains("shared_frontier_capacity=256"));
+    assert!(text.contains("shared_frontier_soft_limit=256"));
     assert!(text.contains("frontier_saturation_fallbacks=4"));
+    assert!(text.contains("frontier_soft_limit_bypasses=2"));
+    assert!(text.contains("open_directory_frame_budget=64"));
+    assert!(text.contains("max_open_directory_frames=7"));
 
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -1090,7 +1096,7 @@ fn adaptive_walker_publishes_wide_child_frontier_in_batches() {
 }
 
 #[test]
-fn adaptive_walker_bounds_shared_frontier_for_wide_trees() {
+fn adaptive_walker_holds_shared_frontier_soft_limit_for_wide_shallow_trees() {
     const MAX_WORKERS: usize = 4;
     const CHILD_COUNT: usize = 1024;
 
@@ -1115,16 +1121,18 @@ fn adaptive_walker_bounds_shared_frontier_for_wide_trees() {
 
     assert_eq!(count, CHILD_COUNT);
     assert!(
-        metrics.max_queued_dirs <= adaptive_shared_frontier_capacity(MAX_WORKERS),
-        "shared frontier peak {} exceeded capacity {}",
+        metrics.max_queued_dirs <= adaptive_shared_frontier_soft_limit(MAX_WORKERS),
+        "shared frontier peak {} exceeded soft limit {}",
         metrics.max_queued_dirs,
-        adaptive_shared_frontier_capacity(MAX_WORKERS)
+        adaptive_shared_frontier_soft_limit(MAX_WORKERS)
     );
     assert_eq!(
-        metrics.shared_frontier_capacity,
-        adaptive_shared_frontier_capacity(MAX_WORKERS)
+        metrics.shared_frontier_soft_limit,
+        adaptive_shared_frontier_soft_limit(MAX_WORKERS)
     );
     assert!(metrics.frontier_saturation_fallbacks > 0);
+    assert_eq!(metrics.frontier_soft_limit_bypasses, 0);
+    assert!(metrics.max_open_directory_frames <= metrics.open_directory_frame_budget);
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -1159,7 +1167,7 @@ fn adaptive_walker_should_stop_after_frontier_saturation_returns_promptly() {
 
     assert_eq!(count, 400);
     assert!(metrics.frontier_saturation_fallbacks > 0);
-    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_capacity(MAX_WORKERS));
+    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_soft_limit(MAX_WORKERS));
     assert!(started.elapsed() < Duration::from_secs(5));
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -1196,7 +1204,55 @@ fn adaptive_walker_frontier_saturation_preserves_max_depth() {
     assert_eq!(paths.len(), TOP_DIR_COUNT * 2);
     assert!(paths.iter().all(|path| !path.ends_with("too-deep.txt")));
     assert!(metrics.frontier_saturation_fallbacks > 0);
-    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_capacity(MAX_WORKERS));
+    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_soft_limit(MAX_WORKERS));
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn adaptive_walker_bounds_open_frames_and_bypasses_soft_limit_for_deep_wide_tree() {
+    const MAX_WORKERS: usize = 4;
+    const SOFT_LIMIT: usize = 8;
+    const LOCAL_FRAME_LIMIT: usize = 2;
+    const TOP_DIR_COUNT: usize = 32;
+    const NESTED_DIR_COUNT: usize = 32;
+
+    let root = test_root("adaptive-frame-budget-bypass");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).expect("create root");
+    for i in 0..TOP_DIR_COUNT {
+        let top = root.join(format!("top-{i:02}"));
+        std::fs::create_dir_all(&top).expect("create top dir");
+        for j in 0..NESTED_DIR_COUNT {
+            std::fs::create_dir_all(top.join(format!("nested-{j:02}"))).expect("create nested dir");
+        }
+    }
+
+    let mut count = 0usize;
+    let metrics = walk_adaptive_filtered_with_frontier_limits(
+        &root,
+        MAX_WORKERS,
+        2,
+        true,
+        true,
+        SOFT_LIMIT,
+        LOCAL_FRAME_LIMIT,
+        |_entry| {
+            count = count.saturating_add(1);
+            true
+        },
+        || false,
+    );
+
+    assert_eq!(count, TOP_DIR_COUNT + TOP_DIR_COUNT * NESTED_DIR_COUNT);
+    assert_eq!(metrics.read_dir_errors, 0);
+    assert_eq!(metrics.shared_frontier_soft_limit, SOFT_LIMIT);
+    assert!(metrics.frontier_soft_limit_bypasses > 0);
+    assert!(metrics.max_queued_dirs > SOFT_LIMIT);
+    assert!(metrics.max_open_directory_frames <= metrics.open_directory_frame_budget);
+    assert_eq!(
+        metrics.open_directory_frame_budget,
+        MAX_WORKERS * LOCAL_FRAME_LIMIT
+    );
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -1612,6 +1668,15 @@ fn perf_adaptive_walker_scheduling_release_matrix() {
             for observation in deferred.iter().chain(incremental.iter()) {
                 assert_eq!(observation.count, expected);
                 assert_eq!(observation.metrics.read_dir_errors, 0);
+                assert_eq!(
+                    observation.metrics.shared_frontier_soft_limit,
+                    adaptive_shared_frontier_soft_limit(MAX_WORKERS)
+                );
+                assert!(
+                    observation.metrics.max_queued_dirs
+                        <= adaptive_shared_frontier_soft_limit(MAX_WORKERS)
+                );
+                assert_eq!(observation.metrics.frontier_soft_limit_bypasses, 0);
             }
             assert!(deferred
                 .iter()
@@ -1726,10 +1791,13 @@ fn perf_adaptive_walker_frontier_release_matrix() {
                 assert_eq!(observation.count, expected);
                 assert_eq!(observation.metrics.read_dir_errors, 0);
             }
-            let capacity = adaptive_shared_frontier_capacity(MAX_WORKERS);
+            let soft_limit = adaptive_shared_frontier_soft_limit(MAX_WORKERS);
             assert!(bounded
                 .iter()
-                .all(|observation| observation.metrics.max_queued_dirs <= capacity));
+                .all(|observation| observation.metrics.max_queued_dirs <= soft_limit));
+            assert!(bounded
+                .iter()
+                .all(|observation| observation.metrics.frontier_soft_limit_bypasses == 0));
             unbounded.sort_unstable_by_key(|observation| observation.elapsed);
             bounded.sort_unstable_by_key(|observation| observation.elapsed);
             let unbounded_median_seconds = median_elapsed_seconds(&unbounded);
@@ -1744,13 +1812,13 @@ fn perf_adaptive_walker_frontier_release_matrix() {
             let bounded_median = &bounded[REPETITIONS / 2];
 
             eprintln!(
-                "Adaptive frontier matrix profile={} shape={} mode={} repetitions={} entries={} capacity={} unbounded_peak={} bounded_peak={} unbounded_median_ms={:.3} bounded_median_ms={:.3} elapsed_speedup={:.3}x unbounded_first_file_us={:.0} bounded_first_file_us={:.0} first_file_speedup={:.3}x",
+                "Adaptive frontier matrix profile={} shape={} mode={} repetitions={} entries={} soft_limit={} unbounded_peak={} soft_limited_peak={} unbounded_median_ms={:.3} soft_limited_median_ms={:.3} elapsed_speedup={:.3}x unbounded_first_file_us={:.0} soft_limited_first_file_us={:.0} first_file_speedup={:.3}x",
                 if cfg!(debug_assertions) { "debug" } else { "release" },
                 shape,
                 mode,
                 REPETITIONS,
                 bounded_median.count,
-                capacity,
+                soft_limit,
                 unbounded_median.metrics.max_queued_dirs,
                 bounded_median.metrics.max_queued_dirs,
                 unbounded_median_seconds * 1000.0,
