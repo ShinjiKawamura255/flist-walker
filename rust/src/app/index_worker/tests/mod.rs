@@ -1152,10 +1152,11 @@ fn adaptive_walker_should_stop_after_frontier_saturation_returns_promptly() {
     let stop = AtomicBool::new(false);
     let started = Instant::now();
     let mut count = 0usize;
+    // Start with one active worker so the root must saturate the frontier before it can be drained.
     let metrics = walk_adaptive(
         &root,
         MAX_WORKERS,
-        2,
+        1,
         |_entry| {
             count = count.saturating_add(1);
             if count == 400 {
