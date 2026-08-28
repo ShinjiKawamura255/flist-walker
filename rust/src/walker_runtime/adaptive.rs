@@ -929,6 +929,7 @@ pub(crate) fn walk_adaptive_filtered_with_frontier_limits_and_max_depth(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn walk_adaptive_with_max_depth(
     root: &Path,
     max_workers: usize,
