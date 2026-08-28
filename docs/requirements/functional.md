@@ -37,7 +37,7 @@
 - FR-034: ツールは root および階層 FileList を UTF-8（先頭の UTF-8 BOM は任意）として決定論的に読み込み、UTF-16、NUL、UTF-8 不正、または上限超過行を置換文字や locale 推測で解釈せず、対象 FileList を特定できるエラーとして拒否しなければならない。
 - FR-035: ツールは TUI で新しい配布版を非同期検知した場合に英語の通知と終了後に実行する手動更新コマンドを表示し、通知だけで更新を開始してはならない。また、GUI を起動せず更新確認または明示的な更新開始を行う CLI 操作を提供しなければならない。
 - FR-036: ツールは GUI で現在利用可能なキーボードショートカットと query のフィールド指定を確認できるヘルプを提供し、OS の primary modifier と runtime config による Emacs 風ショートカットの有効状態を正しく反映しなければならない。
-- FR-037: ツールは path に安定した名前を付ける named root と、root/query/type/source/regex/case/ignore/sort/max-depth だけを保存する検索 preset を管理・適用できなければならない。GUI は modal picker 内で preset の検索・適用、現在 tab の pure-search state からの追加、編集、確認付き削除と、named root の追加・編集・削除を提供しなければならないが、catalog 管理 UI をメイン画面へ常設してはならない。preset は action、外部 command、更新、FileList 変更を保存または暗黙実行してはならない。
+- FR-037: ツールは path に安定した名前を付ける named root と、root/query/type/source/regex/case/ignore/sort/max-depth だけを保存する検索 preset を管理・適用できなければならない。GUI はショートカットを知らない利用者もメイン画面から preset picker を開ける入口を提供し、modal picker 内で preset の検索・適用、現在 tab の pure-search state からの追加、編集、確認付き削除と、named root の追加・編集・削除を提供しなければならない。preset の一覧・選択・編集 UI はメイン画面へ埋め込まず、preset は action、外部 command、更新、FileList 変更を保存または暗黙実行してはならない。
 - FR-038: ツールは従来の path 全体を対象とする query を変更せず、各 query term を filename、root 相対 path、親 directory、最終 extension のいずれかへ限定できなければならない。
 - FR-039: ツールは検索 root からの候補収集深度に上限を指定でき、Walker、FileList、batch CLI、interactive CLI、GUI のいずれでも同じ候補範囲を使用しなければならない。GUI の上限はタブ単位で保持し、preset から適用しても他タブへ波及してはならない。
 - FR-040: ツールは従来の GUI/CLI 両対応 `flistwalker` を維持しつつ、同じ CLI/TUI 契約を `--cli` なしで利用できる CLI 専用 executable `fw` を提供しなければならない。自己更新は起動した executable variant と同じ release asset だけを選択しなければならない。

@@ -527,7 +527,11 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
 
         ui.horizontal(|ui| {
             for label in app.top_action_labels() {
-                if !ui.button(label).clicked() {
+                let mut response = ui.button(label);
+                if label == "Presets..." {
+                    response = response.on_hover_text(FlistWalkerApp::preset_top_action_tooltip());
+                }
+                if !response.clicked() {
                     continue;
                 }
                 if let Some(command) = FlistWalkerApp::top_action_command(label) {

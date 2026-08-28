@@ -12,6 +12,7 @@ pub(super) enum RenderTopActionCommand {
     ClearPinned,
     CreateFileList,
     RefreshIndex,
+    OpenPresetPicker,
     OpenHelp,
 }
 
@@ -366,6 +367,7 @@ impl FlistWalkerApp {
             "Clear Selected",
             create_label,
             "Refresh Index",
+            "Presets...",
             "Help",
         ]
     }
@@ -381,9 +383,17 @@ impl FlistWalkerApp {
                 Some(RenderTopActionCommand::CreateFileList)
             }
             "Refresh Index" => Some(RenderTopActionCommand::RefreshIndex),
+            "Presets..." => Some(RenderTopActionCommand::OpenPresetPicker),
             "Help" => Some(RenderTopActionCommand::OpenHelp),
             _ => None,
         }
+    }
+
+    pub(super) fn preset_top_action_tooltip() -> String {
+        format!(
+            "Open saved search presets ({}+Shift+P)",
+            Self::primary_shortcut_label()
+        )
     }
 
     pub(super) fn schedule_frame_repaint(&mut self, ctx: &egui::Context) {
@@ -564,6 +574,9 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::RefreshIndex) => {
                     self.request_index_refresh();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::OpenPresetPicker) => {
+                    self.open_preset_picker(ctx);
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::OpenHelp) => {
                     self.shell.ui.help_open = true;
