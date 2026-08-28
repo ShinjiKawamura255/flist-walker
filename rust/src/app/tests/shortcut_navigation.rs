@@ -19,7 +19,13 @@ fn ctrl_h_deletes_only_one_char_when_widget_did_not_change_text() {
     let mut cursor = 4usize;
     let mut anchor = 4usize;
 
-    let (text_changed, cursor_changed) = app.apply_ctrl_h_delete(&mut cursor, &mut anchor, false);
+    let (text_changed, cursor_changed) = FlistWalkerApp::apply_ctrl_h_delete(
+        &mut app.shell.runtime.query_state.query,
+        &mut app.shell.runtime.query_state.kill_buffer,
+        &mut cursor,
+        &mut anchor,
+        false,
+    );
 
     assert!(text_changed);
     assert!(cursor_changed);
@@ -39,7 +45,13 @@ fn ctrl_h_does_not_delete_twice_when_widget_already_changed_text() {
     let mut cursor = 3usize;
     let mut anchor = 3usize;
 
-    let (text_changed, cursor_changed) = app.apply_ctrl_h_delete(&mut cursor, &mut anchor, true);
+    let (text_changed, cursor_changed) = FlistWalkerApp::apply_ctrl_h_delete(
+        &mut app.shell.runtime.query_state.query,
+        &mut app.shell.runtime.query_state.kill_buffer,
+        &mut cursor,
+        &mut anchor,
+        true,
+    );
 
     assert!(!text_changed);
     assert!(!cursor_changed);

@@ -66,14 +66,14 @@ impl FlistWalkerApp {
         if emacs_keybindings_enabled {
             lines.extend([
                 "Emacs-style shortcuts".to_string(),
-                "Ctrl+N / Ctrl+P — Move the current row".to_string(),
+                "Ctrl+N / Ctrl+P — Move the current selection in lists and pickers".to_string(),
                 "Ctrl+V / Alt+V — Page down / page up".to_string(),
                 "Ctrl+I — Toggle pin".to_string(),
-                "Ctrl+J / Ctrl+M — Open or execute".to_string(),
-                "Ctrl+G — Clear the query and pinned items".to_string(),
+                "Ctrl+J / Ctrl+M — Accept the active selection".to_string(),
+                "Ctrl+G — Cancel the active view or clear the query and pins".to_string(),
                 "Ctrl+R — Search query history".to_string(),
-                "Ctrl+A / Ctrl+E — Move to the start / end of the search text".to_string(),
-                "Ctrl+B / Ctrl+F — Move one character in the search text".to_string(),
+                "Ctrl+A / Ctrl+E — Move to the start / end of the focused text field".to_string(),
+                "Ctrl+B / Ctrl+F — Move one character in the focused text field".to_string(),
                 "Ctrl+H / Ctrl+D — Delete backward / forward".to_string(),
             ]);
             if ctrl_w_deletes_word_in_query {
@@ -82,11 +82,11 @@ impl FlistWalkerApp {
                         .to_string(),
                 );
             } else {
-                lines.push("Ctrl+K — Delete through the end of the search text".to_string());
+                lines.push("Ctrl+K — Delete through the end of the focused text field".to_string());
             }
             lines.extend([
-                "Ctrl+Y — Restore the most recently deleted search text".to_string(),
-                "Ctrl+U — Delete through the start of the search text".to_string(),
+                "Ctrl+Y — Restore the most recently killed text".to_string(),
+                "Ctrl+U — Delete through the start of the focused text field".to_string(),
             ]);
         } else {
             lines.push("Emacs-style shortcuts are disabled in the runtime config.".to_string());

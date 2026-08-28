@@ -33,6 +33,31 @@ fn f1_opens_help_and_escape_closes_it() {
 }
 
 #[test]
+fn regression_emacs_cancel_closes_help_only_when_enabled() {
+    let root = test_root("shortcut-help-emacs-cancel-regression");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.help_open = true;
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::G, emacs_shortcut_modifiers(false))],
+    );
+    assert!(!app.shell.ui.help_open);
+
+    app.shell.runtime.emacs_keybindings_enabled = false;
+    app.shell.ui.help_open = true;
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::G, emacs_shortcut_modifiers(false))],
+    );
+    assert!(app.shell.ui.help_open);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn open_help_consumes_background_copy_shortcut() {
     let root = test_root("shortcut-help-blocks-copy");
     fs::create_dir_all(&root).expect("create dir");
@@ -67,6 +92,7 @@ fn gui_help_lines_follow_platform_and_emacs_settings() {
     assert!(enabled.contains("Named roots"));
     assert!(enabled.contains("F2 to edit and Delete to remove"));
     assert!(enabled.contains("Ctrl+N / Ctrl+P"));
+    assert!(enabled.contains("lists and pickers"));
     assert!(enabled.contains("Query syntax"));
     assert!(enabled.contains("name:TERM"));
     assert!(enabled.contains("path:TERM"));

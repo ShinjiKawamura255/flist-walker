@@ -60,7 +60,8 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn apply_ctrl_h_delete(
-        &mut self,
+        text: &mut String,
+        kill_buffer: &mut String,
         cursor: &mut usize,
         anchor: &mut usize,
         text_already_changed: bool,
@@ -75,13 +76,7 @@ impl FlistWalkerApp {
             primary: *cursor,
             anchor: *anchor,
         };
-        let query_state = &mut self.shell.runtime.query_state;
-        let outcome = apply_emacs_edit(
-            &mut query_state.query,
-            &mut range,
-            &mut query_state.kill_buffer,
-            EmacsEdit::DeleteBackward,
-        );
+        let outcome = apply_emacs_edit(text, &mut range, kill_buffer, EmacsEdit::DeleteBackward);
         *cursor = range.primary;
         *anchor = range.anchor;
         (outcome.text_changed, outcome.cursor_changed)
@@ -91,14 +86,55 @@ impl FlistWalkerApp {
         &mut self,
         ctx: &egui::Context,
         output: &mut egui::text_edit::TextEditOutput,
+        text_before_widget: &str,
     ) -> bool {
-        if !self.shell.runtime.emacs_keybindings_enabled {
-            return false;
-        }
-        if self.shell.ui.ime_composition_active {
-            return false;
-        }
-        if !output.response.has_focus() {
+        let enabled = self.shell.runtime.emacs_keybindings_enabled;
+        let ime_composition_active = self.shell.ui.ime_composition_active;
+        let query_state = &mut self.shell.runtime.query_state;
+        Self::apply_emacs_text_edit_shortcuts(
+            ctx,
+            output,
+            &mut query_state.query,
+            &mut query_state.kill_buffer,
+            enabled,
+            ime_composition_active,
+            text_before_widget,
+        )
+    }
+
+    pub(in crate::app) fn apply_emacs_history_search_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+        output: &mut egui::text_edit::TextEditOutput,
+        text_before_widget: &str,
+    ) -> bool {
+        let enabled = self.shell.runtime.emacs_keybindings_enabled;
+        let ime_composition_active = self.shell.ui.ime_composition_active;
+        let query_state = &mut self.shell.runtime.query_state;
+        Self::apply_emacs_text_edit_shortcuts(
+            ctx,
+            output,
+            &mut query_state.history_search_query,
+            &mut query_state.kill_buffer,
+            enabled,
+            ime_composition_active,
+            text_before_widget,
+        )
+    }
+
+    // Regression guard: every application-owned single-line TextEdit uses this
+    // adapter so Emacs editing chords do not stop at the main query field. Keep
+    // preset/root editors and future text inputs paired with regression_emacs_ctrl_*.
+    pub(in crate::app) fn apply_emacs_text_edit_shortcuts(
+        ctx: &egui::Context,
+        output: &mut egui::text_edit::TextEditOutput,
+        text: &mut String,
+        kill_buffer: &mut String,
+        enabled: bool,
+        ime_composition_active: bool,
+        text_before_widget: &str,
+    ) -> bool {
+        if !enabled || ime_composition_active || !output.response.has_focus() {
             return false;
         }
 
@@ -108,7 +144,7 @@ impl FlistWalkerApp {
         };
         let pressed = |key: egui::Key| ctx.input_mut(|i| i.consume_key(emacs_mods, key));
 
-        let char_len = self.shell.runtime.query_state.query.chars().count();
+        let char_len = text.chars().count();
         let ccursor =
             output.state.cursor.char_range().unwrap_or_else(|| {
                 egui::text::CCursorRange::one(egui::text::CCursor::new(char_len))
@@ -143,24 +179,37 @@ impl FlistWalkerApp {
             return false;
         };
 
-        let outcome = if edit == EmacsEdit::DeleteBackward {
+        let widget_changed_text = output.response.changed();
+        let outcome = if matches!(edit, EmacsEdit::KillToEnd | EmacsEdit::KillToStart)
+            && widget_changed_text
+        {
+            // egui currently handles Ctrl+K/U before this adapter. Recover the
+            // deleted span so every field still shares the same yank buffer.
+            let removed = widget_kill_segment(text_before_widget, text, edit);
+            if !removed.is_empty() {
+                *kill_buffer = removed;
+            }
+            EditOutcome {
+                text_changed: true,
+                cursor_changed: false,
+            }
+        } else if edit == EmacsEdit::DeleteBackward {
             let mut primary = cursor.primary;
             let mut anchor = cursor.anchor;
-            let (text_changed, cursor_changed) =
-                self.apply_ctrl_h_delete(&mut primary, &mut anchor, output.response.changed());
+            let (text_changed, cursor_changed) = Self::apply_ctrl_h_delete(
+                text,
+                kill_buffer,
+                &mut primary,
+                &mut anchor,
+                widget_changed_text,
+            );
             cursor = CursorRange { primary, anchor };
             EditOutcome {
                 text_changed,
                 cursor_changed,
             }
         } else {
-            let query_state = &mut self.shell.runtime.query_state;
-            apply_emacs_edit(
-                &mut query_state.query,
-                &mut cursor,
-                &mut query_state.kill_buffer,
-                edit,
-            )
+            apply_emacs_edit(text, &mut cursor, kill_buffer, edit)
         };
 
         if outcome.cursor_changed || outcome.text_changed {
@@ -259,12 +308,12 @@ impl FlistWalkerApp {
         true
     }
 
-    pub(in crate::app) fn consume_disabled_emacs_query_edit_shortcuts(
-        &self,
+    pub(in crate::app) fn consume_disabled_emacs_text_edit_shortcuts(
         ctx: &egui::Context,
-        query_focused: bool,
+        input_focused: bool,
+        emacs_enabled: bool,
     ) {
-        if self.shell.runtime.emacs_keybindings_enabled || !query_focused {
+        if emacs_enabled || !input_focused {
             return;
         }
 
@@ -292,5 +341,37 @@ impl FlistWalkerApp {
             let _ = ctx.input_mut(|i| i.consume_key(ctrl_mods, key));
             let _ = ctx.input_mut(|i| i.consume_key(command_mods, key));
         }
+    }
+}
+
+fn widget_kill_segment(before: &str, after: &str, edit: EmacsEdit) -> String {
+    let before = before.chars().collect::<Vec<_>>();
+    let after = after.chars().collect::<Vec<_>>();
+    if after.len() >= before.len() {
+        return String::new();
+    }
+
+    let removed_len = before.len() - after.len();
+    match edit {
+        EmacsEdit::KillToEnd => before[after.len()..].iter().collect(),
+        EmacsEdit::KillToStart => before[..removed_len].iter().collect(),
+        _ => String::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn widget_kill_segment_preserves_unicode_and_repeated_text_direction() {
+        assert_eq!(
+            widget_kill_segment("界a界bc", "界a", EmacsEdit::KillToEnd),
+            "界bc"
+        );
+        assert_eq!(
+            widget_kill_segment("界a界bc", "界bc", EmacsEdit::KillToStart),
+            "界a"
+        );
     }
 }

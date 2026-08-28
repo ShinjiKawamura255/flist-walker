@@ -138,7 +138,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
 - ファイルを削除すると、次回起動時に現在の環境変数を seed にして再生成されます。
 - `walker_max_entries` は大きい root で効くので、ここでは公開しています。
-- `emacs_keybindings_enabled` を `false` にすると、`Ctrl+N`、`Ctrl+P`、`Ctrl+V`、`Alt+V`、`Ctrl+J`、`Ctrl+M`、検索欄編集用 chord などの Emacs 風操作を無効化できます。既定は有効です。
+- `emacs_keybindings_enabled` を `false` にすると、`Ctrl+N`、`Ctrl+P`、`Ctrl+V`、`Alt+V`、`Ctrl+J`、`Ctrl+M`、text-editing chord などの Emacs 風操作を無効化できます。既定は有効で、有効時の移動・確定・キャンセル chord は、対応する矢印キー・`Enter`・`Esc` 操作がある結果一覧、履歴、root 選択、preset/Named Root 画面、overlay、modal 全体へ適用されます。`Ctrl+A/E/B/F/H/D/K/Y/U` は通常検索・履歴だけでなく、preset と root 管理を含む application-owned の全単一行入力へ適用されます。GUI の `Ctrl+W` はタブ終了と競合するため、従来どおり `ctrl_w_deletes_word_in_query` で別途制御します。
 
 例:
 

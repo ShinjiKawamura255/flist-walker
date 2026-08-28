@@ -52,6 +52,7 @@ impl FlistWalkerApp {
             if self.shell.features.presets.picker.named_roots.editor.open {
                 if ctx
                     .input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+                    || self.consume_emacs_shortcut(ctx, egui::Key::G, false)
                 {
                     self.cancel_named_root_edit();
                     return true;
@@ -72,22 +73,22 @@ impl FlistWalkerApp {
             {
                 if ctx
                     .input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+                    || self.consume_emacs_shortcut(ctx, egui::Key::G, false)
                 {
                     self.cancel_delete_named_root();
                     return true;
                 }
                 return true;
             }
-            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            if self.consume_gui_cancel(ctx) {
                 self.close_named_root_manager();
                 return true;
             }
-            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-            {
+            if self.consume_gui_next(ctx) {
                 self.move_named_root_selection(1);
                 return true;
             }
-            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+            if self.consume_gui_previous(ctx) {
                 self.move_named_root_selection(-1);
                 return true;
             }
@@ -103,7 +104,7 @@ impl FlistWalkerApp {
         }
 
         if self.shell.features.presets.picker.editor.open {
-            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            if self.consume_gui_cancel(ctx) {
                 self.cancel_preset_edit();
                 return true;
             }
@@ -115,25 +116,25 @@ impl FlistWalkerApp {
         }
 
         if self.shell.features.presets.picker.confirm_delete {
-            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+            if self.consume_gui_cancel(ctx) {
                 self.cancel_delete_preset();
             }
             return true;
         }
 
-        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+        if self.consume_gui_cancel(ctx) {
             self.close_preset_picker();
             return true;
         }
-        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
+        if self.consume_gui_next(ctx) {
             self.move_preset_picker_selection(1);
             return true;
         }
-        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+        if self.consume_gui_previous(ctx) {
             self.move_preset_picker_selection(-1);
             return true;
         }
-        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
+        if self.consume_gui_accept(ctx) {
             self.apply_selected_preset();
             return true;
         }
@@ -274,6 +275,31 @@ impl FlistWalkerApp {
         false
     }
 
+    // Regression guard: translate Emacs chords at the shared application-command
+    // boundary so modal and main surfaces cannot silently diverge. Do not add a new
+    // Up/Down/Enter/Escape handler without these semantic helpers and the paired
+    // regression_emacs_* tests.
+    pub(in crate::app) fn consume_gui_next(&self, ctx: &egui::Context) -> bool {
+        self.consume_emacs_shortcut(ctx, egui::Key::N, false)
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+    }
+
+    pub(in crate::app) fn consume_gui_previous(&self, ctx: &egui::Context) -> bool {
+        self.consume_emacs_shortcut(ctx, egui::Key::P, false)
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+    }
+
+    pub(in crate::app) fn consume_gui_accept(&self, ctx: &egui::Context) -> bool {
+        self.consume_emacs_shortcut(ctx, egui::Key::J, false)
+            || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
+    }
+
+    pub(in crate::app) fn consume_gui_cancel(&self, ctx: &egui::Context) -> bool {
+        self.consume_emacs_shortcut(ctx, egui::Key::G, false)
+            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+    }
+
     pub(in crate::app) fn handle_shortcuts_with_focus(
         &mut self,
         ctx: &egui::Context,
@@ -284,28 +310,19 @@ impl FlistWalkerApp {
             return;
         }
         if self.is_root_dropdown_open(ctx) {
-            if self.consume_emacs_shortcut(ctx, egui::Key::N, false)
-                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
-            {
+            if self.consume_gui_next(ctx) {
                 self.move_root_dropdown_selection(1);
                 return;
             }
-            if self.consume_emacs_shortcut(ctx, egui::Key::P, false)
-                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
-            {
+            if self.consume_gui_previous(ctx) {
                 self.move_root_dropdown_selection(-1);
                 return;
             }
-            if self.consume_emacs_shortcut(ctx, egui::Key::J, false)
-                || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
-                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
-            {
+            if self.consume_gui_accept(ctx) {
                 self.apply_root_dropdown_selection(ctx);
                 return;
             }
-            if self.consume_emacs_shortcut(ctx, egui::Key::G, false)
-                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
-            {
+            if self.consume_gui_cancel(ctx) {
                 self.close_root_dropdown(ctx);
                 return;
             }
@@ -378,27 +395,16 @@ impl FlistWalkerApp {
         }
 
         if self.shell.runtime.query_state.is_history_search_active() {
-            if self.consume_emacs_shortcut(ctx, egui::Key::N, false) {
+            if self.consume_gui_next(ctx) {
                 self.move_history_search_selection(1);
             }
-            if self.consume_emacs_shortcut(ctx, egui::Key::P, false) {
+            if self.consume_gui_previous(ctx) {
                 self.move_history_search_selection(-1);
             }
-            if self.consume_emacs_shortcut(ctx, egui::Key::G, false)
-                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
-            {
+            if self.consume_gui_cancel(ctx) {
                 self.cancel_history_search();
             }
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
-                self.move_history_search_selection(1);
-            }
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
-                self.move_history_search_selection(-1);
-            }
-            if self.consume_emacs_shortcut(ctx, egui::Key::J, false)
-                || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
-                || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
-            {
+            if self.consume_gui_accept(ctx) {
                 self.accept_history_search();
             }
             if query_focused {
@@ -426,9 +432,7 @@ impl FlistWalkerApp {
             // Event::Copy before widgets see Key::C; keep both paths as path-copy.
             self.shell.ui.pending_copy_shortcut = true;
         }
-        if self.consume_emacs_shortcut(ctx, egui::Key::G, false)
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
-        {
+        if self.consume_gui_cancel(ctx) {
             self.clear_query_and_selection();
         }
         let tab_forward = ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab));
@@ -454,21 +458,16 @@ impl FlistWalkerApp {
         if self.consume_emacs_shortcut(ctx, egui::Key::I, false) {
             self.toggle_pin_current_from_tab();
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown)) {
+        if self.consume_gui_next(ctx) {
             self.move_row(1);
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp)) {
+        if self.consume_gui_previous(ctx) {
             self.move_row(-1);
-        }
-        if self.consume_emacs_shortcut(ctx, egui::Key::J, false)
-            || self.consume_emacs_shortcut(ctx, egui::Key::M, false)
-        {
-            self.execute_selected();
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Enter)) {
             self.execute_selected_open_folder();
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)) {
+        if self.consume_gui_accept(ctx) {
             self.execute_selected();
         }
 

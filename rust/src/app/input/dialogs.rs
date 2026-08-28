@@ -24,10 +24,7 @@ impl FlistWalkerApp {
         {
             return false;
         }
-        let close = ctx.input_mut(|input| {
-            input.consume_key(egui::Modifiers::NONE, egui::Key::Enter)
-                || input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
-        });
+        let close = self.consume_gui_accept(ctx) || self.consume_gui_cancel(ctx);
         ctx.input_mut(|input| {
             input.events.retain(|event| {
                 !matches!(
@@ -56,10 +53,8 @@ impl FlistWalkerApp {
             return false;
         }
 
-        let close = ctx.input_mut(|input| {
-            input.consume_key(egui::Modifiers::NONE, egui::Key::F1)
-                || input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
-        });
+        let close = ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::F1))
+            || self.consume_gui_cancel(ctx);
         ctx.input_mut(|input| {
             input.events.retain(|event| {
                 !matches!(
@@ -95,11 +90,7 @@ impl FlistWalkerApp {
             return false;
         };
 
-        let close = ctx.input_mut(|input| {
-            let enter = input.consume_key(egui::Modifiers::NONE, egui::Key::Enter);
-            let escape = input.consume_key(egui::Modifiers::NONE, egui::Key::Escape);
-            enter || escape
-        });
+        let close = self.consume_gui_accept(ctx) || self.consume_gui_cancel(ctx);
         ctx.input_mut(|input| {
             input.events.retain(|event| {
                 !matches!(
@@ -226,25 +217,25 @@ impl FlistWalkerApp {
         };
         self.sync_filelist_dialog_selection(kind);
 
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
+        if self.consume_gui_cancel(ctx) {
             self.cancel_active_filelist_dialog();
             return true;
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowLeft))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp))
+            || self.consume_gui_previous(ctx)
             || ctx.input_mut(|i| i.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab))
         {
             self.move_filelist_dialog_selection(-1);
             return true;
         }
         if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowRight))
-            || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown))
+            || self.consume_gui_next(ctx)
             || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Tab))
         {
             self.move_filelist_dialog_selection(1);
             return true;
         }
-        if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter))
+        if self.consume_gui_accept(ctx)
             || ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space))
         {
             self.activate_selected_filelist_dialog_button();

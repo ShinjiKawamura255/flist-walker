@@ -395,9 +395,20 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         let editing_history_search = app.shell.runtime.query_state.history_search_active;
         let query_input_id = app.shell.ui.query_input_id();
         let query_focused_before_text_edit = ctx.memory(|m| m.has_focus(query_input_id));
-        if !editing_history_search {
-            app.consume_disabled_emacs_query_edit_shortcuts(&ctx, query_focused_before_text_edit);
-        }
+        FlistWalkerApp::consume_disabled_emacs_text_edit_shortcuts(
+            &ctx,
+            query_focused_before_text_edit,
+            app.shell.runtime.emacs_keybindings_enabled,
+        );
+        let text_before_widget = if editing_history_search {
+            app.shell
+                .runtime
+                .query_state
+                .history_search_query
+                .clone()
+        } else {
+            app.shell.runtime.query_state.query.clone()
+        };
         let mut output = egui::TextEdit::singleline(if editing_history_search {
             &mut app.shell.runtime.query_state.history_search_query
         } else {
@@ -463,7 +474,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 }
                 app.update_results();
             }
-            if app.apply_emacs_query_shortcuts(&ctx, &mut output) {
+            if app.apply_emacs_query_shortcuts(&ctx, &mut output, &text_before_widget) {
                 app.mark_query_edited();
                 app.update_results();
             }
@@ -492,21 +503,25 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 );
                 app.update_results();
             }
-        } else if output.response.changed() {
-            if FlistWalkerApp::normalize_singleline_input(
-                &mut app.shell.runtime.query_state.history_search_query,
-            ) && output.response.has_focus()
-            {
-                let end = char_count(&app.shell.runtime.query_state.history_search_query);
-                output
-                    .state
-                    .cursor
-                    .set_char_range(Some(egui::text::CCursorRange::one(
-                        egui::text::CCursor::new(end),
-                    )));
-                output.state.clone().store(&ctx, output.response.id);
+        } else {
+            let emacs_text_changed =
+                app.apply_emacs_history_search_shortcuts(&ctx, &mut output, &text_before_widget);
+            if output.response.changed() || emacs_text_changed {
+                if FlistWalkerApp::normalize_singleline_input(
+                    &mut app.shell.runtime.query_state.history_search_query,
+                ) && output.response.has_focus()
+                {
+                    let end = char_count(&app.shell.runtime.query_state.history_search_query);
+                    output
+                        .state
+                        .cursor
+                        .set_char_range(Some(egui::text::CCursorRange::one(
+                            egui::text::CCursor::new(end),
+                        )));
+                    output.state.clone().store(&ctx, output.response.id);
+                }
+                app.refresh_history_search_results();
             }
-            app.refresh_history_search_results();
         }
         app.run_deferred_shortcuts(&ctx);
 

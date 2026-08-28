@@ -41,3 +41,4 @@
 - FR-038: ツールは従来の path 全体を対象とする query を変更せず、各 query term を filename、root 相対 path、親 directory、最終 extension のいずれかへ限定できなければならない。
 - FR-039: ツールは検索 root からの候補収集深度に上限を指定でき、Walker、FileList、batch CLI、interactive CLI、GUI のいずれでも同じ候補範囲を使用しなければならない。GUI の上限はタブ単位で保持し、preset から適用しても他タブへ波及してはならない。
 - FR-040: ツールは従来の GUI/CLI 両対応 `flistwalker` を維持しつつ、同じ CLI/TUI 契約を `--cli` なしで利用できる CLI 専用 executable `fw` を提供しなければならない。自己更新は起動した executable variant と同じ release asset だけを選択しなければならない。
+- FR-041: ツールは runtime config の `emacs_keybindings_enabled` が有効な場合、GUI/TUI のメイン一覧、検索履歴、root/preset/Named Root の選択画面、overlay、modal、および application-owned text field を含む全対話面で、通常キーに対応する Emacs 風 application command と text-editing chord を一貫して提供しなければならない。新しい対話面と単一行入力は feature ごとの個別 opt-in ではなく共有 command mapping / text-editing adapter を継承し、同設定が無効な場合は Emacs 風 chord をアプリ操作として処理してはならない。
