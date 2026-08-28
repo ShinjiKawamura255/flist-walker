@@ -110,7 +110,7 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 ## Preset Application Manual Test (TC-174)
 
 1. current rootと同じroot、Walker、Files、非空query、Ignore List有効、Name (A-Z) sortのpresetを用意する。ignore termに一致するpathと一致しないpathを候補へ含める。
-2. GUIで`Primary+Shift+P`からpresetを適用し、rootの再index表示なしにignore対象が消え、Name sortが検索完了後も維持されることを確認する。
+2. GUIでメイン画面の`Presets...`からpickerを開いてpresetを適用し、rootの再index表示なしにignore対象が消え、Name sortが検索完了後も維持されることを確認する。pickerを閉じた後に`Primary+Shift+P`でも同じpickerが開くことを確認する。
 3. 同じrootでIgnore List無効のpresetを適用し、除外されていた候補が戻り、検索完了後も指定sortと現在tabのsort scopeが維持されることを確認する。
 4. 高速に別queryまたはpresetへ切り替え、古い検索responseが最新の候補・sort・scopeを巻き戻さないことを確認する。
 5. GSM-008のNative interaction、GSM-009のvisual/layout、GSM-010の入力・スクロールlivenessへ、build SHA、OS、preset内容、期待/実結果、PASS/FAILを記録する。いずれかのrequired axisが未実行ならrelease readinessをPASSにしない。

@@ -347,6 +347,7 @@ fn top_action_labels_show_default_create_label_when_idle() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
+            "Presets...",
             "Help",
         ]
     );
@@ -362,6 +363,39 @@ fn top_action_labels_show_running_create_label_when_filelist_is_in_progress() {
 
     assert_eq!(app.top_action_labels()[3], "Create File List (Running...)");
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn preset_top_action_maps_to_the_existing_picker_command() {
+    assert!(matches!(
+        FlistWalkerApp::top_action_command("Presets..."),
+        Some(RenderTopActionCommand::OpenPresetPicker)
+    ));
+    assert_eq!(
+        FlistWalkerApp::preset_top_action_tooltip(),
+        format!(
+            "Open saved search presets ({}+Shift+P)",
+            FlistWalkerApp::primary_shortcut_label()
+        )
+    );
+}
+
+#[test]
+fn dispatch_render_commands_opens_preset_picker_from_top_action() {
+    let root = test_root("render-command-open-presets");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let ctx = egui::Context::default();
+
+    app.queue_render_command(RenderCommand::TopAction(
+        RenderTopActionCommand::OpenPresetPicker,
+    ));
+    app.dispatch_render_commands(&ctx);
+
+    assert!(app.shell.features.presets.picker.open);
+    assert!(app.shell.features.presets.picker.focus_requested);
+    assert!(app.shell.ui.pending_render_commands.is_empty());
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]
@@ -855,6 +889,7 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
                 "Clear Selected",
                 "Create File List",
                 "Refresh Index",
+                "Presets...",
                 "Help"
             ],
             "status_line": "idle status",
@@ -880,7 +915,7 @@ fn tc_180_gui_surface_snapshot_exposes_active_tab_max_depth() {
 }
 
 #[test]
-fn gui_surface_snapshot_does_not_expose_permanent_preset_controls() {
+fn gui_surface_snapshot_exposes_only_the_preset_launcher_until_picker_opens() {
     let root = test_root("render-snapshot-no-presets");
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -948,6 +983,7 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
+            "Presets...",
             "Help"
         ])
     );
@@ -1248,6 +1284,7 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
                 "Clear Selected",
                 "Create File List",
                 "Refresh Index",
+                "Presets...",
                 "Help"
             ],
             "status_line": "dialog status",

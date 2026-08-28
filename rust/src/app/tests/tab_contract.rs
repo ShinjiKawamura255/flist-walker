@@ -16,6 +16,7 @@ fn history_search_keeps_only_history_actions_and_help() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
+            "Presets...",
             "Help",
         ]
     );
