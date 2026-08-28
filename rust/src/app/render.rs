@@ -107,6 +107,34 @@ pub(super) enum RenderCommand {
     TabBar(RenderTabBarCommand),
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct EmacsSinglelineOptions<'a> {
+    id: Option<egui::Id>,
+    desired_width: f32,
+    hint_text: Option<&'a str>,
+    frame: bool,
+}
+
+impl<'a> EmacsSinglelineOptions<'a> {
+    pub(super) const fn new(
+        id: Option<egui::Id>,
+        desired_width: f32,
+        hint_text: Option<&'a str>,
+    ) -> Self {
+        Self {
+            id,
+            desired_width,
+            hint_text,
+            frame: true,
+        }
+    }
+
+    const fn without_frame(mut self) -> Self {
+        self.frame = false;
+        self
+    }
+}
+
 impl FlistWalkerApp {
     pub(super) const RESULT_SORT_SELECTOR_WIDTH: f32 = 132.0;
     pub(super) const RESULT_ROW_H_MARGIN: f32 = 3.0;
@@ -188,24 +216,24 @@ impl FlistWalkerApp {
     pub(super) fn manage_root_list_text_edit(
         ui: &mut egui::Ui,
         text: &mut String,
-        desired_width: f32,
+        kill_buffer: &mut String,
+        emacs_enabled: bool,
+        ime_composition_active: bool,
         error: bool,
-        hint_text: Option<&str>,
+        options: EmacsSinglelineOptions<'_>,
     ) -> egui::Response {
         if !error {
-            let edit = egui::TextEdit::singleline(text).desired_width(desired_width);
-            if let Some(hint_text) = hint_text {
-                return ui.add(edit.hint_text(hint_text));
-            } else {
-                return ui.add(edit);
-            }
+            return Self::emacs_singleline_text_edit(
+                ui,
+                text,
+                kill_buffer,
+                emacs_enabled,
+                ime_composition_active,
+                options,
+            )
+            .response
+            .response;
         }
-        let edit = egui::TextEdit::singleline(text).desired_width(desired_width);
-        let edit = if let Some(hint_text) = hint_text {
-            edit.hint_text(hint_text)
-        } else {
-            edit
-        };
         egui::Frame::new()
             .fill(egui::Color32::from_rgba_unmultiplied(160, 40, 40, 28))
             .stroke(egui::Stroke::new(
@@ -214,8 +242,61 @@ impl FlistWalkerApp {
             ))
             .corner_radius(3.0)
             .inner_margin(1.0)
-            .show(ui, |ui| ui.add(edit.frame(egui::Frame::NONE)))
+            .show(ui, |ui| {
+                Self::emacs_singleline_text_edit(
+                    ui,
+                    text,
+                    kill_buffer,
+                    emacs_enabled,
+                    ime_composition_active,
+                    options.without_frame(),
+                )
+                .response
+                .response
+            })
             .inner
+    }
+
+    pub(super) fn emacs_singleline_text_edit(
+        ui: &mut egui::Ui,
+        text: &mut String,
+        kill_buffer: &mut String,
+        emacs_enabled: bool,
+        ime_composition_active: bool,
+        options: EmacsSinglelineOptions<'_>,
+    ) -> egui::text_edit::TextEditOutput {
+        let input_focused = options
+            .id
+            .is_some_and(|id| ui.memory(|memory| memory.has_focus(id)));
+        Self::consume_disabled_emacs_text_edit_shortcuts(ui.ctx(), input_focused, emacs_enabled);
+        let text_before_widget = text.clone();
+        let edit = egui::TextEdit::singleline(text).desired_width(options.desired_width);
+        let edit = if options.frame {
+            edit
+        } else {
+            edit.frame(egui::Frame::NONE)
+        };
+        let edit = if let Some(id) = options.id {
+            edit.id(id)
+        } else {
+            edit
+        };
+        let edit = if let Some(hint_text) = options.hint_text {
+            edit.hint_text(hint_text)
+        } else {
+            edit
+        };
+        let mut output = edit.show(ui);
+        Self::apply_emacs_text_edit_shortcuts(
+            ui.ctx(),
+            &mut output,
+            text,
+            kill_buffer,
+            emacs_enabled,
+            ime_composition_active,
+            &text_before_widget,
+        );
+        output
     }
 
     pub(super) fn apply_manage_root_list_text_edit_focus(

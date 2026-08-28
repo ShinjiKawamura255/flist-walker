@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: application-wide Emacs command mapping
+
+- Scenario: picker/modal が通常キーを feature 内で直接処理し、共有 mapping を通さないため、その画面だけ Emacs 風 navigation/accept/cancel が無効になる。
+- Expected Behavior: `emacs_keybindings_enabled=true` なら、通常の `Down` / `Up` / `Enter` / `Esc` を持つ全 GUI/TUI 対話面で `Ctrl+N` / `Ctrl+P` / `Ctrl+J` または `Ctrl+M` / `Ctrl+G` が同じ application command を実行し、全 application-owned 単一行入力が `Ctrl+A/E/B/F/H/D/K/Y/U` の共有 reducer を使う。設定無効時はアプリ独自操作として処理しない。
+- Non-goals: 通常 command が存在しない画面への新規操作、OS/IME 所有の text composition、別設定が所有する GUI `Ctrl+W` 編集。
+- Related Tests: TC-201, `regression_emacs_navigation_and_accept_apply_to_the_preset_picker`, `regression_emacs_preset_picker_shortcuts_respect_the_runtime_setting`, `regression_emacs_navigation_applies_to_the_named_root_manager`, `regression_emacs_cancel_closes_help_only_when_enabled`, `regression_emacs_ctrl_a_and_ctrl_d_edit_the_preset_filter`, `regression_emacs_ctrl_e_and_ctrl_h_edit_preset_editor_fields`, `regression_emacs_ctrl_k_and_ctrl_y_share_the_kill_buffer_in_preset_fields`, `regression_disabled_emacs_setting_prevents_native_ctrl_k_in_preset_fields`, `regression_emacs_text_editing_applies_to_the_gui_history_filter`, `regression_modal_singleline_fields_cannot_bypass_the_shared_emacs_adapter`, `tc_162_tui_emacs_navigation_pin_and_select_follow_runtime_toggle`, `tc_162_tui_emacs_query_editing_uses_the_same_runtime_toggle`, `tc_162_help_overlay_has_precedence_and_ctrl_g_only_closes_it`.
+- Notes for Future Changes: 新しい picker/modal/overlay は GUI の共有 semantic helper または TUI の共有 input command mapping を使い、feature 内で通常キーと Emacs chord の対応を複製しない。新しい単一行入力は共有 text-editing adapter を使い、素の `TextEdit::singleline` で reducer を迂回しない。
+
 ### Regression Guard: focused Ctrl+W query editing priority
 
 - Scenario: GUI の application shortcut が TextEdit より先に `Ctrl+W` をタブ終了として消費し、opt-in した Emacs 単語削除が実行されない。または TextEdit と独自 reducer が同じ event を処理して2語削除する。

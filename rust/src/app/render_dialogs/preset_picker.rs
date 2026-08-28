@@ -1,4 +1,7 @@
-use crate::app::{render::RenderPresetPickerCommand, render_panels, FlistWalkerApp};
+use crate::app::{
+    render::{EmacsSinglelineOptions, RenderPresetPickerCommand},
+    render_panels, FlistWalkerApp,
+};
 use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource};
 use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
@@ -92,17 +95,26 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.label("Search saved pure-search presets. Applying one never opens or executes a result.");
     ui.add_space(6.0);
 
-    let response = ui.add(
-        egui::TextEdit::singleline(&mut app.shell.features.presets.picker.query)
-            .id(egui::Id::new(FlistWalkerApp::PRESET_PICKER_QUERY_ID))
-            .desired_width(f32::INFINITY)
-            .hint_text("Filter preset names..."),
+    let previous_query = app.shell.features.presets.picker.query.clone();
+    let output = FlistWalkerApp::emacs_singleline_text_edit(
+        ui,
+        &mut app.shell.features.presets.picker.query,
+        &mut app.shell.runtime.query_state.kill_buffer,
+        app.shell.runtime.emacs_keybindings_enabled,
+        app.shell.ui.ime_composition_active,
+        EmacsSinglelineOptions::new(
+            Some(egui::Id::new(FlistWalkerApp::PRESET_PICKER_QUERY_ID)),
+            f32::INFINITY,
+            Some("Filter preset names..."),
+        ),
     );
+    let emacs_text_changed = app.shell.features.presets.picker.query != previous_query;
+    let response = output.response;
     if app.shell.features.presets.picker.focus_requested {
         response.request_focus();
         app.shell.features.presets.picker.focus_requested = false;
     }
-    if response.changed() {
+    if response.changed() || emacs_text_changed {
         app.refresh_preset_picker_matches();
     }
 
@@ -240,17 +252,25 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     let mut manage_named_roots = false;
     let mut browse_root = false;
     let busy = app.shell.worker_bus.catalog.in_progress;
-    let editor = &mut app.shell.features.presets.picker.editor;
+    let emacs_enabled = app.shell.runtime.emacs_keybindings_enabled;
+    let ime_composition_active = app.shell.ui.ime_composition_active;
+    let shell = &mut app.shell;
+    let kill_buffer = &mut shell.runtime.query_state.kill_buffer;
+    let editor = &mut shell.features.presets.picker.editor;
     egui::Grid::new("preset-editor-fields")
         .num_columns(2)
         .spacing([12.0, 7.0])
         .show(ui, |ui| {
             ui.label("Name");
-            let name_response = ui.add(
-                egui::TextEdit::singleline(&mut editor.name)
-                    .id(egui::Id::new("preset-editor-name"))
-                    .desired_width(430.0),
+            let name_output = FlistWalkerApp::emacs_singleline_text_edit(
+                ui,
+                &mut editor.name,
+                kill_buffer,
+                emacs_enabled,
+                ime_composition_active,
+                EmacsSinglelineOptions::new(Some(egui::Id::new("preset-editor-name")), 430.0, None),
             );
+            let name_response = name_output.response;
             if editor.focus_requested {
                 name_response.request_focus();
                 editor.focus_requested = false;
@@ -283,10 +303,17 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 "Root"
             });
             ui.horizontal(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut editor.root_path)
-                        .desired_width(345.0)
-                        .hint_text("Absolute path"),
+                FlistWalkerApp::emacs_singleline_text_edit(
+                    ui,
+                    &mut editor.root_path,
+                    kill_buffer,
+                    emacs_enabled,
+                    ime_composition_active,
+                    EmacsSinglelineOptions::new(
+                        Some(egui::Id::new("preset-editor-root-path")),
+                        345.0,
+                        Some("Absolute path"),
+                    ),
                 );
                 if ui
                     .add_enabled(!busy, egui::Button::new("Browse..."))
@@ -298,10 +325,17 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             ui.end_row();
 
             ui.label("Query");
-            ui.add(
-                egui::TextEdit::singleline(&mut editor.query)
-                    .desired_width(430.0)
-                    .hint_text("Empty query is allowed"),
+            FlistWalkerApp::emacs_singleline_text_edit(
+                ui,
+                &mut editor.query,
+                kill_buffer,
+                emacs_enabled,
+                ime_composition_active,
+                EmacsSinglelineOptions::new(
+                    Some(egui::Id::new("preset-editor-query")),
+                    430.0,
+                    Some("Empty query is allowed"),
+                ),
             );
             ui.end_row();
 
@@ -512,17 +546,29 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     let current_root = normalize_path_for_display(&app.shell.runtime.root);
     let busy = app.shell.worker_bus.catalog.in_progress;
     let mut browse_path = false;
-    let editor = &mut app.shell.features.presets.picker.named_roots.editor;
+    let emacs_enabled = app.shell.runtime.emacs_keybindings_enabled;
+    let ime_composition_active = app.shell.ui.ime_composition_active;
+    let shell = &mut app.shell;
+    let kill_buffer = &mut shell.runtime.query_state.kill_buffer;
+    let editor = &mut shell.features.presets.picker.named_roots.editor;
     egui::Grid::new("named-root-editor-fields")
         .num_columns(2)
         .spacing([12.0, 7.0])
         .show(ui, |ui| {
             ui.label("Name");
-            let response = ui.add(
-                egui::TextEdit::singleline(&mut editor.name)
-                    .id(egui::Id::new("named-root-editor-name"))
-                    .desired_width(430.0),
+            let name_output = FlistWalkerApp::emacs_singleline_text_edit(
+                ui,
+                &mut editor.name,
+                kill_buffer,
+                emacs_enabled,
+                ime_composition_active,
+                EmacsSinglelineOptions::new(
+                    Some(egui::Id::new("named-root-editor-name")),
+                    430.0,
+                    None,
+                ),
             );
+            let response = name_output.response;
             if editor.focus_requested {
                 response.request_focus();
                 editor.focus_requested = false;
@@ -531,10 +577,17 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
 
             ui.label("Path");
             ui.horizontal(|ui| {
-                ui.add(
-                    egui::TextEdit::singleline(&mut editor.path)
-                        .desired_width(245.0)
-                        .hint_text("Absolute path"),
+                FlistWalkerApp::emacs_singleline_text_edit(
+                    ui,
+                    &mut editor.path,
+                    kill_buffer,
+                    emacs_enabled,
+                    ime_composition_active,
+                    EmacsSinglelineOptions::new(
+                        Some(egui::Id::new("named-root-editor-path")),
+                        245.0,
+                        Some("Absolute path"),
+                    ),
                 );
                 if ui
                     .add_enabled(!busy, egui::Button::new("Browse..."))

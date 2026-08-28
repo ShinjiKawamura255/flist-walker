@@ -47,13 +47,14 @@ cargo run --bin flistwalker -- --root ..
 
 - `F1`: open or close the in-app help for keyboard shortcuts and query syntax (also available from `Help`)
 - `Ctrl+Shift+P`: open the preset picker, fuzzy-filter names, apply with `Enter`, add the current search, edit with `F2`, or delete the selected preset (`Cmd+Shift+P` on macOS)
-- `Up` / `Down` or `Ctrl+P` / `Ctrl+N`: move the current row
+- `Up` / `Down` or `Ctrl+P` / `Ctrl+N`: move the current selection in results, history, root selectors, preset picker, and Named Root manager
 - `Ctrl+V` / `Alt+V`: page navigation
-- `Enter` / `Ctrl+J` / `Ctrl+M`: open or execute
+- `Enter` / `Ctrl+J` / `Ctrl+M`: accept the active selection; in results, open or execute
 - `Shift+Enter`: open the containing folder
 - `Tab` / `Shift+Tab` / `Ctrl+I`: toggle pin on the current row
 - `Ctrl+Shift+C`: copy selected paths
-- `Esc` / `Ctrl+G`: clear query and pinned items
+- `Esc` / `Ctrl+G`: cancel the active picker/modal; in the main view, clear query and pinned items
+- `Ctrl+A` / `Ctrl+E`, `Ctrl+B` / `Ctrl+F`, `Ctrl+H` / `Ctrl+D`, `Ctrl+K` / `Ctrl+U`, `Ctrl+Y`: edit the focused GUI/TUI text field with the shared Emacs reducer
 - `Ctrl+L`: focus the search box
 - `Ctrl+T`: new tab
 - `Ctrl+W`: close the current tab; when both `emacs_keybindings_enabled` and `ctrl_w_deletes_word_in_query` are enabled, a focused GUI search/history field uses it to delete the previous word instead
@@ -100,7 +101,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - The file is plain JSON, so you can edit it directly.
 - If you delete the file, the next launch will recreate it from the current environment values.
 - `walker_max_entries` is also exposed here because it caps large-root Walker scans in both the GUI and TUI.
-- Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and query editing chords in both the GUI and TUI. It is enabled by default.
+- Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and text-editing chords in both the GUI and TUI. When enabled (the default), navigation/accept/cancel applies to active result lists, history, root selectors, preset/Named Root screens, overlays, and modals wherever the corresponding arrow/Enter/Esc command exists. Editing chords such as `Ctrl+A/E/B/F/H/D/K/Y/U` apply to every application-owned single-line field, including preset and root-management inputs. GUI `Ctrl+W` remains governed separately by `ctrl_w_deletes_word_in_query` because it conflicts with tab close.
 - Set `ctrl_w_deletes_word_in_query` to `true` to make `Ctrl+W` delete the previous word while the GUI search box or history filter is focused and Emacs keybindings are enabled. It is disabled by default, so `Ctrl+W` continues to close the current tab on Windows/Linux. The TUI has no tab conflict and keeps its existing Emacs `Ctrl+W` behavior.
 - Set `tab_pin_moves_to_next_row` to `true` to move to the next result after `Tab`, `Shift+Tab`, or enabled `Ctrl+I` pin toggles in both the GUI and TUI. It is disabled by default.
 

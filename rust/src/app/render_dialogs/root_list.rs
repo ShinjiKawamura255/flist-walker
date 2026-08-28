@@ -1,4 +1,7 @@
-use crate::app::{render::RenderRootListDialogCommand, FlistWalkerApp};
+use crate::app::{
+    render::{EmacsSinglelineOptions, RenderRootListDialogCommand},
+    FlistWalkerApp,
+};
 use eframe::egui;
 
 #[derive(Default)]
@@ -86,13 +89,24 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     .manage_list
                     .add_error
                     .is_empty();
-                let response = FlistWalkerApp::manage_root_list_text_edit(
-                    ui,
-                    &mut app.shell.features.root_browser.manage_list.input_path,
-                    input_width,
-                    has_error,
-                    Some("Folder path"),
-                );
+                let emacs_enabled = app.shell.runtime.emacs_keybindings_enabled;
+                let ime_composition_active = app.shell.ui.ime_composition_active;
+                let response = {
+                    let shell = &mut app.shell;
+                    FlistWalkerApp::manage_root_list_text_edit(
+                        ui,
+                        &mut shell.features.root_browser.manage_list.input_path,
+                        &mut shell.runtime.query_state.kill_buffer,
+                        emacs_enabled,
+                        ime_composition_active,
+                        has_error,
+                        EmacsSinglelineOptions::new(
+                            Some(egui::Id::new("manage-root-list-add-path")),
+                            input_width,
+                            Some("Folder path"),
+                        ),
+                    )
+                };
                 if response.changed() {
                     app.clear_manage_root_list_add_error();
                 }
@@ -235,13 +249,25 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                                         .manage_list
                                         .edit_error
                                         .is_empty();
-                                    let response = FlistWalkerApp::manage_root_list_text_edit(
-                                        ui,
-                                        &mut app.shell.features.root_browser.manage_list.edit_path,
-                                        available,
-                                        has_error,
-                                        None,
-                                    );
+                                    let emacs_enabled = app.shell.runtime.emacs_keybindings_enabled;
+                                    let ime_composition_active =
+                                        app.shell.ui.ime_composition_active;
+                                    let response = {
+                                        let shell = &mut app.shell;
+                                        FlistWalkerApp::manage_root_list_text_edit(
+                                            ui,
+                                            &mut shell.features.root_browser.manage_list.edit_path,
+                                            &mut shell.runtime.query_state.kill_buffer,
+                                            emacs_enabled,
+                                            ime_composition_active,
+                                            has_error,
+                                            EmacsSinglelineOptions::new(
+                                                Some(egui::Id::new("manage-root-list-edit-path")),
+                                                available,
+                                                None,
+                                            ),
+                                        )
+                                    };
                                     if response.changed() {
                                         app.clear_manage_root_list_edit_error();
                                     }

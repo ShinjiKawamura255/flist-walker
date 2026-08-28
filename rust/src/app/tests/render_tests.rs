@@ -1,6 +1,17 @@
 use super::*;
 use crate::updater::AutoUpdateAssets;
 
+#[test]
+fn regression_modal_singleline_fields_cannot_bypass_the_shared_emacs_adapter() {
+    let preset_picker = include_str!("../render_dialogs/preset_picker.rs");
+    let root_list = include_str!("../render_dialogs/root_list.rs");
+
+    assert!(!preset_picker.contains("TextEdit::singleline"));
+    assert!(!root_list.contains("TextEdit::singleline"));
+    assert!(!preset_picker.contains("EmacsSinglelineOptions::new(None"));
+    assert!(!root_list.contains("EmacsSinglelineOptions::new(None"));
+}
+
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn regression_opted_in_ctrl_w_deletes_query_word_without_closing_tab() {
@@ -1379,7 +1390,7 @@ fn gui_surface_snapshot_exposes_contextual_help_dialog() {
         .expect("help lines");
     assert!(lines
         .iter()
-        .any(|line| line == "Ctrl+N / Ctrl+P — Move the current row"));
+        .any(|line| line == "Ctrl+N / Ctrl+P — Move the current selection in lists and pickers"));
 
     let _ = fs::remove_dir_all(&root);
 }

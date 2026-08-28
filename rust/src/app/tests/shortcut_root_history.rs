@@ -2,6 +2,62 @@ use super::*;
 use crate::app::render_panels;
 
 #[test]
+fn regression_emacs_text_editing_applies_to_the_gui_history_filter() {
+    let root = test_root("history-filter-emacs-edit-regression");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.start_history_search();
+    app.shell.runtime.query_state.history_search_query = "abcd".to_string();
+    let ctx = egui::Context::default();
+    let input_id = app.shell.ui.query_input_id;
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("history filter state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(2),
+        )));
+    state.store(&ctx, input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let key_event = |key| egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers,
+    };
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::A)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("history filter state after Ctrl+A");
+    let range = state.cursor.char_range().expect("history filter cursor");
+    assert_eq!(range.primary.index.0, 0);
+    assert_eq!(range.secondary.index.0, 0);
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::D)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.runtime.query_state.history_search_query, "bcd");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn ctrl_shift_r_opens_root_dropdown_without_starting_history_search() {
     let root = test_root("shortcut-ctrl-shift-r-root-dropdown");
     let alt = root.join("alt");

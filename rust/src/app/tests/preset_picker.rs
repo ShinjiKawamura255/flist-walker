@@ -77,6 +77,347 @@ fn picker_fuzzy_filters_names_and_resets_selection() {
 }
 
 #[test]
+fn regression_emacs_navigation_and_accept_apply_to_the_preset_picker() {
+    let root = test_root("preset-picker-emacs-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
+    for (name, query) in [("Alpha", "alpha"), ("Beta", "beta"), ("Gamma", "gamma")] {
+        app.shell
+            .features
+            .presets
+            .catalog
+            .save_preset(preset(name, &root, query))
+            .expect("save preset");
+    }
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::N, emacs_shortcut_modifiers(false))],
+    );
+    assert_eq!(app.shell.features.presets.picker.selected_match, Some(1));
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::P, emacs_shortcut_modifiers(false))],
+    );
+    assert_eq!(app.shell.features.presets.picker.selected_match, Some(0));
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::M, emacs_shortcut_modifiers(false))],
+    );
+    assert!(!app.shell.features.presets.picker.open);
+    assert_eq!(app.shell.runtime.query_state.query, "alpha");
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_emacs_preset_picker_shortcuts_respect_the_runtime_setting() {
+    let root = test_root("preset-picker-emacs-disabled-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "before".to_string());
+    app.shell.runtime.emacs_keybindings_enabled = false;
+    for (name, query) in [("Alpha", "alpha"), ("Beta", "beta")] {
+        app.shell
+            .features
+            .presets
+            .catalog
+            .save_preset(preset(name, &root, query))
+            .expect("save preset");
+    }
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::N, emacs_shortcut_modifiers(false))],
+    );
+    assert_eq!(app.shell.features.presets.picker.selected_match, Some(0));
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::J, emacs_shortcut_modifiers(false))],
+    );
+    assert!(app.shell.features.presets.picker.open);
+    assert_eq!(app.shell.runtime.query_state.query, "before");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_emacs_navigation_applies_to_the_named_root_manager() {
+    let root = test_root("named-root-emacs-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell
+        .features
+        .presets
+        .catalog
+        .add_named_root("alpha", root.join("alpha"))
+        .expect("add root");
+    app.shell
+        .features
+        .presets
+        .catalog
+        .add_named_root("beta", root.join("beta"))
+        .expect("add root");
+    app.shell.features.presets.picker.open = true;
+    app.open_named_root_manager();
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::N, emacs_shortcut_modifiers(false))],
+    );
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.selected_index,
+        Some(1)
+    );
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::P, emacs_shortcut_modifiers(false))],
+    );
+    assert_eq!(
+        app.shell.features.presets.picker.named_roots.selected_index,
+        Some(0)
+    );
+
+    run_shortcuts_frame(
+        &mut app,
+        true,
+        vec![key_event(egui::Key::G, emacs_shortcut_modifiers(false))],
+    );
+    assert!(!app.shell.features.presets.picker.named_roots.open);
+    assert!(app.shell.features.presets.picker.open);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_emacs_ctrl_a_and_ctrl_d_edit_the_preset_filter() {
+    let root = test_root("preset-filter-emacs-edit-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.shell.features.presets.picker.query = "abcd".to_string();
+    app.shell.features.presets.picker.focus_requested = true;
+    let ctx = egui::Context::default();
+    let input_id = egui::Id::new(FlistWalkerApp::PRESET_PICKER_QUERY_ID);
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state =
+        egui::widgets::text_edit::TextEditState::load(&ctx, input_id).expect("preset filter state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(2),
+        )));
+    state.store(&ctx, input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::A, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset filter state after Ctrl+A");
+    let range = state.cursor.char_range().expect("preset filter cursor");
+    assert_eq!(range.primary.index.0, 0);
+    assert_eq!(range.secondary.index.0, 0);
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::D, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.query, "bcd");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_emacs_ctrl_e_and_ctrl_h_edit_preset_editor_fields() {
+    let root = test_root("preset-editor-emacs-edit-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.start_add_preset();
+    app.shell.features.presets.picker.editor.name = "abcd".to_string();
+    app.shell.features.presets.picker.editor.focus_requested = true;
+    let ctx = egui::Context::default();
+    let input_id = egui::Id::new("preset-editor-name");
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(1),
+        )));
+    state.store(&ctx, input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::E, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state after Ctrl+E");
+    let range = state.cursor.char_range().expect("preset editor cursor");
+    assert_eq!(range.primary.index.0, 4);
+    assert_eq!(range.secondary.index.0, 4);
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::H, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.editor.name, "abc");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_emacs_ctrl_k_and_ctrl_y_share_the_kill_buffer_in_preset_fields() {
+    let root = test_root("preset-editor-emacs-kill-yank-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.start_add_preset();
+    app.shell.features.presets.picker.editor.name = "abcd".to_string();
+    app.shell.features.presets.picker.editor.focus_requested = true;
+    let ctx = egui::Context::default();
+    let input_id = egui::Id::new("preset-editor-name");
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(2),
+        )));
+    state.store(&ctx, input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::K, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.editor.name, "ab");
+    assert_eq!(app.shell.runtime.query_state.kill_buffer, "cd");
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::Y, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.editor.name, "abcd");
+
+    let mut state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state before Ctrl+U");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(2),
+        )));
+    state.store(&ctx, input_id);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::U, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.editor.name, "cd");
+    assert_eq!(app.shell.runtime.query_state.kill_buffer, "ab");
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::Y, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.editor.name, "abcd");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_disabled_emacs_setting_prevents_native_ctrl_k_in_preset_fields() {
+    let root = test_root("preset-editor-disabled-emacs-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.emacs_keybindings_enabled = false;
+    app.shell.features.presets.picker.open = true;
+    app.start_add_preset();
+    app.shell.features.presets.picker.editor.name = "abcd".to_string();
+    app.shell.features.presets.picker.editor.focus_requested = true;
+    let ctx = egui::Context::default();
+    let input_id = egui::Id::new("preset-editor-name");
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(2),
+        )));
+    state.store(&ctx, input_id);
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::K, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+
+    assert_eq!(app.shell.features.presets.picker.editor.name, "abcd");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn enter_applies_selected_pure_search_preset_without_executing_results() {
     let root = test_root("preset-picker-apply");
     let preset_root = root.join("source");
