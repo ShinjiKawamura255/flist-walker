@@ -303,6 +303,61 @@ fn regression_emacs_ctrl_e_and_ctrl_h_edit_preset_editor_fields() {
 }
 
 #[test]
+fn regression_macos_native_ctrl_b_and_ctrl_f_move_preset_filter_once() {
+    let root = test_root("preset-filter-macos-native-emacs-motion");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.shell.features.presets.picker.query = "abcd".to_string();
+    app.shell.features.presets.picker.focus_requested = true;
+    let ctx = egui::Context::default();
+    ctx.set_os(egui::os::OperatingSystem::Mac);
+    let input_id = egui::Id::new(FlistWalkerApp::PRESET_PICKER_QUERY_ID);
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state =
+        egui::widgets::text_edit::TextEditState::load(&ctx, input_id).expect("preset filter state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(2),
+        )));
+    state.store(&ctx, input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::B, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset filter state after Ctrl+B");
+    let range = state.cursor.char_range().expect("preset filter cursor");
+    assert_eq!(range.primary.index.0, 1);
+    assert_eq!(range.secondary.index.0, 1);
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::F, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset filter state after Ctrl+F");
+    let range = state.cursor.char_range().expect("preset filter cursor");
+    assert_eq!(range.primary.index.0, 2);
+    assert_eq!(range.secondary.index.0, 2);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn regression_emacs_ctrl_k_and_ctrl_y_share_the_kill_buffer_in_preset_fields() {
     let root = test_root("preset-editor-emacs-kill-yank-regression");
     fs::create_dir_all(&root).expect("create root");
