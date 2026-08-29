@@ -179,6 +179,21 @@ impl FlistWalkerApp {
             return false;
         };
 
+        if ctx.os() == egui::os::OperatingSystem::Mac
+            && matches!(
+                edit,
+                EmacsEdit::MoveToStart
+                    | EmacsEdit::MoveToEnd
+                    | EmacsEdit::MoveBackward
+                    | EmacsEdit::MoveForward
+            )
+        {
+            // egui applies the native macOS Ctrl+A/E/B/F cursor motions while
+            // rendering TextEdit. The shared adapter still consumes the chord,
+            // but must not move the cursor a second time.
+            return false;
+        }
+
         let widget_changed_text = output.response.changed();
         let outcome = if matches!(edit, EmacsEdit::KillToEnd | EmacsEdit::KillToStart)
             && widget_changed_text

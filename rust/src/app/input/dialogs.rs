@@ -44,6 +44,33 @@ impl FlistWalkerApp {
         true
     }
 
+    pub(in crate::app) fn handle_update_install_failure_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+    ) -> bool {
+        if self.shell.features.update.state.install_failure.is_none() {
+            return false;
+        }
+        let close = self.consume_gui_accept(ctx) || self.consume_gui_cancel(ctx);
+        ctx.input_mut(|input| {
+            input.events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::Copy
+                        | egui::Event::Cut
+                        | egui::Event::Paste(_)
+                        | egui::Event::Text(_)
+                        | egui::Event::Key { .. }
+                        | egui::Event::Ime(_)
+                )
+            });
+        });
+        if close {
+            self.dismiss_update_install_failure();
+        }
+        true
+    }
+
     pub(in crate::app) fn handle_help_dialog_shortcuts(&mut self, ctx: &egui::Context) -> bool {
         if !self.shell.ui.help_open {
             if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::F1)) {

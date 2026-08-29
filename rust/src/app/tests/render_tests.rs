@@ -624,6 +624,55 @@ fn regression_update_check_failure_blocks_background_selection_shortcuts() {
 }
 
 #[test]
+fn regression_update_install_failure_owns_shortcuts_and_closes_without_background_action() {
+    let root = test_root("update-install-failure-owns-shortcuts");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    fs::write(&selected, "fixture").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.results = vec![(selected, 0.0)];
+    app.shell.runtime.current_row = Some(0);
+    let original_tab_count = app.shell.tabs.len();
+    app.shell.features.update.state.install_failure = Some(UpdateInstallFailureState {
+        candidate: Some(test_render_update_candidate()),
+        error: "Update failed: checksum mismatch".to_string(),
+    });
+
+    let ctx = egui::Context::default();
+    let modifiers = gui_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![egui::Event::Key {
+                key: egui::Key::T,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+
+    assert_eq!(app.shell.tabs.len(), original_tab_count);
+    assert!(app.shell.features.update.state.install_failure.is_some());
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            events: vec![unmodified_key_event(egui::Key::Enter)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+
+    assert!(app.shell.features.update.state.install_failure.is_none());
+    assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
+    assert!(!app.shell.worker_bus.action.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn filelist_dialog_command_selection_preserves_button_precedence() {
     assert!(matches!(
         render_dialogs::filelist::overwrite_command(true, true),

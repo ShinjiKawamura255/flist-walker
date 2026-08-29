@@ -17,6 +17,9 @@ impl FlistWalkerApp {
         if self.handle_previous_update_failure_shortcuts(ctx) {
             return;
         }
+        if self.handle_update_install_failure_shortcuts(ctx) {
+            return;
+        }
         if self.handle_update_check_failure_shortcuts(ctx) {
             return;
         }
