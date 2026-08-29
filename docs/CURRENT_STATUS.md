@@ -2,6 +2,20 @@
 
 This document is the short current-state snapshot for maintainers. It does not own validation commands, active task queues, or completed history.
 
+## Current HEAD Validation (2026-08-30)
+
+- Review baseline was clean `master` aligned with `origin/master`; current HEAD is `040ce3d` (`feat(gui): add preset picker launcher`). The 12 commits after `v0.24.5` are reflected in `[Unreleased]` in [CHANGELOG.md](../CHANGELOG.md). Version bump, tag, and GitHub Release operations are intentionally out of scope for this snapshot.
+- Current-head deterministic GUI scenarios passed, including the `preset-picker` group (40/40) and all 12 canonical groups. Evidence: `rust/target/gui-smoke/evidence/GUI-DETERMINISTIC-20260829T162825Z-26504.local.md`.
+- Isolated staged headful GUI liveness passed for 10 seconds with settings and updater-artifact isolation checks. Evidence: `rust/target/gui-smoke/evidence/GUI-HEADFUL-SMOKE-20260829T162853Z-35252-1e527cb3.local.md`. This is liveness evidence only; native interaction remains a separate axis.
+- Stateful endurance on the current HEAD passed after correcting the harness contract for an expected scheduler-side-effect notice: seed replay `0x1840002b`, extended `256 × 1,000` profile (28.12 seconds), and real-worker soak 10 seconds (6,037 iterations). The harness now permits only the exact `index_pending=true → false` plus `Index request dropped due to queue limit` transition while continuing to reject unrelated notice changes.
+- Search performance passed: TC-156 100k query-shape medians were 9–17 ms with maxima 9–19 ms; TC-185 1M-candidate p50/p95/p99 were 78/83/83 ms for selective fuzzy and 139/142/142 ms for dense fuzzy. RSS after drop/quiescence was 60,510,208 bytes in this run and remains observational-only.
+- The current validation found no product-code routing failure. The only repair was a focused stateful-test harness adjustment plus regression tests; full Rust regression (998 passed, 15 ignored), format, clippy, Python script tests (28 passed), and diff hygiene all passed.
+
+### Remaining Evidence Gaps
+
+- Deterministic GUI evidence reports Native interaction as `NOT RUN`; the headful run confirms staged process liveness but does not promote that axis. Japanese IME, alternate DPI, multi-display, real UNC, and explicitly authorized external-action paths remain `NOT RUN`.
+- Cross-platform CI, Windows GNU cross-build, and the exact CI-pinned `cargo-audit` version were not rerun locally in this follow-up; GitHub Actions remains the authoritative evidence surface for those checks.
+
 ## Product Direction
 
 - The Rust GUI/CLI implementation under `rust/` is the canonical product path.

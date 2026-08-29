@@ -4,13 +4,15 @@
 
 ## [Unreleased]
 ### Added
-- なし。
+- GUI のメインパネルから `Presets...` ボタンで検索 preset picker を開けるようにした。既存の `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）と同じ picker を利用できる。
+- GUI/TUI の preset、名前付き root、履歴、overlay、modal を含む application-owned UI へ、設定で有効化された Emacs 風の移動・確定・キャンセル・単一行編集操作を共通適用した。
 
 ### Changed
-- なし。
+- adaptive walker の候補供給、共有 frontier、open-directory frame、child batch の処理を bounded に整理し、大きな root での初期表示とキャンセル時の応答性を改善した。
+- adaptive walker のキャンセル／互換性／release matrix に関する検証を拡充し、キュー境界をまたぐ状態遷移の回帰検証を追加した。
 
 ### Fixed
-- なし。
+- 自動更新の manifest、signature、checksum、network、activation 失敗時に、候補を消費した状態で手動復旧手順と release URL を案内する専用 failure modal を表示するようにした。
 
 ### Breaking
 - なし。
