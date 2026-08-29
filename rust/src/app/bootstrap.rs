@@ -395,6 +395,10 @@ impl FlistWalkerApp {
                 worker_runtime: Some(worker_runtime),
             },
         };
+        Self::append_window_trace(
+            "launch_query_initialized",
+            &Self::query_trace_summary(&app.shell.runtime.query_state.query),
+        );
         if let Some(path) = Self::window_trace_path() {
             Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
         }
