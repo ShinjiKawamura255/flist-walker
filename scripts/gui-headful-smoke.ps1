@@ -1,7 +1,8 @@
 param(
     [int]$DurationSeconds = 10,
     [string]$BaseDir = "",
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    [switch]$ScriptedQueryProbe
 )
 
 $ErrorActionPreference = "Stop"
@@ -126,6 +127,129 @@ function New-QuotedArgument {
     return '"' + ($Value -replace '"', '\"') + '"'
 }
 
+function Initialize-NativeWindowInterop {
+    if ("FlistWalker.GuiSmoke.NativeWindow" -as [type]) {
+        return
+    }
+
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace FlistWalker.GuiSmoke {
+    public static class NativeWindow {
+        private const uint WmNull = 0x0000;
+        private const uint SmtoAbortIfHung = 0x0002;
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SendMessageTimeout(
+            IntPtr hWnd,
+            uint message,
+            UIntPtr wParam,
+            IntPtr lParam,
+            uint flags,
+            uint timeout,
+            out UIntPtr result);
+
+        public static IntPtr FindVisibleWindowForProcess(uint targetProcessId) {
+            IntPtr result = IntPtr.Zero;
+            EnumWindows((hWnd, _) => {
+                uint processId;
+                GetWindowThreadProcessId(hWnd, out processId);
+                if (processId == targetProcessId && IsWindowVisible(hWnd)) {
+                    result = hWnd;
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+            return result;
+        }
+
+        public static bool IsResponsive(IntPtr hWnd) {
+            UIntPtr ignored;
+            return SendMessageTimeout(
+                hWnd,
+                WmNull,
+                UIntPtr.Zero,
+                IntPtr.Zero,
+                SmtoAbortIfHung,
+                1000,
+                out ignored) != IntPtr.Zero;
+        }
+
+    }
+}
+'@
+}
+
+function Wait-ForVisibleWindow {
+    param(
+        [Parameter(Mandatory = $true)][int]$ProcessId,
+        [int]$TimeoutSeconds = 10
+    )
+
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        $window = [FlistWalker.GuiSmoke.NativeWindow]::FindVisibleWindowForProcess([uint32]$ProcessId)
+        if ($window -ne [IntPtr]::Zero) {
+            return $window
+        }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "Timed out waiting for a visible window owned by staged process $ProcessId"
+}
+
+function Wait-ForTraceLine {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$ExpectedLine,
+        [int]$TimeoutSeconds = 10
+    )
+
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        if (Test-Path -LiteralPath $Path) {
+            $lines = [System.IO.File]::ReadAllLines($Path)
+            if ($lines | Where-Object { $_.IndexOf($ExpectedLine, [System.StringComparison]::Ordinal) -ge 0 }) {
+                return
+            }
+        }
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw "Timed out waiting for staged GUI trace: $ExpectedLine"
+}
+
+function Invoke-ScriptedQueryProbe {
+    param(
+        [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)][string]$TracePath,
+        [Parameter(Mandatory = $true)][string]$ExpectedTrace
+    )
+
+    Initialize-NativeWindowInterop
+    $window = Wait-ForVisibleWindow -ProcessId $Process.Id
+    if (-not [FlistWalker.GuiSmoke.NativeWindow]::IsResponsive($window)) {
+        throw "Staged GUI window did not respond to WM_NULL"
+    }
+
+    Wait-ForTraceLine -Path $TracePath -ExpectedLine $ExpectedTrace
+    return [pscustomobject]@{
+        WindowHandle = $window
+        ExpectedTrace = $ExpectedTrace
+    }
+}
+
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
 if ([string]::IsNullOrWhiteSpace($BaseDir)) {
@@ -168,6 +292,13 @@ $ProfileDir = Join-Path $RunDir "profile"
 $LocalProfileDir = Join-Path $ProfileDir "local"
 $HomeProfileDir = Join-Path $ProfileDir "home"
 $SettingsDir = Join-Path $LocalProfileDir "flistwalker"
+$TracePath = Join-Path $RunDir "window-trace.log"
+$scriptedQuery = if ($ScriptedQueryProbe) {
+    "alpha " + [string][char]0x65E5 + [string][char]0x672C
+} else {
+    ""
+}
+$scriptedQueryTrace = "event=launch_query_initialized chars=$(([char[]]$scriptedQuery).Length) has_half_space=true has_full_space=false"
 
 New-Item -ItemType Directory -Path $RunDir | Out-Null
 New-Item -ItemType Directory -Path $AppDir, $ProfileDir | Out-Null
@@ -189,6 +320,8 @@ $runtimeConfig = @{
     history_persist_disabled = $true
     restore_tabs_enabled = $false
     disable_self_update = $true
+    window_trace_enabled = $true
+    window_trace_path = $TracePath
 } | ConvertTo-Json
 Write-Utf8NoBom -Path (Join-Path $SettingsDir ".flistwalker_config.json") -Content $runtimeConfig
 Write-Utf8NoBom -Path (Join-Path $SettingsDir ".flistwalker_ui_state.json") -Content "{}"
@@ -200,6 +333,9 @@ $ReportPath = Join-Path $EvidenceDir "GUI-HEADFUL-SMOKE-$runId.local.md"
 $psi = [System.Diagnostics.ProcessStartInfo]::new()
 $psi.FileName = $AppPath
 $psi.Arguments = "--root " + (New-QuotedArgument -Value $RootDir) + " --limit 1000"
+if ($ScriptedQueryProbe) {
+    $psi.Arguments += " " + (New-QuotedArgument -Value $scriptedQuery)
+}
 $psi.UseShellExecute = $false
 $psi.RedirectStandardOutput = $true
 $psi.RedirectStandardError = $true
@@ -209,6 +345,8 @@ $psi.Environment["USERPROFILE"] = $HomeProfileDir
 $psi.Environment["FLISTWALKER_DISABLE_SELF_UPDATE"] = "1"
 $psi.Environment["FLISTWALKER_DISABLE_HISTORY_PERSIST"] = "1"
 $psi.Environment["FLISTWALKER_RESTORE_TABS"] = "0"
+$psi.Environment["FLISTWALKER_WINDOW_TRACE"] = "1"
+$psi.Environment["FLISTWALKER_WINDOW_TRACE_PATH"] = $TracePath
 
 $process = [System.Diagnostics.Process]::new()
 $process.StartInfo = $psi
@@ -218,6 +356,21 @@ $stderrTask = $process.StandardError.ReadToEndAsync()
 
 $status = "PASS"
 $notes = "Process stayed alive for ${DurationSeconds}s and was stopped by the smoke script."
+$scriptedQueryStatus = "NOT RUN"
+$scriptedQueryNotes = "Scripted Unicode query probe was not requested."
+if ($ScriptedQueryProbe) {
+    try {
+        $scriptedQueryResult = Invoke-ScriptedQueryProbe -Process $process -TracePath $TracePath -ExpectedTrace $scriptedQueryTrace
+        $scriptedQueryStatus = "PASS"
+        $scriptedQueryNotes = "Visible PID-owned window responded to WM_NULL; launch query metadata matched $($scriptedQueryResult.ExpectedTrace) (handle=$($scriptedQueryResult.WindowHandle))."
+    }
+    catch {
+        $status = "FAIL"
+        $scriptedQueryStatus = "FAIL"
+        $scriptedQueryNotes = $_.Exception.Message
+        $notes = "Scripted Unicode query probe failed: $scriptedQueryNotes"
+    }
+}
 Start-Sleep -Seconds $DurationSeconds
 
 if ($process.HasExited) {
@@ -247,9 +400,12 @@ $report = @"
 - Pre/post updater artifacts: PASS (no .flistwalker-update*)
 - Fixture hash/FileList count: PASS
 - Log: $LogPath
+- Window trace: $TracePath
+- Scripted Unicode query probe: $scriptedQueryStatus
 
 ## Notes
 - $notes
+- $scriptedQueryNotes
 "@
 Write-Utf8NoBom -Path $ReportPath -Content $report
 

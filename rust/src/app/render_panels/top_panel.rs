@@ -494,12 +494,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 app.mark_query_edited();
                 FlistWalkerApp::append_window_trace(
                     "query_text_changed",
-                    &format!(
-                        "chars={} has_half_space={} has_full_space={}",
-                        app.shell.runtime.query_state.query.chars().count(),
-                        app.shell.runtime.query_state.query.contains(' '),
-                        app.shell.runtime.query_state.query.contains('\u{3000}')
-                    ),
+                    &FlistWalkerApp::query_trace_summary(&app.shell.runtime.query_state.query),
                 );
                 app.update_results();
             }

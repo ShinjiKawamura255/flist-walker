@@ -221,6 +221,15 @@ impl FlistWalkerApp {
         })
     }
 
+    pub(super) fn query_trace_summary(query: &str) -> String {
+        format!(
+            "chars={} has_half_space={} has_full_space={}",
+            query.chars().count(),
+            query.contains(' '),
+            query.contains('\u{3000}')
+        )
+    }
+
     pub(super) fn window_trace_path() -> Option<PathBuf> {
         if let Some(path) = std::env::var_os("FLISTWALKER_WINDOW_TRACE_PATH") {
             let path = PathBuf::from(path);
@@ -472,6 +481,15 @@ mod tests {
             FlistWalkerApp::window_trace_path_in(&base),
             base.join(".flistwalker_window_trace.log")
         );
+    }
+
+    #[test]
+    fn query_trace_summary_reports_shape_without_query_contents() {
+        let summary = FlistWalkerApp::query_trace_summary("alpha 日本");
+
+        assert_eq!(summary, "chars=8 has_half_space=true has_full_space=false");
+        assert!(!summary.contains("alpha"));
+        assert!(!summary.contains('日'));
     }
 
     #[test]

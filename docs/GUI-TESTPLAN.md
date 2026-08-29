@@ -21,6 +21,7 @@
 - Headful automation smoke:
   - Linux/macOS/WSLg: `scripts/gui-headful-smoke.sh --duration 10`
   - Windows: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 10`
+  - Windows scripted query probe: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\gui-headful-smoke.ps1 -DurationSeconds 10 -ScriptedQueryProbe`
 
 ## Environment Matrix
 | Environment | Required When | Notes |
@@ -65,13 +66,14 @@
 - When adding GUI controls whose state is visible without native platform interaction, add or update a headless snapshot assertion before relying on manual `GSM-*` smoke coverage.
 - When adding GUI controls that require native platform interaction, update the relevant `GSM-*` case and the report template before accepting manual-only coverage.
 - Headful automation is a release/nightly smoke gate only. It launches a fresh BaseDir-owned staged copy against the standard fixture, treats early process exit as FAIL, records the staged path/settings isolation/pre- and post-launch allowlist and `.flistwalker-update*` absence in `GUI-HEADFUL-SMOKE.local.md`, and then stops the process after the configured duration.
-- The headful smoke does not replace `GSM-*` manual checks because it does not assert typed search, visual highlight quality, platform open behavior, IME, or window movement.
+- On Windows, `-ScriptedQueryProbe` additionally launches the staged GUI with the fixed Unicode query `alpha 日本`, finds a visible top-level window by the staged process ID (not its title), checks responsiveness with `WM_NULL`, and requires the isolated window trace to report only the expected query shape. It never sends global keystrokes or changes the foreground window.
+- The scripted query probe covers native launch, query initialization, and a responsive PID-bound window. It does not replace `GSM-*` manual checks for physical input focus, visual highlight quality, platform open behavior, IME conversion/composition, or window movement.
 - Pull-request CI does not require native GUI launch unless a deterministic platform harness is explicitly added later.
 - CI continues to own `cargo test`, clippy, coverage, audit, and performance gates.
 
 ## Native Residual Safety Gates
 - Axis statuses remain `PASS`, `FAIL`, `SKIPPED`, or `NOT RUN`. Environment or authorization prerequisites are recorded as `NOT RUN — <exact prerequisite>`; `blocked` is workflow state, not a GUI axis status.
-- Japanese literal text and Japanese IME composition are separate evidence. Literal injection proves committed Unicode rendering only. Composition PASS additionally requires composition events plus identifier-only record/restore/read-back of a staged-window-scoped input profile and IME mode; otherwise composition remains NOT RUN.
+- Japanese literal text and Japanese IME composition are separate evidence. The Windows scripted query probe proves Unicode query initialization and a trace-only character-count assertion; it does not read query contents. Composition PASS additionally requires composition events plus identifier-only record/restore/read-back of a staged-window-scoped input profile and IME mode; otherwise composition remains NOT RUN.
 - Multi-display PASS requires before/cross-display/return window coordinates and a responsive interaction after crossing. Alternate-DPI PASS additionally requires at least two observed display scale factors; two displays at one scale leave alternate DPI NOT RUN.
 - Copy Path must not read pre-existing clipboard content. First check format count and sequence number only. If nonempty, leave it untouched and record NOT RUN. If empty, compare only the test-generated known fixture value in memory, emit no content, stop without clearing on an unexpected sequence change, otherwise clear and read back zero formats.
 - External open/reveal requires a disposable owned handler/session. Without one, do not invoke the real default application, change associations, close a reused window, or promote deterministic routing to native PASS.
