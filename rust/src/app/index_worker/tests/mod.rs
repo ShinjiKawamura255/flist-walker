@@ -1112,7 +1112,9 @@ fn adaptive_walker_holds_shared_frontier_soft_limit_for_wide_shallow_trees() {
     let metrics = walk_adaptive(
         &root,
         MAX_WORKERS,
-        2,
+        // Keep one worker active while the root publishes its wide child set so
+        // saturation is a fixture invariant rather than an OS scheduling race.
+        1,
         |_entry| {
             count = count.saturating_add(1);
             true
