@@ -4,15 +4,13 @@
 
 ## [Unreleased]
 ### Added
-- GUI のメインパネルから `Presets...` ボタンで検索 preset picker を開けるようにした。既存の `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）と同じ picker を利用できる。
-- GUI/TUI の preset、名前付き root、履歴、overlay、modal を含む application-owned UI へ、設定で有効化された Emacs 風の移動・確定・キャンセル・単一行編集操作を共通適用した。
+- なし。
 
 ### Changed
-- adaptive walker の候補供給、共有 frontier、open-directory frame、child batch の処理を bounded に整理し、大きな root での初期表示とキャンセル時の応答性を改善した。
-- adaptive walker のキャンセル／互換性／release matrix に関する検証を拡充し、キュー境界をまたぐ状態遷移の回帰検証を追加した。
+- なし。
 
 ### Fixed
-- 自動更新の manifest、signature、checksum、network、activation 失敗時に、候補を消費した状態で手動復旧手順と release URL を案内する専用 failure modal を表示するようにした。
+- なし。
 
 ### Breaking
 - なし。
@@ -25,6 +23,33 @@
 
 ### Known issues
 - なし。
+
+## [0.25.0] - 2026-08-30
+### Added
+- GUI のメインパネルから `Presets...` ボタンで検索 preset picker を開けるようにした。既存の `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）と同じ picker を利用できる。
+- GUI/TUI の preset、名前付き root、履歴、overlay、modal を含む application-owned UI へ、設定で有効化された Emacs 風の移動・確定・キャンセル・単一行編集操作を共通適用した。
+
+### Changed
+- adaptive walker の候補供給、共有 frontier、open-directory frame、child batch の処理を bounded に整理し、大きな root での初期表示とキャンセル時の応答性を改善した。
+- adaptive walker のキャンセル／互換性／release matrix、stateful endurance、GUI staged query smoke の検証を拡充し、キュー境界をまたぐ状態遷移の回帰検証を追加した。
+- GUI の modal 分離、macOS 入力、CI compatibility signature、および frontier saturation の決定性を改善した。
+- updater の直前公開版 capability として v0.24.5 を明示登録し、v0.25.0 の exact 26-entry checksum manifest との N-1 互換性を release 前に検証できるようにした。
+
+### Fixed
+- 自動更新の manifest、signature、checksum、network、activation 失敗時に、候補を消費した状態で手動復旧手順と release URL を案内する専用 failure modal を表示するようにした。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 依存関係の追加・更新はなく、updater は従来どおり `SHA256SUMS.sig` の署名検証後に `SHA256SUMS` の checksum を照合する。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
 
 ## [0.24.5] - 2026-08-26
 ### Added
@@ -1923,7 +1948,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.4...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.5...v0.25.0
+[0.24.5]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.3...v0.24.4
 [0.24.3]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.1...v0.24.2

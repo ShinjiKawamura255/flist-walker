@@ -58,7 +58,7 @@ def release_inventory(version: str) -> list[str]:
                 f"fw-{version}-macos-{arch}",
             ]
         )
-    # The release workflow runs `sha256sum *`: the published v0.24.4 manifest
+    # The release workflow runs `sha256sum *`: the published v0.24.5 manifest
     # contains every FlistWalker-* row before the four fw-* rows.
     names.sort(key=lambda name: (name.startswith("fw-"), name))
     assert len(names) == 26
@@ -107,6 +107,16 @@ def test_regression_v0244_accepts_exact_v0245_inventory(
     assert result.returncode == 0, result.stderr
 
 
+def test_regression_v0245_accepts_exact_v0250_inventory(
+    script: Path, manifest: Path, digest: str
+) -> None:
+    write_manifest(manifest, release_inventory("0.25.0"), digest)
+
+    result = run(script, manifest, "0.24.5", "0.25.0")
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_regression_candidate_must_be_newer_than_previous_release(
     script: Path, manifest: Path, digest: str
 ) -> None:
@@ -137,6 +147,7 @@ def main() -> int:
             script, manifest, digest
         )
         test_regression_v0244_accepts_exact_v0245_inventory(script, manifest, digest)
+        test_regression_v0245_accepts_exact_v0250_inventory(script, manifest, digest)
         test_regression_candidate_must_be_newer_than_previous_release(
             script, manifest, digest
         )

@@ -14,6 +14,7 @@ RELEASE_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$", re.ASCII)
 SHIPPED_FAMILY_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "0.24.3": ("FlistWalker-",),
     "0.24.4": ("FlistWalker-", "fw-"),
+    "0.24.5": ("FlistWalker-", "fw-"),
 }
 
 
