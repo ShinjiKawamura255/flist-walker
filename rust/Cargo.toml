@@ -1,6 +1,6 @@
 [package]
 name = "flist-walker"
-version = "0.24.5"
+version = "0.25.0"
 edition = "2021"
 license = "MIT"
 default-run = "flistwalker"
