@@ -58,6 +58,7 @@
 - MUST: indexing の `Finished` 応答時に未反映の index entries が残っている場合、GUI はそれらを単一フレームで全件吸収してはならない。frame budget 内で分割反映し、全件反映後に terminal state へ遷移しなければならない。
 - MUST: `Finished` 応答後の内部後処理 drain は、探索中の表示更新より小さい件数上限を用い、完了速度より入力応答性を優先しなければならない。
 - MUST: Walker が上限打ち切り（`Truncated`）に到達した場合でも、GUI は終端直前の大きな batch backlog を過小な固定件数で長時間 drain し続けてはならない。frame budget を応答性の上限として維持しつつ、`Indexing...` の終端尾を短く保てる件数を 1 frame 内で吸収しなければならない。
+- MUST: index worker が GUI の反映速度を上回る場合、GUI は未反映 entry を UI 所有 queue へ無制限に移してはならない。32,768 entry を high-water mark として既存 backlog の drain を優先し、次の active data batch は queue へ展開せず ownership のまま保留しなければならない。FileList hierarchy replacement も 1 message 1,024 entry 以下へ分割して、queue 再確保または単発 payload が frame budget を迂回しないようにしなければならない。
 - MUST: indexing 中の空クエリ・フィルタなし表示では、表示更新のたびに全候補の表示用スナップショットを複製してはならない。表示に必要な上位件数だけを更新し、全件 snapshot は terminal state で確定させなければならない。
 - MUST: Results描画はviewport内の行だけをwidget化し、offscreen pathのclone、highlight/layout、widget allocationを行ってはならない。offscreen current rowへのscroll、click/double-clickの絶対index、横方向layout、highlight、preview要求は維持する。描画回帰計測はprocess-global stateを使わずthread-localかつ1描画呼出し単位で隔離し、外部actionを起動せず絶対indexだけを記録する。
 - MUST: active indexing 中に空クエリ・フィルタなし状態へ戻す場合、表示更新のために蓄積済み index entries を `runtime.entries` へ全件 clone してはならない。

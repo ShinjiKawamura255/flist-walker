@@ -423,18 +423,19 @@ fn stream_filelist_index(
     .map_err(|err| err.to_string())?;
 
     if replaced {
-        let entries = final_entries
-            .into_iter()
-            .map(|path| IndexEntry {
-                path,
-                kind: EntryKind::file(),
-                kind_known: false,
-            })
+        let mut entries = final_entries.into_iter().map(|path| IndexEntry {
+            path,
+            kind: EntryKind::file(),
+            kind_known: false,
+        });
+        let first_batch = entries
+            .by_ref()
+            .take(FILELIST_BATCH_SIZE)
             .collect::<Vec<_>>();
         if tx_res
             .send(IndexResponse::ReplaceAll {
                 request_id: req.request_id,
-                entries,
+                entries: first_batch,
             })
             .is_err()
         {
@@ -446,6 +447,31 @@ fn stream_filelist_index(
                 "worker response receiver closed during replace"
             );
             return Err("index receiver closed".to_string());
+        }
+        loop {
+            let batch = entries
+                .by_ref()
+                .take(FILELIST_BATCH_SIZE)
+                .collect::<Vec<_>>();
+            if batch.is_empty() {
+                break;
+            }
+            if tx_res
+                .send(IndexResponse::Batch {
+                    request_id: req.request_id,
+                    entries: batch,
+                })
+                .is_err()
+            {
+                warn!(
+                    flow = "index",
+                    source_kind = "filelist",
+                    event = "receiver_closed",
+                    request_id = req.request_id,
+                    "worker response receiver closed during replacement batch"
+                );
+                return Err("index receiver closed".to_string());
+            }
         }
     }
     info!(

@@ -540,11 +540,11 @@ fn filelist_stream_applies_nested_override_after_initial_batches() {
     std::fs::write(child.join("old.txt"), "x").expect("write old");
     std::fs::write(child.join("new.txt"), "x").expect("write new");
     let root_filelist = root.join("FileList.txt");
-    std::fs::write(
-        &root_filelist,
-        "keep.txt\nchild\nchild/old.txt\nchild/filelist.txt\n",
-    )
-    .expect("write root filelist");
+    let mut root_filelist_text = (0..2_050usize)
+        .map(|index| format!("bulk-{index}.txt\n"))
+        .collect::<String>();
+    root_filelist_text.push_str("keep.txt\nchild\nchild/old.txt\nchild/filelist.txt\n");
+    std::fs::write(&root_filelist, root_filelist_text).expect("write root filelist");
     std::thread::sleep(Duration::from_millis(1100));
     std::fs::write(child.join("filelist.txt"), "new.txt\n").expect("write child filelist");
 
@@ -572,17 +572,27 @@ fn filelist_stream_applies_nested_override_after_initial_batches() {
 
     assert!(matches!(result, Ok(IndexSource::FileList(_))));
     let responses = rx_res.try_iter().collect::<Vec<_>>();
-    let replaced = responses
+    let replacement_start = responses
         .iter()
-        .find_map(|response| match response {
-            IndexResponse::ReplaceAll { entries, .. } => Some(entries),
+        .position(|response| matches!(response, IndexResponse::ReplaceAll { .. }))
+        .expect("replace all response");
+    let replacement_batches = responses[replacement_start..]
+        .iter()
+        .filter_map(|response| match response {
+            IndexResponse::ReplaceAll { entries, .. } | IndexResponse::Batch { entries, .. } => {
+                Some(entries)
+            }
             _ => None,
         })
-        .expect("replace all response");
-    let replaced_paths = replaced
-        .iter()
-        .map(|entry| entry.path.clone())
         .collect::<Vec<_>>();
+    assert!(replacement_batches
+        .iter()
+        .all(|entries| entries.len() <= FILELIST_BATCH_SIZE));
+    let replaced_paths = replacement_batches
+        .into_iter()
+        .flat_map(|entries| entries.iter().map(|entry| entry.path.clone()))
+        .collect::<Vec<_>>();
+    assert!(replaced_paths.contains(&root.join("bulk-2049.txt")));
     assert!(replaced_paths.contains(&root.join("keep.txt")));
     assert!(replaced_paths.contains(&child.join("new.txt")));
     assert!(!replaced_paths.contains(&child.join("old.txt")));
