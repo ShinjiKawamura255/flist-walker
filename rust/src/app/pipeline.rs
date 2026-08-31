@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+const MAX_PENDING_INDEX_ENTRIES: usize = 32_768;
+
 impl FlistWalkerApp {
     fn pipeline_owner(&mut self) -> PipelineOwner<'_> {
         PipelineOwner::new(self)
@@ -526,9 +528,34 @@ impl FlistWalkerApp {
         let mut processed = 0usize;
         let mut has_index_progress = false;
         let mut finished_current_request = false;
-        while let Ok(msg) = self.shell.indexing.rx.try_recv() {
+        loop {
+            let msg = if let Some(msg) = self.shell.indexing.deferred_response.take() {
+                msg
+            } else {
+                let Ok(msg) = self.shell.indexing.rx.try_recv() else {
+                    break;
+                };
+                msg
+            };
             let request_id = IndexCoordinator::response_request_id(&msg);
-            match self.shell.indexing.route_response(request_id) {
+            let route = self.shell.indexing.route_response(request_id);
+            // The response channel already owns complete batches. Do not copy another active
+            // batch into the UI-owned VecDeque while its existing backlog is at the frame-sized
+            // high-water mark: growing a very large VecDeque can relocate every queued PathBuf
+            // in one uninterruptible allocation and defeat the wall-clock budget below. Hold one
+            // batch by ownership so control/terminal messages still retain their normal path.
+            if matches!(route, IndexResponseRoute::Active)
+                && matches!(
+                    &msg,
+                    IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }
+                )
+                && self.shell.indexing.pending_entries_request_id == Some(request_id)
+                && self.shell.indexing.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES
+            {
+                self.shell.indexing.deferred_response = Some(msg);
+                break;
+            }
+            match route {
                 IndexResponseRoute::Background(tab_id) => {
                     if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
                         self.handle_background_index_response(tab_index, msg);

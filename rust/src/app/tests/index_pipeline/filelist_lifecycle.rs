@@ -621,6 +621,57 @@ fn finished_index_response_drains_pending_entries_over_multiple_frames() {
 }
 
 #[test]
+fn active_index_backlog_stops_receiving_before_queue_growth_exceeds_frame_guard() {
+    const BACKLOG_GUARD: usize = 32_768;
+
+    let root = test_root("active-index-backlog-guard");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(311);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.pending_entries_request_id = Some(311);
+    app.shell.indexing.pending_entries = (0..BACKLOG_GUARD)
+        .map(|index| IndexEntry {
+            path: root.join(format!("queued-{index}.txt")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        })
+        .collect();
+    tx.send(IndexResponse::Batch {
+        request_id: 311,
+        entries: (0..1_024)
+            .map(|index| IndexEntry {
+                path: root.join(format!("received-{index}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect(),
+    })
+    .expect("send queued batch");
+
+    app.poll_index_response_with_budget_for_test(Duration::ZERO);
+
+    assert_eq!(app.shell.runtime.index.entries.len(), 32);
+    assert_eq!(
+        app.shell.indexing.pending_entries.len(),
+        BACKLOG_GUARD - 32,
+        "the UI must drain its existing backlog before accepting another batch"
+    );
+
+    app.poll_index_response_with_budget_for_test(Duration::ZERO);
+
+    assert_eq!(app.shell.runtime.index.entries.len(), 64);
+    assert_eq!(
+        app.shell.indexing.pending_entries.len(),
+        BACKLOG_GUARD - 64 + 1_024
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn pending_finished_index_finalizes_after_budgeted_drain_completes() {
     let root = test_root("finished-drain-complete");
     fs::create_dir_all(&root).expect("create root");

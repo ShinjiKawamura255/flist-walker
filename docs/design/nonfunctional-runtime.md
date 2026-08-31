@@ -27,6 +27,7 @@
 - tab 保存状態は query/history、index 状態、result/selection を別 struct で保持し、tab 切替や復元時に必要な束だけ同期する。
 - GUI の逐次反映は2系統とする: 空クエリはインデックス蓄積分を即時表示、非空クエリは一定件数/時間の閾値を満たしたときだけ検索用スナップショットを更新する。
 - Active indexing の terminal drain は wall-clock frame budget を主な応答性ガードとする。探索中は表示更新の tail 短縮のため大きめの件数上限を許容し、`Finished` 後の内部後処理では小さい件数上限に切り替えて入力応答性を優先する。
+- Active indexing の受信側は未反映 queue が 32,768 entry に達した frame では次の active data batch を queue へ展開せず ownership のまま 1 message 保留し、既存 backlog を先に drain する。これにより巨大な UI-owned `VecDeque` の capacity growth による全要素 relocation を避けつつ、`Finished` / `Failed` / `Canceled` の通常処理は維持する。nested FileList の hierarchy replacement は最初の `ReplaceAll` と後続 `Batch` をそれぞれ最大 1,024 entry に分け、単一 message の処理が wall-clock budget を迂回しないようにする。
 - 空クエリかつ FILE/DIR/Ignore List のフィルタが不要な active indexing では、表示結果を `runtime.index.entries` の先頭 `limit` 件から直接作り、`runtime.entries` / `incremental_filtered_entries` の全件複製を terminal state まで遅延する。フィルタ切替で同じ状態へ戻った場合も、表示更新のためだけに `runtime.entries` へ全件 clone しない。
 - FILE/DIR/Ignore List のフィルタが必要な active indexing では、ingest 時に更新している `incremental_filtered_entries` を terminal state の `runtime.entries` へ移し、`Finished` 後に `all_entries` 全体を再走査しない。
 - kind filter 用の unknown path queue は、対象 entries を走査しながら entry 自体の kind / entry kind cache / pending set / in-flight set を直接参照して積む。全 path の中間 `Vec<PathBuf>` は作らず、queue へ入れる path だけ clone する。
