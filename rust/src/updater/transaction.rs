@@ -32,12 +32,12 @@ const FAILURE_RECORD_VERSION: u32 = 1;
 const FAILURE_RECORD_MAX_BYTES: u64 = 16 * 1024;
 const RECOVERY_RETRY_INTERVAL: Duration = Duration::from_millis(25);
 const STARTUP_RECOVERY_WAIT: Duration = Duration::from_secs(5);
-const HEADLESS_RESTART_RECOVERY_WAIT: Duration = Duration::from_secs(30);
+const INTERNAL_RESTART_RECOVERY_WAIT: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Copy)]
 enum RecoveryWaitMode {
     Startup,
-    HeadlessRestartHandoff,
+    InternalRestartHandoff,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -702,7 +702,9 @@ fn sanitize_failure_message(error: &anyhow::Error) -> String {
         }
         sanitized.push(ch);
     }
-    sanitized
+    // Regression guard: updater errors compose paths deep in the transaction stack.
+    // Normalize the final display text so no new error context can leak a verbatim prefix.
+    crate::path_utils::normalize_text_for_display(&sanitized)
 }
 
 pub(super) fn write_failure_record(
@@ -791,16 +793,16 @@ pub(super) fn recover_current_installation(current_exe: &Path) -> Result<Option<
     )
 }
 
-pub(super) fn recover_current_installation_after_headless_restart(
+pub(super) fn recover_current_installation_after_internal_restart(
     current_exe: &Path,
 ) -> Result<Option<RecoveryOutcome>> {
-    // Regression guard: the hidden restart child is the only cleanup owner after
-    // spawn. It must outlive a slow helper exit instead of returning Deferred at
-    // the normal GUI startup deadline and orphaning a committed transaction.
+    // Regression guard: a helper-started GUI/headless child is the cleanup owner after spawn.
+    // It must outlive a slow helper exit instead of reporting a false startup failure or
+    // orphaning a committed transaction at the normal GUI recovery deadline.
     recover_current_installation_with_wait(
         current_exe,
-        HEADLESS_RESTART_RECOVERY_WAIT,
-        RecoveryWaitMode::HeadlessRestartHandoff,
+        INTERNAL_RESTART_RECOVERY_WAIT,
+        RecoveryWaitMode::InternalRestartHandoff,
     )
 }
 
@@ -836,8 +838,8 @@ fn recover_current_installation_with_wait(
             Instant::now,
             std::thread::sleep,
         ),
-        RecoveryWaitMode::HeadlessRestartHandoff => {
-            recover_headless_restart_handoff_until_deadline(
+        RecoveryWaitMode::InternalRestartHandoff => {
+            recover_internal_restart_handoff_until_deadline(
                 &marker_path,
                 &probe,
                 recovery_wait,
@@ -919,7 +921,7 @@ impl<P: ProcessProbe> ProcessProbe for ExitedHelperProbe<'_, P> {
     }
 }
 
-fn recover_headless_restart_handoff_until_deadline<N, S>(
+fn recover_internal_restart_handoff_until_deadline<N, S>(
     marker_path: &Path,
     process_probe: &impl ProcessProbe,
     recovery_wait: Duration,
@@ -983,7 +985,7 @@ where
             Phase::BinaryCommitted | Phase::RolledBack
         )
     {
-        bail!("updater transaction changed during headless restart handoff");
+        bail!("updater transaction changed during internal restart handoff");
     }
     let exited_helper = ExitedHelperProbe {
         inner: process_probe,

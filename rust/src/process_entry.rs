@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tracing_subscriber::EnvFilter;
 
-use crate::updater::run_internal_updater_command_if_requested;
+use crate::updater::{run_internal_updater_command_if_requested, InternalUpdaterAction};
 
 fn init_tracing_if_requested() {
     let Ok(filter) = EnvFilter::try_from_default_env() else {
@@ -17,7 +17,7 @@ fn init_tracing_if_requested() {
 
 /// Initializes optional tracing, then handles hidden updater commands before
 /// either public entrypoint gives its arguments to clap.
-pub fn initialize_process_entry() -> Result<bool> {
+pub fn initialize_process_entry() -> Result<InternalUpdaterAction> {
     init_tracing_if_requested();
     run_internal_updater_command_if_requested()
 }

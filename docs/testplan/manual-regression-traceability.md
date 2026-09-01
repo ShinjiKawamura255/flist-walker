@@ -352,3 +352,4 @@ GUI-adjacent structural refactoring ã¯ [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) ã
 - TC-200 -> SP-014 -> DES-014 -> FR-020, NFR-010
 - TC-193 -> SP-023 -> DES-024 -> FR-040, NFR-014
 - TC-201 -> SP-006, SP-010 -> DES-005, DES-009 -> FR-041, AC-042
+- TC-202 -> SP-014 -> DES-014 -> FR-033, NFR-010

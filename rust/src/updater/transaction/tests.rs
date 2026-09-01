@@ -970,10 +970,10 @@ fn tc159_headless_restart_handoff_outlives_normal_startup_deadline_regression() 
     assert!(prepared.lock_path().exists());
 
     tick.set(0);
-    let handoff = recover_headless_restart_handoff_until_deadline(
+    let handoff = recover_internal_restart_handoff_until_deadline(
         prepared.marker_path(),
         &probe,
-        HEADLESS_RESTART_RECOVERY_WAIT,
+        INTERNAL_RESTART_RECOVERY_WAIT,
         || {
             let current = tick.get();
             tick.set(current + 1);
@@ -1044,10 +1044,10 @@ fn tc159_headless_handoff_waits_through_transient_helper_identity_failure_regres
     tick.set(0);
     identity_queries.set(0);
     let started = std::time::Instant::now();
-    let handoff = recover_headless_restart_handoff_until_deadline(
+    let handoff = recover_internal_restart_handoff_until_deadline(
         prepared.marker_path(),
         &probe,
-        HEADLESS_RESTART_RECOVERY_WAIT,
+        INTERNAL_RESTART_RECOVERY_WAIT,
         || {
             let current = tick.get();
             tick.set(current + 1);

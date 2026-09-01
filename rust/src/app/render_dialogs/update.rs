@@ -1,4 +1,5 @@
 use crate::app::{FlistWalkerApp, UpdateSupport};
+use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
 
 pub(in crate::app) fn prompt_command(
@@ -75,7 +76,7 @@ pub(super) fn render_prompt(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         });
                     }
                     UpdateSupport::ManualOnly { message } => {
-                        ui.label(message);
+                        ui.label(normalize_text_for_display(message));
                         ui.label(format!("Release: {}", prompt.candidate.release_url));
                         ui.checkbox(
                             &mut skip_until_next_version,
@@ -118,7 +119,7 @@ pub(super) fn render_check_failure(app: &mut FlistWalkerApp, ctx: &egui::Context
             ui.add_space(6.0);
             ui.separator();
             ui.label("Details");
-            ui.monospace(&failure.error);
+            ui.monospace(normalize_text_for_display(&failure.error));
             ui.add_space(6.0);
             ui.checkbox(
                 &mut suppress_future_errors,
@@ -174,7 +175,9 @@ pub(super) fn render_install_failure(app: &mut FlistWalkerApp, ctx: &egui::Conte
             .max_height(180.0)
             .show(ui, |ui| {
                 ui.add(
-                    egui::Label::new(egui::RichText::new(&failure.error).monospace())
+                    egui::Label::new(
+                        egui::RichText::new(normalize_text_for_display(&failure.error)).monospace(),
+                    )
                         .wrap()
                         .selectable(true),
                 );
@@ -214,9 +217,11 @@ pub(super) fn render_previous_failure(app: &mut FlistWalkerApp, ctx: &egui::Cont
             .max_height(240.0)
             .show(ui, |ui| {
                 ui.add(
-                    egui::Label::new(egui::RichText::new(message).monospace())
-                        .wrap()
-                        .selectable(true),
+                    egui::Label::new(
+                        egui::RichText::new(normalize_text_for_display(&message)).monospace(),
+                    )
+                    .wrap()
+                    .selectable(true),
                 );
             });
         ui.add_space(6.0);

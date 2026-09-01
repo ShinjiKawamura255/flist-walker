@@ -1,7 +1,7 @@
 use super::widgets::centered_top_panel_label;
 use crate::app::{render_tabs, FlistWalkerApp};
-use crate::path_utils::normalize_windows_path_buf;
 use crate::text_editing::char_count;
+use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
 use std::path::PathBuf;
 
@@ -209,9 +209,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                 .iter()
                                 .enumerate()
                             {
-                                let text = normalize_windows_path_buf(path.clone())
-                                    .to_string_lossy()
-                                    .to_string();
+                                let text = normalize_path_for_display(path);
                                 let is_selected = app.shell.ui.root_dropdown_highlight() == Some(index);
                                 if FlistWalkerApp::selectable_row(ui, is_selected, &text).clicked() {
                                     next_root = Some(path.clone());

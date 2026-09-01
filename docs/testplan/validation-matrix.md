@@ -17,6 +17,14 @@
 - Related Tests: TC-200, `regression_update_install_failure_owns_shortcuts_and_closes_without_background_action`, `failed_update_response_replaces_prompt_with_manual_recovery_state`, `tc_200_gui_surface_snapshot_exposes_install_failure_recovery`.
 - Notes for Future Changes: blocking modalを追加した場合はrender layerだけでなく`handle_shortcuts`の最優先ownershipへ接続し、表示初回frameから背景shortcutを遮断する。
 
+### Regression Guard: updater restart success and display normalization
+
+- Scenario: Windows GUI自己更新のcommit直後に新GUIが通常startupとしてlive helperを検査し、一時的なidentity照会失敗を`Ambiguous`と誤判定して、versionは更新済みなのに`Previous Update Failed`を表示する。深いerror contextが複数のverbatim pathを連結すると、個別path helperだけでは`\\?\`が残る。
+- Expected Behavior: helper起動のGUIは専用internal flagでterminal handoff recoveryを先行し、helper終了とmarker/hash再検証後だけ通常GUIへ進む。保存診断・update state・status noticeは共有文字列表示境界を通り、drive/UNCを含む文中すべての`\\?\`を除去する。
+- Non-goals: 通常startupのfail-closed identity契約、filesystem APIへ渡すverbatim path、30秒超のhelper強制終了、production binaryを置換するunit test。
+- Related Tests: TC-202, `tc202_regression_gui_restart_uses_internal_recovery_handoff`, `tc202_regression_headless_restart_keeps_terminal_internal_dispatch`, `tc202_regression_failure_record_hides_embedded_windows_verbatim_prefixes`, `tc202_regression_display_text_strips_all_embedded_verbatim_path_prefixes`, `tc202_regression_display_text_preserves_non_verbatim_content`, `tc202_regression_status_notice_hides_embedded_verbatim_paths`.
+- Notes for Future Changes: updater error/noticeの新しい表示面は個別replaceを追加せず共有文字列表示境界へ接続し、process entryまたはrestart flag変更時はGUI/Headless双方のfocused testを実行する。
+
 ### Regression Guard: focused Ctrl+W query editing priority
 
 - Scenario: GUI の application shortcut が TextEdit より先に `Ctrl+W` をタブ終了として消費し、opt-in した Emacs 単語削除が実行されない。または TextEdit と独自 reducer が同じ event を処理して2語削除する。

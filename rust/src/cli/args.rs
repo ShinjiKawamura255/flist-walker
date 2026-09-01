@@ -404,6 +404,13 @@ pub fn parse_args() -> Args {
     parse_args_from(normalize_update_args(std::env::args_os()), "flistwalker")
 }
 
+pub fn parse_gui_restart_args() -> Args {
+    let program = std::env::args_os()
+        .next()
+        .unwrap_or_else(|| OsString::from("flistwalker"));
+    parse_args_from(vec![program], "flistwalker")
+}
+
 pub(super) fn parse_dedicated_args() -> Args {
     let mut arguments = std::env::args_os().collect::<Vec<_>>();
     if !arguments.iter().any(|argument| argument == "--cli") {

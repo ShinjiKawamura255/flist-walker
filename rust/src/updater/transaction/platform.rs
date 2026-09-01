@@ -1,6 +1,4 @@
 use crate::updater::UpdateRestartMode;
-#[cfg(not(target_os = "macos"))]
-use crate::updater::INTERNAL_UPDATE_RESTART_FLAG;
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use anyhow::bail;
 #[cfg(not(target_os = "macos"))]
@@ -276,9 +274,9 @@ pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<(
 #[cfg(target_os = "windows")]
 fn launch_windows_restart_once(target: &Path, mode: UpdateRestartMode) -> std::io::Result<()> {
     let mut command = windows_hidden_child_command(target);
-    if mode == UpdateRestartMode::Headless {
-        command.arg(INTERNAL_UPDATE_RESTART_FLAG);
-    }
+    // Regression guard: the restarted GUI must identify itself as the transaction handoff owner;
+    // a normal startup can misclassify a still-exiting helper and show a false update failure.
+    command.arg(mode.internal_restart_flag());
     // The updater must not surface a console even if a Windows build temporarily uses the
     // console subsystem. Headless restart is allowed to exit immediately after recovery, while
     // GUI restart must remain alive long enough to reject an immediate startup failure.
@@ -338,9 +336,7 @@ fn attempt_windows_restart_launch(
 pub(super) fn restart_target(target: &Path, mode: UpdateRestartMode) -> Result<()> {
     use std::os::unix::process::CommandExt;
     let mut command = Command::new(target);
-    if mode == UpdateRestartMode::Headless {
-        command.arg(INTERNAL_UPDATE_RESTART_FLAG);
-    }
+    command.arg(mode.internal_restart_flag());
     let error = command.exec();
     Err(error).with_context(|| format!("failed to exec {}", target.display()))
 }

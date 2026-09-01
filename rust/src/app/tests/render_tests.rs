@@ -1,4 +1,31 @@
 use super::*;
+
+#[test]
+fn tc202_regression_gui_renderers_never_use_raw_os_path_strings() {
+    let app_source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/app");
+    let mut production_sources = vec![
+        app_source.join("render.rs"),
+        app_source.join("render_panels.rs"),
+        app_source.join("render_snapshot.rs"),
+    ];
+    for directory in ["render_dialogs", "render_panels"] {
+        production_sources.extend(
+            fs::read_dir(app_source.join(directory))
+                .expect("read GUI renderer directory")
+                .map(|entry| entry.expect("read GUI renderer entry").path())
+                .filter(|path| path.extension().is_some_and(|extension| extension == "rs")),
+        );
+    }
+
+    for path in production_sources {
+        let source = fs::read_to_string(&path).expect("read production GUI renderer source");
+        assert!(
+            !source.contains(".display()") && !source.contains("to_string_lossy()"),
+            "{} bypasses the shared GUI path display boundary",
+            path.display()
+        );
+    }
+}
 use crate::updater::AutoUpdateAssets;
 
 #[test]

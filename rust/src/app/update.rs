@@ -5,6 +5,7 @@ use crate::app::state::{
     UpdateCheckFailureState, UpdateInstallFailureState, UpdateManager, UpdatePromptState,
     UpdateState,
 };
+use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::TryRecvError;
@@ -207,6 +208,7 @@ impl UpdateManager {
                 if !self.settle_response(request_id) {
                     return Vec::new();
                 }
+                let error = normalize_text_for_display(&error);
                 let commands = vec![UpdateCommand::App(UpdateAppCommand::AppendWindowTrace {
                     event: "update_check_failed",
                     details: format!("request_id={request_id} error={error}"),
@@ -274,6 +276,7 @@ impl UpdateManager {
                 if !self.settle_response(request_id) {
                     return Vec::new();
                 }
+                let error = normalize_text_for_display(&error);
                 let details_error = error.clone();
                 let candidate = self.state.prompt.take().map(|prompt| prompt.candidate);
                 self.state.install_failure = Some(UpdateInstallFailureState { candidate, error });
@@ -362,7 +365,8 @@ impl UpdateManager {
 
 impl FlistWalkerApp {
     pub fn set_previous_update_failure(&mut self, message: String) {
-        self.shell.features.update.state.previous_update_failure = Some(message);
+        self.shell.features.update.state.previous_update_failure =
+            Some(normalize_text_for_display(&message));
     }
 
     pub(super) fn dismiss_previous_update_failure(&mut self) {
