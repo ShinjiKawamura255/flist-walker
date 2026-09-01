@@ -18,6 +18,48 @@ const UTF8_BOM: &[u8; 3] = b"\xEF\xBB\xBF";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileListDiscoveryCanceled;
 
+fn is_filelist_case_variant_file(path: &Path, mut is_file: impl FnMut(&Path) -> bool) -> bool {
+    // Regression guard: a large root without FileList must not issue metadata I/O
+    // for every neighbor. Do not move the file probe before the paired name check;
+    // see the discovery_regression_tests metadata-probe cases below.
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.eq_ignore_ascii_case("filelist.txt"))
+        && is_file(path)
+}
+
+#[cfg(test)]
+mod discovery_regression_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn non_filelist_neighbors_skip_metadata_probe_regression() {
+        let probes = AtomicUsize::new(0);
+
+        let matched = is_filelist_case_variant_file(Path::new("ordinary.txt"), |_| {
+            probes.fetch_add(1, Ordering::SeqCst);
+            true
+        });
+
+        assert!(!matched);
+        assert_eq!(probes.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn filelist_case_variant_probes_file_type_once_regression() {
+        let probes = AtomicUsize::new(0);
+
+        let matched = is_filelist_case_variant_file(Path::new("FiLeLiSt.TxT"), |_| {
+            probes.fetch_add(1, Ordering::SeqCst);
+            true
+        });
+
+        assert!(matched);
+        assert_eq!(probes.load(Ordering::SeqCst), 1);
+    }
+}
+
 pub fn find_filelist(root: &Path) -> Option<PathBuf> {
     find_filelist_in_first_level_cancellable(root, || false)
         .ok()
@@ -60,13 +102,7 @@ where
             continue;
         };
         let path = entry.path();
-        if path.is_file()
-            && path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .map(|s| s.eq_ignore_ascii_case("filelist.txt"))
-                == Some(true)
-        {
+        if is_filelist_case_variant_file(&path, Path::is_file) {
             return Ok(Some(path));
         }
     }

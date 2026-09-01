@@ -955,6 +955,18 @@ fn tc_152_restored_active_tab_dispatches_in_same_terminal_poll_regression() {
         .iter()
         .any(|request| request.tab_id == restored_id));
 
+    for index in 0..128 {
+        response_tx
+            .send(IndexResponse::Batch {
+                request_id: 11,
+                entries: vec![IndexEntry {
+                    path: root.join(format!("stale-background-{index}.txt")),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            })
+            .expect("send stale background batch");
+    }
     response_tx
         .send(IndexResponse::Canceled { request_id: 11 })
         .expect("send background terminal response");
@@ -967,5 +979,13 @@ fn tc_152_restored_active_tab_dispatches_in_same_terminal_poll_regression() {
         .indexing
         .inflight_requests
         .contains(&dispatched.request_id));
+    let canceled_tab = app
+        .shell
+        .tabs
+        .iter()
+        .find(|tab| tab.id == background_ids[0])
+        .expect("canceled background tab");
+    assert_eq!(canceled_tab.index_state.pending_index_request_id, None);
+    assert!(!canceled_tab.index_state.index_in_progress);
     let _ = fs::remove_dir_all(&root);
 }
