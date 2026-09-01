@@ -56,6 +56,13 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## anyhow 1.0.104 / ico 0.5.0 dependency review (2026-09-02)
+
+- Direct dependency `anyhow` moves from `1.0.103` to `1.0.104` and retains its `MIT OR Apache-2.0` license. Build dependency `ico` moves from `0.3.0` to `0.5.0` and retains its `MIT` license.
+- The resolved package set is otherwise unchanged by these updates. No new copyleft family, bundled license text, or standalone notice obligation enters the packaged target graphs.
+- `THIRD_PARTY_NOTICES.txt` records the current resolved versions. `cargo metadata --locked` resolves for all four packaged targets, and `cargo audit` exits successfully without vulnerability warnings.
+- Release archives, standalone sidecars, macOS bundles, and self-update continue to use the existing `LICENSE` / `THIRD_PARTY_NOTICES` paths; release asset names and notice-file placement are unchanged.
+
 ## resvg 0.48 dependency review (2026-08-19)
 
 - Direct and build dependency: `resvg` / `usvg` move from `0.43.0` to `0.48.1`. The current releases are `Apache-2.0 OR MIT`, so the previous MPL-2.0 notice section is no longer part of the packaged resolve graph.
@@ -111,10 +118,10 @@
 - Current lockfile check: `rust/Cargo.lock` contains `crossbeam-epoch 0.9.20`.
 
 ### RUSTSEC-2026-0190: `anyhow 1.0.101` unsound downcast
-- Status: resolved on 2026-07-09.
-- Resolution: refreshed `Cargo.lock` to `anyhow 1.0.103`.
+- Status: resolved on 2026-07-09; current dependency review refreshed on 2026-09-02.
+- Resolution: refreshed `Cargo.lock` to the fixed `anyhow 1.0.103`, then to `1.0.104`.
 - Previous observed path from `cargo audit`: direct dependency `anyhow 1.0.101 -> flist-walker`.
-- Current lockfile check: `rust/Cargo.lock` contains `anyhow 1.0.103`.
+- Current lockfile check: `rust/Cargo.lock` contains `anyhow 1.0.104`.
 
 ### RUSTSEC-2026-0186: `memmap2 0.9.10` unchecked pointer offset
 - Status: resolved on 2026-07-09.
