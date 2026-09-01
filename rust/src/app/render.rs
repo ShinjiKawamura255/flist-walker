@@ -1,4 +1,5 @@
 use super::{render_dialogs, render_panels, render_theme, FlistWalkerApp, TabAccentColor};
+use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
 
 // Render command surface. Render.rs stays focused on drawing and input
@@ -327,7 +328,7 @@ impl FlistWalkerApp {
     pub(super) fn manage_root_list_error_label(ui: &mut egui::Ui, error: &str) {
         ui.colored_label(
             egui::Color32::from_rgb(238, 105, 105),
-            format!("Error: {}", error),
+            format!("Error: {}", normalize_text_for_display(error)),
         );
     }
 

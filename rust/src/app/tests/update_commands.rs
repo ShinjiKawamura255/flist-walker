@@ -521,6 +521,30 @@ fn tc189_previous_failure_is_not_suppressed_with_startup_check_failures() {
 }
 
 #[test]
+#[cfg(target_os = "windows")]
+fn tc202_regression_previous_failure_state_hides_verbatim_paths() {
+    let root = test_root("previous-update-failure-verbatim-display");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.set_previous_update_failure(
+        r"restart failed for \\?\C:\tools\flistwalker.exe via \\?\UNC\server\share\helper.exe"
+            .to_string(),
+    );
+
+    assert_eq!(
+        app.shell
+            .features
+            .update
+            .state
+            .previous_update_failure
+            .as_deref(),
+        Some(r"restart failed for C:\tools\flistwalker.exe via \\server\share\helper.exe")
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn update_apply_started_response_emits_trace_command() {
     let mut manager = UpdateManager::default();
     manager.state.pending_request_id = Some(10);
@@ -549,6 +573,29 @@ fn update_failed_response_emits_trace_command() {
     let details = update_trace_details(&commands, "update_failed").expect("failed trace");
     assert!(details.contains("request_id=11"));
     assert!(details.contains("Update failed: offline"));
+}
+
+#[test]
+#[cfg(target_os = "windows")]
+fn tc202_regression_update_failure_response_hides_verbatim_paths() {
+    let mut manager = UpdateManager::default();
+    manager.state.pending_request_id = Some(12);
+
+    manager.handle_response_commands(UpdateResponse::Failed {
+        request_id: 12,
+        error: r"Update failed: \\?\C:\tools\flistwalker.exe; backup \\?\UNC\server\share\old.exe"
+            .to_string(),
+    });
+
+    let failure = manager
+        .state
+        .install_failure
+        .as_ref()
+        .expect("update failure state");
+    assert_eq!(
+        failure.error,
+        r"Update failed: C:\tools\flistwalker.exe; backup \\server\share\old.exe"
+    );
 }
 
 #[test]

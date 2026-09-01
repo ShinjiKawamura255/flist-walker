@@ -1,5 +1,6 @@
 use super::{normalize_windows_path_buf, FlistWalkerApp};
 use crate::indexer::IndexSource;
+use crate::path_utils::normalize_text_for_display;
 use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
 use memory_stats::memory_stats;
@@ -92,7 +93,7 @@ pub(super) fn build_status_line(ctx: StatusLineContext<'_>) -> String {
     let notice = if ctx.notice.is_empty() {
         String::new()
     } else {
-        format!(" | {}", ctx.notice)
+        format!(" | {}", normalize_text_for_display(ctx.notice))
     };
     let memory = match ctx.memory_text {
         Some(mem) => format!(" | Mem: {mem}"),
@@ -205,7 +206,7 @@ impl FlistWalkerApp {
 
     /// notice を更新し status line と同期する。
     pub(super) fn set_notice(&mut self, notice: impl Into<String>) {
-        self.shell.runtime.notice = notice.into();
+        self.shell.runtime.notice = normalize_text_for_display(&notice.into());
         self.refresh_status_line();
     }
 
@@ -411,6 +412,35 @@ mod tests {
         assert!(status.contains("History search: 4/12"));
         assert!(status.contains("Mem: 123.4 MiB"));
         assert!(status.contains("hello"));
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn tc202_regression_status_notice_hides_embedded_verbatim_paths() {
+        let status = build_status_line(StatusLineContext {
+            active_tab: 0,
+            tab_count: 1,
+            indexed_count: 0,
+            results_len: 0,
+            total_match_count: 0,
+            limit: 10,
+            pinned_paths_len: 0,
+            search_in_progress: false,
+            indexing_in_progress: false,
+            action_in_progress: false,
+            filelist_in_progress: false,
+            filelist_cancel_requested: false,
+            update_in_progress: false,
+            sort_in_progress: false,
+            history_search_active: false,
+            history_search_results_len: 0,
+            query_history_len: 0,
+            notice: r"Created \\?\C:\work\FileList.txt from \\?\UNC\server\share",
+            memory_text: None,
+        });
+
+        assert!(status.contains(r"Created C:\work\FileList.txt from \\server\share"));
+        assert!(!status.contains(r"\\?\"));
     }
 
     #[test]

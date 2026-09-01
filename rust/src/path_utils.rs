@@ -12,15 +12,33 @@ pub fn path_key(path: &Path) -> String {
 }
 
 pub fn strip_windows_extended_prefix(text: &str) -> String {
+    normalize_text_for_display(text)
+}
+
+/// Normalizes arbitrary user-visible text, including diagnostics that can contain
+/// more than one embedded Windows path.
+pub fn normalize_text_for_display(text: &str) -> String {
     #[cfg(windows)]
     {
-        if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
-            return format!(r"\\{}", rest);
+        let mut normalized = String::with_capacity(text.len());
+        let mut remaining = text;
+        while let Some(index) = remaining.find(r"\\?\") {
+            normalized.push_str(&remaining[..index]);
+            let after_prefix = &remaining[index + r"\\?\".len()..];
+            if after_prefix
+                .get(..r"UNC\".len())
+                .is_some_and(|namespace| namespace.eq_ignore_ascii_case(r"UNC\"))
+            {
+                normalized.push_str(r"\\");
+                remaining = &after_prefix[r"UNC\".len()..];
+            } else {
+                remaining = after_prefix;
+            }
         }
-        if let Some(rest) = text.strip_prefix(r"\\?\") {
-            return rest.to_string();
-        }
+        normalized.push_str(remaining);
+        normalized
     }
+    #[cfg(not(windows))]
     text.to_string()
 }
 
@@ -116,5 +134,27 @@ pub fn normalize_windows_shell_path(path: &Path) -> PathBuf {
     #[cfg(not(windows))]
     {
         path.to_path_buf()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_text_for_display;
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn tc202_regression_display_text_strips_all_embedded_verbatim_path_prefixes() {
+        assert_eq!(
+            normalize_text_for_display(
+                r"source=\\?\C:\tools\flistwalker.exe backup=\\?\UnC\server\share\old.exe"
+            ),
+            r"source=C:\tools\flistwalker.exe backup=\\server\share\old.exe"
+        );
+    }
+
+    #[test]
+    fn tc202_regression_display_text_preserves_non_verbatim_content() {
+        let message = r"Update failed: access denied (error 5)";
+        assert_eq!(normalize_text_for_display(message), message);
     }
 }

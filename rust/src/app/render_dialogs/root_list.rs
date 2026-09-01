@@ -2,6 +2,7 @@ use crate::app::{
     render::{EmacsSinglelineOptions, RenderRootListDialogCommand},
     FlistWalkerApp,
 };
+use crate::path_utils::{normalize_path_for_display, normalize_text_for_display};
 use eframe::egui;
 
 #[derive(Default)]
@@ -147,7 +148,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
 
             let notice = app.shell.features.root_browser.manage_list.notice.clone();
             if !notice.is_empty() {
-                ui.label(notice);
+                ui.label(normalize_text_for_display(&notice));
             }
 
             ui.separator();
@@ -212,7 +213,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         ui.label("No saved roots");
                     }
                     for (index, root) in roots.iter().enumerate() {
-                        let label = root.to_string_lossy().to_string();
+                        let label = normalize_path_for_display(root);
                         let remove_mode = app.shell.features.root_browser.manage_list.remove_mode;
                         let editing_index =
                             app.shell.features.root_browser.manage_list.editing_index;

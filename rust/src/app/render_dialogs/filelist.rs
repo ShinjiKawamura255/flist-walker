@@ -1,4 +1,5 @@
 use crate::app::{FileListDialogKind, FlistWalkerApp};
+use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
 
 pub(in crate::app) fn overwrite_command(
@@ -65,7 +66,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             .show(ctx, |ui| {
                 ui.label(format!(
                     "{} already exists. Overwrite it?",
-                    existing_path.display()
+                    normalize_path_for_display(&existing_path)
                 ));
                 ui.horizontal(|ui| {
                     if app

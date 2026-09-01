@@ -1,4 +1,5 @@
 use super::{FlistWalkerApp, UpdateSupport};
+use crate::path_utils::normalize_text_for_display;
 use crate::ui_model::normalize_path_for_display;
 use serde::Serialize;
 
@@ -209,7 +210,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             title: "Overwrite FileList?".to_string(),
             lines: vec![format!(
                 "{} already exists. Overwrite it?",
-                pending.existing_path.display()
+                normalize_path_for_display(&pending.existing_path)
             )],
             buttons: vec!["Overwrite".to_string(), "Cancel".to_string()],
         });
@@ -274,7 +275,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                         "FlistWalker {} is available. Current version is {}.",
                         prompt.candidate.target_version, prompt.candidate.current_version
                     ),
-                    message.clone(),
+                    normalize_text_for_display(message),
                     format!("Release: {}", prompt.candidate.release_url),
                 ],
                 vec!["Later".to_string()],
@@ -293,7 +294,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                 "FlistWalker couldn't check for updates right now.".to_string(),
                 "You can keep using the app as usual and try again later.".to_string(),
                 "Details".to_string(),
-                failure.error.clone(),
+                normalize_text_for_display(&failure.error),
             ],
             buttons: vec!["Close".to_string()],
         });
@@ -310,7 +311,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             lines.push(format!("Open release page: {}", candidate.release_url));
         }
         lines.push("Details".to_string());
-        lines.push(failure.error.clone());
+        lines.push(normalize_text_for_display(&failure.error));
         update_dialogs.push(DialogSnapshot {
             title: "Update Installation Failed".to_string(),
             lines,
@@ -319,7 +320,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
     }
 
     GuiSurfaceSnapshot {
-        root: app.shell.runtime.root.display().to_string(),
+        root: normalize_path_for_display(&app.shell.runtime.root),
         query: app.shell.runtime.query_state.query.clone(),
         use_filelist: app.shell.runtime.use_filelist,
         use_regex: app.shell.runtime.use_regex,
@@ -340,7 +341,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
             .runtime
             .current_row
             .and_then(|row| app.shell.runtime.results.get(row))
-            .map(|(path, _)| path.display().to_string()),
+            .map(|(path, _)| normalize_path_for_display(path)),
         pinned_count: app.shell.runtime.pinned_paths.len(),
         tab_count: app.shell.tabs.len(),
         active_tab: app.shell.tabs.active_tab_index(),

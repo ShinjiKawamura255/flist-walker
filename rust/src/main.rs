@@ -9,13 +9,19 @@ use flist_walker::cli;
 use flist_walker::ignore_list::ensure_ignore_list_sample;
 use flist_walker::process_entry::initialize_process_entry;
 use flist_walker::runtime_config::initialize_runtime_config;
+use flist_walker::updater::InternalUpdaterAction;
 
 fn main() -> Result<ExitCode> {
-    if initialize_process_entry()? {
+    let process_entry = initialize_process_entry()?;
+    if process_entry == InternalUpdaterAction::Exit {
         return Ok(ExitCode::SUCCESS);
     }
 
-    let args = cli::parse_args();
+    let args = if process_entry == InternalUpdaterAction::ContinueGuiAfterUpdate {
+        cli::parse_gui_restart_args()
+    } else {
+        cli::parse_args()
+    };
     if args.requests_update_command() {
         return cli::run_update_command(args.update_requested());
     }

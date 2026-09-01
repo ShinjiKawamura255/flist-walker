@@ -1,5 +1,6 @@
 use crate::update_security::CHECKSUM_SIGNATURE_NAME;
 use anyhow::{bail, Context, Result};
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU8, Ordering};
 
@@ -12,6 +13,7 @@ mod transaction;
 const SELF_UPDATE_DISABLE_FLAG_NAME: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 const FORCE_UPDATE_CHECK_FAILURE_FLAG_NAME: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
 const INTERNAL_UPDATE_RESTART_FLAG: &str = "--flistwalker-internal-update-restart";
+const INTERNAL_UPDATE_GUI_RESTART_FLAG: &str = "--flistwalker-internal-update-restart-gui";
 
 const INSTALL_CANCEL_REQUESTED: u8 = 1;
 const INSTALL_COMMIT_HANDOFF: u8 = 2;
@@ -108,6 +110,13 @@ pub enum UpdateRestartMode {
 }
 
 impl UpdateRestartMode {
+    fn internal_restart_flag(self) -> &'static str {
+        match self {
+            Self::Gui => INTERNAL_UPDATE_GUI_RESTART_FLAG,
+            Self::Headless => INTERNAL_UPDATE_RESTART_FLAG,
+        }
+    }
+
     #[cfg(not(target_os = "macos"))]
     fn helper_argument(self) -> &'static str {
         match self {
@@ -122,6 +131,23 @@ impl UpdateRestartMode {
             "headless" => Ok(Self::Headless),
             _ => bail!("internal updater helper restart mode is invalid"),
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InternalUpdaterAction {
+    Continue,
+    Exit,
+    ContinueGuiAfterUpdate,
+}
+
+fn restart_mode_from_internal_flag(flag: &OsStr) -> Option<UpdateRestartMode> {
+    if flag == INTERNAL_UPDATE_RESTART_FLAG {
+        Some(UpdateRestartMode::Headless)
+    } else if flag == INTERNAL_UPDATE_GUI_RESTART_FLAG {
+        Some(UpdateRestartMode::Gui)
+    } else {
+        None
     }
 }
 
@@ -448,24 +474,27 @@ fn verify_staged_update(
     Ok(VerifiedUpdateBundle::new(staged))
 }
 
-pub fn run_internal_updater_command_if_requested() -> Result<bool> {
+pub fn run_internal_updater_command_if_requested() -> Result<InternalUpdaterAction> {
     let mut arguments = std::env::args_os();
     let _program = arguments.next();
     let Some(flag) = arguments.next() else {
-        return Ok(false);
+        return Ok(InternalUpdaterAction::Continue);
     };
-    if flag == INTERNAL_UPDATE_RESTART_FLAG {
+    if let Some(restart_mode) = restart_mode_from_internal_flag(&flag) {
         if arguments.next().is_some() {
             bail!("internal updater restart received unexpected arguments");
         }
-        let outcome = recover_interrupted_update_after_headless_restart()?;
+        let outcome = recover_interrupted_update_after_internal_restart()?;
         if outcome == Some(transaction::RecoveryOutcome::Deferred) {
             bail!("internal updater restart did not reach terminal recovery state");
         }
-        return Ok(true);
+        return Ok(match restart_mode {
+            UpdateRestartMode::Gui => InternalUpdaterAction::ContinueGuiAfterUpdate,
+            UpdateRestartMode::Headless => InternalUpdaterAction::Exit,
+        });
     }
     if flag != apply::INTERNAL_HELPER_FLAG {
-        return Ok(false);
+        return Ok(InternalUpdaterAction::Continue);
     }
     let marker = arguments
         .next()
@@ -492,7 +521,7 @@ pub fn run_internal_updater_command_if_requested() -> Result<bool> {
         &start_token,
         restart_mode,
     )?;
-    Ok(true)
+    Ok(InternalUpdaterAction::Exit)
 }
 
 pub fn recover_interrupted_update_on_startup() -> Result<Option<String>> {
@@ -501,10 +530,10 @@ pub fn recover_interrupted_update_on_startup() -> Result<Option<String>> {
         .map(|outcome| outcome.map(|value| format!("{value:?}")))
 }
 
-fn recover_interrupted_update_after_headless_restart(
+fn recover_interrupted_update_after_internal_restart(
 ) -> Result<Option<transaction::RecoveryOutcome>> {
     let current_exe = std::env::current_exe().context("failed to resolve current executable")?;
-    transaction::recover_current_installation_after_headless_restart(&current_exe)
+    transaction::recover_current_installation_after_internal_restart(&current_exe)
 }
 
 pub fn take_previous_update_failure_on_startup() -> Result<Option<String>> {
@@ -564,6 +593,62 @@ mod tests {
             .expect("take second time")
             .is_none());
         let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn tc202_regression_failure_record_hides_embedded_windows_verbatim_prefixes() {
+        let base = std::env::temp_dir().join(format!(
+            "flistwalker-update-failure-display-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        fs::create_dir(&base).expect("base");
+        let transaction_id = "20112233445566778899aabbccddeeff";
+
+        transaction::write_failure_record(
+            &base,
+            transaction_id,
+            &anyhow::anyhow!(
+                r"failed paths: \\?\C:\Program Files\FlistWalker\flistwalker.exe and \\?\UNC\server\share\FlistWalker.exe"
+            ),
+        )
+        .expect("write failure record");
+
+        let message = transaction::take_failure_record_from_install_dir(&base)
+            .expect("take failure record")
+            .expect("failure message");
+        assert_eq!(
+            message,
+            r"failed paths: C:\Program Files\FlistWalker\flistwalker.exe and \\server\share\FlistWalker.exe"
+        );
+        assert!(!message.contains(r"\\?\"));
+
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn tc202_regression_gui_restart_uses_internal_recovery_handoff() {
+        let flag = UpdateRestartMode::Gui.internal_restart_flag();
+
+        assert_eq!(flag, "--flistwalker-internal-update-restart-gui");
+        assert_eq!(
+            restart_mode_from_internal_flag(std::ffi::OsStr::new(flag)),
+            Some(UpdateRestartMode::Gui)
+        );
+    }
+
+    #[test]
+    fn tc202_regression_headless_restart_keeps_terminal_internal_dispatch() {
+        let flag = UpdateRestartMode::Headless.internal_restart_flag();
+
+        assert_eq!(flag, "--flistwalker-internal-update-restart");
+        assert_eq!(
+            restart_mode_from_internal_flag(std::ffi::OsStr::new(flag)),
+            Some(UpdateRestartMode::Headless)
+        );
     }
 
     #[test]

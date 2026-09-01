@@ -11,7 +11,7 @@ use crate::updater::{
     set_running_binary_variant, BinaryVariant, UpdateCandidate, UpdateRestartMode, UpdateSupport,
 };
 
-pub use args::{parse_args, validate_args, Args};
+pub use args::{parse_args, parse_gui_restart_args, validate_args, Args};
 use batch::run_cli_mode;
 
 fn update_available_message(candidate: &UpdateCandidate) -> String {
