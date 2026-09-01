@@ -7,8 +7,8 @@ use crate::app::query_state::QueryState;
 use crate::app::search_coordinator::SearchCoordinator;
 use crate::app::tab_state::AppTabState;
 use crate::app::ui_state::RuntimeUiState;
-use crate::app::worker_bus::WorkerBus;
-use crate::app::worker_runtime::WorkerRuntime;
+use crate::app::worker::bus::WorkerBus;
+use crate::app::worker::runtime::WorkerRuntime;
 use crate::entry::Entry;
 use crate::indexer::{IndexBuildResult, IndexSource};
 pub(super) use crate::search::{

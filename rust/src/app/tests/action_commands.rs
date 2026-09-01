@@ -3,10 +3,10 @@ use crate::actions::{
     action_target_path_for_open_in_folder, authorize_action_targets, lexical_action_path_precheck,
     ActionPathPrecheck,
 };
-use crate::app::worker_channel::bounded_request_channel;
+use crate::app::worker::channel::bounded_request_channel;
 #[cfg(target_os = "windows")]
-use crate::app::worker_tasks::action_notice_for_targets;
-use crate::app::worker_tasks::{
+use crate::app::worker::tasks::action_notice_for_targets;
+use crate::app::worker::tasks::{
     process_action_request_with, process_action_request_with_outcome, spawn_action_worker_with,
     ActionTerminalOutcome, SharedActionExecutor,
 };
@@ -204,7 +204,7 @@ fn tc_150_action_worker_uses_two_workers_and_bounds_total_to_ten() {
     }
     assert_eq!(
         tx.load(),
-        crate::app::worker_channel::WorkerLoadSnapshot {
+        crate::app::worker::channel::WorkerLoadSnapshot {
             queued: 8,
             inflight: 2,
             capacity: 8,

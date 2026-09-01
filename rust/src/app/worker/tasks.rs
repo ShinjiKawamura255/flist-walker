@@ -1,20 +1,20 @@
-use super::worker_channel::{
+use super::channel::{
     bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
 };
-use super::worker_protocol::{
+use super::protocol::{
     ActionRequest, ActionResponse, CatalogRequest, CatalogRequestKind, CatalogResponse,
     FileListRequest, FileListResponse, KindResolveRequest, KindResolveResponse, PreviewRequest,
     PreviewResponse, RootValidationIntent, RootValidationRequest, RootValidationResponse,
     SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
     UpdateRequestKind, UpdateResponse, ValidatedRoot,
 };
-use super::SortMetadata;
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
 use crate::actions::{
     execute_authorized_action_request, AuthorizedActionBackend, AuthorizedActionGuard,
     AuthorizedActionMode, AuthorizedActionOutcome, AuthorizedActionReport, AuthorizedActionRequest,
 };
+use crate::app::SortMetadata;
 use crate::entry::EntryKind;
 use crate::indexer::{
     execute_filelist_write_plan, plan_filelist_write_cancellable, FileListWriteOptions,
@@ -91,7 +91,7 @@ fn validate_root_request(req: &RootValidationRequest) -> anyhow::Result<Validate
     })
 }
 
-pub(super) fn spawn_root_validation_worker(
+pub(in crate::app) fn spawn_root_validation_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<RootValidationRequest>,
@@ -140,7 +140,7 @@ fn trace_worker_receiver_closed(flow: &'static str, request_id: u64) {
     );
 }
 
-pub(super) fn spawn_search_worker(
+pub(in crate::app) fn spawn_search_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<SearchRequest>,
@@ -219,7 +219,7 @@ pub(super) fn spawn_search_worker(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn spawn_preview_worker(
+pub(in crate::app) fn spawn_preview_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<PreviewRequest>,
@@ -264,7 +264,7 @@ pub(super) fn spawn_preview_worker(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn spawn_catalog_worker(
+pub(in crate::app) fn spawn_catalog_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<CatalogRequest>,
@@ -347,7 +347,7 @@ pub(super) fn spawn_catalog_worker(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn spawn_kind_resolver_worker(
+pub(in crate::app) fn spawn_kind_resolver_worker(
     shutdown: Arc<AtomicBool>,
     latest_epochs: Arc<Mutex<HashMap<u64, u64>>>,
 ) -> (
@@ -451,7 +451,7 @@ pub(crate) fn spawn_kind_resolver_worker_with(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn spawn_filelist_worker(
+pub(in crate::app) fn spawn_filelist_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<FileListRequest>,
@@ -582,7 +582,7 @@ pub(super) fn spawn_filelist_worker(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn spawn_action_worker(
+pub(in crate::app) fn spawn_action_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     BoundedSender<ActionRequest>,
@@ -860,7 +860,7 @@ fn run_action_target(_path: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(super) fn spawn_sort_metadata_worker(
+pub(in crate::app) fn spawn_sort_metadata_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<SortMetadataRequest>,
@@ -924,7 +924,7 @@ pub(super) fn spawn_sort_metadata_worker(
     (tx_req, rx_res, handle)
 }
 
-pub(super) fn spawn_update_worker(
+pub(in crate::app) fn spawn_update_worker(
     shutdown: Arc<AtomicBool>,
 ) -> (
     Sender<UpdateRequest>,

@@ -1,7 +1,7 @@
-use super::worker_channel::{
+use super::worker::channel::{
     bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
 };
-use super::worker_protocol::{IndexEntry, IndexRequest, IndexResponse};
+use super::worker::protocol::{IndexEntry, IndexRequest, IndexResponse};
 use crate::entry::EntryKind;
 use crate::indexer::{
     apply_filelist_hierarchy_overrides_with_max_depth, find_filelist_in_first_level_cancellable,

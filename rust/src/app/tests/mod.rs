@@ -10,8 +10,8 @@ pub(super) use crate::app::state::{
     UpdateCheckFailureState, UpdateInstallFailureState, UpdateManager, UpdatePromptState,
     UpdateState,
 };
-pub(super) use crate::app::worker_channel::bounded_request_channel;
-pub(super) use crate::app::worker_protocol::{
+pub(super) use crate::app::worker::channel::bounded_request_channel;
+pub(super) use crate::app::worker::protocol::{
     KindResolveRequest, KindResolveResponse, UpdateRequestKind,
 };
 pub(super) use crate::app::{clear_process_shutdown_request, process_shutdown_requested};

@@ -1,6 +1,6 @@
 use super::*;
-use crate::app::worker_channel::bounded_request_channel;
-use crate::app::worker_tasks::{spawn_kind_resolver_worker_with, SharedKindResolver};
+use crate::app::worker::channel::bounded_request_channel;
+use crate::app::worker::tasks::{spawn_kind_resolver_worker_with, SharedKindResolver};
 use std::collections::HashMap;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;

@@ -46,7 +46,7 @@ Manual-heavy checks remain documented in [TESTPLAN.md](../TESTPLAN.md). Structur
 - New search operators should start in [query.rs](../../rust/src/query.rs), then update search ranking and UI highlight together.
 - New candidate metadata should be added as a deferred worker/cache path unless it is proven safe for the index fast path.
 - New GUI features should define state ownership first: runtime active state, tab snapshot state, feature bundle state, or cache state.
-- New worker flows should add request/response types in [app/worker_protocol.rs](../../rust/src/app/worker_protocol.rs), channel wiring in [app/worker_bus.rs](../../rust/src/app/worker_bus.rs), and ownership tests under [app/tests](../../rust/src/app/tests).
+- New worker flows should add request/response types in [app/worker/protocol.rs](../../rust/src/app/worker/protocol.rs), channel wiring in [app/worker/bus.rs](../../rust/src/app/worker/bus.rs), and ownership tests under [app/tests](../../rust/src/app/tests).
 - New public environment variables require README/support/release documentation review; dev/test overrides should stay out of public docs.
 
 [[↑ Back to Top]](#top)

@@ -1,7 +1,7 @@
 use super::events::{Event, IndexData, TerminalOutcome, WorkerOutcome};
 use super::invariants::{validate, SemanticSnapshot, TabSemanticSnapshot};
 use crate::app::tests::*;
-use crate::app::worker_channel::BoundedReceiver;
+use crate::app::worker::channel::BoundedReceiver;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 

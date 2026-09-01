@@ -63,11 +63,11 @@ impl FlistWalkerApp {
         };
         match self.shell.worker_bus.action.tx.try_send(req) {
             Ok(()) => {
-                super::super::worker_channel::trace_worker_load(
+                super::super::worker::channel::trace_worker_load(
                     &self.shell.worker_bus.action.tx,
                     "action",
                     "accepted",
-                    super::super::worker_channel::WorkerTraceContext {
+                    super::super::worker::channel::WorkerTraceContext {
                         worker_id: "ui-dispatch",
                         request_id: Some(request_id),
                         tab_id,
@@ -99,11 +99,11 @@ impl FlistWalkerApp {
                 }
             }
             Err(std::sync::mpsc::TrySendError::Full(_)) => {
-                super::super::worker_channel::trace_worker_load(
+                super::super::worker::channel::trace_worker_load(
                     &self.shell.worker_bus.action.tx,
                     "action",
                     "full",
-                    super::super::worker_channel::WorkerTraceContext {
+                    super::super::worker::channel::WorkerTraceContext {
                         worker_id: "ui-dispatch",
                         request_id: Some(request_id),
                         tab_id,
@@ -114,11 +114,11 @@ impl FlistWalkerApp {
                 self.set_notice("Action worker is busy");
             }
             Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
-                super::super::worker_channel::trace_worker_load(
+                super::super::worker::channel::trace_worker_load(
                     &self.shell.worker_bus.action.tx,
                     "action",
                     "disconnected",
-                    super::super::worker_channel::WorkerTraceContext {
+                    super::super::worker::channel::WorkerTraceContext {
                         worker_id: "ui-dispatch",
                         request_id: Some(request_id),
                         tab_id,

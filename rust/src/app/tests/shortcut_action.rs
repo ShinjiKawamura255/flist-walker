@@ -1,5 +1,5 @@
 use super::*;
-use crate::app::worker_channel::bounded_request_channel;
+use crate::app::worker::channel::bounded_request_channel;
 
 #[test]
 fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused() {

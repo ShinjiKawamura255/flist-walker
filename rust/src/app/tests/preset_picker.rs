@@ -828,7 +828,7 @@ fn open_picker_consumes_background_shortcuts_and_escape_preserves_search() {
 
 #[test]
 fn stale_catalog_response_cannot_replace_latest_picker_catalog() {
-    use crate::app::worker_protocol::CatalogResponse;
+    use crate::app::worker::protocol::CatalogResponse;
 
     let root = test_root("preset-picker-stale-catalog");
     fs::create_dir_all(&root).expect("create root");
@@ -1128,7 +1128,7 @@ fn escape_discards_the_preset_draft_and_returns_to_the_picker() {
 
 #[test]
 fn saving_a_preset_draft_queues_an_atomic_replace_without_applying_it() {
-    use crate::app::worker_protocol::CatalogRequestKind;
+    use crate::app::worker::protocol::CatalogRequestKind;
 
     let root = test_root("preset-editor-save-request");
     fs::create_dir_all(&root).expect("create root");
@@ -1212,7 +1212,7 @@ fn adding_a_preset_starts_a_draft_from_the_current_pure_search_state() {
 
 #[test]
 fn saving_a_new_preset_draft_queues_an_atomic_add_without_applying_it() {
-    use crate::app::worker_protocol::CatalogRequestKind;
+    use crate::app::worker::protocol::CatalogRequestKind;
 
     let root = test_root("preset-editor-add-request");
     fs::create_dir_all(&root).expect("create root");
@@ -1242,7 +1242,7 @@ fn saving_a_new_preset_draft_queues_an_atomic_add_without_applying_it() {
 
 #[test]
 fn deleting_a_selected_preset_requires_confirmation_and_queues_atomic_remove() {
-    use crate::app::worker_protocol::CatalogRequestKind;
+    use crate::app::worker::protocol::CatalogRequestKind;
 
     let root = test_root("preset-delete-request");
     fs::create_dir_all(&root).expect("create root");
@@ -1277,7 +1277,7 @@ fn deleting_a_selected_preset_requires_confirmation_and_queues_atomic_remove() {
 
 #[test]
 fn successful_preset_delete_response_updates_the_picker_without_changing_the_current_search() {
-    use crate::app::worker_protocol::CatalogResponse;
+    use crate::app::worker::protocol::CatalogResponse;
 
     let root = test_root("preset-delete-success");
     fs::create_dir_all(&root).expect("create root");
@@ -1324,7 +1324,7 @@ fn successful_preset_delete_response_updates_the_picker_without_changing_the_cur
 
 #[test]
 fn failed_preset_delete_response_keeps_confirmation_and_surfaces_the_error() {
-    use crate::app::worker_protocol::CatalogResponse;
+    use crate::app::worker::protocol::CatalogResponse;
 
     let root = test_root("preset-delete-failure");
     fs::create_dir_all(&root).expect("create root");
@@ -1400,7 +1400,7 @@ fn invalid_preset_draft_stays_local_and_does_not_start_the_worker() {
 
 #[test]
 fn successful_preset_edit_response_returns_to_picker_and_selects_renamed_preset() {
-    use crate::app::worker_protocol::CatalogResponse;
+    use crate::app::worker::protocol::CatalogResponse;
 
     let root = test_root("preset-editor-save-success");
     fs::create_dir_all(&root).expect("create root");
@@ -1446,7 +1446,7 @@ fn successful_preset_edit_response_returns_to_picker_and_selects_renamed_preset(
 
 #[test]
 fn failed_preset_edit_response_keeps_the_draft_for_correction() {
-    use crate::app::worker_protocol::CatalogResponse;
+    use crate::app::worker::protocol::CatalogResponse;
 
     let root = test_root("preset-editor-save-failure");
     fs::create_dir_all(&root).expect("create root");
@@ -1490,7 +1490,7 @@ fn failed_preset_edit_response_keeps_the_draft_for_correction() {
 
 #[test]
 fn named_root_manager_adds_an_absolute_root_without_changing_the_current_search() {
-    use crate::app::worker_protocol::CatalogRequestKind;
+    use crate::app::worker::protocol::CatalogRequestKind;
 
     let root = test_root("named-root-manager-add");
     fs::create_dir_all(&root).expect("create root");
@@ -1522,7 +1522,7 @@ fn named_root_manager_adds_an_absolute_root_without_changing_the_current_search(
 
 #[test]
 fn named_root_manager_edits_and_deletes_the_selected_root_through_catalog_requests() {
-    use crate::app::worker_protocol::CatalogRequestKind;
+    use crate::app::worker::protocol::CatalogRequestKind;
 
     let root = test_root("named-root-manager-edit-delete");
     fs::create_dir_all(&root).expect("create root");
@@ -1610,7 +1610,7 @@ fn named_root_manager_rejects_relative_paths_without_starting_the_worker() {
 #[test]
 fn successful_named_root_rename_updates_an_open_preset_draft_reference() {
     use crate::app::state::PendingNamedRootOperation;
-    use crate::app::worker_protocol::CatalogResponse;
+    use crate::app::worker::protocol::CatalogResponse;
 
     let root = test_root("named-root-manager-success");
     fs::create_dir_all(&root).expect("create root");

@@ -5,32 +5,32 @@ use std::sync::mpsc::{SendError, TryRecvError};
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct WorkerLoadSnapshot {
-    pub(super) queued: usize,
-    pub(super) inflight: usize,
-    pub(super) capacity: usize,
+pub(in crate::app) struct WorkerLoadSnapshot {
+    pub(in crate::app) queued: usize,
+    pub(in crate::app) inflight: usize,
+    pub(in crate::app) capacity: usize,
 }
 
-pub(super) struct WorkerTraceContext<'a> {
-    pub(super) worker_id: &'a str,
-    pub(super) request_id: Option<u64>,
-    pub(super) tab_id: Option<u64>,
-    pub(super) epoch: Option<u64>,
-    pub(super) outcome: &'static str,
+pub(in crate::app) struct WorkerTraceContext<'a> {
+    pub(in crate::app) worker_id: &'a str,
+    pub(in crate::app) request_id: Option<u64>,
+    pub(in crate::app) tab_id: Option<u64>,
+    pub(in crate::app) epoch: Option<u64>,
+    pub(in crate::app) outcome: &'static str,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub(super) struct WorkerTraceRecord<'a> {
-    pub(super) worker_family: &'static str,
-    pub(super) event: &'static str,
-    pub(super) worker_id: &'a str,
-    pub(super) request_id: Option<u64>,
-    pub(super) tab_id: Option<u64>,
-    pub(super) epoch: Option<u64>,
-    pub(super) outcome: &'static str,
-    pub(super) queue_depth: usize,
-    pub(super) in_flight: usize,
-    pub(super) capacity: usize,
+pub(in crate::app) struct WorkerTraceRecord<'a> {
+    pub(in crate::app) worker_family: &'static str,
+    pub(in crate::app) event: &'static str,
+    pub(in crate::app) worker_id: &'a str,
+    pub(in crate::app) request_id: Option<u64>,
+    pub(in crate::app) tab_id: Option<u64>,
+    pub(in crate::app) epoch: Option<u64>,
+    pub(in crate::app) outcome: &'static str,
+    pub(in crate::app) queue_depth: usize,
+    pub(in crate::app) in_flight: usize,
+    pub(in crate::app) capacity: usize,
 }
 
 struct WorkerLoad {
@@ -40,12 +40,12 @@ struct WorkerLoad {
 }
 
 #[derive(Clone)]
-pub(super) struct WorkerLoadObserver {
+pub(in crate::app) struct WorkerLoadObserver {
     load: Arc<WorkerLoad>,
 }
 
 impl WorkerLoadObserver {
-    pub(super) fn load(&self) -> WorkerLoadSnapshot {
+    pub(in crate::app) fn load(&self) -> WorkerLoadSnapshot {
         WorkerLoadSnapshot {
             queued: self.load.queued.load(Ordering::Acquire),
             inflight: self.load.inflight.load(Ordering::Acquire),
@@ -60,7 +60,7 @@ fn decrement_saturating(counter: &AtomicUsize) {
     });
 }
 
-pub(super) struct BoundedSender<T> {
+pub(in crate::app) struct BoundedSender<T> {
     inner: SyncSender<T>,
     load: Arc<WorkerLoad>,
 }
@@ -76,21 +76,21 @@ impl<T> Clone for BoundedSender<T> {
 
 impl<T> BoundedSender<T> {
     #[cfg(test)]
-    pub(super) fn send(&self, value: T) -> Result<(), SendError<T>> {
+    pub(in crate::app) fn send(&self, value: T) -> Result<(), SendError<T>> {
         self.load.queued.fetch_add(1, Ordering::AcqRel);
         self.inner.send(value).inspect_err(|_| {
             decrement_saturating(&self.load.queued);
         })
     }
 
-    pub(super) fn try_send(&self, value: T) -> Result<(), TrySendError<T>> {
+    pub(in crate::app) fn try_send(&self, value: T) -> Result<(), TrySendError<T>> {
         self.load.queued.fetch_add(1, Ordering::AcqRel);
         self.inner.try_send(value).inspect_err(|_| {
             decrement_saturating(&self.load.queued);
         })
     }
 
-    pub(super) fn load(&self) -> WorkerLoadSnapshot {
+    pub(in crate::app) fn load(&self) -> WorkerLoadSnapshot {
         WorkerLoadSnapshot {
             queued: self.load.queued.load(Ordering::Acquire),
             inflight: self.load.inflight.load(Ordering::Acquire),
@@ -98,33 +98,33 @@ impl<T> BoundedSender<T> {
         }
     }
 
-    pub(super) fn load_observer(&self) -> WorkerLoadObserver {
+    pub(in crate::app) fn load_observer(&self) -> WorkerLoadObserver {
         WorkerLoadObserver {
             load: Arc::clone(&self.load),
         }
     }
 }
 
-pub(super) struct BoundedReceiver<T> {
+pub(in crate::app) struct BoundedReceiver<T> {
     inner: Receiver<T>,
     load: Arc<WorkerLoad>,
 }
 
 impl<T> BoundedReceiver<T> {
-    pub(super) fn recv(&self) -> Result<T, RecvError> {
+    pub(in crate::app) fn recv(&self) -> Result<T, RecvError> {
         let value = self.inner.recv()?;
         decrement_saturating(&self.load.queued);
         Ok(value)
     }
 
     #[cfg(test)]
-    pub(super) fn try_recv(&self) -> Result<T, TryRecvError> {
+    pub(in crate::app) fn try_recv(&self) -> Result<T, TryRecvError> {
         let value = self.inner.try_recv()?;
         decrement_saturating(&self.load.queued);
         Ok(value)
     }
 
-    pub(super) fn recv_tracked(&self) -> Result<(T, InflightGuard), RecvError> {
+    pub(in crate::app) fn recv_tracked(&self) -> Result<(T, InflightGuard), RecvError> {
         let value = self.recv()?;
         self.load.inflight.fetch_add(1, Ordering::AcqRel);
         Ok((
@@ -142,7 +142,7 @@ impl<T> Drop for BoundedReceiver<T> {
     }
 }
 
-pub(super) struct InflightGuard {
+pub(in crate::app) struct InflightGuard {
     load: Arc<WorkerLoad>,
 }
 
@@ -153,7 +153,7 @@ impl Drop for InflightGuard {
 }
 
 impl InflightGuard {
-    pub(super) fn load(&self) -> WorkerLoadSnapshot {
+    pub(in crate::app) fn load(&self) -> WorkerLoadSnapshot {
         WorkerLoadSnapshot {
             queued: self.load.queued.load(Ordering::Acquire),
             inflight: self.load.inflight.load(Ordering::Acquire),
@@ -162,7 +162,7 @@ impl InflightGuard {
     }
 }
 
-pub(super) fn bounded_request_channel<T>(
+pub(in crate::app) fn bounded_request_channel<T>(
     capacity: usize,
 ) -> (BoundedSender<T>, BoundedReceiver<T>) {
     let (tx, rx) = mpsc::sync_channel(capacity);
@@ -180,7 +180,7 @@ pub(super) fn bounded_request_channel<T>(
     )
 }
 
-pub(super) fn trace_worker_load<T>(
+pub(in crate::app) fn trace_worker_load<T>(
     sender: &BoundedSender<T>,
     flow: &'static str,
     event: &'static str,
@@ -189,7 +189,7 @@ pub(super) fn trace_worker_load<T>(
     trace_worker_snapshot(sender.load(), flow, event, context);
 }
 
-pub(super) fn trace_worker_snapshot(
+pub(in crate::app) fn trace_worker_snapshot(
     load: WorkerLoadSnapshot,
     flow: &'static str,
     event: &'static str,
@@ -215,7 +215,7 @@ pub(super) fn trace_worker_snapshot(
     );
 }
 
-pub(super) fn worker_trace_record<'a>(
+pub(in crate::app) fn worker_trace_record<'a>(
     load: WorkerLoadSnapshot,
     worker_family: &'static str,
     event: &'static str,
