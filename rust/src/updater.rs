@@ -110,6 +110,7 @@ pub enum UpdateRestartMode {
 }
 
 impl UpdateRestartMode {
+    #[cfg(any(not(target_os = "macos"), test))]
     fn internal_restart_flag(self) -> &'static str {
         match self {
             Self::Gui => INTERNAL_UPDATE_GUI_RESTART_FLAG,
