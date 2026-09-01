@@ -2,7 +2,7 @@ use super::{
     normalize_windows_path_buf, EntryKindCacheState, FlistWalkerApp, PendingActiveIndexFinish,
     ResultSortMode, ResultSortScope, SavedTabState, TabAccentColor,
 };
-use crate::app::worker_protocol::IndexEntry;
+use crate::app::worker::protocol::IndexEntry;
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
 use std::collections::{HashSet, VecDeque};

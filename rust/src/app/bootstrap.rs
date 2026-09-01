@@ -12,7 +12,7 @@ use super::{
     UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
-use crate::app::worker_channel::BoundedSender;
+use crate::app::worker::channel::BoundedSender;
 use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::current_runtime_config;

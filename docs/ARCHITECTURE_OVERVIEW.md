@@ -31,7 +31,7 @@ Primary docs:
 | GUI coordinator | `rust/src/app/mod.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs` | Top-level egui orchestration, app state bundles, index/search lifecycle |
 | Rendering/input | `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/app/render_panels/`, `rust/src/app/render_dialogs.rs`, `rust/src/app/render_dialogs/`, `rust/src/app/input/mod.rs` | Frame rendering, private top-panel/dialog owners, command seams, shortcuts, text input |
 | Tabs/session | `rust/src/app/tabs.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/session.rs` | Tab snapshots, background response routing, persistence |
-| Workers | `rust/src/app/worker_protocol.rs`, `rust/src/app/worker_bus.rs`, `rust/src/app/worker_tasks.rs`, `rust/src/app/worker_runtime.rs` | Request/response types, worker channels, worker bodies, shutdown |
+| Workers | `rust/src/app/worker.rs`, `rust/src/app/worker/` | Private worker namespace, request/response types, bounded channels, bus state, worker bodies, shutdown |
 | Actions / OS integration | `rust/src/actions.rs`, `rust/src/path_utils.rs`, `rust/src/app/shell_support.rs` | Open/execute, path normalization, platform-local shell helpers |
 | Runtime config | `rust/src/runtime_config.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs` | Config file bootstrap, saved state paths, config opening |
 | Self-update / release | `rust/src/updater.rs`, `rust/src/updater/`, `rust/src/update_security.rs`, `scripts/prepare-release*`, `.github/workflows/` | Release discovery, signed update validation, staged apply, asset hygiene |

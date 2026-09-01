@@ -95,7 +95,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
     - owner: index/search/poll の lifecycle は [pipeline.rs](../rust/src/app/pipeline.rs)、active result refresh は [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)、render command は [render.rs](../rust/src/app/render.rs)。
   - `shutdown/persist`
     - 残置: eframe callback から shutdown seam を呼ぶ top-level exit orchestration。
-    - owner: state 永続化は [session.rs](../rust/src/app/session.rs)、worker join/shutdown は [worker_runtime.rs](../rust/src/app/worker_runtime.rs)。
+    - owner: state 永続化は [session.rs](../rust/src/app/session.rs)、worker join/shutdown は [worker/runtime.rs](../rust/src/app/worker/runtime.rs)。
   - `tab routing`
     - 残置: active tab index と owner API 呼び分け。
     - owner: tab snapshot / switch / move / close / activation refresh は [tabs.rs](../rust/src/app/tabs.rs)、background response polling / apply は [response_flow.rs](../rust/src/app/response_flow.rs)、root selector lifecycle は [root_browser.rs](../rust/src/app/root_browser.rs)。
@@ -104,7 +104,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
     - owner: FileList flow は [filelist.rs](../rust/src/app/filelist/mod.rs)、self-update lifecycle は [update.rs](../rust/src/app/update.rs)。
   - `trace helper`
     - 残置: opt-in 診断の入口と egui lifecycle に紐づく top-level trace 発火。
-    - owner: worker protocol tracing は [worker_tasks.rs](../rust/src/app/worker_tasks.rs) の worker body と [worker_protocol.rs](../rust/src/app/worker_protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
+    - owner: worker protocol tracing は [worker/tasks.rs](../rust/src/app/worker/tasks.rs) の worker body と [worker/protocol.rs](../rust/src/app/worker/protocol.rs)、window/session diagnostics は [session.rs](../rust/src/app/session.rs) と各 owner helper。
 
 - [bootstrap.rs](../rust/src/app/bootstrap.rs)
   - worker 起動と launch seed 構築。
@@ -124,11 +124,15 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - FileList / Walker streaming、kind classification、index worker thread 実装を担当する。
 - [walker_runtime/mod.rs](../rust/src/walker_runtime/mod.rs), [walker_runtime/adaptive.rs](../rust/src/walker_runtime/adaptive.rs)
   - GUI/TUI から独立した adaptive Walker backend、runtime settings、entry classification、truncation notice、single-worker serial fast path、read_dir 制御指標を担当する。
-- [worker_protocol.rs](../rust/src/app/worker_protocol.rs)
+- [worker.rs](../rust/src/app/worker.rs), [worker/](../rust/src/app/worker/)
+  - GUI worker subsystem の private namespace/facade。protocol、bounded channel、bus state、worker body、shutdown runtime を `app::worker` 配下に閉じる。
+- [worker/protocol.rs](../rust/src/app/worker/protocol.rs)
   - search/index/preview/action/sort/kind/filelist/update の request/response 型を集約し、worker protocol surface を実装モジュールから分離する。
-- [worker_bus.rs](../rust/src/app/worker_bus.rs)
-  - preview/action/sort/kind/filelist/update worker channel を束ねる。
-- [worker_runtime.rs](../rust/src/app/worker_runtime.rs)
+- [worker/channel.rs](../rust/src/app/worker/channel.rs)
+  - bounded request channel と worker load trace helper を担当する。
+- [worker/bus.rs](../rust/src/app/worker/bus.rs)
+  - preview/action/sort/kind/filelist/update worker channel と request lifecycle state を束ねる。
+- [worker/runtime.rs](../rust/src/app/worker/runtime.rs)
   - worker shutdown signal と join timeout 管理を担当する。
 - [response_flow.rs](../rust/src/app/response_flow.rs)
   - preview/action/sort を中心に worker response の polling と routing を集約する。
@@ -162,7 +166,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [tab_state.rs](../rust/src/app/tab_state.rs)
   - tab snapshot 用 state 型。`AppTabState` は persisted/background tab state の canonical snapshot とし、active tab 側の live state とは区別して追跡する。`TabSessionState` は snapshot と live tab set の橋渡しを担い、owner API でのみ更新する。
   - `rust/src/app/tests/tab_contract.rs` の contract test は `TabIndexState` / `TabQueryState` / `TabResultState` / `AppTabState` の field layout をフルリテラルで固定し、field drift を compile-time で検出する。
-- [worker_tasks.rs](../rust/src/app/worker_tasks.rs)
+- [worker/tasks.rs](../rust/src/app/worker/tasks.rs)
   - search/preview/action/sort/update/filelist/kind worker の spawn registry、use-case 本体、共有 action notice formatting を担当する。
 
 ## App Test Boundaries

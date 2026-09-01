@@ -1,4 +1,4 @@
-use super::worker_channel::BoundedSender;
+use super::worker::channel::BoundedSender;
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
     IndexSource, KindResolveRequest, PendingActiveIndexFinish, TabSessionState,
@@ -317,11 +317,11 @@ impl FlistWalkerApp {
             };
             match self.shell.worker_bus.kind.tx.try_send(req) {
                 Ok(()) => {
-                    super::worker_channel::trace_worker_load(
+                    super::worker::channel::trace_worker_load(
                         &self.shell.worker_bus.kind.tx,
                         "kind_resolver",
                         "accepted",
-                        super::worker_channel::WorkerTraceContext {
+                        super::worker::channel::WorkerTraceContext {
                             worker_id: "ui-dispatch",
                             request_id: None,
                             tab_id: Some(tab_id),
@@ -333,11 +333,11 @@ impl FlistWalkerApp {
                     dispatched = dispatched.saturating_add(1);
                 }
                 Err(std::sync::mpsc::TrySendError::Full(req)) => {
-                    super::worker_channel::trace_worker_load(
+                    super::worker::channel::trace_worker_load(
                         &self.shell.worker_bus.kind.tx,
                         "kind_resolver",
                         "full",
-                        super::worker_channel::WorkerTraceContext {
+                        super::worker::channel::WorkerTraceContext {
                             worker_id: "ui-dispatch",
                             request_id: None,
                             tab_id: Some(req.tab_id),
@@ -353,11 +353,11 @@ impl FlistWalkerApp {
                     break;
                 }
                 Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
-                    super::worker_channel::trace_worker_load(
+                    super::worker::channel::trace_worker_load(
                         &self.shell.worker_bus.kind.tx,
                         "kind_resolver",
                         "disconnected",
-                        super::worker_channel::WorkerTraceContext {
+                        super::worker::channel::WorkerTraceContext {
                             worker_id: "ui-dispatch",
                             request_id: None,
                             tab_id: Some(tab_id),

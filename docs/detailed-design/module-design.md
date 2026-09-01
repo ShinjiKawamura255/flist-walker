@@ -168,7 +168,7 @@ Rationale: egui UI code is easier to regress when it directly mutates cross-feat
 
 ### 6.9 Shell Support, Root Browser, and Window/IME Stability
 
-Responsibility: [app/shell_support.rs](../../rust/src/app/shell_support.rs) owns process shutdown, egui font setup, window trace helpers, and shell-local support policy. [app/root_browser.rs](../../rust/src/app/root_browser.rs) owns root selector state and root change cleanup. [app/coordinator.rs](../../rust/src/app/coordinator.rs) owns status/notice helpers and root/path comparison helpers. Shared action authorization stays in [actions.rs](../../rust/src/actions.rs), while worker-facing action notice formatting stays with [app/worker_tasks.rs](../../rust/src/app/worker_tasks.rs).
+Responsibility: [app/shell_support.rs](../../rust/src/app/shell_support.rs) owns process shutdown, egui font setup, window trace helpers, and shell-local support policy. [app/root_browser.rs](../../rust/src/app/root_browser.rs) owns root selector state and root change cleanup. [app/coordinator.rs](../../rust/src/app/coordinator.rs) owns status/notice helpers and root/path comparison helpers. Shared action authorization stays in [actions.rs](../../rust/src/actions.rs), while worker-facing action notice formatting stays with [app/worker/tasks.rs](../../rust/src/app/worker/tasks.rs).
 
 Window and input stability rules:
 
@@ -183,7 +183,7 @@ Rationale: these helpers are intentionally not embedded in rendering or worker b
 
 ### 6.10 Worker Protocol and Runtime
 
-Responsibility: [app/worker_protocol.rs](../../rust/src/app/worker_protocol.rs) centralizes request/response structs. [app/worker_bus.rs](../../rust/src/app/worker_bus.rs) groups channels. [app/worker_tasks.rs](../../rust/src/app/worker_tasks.rs) implements worker bodies.
+Responsibility: [app/worker.rs](../../rust/src/app/worker.rs) owns the private worker namespace. [app/worker/protocol.rs](../../rust/src/app/worker/protocol.rs) centralizes request/response structs. [app/worker/channel.rs](../../rust/src/app/worker/channel.rs) owns bounded channels and load tracing. [app/worker/bus.rs](../../rust/src/app/worker/bus.rs) groups channels and request lifecycle state. [app/worker/tasks.rs](../../rust/src/app/worker/tasks.rs) implements worker bodies.
 
 Worker families:
 
@@ -199,11 +199,11 @@ Failure mode handling:
 
 - Most workers return response variants containing `error` or `notice` text.
 - Receiver closure is traced and terminates the worker loop.
-- Shutdown uses a shared atomic flag plus bounded join in [app/worker_runtime.rs](../../rust/src/app/worker_runtime.rs).
+- Shutdown uses a shared atomic flag plus bounded join in [app/worker/runtime.rs](../../rust/src/app/worker/runtime.rs).
 
 ### 6.11 FileList Creation Lifecycle
 
-Responsibility: [app/filelist/mod.rs](../../rust/src/app/filelist/mod.rs), `FileListManager` in [app/state.rs](../../rust/src/app/state.rs), [app/worker_protocol.rs](../../rust/src/app/worker_protocol.rs), [app/worker_tasks.rs](../../rust/src/app/worker_tasks.rs), and [indexer/filelist_writer.rs](../../rust/src/indexer/filelist_writer.rs) own the Create File List workflow.
+Responsibility: [app/filelist/mod.rs](../../rust/src/app/filelist/mod.rs), `FileListManager` in [app/state.rs](../../rust/src/app/state.rs), [app/worker/protocol.rs](../../rust/src/app/worker/protocol.rs), [app/worker/tasks.rs](../../rust/src/app/worker/tasks.rs), and [indexer/filelist_writer.rs](../../rust/src/indexer/filelist_writer.rs) own the Create File List workflow.
 
 Lifecycle rules:
 

@@ -401,11 +401,11 @@ impl FlistWalkerApp {
             let req_tab_id = req.tab_id;
             match self.shell.indexing.tx.try_send(req) {
                 Ok(()) => {
-                    super::worker_channel::trace_worker_load(
+                    super::worker::channel::trace_worker_load(
                         &self.shell.indexing.tx,
                         "index",
                         "accepted",
-                        super::worker_channel::WorkerTraceContext {
+                        super::worker::channel::WorkerTraceContext {
                             worker_id: "ui-dispatch",
                             request_id: Some(req_id),
                             tab_id: Some(req_tab_id),
@@ -416,11 +416,11 @@ impl FlistWalkerApp {
                     self.shell.indexing.inflight_requests.insert(req_id);
                 }
                 Err(std::sync::mpsc::TrySendError::Full(req)) => {
-                    super::worker_channel::trace_worker_load(
+                    super::worker::channel::trace_worker_load(
                         &self.shell.indexing.tx,
                         "index",
                         "full",
-                        super::worker_channel::WorkerTraceContext {
+                        super::worker::channel::WorkerTraceContext {
                             worker_id: "ui-dispatch",
                             request_id: Some(req_id),
                             tab_id: Some(req_tab_id),
@@ -432,11 +432,11 @@ impl FlistWalkerApp {
                     break;
                 }
                 Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
-                    super::worker_channel::trace_worker_load(
+                    super::worker::channel::trace_worker_load(
                         &self.shell.indexing.tx,
                         "index",
                         "disconnected",
-                        super::worker_channel::WorkerTraceContext {
+                        super::worker::channel::WorkerTraceContext {
                             worker_id: "ui-dispatch",
                             request_id: Some(req_id),
                             tab_id: Some(req_tab_id),

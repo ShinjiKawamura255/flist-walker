@@ -44,12 +44,7 @@ mod tab_state;
 mod tabs;
 mod ui_state;
 mod update;
-mod worker_bus;
-mod worker_bus_lifecycle;
-mod worker_channel;
-mod worker_protocol;
-mod worker_runtime;
-mod worker_tasks;
+mod worker;
 
 use crate::actions::{lexical_action_path_precheck, ActionPathPrecheck};
 use cache::{
@@ -77,18 +72,18 @@ use state::{
 };
 use tab_state::AppTabState;
 use ui_state::RuntimeUiState;
-use worker_bus::{
+use worker::bus::{
     ActionWorkerBus, CatalogWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus,
     RootValidationWorkerBus, SortWorkerBus, UpdateWorkerBus, WorkerBus,
 };
-use worker_protocol::{
+use worker::protocol::{
     ActionRequest, ActionResponse, CatalogRequest, CatalogRequestKind, FileListRequest,
     FileListResponse, IndexEntry, IndexRequest, IndexResponse, KindResolveRequest, PreviewRequest,
     PreviewResponse, RootValidationIntent, RootValidationRequest, SearchRequest, SearchResponse,
     SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
-use worker_runtime::WorkerRuntime;
-use worker_tasks::{
+use worker::runtime::WorkerRuntime;
+use worker::tasks::{
     spawn_action_worker, spawn_catalog_worker, spawn_filelist_worker, spawn_kind_resolver_worker,
     spawn_preview_worker, spawn_root_validation_worker, spawn_search_worker,
     spawn_sort_metadata_worker, spawn_update_worker,

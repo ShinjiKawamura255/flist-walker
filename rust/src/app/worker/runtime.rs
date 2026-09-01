@@ -4,16 +4,15 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::{
-    ActionRequest, CatalogRequest, FileListRequest, FlistWalkerApp, IndexRequest,
-    KindResolveRequest, PreviewRequest, RootValidationRequest, SearchRequest, SortMetadataRequest,
-    UpdateRequest,
+use super::protocol::{
+    ActionRequest, CatalogRequest, FileListRequest, IndexRequest, KindResolveRequest,
+    PreviewRequest, RootValidationRequest, SearchRequest, SortMetadataRequest, UpdateRequest,
 };
-use crate::app::process_shutdown_requested;
+use crate::app::{process_shutdown_requested, FlistWalkerApp};
 use eframe::egui;
 use tracing::{info, warn};
 
-pub(super) struct WorkerRuntime {
+pub(in crate::app) struct WorkerRuntime {
     shutdown: Arc<AtomicBool>,
     handles: Vec<NamedWorkerHandle>,
 }
@@ -24,40 +23,40 @@ struct NamedWorkerHandle {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct WorkerJoinSummary {
-    pub(super) joined: usize,
-    pub(super) total: usize,
-    pub(super) pending: Vec<String>,
+pub(in crate::app) struct WorkerJoinSummary {
+    pub(in crate::app) joined: usize,
+    pub(in crate::app) total: usize,
+    pub(in crate::app) pending: Vec<String>,
 }
 
 impl WorkerRuntime {
-    pub(super) fn new(shutdown: Arc<AtomicBool>) -> Self {
+    pub(in crate::app) fn new(shutdown: Arc<AtomicBool>) -> Self {
         Self {
             shutdown,
             handles: Vec::new(),
         }
     }
 
-    pub(super) fn push(&mut self, name: impl Into<String>, handle: thread::JoinHandle<()>) {
+    pub(in crate::app) fn push(&mut self, name: impl Into<String>, handle: thread::JoinHandle<()>) {
         self.handles.push(NamedWorkerHandle {
             name: name.into(),
             handle,
         });
     }
 
-    pub(super) fn request_shutdown(&self) {
+    pub(in crate::app) fn request_shutdown(&self) {
         self.shutdown.store(true, Ordering::Relaxed);
     }
 
     #[cfg(test)]
-    pub(super) fn worker_names(&self) -> Vec<String> {
+    pub(in crate::app) fn worker_names(&self) -> Vec<String> {
         self.handles
             .iter()
             .map(|handle| handle.name.clone())
             .collect()
     }
 
-    pub(super) fn join_all_with_timeout(mut self, timeout: Duration) -> WorkerJoinSummary {
+    pub(in crate::app) fn join_all_with_timeout(mut self, timeout: Duration) -> WorkerJoinSummary {
         let total = self.handles.len();
         if total == 0 {
             return WorkerJoinSummary {
@@ -114,16 +113,14 @@ impl FlistWalkerApp {
     fn disconnect_worker_channels(&mut self) {
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
         let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
-        let (dummy_action_tx, _) =
-            super::worker_channel::bounded_request_channel::<ActionRequest>(1);
+        let (dummy_action_tx, _) = super::channel::bounded_request_channel::<ActionRequest>(1);
         let (dummy_sort_tx, _) = mpsc::channel::<SortMetadataRequest>();
-        let (dummy_kind_tx, _) =
-            super::worker_channel::bounded_request_channel::<KindResolveRequest>(1);
+        let (dummy_kind_tx, _) = super::channel::bounded_request_channel::<KindResolveRequest>(1);
         let (dummy_filelist_tx, _) = mpsc::channel::<FileListRequest>();
         let (dummy_update_tx, _) = mpsc::channel::<UpdateRequest>();
         let (dummy_catalog_tx, _) = mpsc::channel::<CatalogRequest>();
         let (dummy_root_validation_tx, _) = mpsc::channel::<RootValidationRequest>();
-        let (dummy_index_tx, _) = super::worker_channel::bounded_request_channel::<IndexRequest>(1);
+        let (dummy_index_tx, _) = super::channel::bounded_request_channel::<IndexRequest>(1);
         let old_search_tx = std::mem::replace(&mut self.shell.search.tx, dummy_search_tx);
         let old_preview_tx =
             std::mem::replace(&mut self.shell.worker_bus.preview.tx, dummy_preview_tx);
@@ -155,7 +152,7 @@ impl FlistWalkerApp {
     }
 
     /// worker 群へ shutdown を通知し、短い timeout で join を待つ。
-    pub(super) fn shutdown_workers_with_timeout(
+    pub(in crate::app) fn shutdown_workers_with_timeout(
         &mut self,
         timeout: Duration,
         phase: &str,
@@ -188,7 +185,7 @@ impl FlistWalkerApp {
                 } else {
                     (
                         "other",
-                        super::worker_channel::WorkerLoadSnapshot {
+                        super::channel::WorkerLoadSnapshot {
                             queued: 0,
                             inflight: 0,
                             capacity: 0,
@@ -196,11 +193,11 @@ impl FlistWalkerApp {
                         false,
                     )
                 };
-                let record = super::worker_channel::worker_trace_record(
+                let record = super::channel::worker_trace_record(
                     load,
                     worker_family,
                     "shutdown_timeout",
-                    super::worker_channel::WorkerTraceContext {
+                    super::channel::WorkerTraceContext {
                         worker_id: pending_worker,
                         request_id: None,
                         tab_id: None,
@@ -243,7 +240,7 @@ impl FlistWalkerApp {
         Some(summary)
     }
 
-    pub(super) fn request_viewport_close_if_needed(&mut self, ctx: &egui::Context) -> bool {
+    pub(in crate::app) fn request_viewport_close_if_needed(&mut self, ctx: &egui::Context) -> bool {
         let signal_close = process_shutdown_requested();
         let native_close = ctx.input(|input| input.viewport().close_requested());
         if signal_close || native_close {
@@ -270,7 +267,7 @@ impl FlistWalkerApp {
         false
     }
 
-    pub(super) fn poll_runtime_events(&mut self) {
+    pub(in crate::app) fn poll_runtime_events(&mut self) {
         self.poll_index_response();
         self.poll_search_response();
         self.poll_routed_worker_responses();

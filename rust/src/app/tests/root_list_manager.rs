@@ -1,5 +1,5 @@
 use super::*;
-use crate::app::worker_protocol::{RootValidationIntent, RootValidationResponse, ValidatedRoot};
+use crate::app::worker::protocol::{RootValidationIntent, RootValidationResponse, ValidatedRoot};
 use std::sync::{mpsc, Mutex, OnceLock};
 
 static SAVED_ROOTS_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
