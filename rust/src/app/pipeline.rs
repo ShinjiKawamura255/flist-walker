@@ -518,6 +518,7 @@ impl FlistWalkerApp {
 
     fn poll_index_response_with_budget(&mut self, frame_budget: Duration) {
         const MAX_MESSAGES_PER_FRAME: usize = 64;
+        const MAX_PRIORITY_ROUTE_MESSAGES_PER_FRAME: usize = 4_096;
         // Large capped roots can leave hundreds of thousands of entries queued at
         // the terminal point. While the worker is still indexing, allow larger
         // chunks; after Finished, prioritize input responsiveness over tail speed.
@@ -526,19 +527,52 @@ impl FlistWalkerApp {
 
         let frame_start = Instant::now();
         let mut processed = 0usize;
+        let mut priority_routed = 0usize;
         let mut has_index_progress = false;
         let mut finished_current_request = false;
         loop {
-            let msg = if let Some(msg) = self.shell.indexing.deferred_response.take() {
-                msg
-            } else {
-                let Ok(msg) = self.shell.indexing.rx.try_recv() else {
+            let (msg, from_shared_response_queue) =
+                if let Some(msg) = self.shell.indexing.deferred_response.take() {
+                    (msg, false)
+                } else if let Ok(msg) = self.shell.indexing.rx.try_recv() {
+                    (msg, true)
+                } else if let Some(msg) = self
+                    .shell
+                    .indexing
+                    .deferred_non_active_responses
+                    .pop_front()
+                {
+                    (msg, false)
+                } else {
                     break;
                 };
-                msg
-            };
             let request_id = IndexCoordinator::response_request_id(&msg);
             let route = self.shell.indexing.route_response(request_id);
+            let stale_payload = matches!(route, IndexResponseRoute::Stale)
+                && matches!(
+                    &msg,
+                    IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }
+                );
+            if from_shared_response_queue
+                && self.shell.indexing.pending_request_id.is_some()
+                && (matches!(route, IndexResponseRoute::Background(_)) || stale_payload)
+            {
+                // Regression guard: an activated restored tab's first response must not
+                // sit behind bulk batches already emitted for an older/background tab.
+                // Route those messages by ownership only; apply or discard them later
+                // under the normal frame budget without copying their entry payloads.
+                self.shell
+                    .indexing
+                    .deferred_non_active_responses
+                    .push_back(msg);
+                priority_routed = priority_routed.saturating_add(1);
+                if priority_routed >= MAX_PRIORITY_ROUTE_MESSAGES_PER_FRAME
+                    || frame_start.elapsed() >= frame_budget
+                {
+                    break;
+                }
+                continue;
+            }
             // The response channel already owns complete batches. Do not copy another active
             // batch into the UI-owned VecDeque while its existing backlog is at the frame-sized
             // high-water mark: growing a very large VecDeque can relocate every queued PathBuf
@@ -573,9 +607,28 @@ impl FlistWalkerApp {
                 IndexResponseRoute::Stale => {
                     self.discard_filelist_index_completion_notice(request_id);
                     if IndexCoordinator::is_terminal_response(&msg) {
+                        let stale_tab_id =
+                            self.shell.indexing.request_tabs.get(&request_id).copied();
+                        if let Some(tab_index) =
+                            stale_tab_id.and_then(|tab_id| self.find_tab_index_by_id(tab_id))
+                        {
+                            if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
+                                if tab.index_state.pending_index_request_id == Some(request_id) {
+                                    // A preempted background request remains owned by its tab
+                                    // until the terminal response arrives. Settle that ownership
+                                    // without applying superseded entries or waking the tab.
+                                    Self::clear_tab_index_request_state(tab);
+                                }
+                            }
+                        }
                         self.shell
                             .indexing
                             .cleanup_stale_terminal_response(request_id);
+                    }
+                    processed = processed.saturating_add(1);
+                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= frame_budget
+                    {
+                        break;
                     }
                     continue;
                 }

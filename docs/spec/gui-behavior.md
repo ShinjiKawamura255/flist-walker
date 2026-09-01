@@ -95,6 +95,7 @@
 - MUST: 削除モードの `Cancel` は選択状態だけを破棄して通常状態へ戻り、draft list を変更してはならない。
 - MUST: `Manage list` の draft 変更は `Apply` または `OK` を押したタイミングでのみ保存済み root list へ反映し、`Cancel` またはウィンドウ close では反映してはならない。
 - SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
+- MUST: 起動時復元された background tab は初回 activate まで index/search 候補を構築せず休眠状態を維持する。初回 activate では同じ遷移内に index request と `Indexing...` 状態を確立し、共有 response queue に旧 background tab の batch が蓄積していても、新しい active request の `Started` / `Batch` を先行 routing して Entries 反映を待たせてはならない。先送りした live background response は破棄せず、後続 frame の予算内で元 tab へ適用しなければならない。
 - MUST: 現在のプロセス中に閉じた GUI タブは in-memory の直近順スタックとして保持し、`Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で最後に閉じたタブから active tab として復元できなければならない。
 - MUST: 閉じたタブを復元する際は、閉じた時点の tab index を優先し、現在の tab 数を超える場合のみ末尾へ復元しなければならない。
 - MUST: 閉じたタブ復元スタックは直近 25 件を上限とし、上限を超えた場合は最も古い閉じたタブから破棄しなければならない。

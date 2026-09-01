@@ -791,6 +791,12 @@ fn background_empty_query_index_finish_updates_total_match_count() {
         .request_tabs
         .insert(77, background_tab_id);
     app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(background_tab_id, 77);
+    app.shell
         .tabs
         .get_mut(0)
         .expect("tab 0")
@@ -895,6 +901,12 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         .indexing
         .request_tabs
         .insert(88, background_tab_id);
+    app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(background_tab_id, 88);
     app.shell
         .tabs
         .get_mut(0)
@@ -1003,6 +1015,12 @@ fn background_walker_truncated_notice_points_to_config_file_setting() {
         .indexing
         .request_tabs
         .insert(92, background_tab_id);
+    app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(background_tab_id, 92);
     app.shell
         .tabs
         .get_mut(0)

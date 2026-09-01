@@ -421,6 +421,126 @@ fn restored_tab_lazy_refresh_starts_for_query_and_source_matrix() {
 }
 
 #[test]
+fn restored_tab_activation_prioritizes_active_batch_over_background_backlog_regression() {
+    let root_a = test_root("restore-tabs-active-response-priority-a");
+    let root_b = test_root("restore-tabs-active-response-priority-b");
+    fs::create_dir_all(&root_a).expect("create root a");
+    fs::create_dir_all(&root_b).expect("create root b");
+    let mut app = FlistWalkerApp::new(root_a.clone(), 50, String::new());
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = index_req_tx;
+    app.shell.indexing.rx = index_res_rx;
+    reset_index_request_state_for_test(&mut app);
+
+    app.initialize_tabs_from_saved(
+        vec![
+            SavedTabState {
+                root: root_a.to_string_lossy().to_string(),
+                use_filelist: true,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                max_depth: crate::indexer::MaxDepth::unlimited(),
+                query: "needle".to_string(),
+                query_history: Vec::new(),
+                tab_accent: None,
+            },
+            SavedTabState {
+                root: root_b.to_string_lossy().to_string(),
+                use_filelist: false,
+                use_regex: false,
+                ignore_case: true,
+                include_files: true,
+                include_dirs: true,
+                max_depth: crate::indexer::MaxDepth::unlimited(),
+                query: String::new(),
+                query_history: Vec::new(),
+                tab_accent: None,
+            },
+        ],
+        1,
+    );
+    let old_active = index_req_rx.try_recv().expect("initial active request");
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .expect("dormant restored tab")
+            .index_state
+            .index_in_progress
+    );
+
+    app.switch_to_tab_index(0);
+    let new_active = index_req_rx
+        .try_recv()
+        .expect("activated restored tab request");
+    assert_eq!(new_active.root, root_a);
+    assert!(new_active.use_filelist);
+    assert!(app.shell.indexing.in_progress);
+
+    for index in 0..128 {
+        index_res_tx
+            .send(IndexResponse::Batch {
+                request_id: old_active.request_id,
+                entries: vec![IndexEntry {
+                    path: root_b.join(format!("background-{index}.txt")),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            })
+            .expect("queue old background batch");
+    }
+    let active_path = root_a.join("needle.txt");
+    index_res_tx
+        .send(IndexResponse::Started {
+            request_id: new_active.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("queue active start");
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: new_active.request_id,
+            entries: vec![IndexEntry {
+                path: active_path.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("queue active batch");
+
+    app.poll_index_response_with_budget_for_test(Duration::from_secs(1));
+
+    assert_eq!(app.shell.runtime.index.source, IndexSource::Walker);
+    assert!(app
+        .shell
+        .runtime
+        .index
+        .entries
+        .iter()
+        .any(|entry| entry.path == active_path));
+
+    for _ in 0..4 {
+        app.poll_index_response_with_budget_for_test(Duration::from_secs(1));
+    }
+    assert_eq!(
+        app.shell
+            .indexing
+            .background_states
+            .get(&old_active.request_id)
+            .expect("deferred background state")
+            .entries
+            .len(),
+        128,
+        "active prioritization must defer rather than discard live background batches"
+    );
+
+    let _ = fs::remove_dir_all(&root_a);
+    let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
 fn background_tab_activation_consumes_pending_activation_refresh_once() {
     let root_a = test_root("background-activation-consumes-pending-a");
     let root_b = test_root("background-activation-consumes-pending-b");

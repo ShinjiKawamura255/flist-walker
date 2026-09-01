@@ -30,6 +30,7 @@ pub(super) struct IndexCoordinator {
     pub(super) pending_entries: VecDeque<IndexEntry>,
     pub(super) pending_entries_request_id: Option<u64>,
     pub(super) deferred_response: Option<IndexResponse>,
+    pub(super) deferred_non_active_responses: VecDeque<IndexResponse>,
     pub(super) pending_finish: Option<PendingActiveIndexFinish>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
     pub(super) pending_kind_paths_set: HashSet<PathBuf>,
@@ -66,6 +67,7 @@ impl IndexCoordinator {
             pending_entries: VecDeque::new(),
             pending_entries_request_id: None,
             deferred_response: None,
+            deferred_non_active_responses: VecDeque::new(),
             pending_finish: None,
             pending_kind_paths: VecDeque::new(),
             pending_kind_paths_set: HashSet::new(),
@@ -172,7 +174,24 @@ impl IndexCoordinator {
             return IndexResponseRoute::Active;
         }
         match self.request_tabs.get(&request_id).copied() {
-            Some(tab_id) => IndexResponseRoute::Background(tab_id),
+            Some(tab_id) => {
+                // Keep request_tabs until terminal accounting settles, but do not route
+                // explicitly superseded payloads back into a live background tab.
+                let explicitly_stale = self
+                    .latest_request_ids
+                    .lock()
+                    .map(|latest| {
+                        latest
+                            .get(&tab_id)
+                            .is_some_and(|latest_id| *latest_id != request_id)
+                    })
+                    .unwrap_or(false);
+                if explicitly_stale {
+                    IndexResponseRoute::Stale
+                } else {
+                    IndexResponseRoute::Background(tab_id)
+                }
+            }
             None => IndexResponseRoute::Stale,
         }
     }

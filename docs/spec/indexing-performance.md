@@ -62,6 +62,14 @@
 - Related Tests: TC-152、`tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression`、`tc_152_startup_and_refresh_settle_filelist_source_and_entries_regression`。
 - Notes for Future Changes: freshness predicate を cancellation API へ渡す境界では極性を明示し、liveness だけでなく Source と Entries の settlement を検証する。
 
+### Regression Guard: restored-tab activation response and FileList discovery latency
+
+- Scenario: 大量 batch を生成した旧 active tab が background 化した後で、休眠中の復元 tab を初回 activate すると、共有 response FIFO の旧 batch が新 active response を head-of-line block する。また FileList 優先 tab の root に canonical 2 名が無い場合、case variant 探索で無関係な全項目へ file metadata probe を行うと Walker 開始前の待ち時間が候補数に比例する。
+- Expected Behavior: background tab は初回 activate まで休眠し、activate 時に確立した active request の `Started` / `Batch` は旧 background payload より先に frame 予算内で routing する。先送りした live background payload は後続 frame で元 tab へ適用する。明示的に supersede 済みの payload は stale として active/background state へ適用せず、terminal response は先送りせず同じ poll で worker slot を解放する。case variant 探索は file name を先に比較し、一致候補だけを file metadata probe する。
+- Non-goals: 非アクティブ復元 tab の eager indexing、background result の破棄、FileList の大文字小文字互換・優先順変更、index worker 同時実行上限の拡大、network root の完了時間保証。
+- Related Tests: TC-152、TC-154、`restored_tab_activation_prioritizes_active_batch_over_background_backlog_regression`、`non_filelist_neighbors_skip_metadata_probe_regression`、`filelist_case_variant_probes_file_type_once_regression`。
+- Notes for Future Changes: tab activation の検証は request/status 確立だけで終えず最初の active Entries 反映まで確認する。共有 response channel の live background payload は active request 中に所有権だけを移して先送りする一方、supersede 済み request の terminal settlement を payload backlog の後ろへ移動しない。FileList case variant 判定では name check と metadata probe の順序を逆転させない。
+
 ### Regression Guard: TUI initial FileList discovery ownership
 
 - Scenario: interactive CLIがterminalを所有してからrequired FileListの不存在を検出すると非TTY環境では契約errorよりterminal errorが先に出る。また、Autoをmain threadで探索するとUI cancellationが届かず、preflightと初回workerが同じrootを重複探索する。明示Walkerがindex完了時にFileList有無を既知扱いすると、F6のoverwrite判定も誤る。
