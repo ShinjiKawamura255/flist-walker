@@ -37,6 +37,18 @@ fn test_response_mailboxes() -> Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>
     Arc::new(Mutex::new(HashMap::new()))
 }
 
+fn establish_prequeued_mailbox_invariant(
+    mailboxes: &Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
+    request_id: u64,
+) {
+    // The production coordinator registers request ownership and its mailbox before queueing.
+    // Direct worker tests bypass that coordinator, so they establish the invariant explicitly.
+    mailboxes
+        .lock()
+        .expect("mailboxes")
+        .insert(request_id, Arc::new(IndexResponseMailbox::new()));
+}
+
 fn recv_index_response(
     mailboxes: &Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     request_id: u64,
@@ -677,6 +689,7 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
         Arc::clone(&mailboxes),
         resolve_root,
     );
+    establish_prequeued_mailbox_invariant(&mailboxes, 1);
     tx.send(IndexRequest {
         request_id: 1,
         tab_id: 7,
@@ -713,6 +726,7 @@ fn tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression
     let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(tab_id, request_id)])));
     let (tx, _rx, mailboxes, handles) =
         spawn_index_worker(Arc::clone(&shutdown), latest_request_ids);
+    establish_prequeued_mailbox_invariant(&mailboxes, request_id);
     tx.send(IndexRequest {
         request_id,
         tab_id,
@@ -809,6 +823,7 @@ fn tc_152_filelist_restore_index_regression_cancels_before_filelist_start() {
         Arc::clone(&mailboxes),
         resolve_root,
     );
+    establish_prequeued_mailbox_invariant(&mailboxes, 1);
     tx.send(IndexRequest {
         request_id: 1,
         tab_id: 7,
@@ -861,7 +876,7 @@ fn tc_152_index_workers_bound_total_to_four() {
     let (tx, _rx, _returned_mailboxes, handles) = spawn_index_worker_with(
         Arc::clone(&shutdown),
         latest_request_ids,
-        mailboxes,
+        Arc::clone(&mailboxes),
         resolve_root,
     );
     let request = |request_id| IndexRequest {
@@ -873,6 +888,9 @@ fn tc_152_index_workers_bound_total_to_four() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
     };
+    for request_id in 1..=5 {
+        establish_prequeued_mailbox_invariant(&mailboxes, request_id);
+    }
     tx.send(request(1)).expect("send first index request");
     tx.send(request(2)).expect("send second index request");
     started_rx
@@ -920,6 +938,7 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
     );
     shutdown.store(true, Ordering::Relaxed);
     for request_id in 1..=4 {
+        establish_prequeued_mailbox_invariant(&mailboxes, request_id);
         tx.send(IndexRequest {
             request_id,
             tab_id: request_id,
@@ -967,6 +986,7 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
         .insert(tab_id, request_id);
     let (tx_req, _rx_res, mailboxes, handles) =
         spawn_index_worker(shutdown.clone(), latest_request_ids);
+    establish_prequeued_mailbox_invariant(&mailboxes, request_id);
     tx_req
         .send(IndexRequest {
             request_id,
