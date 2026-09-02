@@ -1,3 +1,4 @@
+use super::index_mailbox::IndexResponseMailbox;
 use super::worker::channel::BoundedSender;
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
@@ -22,6 +23,7 @@ pub(super) struct IndexCoordinator {
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) pending_queue: VecDeque<IndexRequest>,
     pub(super) inflight_requests: HashSet<u64>,
@@ -44,6 +46,7 @@ pub(super) struct IndexCoordinator {
     pub(super) search_rerun_pending: bool,
     pub(super) request_tabs: HashMap<u64, u64>,
     pub(super) background_states: HashMap<u64, BackgroundIndexState>,
+    pub(super) warm_tab_id: Option<u64>,
 }
 
 impl IndexCoordinator {
@@ -51,6 +54,7 @@ impl IndexCoordinator {
         tx: BoundedSender<IndexRequest>,
         rx: Receiver<IndexResponse>,
         latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+        response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
         latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     ) -> Self {
         Self {
@@ -59,6 +63,7 @@ impl IndexCoordinator {
             next_request_id: 1,
             pending_request_id: None,
             latest_request_ids,
+            response_mailboxes,
             latest_kind_epochs,
             pending_queue: VecDeque::new(),
             inflight_requests: HashSet::new(),
@@ -81,10 +86,26 @@ impl IndexCoordinator {
             search_rerun_pending: false,
             request_tabs: HashMap::new(),
             background_states: HashMap::new(),
+            warm_tab_id: None,
         }
     }
 
     pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+        if self.warm_tab_id == Some(tab_id) {
+            self.warm_tab_id = None;
+        }
+        let removed_request_ids = self
+            .request_tabs
+            .iter()
+            .filter_map(|(request_id, id)| (*id == tab_id).then_some(*request_id))
+            .collect::<Vec<_>>();
+        if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
+            for request_id in removed_request_ids {
+                if let Some(mailbox) = mailboxes.remove(&request_id) {
+                    mailbox.close();
+                }
+            }
+        }
         self.request_tabs.retain(|_, id| *id != tab_id);
         self.pending_queue.retain(|req| req.tab_id != tab_id);
         if let Ok(mut latest) = self.latest_request_ids.lock() {
@@ -105,6 +126,9 @@ impl IndexCoordinator {
             if let Ok(mut latest) = self.latest_request_ids.lock() {
                 latest.insert(tab_id, request_id);
             }
+        }
+        if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
+            mailboxes.insert(request_id, Arc::new(IndexResponseMailbox::new()));
         }
         request_id
     }
@@ -149,9 +173,58 @@ impl IndexCoordinator {
     }
 
     pub(super) fn cleanup_request(&mut self, request_id: u64) {
-        self.request_tabs.remove(&request_id);
+        let tab_id = self.request_tabs.remove(&request_id);
         self.background_states.remove(&request_id);
         self.inflight_requests.remove(&request_id);
+        if let Some(tab_id) = tab_id {
+            if let Ok(mut latest) = self.latest_request_ids.lock() {
+                if latest.get(&tab_id).copied() == Some(request_id) {
+                    latest.remove(&tab_id);
+                }
+            }
+            if self.warm_tab_id == Some(tab_id) {
+                self.warm_tab_id = None;
+            }
+        }
+        if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
+            if let Some(mailbox) = mailboxes.remove(&request_id) {
+                mailbox.close();
+            }
+        }
+    }
+
+    pub(super) fn try_recv_mailbox(&self, request_id: u64) -> Option<IndexResponse> {
+        let mailbox = self
+            .response_mailboxes
+            .lock()
+            .ok()
+            .and_then(|mailboxes| mailboxes.get(&request_id).cloned())?;
+        mailbox.try_recv()
+    }
+
+    pub(super) fn latest_request_for_tab(&self, tab_id: u64) -> Option<u64> {
+        self.latest_request_ids
+            .lock()
+            .ok()
+            .and_then(|latest| latest.get(&tab_id).copied())
+    }
+
+    pub(super) fn replace_warm_tab(&mut self, tab_id: Option<u64>) {
+        if self.warm_tab_id == tab_id {
+            return;
+        }
+        if let Some(previous_warm) = self.warm_tab_id {
+            if let Ok(mut latest) = self.latest_request_ids.lock() {
+                latest.remove(&previous_warm);
+            }
+        }
+        self.warm_tab_id = tab_id;
+    }
+
+    pub(super) fn promote_warm_tab(&mut self, tab_id: u64, replacement: Option<u64>) {
+        if self.warm_tab_id == Some(tab_id) {
+            self.warm_tab_id = replacement;
+        }
     }
 
     pub(super) fn settle_active_terminal_state(&mut self) {

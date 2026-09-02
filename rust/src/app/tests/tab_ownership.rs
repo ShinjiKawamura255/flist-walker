@@ -326,6 +326,20 @@ fn tc_154_active_request_state_moves_to_background_slot_and_back() {
     app.shell.search.set_in_progress(true);
     app.shell.indexing.pending_request_id = Some(1542);
     app.shell.indexing.in_progress = true;
+    app.shell.indexing.request_tabs.insert(1542, active_id);
+    app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(active_id, 1542);
+    app.shell.indexing.request_tabs.insert(1542, active_id);
+    app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(active_id, 1542);
     app.shell.worker_bus.preview.pending_request_id = Some(1543);
     app.shell.worker_bus.preview.in_progress = true;
     app.shell.worker_bus.action.pending_request_id = Some(1544);
@@ -351,6 +365,8 @@ fn tc_154_active_request_state_moves_to_background_slot_and_back() {
     assert!(background.search_in_progress);
     assert_eq!(background.index_state.pending_index_request_id, Some(1542));
     assert!(background.index_state.index_in_progress);
+    assert_eq!(app.shell.indexing.warm_tab_id, Some(active_id));
+    assert_eq!(app.shell.indexing.warm_tab_id, Some(active_id));
     assert_eq!(background.pending_preview_request_id, Some(1543));
     assert!(background.preview_in_progress);
     assert_eq!(background.pending_action_request_id, Some(1544));
@@ -364,6 +380,28 @@ fn tc_154_active_request_state_moves_to_background_slot_and_back() {
     assert!(app.shell.search.in_progress());
     assert_eq!(app.shell.indexing.pending_request_id, Some(1542));
     assert!(app.shell.indexing.in_progress);
+    assert_eq!(
+        app.shell
+            .indexing
+            .latest_request_ids
+            .lock()
+            .expect("latest index requests")
+            .get(&active_id)
+            .copied(),
+        Some(1542),
+        "promoting the warm tab must preserve its generation"
+    );
+    assert_eq!(
+        app.shell
+            .indexing
+            .latest_request_ids
+            .lock()
+            .expect("latest index requests")
+            .get(&active_id)
+            .copied(),
+        Some(1542),
+        "promoting the warm tab must preserve its generation"
+    );
     assert_eq!(app.shell.worker_bus.preview.pending_request_id, Some(1543));
     assert!(app.shell.worker_bus.preview.in_progress);
     assert_eq!(app.shell.worker_bus.action.pending_request_id, Some(1544));

@@ -1,3 +1,4 @@
+use super::index_mailbox::{IndexMailboxPublishError, IndexResponseMailbox};
 use super::worker::channel::{
     bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
 };
@@ -28,8 +29,56 @@ const FILELIST_BATCH_SIZE: usize = 1024;
 const WALKER_BATCH_SIZE: usize = 256;
 const INDEX_BATCH_FLUSH_INTERVAL: Duration = Duration::from_millis(100);
 
+trait IndexResponseSink {
+    fn send(&self, response: IndexResponse) -> Result<(), ()>;
+}
+
+impl IndexResponseSink for Sender<IndexResponse> {
+    fn send(&self, response: IndexResponse) -> Result<(), ()> {
+        Sender::send(self, response).map_err(|_| ())
+    }
+}
+
+struct MailboxResponseSink {
+    request_id: u64,
+    tab_id: u64,
+    mailbox: Arc<IndexResponseMailbox>,
+    shutdown: Arc<AtomicBool>,
+    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+}
+
+impl MailboxResponseSink {
+    fn request_is_current(&self) -> bool {
+        !self.shutdown.load(Ordering::Relaxed)
+            && self
+                .latest_request_ids
+                .lock()
+                .ok()
+                .and_then(|latest| latest.get(&self.tab_id).copied())
+                == Some(self.request_id)
+    }
+}
+
+impl IndexResponseSink for MailboxResponseSink {
+    fn send(&self, mut response: IndexResponse) -> Result<(), ()> {
+        loop {
+            match self.mailbox.try_publish(response) {
+                Ok(()) => return Ok(()),
+                Err(error @ IndexMailboxPublishError::Full(_)) => {
+                    response = error.into_response();
+                    if !self.request_is_current() {
+                        return Err(());
+                    }
+                    thread::sleep(Duration::from_millis(1));
+                }
+                Err(_) => return Err(()),
+            }
+        }
+    }
+}
+
 fn flush_batch(
-    tx_res: &Sender<IndexResponse>,
+    tx_res: &impl IndexResponseSink,
     request_id: u64,
     buffer: &mut Vec<IndexEntry>,
 ) -> bool {
@@ -217,7 +266,7 @@ fn write_walker_metrics_summary(summary: &str, path: &str) {
 }
 
 fn flush_walker_batch(
-    tx_res: &Sender<IndexResponse>,
+    tx_res: &impl IndexResponseSink,
     request_id: u64,
     buffer: &mut Vec<IndexEntry>,
     metrics: &mut WalkerMetrics,
@@ -270,7 +319,7 @@ fn collect_filelist_entries_with_cancel(
 }
 
 fn stream_filelist_index(
-    tx_res: &Sender<IndexResponse>,
+    tx_res: &impl IndexResponseSink,
     req: &IndexRequest,
     root: &Path,
     filelist: PathBuf,
@@ -486,7 +535,7 @@ fn stream_filelist_index(
 }
 
 fn stream_walker_index(
-    tx_res: &Sender<IndexResponse>,
+    tx_res: &impl IndexResponseSink,
     req: &IndexRequest,
     root: &Path,
     shutdown: &AtomicBool,
@@ -661,11 +710,14 @@ pub(super) fn spawn_index_worker(
 ) -> (
     BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
+    Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     Vec<thread::JoinHandle<()>>,
 ) {
+    let response_mailboxes = Arc::new(Mutex::new(HashMap::new()));
     spawn_index_worker_with(
         shutdown,
         latest_request_ids,
+        response_mailboxes,
         Arc::new(|root| root.canonicalize().unwrap_or_else(|_| root.to_path_buf())),
     )
 }
@@ -673,21 +725,23 @@ pub(super) fn spawn_index_worker(
 fn spawn_index_worker_with(
     shutdown: Arc<AtomicBool>,
     latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync>,
 ) -> (
     BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
+    Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     Vec<thread::JoinHandle<()>>,
 ) {
     let (tx_req, rx_req) = bounded_request_channel::<IndexRequest>(2);
-    let (tx_res, rx_res) = mpsc::channel::<IndexResponse>();
+    let (_tx_res, rx_res) = mpsc::channel::<IndexResponse>();
     let rx_req = Arc::new(Mutex::new(rx_req));
     let mut handles = Vec::new();
 
     for worker_index in 0..2 {
-        let tx_res_worker = tx_res.clone();
         let rx_req_worker = Arc::clone(&rx_req);
         let latest_request_ids_worker = Arc::clone(&latest_request_ids);
+        let response_mailboxes_worker = Arc::clone(&response_mailboxes);
         let shutdown_worker = Arc::clone(&shutdown);
         let resolve_root_worker = Arc::clone(&resolve_root);
         let worker_id = format!("flistwalker-index-{worker_index}");
@@ -704,6 +758,22 @@ fn spawn_index_worker_with(
                     }
                 };
                 let (req, inflight) = req;
+                let mailbox = response_mailboxes_worker.lock().ok().map(|mut mailboxes| {
+                    mailboxes
+                        .entry(req.request_id)
+                        .or_insert_with(|| Arc::new(IndexResponseMailbox::new()))
+                        .clone()
+                });
+                let Some(mailbox) = mailbox else {
+                    continue;
+                };
+                let tx_res_worker = MailboxResponseSink {
+                    request_id: req.request_id,
+                    tab_id: req.tab_id,
+                    mailbox,
+                    shutdown: Arc::clone(&shutdown_worker),
+                    latest_request_ids: Arc::clone(&latest_request_ids_worker),
+                };
                 if shutdown_worker.load(Ordering::Relaxed) {
                     trace_worker_snapshot(
                         inflight.load(),
@@ -952,7 +1022,7 @@ fn spawn_index_worker_with(
         handles.push(handle);
     }
 
-    (tx_req, rx_res, handles)
+    (tx_req, rx_res, response_mailboxes, handles)
 }
 
 #[cfg(test)]

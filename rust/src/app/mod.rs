@@ -19,6 +19,7 @@ mod config;
 mod coordinator;
 mod filelist;
 mod index_coordinator;
+pub(crate) mod index_mailbox;
 pub(crate) mod index_worker;
 mod input;
 mod pipeline;
