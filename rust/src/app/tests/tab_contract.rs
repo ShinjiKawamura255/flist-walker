@@ -66,6 +66,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
 
     let index_state = TabIndexState {
         lifecycle: TabResourceLifecycle::Refreshing,
+        committed_snapshot_present: true,
         index: IndexBuildResult {
             entries: vec![file_entry(root.join("indexed.txt"))],
             source: IndexSource::Walker,
@@ -80,6 +81,10 @@ fn tab_state_contract_round_trip_pins_field_layout() {
             request_id: 11,
             source: IndexSource::Walker,
         }),
+        build_reclaim_pending: false,
+        build_reclaim_request_id: None,
+        refresh_after_pending_finish: None,
+        root_after_pending_finish: None,
         pending_kind_paths: VecDeque::from(vec![root.join("kind.txt")]),
         pending_kind_paths_set: HashSet::from([root.join("kind.txt")]),
         in_flight_kind_paths: HashSet::from([root.join("kind-in-flight.txt")]),
@@ -113,6 +118,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         sort_in_progress: true,
         pinned_paths: HashSet::from([root.join("pinned.txt")]),
         current_row: Some(0),
+        evicted_selected_path: None,
         preview: "preview".to_string(),
         results_compacted: false,
     };

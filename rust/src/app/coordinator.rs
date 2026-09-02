@@ -282,17 +282,17 @@ impl FlistWalkerApp {
 
     pub(super) fn settle_tab_canceled_generation(&mut self, tab_id: u64) {
         if self.current_tab_id() == Some(tab_id) {
-            self.shell.indexing.lifecycle = if self.shell.runtime.all_entries.is_empty() {
-                super::TabResourceLifecycle::Dormant
-            } else {
+            self.shell.indexing.lifecycle = if self.shell.indexing.committed_snapshot_present {
                 super::TabResourceLifecycle::Ready
+            } else {
+                super::TabResourceLifecycle::Dormant
             };
         } else if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
             if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
-                tab.index_state.lifecycle = if tab.index_state.all_entries.is_empty() {
-                    super::TabResourceLifecycle::Dormant
-                } else {
+                tab.index_state.lifecycle = if tab.index_state.committed_snapshot_present {
                     super::TabResourceLifecycle::Ready
+                } else {
+                    super::TabResourceLifecycle::Dormant
                 };
             }
         }

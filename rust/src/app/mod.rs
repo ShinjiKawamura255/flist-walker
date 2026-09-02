@@ -65,10 +65,11 @@ pub use session::{
 };
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, ClosedTabState,
-    FeatureStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
-    PendingActiveIndexFinish, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
-    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, PresetManagerState,
+    AppRuntimeState, AppShellState, BackgroundIndexFilterScratch, BackgroundIndexFinalizeScratch,
+    BackgroundIndexState, CacheStateBundle, ClosedTabState, FeatureStateBundle, FileListDialogKind,
+    FileListManager, HighlightCacheKey, PendingActiveIndexFinish, PendingBackgroundIndexFinalize,
+    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
+    PendingFileListUseWalkerConfirmation, PendingIndexRefreshMode, PresetManagerState,
     ResultSortMode, ResultSortScope, RootBrowserState, SortMetadata, TabAccentPalette,
     TabDragState, TabSessionState,
 };

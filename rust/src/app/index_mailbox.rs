@@ -101,7 +101,15 @@ impl IndexResponseMailbox {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn try_recv(&self) -> Option<IndexResponse> {
+        self.try_recv_with_terminal_admission(true)
+    }
+
+    pub(super) fn try_recv_with_terminal_admission(
+        &self,
+        allow_terminal: bool,
+    ) -> Option<IndexResponse> {
         let mut state = self.state.lock().ok()?;
         let mut next_kind = None;
         let mut next_sequence = u64::MAX;
@@ -130,7 +138,8 @@ impl IndexResponseMailbox {
             0 => state.started.take().map(|response| response.response),
             1 => state.data.pop_front().map(|response| response.response),
             2 => state.truncated.take().map(|response| response.response),
-            3 => state.terminal.take().map(|response| response.response),
+            3 if allow_terminal => state.terminal.take().map(|response| response.response),
+            3 => None,
             _ => None,
         }
     }
@@ -139,6 +148,21 @@ impl IndexResponseMailbox {
         if let Ok(mut state) = self.state.lock() {
             state.closed = true;
         }
+    }
+
+    pub(super) fn has_payload(&self) -> bool {
+        self.state.lock().is_ok_and(|state| {
+            !state.data.is_empty()
+                || state.started.is_some()
+                || state.truncated.is_some()
+                || state.terminal.is_some()
+        })
+    }
+
+    pub(super) fn has_terminal_response(&self) -> bool {
+        self.state
+            .lock()
+            .is_ok_and(|state| state.terminal.is_some())
     }
 }
 

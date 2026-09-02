@@ -1,6 +1,6 @@
 use super::{
     egui, lexical_action_path_precheck, ActionPathPrecheck, Entry, EntryKind, FlistWalkerApp,
-    IndexSource, PathBuf, ResultSortMode,
+    IndexSource, PathBuf,
 };
 use crate::actions::open_text_file_with_default_or_editor;
 use crate::path_utils::normalize_windows_path_buf;
@@ -14,8 +14,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::sync::OnceLock;
-use std::sync::{Arc, Mutex};
 #[cfg(test)]
 use std::time::Duration;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -341,32 +341,6 @@ impl FlistWalkerApp {
             .to_string()
     }
 
-    pub(super) fn clear_root_scoped_entry_state(&mut self) {
-        self.shell.runtime.index.entries.clear();
-        self.shell.runtime.index.entries.shrink_to_fit();
-        self.shell.runtime.index.source = IndexSource::None;
-        self.shell.runtime.all_entries = Arc::new(Vec::new());
-        self.shell.runtime.entries = Arc::new(Vec::new());
-        self.shell.cache.entry_kind.clear();
-        self.shell.runtime.base_results.clear();
-        self.shell.runtime.base_results.shrink_to_fit();
-        self.shell.runtime.results.clear();
-        self.shell.runtime.results.shrink_to_fit();
-        // Regression guard: an empty Results snapshot has no valid cursor.
-        self.shell.runtime.current_row = None;
-        self.shell.runtime.preview.clear();
-        self.shell.runtime.total_match_count = 0;
-        self.shell.indexing.incremental_filtered_entries.clear();
-        self.shell
-            .indexing
-            .incremental_filtered_entries
-            .shrink_to_fit();
-        self.shell.worker_bus.sort.clear_request();
-        self.shell.runtime.result_sort_mode = ResultSortMode::Score;
-        self.clear_sort_metadata_cache();
-        self.shell.indexing.last_search_snapshot_len = 0;
-    }
-
     pub(super) fn prefer_relative_display(&self) -> bool {
         matches!(
             self.shell.runtime.index.source,
@@ -381,14 +355,6 @@ impl FlistWalkerApp {
     pub(super) fn use_filelist_requires_locked_filters(&self) -> bool {
         self.shell.runtime.use_filelist
             && !matches!(self.shell.runtime.index.source, IndexSource::Walker)
-    }
-
-    pub(super) fn is_entry_visible_for_flags(
-        entry: &Entry,
-        include_files: bool,
-        include_dirs: bool,
-    ) -> bool {
-        entry.is_visible_for_flags(include_files, include_dirs)
     }
 
     pub(super) fn compiled_ignore_terms(

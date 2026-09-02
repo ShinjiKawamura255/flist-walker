@@ -117,6 +117,288 @@ fn has_inflight_for_tab_uses_request_tab_mapping() {
 }
 
 #[test]
+fn tc_207_replaced_warm_request_is_explicitly_stale_until_cleanup() {
+    let root = test_root("tc-207-replaced-warm-stale-routing");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    let old_warm_tab_id = app.shell.tabs.get(0).expect("old warm tab").id;
+    let replacement_warm_tab_id = app.current_tab_id().expect("replacement warm tab");
+    let request_id = app
+        .shell
+        .indexing
+        .allocate_request_id(Some(old_warm_tab_id));
+    app.shell.indexing.warm_tab_id = Some(old_warm_tab_id);
+
+    app.shell
+        .indexing
+        .replace_warm_tab(Some(replacement_warm_tab_id));
+
+    assert!(app
+        .shell
+        .indexing
+        .superseded_request_ids
+        .contains(&request_id));
+    assert!(matches!(
+        app.shell.indexing.route_response(request_id),
+        IndexResponseRoute::Stale
+    ));
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    {
+        let old_warm_tab = app.shell.tabs.get_mut(0).expect("old warm tab");
+        old_warm_tab.index_state.begin_index_request(request_id);
+    }
+
+    app.switch_to_tab_index(0);
+
+    let replacement = index_rx
+        .try_recv()
+        .expect("reactivating a superseded warm tab must start a fresh generation");
+    assert_eq!(replacement.tab_id, old_warm_tab_id);
+    assert_ne!(replacement.request_id, request_id);
+    assert_eq!(
+        app.shell.indexing.pending_request_id,
+        Some(replacement.request_id)
+    );
+    assert!(!app
+        .shell
+        .indexing
+        .superseded_request_ids
+        .contains(&request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
+    let root = test_root("tc-207-superseded-warm-reactivation-full");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    let active_tab_id = app.current_tab_id().expect("active tab");
+    let target_index = 0;
+    let target_tab_id = app.shell.tabs.get(target_index).expect("target tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(target_tab_id));
+    {
+        let target = app.shell.tabs.get_mut(target_index).expect("target tab");
+        target.index_state.begin_index_request(request_id);
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..100_000)
+                .map(|index| file_entry(root.join(format!("old-{index}.txt"))))
+                .collect(),
+            replaced: true,
+        },
+    );
+    let mailbox = app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .get(&request_id)
+        .cloned()
+        .expect("request mailbox");
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .expect("seed terminal mailbox");
+    app.shell.indexing.warm_tab_id = Some(target_tab_id);
+    app.shell.indexing.replace_warm_tab(Some(active_tab_id));
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut held = app.capture_active_tab_state(12_000 + index as u64);
+        held.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        held.index_state.committed_snapshot_present = true;
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(held.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    app.switch_to_tab_index(target_index);
+
+    assert_eq!(app.current_tab_id(), Some(active_tab_id));
+    assert_eq!(
+        app.shell.tabs.pending_activation_tab_id,
+        Some(target_tab_id)
+    );
+    assert_eq!(
+        app.shell
+            .indexing
+            .background_states
+            .get(&request_id)
+            .expect("rolled back background owner")
+            .entries
+            .len(),
+        100_000
+    );
+    assert!(mailbox.has_terminal_response());
+    assert!(index_rx.try_recv().is_err());
+
+    app.poll_index_response();
+    assert_eq!(app.current_tab_id(), Some(active_tab_id));
+    assert_eq!(
+        app.shell.tabs.pending_activation_tab_id,
+        Some(target_tab_id)
+    );
+    assert!(app.shell.indexing.pending_stale_build_reclaim.is_some());
+
+    app.shell.tabs.resume_resource_reclaimer();
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while app.current_tab_id() != Some(target_tab_id) {
+        assert!(
+            Instant::now() < deadline,
+            "deferred superseded activation must settle after reclaimer capacity returns"
+        );
+        app.poll_index_response();
+        thread::yield_now();
+    }
+    let replacement = index_rx.try_recv().expect("one fresh generation");
+    assert_eq!(replacement.tab_id, target_tab_id);
+    assert_ne!(replacement.request_id, request_id);
+    assert!(index_rx.try_recv().is_err());
+    assert!(!app
+        .shell
+        .indexing
+        .superseded_request_ids
+        .contains(&request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_repeated_rapid_demote_keeps_request_owners_bounded_and_quiesces() {
+    let root = test_root("tc-207-repeated-demote-owner-bound");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    if let Ok(mut mailboxes) = app.shell.indexing.response_mailboxes.lock() {
+        for mailbox in mailboxes.values() {
+            mailbox.close();
+        }
+        mailboxes.clear();
+    }
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Dormant;
+    app.shell.indexing.committed_snapshot_present = false;
+    for tab in app.shell.tabs.iter_mut() {
+        tab.index_state.lifecycle = TabResourceLifecycle::Dormant;
+        tab.index_state.committed_snapshot_present = false;
+        tab.index_state.clear_index_request_state();
+    }
+    app.request_index_refresh();
+
+    for _ in 0..24 {
+        let next = (app.shell.tabs.active_tab_index() + 1) % app.shell.tabs.len();
+        app.switch_to_tab_index(next);
+        while index_rx.try_recv().is_ok() {}
+        let route_count = app.shell.indexing.request_tabs.len();
+        let mailbox_count = app
+            .shell
+            .indexing
+            .response_mailboxes
+            .lock()
+            .expect("mailboxes")
+            .len();
+        assert!(app.shell.indexing.inflight_requests.len() <= FlistWalkerApp::INDEX_MAX_CONCURRENT);
+        assert!(app.shell.indexing.pending_queue.len() <= FlistWalkerApp::INDEX_MAX_QUEUE);
+        assert!(
+            route_count <= FlistWalkerApp::INDEX_MAX_CONCURRENT + FlistWalkerApp::INDEX_MAX_QUEUE
+        );
+        assert_eq!(mailbox_count, route_count);
+        assert!(
+            app.shell.indexing.superseded_request_ids.len()
+                <= FlistWalkerApp::INDEX_MAX_CONCURRENT + FlistWalkerApp::INDEX_MAX_QUEUE
+        );
+        assert!(app
+            .shell
+            .indexing
+            .superseded_request_ids
+            .iter()
+            .all(|request_id| app.shell.indexing.request_tabs.contains_key(request_id)));
+        assert!(app.shell.indexing.background_finalizations.keys().count() <= 2);
+        assert!(app.shell.indexing.pending_stale_build_reclaim.is_none());
+    }
+
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while !app.shell.indexing.request_tabs.is_empty() {
+        assert!(
+            Instant::now() < deadline,
+            "all bounded request owners must reach quiescence"
+        );
+        app.dispatch_index_queue();
+        while index_rx.try_recv().is_ok() {}
+        let inflight = app
+            .shell
+            .indexing
+            .inflight_requests
+            .iter()
+            .copied()
+            .collect::<Vec<_>>();
+        for request_id in inflight {
+            let mailbox = app
+                .shell
+                .indexing
+                .response_mailboxes
+                .lock()
+                .expect("mailboxes")
+                .get(&request_id)
+                .cloned()
+                .expect("inflight mailbox");
+            if !mailbox.has_terminal_response() {
+                mailbox
+                    .try_publish(IndexResponse::Canceled { request_id })
+                    .expect("publish terminal cancellation");
+            }
+        }
+        app.poll_index_response();
+        thread::yield_now();
+    }
+    assert!(
+        app.shell.indexing.superseded_request_ids.is_empty(),
+        "orphan superseded ids: {:?}",
+        (
+            &app.shell.indexing.superseded_request_ids,
+            app.shell
+                .indexing
+                .latest_request_ids
+                .lock()
+                .expect("latest requests")
+                .clone()
+        )
+    );
+    assert!(app.shell.indexing.inflight_requests.is_empty());
+    assert!(app.shell.indexing.pending_queue.is_empty());
+    assert!(app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .is_empty());
+    assert!(app.shell.indexing.pending_stale_build_reclaim.is_none());
+    assert_eq!(
+        app.shell.indexing.background_finalizations.keys().count(),
+        0
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn should_refresh_incremental_search_is_false_when_delta_is_zero() {
     let root = test_root("pipeline-refresh-zero");
     fs::create_dir_all(&root).expect("create dir");

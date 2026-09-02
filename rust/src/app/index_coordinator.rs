@@ -1,8 +1,10 @@
 use super::index_mailbox::IndexResponseMailbox;
+use super::tab_resources::RetiredIndexBuildResources;
 use super::worker::channel::BoundedSender;
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, KindResolveRequest, PendingActiveIndexFinish, TabResourceLifecycle,
+    IndexSource, KindResolveRequest, PendingActiveIndexFinish, PendingBackgroundIndexFinalize,
+    PendingIndexRefreshMode, TabResourceLifecycle,
 };
 use crate::entry::{Entry, EntryKind};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -17,6 +19,82 @@ pub(super) enum IndexResponseRoute {
     Stale,
 }
 
+pub(super) const BACKGROUND_FINALIZATION_CAPACITY: usize = 2;
+
+pub(super) struct BackgroundIndexFinalizationSlots {
+    slots: [Option<(u64, PendingBackgroundIndexFinalize)>; BACKGROUND_FINALIZATION_CAPACITY],
+}
+
+impl Default for BackgroundIndexFinalizationSlots {
+    fn default() -> Self {
+        Self {
+            slots: std::array::from_fn(|_| None),
+        }
+    }
+}
+
+impl BackgroundIndexFinalizationSlots {
+    pub(super) fn contains_key(&self, request_id: &u64) -> bool {
+        self.get(request_id).is_some()
+    }
+
+    pub(super) fn get(&self, request_id: &u64) -> Option<&PendingBackgroundIndexFinalize> {
+        self.slots.iter().find_map(|slot| {
+            slot.as_ref()
+                .and_then(|(id, state)| (id == request_id).then_some(state))
+        })
+    }
+
+    pub(super) fn get_mut(
+        &mut self,
+        request_id: &u64,
+    ) -> Option<&mut PendingBackgroundIndexFinalize> {
+        self.slots.iter_mut().find_map(|slot| {
+            slot.as_mut()
+                .and_then(|(id, state)| (id == request_id).then_some(state))
+        })
+    }
+
+    pub(super) fn has_capacity_for(&self, request_id: u64) -> bool {
+        self.contains_key(&request_id) || self.slots.iter().any(Option::is_none)
+    }
+
+    pub(super) fn is_full(&self) -> bool {
+        self.slots.iter().all(Option::is_some)
+    }
+
+    pub(super) fn insert(&mut self, request_id: u64, state: PendingBackgroundIndexFinalize) {
+        if let Some(slot) = self
+            .slots
+            .iter_mut()
+            .find(|slot| slot.as_ref().is_some_and(|(id, _)| *id == request_id))
+        {
+            *slot = Some((request_id, state));
+            return;
+        }
+        let slot = self
+            .slots
+            .iter_mut()
+            .find(|slot| slot.is_none())
+            .expect("background finalization slots exceed index worker capacity");
+        *slot = Some((request_id, state));
+    }
+
+    pub(super) fn remove(&mut self, request_id: &u64) -> Option<PendingBackgroundIndexFinalize> {
+        let slot = self
+            .slots
+            .iter_mut()
+            .find(|slot| slot.as_ref().is_some_and(|(id, _)| id == request_id))?;
+        slot.take().map(|(_, state)| state)
+    }
+
+    pub(super) fn keys(&self) -> impl Iterator<Item = &u64> {
+        self.slots
+            .iter()
+            .filter_map(|slot| slot.as_ref().map(|(request_id, _)| request_id))
+    }
+}
+
 pub(super) struct IndexCoordinator {
     pub(super) tx: BoundedSender<IndexRequest>,
     #[cfg(test)]
@@ -24,11 +102,13 @@ pub(super) struct IndexCoordinator {
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
     pub(super) lifecycle: TabResourceLifecycle,
+    pub(super) committed_snapshot_present: bool,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) pending_queue: VecDeque<IndexRequest>,
     pub(super) inflight_requests: HashSet<u64>,
+    pub(super) superseded_request_ids: HashSet<u64>,
     pub(super) in_progress: bool,
     pub(super) incremental_filtered_entries: Vec<Entry>,
     pub(super) pending_entries: VecDeque<IndexEntry>,
@@ -38,6 +118,10 @@ pub(super) struct IndexCoordinator {
     #[cfg(test)]
     pub(super) deferred_non_active_responses: VecDeque<IndexResponse>,
     pub(super) pending_finish: Option<PendingActiveIndexFinish>,
+    pub(super) build_reclaim_pending: bool,
+    pub(super) build_reclaim_request_id: Option<u64>,
+    pub(super) refresh_after_pending_finish: Option<PendingIndexRefreshMode>,
+    pub(super) root_after_pending_finish: Option<PathBuf>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
     pub(super) pending_kind_paths_set: HashSet<PathBuf>,
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
@@ -50,7 +134,10 @@ pub(super) struct IndexCoordinator {
     pub(super) search_rerun_pending: bool,
     pub(super) request_tabs: HashMap<u64, u64>,
     pub(super) background_states: HashMap<u64, BackgroundIndexState>,
+    pub(super) background_finalizations: BackgroundIndexFinalizationSlots,
     pub(super) warm_tab_id: Option<u64>,
+    pub(super) pending_stale_build_reclaim: Option<(Option<u64>, RetiredIndexBuildResources)>,
+    pub(super) pending_replace_all: Option<IndexResponse>,
 }
 
 impl IndexCoordinator {
@@ -70,11 +157,13 @@ impl IndexCoordinator {
             next_request_id: 1,
             pending_request_id: None,
             lifecycle: TabResourceLifecycle::Dormant,
+            committed_snapshot_present: false,
             latest_request_ids,
             response_mailboxes,
             latest_kind_epochs,
             pending_queue: VecDeque::new(),
             inflight_requests: HashSet::new(),
+            superseded_request_ids: HashSet::new(),
             in_progress: false,
             incremental_filtered_entries: Vec::new(),
             pending_entries: VecDeque::new(),
@@ -84,6 +173,10 @@ impl IndexCoordinator {
             #[cfg(test)]
             deferred_non_active_responses: VecDeque::new(),
             pending_finish: None,
+            build_reclaim_pending: false,
+            build_reclaim_request_id: None,
+            refresh_after_pending_finish: None,
+            root_after_pending_finish: None,
             pending_kind_paths: VecDeque::new(),
             pending_kind_paths_set: HashSet::new(),
             in_flight_kind_paths: HashSet::new(),
@@ -96,26 +189,18 @@ impl IndexCoordinator {
             search_rerun_pending: false,
             request_tabs: HashMap::new(),
             background_states: HashMap::new(),
+            background_finalizations: BackgroundIndexFinalizationSlots::default(),
             warm_tab_id: None,
+            pending_stale_build_reclaim: None,
+            pending_replace_all: None,
         }
     }
 
-    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+    pub(super) fn clear_for_tab_after_reclaim(&mut self, tab_id: u64) {
         if self.warm_tab_id == Some(tab_id) {
             self.warm_tab_id = None;
         }
-        let removed_request_ids = self
-            .request_tabs
-            .iter()
-            .filter_map(|(request_id, id)| (*id == tab_id).then_some(*request_id))
-            .collect::<Vec<_>>();
-        if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
-            for request_id in removed_request_ids {
-                if let Some(mailbox) = mailboxes.remove(&request_id) {
-                    mailbox.close();
-                }
-            }
-        }
+        debug_assert_eq!(self.request_ids_for_tab(tab_id), Vec::<u64>::new());
         self.request_tabs.retain(|_, id| *id != tab_id);
         self.pending_queue.retain(|req| req.tab_id != tab_id);
         if let Ok(mut latest) = self.latest_request_ids.lock() {
@@ -124,8 +209,106 @@ impl IndexCoordinator {
         if let Ok(mut latest) = self.latest_kind_epochs.lock() {
             latest.remove(&tab_id);
         }
-        self.background_states
-            .retain(|request_id, _| self.request_tabs.contains_key(request_id));
+        debug_assert!(self
+            .background_states
+            .keys()
+            .all(|request_id| self.request_tabs.contains_key(request_id)));
+        debug_assert!(self
+            .background_finalizations
+            .keys()
+            .all(|request_id| self.request_tabs.contains_key(request_id)));
+    }
+
+    #[cfg(test)]
+    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+        let request_ids = self.request_ids_for_tab(tab_id);
+        for request_id in request_ids {
+            self.cleanup_request(request_id);
+        }
+        self.clear_for_tab_after_reclaim(tab_id);
+    }
+
+    pub(super) fn request_ids_for_tab(&self, tab_id: u64) -> Vec<u64> {
+        self.request_tabs
+            .iter()
+            .filter_map(|(request_id, id)| (*id == tab_id).then_some(*request_id))
+            .collect()
+    }
+
+    pub(super) fn take_mailboxes_for_requests(
+        &mut self,
+        request_ids: &[u64],
+    ) -> Vec<(u64, Arc<IndexResponseMailbox>)> {
+        let Ok(mut mailboxes) = self.response_mailboxes.lock() else {
+            return Vec::new();
+        };
+        request_ids
+            .iter()
+            .filter_map(|request_id| {
+                mailboxes
+                    .remove(request_id)
+                    .map(|mailbox| (*request_id, mailbox))
+            })
+            .collect()
+    }
+
+    pub(super) fn restore_mailboxes(
+        &mut self,
+        mailboxes_to_restore: Vec<(u64, Arc<IndexResponseMailbox>)>,
+    ) {
+        if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
+            mailboxes.extend(mailboxes_to_restore);
+        }
+    }
+
+    pub(super) fn take_all_mailboxes_for_shutdown(
+        &mut self,
+    ) -> Vec<(u64, Arc<IndexResponseMailbox>)> {
+        let Ok(mut mailboxes) = self.response_mailboxes.lock() else {
+            return Vec::new();
+        };
+        mailboxes.drain().collect()
+    }
+
+    pub(super) fn take_background_states_for_requests(
+        &mut self,
+        request_ids: &[u64],
+    ) -> Vec<(u64, BackgroundIndexState)> {
+        request_ids
+            .iter()
+            .filter_map(|request_id| {
+                self.background_states
+                    .remove(request_id)
+                    .map(|state| (*request_id, state))
+            })
+            .collect()
+    }
+
+    pub(super) fn restore_background_states(&mut self, states: Vec<(u64, BackgroundIndexState)>) {
+        self.background_states.extend(states);
+    }
+
+    pub(super) fn take_background_finalizations_for_requests(
+        &mut self,
+        request_ids: &[u64],
+    ) -> Vec<(u64, PendingBackgroundIndexFinalize)> {
+        request_ids
+            .iter()
+            .filter_map(|request_id| {
+                self.background_finalizations
+                    .remove(request_id)
+                    .map(|state| (*request_id, state))
+            })
+            .collect()
+    }
+
+    pub(super) fn restore_background_finalizations(
+        &mut self,
+        states: Vec<(u64, PendingBackgroundIndexFinalize)>,
+    ) {
+        for (request_id, state) in states {
+            self.background_finalizations.insert(request_id, state);
+        }
     }
 
     pub(super) fn allocate_request_id(&mut self, tab_id: Option<u64>) -> u64 {
@@ -134,7 +317,11 @@ impl IndexCoordinator {
         if let Some(tab_id) = tab_id {
             self.request_tabs.insert(request_id, tab_id);
             if let Ok(mut latest) = self.latest_request_ids.lock() {
-                latest.insert(tab_id, request_id);
+                if let Some(previous) = latest.insert(tab_id, request_id) {
+                    if previous != request_id && self.request_tabs.contains_key(&previous) {
+                        self.superseded_request_ids.insert(previous);
+                    }
+                }
             }
         }
         if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
@@ -143,13 +330,8 @@ impl IndexCoordinator {
         request_id
     }
 
-    pub(super) fn begin_active_refresh(
-        &mut self,
-        request_id: u64,
-        query_non_empty: bool,
-        has_committed_snapshot: bool,
-    ) {
-        self.lifecycle = if has_committed_snapshot {
+    pub(super) fn begin_active_refresh(&mut self, request_id: u64, query_non_empty: bool) {
+        self.lifecycle = if self.committed_snapshot_present {
             TabResourceLifecycle::Refreshing
         } else {
             TabResourceLifecycle::Loading
@@ -171,14 +353,14 @@ impl IndexCoordinator {
         tab.search_in_progress = false;
         tab.index_state.search_resume_pending = !tab.query_state.query.trim().is_empty();
         tab.index_state.search_rerun_pending = false;
-        tab.index_state.index.entries.clear();
+        debug_assert_eq!(tab.index_state.index.entries.capacity(), 0);
         tab.index_state.index.source = IndexSource::None;
-        tab.index_state.pending_index_entries.clear();
+        debug_assert_eq!(tab.index_state.pending_index_entries.capacity(), 0);
         tab.index_state.pending_index_entries_request_id = None;
-        tab.index_state.pending_kind_paths.clear();
-        tab.index_state.pending_kind_paths_set.clear();
-        tab.index_state.in_flight_kind_paths.clear();
-        tab.index_state.resolved_kind_updates.clear();
+        debug_assert_eq!(tab.index_state.pending_kind_paths.capacity(), 0);
+        debug_assert_eq!(tab.index_state.pending_kind_paths_set.capacity(), 0);
+        debug_assert_eq!(tab.index_state.in_flight_kind_paths.capacity(), 0);
+        debug_assert_eq!(tab.index_state.resolved_kind_updates.capacity(), 0);
         tab.index_state.kind_resolution_in_progress = false;
         tab.index_state.kind_resolution_epoch =
             tab.index_state.kind_resolution_epoch.saturating_add(1);
@@ -195,16 +377,17 @@ impl IndexCoordinator {
     pub(super) fn cleanup_request(&mut self, request_id: u64) {
         let tab_id = self.request_tabs.remove(&request_id);
         self.background_states.remove(&request_id);
+        self.background_finalizations.remove(&request_id);
         self.inflight_requests.remove(&request_id);
+        self.superseded_request_ids.remove(&request_id);
         if let Some(tab_id) = tab_id {
             if let Ok(mut latest) = self.latest_request_ids.lock() {
                 if latest.get(&tab_id).copied() == Some(request_id) {
                     latest.remove(&tab_id);
                 }
             }
-            if self.warm_tab_id == Some(tab_id) {
-                self.warm_tab_id = None;
-            }
+        } else if let Ok(mut latest) = self.latest_request_ids.lock() {
+            latest.retain(|_, latest_request_id| *latest_request_id != request_id);
         }
         if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
             if let Some(mailbox) = mailboxes.remove(&request_id) {
@@ -213,13 +396,69 @@ impl IndexCoordinator {
         }
     }
 
-    pub(super) fn try_recv_mailbox(&self, request_id: u64) -> Option<IndexResponse> {
+    pub(super) fn try_recv_mailbox(
+        &self,
+        request_id: u64,
+        allow_terminal: bool,
+    ) -> Option<IndexResponse> {
         let mailbox = self
             .response_mailboxes
             .lock()
             .ok()
             .and_then(|mailboxes| mailboxes.get(&request_id).cloned())?;
-        mailbox.try_recv()
+        mailbox.try_recv_with_terminal_admission(allow_terminal)
+    }
+
+    pub(super) fn mailbox_has_terminal(&self, request_id: u64) -> bool {
+        self.response_mailboxes
+            .lock()
+            .ok()
+            .and_then(|mailboxes| mailboxes.get(&request_id).cloned())
+            .is_some_and(|mailbox| mailbox.has_terminal_response())
+    }
+
+    pub(super) fn can_admit_mailbox_terminal(&self, request_id: u64) -> bool {
+        if self.pending_request_id == Some(request_id) {
+            return !self.background_states.contains_key(&request_id)
+                || self.background_finalizations.has_capacity_for(request_id);
+        }
+        let Some(tab_id) = self.request_tabs.get(&request_id).copied() else {
+            return true;
+        };
+        let is_latest = self
+            .latest_request_ids
+            .lock()
+            .map(|latest| latest.get(&tab_id).copied() == Some(request_id))
+            .unwrap_or(false);
+        self.superseded_request_ids.contains(&request_id)
+            || !is_latest
+            || self.background_finalizations.has_capacity_for(request_id)
+    }
+
+    pub(super) fn is_superseded_request(&self, request_id: u64) -> bool {
+        self.superseded_request_ids.contains(&request_id)
+    }
+
+    pub(super) fn release_published_terminal_inflight(&mut self) {
+        let completed = self
+            .inflight_requests
+            .iter()
+            .copied()
+            .filter(|request_id| self.mailbox_has_terminal(*request_id))
+            .collect::<Vec<_>>();
+        for request_id in completed {
+            self.inflight_requests.remove(&request_id);
+        }
+    }
+
+    pub(super) fn requeue_terminal(&self, response: IndexResponse) -> bool {
+        let request_id = Self::response_request_id(&response);
+        let mailbox = self
+            .response_mailboxes
+            .lock()
+            .ok()
+            .and_then(|mailboxes| mailboxes.get(&request_id).cloned());
+        mailbox.is_some_and(|mailbox| mailbox.try_publish(response).is_ok())
     }
 
     pub(super) fn latest_request_for_tab(&self, tab_id: u64) -> Option<u64> {
@@ -235,7 +474,12 @@ impl IndexCoordinator {
         }
         if let Some(previous_warm) = self.warm_tab_id {
             if let Ok(mut latest) = self.latest_request_ids.lock() {
-                latest.remove(&previous_warm);
+                if let Some(request_id) = latest
+                    .remove(&previous_warm)
+                    .filter(|request_id| self.request_tabs.contains_key(request_id))
+                {
+                    self.superseded_request_ids.insert(request_id);
+                }
             }
         }
         self.warm_tab_id = tab_id;
@@ -252,7 +496,6 @@ impl IndexCoordinator {
         self.pending_request_id = None;
         self.search_resume_pending = false;
         self.search_rerun_pending = false;
-        self.pending_entries.clear();
         self.pending_entries_request_id = None;
         self.pending_finish = None;
     }
@@ -262,6 +505,9 @@ impl IndexCoordinator {
     }
 
     pub(super) fn route_response(&mut self, request_id: u64) -> IndexResponseRoute {
+        if self.superseded_request_ids.contains(&request_id) {
+            return IndexResponseRoute::Stale;
+        }
         if Some(request_id) == self.pending_request_id {
             return IndexResponseRoute::Active;
         }
@@ -269,15 +515,16 @@ impl IndexCoordinator {
             Some(tab_id) => {
                 // Keep request_tabs until terminal accounting settles, but do not route
                 // explicitly superseded payloads back into a live background tab.
-                let explicitly_stale = self
-                    .latest_request_ids
-                    .lock()
-                    .map(|latest| {
-                        latest
-                            .get(&tab_id)
-                            .is_some_and(|latest_id| *latest_id != request_id)
-                    })
-                    .unwrap_or(false);
+                let explicitly_stale = self.superseded_request_ids.contains(&request_id)
+                    || self
+                        .latest_request_ids
+                        .lock()
+                        .map(|latest| {
+                            latest
+                                .get(&tab_id)
+                                .is_some_and(|latest_id| *latest_id != request_id)
+                        })
+                        .unwrap_or(false);
                 if explicitly_stale {
                     IndexResponseRoute::Stale
                 } else {

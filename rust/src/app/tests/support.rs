@@ -110,6 +110,7 @@ pub(crate) fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
     app.shell.indexing.request_tabs.clear();
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
+    app.shell.indexing.superseded_request_ids.clear();
     if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
         latest.clear();
     }
