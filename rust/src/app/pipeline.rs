@@ -3,6 +3,7 @@ use super::{
     IndexResponse, IndexSource, PendingActiveIndexFinish, PipelineOwner, ResultSortMode,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
+use crate::app::tab_state::TabResourceTransition;
 use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
 use crate::walker_runtime::walker_truncated_notice;
@@ -278,7 +279,9 @@ impl FlistWalkerApp {
             indexing.clear_active_request_state();
             indexing.build_reclaim_pending = active_request_id.is_some();
             indexing.build_reclaim_request_id = active_request_id;
-            indexing.lifecycle = super::TabResourceLifecycle::Failed;
+            indexing
+                .resource_state
+                .apply(TabResourceTransition::Failure);
 
             for tab in tabs {
                 if affected_tab_ids.contains(&tab.id)
@@ -288,7 +291,9 @@ impl FlistWalkerApp {
                     tab.index_state.build_reclaim_pending = true;
                     tab.index_state.build_reclaim_request_id =
                         tab.index_state.pending_index_request_id;
-                    tab.index_state.lifecycle = super::TabResourceLifecycle::Failed;
+                    tab.index_state
+                        .resource_state
+                        .apply(TabResourceTransition::Failure);
                     tab.notice = notice.clone();
                 }
             }
@@ -782,12 +787,9 @@ impl FlistWalkerApp {
                                     tab.index_state.clear_index_request_state();
                                     tab.index_state.build_reclaim_pending = false;
                                     if Some(tab.id) == superseded_tab_id {
-                                        tab.index_state.lifecycle =
-                                            if tab.index_state.committed_snapshot_present {
-                                                super::TabResourceLifecycle::Ready
-                                            } else {
-                                                super::TabResourceLifecycle::Dormant
-                                            };
+                                        tab.index_state
+                                            .resource_state
+                                            .apply(TabResourceTransition::Cancel);
                                     }
                                 }
                             }
@@ -872,11 +874,9 @@ impl FlistWalkerApp {
                     tab.index_state.clear_index_request_state();
                     tab.index_state.build_reclaim_pending = false;
                     if superseded {
-                        tab.index_state.lifecycle = if tab.index_state.committed_snapshot_present {
-                            super::TabResourceLifecycle::Ready
-                        } else {
-                            super::TabResourceLifecycle::Dormant
-                        };
+                        tab.index_state
+                            .resource_state
+                            .apply(TabResourceTransition::Cancel);
                     }
                 }
                 self.shell
@@ -1260,7 +1260,10 @@ impl FlistWalkerApp {
                     self.shell.features.filelist.workflow.pending_after_index = None;
                     self.discard_filelist_index_completion_notice(request_id);
                     self.set_notice(format!("Indexing failed: {}", error));
-                    self.shell.indexing.lifecycle = super::TabResourceLifecycle::Failed;
+                    self.shell
+                        .indexing
+                        .resource_state
+                        .apply(TabResourceTransition::Failure);
                     self.shell.indexing.settle_active_terminal_state();
                     self.shell.indexing.build_reclaim_pending = true;
                     self.shell.indexing.build_reclaim_request_id = Some(request_id);
@@ -1277,12 +1280,10 @@ impl FlistWalkerApp {
                             self.set_notice(notice);
                         }
                     }
-                    self.shell.indexing.lifecycle =
-                        if self.shell.indexing.committed_snapshot_present {
-                            super::TabResourceLifecycle::Ready
-                        } else {
-                            super::TabResourceLifecycle::Dormant
-                        };
+                    self.shell
+                        .indexing
+                        .resource_state
+                        .apply(TabResourceTransition::Cancel);
                     self.shell.indexing.settle_active_terminal_state();
                     self.shell.indexing.build_reclaim_pending = true;
                     self.shell.indexing.build_reclaim_request_id = Some(request_id);
@@ -1686,8 +1687,10 @@ impl FlistWalkerApp {
         self.shell.runtime.index.source = pending_finish.source;
         self.shell.runtime.all_entries =
             Arc::new(std::mem::take(&mut self.shell.runtime.index.entries));
-        self.shell.indexing.committed_snapshot_present = true;
-        self.shell.indexing.lifecycle = super::TabResourceLifecycle::Ready;
+        self.shell
+            .indexing
+            .resource_state
+            .apply(TabResourceTransition::Success);
 
         let needs_filtering = !self.shell.runtime.include_files
             || !self.shell.runtime.include_dirs

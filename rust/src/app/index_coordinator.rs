@@ -1,13 +1,15 @@
 use super::index_mailbox::IndexResponseMailbox;
 use super::tab_resources::RetiredIndexBuildResources;
+use super::tab_state::{TabResourceState, TabResourceTransition};
 use super::worker::channel::BoundedSender;
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
     IndexSource, KindResolveRequest, PendingActiveIndexFinish, PendingBackgroundIndexFinalize,
-    PendingIndexRefreshMode, TabResourceLifecycle,
+    PendingIndexRefreshMode,
 };
 use crate::entry::{Entry, EntryKind};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
@@ -101,8 +103,7 @@ pub(super) struct IndexCoordinator {
     pub(super) rx: Receiver<IndexResponse>,
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
-    pub(super) lifecycle: TabResourceLifecycle,
-    pub(super) committed_snapshot_present: bool,
+    pub(super) resource_state: TabResourceState,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
@@ -156,8 +157,7 @@ impl IndexCoordinator {
             rx,
             next_request_id: 1,
             pending_request_id: None,
-            lifecycle: TabResourceLifecycle::Dormant,
-            committed_snapshot_present: false,
+            resource_state: TabResourceState::default(),
             latest_request_ids,
             response_mailboxes,
             latest_kind_epochs,
@@ -331,11 +331,7 @@ impl IndexCoordinator {
     }
 
     pub(super) fn begin_active_refresh(&mut self, request_id: u64, query_non_empty: bool) {
-        self.lifecycle = if self.committed_snapshot_present {
-            TabResourceLifecycle::Refreshing
-        } else {
-            TabResourceLifecycle::Loading
-        };
+        self.resource_state.apply(TabResourceTransition::Begin);
         self.pending_request_id = Some(request_id);
         self.in_progress = true;
         self.search_resume_pending = query_non_empty;
@@ -563,6 +559,20 @@ impl IndexCoordinator {
 
     pub(super) fn cleanup_stale_terminal_response(&mut self, request_id: u64) {
         self.cleanup_request(request_id);
+    }
+}
+
+impl Deref for IndexCoordinator {
+    type Target = TabResourceState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.resource_state
+    }
+}
+
+impl DerefMut for IndexCoordinator {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.resource_state
     }
 }
 

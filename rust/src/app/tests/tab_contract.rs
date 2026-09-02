@@ -65,8 +65,10 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         .tab_accent = Some(TabAccentColor::Emerald);
 
     let index_state = TabIndexState {
-        lifecycle: TabResourceLifecycle::Refreshing,
-        committed_snapshot_present: true,
+        resource_state: crate::app::tab_state::TabResourceState::new(
+            TabResourceLifecycle::Refreshing,
+            true,
+        ),
         index: IndexBuildResult {
             entries: vec![file_entry(root.join("indexed.txt"))],
             source: IndexSource::Walker,

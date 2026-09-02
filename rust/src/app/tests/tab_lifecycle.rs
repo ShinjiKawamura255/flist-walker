@@ -1,6 +1,126 @@
 use super::*;
 
 #[test]
+fn tc_207_active_and_inactive_resource_transitions_share_one_reducer() {
+    use crate::app::tab_state::{TabResourceState, TabResourceTransition};
+
+    let root = test_root("tc-207-shared-resource-transition-reducer");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let mut inactive = app.capture_active_tab_state(900);
+    let lifecycles = [
+        TabResourceLifecycle::Dormant,
+        TabResourceLifecycle::Loading,
+        TabResourceLifecycle::Ready,
+        TabResourceLifecycle::Refreshing,
+        TabResourceLifecycle::Failed,
+        TabResourceLifecycle::Evicted,
+    ];
+
+    for lifecycle in lifecycles {
+        for committed_snapshot_present in [false, true] {
+            let initial = TabResourceState::new(lifecycle, committed_snapshot_present);
+            let cases = [
+                (
+                    TabResourceTransition::Begin,
+                    TabResourceState::new(
+                        if committed_snapshot_present {
+                            TabResourceLifecycle::Refreshing
+                        } else {
+                            TabResourceLifecycle::Loading
+                        },
+                        committed_snapshot_present,
+                    ),
+                ),
+                (
+                    TabResourceTransition::Success,
+                    TabResourceState::new(TabResourceLifecycle::Ready, true),
+                ),
+                (
+                    TabResourceTransition::Failure,
+                    TabResourceState::new(TabResourceLifecycle::Failed, committed_snapshot_present),
+                ),
+                (
+                    TabResourceTransition::Cancel,
+                    TabResourceState::new(
+                        if committed_snapshot_present {
+                            TabResourceLifecycle::Ready
+                        } else {
+                            TabResourceLifecycle::Dormant
+                        },
+                        committed_snapshot_present,
+                    ),
+                ),
+                (
+                    TabResourceTransition::Evict,
+                    TabResourceState::new(TabResourceLifecycle::Evicted, false),
+                ),
+                (
+                    TabResourceTransition::Reset,
+                    TabResourceState::new(TabResourceLifecycle::Dormant, false),
+                ),
+                (
+                    TabResourceTransition::SnapshotRemoved,
+                    TabResourceState::new(lifecycle, false),
+                ),
+                (
+                    TabResourceTransition::SnapshotRestored,
+                    TabResourceState::new(lifecycle, true),
+                ),
+                (
+                    TabResourceTransition::Dormant,
+                    TabResourceState::new(
+                        TabResourceLifecycle::Dormant,
+                        committed_snapshot_present,
+                    ),
+                ),
+            ];
+
+            for (transition, expected) in cases {
+                app.shell.indexing.resource_state = initial;
+                inactive.index_state.resource_state = initial;
+                app.shell.indexing.resource_state.apply(transition);
+                inactive.index_state.resource_state.apply(transition);
+                assert_eq!(
+                    app.shell.indexing.resource_state, expected,
+                    "active transition {transition:?}"
+                );
+                assert_eq!(
+                    inactive.index_state.resource_state,
+                    app.shell.indexing.resource_state
+                );
+            }
+
+            let evicted = TabResourceState::new(TabResourceLifecycle::Evicted, false);
+            app.shell.indexing.resource_state = evicted;
+            inactive.index_state.resource_state = evicted;
+            // A successful reclaim consumes the retired payload and leaves both
+            // owners in the post-eviction state; only Full returns ownership.
+            assert_eq!(app.shell.indexing.resource_state, evicted);
+            assert_eq!(
+                inactive.index_state.resource_state,
+                app.shell.indexing.resource_state
+            );
+
+            app.shell
+                .indexing
+                .resource_state
+                .apply(TabResourceTransition::ReclaimFullRollback(initial));
+            inactive
+                .index_state
+                .resource_state
+                .apply(TabResourceTransition::ReclaimFullRollback(initial));
+            assert_eq!(app.shell.indexing.resource_state, initial);
+            assert_eq!(
+                inactive.index_state.resource_state,
+                app.shell.indexing.resource_state
+            );
+        }
+    }
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn ctrl_t_creates_new_tab_and_activates_it() {
     let root = test_root("shortcut-ctrl-t-new-tab");
     fs::create_dir_all(&root).expect("create dir");
@@ -77,7 +197,20 @@ fn tc_207_reclaimer_full_returns_heavy_ownership_to_the_caller() {
     fs::create_dir_all(&root).expect("create root");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let reclaimer = TabResourceReclaimer::paused_for_test();
-    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+    let mut accepted = app.capture_active_tab_state(700);
+    accepted.index_state.resource_state =
+        crate::app::tab_state::TabResourceState::new(TabResourceLifecycle::Ready, true);
+    accepted.index_state.all_entries = Arc::new(vec![file_entry(root.join("queued-0.txt"))]);
+    reclaimer
+        .try_retire(accepted.take_heavy_resources())
+        .expect("reclaimer queue accepts payload");
+    assert_eq!(
+        accepted.index_state.lifecycle,
+        TabResourceLifecycle::Evicted
+    );
+    assert!(!accepted.index_state.committed_snapshot_present);
+
+    for index in 1..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(700 + index as u64);
         tab.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("queued-{index}.txt")))]);
@@ -86,12 +219,19 @@ fn tc_207_reclaimer_full_returns_heavy_ownership_to_the_caller() {
             .expect("reclaimer queue accepts capacity");
     }
     let mut overflow = app.capture_active_tab_state(999);
+    overflow.index_state.resource_state =
+        crate::app::tab_state::TabResourceState::new(TabResourceLifecycle::Refreshing, true);
     overflow.index_state.all_entries = Arc::new(vec![file_entry(root.join("overflow.txt"))]);
     let returned = reclaimer
         .try_retire(overflow.take_heavy_resources())
         .expect_err("full reclaimer must return ownership");
     overflow.restore_heavy_resources(*returned);
     assert_eq!(overflow.index_state.all_entries.len(), 1);
+    assert_eq!(
+        overflow.index_state.lifecycle,
+        TabResourceLifecycle::Refreshing
+    );
+    assert!(overflow.index_state.committed_snapshot_present);
     assert_eq!(reclaimer.pending(), TAB_RESOURCE_RECLAIMER_CAPACITY);
     let _ = fs::remove_dir_all(&root);
 }
