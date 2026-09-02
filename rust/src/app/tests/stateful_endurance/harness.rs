@@ -381,7 +381,7 @@ impl StatefulHarness {
                 && before_tab.current_row == after_tab.current_row
                 && before_tab.results_digest == after_tab.results_digest
                 && (before_tab.notice == after_tab.notice
-                    || is_expected_queue_drop_notice_transition(before_tab, after_tab));
+                    || is_expected_scheduler_notice_transition(before_tab, after_tab));
             assert!(
                 content_unchanged,
                 "stateful response changed unrelated tab {}; before={before_tab:?}; after={after_tab:?}; {}",
@@ -723,13 +723,14 @@ impl StatefulHarness {
     }
 }
 
-fn is_expected_queue_drop_notice_transition(
+fn is_expected_scheduler_notice_transition(
     before: &TabSemanticSnapshot,
     after: &TabSemanticSnapshot,
 ) -> bool {
-    before.index_pending
+    (before.index_pending
         && !after.index_pending
-        && after.notice == "Index request dropped due to queue limit"
+        && after.notice == "Index request dropped due to queue limit")
+        || after.notice == "Waiting for background tab resource reclamation"
 }
 
 pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> SemanticSnapshot {
@@ -901,13 +902,20 @@ mod tests {
     fn tc_184_queue_drop_notice_is_expected_scheduler_side_effect() {
         let before = snapshot(true, "Root changed: C:\\root");
         let after = snapshot(false, "Index request dropped due to queue limit");
-        assert!(is_expected_queue_drop_notice_transition(&before, &after));
+        assert!(is_expected_scheduler_notice_transition(&before, &after));
+    }
+
+    #[test]
+    fn tc_184_reclaimer_wait_notice_is_expected_scheduler_side_effect() {
+        let before = snapshot(false, "Action completed");
+        let after = snapshot(false, "Waiting for background tab resource reclamation");
+        assert!(is_expected_scheduler_notice_transition(&before, &after));
     }
 
     #[test]
     fn tc_184_unrelated_notice_change_is_not_ignored() {
         let before = snapshot(true, "Root changed: C:\\root");
         let after = snapshot(false, "Indexing failed: controlled endurance failure");
-        assert!(!is_expected_queue_drop_notice_transition(&before, &after));
+        assert!(!is_expected_scheduler_notice_transition(&before, &after));
     }
 }
