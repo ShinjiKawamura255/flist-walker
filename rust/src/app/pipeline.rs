@@ -4,10 +4,13 @@ use super::{
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::index_response_arbitration::FrameMailboxArbitrator;
+use crate::app::index_response_effects::{
+    IndexFrameCompletionEffect, IndexResponseApplicationOwner, IndexResponseLoopControl,
+    RoutedIndexResponse,
+};
 use crate::app::tab_state::TabResourceTransition;
 use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
-use crate::walker_runtime::walker_truncated_notice;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -671,7 +674,7 @@ impl FlistWalkerApp {
         self.try_retire_tab_index_build_resources(tab_index)
     }
 
-    fn retry_pending_background_index_finish(&mut self) {
+    pub(super) fn retry_pending_background_index_finish(&mut self) {
         let pending = self
             .shell
             .tabs
@@ -749,7 +752,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn retry_pending_active_root_change(&mut self) {
+    pub(super) fn retry_pending_active_root_change(&mut self) {
         if self.shell.indexing.pending_finish.is_some() {
             return;
         }
@@ -759,7 +762,7 @@ impl FlistWalkerApp {
         self.apply_root_change_direct(root);
     }
 
-    fn retry_pending_active_index_build_reclaim(&mut self) {
+    pub(super) fn retry_pending_active_index_build_reclaim(&mut self) {
         if !self.shell.indexing.build_reclaim_pending
             || self.shell.indexing.pending_finish.is_some()
             || self.shell.indexing.root_after_pending_finish.is_some()
@@ -779,7 +782,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn retry_pending_stale_build_reclaim(&mut self) -> bool {
+    pub(super) fn retry_pending_stale_build_reclaim(&mut self) -> bool {
         let Some((cleanup_request_id, resources)) =
             self.shell.indexing.pending_stale_build_reclaim.take()
         else {
@@ -825,7 +828,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn stage_stale_data_reclaim(&mut self, entries: Vec<IndexEntry>) -> bool {
+    pub(super) fn stage_stale_data_reclaim(&mut self, entries: Vec<IndexEntry>) -> bool {
         let mut resources = super::tab_resources::RetiredIndexBuildResources::empty();
         resources.set_stale_index_entries(entries);
         match self.shell.tabs.try_retire_index_build_resources(resources) {
@@ -837,7 +840,7 @@ impl FlistWalkerApp {
         }
     }
 
-    fn stage_stale_terminal_reclaim(&mut self, request_id: u64) -> bool {
+    pub(super) fn stage_stale_terminal_reclaim(&mut self, request_id: u64) -> bool {
         let superseded = self.shell.indexing.is_superseded_request(request_id);
         let tab_index =
             self.shell
@@ -1027,25 +1030,12 @@ impl FlistWalkerApp {
     }
 
     fn poll_index_response_with_budget(&mut self, frame_budget: Duration) {
-        if !self.retry_pending_stale_build_reclaim() {
+        if !IndexResponseApplicationOwner::new(self).prepare_frame() {
             return;
         }
-        if let Some(msg) = self.shell.indexing.pending_replace_all.take() {
-            if !self.try_apply_replace_all_response(msg) {
-                return;
-            }
-        }
-        self.retry_pending_active_root_change();
-        self.retry_pending_active_index_build_reclaim();
-        self.retry_pending_background_index_finish();
-        self.retry_pending_tab_activation();
-        self.shell.indexing.release_published_terminal_inflight();
         const MAX_MESSAGES_PER_FRAME: usize = 64;
         #[cfg(test)]
         const MAX_PRIORITY_ROUTE_MESSAGES_PER_FRAME: usize = 4_096;
-        // Large capped roots can leave hundreds of thousands of entries queued at
-        // the terminal point. While the worker is still indexing, allow larger
-        // chunks; after Finished, prioritize input responsiveness over tail speed.
         const MAX_INDEX_ENTRIES_PER_FRAME: usize = 32_768;
         const MAX_POST_FINISH_INDEX_ENTRIES_PER_FRAME: usize = 2_048;
 
@@ -1055,44 +1045,31 @@ impl FlistWalkerApp {
         let mut priority_routed = 0usize;
         let mut mailbox_arbitrator = FrameMailboxArbitrator::default();
         let mut has_index_progress = false;
-        let mut finished_current_request = false;
         loop {
-            let active_request_id = self.shell.indexing.pending_request_id;
-            let active_mailbox_blocked = self.shell.indexing.pending_entries_request_id
-                == active_request_id
-                && self.shell.indexing.build.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES;
+            let active_mailbox_blocked = self
+                .shell
+                .indexing
+                .active_mailbox_blocked(MAX_PENDING_INDEX_ENTRIES);
             let Some(arbitrated) =
                 mailbox_arbitrator.try_next(&mut self.shell.indexing, active_mailbox_blocked)
             else {
                 break;
             };
-            let msg = arbitrated.response;
-            #[cfg(test)]
-            let from_shared_response_queue = arbitrated.from_shared_response_queue;
-            let request_id = IndexCoordinator::response_request_id(&msg);
-            if IndexCoordinator::is_terminal_response(&msg) {
-                self.shell.indexing.inflight_requests.remove(&request_id);
-            }
+            let request_id = IndexCoordinator::response_request_id(&arbitrated.response);
             let route = self.shell.indexing.route_response(request_id);
+            let effect = IndexResponseApplicationOwner::new(self).apply(RoutedIndexResponse {
+                route,
+                response: arbitrated.response,
+                #[cfg(test)]
+                active_mailbox_blocked,
+                #[cfg(test)]
+                from_shared_response_queue: arbitrated.from_shared_response_queue,
+            });
+            processed = processed.saturating_add(effect.processed_messages);
+            has_index_progress |= effect.index_progress;
+
             #[cfg(test)]
-            let stale_payload = matches!(route, IndexResponseRoute::Stale)
-                && matches!(
-                    &msg,
-                    IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }
-                );
-            #[cfg(test)]
-            if from_shared_response_queue
-                && self.shell.indexing.pending_request_id.is_some()
-                && (matches!(route, IndexResponseRoute::Background(_)) || stale_payload)
-            {
-                // Regression guard: an activated restored tab's first response must not
-                // sit behind bulk batches already emitted for an older/background tab.
-                // Route those messages by ownership only; apply or discard them later
-                // under the normal frame budget without copying their entry payloads.
-                self.shell
-                    .indexing
-                    .deferred_non_active_responses
-                    .push_back(msg);
+            if effect.priority_routed {
                 priority_routed = priority_routed.saturating_add(1);
                 if priority_routed >= MAX_PRIORITY_ROUTE_MESSAGES_PER_FRAME
                     || frame_start.elapsed() >= frame_budget
@@ -1101,185 +1078,25 @@ impl FlistWalkerApp {
                 }
                 continue;
             }
-            // The response channel already owns complete batches. Do not copy another active
-            // batch into the UI-owned VecDeque while its existing backlog is at the frame-sized
-            // high-water mark: growing a very large VecDeque can relocate every queued PathBuf
-            // in one uninterruptible allocation and defeat the wall-clock budget below. Hold one
-            // batch by ownership so control/terminal messages still retain their normal path.
-            #[cfg(test)]
-            if from_shared_response_queue
-                && matches!(route, IndexResponseRoute::Active)
-                && matches!(
-                    &msg,
-                    IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }
-                )
-                && self.shell.indexing.pending_entries_request_id == Some(request_id)
-                && self.shell.indexing.build.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES
+
+            if effect.control == IndexResponseLoopControl::Break
+                || processed >= MAX_MESSAGES_PER_FRAME
+                || frame_start.elapsed() >= frame_budget
             {
-                self.shell.indexing.deferred_response = Some(msg);
-                break;
-            }
-            if matches!(&msg, IndexResponse::ReplaceAll { .. }) {
-                let accepted = self.try_apply_replace_all_response(msg);
-                processed = processed.saturating_add(1);
-                if !accepted
-                    || processed >= MAX_MESSAGES_PER_FRAME
-                    || frame_start.elapsed() >= frame_budget
-                {
-                    break;
-                }
-                continue;
-            }
-            match route {
-                IndexResponseRoute::Background(tab_id) => {
-                    if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
-                        self.handle_background_index_response(tab_index, msg);
-                    } else {
-                        self.discard_filelist_index_completion_notice(request_id);
-                        self.shell.indexing.cleanup_request(request_id);
-                    }
-                    processed = processed.saturating_add(1);
-                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= frame_budget
-                    {
-                        break;
-                    }
-                    continue;
-                }
-                IndexResponseRoute::Stale => {
-                    self.discard_filelist_index_completion_notice(request_id);
-                    let reclaimed = match msg {
-                        IndexResponse::Batch { entries, .. }
-                        | IndexResponse::ReplaceAll { entries, .. } => {
-                            self.stage_stale_data_reclaim(entries)
-                        }
-                        IndexResponse::Finished { .. }
-                        | IndexResponse::Failed { .. }
-                        | IndexResponse::Canceled { .. } => {
-                            self.stage_stale_terminal_reclaim(request_id)
-                        }
-                        IndexResponse::Started { .. } | IndexResponse::Truncated { .. } => true,
-                    };
-                    processed = processed.saturating_add(1);
-                    if !reclaimed {
-                        break;
-                    }
-                    if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= frame_budget
-                    {
-                        break;
-                    }
-                    continue;
-                }
-                IndexResponseRoute::Active => {}
-            }
-
-            match msg {
-                IndexResponse::Started { source, .. } => {
-                    self.shell.indexing.build.index.source = source;
-                    self.refresh_status_line();
-                }
-                IndexResponse::Batch {
-                    request_id,
-                    entries,
-                } => {
-                    self.queue_index_batch(request_id, entries);
-                    has_index_progress = true;
-                }
-                IndexResponse::ReplaceAll { .. } => unreachable!("replace-all handled above"),
-                IndexResponse::Finished { request_id, source } => {
-                    if !self.stage_promoted_background_finalization(request_id, source.clone()) {
-                        self.shell.indexing.pending_finish =
-                            Some(PendingActiveIndexFinish { request_id, source });
-                        self.shell.indexing.in_progress = false;
-                    }
-                    break;
-                }
-                IndexResponse::Failed { request_id, error } => {
-                    self.shell.features.filelist.workflow.pending_after_index = None;
-                    self.discard_filelist_index_completion_notice(request_id);
-                    self.set_notice(format!("Indexing failed: {}", error));
-                    self.shell
-                        .indexing
-                        .apply_resource_transition(TabResourceTransition::Failure);
-                    self.shell.indexing.settle_active_terminal_state();
-                    self.shell.indexing.build_reclaim_pending = true;
-                    self.shell.indexing.build_reclaim_request_id = Some(request_id);
-                    self.try_retire_active_index_build_resources();
-                }
-                IndexResponse::Canceled { request_id } => {
-                    if let Some((tab_id, root)) = self
-                        .current_tab_id()
-                        .map(|tab_id| (tab_id, self.shell.runtime.root.clone()))
-                    {
-                        if let Some(notice) =
-                            self.take_filelist_index_completion_notice(request_id, tab_id, &root)
-                        {
-                            self.set_notice(notice);
-                        }
-                    }
-                    self.shell
-                        .indexing
-                        .apply_resource_transition(TabResourceTransition::Cancel);
-                    self.shell.indexing.settle_active_terminal_state();
-                    self.shell.indexing.build_reclaim_pending = true;
-                    self.shell.indexing.build_reclaim_request_id = Some(request_id);
-                    self.try_retire_active_index_build_resources();
-                }
-                IndexResponse::Truncated { limit, .. } => {
-                    self.set_notice(walker_truncated_notice(limit));
-                }
-            }
-
-            processed = processed.saturating_add(1);
-            if processed >= MAX_MESSAGES_PER_FRAME || frame_start.elapsed() >= frame_budget {
                 break;
             }
         }
 
-        if let Some(request_id) = self.shell.indexing.pending_request_id {
-            let remaining_budget = frame_budget.saturating_sub(frame_start.elapsed());
-            let consumed = if remaining_budget.is_zero() {
-                self.drain_queued_index_entries(request_id, 32)
-            } else {
-                let max_entries = if self.shell.indexing.pending_finish.is_some() {
-                    MAX_POST_FINISH_INDEX_ENTRIES_PER_FRAME
-                } else {
-                    MAX_INDEX_ENTRIES_PER_FRAME
-                };
-                self.drain_queued_index_entries_with_budget(
-                    request_id,
-                    Instant::now(),
-                    remaining_budget,
-                    max_entries,
-                )
-            };
-            has_index_progress |= consumed;
+        let completion = IndexResponseApplicationOwner::new(self).complete_frame(
+            frame_start,
+            frame_budget,
+            has_index_progress,
+            MAX_INDEX_ENTRIES_PER_FRAME,
+            MAX_POST_FINISH_INDEX_ENTRIES_PER_FRAME,
+        );
+        match completion {
+            IndexFrameCompletionEffect::DispatchIndexQueue => self.dispatch_index_queue(),
         }
-
-        if !finished_current_request {
-            finished_current_request = self.try_finish_active_index_after_pending_drain();
-        }
-
-        if finished_current_request {
-            self.dispatch_index_queue();
-            return;
-        }
-
-        if self.shell.indexing.pending_finish.is_some() {
-            self.dispatch_index_queue();
-            return;
-        }
-
-        if !has_index_progress {
-            self.dispatch_index_queue();
-            return;
-        }
-
-        if self.shell.runtime.query_state.query.trim().is_empty() {
-            self.apply_incremental_empty_query_results();
-        } else {
-            self.maybe_refresh_incremental_search();
-        }
-        self.dispatch_index_queue();
     }
 
     fn ensure_entry_filters(&mut self) -> bool {
@@ -1315,7 +1132,7 @@ impl FlistWalkerApp {
         self.pipeline_owner().update_results();
     }
 
-    fn queue_index_batch(&mut self, request_id: u64, entries: Vec<IndexEntry>) {
+    pub(super) fn queue_index_batch(&mut self, request_id: u64, entries: Vec<IndexEntry>) {
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
             self.shell.indexing.build.pending_entries.clear();
             self.shell.indexing.pending_entries_request_id = Some(request_id);
@@ -1372,7 +1189,7 @@ impl FlistWalkerApp {
         processed > 0
     }
 
-    fn drain_queued_index_entries_with_budget(
+    pub(super) fn drain_queued_index_entries_with_budget(
         &mut self,
         request_id: u64,
         frame_start: Instant,
@@ -1404,7 +1221,7 @@ impl FlistWalkerApp {
                 && !self.shell.runtime.ignore_list_terms.is_empty())
     }
 
-    fn stage_promoted_background_finalization(
+    pub(super) fn stage_promoted_background_finalization(
         &mut self,
         request_id: u64,
         source: IndexSource,
@@ -1524,7 +1341,7 @@ impl FlistWalkerApp {
         true
     }
 
-    fn try_finish_active_index_after_pending_drain(&mut self) -> bool {
+    pub(super) fn try_finish_active_index_after_pending_drain(&mut self) -> bool {
         let Some(pending_finish) = self.shell.indexing.pending_finish.clone() else {
             return false;
         };
@@ -1761,7 +1578,7 @@ impl FlistWalkerApp {
         self.shell.indexing.complete_active_request(request_id);
     }
 
-    fn take_filelist_index_completion_notice(
+    pub(super) fn take_filelist_index_completion_notice(
         &mut self,
         request_id: u64,
         tab_id: u64,
@@ -1777,7 +1594,7 @@ impl FlistWalkerApp {
             .map(|pending| pending.notice)
     }
 
-    fn discard_filelist_index_completion_notice(&mut self, request_id: u64) {
+    pub(super) fn discard_filelist_index_completion_notice(&mut self, request_id: u64) {
         self.shell
             .features
             .filelist
@@ -1786,12 +1603,12 @@ impl FlistWalkerApp {
             .remove(&request_id);
     }
 
-    fn apply_incremental_empty_query_results(&mut self) {
+    pub(super) fn apply_incremental_empty_query_results(&mut self) {
         self.pipeline_owner()
             .apply_incremental_empty_query_results();
     }
 
-    fn maybe_refresh_incremental_search(&mut self) {
+    pub(super) fn maybe_refresh_incremental_search(&mut self) {
         self.pipeline_owner().maybe_refresh_incremental_search();
     }
 

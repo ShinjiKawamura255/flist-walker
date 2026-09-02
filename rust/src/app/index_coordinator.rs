@@ -14,6 +14,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum IndexResponseRoute {
     Active,
     Background(u64),
@@ -437,6 +438,11 @@ impl IndexCoordinator {
 
     pub(super) fn active_request_id(&self) -> Option<u64> {
         self.pending_request_id
+    }
+
+    pub(super) fn active_mailbox_blocked(&self, max_pending_entries: usize) -> bool {
+        self.pending_entries_request_id == self.pending_request_id
+            && self.build.pending_entries.len() >= max_pending_entries
     }
 
     pub(super) fn warm_request_id(&self) -> Option<u64> {
