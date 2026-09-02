@@ -137,9 +137,9 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 
 ## Regression Guard
 - 発生条件: restored tab の優先応答を全 background request の cancel または shared response backlog の別 unbounded queue への移動で実現し、rapid switch で再indexを繰り返す。または closed/open-inactive tab の heavy state を予算なしで保持する。
-- 期待動作: startup precedence、lifecycle/committed分離、Active+sole Warm、順序付きbounded mailbox、live/closed共通LRU、bounded reclaimerをTC-203からTC-208で同時に確認する。Readyは再indexせず、Refreshing/Failedはlast-good、Dormant/EvictedだけLoadingする。
+- 期待動作: startup precedence、lifecycle/committed分離、Active+sole Warm、順序付きbounded mailbox、live/closed共通LRU、engagement-qualified Recent Inactive、soft/hard budget、bounded reclaimerをTC-203からTC-211で同時に確認する。Readyと猶予中のRecent Inactiveは再indexせず、瞬間表示だけのtabは保護枠を奪わず、Refreshing/Failedはlast-good、Dormant/EvictedだけLoadingする。
 - 非対象範囲: full snapshotのprocess間永続化、単一active FileList snapshotのhard byte cap。
-- 関連テストID: TC-203, TC-204, TC-205, TC-206, TC-207, TC-208.
+- 関連テストID: TC-203, TC-204, TC-205, TC-206, TC-207, TC-208, TC-209, TC-210, TC-211.
 
 ## Regression Guard
 - 発生条件: include_files/include_dirs 両有効の FileList ストリーム解析で、候補選択のための per-line `metadata` probe を戻してしまい、Windows 由来 `\` 区切り FileList のインデクシングが遅くなる。
@@ -326,8 +326,8 @@ GUI-adjacent structural refactoring は [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) �
 - TC-148 -> SP-018 -> DES-019 -> FR-032, AC-033
 - TC-149 -> SP-010 -> DES-009 -> FR-007
 - TC-150, TC-151, TC-152, TC-153 -> SP-010 -> DES-006, DES-007, DES-009 -> FR-007, NFR-008
-- TC-154, TC-203, TC-204, TC-205, TC-208 -> SP-010 -> DES-009 -> FR-007, NFR-009
-- TC-205, TC-206, TC-207, TC-208 -> SP-010 -> DES-006, DES-007, DES-009 -> NFR-015
+- TC-154, TC-203, TC-204, TC-205, TC-208, TC-209, TC-210 -> SP-010 -> DES-009 -> FR-007, NFR-009
+- TC-205, TC-206, TC-207, TC-208, TC-209, TC-211 -> SP-010 -> DES-006, DES-007, DES-009 -> NFR-015
 - TC-155 -> SP-003, SP-009 -> DES-003, DES-008 -> FR-003, NFR-003
 - TC-156 -> SP-007 -> DES-006 -> NFR-001
 - TC-157 -> SP-014 -> DES-014 -> NFR-010

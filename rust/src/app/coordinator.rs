@@ -263,6 +263,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn finish_programmatic_query_replacement(&mut self) {
+        self.shell.tabs.mark_active_tab_meaningfully_engaged();
         // Regression guard: replacing query text outside TextEdit must also replace
         // its retained cursor state, or the caret can remain beyond/inside old text.
         self.request_query_cursor_to_end();

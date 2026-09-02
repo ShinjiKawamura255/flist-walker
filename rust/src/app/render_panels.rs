@@ -382,11 +382,15 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         }
     });
     if let Some(i) = clicked_row {
+        if app.shell.runtime.current_row != Some(i) {
+            app.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
         app.set_current_row(Some(i));
         app.request_preview_for_current();
         app.refresh_status_line();
     }
     if let Some(i) = execute_row {
+        app.shell.tabs.mark_active_tab_meaningfully_engaged();
         app.set_current_row(Some(i));
         let open_parent_for_files = ui.input(|i| i.modifiers.shift);
         #[cfg(test)]
@@ -454,6 +458,7 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
             }
 
             if let Some(index) = clicked_row {
+                app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.shell.runtime.query_state.history_search_current = Some(index);
             }
             if let Some(index) = accept_row {

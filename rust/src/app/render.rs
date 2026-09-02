@@ -574,6 +574,7 @@ impl FlistWalkerApp {
                     self.create_filelist();
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::RefreshIndex) => {
+                    self.shell.tabs.mark_active_tab_meaningfully_engaged();
                     self.request_index_refresh();
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::OpenPresetPicker) => {

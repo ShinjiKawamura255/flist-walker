@@ -3,9 +3,9 @@
 ## Regression Guard
 ### Regression Guard: restored-tab job and resource ownership
 - Scenario: active priority is restored by preempting every background request or moving background batches into an unbounded deferred queue; closed/open-inactive tabs retain every heavy snapshot; refresh clears the last-good view.
-- Expected: Active + sole Warm scheduling, ordered request-scoped bounded mailboxes, lifecycle plus optional committed snapshot, common live/closed LRU, and bounded off-UI reclaimer satisfy TC-203 through TC-208.
+- Expected: Active + sole Warm scheduling, ordered request-scoped bounded mailboxes, lifecycle plus optional committed snapshot, common live/closed LRU, engagement-qualified Recent Inactive soft protection with a hard bound, and bounded off-UI reclaimer satisfy TC-203 through TC-211.
 - Non-goals: Persisting full snapshots across restarts or imposing a hard byte cap on one active FileList snapshot.
-- Future-change rule: Changes to index dispatch/response, tab transition, close/restore, snapshot compaction, or worker shutdown MUST run TC-203 through TC-208 as selected by the affected owner and MUST update SP-010/DES-009 when a bound or transition changes.
+- Future-change rule: Changes to index dispatch/response, tab transition, close/restore, snapshot compaction, Recent Inactive classification/budget, or worker shutdown MUST run TC-203 through TC-211 as selected by the affected owner and MUST update SP-010/DES-009 when a bound or transition changes.
 
 ### Regression Guard: application-wide Emacs command mapping
 
@@ -96,7 +96,7 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - Preserve request routing, stale response handling, tab/background response ownership, and the invariant that visible empty Results has no row while visible non-empty Results always has a valid current row.
 - Add focused tests under `rust/src/app/tests/` that match the owner module touched.
 - Run GUI smoke evidence when rendering, focus, tabs, dialogs, result drawing, or responsiveness changes.
-- For tab ownership transfer, run TC-154 and TC-203 through TC-208 plus `tab_contract`, `tab_lifecycle`, `tab_result_cache`, `tab_background_responses`, `query_history`, `session_restore`, and `filelist_lifecycle`; cover non-sparse/sparse allocation identity, lifecycle+committed combinations, Query empty/non-empty × FileList/Walker, active-scratch stale-routing, live/closed LRU, reclaimer pressure, and the release-mode transition fixture. Ready activation retains Results; Refreshing/Failed keeps last-good; Evicted reloads without synchronous compaction/drop.
+- For tab ownership transfer, run TC-154 and TC-203 through TC-211 plus `tab_contract`, `tab_lifecycle`, `tab_result_cache`, `tab_background_responses`, `query_history`, `session_restore`, and `filelist_lifecycle`; cover non-sparse/sparse allocation identity, lifecycle+committed combinations, Query empty/non-empty × FileList/Walker, active-scratch stale-routing, live/closed LRU, meaningful/instantaneous active tenure, Recent Inactive grace/hard pressure, reclaimer pressure, and the release-mode transition fixture. Ready and protected Recent Inactive activation retain Results; Refreshing/Failed keeps last-good; Evicted reloads without synchronous compaction/drop.
 
 ### Bounded Worker Scheduling or Shutdown Changes
 - Apply VM-002 to action/kind dispatch, worker bus, load accounting, runtime handle ownership, and shutdown changes; run focused TC-150, TC-151, and TC-153 tests in addition to the full Rust suite.

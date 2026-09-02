@@ -12,8 +12,9 @@ pub(super) use crate::app::state::{
 };
 pub(super) use crate::app::tab_resources::{
     lock_reclaim_drop_observer_for_test, set_reclaim_drop_observer, RetiredIndexBuildResources,
-    TabResourceReclaimer, TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
-    TAB_RESOURCE_RECLAIMER_CAPACITY,
+    TabResourceReclaimer, TAB_RECENT_INACTIVE_ENGAGEMENT_THRESHOLD, TAB_RECENT_INACTIVE_GRACE,
+    TAB_RESOURCE_CACHE_HARD_MAX_COUNT, TAB_RESOURCE_CACHE_HARD_MAX_WEIGHT,
+    TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT, TAB_RESOURCE_RECLAIMER_CAPACITY,
 };
 pub(super) use crate::app::worker::channel::bounded_request_channel;
 pub(super) use crate::app::worker::protocol::{

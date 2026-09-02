@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, SyncSender, TrySendError};
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 #[cfg(test)]
 static RECLAIM_DROP_OBSERVER: std::sync::OnceLock<std::sync::Mutex<Option<mpsc::Sender<String>>>> =
@@ -63,6 +64,10 @@ pub(super) fn lock_reclaim_drop_observer_for_test() -> std::sync::MutexGuard<'st
 
 pub(super) const TAB_RESOURCE_CACHE_MAX_COUNT: usize = 2;
 pub(super) const TAB_RESOURCE_CACHE_MAX_WEIGHT: usize = 1_000_000;
+pub(super) const TAB_RESOURCE_CACHE_HARD_MAX_COUNT: usize = 3;
+pub(super) const TAB_RESOURCE_CACHE_HARD_MAX_WEIGHT: usize = 4_000_000;
+pub(super) const TAB_RECENT_INACTIVE_ENGAGEMENT_THRESHOLD: Duration = Duration::from_secs(2);
+pub(super) const TAB_RECENT_INACTIVE_GRACE: Duration = Duration::from_secs(30);
 pub(super) const TAB_RESOURCE_RECLAIMER_CAPACITY: usize = 4;
 
 #[derive(Debug)]
@@ -235,8 +240,14 @@ impl RetiredRoutingPayload {
 
 enum ReclaimPayload {
     Tab(Box<RetiredTabResources>),
+    TabBatch(Vec<RetiredTabResources>),
     Active(RetiredActiveResources),
     IndexBuild(Box<RetiredIndexBuildResources>),
+}
+
+fn release_reclaimer_slot(available_slots: &AtomicUsize) {
+    let previous = available_slots.fetch_add(1, Ordering::AcqRel);
+    debug_assert!(previous < TAB_RESOURCE_RECLAIMER_CAPACITY);
 }
 
 impl FlistWalkerApp {
@@ -577,6 +588,7 @@ impl AppTabState {
 pub(super) struct TabResourceReclaimer {
     tx: Option<SyncSender<ReclaimPayload>>,
     pending: Arc<AtomicUsize>,
+    available_slots: Arc<AtomicUsize>,
     handle: Option<thread::JoinHandle<()>>,
     #[cfg(test)]
     _paused_rx: Option<mpsc::Receiver<ReclaimPayload>>,
@@ -595,12 +607,16 @@ impl TabResourceReclaimer {
         let (tx, rx) = mpsc::sync_channel::<ReclaimPayload>(TAB_RESOURCE_RECLAIMER_CAPACITY);
         let pending = Arc::new(AtomicUsize::new(0));
         let worker_pending = Arc::clone(&pending);
+        let available_slots = Arc::new(AtomicUsize::new(TAB_RESOURCE_RECLAIMER_CAPACITY));
+        let worker_available_slots = Arc::clone(&available_slots);
         let handle = thread::Builder::new()
             .name("flistwalker-tab-reclaimer".to_string())
             .spawn(move || {
                 while let Ok(resources) = rx.recv() {
+                    release_reclaimer_slot(&worker_available_slots);
                     match resources {
                         ReclaimPayload::Tab(resources) => drop(resources),
+                        ReclaimPayload::TabBatch(resources) => drop(resources),
                         ReclaimPayload::Active(resources) => drop(resources),
                         ReclaimPayload::IndexBuild(resources) => drop(resources),
                     }
@@ -612,6 +628,7 @@ impl TabResourceReclaimer {
             Self {
                 tx: Some(tx),
                 pending,
+                available_slots,
                 handle: None,
                 #[cfg(test)]
                 _paused_rx: None,
@@ -630,6 +647,7 @@ impl TabResourceReclaimer {
         Self {
             tx: Some(tx),
             pending: Arc::new(AtomicUsize::new(0)),
+            available_slots: Arc::new(AtomicUsize::new(TAB_RESOURCE_RECLAIMER_CAPACITY)),
             handle: None,
             _paused_rx: Some(rx),
         }
@@ -645,8 +663,36 @@ impl TabResourceReclaimer {
         match self.try_send(ReclaimPayload::Tab(Box::new(resources))) {
             Ok(()) => Ok(()),
             Err(ReclaimPayload::Tab(resources)) => Err(resources),
-            Err(ReclaimPayload::Active(_)) => unreachable!("tab payload changed variant"),
-            Err(ReclaimPayload::IndexBuild(_)) => unreachable!("tab payload changed variant"),
+            Err(ReclaimPayload::TabBatch(_))
+            | Err(ReclaimPayload::Active(_))
+            | Err(ReclaimPayload::IndexBuild(_)) => unreachable!("tab payload changed variant"),
+        }
+    }
+
+    pub(super) fn try_reserve_slot(&self) -> bool {
+        self.try_acquire_slot()
+    }
+
+    pub(super) fn release_reserved_slot(&self) {
+        release_reclaimer_slot(&self.available_slots);
+    }
+
+    pub(super) fn try_retire_reserved_tabs(
+        &self,
+        resources: Vec<RetiredTabResources>,
+    ) -> Result<(), Vec<RetiredTabResources>> {
+        if resources.is_empty() {
+            self.release_reserved_slot();
+            return Ok(());
+        }
+        match self.try_send_with_acquired_slot(ReclaimPayload::TabBatch(resources)) {
+            Ok(()) => Ok(()),
+            Err(ReclaimPayload::TabBatch(resources)) => Err(resources),
+            Err(ReclaimPayload::Tab(_))
+            | Err(ReclaimPayload::Active(_))
+            | Err(ReclaimPayload::IndexBuild(_)) => {
+                unreachable!("tab batch payload changed variant")
+            }
         }
     }
 
@@ -657,7 +703,9 @@ impl TabResourceReclaimer {
         match self.try_send(ReclaimPayload::Active(resources)) {
             Ok(()) => Ok(()),
             Err(ReclaimPayload::Active(resources)) => Err(resources),
-            Err(ReclaimPayload::Tab(_)) => unreachable!("active payload changed variant"),
+            Err(ReclaimPayload::Tab(_) | ReclaimPayload::TabBatch(_)) => {
+                unreachable!("active payload changed variant")
+            }
             Err(ReclaimPayload::IndexBuild(_)) => {
                 unreachable!("active payload changed variant")
             }
@@ -674,14 +722,42 @@ impl TabResourceReclaimer {
         match self.try_send(ReclaimPayload::IndexBuild(Box::new(resources))) {
             Ok(()) => Ok(()),
             Err(ReclaimPayload::IndexBuild(resources)) => Err(resources),
-            Err(ReclaimPayload::Tab(_) | ReclaimPayload::Active(_)) => {
+            Err(
+                ReclaimPayload::Tab(_) | ReclaimPayload::TabBatch(_) | ReclaimPayload::Active(_),
+            ) => {
                 unreachable!("index build payload changed variant")
             }
         }
     }
 
     fn try_send(&self, resources: ReclaimPayload) -> Result<(), ReclaimPayload> {
+        if !self.try_acquire_slot() {
+            return Err(resources);
+        }
+        self.try_send_with_acquired_slot(resources)
+    }
+
+    fn try_acquire_slot(&self) -> bool {
+        let mut available = self.available_slots.load(Ordering::Acquire);
+        loop {
+            if available == 0 {
+                return false;
+            }
+            match self.available_slots.compare_exchange_weak(
+                available,
+                available - 1,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => return true,
+                Err(current) => available = current,
+            }
+        }
+    }
+
+    fn try_send_with_acquired_slot(&self, resources: ReclaimPayload) -> Result<(), ReclaimPayload> {
         let Some(tx) = self.tx.as_ref() else {
+            release_reclaimer_slot(&self.available_slots);
             return Err(resources);
         };
         self.pending.fetch_add(1, Ordering::AcqRel);
@@ -689,6 +765,7 @@ impl TabResourceReclaimer {
             Ok(()) => Ok(()),
             Err(TrySendError::Full(resources) | TrySendError::Disconnected(resources)) => {
                 self.pending.fetch_sub(1, Ordering::AcqRel);
+                release_reclaimer_slot(&self.available_slots);
                 Err(resources)
             }
         }
