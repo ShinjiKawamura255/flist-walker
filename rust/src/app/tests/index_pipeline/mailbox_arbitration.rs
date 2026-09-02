@@ -192,3 +192,34 @@ fn tc_207_one_frame_full_finalizers_retain_latest_terminal_but_admit_stale_termi
     assert!(latest_mailbox.has_terminal_response());
     assert!(!stale_mailbox.has_terminal_response());
 }
+
+#[test]
+fn tc_207_poll_loop_delegates_response_mutation_to_typed_owner() {
+    let source = include_str!("../../pipeline.rs");
+    let start = source
+        .find("fn poll_index_response_with_budget(&mut self")
+        .expect("poll function");
+    let end = source[start..]
+        .find("\n    fn ensure_entry_filters")
+        .map(|offset| start + offset)
+        .expect("next pipeline function");
+    let body = &source[start..end];
+
+    assert!(body.contains("IndexResponseApplicationOwner"));
+    for forbidden in [
+        "resource_state",
+        "pending_finish",
+        "pending_entries",
+        "runtime.",
+        "set_notice(",
+        "stage_stale_",
+        "queue_index_batch",
+        "incremental_",
+        "inflight_requests",
+    ] {
+        assert!(
+            !body.contains(forbidden),
+            "poll loop must delegate `{forbidden}` mutation to the response owner"
+        );
+    }
+}
