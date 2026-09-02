@@ -102,7 +102,7 @@ fn tc_207_one_frame_active_backlog_blocks_active_mailbox_without_blocking_warm()
     app.shell.indexing.in_progress = true;
     app.shell.indexing.warm_tab_id = app.shell.tabs.get(0).map(|tab| tab.id);
     app.shell.indexing.pending_entries_request_id = Some(active);
-    app.shell.indexing.pending_entries = (0..32_768)
+    app.shell.indexing.build.pending_entries = (0..32_768)
         .map(|sequence| IndexEntry {
             path: root.join(format!("backlog-{sequence}.txt")),
             kind: EntryKind::file(),

@@ -40,25 +40,43 @@ impl FlistWalkerApp {
     }
 
     fn reset_active_index_refresh_state(&mut self, reset_kind_resolution: bool) {
-        debug_assert_eq!(self.shell.runtime.index.entries.capacity(), 0);
-        self.shell.runtime.index.source = IndexSource::None;
+        debug_assert_eq!(self.shell.indexing.build.index.entries.capacity(), 0);
+        self.shell.indexing.build.index.source = IndexSource::None;
         self.clear_preview_cache();
         self.clear_highlight_cache();
-        debug_assert_eq!(self.shell.cache.entry_kind.entries.capacity(), 0);
-        debug_assert_eq!(self.shell.indexing.resolved_kind_updates.capacity(), 0);
         debug_assert_eq!(
-            self.shell.indexing.incremental_filtered_entries.capacity(),
+            self.shell
+                .indexing
+                .build
+                .entry_kind_cache
+                .entries
+                .capacity(),
             0
         );
-        debug_assert_eq!(self.shell.indexing.pending_entries.capacity(), 0);
+        debug_assert_eq!(
+            self.shell.indexing.build.resolved_kind_updates.capacity(),
+            0
+        );
+        debug_assert_eq!(
+            self.shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .capacity(),
+            0
+        );
+        debug_assert_eq!(self.shell.indexing.build.pending_entries.capacity(), 0);
         self.shell.indexing.pending_entries_request_id = None;
         debug_assert!(self.shell.indexing.pending_finish.is_none());
         if reset_kind_resolution {
             self.reset_kind_resolution_state();
         } else {
-            debug_assert_eq!(self.shell.indexing.pending_kind_paths.capacity(), 0);
-            debug_assert_eq!(self.shell.indexing.pending_kind_paths_set.capacity(), 0);
-            debug_assert_eq!(self.shell.indexing.in_flight_kind_paths.capacity(), 0);
+            debug_assert_eq!(self.shell.indexing.build.pending_kind_paths.capacity(), 0);
+            debug_assert_eq!(
+                self.shell.indexing.build.pending_kind_paths_set.capacity(),
+                0
+            );
+            debug_assert_eq!(self.shell.indexing.build.in_flight_kind_paths.capacity(), 0);
             self.shell.indexing.kind_resolution_in_progress = false;
             self.shell.indexing.kind_resolution_epoch =
                 self.shell.indexing.kind_resolution_epoch.saturating_add(1);
@@ -948,7 +966,7 @@ impl FlistWalkerApp {
                         self.shell
                             .tabs
                             .get(tab_index)
-                            .map(|tab| tab.index_state.index.source.clone())
+                            .map(|tab| tab.index_state.build.index.source.clone())
                     });
                 let background_states = self
                     .shell
@@ -1042,7 +1060,7 @@ impl FlistWalkerApp {
             let active_request_id = self.shell.indexing.pending_request_id;
             let active_mailbox_blocked = self.shell.indexing.pending_entries_request_id
                 == active_request_id
-                && self.shell.indexing.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES;
+                && self.shell.indexing.build.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES;
             let Some(arbitrated) =
                 mailbox_arbitrator.try_next(&mut self.shell.indexing, active_mailbox_blocked)
             else {
@@ -1096,7 +1114,7 @@ impl FlistWalkerApp {
                     IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }
                 )
                 && self.shell.indexing.pending_entries_request_id == Some(request_id)
-                && self.shell.indexing.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES
+                && self.shell.indexing.build.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES
             {
                 self.shell.indexing.deferred_response = Some(msg);
                 break;
@@ -1156,7 +1174,7 @@ impl FlistWalkerApp {
 
             match msg {
                 IndexResponse::Started { source, .. } => {
-                    self.shell.runtime.index.source = source;
+                    self.shell.indexing.build.index.source = source;
                     self.refresh_status_line();
                 }
                 IndexResponse::Batch {
@@ -1299,16 +1317,20 @@ impl FlistWalkerApp {
 
     fn queue_index_batch(&mut self, request_id: u64, entries: Vec<IndexEntry>) {
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
-            self.shell.indexing.pending_entries.clear();
+            self.shell.indexing.build.pending_entries.clear();
             self.shell.indexing.pending_entries_request_id = Some(request_id);
         }
-        self.shell.indexing.pending_entries.extend(entries);
+        self.shell.indexing.build.pending_entries.extend(entries);
     }
 
     fn ingest_index_entry(&mut self, entry: IndexEntry) {
         let entry: Entry = entry.into();
         if let Some(kind) = entry.kind {
-            self.shell.cache.entry_kind.set(entry.path.clone(), kind);
+            self.shell
+                .indexing
+                .build
+                .entry_kind_cache
+                .set(entry.path.clone(), kind);
         }
         if entry.kind.is_none_or(|kind| kind.needs_resolution())
             && self.kind_resolution_needed_for_filters()
@@ -1321,10 +1343,11 @@ impl FlistWalkerApp {
         {
             self.shell
                 .indexing
+                .build
                 .incremental_filtered_entries
                 .push(entry.clone());
         }
-        self.shell.runtime.index.entries.push(entry);
+        self.shell.indexing.build.index.entries.push(entry);
     }
 
     pub(super) fn drain_queued_index_entries(
@@ -1337,13 +1360,13 @@ impl FlistWalkerApp {
         }
         let mut processed = 0usize;
         while processed < max_entries {
-            let Some(entry) = self.shell.indexing.pending_entries.pop_front() else {
+            let Some(entry) = self.shell.indexing.build.pending_entries.pop_front() else {
                 break;
             };
             self.ingest_index_entry(entry);
             processed = processed.saturating_add(1);
         }
-        if self.shell.indexing.pending_entries.is_empty() {
+        if self.shell.indexing.build.pending_entries.is_empty() {
             self.shell.indexing.pending_entries_request_id = None;
         }
         processed > 0
@@ -1361,13 +1384,13 @@ impl FlistWalkerApp {
         }
         let mut processed = 0usize;
         while processed < max_entries && frame_start.elapsed() < budget {
-            let Some(entry) = self.shell.indexing.pending_entries.pop_front() else {
+            let Some(entry) = self.shell.indexing.build.pending_entries.pop_front() else {
                 break;
             };
             self.ingest_index_entry(entry);
             processed = processed.saturating_add(1);
         }
-        if self.shell.indexing.pending_entries.is_empty() {
+        if self.shell.indexing.build.pending_entries.is_empty() {
             self.shell.indexing.pending_entries_request_id = None;
         }
         processed > 0
@@ -1422,11 +1445,11 @@ impl FlistWalkerApp {
             .remove(&request_id)
             .expect("promoted background state");
         let source = state.source.take().unwrap_or(source);
-        let existing_entries = std::mem::take(&mut self.shell.runtime.index.entries);
+        let existing_entries = std::mem::take(&mut self.shell.indexing.build.index.entries);
         let pending_entries = if self.shell.indexing.pending_entries_request_id == Some(request_id)
         {
             self.shell.indexing.pending_entries_request_id = None;
-            std::mem::take(&mut self.shell.indexing.pending_entries)
+            std::mem::take(&mut self.shell.indexing.build.pending_entries)
         } else {
             Default::default()
         };
@@ -1506,7 +1529,7 @@ impl FlistWalkerApp {
             return false;
         };
         if self.shell.indexing.pending_entries_request_id == Some(pending_finish.request_id)
-            && !self.shell.indexing.pending_entries.is_empty()
+            && !self.shell.indexing.build.pending_entries.is_empty()
         {
             return false;
         }
@@ -1598,18 +1621,19 @@ impl FlistWalkerApp {
         if let Some(finalization) = finalization.as_mut() {
             debug_assert_eq!(finalization.request_id, request_id);
             debug_assert_eq!(Some(finalization.tab_id), self.current_tab_id());
-            self.shell.runtime.index.entries = std::mem::take(&mut finalization.completed_entries);
-            self.shell.indexing.incremental_filtered_entries =
+            self.shell.indexing.build.index.entries =
+                std::mem::take(&mut finalization.completed_entries);
+            self.shell.indexing.build.incremental_filtered_entries =
                 finalization.filtered_entries.take().unwrap_or_default();
-            self.shell.indexing.pending_kind_paths =
+            self.shell.indexing.build.pending_kind_paths =
                 std::mem::take(&mut finalization.unresolved_kind_paths);
-            self.shell.indexing.pending_kind_paths_set =
+            self.shell.indexing.build.pending_kind_paths_set =
                 std::mem::take(&mut finalization.unresolved_kind_paths_set);
             finalized_filelist_paths = finalization.filelist_paths.take();
         }
-        self.shell.runtime.index.source = pending_finish.source;
+        self.shell.indexing.build.index.source = pending_finish.source;
         self.shell.runtime.all_entries =
-            Arc::new(std::mem::take(&mut self.shell.runtime.index.entries));
+            Arc::new(std::mem::take(&mut self.shell.indexing.build.index.entries));
         self.shell
             .indexing
             .apply_resource_transition(TabResourceTransition::Success);
@@ -1620,13 +1644,18 @@ impl FlistWalkerApp {
                 && !self.shell.runtime.ignore_list_terms.is_empty());
         let has_incremental_filter_snapshot = needs_filtering
             && (finalized_filter_snapshot
-                || !self.shell.indexing.incremental_filtered_entries.is_empty()
-                || !self.shell.runtime.index.entries.is_empty());
+                || !self
+                    .shell
+                    .indexing
+                    .build
+                    .incremental_filtered_entries
+                    .is_empty()
+                || !self.shell.indexing.build.index.entries.is_empty());
         self.shell.indexing.settle_active_terminal_state();
         if needs_filtering {
             if has_incremental_filter_snapshot {
                 self.shell.runtime.entries = Arc::new(std::mem::take(
-                    &mut self.shell.indexing.incremental_filtered_entries,
+                    &mut self.shell.indexing.build.incremental_filtered_entries,
                 ));
                 self.shell.indexing.last_search_snapshot_len = self.shell.runtime.entries.len();
                 self.shell.indexing.search_rerun_pending = false;
@@ -1654,7 +1683,11 @@ impl FlistWalkerApp {
             }
         } else {
             self.shell.runtime.entries = Arc::clone(&self.shell.runtime.all_entries);
-            self.shell.indexing.incremental_filtered_entries.clear();
+            self.shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .clear();
             self.shell.indexing.last_search_snapshot_len = self.shell.runtime.entries.len();
             self.shell.indexing.search_rerun_pending = false;
             if self.shell.runtime.query_state.query.trim().is_empty() {
@@ -1689,7 +1722,7 @@ impl FlistWalkerApp {
             self.apply_result_sort(false);
         }
 
-        if matches!(self.shell.runtime.index.source, IndexSource::Walker) {
+        if matches!(self.shell.indexing.build.index.source, IndexSource::Walker) {
             // Regression guard: keep Walker kind resolution bounded to what is
             // actually visible. Resolving the entire tree eagerly can keep the
             // process hot on huge on-demand roots even after search/index settles.
@@ -1763,7 +1796,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn should_refresh_incremental_search(&self) -> bool {
-        let current_len = self.shell.indexing.incremental_filtered_entries.len();
+        let current_len = self.shell.indexing.build.incremental_filtered_entries.len();
         let delta = current_len.saturating_sub(self.shell.indexing.last_search_snapshot_len);
         if delta == 0 {
             return false;

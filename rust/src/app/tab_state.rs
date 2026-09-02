@@ -1,4 +1,3 @@
-use super::tab_resources::swap_active_tab_payload;
 use super::{
     normalize_windows_path_buf, EntryKindCacheState, FlistWalkerApp, PendingActiveIndexFinish,
     PendingIndexRefreshMode, ResultSortMode, ResultSortScope, SavedTabState, TabAccentColor,
@@ -115,47 +114,155 @@ pub(super) struct TabQueryState {
     pub(super) history_search_current: Option<usize>,
 }
 
-#[derive(Clone, Debug)]
-pub(super) struct TabIndexState {
-    resource_state: TabResourceState,
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
+pub(super) struct TabBuildPayload {
     pub(super) index: IndexBuildResult,
+    pub(super) pending_entries: VecDeque<IndexEntry>,
+    pub(super) pending_kind_paths: VecDeque<PathBuf>,
+    pub(super) pending_kind_paths_set: HashSet<PathBuf>,
+    pub(super) in_flight_kind_paths: HashSet<PathBuf>,
+    pub(super) resolved_kind_updates: Vec<(PathBuf, EntryKind)>,
+    pub(super) incremental_filtered_entries: Vec<Entry>,
+    pub(super) entry_kind_cache: EntryKindCacheState,
+}
+
+impl Default for TabBuildPayload {
+    fn default() -> Self {
+        Self {
+            index: IndexBuildResult {
+                entries: Vec::new(),
+                source: IndexSource::None,
+            },
+            pending_entries: VecDeque::new(),
+            pending_kind_paths: VecDeque::new(),
+            pending_kind_paths_set: HashSet::new(),
+            in_flight_kind_paths: HashSet::new(),
+            resolved_kind_updates: Vec::new(),
+            incremental_filtered_entries: Vec::new(),
+            entry_kind_cache: EntryKindCacheState::default(),
+        }
+    }
+}
+
+impl TabBuildPayload {
+    pub(super) fn take_reclaimable(&mut self) -> Self {
+        let mut payload = mem::take(self);
+        mem::swap(&mut self.index.source, &mut payload.index.source);
+        payload
+    }
+
+    pub(super) fn restore_reclaimable(&mut self, mut payload: Self) {
+        mem::swap(&mut self.index.source, &mut payload.index.source);
+        *self = payload;
+    }
+
+    pub(super) fn is_empty(&self) -> bool {
+        self.index.entries.capacity() == 0
+            && self.pending_entries.capacity() == 0
+            && self.pending_kind_paths.capacity() == 0
+            && self.pending_kind_paths_set.capacity() == 0
+            && self.in_flight_kind_paths.capacity() == 0
+            && self.resolved_kind_updates.capacity() == 0
+            && self.incremental_filtered_entries.capacity() == 0
+            && self.entry_kind_cache.entries.capacity() == 0
+    }
+
+    pub(super) fn heavy_resource_weight(&self) -> usize {
+        self.index
+            .entries
+            .capacity()
+            .saturating_add(self.pending_entries.capacity())
+            .saturating_add(self.pending_kind_paths.capacity())
+            .saturating_add(self.pending_kind_paths_set.capacity())
+            .saturating_add(self.in_flight_kind_paths.capacity())
+            .saturating_add(self.resolved_kind_updates.capacity())
+            .saturating_add(self.incremental_filtered_entries.capacity())
+            .saturating_add(self.entry_kind_cache.entries.capacity())
+    }
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
+pub(super) struct TabCommittedPayload {
     pub(super) all_entries: Arc<Vec<Entry>>,
     pub(super) entries: Arc<Vec<Entry>>,
+    pub(super) base_results: Vec<(PathBuf, f64)>,
+    pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) preview: String,
+    pub(super) total_match_count: usize,
+    pub(super) current_row: Option<usize>,
+}
+
+impl Default for TabCommittedPayload {
+    fn default() -> Self {
+        Self {
+            all_entries: Arc::new(Vec::new()),
+            entries: Arc::new(Vec::new()),
+            base_results: Vec::new(),
+            results: Vec::new(),
+            preview: String::new(),
+            total_match_count: 0,
+            current_row: None,
+        }
+    }
+}
+
+impl TabCommittedPayload {
+    pub(super) fn is_empty(&self) -> bool {
+        self.all_entries.capacity() == 0
+            && self.entries.capacity() == 0
+            && self.base_results.capacity() == 0
+            && self.results.capacity() == 0
+            && self.preview.capacity() == 0
+    }
+
+    pub(super) fn heavy_resource_weight(&self) -> usize {
+        let committed_entries = if Arc::ptr_eq(&self.all_entries, &self.entries) {
+            self.all_entries.capacity()
+        } else {
+            self.all_entries
+                .capacity()
+                .saturating_add(self.entries.capacity())
+        };
+        committed_entries
+            .saturating_add(self.base_results.capacity())
+            .saturating_add(self.results.capacity())
+            .saturating_add(self.preview.capacity())
+    }
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
+pub(super) struct TabIndexState {
+    resource_state: TabResourceState,
+    pub(super) build: TabBuildPayload,
     pub(super) pending_index_request_id: Option<u64>,
     pub(super) index_in_progress: bool,
-    pub(super) pending_index_entries: VecDeque<IndexEntry>,
     pub(super) pending_index_entries_request_id: Option<u64>,
     pub(super) pending_index_finish: Option<PendingActiveIndexFinish>,
     pub(super) build_reclaim_pending: bool,
     pub(super) build_reclaim_request_id: Option<u64>,
     pub(super) refresh_after_pending_finish: Option<PendingIndexRefreshMode>,
     pub(super) root_after_pending_finish: Option<PathBuf>,
-    pub(super) pending_kind_paths: VecDeque<PathBuf>,
-    pub(super) pending_kind_paths_set: HashSet<PathBuf>,
-    pub(super) in_flight_kind_paths: HashSet<PathBuf>,
-    pub(super) resolved_kind_updates: Vec<(PathBuf, EntryKind)>,
     pub(super) kind_resolution_epoch: u64,
     pub(super) kind_resolution_in_progress: bool,
-    pub(super) incremental_filtered_entries: Vec<Entry>,
     pub(super) last_incremental_results_refresh: Instant,
     pub(super) last_search_snapshot_len: usize,
     pub(super) search_resume_pending: bool,
     pub(super) search_rerun_pending: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
 pub(super) struct TabResultState {
-    pub(super) base_results: Vec<(PathBuf, f64)>,
-    pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) committed: TabCommittedPayload,
     pub(super) result_sort_mode: ResultSortMode,
     pub(super) result_sort_scope: ResultSortScope,
-    pub(super) total_match_count: usize,
     pub(super) pending_sort_request_id: Option<u64>,
     pub(super) sort_in_progress: bool,
     pub(super) pinned_paths: HashSet<PathBuf>,
-    pub(super) current_row: Option<usize>,
     pub(super) evicted_selected_path: Option<PathBuf>,
-    pub(super) preview: String,
     pub(super) results_compacted: bool,
 }
 
@@ -174,7 +281,6 @@ pub(crate) struct AppTabState {
     pub(super) index_state: TabIndexState,
     pub(super) query_state: TabQueryState,
     pub(super) result_state: TabResultState,
-    pub(super) entry_kind_cache: EntryKindCacheState,
     pub(super) notice: String,
     pub(super) pending_request_id: Option<u64>,
     pub(super) pending_preview_request_id: Option<u64>,
@@ -233,41 +339,33 @@ impl TabIndexState {
     }
 
     pub(super) fn clear_kind_resolution_state(&mut self) {
-        self.pending_kind_paths.clear();
-        self.pending_kind_paths_set.clear();
-        self.in_flight_kind_paths.clear();
-        self.resolved_kind_updates.clear();
+        self.build.pending_kind_paths.clear();
+        self.build.pending_kind_paths_set.clear();
+        self.build.in_flight_kind_paths.clear();
+        self.build.resolved_kind_updates.clear();
         self.kind_resolution_in_progress = false;
     }
 
     pub(super) fn refresh_kind_resolution_progress(&mut self) {
-        self.kind_resolution_in_progress =
-            !self.pending_kind_paths.is_empty() || !self.in_flight_kind_paths.is_empty();
+        self.kind_resolution_in_progress = !self.build.pending_kind_paths.is_empty()
+            || !self.build.in_flight_kind_paths.is_empty();
     }
 
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
             resource_state: shell.shell.indexing.resource_state(),
-            index: shell.shell.runtime.index.clone(),
-            all_entries: Arc::clone(&shell.shell.runtime.all_entries),
-            entries: Arc::clone(&shell.shell.runtime.entries),
+            build: shell.shell.indexing.build.clone(),
             pending_index_request_id: shell.shell.indexing.pending_request_id,
             index_in_progress: shell.shell.indexing.in_progress,
-            pending_index_entries: shell.shell.indexing.pending_entries.clone(),
             pending_index_entries_request_id: shell.shell.indexing.pending_entries_request_id,
             pending_index_finish: shell.shell.indexing.pending_finish.clone(),
             build_reclaim_pending: shell.shell.indexing.build_reclaim_pending,
             build_reclaim_request_id: shell.shell.indexing.build_reclaim_request_id,
             refresh_after_pending_finish: shell.shell.indexing.refresh_after_pending_finish,
             root_after_pending_finish: shell.shell.indexing.root_after_pending_finish.clone(),
-            pending_kind_paths: shell.shell.indexing.pending_kind_paths.clone(),
-            pending_kind_paths_set: shell.shell.indexing.pending_kind_paths_set.clone(),
-            in_flight_kind_paths: shell.shell.indexing.in_flight_kind_paths.clone(),
-            resolved_kind_updates: shell.shell.indexing.resolved_kind_updates.clone(),
             kind_resolution_epoch: shell.shell.indexing.kind_resolution_epoch,
             kind_resolution_in_progress: shell.shell.indexing.kind_resolution_in_progress,
-            incremental_filtered_entries: shell.shell.indexing.incremental_filtered_entries.clone(),
             last_incremental_results_refresh: shell.shell.indexing.last_incremental_results_refresh,
             last_search_snapshot_len: shell.shell.indexing.last_search_snapshot_len,
             search_resume_pending: shell.shell.indexing.search_resume_pending,
@@ -277,30 +375,21 @@ impl TabIndexState {
 
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.shell.runtime.index = self.index.clone();
+        shell.shell.indexing.build = self.build.clone();
         shell
             .shell
             .indexing
             .set_resource_state_for_test(self.resource_state);
-        shell.shell.runtime.all_entries = Arc::clone(&self.all_entries);
-        shell.shell.runtime.entries = Arc::clone(&self.entries);
         shell.shell.indexing.pending_request_id = self.pending_index_request_id;
         shell.shell.indexing.in_progress = self.index_in_progress;
-        shell.shell.indexing.pending_entries = self.pending_index_entries.clone();
         shell.shell.indexing.pending_entries_request_id = self.pending_index_entries_request_id;
         shell.shell.indexing.pending_finish = self.pending_index_finish.clone();
         shell.shell.indexing.build_reclaim_pending = self.build_reclaim_pending;
         shell.shell.indexing.build_reclaim_request_id = self.build_reclaim_request_id;
         shell.shell.indexing.refresh_after_pending_finish = self.refresh_after_pending_finish;
         shell.shell.indexing.root_after_pending_finish = self.root_after_pending_finish.clone();
-        shell.shell.indexing.pending_kind_paths = self.pending_kind_paths.clone();
-        shell.shell.indexing.pending_kind_paths_set = self.pending_kind_paths_set.clone();
-        shell.shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths.clone();
-        shell.shell.indexing.resolved_kind_updates = self.resolved_kind_updates.clone();
         shell.shell.indexing.kind_resolution_epoch = self.kind_resolution_epoch;
         shell.shell.indexing.kind_resolution_in_progress = self.kind_resolution_in_progress;
-        shell.shell.indexing.incremental_filtered_entries =
-            self.incremental_filtered_entries.clone();
         shell.shell.indexing.last_incremental_results_refresh =
             self.last_incremental_results_refresh;
         shell.shell.indexing.last_search_snapshot_len = self.last_search_snapshot_len;
@@ -313,10 +402,6 @@ impl TabIndexState {
             .shell
             .indexing
             .swap_resource_state(&mut self.resource_state);
-        mem::swap(
-            &mut self.index.source,
-            &mut shell.shell.runtime.index.source,
-        );
         mem::swap(
             &mut self.pending_index_request_id,
             &mut shell.shell.indexing.pending_request_id,
@@ -464,34 +549,26 @@ impl TabResultState {
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            base_results: shell.shell.runtime.base_results.clone(),
-            results: shell.shell.runtime.results.clone(),
+            committed: shell.shell.runtime.committed.clone(),
             result_sort_mode: shell.shell.runtime.result_sort_mode,
             result_sort_scope: shell.shell.runtime.result_sort_scope,
-            total_match_count: shell.shell.runtime.total_match_count,
             pending_sort_request_id: shell.shell.worker_bus.sort.pending_request_id,
             sort_in_progress: shell.shell.worker_bus.sort.in_progress,
             pinned_paths: shell.shell.runtime.pinned_paths.clone(),
-            current_row: shell.shell.runtime.current_row,
             evicted_selected_path: shell.shell.runtime.evicted_selected_path.clone(),
-            preview: shell.shell.runtime.preview.clone(),
             results_compacted: false,
         }
     }
 
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.shell.runtime.base_results = self.base_results.clone();
-        shell.shell.runtime.results = self.results.clone();
+        shell.shell.runtime.committed = self.committed.clone();
         shell.shell.runtime.result_sort_mode = self.result_sort_mode;
         shell.shell.runtime.result_sort_scope = self.result_sort_scope;
-        shell.shell.runtime.total_match_count = self.total_match_count;
         shell.shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
         shell.shell.worker_bus.sort.in_progress = self.sort_in_progress;
         shell.shell.runtime.pinned_paths = self.pinned_paths.clone();
-        shell.shell.runtime.current_row = self.current_row;
         shell.shell.runtime.evicted_selected_path = self.evicted_selected_path.clone();
-        shell.shell.runtime.preview = self.preview.clone();
     }
 
     pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
@@ -574,7 +651,6 @@ impl AppTabState {
             index_state: TabIndexState::from_shell(shell),
             query_state: TabQueryState::from_shell(shell),
             result_state: TabResultState::from_shell(shell),
-            entry_kind_cache: shell.shell.cache.entry_kind.clone(),
             notice: shell.shell.runtime.notice.clone(),
             pending_request_id: shell.shell.search.pending_request_id(),
             pending_preview_request_id: shell.shell.worker_bus.preview.pending_request_id,
@@ -599,28 +675,17 @@ impl AppTabState {
             max_depth: saved.max_depth,
             index_state: TabIndexState {
                 resource_state: TabResourceState::default(),
-                index: IndexBuildResult {
-                    entries: Vec::new(),
-                    source: IndexSource::None,
-                },
-                all_entries: Arc::new(Vec::new()),
-                entries: Arc::new(Vec::new()),
+                build: TabBuildPayload::default(),
                 pending_index_request_id: None,
                 index_in_progress: false,
-                pending_index_entries: VecDeque::new(),
                 pending_index_entries_request_id: None,
                 pending_index_finish: None,
                 build_reclaim_pending: false,
                 build_reclaim_request_id: None,
                 refresh_after_pending_finish: None,
                 root_after_pending_finish: None,
-                pending_kind_paths: VecDeque::new(),
-                pending_kind_paths_set: HashSet::new(),
-                in_flight_kind_paths: HashSet::new(),
-                resolved_kind_updates: Vec::new(),
                 kind_resolution_epoch: 1,
                 kind_resolution_in_progress: false,
-                incremental_filtered_entries: Vec::new(),
                 last_incremental_results_refresh: Instant::now(),
                 last_search_snapshot_len: 0,
                 search_resume_pending: false,
@@ -638,20 +703,15 @@ impl AppTabState {
                 history_search_current: None,
             },
             result_state: TabResultState {
-                base_results: Vec::new(),
-                results: Vec::new(),
+                committed: TabCommittedPayload::default(),
                 result_sort_mode: ResultSortMode::Score,
                 result_sort_scope: ResultSortScope::ShownResults,
-                total_match_count: 0,
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pinned_paths: HashSet::new(),
-                current_row: None,
                 evicted_selected_path: None,
-                preview: String::new(),
                 results_compacted: false,
             },
-            entry_kind_cache: EntryKindCacheState::default(),
             notice: "Restored tab".to_string(),
             pending_request_id: None,
             pending_preview_request_id: None,
@@ -698,28 +758,23 @@ impl AppTabState {
                     },
                     shell.shell.indexing.committed_snapshot_present(),
                 ),
-                index: IndexBuildResult {
-                    entries: Vec::new(),
-                    source: shell.shell.runtime.index.source.clone(),
+                build: TabBuildPayload {
+                    index: IndexBuildResult {
+                        entries: Vec::new(),
+                        source: shell.shell.indexing.build.index.source.clone(),
+                    },
+                    ..TabBuildPayload::default()
                 },
-                all_entries: Arc::clone(&shell.shell.runtime.all_entries),
-                entries: Arc::clone(&shell.shell.runtime.entries),
                 pending_index_request_id: None,
                 index_in_progress: false,
-                pending_index_entries: VecDeque::new(),
                 pending_index_entries_request_id: None,
                 pending_index_finish: None,
                 build_reclaim_pending: false,
                 build_reclaim_request_id: None,
                 refresh_after_pending_finish: None,
                 root_after_pending_finish: None,
-                pending_kind_paths: VecDeque::new(),
-                pending_kind_paths_set: HashSet::new(),
-                in_flight_kind_paths: HashSet::new(),
-                resolved_kind_updates: Vec::new(),
                 kind_resolution_epoch: 1,
                 kind_resolution_in_progress: false,
-                incremental_filtered_entries: Vec::new(),
                 last_incremental_results_refresh: Instant::now(),
                 last_search_snapshot_len: shell.shell.runtime.entries.len(),
                 search_resume_pending: false,
@@ -737,20 +792,23 @@ impl AppTabState {
                 history_search_current: None,
             },
             result_state: TabResultState {
-                results: base_results.clone(),
-                base_results,
+                committed: TabCommittedPayload {
+                    all_entries: Arc::clone(&shell.shell.runtime.all_entries),
+                    entries: Arc::clone(&shell.shell.runtime.entries),
+                    results: base_results.clone(),
+                    base_results,
+                    total_match_count: shell.shell.runtime.entries.len(),
+                    current_row,
+                    ..TabCommittedPayload::default()
+                },
                 result_sort_mode: ResultSortMode::Score,
                 result_sort_scope: shell.shell.runtime.result_sort_scope,
-                total_match_count: shell.shell.runtime.entries.len(),
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pinned_paths: HashSet::new(),
-                current_row,
                 evicted_selected_path: None,
-                preview: String::new(),
                 results_compacted: false,
             },
-            entry_kind_cache: EntryKindCacheState::default(),
             notice: "Opened new tab".to_string(),
             pending_request_id: None,
             pending_preview_request_id: None,
@@ -783,7 +841,11 @@ impl AppTabState {
     }
 
     pub(super) fn swap_payload_with_shell(&mut self, shell: &mut FlistWalkerApp) {
-        swap_active_tab_payload(self, shell);
+        mem::swap(&mut self.index_state.build, &mut shell.shell.indexing.build);
+        mem::swap(
+            &mut self.result_state.committed,
+            &mut shell.shell.runtime.committed,
+        );
         self.index_state.swap_shell(shell);
         self.query_state.swap_shell(shell);
         self.result_state.swap_shell(shell);
@@ -829,7 +891,6 @@ impl AppTabState {
         self.index_state.apply_shell(shell);
         self.query_state.apply_shell(shell);
         self.result_state.apply_shell(shell);
-        shell.shell.cache.entry_kind = self.entry_kind_cache.clone();
         shell.shell.runtime.notice = self.notice.clone();
         shell
             .shell

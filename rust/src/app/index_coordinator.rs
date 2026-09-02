@@ -1,13 +1,13 @@
 use super::index_mailbox::IndexResponseMailbox;
 use super::tab_resources::RetiredIndexBuildResources;
-use super::tab_state::{TabResourceState, TabResourceTransition};
+use super::tab_state::{TabBuildPayload, TabResourceState, TabResourceTransition};
 use super::worker::channel::BoundedSender;
 use super::{
-    AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, KindResolveRequest, PendingActiveIndexFinish, PendingBackgroundIndexFinalize,
+    AppTabState, BackgroundIndexState, FlistWalkerApp, IndexRequest, IndexResponse, IndexSource,
+    KindResolveRequest, PendingActiveIndexFinish, PendingBackgroundIndexFinalize,
     PendingIndexRefreshMode,
 };
-use crate::entry::{Entry, EntryKind};
+use crate::entry::EntryKind;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
@@ -110,8 +110,7 @@ pub(super) struct IndexCoordinator {
     pub(super) inflight_requests: HashSet<u64>,
     pub(super) superseded_request_ids: HashSet<u64>,
     pub(super) in_progress: bool,
-    pub(super) incremental_filtered_entries: Vec<Entry>,
-    pub(super) pending_entries: VecDeque<IndexEntry>,
+    pub(super) build: TabBuildPayload,
     pub(super) pending_entries_request_id: Option<u64>,
     #[cfg(test)]
     pub(super) deferred_response: Option<IndexResponse>,
@@ -124,10 +123,6 @@ pub(super) struct IndexCoordinator {
     pub(super) build_reclaim_request_id: Option<u64>,
     pub(super) refresh_after_pending_finish: Option<PendingIndexRefreshMode>,
     pub(super) root_after_pending_finish: Option<PathBuf>,
-    pub(super) pending_kind_paths: VecDeque<PathBuf>,
-    pub(super) pending_kind_paths_set: HashSet<PathBuf>,
-    pub(super) in_flight_kind_paths: HashSet<PathBuf>,
-    pub(super) resolved_kind_updates: Vec<(PathBuf, EntryKind)>,
     pub(super) kind_resolution_epoch: u64,
     pub(super) kind_resolution_in_progress: bool,
     pub(super) last_incremental_results_refresh: Instant,
@@ -203,8 +198,7 @@ impl IndexCoordinator {
             inflight_requests: HashSet::new(),
             superseded_request_ids: HashSet::new(),
             in_progress: false,
-            incremental_filtered_entries: Vec::new(),
-            pending_entries: VecDeque::new(),
+            build: TabBuildPayload::default(),
             pending_entries_request_id: None,
             #[cfg(test)]
             deferred_response: None,
@@ -217,10 +211,6 @@ impl IndexCoordinator {
             build_reclaim_request_id: None,
             refresh_after_pending_finish: None,
             root_after_pending_finish: None,
-            pending_kind_paths: VecDeque::new(),
-            pending_kind_paths_set: HashSet::new(),
-            in_flight_kind_paths: HashSet::new(),
-            resolved_kind_updates: Vec::new(),
             kind_resolution_epoch: 1,
             kind_resolution_in_progress: false,
             last_incremental_results_refresh: Instant::now(),
@@ -389,14 +379,14 @@ impl IndexCoordinator {
         tab.search_in_progress = false;
         tab.index_state.search_resume_pending = !tab.query_state.query.trim().is_empty();
         tab.index_state.search_rerun_pending = false;
-        debug_assert_eq!(tab.index_state.index.entries.capacity(), 0);
-        tab.index_state.index.source = IndexSource::None;
-        debug_assert_eq!(tab.index_state.pending_index_entries.capacity(), 0);
+        debug_assert_eq!(tab.index_state.build.index.entries.capacity(), 0);
+        tab.index_state.build.index.source = IndexSource::None;
+        debug_assert_eq!(tab.index_state.build.pending_entries.capacity(), 0);
         tab.index_state.pending_index_entries_request_id = None;
-        debug_assert_eq!(tab.index_state.pending_kind_paths.capacity(), 0);
-        debug_assert_eq!(tab.index_state.pending_kind_paths_set.capacity(), 0);
-        debug_assert_eq!(tab.index_state.in_flight_kind_paths.capacity(), 0);
-        debug_assert_eq!(tab.index_state.resolved_kind_updates.capacity(), 0);
+        debug_assert_eq!(tab.index_state.build.pending_kind_paths.capacity(), 0);
+        debug_assert_eq!(tab.index_state.build.pending_kind_paths_set.capacity(), 0);
+        debug_assert_eq!(tab.index_state.build.in_flight_kind_paths.capacity(), 0);
+        debug_assert_eq!(tab.index_state.build.resolved_kind_updates.capacity(), 0);
         tab.index_state.kind_resolution_in_progress = false;
         tab.index_state.kind_resolution_epoch =
             tab.index_state.kind_resolution_epoch.saturating_add(1);
@@ -628,10 +618,10 @@ impl FlistWalkerApp {
 
     /// kind 解決キューと epoch を初期化し直す。
     pub(super) fn reset_kind_resolution_state(&mut self) {
-        self.shell.indexing.pending_kind_paths.clear();
-        self.shell.indexing.pending_kind_paths_set.clear();
-        self.shell.indexing.in_flight_kind_paths.clear();
-        self.shell.indexing.resolved_kind_updates.clear();
+        self.shell.indexing.build.pending_kind_paths.clear();
+        self.shell.indexing.build.pending_kind_paths_set.clear();
+        self.shell.indexing.build.in_flight_kind_paths.clear();
+        self.shell.indexing.build.resolved_kind_updates.clear();
         self.shell.indexing.kind_resolution_in_progress = false;
         self.shell.indexing.kind_resolution_epoch =
             self.shell.indexing.kind_resolution_epoch.saturating_add(1);
@@ -648,25 +638,31 @@ impl FlistWalkerApp {
             return;
         }
         let use_live_index =
-            self.shell.indexing.in_progress && !self.shell.runtime.index.entries.is_empty();
-        let cache = &self.shell.cache.entry_kind;
-        let indexing = &mut self.shell.indexing;
+            self.shell.indexing.in_progress && !self.shell.indexing.build.index.entries.is_empty();
+        let TabBuildPayload {
+            index,
+            pending_kind_paths,
+            pending_kind_paths_set,
+            in_flight_kind_paths,
+            entry_kind_cache,
+            ..
+        } = &mut self.shell.indexing.build;
         let source = if use_live_index {
-            self.shell.runtime.index.entries.as_slice()
+            index.entries.as_slice()
         } else {
             self.shell.runtime.all_entries.as_ref()
         };
         for entry in source {
             if entry.kind.is_some()
-                || cache.get(entry.path()).is_some()
-                || indexing.pending_kind_paths_set.contains(entry.path())
-                || indexing.in_flight_kind_paths.contains(entry.path())
+                || entry_kind_cache.get(entry.path()).is_some()
+                || pending_kind_paths_set.contains(entry.path())
+                || in_flight_kind_paths.contains(entry.path())
             {
                 continue;
             }
             let path = entry.path.clone();
-            indexing.pending_kind_paths_set.insert(path.clone());
-            indexing.pending_kind_paths.push_back(path);
+            pending_kind_paths_set.insert(path.clone());
+            pending_kind_paths.push_back(path);
         }
     }
 
@@ -696,16 +692,27 @@ impl FlistWalkerApp {
 
     /// kind 解決キューへ重複なしで path を追加する。
     pub(super) fn queue_kind_resolution(&mut self, path: PathBuf) {
-        if self.shell.indexing.pending_kind_paths_set.contains(&path)
-            || self.shell.indexing.in_flight_kind_paths.contains(&path)
+        if self
+            .shell
+            .indexing
+            .build
+            .pending_kind_paths_set
+            .contains(&path)
+            || self
+                .shell
+                .indexing
+                .build
+                .in_flight_kind_paths
+                .contains(&path)
         {
             return;
         }
         self.shell
             .indexing
+            .build
             .pending_kind_paths_set
             .insert(path.clone());
-        self.shell.indexing.pending_kind_paths.push_back(path);
+        self.shell.indexing.build.pending_kind_paths.push_back(path);
     }
 
     /// kind resolver worker へ frame 予算内で request を流す。
@@ -718,10 +725,14 @@ impl FlistWalkerApp {
         }
         let mut dispatched = 0usize;
         while dispatched < MAX_DISPATCH_PER_FRAME {
-            let Some(path) = self.shell.indexing.pending_kind_paths.pop_front() else {
+            let Some(path) = self.shell.indexing.build.pending_kind_paths.pop_front() else {
                 break;
             };
-            self.shell.indexing.pending_kind_paths_set.remove(&path);
+            self.shell
+                .indexing
+                .build
+                .pending_kind_paths_set
+                .remove(&path);
             let req = KindResolveRequest {
                 tab_id,
                 epoch,
@@ -741,7 +752,7 @@ impl FlistWalkerApp {
                             outcome: "accepted",
                         },
                     );
-                    self.shell.indexing.in_flight_kind_paths.insert(path);
+                    self.shell.indexing.build.in_flight_kind_paths.insert(path);
                     dispatched = dispatched.saturating_add(1);
                 }
                 Err(std::sync::mpsc::TrySendError::Full(req)) => {
@@ -759,9 +770,14 @@ impl FlistWalkerApp {
                     );
                     self.shell
                         .indexing
+                        .build
                         .pending_kind_paths_set
                         .insert(req.path.clone());
-                    self.shell.indexing.pending_kind_paths.push_front(req.path);
+                    self.shell
+                        .indexing
+                        .build
+                        .pending_kind_paths
+                        .push_front(req.path);
                     break;
                 }
                 Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
@@ -777,9 +793,9 @@ impl FlistWalkerApp {
                             outcome: "disconnected",
                         },
                     );
-                    self.shell.indexing.pending_kind_paths.clear();
-                    self.shell.indexing.pending_kind_paths_set.clear();
-                    self.shell.indexing.in_flight_kind_paths.clear();
+                    self.shell.indexing.build.pending_kind_paths.clear();
+                    self.shell.indexing.build.pending_kind_paths_set.clear();
+                    self.shell.indexing.build.in_flight_kind_paths.clear();
                     self.shell.indexing.kind_resolution_in_progress = false;
                     for tab in &mut self.shell.tabs {
                         tab.index_state.clear_kind_resolution_state();
@@ -790,8 +806,8 @@ impl FlistWalkerApp {
             }
         }
         self.shell.indexing.kind_resolution_in_progress =
-            !self.shell.indexing.pending_kind_paths.is_empty()
-                || !self.shell.indexing.in_flight_kind_paths.is_empty();
+            !self.shell.indexing.build.pending_kind_paths.is_empty()
+                || !self.shell.indexing.build.in_flight_kind_paths.is_empty();
     }
 
     /// kind resolver 応答を吸収し filter/preview を必要最小限で更新する。
@@ -808,10 +824,17 @@ impl FlistWalkerApp {
                 if let Some(tab_index) = self.find_tab_index_by_id(response.tab_id) {
                     if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
                         if tab.index_state.kind_resolution_epoch == response.epoch {
-                            tab.index_state.in_flight_kind_paths.remove(&response.path);
+                            tab.index_state
+                                .build
+                                .in_flight_kind_paths
+                                .remove(&response.path);
                             if let Some(kind) = response.kind {
-                                tab.entry_kind_cache.set(response.path.clone(), kind);
                                 tab.index_state
+                                    .build
+                                    .entry_kind_cache
+                                    .set(response.path.clone(), kind);
+                                tab.index_state
+                                    .build
                                     .resolved_kind_updates
                                     .push((response.path.clone(), kind));
                             }
@@ -830,6 +853,7 @@ impl FlistWalkerApp {
             }
             self.shell
                 .indexing
+                .build
                 .in_flight_kind_paths
                 .remove(&response.path);
             if let Some(kind) = response.kind {
@@ -855,13 +879,14 @@ impl FlistWalkerApp {
             self.apply_entry_kind_updates(&resolved_updates);
             self.shell
                 .indexing
+                .build
                 .resolved_kind_updates
                 .extend(resolved_updates);
         }
 
         self.shell.indexing.kind_resolution_in_progress =
-            !self.shell.indexing.pending_kind_paths.is_empty()
-                || !self.shell.indexing.in_flight_kind_paths.is_empty();
+            !self.shell.indexing.build.pending_kind_paths.is_empty()
+                || !self.shell.indexing.build.in_flight_kind_paths.is_empty();
 
         if resolved_any && (!self.shell.runtime.include_files || !self.shell.runtime.include_dirs) {
             self.apply_entry_filters(true);

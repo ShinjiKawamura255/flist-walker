@@ -7,6 +7,35 @@ use crate::app::{
 
 const PAYLOAD_LEN: usize = 128;
 
+#[test]
+fn heavy_payload_membership_is_stored_once_and_swapped_as_aggregate_values() {
+    let tab_state = include_str!("../tab_state.rs");
+    let state = include_str!("../state.rs");
+    let index_coordinator = include_str!("../index_coordinator.rs");
+    let tab_resources = include_str!("../tab_resources.rs");
+    let worker_runtime = include_str!("../worker/runtime.rs");
+    assert!(tab_state.contains("pub(super) build: TabBuildPayload"));
+    assert!(tab_state.contains("pub(super) committed: TabCommittedPayload"));
+    assert!(state.contains("pub(super) committed: TabCommittedPayload"));
+    assert!(index_coordinator.contains("pub(super) build: TabBuildPayload"));
+    assert!(!tab_resources.contains("struct IndexBuildResourcePayload"));
+    assert!(!tab_resources.contains("struct CommittedResourcePayload"));
+    assert!(!state.contains("all_entries: Arc<Vec<Entry>>"));
+    assert!(!index_coordinator.contains("pending_entries: VecDeque<IndexEntry>"));
+    assert!(worker_runtime.contains("let active_build = self.take_active_index_build_resources()"));
+    assert!(!worker_runtime.contains("take(&mut self.shell.indexing.build.pending_kind_paths"));
+
+    let compact = tab_state
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>();
+    assert!(
+        compact.contains("mem::swap(&mutself.index_state.build,&mutshell.shell.indexing.build)")
+    );
+    assert!(compact
+        .contains("mem::swap(&mutself.result_state.committed,&mutshell.shell.runtime.committed,)"));
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct PayloadAllocations {
     index_entries: (*const Entry, usize),
@@ -135,27 +164,29 @@ fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
-    app.shell.runtime.index.entries = entries(prefix);
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.entries = entries(prefix);
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.all_entries = Arc::new(entries(&format!("{prefix}-all")));
     app.shell.runtime.entries = Arc::new(entries(&format!("{prefix}-filtered")));
-    app.shell.indexing.pending_entries = pending_entries(prefix);
+    app.shell.indexing.build.pending_entries = pending_entries(prefix);
     app.shell.indexing.pending_entries_request_id = Some(request_id + 10);
-    app.shell.indexing.pending_kind_paths = kind_paths(prefix);
-    app.shell.indexing.pending_kind_paths_set = app
+    app.shell.indexing.build.pending_kind_paths = kind_paths(prefix);
+    app.shell.indexing.build.pending_kind_paths_set = app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .cloned()
         .collect();
-    app.shell.indexing.in_flight_kind_paths = (0..PAYLOAD_LEN)
+    app.shell.indexing.build.in_flight_kind_paths = (0..PAYLOAD_LEN)
         .map(|index| PathBuf::from(format!("{prefix}-in-flight-{index}.txt")))
         .collect();
-    app.shell.indexing.resolved_kind_updates = kind_updates(prefix);
+    app.shell.indexing.build.resolved_kind_updates = kind_updates(prefix);
     app.shell.indexing.kind_resolution_epoch = request_id + 20;
     app.shell.indexing.kind_resolution_in_progress = true;
-    app.shell.indexing.incremental_filtered_entries = entries(&format!("{prefix}-incremental"));
+    app.shell.indexing.build.incremental_filtered_entries =
+        entries(&format!("{prefix}-incremental"));
     app.shell.indexing.last_search_snapshot_len = PAYLOAD_LEN - 1;
     app.shell.indexing.search_resume_pending = true;
     app.shell.indexing.search_rerun_pending = true;
@@ -168,9 +199,9 @@ fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
     app.shell.runtime.evicted_selected_path = Some(PathBuf::from(format!("{prefix}-result-7.txt")));
     app.shell.runtime.preview = format!("{prefix}-preview-").repeat(PAYLOAD_LEN);
     app.shell.runtime.notice = format!("{prefix} notice");
-    app.shell.cache.entry_kind.clear();
+    app.shell.indexing.build.entry_kind_cache.clear();
     for index in 0..PAYLOAD_LEN {
-        app.shell.cache.entry_kind.set(
+        app.shell.indexing.build.entry_kind_cache.set(
             PathBuf::from(format!("{prefix}-cached-{index}.txt")),
             EntryKind::file(),
         );
@@ -188,37 +219,42 @@ fn seed_tab_payload(tab: &mut AppTabState, prefix: &str, request_id: u64) {
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
     tab.index_state
         .set_committed_snapshot_present_for_test(true);
-    tab.index_state.index.entries = entries(prefix);
-    tab.index_state.index.source = IndexSource::Walker;
-    tab.index_state.all_entries = Arc::new(entries(&format!("{prefix}-all")));
-    tab.index_state.entries = Arc::new(entries(&format!("{prefix}-filtered")));
-    tab.index_state.pending_index_entries = pending_entries(prefix);
+    tab.index_state.build.index.entries = entries(prefix);
+    tab.index_state.build.index.source = IndexSource::Walker;
+    tab.result_state.committed.all_entries = Arc::new(entries(&format!("{prefix}-all")));
+    tab.result_state.committed.entries = Arc::new(entries(&format!("{prefix}-filtered")));
+    tab.index_state.build.pending_entries = pending_entries(prefix);
     tab.index_state.pending_index_entries_request_id = Some(request_id + 10);
-    tab.index_state.pending_kind_paths = kind_paths(prefix);
-    tab.index_state.pending_kind_paths_set =
-        tab.index_state.pending_kind_paths.iter().cloned().collect();
-    tab.index_state.in_flight_kind_paths = (0..PAYLOAD_LEN)
+    tab.index_state.build.pending_kind_paths = kind_paths(prefix);
+    tab.index_state.build.pending_kind_paths_set = tab
+        .index_state
+        .build
+        .pending_kind_paths
+        .iter()
+        .cloned()
+        .collect();
+    tab.index_state.build.in_flight_kind_paths = (0..PAYLOAD_LEN)
         .map(|index| PathBuf::from(format!("{prefix}-in-flight-{index}.txt")))
         .collect();
-    tab.index_state.resolved_kind_updates = kind_updates(prefix);
+    tab.index_state.build.resolved_kind_updates = kind_updates(prefix);
     tab.index_state.kind_resolution_epoch = request_id + 20;
     tab.index_state.kind_resolution_in_progress = true;
-    tab.index_state.incremental_filtered_entries = entries(&format!("{prefix}-incremental"));
+    tab.index_state.build.incremental_filtered_entries = entries(&format!("{prefix}-incremental"));
     tab.index_state.last_search_snapshot_len = PAYLOAD_LEN - 1;
     tab.index_state.search_resume_pending = true;
     tab.index_state.search_rerun_pending = true;
-    tab.result_state.base_results = results(&format!("{prefix}-base"));
-    tab.result_state.results = results(prefix);
+    tab.result_state.committed.base_results = results(&format!("{prefix}-base"));
+    tab.result_state.committed.results = results(prefix);
     tab.result_state.result_sort_mode = ResultSortMode::NameAsc;
     tab.result_state.result_sort_scope = ResultSortScope::AllMatches;
-    tab.result_state.total_match_count = PAYLOAD_LEN + 7;
-    tab.result_state.current_row = Some(7);
+    tab.result_state.committed.total_match_count = PAYLOAD_LEN + 7;
+    tab.result_state.committed.current_row = Some(7);
     tab.result_state.evicted_selected_path = Some(PathBuf::from(format!("{prefix}-result-7.txt")));
-    tab.result_state.preview = format!("{prefix}-preview-").repeat(PAYLOAD_LEN);
+    tab.result_state.committed.preview = format!("{prefix}-preview-").repeat(PAYLOAD_LEN);
     tab.notice = format!("{prefix} notice");
-    tab.entry_kind_cache.clear();
+    tab.index_state.build.entry_kind_cache.clear();
     for index in 0..PAYLOAD_LEN {
-        tab.entry_kind_cache.set(
+        tab.index_state.build.entry_kind_cache.set(
             PathBuf::from(format!("{prefix}-cached-{index}.txt")),
             EntryKind::file(),
         );
@@ -240,8 +276,8 @@ fn deque_allocation<T>(deque: &VecDeque<T>) -> (*const T, usize) {
 fn live_allocations(app: &FlistWalkerApp) -> PayloadAllocations {
     PayloadAllocations {
         index_entries: (
-            app.shell.runtime.index.entries.as_ptr(),
-            app.shell.runtime.index.entries.capacity(),
+            app.shell.indexing.build.index.entries.as_ptr(),
+            app.shell.indexing.build.index.entries.capacity(),
         ),
         all_entries: (
             Arc::as_ptr(&app.shell.runtime.all_entries),
@@ -251,15 +287,23 @@ fn live_allocations(app: &FlistWalkerApp) -> PayloadAllocations {
             Arc::as_ptr(&app.shell.runtime.entries),
             app.shell.runtime.entries.capacity(),
         ),
-        pending_index_entries: deque_allocation(&app.shell.indexing.pending_entries),
-        pending_kind_paths: deque_allocation(&app.shell.indexing.pending_kind_paths),
+        pending_index_entries: deque_allocation(&app.shell.indexing.build.pending_entries),
+        pending_kind_paths: deque_allocation(&app.shell.indexing.build.pending_kind_paths),
         resolved_kind_updates: (
-            app.shell.indexing.resolved_kind_updates.as_ptr(),
-            app.shell.indexing.resolved_kind_updates.capacity(),
+            app.shell.indexing.build.resolved_kind_updates.as_ptr(),
+            app.shell.indexing.build.resolved_kind_updates.capacity(),
         ),
         incremental_filtered_entries: (
-            app.shell.indexing.incremental_filtered_entries.as_ptr(),
-            app.shell.indexing.incremental_filtered_entries.capacity(),
+            app.shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .as_ptr(),
+            app.shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .capacity(),
         ),
         base_results: (
             app.shell.runtime.base_results.as_ptr(),
@@ -275,13 +319,14 @@ fn live_allocations(app: &FlistWalkerApp) -> PayloadAllocations {
         ),
         entry_kind_cache: (
             app.shell
-                .cache
-                .entry_kind
+                .indexing
+                .build
+                .entry_kind_cache
                 .entries
                 .keys()
                 .next()
                 .expect("live cache key") as *const PathBuf,
-            app.shell.cache.entry_kind.entries.capacity(),
+            app.shell.indexing.build.entry_kind_cache.entries.capacity(),
         ),
     }
 }
@@ -289,46 +334,51 @@ fn live_allocations(app: &FlistWalkerApp) -> PayloadAllocations {
 fn tab_allocations(tab: &AppTabState) -> PayloadAllocations {
     PayloadAllocations {
         index_entries: (
-            tab.index_state.index.entries.as_ptr(),
-            tab.index_state.index.entries.capacity(),
+            tab.index_state.build.index.entries.as_ptr(),
+            tab.index_state.build.index.entries.capacity(),
         ),
         all_entries: (
-            Arc::as_ptr(&tab.index_state.all_entries),
-            tab.index_state.all_entries.capacity(),
+            Arc::as_ptr(&tab.result_state.committed.all_entries),
+            tab.result_state.committed.all_entries.capacity(),
         ),
         filtered_entries: (
-            Arc::as_ptr(&tab.index_state.entries),
-            tab.index_state.entries.capacity(),
+            Arc::as_ptr(&tab.result_state.committed.entries),
+            tab.result_state.committed.entries.capacity(),
         ),
-        pending_index_entries: deque_allocation(&tab.index_state.pending_index_entries),
-        pending_kind_paths: deque_allocation(&tab.index_state.pending_kind_paths),
+        pending_index_entries: deque_allocation(&tab.index_state.build.pending_entries),
+        pending_kind_paths: deque_allocation(&tab.index_state.build.pending_kind_paths),
         resolved_kind_updates: (
-            tab.index_state.resolved_kind_updates.as_ptr(),
-            tab.index_state.resolved_kind_updates.capacity(),
+            tab.index_state.build.resolved_kind_updates.as_ptr(),
+            tab.index_state.build.resolved_kind_updates.capacity(),
         ),
         incremental_filtered_entries: (
-            tab.index_state.incremental_filtered_entries.as_ptr(),
-            tab.index_state.incremental_filtered_entries.capacity(),
+            tab.index_state.build.incremental_filtered_entries.as_ptr(),
+            tab.index_state
+                .build
+                .incremental_filtered_entries
+                .capacity(),
         ),
         base_results: (
-            tab.result_state.base_results.as_ptr(),
-            tab.result_state.base_results.capacity(),
+            tab.result_state.committed.base_results.as_ptr(),
+            tab.result_state.committed.base_results.capacity(),
         ),
         results: (
-            tab.result_state.results.as_ptr(),
-            tab.result_state.results.capacity(),
+            tab.result_state.committed.results.as_ptr(),
+            tab.result_state.committed.results.capacity(),
         ),
         preview: (
-            tab.result_state.preview.as_ptr(),
-            tab.result_state.preview.capacity(),
+            tab.result_state.committed.preview.as_ptr(),
+            tab.result_state.committed.preview.capacity(),
         ),
         entry_kind_cache: (
-            tab.entry_kind_cache
+            tab.index_state
+                .build
+                .entry_kind_cache
                 .entries
                 .keys()
                 .next()
                 .expect("tab cache key") as *const PathBuf,
-            tab.entry_kind_cache.entries.capacity(),
+            tab.index_state.build.entry_kind_cache.entries.capacity(),
         ),
     }
 }
@@ -350,7 +400,7 @@ fn live_inventory(app: &FlistWalkerApp) -> PayloadInventory {
         allocations: live_allocations(app),
         metadata: PayloadMetadata {
             resource_state: app.shell.indexing.resource_state(),
-            index_source: app.shell.runtime.index.source.clone(),
+            index_source: app.shell.indexing.build.index.source.clone(),
             pending_search_request_id: app.shell.search.pending_request_id(),
             pending_preview_request_id: app.shell.worker_bus.preview.pending_request_id,
             pending_action_request_id: app.shell.worker_bus.action.pending_request_id,
@@ -359,12 +409,12 @@ fn live_inventory(app: &FlistWalkerApp) -> PayloadInventory {
             action_in_progress: app.shell.worker_bus.action.in_progress,
             pending_entries_request_id: app.shell.indexing.pending_entries_request_id,
             pending_kind_paths_set: (
-                sorted_paths(&app.shell.indexing.pending_kind_paths_set),
-                app.shell.indexing.pending_kind_paths_set.capacity(),
+                sorted_paths(&app.shell.indexing.build.pending_kind_paths_set),
+                app.shell.indexing.build.pending_kind_paths_set.capacity(),
             ),
             in_flight_kind_paths: (
-                sorted_paths(&app.shell.indexing.in_flight_kind_paths),
-                app.shell.indexing.in_flight_kind_paths.capacity(),
+                sorted_paths(&app.shell.indexing.build.in_flight_kind_paths),
+                app.shell.indexing.build.in_flight_kind_paths.capacity(),
             ),
             kind_resolution_epoch: app.shell.indexing.kind_resolution_epoch,
             kind_resolution_in_progress: app.shell.indexing.kind_resolution_in_progress,
@@ -377,8 +427,8 @@ fn live_inventory(app: &FlistWalkerApp) -> PayloadInventory {
             current_row: app.shell.runtime.current_row,
             evicted_selected_path: app.shell.runtime.evicted_selected_path.clone(),
             entry_kind_cache_paths: (
-                sorted_cache_paths(&app.shell.cache.entry_kind),
-                app.shell.cache.entry_kind.entries.capacity(),
+                sorted_cache_paths(&app.shell.indexing.build.entry_kind_cache),
+                app.shell.indexing.build.entry_kind_cache.entries.capacity(),
             ),
             notice: app.shell.runtime.notice.clone(),
         },
@@ -390,7 +440,7 @@ fn tab_inventory(tab: &AppTabState) -> PayloadInventory {
         allocations: tab_allocations(tab),
         metadata: PayloadMetadata {
             resource_state: tab.index_state.resource_state(),
-            index_source: tab.index_state.index.source.clone(),
+            index_source: tab.index_state.build.index.source.clone(),
             pending_search_request_id: tab.pending_request_id,
             pending_preview_request_id: tab.pending_preview_request_id,
             pending_action_request_id: tab.pending_action_request_id,
@@ -399,12 +449,12 @@ fn tab_inventory(tab: &AppTabState) -> PayloadInventory {
             action_in_progress: tab.action_in_progress,
             pending_entries_request_id: tab.index_state.pending_index_entries_request_id,
             pending_kind_paths_set: (
-                sorted_paths(&tab.index_state.pending_kind_paths_set),
-                tab.index_state.pending_kind_paths_set.capacity(),
+                sorted_paths(&tab.index_state.build.pending_kind_paths_set),
+                tab.index_state.build.pending_kind_paths_set.capacity(),
             ),
             in_flight_kind_paths: (
-                sorted_paths(&tab.index_state.in_flight_kind_paths),
-                tab.index_state.in_flight_kind_paths.capacity(),
+                sorted_paths(&tab.index_state.build.in_flight_kind_paths),
+                tab.index_state.build.in_flight_kind_paths.capacity(),
             ),
             kind_resolution_epoch: tab.index_state.kind_resolution_epoch,
             kind_resolution_in_progress: tab.index_state.kind_resolution_in_progress,
@@ -413,12 +463,12 @@ fn tab_inventory(tab: &AppTabState) -> PayloadInventory {
             search_rerun_pending: tab.index_state.search_rerun_pending,
             result_sort_mode: tab.result_state.result_sort_mode,
             result_sort_scope: tab.result_state.result_sort_scope,
-            total_match_count: tab.result_state.total_match_count,
-            current_row: tab.result_state.current_row,
+            total_match_count: tab.result_state.committed.total_match_count,
+            current_row: tab.result_state.committed.current_row,
             evicted_selected_path: tab.result_state.evicted_selected_path.clone(),
             entry_kind_cache_paths: (
-                sorted_cache_paths(&tab.entry_kind_cache),
-                tab.entry_kind_cache.entries.capacity(),
+                sorted_cache_paths(&tab.index_state.build.entry_kind_cache),
+                tab.index_state.build.entry_kind_cache.entries.capacity(),
             ),
             notice: tab.notice.clone(),
         },
@@ -507,21 +557,27 @@ fn tc_154_tab_heavy_take_restore_preserves_the_complete_inventory() {
     let resources = tab.take_heavy_resources();
     assert_eq!(tab.index_state.lifecycle(), TabResourceLifecycle::Evicted);
     assert!(!tab.index_state.committed_snapshot_present());
-    assert_eq!(tab.index_state.index.source, IndexSource::Walker);
+    assert_eq!(tab.index_state.build.index.source, IndexSource::Walker);
     assert_eq!(tab.heavy_resource_weight(), 0);
-    assert_eq!(tab.index_state.index.entries.capacity(), 0);
-    assert_eq!(tab.index_state.all_entries.capacity(), 0);
-    assert_eq!(tab.index_state.entries.capacity(), 0);
-    assert_eq!(tab.index_state.pending_index_entries.capacity(), 0);
-    assert_eq!(tab.index_state.pending_kind_paths.capacity(), 0);
-    assert_eq!(tab.index_state.pending_kind_paths_set.capacity(), 0);
-    assert_eq!(tab.index_state.in_flight_kind_paths.capacity(), 0);
-    assert_eq!(tab.index_state.resolved_kind_updates.capacity(), 0);
-    assert_eq!(tab.index_state.incremental_filtered_entries.capacity(), 0);
-    assert_eq!(tab.result_state.base_results.capacity(), 0);
-    assert_eq!(tab.result_state.results.capacity(), 0);
-    assert_eq!(tab.result_state.preview.capacity(), 0);
-    assert_eq!(tab.entry_kind_cache.entries.capacity(), 0);
+    assert_eq!(tab.index_state.build.index.entries.capacity(), 0);
+    assert_eq!(tab.result_state.committed.all_entries.capacity(), 0);
+    assert_eq!(tab.result_state.committed.entries.capacity(), 0);
+    assert_eq!(tab.index_state.build.pending_entries.capacity(), 0);
+    assert_eq!(tab.index_state.build.pending_kind_paths.capacity(), 0);
+    assert_eq!(tab.index_state.build.pending_kind_paths_set.capacity(), 0);
+    assert_eq!(tab.index_state.build.in_flight_kind_paths.capacity(), 0);
+    assert_eq!(tab.index_state.build.resolved_kind_updates.capacity(), 0);
+    assert_eq!(
+        tab.index_state
+            .build
+            .incremental_filtered_entries
+            .capacity(),
+        0
+    );
+    assert_eq!(tab.result_state.committed.base_results.capacity(), 0);
+    assert_eq!(tab.result_state.committed.results.capacity(), 0);
+    assert_eq!(tab.result_state.committed.preview.capacity(), 0);
+    assert_eq!(tab.index_state.build.entry_kind_cache.entries.capacity(), 0);
 
     tab.restore_heavy_resources(resources);
     assert_eq!(tab_inventory(&tab), before);
@@ -680,20 +736,22 @@ fn tc_154_tab_switch_does_not_compact_sparse_payload_on_ui_path() {
         "inactive-sparse",
         1542,
     );
-    app.shell.runtime.index.entries.reserve(8_192);
-    app.shell.indexing.pending_entries.reserve(8_192);
-    app.shell.indexing.pending_kind_paths.reserve(8_192);
+    app.shell.indexing.build.index.entries.reserve(8_192);
+    app.shell.indexing.build.pending_entries.reserve(8_192);
+    app.shell.indexing.build.pending_kind_paths.reserve(8_192);
     app.shell
         .indexing
+        .build
         .incremental_filtered_entries
         .reserve(8_192);
     {
         let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
-        inactive.index_state.index.entries.reserve(8_192);
-        inactive.index_state.pending_index_entries.reserve(8_192);
-        inactive.index_state.pending_kind_paths.reserve(8_192);
+        inactive.index_state.build.index.entries.reserve(8_192);
+        inactive.index_state.build.pending_entries.reserve(8_192);
+        inactive.index_state.build.pending_kind_paths.reserve(8_192);
         inactive
             .index_state
+            .build
             .incremental_filtered_entries
             .reserve(8_192);
     }
@@ -722,18 +780,20 @@ fn perf_tc_154_tab_transition_coordinator_p95_stays_below_hard_ceiling() {
     let mut app = FlistWalkerApp::new(root.clone(), 1_000, String::new());
     app.create_new_tab();
 
-    app.shell.runtime.index.entries = (0..ENTRY_COUNT)
+    app.shell.indexing.build.index.entries = (0..ENTRY_COUNT)
         .map(|index| file_entry(PathBuf::from(format!("live-{index}.txt"))))
         .collect();
-    app.shell.runtime.all_entries = Arc::new(app.shell.runtime.index.entries.clone());
+    app.shell.runtime.all_entries = Arc::new(app.shell.indexing.build.index.entries.clone());
     app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
     {
         let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
-        inactive.index_state.index.entries = (0..ENTRY_COUNT)
+        inactive.index_state.build.index.entries = (0..ENTRY_COUNT)
             .map(|index| file_entry(PathBuf::from(format!("tab-{index}.txt"))))
             .collect();
-        inactive.index_state.all_entries = Arc::new(inactive.index_state.index.entries.clone());
-        inactive.index_state.entries = Arc::clone(&inactive.index_state.all_entries);
+        inactive.result_state.committed.all_entries =
+            Arc::new(inactive.index_state.build.index.entries.clone());
+        inactive.result_state.committed.entries =
+            Arc::clone(&inactive.result_state.committed.all_entries);
     }
 
     for _ in 0..6 {
@@ -889,10 +949,11 @@ fn tc_154_stale_background_routes_never_mutate_active_scratch() {
             .tabs
             .get_mut(active_index)
             .expect("active scratch");
-        scratch.index_state.index.entries = vec![file_entry(scratch_path.clone())];
-        scratch.result_state.base_results = vec![(scratch_path.clone(), 1.0)];
-        scratch.result_state.results = scratch.result_state.base_results.clone();
-        scratch.result_state.preview = "scratch preview".to_string();
+        scratch.index_state.build.index.entries = vec![file_entry(scratch_path.clone())];
+        scratch.result_state.committed.base_results = vec![(scratch_path.clone(), 1.0)];
+        scratch.result_state.committed.results =
+            scratch.result_state.committed.base_results.clone();
+        scratch.result_state.committed.preview = "scratch preview".to_string();
         scratch.notice = "scratch notice".to_string();
         scratch.pending_request_id = Some(2001);
         scratch.pending_preview_request_id = Some(2002);
@@ -974,10 +1035,13 @@ fn tc_154_stale_background_routes_never_mutate_active_scratch() {
     });
 
     let scratch = app.shell.tabs.get(active_index).expect("active scratch");
-    assert_eq!(scratch.index_state.index.entries[0], scratch_path);
-    assert_eq!(scratch.result_state.base_results[0].0, scratch_path);
-    assert_eq!(scratch.result_state.results[0].0, scratch_path);
-    assert_eq!(scratch.result_state.preview, "scratch preview");
+    assert_eq!(scratch.index_state.build.index.entries[0], scratch_path);
+    assert_eq!(
+        scratch.result_state.committed.base_results[0].0,
+        scratch_path
+    );
+    assert_eq!(scratch.result_state.committed.results[0].0, scratch_path);
+    assert_eq!(scratch.result_state.committed.preview, "scratch preview");
     assert_eq!(scratch.notice, "scratch notice");
     assert_eq!(scratch.pending_request_id, Some(2001));
     assert_eq!(scratch.pending_preview_request_id, Some(2002));

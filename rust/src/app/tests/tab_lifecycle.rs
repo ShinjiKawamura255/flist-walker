@@ -196,8 +196,8 @@ fn tc_207_open_inactive_snapshots_share_the_bounded_lru() {
         let tab = app.shell.tabs.get_mut(index).expect("inactive tab");
         tab.index_state
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
 
@@ -234,7 +234,8 @@ fn tc_207_reclaimer_full_returns_heavy_ownership_to_the_caller() {
             TabResourceLifecycle::Ready,
             true,
         ));
-    accepted.index_state.all_entries = Arc::new(vec![file_entry(root.join("queued-0.txt"))]);
+    accepted.result_state.committed.all_entries =
+        Arc::new(vec![file_entry(root.join("queued-0.txt"))]);
     reclaimer
         .try_retire(accepted.take_heavy_resources())
         .expect("reclaimer queue accepts payload");
@@ -246,7 +247,7 @@ fn tc_207_reclaimer_full_returns_heavy_ownership_to_the_caller() {
 
     for index in 1..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(700 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("queued-{index}.txt")))]);
         reclaimer
             .try_retire(tab.take_heavy_resources())
@@ -259,12 +260,13 @@ fn tc_207_reclaimer_full_returns_heavy_ownership_to_the_caller() {
             TabResourceLifecycle::Refreshing,
             true,
         ));
-    overflow.index_state.all_entries = Arc::new(vec![file_entry(root.join("overflow.txt"))]);
+    overflow.result_state.committed.all_entries =
+        Arc::new(vec![file_entry(root.join("overflow.txt"))]);
     let returned = reclaimer
         .try_retire(overflow.take_heavy_resources())
         .expect_err("full reclaimer must return ownership");
     overflow.restore_heavy_resources(*returned);
-    assert_eq!(overflow.index_state.all_entries.len(), 1);
+    assert_eq!(overflow.result_state.committed.all_entries.len(), 1);
     assert_eq!(
         overflow.index_state.lifecycle(),
         TabResourceLifecycle::Refreshing
@@ -282,7 +284,7 @@ fn tc_207_reclaimer_full_repeated_close_keeps_history_and_heavy_cache_bounded() 
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_000 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("queued-{index}.txt")))]);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -344,7 +346,7 @@ fn tc_207_closed_history_stays_exactly_25_when_oldest_heavy_retirement_is_full()
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_000 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -378,8 +380,8 @@ fn tc_207_eviction_keeps_pin_and_selected_path_as_lightweight_intent() {
     let pinned = root.join("pinned.txt");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let mut tab = app.capture_active_tab_state(2_000);
-    tab.result_state.results = vec![(selected.clone(), 1.0)];
-    tab.result_state.current_row = Some(0);
+    tab.result_state.committed.results = vec![(selected.clone(), 1.0)];
+    tab.result_state.committed.current_row = Some(0);
     tab.result_state.pinned_paths.insert(pinned.clone());
 
     let _retired = tab.take_heavy_resources();
@@ -405,9 +407,9 @@ fn tc_207_empty_high_capacity_snapshot_is_accounted_and_reclaimed_off_ui() {
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
     tab.index_state
         .set_committed_snapshot_present_for_test(true);
-    tab.index_state.all_entries = Arc::clone(&retained_entries);
-    tab.index_state.entries = retained_entries;
-    tab.result_state.results = Vec::with_capacity(4_096);
+    tab.result_state.committed.all_entries = Arc::clone(&retained_entries);
+    tab.result_state.committed.entries = retained_entries;
+    tab.result_state.committed.results = Vec::with_capacity(4_096);
 
     assert!(tab.heavy_resource_weight() >= 12_288);
     let resources = tab.take_heavy_resources();
@@ -437,8 +439,8 @@ fn tc_207_empty_high_capacity_snapshots_obey_cache_count_limit() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::clone(&retained);
-        tab.index_state.entries = retained;
+        tab.result_state.committed.all_entries = Arc::clone(&retained);
+        tab.result_state.committed.entries = retained;
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     app.shell.tabs.pause_resource_reclaimer();
@@ -484,7 +486,7 @@ fn tc_207_deferred_root_is_a_barrier_for_refresh_close_and_restore() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_300 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -544,8 +546,8 @@ fn tc_207_inactive_deferred_root_survives_background_refresh_and_close() {
         target
             .index_state
             .set_committed_snapshot_present_for_test(true);
-        target.index_state.all_entries = Arc::new(vec![old.clone()]);
-        target.index_state.entries = Arc::new(vec![old]);
+        target.result_state.committed.all_entries = Arc::new(vec![old.clone()]);
+        target.result_state.committed.entries = Arc::new(vec![old]);
         target.index_state.root_after_pending_finish = Some(root_b.clone());
         target.index_state.refresh_after_pending_finish =
             Some(super::PendingIndexRefreshMode::Normal);
@@ -559,7 +561,7 @@ fn tc_207_inactive_deferred_root_survives_background_refresh_and_close() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_500 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -643,14 +645,14 @@ fn tc_207_closing_sole_warm_preflights_it_as_unpinned_cache() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_400 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -701,14 +703,14 @@ fn tc_207_switch_to_light_tab_rolls_back_before_cache_overflow() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_600 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -757,14 +759,14 @@ fn tc_207_restore_light_closed_tab_rolls_back_before_cache_overflow() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_700 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -826,8 +828,8 @@ fn tc_207_new_tab_is_refused_before_it_can_exceed_the_heavy_cache_bound() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     let active = file_entry(root.join("active.txt"));
@@ -842,7 +844,7 @@ fn tc_207_new_tab_is_refused_before_it_can_exceed_the_heavy_cache_bound() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_500 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -886,8 +888,8 @@ fn tc_207_background_admission_retries_once_after_reclaimer_debt_clears() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
@@ -898,7 +900,7 @@ fn tc_207_background_admission_retries_once_after_reclaimer_debt_clears() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_800 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -1045,8 +1047,8 @@ fn tc_207_warm_tab_is_pinned_outside_the_inactive_cache_budget() {
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        tab.index_state.entries = Arc::new(vec![entry]);
+        tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![entry]);
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
 
@@ -1695,7 +1697,7 @@ fn tc_207_heavy_closed_restore_excludes_target_from_cache_budget_under_full_recl
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(3_400 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -1719,7 +1721,7 @@ fn tc_207_heavy_closed_restore_excludes_target_from_cache_budget_under_full_recl
         .find(|tab| tab.id == cached_id)
         .expect("cached tab retained");
     assert!(cached.index_state.committed_snapshot_present());
-    assert_eq!(cached.index_state.all_entries.len(), 1);
+    assert_eq!(cached.result_state.committed.all_entries.len(), 1);
     let _ = fs::remove_dir_all(&root);
 }
 

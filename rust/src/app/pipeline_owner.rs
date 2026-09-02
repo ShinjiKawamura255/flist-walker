@@ -96,17 +96,23 @@ impl<'a> PipelineOwner<'a> {
     pub(super) fn apply_entry_filters(&mut self, keep_scroll_position: bool) {
         if self.app.kind_resolution_needed_for_filters() {
             self.app.queue_unknown_kind_paths_for_active_entries();
-        } else if !self.app.shell.indexing.pending_kind_paths.is_empty()
-            || !self.app.shell.indexing.in_flight_kind_paths.is_empty()
+        } else if !self.app.shell.indexing.build.pending_kind_paths.is_empty()
+            || !self
+                .app
+                .shell
+                .indexing
+                .build
+                .in_flight_kind_paths
+                .is_empty()
         {
             self.app.reset_kind_resolution_state();
         }
 
         let compiled_ignore_terms = self.app.compiled_ignore_terms();
-        let source_is_all_entries =
-            !self.app.shell.indexing.in_progress || self.app.shell.runtime.index.entries.is_empty();
+        let source_is_all_entries = !self.app.shell.indexing.in_progress
+            || self.app.shell.indexing.build.index.entries.is_empty();
         let base = if !source_is_all_entries {
-            &self.app.shell.runtime.index.entries
+            &self.app.shell.indexing.build.index.entries
         } else {
             self.app.shell.runtime.all_entries.as_ref()
         };
@@ -118,7 +124,12 @@ impl<'a> PipelineOwner<'a> {
             && !needs_filtering
             && self.app.shell.runtime.query_state.query.trim().is_empty()
         {
-            self.app.shell.indexing.incremental_filtered_entries.clear();
+            self.app
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .clear();
             self.app.shell.indexing.last_search_snapshot_len = base.len();
             self.app.shell.indexing.search_rerun_pending = false;
             self.app.shell.search.clear_active_request_state();
@@ -150,11 +161,16 @@ impl<'a> PipelineOwner<'a> {
         if self.app.shell.indexing.in_progress {
             let entries = Arc::clone(&self.app.shell.runtime.entries);
             Self::overwrite_entries_vec(
-                &mut self.app.shell.indexing.incremental_filtered_entries,
+                &mut self.app.shell.indexing.build.incremental_filtered_entries,
                 entries.as_ref(),
             );
         } else {
-            self.app.shell.indexing.incremental_filtered_entries.clear();
+            self.app
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .clear();
         }
         self.app.shell.indexing.last_search_snapshot_len = self.app.shell.runtime.entries.len();
         self.app.shell.indexing.search_rerun_pending = false;
@@ -189,7 +205,7 @@ impl<'a> PipelineOwner<'a> {
             || self.ignore_list_filter_active();
         if self.app.shell.indexing.in_progress && !needs_filtering {
             self.app.shell.search.clear_active_request_state();
-            let source = self.app.shell.runtime.index.entries.as_slice();
+            let source = self.app.shell.indexing.build.index.entries.as_slice();
             let results = source
                 .iter()
                 .take(self.app.shell.runtime.limit)
@@ -236,7 +252,13 @@ impl<'a> PipelineOwner<'a> {
             return;
         }
 
-        let current_len = self.app.shell.indexing.incremental_filtered_entries.len();
+        let current_len = self
+            .app
+            .shell
+            .indexing
+            .build
+            .incremental_filtered_entries
+            .len();
         if self.app.should_refresh_incremental_search() {
             if self.app.shell.search.in_progress() {
                 self.app.shell.indexing.search_rerun_pending = true;
@@ -258,13 +280,13 @@ impl<'a> PipelineOwner<'a> {
         SearchRequest {
             request_id,
             query: tab.query_state.query.clone(),
-            entries: Arc::clone(&tab.index_state.entries),
+            entries: Arc::clone(&tab.result_state.committed.entries),
             limit,
             use_regex: tab.use_regex,
             ignore_case: tab.ignore_case,
             root: tab.root.clone(),
             prefer_relative: FlistWalkerApp::prefer_relative_display_for(
-                &tab.index_state.index.source,
+                &tab.index_state.build.index.source,
             ),
             sort_mode: tab.result_state.result_sort_mode,
             sort_scope: tab.result_state.result_sort_scope,
@@ -315,7 +337,13 @@ impl<'a> PipelineOwner<'a> {
     }
 
     fn sync_entries_from_incremental(&mut self) {
-        let incremental_entries = self.app.shell.indexing.incremental_filtered_entries.clone();
+        let incremental_entries = self
+            .app
+            .shell
+            .indexing
+            .build
+            .incremental_filtered_entries
+            .clone();
         Self::overwrite_entries_arc(&mut self.app.shell.runtime.entries, &incremental_entries);
     }
 

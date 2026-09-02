@@ -114,22 +114,13 @@ impl FlistWalkerApp {
     /// can otherwise consume the whole close-frame budget.
     fn offload_tab_resources_for_shutdown(&mut self, runtime: &mut WorkerRuntime) {
         let active_committed = self.take_active_committed_resources();
-        let active_index_entries = std::mem::take(&mut self.shell.runtime.index.entries);
-        let pending_entries = std::mem::take(&mut self.shell.indexing.pending_entries);
-        let incremental_entries =
-            std::mem::take(&mut self.shell.indexing.incremental_filtered_entries);
-        let pending_kind_paths = std::mem::take(&mut self.shell.indexing.pending_kind_paths);
-        let pending_kind_paths_set =
-            std::mem::take(&mut self.shell.indexing.pending_kind_paths_set);
-        let in_flight_kind_paths = std::mem::take(&mut self.shell.indexing.in_flight_kind_paths);
-        let resolved_kind_updates = std::mem::take(&mut self.shell.indexing.resolved_kind_updates);
+        let active_build = self.take_active_index_build_resources();
         let background_states = std::mem::take(&mut self.shell.indexing.background_states);
         let background_finalizations =
             std::mem::take(&mut self.shell.indexing.background_finalizations);
         let pending_stale_build_reclaim = self.shell.indexing.pending_stale_build_reclaim.take();
         let pending_replace_all = self.shell.indexing.pending_replace_all.take();
         let index_mailboxes = self.shell.indexing.take_all_mailboxes_for_shutdown();
-        let active_kind_cache = std::mem::take(&mut self.shell.cache.entry_kind);
         let tab_resources = self.shell.tabs.take_all_heavy_resources_for_shutdown();
 
         let handle = thread::Builder::new()
@@ -137,19 +128,12 @@ impl FlistWalkerApp {
             .spawn(move || {
                 drop((
                     active_committed,
-                    active_index_entries,
-                    pending_entries,
-                    incremental_entries,
-                    pending_kind_paths,
-                    pending_kind_paths_set,
-                    in_flight_kind_paths,
-                    resolved_kind_updates,
+                    active_build,
                     background_states,
                     background_finalizations,
                     pending_stale_build_reclaim,
                     pending_replace_all,
                     index_mailboxes,
-                    active_kind_cache,
                     tab_resources,
                 ));
             })

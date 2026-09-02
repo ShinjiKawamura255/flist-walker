@@ -343,7 +343,7 @@ impl FlistWalkerApp {
 
     pub(super) fn prefer_relative_display(&self) -> bool {
         matches!(
-            self.shell.runtime.index.source,
+            self.shell.indexing.build.index.source,
             IndexSource::Walker | IndexSource::FileList(_)
         )
     }
@@ -354,7 +354,7 @@ impl FlistWalkerApp {
 
     pub(super) fn use_filelist_requires_locked_filters(&self) -> bool {
         self.shell.runtime.use_filelist
-            && !matches!(self.shell.runtime.index.source, IndexSource::Walker)
+            && !matches!(self.shell.indexing.build.index.source, IndexSource::Walker)
     }
 
     pub(super) fn compiled_ignore_terms(
@@ -400,18 +400,22 @@ impl FlistWalkerApp {
     // DO NOT invoke `set_entry_kind_in_arc_batch` or `Arc::make_mut` here.
     // Iterating and cloning all elements in the 500k+ `entries` arrays for every 512-item batch
     // from the background worker locks up the main frame loop entirely. All kinds are now fetched
-    // lazily/reactively via `self.shell.cache.entry_kind` specifically to avoid UI freezes.
+    // lazily/reactively via `self.shell.indexing.build.entry_kind_cache` specifically to avoid UI freezes.
     pub(super) fn apply_entry_kind_updates(&mut self, updates: &[(PathBuf, EntryKind)]) {
         if updates.is_empty() {
             return;
         }
         for (path, kind) in updates {
-            self.shell.cache.entry_kind.set(path.clone(), *kind);
+            self.shell
+                .indexing
+                .build
+                .entry_kind_cache
+                .set(path.clone(), *kind);
         }
     }
 
     pub(super) fn find_entry_kind(&self, path: &Path) -> Option<EntryKind> {
-        self.shell.cache.entry_kind.get(path)
+        self.shell.indexing.build.entry_kind_cache.get(path)
     }
 
     #[cfg(test)]

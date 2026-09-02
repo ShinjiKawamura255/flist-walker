@@ -558,10 +558,11 @@ fn restored_tab_activation_prioritizes_active_batch_over_background_backlog_regr
 
     app.poll_index_response_with_budget_for_test(Duration::from_secs(1));
 
-    assert_eq!(app.shell.runtime.index.source, IndexSource::Walker);
+    assert_eq!(app.shell.indexing.build.index.source, IndexSource::Walker);
     assert!(app
         .shell
-        .runtime
+        .indexing
+        .build
         .index
         .entries
         .iter()
@@ -714,7 +715,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
     assert_eq!(app.shell.tabs.active_tab, 1);
     assert_eq!(app.shell.runtime.root, root_b);
     let background = app.shell.tabs.get(0).expect("tab 0");
-    assert!(background.result_state.preview.is_empty());
+    assert!(background.result_state.committed.preview.is_empty());
     assert!(background.preview_reload_pending);
     assert_eq!(app.preview_request_tab(preview_request_id), None);
     assert_eq!(
@@ -722,13 +723,20 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
             .tabs
             .get(0)
             .expect("tab 0")
-            .index_state
+            .result_state
+            .committed
             .entries
             .len(),
         1
     );
     assert_eq!(
-        app.shell.tabs.get(0).expect("tab 0").index_state.entries[0],
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .committed
+            .entries[0],
         indexed_file
     );
 

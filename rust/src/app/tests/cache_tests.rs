@@ -476,10 +476,12 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     app.shell.runtime.current_row = Some(0);
     app.shell
         .indexing
+        .build
         .pending_kind_paths
         .push_back(file.clone());
     app.shell
         .indexing
+        .build
         .pending_kind_paths_set
         .insert(file.clone());
     app.shell.indexing.kind_resolution_in_progress = true;
@@ -489,10 +491,16 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     assert!(app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .any(|p| *p == file));
-    assert!(app.shell.indexing.pending_kind_paths_set.contains(&file));
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .pending_kind_paths_set
+        .contains(&file));
     assert!(app.shell.indexing.kind_resolution_in_progress);
     let _ = fs::remove_dir_all(&root);
 }
@@ -511,7 +519,7 @@ fn entry_kind_cache_survives_tab_state_roundtrip() {
 
     let tab_id = app.current_tab_id().expect("active tab id");
     let snapshot = app.capture_active_tab_state(tab_id);
-    app.shell.cache.entry_kind.clear();
+    app.shell.indexing.build.entry_kind_cache.clear();
     app.apply_tab_state(&snapshot);
 
     assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));

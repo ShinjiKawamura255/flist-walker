@@ -10,7 +10,7 @@ fn wait_for_filelist_index_settlement(app: &mut FlistWalkerApp, deadline: Instan
         thread::yield_now();
     }
     assert!(matches!(
-        app.shell.runtime.index.source,
+        app.shell.indexing.build.index.source,
         IndexSource::FileList(_)
     ));
 }
@@ -218,7 +218,7 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut held = app.capture_active_tab_state(12_000 + index as u64);
-        held.index_state.all_entries =
+        held.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         held.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -410,7 +410,7 @@ fn should_refresh_incremental_search_is_false_when_delta_is_zero() {
     let root = test_root("pipeline-refresh-zero");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.indexing.incremental_filtered_entries = vec![unknown_entry(root.join("a.txt"))];
+    app.shell.indexing.build.incremental_filtered_entries = vec![unknown_entry(root.join("a.txt"))];
     app.shell.indexing.last_search_snapshot_len = 1;
 
     assert!(!app.should_refresh_incremental_search());
@@ -423,7 +423,7 @@ fn should_refresh_incremental_search_is_false_for_small_delta_while_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.incremental_filtered_entries = (0..64)
+    app.shell.indexing.build.incremental_filtered_entries = (0..64)
         .map(|i| unknown_entry(root.join(format!("file-{i}.txt"))))
         .collect();
     app.shell.indexing.last_search_snapshot_len = 0;
@@ -440,7 +440,7 @@ fn should_refresh_incremental_search_is_true_for_large_delta_after_interval() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.incremental_filtered_entries = (0
+    app.shell.indexing.build.incremental_filtered_entries = (0
         ..(FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX + 1))
         .map(|i| unknown_entry(root.join(format!("file-{i}.txt"))))
         .collect();
@@ -466,8 +466,8 @@ fn regression_ignore_list_is_applied_when_files_and_folders_are_both_enabled() {
         file_entry(ignored_tilde.clone()),
         file_entry(kept.clone()),
     ]);
-    app.shell.runtime.index.entries.clear();
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.entries.clear();
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.entries = Arc::new(Vec::new());
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
@@ -496,8 +496,8 @@ fn regression_ignore_list_toggle_off_keeps_all_entries_visible() {
         file_entry(ignored_old.clone()),
         file_entry(kept.clone()),
     ]);
-    app.shell.runtime.index.entries.clear();
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.entries.clear();
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.entries = Arc::new(Vec::new());
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;

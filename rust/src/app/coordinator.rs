@@ -144,11 +144,12 @@ impl FlistWalkerApp {
             if self.shell.indexing.in_progress || self.shell.indexing.pending_finish.is_some() {
                 let active_indexed_count = self
                     .shell
-                    .runtime
+                    .indexing
+                    .build
                     .index
                     .entries
                     .len()
-                    .saturating_add(self.shell.indexing.pending_entries.len());
+                    .saturating_add(self.shell.indexing.build.pending_entries.len());
                 if active_indexed_count == 0 {
                     self.shell.runtime.all_entries.len()
                 } else {
@@ -314,7 +315,7 @@ impl FlistWalkerApp {
 
     /// 現在の index source を status 向け文言へ整形する。
     pub(super) fn source_text(&self) -> String {
-        match &self.shell.runtime.index.source {
+        match &self.shell.indexing.build.index.source {
             IndexSource::FileList(path) => format!(
                 "Source: FileList ({})",
                 path.file_name()

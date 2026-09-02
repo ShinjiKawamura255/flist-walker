@@ -36,10 +36,10 @@ fn search_response_requeues_unknown_walker_result_kind() {
     fs::write(&link, "shortcut").expect("write shortcut");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, "tail".to_string());
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.entries = Arc::new(vec![unknown_entry(link.clone())]);
     app.shell.runtime.results.clear();
-    app.shell.cache.entry_kind.clear();
+    app.shell.indexing.build.entry_kind_cache.clear();
     app.shell.search.set_pending_request_id(Some(71));
     app.shell.search.set_in_progress(true);
     let (tx, rx) = mpsc::channel::<SearchResponse>();
@@ -60,16 +60,22 @@ fn search_response_requeues_unknown_walker_result_kind() {
     assert_eq!(app.shell.runtime.results, vec![(link.clone(), 0.0)]);
     assert_eq!(app.find_entry_kind(&link), None);
     assert!(matches!(
-        app.shell.runtime.index.source,
+        app.shell.indexing.build.index.source,
         IndexSource::Walker
     ));
     assert!(
         app.shell
             .indexing
+            .build
             .pending_kind_paths
             .iter()
             .any(|path| path == &link)
-            || app.shell.indexing.in_flight_kind_paths.contains(&link)
+            || app
+                .shell
+                .indexing
+                .build
+                .in_flight_kind_paths
+                .contains(&link)
     );
     let _ = fs::remove_dir_all(&root);
 }

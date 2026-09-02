@@ -697,7 +697,7 @@ impl StatefulHarness {
             && self.app.shell.indexing.inflight_requests.is_empty()
             && self.app.shell.indexing.pending_request_id.is_none()
             && !self.app.shell.indexing.in_progress
-            && self.app.shell.indexing.pending_entries.is_empty()
+            && self.app.shell.indexing.build.pending_entries.is_empty()
             && self.app.shell.indexing.pending_finish.is_none()
             && self.app.shell.search.pending_request_id().is_none()
             && !self.app.shell.search.in_progress()
@@ -789,12 +789,12 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                     id: tab.id,
                     root: root_index(&tab.root),
                     query: tab.query_state.query.clone(),
-                    results_len: tab.result_state.results.len(),
-                    retained_results_len: tab.result_state.base_results.len(),
+                    results_len: tab.result_state.committed.results.len(),
+                    retained_results_len: tab.result_state.committed.base_results.len(),
                     results_compacted: tab.result_state.results_compacted,
-                    total_match_count: tab.result_state.total_match_count,
-                    current_row: tab.result_state.current_row,
-                    results_digest: results_digest(&tab.result_state.results),
+                    total_match_count: tab.result_state.committed.total_match_count,
+                    current_row: tab.result_state.committed.current_row,
+                    results_digest: results_digest(&tab.result_state.committed.results),
                     notice: tab.notice.clone(),
                     index_pending: tab.index_state.pending_index_request_id.is_some()
                         || tab.index_state.index_in_progress,

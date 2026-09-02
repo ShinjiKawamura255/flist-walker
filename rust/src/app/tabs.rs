@@ -271,7 +271,7 @@ impl FlistWalkerApp {
         }
 
         slot.root = new_root;
-        slot.index_state.index.source = IndexSource::None;
+        slot.index_state.build.index.source = IndexSource::None;
         slot.index_state
             .apply_resource_transition(TabResourceTransition::Reset);
         slot.index_state.clear_index_request_state();
@@ -329,7 +329,7 @@ impl FlistWalkerApp {
             .get_mut(tab_index)
             .expect("validated inactive tab");
         tab.root = new_root;
-        tab.index_state.index.source = IndexSource::None;
+        tab.index_state.build.index.source = IndexSource::None;
         tab.index_state
             .apply_resource_transition(TabResourceTransition::Reset);
         tab.index_state.clear_index_request_state();
@@ -467,11 +467,11 @@ impl FlistWalkerApp {
                 self.shell.ui.ignore_list_enabled && !ignore_terms_source.is_empty();
             let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
             let source = state.source.take().unwrap_or(source);
-            tab.index_state.index.source = source.clone();
-            let existing_entries = std::mem::take(&mut tab.index_state.index.entries);
+            tab.index_state.build.index.source = source.clone();
+            let existing_entries = std::mem::take(&mut tab.index_state.build.index.entries);
             let pending_entries =
                 if tab.index_state.pending_index_entries_request_id == Some(request_id) {
-                    std::mem::take(&mut tab.index_state.pending_index_entries)
+                    std::mem::take(&mut tab.index_state.build.pending_entries)
                 } else {
                     Default::default()
                 };
@@ -573,12 +573,13 @@ impl FlistWalkerApp {
             let had_filtered_entries = finalization.filtered_entries.is_some();
             {
                 let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
-                tab.index_state.index.entries = std::mem::take(&mut finalization.completed_entries);
-                tab.index_state.incremental_filtered_entries =
+                tab.index_state.build.index.entries =
+                    std::mem::take(&mut finalization.completed_entries);
+                tab.index_state.build.incremental_filtered_entries =
                     finalization.filtered_entries.take().unwrap_or_default();
-                tab.index_state.pending_kind_paths =
+                tab.index_state.build.pending_kind_paths =
                     std::mem::take(&mut finalization.unresolved_kind_paths);
-                tab.index_state.pending_kind_paths_set =
+                tab.index_state.build.pending_kind_paths_set =
                     std::mem::take(&mut finalization.unresolved_kind_paths_set);
             }
             let resources = self
@@ -590,14 +591,15 @@ impl FlistWalkerApp {
             if let Err(resources) = self.shell.tabs.try_retire_tab_resources(resources) {
                 let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
                 tab.restore_heavy_resources(*resources);
-                finalization.completed_entries = std::mem::take(&mut tab.index_state.index.entries);
+                finalization.completed_entries =
+                    std::mem::take(&mut tab.index_state.build.index.entries);
                 let filtered_entries =
-                    std::mem::take(&mut tab.index_state.incremental_filtered_entries);
+                    std::mem::take(&mut tab.index_state.build.incremental_filtered_entries);
                 finalization.filtered_entries = had_filtered_entries.then_some(filtered_entries);
                 finalization.unresolved_kind_paths =
-                    std::mem::take(&mut tab.index_state.pending_kind_paths);
+                    std::mem::take(&mut tab.index_state.build.pending_kind_paths);
                 finalization.unresolved_kind_paths_set =
-                    std::mem::take(&mut tab.index_state.pending_kind_paths_set);
+                    std::mem::take(&mut tab.index_state.build.pending_kind_paths_set);
                 tab.notice = "Waiting for background tab resource reclamation".to_string();
                 self.shell
                     .indexing
@@ -608,7 +610,7 @@ impl FlistWalkerApp {
             let tab_id = {
                 let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
                 tab.root = target_root;
-                tab.index_state.index.source = IndexSource::None;
+                tab.index_state.build.index.source = IndexSource::None;
                 tab.index_state
                     .apply_resource_transition(TabResourceTransition::Reset);
                 tab.index_state.clear_index_request_state();
@@ -675,24 +677,25 @@ impl FlistWalkerApp {
             .take()
             .expect("staged background finish");
         debug_assert_eq!(finalization.tab_id, tab.id);
-        tab.index_state.index.source = pending_finish.source;
-        tab.index_state.all_entries = Arc::new(std::mem::take(&mut finalization.completed_entries));
+        tab.index_state.build.index.source = pending_finish.source;
+        tab.result_state.committed.all_entries =
+            Arc::new(std::mem::take(&mut finalization.completed_entries));
         tab.index_state
             .apply_resource_transition(TabResourceTransition::Success);
-        tab.index_state.entries = finalization
+        tab.result_state.committed.entries = finalization
             .filtered_entries
             .take()
             .map(Arc::new)
-            .unwrap_or_else(|| Arc::clone(&tab.index_state.all_entries));
+            .unwrap_or_else(|| Arc::clone(&tab.result_state.committed.all_entries));
         tab.index_state.clear_index_request_state();
-        tab.index_state.last_search_snapshot_len = tab.index_state.entries.len();
+        tab.index_state.last_search_snapshot_len = tab.result_state.committed.entries.len();
         tab.index_state.last_incremental_results_refresh = Instant::now();
-        if matches!(tab.index_state.index.source, IndexSource::Walker)
+        if matches!(tab.index_state.build.index.source, IndexSource::Walker)
             && (!tab.include_files || !tab.include_dirs)
         {
-            tab.index_state.pending_kind_paths =
+            tab.index_state.build.pending_kind_paths =
                 std::mem::take(&mut finalization.unresolved_kind_paths);
-            tab.index_state.pending_kind_paths_set =
+            tab.index_state.build.pending_kind_paths_set =
                 std::mem::take(&mut finalization.unresolved_kind_paths_set);
             tab.index_state.refresh_kind_resolution_progress();
         } else {
@@ -716,7 +719,8 @@ impl FlistWalkerApp {
         }
         if tab.query_state.query.trim().is_empty() {
             let results = tab
-                .index_state
+                .result_state
+                .committed
                 .entries
                 .iter()
                 .take(limit)
@@ -726,25 +730,31 @@ impl FlistWalkerApp {
             tab.result_state.clear_sort_request_state();
             tab.result_state.result_sort_mode = ResultSortMode::Score;
             tab.result_state.result_sort_scope = ResultSortScope::ShownResults;
-            tab.result_state.base_results = results.clone();
-            tab.result_state.results = results;
+            tab.result_state.committed.base_results = results.clone();
+            tab.result_state.committed.results = results;
             tab.result_state.results_compacted = false;
-            tab.result_state.total_match_count = tab.index_state.entries.len();
-            if tab.result_state.results.is_empty() {
-                tab.result_state.current_row = None;
-                tab.result_state.preview.clear();
+            tab.result_state.committed.total_match_count = tab.result_state.committed.entries.len();
+            if tab.result_state.committed.results.is_empty() {
+                tab.result_state.committed.current_row = None;
+                tab.result_state.committed.preview.clear();
                 tab.clear_preview_request_state();
             } else if let Some(selected) = tab.result_state.evicted_selected_path.take() {
-                tab.result_state.current_row = tab
+                tab.result_state.committed.current_row = tab
                     .result_state
+                    .committed
                     .results
                     .iter()
                     .position(|(path, _)| *path == selected)
                     .or(Some(0));
             } else {
-                let max_index = tab.result_state.results.len().saturating_sub(1);
-                tab.result_state.current_row =
-                    Some(tab.result_state.current_row.unwrap_or(0).min(max_index));
+                let max_index = tab.result_state.committed.results.len().saturating_sub(1);
+                tab.result_state.committed.current_row = Some(
+                    tab.result_state
+                        .committed
+                        .current_row
+                        .unwrap_or(0)
+                        .min(max_index),
+                );
             }
         } else {
             effect.trigger_search = true;
@@ -802,7 +812,7 @@ impl FlistWalkerApp {
                 if tab.index_state.pending_index_request_id != Some(request_id) {
                     return effect;
                 }
-                tab.index_state.index.source = source.clone();
+                tab.index_state.build.index.source = source.clone();
                 indexing
                     .background_states
                     .entry(request_id)
@@ -965,10 +975,10 @@ impl FlistWalkerApp {
         if !tab.preview_in_progress {
             // Keep result and index allocations intact: tab activation is a latency-critical
             // ownership transfer and must not perform O(n) drops or allocator compaction.
-            if !tab.result_state.preview.is_empty() {
+            if !tab.result_state.committed.preview.is_empty() {
                 tab.mark_preview_reload_pending();
             }
-            tab.result_state.preview.clear();
+            tab.result_state.committed.preview.clear();
         }
     }
 
@@ -1257,7 +1267,7 @@ impl FlistWalkerApp {
         tab.clear_search_request_state();
         tab.clear_preview_request_state();
         if preview_reload_pending {
-            tab.result_state.preview.clear();
+            tab.result_state.committed.preview.clear();
             tab.mark_preview_reload_pending();
         } else {
             tab.clear_preview_reload_pending();
