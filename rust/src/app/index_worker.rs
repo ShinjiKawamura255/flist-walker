@@ -755,12 +755,10 @@ fn spawn_index_worker_with(
                     }
                 };
                 let (req, inflight) = req;
-                let mailbox = response_mailboxes_worker.lock().ok().map(|mut mailboxes| {
-                    mailboxes
-                        .entry(req.request_id)
-                        .or_insert_with(|| Arc::new(IndexResponseMailbox::new()))
-                        .clone()
-                });
+                let mailbox = mailbox_for_dequeued_request(
+                    response_mailboxes_worker.as_ref(),
+                    req.request_id,
+                );
                 let Some(mailbox) = mailbox else {
                     continue;
                 };
@@ -1020,6 +1018,19 @@ fn spawn_index_worker_with(
     }
 
     (tx_req, rx_res, response_mailboxes, handles)
+}
+
+pub(super) fn mailbox_for_dequeued_request(
+    response_mailboxes: &Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>,
+    request_id: u64,
+) -> Option<Arc<IndexResponseMailbox>> {
+    // Regression guard: cleanup is the terminal owner transition for a request.
+    // Never recreate a missing mailbox here; a dequeued stale request must be dropped.
+    // Paired test: tc_206_dequeued_worker_request_regression_cannot_recreate_mailbox_after_cleanup.
+    response_mailboxes
+        .lock()
+        .ok()
+        .and_then(|mailboxes| mailboxes.get(&request_id).cloned())
 }
 
 #[cfg(test)]

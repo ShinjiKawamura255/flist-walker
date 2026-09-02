@@ -71,6 +71,14 @@
   - `FileListManager` / `UpdateManager` は内部 bundle を透明に露出せず、`workflow` / `state` を明示参照する前提で扱う。
 - 役割補足: background tab snapshot は `app/tab_state.rs` の `TabQueryState`、`TabIndexState`、`TabResultState` へ分割し、tab capture/apply/restore で query/history/index/result の境界を明示する。
 - 役割補足: `app/tabs.rs` は tab 初期化、intent/lifecycle/committed snapshot の ownership transition、switch/move/close/restore、新規 tab 作成、action/sort routing を担当する。`app/state.rs` の `TabSessionState` は live tab registry、activation sequence、closed lightweight intent、live/closed共通LRUを所有し、旧 `pending_activation_refresh` marker は使用しない。`app/index_coordinator.rs` は generation/role/mailbox と Active+sole Warm scheduler、`app/index_worker.rs` は mailbox publication、固定 reclaimer は detached heavy payload の最終 drop を所有する。
+
+#### Regression Guard: cleanup 後の index mailbox 所有権
+
+- Scenario: worker が request を dequeue した直後に UI 側 cleanup が mailbox owner を削除する。
+- Expected Behavior: worker は事前登録済み mailbox の参照だけを取得し、不在なら request を破棄する。mailbox、route、terminal ownership を再生成しない。
+- Non-goals: scheduler quota、frame budget、request ordering、worker 数は変更しない。
+- Related Tests: `tc_206_dequeued_worker_request_regression_cannot_recreate_mailbox_after_cleanup`、`tc_207_repeated_rapid_demote_keeps_request_owners_bounded_and_quiesces`
+- Notes for Future Changes: dequeue 後の mailbox lookup に `entry` / `or_insert_with` を戻さず、mailbox 登録は request enqueue 前の coordinator owner transition に限定する。
 - 役割補足: root change、tab lifecycle、tab activation/background restore、tab close cleanup、tab reorder の state transition は専用 helper / command 境界へ寄せてあり、`app/mod.rs` には feature owner を呼び分ける coordinator だけを残す。
 - 役割補足: `app/render.rs` は `run_ui_frame()`、`RenderCommand`、`dispatch_render_commands()`、小さな facade wrapper を保持する。results/status は `app/render_panels.rs`、top panel は `app/render_panels/top_panel.rs`、FileList/update/root-list/help dialog は `app/render_dialogs/` の private owner、tab/snapshot/theme は各 render module が担当し、interaction からの state transition は描画後 dispatcher で一段遅らせて実行する。help の開閉状態は `RuntimeUiState` にだけ保持し、`app/input/dialogs.rs` が表示中の背後キーイベントを遮断する。render owner は filesystem/network/process/worker 実装へ依存しない。
 - 役割補足: `app/mod.rs` の frame/update/exit orchestration は `poll_runtime_events()`, `run_update_cycle()`, `schedule_frame_repaint()`, `request_viewport_close_if_needed()`, `persist_state_and_shutdown()` といった helper seam を経由し、`update()` / `on_exit()` / `Drop` の open-coded sequence を最小化する。

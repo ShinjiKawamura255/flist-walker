@@ -406,6 +406,52 @@ fn tc_207_repeated_rapid_demote_keeps_request_owners_bounded_and_quiesces() {
 }
 
 #[test]
+fn tc_206_dequeued_worker_request_regression_cannot_recreate_mailbox_after_cleanup() {
+    let root = test_root("tc-206-dequeued-cleanup-mailbox-race");
+    let mut app = FlistWalkerApp::new(root, 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    let tab_id = app.current_tab_id().expect("active tab");
+    let dequeued_request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    let mailboxes = Arc::clone(&app.shell.indexing.response_mailboxes);
+    let retired_mailbox = mailboxes
+        .lock()
+        .expect("mailboxes")
+        .get(&dequeued_request_id)
+        .cloned()
+        .expect("allocated request mailbox");
+
+    // Deterministic race ordering: the request has already been dequeued, then the
+    // UI cleanup removes its registered mailbox before the worker resolves the sink.
+    app.shell.indexing.cleanup_request(dequeued_request_id);
+    let mailbox_count_after_cleanup = mailboxes.lock().expect("mailboxes").len();
+    let worker_mailbox = crate::app::index_worker::mailbox_for_dequeued_request(
+        mailboxes.as_ref(),
+        dequeued_request_id,
+    );
+
+    assert!(worker_mailbox.is_none());
+    let mailboxes_after_worker_lookup = mailboxes.lock().expect("mailboxes");
+    assert_eq!(
+        mailboxes_after_worker_lookup.len(),
+        mailbox_count_after_cleanup,
+        "worker lookup must not recreate an owner after cleanup"
+    );
+    assert!(!mailboxes_after_worker_lookup.contains_key(&dequeued_request_id));
+    drop(mailboxes_after_worker_lookup);
+    assert!(retired_mailbox
+        .try_publish(IndexResponse::Canceled {
+            request_id: dequeued_request_id,
+        })
+        .is_err());
+    assert!(!retired_mailbox.has_terminal_response());
+    assert!(matches!(
+        app.shell.indexing.route_response(dequeued_request_id),
+        IndexResponseRoute::Stale
+    ));
+    assert!(app.shell.indexing.request_tabs.is_empty());
+}
+
+#[test]
 fn should_refresh_incremental_search_is_false_when_delta_is_zero() {
     let root = test_root("pipeline-refresh-zero");
     fs::create_dir_all(&root).expect("create dir");
