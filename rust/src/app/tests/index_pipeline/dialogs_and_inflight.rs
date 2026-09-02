@@ -334,7 +334,7 @@ fn filelist_use_walker_dialog_text_describes_background_execution() {
 }
 
 #[test]
-fn preempt_all_background_requests_when_active_index_is_queued() {
+fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
     let root = test_root("index-preempt-active-priority");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -355,6 +355,7 @@ fn preempt_all_background_requests_when_active_index_is_queued() {
     app.shell.indexing.inflight_requests.insert(101);
     app.shell.indexing.request_tabs.insert(100, bg_tab_a);
     app.shell.indexing.request_tabs.insert(101, bg_tab_b);
+    app.shell.indexing.warm_tab_id = Some(bg_tab_b);
     app.shell.indexing.pending_queue.push_back(IndexRequest {
         request_id: 102,
         tab_id: active_tab_id,
@@ -384,14 +385,14 @@ fn preempt_all_background_requests_when_active_index_is_queued() {
         .lock()
         .expect("lock latest");
     assert_eq!(latest.get(&bg_tab_a).copied(), Some(0));
-    assert_eq!(latest.get(&bg_tab_b).copied(), Some(0));
+    assert_eq!(latest.get(&bg_tab_b).copied(), Some(101));
     drop(latest);
     assert!(app
         .shell
         .tabs
         .pending_activation_refresh_tabs
         .contains(&bg_tab_a));
-    assert!(app
+    assert!(!app
         .shell
         .tabs
         .pending_activation_refresh_tabs
@@ -434,6 +435,71 @@ fn preempt_all_background_requests_when_active_index_is_queued() {
     );
     assert!(app.shell.indexing.in_progress);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_206_request_mailbox_preserves_control_data_terminal_order_under_full_pressure() {
+    use crate::app::index_mailbox::{IndexMailboxPublishError, IndexResponseMailbox};
+
+    let mailbox = IndexResponseMailbox::with_data_capacity(1);
+    mailbox
+        .try_publish(IndexResponse::Started {
+            request_id: 7,
+            source: IndexSource::Walker,
+        })
+        .expect("started control slot");
+    mailbox
+        .try_publish(IndexResponse::Batch {
+            request_id: 7,
+            entries: vec![IndexEntry {
+                path: PathBuf::from("first.txt"),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("first data slot");
+    let full = mailbox.try_publish(IndexResponse::Batch {
+        request_id: 7,
+        entries: vec![IndexEntry {
+            path: PathBuf::from("second.txt"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }],
+    });
+    assert!(matches!(full, Err(IndexMailboxPublishError::Full(_))));
+    mailbox
+        .try_publish(IndexResponse::Truncated {
+            request_id: 7,
+            limit: 1,
+        })
+        .expect("truncated control slot is independent from data capacity");
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: 7,
+            source: IndexSource::Walker,
+        })
+        .expect("terminal slot is independent from data capacity");
+
+    assert!(matches!(
+        mailbox.try_recv(),
+        Some(IndexResponse::Started { request_id: 7, .. })
+    ));
+    assert!(matches!(
+        mailbox.try_recv(),
+        Some(IndexResponse::Batch { request_id: 7, .. })
+    ));
+    assert!(matches!(
+        mailbox.try_recv(),
+        Some(IndexResponse::Truncated {
+            request_id: 7,
+            limit: 1
+        })
+    ));
+    assert!(matches!(
+        mailbox.try_recv(),
+        Some(IndexResponse::Finished { request_id: 7, .. })
+    ));
+    assert!(mailbox.try_recv().is_none());
 }
 
 #[test]

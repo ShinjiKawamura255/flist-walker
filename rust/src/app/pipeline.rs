@@ -131,6 +131,7 @@ impl FlistWalkerApp {
         let Some(tab_id) = tabs.get(tab_index).map(|tab| tab.id) else {
             return;
         };
+        indexing.replace_warm_tab(Some(tab_id));
         let request_id = indexing.allocate_request_id(Some(tab_id));
 
         let Some(tab) = tabs.get_mut(tab_index) else {
@@ -343,7 +344,7 @@ impl FlistWalkerApp {
             return false;
         }
 
-        let victims: Vec<(u64, u64)> = self
+        let mut victims: Vec<(u64, u64, u64)> = self
             .shell
             .indexing
             .inflight_requests
@@ -362,30 +363,31 @@ impl FlistWalkerApp {
                     .find(|req| req.tab_id == tab_id)
                     .map(|req| req.request_id)
                     .unwrap_or(0);
-                Some((tab_id, replacement_request_id))
+                Some((*request_id, tab_id, replacement_request_id))
             })
             .collect();
+        victims.sort_unstable_by_key(|(request_id, _, _)| *request_id);
+        let victim = victims
+            .iter()
+            .copied()
+            .find(|(_, tab_id, _)| Some(*tab_id) != self.shell.indexing.warm_tab_id)
+            .or_else(|| victims.first().copied());
+        let Some((_, tab_id, replacement_request_id)) = victim else {
+            return false;
+        };
 
         let Ok(mut latest) = self.shell.indexing.latest_request_ids.lock() else {
             return false;
         };
-        let mut preempted = false;
-        let mut activation_refresh_tabs = Vec::new();
-        for (tab_id, replacement_request_id) in victims {
-            if latest.get(&tab_id).copied() == Some(replacement_request_id) {
-                continue;
-            }
-            latest.insert(tab_id, replacement_request_id);
-            if replacement_request_id == 0 {
-                activation_refresh_tabs.push(tab_id);
-            }
-            preempted = true;
+        if latest.get(&tab_id).copied() == Some(replacement_request_id) {
+            return false;
         }
+        latest.insert(tab_id, replacement_request_id);
         drop(latest);
-        for tab_id in activation_refresh_tabs {
+        if replacement_request_id == 0 {
             self.mark_pending_activation_refresh_for_tab(tab_id);
         }
-        preempted
+        true
     }
 
     pub(super) fn dispatch_index_queue(&mut self) {
@@ -519,6 +521,8 @@ impl FlistWalkerApp {
     fn poll_index_response_with_budget(&mut self, frame_budget: Duration) {
         const MAX_MESSAGES_PER_FRAME: usize = 64;
         const MAX_PRIORITY_ROUTE_MESSAGES_PER_FRAME: usize = 4_096;
+        const ACTIVE_MAILBOX_QUOTA: usize = 48;
+        const WARM_MAILBOX_QUOTA: usize = 8;
         // Large capped roots can leave hundreds of thousands of entries queued at
         // the terminal point. While the worker is still indexing, allow larger
         // chunks; after Finished, prioritize input responsiveness over tail speed.
@@ -528,24 +532,79 @@ impl FlistWalkerApp {
         let frame_start = Instant::now();
         let mut processed = 0usize;
         let mut priority_routed = 0usize;
+        let mut active_mailbox_processed = 0usize;
+        let mut warm_mailbox_processed = 0usize;
         let mut has_index_progress = false;
         let mut finished_current_request = false;
         loop {
-            let (msg, from_shared_response_queue) =
-                if let Some(msg) = self.shell.indexing.deferred_response.take() {
-                    (msg, false)
-                } else if let Ok(msg) = self.shell.indexing.rx.try_recv() {
-                    (msg, true)
-                } else if let Some(msg) = self
-                    .shell
+            let active_request_id = self.shell.indexing.pending_request_id;
+            let warm_request_id = self
+                .shell
+                .indexing
+                .warm_tab_id
+                .and_then(|tab_id| self.shell.indexing.latest_request_for_tab(tab_id));
+            let active_mailbox_blocked = self.shell.indexing.pending_entries_request_id
+                == active_request_id
+                && self.shell.indexing.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES;
+            let injected_response = if let Some(msg) = self.shell.indexing.deferred_response.take()
+            {
+                Some((msg, false))
+            } else if let Ok(msg) = self.shell.indexing.rx.try_recv() {
+                Some((msg, true))
+            } else {
+                self.shell
                     .indexing
                     .deferred_non_active_responses
                     .pop_front()
-                {
+                    .map(|msg| (msg, false))
+            };
+            let (msg, from_shared_response_queue) = if let Some(response) = injected_response {
+                response
+            } else {
+                let active_response =
+                    if active_mailbox_processed < ACTIVE_MAILBOX_QUOTA && !active_mailbox_blocked {
+                        active_request_id
+                            .and_then(|request_id| self.shell.indexing.try_recv_mailbox(request_id))
+                    } else {
+                        None
+                    };
+                if let Some(msg) = active_response {
+                    active_mailbox_processed = active_mailbox_processed.saturating_add(1);
                     (msg, false)
                 } else {
-                    break;
-                };
+                    let warm_response = if warm_mailbox_processed < WARM_MAILBOX_QUOTA
+                        && warm_request_id != active_request_id
+                    {
+                        warm_request_id
+                            .and_then(|request_id| self.shell.indexing.try_recv_mailbox(request_id))
+                    } else {
+                        None
+                    };
+                    if let Some(msg) = warm_response {
+                        warm_mailbox_processed = warm_mailbox_processed.saturating_add(1);
+                        (msg, false)
+                    } else {
+                        let mut remaining_request_ids = self
+                            .shell
+                            .indexing
+                            .request_tabs
+                            .keys()
+                            .copied()
+                            .filter(|request_id| {
+                                Some(*request_id) != active_request_id
+                                    && Some(*request_id) != warm_request_id
+                            })
+                            .collect::<Vec<_>>();
+                        remaining_request_ids.sort_unstable();
+                        let Some(msg) = remaining_request_ids.into_iter().find_map(|request_id| {
+                            self.shell.indexing.try_recv_mailbox(request_id)
+                        }) else {
+                            break;
+                        };
+                        (msg, false)
+                    }
+                }
+            };
             let request_id = IndexCoordinator::response_request_id(&msg);
             let route = self.shell.indexing.route_response(request_id);
             let stale_payload = matches!(route, IndexResponseRoute::Stale)
@@ -578,7 +637,8 @@ impl FlistWalkerApp {
             // high-water mark: growing a very large VecDeque can relocate every queued PathBuf
             // in one uninterruptible allocation and defeat the wall-clock budget below. Hold one
             // batch by ownership so control/terminal messages still retain their normal path.
-            if matches!(route, IndexResponseRoute::Active)
+            if from_shared_response_queue
+                && matches!(route, IndexResponseRoute::Active)
                 && matches!(
                     &msg,
                     IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }

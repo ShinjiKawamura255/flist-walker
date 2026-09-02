@@ -33,6 +33,63 @@ fn test_root(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("flistwalker-workers-{name}-{nonce}"))
 }
 
+fn test_response_mailboxes() -> Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>> {
+    Arc::new(Mutex::new(HashMap::new()))
+}
+
+fn recv_index_response(
+    mailboxes: &Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
+    request_id: u64,
+    timeout: Duration,
+) -> IndexResponse {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if let Some(response) = mailboxes
+            .lock()
+            .ok()
+            .and_then(|mailboxes| mailboxes.get(&request_id).cloned())
+            .and_then(|mailbox| mailbox.try_recv())
+        {
+            return response;
+        }
+        assert!(Instant::now() < deadline, "index response timed out");
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+
+#[test]
+fn tc_206_full_mailbox_publish_stops_when_generation_is_superseded() {
+    let request_id = 41;
+    let tab_id = 7;
+    let mailbox = Arc::new(IndexResponseMailbox::with_data_capacity(1));
+    mailbox
+        .try_publish(IndexResponse::Batch {
+            request_id,
+            entries: Vec::new(),
+        })
+        .expect("fill mailbox data lane");
+    let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(tab_id, request_id)])));
+    let sink = MailboxResponseSink {
+        request_id,
+        tab_id,
+        mailbox,
+        shutdown: Arc::new(AtomicBool::new(false)),
+        latest_request_ids: Arc::clone(&latest_request_ids),
+    };
+    let handle = thread::spawn(move || {
+        sink.send(IndexResponse::Batch {
+            request_id,
+            entries: Vec::new(),
+        })
+    });
+    thread::sleep(Duration::from_millis(10));
+    latest_request_ids
+        .lock()
+        .expect("latest requests")
+        .insert(tab_id, request_id + 1);
+    assert!(handle.join().expect("join blocked publisher").is_err());
+}
+
 #[test]
 fn classify_walker_entry_keeps_regular_file_fast_path_known() {
     let root = test_root("file");
@@ -613,8 +670,13 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
             root.to_path_buf()
         })
     };
-    let (tx, rx, handles) =
-        spawn_index_worker_with(Arc::clone(&shutdown), latest_request_ids, resolve_root);
+    let mailboxes = test_response_mailboxes();
+    let (tx, _rx, _returned_mailboxes, handles) = spawn_index_worker_with(
+        Arc::clone(&shutdown),
+        latest_request_ids,
+        Arc::clone(&mailboxes),
+        resolve_root,
+    );
     tx.send(IndexRequest {
         request_id: 1,
         tab_id: 7,
@@ -626,8 +688,7 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
     })
     .expect("send stale index request");
     assert!(matches!(
-        rx.recv_timeout(Duration::from_secs(1))
-            .expect("stale terminal response"),
+        recv_index_response(&mailboxes, 1, Duration::from_secs(1)),
         IndexResponse::Canceled { request_id: 1 }
     ));
     assert_eq!(root_resolve_calls.load(Ordering::SeqCst), 0);
@@ -650,7 +711,8 @@ fn tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression
     let request_id = 1;
     let tab_id = 7;
     let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(tab_id, request_id)])));
-    let (tx, rx, handles) = spawn_index_worker(Arc::clone(&shutdown), latest_request_ids);
+    let (tx, _rx, mailboxes, handles) =
+        spawn_index_worker(Arc::clone(&shutdown), latest_request_ids);
     tx.send(IndexRequest {
         request_id,
         tab_id,
@@ -670,10 +732,7 @@ fn tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression
         let remaining = deadline
             .checked_duration_since(Instant::now())
             .expect("tiny local FileList request exceeded terminal deadline");
-        match rx
-            .recv_timeout(remaining)
-            .expect("tiny local FileList request must settle")
-        {
+        match recv_index_response(&mailboxes, request_id, remaining) {
             IndexResponse::Started {
                 request_id: response_id,
                 source: IndexSource::FileList(_),
@@ -743,8 +802,13 @@ fn tc_152_filelist_restore_index_regression_cancels_before_filelist_start() {
             .insert(7, 2);
         path.to_path_buf()
     });
-    let (tx, rx, handles) =
-        spawn_index_worker_with(Arc::clone(&shutdown), latest_request_ids, resolve_root);
+    let mailboxes = test_response_mailboxes();
+    let (tx, _rx, _returned_mailboxes, handles) = spawn_index_worker_with(
+        Arc::clone(&shutdown),
+        latest_request_ids,
+        Arc::clone(&mailboxes),
+        resolve_root,
+    );
     tx.send(IndexRequest {
         request_id: 1,
         tab_id: 7,
@@ -757,8 +821,7 @@ fn tc_152_filelist_restore_index_regression_cancels_before_filelist_start() {
     .expect("send stale FileList request");
 
     assert!(matches!(
-        rx.recv_timeout(Duration::from_secs(1))
-            .expect("stale FileList terminal response"),
+        recv_index_response(&mailboxes, 1, Duration::from_secs(1)),
         IndexResponse::Canceled { request_id: 1 }
     ));
 
@@ -794,8 +857,13 @@ fn tc_152_index_workers_bound_total_to_four() {
             root.to_path_buf()
         })
     };
-    let (tx, _rx, handles) =
-        spawn_index_worker_with(Arc::clone(&shutdown), latest_request_ids, resolve_root);
+    let mailboxes = test_response_mailboxes();
+    let (tx, _rx, _returned_mailboxes, handles) = spawn_index_worker_with(
+        Arc::clone(&shutdown),
+        latest_request_ids,
+        mailboxes,
+        resolve_root,
+    );
     let request = |request_id| IndexRequest {
         request_id,
         tab_id: request_id,
@@ -843,9 +911,11 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
             root.to_path_buf()
         })
     };
-    let (tx, rx, handles) = spawn_index_worker_with(
+    let mailboxes = test_response_mailboxes();
+    let (tx, _rx, _returned_mailboxes, handles) = spawn_index_worker_with(
         Arc::clone(&shutdown),
         Arc::new(Mutex::new(HashMap::new())),
+        Arc::clone(&mailboxes),
         resolve_root,
     );
     shutdown.store(true, Ordering::Relaxed);
@@ -864,11 +934,8 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
     drop(tx);
 
     let mut settled = Vec::new();
-    for _ in 0..4 {
-        match rx
-            .recv_timeout(Duration::from_secs(1))
-            .expect("terminal shutdown index response")
-        {
+    for request_id in 1..=4 {
+        match recv_index_response(&mailboxes, request_id, Duration::from_secs(1)) {
             IndexResponse::Canceled { request_id } => settled.push(request_id),
             _ => panic!("shutdown must emit only terminal cancellation"),
         }
@@ -898,7 +965,8 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
         .lock()
         .expect("latest ids lock")
         .insert(tab_id, request_id);
-    let (tx_req, rx_res, handles) = spawn_index_worker(shutdown.clone(), latest_request_ids);
+    let (tx_req, _rx_res, mailboxes, handles) =
+        spawn_index_worker(shutdown.clone(), latest_request_ids);
     tx_req
         .send(IndexRequest {
             request_id,
@@ -912,18 +980,18 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
         .expect("send request");
 
     assert!(matches!(
-        rx_res.recv().expect("started response"),
+        recv_index_response(&mailboxes, request_id, Duration::from_secs(1)),
         IndexResponse::Started {
             request_id: 41,
             source: IndexSource::Walker,
         }
     ));
     assert!(matches!(
-        rx_res.recv().expect("batch response"),
+        recv_index_response(&mailboxes, request_id, Duration::from_secs(1)),
         IndexResponse::Batch { request_id: 41, .. }
     ));
     assert!(matches!(
-        rx_res.recv().expect("finished response"),
+        recv_index_response(&mailboxes, request_id, Duration::from_secs(1)),
         IndexResponse::Finished {
             request_id: 41,
             source: IndexSource::Walker,

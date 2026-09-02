@@ -530,9 +530,25 @@ impl FlistWalkerApp {
         if next_index >= self.shell.tabs.len() || next_index == self.shell.tabs.active_tab_index() {
             return;
         }
+        let previous_tab_id = self.current_tab_id();
+        let previous_was_indexing = self.shell.indexing.pending_request_id.is_some();
+        let next_tab_id = self.shell.tabs.get(next_index).map(|tab| tab.id);
+        let promoted_warm = next_tab_id == self.shell.indexing.warm_tab_id;
         self.deactivate_active_tab_for_transition();
         self.shell.tabs.set_active_tab_index(next_index);
         let (results_compacted, preview_reload_pending) = self.load_tab_payload(next_index);
+        let previous_warm_candidate = previous_was_indexing.then_some(previous_tab_id).flatten();
+        if promoted_warm {
+            if let Some(next_tab_id) = next_tab_id {
+                self.shell
+                    .indexing
+                    .promote_warm_tab(next_tab_id, previous_warm_candidate);
+            }
+        } else if previous_was_indexing {
+            self.shell
+                .indexing
+                .replace_warm_tab(previous_warm_candidate);
+        }
         self.activate_background_tab_after_transition(results_compacted, preview_reload_pending);
     }
 

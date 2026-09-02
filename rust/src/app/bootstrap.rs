@@ -28,6 +28,7 @@ type WorkerBootstrapParts = (
     BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
     Arc<Mutex<HashMap<u64, u64>>>,
+    Arc<Mutex<HashMap<u64, Arc<super::index_mailbox::IndexResponseMailbox>>>>,
     Arc<Mutex<HashMap<u64, u64>>>,
     WorkerRuntime,
 );
@@ -53,6 +54,8 @@ pub(super) struct AppWorkerBootstrap {
     index_tx: BoundedSender<IndexRequest>,
     index_rx: Receiver<IndexResponse>,
     latest_index_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    index_response_mailboxes:
+        Arc<Mutex<HashMap<u64, Arc<super::index_mailbox::IndexResponseMailbox>>>>,
     latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     worker_runtime: WorkerRuntime,
 }
@@ -80,6 +83,7 @@ impl AppWorkerBootstrap {
             self.index_tx,
             self.index_rx,
             self.latest_index_request_ids,
+            self.index_response_mailboxes,
             self.latest_kind_epochs,
             self.worker_runtime,
         )
@@ -208,7 +212,7 @@ impl FlistWalkerApp {
             spawn_root_validation_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("root-validation", root_validation_handle);
         let latest_index_request_ids = Arc::new(Mutex::new(HashMap::new()));
-        let (index_tx, index_rx, index_handles) = spawn_index_worker(
+        let (index_tx, index_rx, index_response_mailboxes, index_handles) = spawn_index_worker(
             Arc::clone(&worker_shutdown),
             Arc::clone(&latest_index_request_ids),
         );
@@ -271,6 +275,7 @@ impl FlistWalkerApp {
             index_tx,
             index_rx,
             latest_index_request_ids,
+            index_response_mailboxes,
             latest_kind_epochs,
             worker_runtime,
         }
@@ -318,6 +323,7 @@ impl FlistWalkerApp {
             index_tx,
             index_rx,
             latest_index_request_ids,
+            index_response_mailboxes,
             latest_kind_epochs,
             worker_runtime,
         ) = Self::bootstrap_workers().into_parts();
@@ -377,6 +383,7 @@ impl FlistWalkerApp {
                     index_tx,
                     index_rx,
                     latest_index_request_ids,
+                    index_response_mailboxes,
                     latest_kind_epochs,
                 ),
                 ui: RuntimeUiState::new(show_preview, ignore_list_enabled, preview_panel_width),
