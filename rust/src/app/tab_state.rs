@@ -1,3 +1,4 @@
+use super::tab_resources::swap_active_tab_payload;
 use super::{
     normalize_windows_path_buf, EntryKindCacheState, FlistWalkerApp, PendingActiveIndexFinish,
     PendingIndexRefreshMode, ResultSortMode, ResultSortScope, SavedTabState, TabAccentColor,
@@ -271,9 +272,10 @@ impl TabIndexState {
             &mut self.resource_state,
             &mut shell.shell.indexing.resource_state,
         );
-        mem::swap(&mut self.index, &mut shell.shell.runtime.index);
-        mem::swap(&mut self.all_entries, &mut shell.shell.runtime.all_entries);
-        mem::swap(&mut self.entries, &mut shell.shell.runtime.entries);
+        mem::swap(
+            &mut self.index.source,
+            &mut shell.shell.runtime.index.source,
+        );
         mem::swap(
             &mut self.pending_index_request_id,
             &mut shell.shell.indexing.pending_request_id,
@@ -281,10 +283,6 @@ impl TabIndexState {
         mem::swap(
             &mut self.index_in_progress,
             &mut shell.shell.indexing.in_progress,
-        );
-        mem::swap(
-            &mut self.pending_index_entries,
-            &mut shell.shell.indexing.pending_entries,
         );
         mem::swap(
             &mut self.pending_index_entries_request_id,
@@ -311,32 +309,12 @@ impl TabIndexState {
             &mut shell.shell.indexing.root_after_pending_finish,
         );
         mem::swap(
-            &mut self.pending_kind_paths,
-            &mut shell.shell.indexing.pending_kind_paths,
-        );
-        mem::swap(
-            &mut self.pending_kind_paths_set,
-            &mut shell.shell.indexing.pending_kind_paths_set,
-        );
-        mem::swap(
-            &mut self.in_flight_kind_paths,
-            &mut shell.shell.indexing.in_flight_kind_paths,
-        );
-        mem::swap(
-            &mut self.resolved_kind_updates,
-            &mut shell.shell.indexing.resolved_kind_updates,
-        );
-        mem::swap(
             &mut self.kind_resolution_epoch,
             &mut shell.shell.indexing.kind_resolution_epoch,
         );
         mem::swap(
             &mut self.kind_resolution_in_progress,
             &mut shell.shell.indexing.kind_resolution_in_progress,
-        );
-        mem::swap(
-            &mut self.incremental_filtered_entries,
-            &mut shell.shell.indexing.incremental_filtered_entries,
         );
         mem::swap(
             &mut self.last_incremental_results_refresh,
@@ -491,21 +469,12 @@ impl TabResultState {
 
     pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
         mem::swap(
-            &mut self.base_results,
-            &mut shell.shell.runtime.base_results,
-        );
-        mem::swap(&mut self.results, &mut shell.shell.runtime.results);
-        mem::swap(
             &mut self.result_sort_mode,
             &mut shell.shell.runtime.result_sort_mode,
         );
         mem::swap(
             &mut self.result_sort_scope,
             &mut shell.shell.runtime.result_sort_scope,
-        );
-        mem::swap(
-            &mut self.total_match_count,
-            &mut shell.shell.runtime.total_match_count,
         );
         mem::swap(
             &mut self.pending_sort_request_id,
@@ -519,12 +488,10 @@ impl TabResultState {
             &mut self.pinned_paths,
             &mut shell.shell.runtime.pinned_paths,
         );
-        mem::swap(&mut self.current_row, &mut shell.shell.runtime.current_row);
         mem::swap(
             &mut self.evicted_selected_path,
             &mut shell.shell.runtime.evicted_selected_path,
         );
-        mem::swap(&mut self.preview, &mut shell.shell.runtime.preview);
     }
 }
 
@@ -789,13 +756,10 @@ impl AppTabState {
     }
 
     pub(super) fn swap_payload_with_shell(&mut self, shell: &mut FlistWalkerApp) {
+        swap_active_tab_payload(self, shell);
         self.index_state.swap_shell(shell);
         self.query_state.swap_shell(shell);
         self.result_state.swap_shell(shell);
-        mem::swap(
-            &mut self.entry_kind_cache,
-            &mut shell.shell.cache.entry_kind,
-        );
         mem::swap(&mut self.notice, &mut shell.shell.runtime.notice);
 
         let shell_search_request_id = shell.shell.search.pending_request_id();
