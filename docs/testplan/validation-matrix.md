@@ -1,6 +1,12 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: restored-tab job and resource ownership
+- Scenario: active priority is restored by preempting every background request or moving background batches into an unbounded deferred queue; closed/open-inactive tabs retain every heavy snapshot; refresh clears the last-good view.
+- Expected: Active + sole Warm scheduling, ordered request-scoped bounded mailboxes, lifecycle plus optional committed snapshot, common live/closed LRU, and bounded off-UI reclaimer satisfy TC-203 through TC-208.
+- Non-goals: Persisting full snapshots across restarts or imposing a hard byte cap on one active FileList snapshot.
+- Future-change rule: Changes to index dispatch/response, tab transition, close/restore, snapshot compaction, or worker shutdown MUST run TC-203 through TC-208 as selected by the affected owner and MUST update SP-010/DES-009 when a bound or transition changes.
+
 ### Regression Guard: application-wide Emacs command mapping
 
 - Scenario: picker/modal が通常キーを feature 内で直接処理し、共有 mapping を通さないため、その画面だけ Emacs 風 navigation/accept/cancel が無効になる。
@@ -90,13 +96,13 @@ Use this checklist before selecting runner commands. The VM table below remains 
 - Preserve request routing, stale response handling, tab/background response ownership, and the invariant that visible empty Results has no row while visible non-empty Results always has a valid current row.
 - Add focused tests under `rust/src/app/tests/` that match the owner module touched.
 - Run GUI smoke evidence when rendering, focus, tabs, dialogs, result drawing, or responsiveness changes.
-- For tab ownership transfer, run TC-154 plus `tab_contract`, `tab_lifecycle`, `tab_result_cache`, `tab_background_responses`, `query_history`, `session_restore`, and `filelist_lifecycle`; cover non-sparse and deliberately sparse allocation identity, Query empty/non-empty × FileList/Walker restore refresh, tab-owned entry-kind cache identity, active-scratch stale-routing, and the release-mode transition latency fixture. Activation must retain computed Results and must not compact capacity on the UI path.
+- For tab ownership transfer, run TC-154 and TC-203 through TC-208 plus `tab_contract`, `tab_lifecycle`, `tab_result_cache`, `tab_background_responses`, `query_history`, `session_restore`, and `filelist_lifecycle`; cover non-sparse/sparse allocation identity, lifecycle+committed combinations, Query empty/non-empty × FileList/Walker, active-scratch stale-routing, live/closed LRU, reclaimer pressure, and the release-mode transition fixture. Ready activation retains Results; Refreshing/Failed keeps last-good; Evicted reloads without synchronous compaction/drop.
 
 ### Bounded Worker Scheduling or Shutdown Changes
 - Apply VM-002 to action/kind dispatch, worker bus, load accounting, runtime handle ownership, and shutdown changes; run focused TC-150, TC-151, and TC-153 tests in addition to the full Rust suite.
-- For index preemption, pending queue eviction, or terminal settlement changes, include stale nonterminal retention and rapid A→B→C→A reactivation: a replacement-less preempted or evicted tab must regain an activation refresh marker, and the old terminal response must release only its own tracking without settling the new active request.
+- For index scheduling, mailbox, pending queue eviction, or terminal settlement changes, include Warm promotion without duplication, deterministic single-victim A→B→C→A, data-lane Full with active/shutdown progress, Started/data/Truncated/terminal sequence, and stale terminal isolation. Scheduler cancel returns to Ready with committed data or Dormant without it; no activation-refresh marker compatibility path remains.
 - Apply VM-003 as well when index dispatch, index coordinator, index worker, or stale-before-canonicalize behavior changes; run focused TC-152 and the VM-003 ignored FileList/Walker performance tests.
-- Verify the fixed limits exactly: action 2 + 8 = 10, kind 1 + 256 = 257, index 2 + 2 = 4 including stale, coordinator tracking <= 2, app pending <= 4 and latest one per tab.
+- Verify the fixed limits exactly: action 2 + 8 = 10, kind 1 + 256 = 257, index 2 workers with Active 1 + Warm at most 1, app pending <= 4/latest one per tab, mailbox data 8 per admitted request plus fixed control/terminal slots, snapshot cache count 2/weight 1,000,000, reclaimer queue 4.
 - Exercise `Accepted`, `Full`, `Disconnected`, stale/cancel, error, panic unwind, and shutdown-timeout paths. Assert terminal settlement, zero leaked load, no filesystem I/O before stale rejection, and UI dispatch latency independent of queue availability.
 
 ### Indexing, FileList, Walker, or Kind Resolution Changes

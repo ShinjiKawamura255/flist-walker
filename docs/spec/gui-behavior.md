@@ -42,11 +42,12 @@
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
 - MUST: search / index の非同期応答は、active request_id または request-tab routing で結び付いた background tab に対してのみ適用し、stale 応答で現在の root / tab / result state を巻き戻してはならない。
 - MUST: background tab の search/sort 応答で選択中 path が変わった場合は、`None`から`Some(path)`への遷移も含め、その tab の旧 preview と pending preview routing を無効化する。非compactionのinactive化で完了済みpreview本文を破棄する場合もtab scoped reload pendingを記録する。tab activation時はcompaction復元または明示reload pendingの場合だけ、新しいcurrent pathのpreviewを既存の非同期/cache worker経路へ要求し、通常activationで無条件要求してはならず、無効化前の遅延`PreviewResponse`も採用してはならない。session restoreのlazy index refreshとreloadが重なる場合は、preview request ownershipをrefreshで消さないようrefreshを先にdispatchし、必要ならkind resolutionを経てpreviewを要求する。
-- MUST: active indexing 中にタブ切替で request が background tab に移った場合、GUI は切替前に active tab 側へ取り込み済みの entries、未 drain の pending entries、切替後の background batches を同じ request_id の完了 snapshot として統合しなければならない。ただし同じ request_id で `ReplaceAll` を受けた場合は、切替前の部分 snapshot を混ぜず置換 snapshot のみで確定しなければならない。
-- MUST: 通常・session restore・closed-tab restore のタブ遷移では、active tab の index entries、pending index entries、kind resolution collections、incremental filtered entries、base results、results、entry-kind cache を要素単位で複製、破棄、capacity 縮小、または全件再構築してはならない。active tab の live payload と inactive tab の保持 payload は ownership transfer で入れ替え、計算済み Results を保持して activation 時の再検索・再 sort を避けなければならない。Preview 本文だけは非同期 reload ownership を記録した上で破棄してよい。
-- MUST: restore 後に lazy refresh が必要なタブを activate した場合、Query の空/非空および FileList/Walker 設定にかかわらず、同じ tab transition 内で active state を `Indexing...` にし、最新 index request を app pending または worker queue へ登録しなければならない。root 解決、FileList discovery、結果再構築、allocator compaction をその開始条件として UI thread 上で待ってはならない。
+- MUST: tab は `Dormant` / `Loading` / `Ready` / `Refreshing` / `Failed` / `Evicted` の lifecycle と committed snapshot の有無を別々に所有する。request_id は tab generation として扱い、generation が一致する `Finished` だけが building snapshot を committed snapshot へ ownership swap できる。stale terminal は自身の job/mailbox tracking だけを解放し、後続 generation を settle してはならない。
+- MUST: 通常・session restore・closed-tab restore のタブ遷移では、active tab の committed/building index、kind resolution collections、base results、results、entry-kind cache を要素単位で複製、同期破棄、capacity 縮小、または全件再構築してはならない。Ready tab の activation は保持 snapshot を即時表示し無条件 reindex してはならない。Refreshing または Failed tab は last-good Results を保持し、新 generation が成功した時だけ置換する。
+- MUST: Dormant/Evicted tab を activate した場合、Query の空/非空および FileList/Walker 設定にかかわらず、同じ tab transition 内で `Loading` と `Indexing...` を設定して最新 generation を scheduler へ登録しなければならない。root 解決、FileList discovery、結果再構築、allocator compaction を UI thread 上で待ってはならない。既存 Warm generation の activation は同じ request を Active へ promote し、重複 request を作ってはならない。
 - MUST: index 中に閉じた tab は closed-tab restore 時に新しい index request を確立しなければならない。search/sort も中断していた場合は、保持済み entries/results から同種 request を新しい tab ID で直ちに再発行し、replacement index 成功後の最終 snapshot に保持した sort mode/scope を再適用しなければならない。replacement index が失敗しても先行する result request を旧 tab ID へ戻してはならない。preview request ownership を破棄した場合は選択中 path の preview reload を再発行し、旧 request ID と response routing は復元後の tab ID へ引き継いではならない。
-- MUST: index coordinator は worker channel へ受理された request を terminal response まで inflight として追跡しなければならない。replacement を最新化しても旧 request を早期に tracking から外してはならず、stale な `Started` / `Batch` / `ReplaceAll` / `Truncated` は payload だけを破棄して tracking を維持し、未追跡の worker FIFO backlog に新しい active-tab request を積んではならない。request は worker channel の送信成功時だけ inflight へ遷移する。active-tab 優先の preempt、または app pending queue 上限による eviction で background tab に新しい replacement が残らない場合は activation refresh marker を再設定し、次回 activation で最新 request を作り直さなければならない。queue eviction は active-tab request を優先保持し、より新しい同一 tab request が存在する場合は二重 refresh marker を作ってはならない。旧 terminal response は再 activation 後の新しい active request state を settle してはならない。
+- MUST: index scheduler は Active 1件と Warm 最大1件を役割・世代・選択 sequence で決定論的に追跡する。A と B が worker を使用中に C を activate した場合、選択対象または直前 Active を Warm として残し、最古/低優先の Warm 1件だけを cancel する。全 background job の一括 preempt、`HashSet` 列挙順による victim 選択、cancel 済み generation の再 activation は禁止する。scheduler cancel は committed snapshot があれば Ready、なければ Dormant へ戻す。
+- MUST: 各 index request は data 8 batch 上限の request-scoped mailbox と固定 `Started` / `Truncated` / terminal control slot を持つ。全 publication は generation と別の mailbox-local sequence を持ち、coordinator は `Started`、data、`Truncated`、terminal の順序を維持する。data Full の producer は latest/cancel/mailbox close/shutdown を再確認しながら non-blocking retry し、terminal は data capacity に依存せず最終 sequence と preceding-data count を固定する。Active mailbox を先に drain し、Warm は固定小 quota とし、shared response queue や UI-owned unbounded deferred queue を設けてはならない。
 - MUST: active tab の root、検索オプション、query/history、result/selection/preview、notice、pending request、index/search/sort/action/preview の進行状態は、切替、並べ替え、新規作成、close、closed-tab restore、session restore の前後で tab identity と対応し続けなければならない。新規タブ生成前に未確定の共有 query history を確定し、active request の応答は live state、background request の応答は対応する inactive tab state だけを更新しなければならない。request routing が active tab ID を返しても live pending request_id と一致しない応答を active slot の scratch payload へ適用してはならない。
 - MUST: session 保存は active tab の live persisted fields と inactive tab の persisted fields だけを射影し、保存のために tab の index/result payload 全体を複製してはならない。
 - MUST: supersede または cancel された非同期 flow は、pending / in_progress / deferred action 状態を解放し、現在の UI state を壊さずに継続操作可能でなければならない。
@@ -58,7 +59,7 @@
 - MUST: indexing の `Finished` 応答時に未反映の index entries が残っている場合、GUI はそれらを単一フレームで全件吸収してはならない。frame budget 内で分割反映し、全件反映後に terminal state へ遷移しなければならない。
 - MUST: `Finished` 応答後の内部後処理 drain は、探索中の表示更新より小さい件数上限を用い、完了速度より入力応答性を優先しなければならない。
 - MUST: Walker が上限打ち切り（`Truncated`）に到達した場合でも、GUI は終端直前の大きな batch backlog を過小な固定件数で長時間 drain し続けてはならない。frame budget を応答性の上限として維持しつつ、`Indexing...` の終端尾を短く保てる件数を 1 frame 内で吸収しなければならない。
-- MUST: index worker が GUI の反映速度を上回る場合、GUI は未反映 entry を UI 所有 queue へ無制限に移してはならない。32,768 entry を high-water mark として既存 backlog の drain を優先し、次の active data batch は queue へ展開せず ownership のまま保留しなければならない。FileList hierarchy replacement も 1 message 1,024 entry 以下へ分割して、queue 再確保または単発 payload が frame budget を迂回しないようにしなければならない。
+- MUST: index worker が GUI の反映速度を上回る場合、request mailbox の 8 batch 上限で producer に backpressure を掛けなければならない。GUI は mailbox 外へ未反映 batch を無制限に移さず、active pending entry の 32,768 entry high-water mark と frame budget を併用する。FileList hierarchy replacement も 1 batch 1,024 entry 以下へ分割する。
 - MUST: indexing 中の空クエリ・フィルタなし表示では、表示更新のたびに全候補の表示用スナップショットを複製してはならない。表示に必要な上位件数だけを更新し、全件 snapshot は terminal state で確定させなければならない。
 - MUST: Results描画はviewport内の行だけをwidget化し、offscreen pathのclone、highlight/layout、widget allocationを行ってはならない。offscreen current rowへのscroll、click/double-clickの絶対index、横方向layout、highlight、preview要求は維持する。描画回帰計測はprocess-global stateを使わずthread-localかつ1描画呼出し単位で隔離し、外部actionを起動せず絶対indexだけを記録する。
 - MUST: active indexing 中に空クエリ・フィルタなし状態へ戻す場合、表示更新のために蓄積済み index entries を `runtime.entries` へ全件 clone してはならない。
@@ -78,7 +79,7 @@
 - MUST: 非 active tab に accent color が設定されている場合、タブ下部にその色の装飾を表示する。
 - MUST: active tab に accent color が設定されている場合、タブ全面をその色で装飾する。
 - MUST: タブ accent color は保存対象のタブ状態に含め、タブ復元時に保持する。
-- MUST: タブ復元が無効、または `--root` / 起動時 query が明示された場合は、従来どおり `Set as default` の root 選択を優先する。
+- MUST: タブ復元が無効、または `--root` / 起動時 query / 起動時 depth が明示された場合は saved session 全体を復元しない。明示 root がなければ `Set as default`、`last_root`、通常 root の順で選び、saved-session root を default より優先してはならない。Restore Tabs が有効で明示値がなく有効な saved session がある場合だけ active saved-tab root を優先し、有効な session がない場合は `last_root`、default、通常 root の順とする。
 - MUST: runtime config の `restore_tabs_enabled` が有効な間は `Set as default` 操作を UI で無効化し、起動 root と競合する永続設定を追加できないようにする。
 - MUST: 保存済み root list の追加・編集・削除は `Manage list` へ統合し、メインウィンドウへ埋め込まれない独立した非ブロッキング native 管理ウィンドウで操作できなければならない。
 - MUST: `Manage list` は FlistWalker メインウィンドウの外枠を基準に中央配置し、メインウィンドウが負座標を含む別ディスプレイ上にある場合も同じ仮想デスクトップ座標系で配置しなければならない。メインウィンドウの geometry を取得できない場合は OS の既定配置へフォールバックしてよい。
@@ -94,11 +95,12 @@
 - MUST: `Manage list` は `Remove...` により明示的な削除モードへ移行し、削除モード中だけ複数選択用チェックボックスと `Remove selected` / `Cancel` を表示しなければならない。
 - MUST: 削除モードの `Cancel` は選択状態だけを破棄して通常状態へ戻り、draft list を変更してはならない。
 - MUST: `Manage list` の draft 変更は `Apply` または `OK` を押したタイミングでのみ保存済み root list へ反映し、`Cancel` またはウィンドウ close では反映してはならない。
-- SHOULD: タブ復元時は active tab のみ起動直後に再インデックスし、background tab は初回 activate 時に遅延 reindex する。
-- MUST: 起動時復元された background tab は初回 activate まで index/search 候補を構築せず休眠状態を維持する。初回 activate では同じ遷移内に index request と `Indexing...` 状態を確立し、共有 response queue に旧 background tab の batch が蓄積していても、新しい active request の `Started` / `Batch` を先行 routing して Entries 反映を待たせてはならない。先送りした live background response は破棄せず、後続 frame の予算内で元 tab へ適用しなければならない。
+- SHOULD: タブ復元時は active tab のみ起動直後に Loading とし、background tab は Dormant のまま初回 activate 時に遅延 load する。
+- MUST: 起動時復元された background tab は初回 activate まで index/search 候補を構築しない。初回 activate した generation は Active mailbox として Warm より先に処理し、Warm の Full data lane や stale terminal によって開始・応答適用を待たせてはならない。
 - MUST: 現在のプロセス中に閉じた GUI タブは in-memory の直近順スタックとして保持し、`Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で最後に閉じたタブから active tab として復元できなければならない。
 - MUST: 閉じたタブを復元する際は、閉じた時点の tab index を優先し、現在の tab 数を超える場合のみ末尾へ復元しなければならない。
-- MUST: 閉じたタブ復元スタックは直近 25 件を上限とし、上限を超えた場合は最も古い閉じたタブから破棄しなければならない。
+- MUST: 閉じたタブ復元スタックは直近 25 件の lightweight intent（root/query/history、filter/source/depth、accent、元位置、sort mode/scope、PIN、選択 path）を保持する。heavy snapshot は open-inactive tab と共通の LRU cache（count 2、deterministic weight 1,000,000 entry-unit）内だけで保持し、active と sole Warm は cache 外の pinned owner とする。heavy snapshot が Evicted の closed tab は intent を即時表示して Loading を開始し、旧 request/routing を引き継いではならない。
+- MUST: heavy snapshot の最終 drop は `WorkerRuntime` が所有する固定 reclaimer worker で行う。queue は4件を上限とし、Full 時の対象は cache count/weight 内で eviction-pending のまま保持する。retirement が必要な terminal commit は固定 terminal-pending slot で ownership swap を待ち、同 tab の後続 generation と新しい heavy cache admission を止める。close/restore は未上限 side queue を作らず、UI は操作可能なまま reclaim pending status を表示する。
 - MUST: 閉じたタブ復元は前回セッションの閉じたタブ履歴を読み書きしてはならず、復元対象がない場合はタブ構成を変更してはならない。
 - MUST: 閉じたタブを復元する際は新しい tab id を割り当て、閉じる前の pending search/index/preview/action/sort request_id を復元してはならない。
 - MUST: タブの close ボタンにマウスが重なった場合、close ボタンの押下領域をタブ本体の押下領域と視覚的に区別できなければならない。
@@ -114,6 +116,10 @@
 - Postconditions: 利用者がプレビュー確認後に安全に実行/オープンできる。
 
 ### Regression Guard
+- 発生条件: restore tab の体感改善を shared response queue の先送り、全 background request の一括 preempt、activation ごとの unconditional reindex、または closed tab の full payload 常時保持で実現する。
+- 期待動作: saved session は intent だけを復元し、active だけ Loading、background は Dormant で開始する。scheduler は Active + sole Warm、response は順序付き bounded request mailbox、snapshot は committed/building 分離、inactive/closed は共通 LRU、最終 drop は bounded reclaimer とする。Refresh failure は last-good を保持し、Ready activation は同じ snapshot を即時表示する。
+- 非対象範囲: 単一 active FileList snapshot 自体の hard byte cap、process restart をまたぐ full snapshot 永続化、検索意味論の変更。
+- 関連テストID: TC-203, TC-204, TC-205, TC-206, TC-207, TC-208。
 - 発生条件: 新しい picker/modal が `ArrowDown` / `ArrowUp` / `Enter` / `Escape` を feature 内で直接処理し、共有 Emacs command mapping を通さないため、その画面だけ `Ctrl+N` / `Ctrl+P` / `Ctrl+J` / `Ctrl+M` / `Ctrl+G` が無効になる。
 - 期待動作: Emacs 設定が有効なら preset picker を含む全対応対話面で通常キーと同じ application command が動作し、全 application-owned 単一行入力で同じ Emacs text-editing reducer が動作する。無効なら chord をアプリ独自操作として処理しない。
 - 非対象範囲: 対応する通常 command が存在しない画面への新規操作追加、OS/IME が所有する text composition、`ctrl_w_deletes_word_in_query` が別途制御する `Ctrl+W`。

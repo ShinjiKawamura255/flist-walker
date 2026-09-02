@@ -124,7 +124,47 @@ fn set_as_default_is_disabled_while_restore_tabs_config_is_enabled() {
         app.shell.runtime.notice,
         FlistWalkerApp::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE
     );
+    assert_eq!(
+        FlistWalkerApp::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_TOOLTIP,
+        "Unavailable while Restore Tabs is enabled. The last session takes priority at startup, so the default root is not used."
+    );
+    assert_eq!(
+        FlistWalkerApp::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE,
+        "Set as default is unavailable while Restore Tabs is enabled because the last session takes priority at startup."
+    );
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn explicit_query_or_depth_suppresses_session_and_restores_default_root_precedence() {
+    let unlimited = crate::indexer::MaxDepth::unlimited();
+    let limited = crate::indexer::MaxDepth::limited(2).expect("limited depth");
+
+    assert!(FlistWalkerApp::restore_session_allowed(
+        true, false, "", unlimited
+    ));
+    assert!(!FlistWalkerApp::restore_session_allowed(
+        true, false, "needle", unlimited
+    ));
+    assert!(!FlistWalkerApp::restore_session_allowed(
+        true, false, "", limited
+    ));
+    assert!(!FlistWalkerApp::restore_session_allowed(
+        true, true, "", unlimited
+    ));
+    assert!(!FlistWalkerApp::restore_session_allowed(
+        false, false, "", unlimited
+    ));
+
+    let chosen = FlistWalkerApp::choose_startup_root(
+        PathBuf::from("/fallback"),
+        false,
+        false,
+        None,
+        Some(PathBuf::from("/last-session")),
+        Some(PathBuf::from("/default")),
+    );
+    assert_eq!(chosen, PathBuf::from("/default"));
 }
 
 #[test]
