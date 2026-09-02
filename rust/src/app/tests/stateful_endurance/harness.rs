@@ -6,9 +6,10 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 // Stateful endurance validates response ownership across event boundaries, not frame timing.
-// Drain each injected response without a wall-clock cutoff so slow and instrumented runners do
-// not defer an earlier response into the next modeled event.
+// Process every directly available response without a wall-clock cutoff; asynchronous reclaimer
+// deferrals are covered by routed-owner sets and the bounded quiescence deadline below.
 const ENDURANCE_RESPONSE_DRAIN_BUDGET: Duration = Duration::MAX;
+const ENDURANCE_QUIESCENCE_TIMEOUT: Duration = Duration::from_secs(2);
 
 pub(super) struct StatefulHarness {
     app: FlistWalkerApp,
@@ -126,14 +127,14 @@ impl StatefulHarness {
         self.assert_invariants(seed, 0, &Event::RefreshIndex);
         for (step, event) in events.iter().enumerate() {
             let before = self.snapshot();
-            let response_owner = self.response_owner(event);
+            let response_owners = self.response_owners(event);
             self.apply(event);
             self.capture_requests();
-            if let Some(owner) = response_owner {
+            if let Some(owners) = response_owners {
                 self.assert_other_tab_content_unchanged(
                     &before,
                     &self.snapshot(),
-                    owner,
+                    &owners,
                     seed,
                     step + 1,
                     event,
@@ -154,8 +155,9 @@ impl StatefulHarness {
     }
 
     pub(super) fn quiesce(&mut self, seed: u64) {
-        let max_steps = self.replay_steps.saturating_mul(3).saturating_add(256);
-        for step in 0..max_steps {
+        let deadline = Instant::now() + ENDURANCE_QUIESCENCE_TIMEOUT;
+        let mut step = 0usize;
+        while Instant::now() < deadline {
             self.capture_requests();
             if let Some(request) = self.pending_indexes.pop_front() {
                 self.respond_to_index(request, TerminalOutcome::Canceled);
@@ -180,10 +182,12 @@ impl StatefulHarness {
                     return;
                 }
             }
+            step = step.saturating_add(1);
+            thread::yield_now();
         }
 
         panic!(
-            "stateful endurance did not quiesce: seed={seed:#x}; phase=quiescence; max_steps={max_steps}; index_routes={:?}; search_routes={:?}; response_routes={:?}; filelist_route={:?}; state={}; replay={}",
+            "stateful endurance did not quiesce: seed={seed:#x}; phase=quiescence; timeout={ENDURANCE_QUIESCENCE_TIMEOUT:?}; steps={step}; index_routes={:?}; search_routes={:?}; response_routes={:?}; filelist_route={:?}; state={}; replay={}",
             self.app.shell.indexing.request_tabs,
             self.app.shell.search.request_routes_for_test(),
             self.app.shell.tabs.routed_tab_ids_for_test(),
@@ -298,73 +302,71 @@ impl StatefulHarness {
         }
     }
 
-    fn response_owner(&self, event: &Event) -> Option<Option<u64>> {
-        let owner = match event {
-            Event::DeliverOldestIndexData(_) | Event::CompleteOldestIndex(_) => {
-                self.pending_indexes.front().and_then(|request| {
-                    self.app
-                        .shell
-                        .indexing
-                        .request_tabs
-                        .get(&request.request_id)
-                        .copied()
-                })
-            }
-            Event::DeliverNewestIndexData(_) | Event::CompleteNewestIndex(_) => {
-                self.pending_indexes.back().and_then(|request| {
-                    self.app
-                        .shell
-                        .indexing
-                        .request_tabs
-                        .get(&request.request_id)
-                        .copied()
-                })
-            }
-            Event::CompleteOldestSearch => self.pending_searches.front().and_then(|request| {
-                self.app
-                    .shell
-                    .search
-                    .request_routes_for_test()
-                    .into_iter()
-                    .find_map(|(request_id, tab_id)| {
-                        (request_id == request.request_id).then_some(tab_id)
-                    })
-            }),
+    fn response_owners(&self, event: &Event) -> Option<HashSet<u64>> {
+        let owners = match event {
+            Event::DeliverOldestIndexData(_)
+            | Event::DeliverNewestIndexData(_)
+            | Event::CompleteOldestIndex(_)
+            | Event::CompleteNewestIndex(_)
+            | Event::DeliverStaleIndex => self
+                .app
+                .shell
+                .indexing
+                .request_tabs
+                .values()
+                .copied()
+                .collect(),
+            Event::CompleteOldestSearch | Event::DeliverStaleSearch => self
+                .app
+                .shell
+                .search
+                .request_routes_for_test()
+                .into_iter()
+                .map(|(_, tab_id)| tab_id)
+                .collect(),
             Event::CompleteOldestPreview(_) => self
                 .pending_previews
                 .front()
-                .and_then(|request| self.app.preview_request_tab(request.request_id)),
+                .and_then(|request| self.app.preview_request_tab(request.request_id))
+                .into_iter()
+                .collect(),
             Event::CompleteOldestAction(_) => self
                 .pending_actions
                 .front()
-                .and_then(|request| self.app.action_request_tab(request.request_id)),
+                .and_then(|request| self.app.action_request_tab(request.request_id))
+                .into_iter()
+                .collect(),
             Event::CompleteOldestSort(_) => self
                 .pending_sorts
                 .front()
-                .and_then(|request| self.app.sort_request_tab(request.request_id)),
-            Event::CompleteOldestFileList(_) => {
-                self.pending_filelists.front().and_then(|request| {
+                .and_then(|request| self.app.sort_request_tab(request.request_id))
+                .into_iter()
+                .collect(),
+            Event::CompleteOldestFileList(_) => self
+                .pending_filelists
+                .front()
+                .and_then(|request| {
                     let workflow = &self.app.shell.features.filelist.workflow;
                     (workflow.pending_request_id == Some(request.request_id))
                         .then_some(request.tab_id)
                 })
-            }
-            Event::DeliverStaleIndex | Event::DeliverStaleSearch => None,
+                .into_iter()
+                .collect(),
             _ => return None,
         };
-        Some(owner)
+        Some(owners)
     }
 
     fn assert_other_tab_content_unchanged(
         &self,
         before: &SemanticSnapshot,
         after: &SemanticSnapshot,
-        owner: Option<u64>,
+        owners: &HashSet<u64>,
         seed: u64,
         step: usize,
         event: &Event,
     ) {
-        for before_tab in before.tabs.iter().filter(|tab| Some(tab.id) != owner) {
+        for before_tab in before.tabs.iter().filter(|tab| !owners.contains(&tab.id)) {
             let Some(after_tab) = after.tabs.iter().find(|tab| tab.id == before_tab.id) else {
                 panic!(
                     "stateful response removed unrelated tab {}; {}",
@@ -379,7 +381,7 @@ impl StatefulHarness {
                 && before_tab.current_row == after_tab.current_row
                 && before_tab.results_digest == after_tab.results_digest
                 && (before_tab.notice == after_tab.notice
-                    || is_expected_scheduler_notice_transition(before_tab, after_tab));
+                    || is_expected_queue_drop_notice_transition(before_tab, after_tab));
             assert!(
                 content_unchanged,
                 "stateful response changed unrelated tab {}; before={before_tab:?}; after={after_tab:?}; {}",
@@ -721,16 +723,13 @@ impl StatefulHarness {
     }
 }
 
-fn is_expected_scheduler_notice_transition(
+fn is_expected_queue_drop_notice_transition(
     before: &TabSemanticSnapshot,
     after: &TabSemanticSnapshot,
 ) -> bool {
-    (before.index_pending
+    before.index_pending
         && !after.index_pending
-        && after.notice == "Index request dropped due to queue limit")
-        || (before.index_pending
-            && after.index_pending
-            && after.notice == "Waiting for background tab resource reclamation")
+        && after.notice == "Index request dropped due to queue limit"
 }
 
 pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> SemanticSnapshot {
@@ -902,20 +901,13 @@ mod tests {
     fn tc_184_queue_drop_notice_is_expected_scheduler_side_effect() {
         let before = snapshot(true, "Root changed: C:\\root");
         let after = snapshot(false, "Index request dropped due to queue limit");
-        assert!(is_expected_scheduler_notice_transition(&before, &after));
-    }
-
-    #[test]
-    fn tc_184_reclaimer_wait_notice_is_expected_scheduler_side_effect() {
-        let before = snapshot(true, "");
-        let after = snapshot(true, "Waiting for background tab resource reclamation");
-        assert!(is_expected_scheduler_notice_transition(&before, &after));
+        assert!(is_expected_queue_drop_notice_transition(&before, &after));
     }
 
     #[test]
     fn tc_184_unrelated_notice_change_is_not_ignored() {
         let before = snapshot(true, "Root changed: C:\\root");
         let after = snapshot(false, "Indexing failed: controlled endurance failure");
-        assert!(!is_expected_scheduler_notice_transition(&before, &after));
+        assert!(!is_expected_queue_drop_notice_transition(&before, &after));
     }
 }
