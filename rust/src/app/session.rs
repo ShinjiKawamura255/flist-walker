@@ -621,9 +621,9 @@ fn default_ignore_list_enabled() -> bool {
 
 impl FlistWalkerApp {
     pub(super) const SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE: &'static str =
-        "Set as default is disabled because Restore tabs is enabled in runtime config";
+        "Set as default is unavailable while Restore Tabs is enabled because the last session takes priority at startup.";
     pub(super) const SET_DEFAULT_DISABLED_BY_RESTORE_TABS_TOOLTIP: &'static str =
-        "Disabled while Restore tabs is enabled in runtime config";
+        "Unavailable while Restore Tabs is enabled. The last session takes priority at startup, so the default root is not used.";
 
     pub(super) fn persist_state_and_shutdown(&mut self, phase: &str) {
         self.apply_stable_window_geometry(true);

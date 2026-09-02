@@ -349,7 +349,7 @@ impl FlistWalkerApp {
     pub(super) fn choose_startup_root(
         root: PathBuf,
         root_explicit: bool,
-        restore_tabs_enabled: bool,
+        restore_session_allowed: bool,
         restore_session: Option<&(Vec<SavedTabState>, usize)>,
         last_root: Option<PathBuf>,
         default_root: Option<PathBuf>,
@@ -362,7 +362,7 @@ impl FlistWalkerApp {
                 return tab_root;
             }
         }
-        if restore_tabs_enabled {
+        if restore_session_allowed {
             last_root.or(default_root).unwrap_or(root)
         } else {
             default_root.or(last_root).unwrap_or(root)

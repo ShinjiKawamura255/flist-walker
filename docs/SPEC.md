@@ -20,7 +20,8 @@ This file is the entry point for FlistWalker specifications. Detailed SP content
 - FR-003 -> SP-003 -> DES-003 -> TC-003, TC-155
 - FR-007 -> SP-010 -> DES-009 -> TC-010
 - FR-007, NFR-008 -> SP-010 -> DES-006, DES-007, DES-009 -> TC-150, TC-151, TC-152, TC-153
-- FR-007, NFR-009 -> SP-010 -> DES-009 -> TC-154
+- FR-007, NFR-009 -> SP-010 -> DES-009 -> TC-154, TC-203, TC-204, TC-205, TC-208
+- NFR-015 -> SP-010 -> DES-006, DES-007, DES-009 -> TC-205, TC-206, TC-207, TC-208
 - NFR-001 -> SP-007 -> DES-006 -> TC-007, TC-156, TC-161, TC-185
 - FR-009 -> SP-004 -> DES-004, DES-007 -> TC-050, TC-051
 - FR-012 -> SP-013 -> DES-013 -> TC-057

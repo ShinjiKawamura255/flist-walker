@@ -133,11 +133,9 @@ impl FlistWalkerApp {
         let restore_tabs_enabled = Self::restore_tabs_enabled();
         let saved_last_root = launch.last_root.clone().map(normalize_windows_path_buf);
         let saved_default = launch.default_root.clone().map(normalize_windows_path_buf);
-        let restore_session = if restore_tabs_enabled
-            && !root_explicit
-            && query.trim().is_empty()
-            && max_depth.is_unlimited()
-        {
+        let restore_session_allowed =
+            Self::restore_session_allowed(restore_tabs_enabled, root_explicit, &query, max_depth);
+        let restore_session = if restore_session_allowed {
             Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
         } else {
             None
@@ -145,7 +143,7 @@ impl FlistWalkerApp {
         let chosen_root = Self::choose_startup_root(
             root,
             root_explicit,
-            restore_tabs_enabled,
+            restore_session_allowed,
             restore_session.as_ref(),
             saved_last_root,
             saved_default,
@@ -160,6 +158,18 @@ impl FlistWalkerApp {
         );
         app.request_startup_update_check();
         app
+    }
+
+    pub(super) fn restore_session_allowed(
+        restore_tabs_enabled: bool,
+        root_explicit: bool,
+        query: &str,
+        max_depth: crate::indexer::MaxDepth,
+    ) -> bool {
+        restore_tabs_enabled
+            && !root_explicit
+            && query.trim().is_empty()
+            && max_depth.is_unlimited()
     }
 
     pub(super) fn bootstrap_workers() -> AppWorkerBootstrap {
