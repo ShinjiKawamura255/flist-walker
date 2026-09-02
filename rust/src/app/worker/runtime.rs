@@ -109,6 +109,55 @@ impl WorkerRuntime {
 }
 
 impl FlistWalkerApp {
+    /// Move tab-owned snapshots and in-progress index buffers to a worker before
+    /// the native UI starts waiting for shutdown. Dropping a large `Vec<Entry>`
+    /// can otherwise consume the whole close-frame budget.
+    fn offload_tab_resources_for_shutdown(&mut self, runtime: &mut WorkerRuntime) {
+        let active_committed = self.take_active_committed_resources();
+        let active_index_entries = std::mem::take(&mut self.shell.runtime.index.entries);
+        let pending_entries = std::mem::take(&mut self.shell.indexing.pending_entries);
+        let incremental_entries =
+            std::mem::take(&mut self.shell.indexing.incremental_filtered_entries);
+        let pending_kind_paths = std::mem::take(&mut self.shell.indexing.pending_kind_paths);
+        let pending_kind_paths_set =
+            std::mem::take(&mut self.shell.indexing.pending_kind_paths_set);
+        let in_flight_kind_paths = std::mem::take(&mut self.shell.indexing.in_flight_kind_paths);
+        let resolved_kind_updates = std::mem::take(&mut self.shell.indexing.resolved_kind_updates);
+        let background_states = std::mem::take(&mut self.shell.indexing.background_states);
+        let background_finalizations =
+            std::mem::take(&mut self.shell.indexing.background_finalizations);
+        let pending_stale_build_reclaim = self.shell.indexing.pending_stale_build_reclaim.take();
+        let pending_replace_all = self.shell.indexing.pending_replace_all.take();
+        let index_mailboxes = self.shell.indexing.take_all_mailboxes_for_shutdown();
+        let active_kind_cache = std::mem::take(&mut self.shell.cache.entry_kind);
+        let tab_resources = self.shell.tabs.take_all_heavy_resources_for_shutdown();
+
+        let handle = thread::Builder::new()
+            .name("flistwalker-tab-shutdown-drain".to_string())
+            .spawn(move || {
+                drop((
+                    active_committed,
+                    active_index_entries,
+                    pending_entries,
+                    incremental_entries,
+                    pending_kind_paths,
+                    pending_kind_paths_set,
+                    in_flight_kind_paths,
+                    resolved_kind_updates,
+                    background_states,
+                    background_finalizations,
+                    pending_stale_build_reclaim,
+                    pending_replace_all,
+                    index_mailboxes,
+                    active_kind_cache,
+                    tab_resources,
+                ));
+            })
+            .expect("spawn tab shutdown drain");
+        runtime.push("tab-shutdown-drain", handle);
+        self.shell.tabs.disconnect_resource_reclaimer();
+    }
+
     /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
     fn disconnect_worker_channels(&mut self) {
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
@@ -157,13 +206,13 @@ impl FlistWalkerApp {
         timeout: Duration,
         phase: &str,
     ) -> Option<WorkerJoinSummary> {
-        let runtime = self.shell.worker_runtime.as_ref()?;
-        runtime.request_shutdown();
+        self.shell.worker_runtime.as_ref()?.request_shutdown();
         let action_load = self.shell.worker_bus.action.tx.load_observer();
         let kind_load = self.shell.worker_bus.kind.tx.load_observer();
         let index_load = self.shell.indexing.tx.load_observer();
+        let mut runtime = self.shell.worker_runtime.take()?;
+        self.offload_tab_resources_for_shutdown(&mut runtime);
         self.disconnect_worker_channels();
-        let runtime = self.shell.worker_runtime.take()?;
         let summary = runtime.join_all_with_timeout(timeout);
         if summary.joined < summary.total {
             let pending_names = if summary.pending.is_empty() {

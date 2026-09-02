@@ -1,5 +1,54 @@
 use super::*;
 
+fn collect_drop_threads_until(
+    drop_rx: &mpsc::Receiver<String>,
+    expected: &str,
+    timeout: Duration,
+) -> Vec<String> {
+    let deadline = Instant::now() + timeout;
+    let mut threads = drop_rx.try_iter().collect::<Vec<_>>();
+    while !threads.iter().any(|name| name == expected) {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        match drop_rx.recv_timeout(remaining) {
+            Ok(name) => threads.push(name),
+            Err(_) => break,
+        }
+    }
+    threads
+}
+
+fn settle_background_finish_with_frame_budget(
+    app: &mut FlistWalkerApp,
+    tab_index: usize,
+    request_id: u64,
+    source: IndexSource,
+) -> Vec<Duration> {
+    let mut frame_times = Vec::new();
+    for _ in 0..2_000 {
+        if app
+            .shell
+            .tabs
+            .get(tab_index)
+            .is_some_and(|tab| tab.index_state.pending_index_finish.is_none())
+        {
+            return frame_times;
+        }
+        let started = Instant::now();
+        app.handle_background_index_response(
+            tab_index,
+            IndexResponse::Finished {
+                request_id,
+                source: source.clone(),
+            },
+        );
+        frame_times.push(started.elapsed());
+    }
+    panic!("background finalization did not settle within the frame bound");
+}
+
 #[test]
 fn background_tab_search_and_preview_responses_are_retained() {
     let root = test_root("background-tab-search-preview");
@@ -861,7 +910,8 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = index_req_tx;
     app.shell.indexing.rx = index_res_rx;
-    let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
+    reset_index_request_state_for_test(&mut app);
+    let (search_tx_req, search_rx_req) = mpsc::channel::<SearchRequest>();
     let (search_tx_res, search_rx_res) = mpsc::channel::<SearchResponse>();
     app.shell.search.tx = search_tx_req;
     app.shell.search.rx = search_rx_res;
@@ -871,6 +921,8 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
     app.shell.runtime.base_results = app.shell.runtime.results.clone();
     app.shell.runtime.current_row = Some(0);
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
+    app.shell.indexing.committed_snapshot_present = true;
     app.sync_active_tab_state();
 
     app.create_new_tab();
@@ -880,6 +932,8 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
     app.shell.runtime.base_results = app.shell.runtime.results.clone();
     app.shell.runtime.current_row = Some(0);
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
+    app.shell.indexing.committed_snapshot_present = true;
     app.sync_active_tab_state();
 
     app.switch_to_tab_index(0);
@@ -960,25 +1014,17 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     assert_eq!(app.shell.runtime.results, active_results);
     assert_eq!(app.shell.runtime.base_results, active_base_results);
     assert_eq!(app.shell.runtime.current_row, active_current_row);
-    assert_eq!(
-        app.shell
-            .tabs
-            .get(0)
-            .expect("tab 0")
-            .result_state
-            .base_results
-            .len(),
-        1
-    );
-    assert_eq!(
-        app.shell
-            .tabs
-            .get(0)
-            .expect("tab 0")
-            .result_state
-            .base_results[0]
-            .0,
-        background_file
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("tab 0")
+        .result_state
+        .base_results
+        .is_empty());
+    assert!(
+        search_rx_req.try_recv().is_ok(),
+        "the committed background snapshot must be searched again"
     );
     assert_eq!(
         app.shell
@@ -1044,5 +1090,1846 @@ fn background_walker_truncated_notice_points_to_config_file_setting() {
     );
     assert!(!notice.contains("FLISTWALKER_WALKER_MAX_ENTRIES"));
 
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() {
+    let root = test_root("tc-207-background-finish-reclaimer-debt");
+    fs::create_dir_all(&root).expect("create root");
+    let old = file_entry(root.join("old.txt"));
+    let new = file_entry(root.join("new.txt"));
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.lifecycle = TabResourceLifecycle::Refreshing;
+        tab.index_state.committed_snapshot_present = true;
+        tab.index_state.all_entries = Arc::new(vec![old.clone()]);
+        tab.index_state.entries = Arc::new(vec![old.clone()]);
+        tab.result_state.results = vec![(old.path.clone(), 0.0)];
+        tab.index_state.pending_index_request_id = Some(407);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(407, background_tab_id);
+    app.shell.indexing.warm_tab_id = Some(background_tab_id);
+    app.shell.indexing.background_states.insert(
+        407,
+        BackgroundIndexState {
+            source: Some(IndexSource::Walker),
+            entries: vec![new.clone()],
+            replaced: true,
+        },
+    );
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(1_400 + index as u64);
+        tab.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        tab.index_state.committed_snapshot_present = true;
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    let effect = app.apply_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id: 407,
+            source: IndexSource::Walker,
+        },
+    );
+
+    assert!(effect.cleanup_request_id.is_none());
+    let waiting = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(waiting.index_state.all_entries.as_ref(), &[old]);
+    assert!(waiting.index_state.pending_index_finish.is_some());
+    assert!(waiting
+        .notice
+        .contains("Waiting for background tab resource"));
+
+    app.shell.tabs.resume_resource_reclaimer();
+    let frame_times =
+        settle_background_finish_with_frame_budget(&mut app, 0, 407, IndexSource::Walker);
+    assert!(
+        frame_times
+            .iter()
+            .all(|elapsed| *elapsed < Duration::from_millis(100)),
+        "frame times: {frame_times:?}"
+    );
+
+    let completed = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(completed.index_state.all_entries.as_ref(), &[new]);
+    assert!(completed.index_state.pending_index_finish.is_none());
+    assert_eq!(completed.index_state.lifecycle, TabResourceLifecycle::Ready);
+    assert!(!app.shell.indexing.request_tabs.contains_key(&407));
+    assert_eq!(app.shell.indexing.warm_tab_id, Some(background_tab_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finished_commits_100k_default_snapshot_within_ui_budget() {
+    let root = test_root("tc-207-background-finish-100k");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app
+        .shell
+        .indexing
+        .allocate_request_id(Some(background_tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.include_files = true;
+        tab.include_dirs = true;
+        tab.index_state.lifecycle = TabResourceLifecycle::Loading;
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..100_000)
+                .map(|index| file_entry(root.join(format!("entry-{index}.txt"))))
+                .collect(),
+            replaced: true,
+        },
+    );
+
+    let started = Instant::now();
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    let elapsed = started.elapsed();
+
+    assert!(
+        elapsed < Duration::from_millis(100),
+        "100k background finish admission took {elapsed:?}"
+    );
+    let staged = app
+        .shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .expect("100k finalization remains pending after admission");
+    assert!((1..=2_048).contains(&staged.completed_entries.len()));
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("background tab")
+        .index_state
+        .pending_index_finish
+        .is_some());
+    let mut prior_completed = staged.completed_entries.len();
+    let mut paced_frames = 0usize;
+    while app
+        .shell
+        .indexing
+        .background_finalizations
+        .contains_key(&request_id)
+    {
+        app.handle_background_index_response(
+            0,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+        paced_frames = paced_frames.saturating_add(1);
+        if let Some(staged) = app.shell.indexing.background_finalizations.get(&request_id) {
+            let added = staged
+                .completed_entries
+                .len()
+                .saturating_sub(prior_completed);
+            assert!(added <= 2_048, "one frame assembled {added} entries");
+            prior_completed = staged.completed_entries.len();
+        }
+    }
+    assert!(
+        paced_frames > 1,
+        "100k finalization must span multiple frames"
+    );
+    let tab = app.shell.tabs.get(0).expect("completed background tab");
+    assert_eq!(tab.index_state.all_entries.len(), 100_000);
+    assert_eq!(tab.index_state.lifecycle, TabResourceLifecycle::Ready);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finished_mixed_owners_settles_incrementally() {
+    let root = test_root("tc-207-background-finish-mixed-100k");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.index.entries = (0..40_000)
+            .map(|index| file_entry(root.join(format!("base-{index}.txt"))))
+            .collect();
+        tab.index_state.pending_index_entries_request_id = Some(request_id);
+        tab.index_state.pending_index_entries = (0..30_000)
+            .map(|index| IndexEntry {
+                path: root.join(format!("pending-{index}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect();
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..30_000)
+                .map(|index| file_entry(root.join(format!("tail-{index}.txt"))))
+                .collect(),
+            replaced: false,
+        },
+    );
+
+    let started = Instant::now();
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    assert!(started.elapsed() < Duration::from_millis(100));
+    let frames = settle_background_finish_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+    );
+    assert!(frames
+        .iter()
+        .all(|elapsed| *elapsed < Duration::from_millis(100)));
+    let tab = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(tab.index_state.all_entries.len(), 100_000);
+    assert!(tab.index_state.all_entries[0].path.ends_with("base-0.txt"));
+    assert!(tab.index_state.all_entries[40_000]
+        .path
+        .ends_with("pending-0.txt"));
+    assert!(tab.index_state.all_entries[70_000]
+        .path
+        .ends_with("tail-0.txt"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finished_file_filter_settles_incrementally() {
+    let root = test_root("tc-207-background-finish-filter-100k");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.include_files = true;
+        tab.include_dirs = false;
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..100_000)
+                .map(|index| {
+                    let name = if index % 4 == 0 {
+                        format!("ignored-{index}")
+                    } else {
+                        format!("entry-{index}")
+                    };
+                    let path = root.join(name);
+                    if index % 2 == 0 {
+                        file_entry(path)
+                    } else {
+                        dir_entry(path)
+                    }
+                })
+                .collect(),
+            replaced: true,
+        },
+    );
+
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    let frames = settle_background_finish_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+    );
+    assert!(frames
+        .iter()
+        .all(|elapsed| *elapsed < Duration::from_millis(100)));
+    let tab = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(tab.index_state.all_entries.len(), 100_000);
+    assert_eq!(tab.index_state.entries.len(), 25_000);
+    assert!(tab
+        .index_state
+        .entries
+        .iter()
+        .all(|entry| entry.kind == Some(EntryKind::file())));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finalization_tracks_ignore_policy_changes_both_directions() {
+    for (starts_enabled, expected_len) in [(false, 50_000), (true, 100_000)] {
+        let case = if starts_enabled { "on-off" } else { "off-on" };
+        let root = test_root(&format!("tc-207-finalize-ignore-{case}"));
+        fs::create_dir_all(&root).expect("create root");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.create_new_tab();
+        app.shell.ui.ignore_list_enabled = starts_enabled;
+        app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+        let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+        let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+        {
+            let tab = app.shell.tabs.get_mut(0).expect("background tab");
+            tab.include_files = true;
+            tab.include_dirs = true;
+            tab.index_state.pending_index_request_id = Some(request_id);
+            tab.index_state.index_in_progress = true;
+        }
+        app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+                entries: (0..100_000)
+                    .map(|index| {
+                        let prefix = if index % 2 == 0 { "ignored" } else { "kept" };
+                        file_entry(root.join(format!("{prefix}-{index}.txt")))
+                    })
+                    .collect(),
+                replaced: true,
+            },
+        );
+
+        app.handle_background_index_response(
+            0,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+        assert!(app
+            .shell
+            .indexing
+            .background_finalizations
+            .contains_key(&request_id));
+        app.shell.ui.ignore_list_enabled = !starts_enabled;
+        let frames = settle_background_finish_with_frame_budget(
+            &mut app,
+            0,
+            request_id,
+            IndexSource::FileList(root.join("FileList.txt")),
+        );
+        assert!(frames.len() > 1);
+        assert!(frames
+            .iter()
+            .all(|elapsed| *elapsed < Duration::from_millis(100)));
+        let entries = &app
+            .shell
+            .tabs
+            .get(0)
+            .expect("background tab")
+            .index_state
+            .entries;
+        assert_eq!(entries.len(), expected_len);
+        if !starts_enabled {
+            assert!(entries
+                .iter()
+                .all(|entry| !entry.path.to_string_lossy().contains("ignored")));
+        }
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn tc_207_late_filter_policy_change_reclaims_old_output_off_ui() {
+    let root = test_root("tc-207-late-filter-policy-reclaim");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.include_files = true;
+        tab.include_dirs = true;
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..100_000)
+                .map(|index| {
+                    let prefix = if index % 2 == 0 { "ignored" } else { "kept" };
+                    file_entry(root.join(format!("{prefix}-{index}.txt")))
+                })
+                .collect(),
+            replaced: true,
+        },
+    );
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    let mut prior_filter_cursor = 0usize;
+    let mut filter_frames = 0usize;
+    while app
+        .shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .is_some_and(|state| state.filter_cursor < 50_000)
+    {
+        app.handle_background_index_response(
+            0,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+        if let Some(state) = app.shell.indexing.background_finalizations.get(&request_id) {
+            let advanced = state.filter_cursor.saturating_sub(prior_filter_cursor);
+            assert!(advanced <= 2_048, "one frame filtered {advanced} entries");
+            if advanced > 0 {
+                filter_frames = filter_frames.saturating_add(1);
+            }
+            prior_filter_cursor = state.filter_cursor;
+        }
+    }
+    assert!(filter_frames > 1);
+    assert!(app
+        .shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .is_some_and(|state| {
+            state
+                .filtered_entries
+                .as_ref()
+                .is_some_and(|entries| entries.len() >= 20_000)
+        }));
+
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+    app.shell.ui.ignore_list_enabled = false;
+    let started = Instant::now();
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    assert!(started.elapsed() < Duration::from_millis(100));
+    set_reclaim_drop_observer(None);
+    let drop_threads = collect_drop_threads_until(
+        &drop_rx,
+        "flistwalker-tab-reclaimer",
+        Duration::from_millis(250),
+    );
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
+    let _ = settle_background_finish_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+    );
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("background tab")
+            .index_state
+            .entries
+            .len(),
+        100_000
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_late_filter_policy_change_rolls_back_while_reclaimer_is_full() {
+    let root = test_root("tc-207-late-filter-policy-full");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..100_000)
+                .map(|index| file_entry(root.join(format!("entry-{index}.txt"))))
+                .collect(),
+            replaced: true,
+        },
+    );
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    while app
+        .shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .is_some_and(|state| state.filter_cursor < 50_000)
+    {
+        app.handle_background_index_response(
+            0,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+    }
+    let (cursor_before, output_before) = app
+        .shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .map(|state| {
+            (
+                state.filter_cursor,
+                state.filtered_entries.as_ref().map_or(0, Vec::len),
+            )
+        })
+        .expect("late filter phase");
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut held = app.capture_active_tab_state(9_500 + index as u64);
+        held.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        held.index_state.committed_snapshot_present = true;
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(held.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+    app.shell.ui.ignore_list_enabled = false;
+    let started = Instant::now();
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    assert!(started.elapsed() < Duration::from_millis(100));
+    let state = app
+        .shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .expect("policy retry remains pending");
+    assert_eq!(state.filter_cursor, cursor_before);
+    assert_eq!(
+        state.filtered_entries.as_ref().map_or(0, Vec::len),
+        output_before
+    );
+    assert!(state.ignore_list_enabled);
+
+    app.shell.tabs.resume_resource_reclaimer();
+    let frames = settle_background_finish_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+    );
+    assert!(frames
+        .iter()
+        .all(|elapsed| *elapsed < Duration::from_millis(100)));
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("background tab")
+            .index_state
+            .entries
+            .len(),
+        100_000
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finished_walker_kind_queue_settles_incrementally() {
+    let root = test_root("tc-207-background-finish-walker-kind-100k");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.include_files = true;
+        tab.include_dirs = false;
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::Walker),
+            entries: (0..100_000)
+                .map(|index| Entry::unknown(root.join(format!("entry-{index}"))))
+                .collect(),
+            replaced: true,
+        },
+    );
+
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::Walker,
+        },
+    );
+    let mut previous_kind_cursor = 0usize;
+    let mut kind_frames = 0usize;
+    while app
+        .shell
+        .indexing
+        .background_finalizations
+        .contains_key(&request_id)
+    {
+        let started = Instant::now();
+        app.handle_background_index_response(
+            0,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::Walker,
+            },
+        );
+        assert!(started.elapsed() < Duration::from_millis(100));
+        if let Some(state) = app.shell.indexing.background_finalizations.get(&request_id) {
+            let advanced = state.kind_cursor.saturating_sub(previous_kind_cursor);
+            assert!(advanced <= 2_048, "one frame scanned {advanced} kinds");
+            if advanced > 0 {
+                kind_frames = kind_frames.saturating_add(1);
+            }
+            previous_kind_cursor = state.kind_cursor;
+        }
+    }
+    assert!(kind_frames > 1);
+    let tab = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(tab.index_state.all_entries.len(), 100_000);
+    assert!(tab.index_state.entries.is_empty());
+    assert_eq!(tab.index_state.pending_kind_paths.len(), 100_000);
+    assert_eq!(tab.index_state.pending_kind_paths_set.len(), 100_000);
+    assert!(tab.index_state.kind_resolution_in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_finalization_survives_promotion_to_active() {
+    let root = test_root("tc-207-background-finalize-promote-active");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.include_files = true;
+        tab.include_dirs = true;
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::Walker),
+            entries: (0..100_000)
+                .map(|index| {
+                    let prefix = if index % 4 == 0 || index % 4 == 3 {
+                        "ignored"
+                    } else {
+                        "kept"
+                    };
+                    let path = root.join(format!("{prefix}-{index}"));
+                    if index % 2 == 0 {
+                        file_entry(path)
+                    } else {
+                        dir_entry(path)
+                    }
+                })
+                .collect(),
+            replaced: true,
+        },
+    );
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::Walker,
+        },
+    );
+    assert!(app
+        .shell
+        .indexing
+        .background_finalizations
+        .contains_key(&request_id));
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .expect("background tab")
+        .index_state
+        .pending_index_finish
+        .is_some());
+
+    app.switch_to_tab_index(0);
+    assert_eq!(app.current_tab_id(), Some(tab_id));
+    assert!(app.shell.indexing.pending_finish.is_some());
+    app.shell.runtime.include_files = false;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    let mut settled = false;
+    for _ in 0..2_000 {
+        let started = Instant::now();
+        app.poll_index_response_with_budget_for_test(Duration::from_millis(4));
+        assert!(
+            started.elapsed() < Duration::from_millis(100),
+            "promotion finalization frame exceeded budget"
+        );
+        if app.shell.indexing.pending_finish.is_none() {
+            settled = true;
+            break;
+        }
+    }
+
+    assert!(settled, "promoted finalization did not settle");
+    assert_eq!(app.shell.runtime.all_entries.len(), 100_000);
+    assert_eq!(app.shell.runtime.entries.len(), 25_000);
+    assert!(app.shell.runtime.entries.iter().all(|entry| {
+        entry.kind == Some(EntryKind::dir()) && !entry.path.to_string_lossy().contains("ignored")
+    }));
+    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
+    assert!(!app
+        .shell
+        .indexing
+        .background_finalizations
+        .contains_key(&request_id));
+    assert!(!app.shell.indexing.request_tabs.contains_key(&request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_terminal_finalizers_do_not_block_a_new_active_request_when_reclaimer_is_full() {
+    let root = test_root("tc-207-finalizer-slots-active-priority");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
+
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut held = app.capture_active_tab_state(8_000 + index as u64);
+        held.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        held.index_state.committed_snapshot_present = true;
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(held.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    for tab_index in 0..2 {
+        let tab_id = app.shell.tabs.get(tab_index).expect("inactive tab").id;
+        let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+        {
+            let tab = app.shell.tabs.get_mut(tab_index).expect("inactive tab");
+            tab.index_state.pending_index_request_id = Some(request_id);
+            tab.index_state.index_in_progress = true;
+        }
+        app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+                entries: (0..100_000)
+                    .map(|index| {
+                        file_entry(root.join(format!("tab-{tab_index}-entry-{index}.txt")))
+                    })
+                    .collect(),
+                replaced: true,
+            },
+        );
+        app.shell.indexing.inflight_requests.insert(request_id);
+
+        app.handle_background_index_response(
+            tab_index,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+        assert!(!app.shell.indexing.inflight_requests.contains(&request_id));
+    }
+
+    assert!(app.shell.indexing.background_finalizations.is_full());
+    assert_eq!(
+        app.shell.indexing.background_finalizations.keys().count(),
+        2
+    );
+    let active_tab_id = app.current_tab_id().expect("active tab");
+    app.request_index_refresh();
+    let request = index_rx
+        .try_recv()
+        .expect("active request must bypass occupied finalization slots");
+    assert_eq!(request.tab_id, active_tab_id);
+
+    app.shell.tabs.resume_resource_reclaimer();
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_terminal_waits_in_mailbox_and_activation_commits_complete_snapshot() {
+    let root = test_root("tc-207-terminal-mailbox-activation-barrier");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    let original_active_id = app.current_tab_id().expect("active tab");
+
+    for tab_index in 0..2 {
+        let tab_id = app.shell.tabs.get(tab_index).expect("inactive tab").id;
+        let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+        {
+            let tab = app.shell.tabs.get_mut(tab_index).expect("inactive tab");
+            tab.index_state.pending_index_request_id = Some(request_id);
+            tab.index_state.index_in_progress = true;
+        }
+        app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+                entries: (0..100_000)
+                    .map(|index| {
+                        file_entry(root.join(format!("slot-{tab_index}-entry-{index}.txt")))
+                    })
+                    .collect(),
+                replaced: true,
+            },
+        );
+        app.handle_background_index_response(
+            tab_index,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+    }
+    assert!(app.shell.indexing.background_finalizations.is_full());
+
+    let waiting_tab_index = 2;
+    let waiting_tab_id = app
+        .shell
+        .tabs
+        .get(waiting_tab_index)
+        .expect("waiting tab")
+        .id;
+    let waiting_request_id = app.shell.indexing.allocate_request_id(Some(waiting_tab_id));
+    {
+        let tab = app
+            .shell
+            .tabs
+            .get_mut(waiting_tab_index)
+            .expect("waiting tab");
+        tab.index_state.pending_index_request_id = Some(waiting_request_id);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.index.entries = (0..20_000)
+            .map(|index| file_entry(root.join(format!("partial-{index}.txt"))))
+            .collect();
+        tab.index_state.pending_index_entries_request_id = Some(waiting_request_id);
+        tab.index_state.pending_index_entries = (0..20_000)
+            .map(|index| IndexEntry {
+                path: root.join(format!("pending-{index}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect();
+    }
+    app.shell.indexing.background_states.insert(
+        waiting_request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..60_000)
+                .map(|index| file_entry(root.join(format!("continuation-{index}.txt"))))
+                .collect(),
+            replaced: false,
+        },
+    );
+    let waiting_mailbox = app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .get(&waiting_request_id)
+        .cloned()
+        .expect("waiting mailbox");
+    waiting_mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: waiting_request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .expect("publish terminal");
+    app.shell
+        .indexing
+        .inflight_requests
+        .insert(waiting_request_id);
+
+    app.switch_to_tab_index(waiting_tab_index);
+    assert_eq!(app.current_tab_id(), Some(original_active_id));
+    assert_eq!(
+        app.shell.tabs.pending_activation_tab_id,
+        Some(waiting_tab_id)
+    );
+    let current_tab_index = app.shell.tabs.active_tab_index();
+    app.switch_to_tab_index(current_tab_index);
+    assert_eq!(
+        app.shell.tabs.pending_activation_tab_id, None,
+        "reselecting the current tab must cancel a deferred activation intent"
+    );
+    app.switch_to_tab_index(waiting_tab_index);
+    assert_eq!(
+        app.shell.tabs.pending_activation_tab_id,
+        Some(waiting_tab_id)
+    );
+    assert!(waiting_mailbox.has_terminal_response());
+    assert!(!app
+        .shell
+        .tabs
+        .get(waiting_tab_index)
+        .expect("waiting tab")
+        .index_state
+        .pending_index_finish
+        .is_some());
+
+    let admitted_request_id = *app
+        .shell
+        .indexing
+        .background_finalizations
+        .keys()
+        .next()
+        .expect("occupied finalizer");
+    let admitted_tab_id = *app
+        .shell
+        .indexing
+        .request_tabs
+        .get(&admitted_request_id)
+        .expect("finalizer owner");
+    let admitted_tab_index = app
+        .find_tab_index_by_id(admitted_tab_id)
+        .expect("finalizer tab");
+    let source = IndexSource::FileList(root.join("FileList.txt"));
+    let _ = settle_background_finish_with_frame_budget(
+        &mut app,
+        admitted_tab_index,
+        admitted_request_id,
+        source,
+    );
+
+    let mut settled = false;
+    for _ in 0..2_000 {
+        app.poll_index_response_with_budget_for_test(Duration::from_millis(4));
+        if app.current_tab_id() == Some(waiting_tab_id)
+            && app.shell.indexing.pending_finish.is_none()
+        {
+            settled = true;
+            break;
+        }
+    }
+    assert!(settled, "deferred activation did not settle");
+    assert_eq!(app.shell.runtime.all_entries.len(), 100_000);
+    assert!(app
+        .shell
+        .runtime
+        .all_entries
+        .iter()
+        .any(|entry| entry.path.ends_with("partial-0.txt")));
+    assert!(app
+        .shell
+        .runtime
+        .all_entries
+        .iter()
+        .any(|entry| entry.path.ends_with("pending-0.txt")));
+    assert!(app
+        .shell
+        .runtime
+        .all_entries
+        .iter()
+        .any(|entry| entry.path.ends_with("continuation-0.txt")));
+    assert!(!app
+        .shell
+        .indexing
+        .background_states
+        .contains_key(&waiting_request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_promotion_before_terminal_uses_active_finalization_barrier() {
+    let root = test_root("tc-207-promotion-before-terminal-barrier");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+
+    for tab_index in 0..2 {
+        let tab_id = app.shell.tabs.get(tab_index).expect("inactive tab").id;
+        let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+        {
+            let tab = app.shell.tabs.get_mut(tab_index).expect("inactive tab");
+            tab.index_state.pending_index_request_id = Some(request_id);
+            tab.index_state.index_in_progress = true;
+        }
+        app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+                entries: (0..100_000)
+                    .map(|index| file_entry(root.join(format!("occupied-{tab_index}-{index}.txt"))))
+                    .collect(),
+                replaced: true,
+            },
+        );
+        app.handle_background_index_response(
+            tab_index,
+            IndexResponse::Finished {
+                request_id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+        );
+    }
+    assert!(app.shell.indexing.background_finalizations.is_full());
+
+    let promoted_index = 2;
+    let promoted_tab_id = app.shell.tabs.get(promoted_index).expect("promoted tab").id;
+    let request_id = app
+        .shell
+        .indexing
+        .allocate_request_id(Some(promoted_tab_id));
+    {
+        let tab = app
+            .shell
+            .tabs
+            .get_mut(promoted_index)
+            .expect("promoted tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.index.entries = (0..20_000)
+            .map(|index| file_entry(root.join(format!("partial-{index}.txt"))))
+            .collect();
+        tab.index_state.pending_index_entries_request_id = Some(request_id);
+        tab.index_state.pending_index_entries = (0..20_000)
+            .map(|index| IndexEntry {
+                path: root.join(format!("pending-{index}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect();
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..60_000)
+                .map(|index| file_entry(root.join(format!("continuation-{index}.txt"))))
+                .collect(),
+            replaced: false,
+        },
+    );
+
+    app.switch_to_tab_index(promoted_index);
+    assert_eq!(app.current_tab_id(), Some(promoted_tab_id));
+    let mailbox = app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .get(&request_id)
+        .cloned()
+        .expect("promoted mailbox");
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .expect("publish promoted terminal");
+    app.shell.indexing.inflight_requests.insert(request_id);
+    app.poll_index_response_with_budget_for_test(Duration::from_millis(4));
+    assert!(mailbox.has_terminal_response());
+    assert!(!app.shell.indexing.inflight_requests.contains(&request_id));
+    assert!(app.shell.indexing.pending_finish.is_none());
+    assert!(app
+        .shell
+        .indexing
+        .background_states
+        .contains_key(&request_id));
+
+    let admitted_request_id = *app
+        .shell
+        .indexing
+        .background_finalizations
+        .keys()
+        .next()
+        .expect("occupied finalizer");
+    let admitted_tab_id = *app
+        .shell
+        .indexing
+        .request_tabs
+        .get(&admitted_request_id)
+        .expect("finalizer owner");
+    let admitted_tab_index = app
+        .find_tab_index_by_id(admitted_tab_id)
+        .expect("finalizer tab");
+    let _ = settle_background_finish_with_frame_budget(
+        &mut app,
+        admitted_tab_index,
+        admitted_request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+    );
+
+    let mut settled = false;
+    for _ in 0..2_000 {
+        app.poll_index_response_with_budget_for_test(Duration::from_millis(4));
+        if app.shell.indexing.pending_finish.is_none()
+            && !app
+                .shell
+                .indexing
+                .background_states
+                .contains_key(&request_id)
+            && !app
+                .shell
+                .indexing
+                .background_finalizations
+                .contains_key(&request_id)
+        {
+            settled = true;
+            break;
+        }
+    }
+    assert!(settled, "promoted terminal barrier did not settle");
+    assert_eq!(app.shell.runtime.all_entries.len(), 100_000);
+    assert!(app
+        .shell
+        .runtime
+        .all_entries
+        .iter()
+        .any(|entry| entry.path.ends_with("partial-0.txt")));
+    assert!(app
+        .shell
+        .runtime
+        .all_entries
+        .iter()
+        .any(|entry| entry.path.ends_with("pending-0.txt")));
+    assert!(app
+        .shell
+        .runtime
+        .all_entries
+        .iter()
+        .any(|entry| entry.path.ends_with("continuation-0.txt")));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_replace_all_discarded_build_moves_to_reclaimer_without_ui_drop() {
+    let root = test_root("tc-207-replace-all-discard-reclaimer");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.pending_index_entries_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.index.entries = (0..50_000)
+            .map(|index| file_entry(root.join(format!("old-{index}.txt"))))
+            .collect();
+        tab.index_state.pending_index_entries = (0..50_000)
+            .map(|index| IndexEntry {
+                path: root.join(format!("pending-{index}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect();
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: vec![file_entry(root.join("replacement.txt"))],
+            replaced: true,
+        },
+    );
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+
+    let started = Instant::now();
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Finished {
+            request_id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        },
+    );
+    assert!(started.elapsed() < Duration::from_millis(100));
+
+    set_reclaim_drop_observer(None);
+    let tab = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(tab.index_state.all_entries.len(), 1);
+    assert_eq!(
+        tab.index_state.all_entries[0].path,
+        root.join("replacement.txt")
+    );
+    let drop_threads = collect_drop_threads_until(
+        &drop_rx,
+        "flistwalker-tab-reclaimer",
+        Duration::from_millis(250),
+    );
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_failure_reclaims_tab_and_coordinator_building_off_ui() {
+    let root = test_root("tc-207-background-failure-reclaim");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.lifecycle = TabResourceLifecycle::Loading;
+        tab.index_state.pending_index_request_id = Some(1_207);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.index.entries = (0..1_000)
+            .map(|index| file_entry(root.join(format!("tab-building-{index}.txt"))))
+            .collect();
+    }
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(1_207, background_tab_id);
+    app.shell.indexing.background_states.insert(
+        1_207,
+        BackgroundIndexState {
+            source: Some(IndexSource::Walker),
+            entries: (0..1_000)
+                .map(|index| file_entry(root.join(format!("coordinator-{index}.txt"))))
+                .collect(),
+            replaced: true,
+        },
+    );
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Failed {
+            request_id: 1_207,
+            error: "fixture failure".to_string(),
+        },
+    );
+
+    set_reclaim_drop_observer(None);
+    let tab = app.shell.tabs.get(0).expect("background tab");
+    assert!(!tab.index_state.build_reclaim_pending);
+    assert!(tab.index_state.pending_index_request_id.is_none());
+    assert_eq!(tab.index_state.index.entries.capacity(), 0);
+    assert!(!app.shell.indexing.background_states.contains_key(&1_207));
+    let drop_threads = collect_drop_threads_until(
+        &drop_rx,
+        "flistwalker-tab-reclaimer",
+        Duration::from_millis(250),
+    );
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_replace_all_waits_for_reclaimer_and_preserves_old_build() {
+    let root = test_root("tc-207-background-replace-all-full");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app
+        .shell
+        .indexing
+        .allocate_request_id(Some(background_tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::FileList(root.join("FileList.txt"))),
+            entries: (0..2_000)
+                .map(|index| file_entry(root.join(format!("old-{index}.txt"))))
+                .collect(),
+            replaced: false,
+        },
+    );
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(3_200 + index as u64);
+        tab.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    assert!(
+        !app.try_apply_replace_all_response(IndexResponse::ReplaceAll {
+            request_id,
+            entries: vec![IndexEntry {
+                path: root.join("replacement.txt"),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+    );
+
+    assert!(app.shell.indexing.pending_replace_all.is_some());
+    assert_eq!(
+        app.shell
+            .indexing
+            .background_states
+            .get(&request_id)
+            .expect("old state restored")
+            .entries
+            .len(),
+        2_000
+    );
+
+    app.shell.tabs.resume_resource_reclaimer();
+    app.poll_index_response();
+
+    let replacement = app
+        .shell
+        .indexing
+        .background_states
+        .get(&request_id)
+        .expect("replacement state");
+    assert!(app.shell.indexing.pending_replace_all.is_none());
+    assert!(replacement.replaced);
+    assert_eq!(replacement.entries.len(), 1);
+    assert_eq!(replacement.entries[0].path, root.join("replacement.txt"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_failure_debt_switches_active_and_cleans_routing() {
+    let root = test_root("tc-207-background-debt-switch-active");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let request_id = app
+        .shell
+        .indexing
+        .allocate_request_id(Some(background_tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.index.entries = (0..2_000)
+            .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
+            .collect();
+    }
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(3_300 + index as u64);
+        tab.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    app.handle_background_index_response(
+        0,
+        IndexResponse::Failed {
+            request_id,
+            error: "fixture failure".to_string(),
+        },
+    );
+    assert!(
+        app.shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .index_state
+            .build_reclaim_pending
+    );
+
+    app.switch_to_tab_index(0);
+    assert_eq!(app.current_tab_id(), Some(background_tab_id));
+    assert!(app.shell.indexing.build_reclaim_pending);
+
+    app.shell.tabs.resume_resource_reclaimer();
+    app.poll_index_response();
+
+    assert!(!app.shell.indexing.build_reclaim_pending);
+    assert!(app.shell.indexing.build_reclaim_request_id.is_none());
+    assert!(!app.shell.indexing.request_tabs.contains_key(&request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .contains_key(&request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_midflight_background_close_reclaims_coordinator_and_mailbox_off_ui() {
+    let root = test_root("tc-207-midflight-background-close");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    assert_eq!(app.shell.tabs.active_tab_index(), 1);
+    let closing_tab_id = app.shell.tabs.get(0).expect("closing tab").id;
+    let request_id = app.shell.indexing.allocate_request_id(Some(closing_tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("closing tab");
+        tab.index_state.pending_index_request_id = Some(request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell.indexing.background_states.insert(
+        request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::Walker),
+            entries: (0..1_000)
+                .map(|index| file_entry(root.join(format!("state-{index}.txt"))))
+                .collect(),
+            replaced: false,
+        },
+    );
+    let mailbox = app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .get(&request_id)
+        .cloned()
+        .expect("request mailbox");
+    mailbox
+        .try_publish(IndexResponse::Batch {
+            request_id,
+            entries: (0..1_000)
+                .map(|index| IndexEntry {
+                    path: root.join(format!("mailbox-{index}.txt")),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                })
+                .collect(),
+        })
+        .expect("seed mailbox payload");
+    drop(mailbox);
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+    assert!(app.shell.tabs.get(0).unwrap().index_state.index_in_progress);
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .index_state
+            .pending_index_request_id,
+        Some(request_id)
+    );
+
+    app.close_tab_index(0);
+
+    set_reclaim_drop_observer(None);
+    assert_eq!(app.shell.tabs.len(), 1);
+    assert_eq!(app.shell.tabs.closed_tab_count(), 1);
+    assert!(!app.shell.indexing.request_tabs.contains_key(&request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .background_states
+        .contains_key(&request_id));
+    assert!(!app
+        .shell
+        .indexing
+        .response_mailboxes
+        .lock()
+        .expect("mailboxes")
+        .contains_key(&request_id));
+    let drop_threads = collect_drop_threads_until(
+        &drop_rx,
+        "flistwalker-tab-reclaimer",
+        Duration::from_millis(250),
+    );
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_multigeneration_background_close_reclaims_every_request_owner() {
+    let root = test_root("tc-207-multigeneration-background-close");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_id = app.shell.tabs.get(0).expect("closing tab").id;
+    let superseded_request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    let current_request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("closing tab");
+        tab.index_state.pending_index_request_id = Some(current_request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    for request_id in [superseded_request_id, current_request_id] {
+        app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::Walker),
+                entries: (0..1_000)
+                    .map(|index| file_entry(root.join(format!("state-{request_id}-{index}.txt"))))
+                    .collect(),
+                replaced: false,
+            },
+        );
+        let mailbox = app
+            .shell
+            .indexing
+            .response_mailboxes
+            .lock()
+            .expect("mailboxes")
+            .get(&request_id)
+            .cloned()
+            .expect("mailbox");
+        mailbox
+            .try_publish(IndexResponse::Batch {
+                request_id,
+                entries: vec![IndexEntry {
+                    path: root.join(format!("mailbox-{request_id}.txt")),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            })
+            .expect("seed mailbox");
+    }
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+
+    app.close_tab_index(0);
+
+    set_reclaim_drop_observer(None);
+    assert_eq!(app.shell.tabs.len(), 1);
+    assert_eq!(app.shell.tabs.closed_tab_count(), 1);
+    for request_id in [superseded_request_id, current_request_id] {
+        assert!(!app.shell.indexing.request_tabs.contains_key(&request_id));
+        assert!(!app
+            .shell
+            .indexing
+            .background_states
+            .contains_key(&request_id));
+        assert!(!app
+            .shell
+            .indexing
+            .response_mailboxes
+            .lock()
+            .expect("mailboxes")
+            .contains_key(&request_id));
+    }
+    let drop_threads = collect_drop_threads_until(
+        &drop_rx,
+        "flistwalker-tab-reclaimer",
+        Duration::from_millis(250),
+    );
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_multigeneration_background_close_rolls_back_every_owner_when_full() {
+    let root = test_root("tc-207-multigeneration-background-close-full");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let tab_id = app.shell.tabs.get(0).expect("closing tab").id;
+    let superseded_request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    let current_request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("closing tab");
+        tab.index_state.pending_index_request_id = Some(current_request_id);
+        tab.index_state.index_in_progress = true;
+    }
+    for request_id in [superseded_request_id, current_request_id] {
+        app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::Walker),
+                entries: vec![file_entry(root.join(format!("state-{request_id}.txt")))],
+                replaced: false,
+            },
+        );
+        let mailbox = app
+            .shell
+            .indexing
+            .response_mailboxes
+            .lock()
+            .expect("mailboxes")
+            .get(&request_id)
+            .cloned()
+            .expect("mailbox");
+        mailbox
+            .try_publish(IndexResponse::Batch {
+                request_id,
+                entries: vec![IndexEntry {
+                    path: root.join(format!("mailbox-{request_id}.txt")),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            })
+            .expect("seed mailbox");
+    }
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut held = app.capture_active_tab_state(7_000 + index as u64);
+        held.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(held.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    app.close_tab_index(0);
+
+    assert_eq!(app.shell.tabs.len(), 2);
+    assert_eq!(app.shell.tabs.closed_tab_count(), 0);
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("closing tab retained")
+            .index_state
+            .pending_index_request_id,
+        Some(current_request_id)
+    );
+    for request_id in [superseded_request_id, current_request_id] {
+        assert_eq!(
+            app.shell.indexing.request_tabs.get(&request_id),
+            Some(&tab_id)
+        );
+        assert!(app
+            .shell
+            .indexing
+            .background_states
+            .contains_key(&request_id));
+        let mailbox = app
+            .shell
+            .indexing
+            .response_mailboxes
+            .lock()
+            .expect("mailboxes")
+            .get(&request_id)
+            .cloned()
+            .expect("mailbox restored");
+        assert!(mailbox.has_payload());
+    }
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_terminal_debt_coalesces_refresh_to_one_follow_up() {
+    let root = test_root("tc-207-background-terminal-follow-up");
+    fs::create_dir_all(&root).expect("create root");
+    let old = file_entry(root.join("old.txt"));
+    let new = file_entry(root.join("new.txt"));
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    app.shell.indexing.pending_queue.clear();
+    app.shell.indexing.inflight_requests.clear();
+    app.shell.indexing.request_tabs.clear();
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.lifecycle = TabResourceLifecycle::Refreshing;
+        tab.index_state.committed_snapshot_present = true;
+        tab.index_state.all_entries = Arc::new(vec![old.clone()]);
+        tab.index_state.entries = Arc::new(vec![old]);
+        tab.index_state.index.entries = vec![new];
+        tab.index_state.pending_index_request_id = Some(607);
+        tab.index_state.pending_index_finish = Some(PendingActiveIndexFinish {
+            request_id: 607,
+            source: IndexSource::Walker,
+        });
+    }
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(607, background_tab_id);
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(1_700 + index as u64);
+        tab.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+    let next_request_id = app.shell.indexing.next_request_id;
+
+    app.request_background_index_refresh_for_tab(0);
+    app.request_background_index_refresh_for_tab(0);
+
+    let waiting = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(waiting.index_state.pending_index_request_id, Some(607));
+    assert_eq!(waiting.index_state.index.entries.len(), 1);
+    assert_eq!(app.shell.indexing.next_request_id, next_request_id);
+    assert!(request_rx.try_recv().is_err());
+
+    app.shell.tabs.resume_resource_reclaimer();
+    app.poll_index_response();
+
+    let replay = request_rx
+        .try_recv()
+        .expect("one coalesced background refresh");
+    assert_eq!(replay.tab_id, background_tab_id);
+    assert!(request_rx.try_recv().is_err());
+    assert_eq!(app.shell.indexing.next_request_id, next_request_id + 1);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_background_search_restores_evicted_selected_path() {
+    let root = test_root("tc-207-background-selected-path");
+    fs::create_dir_all(&root).expect("create root");
+    let first = root.join("first.txt");
+    let selected = root.join("selected.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.query_state.query = "selected".to_string();
+        tab.result_state.evicted_selected_path = Some(selected.clone());
+        tab.pending_request_id = Some(707);
+        tab.search_in_progress = true;
+    }
+
+    app.apply_background_search_response(
+        background_tab_id,
+        SearchResponse {
+            request_id: 707,
+            results: vec![(first, 2.0), (selected.clone(), 1.0)],
+            total_match_count: 2,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        },
+    );
+
+    let tab = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(tab.result_state.current_row, Some(1));
+    assert_eq!(tab.result_state.results[1].0, selected);
+    assert!(tab.result_state.evicted_selected_path.is_none());
     let _ = fs::remove_dir_all(&root);
 }

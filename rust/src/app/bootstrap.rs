@@ -12,6 +12,7 @@ use super::{
     UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
+use crate::app::tab_resources::TabResourceReclaimer;
 use crate::app::worker::channel::BoundedSender;
 use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
@@ -30,6 +31,7 @@ type WorkerBootstrapParts = (
     Arc<Mutex<HashMap<u64, u64>>>,
     Arc<Mutex<HashMap<u64, Arc<super::index_mailbox::IndexResponseMailbox>>>>,
     Arc<Mutex<HashMap<u64, u64>>>,
+    TabResourceReclaimer,
     WorkerRuntime,
 );
 
@@ -57,6 +59,7 @@ pub(super) struct AppWorkerBootstrap {
     index_response_mailboxes:
         Arc<Mutex<HashMap<u64, Arc<super::index_mailbox::IndexResponseMailbox>>>>,
     latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
+    tab_resource_reclaimer: TabResourceReclaimer,
     worker_runtime: WorkerRuntime,
 }
 
@@ -85,6 +88,7 @@ impl AppWorkerBootstrap {
             self.latest_index_request_ids,
             self.index_response_mailboxes,
             self.latest_kind_epochs,
+            self.tab_resource_reclaimer,
             self.worker_runtime,
         )
     }
@@ -219,6 +223,9 @@ impl FlistWalkerApp {
         for (idx, handle) in index_handles.into_iter().enumerate() {
             worker_runtime.push(format!("index-{idx}"), handle);
         }
+        let (tab_resource_reclaimer, tab_resource_reclaimer_handle) =
+            TabResourceReclaimer::spawn_managed();
+        worker_runtime.push("tab-reclaimer", tab_resource_reclaimer_handle);
 
         AppWorkerBootstrap {
             search_tx,
@@ -277,6 +284,7 @@ impl FlistWalkerApp {
             latest_index_request_ids,
             index_response_mailboxes,
             latest_kind_epochs,
+            tab_resource_reclaimer,
             worker_runtime,
         }
     }
@@ -325,6 +333,7 @@ impl FlistWalkerApp {
             latest_index_request_ids,
             index_response_mailboxes,
             latest_kind_epochs,
+            tab_resource_reclaimer,
             worker_runtime,
         ) = Self::bootstrap_workers().into_parts();
         let (
@@ -370,6 +379,7 @@ impl FlistWalkerApp {
                     total_match_count: 0,
                     pinned_paths: HashSet::new(),
                     current_row: None,
+                    evicted_selected_path: None,
                     emacs_keybindings_enabled,
                     ctrl_w_deletes_word_in_query,
                     tab_pin_moves_to_next_row,
@@ -394,7 +404,7 @@ impl FlistWalkerApp {
                     entry_kind: EntryKindCacheState::default(),
                     sort_metadata: SortMetadataCacheState::default(),
                 },
-                tabs: TabSessionState::default(),
+                tabs: TabSessionState::with_resource_reclaimer(tab_resource_reclaimer),
                 features: FeatureStateBundle {
                     root_browser: RootBrowserState {
                         #[cfg(test)]

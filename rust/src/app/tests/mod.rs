@@ -6,11 +6,12 @@ pub(super) use crate::app::session::UiState;
 pub(super) use crate::app::state::{
     BackgroundIndexState, PendingActiveIndexFinish, PendingFileListAfterIndex,
     PendingFileListAncestorConfirmation, PendingFileListConfirmation,
-    PendingFileListIndexCompletionNotice, PendingFileListUseWalkerConfirmation, SortMetadata,
-    UpdateCheckFailureState, UpdateInstallFailureState, UpdateManager, UpdatePromptState,
-    UpdateState,
+    PendingFileListIndexCompletionNotice, PendingFileListUseWalkerConfirmation,
+    PendingIndexRefreshMode, SortMetadata, UpdateCheckFailureState, UpdateInstallFailureState,
+    UpdateManager, UpdatePromptState, UpdateState,
 };
 pub(super) use crate::app::tab_resources::{
+    lock_reclaim_drop_observer_for_test, set_reclaim_drop_observer, RetiredIndexBuildResources,
     TabResourceReclaimer, TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
     TAB_RESOURCE_RECLAIMER_CAPACITY,
 };

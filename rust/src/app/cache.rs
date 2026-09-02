@@ -249,6 +249,7 @@ impl SortMetadataCacheState {
 }
 
 impl EntryKindCacheState {
+    #[cfg(test)]
     pub(super) fn clear(&mut self) {
         self.entries.clear();
     }

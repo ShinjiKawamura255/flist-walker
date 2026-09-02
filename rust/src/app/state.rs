@@ -6,8 +6,8 @@ use crate::app::index_coordinator::IndexCoordinator;
 use crate::app::query_state::QueryState;
 use crate::app::search_coordinator::SearchCoordinator;
 use crate::app::tab_resources::{
-    RetiredActiveResources, TabResourceReclaimer, TAB_RESOURCE_CACHE_MAX_COUNT,
-    TAB_RESOURCE_CACHE_MAX_WEIGHT,
+    RetiredActiveResources, RetiredTabResources, TabResourceReclaimer,
+    TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
 };
 use crate::app::tab_state::AppTabState;
 use crate::app::ui_state::RuntimeUiState;
@@ -32,6 +32,329 @@ pub(super) struct BackgroundIndexState {
     pub(super) source: Option<IndexSource>,
     pub(super) entries: Vec<Entry>,
     pub(super) replaced: bool,
+}
+
+#[derive(Debug)]
+pub(super) struct PendingBackgroundIndexFinalize {
+    pub(super) tab_id: u64,
+    pub(super) request_id: u64,
+    pub(super) source: IndexSource,
+    pub(super) include_files: bool,
+    pub(super) include_dirs: bool,
+    pub(super) root: PathBuf,
+    pub(super) prefer_relative: bool,
+    pub(super) ignore_case: bool,
+    pub(super) ignore_list_enabled: bool,
+    pub(super) ignore_terms_source: Arc<Vec<String>>,
+    pub(super) ignore_terms: Option<Arc<crate::query::CompiledIgnoreTerms>>,
+    pub(super) initial_entries: VecDeque<Entry>,
+    pub(super) pending_entries: VecDeque<crate::app::IndexEntry>,
+    pub(super) continuation_entries: VecDeque<Entry>,
+    pub(super) discarded_entries: VecDeque<Entry>,
+    pub(super) discarded_pending_entries: VecDeque<crate::app::IndexEntry>,
+    pub(super) completed_entries: Vec<Entry>,
+    pub(super) filtered_entries: Option<Vec<Entry>>,
+    pub(super) filter_cursor: usize,
+    pub(super) unresolved_kind_paths: VecDeque<PathBuf>,
+    pub(super) unresolved_kind_paths_set: HashSet<PathBuf>,
+    pub(super) kind_cursor: usize,
+    pub(super) filelist_paths: Option<Vec<PathBuf>>,
+    pub(super) scratch_reclaimed: bool,
+}
+
+#[derive(Debug, Default)]
+pub(super) struct BackgroundIndexFinalizeScratch {
+    initial_entries: VecDeque<Entry>,
+    pending_entries: VecDeque<crate::app::IndexEntry>,
+    continuation_entries: VecDeque<Entry>,
+    discarded_entries: VecDeque<Entry>,
+    discarded_pending_entries: VecDeque<crate::app::IndexEntry>,
+}
+
+#[derive(Debug, Default)]
+pub(super) struct BackgroundIndexFilterScratch {
+    filtered_entries: Option<Vec<Entry>>,
+    filter_cursor: usize,
+    unresolved_kind_paths: VecDeque<PathBuf>,
+    unresolved_kind_paths_set: HashSet<PathBuf>,
+    kind_cursor: usize,
+}
+
+impl BackgroundIndexFinalizeScratch {
+    pub(super) fn heavy_resource_weight(&self) -> usize {
+        self.initial_entries
+            .capacity()
+            .saturating_add(self.pending_entries.capacity())
+            .saturating_add(self.continuation_entries.capacity())
+            .saturating_add(self.discarded_entries.capacity())
+            .saturating_add(self.discarded_pending_entries.capacity())
+    }
+}
+
+impl BackgroundIndexFilterScratch {
+    pub(super) fn heavy_resource_weight(&self) -> usize {
+        self.filtered_entries
+            .as_ref()
+            .map_or(0, Vec::capacity)
+            .saturating_add(self.unresolved_kind_paths.capacity())
+            .saturating_add(self.unresolved_kind_paths_set.capacity())
+    }
+}
+
+impl PendingBackgroundIndexFinalize {
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn new(
+        tab_id: u64,
+        request_id: u64,
+        source: IndexSource,
+        include_files: bool,
+        include_dirs: bool,
+        root: PathBuf,
+        prefer_relative: bool,
+        ignore_case: bool,
+        ignore_list_enabled: bool,
+        ignore_terms_source: Arc<Vec<String>>,
+        initial_entries: VecDeque<Entry>,
+        pending_entries: VecDeque<crate::app::IndexEntry>,
+        continuation_entries: VecDeque<Entry>,
+        discarded_entries: VecDeque<Entry>,
+        discarded_pending_entries: VecDeque<crate::app::IndexEntry>,
+        capture_filelist_paths: bool,
+    ) -> Self {
+        let selected_len = initial_entries
+            .len()
+            .saturating_add(pending_entries.len())
+            .saturating_add(continuation_entries.len());
+        let ignore_list_enabled = ignore_list_enabled && !ignore_terms_source.is_empty();
+        let ignore_terms = ignore_list_enabled.then(|| {
+            Arc::new(crate::query::CompiledIgnoreTerms::compile(
+                ignore_terms_source.as_slice(),
+                ignore_case,
+            ))
+        });
+        let needs_filter = !include_files || !include_dirs || ignore_terms.is_some();
+        let tracks_unknown_kinds =
+            matches!(source, IndexSource::Walker) && (!include_files || !include_dirs);
+        Self {
+            tab_id,
+            request_id,
+            source,
+            include_files,
+            include_dirs,
+            root,
+            prefer_relative,
+            ignore_case,
+            ignore_list_enabled,
+            ignore_terms_source,
+            ignore_terms,
+            initial_entries,
+            pending_entries,
+            continuation_entries,
+            discarded_entries,
+            discarded_pending_entries,
+            completed_entries: Vec::with_capacity(selected_len),
+            filtered_entries: needs_filter.then(|| Vec::with_capacity(selected_len)),
+            filter_cursor: 0,
+            unresolved_kind_paths: if tracks_unknown_kinds {
+                VecDeque::with_capacity(selected_len)
+            } else {
+                VecDeque::new()
+            },
+            unresolved_kind_paths_set: if tracks_unknown_kinds {
+                HashSet::with_capacity(selected_len)
+            } else {
+                HashSet::new()
+            },
+            kind_cursor: 0,
+            filelist_paths: capture_filelist_paths.then(|| Vec::with_capacity(selected_len)),
+            scratch_reclaimed: false,
+        }
+    }
+
+    pub(super) fn heavy_resource_weight(&self) -> usize {
+        self.initial_entries
+            .capacity()
+            .saturating_add(self.pending_entries.capacity())
+            .saturating_add(self.continuation_entries.capacity())
+            .saturating_add(self.discarded_entries.capacity())
+            .saturating_add(self.discarded_pending_entries.capacity())
+            .saturating_add(self.completed_entries.capacity())
+            .saturating_add(self.filtered_entries.as_ref().map_or(0, Vec::capacity))
+            .saturating_add(self.unresolved_kind_paths.capacity())
+            .saturating_add(self.unresolved_kind_paths_set.capacity())
+            .saturating_add(self.filelist_paths.as_ref().map_or(0, Vec::capacity))
+    }
+
+    pub(super) fn is_complete(&self) -> bool {
+        self.initial_entries.is_empty()
+            && self.pending_entries.is_empty()
+            && self.continuation_entries.is_empty()
+            && self
+                .filtered_entries
+                .as_ref()
+                .is_none_or(|_| self.filter_cursor == self.completed_entries.len())
+            && (!matches!(self.source, IndexSource::Walker)
+                || (self.include_files && self.include_dirs)
+                || self.kind_cursor == self.completed_entries.len())
+    }
+
+    pub(super) fn filter_policy_matches(
+        &self,
+        include_files: bool,
+        include_dirs: bool,
+        ignore_case: bool,
+        enabled: bool,
+        terms: &Arc<Vec<String>>,
+    ) -> bool {
+        let enabled = enabled && !terms.is_empty();
+        self.include_files == include_files
+            && self.include_dirs == include_dirs
+            && self.ignore_case == ignore_case
+            && self.ignore_list_enabled == enabled
+            && Arc::ptr_eq(&self.ignore_terms_source, terms)
+    }
+
+    pub(super) fn take_filter_scratch(&mut self) -> BackgroundIndexFilterScratch {
+        BackgroundIndexFilterScratch {
+            filtered_entries: self.filtered_entries.take(),
+            filter_cursor: self.filter_cursor,
+            unresolved_kind_paths: std::mem::take(&mut self.unresolved_kind_paths),
+            unresolved_kind_paths_set: std::mem::take(&mut self.unresolved_kind_paths_set),
+            kind_cursor: self.kind_cursor,
+        }
+    }
+
+    pub(super) fn restore_filter_scratch(&mut self, scratch: BackgroundIndexFilterScratch) {
+        self.filtered_entries = scratch.filtered_entries;
+        self.filter_cursor = scratch.filter_cursor;
+        self.unresolved_kind_paths = scratch.unresolved_kind_paths;
+        self.unresolved_kind_paths_set = scratch.unresolved_kind_paths_set;
+        self.kind_cursor = scratch.kind_cursor;
+    }
+
+    pub(super) fn apply_filter_policy(
+        &mut self,
+        include_files: bool,
+        include_dirs: bool,
+        ignore_case: bool,
+        enabled: bool,
+        terms: Arc<Vec<String>>,
+    ) {
+        let enabled = enabled && !terms.is_empty();
+        self.include_files = include_files;
+        self.include_dirs = include_dirs;
+        self.ignore_case = ignore_case;
+        self.ignore_list_enabled = enabled;
+        self.ignore_terms_source = Arc::clone(&terms);
+        self.ignore_terms = enabled.then(|| {
+            Arc::new(crate::query::CompiledIgnoreTerms::compile(
+                terms.as_slice(),
+                self.ignore_case,
+            ))
+        });
+        let needs_filter = !self.include_files || !self.include_dirs || enabled;
+        self.filtered_entries =
+            needs_filter.then(|| Vec::with_capacity(self.completed_entries.capacity()));
+        self.filter_cursor = 0;
+        self.unresolved_kind_paths = if matches!(self.source, IndexSource::Walker)
+            && (!self.include_files || !self.include_dirs)
+        {
+            VecDeque::with_capacity(self.completed_entries.capacity())
+        } else {
+            VecDeque::new()
+        };
+        self.unresolved_kind_paths_set = if matches!(self.source, IndexSource::Walker)
+            && (!self.include_files || !self.include_dirs)
+        {
+            HashSet::with_capacity(self.completed_entries.capacity())
+        } else {
+            HashSet::new()
+        };
+        self.kind_cursor = 0;
+    }
+
+    pub(super) fn take_scratch(&mut self) -> BackgroundIndexFinalizeScratch {
+        BackgroundIndexFinalizeScratch {
+            initial_entries: std::mem::take(&mut self.initial_entries),
+            pending_entries: std::mem::take(&mut self.pending_entries),
+            continuation_entries: std::mem::take(&mut self.continuation_entries),
+            discarded_entries: std::mem::take(&mut self.discarded_entries),
+            discarded_pending_entries: std::mem::take(&mut self.discarded_pending_entries),
+        }
+    }
+
+    pub(super) fn restore_scratch(&mut self, scratch: BackgroundIndexFinalizeScratch) {
+        self.initial_entries = scratch.initial_entries;
+        self.pending_entries = scratch.pending_entries;
+        self.continuation_entries = scratch.continuation_entries;
+        self.discarded_entries = scratch.discarded_entries;
+        self.discarded_pending_entries = scratch.discarded_pending_entries;
+    }
+
+    pub(super) fn advance(&mut self, max_entries: usize, frame_budget: std::time::Duration) {
+        let started = std::time::Instant::now();
+        let mut processed = 0usize;
+        while processed < max_entries && started.elapsed() < frame_budget {
+            let next = self
+                .initial_entries
+                .pop_front()
+                .or_else(|| self.pending_entries.pop_front().map(Entry::from))
+                .or_else(|| self.continuation_entries.pop_front());
+            if let Some(entry) = next {
+                if let Some(paths) = self.filelist_paths.as_mut() {
+                    paths.push(entry.path.clone());
+                }
+                self.completed_entries.push(entry);
+            } else {
+                break;
+            }
+            processed = processed.saturating_add(1);
+        }
+        while processed < max_entries
+            && started.elapsed() < frame_budget
+            && self.initial_entries.is_empty()
+            && self.pending_entries.is_empty()
+            && self.continuation_entries.is_empty()
+            && matches!(self.source, IndexSource::Walker)
+            && (!self.include_files || !self.include_dirs)
+            && self.kind_cursor < self.completed_entries.len()
+        {
+            let entry = &self.completed_entries[self.kind_cursor];
+            if entry.kind.is_none() {
+                self.unresolved_kind_paths_set.insert(entry.path.clone());
+                self.unresolved_kind_paths.push_back(entry.path.clone());
+            }
+            self.kind_cursor = self.kind_cursor.saturating_add(1);
+            processed = processed.saturating_add(1);
+        }
+        while processed < max_entries
+            && started.elapsed() < frame_budget
+            && self.initial_entries.is_empty()
+            && self.pending_entries.is_empty()
+            && self.continuation_entries.is_empty()
+            && self.filtered_entries.is_some()
+            && self.filter_cursor < self.completed_entries.len()
+        {
+            let entry = &self.completed_entries[self.filter_cursor];
+            let ignored = self.ignore_terms.as_ref().is_some_and(|compiled| {
+                compiled.matches_path(
+                    entry.path(),
+                    crate::query::QueryScope {
+                        root: Some(&self.root),
+                        prefer_relative: self.prefer_relative,
+                        ignore_case: self.ignore_case,
+                    },
+                )
+            });
+            if !ignored && entry.is_visible_for_flags(self.include_files, self.include_dirs) {
+                if let Some(filtered_entries) = self.filtered_entries.as_mut() {
+                    filtered_entries.push(entry.clone());
+                }
+            }
+            self.filter_cursor = self.filter_cursor.saturating_add(1);
+            processed = processed.saturating_add(1);
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -112,6 +435,12 @@ pub(super) struct PendingFileListUseWalkerConfirmation {
 pub(super) struct PendingActiveIndexFinish {
     pub(super) request_id: u64,
     pub(super) source: IndexSource,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PendingIndexRefreshMode {
+    Normal,
+    CreateFileListWalker,
 }
 
 #[derive(Clone, Debug)]
@@ -276,6 +605,7 @@ pub struct AppRuntimeState {
     pub(super) total_match_count: usize,
     pub(super) pinned_paths: HashSet<PathBuf>,
     pub(super) current_row: Option<usize>,
+    pub(super) evicted_selected_path: Option<PathBuf>,
     pub(super) emacs_keybindings_enabled: bool,
     pub(super) ctrl_w_deletes_word_in_query: bool,
     pub(super) tab_pin_moves_to_next_row: bool,
@@ -485,6 +815,7 @@ pub(crate) struct TabSessionState {
     eviction_pending_tabs: HashSet<u64>,
     resource_reclaimer: TabResourceReclaimer,
     request_tab_routing: RequestTabRoutingState,
+    pub(super) pending_activation_tab_id: Option<u64>,
 }
 
 impl Default for TabSessionState {
@@ -498,12 +829,27 @@ impl Default for TabSessionState {
             eviction_pending_tabs: HashSet::new(),
             resource_reclaimer: TabResourceReclaimer::default(),
             request_tab_routing: RequestTabRoutingState::default(),
+            pending_activation_tab_id: None,
         }
     }
 }
 
 impl TabSessionState {
     const CLOSED_TAB_RESTORE_LIMIT: usize = 25;
+
+    pub(super) fn with_resource_reclaimer(resource_reclaimer: TabResourceReclaimer) -> Self {
+        Self {
+            tabs: Vec::new(),
+            active_tab: 0,
+            next_tab_id: 1,
+            closed_tabs: Vec::new(),
+            resource_lru: VecDeque::new(),
+            eviction_pending_tabs: HashSet::new(),
+            resource_reclaimer,
+            request_tab_routing: RequestTabRoutingState::default(),
+            pending_activation_tab_id: None,
+        }
+    }
 
     pub(super) fn replace_all(&mut self, tabs: Vec<AppTabState>) {
         self.tabs = tabs;
@@ -547,24 +893,49 @@ impl TabSessionState {
         self.tabs.remove(index)
     }
 
-    pub(super) fn push_closed_tab(&mut self, closed_tab: ClosedTabState) {
-        self.closed_tabs.push(closed_tab);
-        while self.closed_tabs.len() > Self::CLOSED_TAB_RESTORE_LIMIT {
-            let mut expired = self.closed_tabs.remove(0);
-            self.remove_resource_tracking(expired.tab.id);
-            let resources = expired.tab.take_heavy_resources();
-            if let Err(resources) = self.resource_reclaimer.try_retire(resources) {
-                expired.tab.restore_heavy_resources(*resources);
-                self.closed_tabs.insert(0, expired);
-                break;
+    pub(super) fn try_prepare_closed_history_slot(&mut self) -> bool {
+        if self.closed_tabs.len() < Self::CLOSED_TAB_RESTORE_LIMIT {
+            return true;
+        }
+        let Some(expired) = self.closed_tabs.first_mut() else {
+            return true;
+        };
+        if expired.tab.heavy_resource_weight() == 0 {
+            return true;
+        }
+        let expired_id = expired.tab.id;
+        let resources = expired.tab.take_heavy_resources();
+        match self.resource_reclaimer.try_retire(resources) {
+            Ok(()) => {
+                self.remove_resource_tracking(expired_id);
+                self.closed_tabs[0].activation_refresh_pending = true;
+                true
+            }
+            Err(resources) => {
+                self.closed_tabs[0].tab.restore_heavy_resources(*resources);
+                self.eviction_pending_tabs.insert(expired_id);
+                false
             }
         }
+    }
+
+    pub(super) fn push_closed_tab(&mut self, closed_tab: ClosedTabState) {
+        if self.closed_tabs.len() >= Self::CLOSED_TAB_RESTORE_LIMIT {
+            let expired = self.closed_tabs.remove(0);
+            debug_assert_eq!(expired.tab.heavy_resource_weight(), 0);
+            self.remove_resource_tracking(expired.tab.id);
+        }
+        self.closed_tabs.push(closed_tab);
     }
 
     pub(super) fn pop_closed_tab(&mut self) -> Option<ClosedTabState> {
         let closed = self.closed_tabs.pop()?;
         self.remove_resource_tracking(closed.tab.id);
         Some(closed)
+    }
+
+    pub(super) fn last_closed_tab_id(&self) -> Option<u64> {
+        self.closed_tabs.last().map(|closed| closed.tab.id)
     }
 
     pub(super) fn touch_heavy_resource(&mut self, tab_id: u64) {
@@ -586,12 +957,20 @@ impl TabSessionState {
             let cached = self
                 .tabs
                 .iter()
-                .filter(|tab| Some(tab.id) != active_tab_id && tab.heavy_resource_weight() > 0)
+                .filter(|tab| {
+                    Some(tab.id) != active_tab_id
+                        && Some(tab.id) != warm_tab_id
+                        && tab.heavy_resource_weight() > 0
+                })
                 .map(|tab| tab.heavy_resource_weight())
                 .chain(
                     self.closed_tabs
                         .iter()
-                        .filter(|closed| closed.tab.heavy_resource_weight() > 0)
+                        .filter(|closed| {
+                            Some(closed.tab.id) != active_tab_id
+                                && Some(closed.tab.id) != warm_tab_id
+                                && closed.tab.heavy_resource_weight() > 0
+                        })
                         .map(|closed| closed.tab.heavy_resource_weight()),
                 )
                 .collect::<Vec<_>>();
@@ -603,11 +982,23 @@ impl TabSessionState {
                 return true;
             }
 
-            let candidate = self
-                .resource_lru
-                .iter()
-                .copied()
-                .find(|tab_id| Some(*tab_id) != active_tab_id && Some(*tab_id) != warm_tab_id);
+            let candidate = self.resource_lru.iter().copied().find(|tab_id| {
+                Some(*tab_id) != active_tab_id
+                    && Some(*tab_id) != warm_tab_id
+                    && self
+                        .tabs
+                        .iter()
+                        .find(|tab| tab.id == *tab_id)
+                        .is_none_or(|tab| {
+                            tab.index_state.pending_index_finish.is_none()
+                                && !tab.index_state.build_reclaim_pending
+                        })
+                    && self
+                        .closed_tabs
+                        .iter()
+                        .find(|closed| closed.tab.id == *tab_id)
+                        .is_none_or(|closed| !closed.tab.index_state.build_reclaim_pending)
+            });
             let Some(candidate) = candidate else {
                 return false;
             };
@@ -668,6 +1059,41 @@ impl TabSessionState {
         self.resource_reclaimer.try_retire_active(resources)
     }
 
+    pub(super) fn try_retire_tab_resources(
+        &self,
+        resources: RetiredTabResources,
+    ) -> Result<(), Box<RetiredTabResources>> {
+        self.resource_reclaimer.try_retire(resources)
+    }
+
+    pub(super) fn try_retire_index_build_resources(
+        &self,
+        resources: crate::app::tab_resources::RetiredIndexBuildResources,
+    ) -> Result<(), Box<crate::app::tab_resources::RetiredIndexBuildResources>> {
+        self.resource_reclaimer.try_retire_index_build(resources)
+    }
+
+    pub(super) fn take_all_heavy_resources_for_shutdown(&mut self) -> Vec<RetiredTabResources> {
+        let mut resources = Vec::new();
+        for tab in &mut self.tabs {
+            let payload = tab.take_heavy_resources();
+            if !payload.is_empty() {
+                resources.push(payload);
+            }
+        }
+        for closed in &mut self.closed_tabs {
+            let payload = closed.tab.take_heavy_resources();
+            if !payload.is_empty() {
+                resources.push(payload);
+            }
+        }
+        resources
+    }
+
+    pub(super) fn disconnect_resource_reclaimer(&mut self) {
+        self.resource_reclaimer.disconnect();
+    }
+
     #[cfg(test)]
     pub(super) fn pause_resource_reclaimer(&mut self) {
         self.resource_reclaimer = TabResourceReclaimer::paused_for_test();
@@ -687,10 +1113,18 @@ impl TabSessionState {
     }
 
     #[cfg(test)]
-    pub(super) fn cached_heavy_resource_count(&self, active_tab_id: Option<u64>) -> usize {
+    pub(super) fn cached_heavy_resource_count(
+        &self,
+        active_tab_id: Option<u64>,
+        warm_tab_id: Option<u64>,
+    ) -> usize {
         self.tabs
             .iter()
-            .filter(|tab| Some(tab.id) != active_tab_id && tab.heavy_resource_weight() > 0)
+            .filter(|tab| {
+                Some(tab.id) != active_tab_id
+                    && Some(tab.id) != warm_tab_id
+                    && tab.heavy_resource_weight() > 0
+            })
             .count()
             + self
                 .closed_tabs
@@ -709,6 +1143,22 @@ impl TabSessionState {
         self.closed_tabs
             .last()
             .map(|closed| closed.tab.result_state.results_compacted)
+    }
+
+    #[cfg(test)]
+    pub(super) fn closed_tab_count(&self) -> usize {
+        self.closed_tabs.len()
+    }
+
+    #[cfg(test)]
+    pub(super) fn seed_oldest_closed_snapshot(&mut self, entry: Entry) {
+        let closed = self.closed_tabs.first_mut().expect("closed tab fixture");
+        closed.tab.index_state.lifecycle = super::TabResourceLifecycle::Ready;
+        closed.tab.index_state.committed_snapshot_present = true;
+        closed.tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
+        closed.tab.index_state.entries = Arc::new(vec![entry]);
+        let tab_id = closed.tab.id;
+        self.touch_heavy_resource(tab_id);
     }
 
     pub(super) fn iter(&self) -> std::slice::Iter<'_, AppTabState> {

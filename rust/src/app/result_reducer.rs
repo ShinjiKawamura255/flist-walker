@@ -63,17 +63,20 @@ pub(super) fn apply_results_with_selection_policy(
     keep_scroll_position: bool,
     preserve_selected_path: bool,
 ) {
-    let selected_path = preserve_selected_path
-        .then(|| {
-            app.shell.runtime.current_row.and_then(|row| {
-                app.shell
-                    .runtime
-                    .results
-                    .get(row)
-                    .map(|(path, _)| path.clone())
+    let evicted_selected_path = app.shell.runtime.evicted_selected_path.take();
+    let selected_path = evicted_selected_path.or_else(|| {
+        preserve_selected_path
+            .then(|| {
+                app.shell.runtime.current_row.and_then(|row| {
+                    app.shell
+                        .runtime
+                        .results
+                        .get(row)
+                        .map(|(path, _)| path.clone())
+                })
             })
-        })
-        .flatten();
+            .flatten()
+    });
     let previous_row = app.shell.runtime.current_row;
     app.shell.runtime.results = results;
     if app.shell.runtime.results.is_empty() {
@@ -128,7 +131,19 @@ pub(super) fn apply_background_search_response(
     tab.result_state.result_sort_mode = response.sort_mode;
     tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
-    clamp_tab_result_selection(tab);
+    if let Some(selected) = tab.result_state.evicted_selected_path.take() {
+        tab.result_state.current_row = tab
+            .result_state
+            .results
+            .iter()
+            .position(|(path, _)| *path == selected)
+            .or_else(|| normalized_result_row(None, tab.result_state.results.len()));
+        if tab.result_state.results.is_empty() {
+            clear_tab_result_selection(tab);
+        }
+    } else {
+        clamp_tab_result_selection(tab);
+    }
     let preview_invalidated =
         invalidate_background_preview_if_selection_changed(tab, previous_path.as_ref());
     FlistWalkerApp::trim_inactive_tab_preview(tab);
