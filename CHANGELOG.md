@@ -24,6 +24,34 @@
 ### Known issues
 - なし。
 
+## [0.25.1] - 2026-09-02
+### Added
+- なし。
+
+### Changed
+- 復元した tab の初回 index を優先し、高スループットの index 処理中も一覧操作の応答性を維持するようにした。
+- worker の内部モジュール構成を整理し、index・状態・通信の責務境界を明確にした。
+- updater の再起動経路を対応対象へ限定し、更新後の状態復旧と表示診断を安定化した。
+- anyhow 1.0.104 と ico 0.5.0 へ更新し、依存ライセンス notice と review 記録を同期した。
+- v0.25.0 を直前公開版 updater capability として明示登録し、v0.25.1 の exact manifest を release 前に検証できるようにした。
+
+### Fixed
+- 再起動後に更新が成功しているにもかかわらず、誤って updater failure と表示する問題を修正した。
+- 対応外 platform で updater restart flag が誤って有効になる問題を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- updater は従来どおり `SHA256SUMS.sig` の署名検証後に `SHA256SUMS` の checksum を照合する。今回の依存更新に伴う新しい公開 API や権限変更はない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+
 ## [0.25.0] - 2026-08-30
 ### Added
 - GUI のメインパネルから `Presets...` ボタンで検索 preset picker を開けるようにした。既存の `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）と同じ picker を利用できる。

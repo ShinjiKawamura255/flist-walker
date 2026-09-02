@@ -150,6 +150,7 @@
 - 非対象範囲: v0.24.3 assetの差し替え、既存archiveへの`fw`混在、1transactionで両variantを置換する更新。
 - 関連テストID: TC-194, TC-196.
 - 将来変更時の注意: checker self-testと、生成したcandidate `SHA256SUMS`に対する直前公開版contractの実検証を別々に実行する。candidate側parserの修正を、更新前binaryの非互換を承認する理由にしてはならない。直前公開版はcheckerの明示的なshipped capability表に登録されていなければならず、version大小からparser能力を推測してはならない。
+- 現行の shipped capability table には v0.24.3、v0.24.4、v0.24.5、v0.25.0 を明示登録し、各リリースの exact 26-entry candidate manifest を対応する predecessor contract で検証する。
 
 #### v0.24.3 からの回復手順
 
