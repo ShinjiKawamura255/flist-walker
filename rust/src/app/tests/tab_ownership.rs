@@ -60,6 +60,7 @@ fn results(prefix: &str) -> Vec<(PathBuf, f64)> {
 }
 
 fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     app.shell.runtime.index.entries = entries(prefix);
     app.shell.indexing.pending_entries = pending_entries(prefix);
     app.shell.indexing.pending_kind_paths = kind_paths(prefix);
@@ -79,6 +80,7 @@ fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
 }
 
 fn seed_tab_payload(tab: &mut AppTabState, prefix: &str, request_id: u64) {
+    tab.index_state.lifecycle = TabResourceLifecycle::Ready;
     tab.index_state.index.entries = entries(prefix);
     tab.index_state.pending_index_entries = pending_entries(prefix);
     tab.index_state.pending_kind_paths = kind_paths(prefix);

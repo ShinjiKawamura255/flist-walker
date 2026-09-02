@@ -10,6 +10,10 @@ pub(super) use crate::app::state::{
     UpdateCheckFailureState, UpdateInstallFailureState, UpdateManager, UpdatePromptState,
     UpdateState,
 };
+pub(super) use crate::app::tab_resources::{
+    TabResourceReclaimer, TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
+    TAB_RESOURCE_RECLAIMER_CAPACITY,
+};
 pub(super) use crate::app::worker::channel::bounded_request_channel;
 pub(super) use crate::app::worker::protocol::{
     KindResolveRequest, KindResolveResponse, UpdateRequestKind,
@@ -23,8 +27,8 @@ pub(super) use crate::app::{
     PreviewRequest, PreviewResponse, QueryState, ResultSortMode, ResultSortScope, RootBrowserState,
     RuntimeUiState, SavedTabState, SavedWindowGeometry, SearchCoordinator, SearchRequest,
     SearchResponse, SortMetadataCacheState, SortMetadataRequest, SortMetadataResponse,
-    TabAccentColor, TabAccentPalette, TabDragState, TabSessionState, UpdateRequest, UpdateResponse,
-    WorkerBus, WorkerRuntime,
+    TabAccentColor, TabAccentPalette, TabDragState, TabResourceLifecycle, TabSessionState,
+    UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
 };
 pub(super) use crate::app::{render_tabs, request_process_shutdown, spawn_kind_resolver_worker};
 pub(super) use crate::entry::Entry;

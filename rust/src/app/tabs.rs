@@ -21,6 +21,13 @@ impl FlistWalkerApp {
         self.apply_root_change_direct(new_root);
     }
     fn settle_background_tab_index_failure(tab: &mut AppTabState, notice: Option<String>) {
+        tab.index_state.lifecycle = if notice.is_some() {
+            super::TabResourceLifecycle::Failed
+        } else if tab.index_state.all_entries.is_empty() {
+            super::TabResourceLifecycle::Dormant
+        } else {
+            super::TabResourceLifecycle::Ready
+        };
         tab.index_state.clear_index_request_state();
         if let Some(notice) = notice {
             tab.notice = notice;
@@ -41,8 +48,12 @@ impl FlistWalkerApp {
         self.shell.ui.tab_drag_state = None;
     }
 
-    fn trigger_pending_activation_refresh(&mut self) {
-        if !self.take_pending_activation_refresh_for_active_tab() {
+    fn trigger_lifecycle_activation_refresh(&mut self) {
+        if !matches!(
+            self.shell.indexing.lifecycle,
+            super::TabResourceLifecycle::Dormant | super::TabResourceLifecycle::Evicted
+        ) || self.shell.indexing.pending_request_id.is_some()
+        {
             return;
         }
         self.request_index_refresh();
@@ -67,7 +78,6 @@ impl FlistWalkerApp {
         self.shell.indexing.clear_for_tab(tab_id);
         self.shell.search.clear_for_tab(tab_id);
         self.clear_response_routing_for_tab(tab_id);
-        self.clear_pending_activation_refresh_for_tab(tab_id);
         self.shell.ui.memory_usage_bytes = None;
     }
 
@@ -81,6 +91,9 @@ impl FlistWalkerApp {
         self.clear_tab_drag_state();
         let previous_active = self.shell.tabs.active_tab_index();
         self.store_active_tab_payload();
+        if let Some(tab_id) = self.shell.tabs.get(previous_active).map(|tab| tab.id) {
+            self.shell.tabs.touch_heavy_resource(tab_id);
+        }
         if let Some(previous_tab) = self.shell.tabs.get_mut(previous_active) {
             Self::trim_inactive_tab_preview(previous_tab);
         }
@@ -103,7 +116,7 @@ impl FlistWalkerApp {
             // Regression guard: restore refresh resets preview request ownership.
             // Schedule it before consuming a tab-scoped reload flag so the new
             // async preview request remains live and can settle.
-            self.trigger_pending_activation_refresh();
+            self.trigger_lifecycle_activation_refresh();
         }
         if preview_reload_pending {
             self.request_preview_for_current();
@@ -207,6 +220,7 @@ impl FlistWalkerApp {
                 }
                 completed_entries.extend(state.entries);
                 tab.index_state.all_entries = Arc::new(completed_entries);
+                tab.index_state.lifecycle = super::TabResourceLifecycle::Ready;
                 if tab.include_files && tab.include_dirs {
                     tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
                 } else {
@@ -393,10 +407,6 @@ impl FlistWalkerApp {
             })
             .collect();
         self.shell.tabs.replace_all(restored_tabs);
-        let restored_tab_ids = self.shell.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>();
-        for tab_id in restored_tab_ids {
-            self.mark_pending_activation_refresh_for_tab(tab_id);
-        }
         self.shell
             .tabs
             .set_active_tab_index(active_tab.min(self.shell.tabs.len().saturating_sub(1)));
@@ -407,7 +417,7 @@ impl FlistWalkerApp {
             self.ensure_results_cursor_visible();
             self.request_focus_query();
             self.clear_unfocus_query_request();
-            self.trigger_pending_activation_refresh();
+            self.trigger_lifecycle_activation_refresh();
             self.shell.runtime.notice = "Restored tab session".to_string();
             self.refresh_status_line();
         }
@@ -510,6 +520,9 @@ impl FlistWalkerApp {
     }
 
     fn load_tab_payload(&mut self, index: usize) -> (bool, bool) {
+        if let Some(tab_id) = self.shell.tabs.get(index).map(|tab| tab.id) {
+            self.shell.tabs.remove_resource_tracking(tab_id);
+        }
         let mut slot = self.shell.tabs.remove(index);
         let results_compacted = slot.result_state.results_compacted;
         let preview_reload_pending = slot.take_preview_reload_pending();
@@ -520,6 +533,20 @@ impl FlistWalkerApp {
         self.shell.tabs.insert(index, slot);
         self.finish_tab_payload_load();
         (results_compacted, preview_reload_pending)
+    }
+
+    pub(super) fn enforce_tab_resource_budget(&mut self) {
+        let active_tab_id = self.current_tab_id();
+        let warm_tab_id = self.shell.indexing.warm_tab_id;
+        if !self
+            .shell
+            .tabs
+            .enforce_resource_budget(active_tab_id, warm_tab_id)
+            && self.shell.runtime.notice.is_empty()
+        {
+            self.shell.runtime.notice =
+                "Waiting for background tab resource reclamation".to_string();
+        }
     }
 
     pub(super) fn find_tab_index_by_id(&self, tab_id: u64) -> Option<usize> {
@@ -550,6 +577,7 @@ impl FlistWalkerApp {
                 .replace_warm_tab(previous_warm_candidate);
         }
         self.activate_background_tab_after_transition(results_compacted, preview_reload_pending);
+        self.enforce_tab_resource_budget();
     }
 
     pub(super) fn set_tab_accent(&mut self, index: usize, accent: Option<TabAccentColor>) {
@@ -586,6 +614,7 @@ impl FlistWalkerApp {
         if requires_unlimited_reindex {
             self.request_index_refresh();
         }
+        self.enforce_tab_resource_budget();
     }
 
     pub(super) fn close_active_tab(&mut self) {
@@ -626,15 +655,19 @@ impl FlistWalkerApp {
             self.sync_active_tab_state();
         }
         let mut removed = self.shell.tabs.remove(index);
-        let activation_refresh_pending = self
-            .shell
-            .tabs
-            .has_pending_activation_refresh_for_tab(removed.id)
-            || removed.index_state.index_in_progress;
+        let activation_refresh_pending = removed.index_state.index_in_progress
+            || matches!(
+                removed.index_state.lifecycle,
+                super::TabResourceLifecycle::Dormant
+                    | super::TabResourceLifecycle::Loading
+                    | super::TabResourceLifecycle::Refreshing
+                    | super::TabResourceLifecycle::Evicted
+            );
         let search_refresh_pending = removed.search_in_progress;
         let sort_refresh_pending = removed.result_state.sort_in_progress;
         self.clear_closed_tab_state(removed.id);
         Self::trim_inactive_tab_preview(&mut removed);
+        self.shell.tabs.touch_heavy_resource(removed.id);
         self.shell.tabs.push_closed_tab(ClosedTabState {
             tab: removed,
             original_index: index,
@@ -666,6 +699,7 @@ impl FlistWalkerApp {
             self.reapply_active_tab_state();
         }
         self.refresh_status_line_with_memory_sample();
+        self.enforce_tab_resource_budget();
     }
 
     pub(super) fn restore_recently_closed_tab(&mut self) {
@@ -685,7 +719,7 @@ impl FlistWalkerApp {
         let id = self.shell.tabs.take_next_tab_id();
         Self::prepare_closed_tab_for_restore(&mut tab, id);
         if activation_refresh_pending {
-            self.mark_pending_activation_refresh_for_tab(id);
+            tab.index_state.lifecycle = super::TabResourceLifecycle::Dormant;
         }
         let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
         self.shell.tabs.insert(restore_index, tab);
@@ -711,6 +745,7 @@ impl FlistWalkerApp {
         } else if sort_refresh_pending {
             self.apply_result_sort(false);
         }
+        self.enforce_tab_resource_budget();
     }
 
     pub(super) fn move_tab(&mut self, from_index: usize, to_index: usize) {

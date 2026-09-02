@@ -232,8 +232,10 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     app.switch_to_tab_index(0);
     app.shell
         .tabs
-        .pending_activation_refresh_tabs
-        .insert(app.shell.tabs.get(0).expect("tab 0").id);
+        .get_mut(0)
+        .expect("tab 0")
+        .index_state
+        .lifecycle = TabResourceLifecycle::Dormant;
 
     let (_, rx) = bounded_request_channel::<IndexRequest>(2);
     let (closed_tx, _) = bounded_request_channel::<IndexRequest>(2);
@@ -246,7 +248,10 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert!(!background_tab.index_state.index_in_progress);
     assert_eq!(background_tab.index_state.pending_index_request_id, None);
     assert!(background_tab.index_state.pending_index_entries.is_empty());
-    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
+    assert_eq!(
+        background_tab.index_state.lifecycle,
+        TabResourceLifecycle::Failed
+    );
     assert!(background_tab
         .notice
         .contains("Index worker is unavailable"));

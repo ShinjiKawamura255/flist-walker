@@ -280,33 +280,22 @@ impl FlistWalkerApp {
         self.shell.runtime.query_state.query_history_dirty_since = value;
     }
 
-    pub(super) fn clear_pending_activation_refresh(&mut self) {
-        if let Some(tab_id) = self.current_tab_id() {
-            self.shell
-                .tabs
-                .clear_pending_activation_refresh_for_tab(tab_id);
+    pub(super) fn settle_tab_canceled_generation(&mut self, tab_id: u64) {
+        if self.current_tab_id() == Some(tab_id) {
+            self.shell.indexing.lifecycle = if self.shell.runtime.all_entries.is_empty() {
+                super::TabResourceLifecycle::Dormant
+            } else {
+                super::TabResourceLifecycle::Ready
+            };
+        } else if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
+            if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
+                tab.index_state.lifecycle = if tab.index_state.all_entries.is_empty() {
+                    super::TabResourceLifecycle::Dormant
+                } else {
+                    super::TabResourceLifecycle::Ready
+                };
+            }
         }
-    }
-
-    pub(super) fn mark_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
-        self.shell
-            .tabs
-            .mark_pending_activation_refresh_for_tab(tab_id);
-    }
-
-    pub(super) fn clear_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
-        self.shell
-            .tabs
-            .clear_pending_activation_refresh_for_tab(tab_id);
-    }
-
-    pub(super) fn take_pending_activation_refresh_for_active_tab(&mut self) -> bool {
-        let Some(tab_id) = self.current_tab_id() else {
-            return false;
-        };
-        self.shell
-            .tabs
-            .take_pending_activation_refresh_for_tab(tab_id)
     }
 
     /// action worker 実行中の進捗ラベルを返す。

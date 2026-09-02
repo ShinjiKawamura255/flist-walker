@@ -31,6 +31,118 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
 }
 
 #[test]
+fn tc_207_open_inactive_snapshots_share_the_bounded_lru() {
+    let root = test_root("tc-207-open-lru");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    app.create_new_tab();
+    app.create_new_tab();
+    let active_tab_id = app.current_tab_id();
+    let inactive_ids = (0..3)
+        .map(|index| app.shell.tabs.get(index).expect("inactive tab").id)
+        .collect::<Vec<_>>();
+    for (index, tab_id) in inactive_ids.iter().copied().enumerate() {
+        let entry = file_entry(root.join(format!("cached-{index}.txt")));
+        let tab = app.shell.tabs.get_mut(index).expect("inactive tab");
+        tab.index_state.lifecycle = TabResourceLifecycle::Ready;
+        tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
+        tab.index_state.entries = Arc::new(vec![entry]);
+        app.shell.tabs.touch_heavy_resource(tab_id);
+    }
+
+    assert!(app.shell.tabs.enforce_resource_budget(active_tab_id, None));
+    assert_eq!(
+        app.shell.tabs.cached_heavy_resource_count(active_tab_id),
+        TAB_RESOURCE_CACHE_MAX_COUNT
+    );
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("oldest tab")
+            .index_state
+            .lifecycle,
+        TabResourceLifecycle::Evicted
+    );
+    assert!(app.shell.tabs.reclaimer_pending() <= TAB_RESOURCE_RECLAIMER_CAPACITY);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_reclaimer_full_returns_heavy_ownership_to_the_caller() {
+    let root = test_root("tc-207-reclaimer-full");
+    fs::create_dir_all(&root).expect("create root");
+    let app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let reclaimer = TabResourceReclaimer::paused_for_test();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(700 + index as u64);
+        tab.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("queued-{index}.txt")))]);
+        reclaimer
+            .try_retire(tab.take_heavy_resources())
+            .expect("reclaimer queue accepts capacity");
+    }
+    let mut overflow = app.capture_active_tab_state(999);
+    overflow.index_state.all_entries = Arc::new(vec![file_entry(root.join("overflow.txt"))]);
+    let returned = reclaimer
+        .try_retire(overflow.take_heavy_resources())
+        .expect_err("full reclaimer must return ownership");
+    overflow.restore_heavy_resources(*returned);
+    assert_eq!(overflow.index_state.all_entries.len(), 1);
+    assert_eq!(reclaimer.pending(), TAB_RESOURCE_RECLAIMER_CAPACITY);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_204_ready_activation_reuses_snapshot_but_evicted_activation_requests_once() {
+    let root = test_root("tc-204-activation-lifecycle");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    app.shell.indexing.pending_queue.clear();
+    app.shell.indexing.inflight_requests.clear();
+    app.shell.indexing.pending_request_id = None;
+    let target_id = app.shell.tabs.get(0).expect("target tab").id;
+    {
+        let target = app.shell.tabs.get_mut(0).expect("target tab");
+        target.index_state.pending_index_request_id = None;
+        target.index_state.index_in_progress = false;
+        target.index_state.lifecycle = TabResourceLifecycle::Ready;
+    }
+
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
+    assert_eq!(app.shell.indexing.tx.load().queued, 0);
+
+    app.shell
+        .tabs
+        .get_mut(1)
+        .expect("other tab")
+        .index_state
+        .lifecycle = TabResourceLifecycle::Ready;
+    app.switch_to_tab_index(1);
+    {
+        let target = app.shell.tabs.get_mut(0).expect("target tab");
+        target.index_state.pending_index_request_id = None;
+        target.index_state.index_in_progress = false;
+        target.index_state.lifecycle = TabResourceLifecycle::Evicted;
+    }
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Loading);
+    assert_eq!(app.shell.indexing.tx.load().queued, 1);
+    let request = index_rx.try_recv().expect("one evicted refresh request");
+    assert_eq!(request.tab_id, target_id);
+    assert!(
+        index_rx.try_recv().is_err(),
+        "activation must not duplicate the request"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn create_new_tab_resets_total_match_count_to_current_entries() {
     let root = test_root("new-tab-total-count");
     fs::create_dir_all(&root).expect("create dir");
@@ -267,6 +379,7 @@ fn ctrl_shift_t_restores_most_recently_closed_tab_as_active() {
     app.create_new_tab();
     app.shell.runtime.root = root_b.clone();
     app.shell.runtime.query_state.query = "needle".to_string();
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     app.shell.runtime.include_dirs = false;
     app.sync_active_tab_state();
     let closed_tab_id = app.shell.tabs.get(1).expect("tab 1").id;
@@ -386,6 +499,7 @@ fn restoring_closed_tab_reissues_interrupted_search_without_reindex() {
     let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
     app.shell.search.tx = search_tx;
     app.shell.runtime.query_state.query = "needle".to_string();
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     let closed_id = app.current_tab_id().expect("closed tab id");
     app.shell.search.set_pending_request_id(Some(401));
     app.shell.search.set_in_progress(true);
@@ -430,6 +544,7 @@ fn restoring_closed_tab_reissues_interrupted_sort_without_reindex() {
     app.shell.runtime.results = app.shell.runtime.base_results.clone();
     app.shell.runtime.current_row = Some(0);
     app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     app.shell.worker_bus.sort.pending_request_id = Some(402);
     app.shell.worker_bus.sort.in_progress = true;
     let closed_id = app.current_tab_id().expect("closed tab id");
@@ -524,6 +639,7 @@ fn restoring_closed_tab_reissues_shown_metadata_sort_after_index_restart() {
     app.shell.worker_bus.sort.tx = sort_tx;
     app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
     app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
     app.shell.runtime.results = app.shell.runtime.base_results.clone();
     app.shell.runtime.current_row = Some(0);
@@ -593,6 +709,7 @@ fn restoring_closed_tab_reloads_preview_after_request_ownership_is_cleared() {
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
     app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
     app.shell.runtime.results = app.shell.runtime.base_results.clone();
     app.shell.runtime.current_row = Some(0);
@@ -625,6 +742,7 @@ fn restoring_closed_tab_reloads_trimmed_completed_preview() {
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
     app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
     app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
     app.shell.runtime.results = app.shell.runtime.base_results.clone();
     app.shell.runtime.current_row = Some(0);

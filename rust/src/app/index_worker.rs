@@ -704,15 +704,17 @@ fn stream_walker_index(
     Ok(source)
 }
 
-pub(super) fn spawn_index_worker(
-    shutdown: Arc<AtomicBool>,
-    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
-) -> (
+type SpawnedIndexWorkers = (
     BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
     Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     Vec<thread::JoinHandle<()>>,
-) {
+);
+
+pub(super) fn spawn_index_worker(
+    shutdown: Arc<AtomicBool>,
+    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+) -> SpawnedIndexWorkers {
     let response_mailboxes = Arc::new(Mutex::new(HashMap::new()));
     spawn_index_worker_with(
         shutdown,
@@ -727,12 +729,7 @@ fn spawn_index_worker_with(
     latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync>,
-) -> (
-    BoundedSender<IndexRequest>,
-    Receiver<IndexResponse>,
-    Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
-    Vec<thread::JoinHandle<()>>,
-) {
+) -> SpawnedIndexWorkers {
     let (tx_req, rx_req) = bounded_request_channel::<IndexRequest>(2);
     let (_tx_res, rx_res) = mpsc::channel::<IndexResponse>();
     let rx_req = Arc::new(Mutex::new(rx_req));

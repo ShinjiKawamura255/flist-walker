@@ -387,16 +387,10 @@ fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
     assert_eq!(latest.get(&bg_tab_a).copied(), Some(0));
     assert_eq!(latest.get(&bg_tab_b).copied(), Some(101));
     drop(latest);
-    assert!(app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&bg_tab_a));
-    assert!(!app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&bg_tab_b));
+    assert_eq!(
+        app.shell.tabs.get(0).expect("tab A").index_state.lifecycle,
+        TabResourceLifecycle::Dormant
+    );
 
     app.switch_to_tab_index(0);
 
@@ -407,11 +401,10 @@ fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
         .expect("reactivation must establish a replacement request");
     assert!(app.shell.indexing.in_progress);
     assert!(app.shell.runtime.status_line.contains("Indexing..."));
-    assert!(!app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&bg_tab_a));
+    assert!(matches!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
+    ));
     assert!(app
         .shell
         .indexing
@@ -795,11 +788,15 @@ fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
 
     let evicted_tab_id = background_tab_ids[0];
     assert_eq!(app.shell.indexing.pending_queue.len(), 4);
-    assert!(app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&evicted_tab_id));
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("evicted tab")
+            .index_state
+            .lifecycle,
+        TabResourceLifecycle::Dormant
+    );
     assert_eq!(
         app.shell
             .tabs
@@ -824,11 +821,10 @@ fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
     assert_eq!(dispatched.request_id, replacement_request_id);
     assert!(app.shell.indexing.in_progress);
     assert!(app.shell.runtime.status_line.contains("Indexing..."));
-    assert!(!app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&evicted_tab_id));
+    assert!(matches!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
+    ));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -991,8 +987,8 @@ fn tc_152_restored_active_tab_dispatches_in_same_terminal_poll_regression() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     app.create_new_tab();
-    let closed_id = app.current_tab_id().expect("tab to restore");
-    app.mark_pending_activation_refresh_for_tab(closed_id);
+    let _closed_id = app.current_tab_id().expect("tab to restore");
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Dormant;
     app.close_active_tab();
     let background_ids = [
         app.shell.tabs.get(0).expect("tab 0").id,

@@ -5,6 +5,10 @@ use crate::app::cache::{
 use crate::app::index_coordinator::IndexCoordinator;
 use crate::app::query_state::QueryState;
 use crate::app::search_coordinator::SearchCoordinator;
+use crate::app::tab_resources::{
+    RetiredActiveResources, TabResourceReclaimer, TAB_RESOURCE_CACHE_MAX_COUNT,
+    TAB_RESOURCE_CACHE_MAX_WEIGHT,
+};
 use crate::app::tab_state::AppTabState;
 use crate::app::ui_state::RuntimeUiState;
 use crate::app::worker::bus::WorkerBus;
@@ -17,7 +21,7 @@ pub(super) use crate::search::{
 use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource, SearchCatalog};
 use crate::updater::UpdateCandidate;
 use eframe::egui;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -477,7 +481,9 @@ pub(crate) struct TabSessionState {
     pub(super) active_tab: usize,
     next_tab_id: u64,
     closed_tabs: Vec<ClosedTabState>,
-    pub(super) pending_activation_refresh_tabs: HashSet<u64>,
+    resource_lru: VecDeque<u64>,
+    eviction_pending_tabs: HashSet<u64>,
+    resource_reclaimer: TabResourceReclaimer,
     request_tab_routing: RequestTabRoutingState,
 }
 
@@ -488,7 +494,9 @@ impl Default for TabSessionState {
             active_tab: 0,
             next_tab_id: 1,
             closed_tabs: Vec::new(),
-            pending_activation_refresh_tabs: HashSet::new(),
+            resource_lru: VecDeque::new(),
+            eviction_pending_tabs: HashSet::new(),
+            resource_reclaimer: TabResourceReclaimer::default(),
             request_tab_routing: RequestTabRoutingState::default(),
         }
     }
@@ -540,14 +548,160 @@ impl TabSessionState {
     }
 
     pub(super) fn push_closed_tab(&mut self, closed_tab: ClosedTabState) {
-        if self.closed_tabs.len() >= Self::CLOSED_TAB_RESTORE_LIMIT {
-            self.closed_tabs.remove(0);
-        }
         self.closed_tabs.push(closed_tab);
+        while self.closed_tabs.len() > Self::CLOSED_TAB_RESTORE_LIMIT {
+            let mut expired = self.closed_tabs.remove(0);
+            self.remove_resource_tracking(expired.tab.id);
+            let resources = expired.tab.take_heavy_resources();
+            if let Err(resources) = self.resource_reclaimer.try_retire(resources) {
+                expired.tab.restore_heavy_resources(*resources);
+                self.closed_tabs.insert(0, expired);
+                break;
+            }
+        }
     }
 
     pub(super) fn pop_closed_tab(&mut self) -> Option<ClosedTabState> {
-        self.closed_tabs.pop()
+        let closed = self.closed_tabs.pop()?;
+        self.remove_resource_tracking(closed.tab.id);
+        Some(closed)
+    }
+
+    pub(super) fn touch_heavy_resource(&mut self, tab_id: u64) {
+        self.remove_resource_tracking(tab_id);
+        self.resource_lru.push_back(tab_id);
+    }
+
+    pub(super) fn remove_resource_tracking(&mut self, tab_id: u64) {
+        self.resource_lru.retain(|id| *id != tab_id);
+        self.eviction_pending_tabs.remove(&tab_id);
+    }
+
+    pub(super) fn enforce_resource_budget(
+        &mut self,
+        active_tab_id: Option<u64>,
+        warm_tab_id: Option<u64>,
+    ) -> bool {
+        loop {
+            let cached = self
+                .tabs
+                .iter()
+                .filter(|tab| Some(tab.id) != active_tab_id && tab.heavy_resource_weight() > 0)
+                .map(|tab| tab.heavy_resource_weight())
+                .chain(
+                    self.closed_tabs
+                        .iter()
+                        .filter(|closed| closed.tab.heavy_resource_weight() > 0)
+                        .map(|closed| closed.tab.heavy_resource_weight()),
+                )
+                .collect::<Vec<_>>();
+            let count = cached.len();
+            let weight = cached
+                .into_iter()
+                .fold(0usize, |total, weight| total.saturating_add(weight));
+            if count <= TAB_RESOURCE_CACHE_MAX_COUNT && weight <= TAB_RESOURCE_CACHE_MAX_WEIGHT {
+                return true;
+            }
+
+            let candidate = self
+                .resource_lru
+                .iter()
+                .copied()
+                .find(|tab_id| Some(*tab_id) != active_tab_id && Some(*tab_id) != warm_tab_id);
+            let Some(candidate) = candidate else {
+                return false;
+            };
+
+            let mut closed_candidate = false;
+            let resources = if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.id == candidate)
+            {
+                Some(tab.take_heavy_resources())
+            } else if let Some(closed) = self
+                .closed_tabs
+                .iter_mut()
+                .find(|closed| closed.tab.id == candidate)
+            {
+                closed_candidate = true;
+                Some(closed.tab.take_heavy_resources())
+            } else {
+                None
+            };
+            let Some(resources) = resources else {
+                self.remove_resource_tracking(candidate);
+                continue;
+            };
+
+            match self.resource_reclaimer.try_retire(resources) {
+                Ok(()) => {
+                    self.remove_resource_tracking(candidate);
+                    if closed_candidate {
+                        if let Some(closed) = self
+                            .closed_tabs
+                            .iter_mut()
+                            .find(|closed| closed.tab.id == candidate)
+                        {
+                            closed.activation_refresh_pending = true;
+                        }
+                    }
+                }
+                Err(resources) => {
+                    if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.id == candidate) {
+                        tab.restore_heavy_resources(*resources);
+                    } else if let Some(closed) = self
+                        .closed_tabs
+                        .iter_mut()
+                        .find(|closed| closed.tab.id == candidate)
+                    {
+                        closed.tab.restore_heavy_resources(*resources);
+                    }
+                    self.eviction_pending_tabs.insert(candidate);
+                    return false;
+                }
+            }
+        }
+    }
+
+    pub(super) fn try_retire_active_resources(
+        &self,
+        resources: RetiredActiveResources,
+    ) -> Result<(), RetiredActiveResources> {
+        self.resource_reclaimer.try_retire_active(resources)
+    }
+
+    #[cfg(test)]
+    pub(super) fn pause_resource_reclaimer(&mut self) {
+        self.resource_reclaimer = TabResourceReclaimer::paused_for_test();
+    }
+
+    #[cfg(test)]
+    pub(super) fn resume_resource_reclaimer(&mut self) {
+        self.resource_reclaimer = TabResourceReclaimer::default();
+    }
+
+    #[cfg(test)]
+    pub(super) fn retire_tab_resources_for_test(
+        &self,
+        resources: crate::app::tab_resources::RetiredTabResources,
+    ) -> Result<(), Box<crate::app::tab_resources::RetiredTabResources>> {
+        self.resource_reclaimer.try_retire(resources)
+    }
+
+    #[cfg(test)]
+    pub(super) fn cached_heavy_resource_count(&self, active_tab_id: Option<u64>) -> usize {
+        self.tabs
+            .iter()
+            .filter(|tab| Some(tab.id) != active_tab_id && tab.heavy_resource_weight() > 0)
+            .count()
+            + self
+                .closed_tabs
+                .iter()
+                .filter(|closed| closed.tab.heavy_resource_weight() > 0)
+                .count()
+    }
+
+    #[cfg(test)]
+    pub(super) fn reclaimer_pending(&self) -> usize {
+        self.resource_reclaimer.pending()
     }
 
     #[cfg(test)]
@@ -557,32 +711,12 @@ impl TabSessionState {
             .map(|closed| closed.tab.result_state.results_compacted)
     }
 
-    pub(super) fn has_pending_activation_refresh_for_tab(&self, tab_id: u64) -> bool {
-        self.pending_activation_refresh_tabs.contains(&tab_id)
-    }
-
     pub(super) fn iter(&self) -> std::slice::Iter<'_, AppTabState> {
         self.tabs.iter()
     }
 
     pub(super) fn iter_mut(&mut self) -> std::slice::IterMut<'_, AppTabState> {
         self.tabs.iter_mut()
-    }
-
-    pub(super) fn mark_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
-        self.pending_activation_refresh_tabs.insert(tab_id);
-    }
-
-    pub(super) fn clear_pending_activation_refresh_for_tab(&mut self, tab_id: u64) {
-        self.pending_activation_refresh_tabs.remove(&tab_id);
-    }
-
-    pub(super) fn clear_pending_activation_refresh_tabs(&mut self) {
-        self.pending_activation_refresh_tabs.clear();
-    }
-
-    pub(super) fn take_pending_activation_refresh_for_tab(&mut self, tab_id: u64) -> bool {
-        self.pending_activation_refresh_tabs.remove(&tab_id)
     }
 
     pub(super) fn bind_preview_request(&mut self, request_id: u64, tab_id: u64) {
