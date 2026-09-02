@@ -285,13 +285,11 @@ impl FlistWalkerApp {
         if self.current_tab_id() == Some(tab_id) {
             self.shell
                 .indexing
-                .resource_state
-                .apply(TabResourceTransition::Cancel);
+                .apply_resource_transition(TabResourceTransition::Cancel);
         } else if let Some(tab_index) = self.find_tab_index_by_id(tab_id) {
             if let Some(tab) = self.shell.tabs.get_mut(tab_index) {
                 tab.index_state
-                    .resource_state
-                    .apply(TabResourceTransition::Cancel);
+                    .apply_resource_transition(TabResourceTransition::Cancel);
             }
         }
     }

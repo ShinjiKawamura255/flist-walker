@@ -10,8 +10,12 @@ fn tc_204_empty_committed_snapshot_refreshes_and_cancels_back_to_ready() {
     let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = request_tx;
     app.shell.indexing.rx = response_rx;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.runtime.all_entries = Arc::new(Vec::new());
     app.shell.runtime.entries = Arc::new(Vec::new());
 
@@ -22,7 +26,7 @@ fn tc_204_empty_committed_snapshot_refreshes_and_cancels_back_to_ready() {
         .pending_request_id
         .expect("refresh request");
     assert_eq!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Refreshing
     );
 
@@ -31,8 +35,8 @@ fn tc_204_empty_committed_snapshot_refreshes_and_cancels_back_to_ready() {
         .expect("send canceled");
     app.poll_index_response();
 
-    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
-    assert!(app.shell.indexing.committed_snapshot_present);
+    assert_eq!(app.shell.indexing.lifecycle(), TabResourceLifecycle::Ready);
+    assert!(app.shell.indexing.committed_snapshot_present());
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -48,7 +52,9 @@ fn tc_207_active_failure_reclaims_building_payload_off_ui() {
         .collect();
     app.shell.indexing.pending_request_id = Some(1_007);
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Loading;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Loading);
     let _observer_guard = lock_reclaim_drop_observer_for_test();
     let (drop_tx, drop_rx) = mpsc::channel();
     set_reclaim_drop_observer(Some(drop_tx));
@@ -89,7 +95,9 @@ fn tc_207_active_cancel_keeps_fixed_build_debt_until_reclaimer_accepts() {
         .collect();
     app.shell.indexing.pending_request_id = Some(1_107);
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Loading;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Loading);
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_800 + index as u64);
@@ -250,8 +258,12 @@ fn tc_204_refresh_failure_keeps_last_good_snapshot_and_sets_explicit_lifecycle()
     app.shell.runtime.all_entries = Arc::new(vec![kept.clone()]);
     app.shell.runtime.entries = Arc::new(vec![kept.clone()]);
     app.shell.runtime.results = vec![(kept.path.clone(), 0.0)];
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
 
     app.request_index_refresh();
     let request_id = app
@@ -260,7 +272,7 @@ fn tc_204_refresh_failure_keeps_last_good_snapshot_and_sets_explicit_lifecycle()
         .pending_request_id
         .expect("refresh request");
     assert_eq!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Refreshing
     );
     assert_eq!(
@@ -276,7 +288,7 @@ fn tc_204_refresh_failure_keeps_last_good_snapshot_and_sets_explicit_lifecycle()
         .expect("send failure");
     app.poll_index_response();
 
-    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Failed);
+    assert_eq!(app.shell.indexing.lifecycle(), TabResourceLifecycle::Failed);
     assert_eq!(
         app.shell.runtime.all_entries.as_ref(),
         std::slice::from_ref(&kept)
@@ -300,7 +312,9 @@ fn tc_207_terminal_commit_waits_when_reclaimer_is_full() {
     app.shell.runtime.index.entries = vec![new.clone()];
     app.shell.indexing.pending_request_id = Some(207);
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(800 + index as u64);
@@ -334,7 +348,7 @@ fn tc_207_terminal_commit_waits_when_reclaimer_is_full() {
     app.poll_index_response();
     assert!(app.shell.indexing.pending_finish.is_none());
     assert_eq!(app.shell.runtime.all_entries.as_ref(), &[new]);
-    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
+    assert_eq!(app.shell.indexing.lifecycle(), TabResourceLifecycle::Ready);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -354,17 +368,22 @@ fn tc_207_terminal_reclaimer_debt_coalesces_repeated_refresh_to_one_generation()
     app.shell.indexing.request_tabs.clear();
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old]);
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.runtime.index.entries = vec![new];
     app.shell.indexing.pending_request_id = Some(207);
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(900 + index as u64);
         tab.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
-        tab.index_state.committed_snapshot_present = true;
+        tab.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(tab.take_heavy_resources())
@@ -399,7 +418,7 @@ fn tc_207_terminal_reclaimer_debt_coalesces_repeated_refresh_to_one_generation()
     );
     assert!(request_rx.try_recv().is_err());
     assert_eq!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Refreshing
     );
     let _ = fs::remove_dir_all(&root);
@@ -425,17 +444,22 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     app.shell.indexing.request_tabs.clear();
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old]);
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.runtime.index.entries = vec![new];
     app.shell.indexing.pending_request_id = Some(307);
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_300 + index as u64);
         tab.index_state.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
-        tab.index_state.committed_snapshot_present = true;
+        tab.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(tab.take_heavy_resources())
@@ -504,10 +528,14 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old]);
     app.shell.runtime.index.entries = vec![new];
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.indexing.pending_request_id = Some(507);
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_600 + index as u64);
@@ -532,8 +560,12 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
         Some(super::PendingIndexRefreshMode::CreateFileListWalker);
     {
         let other = app.shell.tabs.get_mut(1).expect("other tab");
-        other.index_state.lifecycle = TabResourceLifecycle::Ready;
-        other.index_state.committed_snapshot_present = true;
+        other
+            .index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+        other
+            .index_state
+            .set_committed_snapshot_present_for_test(true);
     }
     app.switch_to_tab_index(1);
 
@@ -543,7 +575,7 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     let original = app.shell.tabs.get(0).expect("original background tab");
     assert_eq!(original.id, original_tab_id);
     assert_eq!(path_key(&original.root), path_key(&root_b));
-    assert!(!original.index_state.committed_snapshot_present);
+    assert!(!original.index_state.committed_snapshot_present());
     assert!(original.index_state.pending_index_finish.is_none());
     let replay = request_rx.try_recv().expect("one background root replay");
     assert_eq!(replay.tab_id, original_tab_id);
@@ -569,8 +601,12 @@ fn tc_207_terminal_root_close_is_atomic_and_restore_starts_one_target_request() 
     app.create_new_tab();
     {
         let other = app.shell.tabs.get_mut(0).expect("other tab");
-        other.index_state.lifecycle = TabResourceLifecycle::Ready;
-        other.index_state.committed_snapshot_present = true;
+        other
+            .index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+        other
+            .index_state
+            .set_committed_snapshot_present_for_test(true);
     }
     let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = request_tx;
@@ -581,8 +617,12 @@ fn tc_207_terminal_root_close_is_atomic_and_restore_starts_one_target_request() 
     app.shell.runtime.entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
     app.shell.runtime.index.entries = vec![new];
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.indexing.pending_request_id = Some(807);
     app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
         request_id: 807,
@@ -615,7 +655,7 @@ fn tc_207_terminal_root_close_is_atomic_and_restore_starts_one_target_request() 
     app.restore_recently_closed_tab();
 
     assert_eq!(path_key(&app.shell.runtime.root), path_key(&root_b));
-    assert!(!app.shell.indexing.committed_snapshot_present);
+    assert!(!app.shell.indexing.committed_snapshot_present());
     assert!(app.shell.runtime.all_entries.is_empty());
     let request = request_rx.try_recv().expect("one restored-root request");
     assert_eq!(path_key(&request.root), path_key(&root_b));
@@ -649,8 +689,12 @@ fn tc_207_terminal_root_close_rolls_back_when_history_preflight_consumes_last_sl
     app.shell.runtime.entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
     app.shell.runtime.index.entries = vec![new];
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.indexing.pending_request_id = Some(907);
     app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
         request_id: 907,

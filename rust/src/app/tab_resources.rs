@@ -654,8 +654,7 @@ impl FlistWalkerApp {
                     }
                     if retires_superseded_generation {
                         tab.index_state
-                            .resource_state
-                            .apply(TabResourceTransition::Cancel);
+                            .apply_resource_transition(TabResourceTransition::Cancel);
                     }
                 }
                 for request_id in request_ids {
@@ -744,8 +743,7 @@ impl AppTabState {
             .map(|(path, _)| path.clone())
             .or_else(|| self.result_state.evicted_selected_path.clone());
         self.index_state
-            .resource_state
-            .apply(TabResourceTransition::SnapshotRemoved);
+            .apply_resource_transition(TabResourceTransition::SnapshotRemoved);
         RetiredActiveResources {
             committed: CommittedResourcePayload::take_tab(self),
         }
@@ -753,8 +751,7 @@ impl AppTabState {
 
     pub(super) fn restore_committed_resources(&mut self, resources: RetiredActiveResources) {
         self.index_state
-            .resource_state
-            .apply(TabResourceTransition::SnapshotRestored);
+            .apply_resource_transition(TabResourceTransition::SnapshotRestored);
         resources.committed.restore_tab(self);
     }
 }
@@ -776,7 +773,7 @@ impl AppTabState {
             #[cfg(test)]
             _drop_probe: ReclaimDropProbe::capture(),
             control: TabHeavyControlPayload {
-                resource_state: self.index_state.resource_state,
+                resource_state: self.index_state.resource_state(),
                 build_reclaim_pending: self.index_state.build_reclaim_pending,
                 build_reclaim_request_id: self.index_state.build_reclaim_request_id,
                 pending_index_entries_request_id: self
@@ -791,8 +788,7 @@ impl AppTabState {
             committed: CommittedResourcePayload::take_tab(self),
         };
         self.index_state
-            .resource_state
-            .apply(TabResourceTransition::Evict);
+            .apply_resource_transition(TabResourceTransition::Evict);
         self.index_state.build_reclaim_pending = false;
         self.index_state.build_reclaim_request_id = None;
         self.index_state.clear_kind_resolution_state();
@@ -810,8 +806,7 @@ impl AppTabState {
             ..
         } = resources;
         self.index_state
-            .resource_state
-            .apply(TabResourceTransition::ReclaimFullRollback(
+            .apply_resource_transition(TabResourceTransition::ReclaimFullRollback(
                 control.resource_state,
             ));
         self.index_state.build_reclaim_pending = control.build_reclaim_pending;

@@ -830,8 +830,9 @@ impl TabSessionState {
     #[cfg(test)]
     pub(super) fn seed_oldest_closed_snapshot(&mut self, entry: Entry) {
         let closed = self.closed_tabs.first_mut().expect("closed tab fixture");
-        closed.tab.index_state.lifecycle = super::TabResourceLifecycle::Ready;
-        closed.tab.index_state.committed_snapshot_present = true;
+        closed.tab.index_state.set_resource_state_for_test(
+            super::tab_state::TabResourceState::new(super::TabResourceLifecycle::Ready, true),
+        );
         closed.tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
         closed.tab.index_state.entries = Arc::new(vec![entry]);
         let tab_id = closed.tab.id;

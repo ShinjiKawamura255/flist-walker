@@ -388,7 +388,12 @@ fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
     assert_eq!(latest.get(&bg_tab_b).copied(), Some(101));
     drop(latest);
     assert_eq!(
-        app.shell.tabs.get(0).expect("tab A").index_state.lifecycle,
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab A")
+            .index_state
+            .lifecycle(),
         TabResourceLifecycle::Dormant
     );
 
@@ -402,7 +407,7 @@ fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
     assert!(app.shell.indexing.in_progress);
     assert!(app.shell.runtime.status_line.contains("Indexing..."));
     assert!(matches!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
     ));
     assert!(app
@@ -794,7 +799,7 @@ fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
             .get(0)
             .expect("evicted tab")
             .index_state
-            .lifecycle,
+            .lifecycle(),
         TabResourceLifecycle::Dormant
     );
     assert_eq!(
@@ -822,7 +827,7 @@ fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
     assert!(app.shell.indexing.in_progress);
     assert!(app.shell.runtime.status_line.contains("Indexing..."));
     assert!(matches!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
     ));
     let _ = fs::remove_dir_all(&root);
@@ -988,7 +993,9 @@ fn tc_152_restored_active_tab_dispatches_in_same_terminal_poll_regression() {
     app.create_new_tab();
     app.create_new_tab();
     let _closed_id = app.current_tab_id().expect("tab to restore");
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Dormant;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Dormant);
     app.close_active_tab();
     let background_ids = [
         app.shell.tabs.get(0).expect("tab 0").id,

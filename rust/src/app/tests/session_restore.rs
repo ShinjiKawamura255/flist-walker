@@ -299,11 +299,16 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
         Some(TabAccentColor::Crimson)
     );
     assert_eq!(
-        app.shell.tabs.get(0).expect("tab 0").index_state.lifecycle,
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .index_state
+            .lifecycle(),
         TabResourceLifecycle::Dormant
     );
     assert!(matches!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
     ));
 
@@ -391,7 +396,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
     let req = rx.try_recv().expect("background tab lazy refresh");
     assert_eq!(req.root, root_a);
     assert!(matches!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
     ));
 
@@ -735,7 +740,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
     );
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_a);
-    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
+    assert_eq!(app.shell.indexing.lifecycle(), TabResourceLifecycle::Ready);
     assert_eq!(app.shell.runtime.results.len(), 1);
     assert_eq!(app.shell.runtime.results[0].0, indexed_file);
 
@@ -823,7 +828,7 @@ fn close_tab_triggers_dormant_survivor_refresh() {
         .expect("survivor pending restore refresh");
     assert_eq!(refresh_req.root, root_a);
     assert!(matches!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
     ));
 
@@ -890,7 +895,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
         .expect("restored closed startup tab refresh");
     assert_eq!(refresh_req.root, root_a);
     assert!(matches!(
-        app.shell.indexing.lifecycle,
+        app.shell.indexing.lifecycle(),
         TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
     ));
 

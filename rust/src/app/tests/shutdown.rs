@@ -84,8 +84,12 @@ fn tc_207_shutdown_drops_tab_snapshots_on_the_registered_drain_worker() {
     {
         let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
         let entry = file_entry(root.join("heavy.txt"));
-        inactive.index_state.lifecycle = TabResourceLifecycle::Ready;
-        inactive.index_state.committed_snapshot_present = true;
+        inactive
+            .index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+        inactive
+            .index_state
+            .set_committed_snapshot_present_for_test(true);
         inactive.index_state.all_entries = Arc::new(vec![entry.clone()]);
         inactive.index_state.entries = Arc::new(vec![entry]);
     }
@@ -202,7 +206,8 @@ fn tc_207_shutdown_drain_owns_unfinished_and_scratch_pending_finalizers() {
         let mut held = app.capture_active_tab_state(9_000 + index as u64);
         held.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
-        held.index_state.committed_snapshot_present = true;
+        held.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(held.take_heavy_resources())
