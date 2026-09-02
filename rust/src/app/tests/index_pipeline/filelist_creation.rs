@@ -9,7 +9,7 @@ fn create_filelist_waits_while_indexing() {
     app.shell.indexing.tx = index_tx;
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.indexing.in_progress = true;
@@ -52,7 +52,7 @@ fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
     app.shell.indexing.tx = index_tx;
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.shell.indexing.in_progress = true;
@@ -84,7 +84,7 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
 
     app.create_filelist();
 
@@ -251,7 +251,7 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.all_entries = Arc::new(vec![file_entry(path.clone())]);
     app.set_entry_kind(&path, EntryKind::file());
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
 
     app.create_filelist();
 

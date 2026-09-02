@@ -235,6 +235,7 @@ fn inactive_tab_results_are_retained_for_immediate_activation() {
             .get(0)
             .expect("tab 0")
             .result_state
+            .committed
             .results
             .len(),
         2
@@ -245,6 +246,7 @@ fn inactive_tab_results_are_retained_for_immediate_activation() {
             .get(0)
             .expect("tab 0")
             .result_state
+            .committed
             .base_results
             .len(),
         2
@@ -255,6 +257,7 @@ fn inactive_tab_results_are_retained_for_immediate_activation() {
         .get(0)
         .expect("tab 0")
         .result_state
+        .committed
         .preview
         .is_empty());
 
@@ -297,7 +300,7 @@ fn explicitly_compacted_empty_query_restore_rebuilds_results_from_current_entrie
     app.create_new_tab();
     {
         let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
-        inactive.result_state.results.clear();
+        inactive.result_state.committed.results.clear();
         inactive.result_state.results_compacted = true;
     }
     app.switch_to_tab_index(0);
@@ -333,8 +336,8 @@ fn non_score_sorted_inactive_tab_keeps_results_for_fast_activation() {
 
     let inactive = app.shell.tabs.get(0).expect("tab 0");
     assert!(!inactive.result_state.results_compacted);
-    assert_eq!(inactive.result_state.results.len(), 2);
-    assert_eq!(inactive.result_state.results[0].0, second);
+    assert_eq!(inactive.result_state.committed.results.len(), 2);
+    assert_eq!(inactive.result_state.committed.results[0].0, second);
 
     app.switch_to_tab_index(0);
 

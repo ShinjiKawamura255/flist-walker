@@ -1,6 +1,5 @@
 use crate::app::cache::{
-    EntryKindCacheState, HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState,
-    SortMetadataCacheState,
+    HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState, SortMetadataCacheState,
 };
 use crate::app::index_coordinator::IndexCoordinator;
 use crate::app::query_state::QueryState;
@@ -9,12 +8,12 @@ use crate::app::tab_resources::{
     RetiredActiveResources, RetiredTabResources, TabResourceReclaimer,
     TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
 };
-use crate::app::tab_state::AppTabState;
+use crate::app::tab_state::{AppTabState, TabCommittedPayload};
 use crate::app::ui_state::RuntimeUiState;
 use crate::app::worker::bus::WorkerBus;
 use crate::app::worker::runtime::WorkerRuntime;
 use crate::entry::Entry;
-use crate::indexer::{IndexBuildResult, IndexSource};
+use crate::indexer::IndexSource;
 pub(super) use crate::search::{
     SearchSortMode as ResultSortMode, SearchSortScope as ResultSortScope,
 };
@@ -257,11 +256,10 @@ pub(super) struct CacheStateBundle {
     pub(super) preview: PreviewCacheState,
     pub(super) highlight: HighlightCacheState,
     pub(super) ignore_matcher: IgnoreMatcherCacheState,
-    pub(super) entry_kind: EntryKindCacheState,
     pub(super) sort_metadata: SortMetadataCacheState,
 }
 
-pub struct AppRuntimeState {
+pub(super) struct AppRuntimeState {
     pub(super) root: PathBuf,
     pub(super) limit: usize,
     pub(super) max_depth: crate::indexer::MaxDepth,
@@ -272,23 +270,30 @@ pub struct AppRuntimeState {
     pub(super) ignore_list_terms: Arc<Vec<String>>,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
-    pub(super) index: IndexBuildResult,
-    pub(super) all_entries: Arc<Vec<Entry>>,
-    pub(super) entries: Arc<Vec<Entry>>,
-    pub(super) base_results: Vec<(PathBuf, f64)>,
-    pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) committed: TabCommittedPayload,
     pub(super) result_sort_mode: ResultSortMode,
     pub(super) result_sort_scope: ResultSortScope,
-    pub(super) total_match_count: usize,
     pub(super) pinned_paths: HashSet<PathBuf>,
-    pub(super) current_row: Option<usize>,
     pub(super) evicted_selected_path: Option<PathBuf>,
     pub(super) emacs_keybindings_enabled: bool,
     pub(super) ctrl_w_deletes_word_in_query: bool,
     pub(super) tab_pin_moves_to_next_row: bool,
-    pub(super) preview: String,
     pub(super) notice: String,
     pub(super) status_line: String,
+}
+
+impl std::ops::Deref for AppRuntimeState {
+    type Target = TabCommittedPayload;
+
+    fn deref(&self) -> &Self::Target {
+        &self.committed
+    }
+}
+
+impl std::ops::DerefMut for AppRuntimeState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.committed
+    }
 }
 
 pub struct AppShellState {
@@ -833,8 +838,8 @@ impl TabSessionState {
         closed.tab.index_state.set_resource_state_for_test(
             super::tab_state::TabResourceState::new(super::TabResourceLifecycle::Ready, true),
         );
-        closed.tab.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        closed.tab.index_state.entries = Arc::new(vec![entry]);
+        closed.tab.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        closed.tab.result_state.committed.entries = Arc::new(vec![entry]);
         let tab_id = closed.tab.id;
         self.touch_heavy_resource(tab_id);
     }

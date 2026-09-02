@@ -36,7 +36,8 @@ fn root_change_clears_stale_selection_state() {
         .tabs
         .get(active_tab)
         .expect("tab")
-        .index_state
+        .result_state
+        .committed
         .all_entries
         .is_empty());
     assert!(app
@@ -44,7 +45,8 @@ fn root_change_clears_stale_selection_state() {
         .tabs
         .get(active_tab)
         .expect("tab")
-        .index_state
+        .result_state
+        .committed
         .entries
         .is_empty());
     let req = rx.try_recv().expect("index request should be sent");
@@ -163,7 +165,7 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
@@ -206,7 +208,7 @@ fn denying_ancestor_propagation_still_creates_root_filelist() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
@@ -241,7 +243,7 @@ fn create_filelist_skips_ancestor_confirmation_when_child_reference_is_already_p
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);

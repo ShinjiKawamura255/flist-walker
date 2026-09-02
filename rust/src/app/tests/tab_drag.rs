@@ -162,8 +162,14 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
         expected_tab_b.query_state.query
     );
     assert_eq!(
-        app.shell.tabs.get(0).expect("tab 0").result_state.preview,
-        expected_tab_b.result_state.preview
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .committed
+            .preview,
+        expected_tab_b.result_state.committed.preview
     );
     assert_eq!(
         app.shell.tabs.get(1).expect("tab 1").root,
@@ -174,8 +180,14 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
         expected_tab_c.query_state.query
     );
     assert_eq!(
-        app.shell.tabs.get(1).expect("tab 1").result_state.preview,
-        expected_tab_c.result_state.preview
+        app.shell
+            .tabs
+            .get(1)
+            .expect("tab 1")
+            .result_state
+            .committed
+            .preview,
+        expected_tab_c.result_state.committed.preview
     );
     assert_eq!(
         app.shell.tabs.get(2).expect("tab 2").root,
@@ -186,8 +198,14 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
         expected_tab_a.query_state.query
     );
     assert_eq!(
-        app.shell.tabs.get(2).expect("tab 2").result_state.preview,
-        expected_tab_a.result_state.preview
+        app.shell
+            .tabs
+            .get(2)
+            .expect("tab 2")
+            .result_state
+            .committed
+            .preview,
+        expected_tab_a.result_state.committed.preview
     );
 
     let _ = fs::remove_dir_all(&root_a);

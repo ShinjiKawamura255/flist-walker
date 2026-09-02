@@ -47,7 +47,7 @@ fn tc_207_active_failure_reclaims_building_payload_off_ui() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = response_rx;
-    app.shell.runtime.index.entries = (0..2_000)
+    app.shell.indexing.build.index.entries = (0..2_000)
         .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
         .collect();
     app.shell.indexing.pending_request_id = Some(1_007);
@@ -69,7 +69,7 @@ fn tc_207_active_failure_reclaims_building_payload_off_ui() {
 
     set_reclaim_drop_observer(None);
     assert!(!app.shell.indexing.build_reclaim_pending);
-    assert_eq!(app.shell.runtime.index.entries.capacity(), 0);
+    assert_eq!(app.shell.indexing.build.index.entries.capacity(), 0);
     let drop_threads = drop_rx
         .try_iter()
         .chain(drop_rx.recv_timeout(Duration::from_millis(250)))
@@ -90,7 +90,7 @@ fn tc_207_active_cancel_keeps_fixed_build_debt_until_reclaimer_accepts() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = response_rx;
-    app.shell.runtime.index.entries = (0..2_000)
+    app.shell.indexing.build.index.entries = (0..2_000)
         .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
         .collect();
     app.shell.indexing.pending_request_id = Some(1_107);
@@ -101,7 +101,7 @@ fn tc_207_active_cancel_keeps_fixed_build_debt_until_reclaimer_accepts() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(2_800 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -115,13 +115,13 @@ fn tc_207_active_cancel_keeps_fixed_build_debt_until_reclaimer_accepts() {
     app.poll_index_response();
 
     assert!(app.shell.indexing.build_reclaim_pending);
-    assert_eq!(app.shell.runtime.index.entries.len(), 2_000);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 2_000);
 
     app.shell.tabs.resume_resource_reclaimer();
     app.poll_index_response();
 
     assert!(!app.shell.indexing.build_reclaim_pending);
-    assert_eq!(app.shell.runtime.index.entries.capacity(), 0);
+    assert_eq!(app.shell.indexing.build.index.entries.capacity(), 0);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -134,18 +134,22 @@ fn tc_207_active_replace_all_waits_for_reclaimer_without_dropping_old_build() {
     app.shell.indexing.rx = response_rx;
     app.shell.indexing.pending_request_id = Some(1_207);
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.index.entries = (0..2_000)
+    app.shell.indexing.build.index.entries = (0..2_000)
         .map(|index| file_entry(root.join(format!("old-{index}.txt"))))
         .collect();
-    app.shell.indexing.pending_entries.push_back(IndexEntry {
-        path: root.join("old-pending.txt"),
-        kind: EntryKind::file(),
-        kind_known: true,
-    });
+    app.shell
+        .indexing
+        .build
+        .pending_entries
+        .push_back(IndexEntry {
+            path: root.join("old-pending.txt"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        });
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(3_000 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -166,16 +170,16 @@ fn tc_207_active_replace_all_waits_for_reclaimer_without_dropping_old_build() {
     app.poll_index_response();
 
     assert!(app.shell.indexing.pending_replace_all.is_some());
-    assert_eq!(app.shell.runtime.index.entries.len(), 2_000);
-    assert_eq!(app.shell.indexing.pending_entries.len(), 1);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 2_000);
+    assert_eq!(app.shell.indexing.build.pending_entries.len(), 1);
 
     app.shell.tabs.resume_resource_reclaimer();
     app.poll_index_response();
 
     assert!(app.shell.indexing.pending_replace_all.is_none());
-    assert_eq!(app.shell.runtime.index.entries.len(), 1);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 1);
     assert_eq!(
-        app.shell.runtime.index.entries[0].path,
+        app.shell.indexing.build.index.entries[0].path,
         root.join("replacement.txt")
     );
     let _ = fs::remove_dir_all(&root);
@@ -191,13 +195,13 @@ fn tc_207_active_failure_debt_switches_to_background_and_cleans_routing() {
     let request_id = app.shell.indexing.allocate_request_id(Some(failing_tab_id));
     app.shell.indexing.pending_request_id = Some(request_id);
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.index.entries = (0..2_000)
+    app.shell.indexing.build.index.entries = (0..2_000)
         .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
         .collect();
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(3_100 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -309,7 +313,7 @@ fn tc_207_terminal_commit_waits_when_reclaimer_is_full() {
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
-    app.shell.runtime.index.entries = vec![new.clone()];
+    app.shell.indexing.build.index.entries = vec![new.clone()];
     app.shell.indexing.pending_request_id = Some(207);
     app.shell.indexing.in_progress = true;
     app.shell
@@ -318,7 +322,7 @@ fn tc_207_terminal_commit_waits_when_reclaimer_is_full() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(800 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -371,7 +375,7 @@ fn tc_207_terminal_reclaimer_debt_coalesces_repeated_refresh_to_one_generation()
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
-    app.shell.runtime.index.entries = vec![new];
+    app.shell.indexing.build.index.entries = vec![new];
     app.shell.indexing.pending_request_id = Some(207);
     app.shell.indexing.in_progress = true;
     app.shell
@@ -380,7 +384,7 @@ fn tc_207_terminal_reclaimer_debt_coalesces_repeated_refresh_to_one_generation()
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(900 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -404,7 +408,7 @@ fn tc_207_terminal_reclaimer_debt_coalesces_repeated_refresh_to_one_generation()
     assert_eq!(app.shell.indexing.next_request_id, next_before);
     assert_eq!(app.shell.indexing.pending_request_id, Some(207));
     assert!(app.shell.indexing.pending_finish.is_some());
-    assert_eq!(app.shell.runtime.index.entries.len(), 1);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 1);
     assert!(request_rx.try_recv().is_err());
 
     app.shell.tabs.resume_resource_reclaimer();
@@ -447,7 +451,7 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
-    app.shell.runtime.index.entries = vec![new];
+    app.shell.indexing.build.index.entries = vec![new];
     app.shell.indexing.pending_request_id = Some(307);
     app.shell.indexing.in_progress = true;
     app.shell
@@ -456,7 +460,7 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_300 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -527,7 +531,7 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     app.shell.indexing.request_tabs.clear();
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old]);
-    app.shell.runtime.index.entries = vec![new];
+    app.shell.indexing.build.index.entries = vec![new];
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
@@ -539,7 +543,7 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_600 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -616,7 +620,7 @@ fn tc_207_terminal_root_close_is_atomic_and_restore_starts_one_target_request() 
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
-    app.shell.runtime.index.entries = vec![new];
+    app.shell.indexing.build.index.entries = vec![new];
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
@@ -633,7 +637,7 @@ fn tc_207_terminal_root_close_is_atomic_and_restore_starts_one_target_request() 
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_900 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -688,7 +692,7 @@ fn tc_207_terminal_root_close_rolls_back_when_history_preflight_consumes_last_sl
     app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
-    app.shell.runtime.index.entries = vec![new];
+    app.shell.indexing.build.index.entries = vec![new];
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
@@ -705,7 +709,7 @@ fn tc_207_terminal_root_close_rolls_back_when_history_preflight_consumes_last_sl
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY - 1 {
         let mut tab = app.capture_active_tab_state(2_100 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root_a.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -756,7 +760,7 @@ fn tc_207_rootless_terminal_close_is_noop_before_closed_history_preflight() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY - 1 {
         let mut tab = app.capture_active_tab_state(2_200 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -971,8 +975,12 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     app.shell.indexing.rx = rx;
     app.shell.runtime.entries = Arc::new(Vec::new());
     app.shell.runtime.all_entries = Arc::new(Vec::new());
-    app.shell.runtime.index.entries.clear();
-    app.shell.indexing.incremental_filtered_entries.clear();
+    app.shell.indexing.build.index.entries.clear();
+    app.shell
+        .indexing
+        .build
+        .incremental_filtered_entries
+        .clear();
     app.shell.indexing.search_resume_pending = false;
     app.shell.indexing.last_search_snapshot_len = 0;
     app.shell.search.set_in_progress(false);
@@ -996,7 +1004,7 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
 
     assert!(app.shell.runtime.entries.is_empty());
     assert_eq!(
-        app.shell.indexing.incremental_filtered_entries,
+        app.shell.indexing.build.incremental_filtered_entries,
         vec![file_entry(path)]
     );
     assert!(!app.shell.indexing.search_rerun_pending);
@@ -1042,8 +1050,12 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     app.shell.indexing.rx = rx;
     app.shell.runtime.entries = Arc::new(Vec::new());
     app.shell.runtime.all_entries = Arc::new(Vec::new());
-    app.shell.runtime.index.entries.clear();
-    app.shell.indexing.incremental_filtered_entries.clear();
+    app.shell.indexing.build.index.entries.clear();
+    app.shell
+        .indexing
+        .build
+        .incremental_filtered_entries
+        .clear();
     app.shell.indexing.search_resume_pending = false;
     app.shell.indexing.last_search_snapshot_len = 0;
     app.shell.search.set_in_progress(false);
@@ -1081,7 +1093,7 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
         FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
     );
     assert_eq!(
-        app.shell.indexing.incremental_filtered_entries.len(),
+        app.shell.indexing.build.incremental_filtered_entries.len(),
         app.shell.runtime.entries.len()
     );
     let _ = fs::remove_dir_all(&root);
@@ -1123,9 +1135,18 @@ fn non_empty_query_batch_delta_updates_snapshot_even_without_search_refresh() {
     app.poll_index_response();
 
     assert!(app.shell.runtime.entries.is_empty());
-    assert_eq!(app.shell.indexing.incremental_filtered_entries.len(), 2);
-    assert_eq!(app.shell.indexing.incremental_filtered_entries[0], path_a);
-    assert_eq!(app.shell.indexing.incremental_filtered_entries[1], path_b);
+    assert_eq!(
+        app.shell.indexing.build.incremental_filtered_entries.len(),
+        2
+    );
+    assert_eq!(
+        app.shell.indexing.build.incremental_filtered_entries[0],
+        path_a
+    );
+    assert_eq!(
+        app.shell.indexing.build.incremental_filtered_entries[1],
+        path_b
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1176,7 +1197,7 @@ fn status_line_prefers_current_index_count_while_indexing() {
             .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
             .collect::<Vec<_>>(),
     );
-    app.shell.runtime.index.entries = (0..3)
+    app.shell.indexing.build.index.entries = (0..3)
         .map(|i| unknown_entry(root.join(format!("new-{i}.txt"))))
         .collect::<Vec<_>>();
 
@@ -1197,10 +1218,10 @@ fn status_line_counts_pending_index_entries_while_indexing() {
             .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
             .collect::<Vec<_>>(),
     );
-    app.shell.runtime.index.entries = (0..3)
+    app.shell.indexing.build.index.entries = (0..3)
         .map(|i| unknown_entry(root.join(format!("new-{i}.txt"))))
         .collect::<Vec<_>>();
-    app.shell.indexing.pending_entries = (0..4)
+    app.shell.indexing.build.pending_entries = (0..4)
         .map(|i| IndexEntry {
             path: root.join(format!("pending-{i}.txt")),
             kind: EntryKind::file(),
@@ -1276,7 +1297,7 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.index.entries = vec![file_entry(file.clone()), dir_entry(dir.clone())];
+    app.shell.indexing.build.index.entries = vec![file_entry(file.clone()), dir_entry(dir.clone())];
     app.set_entry_kind(&file, EntryKind::file());
     app.set_entry_kind(&dir, EntryKind::dir());
     app.shell.runtime.include_files = false;
@@ -1286,10 +1307,10 @@ fn apply_entry_filters_resyncs_incremental_state_during_indexing() {
 
     assert_eq!(app.shell.runtime.entries.as_ref(), &vec![dir.clone()]);
     assert_eq!(
-        app.shell.indexing.incremental_filtered_entries,
+        app.shell.indexing.build.incremental_filtered_entries,
         vec![dir_entry(dir)]
     );
-    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
     assert!(app.shell.indexing.pending_entries_request_id.is_none());
     let _ = fs::remove_dir_all(&root);
 }
@@ -1303,14 +1324,19 @@ fn apply_entry_filters_all_filtered_then_next_batch_adds_once() {
     fs::write(&file, "fn main() {}").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.index.entries = vec![file_entry(file.clone())];
+    app.shell.indexing.build.index.entries = vec![file_entry(file.clone())];
     app.set_entry_kind(&file, EntryKind::file());
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
 
     app.apply_entry_filters(true);
     assert!(app.shell.runtime.entries.is_empty());
-    assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .incremental_filtered_entries
+        .is_empty());
 
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
@@ -1342,14 +1368,19 @@ fn active_indexing_empty_query_without_filters_does_not_clone_full_entries_snaps
     app.shell.runtime.include_dirs = true;
     app.shell.ui.ignore_list_enabled = false;
     app.shell.runtime.entries = Arc::new(Vec::new());
-    app.shell.runtime.index.entries = (0..5)
+    app.shell.indexing.build.index.entries = (0..5)
         .map(|idx| file_entry(root.join(format!("file-{idx}.txt"))))
         .collect();
 
     app.apply_entry_filters(true);
 
     assert!(app.shell.runtime.entries.is_empty());
-    assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .incremental_filtered_entries
+        .is_empty());
     assert_eq!(app.shell.indexing.last_search_snapshot_len, 5);
     assert_eq!(app.shell.runtime.results.len(), 2);
     assert_eq!(app.shell.runtime.results[0].0, root.join("file-0.txt"));
@@ -1368,7 +1399,7 @@ fn finished_index_response_drains_pending_entries_over_multiple_frames() {
     app.shell.indexing.pending_request_id = Some(301);
     app.shell.indexing.in_progress = true;
     app.shell.indexing.pending_entries_request_id = Some(301);
-    app.shell.indexing.pending_entries = (0..50_000)
+    app.shell.indexing.build.pending_entries = (0..50_000)
         .map(|index| IndexEntry {
             path: root.join(format!("file-{index}.txt")),
             kind: EntryKind::file(),
@@ -1386,9 +1417,9 @@ fn finished_index_response_drains_pending_entries_over_multiple_frames() {
 
     assert!(!app.shell.indexing.in_progress);
     assert!(app.shell.indexing.pending_finish.is_some());
-    assert!(app.shell.indexing.pending_entries.len() < 50_000);
-    assert!(app.shell.indexing.pending_entries.len() >= 47_952);
-    assert!(!app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.len() < 50_000);
+    assert!(app.shell.indexing.build.pending_entries.len() >= 47_952);
+    assert!(!app.shell.indexing.build.pending_entries.is_empty());
     assert!(!app.status_line_text().contains("Indexing..."));
 
     let _ = fs::remove_dir_all(&root);
@@ -1406,7 +1437,7 @@ fn active_index_backlog_stops_receiving_before_queue_growth_exceeds_frame_guard(
     app.shell.indexing.pending_request_id = Some(311);
     app.shell.indexing.in_progress = true;
     app.shell.indexing.pending_entries_request_id = Some(311);
-    app.shell.indexing.pending_entries = (0..BACKLOG_GUARD)
+    app.shell.indexing.build.pending_entries = (0..BACKLOG_GUARD)
         .map(|index| IndexEntry {
             path: root.join(format!("queued-{index}.txt")),
             kind: EntryKind::file(),
@@ -1427,18 +1458,18 @@ fn active_index_backlog_stops_receiving_before_queue_growth_exceeds_frame_guard(
 
     app.poll_index_response_with_budget_for_test(Duration::ZERO);
 
-    assert_eq!(app.shell.runtime.index.entries.len(), 32);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 32);
     assert_eq!(
-        app.shell.indexing.pending_entries.len(),
+        app.shell.indexing.build.pending_entries.len(),
         BACKLOG_GUARD - 32,
         "the UI must drain its existing backlog before accepting another batch"
     );
 
     app.poll_index_response_with_budget_for_test(Duration::ZERO);
 
-    assert_eq!(app.shell.runtime.index.entries.len(), 64);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 64);
     assert_eq!(
-        app.shell.indexing.pending_entries.len(),
+        app.shell.indexing.build.pending_entries.len(),
         BACKLOG_GUARD - 64 + 1_024
     );
 
@@ -1455,7 +1486,7 @@ fn pending_finished_index_finalizes_after_budgeted_drain_completes() {
     app.shell.indexing.pending_request_id = Some(302);
     app.shell.indexing.in_progress = true;
     app.shell.indexing.pending_entries_request_id = Some(302);
-    app.shell.indexing.pending_entries = (0..600)
+    app.shell.indexing.build.pending_entries = (0..600)
         .map(|index| IndexEntry {
             path: root.join(format!("file-{index}.txt")),
             kind: EntryKind::file(),
@@ -1474,7 +1505,7 @@ fn pending_finished_index_finalizes_after_budgeted_drain_completes() {
 
     assert!(!app.shell.indexing.in_progress);
     assert!(app.shell.indexing.pending_finish.is_none());
-    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
     assert_eq!(app.shell.runtime.all_entries.len(), 600);
 
     let _ = fs::remove_dir_all(&root);
@@ -1490,16 +1521,16 @@ fn pending_finished_index_finalization_does_not_shrink_drained_queue_regression(
     app.shell.indexing.pending_request_id = Some(305);
     app.shell.indexing.in_progress = true;
     app.shell.indexing.pending_entries_request_id = Some(305);
-    app.shell.indexing.pending_entries.reserve(20_000);
-    app.shell.indexing.pending_entries = (0..600)
+    app.shell.indexing.build.pending_entries.reserve(20_000);
+    app.shell.indexing.build.pending_entries = (0..600)
         .map(|index| IndexEntry {
             path: root.join(format!("file-{index}.txt")),
             kind: EntryKind::file(),
             kind_known: true,
         })
         .collect();
-    app.shell.indexing.pending_entries.reserve(20_000);
-    let capacity_before = app.shell.indexing.pending_entries.capacity();
+    app.shell.indexing.build.pending_entries.reserve(20_000);
+    let capacity_before = app.shell.indexing.build.pending_entries.capacity();
     tx.send(IndexResponse::Finished {
         request_id: 305,
         source: IndexSource::Walker,
@@ -1518,8 +1549,8 @@ fn pending_finished_index_finalization_does_not_shrink_drained_queue_regression(
     }
 
     assert!(capacity_before >= 20_000);
-    assert!(app.shell.indexing.pending_entries.is_empty());
-    assert!(app.shell.indexing.pending_entries.capacity() >= capacity_before);
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.capacity() >= capacity_before);
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -1569,8 +1600,8 @@ fn finished_index_with_filters_reuses_incremental_snapshot_without_full_rescan()
 
     let kept = dir_entry(root.join("kept"));
     let other = dir_entry(root.join("other"));
-    app.shell.runtime.index.entries = vec![kept.clone(), other.clone()];
-    app.shell.indexing.incremental_filtered_entries = vec![kept.clone()];
+    app.shell.indexing.build.index.entries = vec![kept.clone(), other.clone()];
+    app.shell.indexing.build.incremental_filtered_entries = vec![kept.clone()];
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
     app.shell.indexing.pending_request_id = Some(307);
@@ -1590,7 +1621,12 @@ fn finished_index_with_filters_reuses_incremental_snapshot_without_full_rescan()
     assert_eq!(app.shell.runtime.entries.as_ref(), &vec![kept.clone()]);
     assert_eq!(app.shell.runtime.results, vec![(kept.path, 0.0)]);
     assert_eq!(app.shell.runtime.total_match_count, 1);
-    assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .incremental_filtered_entries
+        .is_empty());
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -1605,7 +1641,7 @@ fn capped_walker_finished_drains_large_backlog_without_long_tail_regression() {
     app.shell.indexing.pending_request_id = Some(303);
     app.shell.indexing.in_progress = true;
     app.shell.indexing.pending_entries_request_id = Some(303);
-    app.shell.indexing.pending_entries = (0..5_000)
+    app.shell.indexing.build.pending_entries = (0..5_000)
         .map(|index| IndexEntry {
             path: root.join(format!("file-{index}.txt")),
             kind: EntryKind::file(),
@@ -1633,7 +1669,7 @@ fn capped_walker_finished_drains_large_backlog_without_long_tail_regression() {
 
     assert!(!app.shell.indexing.in_progress);
     assert!(app.shell.indexing.pending_finish.is_none());
-    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
     assert_eq!(app.shell.runtime.all_entries.len(), 5_000);
 
     let _ = fs::remove_dir_all(&root);
@@ -1663,10 +1699,15 @@ fn empty_query_unfiltered_indexing_does_not_duplicate_incremental_snapshot() {
 
     app.poll_index_response();
 
-    assert!(app.shell.indexing.incremental_filtered_entries.is_empty());
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .incremental_filtered_entries
+        .is_empty());
     assert!(app.shell.runtime.entries.is_empty());
-    assert!(app.shell.runtime.index.entries.len() >= 50);
-    assert!(app.shell.runtime.index.entries.len() < 2_000);
+    assert!(app.shell.indexing.build.index.entries.len() >= 50);
+    assert!(app.shell.indexing.build.index.entries.len() < 2_000);
     assert_eq!(app.shell.runtime.results.len(), 50);
 
     let _ = fs::remove_dir_all(&root);

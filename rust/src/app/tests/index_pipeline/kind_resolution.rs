@@ -24,10 +24,12 @@ fn tc_151_kind_full_requeues_without_loss_or_duplication() {
     app.shell.worker_bus.kind.tx = tx;
     app.shell
         .indexing
+        .build
         .pending_kind_paths
         .push_back(queued.clone());
     app.shell
         .indexing
+        .build
         .pending_kind_paths_set
         .insert(queued.clone());
 
@@ -36,14 +38,25 @@ fn tc_151_kind_full_requeues_without_loss_or_duplication() {
     assert_eq!(
         app.shell
             .indexing
+            .build
             .pending_kind_paths
             .iter()
             .filter(|path| **path == queued)
             .count(),
         1
     );
-    assert!(app.shell.indexing.pending_kind_paths_set.contains(&queued));
-    assert!(!app.shell.indexing.in_flight_kind_paths.contains(&queued));
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .pending_kind_paths_set
+        .contains(&queued));
+    assert!(!app
+        .shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .contains(&queued));
     drop(rx);
     let _ = fs::remove_dir_all(&root);
 }
@@ -288,19 +301,25 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.show_preview = false;
-    app.shell.indexing.pending_kind_paths.clear();
-    app.shell.indexing.pending_kind_paths_set.clear();
-    app.shell.indexing.in_flight_kind_paths.clear();
+    app.shell.indexing.build.pending_kind_paths.clear();
+    app.shell.indexing.build.pending_kind_paths_set.clear();
+    app.shell.indexing.build.in_flight_kind_paths.clear();
 
     app.apply_entry_filters(true);
 
     assert!(!app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .any(|p| *p == path));
-    assert!(!app.shell.indexing.in_flight_kind_paths.contains(&path));
+    assert!(!app
+        .shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -317,7 +336,7 @@ fn active_kind_queue_walks_entries_without_duplicate_requests() {
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.index.entries = vec![
+    app.shell.indexing.build.index.entries = vec![
         file_entry(known.clone()),
         unknown_entry(queued.clone()),
         unknown_entry(pending.clone()),
@@ -325,14 +344,17 @@ fn active_kind_queue_walks_entries_without_duplicate_requests() {
     ];
     app.shell
         .indexing
+        .build
         .pending_kind_paths_set
         .insert(pending.clone());
     app.shell
         .indexing
+        .build
         .pending_kind_paths
         .push_back(pending.clone());
     app.shell
         .indexing
+        .build
         .in_flight_kind_paths
         .insert(inflight.clone());
 
@@ -341,6 +363,7 @@ fn active_kind_queue_walks_entries_without_duplicate_requests() {
     let queued_count = app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .filter(|path| **path == queued)
@@ -348,6 +371,7 @@ fn active_kind_queue_walks_entries_without_duplicate_requests() {
     let pending_count = app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .filter(|path| **path == pending)
@@ -357,12 +381,14 @@ fn active_kind_queue_walks_entries_without_duplicate_requests() {
     assert!(!app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .any(|path| *path == known));
     assert!(!app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .any(|path| *path == inflight));
@@ -411,7 +437,12 @@ fn walker_unknown_kind_batch_still_finishes_and_keeps_entries_visible() {
     assert_eq!(app.shell.runtime.all_entries.as_ref(), &vec![path.clone()]);
     assert!(app.find_entry_kind(&path).is_none());
     assert!(app.shell.indexing.kind_resolution_in_progress);
-    assert!(app.shell.indexing.in_flight_kind_paths.contains(&path));
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .contains(&path));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -469,8 +500,18 @@ fn walker_finished_queues_unknown_kind_resolution_for_visible_results_only_regre
     assert_eq!(req.path, first.clone());
     assert!(kind_rx.try_recv().is_err());
     assert!(app.shell.indexing.kind_resolution_in_progress);
-    assert!(app.shell.indexing.in_flight_kind_paths.contains(&first));
-    assert!(!app.shell.indexing.in_flight_kind_paths.contains(&second));
+    assert!(app
+        .shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .contains(&first));
+    assert!(!app
+        .shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .contains(&second));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -507,6 +548,7 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
     assert!(app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .any(|p| *p == path));
@@ -547,6 +589,7 @@ fn walker_unknown_kind_batch_queues_resolution_when_single_filter_enabled() {
     assert!(app
         .shell
         .indexing
+        .build
         .pending_kind_paths
         .iter()
         .any(|p| *p == path));
@@ -568,7 +611,11 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
     app.shell.worker_bus.kind.rx = rx;
-    app.shell.indexing.in_flight_kind_paths.insert(dir.clone());
+    app.shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .insert(dir.clone());
     tx.send(KindResolveResponse {
         tab_id: app.current_tab_id().unwrap_or_default(),
         epoch: app.shell.indexing.kind_resolution_epoch,
@@ -603,9 +650,14 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
     app.shell.worker_bus.kind.rx = rx;
-    app.shell.indexing.in_flight_kind_paths.insert(left.clone());
     app.shell
         .indexing
+        .build
+        .in_flight_kind_paths
+        .insert(left.clone());
+    app.shell
+        .indexing
+        .build
         .in_flight_kind_paths
         .insert(right.clone());
     let epoch = app.shell.indexing.kind_resolution_epoch;
@@ -648,13 +700,16 @@ fn inactive_tab_kind_response_is_retained_until_tab_activation() {
     let epoch = 23;
     {
         let tab = app.shell.tabs.get_mut(0).expect("inactive tab");
-        tab.index_state.index.source = IndexSource::Walker;
-        tab.index_state.all_entries = Arc::new(vec![unknown_entry(link.clone())]);
-        tab.index_state.entries = Arc::clone(&tab.index_state.all_entries);
+        tab.index_state.build.index.source = IndexSource::Walker;
+        tab.result_state.committed.all_entries = Arc::new(vec![unknown_entry(link.clone())]);
+        tab.result_state.committed.entries = Arc::clone(&tab.result_state.committed.all_entries);
         tab.index_state.kind_resolution_epoch = epoch;
-        tab.index_state.in_flight_kind_paths.insert(link.clone());
+        tab.index_state
+            .build
+            .in_flight_kind_paths
+            .insert(link.clone());
         tab.index_state.kind_resolution_in_progress = true;
-        tab.result_state.results = vec![(link.clone(), 0.0)];
+        tab.result_state.committed.results = vec![(link.clone(), 0.0)];
     }
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
@@ -672,14 +727,15 @@ fn inactive_tab_kind_response_is_retained_until_tab_activation() {
     let inactive_tab = app.shell.tabs.get(0).expect("inactive tab");
     assert!(!inactive_tab
         .index_state
+        .build
         .in_flight_kind_paths
         .contains(&link));
     assert_eq!(
-        inactive_tab.index_state.resolved_kind_updates,
+        inactive_tab.index_state.build.resolved_kind_updates,
         vec![(link.clone(), EntryKind::link(false))]
     );
     assert_eq!(
-        inactive_tab.entry_kind_cache.get(&link),
+        inactive_tab.index_state.build.entry_kind_cache.get(&link),
         Some(EntryKind::link(false))
     );
 
@@ -788,7 +844,11 @@ fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
 
     let (tx, rx) = mpsc::channel::<KindResolveResponse>();
     app.shell.worker_bus.kind.rx = rx;
-    app.shell.indexing.in_flight_kind_paths.insert(left.clone());
+    app.shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .insert(left.clone());
     tx.send(KindResolveResponse {
         tab_id: app.current_tab_id().unwrap_or_default(),
         epoch: app.shell.indexing.kind_resolution_epoch,

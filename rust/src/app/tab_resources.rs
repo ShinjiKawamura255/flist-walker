@@ -1,11 +1,10 @@
-use super::tab_state::{TabResourceState, TabResourceTransition};
+use super::tab_state::{
+    TabBuildPayload, TabCommittedPayload, TabResourceState, TabResourceTransition,
+};
 use super::{
     AppTabState, BackgroundIndexFilterScratch, BackgroundIndexFinalizeScratch,
-    BackgroundIndexState, Entry, EntryKindCacheState, FlistWalkerApp, IndexEntry,
-    PendingBackgroundIndexFinalize,
+    BackgroundIndexState, FlistWalkerApp, IndexEntry, PendingBackgroundIndexFinalize,
 };
-use std::collections::{HashSet, VecDeque};
-use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, SyncSender, TrySendError};
 use std::sync::Arc;
@@ -71,8 +70,8 @@ pub(super) struct RetiredTabResources {
     #[cfg(test)]
     _drop_probe: ReclaimDropProbe,
     control: TabHeavyControlPayload,
-    build: IndexBuildResourcePayload,
-    committed: CommittedResourcePayload,
+    build: TabBuildPayload,
+    committed: TabCommittedPayload,
 }
 
 #[derive(Debug)]
@@ -86,29 +85,6 @@ struct TabHeavyControlPayload {
     results_compacted: bool,
 }
 
-#[derive(Debug)]
-struct IndexBuildResourcePayload {
-    index_entries: Vec<Entry>,
-    pending_index_entries: VecDeque<IndexEntry>,
-    pending_kind_paths: VecDeque<PathBuf>,
-    pending_kind_paths_set: HashSet<PathBuf>,
-    in_flight_kind_paths: HashSet<PathBuf>,
-    resolved_kind_updates: Vec<(PathBuf, crate::entry::EntryKind)>,
-    incremental_filtered_entries: Vec<Entry>,
-    entry_kind_cache: EntryKindCacheState,
-}
-
-#[derive(Debug)]
-struct CommittedResourcePayload {
-    all_entries: Arc<Vec<Entry>>,
-    entries: Arc<Vec<Entry>>,
-    base_results: Vec<(PathBuf, f64)>,
-    results: Vec<(PathBuf, f64)>,
-    preview: String,
-    total_match_count: usize,
-    current_row: Option<usize>,
-}
-
 impl RetiredTabResources {
     pub(super) fn is_empty(&self) -> bool {
         self.build.is_empty() && self.committed.is_empty()
@@ -116,13 +92,13 @@ impl RetiredTabResources {
 }
 
 pub(super) struct RetiredActiveResources {
-    committed: CommittedResourcePayload,
+    committed: TabCommittedPayload,
 }
 
 pub(super) struct RetiredIndexBuildResources {
     #[cfg(test)]
     _drop_probe: ReclaimDropProbe,
-    build: IndexBuildResourcePayload,
+    build: TabBuildPayload,
     routing: RetiredRoutingPayload,
 }
 
@@ -141,7 +117,7 @@ impl RetiredIndexBuildResources {
         Self {
             #[cfg(test)]
             _drop_probe: ReclaimDropProbe::capture(),
-            build: IndexBuildResourcePayload::empty(),
+            build: TabBuildPayload::default(),
             routing: RetiredRoutingPayload::default(),
         }
     }
@@ -255,236 +231,6 @@ impl RetiredRoutingPayload {
                 .all(|(_, mailbox)| !mailbox.has_payload())
             && self.stale_index_entries.capacity() == 0
     }
-}
-
-impl IndexBuildResourcePayload {
-    fn empty() -> Self {
-        Self {
-            index_entries: Vec::new(),
-            pending_index_entries: VecDeque::new(),
-            pending_kind_paths: VecDeque::new(),
-            pending_kind_paths_set: HashSet::new(),
-            in_flight_kind_paths: HashSet::new(),
-            resolved_kind_updates: Vec::new(),
-            incremental_filtered_entries: Vec::new(),
-            entry_kind_cache: EntryKindCacheState::default(),
-        }
-    }
-
-    fn take_active(app: &mut FlistWalkerApp) -> Self {
-        Self {
-            index_entries: std::mem::take(&mut app.shell.runtime.index.entries),
-            pending_index_entries: std::mem::take(&mut app.shell.indexing.pending_entries),
-            pending_kind_paths: std::mem::take(&mut app.shell.indexing.pending_kind_paths),
-            pending_kind_paths_set: std::mem::take(&mut app.shell.indexing.pending_kind_paths_set),
-            in_flight_kind_paths: std::mem::take(&mut app.shell.indexing.in_flight_kind_paths),
-            resolved_kind_updates: std::mem::take(&mut app.shell.indexing.resolved_kind_updates),
-            incremental_filtered_entries: std::mem::take(
-                &mut app.shell.indexing.incremental_filtered_entries,
-            ),
-            entry_kind_cache: std::mem::take(&mut app.shell.cache.entry_kind),
-        }
-    }
-
-    fn swap_active_tab(tab: &mut AppTabState, app: &mut FlistWalkerApp) {
-        std::mem::swap(
-            &mut tab.index_state.index.entries,
-            &mut app.shell.runtime.index.entries,
-        );
-        std::mem::swap(
-            &mut tab.index_state.pending_index_entries,
-            &mut app.shell.indexing.pending_entries,
-        );
-        std::mem::swap(
-            &mut tab.index_state.pending_kind_paths,
-            &mut app.shell.indexing.pending_kind_paths,
-        );
-        std::mem::swap(
-            &mut tab.index_state.pending_kind_paths_set,
-            &mut app.shell.indexing.pending_kind_paths_set,
-        );
-        std::mem::swap(
-            &mut tab.index_state.in_flight_kind_paths,
-            &mut app.shell.indexing.in_flight_kind_paths,
-        );
-        std::mem::swap(
-            &mut tab.index_state.resolved_kind_updates,
-            &mut app.shell.indexing.resolved_kind_updates,
-        );
-        std::mem::swap(
-            &mut tab.index_state.incremental_filtered_entries,
-            &mut app.shell.indexing.incremental_filtered_entries,
-        );
-        std::mem::swap(&mut tab.entry_kind_cache, &mut app.shell.cache.entry_kind);
-    }
-
-    fn restore_active(self, app: &mut FlistWalkerApp) {
-        app.shell.runtime.index.entries = self.index_entries;
-        app.shell.indexing.pending_entries = self.pending_index_entries;
-        app.shell.indexing.pending_kind_paths = self.pending_kind_paths;
-        app.shell.indexing.pending_kind_paths_set = self.pending_kind_paths_set;
-        app.shell.indexing.in_flight_kind_paths = self.in_flight_kind_paths;
-        app.shell.indexing.resolved_kind_updates = self.resolved_kind_updates;
-        app.shell.indexing.incremental_filtered_entries = self.incremental_filtered_entries;
-        app.shell.cache.entry_kind = self.entry_kind_cache;
-    }
-
-    fn take_tab(tab: &mut AppTabState) -> Self {
-        Self {
-            index_entries: std::mem::take(&mut tab.index_state.index.entries),
-            pending_index_entries: std::mem::take(&mut tab.index_state.pending_index_entries),
-            pending_kind_paths: std::mem::take(&mut tab.index_state.pending_kind_paths),
-            pending_kind_paths_set: std::mem::take(&mut tab.index_state.pending_kind_paths_set),
-            in_flight_kind_paths: std::mem::take(&mut tab.index_state.in_flight_kind_paths),
-            resolved_kind_updates: std::mem::take(&mut tab.index_state.resolved_kind_updates),
-            incremental_filtered_entries: std::mem::take(
-                &mut tab.index_state.incremental_filtered_entries,
-            ),
-            entry_kind_cache: std::mem::take(&mut tab.entry_kind_cache),
-        }
-    }
-
-    fn restore_tab(self, tab: &mut AppTabState) {
-        tab.index_state.index.entries = self.index_entries;
-        tab.index_state.pending_index_entries = self.pending_index_entries;
-        tab.index_state.pending_kind_paths = self.pending_kind_paths;
-        tab.index_state.pending_kind_paths_set = self.pending_kind_paths_set;
-        tab.index_state.in_flight_kind_paths = self.in_flight_kind_paths;
-        tab.index_state.resolved_kind_updates = self.resolved_kind_updates;
-        tab.index_state.incremental_filtered_entries = self.incremental_filtered_entries;
-        tab.entry_kind_cache = self.entry_kind_cache;
-    }
-
-    fn is_empty(&self) -> bool {
-        self.index_entries.capacity() == 0
-            && self.pending_index_entries.capacity() == 0
-            && self.pending_kind_paths.capacity() == 0
-            && self.pending_kind_paths_set.capacity() == 0
-            && self.in_flight_kind_paths.capacity() == 0
-            && self.resolved_kind_updates.capacity() == 0
-            && self.incremental_filtered_entries.capacity() == 0
-            && self.entry_kind_cache.entries.capacity() == 0
-    }
-
-    fn tab_weight(tab: &AppTabState) -> usize {
-        tab.index_state
-            .index
-            .entries
-            .capacity()
-            .saturating_add(tab.index_state.pending_index_entries.capacity())
-            .saturating_add(tab.index_state.pending_kind_paths.capacity())
-            .saturating_add(tab.index_state.pending_kind_paths_set.capacity())
-            .saturating_add(tab.index_state.in_flight_kind_paths.capacity())
-            .saturating_add(tab.index_state.resolved_kind_updates.capacity())
-            .saturating_add(tab.index_state.incremental_filtered_entries.capacity())
-            .saturating_add(tab.entry_kind_cache.entries.capacity())
-    }
-}
-
-impl CommittedResourcePayload {
-    fn take_active(app: &mut FlistWalkerApp) -> Self {
-        Self {
-            all_entries: std::mem::replace(
-                &mut app.shell.runtime.all_entries,
-                Arc::new(Vec::new()),
-            ),
-            entries: std::mem::replace(&mut app.shell.runtime.entries, Arc::new(Vec::new())),
-            base_results: std::mem::take(&mut app.shell.runtime.base_results),
-            results: std::mem::take(&mut app.shell.runtime.results),
-            preview: std::mem::take(&mut app.shell.runtime.preview),
-            total_match_count: std::mem::take(&mut app.shell.runtime.total_match_count),
-            current_row: app.shell.runtime.current_row.take(),
-        }
-    }
-
-    fn swap_active_tab(tab: &mut AppTabState, app: &mut FlistWalkerApp) {
-        std::mem::swap(
-            &mut tab.index_state.all_entries,
-            &mut app.shell.runtime.all_entries,
-        );
-        std::mem::swap(&mut tab.index_state.entries, &mut app.shell.runtime.entries);
-        std::mem::swap(
-            &mut tab.result_state.base_results,
-            &mut app.shell.runtime.base_results,
-        );
-        std::mem::swap(
-            &mut tab.result_state.results,
-            &mut app.shell.runtime.results,
-        );
-        std::mem::swap(
-            &mut tab.result_state.preview,
-            &mut app.shell.runtime.preview,
-        );
-        std::mem::swap(
-            &mut tab.result_state.total_match_count,
-            &mut app.shell.runtime.total_match_count,
-        );
-        std::mem::swap(
-            &mut tab.result_state.current_row,
-            &mut app.shell.runtime.current_row,
-        );
-    }
-
-    fn restore_active(self, app: &mut FlistWalkerApp) {
-        app.shell.runtime.all_entries = self.all_entries;
-        app.shell.runtime.entries = self.entries;
-        app.shell.runtime.base_results = self.base_results;
-        app.shell.runtime.results = self.results;
-        app.shell.runtime.preview = self.preview;
-        app.shell.runtime.total_match_count = self.total_match_count;
-        app.shell.runtime.current_row = self.current_row;
-    }
-
-    fn take_tab(tab: &mut AppTabState) -> Self {
-        Self {
-            all_entries: std::mem::replace(&mut tab.index_state.all_entries, Arc::new(Vec::new())),
-            entries: std::mem::replace(&mut tab.index_state.entries, Arc::new(Vec::new())),
-            base_results: std::mem::take(&mut tab.result_state.base_results),
-            results: std::mem::take(&mut tab.result_state.results),
-            preview: std::mem::take(&mut tab.result_state.preview),
-            total_match_count: std::mem::take(&mut tab.result_state.total_match_count),
-            current_row: tab.result_state.current_row.take(),
-        }
-    }
-
-    fn restore_tab(self, tab: &mut AppTabState) {
-        tab.index_state.all_entries = self.all_entries;
-        tab.index_state.entries = self.entries;
-        tab.result_state.base_results = self.base_results;
-        tab.result_state.results = self.results;
-        tab.result_state.preview = self.preview;
-        tab.result_state.total_match_count = self.total_match_count;
-        tab.result_state.current_row = self.current_row;
-    }
-
-    fn is_empty(&self) -> bool {
-        self.all_entries.capacity() == 0
-            && self.entries.capacity() == 0
-            && self.base_results.capacity() == 0
-            && self.results.capacity() == 0
-            && self.preview.capacity() == 0
-    }
-
-    fn tab_weight(tab: &AppTabState) -> usize {
-        let committed_entries =
-            if Arc::ptr_eq(&tab.index_state.all_entries, &tab.index_state.entries) {
-                tab.index_state.all_entries.capacity()
-            } else {
-                tab.index_state
-                    .all_entries
-                    .capacity()
-                    .saturating_add(tab.index_state.entries.capacity())
-            };
-        committed_entries
-            .saturating_add(tab.result_state.base_results.capacity())
-            .saturating_add(tab.result_state.results.capacity())
-            .saturating_add(tab.result_state.preview.capacity())
-    }
-}
-
-pub(super) fn swap_active_tab_payload(tab: &mut AppTabState, app: &mut FlistWalkerApp) {
-    IndexBuildResourcePayload::swap_active_tab(tab, app);
-    CommittedResourcePayload::swap_active_tab(tab, app);
 }
 
 enum ReclaimPayload {
@@ -691,7 +437,7 @@ impl FlistWalkerApp {
         RetiredIndexBuildResources {
             #[cfg(test)]
             _drop_probe: ReclaimDropProbe::capture(),
-            build: IndexBuildResourcePayload::take_active(self),
+            build: self.shell.indexing.build.take_reclaimable(),
             routing: RetiredRoutingPayload::default(),
         }
     }
@@ -700,7 +446,10 @@ impl FlistWalkerApp {
         &mut self,
         resources: RetiredIndexBuildResources,
     ) {
-        resources.build.restore_active(self);
+        self.shell
+            .indexing
+            .build
+            .restore_reclaimable(resources.build);
     }
 
     pub(super) fn take_active_committed_resources(&mut self) -> RetiredActiveResources {
@@ -712,12 +461,12 @@ impl FlistWalkerApp {
             .map(|(path, _)| path.clone())
             .or_else(|| self.shell.runtime.evicted_selected_path.clone());
         RetiredActiveResources {
-            committed: CommittedResourcePayload::take_active(self),
+            committed: std::mem::take(&mut self.shell.runtime.committed),
         }
     }
 
     pub(super) fn restore_active_committed_resources(&mut self, resources: RetiredActiveResources) {
-        resources.committed.restore_active(self);
+        self.shell.runtime.committed = resources.committed;
     }
 }
 
@@ -726,47 +475,51 @@ impl AppTabState {
         RetiredIndexBuildResources {
             #[cfg(test)]
             _drop_probe: ReclaimDropProbe::capture(),
-            build: IndexBuildResourcePayload::take_tab(self),
+            build: self.index_state.build.take_reclaimable(),
             routing: RetiredRoutingPayload::default(),
         }
     }
 
     pub(super) fn restore_index_build_resources(&mut self, resources: RetiredIndexBuildResources) {
-        resources.build.restore_tab(self);
+        self.index_state.build.restore_reclaimable(resources.build);
     }
 
     pub(super) fn take_committed_resources(&mut self) -> RetiredActiveResources {
         self.result_state.evicted_selected_path = self
             .result_state
+            .committed
             .current_row
-            .and_then(|row| self.result_state.results.get(row))
+            .and_then(|row| self.result_state.committed.results.get(row))
             .map(|(path, _)| path.clone())
             .or_else(|| self.result_state.evicted_selected_path.clone());
         self.index_state
             .apply_resource_transition(TabResourceTransition::SnapshotRemoved);
         RetiredActiveResources {
-            committed: CommittedResourcePayload::take_tab(self),
+            committed: std::mem::take(&mut self.result_state.committed),
         }
     }
 
     pub(super) fn restore_committed_resources(&mut self, resources: RetiredActiveResources) {
         self.index_state
             .apply_resource_transition(TabResourceTransition::SnapshotRestored);
-        resources.committed.restore_tab(self);
+        self.result_state.committed = resources.committed;
     }
 }
 
 impl AppTabState {
     pub(super) fn heavy_resource_weight(&self) -> usize {
-        IndexBuildResourcePayload::tab_weight(self)
-            .saturating_add(CommittedResourcePayload::tab_weight(self))
+        self.index_state
+            .build
+            .heavy_resource_weight()
+            .saturating_add(self.result_state.committed.heavy_resource_weight())
     }
 
     pub(super) fn take_heavy_resources(&mut self) -> RetiredTabResources {
         self.result_state.evicted_selected_path = self
             .result_state
+            .committed
             .current_row
-            .and_then(|row| self.result_state.results.get(row))
+            .and_then(|row| self.result_state.committed.results.get(row))
             .map(|(path, _)| path.clone())
             .or_else(|| self.result_state.evicted_selected_path.clone());
         let resources = RetiredTabResources {
@@ -784,16 +537,16 @@ impl AppTabState {
                 kind_resolution_in_progress: self.index_state.kind_resolution_in_progress,
                 results_compacted: self.result_state.results_compacted,
             },
-            build: IndexBuildResourcePayload::take_tab(self),
-            committed: CommittedResourcePayload::take_tab(self),
+            build: self.index_state.build.take_reclaimable(),
+            committed: std::mem::take(&mut self.result_state.committed),
         };
         self.index_state
             .apply_resource_transition(TabResourceTransition::Evict);
         self.index_state.build_reclaim_pending = false;
         self.index_state.build_reclaim_request_id = None;
         self.index_state.clear_kind_resolution_state();
-        self.result_state.total_match_count = 0;
-        self.result_state.current_row = None;
+        self.result_state.committed.total_match_count = 0;
+        self.result_state.committed.current_row = None;
         self.result_state.results_compacted = false;
         resources
     }
@@ -816,8 +569,8 @@ impl AppTabState {
         self.index_state.kind_resolution_epoch = control.kind_resolution_epoch;
         self.index_state.kind_resolution_in_progress = control.kind_resolution_in_progress;
         self.result_state.results_compacted = control.results_compacted;
-        build.restore_tab(self);
-        committed.restore_tab(self);
+        self.index_state.build.restore_reclaimable(build);
+        self.result_state.committed = committed;
     }
 }
 

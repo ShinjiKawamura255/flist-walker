@@ -147,7 +147,7 @@ impl FlistWalkerApp {
             self.shell.runtime.include_dirs = true;
             needs_reindex = true;
         }
-        if !matches!(self.shell.runtime.index.source, IndexSource::Walker) {
+        if !matches!(self.shell.indexing.build.index.source, IndexSource::Walker) {
             needs_reindex = true;
         }
         if self.shell.indexing.in_progress || self.shell.indexing.pending_finish.is_some() {

@@ -199,7 +199,7 @@ fn prefer_relative_display_is_enabled_for_filelist_source() {
     let root = test_root("prefer-relative-filelist");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.index.source = IndexSource::FileList(root.join("FileList.txt"));
+    app.shell.indexing.build.index.source = IndexSource::FileList(root.join("FileList.txt"));
 
     assert!(app.prefer_relative_display());
     let _ = fs::remove_dir_all(&root);

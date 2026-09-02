@@ -50,22 +50,29 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
     let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
-    app.shell.indexing.pending_entries.push_back(IndexEntry {
-        path: root.join("stale.txt"),
-        kind: EntryKind::file(),
-        kind_known: true,
-    });
+    app.shell
+        .indexing
+        .build
+        .pending_entries
+        .push_back(IndexEntry {
+            path: root.join("stale.txt"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        });
     app.shell.indexing.pending_entries_request_id = Some(7);
     app.shell
         .indexing
+        .build
         .pending_kind_paths
         .push_back(root.join("stale-kind.txt"));
     app.shell
         .indexing
+        .build
         .pending_kind_paths_set
         .insert(root.join("stale-kind.txt"));
     app.shell
         .indexing
+        .build
         .in_flight_kind_paths
         .insert(root.join("in-flight.txt"));
     app.shell.indexing.kind_resolution_in_progress = true;
@@ -83,11 +90,11 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
         .indexing
         .inflight_requests
         .contains(&req.request_id));
-    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
     assert_eq!(app.shell.indexing.pending_entries_request_id, None);
-    assert!(app.shell.indexing.pending_kind_paths.is_empty());
-    assert!(app.shell.indexing.pending_kind_paths_set.is_empty());
-    assert!(app.shell.indexing.in_flight_kind_paths.is_empty());
+    assert!(app.shell.indexing.build.pending_kind_paths.is_empty());
+    assert!(app.shell.indexing.build.pending_kind_paths_set.is_empty());
+    assert!(app.shell.indexing.build.in_flight_kind_paths.is_empty());
     assert!(!app.shell.indexing.kind_resolution_in_progress);
     assert_eq!(app.shell.worker_bus.preview.pending_request_id, None);
     assert!(!app.shell.worker_bus.preview.in_progress);
@@ -146,7 +153,7 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     app.shell.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = true;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
 
@@ -169,7 +176,7 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
     app.shell.runtime.use_filelist = true;
-    app.shell.runtime.index.source = IndexSource::Walker;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.indexing.in_progress = false;
 
     app.create_filelist();

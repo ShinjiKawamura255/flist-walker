@@ -8,8 +8,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn clear_tab_result_selection(tab: &mut AppTabState) {
-    tab.result_state.current_row = None;
-    tab.result_state.preview.clear();
+    tab.result_state.committed.current_row = None;
+    tab.result_state.committed.preview.clear();
     tab.clear_preview_request_state();
 }
 
@@ -23,21 +23,24 @@ fn normalized_result_row(current_row: Option<usize>, results_len: usize) -> Opti
 }
 
 fn clamp_tab_result_selection(tab: &mut AppTabState) {
-    if tab.result_state.results.is_empty() {
+    if tab.result_state.committed.results.is_empty() {
         clear_tab_result_selection(tab);
         return;
     }
-    tab.result_state.current_row =
-        normalized_result_row(tab.result_state.current_row, tab.result_state.results.len());
+    tab.result_state.committed.current_row = normalized_result_row(
+        tab.result_state.committed.current_row,
+        tab.result_state.committed.results.len(),
+    );
 }
 
 fn selected_tab_path(tab: &AppTabState) -> Option<&PathBuf> {
     let results = if tab.result_state.results_compacted {
-        &tab.result_state.base_results
+        &tab.result_state.committed.base_results
     } else {
-        &tab.result_state.results
+        &tab.result_state.committed.results
     };
     tab.result_state
+        .committed
         .current_row
         .and_then(|row| results.get(row).map(|(path, _)| path))
 }
@@ -51,7 +54,7 @@ fn invalidate_background_preview_if_selection_changed(
     }
     // Regression guard: an inactive tab may receive search/sort after its preview.
     // Never carry that old path's preview or request ownership into activation.
-    tab.result_state.preview.clear();
+    tab.result_state.committed.preview.clear();
     tab.clear_preview_request_state();
     tab.mark_preview_reload_pending();
     true
@@ -124,21 +127,22 @@ pub(super) fn apply_background_search_response(
         .error
         .map(|error| format!("Search failed: {error}"))
         .unwrap_or_default();
-    tab.result_state.base_results = response.results.clone();
-    tab.result_state.results = response.results;
-    tab.result_state.total_match_count = response.total_match_count;
+    tab.result_state.committed.base_results = response.results.clone();
+    tab.result_state.committed.results = response.results;
+    tab.result_state.committed.total_match_count = response.total_match_count;
     tab.result_state.results_compacted = false;
     tab.result_state.result_sort_mode = response.sort_mode;
     tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
     if let Some(selected) = tab.result_state.evicted_selected_path.take() {
-        tab.result_state.current_row = tab
+        tab.result_state.committed.current_row = tab
             .result_state
+            .committed
             .results
             .iter()
             .position(|(path, _)| *path == selected)
-            .or_else(|| normalized_result_row(None, tab.result_state.results.len()));
-        if tab.result_state.results.is_empty() {
+            .or_else(|| normalized_result_row(None, tab.result_state.committed.results.len()));
+        if tab.result_state.committed.results.is_empty() {
             clear_tab_result_selection(tab);
         }
     } else {
@@ -171,7 +175,7 @@ pub(super) fn apply_active_search_response(
     app.shell.runtime.result_sort_mode = response.sort_mode;
     app.shell.runtime.result_sort_scope = response.sort_scope;
     app.replace_results_snapshot(response.results, false);
-    if matches!(app.shell.runtime.index.source, IndexSource::Walker) {
+    if matches!(app.shell.indexing.build.index.source, IndexSource::Walker) {
         // Search results can arrive after index completion. Queue kind resolution
         // from the newly installed result snapshot so deferred LINK entries are
         // not lost when the finish-time snapshot was stale.
@@ -184,8 +188,13 @@ pub(super) fn apply_active_search_response(
     {
         app.shell.indexing.search_rerun_pending = false;
         app.shell.indexing.search_resume_pending = false;
-        app.shell.runtime.entries =
-            Arc::new(app.shell.indexing.incremental_filtered_entries.clone());
+        app.shell.runtime.entries = Arc::new(
+            app.shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .clone(),
+        );
         app.shell.indexing.last_search_snapshot_len = app.shell.runtime.entries.len();
         app.shell.indexing.last_incremental_results_refresh = Instant::now();
         app.enqueue_search_request();
@@ -318,16 +327,24 @@ pub(super) fn apply_background_preview_response(
     if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
         tab.clear_preview_request_state();
         let current_path = if tab.result_state.results_compacted {
-            tab.result_state
-                .current_row
-                .and_then(|row| tab.result_state.base_results.get(row).map(|(path, _)| path))
+            tab.result_state.committed.current_row.and_then(|row| {
+                tab.result_state
+                    .committed
+                    .base_results
+                    .get(row)
+                    .map(|(path, _)| path)
+            })
         } else {
-            tab.result_state
-                .current_row
-                .and_then(|row| tab.result_state.results.get(row).map(|(path, _)| path))
+            tab.result_state.committed.current_row.and_then(|row| {
+                tab.result_state
+                    .committed
+                    .results
+                    .get(row)
+                    .map(|(path, _)| path)
+            })
         };
         if current_path.is_some_and(|current_path| *current_path == response.path) {
-            tab.result_state.preview = response.preview;
+            tab.result_state.committed.preview = response.preview;
         }
     }
 }
@@ -375,19 +392,21 @@ pub(super) fn apply_background_sort_response(
     tab.result_state.clear_sort_request_state();
     if response.mode == tab.result_state.result_sort_mode {
         let previous_path = selected_tab_path(tab).cloned();
-        tab.result_state.results = FlistWalkerApp::build_sorted_results_from(
-            &tab.result_state.base_results,
+        tab.result_state.committed.results = FlistWalkerApp::build_sorted_results_from(
+            &tab.result_state.committed.base_results,
             tab.result_state.result_sort_mode,
             &sort_metadata,
         );
         tab.result_state.results_compacted = false;
-        if tab.result_state.results.is_empty() {
-            tab.result_state.current_row = None;
-            tab.result_state.preview.clear();
+        if tab.result_state.committed.results.is_empty() {
+            tab.result_state.committed.current_row = None;
+            tab.result_state.committed.preview.clear();
             tab.clear_preview_request_state();
         } else {
-            tab.result_state.current_row =
-                normalized_result_row(tab.result_state.current_row, tab.result_state.results.len());
+            tab.result_state.committed.current_row = normalized_result_row(
+                tab.result_state.committed.current_row,
+                tab.result_state.committed.results.len(),
+            );
         }
         let preview_invalidated =
             invalidate_background_preview_if_selection_changed(tab, previous_path.as_ref());

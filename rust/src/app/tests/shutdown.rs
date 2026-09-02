@@ -90,8 +90,8 @@ fn tc_207_shutdown_drops_tab_snapshots_on_the_registered_drain_worker() {
         inactive
             .index_state
             .set_committed_snapshot_present_for_test(true);
-        inactive.index_state.all_entries = Arc::new(vec![entry.clone()]);
-        inactive.index_state.entries = Arc::new(vec![entry]);
+        inactive.result_state.committed.all_entries = Arc::new(vec![entry.clone()]);
+        inactive.result_state.committed.entries = Arc::new(vec![entry]);
     }
     let _observer_guard = lock_reclaim_drop_observer_for_test();
     let (drop_tx, drop_rx) = mpsc::channel();
@@ -204,7 +204,7 @@ fn tc_207_shutdown_drain_owns_unfinished_and_scratch_pending_finalizers() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut held = app.capture_active_tab_state(9_000 + index as u64);
-        held.index_state.all_entries =
+        held.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         held.index_state
             .set_committed_snapshot_present_for_test(true);

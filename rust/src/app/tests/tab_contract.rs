@@ -1,6 +1,7 @@
 use super::*;
-use crate::app::cache::EntryKindCacheState;
-use crate::app::tab_state::{AppTabState, TabIndexState, TabQueryState, TabResultState};
+use crate::app::tab_state::{
+    AppTabState, TabCommittedPayload, TabIndexState, TabQueryState, TabResultState,
+};
 
 #[test]
 fn history_search_keeps_only_history_actions_and_help() {
@@ -69,15 +70,13 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         TabResourceLifecycle::Refreshing,
         true,
     ));
-    index_state.index = IndexBuildResult {
+    index_state.build.index = IndexBuildResult {
         entries: vec![file_entry(root.join("indexed.txt"))],
         source: IndexSource::Walker,
     };
-    index_state.all_entries = Arc::new(vec![file_entry(root.join("all.txt"))]);
-    index_state.entries = Arc::new(vec![file_entry(root.join("visible.txt"))]);
     index_state.pending_index_request_id = Some(11);
     index_state.index_in_progress = true;
-    index_state.pending_index_entries = VecDeque::new();
+    index_state.build.pending_entries = VecDeque::new();
     index_state.pending_index_entries_request_id = Some(12);
     index_state.pending_index_finish = Some(PendingActiveIndexFinish {
         request_id: 11,
@@ -87,13 +86,13 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     index_state.build_reclaim_request_id = None;
     index_state.refresh_after_pending_finish = None;
     index_state.root_after_pending_finish = None;
-    index_state.pending_kind_paths = VecDeque::from(vec![root.join("kind.txt")]);
-    index_state.pending_kind_paths_set = HashSet::from([root.join("kind.txt")]);
-    index_state.in_flight_kind_paths = HashSet::from([root.join("kind-in-flight.txt")]);
-    index_state.resolved_kind_updates = Vec::new();
+    index_state.build.pending_kind_paths = VecDeque::from(vec![root.join("kind.txt")]);
+    index_state.build.pending_kind_paths_set = HashSet::from([root.join("kind.txt")]);
+    index_state.build.in_flight_kind_paths = HashSet::from([root.join("kind-in-flight.txt")]);
+    index_state.build.resolved_kind_updates = Vec::new();
     index_state.kind_resolution_epoch = 9;
     index_state.kind_resolution_in_progress = true;
-    index_state.incremental_filtered_entries = vec![file_entry(root.join("filtered.txt"))];
+    index_state.build.incremental_filtered_entries = vec![file_entry(root.join("filtered.txt"))];
     index_state.last_incremental_results_refresh = Instant::now();
     index_state.last_search_snapshot_len = 3;
     index_state.search_resume_pending = true;
@@ -110,17 +109,21 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         history_search_current: Some(0),
     };
     let result_state = TabResultState {
-        base_results: vec![(root.join("base.txt"), 0.5)],
-        results: vec![(root.join("visible.txt"), 1.0)],
+        committed: TabCommittedPayload {
+            all_entries: Arc::new(vec![file_entry(root.join("all.txt"))]),
+            entries: Arc::new(vec![file_entry(root.join("visible.txt"))]),
+            base_results: vec![(root.join("base.txt"), 0.5)],
+            results: vec![(root.join("visible.txt"), 1.0)],
+            total_match_count: 12,
+            current_row: Some(0),
+            preview: "preview".to_string(),
+        },
         result_sort_mode: ResultSortMode::NameAsc,
         result_sort_scope: ResultSortScope::AllMatches,
-        total_match_count: 12,
         pending_sort_request_id: Some(21),
         sort_in_progress: true,
         pinned_paths: HashSet::from([root.join("pinned.txt")]),
-        current_row: Some(0),
         evicted_selected_path: None,
-        preview: "preview".to_string(),
         results_compacted: false,
     };
     let snapshot = AppTabState {
@@ -136,7 +139,6 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         index_state,
         query_state,
         result_state,
-        entry_kind_cache: EntryKindCacheState::default(),
         notice: "contract notice".to_string(),
         pending_request_id: Some(31),
         pending_preview_request_id: Some(32),
@@ -270,8 +272,8 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         snapshot.result_state.result_sort_scope
     );
     assert_eq!(
-        restored.result_state.total_match_count,
-        snapshot.result_state.total_match_count
+        restored.result_state.committed.total_match_count,
+        snapshot.result_state.committed.total_match_count
     );
     assert_eq!(
         restored.result_state.pending_sort_request_id,
@@ -282,10 +284,13 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         snapshot.result_state.sort_in_progress
     );
     assert_eq!(
-        restored.result_state.current_row,
-        snapshot.result_state.current_row
+        restored.result_state.committed.current_row,
+        snapshot.result_state.committed.current_row
     );
-    assert_eq!(restored.result_state.preview, snapshot.result_state.preview);
+    assert_eq!(
+        restored.result_state.committed.preview,
+        snapshot.result_state.committed.preview
+    );
     assert_eq!(restored.notice, snapshot.notice);
     assert_eq!(restored.pending_request_id, snapshot.pending_request_id);
     assert_eq!(

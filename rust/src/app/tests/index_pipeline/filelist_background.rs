@@ -247,7 +247,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     let background_tab = app.shell.tabs.get(1).expect("background tab");
     assert!(!background_tab.index_state.index_in_progress);
     assert_eq!(background_tab.index_state.pending_index_request_id, None);
-    assert!(background_tab.index_state.pending_index_entries.is_empty());
+    assert!(background_tab.index_state.build.pending_entries.is_empty());
     assert_eq!(
         background_tab.index_state.lifecycle(),
         TabResourceLifecycle::Failed

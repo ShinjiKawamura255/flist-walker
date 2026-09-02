@@ -1,5 +1,7 @@
 use crate::entry::{Entry, EntryDisplayKind, EntryKind};
-use crate::indexer::{IndexBuildResult, IndexSource};
+#[cfg(test)]
+use crate::indexer::IndexBuildResult;
+use crate::indexer::IndexSource;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::ui_model::{
     display_path_with_mode, match_positions_for_path_with_compiled, normalize_path_for_display,

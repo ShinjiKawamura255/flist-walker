@@ -116,11 +116,11 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .iter()
         .find(|tab| tab.id == first_tab_id)
         .expect("first tab");
-    assert_eq!(first_tab.result_state.results.len(), 1);
+    assert_eq!(first_tab.result_state.committed.results.len(), 1);
     assert!(!first_tab.result_state.results_compacted);
-    assert_eq!(first_tab.result_state.base_results.len(), 1);
-    assert_eq!(first_tab.result_state.base_results[0].0, selected);
-    assert_eq!(first_tab.result_state.preview, "preview-body");
+    assert_eq!(first_tab.result_state.committed.base_results.len(), 1);
+    assert_eq!(first_tab.result_state.committed.base_results[0].0, selected);
+    assert_eq!(first_tab.result_state.committed.preview, "preview-body");
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -166,7 +166,7 @@ fn background_search_selection_change_invalidates_old_preview_and_reloads_on_act
     );
 
     let background = app.shell.tabs.get(0).expect("background tab");
-    assert!(background.result_state.preview.is_empty());
+    assert!(background.result_state.committed.preview.is_empty());
     assert!(background.pending_preview_request_id.is_none());
     assert!(background.preview_reload_pending);
     assert_eq!(app.preview_request_tab(old_request.request_id), None);
@@ -179,6 +179,8 @@ fn background_search_selection_change_invalidates_old_preview_and_reloads_on_act
         .tabs
         .get_mut(0)
         .expect("background tab")
+        .index_state
+        .build
         .entry_kind_cache
         .set(new_path.clone(), EntryKind::file());
 
@@ -276,7 +278,7 @@ fn sizedesc_inactive_completed_preview_roundtrips_via_explicit_reload_regression
     app.create_new_tab();
     let background = app.shell.tabs.get(0).expect("background tab");
     assert!(!background.result_state.results_compacted);
-    assert!(background.result_state.preview.is_empty());
+    assert!(background.result_state.committed.preview.is_empty());
     assert!(background.preview_reload_pending);
     while preview_rx.try_recv().is_ok() {}
 
@@ -343,6 +345,7 @@ fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression
         .get(0)
         .expect("background tab")
         .result_state
+        .committed
         .preview
         .is_empty());
 
@@ -350,6 +353,8 @@ fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression
         .tabs
         .get_mut(0)
         .expect("background tab")
+        .index_state
+        .build
         .entry_kind_cache
         .set(selected.clone(), EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
@@ -409,9 +414,12 @@ fn background_sort_reorder_invalidates_old_preview_request_regression() {
     });
 
     let background = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(background.result_state.base_results[0].0, old_path);
-    assert_eq!(background.result_state.results[0].0, new_path);
-    assert!(background.result_state.preview.is_empty());
+    assert_eq!(
+        background.result_state.committed.base_results[0].0,
+        old_path
+    );
+    assert_eq!(background.result_state.committed.results[0].0, new_path);
+    assert!(background.result_state.committed.preview.is_empty());
     assert!(background.pending_preview_request_id.is_none());
     assert!(background.preview_reload_pending);
     assert_eq!(app.preview_request_tab(94), None);
@@ -420,6 +428,8 @@ fn background_sort_reorder_invalidates_old_preview_request_regression() {
         .tabs
         .get_mut(0)
         .expect("background tab")
+        .index_state
+        .build
         .entry_kind_cache
         .set(new_path.clone(), EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
@@ -592,12 +602,15 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
         background.result_state.result_sort_mode,
         ResultSortMode::Score
     );
-    assert_eq!(background.result_state.total_match_count, 1);
+    assert_eq!(background.result_state.committed.total_match_count, 1);
     assert_eq!(
-        background.result_state.base_results,
+        background.result_state.committed.base_results,
         vec![(current.clone(), 0.0)]
     );
-    assert_eq!(background.result_state.results, vec![(current, 0.0)]);
+    assert_eq!(
+        background.result_state.committed.results,
+        vec![(current, 0.0)]
+    );
     assert!(background.result_state.pending_sort_request_id.is_none());
     assert!(!background.result_state.sort_in_progress);
     let _ = fs::remove_dir_all(&root);
@@ -633,7 +646,7 @@ fn active_index_progress_before_tab_switch_is_preserved_on_background_finish() {
         })
         .expect("send active batch");
     app.poll_index_response();
-    assert_eq!(app.shell.runtime.index.entries.len(), 1);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 1);
 
     app.create_new_tab();
     assert_eq!(app.shell.tabs.active_tab, 1);
@@ -696,13 +709,17 @@ fn active_index_handoff_preserves_pending_and_background_batches() {
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
-    app.shell.runtime.index.entries = vec![file_entry(drained_file.clone())];
+    app.shell.indexing.build.index.entries = vec![file_entry(drained_file.clone())];
     app.shell.indexing.pending_entries_request_id = Some(index_req.request_id);
-    app.shell.indexing.pending_entries.push_back(IndexEntry {
-        path: pending_file.clone(),
-        kind: EntryKind::file(),
-        kind_known: true,
-    });
+    app.shell
+        .indexing
+        .build
+        .pending_entries
+        .push_back(IndexEntry {
+            path: pending_file.clone(),
+            kind: EntryKind::file(),
+            kind_known: true,
+        });
 
     app.create_new_tab();
     assert_eq!(app.shell.tabs.active_tab, 1);
@@ -747,7 +764,7 @@ fn active_index_handoff_preserves_pending_and_background_batches() {
         .iter()
         .any(|entry| entry.path == background_file));
     assert!(!app.shell.indexing.in_progress);
-    assert!(app.shell.indexing.pending_entries.is_empty());
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -770,13 +787,17 @@ fn background_replace_all_after_active_handoff_discards_prior_partial_index() {
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
-    app.shell.runtime.index.entries = vec![file_entry(stale_file.clone())];
+    app.shell.indexing.build.index.entries = vec![file_entry(stale_file.clone())];
     app.shell.indexing.pending_entries_request_id = Some(index_req.request_id);
-    app.shell.indexing.pending_entries.push_back(IndexEntry {
-        path: stale_file.clone(),
-        kind: EntryKind::file(),
-        kind_known: true,
-    });
+    app.shell
+        .indexing
+        .build
+        .pending_entries
+        .push_back(IndexEntry {
+            path: stale_file.clone(),
+            kind: EntryKind::file(),
+            kind_known: true,
+        });
 
     app.create_new_tab();
 
@@ -885,8 +906,8 @@ fn background_empty_query_index_finish_updates_total_match_count() {
     app.poll_index_response();
 
     let background_tab = app.shell.tabs.get(0).expect("tab 0");
-    assert_eq!(background_tab.result_state.results.len(), 1);
-    assert_eq!(background_tab.result_state.total_match_count, 2);
+    assert_eq!(background_tab.result_state.committed.results.len(), 1);
+    assert_eq!(background_tab.result_state.committed.total_match_count, 2);
 
     app.switch_to_tab_index(0);
     assert_eq!(app.shell.runtime.results.len(), 1);
@@ -1028,6 +1049,7 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         .get(0)
         .expect("tab 0")
         .result_state
+        .committed
         .base_results
         .is_empty());
     assert!(
@@ -1039,13 +1061,20 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
             .tabs
             .get(0)
             .expect("tab 0")
-            .index_state
+            .result_state
+            .committed
             .entries
             .len(),
         1
     );
     assert_eq!(
-        app.shell.tabs.get(0).expect("tab 0").index_state.entries[0],
+        app.shell
+            .tabs
+            .get(0)
+            .expect("tab 0")
+            .result_state
+            .committed
+            .entries[0],
         background_file
     );
     assert!(index_req_rx.try_recv().is_err());
@@ -1116,9 +1145,9 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
             .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![old.clone()]);
-        tab.index_state.entries = Arc::new(vec![old.clone()]);
-        tab.result_state.results = vec![(old.path.clone(), 0.0)];
+        tab.result_state.committed.all_entries = Arc::new(vec![old.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![old.clone()]);
+        tab.result_state.committed.results = vec![(old.path.clone(), 0.0)];
         tab.index_state.pending_index_request_id = Some(407);
         tab.index_state.index_in_progress = true;
     }
@@ -1138,7 +1167,7 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_400 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -1158,7 +1187,7 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
 
     assert!(effect.cleanup_request_id.is_none());
     let waiting = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(waiting.index_state.all_entries.as_ref(), &[old]);
+    assert_eq!(waiting.result_state.committed.all_entries.as_ref(), &[old]);
     assert!(waiting.index_state.pending_index_finish.is_some());
     assert!(waiting
         .notice
@@ -1175,7 +1204,10 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
     );
 
     let completed = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(completed.index_state.all_entries.as_ref(), &[new]);
+    assert_eq!(
+        completed.result_state.committed.all_entries.as_ref(),
+        &[new]
+    );
     assert!(completed.index_state.pending_index_finish.is_none());
     assert_eq!(
         completed.index_state.lifecycle(),
@@ -1276,7 +1308,7 @@ fn tc_207_background_finished_commits_100k_default_snapshot_within_ui_budget() {
         "100k finalization must span multiple frames"
     );
     let tab = app.shell.tabs.get(0).expect("completed background tab");
-    assert_eq!(tab.index_state.all_entries.len(), 100_000);
+    assert_eq!(tab.result_state.committed.all_entries.len(), 100_000);
     assert_eq!(tab.index_state.lifecycle(), TabResourceLifecycle::Ready);
     let _ = fs::remove_dir_all(&root);
 }
@@ -1293,11 +1325,11 @@ fn tc_207_background_finished_mixed_owners_settles_incrementally() {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
         tab.index_state.pending_index_request_id = Some(request_id);
         tab.index_state.index_in_progress = true;
-        tab.index_state.index.entries = (0..40_000)
+        tab.index_state.build.index.entries = (0..40_000)
             .map(|index| file_entry(root.join(format!("base-{index}.txt"))))
             .collect();
         tab.index_state.pending_index_entries_request_id = Some(request_id);
-        tab.index_state.pending_index_entries = (0..30_000)
+        tab.index_state.build.pending_entries = (0..30_000)
             .map(|index| IndexEntry {
                 path: root.join(format!("pending-{index}.txt")),
                 kind: EntryKind::file(),
@@ -1335,12 +1367,14 @@ fn tc_207_background_finished_mixed_owners_settles_incrementally() {
         .iter()
         .all(|elapsed| *elapsed < Duration::from_millis(100)));
     let tab = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(tab.index_state.all_entries.len(), 100_000);
-    assert!(tab.index_state.all_entries[0].path.ends_with("base-0.txt"));
-    assert!(tab.index_state.all_entries[40_000]
+    assert_eq!(tab.result_state.committed.all_entries.len(), 100_000);
+    assert!(tab.result_state.committed.all_entries[0]
+        .path
+        .ends_with("base-0.txt"));
+    assert!(tab.result_state.committed.all_entries[40_000]
         .path
         .ends_with("pending-0.txt"));
-    assert!(tab.index_state.all_entries[70_000]
+    assert!(tab.result_state.committed.all_entries[70_000]
         .path
         .ends_with("tail-0.txt"));
     let _ = fs::remove_dir_all(&root);
@@ -1403,10 +1437,11 @@ fn tc_207_background_finished_file_filter_settles_incrementally() {
         .iter()
         .all(|elapsed| *elapsed < Duration::from_millis(100)));
     let tab = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(tab.index_state.all_entries.len(), 100_000);
-    assert_eq!(tab.index_state.entries.len(), 25_000);
+    assert_eq!(tab.result_state.committed.all_entries.len(), 100_000);
+    assert_eq!(tab.result_state.committed.entries.len(), 25_000);
     assert!(tab
-        .index_state
+        .result_state
+        .committed
         .entries
         .iter()
         .all(|entry| entry.kind == Some(EntryKind::file())));
@@ -1474,7 +1509,8 @@ fn tc_207_background_finalization_tracks_ignore_policy_changes_both_directions()
             .tabs
             .get(0)
             .expect("background tab")
-            .index_state
+            .result_state
+            .committed
             .entries;
         assert_eq!(entries.len(), expected_len);
         if !starts_enabled {
@@ -1597,7 +1633,8 @@ fn tc_207_late_filter_policy_change_reclaims_old_output_off_ui() {
             .tabs
             .get(0)
             .expect("background tab")
-            .index_state
+            .result_state
+            .committed
             .entries
             .len(),
         100_000
@@ -1667,7 +1704,7 @@ fn tc_207_late_filter_policy_change_rolls_back_while_reclaimer_is_full() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut held = app.capture_active_tab_state(9_500 + index as u64);
-        held.index_state.all_entries =
+        held.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         held.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -1714,7 +1751,8 @@ fn tc_207_late_filter_policy_change_rolls_back_while_reclaimer_is_full() {
             .tabs
             .get(0)
             .expect("background tab")
-            .index_state
+            .result_state
+            .committed
             .entries
             .len(),
         100_000
@@ -1783,10 +1821,10 @@ fn tc_207_background_finished_walker_kind_queue_settles_incrementally() {
     }
     assert!(kind_frames > 1);
     let tab = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(tab.index_state.all_entries.len(), 100_000);
-    assert!(tab.index_state.entries.is_empty());
-    assert_eq!(tab.index_state.pending_kind_paths.len(), 100_000);
-    assert_eq!(tab.index_state.pending_kind_paths_set.len(), 100_000);
+    assert_eq!(tab.result_state.committed.all_entries.len(), 100_000);
+    assert!(tab.result_state.committed.entries.is_empty());
+    assert_eq!(tab.index_state.build.pending_kind_paths.len(), 100_000);
+    assert_eq!(tab.index_state.build.pending_kind_paths_set.len(), 100_000);
     assert!(tab.index_state.kind_resolution_in_progress);
     let _ = fs::remove_dir_all(&root);
 }
@@ -1900,7 +1938,7 @@ fn tc_207_terminal_finalizers_do_not_block_a_new_active_request_when_reclaimer_i
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut held = app.capture_active_tab_state(8_000 + index as u64);
-        held.index_state.all_entries =
+        held.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         held.index_state
             .set_committed_snapshot_present_for_test(true);
@@ -2015,11 +2053,11 @@ fn tc_207_terminal_waits_in_mailbox_and_activation_commits_complete_snapshot() {
             .expect("waiting tab");
         tab.index_state.pending_index_request_id = Some(waiting_request_id);
         tab.index_state.index_in_progress = true;
-        tab.index_state.index.entries = (0..20_000)
+        tab.index_state.build.index.entries = (0..20_000)
             .map(|index| file_entry(root.join(format!("partial-{index}.txt"))))
             .collect();
         tab.index_state.pending_index_entries_request_id = Some(waiting_request_id);
-        tab.index_state.pending_index_entries = (0..20_000)
+        tab.index_state.build.pending_entries = (0..20_000)
             .map(|index| IndexEntry {
                 path: root.join(format!("pending-{index}.txt")),
                 kind: EntryKind::file(),
@@ -2198,11 +2236,11 @@ fn tc_207_promotion_before_terminal_uses_active_finalization_barrier() {
             .expect("promoted tab");
         tab.index_state.pending_index_request_id = Some(request_id);
         tab.index_state.index_in_progress = true;
-        tab.index_state.index.entries = (0..20_000)
+        tab.index_state.build.index.entries = (0..20_000)
             .map(|index| file_entry(root.join(format!("partial-{index}.txt"))))
             .collect();
         tab.index_state.pending_index_entries_request_id = Some(request_id);
-        tab.index_state.pending_index_entries = (0..20_000)
+        tab.index_state.build.pending_entries = (0..20_000)
             .map(|index| IndexEntry {
                 path: root.join(format!("pending-{index}.txt")),
                 kind: EntryKind::file(),
@@ -2327,10 +2365,10 @@ fn tc_207_replace_all_discarded_build_moves_to_reclaimer_without_ui_drop() {
         tab.index_state.pending_index_request_id = Some(request_id);
         tab.index_state.pending_index_entries_request_id = Some(request_id);
         tab.index_state.index_in_progress = true;
-        tab.index_state.index.entries = (0..50_000)
+        tab.index_state.build.index.entries = (0..50_000)
             .map(|index| file_entry(root.join(format!("old-{index}.txt"))))
             .collect();
-        tab.index_state.pending_index_entries = (0..50_000)
+        tab.index_state.build.pending_entries = (0..50_000)
             .map(|index| IndexEntry {
                 path: root.join(format!("pending-{index}.txt")),
                 kind: EntryKind::file(),
@@ -2362,9 +2400,9 @@ fn tc_207_replace_all_discarded_build_moves_to_reclaimer_without_ui_drop() {
 
     set_reclaim_drop_observer(None);
     let tab = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(tab.index_state.all_entries.len(), 1);
+    assert_eq!(tab.result_state.committed.all_entries.len(), 1);
     assert_eq!(
-        tab.index_state.all_entries[0].path,
+        tab.result_state.committed.all_entries[0].path,
         root.join("replacement.txt")
     );
     let drop_threads = collect_drop_threads_until(
@@ -2394,7 +2432,7 @@ fn tc_207_background_failure_reclaims_tab_and_coordinator_building_off_ui() {
             .set_lifecycle_for_test(TabResourceLifecycle::Loading);
         tab.index_state.pending_index_request_id = Some(1_207);
         tab.index_state.index_in_progress = true;
-        tab.index_state.index.entries = (0..1_000)
+        tab.index_state.build.index.entries = (0..1_000)
             .map(|index| file_entry(root.join(format!("tab-building-{index}.txt"))))
             .collect();
     }
@@ -2428,7 +2466,7 @@ fn tc_207_background_failure_reclaims_tab_and_coordinator_building_off_ui() {
     let tab = app.shell.tabs.get(0).expect("background tab");
     assert!(!tab.index_state.build_reclaim_pending);
     assert!(tab.index_state.pending_index_request_id.is_none());
-    assert_eq!(tab.index_state.index.entries.capacity(), 0);
+    assert_eq!(tab.index_state.build.index.entries.capacity(), 0);
     assert!(!app.shell.indexing.background_states.contains_key(&1_207));
     let drop_threads = collect_drop_threads_until(
         &drop_rx,
@@ -2473,7 +2511,7 @@ fn tc_207_background_replace_all_waits_for_reclaimer_and_preserves_old_build() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(3_200 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -2535,14 +2573,14 @@ fn tc_207_background_failure_debt_switches_active_and_cleans_routing() {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
         tab.index_state.pending_index_request_id = Some(request_id);
         tab.index_state.index_in_progress = true;
-        tab.index_state.index.entries = (0..2_000)
+        tab.index_state.build.index.entries = (0..2_000)
             .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
             .collect();
     }
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(3_300 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -2807,7 +2845,7 @@ fn tc_207_multigeneration_background_close_rolls_back_every_owner_when_full() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut held = app.capture_active_tab_state(7_000 + index as u64);
-        held.index_state.all_entries =
+        held.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -2872,9 +2910,9 @@ fn tc_207_background_terminal_debt_coalesces_refresh_to_one_follow_up() {
             .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
         tab.index_state
             .set_committed_snapshot_present_for_test(true);
-        tab.index_state.all_entries = Arc::new(vec![old.clone()]);
-        tab.index_state.entries = Arc::new(vec![old]);
-        tab.index_state.index.entries = vec![new];
+        tab.result_state.committed.all_entries = Arc::new(vec![old.clone()]);
+        tab.result_state.committed.entries = Arc::new(vec![old]);
+        tab.index_state.build.index.entries = vec![new];
         tab.index_state.pending_index_request_id = Some(607);
         tab.index_state.pending_index_finish = Some(PendingActiveIndexFinish {
             request_id: 607,
@@ -2888,7 +2926,7 @@ fn tc_207_background_terminal_debt_coalesces_refresh_to_one_follow_up() {
     app.shell.tabs.pause_resource_reclaimer();
     for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
         let mut tab = app.capture_active_tab_state(1_700 + index as u64);
-        tab.index_state.all_entries =
+        tab.result_state.committed.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
         app.shell
             .tabs
@@ -2902,7 +2940,7 @@ fn tc_207_background_terminal_debt_coalesces_refresh_to_one_follow_up() {
 
     let waiting = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(waiting.index_state.pending_index_request_id, Some(607));
-    assert_eq!(waiting.index_state.index.entries.len(), 1);
+    assert_eq!(waiting.index_state.build.index.entries.len(), 1);
     assert_eq!(app.shell.indexing.next_request_id, next_request_id);
     assert!(request_rx.try_recv().is_err());
 
@@ -2948,8 +2986,8 @@ fn tc_207_background_search_restores_evicted_selected_path() {
     );
 
     let tab = app.shell.tabs.get(0).expect("background tab");
-    assert_eq!(tab.result_state.current_row, Some(1));
-    assert_eq!(tab.result_state.results[1].0, selected);
+    assert_eq!(tab.result_state.committed.current_row, Some(1));
+    assert_eq!(tab.result_state.committed.results[1].0, selected);
     assert!(tab.result_state.evicted_selected_path.is_none());
     let _ = fs::remove_dir_all(&root);
 }
