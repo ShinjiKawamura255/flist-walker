@@ -504,22 +504,28 @@ impl FlistWalkerApp {
                 )
             };
             let finalization = PendingBackgroundIndexFinalize::new(
-                tab.id,
-                request_id,
-                source.clone(),
-                tab_include_files,
-                tab_include_dirs,
-                tab_root,
-                Self::prefer_relative_display_for(&source),
-                tab_ignore_case,
-                ignore_list_enabled,
-                ignore_terms_source,
-                initial_entries,
-                selected_pending_entries,
-                continuation_entries,
-                discarded_entries,
-                discarded_pending_entries,
-                pending_after_index_matches,
+                super::BackgroundIndexFinalizeIdentity {
+                    tab_id: tab.id,
+                    request_id,
+                    source: source.clone(),
+                },
+                super::BackgroundIndexFinalizePolicy {
+                    include_files: tab_include_files,
+                    include_dirs: tab_include_dirs,
+                    root: tab_root,
+                    prefer_relative: Self::prefer_relative_display_for(&source),
+                    ignore_case: tab_ignore_case,
+                    ignore_list_enabled,
+                    ignore_terms_source,
+                },
+                super::BackgroundIndexFinalizeInputs {
+                    initial_entries,
+                    pending_entries: selected_pending_entries,
+                    continuation_entries,
+                    discarded_entries,
+                    discarded_pending_entries,
+                    capture_filelist_paths: pending_after_index_matches,
+                },
             );
             tab.index_state.pending_index_finish =
                 Some(super::PendingActiveIndexFinish { request_id, source });

@@ -3,6 +3,7 @@ use super::{
     IndexResponse, IndexSource, PendingActiveIndexFinish, PipelineOwner, ResultSortMode,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
+use crate::app::index_response_arbitration::FrameMailboxArbitrator;
 use crate::app::tab_state::TabResourceTransition;
 use crate::app::tabs::BackgroundIndexResponseEffect;
 use crate::path_utils::path_key;
@@ -1028,8 +1029,6 @@ impl FlistWalkerApp {
         const MAX_MESSAGES_PER_FRAME: usize = 64;
         #[cfg(test)]
         const MAX_PRIORITY_ROUTE_MESSAGES_PER_FRAME: usize = 4_096;
-        const ACTIVE_MAILBOX_QUOTA: usize = 48;
-        const WARM_MAILBOX_QUOTA: usize = 8;
         // Large capped roots can leave hundreds of thousands of entries queued at
         // the terminal point. While the worker is still indexing, allow larger
         // chunks; after Finished, prioritize input responsiveness over tail speed.
@@ -1040,98 +1039,22 @@ impl FlistWalkerApp {
         let mut processed = 0usize;
         #[cfg(test)]
         let mut priority_routed = 0usize;
-        let mut active_mailbox_processed = 0usize;
-        let mut warm_mailbox_processed = 0usize;
+        let mut mailbox_arbitrator = FrameMailboxArbitrator::default();
         let mut has_index_progress = false;
         let mut finished_current_request = false;
         loop {
             let active_request_id = self.shell.indexing.pending_request_id;
-            let warm_request_id = self
-                .shell
-                .indexing
-                .warm_tab_id
-                .and_then(|tab_id| self.shell.indexing.latest_request_for_tab(tab_id));
             let active_mailbox_blocked = self.shell.indexing.pending_entries_request_id
                 == active_request_id
                 && self.shell.indexing.pending_entries.len() >= MAX_PENDING_INDEX_ENTRIES;
+            let Some(arbitrated) =
+                mailbox_arbitrator.try_next(&mut self.shell.indexing, active_mailbox_blocked)
+            else {
+                break;
+            };
+            let msg = arbitrated.response;
             #[cfg(test)]
-            let injected_response = if let Some(msg) = self.shell.indexing.deferred_response.take()
-            {
-                Some((msg, false))
-            } else if let Ok(msg) = self.shell.indexing.rx.try_recv() {
-                Some((msg, true))
-            } else {
-                self.shell
-                    .indexing
-                    .deferred_non_active_responses
-                    .pop_front()
-                    .map(|msg| (msg, false))
-            };
-            #[cfg(not(test))]
-            let injected_response: Option<(IndexResponse, bool)> = None;
-            let (msg, from_shared_response_queue) = if let Some(response) = injected_response {
-                response
-            } else {
-                let active_response =
-                    if active_mailbox_processed < ACTIVE_MAILBOX_QUOTA && !active_mailbox_blocked {
-                        active_request_id.and_then(|request_id| {
-                            let allow_terminal =
-                                self.shell.indexing.can_admit_mailbox_terminal(request_id);
-                            self.shell
-                                .indexing
-                                .try_recv_mailbox(request_id, allow_terminal)
-                        })
-                    } else {
-                        None
-                    };
-                if let Some(msg) = active_response {
-                    active_mailbox_processed = active_mailbox_processed.saturating_add(1);
-                    (msg, false)
-                } else {
-                    let warm_response = if warm_mailbox_processed < WARM_MAILBOX_QUOTA
-                        && warm_request_id != active_request_id
-                    {
-                        warm_request_id.and_then(|request_id| {
-                            let allow_terminal =
-                                self.shell.indexing.can_admit_mailbox_terminal(request_id);
-                            self.shell
-                                .indexing
-                                .try_recv_mailbox(request_id, allow_terminal)
-                        })
-                    } else {
-                        None
-                    };
-                    if let Some(msg) = warm_response {
-                        warm_mailbox_processed = warm_mailbox_processed.saturating_add(1);
-                        (msg, false)
-                    } else {
-                        let mut remaining_request_ids = self
-                            .shell
-                            .indexing
-                            .request_tabs
-                            .keys()
-                            .copied()
-                            .filter(|request_id| {
-                                Some(*request_id) != active_request_id
-                                    && Some(*request_id) != warm_request_id
-                            })
-                            .collect::<Vec<_>>();
-                        remaining_request_ids.sort_unstable();
-                        let Some(msg) = remaining_request_ids.into_iter().find_map(|request_id| {
-                            let allow_terminal =
-                                self.shell.indexing.can_admit_mailbox_terminal(request_id);
-                            self.shell
-                                .indexing
-                                .try_recv_mailbox(request_id, allow_terminal)
-                        }) else {
-                            break;
-                        };
-                        (msg, false)
-                    }
-                }
-            };
-            #[cfg(not(test))]
-            let _ = from_shared_response_queue;
+            let from_shared_response_queue = arbitrated.from_shared_response_queue;
             let request_id = IndexCoordinator::response_request_id(&msg);
             if IndexCoordinator::is_terminal_response(&msg) {
                 self.shell.indexing.inflight_requests.remove(&request_id);
@@ -1552,22 +1475,28 @@ impl FlistWalkerApp {
                     && path_key(&pending.root) == path_key(&self.shell.runtime.root)
             });
         let finalization = super::PendingBackgroundIndexFinalize::new(
-            tab_id,
-            request_id,
-            source.clone(),
-            self.shell.runtime.include_files,
-            self.shell.runtime.include_dirs,
-            self.shell.runtime.root.clone(),
-            Self::prefer_relative_display_for(&source),
-            self.shell.runtime.ignore_case,
-            self.shell.ui.ignore_list_enabled,
-            Arc::clone(&self.shell.runtime.ignore_list_terms),
-            initial_entries,
-            selected_pending_entries,
-            continuation_entries,
-            discarded_entries,
-            discarded_pending_entries,
-            capture_filelist_paths,
+            super::BackgroundIndexFinalizeIdentity {
+                tab_id,
+                request_id,
+                source: source.clone(),
+            },
+            super::BackgroundIndexFinalizePolicy {
+                include_files: self.shell.runtime.include_files,
+                include_dirs: self.shell.runtime.include_dirs,
+                root: self.shell.runtime.root.clone(),
+                prefer_relative: Self::prefer_relative_display_for(&source),
+                ignore_case: self.shell.runtime.ignore_case,
+                ignore_list_enabled: self.shell.ui.ignore_list_enabled,
+                ignore_terms_source: Arc::clone(&self.shell.runtime.ignore_list_terms),
+            },
+            super::BackgroundIndexFinalizeInputs {
+                initial_entries,
+                pending_entries: selected_pending_entries,
+                continuation_entries,
+                discarded_entries,
+                discarded_pending_entries,
+                capture_filelist_paths,
+            },
         );
         self.shell
             .indexing

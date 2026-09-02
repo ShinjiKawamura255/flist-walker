@@ -6,4 +6,5 @@ mod filelist_creation;
 mod filelist_lifecycle;
 mod filelist_root_cleanup;
 mod kind_resolution;
+mod mailbox_arbitration;
 mod search_refresh;

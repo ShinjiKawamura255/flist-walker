@@ -118,6 +118,8 @@ pub(super) struct IndexCoordinator {
     pub(super) deferred_response: Option<IndexResponse>,
     #[cfg(test)]
     pub(super) deferred_non_active_responses: VecDeque<IndexResponse>,
+    #[cfg(test)]
+    pub(super) mailbox_selection_trace: Vec<u64>,
     pub(super) pending_finish: Option<PendingActiveIndexFinish>,
     pub(super) build_reclaim_pending: bool,
     pub(super) build_reclaim_request_id: Option<u64>,
@@ -172,6 +174,8 @@ impl IndexCoordinator {
             deferred_response: None,
             #[cfg(test)]
             deferred_non_active_responses: VecDeque::new(),
+            #[cfg(test)]
+            mailbox_selection_trace: Vec::new(),
             pending_finish: None,
             build_reclaim_pending: false,
             build_reclaim_request_id: None,
@@ -403,6 +407,24 @@ impl IndexCoordinator {
             .ok()
             .and_then(|mailboxes| mailboxes.get(&request_id).cloned())?;
         mailbox.try_recv_with_terminal_admission(allow_terminal)
+    }
+
+    pub(super) fn active_request_id(&self) -> Option<u64> {
+        self.pending_request_id
+    }
+
+    pub(super) fn warm_request_id(&self) -> Option<u64> {
+        self.warm_tab_id
+            .and_then(|tab_id| self.latest_request_for_tab(tab_id))
+    }
+
+    pub(super) fn tracked_request_ids(&self) -> impl Iterator<Item = u64> + '_ {
+        self.request_tabs.keys().copied()
+    }
+
+    #[cfg(test)]
+    pub(super) fn record_mailbox_selection_for_test(&mut self, request_id: u64) {
+        self.mailbox_selection_trace.push(request_id);
     }
 
     pub(super) fn mailbox_has_terminal(&self, request_id: u64) -> bool {

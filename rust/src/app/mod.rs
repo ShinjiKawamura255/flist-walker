@@ -19,7 +19,9 @@ mod config;
 mod coordinator;
 mod filelist;
 mod index_coordinator;
+mod index_finalization;
 pub(crate) mod index_mailbox;
+mod index_response_arbitration;
 pub(crate) mod index_worker;
 mod input;
 mod pipeline;
@@ -55,6 +57,10 @@ use cache::{
 };
 use coordinator::normalized_compare_key;
 use index_coordinator::IndexCoordinator;
+use index_finalization::{
+    BackgroundIndexFilterScratch, BackgroundIndexFinalizeIdentity, BackgroundIndexFinalizeInputs,
+    BackgroundIndexFinalizePolicy, BackgroundIndexFinalizeScratch, PendingBackgroundIndexFinalize,
+};
 use index_worker::spawn_index_worker;
 use pipeline_owner::PipelineOwner;
 use query_state::QueryState;
@@ -65,13 +71,12 @@ pub use session::{
 };
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
-    AppRuntimeState, AppShellState, BackgroundIndexFilterScratch, BackgroundIndexFinalizeScratch,
-    BackgroundIndexState, CacheStateBundle, ClosedTabState, FeatureStateBundle, FileListDialogKind,
-    FileListManager, HighlightCacheKey, PendingActiveIndexFinish, PendingBackgroundIndexFinalize,
-    PendingFileListAfterIndex, PendingFileListAncestorConfirmation, PendingFileListConfirmation,
-    PendingFileListUseWalkerConfirmation, PendingIndexRefreshMode, PresetManagerState,
-    ResultSortMode, ResultSortScope, RootBrowserState, SortMetadata, TabAccentPalette,
-    TabDragState, TabSessionState,
+    AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, ClosedTabState,
+    FeatureStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
+    PendingActiveIndexFinish, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
+    PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, PendingIndexRefreshMode,
+    PresetManagerState, ResultSortMode, ResultSortScope, RootBrowserState, SortMetadata,
+    TabAccentPalette, TabDragState, TabSessionState,
 };
 use tab_state::{AppTabState, TabResourceLifecycle};
 use ui_state::RuntimeUiState;
