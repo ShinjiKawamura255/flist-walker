@@ -235,7 +235,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
         .get_mut(0)
         .expect("tab 0")
         .index_state
-        .lifecycle = TabResourceLifecycle::Dormant;
+        .set_lifecycle_for_test(TabResourceLifecycle::Dormant);
 
     let (_, rx) = bounded_request_channel::<IndexRequest>(2);
     let (closed_tx, _) = bounded_request_channel::<IndexRequest>(2);
@@ -249,7 +249,7 @@ fn background_index_send_failure_clears_pending_state_for_target_tab() {
     assert_eq!(background_tab.index_state.pending_index_request_id, None);
     assert!(background_tab.index_state.pending_index_entries.is_empty());
     assert_eq!(
-        background_tab.index_state.lifecycle,
+        background_tab.index_state.lifecycle(),
         TabResourceLifecycle::Failed
     );
     assert!(background_tab

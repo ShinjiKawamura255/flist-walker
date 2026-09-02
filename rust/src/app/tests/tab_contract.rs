@@ -64,41 +64,40 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         .expect("active tab")
         .tab_accent = Some(TabAccentColor::Emerald);
 
-    let index_state = TabIndexState {
-        resource_state: crate::app::tab_state::TabResourceState::new(
-            TabResourceLifecycle::Refreshing,
-            true,
-        ),
-        index: IndexBuildResult {
-            entries: vec![file_entry(root.join("indexed.txt"))],
-            source: IndexSource::Walker,
-        },
-        all_entries: Arc::new(vec![file_entry(root.join("all.txt"))]),
-        entries: Arc::new(vec![file_entry(root.join("visible.txt"))]),
-        pending_index_request_id: Some(11),
-        index_in_progress: true,
-        pending_index_entries: VecDeque::new(),
-        pending_index_entries_request_id: Some(12),
-        pending_index_finish: Some(PendingActiveIndexFinish {
-            request_id: 11,
-            source: IndexSource::Walker,
-        }),
-        build_reclaim_pending: false,
-        build_reclaim_request_id: None,
-        refresh_after_pending_finish: None,
-        root_after_pending_finish: None,
-        pending_kind_paths: VecDeque::from(vec![root.join("kind.txt")]),
-        pending_kind_paths_set: HashSet::from([root.join("kind.txt")]),
-        in_flight_kind_paths: HashSet::from([root.join("kind-in-flight.txt")]),
-        resolved_kind_updates: Vec::new(),
-        kind_resolution_epoch: 9,
-        kind_resolution_in_progress: true,
-        incremental_filtered_entries: vec![file_entry(root.join("filtered.txt"))],
-        last_incremental_results_refresh: Instant::now(),
-        last_search_snapshot_len: 3,
-        search_resume_pending: true,
-        search_rerun_pending: false,
+    let mut index_state = TabIndexState::from_shell(&app);
+    index_state.set_resource_state_for_test(crate::app::tab_state::TabResourceState::new(
+        TabResourceLifecycle::Refreshing,
+        true,
+    ));
+    index_state.index = IndexBuildResult {
+        entries: vec![file_entry(root.join("indexed.txt"))],
+        source: IndexSource::Walker,
     };
+    index_state.all_entries = Arc::new(vec![file_entry(root.join("all.txt"))]);
+    index_state.entries = Arc::new(vec![file_entry(root.join("visible.txt"))]);
+    index_state.pending_index_request_id = Some(11);
+    index_state.index_in_progress = true;
+    index_state.pending_index_entries = VecDeque::new();
+    index_state.pending_index_entries_request_id = Some(12);
+    index_state.pending_index_finish = Some(PendingActiveIndexFinish {
+        request_id: 11,
+        source: IndexSource::Walker,
+    });
+    index_state.build_reclaim_pending = false;
+    index_state.build_reclaim_request_id = None;
+    index_state.refresh_after_pending_finish = None;
+    index_state.root_after_pending_finish = None;
+    index_state.pending_kind_paths = VecDeque::from(vec![root.join("kind.txt")]);
+    index_state.pending_kind_paths_set = HashSet::from([root.join("kind.txt")]);
+    index_state.in_flight_kind_paths = HashSet::from([root.join("kind-in-flight.txt")]);
+    index_state.resolved_kind_updates = Vec::new();
+    index_state.kind_resolution_epoch = 9;
+    index_state.kind_resolution_in_progress = true;
+    index_state.incremental_filtered_entries = vec![file_entry(root.join("filtered.txt"))];
+    index_state.last_incremental_results_refresh = Instant::now();
+    index_state.last_search_snapshot_len = 3;
+    index_state.search_resume_pending = true;
+    index_state.search_rerun_pending = false;
     let query_state = TabQueryState {
         query: "tab-contract".to_string(),
         query_history: VecDeque::from(vec!["first".to_string(), "second".to_string()]),

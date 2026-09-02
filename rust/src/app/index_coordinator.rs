@@ -9,7 +9,6 @@ use super::{
 };
 use crate::entry::{Entry, EntryKind};
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
@@ -103,7 +102,7 @@ pub(super) struct IndexCoordinator {
     pub(super) rx: Receiver<IndexResponse>,
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
-    pub(super) resource_state: TabResourceState,
+    resource_state: TabResourceState,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
@@ -144,6 +143,43 @@ pub(super) struct IndexCoordinator {
 }
 
 impl IndexCoordinator {
+    pub(super) const fn lifecycle(&self) -> super::TabResourceLifecycle {
+        self.resource_state.lifecycle()
+    }
+
+    pub(super) const fn committed_snapshot_present(&self) -> bool {
+        self.resource_state.committed_snapshot_present()
+    }
+
+    #[cfg(test)]
+    pub(super) const fn resource_state(&self) -> TabResourceState {
+        self.resource_state
+    }
+
+    pub(super) fn apply_resource_transition(&mut self, transition: TabResourceTransition) {
+        self.resource_state.apply(transition);
+    }
+
+    pub(super) fn swap_resource_state(&mut self, state: &mut TabResourceState) {
+        std::mem::swap(&mut self.resource_state, state);
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_resource_state_for_test(&mut self, state: TabResourceState) {
+        self.resource_state = state;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_lifecycle_for_test(&mut self, lifecycle: super::TabResourceLifecycle) {
+        let committed = self.committed_snapshot_present();
+        self.resource_state = TabResourceState::new(lifecycle, committed);
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_committed_snapshot_present_for_test(&mut self, present: bool) {
+        self.resource_state = TabResourceState::new(self.lifecycle(), present);
+    }
+
     pub(super) fn new(
         tx: BoundedSender<IndexRequest>,
         rx: Receiver<IndexResponse>,
@@ -335,7 +371,7 @@ impl IndexCoordinator {
     }
 
     pub(super) fn begin_active_refresh(&mut self, request_id: u64, query_non_empty: bool) {
-        self.resource_state.apply(TabResourceTransition::Begin);
+        self.apply_resource_transition(TabResourceTransition::Begin);
         self.pending_request_id = Some(request_id);
         self.in_progress = true;
         self.search_resume_pending = query_non_empty;
@@ -581,20 +617,6 @@ impl IndexCoordinator {
 
     pub(super) fn cleanup_stale_terminal_response(&mut self, request_id: u64) {
         self.cleanup_request(request_id);
-    }
-}
-
-impl Deref for IndexCoordinator {
-    type Target = TabResourceState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.resource_state
-    }
-}
-
-impl DerefMut for IndexCoordinator {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.resource_state
     }
 }
 

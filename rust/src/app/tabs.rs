@@ -150,7 +150,7 @@ impl FlistWalkerApp {
         } else {
             TabResourceTransition::Cancel
         };
-        tab.index_state.resource_state.apply(transition);
+        tab.index_state.apply_resource_transition(transition);
         tab.index_state.index_in_progress = false;
         tab.index_state.search_resume_pending = false;
         tab.index_state.search_rerun_pending = false;
@@ -193,7 +193,7 @@ impl FlistWalkerApp {
             }
         }
         if !matches!(
-            self.shell.indexing.lifecycle,
+            self.shell.indexing.lifecycle(),
             super::TabResourceLifecycle::Dormant | super::TabResourceLifecycle::Evicted
         ) || self.shell.indexing.pending_request_id.is_some()
         {
@@ -273,8 +273,7 @@ impl FlistWalkerApp {
         slot.root = new_root;
         slot.index_state.index.source = IndexSource::None;
         slot.index_state
-            .resource_state
-            .apply(TabResourceTransition::Reset);
+            .apply_resource_transition(TabResourceTransition::Reset);
         slot.index_state.clear_index_request_state();
         slot.index_state.refresh_after_pending_finish = None;
         slot.index_state.root_after_pending_finish = None;
@@ -332,8 +331,7 @@ impl FlistWalkerApp {
         tab.root = new_root;
         tab.index_state.index.source = IndexSource::None;
         tab.index_state
-            .resource_state
-            .apply(TabResourceTransition::Reset);
+            .apply_resource_transition(TabResourceTransition::Reset);
         tab.index_state.clear_index_request_state();
         tab.index_state.refresh_after_pending_finish = None;
         tab.index_state.root_after_pending_finish = None;
@@ -612,8 +610,7 @@ impl FlistWalkerApp {
                 tab.root = target_root;
                 tab.index_state.index.source = IndexSource::None;
                 tab.index_state
-                    .resource_state
-                    .apply(TabResourceTransition::Reset);
+                    .apply_resource_transition(TabResourceTransition::Reset);
                 tab.index_state.clear_index_request_state();
                 tab.index_state.refresh_after_pending_finish = None;
                 tab.index_state.root_after_pending_finish = None;
@@ -646,7 +643,7 @@ impl FlistWalkerApp {
         let previous = {
             let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
             tab.index_state
-                .committed_snapshot_present
+                .committed_snapshot_present()
                 .then(|| tab.take_committed_resources())
         };
         if let Some(previous) = previous {
@@ -681,8 +678,7 @@ impl FlistWalkerApp {
         tab.index_state.index.source = pending_finish.source;
         tab.index_state.all_entries = Arc::new(std::mem::take(&mut finalization.completed_entries));
         tab.index_state
-            .resource_state
-            .apply(TabResourceTransition::Success);
+            .apply_resource_transition(TabResourceTransition::Success);
         tab.index_state.entries = finalization
             .filtered_entries
             .take()
@@ -1310,7 +1306,7 @@ impl FlistWalkerApp {
                 || self.shell.indexing.in_progress
                 || self.shell.indexing.build_reclaim_pending
                 || matches!(
-                    self.shell.indexing.lifecycle,
+                    self.shell.indexing.lifecycle(),
                     super::TabResourceLifecycle::Dormant
                         | super::TabResourceLifecycle::Loading
                         | super::TabResourceLifecycle::Refreshing
@@ -1322,7 +1318,7 @@ impl FlistWalkerApp {
                     || tab.index_state.index_in_progress
                     || tab.index_state.build_reclaim_pending
                     || matches!(
-                        tab.index_state.lifecycle,
+                        tab.index_state.lifecycle(),
                         super::TabResourceLifecycle::Dormant
                             | super::TabResourceLifecycle::Loading
                             | super::TabResourceLifecycle::Refreshing
@@ -1414,7 +1410,7 @@ impl FlistWalkerApp {
         let activation_refresh_pending = interrupted_index_before_close
             || removed.index_state.index_in_progress
             || matches!(
-                removed.index_state.lifecycle,
+                removed.index_state.lifecycle(),
                 super::TabResourceLifecycle::Dormant
                     | super::TabResourceLifecycle::Loading
                     | super::TabResourceLifecycle::Refreshing
@@ -1502,8 +1498,7 @@ impl FlistWalkerApp {
         Self::prepare_closed_tab_for_restore(&mut tab, id);
         if activation_refresh_pending {
             tab.index_state
-                .resource_state
-                .apply(TabResourceTransition::Dormant);
+                .apply_resource_transition(TabResourceTransition::Dormant);
         }
         let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
         self.shell.tabs.insert(restore_index, tab);

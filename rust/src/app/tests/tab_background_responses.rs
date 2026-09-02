@@ -921,8 +921,12 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
     app.shell.runtime.base_results = app.shell.runtime.results.clone();
     app.shell.runtime.current_row = Some(0);
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.sync_active_tab_state();
 
     app.create_new_tab();
@@ -932,8 +936,12 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
     app.shell.runtime.base_results = app.shell.runtime.results.clone();
     app.shell.runtime.current_row = Some(0);
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.sync_active_tab_state();
 
     app.switch_to_tab_index(0);
@@ -1104,8 +1112,10 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
     let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
     {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
-        tab.index_state.lifecycle = TabResourceLifecycle::Refreshing;
-        tab.index_state.committed_snapshot_present = true;
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
+        tab.index_state
+            .set_committed_snapshot_present_for_test(true);
         tab.index_state.all_entries = Arc::new(vec![old.clone()]);
         tab.index_state.entries = Arc::new(vec![old.clone()]);
         tab.result_state.results = vec![(old.path.clone(), 0.0)];
@@ -1130,7 +1140,8 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
         let mut tab = app.capture_active_tab_state(1_400 + index as u64);
         tab.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
-        tab.index_state.committed_snapshot_present = true;
+        tab.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(tab.take_heavy_resources())
@@ -1166,7 +1177,10 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
     let completed = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(completed.index_state.all_entries.as_ref(), &[new]);
     assert!(completed.index_state.pending_index_finish.is_none());
-    assert_eq!(completed.index_state.lifecycle, TabResourceLifecycle::Ready);
+    assert_eq!(
+        completed.index_state.lifecycle(),
+        TabResourceLifecycle::Ready
+    );
     assert!(!app.shell.indexing.request_tabs.contains_key(&407));
     assert_eq!(app.shell.indexing.warm_tab_id, Some(background_tab_id));
     let _ = fs::remove_dir_all(&root);
@@ -1187,7 +1201,8 @@ fn tc_207_background_finished_commits_100k_default_snapshot_within_ui_budget() {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
         tab.include_files = true;
         tab.include_dirs = true;
-        tab.index_state.lifecycle = TabResourceLifecycle::Loading;
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Loading);
         tab.index_state.pending_index_request_id = Some(request_id);
         tab.index_state.index_in_progress = true;
     }
@@ -1262,7 +1277,7 @@ fn tc_207_background_finished_commits_100k_default_snapshot_within_ui_budget() {
     );
     let tab = app.shell.tabs.get(0).expect("completed background tab");
     assert_eq!(tab.index_state.all_entries.len(), 100_000);
-    assert_eq!(tab.index_state.lifecycle, TabResourceLifecycle::Ready);
+    assert_eq!(tab.index_state.lifecycle(), TabResourceLifecycle::Ready);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1654,7 +1669,8 @@ fn tc_207_late_filter_policy_change_rolls_back_while_reclaimer_is_full() {
         let mut held = app.capture_active_tab_state(9_500 + index as u64);
         held.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
-        held.index_state.committed_snapshot_present = true;
+        held.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(held.take_heavy_resources())
@@ -1860,7 +1876,7 @@ fn tc_207_background_finalization_survives_promotion_to_active() {
     assert!(app.shell.runtime.entries.iter().all(|entry| {
         entry.kind == Some(EntryKind::dir()) && !entry.path.to_string_lossy().contains("ignored")
     }));
-    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
+    assert_eq!(app.shell.indexing.lifecycle(), TabResourceLifecycle::Ready);
     assert!(!app
         .shell
         .indexing
@@ -1886,7 +1902,8 @@ fn tc_207_terminal_finalizers_do_not_block_a_new_active_request_when_reclaimer_i
         let mut held = app.capture_active_tab_state(8_000 + index as u64);
         held.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
-        held.index_state.committed_snapshot_present = true;
+        held.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(held.take_heavy_resources())
@@ -2373,7 +2390,8 @@ fn tc_207_background_failure_reclaims_tab_and_coordinator_building_off_ui() {
     let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
     {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
-        tab.index_state.lifecycle = TabResourceLifecycle::Loading;
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Loading);
         tab.index_state.pending_index_request_id = Some(1_207);
         tab.index_state.index_in_progress = true;
         tab.index_state.index.entries = (0..1_000)
@@ -2850,8 +2868,10 @@ fn tc_207_background_terminal_debt_coalesces_refresh_to_one_follow_up() {
     app.shell.indexing.request_tabs.clear();
     {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
-        tab.index_state.lifecycle = TabResourceLifecycle::Refreshing;
-        tab.index_state.committed_snapshot_present = true;
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Refreshing);
+        tab.index_state
+            .set_committed_snapshot_present_for_test(true);
         tab.index_state.all_entries = Arc::new(vec![old.clone()]);
         tab.index_state.entries = Arc::new(vec![old]);
         tab.index_state.index.entries = vec![new];

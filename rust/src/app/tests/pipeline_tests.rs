@@ -220,7 +220,8 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
         let mut held = app.capture_active_tab_state(12_000 + index as u64);
         held.index_state.all_entries =
             Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
-        held.index_state.committed_snapshot_present = true;
+        held.index_state
+            .set_committed_snapshot_present_for_test(true);
         app.shell
             .tabs
             .retire_tab_resources_for_test(held.take_heavy_resources())
@@ -293,11 +294,17 @@ fn tc_207_repeated_rapid_demote_keeps_request_owners_bounded_and_quiesces() {
     }
     let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = index_tx;
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Dormant;
-    app.shell.indexing.committed_snapshot_present = false;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Dormant);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(false);
     for tab in app.shell.tabs.iter_mut() {
-        tab.index_state.lifecycle = TabResourceLifecycle::Dormant;
-        tab.index_state.committed_snapshot_present = false;
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Dormant);
+        tab.index_state
+            .set_committed_snapshot_present_for_test(false);
         tab.index_state.clear_index_request_state();
     }
     app.request_index_refresh();

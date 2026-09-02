@@ -129,8 +129,12 @@ fn results(prefix: &str) -> Vec<(PathBuf, f64)> {
 }
 
 fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
-    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
-    app.shell.indexing.committed_snapshot_present = true;
+    app.shell
+        .indexing
+        .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    app.shell
+        .indexing
+        .set_committed_snapshot_present_for_test(true);
     app.shell.runtime.index.entries = entries(prefix);
     app.shell.runtime.index.source = IndexSource::Walker;
     app.shell.runtime.all_entries = Arc::new(entries(&format!("{prefix}-all")));
@@ -180,8 +184,10 @@ fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
 }
 
 fn seed_tab_payload(tab: &mut AppTabState, prefix: &str, request_id: u64) {
-    tab.index_state.lifecycle = TabResourceLifecycle::Ready;
-    tab.index_state.committed_snapshot_present = true;
+    tab.index_state
+        .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    tab.index_state
+        .set_committed_snapshot_present_for_test(true);
     tab.index_state.index.entries = entries(prefix);
     tab.index_state.index.source = IndexSource::Walker;
     tab.index_state.all_entries = Arc::new(entries(&format!("{prefix}-all")));
@@ -343,7 +349,7 @@ fn live_inventory(app: &FlistWalkerApp) -> PayloadInventory {
     PayloadInventory {
         allocations: live_allocations(app),
         metadata: PayloadMetadata {
-            resource_state: app.shell.indexing.resource_state,
+            resource_state: app.shell.indexing.resource_state(),
             index_source: app.shell.runtime.index.source.clone(),
             pending_search_request_id: app.shell.search.pending_request_id(),
             pending_preview_request_id: app.shell.worker_bus.preview.pending_request_id,
@@ -383,7 +389,7 @@ fn tab_inventory(tab: &AppTabState) -> PayloadInventory {
     PayloadInventory {
         allocations: tab_allocations(tab),
         metadata: PayloadMetadata {
-            resource_state: tab.index_state.resource_state,
+            resource_state: tab.index_state.resource_state(),
             index_source: tab.index_state.index.source.clone(),
             pending_search_request_id: tab.pending_request_id,
             pending_preview_request_id: tab.pending_preview_request_id,
@@ -499,8 +505,8 @@ fn tc_154_tab_heavy_take_restore_preserves_the_complete_inventory() {
     let before = tab_inventory(&tab);
 
     let resources = tab.take_heavy_resources();
-    assert_eq!(tab.index_state.lifecycle, TabResourceLifecycle::Evicted);
-    assert!(!tab.index_state.committed_snapshot_present);
+    assert_eq!(tab.index_state.lifecycle(), TabResourceLifecycle::Evicted);
+    assert!(!tab.index_state.committed_snapshot_present());
     assert_eq!(tab.index_state.index.source, IndexSource::Walker);
     assert_eq!(tab.heavy_resource_weight(), 0);
     assert_eq!(tab.index_state.index.entries.capacity(), 0);
