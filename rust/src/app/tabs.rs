@@ -3,6 +3,7 @@ use super::{
     PendingBackgroundIndexFinalize, ResultSortMode, ResultSortScope, SavedTabState, SearchResponse,
     TabAccentColor,
 };
+use crate::app::tab_state::TabResourceTransition;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
 use crate::walker_runtime::walker_truncated_notice;
@@ -144,13 +145,12 @@ impl FlistWalkerApp {
         self.apply_root_change_direct(new_root);
     }
     fn settle_background_tab_index_failure(tab: &mut AppTabState, notice: Option<String>) {
-        tab.index_state.lifecycle = if notice.is_some() {
-            super::TabResourceLifecycle::Failed
-        } else if tab.index_state.committed_snapshot_present {
-            super::TabResourceLifecycle::Ready
+        let transition = if notice.is_some() {
+            TabResourceTransition::Failure
         } else {
-            super::TabResourceLifecycle::Dormant
+            TabResourceTransition::Cancel
         };
+        tab.index_state.resource_state.apply(transition);
         tab.index_state.index_in_progress = false;
         tab.index_state.search_resume_pending = false;
         tab.index_state.search_rerun_pending = false;
@@ -272,8 +272,9 @@ impl FlistWalkerApp {
 
         slot.root = new_root;
         slot.index_state.index.source = IndexSource::None;
-        slot.index_state.lifecycle = super::TabResourceLifecycle::Dormant;
-        slot.index_state.committed_snapshot_present = false;
+        slot.index_state
+            .resource_state
+            .apply(TabResourceTransition::Reset);
         slot.index_state.clear_index_request_state();
         slot.index_state.refresh_after_pending_finish = None;
         slot.index_state.root_after_pending_finish = None;
@@ -330,8 +331,9 @@ impl FlistWalkerApp {
             .expect("validated inactive tab");
         tab.root = new_root;
         tab.index_state.index.source = IndexSource::None;
-        tab.index_state.lifecycle = super::TabResourceLifecycle::Dormant;
-        tab.index_state.committed_snapshot_present = false;
+        tab.index_state
+            .resource_state
+            .apply(TabResourceTransition::Reset);
         tab.index_state.clear_index_request_state();
         tab.index_state.refresh_after_pending_finish = None;
         tab.index_state.root_after_pending_finish = None;
@@ -603,8 +605,9 @@ impl FlistWalkerApp {
                 let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
                 tab.root = target_root;
                 tab.index_state.index.source = IndexSource::None;
-                tab.index_state.lifecycle = super::TabResourceLifecycle::Dormant;
-                tab.index_state.committed_snapshot_present = false;
+                tab.index_state
+                    .resource_state
+                    .apply(TabResourceTransition::Reset);
                 tab.index_state.clear_index_request_state();
                 tab.index_state.refresh_after_pending_finish = None;
                 tab.index_state.root_after_pending_finish = None;
@@ -671,8 +674,9 @@ impl FlistWalkerApp {
         debug_assert_eq!(finalization.tab_id, tab.id);
         tab.index_state.index.source = pending_finish.source;
         tab.index_state.all_entries = Arc::new(std::mem::take(&mut finalization.completed_entries));
-        tab.index_state.committed_snapshot_present = true;
-        tab.index_state.lifecycle = super::TabResourceLifecycle::Ready;
+        tab.index_state
+            .resource_state
+            .apply(TabResourceTransition::Success);
         tab.index_state.entries = finalization
             .filtered_entries
             .take()
@@ -1491,7 +1495,9 @@ impl FlistWalkerApp {
         let id = self.shell.tabs.take_next_tab_id();
         Self::prepare_closed_tab_for_restore(&mut tab, id);
         if activation_refresh_pending {
-            tab.index_state.lifecycle = super::TabResourceLifecycle::Dormant;
+            tab.index_state
+                .resource_state
+                .apply(TabResourceTransition::Dormant);
         }
         let restore_index = closed_tab.original_index.min(self.shell.tabs.len());
         self.shell.tabs.insert(restore_index, tab);

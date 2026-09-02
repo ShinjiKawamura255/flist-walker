@@ -1,7 +1,8 @@
+use super::tab_state::{TabResourceState, TabResourceTransition};
 use super::{
     AppTabState, BackgroundIndexFilterScratch, BackgroundIndexFinalizeScratch,
     BackgroundIndexState, Entry, EntryKindCacheState, FlistWalkerApp, IndexEntry,
-    PendingBackgroundIndexFinalize, TabResourceLifecycle,
+    PendingBackgroundIndexFinalize,
 };
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
@@ -69,8 +70,7 @@ pub(super) const TAB_RESOURCE_RECLAIMER_CAPACITY: usize = 4;
 pub(super) struct RetiredTabResources {
     #[cfg(test)]
     _drop_probe: ReclaimDropProbe,
-    lifecycle: TabResourceLifecycle,
-    committed_snapshot_present: bool,
+    resource_state: TabResourceState,
     build_reclaim_pending: bool,
     build_reclaim_request_id: Option<u64>,
     index_entries: Vec<Entry>,
@@ -445,11 +445,9 @@ impl FlistWalkerApp {
                         tab.index_state.clear_index_request_state();
                     }
                     if retires_superseded_generation {
-                        tab.index_state.lifecycle = if tab.index_state.committed_snapshot_present {
-                            super::TabResourceLifecycle::Ready
-                        } else {
-                            super::TabResourceLifecycle::Dormant
-                        };
+                        tab.index_state
+                            .resource_state
+                            .apply(TabResourceTransition::Cancel);
                     }
                 }
                 for request_id in request_ids {
@@ -594,7 +592,9 @@ impl AppTabState {
             .and_then(|row| self.result_state.results.get(row))
             .map(|(path, _)| path.clone())
             .or_else(|| self.result_state.evicted_selected_path.clone());
-        self.index_state.committed_snapshot_present = false;
+        self.index_state
+            .resource_state
+            .apply(TabResourceTransition::SnapshotRemoved);
         RetiredActiveResources {
             all_entries: std::mem::replace(&mut self.index_state.all_entries, Arc::new(Vec::new())),
             entries: std::mem::replace(&mut self.index_state.entries, Arc::new(Vec::new())),
@@ -607,7 +607,9 @@ impl AppTabState {
     }
 
     pub(super) fn restore_committed_resources(&mut self, resources: RetiredActiveResources) {
-        self.index_state.committed_snapshot_present = true;
+        self.index_state
+            .resource_state
+            .apply(TabResourceTransition::SnapshotRestored);
         self.index_state.all_entries = resources.all_entries;
         self.index_state.entries = resources.entries;
         self.result_state.base_results = resources.base_results;
@@ -656,8 +658,7 @@ impl AppTabState {
         let resources = RetiredTabResources {
             #[cfg(test)]
             _drop_probe: ReclaimDropProbe::capture(),
-            lifecycle: self.index_state.lifecycle,
-            committed_snapshot_present: self.index_state.committed_snapshot_present,
+            resource_state: self.index_state.resource_state,
             build_reclaim_pending: self.index_state.build_reclaim_pending,
             build_reclaim_request_id: self.index_state.build_reclaim_request_id,
             index_entries: std::mem::take(&mut self.index_state.index.entries),
@@ -685,8 +686,9 @@ impl AppTabState {
             results_compacted: self.result_state.results_compacted,
             entry_kind_cache: std::mem::take(&mut self.entry_kind_cache),
         };
-        self.index_state.lifecycle = TabResourceLifecycle::Evicted;
-        self.index_state.committed_snapshot_present = false;
+        self.index_state
+            .resource_state
+            .apply(TabResourceTransition::Evict);
         self.index_state.build_reclaim_pending = false;
         self.index_state.build_reclaim_request_id = None;
         self.index_state.clear_kind_resolution_state();
@@ -697,8 +699,11 @@ impl AppTabState {
     }
 
     pub(super) fn restore_heavy_resources(&mut self, resources: RetiredTabResources) {
-        self.index_state.lifecycle = resources.lifecycle;
-        self.index_state.committed_snapshot_present = resources.committed_snapshot_present;
+        self.index_state
+            .resource_state
+            .apply(TabResourceTransition::ReclaimFullRollback(
+                resources.resource_state,
+            ));
         self.index_state.build_reclaim_pending = resources.build_reclaim_pending;
         self.index_state.build_reclaim_request_id = resources.build_reclaim_request_id;
         self.index_state.index.entries = resources.index_entries;

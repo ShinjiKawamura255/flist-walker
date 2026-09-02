@@ -7,6 +7,7 @@ use crate::entry::{Entry, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
 use std::collections::{HashSet, VecDeque};
 use std::mem;
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -20,6 +21,77 @@ pub(super) enum TabResourceLifecycle {
     Refreshing,
     Failed,
     Evicted,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) struct TabResourceState {
+    pub(super) lifecycle: TabResourceLifecycle,
+    pub(super) committed_snapshot_present: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum TabResourceTransition {
+    Begin,
+    Success,
+    Failure,
+    Cancel,
+    Evict,
+    ReclaimFullRollback(TabResourceState),
+    SnapshotRemoved,
+    SnapshotRestored,
+    Dormant,
+    Reset,
+}
+
+impl TabResourceState {
+    pub(super) const fn new(
+        lifecycle: TabResourceLifecycle,
+        committed_snapshot_present: bool,
+    ) -> Self {
+        Self {
+            lifecycle,
+            committed_snapshot_present,
+        }
+    }
+
+    const fn reduced(self, transition: TabResourceTransition) -> Self {
+        match transition {
+            TabResourceTransition::Begin => Self::new(
+                if self.committed_snapshot_present {
+                    TabResourceLifecycle::Refreshing
+                } else {
+                    TabResourceLifecycle::Loading
+                },
+                self.committed_snapshot_present,
+            ),
+            TabResourceTransition::Success => Self::new(TabResourceLifecycle::Ready, true),
+            TabResourceTransition::Failure => Self::new(
+                TabResourceLifecycle::Failed,
+                self.committed_snapshot_present,
+            ),
+            TabResourceTransition::Cancel => Self::new(
+                if self.committed_snapshot_present {
+                    TabResourceLifecycle::Ready
+                } else {
+                    TabResourceLifecycle::Dormant
+                },
+                self.committed_snapshot_present,
+            ),
+            TabResourceTransition::Evict => Self::new(TabResourceLifecycle::Evicted, false),
+            TabResourceTransition::ReclaimFullRollback(previous) => previous,
+            TabResourceTransition::SnapshotRemoved => Self::new(self.lifecycle, false),
+            TabResourceTransition::SnapshotRestored => Self::new(self.lifecycle, true),
+            TabResourceTransition::Dormant => Self::new(
+                TabResourceLifecycle::Dormant,
+                self.committed_snapshot_present,
+            ),
+            TabResourceTransition::Reset => Self::new(TabResourceLifecycle::Dormant, false),
+        }
+    }
+
+    pub(super) fn apply(&mut self, transition: TabResourceTransition) {
+        *self = self.reduced(transition);
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -37,8 +109,7 @@ pub(super) struct TabQueryState {
 
 #[derive(Clone, Debug)]
 pub(super) struct TabIndexState {
-    pub(super) lifecycle: TabResourceLifecycle,
-    pub(super) committed_snapshot_present: bool,
+    pub(super) resource_state: TabResourceState,
     pub(super) index: IndexBuildResult,
     pub(super) all_entries: Arc<Vec<Entry>>,
     pub(super) entries: Arc<Vec<Entry>>,
@@ -108,11 +179,7 @@ pub(crate) struct AppTabState {
 
 impl TabIndexState {
     pub(super) fn begin_index_request(&mut self, request_id: u64) {
-        self.lifecycle = if self.committed_snapshot_present {
-            TabResourceLifecycle::Refreshing
-        } else {
-            TabResourceLifecycle::Loading
-        };
+        self.resource_state.apply(TabResourceTransition::Begin);
         self.pending_index_request_id = Some(request_id);
         self.index_in_progress = true;
     }
@@ -142,8 +209,7 @@ impl TabIndexState {
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            lifecycle: shell.shell.indexing.lifecycle,
-            committed_snapshot_present: shell.shell.indexing.committed_snapshot_present,
+            resource_state: shell.shell.indexing.resource_state,
             index: shell.shell.runtime.index.clone(),
             all_entries: Arc::clone(&shell.shell.runtime.all_entries),
             entries: Arc::clone(&shell.shell.runtime.entries),
@@ -173,8 +239,7 @@ impl TabIndexState {
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.index = self.index.clone();
-        shell.shell.indexing.lifecycle = self.lifecycle;
-        shell.shell.indexing.committed_snapshot_present = self.committed_snapshot_present;
+        shell.shell.indexing.resource_state = self.resource_state;
         shell.shell.runtime.all_entries = Arc::clone(&self.all_entries);
         shell.shell.runtime.entries = Arc::clone(&self.entries);
         shell.shell.indexing.pending_request_id = self.pending_index_request_id;
@@ -202,10 +267,9 @@ impl TabIndexState {
     }
 
     pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
-        mem::swap(&mut self.lifecycle, &mut shell.shell.indexing.lifecycle);
         mem::swap(
-            &mut self.committed_snapshot_present,
-            &mut shell.shell.indexing.committed_snapshot_present,
+            &mut self.resource_state,
+            &mut shell.shell.indexing.resource_state,
         );
         mem::swap(&mut self.index, &mut shell.shell.runtime.index);
         mem::swap(&mut self.all_entries, &mut shell.shell.runtime.all_entries);
@@ -290,6 +354,20 @@ impl TabIndexState {
             &mut self.search_rerun_pending,
             &mut shell.shell.indexing.search_rerun_pending,
         );
+    }
+}
+
+impl Deref for TabIndexState {
+    type Target = TabResourceState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.resource_state
+    }
+}
+
+impl DerefMut for TabIndexState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.resource_state
     }
 }
 
@@ -526,8 +604,7 @@ impl AppTabState {
             include_dirs: saved.include_dirs,
             max_depth: saved.max_depth,
             index_state: TabIndexState {
-                lifecycle: TabResourceLifecycle::Dormant,
-                committed_snapshot_present: false,
+                resource_state: TabResourceState::default(),
                 index: IndexBuildResult {
                     entries: Vec::new(),
                     source: IndexSource::None,
@@ -619,12 +696,14 @@ impl AppTabState {
             include_dirs: shell.shell.runtime.include_dirs,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             index_state: TabIndexState {
-                lifecycle: if shell.shell.indexing.committed_snapshot_present {
-                    TabResourceLifecycle::Ready
-                } else {
-                    TabResourceLifecycle::Dormant
-                },
-                committed_snapshot_present: shell.shell.indexing.committed_snapshot_present,
+                resource_state: TabResourceState::new(
+                    if shell.shell.indexing.committed_snapshot_present {
+                        TabResourceLifecycle::Ready
+                    } else {
+                        TabResourceLifecycle::Dormant
+                    },
+                    shell.shell.indexing.committed_snapshot_present,
+                ),
                 index: IndexBuildResult {
                     entries: Vec::new(),
                     source: shell.shell.runtime.index.source.clone(),
