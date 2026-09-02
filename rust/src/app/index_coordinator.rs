@@ -2,7 +2,7 @@ use super::index_mailbox::IndexResponseMailbox;
 use super::worker::channel::BoundedSender;
 use super::{
     AppTabState, BackgroundIndexState, FlistWalkerApp, IndexEntry, IndexRequest, IndexResponse,
-    IndexSource, KindResolveRequest, PendingActiveIndexFinish, TabSessionState,
+    IndexSource, KindResolveRequest, PendingActiveIndexFinish, TabResourceLifecycle,
 };
 use crate::entry::{Entry, EntryKind};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -19,9 +19,11 @@ pub(super) enum IndexResponseRoute {
 
 pub(super) struct IndexCoordinator {
     pub(super) tx: BoundedSender<IndexRequest>,
+    #[cfg(test)]
     pub(super) rx: Receiver<IndexResponse>,
     pub(super) next_request_id: u64,
     pub(super) pending_request_id: Option<u64>,
+    pub(super) lifecycle: TabResourceLifecycle,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
@@ -31,7 +33,9 @@ pub(super) struct IndexCoordinator {
     pub(super) incremental_filtered_entries: Vec<Entry>,
     pub(super) pending_entries: VecDeque<IndexEntry>,
     pub(super) pending_entries_request_id: Option<u64>,
+    #[cfg(test)]
     pub(super) deferred_response: Option<IndexResponse>,
+    #[cfg(test)]
     pub(super) deferred_non_active_responses: VecDeque<IndexResponse>,
     pub(super) pending_finish: Option<PendingActiveIndexFinish>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
@@ -57,11 +61,15 @@ impl IndexCoordinator {
         response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
         latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     ) -> Self {
+        #[cfg(not(test))]
+        let _ = rx;
         Self {
             tx,
+            #[cfg(test)]
             rx,
             next_request_id: 1,
             pending_request_id: None,
+            lifecycle: TabResourceLifecycle::Dormant,
             latest_request_ids,
             response_mailboxes,
             latest_kind_epochs,
@@ -71,7 +79,9 @@ impl IndexCoordinator {
             incremental_filtered_entries: Vec::new(),
             pending_entries: VecDeque::new(),
             pending_entries_request_id: None,
+            #[cfg(test)]
             deferred_response: None,
+            #[cfg(test)]
             deferred_non_active_responses: VecDeque::new(),
             pending_finish: None,
             pending_kind_paths: VecDeque::new(),
@@ -133,7 +143,17 @@ impl IndexCoordinator {
         request_id
     }
 
-    pub(super) fn begin_active_refresh(&mut self, request_id: u64, query_non_empty: bool) {
+    pub(super) fn begin_active_refresh(
+        &mut self,
+        request_id: u64,
+        query_non_empty: bool,
+        has_committed_snapshot: bool,
+    ) {
+        self.lifecycle = if has_committed_snapshot {
+            TabResourceLifecycle::Refreshing
+        } else {
+            TabResourceLifecycle::Loading
+        };
         self.pending_request_id = Some(request_id);
         self.in_progress = true;
         self.search_resume_pending = query_non_empty;
@@ -237,9 +257,8 @@ impl IndexCoordinator {
         self.pending_finish = None;
     }
 
-    pub(super) fn clear_active_request_state(&mut self, tabs: &mut TabSessionState) {
+    pub(super) fn clear_active_request_state(&mut self) {
         self.settle_active_terminal_state();
-        tabs.clear_pending_activation_refresh_tabs();
     }
 
     pub(super) fn route_response(&mut self, request_id: u64) -> IndexResponseRoute {

@@ -140,7 +140,6 @@ impl IndexResponseMailbox {
             state.closed = true;
         }
     }
-
 }
 
 impl IndexMailboxPublishError {

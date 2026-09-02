@@ -11,6 +11,17 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum TabResourceLifecycle {
+    #[default]
+    Dormant,
+    Loading,
+    Ready,
+    Refreshing,
+    Failed,
+    Evicted,
+}
+
 #[derive(Clone, Debug)]
 pub(super) struct TabQueryState {
     pub(super) query: String,
@@ -26,6 +37,7 @@ pub(super) struct TabQueryState {
 
 #[derive(Clone, Debug)]
 pub(super) struct TabIndexState {
+    pub(super) lifecycle: TabResourceLifecycle,
     pub(super) index: IndexBuildResult,
     pub(super) all_entries: Arc<Vec<Entry>>,
     pub(super) entries: Arc<Vec<Entry>>,
@@ -90,6 +102,11 @@ pub(crate) struct AppTabState {
 
 impl TabIndexState {
     pub(super) fn begin_index_request(&mut self, request_id: u64) {
+        self.lifecycle = if self.all_entries.is_empty() {
+            TabResourceLifecycle::Loading
+        } else {
+            TabResourceLifecycle::Refreshing
+        };
         self.pending_index_request_id = Some(request_id);
         self.index_in_progress = true;
     }
@@ -120,6 +137,7 @@ impl TabIndexState {
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
+            lifecycle: shell.shell.indexing.lifecycle,
             index: shell.shell.runtime.index.clone(),
             all_entries: Arc::clone(&shell.shell.runtime.all_entries),
             entries: Arc::clone(&shell.shell.runtime.entries),
@@ -145,6 +163,7 @@ impl TabIndexState {
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.index = self.index.clone();
+        shell.shell.indexing.lifecycle = self.lifecycle;
         shell.shell.runtime.all_entries = Arc::clone(&self.all_entries);
         shell.shell.runtime.entries = Arc::clone(&self.entries);
         shell.shell.indexing.pending_request_id = self.pending_index_request_id;
@@ -168,6 +187,7 @@ impl TabIndexState {
     }
 
     pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
+        mem::swap(&mut self.lifecycle, &mut shell.shell.indexing.lifecycle);
         mem::swap(&mut self.index, &mut shell.shell.runtime.index);
         mem::swap(&mut self.all_entries, &mut shell.shell.runtime.all_entries);
         mem::swap(&mut self.entries, &mut shell.shell.runtime.entries);
@@ -465,6 +485,7 @@ impl AppTabState {
             include_dirs: saved.include_dirs,
             max_depth: saved.max_depth,
             index_state: TabIndexState {
+                lifecycle: TabResourceLifecycle::Dormant,
                 index: IndexBuildResult {
                     entries: Vec::new(),
                     source: IndexSource::None,
@@ -551,6 +572,11 @@ impl AppTabState {
             include_dirs: shell.shell.runtime.include_dirs,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             index_state: TabIndexState {
+                lifecycle: if shell.shell.runtime.all_entries.is_empty() {
+                    TabResourceLifecycle::Dormant
+                } else {
+                    TabResourceLifecycle::Ready
+                },
                 index: IndexBuildResult {
                     entries: Vec::new(),
                     source: shell.shell.runtime.index.source.clone(),

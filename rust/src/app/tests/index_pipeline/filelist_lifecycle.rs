@@ -2,6 +2,106 @@ use super::*;
 use std::sync::atomic::AtomicBool;
 
 #[test]
+fn tc_204_refresh_failure_keeps_last_good_snapshot_and_sets_explicit_lifecycle() {
+    let root = test_root("tc-204-last-good-refresh-failure");
+    fs::create_dir_all(&root).expect("create root");
+    let kept = file_entry(root.join("kept.txt"));
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (request_tx, _request_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = request_tx;
+    app.shell.indexing.rx = response_rx;
+    app.shell.runtime.all_entries = Arc::new(vec![kept.clone()]);
+    app.shell.runtime.entries = Arc::new(vec![kept.clone()]);
+    app.shell.runtime.results = vec![(kept.path.clone(), 0.0)];
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Ready;
+
+    app.request_index_refresh();
+    let request_id = app
+        .shell
+        .indexing
+        .pending_request_id
+        .expect("refresh request");
+    assert_eq!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Refreshing
+    );
+    assert_eq!(
+        app.shell.runtime.all_entries.as_ref(),
+        std::slice::from_ref(&kept)
+    );
+
+    response_tx
+        .send(IndexResponse::Failed {
+            request_id,
+            error: "read failed".to_string(),
+        })
+        .expect("send failure");
+    app.poll_index_response();
+
+    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Failed);
+    assert_eq!(
+        app.shell.runtime.all_entries.as_ref(),
+        std::slice::from_ref(&kept)
+    );
+    assert_eq!(app.shell.runtime.results, vec![(kept.path, 0.0)]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_terminal_commit_waits_when_reclaimer_is_full() {
+    let root = test_root("tc-207-terminal-reclaimer-full");
+    fs::create_dir_all(&root).expect("create root");
+    let old = file_entry(root.join("old.txt"));
+    let new = file_entry(root.join("new.txt"));
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = response_rx;
+    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
+    app.shell.runtime.index.entries = vec![new.clone()];
+    app.shell.indexing.pending_request_id = Some(207);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.lifecycle = TabResourceLifecycle::Refreshing;
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(800 + index as u64);
+        tab.index_state.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+    response_tx
+        .send(IndexResponse::Finished {
+            request_id: 207,
+            source: IndexSource::Walker,
+        })
+        .expect("send finished");
+
+    app.poll_index_response();
+
+    assert!(app.shell.indexing.pending_finish.is_some());
+    assert_eq!(
+        app.shell.runtime.all_entries.as_ref(),
+        std::slice::from_ref(&old)
+    );
+    assert_eq!(app.shell.runtime.results, vec![(old.path.clone(), 0.0)]);
+    assert!(app
+        .status_line_text()
+        .contains("Waiting for background tab resource reclamation"));
+
+    app.shell.tabs.resume_resource_reclaimer();
+    app.poll_index_response();
+    assert!(app.shell.indexing.pending_finish.is_none());
+    assert_eq!(app.shell.runtime.all_entries.as_ref(), &[new]);
+    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn filelist_failed_updates_state_and_notice() {
     let root = test_root("filelist-failed");
     fs::create_dir_all(&root).expect("create dir");

@@ -298,16 +298,14 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
         app.shell.tabs.get(1).expect("tab 1").tab_accent,
         Some(TabAccentColor::Crimson)
     );
-    assert!(app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&app.shell.tabs.get(0).expect("tab 0").id));
-    assert!(!app
-        .shell
-        .tabs
-        .pending_activation_refresh_tabs
-        .contains(&app.shell.tabs.get(1).expect("tab 1").id));
+    assert_eq!(
+        app.shell.tabs.get(0).expect("tab 0").index_state.lifecycle,
+        TabResourceLifecycle::Dormant
+    );
+    assert!(matches!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
+    ));
 
     let req = rx.try_recv().expect("active tab refresh");
     assert_eq!(req.root, root_b);
@@ -392,7 +390,10 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
 
     let req = rx.try_recv().expect("background tab lazy refresh");
     assert_eq!(req.root, root_a);
-    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
+    assert!(matches!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
+    ));
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -581,7 +582,7 @@ fn restored_tab_activation_prioritizes_active_batch_over_background_backlog_regr
 }
 
 #[test]
-fn background_tab_activation_consumes_pending_activation_refresh_once() {
+fn background_tab_activation_consumes_dormant_lifecycle_once() {
     let root_a = test_root("background-activation-consumes-pending-a");
     let root_b = test_root("background-activation-consumes-pending-b");
     fs::create_dir_all(&root_a).expect("create root a");
@@ -728,20 +729,19 @@ fn background_tab_activation_consumes_pending_activation_refresh_once() {
 
     app.switch_to_tab_index(0);
 
-    let refresh_req = index_req_rx
-        .try_recv()
-        .expect("lazy refresh request for activated background tab");
-    assert_eq!(refresh_req.root, root_a);
-    assert!(index_req_rx.try_recv().is_err());
+    assert!(
+        index_req_rx.try_recv().is_err(),
+        "a Ready background generation must be promoted without reindex"
+    );
     assert_eq!(app.shell.tabs.active_tab, 0);
     assert_eq!(app.shell.runtime.root, root_a);
-    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
+    assert_eq!(app.shell.indexing.lifecycle, TabResourceLifecycle::Ready);
     assert_eq!(app.shell.runtime.results.len(), 1);
     assert_eq!(app.shell.runtime.results[0].0, indexed_file);
 
     let kind_request = kind_rx_req
         .try_recv()
-        .expect("restore refresh resolves current kind before preview reload");
+        .expect("Ready Walker activation resolves retained unknown kind");
     assert_eq!(kind_request.path, indexed_file);
     assert_eq!(app.shell.runtime.preview, "Resolving entry type...");
     kind_tx_res
@@ -755,7 +755,7 @@ fn background_tab_activation_consumes_pending_activation_refresh_once() {
     app.poll_kind_response();
     let reload_request = preview_rx_req
         .try_recv()
-        .expect("resolved current kind dispatches preview reload");
+        .expect("Ready activation dispatches preview reload");
     assert_eq!(reload_request.path, indexed_file);
     preview_tx_res
         .send(PreviewResponse {
@@ -772,7 +772,7 @@ fn background_tab_activation_consumes_pending_activation_refresh_once() {
 }
 
 #[test]
-fn close_tab_triggers_pending_activation_refresh_for_survivor() {
+fn close_tab_triggers_dormant_survivor_refresh() {
     let root_a = test_root("close-tab-pending-refresh-a");
     let root_b = test_root("close-tab-pending-refresh-b");
     fs::create_dir_all(&root_a).expect("create root a");
@@ -822,7 +822,10 @@ fn close_tab_triggers_pending_activation_refresh_for_survivor() {
         .try_recv()
         .expect("survivor pending restore refresh");
     assert_eq!(refresh_req.root, root_a);
-    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
+    assert!(matches!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
+    ));
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
@@ -875,7 +878,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
 
     app.close_tab_index(0);
     assert_eq!(app.shell.tabs.len(), 1);
-    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
+    assert_eq!(app.shell.tabs.len(), 1);
 
     app.restore_recently_closed_tab();
 
@@ -886,7 +889,10 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
         .try_recv()
         .expect("restored closed startup tab refresh");
     assert_eq!(refresh_req.root, root_a);
-    assert!(app.shell.tabs.pending_activation_refresh_tabs.is_empty());
+    assert!(matches!(
+        app.shell.indexing.lifecycle,
+        TabResourceLifecycle::Loading | TabResourceLifecycle::Refreshing
+    ));
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);

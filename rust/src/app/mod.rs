@@ -41,6 +41,7 @@ mod root_browser;
 mod search_coordinator;
 mod session;
 mod state;
+mod tab_resources;
 mod tab_state;
 mod tabs;
 mod ui_state;
@@ -71,7 +72,7 @@ use state::{
     ResultSortMode, ResultSortScope, RootBrowserState, SortMetadata, TabAccentPalette,
     TabDragState, TabSessionState,
 };
-use tab_state::AppTabState;
+use tab_state::{AppTabState, TabResourceLifecycle};
 use ui_state::RuntimeUiState;
 use worker::bus::{
     ActionWorkerBus, CatalogWorkerBus, FileListWorkerBus, KindWorkerBus, PreviewWorkerBus,
