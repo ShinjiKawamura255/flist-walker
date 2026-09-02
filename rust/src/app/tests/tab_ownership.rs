@@ -1,6 +1,9 @@
 use super::*;
 use crate::app::tab_state::AppTabState;
-use crate::app::{EntryKindCacheState, PendingBackgroundIndexFinalize};
+use crate::app::{
+    BackgroundIndexFinalizeIdentity, BackgroundIndexFinalizeInputs, BackgroundIndexFinalizePolicy,
+    EntryKindCacheState, PendingBackgroundIndexFinalize,
+};
 
 const PAYLOAD_LEN: usize = 128;
 
@@ -558,22 +561,28 @@ fn tc_154_reclaimer_full_restores_complete_tab_mailbox_and_finalizer_ownership()
     app.shell.indexing.background_finalizations.insert(
         request_id,
         PendingBackgroundIndexFinalize::new(
-            active_tab_id,
-            request_id,
-            IndexSource::Walker,
-            true,
-            true,
-            root.clone(),
-            false,
-            true,
-            false,
-            Arc::new(Vec::new()),
-            entries("full-rollback-finalizer").into(),
-            VecDeque::new(),
-            VecDeque::new(),
-            VecDeque::new(),
-            VecDeque::new(),
-            false,
+            BackgroundIndexFinalizeIdentity {
+                tab_id: active_tab_id,
+                request_id,
+                source: IndexSource::Walker,
+            },
+            BackgroundIndexFinalizePolicy {
+                include_files: true,
+                include_dirs: true,
+                root: root.clone(),
+                prefer_relative: false,
+                ignore_case: true,
+                ignore_list_enabled: false,
+                ignore_terms_source: Arc::new(Vec::new()),
+            },
+            BackgroundIndexFinalizeInputs {
+                initial_entries: entries("full-rollback-finalizer").into(),
+                pending_entries: VecDeque::new(),
+                continuation_entries: VecDeque::new(),
+                discarded_entries: VecDeque::new(),
+                discarded_pending_entries: VecDeque::new(),
+                capture_filelist_paths: false,
+            },
         ),
     );
     let mailbox = app
