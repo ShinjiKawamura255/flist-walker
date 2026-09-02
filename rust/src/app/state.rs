@@ -6,6 +6,8 @@ use crate::app::query_state::QueryState;
 use crate::app::search_coordinator::SearchCoordinator;
 use crate::app::tab_resources::{
     RetiredActiveResources, RetiredTabResources, TabResourceReclaimer,
+    TAB_RECENT_INACTIVE_ENGAGEMENT_THRESHOLD, TAB_RECENT_INACTIVE_GRACE,
+    TAB_RESOURCE_CACHE_HARD_MAX_COUNT, TAB_RESOURCE_CACHE_HARD_MAX_WEIGHT,
     TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
 };
 use crate::app::tab_state::{AppTabState, TabCommittedPayload};
@@ -24,7 +26,7 @@ use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use std::time::SystemTime;
+use std::time::{Instant, SystemTime};
 
 #[derive(Default)]
 pub(super) struct BackgroundIndexState {
@@ -488,6 +490,33 @@ pub(super) struct ClosedTabState {
     pub(super) sort_refresh_pending: bool,
 }
 
+#[derive(Clone, Copy, Debug)]
+struct ActiveTabEngagement {
+    tab_id: u64,
+    activated_at: Instant,
+    meaningful_interaction: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct RecentInactiveTab {
+    tab_id: u64,
+    protected_until: Instant,
+}
+
+#[derive(Debug)]
+struct RecentInactiveTransition {
+    deactivated_engagement: Option<ActiveTabEngagement>,
+    candidate: Option<RecentInactiveTab>,
+    staged_evictions: Vec<StagedRecentEviction>,
+    reclaimer_slot_reserved: bool,
+}
+
+#[derive(Debug)]
+struct StagedRecentEviction {
+    tab_id: u64,
+    resources: RetiredTabResources,
+}
+
 pub(crate) struct TabSessionState {
     tabs: Vec<AppTabState>,
     pub(super) active_tab: usize,
@@ -498,6 +527,9 @@ pub(crate) struct TabSessionState {
     resource_reclaimer: TabResourceReclaimer,
     request_tab_routing: RequestTabRoutingState,
     pub(super) pending_activation_tab_id: Option<u64>,
+    active_tab_engagement: Option<ActiveTabEngagement>,
+    recent_inactive: Option<RecentInactiveTab>,
+    recent_inactive_transition: Option<RecentInactiveTransition>,
 }
 
 impl Default for TabSessionState {
@@ -512,6 +544,9 @@ impl Default for TabSessionState {
             resource_reclaimer: TabResourceReclaimer::default(),
             request_tab_routing: RequestTabRoutingState::default(),
             pending_activation_tab_id: None,
+            active_tab_engagement: None,
+            recent_inactive: None,
+            recent_inactive_transition: None,
         }
     }
 }
@@ -530,11 +565,19 @@ impl TabSessionState {
             resource_reclaimer,
             request_tab_routing: RequestTabRoutingState::default(),
             pending_activation_tab_id: None,
+            active_tab_engagement: None,
+            recent_inactive: None,
+            recent_inactive_transition: None,
         }
     }
 
     pub(super) fn replace_all(&mut self, tabs: Vec<AppTabState>) {
         self.tabs = tabs;
+        self.active_tab_engagement = None;
+        self.recent_inactive = None;
+        self.recent_inactive_transition = None;
+        self.resource_lru.clear();
+        self.eviction_pending_tabs.clear();
     }
 
     pub(super) fn active_tab_index(&self) -> usize {
@@ -542,7 +585,135 @@ impl TabSessionState {
     }
 
     pub(super) fn set_active_tab_index(&mut self, active_tab: usize) {
+        self.set_active_tab_index_at(active_tab, Instant::now());
+    }
+
+    pub(super) fn set_active_tab_index_at(&mut self, active_tab: usize, now: Instant) {
         self.active_tab = active_tab;
+        let Some(tab_id) = self.tabs.get(active_tab).map(|tab| tab.id) else {
+            self.active_tab_engagement = None;
+            return;
+        };
+        if self
+            .active_tab_engagement
+            .is_some_and(|engagement| engagement.tab_id == tab_id)
+        {
+            return;
+        }
+        if self
+            .recent_inactive
+            .is_some_and(|recent| recent.tab_id == tab_id)
+        {
+            self.recent_inactive = None;
+        }
+        self.active_tab_engagement = Some(ActiveTabEngagement {
+            tab_id,
+            activated_at: now,
+            meaningful_interaction: false,
+        });
+    }
+
+    pub(super) fn mark_active_tab_meaningfully_engaged(&mut self) {
+        let active_tab_id = self.tabs.get(self.active_tab).map(|tab| tab.id);
+        if let Some(engagement) = self.active_tab_engagement.as_mut() {
+            if Some(engagement.tab_id) == active_tab_id {
+                engagement.meaningful_interaction = true;
+            }
+        }
+    }
+
+    pub(super) fn record_active_tab_deactivation_at(&mut self, tab_id: u64, now: Instant) {
+        let engagement = self
+            .active_tab_engagement
+            .take()
+            .filter(|engagement| engagement.tab_id == tab_id);
+        let qualifies = engagement.is_some_and(|engagement| {
+            engagement.meaningful_interaction
+                || now.saturating_duration_since(engagement.activated_at)
+                    >= TAB_RECENT_INACTIVE_ENGAGEMENT_THRESHOLD
+        });
+        let has_reusable_snapshot = self.tabs.iter().any(|tab| {
+            tab.id == tab_id
+                && tab.index_state.committed_snapshot_present()
+                && tab.heavy_resource_weight() > 0
+        });
+        let candidate = (qualifies && has_reusable_snapshot).then_some(RecentInactiveTab {
+            tab_id,
+            protected_until: now + TAB_RECENT_INACTIVE_GRACE,
+        });
+        self.recent_inactive_transition = Some(RecentInactiveTransition {
+            deactivated_engagement: engagement,
+            candidate,
+            staged_evictions: Vec::new(),
+            reclaimer_slot_reserved: false,
+        });
+    }
+
+    pub(super) fn commit_recent_inactive_transition(&mut self) -> bool {
+        self.finish_recent_inactive_transition(true)
+    }
+
+    pub(super) fn discard_recent_inactive_transition(&mut self) -> bool {
+        self.finish_recent_inactive_transition(false)
+    }
+
+    pub(super) fn rollback_recent_inactive_transition(&mut self) {
+        let Some(transition) = self.recent_inactive_transition.take() else {
+            return;
+        };
+        if transition.reclaimer_slot_reserved {
+            self.resource_reclaimer.release_reserved_slot();
+        }
+        for staged in transition.staged_evictions {
+            if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.id == staged.tab_id) {
+                tab.restore_heavy_resources(staged.resources);
+            }
+        }
+        self.active_tab_engagement = transition.deactivated_engagement;
+    }
+
+    fn finish_recent_inactive_transition(&mut self, commit_candidate: bool) -> bool {
+        let Some(transition) = self.recent_inactive_transition.take() else {
+            return true;
+        };
+        let staged_ids = transition
+            .staged_evictions
+            .iter()
+            .map(|staged| staged.tab_id)
+            .collect::<Vec<_>>();
+        if transition.reclaimer_slot_reserved {
+            let resources = transition
+                .staged_evictions
+                .into_iter()
+                .map(|staged| staged.resources)
+                .collect::<Vec<_>>();
+            if let Err(resources) = self.resource_reclaimer.try_retire_reserved_tabs(resources) {
+                for (tab_id, resources) in staged_ids.into_iter().zip(resources) {
+                    if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.id == tab_id) {
+                        tab.restore_heavy_resources(resources);
+                    }
+                }
+                self.active_tab_engagement = transition.deactivated_engagement;
+                return false;
+            }
+            for tab_id in &staged_ids {
+                self.remove_resource_tracking(*tab_id);
+            }
+        }
+        if commit_candidate {
+            if let Some(candidate) = transition
+                .candidate
+                .filter(|candidate| !staged_ids.contains(&candidate.tab_id))
+            {
+                self.recent_inactive = Some(candidate);
+            }
+        }
+        true
+    }
+
+    #[cfg(test)]
+    pub(super) fn recent_inactive_tab_id(&self) -> Option<u64> {
+        self.recent_inactive.map(|recent| recent.tab_id)
     }
 
     pub(super) fn take_next_tab_id(&mut self) -> u64 {
@@ -628,6 +799,20 @@ impl TabSessionState {
     pub(super) fn remove_resource_tracking(&mut self, tab_id: u64) {
         self.resource_lru.retain(|id| *id != tab_id);
         self.eviction_pending_tabs.remove(&tab_id);
+        if self
+            .recent_inactive
+            .is_some_and(|recent| recent.tab_id == tab_id)
+        {
+            self.recent_inactive = None;
+        }
+        if let Some(transition) = self.recent_inactive_transition.as_mut() {
+            if transition
+                .candidate
+                .is_some_and(|recent| recent.tab_id == tab_id)
+            {
+                transition.candidate = None;
+            }
+        }
     }
 
     pub(super) fn enforce_resource_budget(
@@ -635,6 +820,47 @@ impl TabSessionState {
         active_tab_id: Option<u64>,
         warm_tab_id: Option<u64>,
     ) -> bool {
+        self.enforce_resource_budget_at(active_tab_id, warm_tab_id, Instant::now())
+    }
+
+    pub(super) fn enforce_resource_budget_at(
+        &mut self,
+        active_tab_id: Option<u64>,
+        warm_tab_id: Option<u64>,
+        now: Instant,
+    ) -> bool {
+        let is_valid_recent = |recent: RecentInactiveTab| {
+            now < recent.protected_until
+                && self.tabs.iter().any(|tab| {
+                    tab.id == recent.tab_id
+                        && tab.index_state.committed_snapshot_present()
+                        && tab.heavy_resource_weight() > 0
+                })
+        };
+        if let Some(transition) = self.recent_inactive_transition.as_mut() {
+            if transition
+                .candidate
+                .is_some_and(|recent| !is_valid_recent(recent))
+            {
+                transition.candidate = None;
+            }
+        }
+        if self
+            .recent_inactive
+            .is_some_and(|recent| !is_valid_recent(recent))
+        {
+            self.recent_inactive = None;
+        }
+        let protected_pending_recent = self
+            .recent_inactive_transition
+            .as_ref()
+            .and_then(|transition| transition.candidate)
+            .map(|candidate| candidate.tab_id)
+            .filter(|tab_id| Some(*tab_id) != active_tab_id && Some(*tab_id) != warm_tab_id);
+        let protected_existing_recent = self
+            .recent_inactive
+            .map(|recent| recent.tab_id)
+            .filter(|tab_id| Some(*tab_id) != active_tab_id && Some(*tab_id) != warm_tab_id);
         loop {
             let cached = self
                 .tabs
@@ -658,13 +884,44 @@ impl TabSessionState {
                 .collect::<Vec<_>>();
             let count = cached.len();
             let weight = cached
+                .iter()
+                .copied()
+                .fold(0usize, |total, weight| total.saturating_add(weight));
+            let cold_cached = self
+                .tabs
+                .iter()
+                .filter(|tab| {
+                    Some(tab.id) != active_tab_id
+                        && Some(tab.id) != warm_tab_id
+                        && Some(tab.id) != protected_pending_recent
+                        && Some(tab.id) != protected_existing_recent
+                        && tab.heavy_resource_weight() > 0
+                })
+                .map(|tab| tab.heavy_resource_weight())
+                .chain(
+                    self.closed_tabs
+                        .iter()
+                        .filter(|closed| {
+                            Some(closed.tab.id) != active_tab_id
+                                && Some(closed.tab.id) != warm_tab_id
+                                && closed.tab.heavy_resource_weight() > 0
+                        })
+                        .map(|closed| closed.tab.heavy_resource_weight()),
+                )
+                .collect::<Vec<_>>();
+            let cold_count = cold_cached.len();
+            let cold_weight = cold_cached
                 .into_iter()
                 .fold(0usize, |total, weight| total.saturating_add(weight));
-            if count <= TAB_RESOURCE_CACHE_MAX_COUNT && weight <= TAB_RESOURCE_CACHE_MAX_WEIGHT {
+            let hard_pressure = count > TAB_RESOURCE_CACHE_HARD_MAX_COUNT
+                || weight > TAB_RESOURCE_CACHE_HARD_MAX_WEIGHT;
+            let soft_pressure = cold_count > TAB_RESOURCE_CACHE_MAX_COUNT
+                || cold_weight > TAB_RESOURCE_CACHE_MAX_WEIGHT;
+            if !hard_pressure && !soft_pressure {
                 return true;
             }
 
-            let candidate = self.resource_lru.iter().copied().find(|tab_id| {
+            let candidate_is_eligible = |tab_id: &u64| {
                 Some(*tab_id) != active_tab_id
                     && Some(*tab_id) != warm_tab_id
                     && self
@@ -680,7 +937,75 @@ impl TabSessionState {
                         .iter()
                         .find(|closed| closed.tab.id == *tab_id)
                         .is_none_or(|closed| !closed.tab.index_state.build_reclaim_pending)
+            };
+            let ordinary_candidate = self.resource_lru.iter().copied().find(|tab_id| {
+                Some(*tab_id) != protected_pending_recent
+                    && Some(*tab_id) != protected_existing_recent
+                    && candidate_is_eligible(tab_id)
             });
+            let protected_candidate = hard_pressure
+                .then(|| {
+                    protected_existing_recent
+                        .filter(|tab_id| candidate_is_eligible(tab_id))
+                        .filter(|tab_id| {
+                            self.tabs
+                                .iter()
+                                .any(|tab| tab.id == *tab_id && tab.heavy_resource_weight() > 0)
+                        })
+                        .or_else(|| {
+                            protected_pending_recent
+                                .filter(|tab_id| candidate_is_eligible(tab_id))
+                                .filter(|tab_id| {
+                                    self.tabs.iter().any(|tab| {
+                                        tab.id == *tab_id && tab.heavy_resource_weight() > 0
+                                    })
+                                })
+                        })
+                })
+                .flatten();
+            if ordinary_candidate.is_none() {
+                if let (Some(candidate), Some(transition)) = (
+                    protected_candidate,
+                    self.recent_inactive_transition.as_ref(),
+                ) {
+                    if !transition.reclaimer_slot_reserved
+                        && !self.resource_reclaimer.try_reserve_slot()
+                    {
+                        return false;
+                    }
+                    let resources = self
+                        .tabs
+                        .iter_mut()
+                        .find(|tab| tab.id == candidate)
+                        .map(AppTabState::take_heavy_resources);
+                    let Some(resources) = resources else {
+                        if !transition.reclaimer_slot_reserved {
+                            self.resource_reclaimer.release_reserved_slot();
+                        }
+                        return false;
+                    };
+                    let transition = self
+                        .recent_inactive_transition
+                        .as_mut()
+                        .expect("transition checked before staging protected eviction");
+                    transition.reclaimer_slot_reserved = true;
+                    transition.staged_evictions.push(StagedRecentEviction {
+                        tab_id: candidate,
+                        resources,
+                    });
+                    continue;
+                }
+            }
+            let candidate = if hard_pressure {
+                let existing_candidate = if self.recent_inactive_transition.is_none() {
+                    protected_existing_recent.filter(|tab_id| candidate_is_eligible(tab_id))
+                } else {
+                    None
+                };
+                ordinary_candidate.or(existing_candidate)
+            } else {
+                ordinary_candidate
+            };
             let Some(candidate) = candidate else {
                 return false;
             };

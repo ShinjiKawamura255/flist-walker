@@ -88,6 +88,7 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn move_history_search_selection(&mut self, delta: isize) {
+        self.shell.tabs.mark_active_tab_meaningfully_engaged();
         self.shell
             .runtime
             .query_state
@@ -95,6 +96,7 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn mark_query_edited(&mut self) {
+        self.shell.tabs.mark_active_tab_meaningfully_engaged();
         self.reset_query_history_navigation();
         self.set_query_history_dirty_since(Some(Instant::now()));
         self.invalidate_result_sort(true);

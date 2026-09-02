@@ -339,6 +339,7 @@ impl FlistWalkerApp {
         files_changed: bool,
         dirs_changed: bool,
     ) {
+        let user_changed_filter = use_filelist_changed || files_changed || dirs_changed;
         let mut reindex = use_filelist_changed;
         reindex |= files_changed || dirs_changed;
         if self.use_filelist_requires_locked_filters()
@@ -350,6 +351,9 @@ impl FlistWalkerApp {
         }
         reindex |= self.ensure_entry_filters();
         if reindex {
+            if user_changed_filter {
+                self.shell.tabs.mark_active_tab_meaningfully_engaged();
+            }
             self.request_index_refresh();
         }
     }

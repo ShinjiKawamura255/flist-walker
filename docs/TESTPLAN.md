@@ -46,7 +46,7 @@ For documentation-only restructuring, apply VM-001:
 - Apply VM-002 to action/kind/runtime scheduling and VM-003 to index scheduling; TC-149 remains the independent background-index snapshot regression guard.
 
 ## Tab Ownership Transfer Verification
-- TC-154 retains the allocation-preserving active/inactive ownership transfer and release-mode transition ceiling. TC-203 through TC-208 replace the old restore/preempt/deferred-response assumptions with startup precedence, explicit lifecycle/last-good snapshots, Active+Warm scheduling, ordered bounded request mailboxes, common live/closed LRU, bounded reclaimer, and repeated native switching coverage.
+- TC-154 retains the allocation-preserving active/inactive ownership transfer and release-mode transition ceiling. TC-203 through TC-211 define startup precedence, explicit lifecycle/last-good snapshots, Active+Warm scheduling, ordered bounded request mailboxes, common live/closed LRU, engagement-qualified Recent Inactive retention, bounded reclaimer, and repeated native switching coverage.
 - Apply VM-002 with focused tab owner tests; use both non-sparse and deliberately sparse fixtures for pointer/capacity identity, retain computed results across activation, and run the release-mode tab-transition latency fixture when the activation hot path changes.
 
 ## GUI Evidence Axes
@@ -62,8 +62,8 @@ For documentation-only restructuring, apply VM-001:
 - TC-003, TC-155 -> SP-003 -> DES-003 -> FR-003
 - TC-010 -> SP-010 -> DES-009 -> FR-007
 - TC-150, TC-151, TC-152, TC-153 -> SP-010 -> DES-006, DES-007, DES-009 -> FR-007, NFR-008
-- TC-154, TC-203, TC-204, TC-205, TC-208 -> SP-010 -> DES-009 -> FR-007, NFR-009
-- TC-205, TC-206, TC-207, TC-208 -> SP-010 -> DES-006, DES-007, DES-009 -> NFR-015
+- TC-154, TC-203, TC-204, TC-205, TC-208, TC-209, TC-210 -> SP-010 -> DES-009 -> FR-007, NFR-009
+- TC-205, TC-206, TC-207, TC-208, TC-209, TC-211 -> SP-010 -> DES-006, DES-007, DES-009 -> NFR-015
 - TC-156 -> SP-007 -> DES-006 -> NFR-001
 - TC-157 -> SP-014 -> DES-014 -> NFR-010
 - TC-158, TC-159, TC-160, TC-171, TC-186, TC-187 -> SP-014 -> DES-014 -> FR-033

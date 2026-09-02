@@ -142,6 +142,11 @@ impl FlistWalkerApp {
 
     /// root 切り替えに伴う state reset と再 index をまとめて適用する。
     pub(super) fn apply_root_change(&mut self, new_root: PathBuf) {
+        if path_key(&normalize_windows_path_buf(new_root.clone()))
+            != path_key(&self.shell.runtime.root)
+        {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
         self.apply_root_change_direct(new_root);
     }
     fn settle_background_tab_index_failure(tab: &mut AppTabState, notice: Option<String>) {
@@ -231,11 +236,18 @@ impl FlistWalkerApp {
     }
 
     fn deactivate_active_tab_for_transition(&mut self) -> usize {
+        self.deactivate_active_tab_for_transition_at(Instant::now())
+    }
+
+    fn deactivate_active_tab_for_transition_at(&mut self, now: Instant) -> usize {
         self.clear_tab_drag_state();
         let previous_active = self.shell.tabs.active_tab_index();
         self.store_active_tab_payload();
         if let Some(tab_id) = self.shell.tabs.get(previous_active).map(|tab| tab.id) {
             self.shell.tabs.touch_heavy_resource(tab_id);
+            self.shell
+                .tabs
+                .record_active_tab_deactivation_at(tab_id, now);
         }
         if let Some(previous_tab) = self.shell.tabs.get_mut(previous_active) {
             Self::trim_inactive_tab_preview(previous_tab);
@@ -1148,6 +1160,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn switch_to_tab_index(&mut self, next_index: usize) {
+        self.switch_to_tab_index_at(next_index, Instant::now());
+    }
+
+    pub(super) fn switch_to_tab_index_at(&mut self, next_index: usize, now: Instant) {
         if next_index >= self.shell.tabs.len() {
             return;
         }
@@ -1165,7 +1181,7 @@ impl FlistWalkerApp {
         let previous_was_indexing = self.shell.indexing.pending_request_id.is_some();
         let next_tab_id = self.shell.tabs.get(next_index).map(|tab| tab.id);
         let promoted_warm = next_tab_id == self.shell.indexing.warm_tab_id;
-        let previous_active = self.deactivate_active_tab_for_transition();
+        let previous_active = self.deactivate_active_tab_for_transition_at(now);
         let future_warm = if promoted_warm {
             previous_was_indexing.then_some(previous_tab_id).flatten()
         } else if previous_was_indexing {
@@ -1178,11 +1194,23 @@ impl FlistWalkerApp {
             .tabs
             .enforce_resource_budget(next_tab_id, future_warm)
         {
+            self.shell.tabs.rollback_recent_inactive_transition();
             let _ = self.load_tab_payload(previous_active);
+            self.shell
+                .tabs
+                .set_active_tab_index_at(previous_active, now);
             self.set_notice("Waiting for background tab resource reclamation");
             return;
         }
-        self.shell.tabs.set_active_tab_index(next_index);
+        if !self.shell.tabs.commit_recent_inactive_transition() {
+            let _ = self.load_tab_payload(previous_active);
+            self.shell
+                .tabs
+                .set_active_tab_index_at(previous_active, now);
+            self.set_notice("Waiting for background tab resource reclamation");
+            return;
+        }
+        self.shell.tabs.set_active_tab_index_at(next_index, now);
         let (results_compacted, preview_reload_pending) = self.load_tab_payload(next_index);
         let previous_warm_candidate = previous_was_indexing.then_some(previous_tab_id).flatten();
         if promoted_warm {
@@ -1234,6 +1262,12 @@ impl FlistWalkerApp {
             .tabs
             .enforce_resource_budget(Some(id), self.shell.indexing.warm_tab_id)
         {
+            self.shell.tabs.rollback_recent_inactive_transition();
+            let _ = self.load_tab_payload(previous_active);
+            self.set_notice("Waiting for background tab resource reclamation");
+            return;
+        }
+        if !self.shell.tabs.commit_recent_inactive_transition() {
             let _ = self.load_tab_payload(previous_active);
             self.set_notice("Waiting for background tab resource reclamation");
             return;
@@ -1357,11 +1391,13 @@ impl FlistWalkerApp {
                 .tabs
                 .enforce_resource_budget(future_active_id, self.shell.indexing.warm_tab_id)
             {
+                self.shell.tabs.rollback_recent_inactive_transition();
                 let _ = self.load_tab_payload(index);
                 self.set_notice("Waiting for background tab resource reclamation");
                 return;
             }
             if !self.shell.tabs.try_prepare_closed_history_slot() {
+                self.shell.tabs.rollback_recent_inactive_transition();
                 let _ = self.load_tab_payload(index);
                 self.set_notice("Waiting for background tab resource reclamation");
                 return;
@@ -1388,6 +1424,7 @@ impl FlistWalkerApp {
         if root_reclaim_pending {
             let Some(pending_root) = pending_root else {
                 if closing_active {
+                    self.shell.tabs.rollback_recent_inactive_transition();
                     let _ = self.load_tab_payload(index);
                 }
                 self.set_notice("Waiting for background tab resource reclamation");
@@ -1395,6 +1432,7 @@ impl FlistWalkerApp {
             };
             if !self.try_retire_inactive_root_resources(index, pending_root) {
                 if closing_active {
+                    self.shell.tabs.rollback_recent_inactive_transition();
                     let _ = self.load_tab_payload(index);
                 }
                 self.set_notice("Waiting for background tab resource reclamation");
@@ -1407,6 +1445,7 @@ impl FlistWalkerApp {
         }) && !self.try_retire_tab_index_build_resources_for_boundary(index)
         {
             if closing_active {
+                self.shell.tabs.rollback_recent_inactive_transition();
                 let _ = self.load_tab_payload(index);
             }
             self.set_notice("Waiting for background tab resource reclamation");
@@ -1415,6 +1454,12 @@ impl FlistWalkerApp {
         self.clear_tab_drag_state();
         if !closing_active {
             self.sync_active_tab_state();
+        } else {
+            if !self.shell.tabs.discard_recent_inactive_transition() {
+                let _ = self.load_tab_payload(index);
+                self.set_notice("Waiting for background tab resource reclamation");
+                return;
+            }
         }
         let mut removed = self.shell.tabs.remove(index);
         let activation_refresh_pending = interrupted_index_before_close
@@ -1484,6 +1529,12 @@ impl FlistWalkerApp {
             .tabs
             .enforce_resource_budget(Some(closed_tab_id), future_warm)
         {
+            self.shell.tabs.rollback_recent_inactive_transition();
+            let _ = self.load_tab_payload(previous_active);
+            self.set_notice("Waiting for background tab resource reclamation");
+            return;
+        }
+        if !self.shell.tabs.commit_recent_inactive_transition() {
             let _ = self.load_tab_payload(previous_active);
             self.set_notice("Waiting for background tab resource reclamation");
             return;

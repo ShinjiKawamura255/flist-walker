@@ -298,6 +298,9 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
 }
 
 pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMode) {
+    if app.shell.runtime.result_sort_mode != mode {
+        app.shell.tabs.mark_active_tab_meaningfully_engaged();
+    }
     app.shell.runtime.result_sort_mode = mode;
     apply_result_sort(app, false);
 }
@@ -306,6 +309,7 @@ pub(super) fn set_result_sort_scope(app: &mut FlistWalkerApp, scope: super::Resu
     if app.shell.runtime.result_sort_scope == scope {
         return;
     }
+    app.shell.tabs.mark_active_tab_meaningfully_engaged();
     app.shell.runtime.result_sort_scope = scope;
     apply_result_sort(app, false);
 }

@@ -14,6 +14,9 @@ impl FlistWalkerApp {
         }
         let row = self.shell.runtime.current_row.unwrap_or(0) as isize;
         let next = (row + delta).clamp(0, self.shell.runtime.results.len() as isize - 1) as usize;
+        if Some(next) != self.shell.runtime.current_row {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
         self.set_current_row(Some(next));
         self.request_scroll_to_current();
         self.request_preview_for_current();
@@ -30,6 +33,7 @@ impl FlistWalkerApp {
                 } else {
                     self.shell.runtime.pinned_paths.insert(path);
                 }
+                self.shell.tabs.mark_active_tab_meaningfully_engaged();
                 self.refresh_status_line();
             }
         }
@@ -49,6 +53,9 @@ impl FlistWalkerApp {
         if self.shell.runtime.results.is_empty() {
             return;
         }
+        if self.shell.runtime.current_row != Some(0) {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
         self.set_current_row(Some(0));
         self.request_scroll_to_current();
         self.request_preview_for_current();
@@ -61,7 +68,11 @@ impl FlistWalkerApp {
         if self.shell.runtime.results.is_empty() {
             return;
         }
-        self.set_current_row(Some(self.shell.runtime.results.len().saturating_sub(1)));
+        let last = self.shell.runtime.results.len().saturating_sub(1);
+        if self.shell.runtime.current_row != Some(last) {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
+        self.set_current_row(Some(last));
         self.request_scroll_to_current();
         self.request_preview_for_current();
         self.refresh_status_line();
@@ -69,6 +80,12 @@ impl FlistWalkerApp {
 
     /// query と選択状態を初期化し一覧表示へ戻す。
     pub(in crate::app) fn clear_query_and_selection(&mut self) {
+        if !self.shell.runtime.query_state.query.is_empty()
+            || !self.shell.runtime.pinned_paths.is_empty()
+            || self.shell.runtime.current_row != Some(0)
+        {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
         self.shell.runtime.query_state.query.clear();
         self.reset_query_history_navigation();
         self.reset_history_search_state();

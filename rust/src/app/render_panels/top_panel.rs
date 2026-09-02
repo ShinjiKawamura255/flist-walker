@@ -258,11 +258,13 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 centered_checkbox(ui, &mut app.shell.runtime.use_filelist, "Use FileList")
                     .changed();
             if centered_checkbox(ui, &mut app.shell.runtime.use_regex, "Regex").changed() {
+                app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
             if centered_checkbox(ui, &mut app.shell.runtime.ignore_case, "Ignore Case").changed()
             {
+                app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
@@ -274,6 +276,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
             if ignore_list_response.changed()
             {
+                app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.apply_entry_filters(false);
                 app.mark_ui_state_dirty();
                 app.persist_ui_state_now();
@@ -356,6 +359,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     .unwrap_or_default();
                 egui::Popup::close_id(ui.ctx(), depth_popup_id);
                 if next_depth != app.shell.runtime.max_depth {
+                    app.shell.tabs.mark_active_tab_meaningfully_engaged();
                     app.shell.runtime.max_depth = next_depth;
                     app.sync_active_tab_state();
                     app.mark_ui_state_dirty();
