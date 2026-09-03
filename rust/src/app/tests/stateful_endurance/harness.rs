@@ -134,15 +134,13 @@ impl StatefulHarness {
             self.capture_requests();
             let after = self.snapshot();
             if let Some(mut owners) = response_owners {
-                // Completing one response can admit a previously queued request. That
-                // tab becomes an owner only when a new route proves the transfer.
-                owners.extend(
-                    after
-                        .routed_tab_ids
-                        .iter()
-                        .filter(|tab_id| !before.routed_tab_ids.contains(tab_id))
-                        .copied(),
-                );
+                // Completing one response can admit a previously queued request. Compare
+                // request identity as well as tab identity so replacing an old route with
+                // a new route for the same tab still proves the downstream transfer.
+                owners.extend(newly_routed_tab_ids(
+                    &before.routed_requests,
+                    &after.routed_requests,
+                ));
                 // A response can admit a queued index request whose resource reservation
                 // deterministically evicts one background snapshot. Treat only the tab
                 // whose lifecycle actually crossed into Evicted as a downstream owner.
@@ -832,6 +830,14 @@ fn newly_evicted_tab_ids(
         .collect()
 }
 
+fn newly_routed_tab_ids(before: &[(u8, u64, u64)], after: &[(u8, u64, u64)]) -> HashSet<u64> {
+    after
+        .iter()
+        .filter(|route| !before.contains(route))
+        .map(|(_, _, tab_id)| *tab_id)
+        .collect()
+}
+
 fn is_allowed_unowned_tab_transition(
     before: &TabSemanticSnapshot,
     after: &TabSemanticSnapshot,
@@ -870,15 +876,40 @@ fn is_expected_scheduler_notice_transition(
 
 pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> SemanticSnapshot {
     let tab_ids = app.shell.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>();
-    let mut routed_tab_ids = app
+    let mut routed_requests = app
         .shell
         .search
         .request_routes_for_test()
         .into_iter()
-        .map(|(_, tab_id)| tab_id)
-        .chain(app.shell.indexing.request_tabs.values().copied())
-        .chain(app.shell.tabs.routed_tab_ids_for_test())
-        .chain(app.shell.features.filelist.workflow.pending_request_tab_id)
+        .map(|(request_id, tab_id)| (0, request_id, tab_id))
+        .chain(
+            app.shell
+                .indexing
+                .request_tabs
+                .iter()
+                .map(|(request_id, tab_id)| (1, *request_id, *tab_id)),
+        )
+        .chain(
+            app.shell
+                .tabs
+                .routed_requests_for_test()
+                .into_iter()
+                .map(|(family, request_id, tab_id)| (family + 2, request_id, tab_id)),
+        )
+        .chain(
+            app.shell
+                .features
+                .filelist
+                .workflow
+                .pending_request_id
+                .zip(app.shell.features.filelist.workflow.pending_request_tab_id)
+                .map(|(request_id, tab_id)| (5, request_id, tab_id)),
+        )
+        .collect::<Vec<_>>();
+    routed_requests.sort_unstable();
+    let mut routed_tab_ids = routed_requests
+        .iter()
+        .map(|(_, _, tab_id)| *tab_id)
         .collect::<Vec<_>>();
     routed_tab_ids.sort_unstable();
 
@@ -972,6 +1003,7 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
         current_row: app.shell.runtime.current_row,
         index_pending: app.shell.indexing.pending_queue.len(),
         index_inflight: app.shell.indexing.inflight_requests.len(),
+        routed_requests,
         routed_tab_ids,
         active_index_pending: app.shell.indexing.pending_request_id.is_some()
             || app.shell.indexing.in_progress,
@@ -1105,6 +1137,15 @@ mod tests {
             ),
             HashSet::from([1])
         );
+    }
+
+    #[test]
+    fn tc_184_downstream_owner_uses_request_identity_when_tab_is_already_routed() {
+        assert_eq!(
+            newly_routed_tab_ids(&[(1, 10, 4)], &[(1, 11, 4)]),
+            HashSet::from([4])
+        );
+        assert!(newly_routed_tab_ids(&[(1, 10, 4)], &[(1, 10, 4)]).is_empty());
     }
 
     #[test]

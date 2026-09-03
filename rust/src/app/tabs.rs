@@ -746,11 +746,12 @@ impl FlistWalkerApp {
             tab.result_state.committed.results = results;
             tab.result_state.results_compacted = false;
             tab.result_state.committed.total_match_count = tab.result_state.committed.entries.len();
+            let evicted_selected_path = tab.result_state.evicted_selected_path.take();
             if tab.result_state.committed.results.is_empty() {
                 tab.result_state.committed.current_row = None;
                 tab.result_state.committed.preview.clear();
                 tab.clear_preview_request_state();
-            } else if let Some(selected) = tab.result_state.evicted_selected_path.take() {
+            } else if let Some(selected) = evicted_selected_path {
                 tab.result_state.committed.current_row = tab
                     .result_state
                     .committed

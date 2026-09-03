@@ -35,6 +35,7 @@ pub(super) struct SemanticSnapshot {
     pub(super) current_row: Option<usize>,
     pub(super) index_pending: usize,
     pub(super) index_inflight: usize,
+    pub(super) routed_requests: Vec<(u8, u64, u64)>,
     pub(super) routed_tab_ids: Vec<u64>,
     pub(super) active_index_pending: bool,
     pub(super) active_search_pending: bool,
@@ -47,7 +48,7 @@ pub(super) struct SemanticSnapshot {
 impl SemanticSnapshot {
     pub(super) fn digest(&self) -> String {
         format!(
-            "tabs={:?};tab_states={:?};active={};root={};query={:?};results={}/{};row={:?};index={}/{};routes={:?};pending={}/{}/{}/{}/{}/{}",
+            "tabs={:?};tab_states={:?};active={};root={};query={:?};results={}/{};row={:?};index={}/{};request_routes={:?};routes={:?};pending={}/{}/{}/{}/{}/{}",
             self.tab_ids, self.tabs,
             self.active_tab,
             self.active_root,
@@ -57,6 +58,7 @@ impl SemanticSnapshot {
             self.current_row,
             self.index_pending,
             self.index_inflight,
+            self.routed_requests,
             self.routed_tab_ids,
             self.active_index_pending,
             self.active_search_pending,
@@ -198,6 +200,7 @@ mod tests {
             current_row: Some(0),
             index_pending: 0,
             index_inflight: 0,
+            routed_requests: Vec::new(),
             routed_tab_ids: Vec::new(),
             active_index_pending: false,
             active_search_pending: false,

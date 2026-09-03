@@ -28,9 +28,9 @@
 ### Regression Guard: stateful response ownership is request-exact
 
 - Scenario: endurance oracle が index/search の全 routed tab を response owner として除外し、実際には応答を消費しない別 tab の mutation を見逃す。または reclaimer 待機の根拠がない notice 変化を scheduler side effect として無条件に許す。
-- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id と、前 event から submitted 済みで未消費の request_id の route owner だけを一次 owner とする。応答処理後に新規 route が追加された tab と、resource reservation により lifecycle が新たに `Evicted` へ遷移した exact tab だけを証跡付き downstream owner とする。reclaimer notice の例外は、直前 snapshot に対応する reclaim-pending state があり、既知の reclamation/finalization phase 間を遷移する場合だけ認める。
+- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id と、前 event から submitted 済みで未消費の request_id の route owner だけを一次 owner とする。応答処理後は family/request_id/tab_id の組で新規 route を判定し、同じ tab の旧 route が残っていても新要求の owner transfer を識別する。resource reservation により lifecycle が新たに `Evicted` へ遷移した exact tab だけも証跡付き downstream owner とする。reclaimer notice の例外は、直前 snapshot に対応する reclaim-pending state があり、既知の reclamation/finalization phase 間を遷移する場合だけ認める。
 - Non-goals: worker 完了順序の固定、非応答イベント間の tab mutation 比較、scheduler が正当に追加した新規 route の拒否。
-- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_response_owner_includes_only_the_exact_newly_evicted_tab`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`, `tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases`。
+- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_downstream_owner_uses_request_identity_when_tab_is_already_routed`, `tc_184_response_owner_includes_only_the_exact_newly_evicted_tab`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`, `tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases`。
 - Notes for Future Changes: response event を追加する場合は pending request の選択規則と request_id route を同じ owner resolver に接続する。notice 文字列だけで例外化せず、直前 state の因果フラグを snapshot に含める。
 
 ### Regression Guard: Recent Inactive engagement follows actual mutations
@@ -46,7 +46,7 @@
 - Scenario: Evicted tab の再 index 中、保存した selected path より前の batch だけで empty-query Results を更新する。または non-empty query の増分 search response が selected path をまだ含まない。
 - Expected Behavior: partial snapshot の miss では selection restore intent を保持し、後続 snapshot に path が現れた時点でその行へ復元する。同 generation の成功した terminal index snapshot または index 完了後の authoritative search response にも path がなければ intent を破棄する。active/background の search 経路で同じ契約を維持する。
 - Non-goals: limit 外の path の強制表示、失敗した search response での intent 破棄、root/query 境界を越えた selection 復元。
-- Related Tests: TC-207, `tc_207_evicted_selection_survives_partial_empty_query_miss_and_restores_later_regression`, `tc_207_empty_query_terminal_absence_clears_evicted_selection_intent_regression`, `tc_207_evicted_selection_survives_partial_search_miss_and_restores_later_regression`, `tc_207_authoritative_search_absence_clears_evicted_selection_intent_regression`, `tc_207_background_search_restores_evicted_selected_path`。
+- Related Tests: TC-207, `tc_207_evicted_selection_survives_partial_empty_query_miss_and_restores_later_regression`, `tc_207_empty_query_terminal_absence_clears_evicted_selection_intent_regression`, `tc_207_background_empty_terminal_clears_absent_evicted_selection_intent_regression`, `tc_207_evicted_selection_survives_partial_search_miss_and_restores_later_regression`, `tc_207_authoritative_search_absence_clears_evicted_selection_intent_regression`, `tc_207_background_search_restores_evicted_selected_path`。
 - Notes for Future Changes: incremental result reducer は restore intent を最初の miss で `take()` しない。intent の破棄は path match または generation の authoritative completion に限定する。
 
 ### Regression Guard: request mailbox closure preserves resident index capacity

@@ -1249,6 +1249,30 @@ impl TabSessionState {
         tab_ids.sort_unstable();
         tab_ids
     }
+
+    #[cfg(test)]
+    pub(super) fn routed_requests_for_test(&self) -> Vec<(u8, u64, u64)> {
+        let mut routes = self
+            .request_tab_routing
+            .preview
+            .iter()
+            .map(|(request_id, tab_id)| (0, *request_id, *tab_id))
+            .chain(
+                self.request_tab_routing
+                    .action
+                    .iter()
+                    .map(|(request_id, tab_id)| (1, *request_id, *tab_id)),
+            )
+            .chain(
+                self.request_tab_routing
+                    .sort
+                    .iter()
+                    .map(|(request_id, tab_id)| (2, *request_id, *tab_id)),
+            )
+            .collect::<Vec<_>>();
+        routes.sort_unstable();
+        routes
+    }
 }
 
 impl<'a> IntoIterator for &'a TabSessionState {
