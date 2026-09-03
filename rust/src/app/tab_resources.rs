@@ -12,7 +12,7 @@ use std::thread;
 use std::time::Duration;
 
 #[cfg(test)]
-static RECLAIM_DROP_OBSERVER: std::sync::OnceLock<std::sync::Mutex<Option<mpsc::Sender<String>>>> =
+static RECLAIM_DROP_OBSERVER: std::sync::OnceLock<std::sync::Mutex<Option<ReclaimDropObserver>>> =
     std::sync::OnceLock::new();
 #[cfg(test)]
 static RECLAIM_DROP_OBSERVER_TEST_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> =
@@ -23,13 +23,24 @@ static RECLAIM_DROP_OBSERVER_TEST_LOCK: std::sync::OnceLock<std::sync::Mutex<()>
 struct ReclaimDropProbe(Option<mpsc::Sender<String>>);
 
 #[cfg(test)]
+struct ReclaimDropObserver {
+    sender: mpsc::Sender<String>,
+    capture_thread: thread::ThreadId,
+}
+
+#[cfg(test)]
 impl ReclaimDropProbe {
     fn capture() -> Self {
+        let capture_thread = thread::current().id();
         let sender = RECLAIM_DROP_OBSERVER
             .get_or_init(|| std::sync::Mutex::new(None))
             .lock()
             .ok()
-            .and_then(|sender| sender.clone());
+            .and_then(|observer| {
+                observer.as_ref().and_then(|observer| {
+                    (observer.capture_thread == capture_thread).then(|| observer.sender.clone())
+                })
+            });
         Self(sender)
     }
 }
@@ -50,7 +61,10 @@ pub(super) fn set_reclaim_drop_observer(sender: Option<mpsc::Sender<String>>) {
         .get_or_init(|| std::sync::Mutex::new(None))
         .lock()
     {
-        *observer = sender;
+        *observer = sender.map(|sender| ReclaimDropObserver {
+            sender,
+            capture_thread: thread::current().id(),
+        });
     }
 }
 
@@ -783,5 +797,37 @@ impl Drop for TabResourceReclaimer {
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tc_207_drop_observer_ignores_payloads_captured_by_parallel_test_threads() {
+        let _observer_guard = lock_reclaim_drop_observer_for_test();
+        let (drop_tx, drop_rx) = mpsc::channel();
+        set_reclaim_drop_observer(Some(drop_tx));
+
+        let foreign_probe = thread::spawn(ReclaimDropProbe::capture)
+            .join()
+            .expect("capture foreign probe");
+        drop(foreign_probe);
+        assert!(drop_rx.try_recv().is_err());
+
+        let local_probe = ReclaimDropProbe::capture();
+        thread::Builder::new()
+            .name("flistwalker-tab-reclaimer".to_string())
+            .spawn(move || drop(local_probe))
+            .expect("spawn probe drop")
+            .join()
+            .expect("join probe drop");
+        assert_eq!(
+            drop_rx.recv_timeout(Duration::from_millis(250)).as_deref(),
+            Ok("flistwalker-tab-reclaimer")
+        );
+
+        set_reclaim_drop_observer(None);
     }
 }

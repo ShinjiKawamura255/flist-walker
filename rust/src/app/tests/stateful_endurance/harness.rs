@@ -143,6 +143,10 @@ impl StatefulHarness {
                         .filter(|tab_id| !before.routed_tab_ids.contains(tab_id))
                         .copied(),
                 );
+                // A response can admit a queued index request whose resource reservation
+                // deterministically evicts one background snapshot. Treat only the tab
+                // whose lifecycle actually crossed into Evicted as a downstream owner.
+                owners.extend(newly_evicted_tab_ids(&before.tabs, &after.tabs));
                 self.assert_other_tab_content_unchanged(
                     &before,
                     &after,
@@ -809,6 +813,25 @@ fn request_owner(
         .collect()
 }
 
+fn newly_evicted_tab_ids(
+    before: &[TabSemanticSnapshot],
+    after: &[TabSemanticSnapshot],
+) -> HashSet<u64> {
+    after
+        .iter()
+        .filter_map(|after_tab| {
+            before
+                .iter()
+                .find(|before_tab| before_tab.id == after_tab.id)
+                .is_some_and(|before_tab| {
+                    before_tab.lifecycle != TabResourceLifecycle::Evicted
+                        && after_tab.lifecycle == TabResourceLifecycle::Evicted
+                })
+                .then_some(after_tab.id)
+        })
+        .collect()
+}
+
 fn is_allowed_unowned_tab_transition(
     before: &TabSemanticSnapshot,
     after: &TabSemanticSnapshot,
@@ -831,6 +854,18 @@ fn is_expected_scheduler_notice_transition(
         && after.notice == "Index request dropped due to queue limit")
         || (before.reclaim_pending
             && after.notice == "Waiting for background tab resource reclamation")
+        || (before.reclaim_pending
+            && after.reclaim_pending
+            && matches!(
+                before.notice.as_str(),
+                "Waiting for background tab resource reclamation"
+                    | "Waiting for background tab resource finalization"
+            )
+            && matches!(
+                after.notice.as_str(),
+                "Waiting for background tab resource reclamation"
+                    | "Waiting for background tab resource finalization"
+            ))
 }
 
 pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> SemanticSnapshot {
@@ -873,6 +908,7 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                 TabSemanticSnapshot {
                     id: tab.id,
                     root: active_root,
+                    lifecycle: app.shell.indexing.lifecycle(),
                     query: app.shell.runtime.query_state.query.clone(),
                     results_len: app.shell.runtime.results.len(),
                     retained_results_len: app.shell.runtime.base_results.len(),
@@ -899,6 +935,7 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                 TabSemanticSnapshot {
                     id: tab.id,
                     root: root_index(&tab.root),
+                    lifecycle: tab.index_state.lifecycle(),
                     query: tab.query_state.query.clone(),
                     results_len: tab.result_state.committed.results.len(),
                     retained_results_len: tab.result_state.committed.base_results.len(),
@@ -988,6 +1025,7 @@ mod tests {
         TabSemanticSnapshot {
             id: 1,
             root: 0,
+            lifecycle: TabResourceLifecycle::Ready,
             query: String::new(),
             results_len: 0,
             retained_results_len: 0,
@@ -1028,6 +1066,18 @@ mod tests {
     }
 
     #[test]
+    fn tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases() {
+        let mut before = snapshot(false, "Waiting for background tab resource reclamation");
+        before.reclaim_pending = true;
+        let mut after = snapshot(false, "Waiting for background tab resource finalization");
+        after.reclaim_pending = true;
+        assert!(is_expected_scheduler_notice_transition(&before, &after));
+
+        before.notice = "Action completed".to_string();
+        assert!(!is_expected_scheduler_notice_transition(&before, &after));
+    }
+
+    #[test]
     fn tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression() {
         assert_eq!(
             request_owner(Some(11), [(11, 1), (12, 2)]),
@@ -1037,6 +1087,24 @@ mod tests {
         let mut after = before.clone();
         after.root = 1;
         assert!(!is_allowed_unowned_tab_transition(&before, &after));
+    }
+
+    #[test]
+    fn tc_184_response_owner_includes_only_the_exact_newly_evicted_tab() {
+        let before_ready = snapshot(false, "ready");
+        let mut after_evicted = before_ready.clone();
+        after_evicted.lifecycle = TabResourceLifecycle::Evicted;
+        let mut already_evicted = before_ready.clone();
+        already_evicted.id = 2;
+        already_evicted.lifecycle = TabResourceLifecycle::Evicted;
+
+        assert_eq!(
+            newly_evicted_tab_ids(
+                &[before_ready, already_evicted.clone()],
+                &[after_evicted, already_evicted],
+            ),
+            HashSet::from([1])
+        );
     }
 
     #[test]

@@ -1,9 +1,12 @@
 use std::collections::HashSet;
 
+use crate::app::TabResourceLifecycle;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct TabSemanticSnapshot {
     pub(super) id: u64,
     pub(super) root: usize,
+    pub(super) lifecycle: TabResourceLifecycle,
     pub(super) query: String,
     pub(super) results_len: usize,
     pub(super) retained_results_len: usize,
@@ -171,6 +174,7 @@ mod tests {
             tabs: vec![TabSemanticSnapshot {
                 id: 1,
                 root: 0,
+                lifecycle: TabResourceLifecycle::Ready,
                 query: String::new(),
                 results_len: 1,
                 retained_results_len: 1,
