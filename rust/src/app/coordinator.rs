@@ -431,7 +431,7 @@ mod tests {
     }
 
     #[test]
-    fn path_guard_accepts_descendants_and_rejects_outside_paths() {
+    fn path_guard_defers_descendants_and_distinct_absolute_paths() {
         let base = std::env::temp_dir().join("flistwalker-path-guard");
         let root = base.join("root");
         let inside = root.join("sub").join("file.txt");
@@ -443,7 +443,7 @@ mod tests {
         );
         assert_eq!(
             lexical_action_path_precheck(&root, &outside),
-            ActionPathPrecheck::Reject
+            ActionPathPrecheck::Defer
         );
     }
 

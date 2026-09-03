@@ -184,27 +184,28 @@ pub fn execute_authorized_action_request(
                 Some(target.display_path.clone()),
             );
         }
-        let execution_path = match reauthorize_action_target(&batch.canonical_root, target) {
-            Ok(path) => path,
-            Err(error) => {
-                let diagnostic = error.to_string();
-                let outcome = if completed == 0 {
-                    AuthorizedActionOutcome::Blocked
-                } else {
-                    AuthorizedActionOutcome::PartialFailure
-                };
-                return AuthorizedActionReport::new(
-                    request,
-                    outcome,
-                    completed,
-                    total,
-                    error
-                        .display_path
-                        .or_else(|| Some(target.display_path.clone())),
-                )
-                .with_diagnostic(diagnostic);
-            }
-        };
+        let execution_path =
+            match reauthorize_action_target(&batch.canonical_root, &batch.lexical_root, target) {
+                Ok(path) => path,
+                Err(error) => {
+                    let diagnostic = error.to_string();
+                    let outcome = if completed == 0 {
+                        AuthorizedActionOutcome::Blocked
+                    } else {
+                        AuthorizedActionOutcome::PartialFailure
+                    };
+                    return AuthorizedActionReport::new(
+                        request,
+                        outcome,
+                        completed,
+                        total,
+                        error
+                            .display_path
+                            .or_else(|| Some(target.display_path.clone())),
+                    )
+                    .with_diagnostic(diagnostic);
+                }
+            };
         if let Some(outcome) = observed_request_outcome(request, guard) {
             return AuthorizedActionReport::new(
                 request,
@@ -268,6 +269,7 @@ pub(crate) struct AuthorizedActionTarget {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct AuthorizedActionBatch {
     pub(crate) canonical_root: PathBuf,
+    pub(crate) lexical_root: PathBuf,
     pub(crate) targets: Vec<AuthorizedActionTarget>,
 }
 
@@ -348,13 +350,18 @@ pub(crate) fn lexical_action_path_precheck(root: &Path, path: &Path) -> ActionPa
     let Some(root) = normalize_absolute_lexically(root) else {
         return ActionPathPrecheck::Defer;
     };
-    let Some(path) = normalize_absolute_lexically(path) else {
+    let raw_path = path;
+    let Some(path) = normalize_absolute_lexically(raw_path) else {
         return ActionPathPrecheck::Defer;
     };
 
-    match lexically_within_root(&root, &path) {
-        Some(false) => ActionPathPrecheck::Reject,
-        Some(true) | None => ActionPathPrecheck::Defer,
+    // A result produced through a linked root can legitimately use the resolved
+    // root's absolute prefix. Only a parent-component escape that visibly starts
+    // in the captured root is safe for the I/O-free UI check to reject.
+    let raw_starts_with_root = lexically_within_root(&root, raw_path);
+    match (raw_starts_with_root, lexically_within_root(&root, &path)) {
+        (Some(true), Some(false)) => ActionPathPrecheck::Reject,
+        _ => ActionPathPrecheck::Defer,
     }
 }
 
@@ -408,8 +415,9 @@ fn raw_action_target(
     action_target_path_for_open_in_folder(path)
 }
 
-fn resolve_within_root(
+fn resolve_authorized_target(
     canonical_root: &Path,
+    lexical_root: &Path,
     raw_path: &Path,
 ) -> Result<PathBuf, ActionAuthorizationFailure> {
     let resolved = raw_path.canonicalize().map_err(|_| {
@@ -418,7 +426,12 @@ fn resolve_within_root(
             "path could not be resolved within current root",
         )
     })?;
-    if !resolved.starts_with(canonical_root) {
+    // Preserve both valid representations of a link scope: the user-selected
+    // lexical path and the filesystem-resolved path used by index results.
+    let lexically_contained = normalize_absolute_lexically(raw_path)
+        .and_then(|path| lexically_within_root(lexical_root, &path))
+        .unwrap_or(false);
+    if !lexically_contained && !resolved.starts_with(canonical_root) {
         return Err(ActionAuthorizationFailure::new(
             Some(raw_path.to_path_buf()),
             "path is outside current root",
@@ -438,12 +451,13 @@ pub(crate) fn authorize_action_targets(
             "current root could not be resolved",
         )
     })?;
+    let lexical_root = normalize_absolute_lexically(root).unwrap_or_else(|| canonical_root.clone());
     let mut target_indices: HashMap<PathBuf, usize> = HashMap::with_capacity(paths.len());
     let mut targets: Vec<AuthorizedActionTarget> = Vec::with_capacity(paths.len());
 
     for source_path in paths {
         let raw_path = raw_action_target(source_path, open_parent_for_files)?;
-        let execution_path = resolve_within_root(&canonical_root, &raw_path)?;
+        let execution_path = resolve_authorized_target(&canonical_root, &lexical_root, &raw_path)?;
         if let Some(index) = target_indices.get(&execution_path).copied() {
             targets[index].source_paths.push(source_path.clone());
             continue;
@@ -459,18 +473,20 @@ pub(crate) fn authorize_action_targets(
 
     Ok(AuthorizedActionBatch {
         canonical_root,
+        lexical_root,
         targets,
     })
 }
 
 pub(crate) fn reauthorize_action_target(
     canonical_root: &Path,
+    lexical_root: &Path,
     target: &AuthorizedActionTarget,
 ) -> Result<PathBuf, ActionAuthorizationFailure> {
     let mut final_execution_path = None;
     for source_path in &target.source_paths {
         let raw_path = raw_action_target(source_path, target.open_parent_for_files)?;
-        let execution_path = resolve_within_root(canonical_root, &raw_path)?;
+        let execution_path = resolve_authorized_target(canonical_root, lexical_root, &raw_path)?;
         if execution_path != target.execution_path {
             return Err(ActionAuthorizationFailure::new(
                 Some(target.display_path.clone()),

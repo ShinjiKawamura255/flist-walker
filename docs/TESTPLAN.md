@@ -37,8 +37,8 @@ For documentation-only restructuring, apply VM-001:
 - confirm the top-level SDD/TDD files link to the detail topic files.
 
 ## Action Authorization Verification
-- TC-050 is the automated contract for the UI `Reject` / `Defer` precheck, worker all-target preauthorization, immediate per-target recheck, fail-closed resolution handling, recording-executor call count, display/execution path separation, and partial completion.
-- TC-051 adds Unix symlink and Windows link/junction/path-form coverage plus the environment-dependent real-UNC evidence in [Manual Regression and Traceability](testplan/manual-regression-traceability.md#action-authorization-platform-evidence-tc-050--tc-051).
+- TC-050 is the automated contract for the UI `Reject` / `Defer` precheck, lexical-or-resolved root worker preauthorization, immediate per-target recheck, fail-closed resolution handling, recording-executor call count, display/execution path separation, and partial completion.
+- TC-051 adds Unix symlink-root and linked-target coverage, Windows link/junction-root/path-form coverage, plus the environment-dependent real-UNC evidence in [Manual Regression and Traceability](testplan/manual-regression-traceability.md#action-authorization-platform-evidence-tc-050--tc-051).
 - An unavailable Windows junction or real-UNC environment is recorded as `not run`; it is not equivalent to passing evidence.
 
 ## Bounded Worker Scheduling Verification
