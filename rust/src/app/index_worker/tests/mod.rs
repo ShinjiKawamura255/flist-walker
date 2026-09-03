@@ -2254,10 +2254,14 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
     let _ = std::fs::remove_dir_all(&root);
     let dataset = root.join("dataset");
     std::fs::create_dir_all(&dataset).expect("create dataset");
-    for i in 0..20_000usize {
+    // Keep the fixture shallow and file-heavy so the shared recursive read_dir cost
+    // does not drown out the per-entry classification behavior under measurement.
+    for i in 0..128usize {
         let dir = dataset.join(format!("dir-{i}"));
         std::fs::create_dir_all(&dir).expect("create dir");
-        std::fs::write(dir.join("main.rs"), "fn main() {}").expect("write file");
+        for j in 0..256usize {
+            std::fs::write(dir.join(format!("entry-{j}.rs")), "fn main() {}").expect("write file");
+        }
     }
     #[cfg(unix)]
     let link_target = dataset.join("dir-0").join("main.rs");
@@ -2274,24 +2278,38 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
         }
     }
 
-    let mut eager_best = Duration::MAX;
-    let mut fast_best = Duration::MAX;
-    let iterations = 3usize;
-    let mut eager_count = 0usize;
-    let mut fast_count = 0usize;
+    let expected_count = count_eager_metadata_entries(&root);
+    assert_eq!(expected_count, count_std_walker_entries(&root));
 
-    for _ in 0..iterations {
-        let eager_start = Instant::now();
-        eager_count = count_eager_metadata_entries(&root);
-        eager_best = eager_best.min(eager_start.elapsed());
-
-        let fast_start = Instant::now();
-        fast_count = count_std_walker_entries(&root);
-        fast_best = fast_best.min(fast_start.elapsed());
+    let iterations = 7usize;
+    let mut eager_samples = Vec::with_capacity(iterations);
+    let mut fast_samples = Vec::with_capacity(iterations);
+    for iteration in 0..iterations {
+        let mut measure_eager = || {
+            let started = Instant::now();
+            assert_eq!(count_eager_metadata_entries(&root), expected_count);
+            eager_samples.push(started.elapsed());
+        };
+        let mut measure_fast = || {
+            let started = Instant::now();
+            assert_eq!(count_std_walker_entries(&root), expected_count);
+            fast_samples.push(started.elapsed());
+        };
+        if iteration % 2 == 0 {
+            measure_eager();
+            measure_fast();
+        } else {
+            measure_fast();
+            measure_eager();
+        }
     }
 
-    let eager_ms = eager_best.as_secs_f64() * 1000.0;
-    let fast_ms = fast_best.as_secs_f64() * 1000.0;
+    eager_samples.sort_unstable();
+    fast_samples.sort_unstable();
+    let eager_median = eager_samples[iterations / 2];
+    let fast_median = fast_samples[iterations / 2];
+    let eager_ms = eager_median.as_secs_f64() * 1000.0;
+    let fast_ms = fast_median.as_secs_f64() * 1000.0;
     let speedup = if fast_ms > 0.0 {
         eager_ms / fast_ms
     } else {
@@ -2299,10 +2317,9 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
     };
 
     eprintln!(
-        "Walker perf control_baseline eager_metadata_ms={eager_ms:.3} fast_classify_ms={fast_ms:.3} speedup={speedup:.2}x eager_count={eager_count} fast_count={fast_count}"
+        "Walker perf control_baseline samples={iterations} eager_metadata_median_ms={eager_ms:.3} fast_classify_median_ms={fast_ms:.3} speedup={speedup:.2}x entries={expected_count}"
     );
 
-    assert_eq!(eager_count, fast_count);
     assert!(
         speedup >= 1.25,
         "walker fast classification did not beat the control baseline enough: {speedup:.2}x"
