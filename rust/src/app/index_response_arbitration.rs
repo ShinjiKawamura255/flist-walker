@@ -24,6 +24,9 @@ impl FrameMailboxArbitrator {
     ) -> Option<ArbitratedIndexResponse> {
         #[cfg(test)]
         if let Some(response) = Self::try_injected_response(coordinator) {
+            coordinator.record_mailbox_selection_for_test(IndexCoordinator::response_request_id(
+                &response.response,
+            ));
             return Some(response);
         }
 

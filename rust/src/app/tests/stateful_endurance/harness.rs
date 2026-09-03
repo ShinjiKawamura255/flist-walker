@@ -18,6 +18,7 @@ pub(super) struct StatefulHarness {
     index_requests: BoundedReceiver<IndexRequest>,
     index_responses: mpsc::Sender<IndexResponse>,
     pending_indexes: VecDeque<IndexRequest>,
+    submitted_index_responses: VecDeque<u64>,
     search_requests: mpsc::Receiver<SearchRequest>,
     search_responses: mpsc::Sender<SearchResponse>,
     pending_searches: VecDeque<SearchRequest>,
@@ -100,6 +101,7 @@ impl StatefulHarness {
             index_requests,
             index_responses,
             pending_indexes: VecDeque::new(),
+            submitted_index_responses: VecDeque::new(),
             search_requests,
             search_responses,
             pending_searches: VecDeque::new(),
@@ -182,8 +184,7 @@ impl StatefulHarness {
             } else if let Some(request) = self.pending_filelists.pop_front() {
                 self.respond_to_filelist(request, TerminalOutcome::Canceled);
             } else {
-                self.app
-                    .poll_index_response_with_budget_for_test(ENDURANCE_RESPONSE_DRAIN_BUDGET);
+                self.poll_index_responses_and_track_consumption();
                 self.app.poll_search_response();
                 self.app.dispatch_index_queue();
                 self.capture_requests();
@@ -313,7 +314,7 @@ impl StatefulHarness {
     }
 
     fn response_owners(&self, event: &Event) -> Option<HashSet<u64>> {
-        let owners = match event {
+        let mut owners = match event {
             Event::DeliverOldestIndexData(_) | Event::CompleteOldestIndex(_) => request_owner(
                 self.pending_indexes
                     .front()
@@ -374,6 +375,48 @@ impl StatefulHarness {
                 .collect(),
             _ => return None,
         };
+        if matches!(
+            event,
+            Event::DeliverOldestIndexData(_)
+                | Event::DeliverNewestIndexData(_)
+                | Event::CompleteOldestIndex(_)
+                | Event::CompleteNewestIndex(_)
+                | Event::DeliverStaleIndex
+        ) {
+            // prepare_frame can defer an injected response across event boundaries.
+            // Track the exact submitted request IDs that the next poll may consume.
+            for request_id in self.submitted_index_responses.iter().copied() {
+                owners.extend(request_owner(
+                    Some(request_id),
+                    self.app
+                        .shell
+                        .indexing
+                        .request_tabs
+                        .iter()
+                        .map(|(request_id, tab_id)| (*request_id, *tab_id)),
+                ));
+            }
+        }
+        if matches!(
+            event,
+            Event::CompleteOldestSearch | Event::DeliverStaleSearch
+        ) {
+            let worker_owned_request_ids = self
+                .pending_searches
+                .iter()
+                .map(|request| request.request_id)
+                .collect::<HashSet<_>>();
+            owners.extend(
+                self.app
+                    .shell
+                    .search
+                    .request_routes_for_test()
+                    .into_iter()
+                    .filter_map(|(request_id, tab_id)| {
+                        (!worker_owned_request_ids.contains(&request_id)).then_some(tab_id)
+                    }),
+            );
+        }
         Some(owners)
     }
 
@@ -425,8 +468,24 @@ impl StatefulHarness {
         }
     }
 
+    fn poll_index_responses_and_track_consumption(&mut self) {
+        self.app.shell.indexing.mailbox_selection_trace.clear();
+        self.app
+            .poll_index_response_with_budget_for_test(ENDURANCE_RESPONSE_DRAIN_BUDGET);
+        for request_id in std::mem::take(&mut self.app.shell.indexing.mailbox_selection_trace) {
+            if let Some(index) = self
+                .submitted_index_responses
+                .iter()
+                .position(|submitted| *submitted == request_id)
+            {
+                self.submitted_index_responses.remove(index);
+            }
+        }
+    }
+
     fn respond_to_index(&mut self, request: IndexRequest, outcome: TerminalOutcome) {
         let request_id = request.request_id;
+        self.submitted_index_responses.push_back(request_id);
         match outcome {
             TerminalOutcome::Finished => {
                 self.index_responses
@@ -448,8 +507,7 @@ impl StatefulHarness {
                 .send(IndexResponse::Canceled { request_id })
                 .expect("send index cancel"),
         }
-        self.app
-            .poll_index_response_with_budget_for_test(ENDURANCE_RESPONSE_DRAIN_BUDGET);
+        self.poll_index_responses_and_track_consumption();
         self.app.poll_search_response();
         self.app.dispatch_index_queue();
     }
@@ -477,11 +535,11 @@ impl StatefulHarness {
                 entries: vec![entry],
             },
         };
+        self.submitted_index_responses.push_back(request_id);
         self.index_responses
             .send(response)
             .expect("send index data");
-        self.app
-            .poll_index_response_with_budget_for_test(ENDURANCE_RESPONSE_DRAIN_BUDGET);
+        self.poll_index_responses_and_track_consumption();
         self.app.poll_search_response();
         self.app.dispatch_index_queue();
     }
@@ -639,14 +697,14 @@ impl StatefulHarness {
 
     fn deliver_stale_index(&mut self) {
         let request_id = self.take_stale_request_id();
+        self.submitted_index_responses.push_back(request_id);
         self.index_responses
             .send(IndexResponse::Finished {
                 request_id,
                 source: IndexSource::Walker,
             })
             .expect("send stale index");
-        self.app
-            .poll_index_response_with_budget_for_test(ENDURANCE_RESPONSE_DRAIN_BUDGET);
+        self.poll_index_responses_and_track_consumption();
     }
 
     fn deliver_stale_search(&mut self) {

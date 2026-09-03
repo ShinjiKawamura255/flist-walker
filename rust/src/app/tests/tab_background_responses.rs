@@ -20,22 +20,107 @@ fn collect_drop_threads_until(
     threads
 }
 
-fn settle_background_finish_with_frame_budget(
+const BACKGROUND_FINALIZATION_FRAME_LIMIT: usize = 2_000;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct BackgroundFinalizationProgress {
+    initial_remaining: usize,
+    pending_remaining: usize,
+    continuation_remaining: usize,
+    completed: usize,
+    filter_cursor: usize,
+    filtered: usize,
+    kind_cursor: usize,
+    unresolved_kinds: usize,
+    scratch_reclaimed: bool,
+}
+
+#[derive(Clone, Debug)]
+struct BackgroundFinalizationFrame {
+    elapsed: Duration,
+    before: Option<BackgroundFinalizationProgress>,
+    after: Option<BackgroundFinalizationProgress>,
+}
+
+#[derive(Clone, Copy)]
+enum BackgroundFinalizationTarget {
+    Removed,
+    FilterCursorAtLeast(usize),
+    TabFinishSettled,
+}
+
+fn background_finalization_progress(
+    app: &FlistWalkerApp,
+    request_id: u64,
+) -> Option<BackgroundFinalizationProgress> {
+    app.shell
+        .indexing
+        .background_finalizations
+        .get(&request_id)
+        .map(|state| BackgroundFinalizationProgress {
+            initial_remaining: state.initial_entries.len(),
+            pending_remaining: state.pending_entries.len(),
+            continuation_remaining: state.continuation_entries.len(),
+            completed: state.completed_entries.len(),
+            filter_cursor: state.filter_cursor,
+            filtered: state.filtered_entries.as_ref().map_or(0, Vec::len),
+            kind_cursor: state.kind_cursor,
+            unresolved_kinds: state.unresolved_kind_paths.len(),
+            scratch_reclaimed: state.scratch_reclaimed,
+        })
+}
+
+fn background_finalization_target_reached(
+    app: &FlistWalkerApp,
+    tab_index: usize,
+    request_id: u64,
+    target: BackgroundFinalizationTarget,
+) -> bool {
+    match target {
+        BackgroundFinalizationTarget::Removed => !app
+            .shell
+            .indexing
+            .background_finalizations
+            .contains_key(&request_id),
+        BackgroundFinalizationTarget::FilterCursorAtLeast(minimum) => app
+            .shell
+            .indexing
+            .background_finalizations
+            .get(&request_id)
+            .is_some_and(|state| state.filter_cursor >= minimum),
+        BackgroundFinalizationTarget::TabFinishSettled => app
+            .shell
+            .tabs
+            .get(tab_index)
+            .is_some_and(|tab| tab.index_state.pending_index_finish.is_none()),
+    }
+}
+
+fn assert_background_finalization_progress(
+    request_id: u64,
+    frame: usize,
+    before: Option<BackgroundFinalizationProgress>,
+    after: Option<BackgroundFinalizationProgress>,
+) {
+    assert_ne!(
+        before, after,
+        "background finalization stalled: request_id={request_id}, frame={frame}, progress={before:?}"
+    );
+}
+
+fn drive_background_finalization_with_frame_budget(
     app: &mut FlistWalkerApp,
     tab_index: usize,
     request_id: u64,
     source: IndexSource,
-) -> Vec<Duration> {
-    let mut frame_times = Vec::new();
-    for _ in 0..2_000 {
-        if app
-            .shell
-            .tabs
-            .get(tab_index)
-            .is_some_and(|tab| tab.index_state.pending_index_finish.is_none())
-        {
-            return frame_times;
+    target: BackgroundFinalizationTarget,
+) -> Vec<BackgroundFinalizationFrame> {
+    let mut frames = Vec::new();
+    for frame in 0..BACKGROUND_FINALIZATION_FRAME_LIMIT {
+        if background_finalization_target_reached(app, tab_index, request_id, target) {
+            return frames;
         }
+        let before = background_finalization_progress(app, request_id);
         let started = Instant::now();
         app.handle_background_index_response(
             tab_index,
@@ -44,9 +129,58 @@ fn settle_background_finish_with_frame_budget(
                 source: source.clone(),
             },
         );
-        frame_times.push(started.elapsed());
+        let elapsed = started.elapsed();
+        let after = background_finalization_progress(app, request_id);
+        if !background_finalization_target_reached(app, tab_index, request_id, target) {
+            assert_background_finalization_progress(request_id, frame, before, after);
+        }
+        frames.push(BackgroundFinalizationFrame {
+            elapsed,
+            before,
+            after,
+        });
     }
-    panic!("background finalization did not settle within the frame bound");
+    panic!(
+        "background finalization exceeded frame bound: request_id={request_id}, tab_index={tab_index}, frames={BACKGROUND_FINALIZATION_FRAME_LIMIT}, progress={:?}",
+        background_finalization_progress(app, request_id)
+    );
+}
+
+fn settle_background_finish_with_frame_budget(
+    app: &mut FlistWalkerApp,
+    tab_index: usize,
+    request_id: u64,
+    source: IndexSource,
+) -> Vec<Duration> {
+    drive_background_finalization_with_frame_budget(
+        app,
+        tab_index,
+        request_id,
+        source,
+        BackgroundFinalizationTarget::TabFinishSettled,
+    )
+    .into_iter()
+    .map(|frame| frame.elapsed)
+    .collect()
+}
+
+#[test]
+fn tc_207_stalled_background_finalization_guard_fails_deterministically_regression() {
+    let stalled = BackgroundFinalizationProgress {
+        initial_remaining: 10,
+        pending_remaining: 0,
+        continuation_remaining: 0,
+        completed: 0,
+        filter_cursor: 0,
+        filtered: 0,
+        kind_cursor: 0,
+        unresolved_kinds: 0,
+        scratch_reclaimed: false,
+    };
+    let failure = std::panic::catch_unwind(|| {
+        assert_background_finalization_progress(207, 3, Some(stalled), Some(stalled));
+    });
+    assert!(failure.is_err());
 }
 
 #[test]
@@ -1278,33 +1412,21 @@ fn tc_207_background_finished_commits_100k_default_snapshot_within_ui_budget() {
         .index_state
         .pending_index_finish
         .is_some());
-    let mut prior_completed = staged.completed_entries.len();
-    let mut paced_frames = 0usize;
-    while app
-        .shell
-        .indexing
-        .background_finalizations
-        .contains_key(&request_id)
-    {
-        app.handle_background_index_response(
-            0,
-            IndexResponse::Finished {
-                request_id,
-                source: IndexSource::FileList(root.join("FileList.txt")),
-            },
-        );
-        paced_frames = paced_frames.saturating_add(1);
-        if let Some(staged) = app.shell.indexing.background_finalizations.get(&request_id) {
-            let added = staged
-                .completed_entries
-                .len()
-                .saturating_sub(prior_completed);
+    let frames = drive_background_finalization_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+        BackgroundFinalizationTarget::Removed,
+    );
+    for frame in &frames {
+        if let (Some(before), Some(after)) = (frame.before, frame.after) {
+            let added = after.completed.saturating_sub(before.completed);
             assert!(added <= 2_048, "one frame assembled {added} entries");
-            prior_completed = staged.completed_entries.len();
         }
     }
     assert!(
-        paced_frames > 1,
+        frames.len() > 1,
         "100k finalization must span multiple frames"
     );
     let tab = app.shell.tabs.get(0).expect("completed background tab");
@@ -1559,31 +1681,25 @@ fn tc_207_late_filter_policy_change_reclaims_old_output_off_ui() {
             source: IndexSource::FileList(root.join("FileList.txt")),
         },
     );
-    let mut prior_filter_cursor = 0usize;
-    let mut filter_frames = 0usize;
-    while app
-        .shell
-        .indexing
-        .background_finalizations
-        .get(&request_id)
-        .is_some_and(|state| state.filter_cursor < 50_000)
-    {
-        app.handle_background_index_response(
-            0,
-            IndexResponse::Finished {
-                request_id,
-                source: IndexSource::FileList(root.join("FileList.txt")),
-            },
-        );
-        if let Some(state) = app.shell.indexing.background_finalizations.get(&request_id) {
-            let advanced = state.filter_cursor.saturating_sub(prior_filter_cursor);
-            assert!(advanced <= 2_048, "one frame filtered {advanced} entries");
-            if advanced > 0 {
-                filter_frames = filter_frames.saturating_add(1);
+    let frames = drive_background_finalization_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+        BackgroundFinalizationTarget::FilterCursorAtLeast(50_000),
+    );
+    let filter_frames = frames
+        .iter()
+        .filter(|frame| {
+            if let (Some(before), Some(after)) = (frame.before, frame.after) {
+                let advanced = after.filter_cursor.saturating_sub(before.filter_cursor);
+                assert!(advanced <= 2_048, "one frame filtered {advanced} entries");
+                advanced > 0
+            } else {
+                false
             }
-            prior_filter_cursor = state.filter_cursor;
-        }
-    }
+        })
+        .count();
     assert!(filter_frames > 1);
     assert!(app
         .shell
@@ -1674,21 +1790,13 @@ fn tc_207_late_filter_policy_change_rolls_back_while_reclaimer_is_full() {
             source: IndexSource::FileList(root.join("FileList.txt")),
         },
     );
-    while app
-        .shell
-        .indexing
-        .background_finalizations
-        .get(&request_id)
-        .is_some_and(|state| state.filter_cursor < 50_000)
-    {
-        app.handle_background_index_response(
-            0,
-            IndexResponse::Finished {
-                request_id,
-                source: IndexSource::FileList(root.join("FileList.txt")),
-            },
-        );
-    }
+    let _ = drive_background_finalization_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::FileList(root.join("FileList.txt")),
+        BackgroundFinalizationTarget::FilterCursorAtLeast(50_000),
+    );
     let (cursor_before, output_before) = app
         .shell
         .indexing
@@ -1793,32 +1901,26 @@ fn tc_207_background_finished_walker_kind_queue_settles_incrementally() {
             source: IndexSource::Walker,
         },
     );
-    let mut previous_kind_cursor = 0usize;
-    let mut kind_frames = 0usize;
-    while app
-        .shell
-        .indexing
-        .background_finalizations
-        .contains_key(&request_id)
-    {
-        let started = Instant::now();
-        app.handle_background_index_response(
-            0,
-            IndexResponse::Finished {
-                request_id,
-                source: IndexSource::Walker,
-            },
-        );
-        assert!(started.elapsed() < Duration::from_millis(100));
-        if let Some(state) = app.shell.indexing.background_finalizations.get(&request_id) {
-            let advanced = state.kind_cursor.saturating_sub(previous_kind_cursor);
-            assert!(advanced <= 2_048, "one frame scanned {advanced} kinds");
-            if advanced > 0 {
-                kind_frames = kind_frames.saturating_add(1);
+    let frames = drive_background_finalization_with_frame_budget(
+        &mut app,
+        0,
+        request_id,
+        IndexSource::Walker,
+        BackgroundFinalizationTarget::Removed,
+    );
+    let kind_frames = frames
+        .iter()
+        .filter(|frame| {
+            assert!(frame.elapsed < Duration::from_millis(100));
+            if let (Some(before), Some(after)) = (frame.before, frame.after) {
+                let advanced = after.kind_cursor.saturating_sub(before.kind_cursor);
+                assert!(advanced <= 2_048, "one frame scanned {advanced} kinds");
+                advanced > 0
+            } else {
+                false
             }
-            previous_kind_cursor = state.kind_cursor;
-        }
-    }
+        })
+        .count();
     assert!(kind_frames > 1);
     let tab = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(tab.result_state.committed.all_entries.len(), 100_000);
