@@ -919,6 +919,79 @@ fn tc_152_index_workers_bound_total_to_four() {
 }
 
 #[test]
+fn tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regression() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(1, 1), (2, 2), (3, 3)])));
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let (started_tx, started_rx) = mpsc::channel();
+    let resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync> = {
+        let gate = Arc::clone(&gate);
+        Arc::new(move |root| {
+            started_tx.send(()).expect("signal root resolution");
+            let (lock, ready) = &*gate;
+            let mut open = lock.lock().expect("lock gate");
+            while !*open {
+                open = ready.wait(open).expect("wait gate");
+            }
+            root.to_path_buf()
+        })
+    };
+    let mailboxes = test_response_mailboxes();
+    let (tx, _rx, _returned_mailboxes, handles) = spawn_index_worker_with(
+        Arc::clone(&shutdown),
+        latest_request_ids,
+        Arc::clone(&mailboxes),
+        resolve_root,
+    );
+    let request = |request_id| IndexRequest {
+        request_id,
+        tab_id: request_id,
+        root: PathBuf::from(format!("missing-root-{request_id}")),
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+    };
+    for request_id in 1..=3 {
+        establish_prequeued_mailbox_invariant(&mailboxes, request_id);
+    }
+
+    tx.send(request(1)).expect("send first index request");
+    tx.send(request(2)).expect("send second index request");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("first worker acquired request mailbox");
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("second worker acquired request mailbox");
+    {
+        let mailboxes = mailboxes.lock().expect("mailboxes");
+        mailboxes.get(&1).expect("first mailbox").close();
+        mailboxes.get(&2).expect("second mailbox").close();
+    }
+    tx.send(request(3))
+        .expect("queue request after both request mailboxes close");
+
+    let (lock, ready) = &*gate;
+    *lock.lock().expect("lock gate") = true;
+    ready.notify_all();
+
+    assert!(matches!(
+        recv_index_response(&mailboxes, 3, Duration::from_secs(1)),
+        IndexResponse::Started {
+            request_id: 3,
+            source: IndexSource::Walker,
+        }
+    ));
+
+    shutdown.store(true, Ordering::Relaxed);
+    drop(tx);
+    for handle in handles {
+        handle.join().expect("join index worker");
+    }
+}
+
+#[test]
 fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
     let shutdown = Arc::new(AtomicBool::new(false));
     let root_resolve_calls = Arc::new(AtomicUsize::new(0));

@@ -831,7 +831,9 @@ fn spawn_index_worker_with(
                             request_id = req.request_id,
                             "worker response receiver closed before empty start"
                         );
-                        break;
+                        // Request mailboxes are closed during normal tab/root lifecycle
+                        // cleanup. Their lifetime must not terminate the resident worker.
+                        continue;
                     }
                     if tx_res_worker
                         .send(IndexResponse::Finished {
@@ -847,7 +849,7 @@ fn spawn_index_worker_with(
                             request_id = req.request_id,
                             "worker response receiver closed before empty finish"
                         );
-                        break;
+                        continue;
                     }
                     trace_worker_snapshot(
                         inflight.load(),
@@ -936,7 +938,7 @@ fn spawn_index_worker_with(
                                 request_id = req.request_id,
                                 "worker response receiver closed before finish"
                             );
-                            break;
+                            continue;
                         }
                         trace_worker_snapshot(
                             inflight.load(),
@@ -996,7 +998,7 @@ fn spawn_index_worker_with(
                                 request_id = req.request_id,
                                 "worker response receiver closed before failure"
                             );
-                            break;
+                            continue;
                         }
                         trace_worker_snapshot(
                             inflight.load(),

@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: request mailbox closure preserves resident index capacity
+
+- Scenario: refresh、root change、tab close が、worker が取得済みの request-scoped mailbox を通常 cleanup で閉じる。隣接する2要求で同時に起きると、mailbox への `Started` / data / terminal publish は失敗する。
+- Expected Behavior: publish failure はその要求だけを終了し、常駐する2 index worker は次の要求を処理できる。shutdown で request receiver を閉じた場合だけ worker loop を終了する。
+- Non-goals: 閉じた mailbox への応答再送、cleanup 済み要求の terminal 復元、index worker 数や mailbox 容量の変更。
+- Related Tests: TC-206, `tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regression`。
+- Notes for Future Changes: request mailbox の `Closed` / `SlotOccupied` は worker endpoint の切断と同一視しない。index response publish の失敗経路を変更した場合は、2 worker が隣接して mailbox close を受けた後の後続要求を必ず検証する。
+
 ### Regression Guard: restored-tab job and resource ownership
 - Scenario: active priority is restored by preempting every background request or moving background batches into an unbounded deferred queue; closed/open-inactive tabs retain every heavy snapshot; refresh clears the last-good view.
 - Expected: Active + sole Warm scheduling, ordered request-scoped bounded mailboxes, lifecycle plus optional committed snapshot, common live/closed LRU, engagement-qualified Recent Inactive soft protection with a hard bound, and bounded off-UI reclaimer satisfy TC-203 through TC-211.
