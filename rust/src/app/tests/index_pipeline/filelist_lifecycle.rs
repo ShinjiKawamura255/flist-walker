@@ -1187,6 +1187,104 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
 }
 
 #[test]
+fn tc_207_evicted_selection_survives_partial_empty_query_miss_and_restores_later_regression() {
+    let root = test_root("evicted-selection-partial-empty-query");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("first.txt");
+    let selected = root.join("selected.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(32);
+    app.shell.indexing.in_progress = true;
+    app.shell.runtime.evicted_selected_path = Some(selected.clone());
+
+    tx.send(IndexResponse::Batch {
+        request_id: 32,
+        entries: vec![IndexEntry {
+            path: first,
+            kind: EntryKind::file(),
+            kind_known: true,
+        }],
+    })
+    .expect("send partial index batch");
+    app.poll_index_response();
+
+    assert_eq!(
+        app.shell.runtime.evicted_selected_path.as_ref(),
+        Some(&selected),
+        "a partial miss must retain the restore intent"
+    );
+
+    tx.send(IndexResponse::Batch {
+        request_id: 32,
+        entries: vec![IndexEntry {
+            path: selected.clone(),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }],
+    })
+    .expect("send selected path in later batch");
+    app.poll_index_response();
+
+    assert_eq!(
+        app.shell.runtime.current_row.and_then(|row| app
+            .shell
+            .runtime
+            .results
+            .get(row)
+            .map(|(path, _)| path)),
+        Some(&selected)
+    );
+    assert!(app.shell.runtime.evicted_selected_path.is_none());
+
+    tx.send(IndexResponse::Finished {
+        request_id: 32,
+        source: IndexSource::Walker,
+    })
+    .expect("send index finished");
+    app.poll_index_response();
+
+    assert!(!app.shell.indexing.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_empty_query_terminal_absence_clears_evicted_selection_intent_regression() {
+    let root = test_root("evicted-selection-empty-query-absence");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(33);
+    app.shell.indexing.in_progress = true;
+    app.shell.runtime.evicted_selected_path = Some(root.join("selected.txt"));
+
+    tx.send(IndexResponse::Batch {
+        request_id: 33,
+        entries: vec![IndexEntry {
+            path: root.join("other.txt"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }],
+    })
+    .expect("send partial index batch");
+    app.poll_index_response();
+    assert!(app.shell.runtime.evicted_selected_path.is_some());
+
+    tx.send(IndexResponse::Finished {
+        request_id: 33,
+        source: IndexSource::Walker,
+    })
+    .expect("send index finished");
+    app.poll_index_response();
+
+    assert!(!app.shell.indexing.in_progress);
+    assert!(app.shell.runtime.evicted_selected_path.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn status_line_prefers_current_index_count_while_indexing() {
     let root = test_root("status-line-current-index-count");
     fs::create_dir_all(&root).expect("create dir");

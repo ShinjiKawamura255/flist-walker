@@ -66,8 +66,8 @@ pub(super) fn apply_results_with_selection_policy(
     keep_scroll_position: bool,
     preserve_selected_path: bool,
 ) {
-    let evicted_selected_path = app.shell.runtime.evicted_selected_path.take();
-    let selected_path = evicted_selected_path.or_else(|| {
+    let evicted_selected_path = app.shell.runtime.evicted_selected_path.clone();
+    let selected_path = evicted_selected_path.clone().or_else(|| {
         preserve_selected_path
             .then(|| {
                 app.shell.runtime.current_row.and_then(|row| {
@@ -88,23 +88,29 @@ pub(super) fn apply_results_with_selection_policy(
         app.shell.worker_bus.preview.clear_request();
     } else {
         let previous_row = normalized_result_row(previous_row, app.shell.runtime.results.len());
-        app.set_current_row(
-            selected_path
-                .and_then(|selected| {
-                    app.shell
-                        .runtime
-                        .results
-                        .iter()
-                        .position(|(path, _)| *path == selected)
-                })
-                .or(previous_row),
-        );
+        let selected_row = selected_path.as_ref().and_then(|selected| {
+            app.shell
+                .runtime
+                .results
+                .iter()
+                .position(|(path, _)| path == selected)
+        });
+        if evicted_selected_path.is_some() && selected_row.is_some() {
+            app.shell.runtime.evicted_selected_path = None;
+        }
+        app.set_current_row(selected_row.or(previous_row));
         app.request_preview_for_current();
         if !keep_scroll_position {
             app.request_scroll_to_current();
         }
     }
     app.refresh_status_line();
+}
+
+pub(super) fn clear_unrestored_evicted_selection(app: &mut FlistWalkerApp) {
+    // Incremental index/search snapshots may not contain the restored path yet.
+    // Discard the intent only after a successful authoritative snapshot has missed it.
+    app.shell.runtime.evicted_selected_path = None;
 }
 
 pub(super) fn apply_background_search_response(
@@ -123,6 +129,7 @@ pub(super) fn apply_background_search_response(
     };
     let previous_path = selected_tab_path(tab).cloned();
     tab.clear_search_request_state();
+    let response_failed = response.error.is_some();
     tab.notice = response
         .error
         .map(|error| format!("Search failed: {error}"))
@@ -134,13 +141,17 @@ pub(super) fn apply_background_search_response(
     tab.result_state.result_sort_mode = response.sort_mode;
     tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
-    if let Some(selected) = tab.result_state.evicted_selected_path.take() {
-        tab.result_state.committed.current_row = tab
+    if let Some(selected) = tab.result_state.evicted_selected_path.clone() {
+        let selected_row = tab
             .result_state
             .committed
             .results
             .iter()
-            .position(|(path, _)| *path == selected)
+            .position(|(path, _)| *path == selected);
+        if selected_row.is_some() || (!tab.index_state.index_in_progress && !response_failed) {
+            tab.result_state.evicted_selected_path = None;
+        }
+        tab.result_state.committed.current_row = selected_row
             .or_else(|| normalized_result_row(None, tab.result_state.committed.results.len()));
         if tab.result_state.committed.results.is_empty() {
             clear_tab_result_selection(tab);
@@ -166,6 +177,7 @@ pub(super) fn apply_active_search_response(
         return false;
     }
     app.shell.search.clear_active_request_state();
+    let response_failed = response.error.is_some();
     if let Some(error) = response.error {
         app.set_notice(format!("Search failed: {error}"));
     } else {
@@ -175,6 +187,9 @@ pub(super) fn apply_active_search_response(
     app.shell.runtime.result_sort_mode = response.sort_mode;
     app.shell.runtime.result_sort_scope = response.sort_scope;
     app.replace_results_snapshot(response.results, false);
+    if !app.shell.indexing.in_progress && !response_failed {
+        clear_unrestored_evicted_selection(app);
+    }
     if matches!(app.shell.indexing.build.index.source, IndexSource::Walker) {
         // Search results can arrive after index completion. Queue kind resolution
         // from the newly installed result snapshot so deferred LINK entries are

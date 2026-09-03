@@ -2969,9 +2969,39 @@ fn tc_207_background_search_restores_evicted_selected_path() {
         let tab = app.shell.tabs.get_mut(0).expect("background tab");
         tab.query_state.query = "selected".to_string();
         tab.result_state.evicted_selected_path = Some(selected.clone());
+        tab.index_state.index_in_progress = true;
         tab.pending_request_id = Some(707);
         tab.search_in_progress = true;
     }
+
+    app.apply_background_search_response(
+        background_tab_id,
+        SearchResponse {
+            request_id: 706,
+            results: vec![(first.clone(), 2.0)],
+            total_match_count: 1,
+            sort_mode: ResultSortMode::Score,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        },
+    );
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .expect("background tab")
+            .result_state
+            .evicted_selected_path
+            .as_ref(),
+        Some(&selected),
+        "background partial search must retain the restore intent"
+    );
+    app.shell
+        .tabs
+        .get_mut(0)
+        .expect("background tab")
+        .index_state
+        .index_in_progress = false;
 
     app.apply_background_search_response(
         background_tab_id,

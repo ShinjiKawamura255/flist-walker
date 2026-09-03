@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: evicted selection survives partial result snapshots
+
+- Scenario: Evicted tab の再 index 中、保存した selected path より前の batch だけで empty-query Results を更新する。または non-empty query の増分 search response が selected path をまだ含まない。
+- Expected Behavior: partial snapshot の miss では selection restore intent を保持し、後続 snapshot に path が現れた時点でその行へ復元する。同 generation の成功した terminal index snapshot または index 完了後の authoritative search response にも path がなければ intent を破棄する。active/background の search 経路で同じ契約を維持する。
+- Non-goals: limit 外の path の強制表示、失敗した search response での intent 破棄、root/query 境界を越えた selection 復元。
+- Related Tests: TC-207, `tc_207_evicted_selection_survives_partial_empty_query_miss_and_restores_later_regression`, `tc_207_empty_query_terminal_absence_clears_evicted_selection_intent_regression`, `tc_207_evicted_selection_survives_partial_search_miss_and_restores_later_regression`, `tc_207_authoritative_search_absence_clears_evicted_selection_intent_regression`, `tc_207_background_search_restores_evicted_selected_path`。
+- Notes for Future Changes: incremental result reducer は restore intent を最初の miss で `take()` しない。intent の破棄は path match または generation の authoritative completion に限定する。
+
 ### Regression Guard: request mailbox closure preserves resident index capacity
 
 - Scenario: refresh、root change、tab close が、worker が取得済みの request-scoped mailbox を通常 cleanup で閉じる。隣接する2要求で同時に起きると、mailbox への `Started` / data / terminal publish は失敗する。
