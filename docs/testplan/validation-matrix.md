@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: Walker classification perf isolates per-entry metadata cost
+
+- Scenario: 深い directory-heavy fixture では両経路に共通する再帰 `read_dir` が計測の大半を占め、通常 entry の追加 metadata probe を除いた効果が環境差で埋もれて 1.25x gate が不安定になる。
+- Expected Behavior: 計測区間外で shallow/file-heavy fixture を構築し、両経路を warm-up 後に交互順で7回測定した median を比較する。候補件数の一致と既存の 1.25x 下限は維持する。
+- Non-goals: しきい値の緩和、fixture 作成時間の計測、特殊 entry や symlink の分類契約変更。
+- Related Tests: TC-083、`perf_walker_classification_is_faster_than_eager_metadata_resolution`。
+- Notes for Future Changes: 再帰方式そのものを比較する場合はこの分類 gate に共有 traversal cost を混ぜず、adaptive walker matrix を使う。
+
 ### Regression Guard: incremental-finalization tests are bounded and progress-checked
 
 - Scenario: 100k entry の background finalization test が `background_finalizations` の消滅または cursor 到達まで無期限に loop し、production の進捗停止時に test process 自体が終了しない。
