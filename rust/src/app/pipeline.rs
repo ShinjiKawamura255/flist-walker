@@ -1,6 +1,7 @@
 use super::{
-    BackgroundIndexState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry, IndexRequest,
-    IndexResponse, IndexSource, PendingActiveIndexFinish, PipelineOwner, ResultSortMode,
+    result_reducer, BackgroundIndexState, Entry, FlistWalkerApp, IndexCoordinator, IndexEntry,
+    IndexRequest, IndexResponse, IndexSource, PendingActiveIndexFinish, PipelineOwner,
+    ResultSortMode,
 };
 use crate::app::index_coordinator::IndexResponseRoute;
 use crate::app::index_response_arbitration::FrameMailboxArbitrator;
@@ -1529,6 +1530,10 @@ impl FlistWalkerApp {
             } else {
                 self.update_results();
             }
+        }
+
+        if self.shell.runtime.query_state.query.trim().is_empty() {
+            result_reducer::clear_unrestored_evicted_selection(self);
         }
 
         if self.shell.runtime.query_state.query.trim().is_empty()

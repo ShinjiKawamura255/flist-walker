@@ -81,6 +81,85 @@ fn search_response_requeues_unknown_walker_result_kind() {
 }
 
 #[test]
+fn tc_207_evicted_selection_survives_partial_search_miss_and_restores_later_regression() {
+    let root = test_root("evicted-selection-partial-search");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("first.txt");
+    let selected = root.join("selected.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "selected".to_string());
+    let (tx, rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search.rx = rx;
+    app.shell.indexing.in_progress = true;
+    app.shell.runtime.evicted_selected_path = Some(selected.clone());
+    app.shell.search.set_pending_request_id(Some(72));
+    app.shell.search.set_in_progress(true);
+
+    tx.send(SearchResponse {
+        request_id: 72,
+        results: vec![(first, 1.0)],
+        total_match_count: 1,
+        sort_mode: ResultSortMode::Score,
+        sort_scope: ResultSortScope::ShownResults,
+        error: None,
+    })
+    .expect("send partial search response");
+    app.poll_search_response();
+
+    assert_eq!(
+        app.shell.runtime.evicted_selected_path.as_ref(),
+        Some(&selected),
+        "an indexing-time search miss is not authoritative"
+    );
+
+    app.shell.indexing.in_progress = false;
+    app.shell.search.set_pending_request_id(Some(73));
+    app.shell.search.set_in_progress(true);
+    tx.send(SearchResponse {
+        request_id: 73,
+        results: vec![(selected.clone(), 2.0)],
+        total_match_count: 1,
+        sort_mode: ResultSortMode::Score,
+        sort_scope: ResultSortScope::ShownResults,
+        error: None,
+    })
+    .expect("send final search response");
+    app.poll_search_response();
+
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert_eq!(app.shell.runtime.results[0].0, selected);
+    assert!(app.shell.runtime.evicted_selected_path.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_authoritative_search_absence_clears_evicted_selection_intent_regression() {
+    let root = test_root("evicted-selection-authoritative-absence");
+    fs::create_dir_all(&root).expect("create dir");
+    let selected = root.join("selected.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "selected".to_string());
+    let (tx, rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search.rx = rx;
+    app.shell.indexing.in_progress = false;
+    app.shell.runtime.evicted_selected_path = Some(selected);
+    app.shell.search.set_pending_request_id(Some(74));
+    app.shell.search.set_in_progress(true);
+
+    tx.send(SearchResponse {
+        request_id: 74,
+        results: vec![(root.join("other.txt"), 1.0)],
+        total_match_count: 1,
+        sort_mode: ResultSortMode::Score,
+        sort_scope: ResultSortScope::ShownResults,
+        error: None,
+    })
+    .expect("send authoritative search response");
+    app.poll_search_response();
+
+    assert!(app.shell.runtime.evicted_selected_path.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn stale_search_response_is_ignored_after_index_refresh() {
     let root = test_root("stale-search-after-refresh");
     fs::create_dir_all(&root).expect("create dir");
