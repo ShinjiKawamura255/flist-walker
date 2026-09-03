@@ -408,7 +408,11 @@ fn execute_external_command_with_budget(
         }
         let mut batch_paths = Vec::with_capacity(range.len());
         for target in &authorized.targets[range.clone()] {
-            match reauthorize_action_target(&authorized.canonical_root, target) {
+            match reauthorize_action_target(
+                &authorized.canonical_root,
+                &authorized.lexical_root,
+                target,
+            ) {
                 Ok(path) => batch_paths.push(path),
                 Err(error) => {
                     let mut report = ExecReport::new(

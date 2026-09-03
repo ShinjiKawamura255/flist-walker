@@ -95,7 +95,7 @@ fn execute_selected_notice_normalizes_extended_prefix() {
 }
 
 #[test]
-fn execute_selected_blocks_path_outside_current_root() {
+fn execute_selected_defers_absolute_outside_path_to_worker() {
     let root = test_root("action-block-outside-root");
     let outside_root = test_root("action-block-outside-root-other");
     let outside = outside_root.join("tool.exe");
@@ -112,13 +112,13 @@ fn execute_selected_blocks_path_outside_current_root() {
 
     app.execute_selected();
 
-    assert!(
-        action_rx_req.try_recv().is_err(),
-        "action request must not be enqueued"
-    );
-    assert!(app.shell.runtime.notice.contains("outside current root"));
-    assert!(app.shell.worker_bus.action.pending_request_id.is_none());
-    assert!(!app.shell.worker_bus.action.in_progress);
+    let request = action_rx_req
+        .try_recv()
+        .expect("potentially link-resolved path must reach worker authorization");
+    assert_eq!(request.root, root);
+    assert_eq!(request.paths, vec![outside]);
+    assert!(app.shell.worker_bus.action.pending_request_id.is_some());
+    assert!(app.shell.worker_bus.action.in_progress);
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&outside_root);
 }
@@ -431,6 +431,49 @@ fn tc_050_ui_precheck_rejects_parent_escape_and_defers_safe_or_ambiguous_paths()
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn tc_051_link_root_with_resolved_result_reaches_worker_authorization() {
+    use std::os::unix::fs::symlink;
+
+    let container = test_root("action-linked-root-container");
+    let actual_root = test_root("action-linked-root-target");
+    fs::create_dir_all(&container).expect("create link container");
+    fs::create_dir_all(&actual_root).expect("create actual root");
+    let linked_root = container.join("linked-root");
+    symlink(&actual_root, &linked_root).expect("create root symlink");
+    let selected = actual_root.join("selected.txt");
+    fs::write(&selected, "selected").expect("write selected target");
+    let mut app = FlistWalkerApp::new(linked_root.clone(), 50, String::new());
+    let (action_tx_req, action_rx_req) = bounded_request_channel::<ActionRequest>(8);
+    let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
+    app.shell.worker_bus.action.tx = action_tx_req;
+    app.shell.worker_bus.action.rx = action_rx_res;
+    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.current_row = Some(0);
+
+    app.execute_selected();
+
+    let request = action_rx_req
+        .try_recv()
+        .expect("resolved result under a linked root must reach the worker");
+    assert_eq!(request.root, linked_root);
+    assert_eq!(request.paths, vec![selected.clone()]);
+    assert!(app.shell.worker_bus.action.in_progress);
+    let mut calls = Vec::new();
+    let response = process_action_request_with(request, |path| {
+        calls.push(path.to_path_buf());
+        Ok(())
+    });
+    assert_eq!(
+        calls,
+        vec![selected.canonicalize().expect("canonical target")]
+    );
+    assert!(!response.notice.starts_with("Action blocked:"));
+    let _ = fs::remove_dir_all(&container);
+    let _ = fs::remove_dir_all(&actual_root);
+}
+
 #[test]
 fn tc_050_worker_rejects_mixed_selection_before_executor_call() {
     let root = test_root("action-worker-mixed-root");
@@ -611,7 +654,7 @@ fn tc_050_worker_reports_partial_completion_when_recheck_fails() {
 
 #[cfg(unix)]
 #[test]
-fn tc_051_symlink_escape_is_rejected_but_open_parent_of_file_link_is_allowed() {
+fn tc_051_symlink_targets_lexically_under_root_are_allowed() {
     use std::os::unix::fs::symlink;
 
     let root = test_root("action-worker-symlink-root");
@@ -636,12 +679,11 @@ fn tc_051_symlink_escape_is_rejected_but_open_parent_of_file_link_is_allowed() {
             Ok(())
         },
     );
-    assert!(direct_calls.is_empty());
-    assert!(direct.notice.starts_with("Action blocked:"));
-    assert!(direct.notice.contains(&normalize_path_for_display(&link)));
-    assert!(!direct
-        .notice
-        .contains(&outside_file.to_string_lossy().to_string()));
+    assert_eq!(
+        direct_calls,
+        vec![outside_file.canonicalize().expect("canonical outside file")]
+    );
+    assert!(!direct.notice.starts_with("Action blocked:"));
 
     let mut parent_calls = Vec::new();
     let parent = process_action_request_with(
@@ -679,8 +721,62 @@ fn tc_051_symlink_escape_is_rejected_but_open_parent_of_file_link_is_allowed() {
             Ok(())
         },
     );
-    assert!(directory_calls.is_empty());
-    assert!(directory_response.notice.starts_with("Action blocked:"));
+    assert_eq!(
+        directory_calls,
+        vec![outside_dir
+            .canonicalize()
+            .expect("canonical outside directory")]
+    );
+    assert!(!directory_response.notice.starts_with("Action blocked:"));
+
+    let linked_ancestor = root.join("linked-ancestor");
+    symlink(&outside_root, &linked_ancestor).expect("create linked ancestor");
+    let through_link = linked_ancestor.join("outside.txt");
+    let mut ancestor_calls = Vec::new();
+    let ancestor_response = process_action_request_with(
+        ActionRequest {
+            request_id: 111,
+            root: root.clone(),
+            paths: vec![through_link],
+            open_parent_for_files: false,
+        },
+        |path| {
+            ancestor_calls.push(path.to_path_buf());
+            Ok(())
+        },
+    );
+    assert_eq!(
+        ancestor_calls,
+        vec![outside_file.canonicalize().expect("canonical linked child")]
+    );
+    assert!(!ancestor_response.notice.starts_with("Action blocked:"));
+
+    let first = root.join("first.txt");
+    fs::write(&first, "first").expect("write first target");
+    let alternate_file = outside_root.join("alternate.txt");
+    fs::write(&alternate_file, "alternate").expect("write alternate target");
+    let retargeted_link = root.join("retargeted-link.txt");
+    symlink(&outside_file, &retargeted_link).expect("create retargeted link");
+    let retargeted_link_for_call = retargeted_link.clone();
+    let mut retarget_calls = Vec::new();
+    let retarget_response = process_action_request_with(
+        ActionRequest {
+            request_id: 112,
+            root: root.clone(),
+            paths: vec![first, retargeted_link],
+            open_parent_for_files: false,
+        },
+        |path| {
+            retarget_calls.push(path.to_path_buf());
+            if retarget_calls.len() == 1 {
+                fs::remove_file(&retargeted_link_for_call).expect("remove original link");
+                symlink(&alternate_file, &retargeted_link_for_call).expect("retarget link");
+            }
+            Ok(())
+        },
+    );
+    assert_eq!(retarget_calls.len(), 1);
+    assert!(retarget_response.notice.contains("1 of 2"));
 
     let broken_link = root.join("broken-link");
     symlink(outside_root.join("missing-target"), &broken_link).expect("create broken symlink");
@@ -792,7 +888,7 @@ fn tc_051_windows_worker_accepts_case_and_extended_prefix_for_same_target() {
 #[cfg(windows)]
 #[test]
 #[ignore = "manual Windows junction evidence; requires FLISTWALKER_TC051_* paths"]
-fn tc_051_windows_junction_escape_manual_evidence() {
+fn tc_051_windows_junction_target_manual_evidence() {
     let root =
         PathBuf::from(std::env::var_os("FLISTWALKER_TC051_ROOT").expect("FLISTWALKER_TC051_ROOT"));
     let junction = PathBuf::from(
@@ -802,9 +898,29 @@ fn tc_051_windows_junction_escape_manual_evidence() {
         std::env::var_os("FLISTWALKER_TC051_OUTSIDE").expect("FLISTWALKER_TC051_OUTSIDE"),
     );
     let inside = root.join("inside.txt");
+    let canonical_outside = outside.canonicalize().expect("canonical outside target");
     let mut calls = Vec::new();
 
+    let canonical_root = root.canonicalize().expect("canonical junction root");
+    let resolved_inside = canonical_root.join("inside.txt");
+    let mut resolved_calls = Vec::new();
+    let resolved_response = process_action_request_with(
+        ActionRequest {
+            request_id: 150,
+            root: root.clone(),
+            paths: vec![resolved_inside.clone()],
+            open_parent_for_files: false,
+        },
+        |path| {
+            resolved_calls.push(path.to_path_buf());
+            Ok(())
+        },
+    );
+    assert_eq!(resolved_calls, vec![resolved_inside]);
+    assert!(!resolved_response.notice.starts_with("Action blocked:"));
+
     for open_parent_for_files in [false, true] {
+        calls.clear();
         let response = process_action_request_with(
             ActionRequest {
                 request_id: 151,
@@ -817,17 +933,9 @@ fn tc_051_windows_junction_escape_manual_evidence() {
                 Ok(())
             },
         );
-        assert!(
-            calls.is_empty(),
-            "junction escape must fail preauthorization"
-        );
-        assert!(response.notice.starts_with("Action blocked:"));
-        assert!(
-            !response
-                .notice
-                .contains(&outside.to_string_lossy().to_string()),
-            "notice must not disclose the external canonical destination"
-        );
+        assert_eq!(calls.len(), 2, "both lexical root targets must execute");
+        assert!(!response.notice.starts_with("Action blocked:"));
+        assert_eq!(calls.last(), Some(&canonical_outside));
     }
 }
 

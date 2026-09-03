@@ -24,7 +24,7 @@
 - DES-004 Action Executor
 - 役割: UI の action intent、worker の root confinement、OS 固有の open/execute leaf を分離し、認可済み path だけが OS 境界へ到達する testable seam を保つ。
 - 役割補足: UI は同期 filesystem I/O を行わない `Reject` / `Defer` の字句的 precheck と trusted root を含む request 構築だけを担当する。`Defer` は許可を意味せず、worker の権威的な判定へ必ず送る。
-- 役割補足: action authorization module は action mode から raw effective target と display path を導出し、解決済み root に対する component containment、解決済み execution path の deduplication、execution/display path の分離を担当する。
+- 役割補足: action authorization module は action mode から raw effective target と display path を導出し、字句的 root と解決済み root の両 scope に対する component containment、解決済み execution path の deduplication、execution/display path の分離を担当する。raw target が字句的 root 配下、または解決先が解決済み root 配下なら許可するため、root 自体および root 配下の symlink/junction を OS 間で同じ契約として扱う。
 - 役割補足: Action worker は全 target の fail-closed な事前認可、各 OS 呼び出し直前の再認可、実行順序、途中失敗時の残件停止と partial-completion 通知を担当する。OS leaf は認可済みの解決済み path を実行し、root policy を判断しない。
 - 実装: `rust/src/app/coordinator.rs`, `rust/src/app/input/actions.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/worker/protocol.rs`, `rust/src/app/worker/tasks.rs`, `rust/src/actions.rs`
 

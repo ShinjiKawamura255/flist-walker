@@ -43,28 +43,28 @@
 - MUST: Windows の一般 `.ps1` は既定動作で直接実行してはならず、既定アプリでオープンしなければならない。
 - MUST: 外部コマンドはシェル展開なしで実行する。
 - MUST: Windows で既定アプリ起動やフォルダ表示へパスを渡す際、`&` などの特殊記号をシェル解釈させず、リテラルなパスとして OS へ引き渡す。
-- MUST: UI は filesystem I/O を行わない字句的 precheck だけを実施し、captured root からの逸脱を証明できる入力だけを `Reject` とする。相対パス、大小文字、prefix、非 UTF-8、drive-relative、rooted-without-drive、UNC、verbatim prefix など、字句情報だけでは安全性を確定できない入力は `Defer` として worker へ渡す。
+- MUST: UI は filesystem I/O を行わない字句的 precheck だけを実施する。raw path が captured root から始まり、`.` / `..` の component 正規化によって root 外へ出ることを証明できる場合だけ `Reject` とする。別の absolute prefix に見える path は、link root の解決済み表現である可能性があるため `Defer` として worker へ渡す。相対パス、大小文字、prefix、非 UTF-8、drive-relative、rooted-without-drive、UNC、verbatim prefix など、字句情報だけでは安全性を確定できない入力も `Defer` とする。
 - MUST: action request は、選択内容と同時に取得した trusted root を worker へ渡す。インデクシング経路には root 配下判定を追加しない。
-- MUST: worker は OS への要求を発行する前に、trusted root とすべての effective target を解決し、解決済み path component によって root 配下であることを権威的に検証する。文字列 prefix、lossy 変換、区切り文字置換、手動の大小文字変換を認可判断に使用してはならない。
-- MUST: direct action の effective target は選択対象、open-containing-folder の effective target は通常ファイルまたは file link の字句的な親、ディレクトリまたは directory link/junction 自身とする。解決後の effective target が解決済み root 配下でなければ拒否する。
-- MUST: 複数選択では、すべての effective target の解決と認可が成功するまで OS backend を一度も呼び出してはならない。1 件でも解決不能または root 外なら要求全体を拒否する。
-- MUST: worker は各 backend 呼び出しの直前にも対応する raw effective target を再解決し、root 配下判定を繰り返す。再検証が途中で失敗した場合は残りを実行せず、すでに開始した件数を含む partial completion として通知し、完了済み外部アクションを rollback したと主張してはならない。
+- MUST: worker は OS への要求を発行する前に、trusted root とすべての effective target を解決し、raw effective target が OS-aware な component 比較で字句的 trusted root 配下にあるか、解決済み effective target が解決済み root 配下にある場合だけ権威的に許可する。単純な文字列 prefix や lossy な表示文字列を認可判断に使用してはならない。
+- MUST: direct action の effective target は選択対象、open-containing-folder の effective target は通常ファイルまたは file link の字句的な親、ディレクトリまたは directory link/junction 自身とする。字句上 trusted root 配下に置かれた file/directory link と junction は、解決先が物理的な root 外でも許可する。trusted root 自体が link/junction の場合は、その字句的配下と解決済み配下のどちらの path 表現も許可する。
+- MUST: 複数選択では、すべての effective target の解決と認可が成功するまで OS backend を一度も呼び出してはならない。1 件でも解決不能、または字句的 root と解決済み root のどちらにも属さない場合は要求全体を拒否する。
+- MUST: worker は各 backend 呼び出しの直前にも対応する raw effective target を再解決し、root 配下判定を繰り返す。リンク先を含む execution path が事前認可時から変化した場合、または再検証が途中で失敗した場合は残りを実行せず、すでに開始した件数を含む partial completion として通知し、完了済み外部アクションを rollback したと主張してはならない。
 - MUST: shared action request は trusted root、current-row selection snapshot、request identity、cancellation token を保持する。whole-request の事前認可成功後、単一 backend 呼び出しの直前に freshness/cancel 確認と再認可を行う。root switch または exit cancellation の観測後、新しい backend 呼び出しを開始してはならない。開始済み OS action は不可逆として扱う。
 - MUST: OS backend へ渡す path は最後に認可した解決済み execution path とする。成功/失敗通知は利用者が選択した display path または effective display path を使い、拒否した root 外の解決先を表示してはならない。
-- MUST: root 外パスは一覧表示されていても実行/オープンを拒否し、利用者へ通知する。
-- MUST: UNC root を検索 root とする場合も、解決済みの同一 root 配下は許可し、別 share または root 外は拒否する。
+- MUST: 字句的 root と解決済み root のどちらにも属さないパスは一覧表示されていても実行/オープンを拒否し、利用者へ通知する。
+- MUST: UNC root を検索 root とする場合も、字句的または解決済みの同一 root 配下は許可し、どちらにも属さない別 share または root 外は拒否する。
 
 ### Preconditions / Postconditions
 - Preconditions: 1 件以上の対象と、その選択時点の trusted root が action request に含まれる。
-- Postconditions: 全対象の事前認可が成功した場合だけ、各対象の直前再検証後に解決済み execution path が OS へ渡される。事前認可失敗では backend 呼び出しは 0 件となる。
+- Postconditions: 全対象について字句的または解決済み root 配下として事前認可が成功した場合だけ、各対象の直前再検証後に解決済み execution path が OS へ渡される。事前認可失敗では backend 呼び出しは 0 件となる。
 
 ### Edge / Error
 - 起動失敗時はユーザ向けメッセージを返す。
 - 拡張子関連付け未定義は失敗として通知する。
 - trusted root または effective target を解決できない場合は fail closed とする。
 - open-containing-folder の対象種別を metadata で確定できない場合、壊れた link、未対応の特殊種別は親フォルダへ推測変換せず fail closed とする。worker は事前認可時に使った各 source path の種別と effective target を backend 呼び出し直前に再導出し、変更されていれば残件を停止する。
-- 別ドライブ、別 UNC share、`..` 解決後に root 外となるパス、root 内に置かれた link/junction の解決先が root 外となるパスは拒否する。
-- open-containing-folder で root 内の file link を選び、その link の字句的な親が root 内に解決される場合は、file link の解決先が root 外でも親フォルダの表示を許可する。file link の解決先そのものを開いてはならない。
+- 別ドライブ、別 UNC share、または root 外の path でも、trusted root 自体の link 解決済み表現、字句的 root 配下の link/junction 経由、または解決済み root 配下のいずれかに該当すれば許可する。いずれにも該当しない path と、raw path が trusted root から始まりながら `..` の component 正規化で root 外へ出る path は拒否する。
+- open-containing-folder で root 内の file link を選んだ場合は link の字句的な親を開き、directory link/junction を選んだ場合は解決済み directory を開く。direct action では file/directory link の解決済み target を開く。
 - 最終再検証と OS による利用の間に filesystem object が変化する TOCTOU は完全には排除できない。最後に再解決した path を backend へ渡して露出時間を最小化し、保証範囲を過大に表現しない。
 - OS leaf の詳細エラーは内部 trace に記録し、利用者向け失敗通知へ canonical execution path や OS エラー本文を転記してはならない。通知は対応する display path と、blocked / failed / partial の結果だけを示す。
 
