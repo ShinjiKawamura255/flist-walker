@@ -88,11 +88,24 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn move_history_search_selection(&mut self, delta: isize) {
-        self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        let before = self.shell.runtime.query_state.history_search_current;
         self.shell
             .runtime
             .query_state
             .move_history_search_selection(delta);
+        if self.shell.runtime.query_state.history_search_current != before {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
+    }
+
+    pub(in crate::app) fn select_history_search_result(&mut self, index: usize) {
+        if index >= self.shell.runtime.query_state.history_search_results.len()
+            || self.shell.runtime.query_state.history_search_current == Some(index)
+        {
+            return;
+        }
+        self.shell.runtime.query_state.history_search_current = Some(index);
+        self.shell.tabs.mark_active_tab_meaningfully_engaged();
     }
 
     pub(in crate::app) fn mark_query_edited(&mut self) {

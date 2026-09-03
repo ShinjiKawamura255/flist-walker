@@ -27,6 +27,41 @@ fn clear_query_and_selection_clears_state() {
 }
 
 #[test]
+fn tc_209_clear_pinned_marks_meaningful_interaction_regression() {
+    let root = test_root("clear-pinned-engagement");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.tabs.set_active_tab_index_at(0, Instant::now());
+    app.shell
+        .runtime
+        .pinned_paths
+        .insert(root.join("pinned.txt"));
+    assert!(!app.shell.tabs.active_tab_meaningfully_engaged_for_test());
+
+    app.clear_pinned();
+
+    assert!(app.shell.tabs.active_tab_meaningfully_engaged_for_test());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_209_empty_clear_query_attempt_is_not_meaningful_interaction_regression() {
+    let root = test_root("empty-clear-query-engagement");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.tabs.set_active_tab_index_at(0, Instant::now());
+    app.shell.runtime.results.clear();
+    app.shell.runtime.current_row = None;
+    assert!(app.shell.runtime.query_state.query.is_empty());
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+
+    app.clear_query_and_selection();
+
+    assert!(!app.shell.tabs.active_tab_meaningfully_engaged_for_test());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn startup_requests_query_focus() {
     let root = test_root("startup-focus");
     fs::create_dir_all(&root).expect("create dir");

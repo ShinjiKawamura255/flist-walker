@@ -152,6 +152,9 @@ impl FlistWalkerApp {
 
     /// pinned selection を全解除する。
     pub(in crate::app) fn clear_pinned(&mut self) {
+        if !self.shell.runtime.pinned_paths.is_empty() {
+            self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        }
         self.shell.runtime.pinned_paths.clear();
         self.set_notice("Cleared pinned selections");
     }

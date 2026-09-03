@@ -622,6 +622,14 @@ impl TabSessionState {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn active_tab_meaningfully_engaged_for_test(&self) -> bool {
+        let active_tab_id = self.tabs.get(self.active_tab).map(|tab| tab.id);
+        self.active_tab_engagement.is_some_and(|engagement| {
+            Some(engagement.tab_id) == active_tab_id && engagement.meaningful_interaction
+        })
+    }
+
     pub(super) fn record_active_tab_deactivation_at(&mut self, tab_id: u64, now: Instant) {
         let engagement = self
             .active_tab_engagement
