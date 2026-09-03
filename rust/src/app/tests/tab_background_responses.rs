@@ -1069,6 +1069,96 @@ fn background_empty_query_index_finish_updates_total_match_count() {
 }
 
 #[test]
+fn tc_207_background_empty_terminal_clears_absent_evicted_selection_intent_regression() {
+    let root = test_root("tc-207-background-empty-clears-selection-intent");
+    fs::create_dir_all(&root).expect("create dir");
+    let first = root.join("first.txt");
+    let previously_selected = root.join("previously-selected.txt");
+    fs::write(&first, "first").expect("write first");
+    fs::write(&previously_selected, "selected").expect("write selected");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_res_rx;
+    app.create_new_tab();
+    let background_tab_id = app.shell.tabs.get(0).expect("background tab").id;
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.result_state.evicted_selected_path = Some(previously_selected.clone());
+        tab.index_state.pending_index_request_id = Some(807);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(807, background_tab_id);
+    app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(background_tab_id, 807);
+
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: 807,
+            source: IndexSource::Walker,
+        })
+        .expect("send empty terminal");
+    app.poll_index_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert!(background.result_state.committed.results.is_empty());
+    assert!(background.result_state.evicted_selected_path.is_none());
+
+    {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.index_state.pending_index_request_id = Some(808);
+        tab.index_state.index_in_progress = true;
+    }
+    app.shell
+        .indexing
+        .request_tabs
+        .insert(808, background_tab_id);
+    app.shell
+        .indexing
+        .latest_request_ids
+        .lock()
+        .expect("latest index requests")
+        .insert(background_tab_id, 808);
+    index_res_tx
+        .send(IndexResponse::Batch {
+            request_id: 808,
+            entries: vec![
+                IndexEntry {
+                    path: first.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: previously_selected.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send later batch");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: 808,
+            source: IndexSource::Walker,
+        })
+        .expect("send later terminal");
+    app.poll_index_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(background.result_state.committed.current_row, Some(0));
+    assert_eq!(background.result_state.committed.results[0].0, first);
+    assert!(background.result_state.evicted_selected_path.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn background_tab_search_and_index_responses_do_not_override_active_results() {
     let root = test_root("background-tab-response-isolation");
     fs::create_dir_all(&root).expect("create dir");

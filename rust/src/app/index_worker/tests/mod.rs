@@ -2264,7 +2264,9 @@ fn perf_walker_classification_is_faster_than_eager_metadata_resolution() {
         }
     }
     #[cfg(unix)]
-    let link_target = dataset.join("dir-0").join("main.rs");
+    let link_target = dataset.join("dir-0").join("entry-0.rs");
+    #[cfg(unix)]
+    assert!(link_target.is_file(), "symlink perf target must exist");
     for i in 0..128usize {
         #[cfg(unix)]
         {
