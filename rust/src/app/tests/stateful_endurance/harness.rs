@@ -130,10 +130,20 @@ impl StatefulHarness {
             let response_owners = self.response_owners(event);
             self.apply(event);
             self.capture_requests();
-            if let Some(owners) = response_owners {
+            let after = self.snapshot();
+            if let Some(mut owners) = response_owners {
+                // Completing one response can admit a previously queued request. That
+                // tab becomes an owner only when a new route proves the transfer.
+                owners.extend(
+                    after
+                        .routed_tab_ids
+                        .iter()
+                        .filter(|tab_id| !before.routed_tab_ids.contains(tab_id))
+                        .copied(),
+                );
                 self.assert_other_tab_content_unchanged(
                     &before,
-                    &self.snapshot(),
+                    &after,
                     &owners,
                     seed,
                     step + 1,
@@ -304,26 +314,36 @@ impl StatefulHarness {
 
     fn response_owners(&self, event: &Event) -> Option<HashSet<u64>> {
         let owners = match event {
-            Event::DeliverOldestIndexData(_)
-            | Event::DeliverNewestIndexData(_)
-            | Event::CompleteOldestIndex(_)
-            | Event::CompleteNewestIndex(_)
-            | Event::DeliverStaleIndex => self
-                .app
-                .shell
-                .indexing
-                .request_tabs
-                .values()
-                .copied()
-                .collect(),
-            Event::CompleteOldestSearch | Event::DeliverStaleSearch => self
-                .app
-                .shell
-                .search
-                .request_routes_for_test()
-                .into_iter()
-                .map(|(_, tab_id)| tab_id)
-                .collect(),
+            Event::DeliverOldestIndexData(_) | Event::CompleteOldestIndex(_) => request_owner(
+                self.pending_indexes
+                    .front()
+                    .map(|request| request.request_id),
+                self.app
+                    .shell
+                    .indexing
+                    .request_tabs
+                    .iter()
+                    .map(|(request_id, tab_id)| (*request_id, *tab_id)),
+            ),
+            Event::DeliverNewestIndexData(_) | Event::CompleteNewestIndex(_) => request_owner(
+                self.pending_indexes
+                    .back()
+                    .map(|request| request.request_id),
+                self.app
+                    .shell
+                    .indexing
+                    .request_tabs
+                    .iter()
+                    .map(|(request_id, tab_id)| (*request_id, *tab_id)),
+            ),
+            Event::DeliverStaleIndex => HashSet::new(),
+            Event::CompleteOldestSearch => request_owner(
+                self.pending_searches
+                    .front()
+                    .map(|request| request.request_id),
+                self.app.shell.search.request_routes_for_test(),
+            ),
+            Event::DeliverStaleSearch => HashSet::new(),
             Event::CompleteOldestPreview(_) => self
                 .pending_previews
                 .front()
@@ -374,14 +394,7 @@ impl StatefulHarness {
                     self.failure_context(seed, step, event, after)
                 );
             };
-            let content_unchanged = before_tab.root == after_tab.root
-                && before_tab.query == after_tab.query
-                && before_tab.results_len == after_tab.results_len
-                && before_tab.total_match_count == after_tab.total_match_count
-                && before_tab.current_row == after_tab.current_row
-                && before_tab.results_digest == after_tab.results_digest
-                && (before_tab.notice == after_tab.notice
-                    || is_expected_scheduler_notice_transition(before_tab, after_tab));
+            let content_unchanged = is_allowed_unowned_tab_transition(before_tab, after_tab);
             assert!(
                 content_unchanged,
                 "stateful response changed unrelated tab {}; before={before_tab:?}; after={after_tab:?}; {}",
@@ -723,6 +736,34 @@ impl StatefulHarness {
     }
 }
 
+fn request_owner(
+    request_id: Option<u64>,
+    routes: impl IntoIterator<Item = (u64, u64)>,
+) -> HashSet<u64> {
+    let Some(request_id) = request_id else {
+        return HashSet::new();
+    };
+    routes
+        .into_iter()
+        .filter_map(|(routed_request_id, tab_id)| {
+            (routed_request_id == request_id).then_some(tab_id)
+        })
+        .collect()
+}
+
+fn is_allowed_unowned_tab_transition(
+    before: &TabSemanticSnapshot,
+    after: &TabSemanticSnapshot,
+) -> bool {
+    before.root == after.root
+        && before.query == after.query
+        && before.results_len == after.results_len
+        && before.total_match_count == after.total_match_count
+        && before.current_row == after.current_row
+        && before.results_digest == after.results_digest
+        && (before.notice == after.notice || is_expected_scheduler_notice_transition(before, after))
+}
+
 fn is_expected_scheduler_notice_transition(
     before: &TabSemanticSnapshot,
     after: &TabSemanticSnapshot,
@@ -730,7 +771,8 @@ fn is_expected_scheduler_notice_transition(
     (before.index_pending
         && !after.index_pending
         && after.notice == "Index request dropped due to queue limit")
-        || after.notice == "Waiting for background tab resource reclamation"
+        || (before.reclaim_pending
+            && after.notice == "Waiting for background tab resource reclamation")
 }
 
 pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> SemanticSnapshot {
@@ -781,6 +823,9 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                     current_row: app.shell.runtime.current_row,
                     results_digest: results_digest(&app.shell.runtime.results),
                     notice: app.shell.runtime.notice.clone(),
+                    reclaim_pending: app.shell.indexing.build_reclaim_pending
+                        || app.shell.indexing.pending_finish.is_some()
+                        || app.shell.indexing.root_after_pending_finish.is_some(),
                     index_pending: app.shell.indexing.pending_request_id.is_some()
                         || app.shell.indexing.in_progress,
                     search_pending: app.shell.search.pending_request_id().is_some()
@@ -804,6 +849,9 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                     current_row: tab.result_state.committed.current_row,
                     results_digest: results_digest(&tab.result_state.committed.results),
                     notice: tab.notice.clone(),
+                    reclaim_pending: tab.index_state.build_reclaim_pending
+                        || tab.index_state.pending_index_finish.is_some()
+                        || tab.index_state.root_after_pending_finish.is_some(),
                     index_pending: tab.index_state.pending_index_request_id.is_some()
                         || tab.index_state.index_in_progress,
                     search_pending: tab.pending_request_id.is_some() || tab.search_in_progress,
@@ -890,6 +938,7 @@ mod tests {
             current_row: None,
             results_digest: 0,
             notice: notice.to_string(),
+            reclaim_pending: false,
             index_pending,
             search_pending: false,
             preview_pending: false,
@@ -906,10 +955,30 @@ mod tests {
     }
 
     #[test]
-    fn tc_184_reclaimer_wait_notice_is_expected_scheduler_side_effect() {
+    fn tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression() {
         let before = snapshot(false, "Action completed");
         let after = snapshot(false, "Waiting for background tab resource reclamation");
+        assert!(!is_expected_scheduler_notice_transition(&before, &after));
+    }
+
+    #[test]
+    fn tc_184_reclaimer_wait_notice_requires_matching_pending_transition() {
+        let mut before = snapshot(false, "Refreshing");
+        before.reclaim_pending = true;
+        let after = snapshot(false, "Waiting for background tab resource reclamation");
         assert!(is_expected_scheduler_notice_transition(&before, &after));
+    }
+
+    #[test]
+    fn tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression() {
+        assert_eq!(
+            request_owner(Some(11), [(11, 1), (12, 2)]),
+            HashSet::from([1])
+        );
+        let before = snapshot(false, "ready");
+        let mut after = before.clone();
+        after.root = 1;
+        assert!(!is_allowed_unowned_tab_transition(&before, &after));
     }
 
     #[test]

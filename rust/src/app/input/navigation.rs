@@ -82,7 +82,7 @@ impl FlistWalkerApp {
     pub(in crate::app) fn clear_query_and_selection(&mut self) {
         if !self.shell.runtime.query_state.query.is_empty()
             || !self.shell.runtime.pinned_paths.is_empty()
-            || self.shell.runtime.current_row != Some(0)
+            || (!self.shell.runtime.results.is_empty() && self.shell.runtime.current_row != Some(0))
         {
             self.shell.tabs.mark_active_tab_meaningfully_engaged();
         }

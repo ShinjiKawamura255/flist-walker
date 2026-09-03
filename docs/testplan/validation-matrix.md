@@ -1,6 +1,22 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: stateful response ownership is request-exact
+
+- Scenario: endurance oracle が index/search の全 routed tab を response owner として除外し、実際には応答を消費しない別 tab の mutation を見逃す。または reclaimer 待機の根拠がない notice 変化を scheduler side effect として無条件に許す。
+- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id の route owner だけを一次 owner とし、応答処理後に新規 route が追加された tab だけを証跡付き downstream owner とする。`Waiting for background tab resource reclamation` の notice 例外は、直前 snapshot に対応する reclaim-pending state がある場合だけ認める。
+- Non-goals: worker 完了順序の固定、非応答イベント間の tab mutation 比較、scheduler が正当に追加した新規 route の拒否。
+- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`。
+- Notes for Future Changes: response event を追加する場合は pending request の選択規則と request_id route を同じ owner resolver に接続する。notice 文字列だけで例外化せず、直前 state の因果フラグを snapshot に含める。
+
+### Regression Guard: Recent Inactive engagement follows actual mutations
+
+- Scenario: Clear Selected が PIN を解除しても engagement を記録しない一方、空 Results の Esc、history 先頭/末尾での移動、選択済み history row の再クリックが状態を変えずに engagement を記録する。
+- Expected Behavior: query、selection、PIN、history selection など保護判定対象の状態が実際に変化した時だけ active tab を meaningfully engaged とする。PIN の全解除は非空から空への変更として記録し、境界操作・同一値設定・空状態の clear は記録しない。
+- Non-goals: 2秒以上の active tenure による独立した保護、明示 Refresh の engagement 契約、notice/focus だけの変化を保護対象へ追加すること。
+- Related Tests: TC-209, `tc_209_clear_pinned_marks_meaningful_interaction_regression`, `tc_209_empty_clear_query_attempt_is_not_meaningful_interaction_regression`, `tc_209_history_boundary_attempt_is_not_meaningful_interaction_regression`, `tc_209_same_history_row_click_is_not_meaningful_interaction_regression`。
+- Notes for Future Changes: engagement は UI event の発生箇所ではなく state mutation owner で before/after を比較して記録する。同一値代入や clamp 済み navigation を新しい meaningful interaction として扱わない。
+
 ### Regression Guard: evicted selection survives partial result snapshots
 
 - Scenario: Evicted tab の再 index 中、保存した selected path より前の batch だけで empty-query Results を更新する。または non-empty query の増分 search response が selected path をまだ含まない。

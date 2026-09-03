@@ -1,6 +1,50 @@
 use super::*;
 
 #[test]
+fn tc_209_history_boundary_attempt_is_not_meaningful_interaction_regression() {
+    let root = test_root("history-boundary-engagement");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.tabs.set_active_tab_index_at(0, Instant::now());
+    app.shell.runtime.query_state.query_history = VecDeque::from(["only".to_string()]);
+    app.start_history_search();
+    app.refresh_history_search_results();
+    assert_eq!(
+        app.shell.runtime.query_state.history_search_current,
+        Some(0)
+    );
+
+    app.move_history_search_selection(-1);
+
+    assert_eq!(
+        app.shell.runtime.query_state.history_search_current,
+        Some(0)
+    );
+    assert!(!app.shell.tabs.active_tab_meaningfully_engaged_for_test());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_209_same_history_row_click_is_not_meaningful_interaction_regression() {
+    let root = test_root("same-history-row-engagement");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.tabs.set_active_tab_index_at(0, Instant::now());
+    app.shell.runtime.query_state.query_history = VecDeque::from(["only".to_string()]);
+    app.start_history_search();
+    app.refresh_history_search_results();
+
+    app.select_history_search_result(0);
+
+    assert_eq!(
+        app.shell.runtime.query_state.history_search_current,
+        Some(0)
+    );
+    assert!(!app.shell.tabs.active_tab_meaningfully_engaged_for_test());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn ctrl_r_starts_history_search_with_recent_entries_first() {
     let root = test_root("query-history-search-start");
     fs::create_dir_all(&root).expect("create dir");

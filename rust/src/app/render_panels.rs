@@ -475,8 +475,7 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
             }
 
             if let Some(index) = clicked_row {
-                app.shell.tabs.mark_active_tab_meaningfully_engaged();
-                app.shell.runtime.query_state.history_search_current = Some(index);
+                app.select_history_search_result(index);
             }
             if let Some(index) = accept_row {
                 app.shell.runtime.query_state.history_search_current = Some(index);
