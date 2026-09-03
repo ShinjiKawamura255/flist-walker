@@ -33,10 +33,12 @@
 - MUST: 履歴検索モード中は履歴検索中であることがわかる表記を行い、結果一覧は履歴候補一覧へ切り替える。
 - MUST: 履歴検索モード中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして開始前 query へ戻す。
 - MUST: preset適用、履歴検索の確定・キャンセルなどがquery文字列をprogrammaticに置換した場合、検索欄へfocusを戻し、TextEditのcursorを置換後query末尾へ移動する。
+- MUST: Windows/Linux の `Ctrl+L` と macOS の `Cmd+L` は、通常画面で検索欄の focus を toggle する。同じ shortcut を繰り返すと unfocused → focused → unfocused と遷移しなければならない。
 - MUST: 検索オプションに `Ignore Case` チェックボックスを表示し、既定で有効にする。無効化時は検索結果とハイライトの両方を case-sensitive に切り替える。
 - SHOULD: query 履歴は打鍵ごとではなく、一定時間の無入力または結果移動開始を契機に確定する。
 - SHOULD: IME 合成中の未確定文字列は query 履歴へ保存せず、変換確定後の query のみ履歴対象とする。
 - MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。
+- MUST: `ArrowUp` / `ArrowDown` および有効な `Ctrl+P` / `Ctrl+N` による current row 移動では、移動先が現在の viewport 内にある限り Results の scroll offset を維持する。移動先が viewport 外へ出る場合だけ、current row が見える最小量を scroll し、current row を毎回 viewport 先頭へ固定してはならない。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除を実行する。runtime config の `tab_pin_moves_to_next_row` が `false` または未指定のときは選択行移動を行わず、`true` のときは PIN 固定/解除後に選択行を次行へ進める。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。

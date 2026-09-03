@@ -15,6 +15,14 @@
 - Related Tests: TC-201, `regression_emacs_navigation_and_accept_apply_to_the_preset_picker`, `regression_emacs_preset_picker_shortcuts_respect_the_runtime_setting`, `regression_emacs_navigation_applies_to_the_named_root_manager`, `regression_emacs_cancel_closes_help_only_when_enabled`, `regression_emacs_ctrl_a_and_ctrl_d_edit_the_preset_filter`, `regression_emacs_ctrl_e_and_ctrl_h_edit_preset_editor_fields`, `regression_macos_native_ctrl_b_and_ctrl_f_move_preset_filter_once`, `regression_emacs_ctrl_k_and_ctrl_y_share_the_kill_buffer_in_preset_fields`, `regression_disabled_emacs_setting_prevents_native_ctrl_k_in_preset_fields`, `regression_emacs_text_editing_applies_to_the_gui_history_filter`, `regression_modal_singleline_fields_cannot_bypass_the_shared_emacs_adapter`, `tc_162_tui_emacs_navigation_pin_and_select_follow_runtime_toggle`, `tc_162_tui_emacs_query_editing_uses_the_same_runtime_toggle`, `tc_162_help_overlay_has_precedence_and_ctrl_g_only_closes_it`.
 - Notes for Future Changes: 新しい picker/modal/overlay は GUI の共有 semantic helper または TUI の共有 input command mapping を使い、feature 内で通常キーと Emacs chord の対応を複製しない。新しい単一行入力は共有 text-editing adapter を使い、素の `TextEdit::singleline` で reducer を迂回しない。macOS では egui 自身が `Ctrl+A/E/B/F` を処理するため、共有 adapter は同じ cursor motion を二重適用しない。
 
+### Regression Guard: query focus toggle and result cursor viewport tracking
+
+- Scenario: Primary+L の pending focus flag が TextEdit 描画へ反映されず toggle できない。または仮想化した Results が keyboard 移動のたびに current row の絶対位置を scroll offset として設定し、選択行を viewport 先頭へ固定する。
+- Expected Behavior: Windows/Linux の `Ctrl+L` と macOS の `Cmd+L` は full frame を跨いで検索欄 focus を双方向に toggle する。`ArrowUp` / `ArrowDown` と有効な `Ctrl+P` / `Ctrl+N` は current row を移動し、移動先が既存 viewport 内なら表示開始行を維持し、viewport 外なら見える最小量だけ scroll する。
+- Non-goals: picker/modal が所有する focus、mouse wheel/scroll bar による手動 scroll、PageUp/PageDown のページ移動量、IME composition 中の text editing。
+- Related Tests: TC-212, `regression_primary_l_toggles_query_focus_through_full_frames`, `regression_single_step_selection_does_not_pin_current_row_to_viewport_top`, `results_renderer_processes_only_visible_rows_regression`, `ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused`, `regression_arrow_keys_move_selection_even_when_query_focused`.
+- Notes for Future Changes: shortcut dispatch は TextEdit 描画前に focus request を確定し、Results の仮想化は persisted scroll offset と viewport 境界から visibility clamp を計算する。current row の絶対 row offset を毎 key event に無条件適用しない。
+
 ### Regression Guard: update installation failure modal input ownership
 
 - Scenario: automatic update failure後のmanual recovery modalがapplication shortcut dispatcherに登録されず、modal表示中の`Ctrl+T`、selection、query入力などが背面UIへ漏れる。

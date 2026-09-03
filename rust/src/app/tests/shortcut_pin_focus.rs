@@ -177,6 +177,39 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
 }
 
 #[test]
+fn regression_primary_l_toggles_query_focus_through_full_frames() {
+    let root = test_root("regression-primary-l-toggle-query-focus");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.clear_focus_query_request();
+    let ctx = egui::Context::default();
+    let dummy_focus = egui::Id::new("primary-l-dummy-focus");
+    ctx.memory_mut(|memory| memory.request_focus(dummy_focus));
+    let modifiers = gui_shortcut_modifiers(false);
+    let primary_l_input = || egui::RawInput {
+        modifiers,
+        events: vec![egui::Event::Key {
+            key: egui::Key::L,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers,
+        }],
+        ..Default::default()
+    };
+
+    let _ = ctx.run_ui(primary_l_input(), |ui| app.run_ui_frame(ui));
+    assert!(ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+
+    let _ = ctx.run_ui(primary_l_input(), |ui| app.run_ui_frame(ui));
+    assert!(!ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+
+    let _ = ctx.run_ui(primary_l_input(), |ui| app.run_ui_frame(ui));
+    assert!(ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
     let root = test_root("regression-ctrl-i-pin-toggle");
     fs::create_dir_all(&root).expect("create dir");

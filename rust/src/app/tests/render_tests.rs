@@ -242,6 +242,51 @@ fn results_renderer_processes_only_visible_rows_regression() {
     let _ = fs::remove_dir_all(&root);
 }
 
+#[test]
+fn regression_single_step_selection_does_not_pin_current_row_to_viewport_top() {
+    let root = test_root("regression-selection-keeps-viewport");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 20_000, String::new());
+    app.shell.runtime.results = (0..10_000)
+        .map(|index| (root.join(format!("item-{index:05}.txt")), 0.0))
+        .collect();
+    app.shell.runtime.total_match_count = app.shell.runtime.results.len();
+    app.shell.runtime.current_row = Some(0);
+    let ctx = egui::Context::default();
+    let input = || egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(800.0, 600.0),
+        )),
+        ..Default::default()
+    };
+
+    render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+    let _ = ctx.run_ui(input(), |ui| {
+        render_panels::render_results_list(&mut app, ui)
+    });
+    let initial_frame = render_panels::take_result_render_probe();
+    app.clear_scroll_to_current();
+    assert!(initial_frame.rendered_rows.contains(&0));
+    assert!(initial_frame.rendered_rows.contains(&1));
+
+    app.move_row(1);
+    render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+    let _ = ctx.run_ui(input(), |ui| {
+        render_panels::render_results_list(&mut app, ui)
+    });
+    let moved_frame = render_panels::take_result_render_probe();
+
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    assert!(
+        moved_frame.rendered_rows.contains(&0),
+        "a visible neighboring row must remain visible after one selection step: {:?}",
+        moved_frame.rendered_rows
+    );
+    assert!(moved_frame.rendered_rows.contains(&1));
+    let _ = fs::remove_dir_all(&root);
+}
+
 fn test_render_update_candidate() -> UpdateCandidate {
     UpdateCandidate {
         current_version: "0.16.1".to_string(),

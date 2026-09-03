@@ -330,7 +330,9 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     app.ensure_highlight_cache_scope(prefer_relative);
     let row_height = result_row_height(ui);
     let total_rows = app.shell.runtime.results.len();
+    let scroll_area_id = ui.make_persistent_id("results-scroll-area");
     let mut scroll_area = egui::ScrollArea::both()
+        .id_salt("results-scroll-area")
         .scroll_source(scroll_source)
         .auto_shrink([false, false]);
     if app.shell.ui.scroll_to_current() {
@@ -340,10 +342,25 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             .current_row
             .filter(|row| *row < total_rows)
         {
-            // Regression guard: show_rows only creates the current viewport. Set the
-            // virtual offset before row allocation so an offscreen cursor is materialized.
+            // Regression guard: materialize an offscreen current row without pinning every
+            // keyboard step to the viewport top. Do not replace this visibility clamp with
+            // an unconditional row offset; keep it paired with regression_single_step_*.
             let row_stride = row_height + ui.spacing().item_spacing.y;
-            scroll_area = scroll_area.vertical_scroll_offset(current as f32 * row_stride);
+            let current_top = current as f32 * row_stride;
+            let current_bottom = current_top + row_height;
+            let viewport_height = ui.available_height().max(row_height);
+            let previous_offset = egui::scroll_area::State::load(ui.ctx(), scroll_area_id)
+                .unwrap_or_default()
+                .offset
+                .y;
+            let next_offset = if current_top < previous_offset {
+                current_top
+            } else if current_bottom > previous_offset + viewport_height {
+                current_bottom - viewport_height
+            } else {
+                previous_offset
+            };
+            scroll_area = scroll_area.vertical_scroll_offset(next_offset.max(0.0));
         }
     }
     scroll_area.show_rows(ui, row_height, total_rows, |ui, visible_rows| {
