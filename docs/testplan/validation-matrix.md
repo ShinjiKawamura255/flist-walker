@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: incremental-finalization tests are bounded and progress-checked
+
+- Scenario: 100k entry の background finalization test が `background_finalizations` の消滅または cursor 到達まで無期限に loop し、production の進捗停止時に test process 自体が終了しない。
+- Expected Behavior: test driver は最大2,000 frameで停止し、各未完了 frame で input remaining、completed、filter/kind cursor、output、scratch state のいずれかが進むことを検証する。停止時は request_id、tab index、frame、全 cursor state を診断へ含める。
+- Non-goals: production の1 frame budget変更、100k fixtureの縮小、reclaimer Full rollbackを進捗として偽装すること。
+- Related Tests: TC-207, `tc_207_stalled_background_finalization_guard_fails_deterministically_regression` と `tab_background_responses` の100k incremental finalization cases。
+- Notes for Future Changes: finalization phase/cursor を追加した場合は共有 progress snapshot と target 判定を更新し、個別 test に新しい無期限 `while` を追加しない。
+
 ### Regression Guard: stateful response ownership is request-exact
 
 - Scenario: endurance oracle が index/search の全 routed tab を response owner として除外し、実際には応答を消費しない別 tab の mutation を見逃す。または reclaimer 待機の根拠がない notice 変化を scheduler side effect として無条件に許す。
