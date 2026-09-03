@@ -378,6 +378,9 @@ impl FlistWalkerApp {
                 return;
             }
         }
+        // Regression guard: Primary+L is a focus toggle and must update the pending
+        // focus flags before TextEdit is rendered. Keep this paired with
+        // regression_primary_l_toggles_query_focus_through_full_frames.
         if Self::consume_gui_shortcut(ctx, egui::Key::L, false) {
             if query_focused {
                 self.clear_focus_query_request();
