@@ -1,6 +1,14 @@
 ﻿# Validation Matrix and Runner Commands
 
 ## Regression Guard
+### Regression Guard: reclaimer drop observers are test-session isolated
+
+- Scenario: global drop observer が有効な間に並列 test thread が resource payload を生成すると、その payload が observer sender を捕捉し、後から無関係な test 名を drop 証跡へ混入させる。
+- Expected Behavior: observer は登録した test thread で生成された payload だけへ sender を埋め込み、実際の drop thread 名は reclaimer 側で記録する。別 test thread が同時に生成した payload は観測しない。
+- Non-goals: production reclaimer の thread/queue 契約変更、Rust test runner の直列化、drop 完了順序の固定。
+- Related Tests: TC-207、`tc_207_drop_observer_ignores_payloads_captured_by_parallel_test_threads`、reclaimer drop-thread assertions。
+- Notes for Future Changes: process-global test hook は設定時の test identity を payload capture 条件へ含め、observer lock だけで並列 test との隔離を仮定しない。
+
 ### Regression Guard: Walker classification perf isolates per-entry metadata cost
 
 - Scenario: 深い directory-heavy fixture では両経路に共通する再帰 `read_dir` が計測の大半を占め、通常 entry の追加 metadata probe を除いた効果が環境差で埋もれて 1.25x gate が不安定になる。
@@ -12,7 +20,7 @@
 ### Regression Guard: incremental-finalization tests are bounded and progress-checked
 
 - Scenario: 100k entry の background finalization test が `background_finalizations` の消滅または cursor 到達まで無期限に loop し、production の進捗停止時に test process 自体が終了しない。
-- Expected Behavior: test driver は最大2,000 frameで停止し、各未完了 frame で input remaining、completed、filter/kind cursor、output、scratch state のいずれかが進むことを検証する。停止時は request_id、tab index、frame、全 cursor state を診断へ含める。
+- Expected Behavior: test driver は最大2,000 frameで停止し、計測 instrumentation による単発の budget 消費は許容しつつ、未完了状態で32 frameを超えて input remaining、completed、filter/kind cursor、output、scratch state のいずれも進まなければ失敗する。停止時は request_id、tab index、frame、連続停滞数、全 cursor state を診断へ含める。
 - Non-goals: production の1 frame budget変更、100k fixtureの縮小、reclaimer Full rollbackを進捗として偽装すること。
 - Related Tests: TC-207, `tc_207_stalled_background_finalization_guard_fails_deterministically_regression` と `tab_background_responses` の100k incremental finalization cases。
 - Notes for Future Changes: finalization phase/cursor を追加した場合は共有 progress snapshot と target 判定を更新し、個別 test に新しい無期限 `while` を追加しない。
@@ -20,9 +28,9 @@
 ### Regression Guard: stateful response ownership is request-exact
 
 - Scenario: endurance oracle が index/search の全 routed tab を response owner として除外し、実際には応答を消費しない別 tab の mutation を見逃す。または reclaimer 待機の根拠がない notice 変化を scheduler side effect として無条件に許す。
-- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id の route owner だけを一次 owner とし、応答処理後に新規 route が追加された tab だけを証跡付き downstream owner とする。`Waiting for background tab resource reclamation` の notice 例外は、直前 snapshot に対応する reclaim-pending state がある場合だけ認める。
+- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id と、前 event から submitted 済みで未消費の request_id の route owner だけを一次 owner とする。応答処理後に新規 route が追加された tab と、resource reservation により lifecycle が新たに `Evicted` へ遷移した exact tab だけを証跡付き downstream owner とする。reclaimer notice の例外は、直前 snapshot に対応する reclaim-pending state があり、既知の reclamation/finalization phase 間を遷移する場合だけ認める。
 - Non-goals: worker 完了順序の固定、非応答イベント間の tab mutation 比較、scheduler が正当に追加した新規 route の拒否。
-- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`。
+- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_response_owner_includes_only_the_exact_newly_evicted_tab`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`, `tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases`。
 - Notes for Future Changes: response event を追加する場合は pending request の選択規則と request_id route を同じ owner resolver に接続する。notice 文字列だけで例外化せず、直前 state の因果フラグを snapshot に含める。
 
 ### Regression Guard: Recent Inactive engagement follows actual mutations

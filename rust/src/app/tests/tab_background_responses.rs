@@ -21,6 +21,7 @@ fn collect_drop_threads_until(
 }
 
 const BACKGROUND_FINALIZATION_FRAME_LIMIT: usize = 2_000;
+const BACKGROUND_FINALIZATION_STALL_LIMIT: usize = 32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct BackgroundFinalizationProgress {
@@ -99,12 +100,12 @@ fn background_finalization_target_reached(
 fn assert_background_finalization_progress(
     request_id: u64,
     frame: usize,
+    consecutive_stalled_frames: usize,
     before: Option<BackgroundFinalizationProgress>,
-    after: Option<BackgroundFinalizationProgress>,
 ) {
-    assert_ne!(
-        before, after,
-        "background finalization stalled: request_id={request_id}, frame={frame}, progress={before:?}"
+    assert!(
+        consecutive_stalled_frames <= BACKGROUND_FINALIZATION_STALL_LIMIT,
+        "background finalization stalled: request_id={request_id}, frame={frame}, consecutive_stalled_frames={consecutive_stalled_frames}, progress={before:?}"
     );
 }
 
@@ -116,6 +117,7 @@ fn drive_background_finalization_with_frame_budget(
     target: BackgroundFinalizationTarget,
 ) -> Vec<BackgroundFinalizationFrame> {
     let mut frames = Vec::new();
+    let mut consecutive_stalled_frames = 0usize;
     for frame in 0..BACKGROUND_FINALIZATION_FRAME_LIMIT {
         if background_finalization_target_reached(app, tab_index, request_id, target) {
             return frames;
@@ -132,7 +134,17 @@ fn drive_background_finalization_with_frame_budget(
         let elapsed = started.elapsed();
         let after = background_finalization_progress(app, request_id);
         if !background_finalization_target_reached(app, tab_index, request_id, target) {
-            assert_background_finalization_progress(request_id, frame, before, after);
+            consecutive_stalled_frames = if before == after {
+                consecutive_stalled_frames.saturating_add(1)
+            } else {
+                0
+            };
+            assert_background_finalization_progress(
+                request_id,
+                frame,
+                consecutive_stalled_frames,
+                before,
+            );
         }
         frames.push(BackgroundFinalizationFrame {
             elapsed,
@@ -178,7 +190,12 @@ fn tc_207_stalled_background_finalization_guard_fails_deterministically_regressi
         scratch_reclaimed: false,
     };
     let failure = std::panic::catch_unwind(|| {
-        assert_background_finalization_progress(207, 3, Some(stalled), Some(stalled));
+        assert_background_finalization_progress(
+            207,
+            BACKGROUND_FINALIZATION_STALL_LIMIT,
+            BACKGROUND_FINALIZATION_STALL_LIMIT + 1,
+            Some(stalled),
+        );
     });
     assert!(failure.is_err());
 }
