@@ -1,0 +1,171 @@
+{
+  "schema": "flistwalker.validation-routing.v1",
+  "rules": [
+    {
+      "id": "VM-001",
+      "label": "Docs only",
+      "detail": "docs/testplan/validation/vm-001.md",
+      "checklists": ["docs/testplan/validation-matrix.md#docs-only-or-sddtdd-document-updates"],
+      "patterns": [
+        "AGENTS.md",
+        "README*.md",
+        "CHANGELOG.md",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.txt",
+        "docs/**",
+        ".github/pull_request_template.md"
+      ]
+    },
+    {
+      "id": "VM-002",
+      "label": "App/UI orchestration",
+      "detail": "docs/testplan/validation/vm-002.md",
+      "checklists": [
+        "docs/testplan/validation-matrix.md#gui-orchestration-rendering-input-tabs-or-session-changes",
+        "docs/testplan/validation-matrix.md#bounded-worker-scheduling-or-shutdown-changes"
+      ],
+      "patterns": ["rust/src/app/**"]
+    },
+    {
+      "id": "VM-003",
+      "label": "Indexing path",
+      "detail": "docs/testplan/validation/vm-003.md",
+      "checklists": [
+        "docs/testplan/validation-matrix.md#bounded-worker-scheduling-or-shutdown-changes",
+        "docs/testplan/validation-matrix.md#indexing-filelist-walker-or-kind-resolution-changes"
+      ],
+      "patterns": [
+        "rust/src/indexer/**",
+        "rust/src/walker_runtime/**",
+        "rust/src/app/index_*.rs",
+        "rust/src/app/index*/**"
+      ]
+    },
+    {
+      "id": "VM-004",
+      "label": "Search/query contract",
+      "detail": "docs/testplan/validation/vm-004.md",
+      "checklists": ["docs/testplan/validation-matrix.md#search-or-query-contract-changes"],
+      "patterns": [
+        "rust/src/query.rs",
+        "rust/src/search/**",
+        "rust/src/ui_model/**",
+        "rust/src/app/cache.rs",
+        "rust/src/app/preview_flow.rs"
+      ]
+    },
+    {
+      "id": "VM-005",
+      "label": "CLI/build/release/updater",
+      "detail": "docs/testplan/validation/vm-005.md",
+      "checklists": ["docs/testplan/validation-matrix.md#cli-build-release-updater-or-oss-packaging-changes"],
+      "patterns": [
+        "rust/src/main.rs",
+        "rust/src/bin/**",
+        "rust/src/process_entry.rs",
+        "rust/src/windows_console.rs",
+        "rust/src/gui_launch.rs",
+        "rust/src/launch_path.rs",
+        "rust/src/cli.rs",
+        "rust/src/cli/**",
+        "rust/src/cli_tui.rs",
+        "rust/src/cli_tui/**",
+        "rust/src/updater.rs",
+        "rust/src/updater/**",
+        "rust/build.rs",
+        "rust/Cargo.toml",
+        "rust/Cargo.lock",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.txt",
+        "scripts/build-rust-*",
+        "scripts/common-win-gnu.*",
+        "scripts/prepare-release*",
+        "scripts/validate-release-bundle.sh",
+        "scripts/test-validate-release-bundle.sh",
+        "scripts/check-updater-n-minus-one-compatibility.py",
+        "scripts/test-updater-n-minus-one-compatibility.py",
+        "docs/RELEASE.md",
+        "docs/OSS_COMPLIANCE.md",
+        "skills/flistwalker-release-preflight/**",
+        "skills/flistwalker-release-notes/**",
+        ".github/release-template.md",
+        ".github/workflows/release-tagged.yml"
+      ]
+    },
+    {
+      "id": "VM-006",
+      "label": "Coverage/GUI validation",
+      "detail": "docs/testplan/validation/vm-006.md",
+      "checklists": ["docs/testplan/validation-matrix.md#ci-coverage-gui-validation-docs-or-smoke-script-changes"],
+      "patterns": [
+        "docs/GUI-TESTPLAN.md",
+        "docs/GUI-TESTREPORT.template.md",
+        ".github/workflows/ci-cross-platform.yml",
+        "scripts/gui-*",
+        "rust/tests/fixtures/gui-smoke/**"
+      ]
+    },
+    {
+      "id": "VM-007",
+      "label": "Supportability",
+      "detail": "docs/testplan/validation/vm-007.md",
+      "checklists": ["docs/testplan/validation-matrix.md#supportability-docs-templates-or-diagnostics-wording"],
+      "patterns": ["docs/SUPPORT.md", ".github/ISSUE_TEMPLATE/**"]
+    },
+    {
+      "id": "VM-008",
+      "label": "Runtime configuration",
+      "detail": "docs/testplan/validation/vm-008.md",
+      "checklists": ["docs/testplan/validation-matrix.md#runtime-config-settings-or-startup-bootstrap-changes"],
+      "patterns": [
+        "rust/src/runtime_config.rs",
+        "rust/src/runtime_config/**",
+        "rust/src/main.rs",
+        "rust/src/search/config.rs",
+        "rust/src/app/index_worker.rs",
+        "rust/src/app/shell_support.rs",
+        "rust/src/app/session.rs",
+        "rust/src/app/session/**",
+        "rust/src/updater.rs"
+      ]
+    },
+    {
+      "id": "VM-009",
+      "label": "CI/merge/agent workflow",
+      "detail": "docs/testplan/validation/vm-009.md",
+      "checklists": ["docs/testplan/validation-matrix.md#ci-reliability-version-pins-security-audit-or-merge-policy-changes"],
+      "patterns": [
+        ".github/workflows/**",
+        ".github/dependabot.yml",
+        ".github/pull_request_template.md",
+        "rust/Cargo.toml",
+        "rust/Cargo.lock",
+        "rust/rust-toolchain.toml",
+        "rust/.cargo/audit.toml",
+        "scripts/check_ci_policy.py",
+        "scripts/check_repo_contract.py",
+        "scripts/validate_change.py",
+        "scripts/validation-rules.json",
+        "scripts/agent_worktree_preflight.py",
+        "scripts/tests/test_check_ci_policy.py",
+        "scripts/tests/test_check_repo_contract.py",
+        "scripts/tests/test_validate_change.py",
+        "scripts/tests/test_agent_worktree_preflight.py",
+        "skills/flistwalker-pr-lifecycle/**",
+        "skills/flistwalker-change-review/**",
+        "docs/AI_DEVELOPMENT.md",
+        "docs/CI_OPERATIONS.md"
+      ]
+    },
+    {
+      "id": "VM-010",
+      "label": "Stateful endurance",
+      "detail": "docs/testplan/validation/vm-010.md",
+      "checklists": ["docs/testplan/validation-matrix.md#stateful-endurance-harness-or-scheduled-soak-changes"],
+      "patterns": [
+        "rust/src/app/tests/stateful_endurance/**",
+        ".github/workflows/stateful-endurance.yml"
+      ]
+    }
+  ]
+}
