@@ -187,15 +187,18 @@
 - `.app` bundle 自体は notarization / staple 用に `dist/` へ保持するが、GitHub Releases には添付しない。
 
 ## GitHub Actions 自動リリース
-1. `vX.Y.Z` 形式の新規 tag を push する。
-2. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo clippy --locked --all-targets -- -D warnings`、および `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
-3. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
-4. 各 job が生成した uploadable なアセットを集約し、その tag の draft release を自動作成する。同一tagのreleaseが既に存在する場合は停止し、既存assetを上書きしない。
-5. draft release には各 OS 向け universal 実行バイナリ、CLI 専用 `fw` standalone、既存配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内と`fw` standaloneの実行手順を続ける。remoteのversion付きsidecar assetは両variantで共有し、自己更新後のローカル文書はuniversalの通常名とCLIの`fw.` prefix付き名へ分離する。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は署名秘密鍵から導出した公開鍵、build時の公開鍵、署名検証鍵が一致する場合だけ生成する。`scripts/validate-release-bundle.sh` で期待28 asset、26 checksum entry、既存archiveのmember完全一致、archive/sidecarの `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を検証する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
-6. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
-7. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
-8. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
-9. 公開後に重大問題を検出した場合は `docs/RELEASE_INCIDENT_RUNBOOK.md` に従い、公開済みtag/assetを上書きせずに取得停止、警告、影響確認、patch releaseを行う。
+1. version / changelog / release note の準備を protected PR で merge し、clean な `master == origin/master` と対象 commit SHA を確認する。
+2. tag 作成前に、default branch の workflow だけを使って候補を生成する: `gh workflow run release-tagged.yml --ref master -f version=vX.Y.Z`。`workflow_dispatch` は `master` 以外を拒否し、候補モードでは release/tag を作成・更新しない。
+3. manual run の `headSha` が手順1の対象 SHA と一致することを API で確認してから完了を待つ。`validated-release-bundle-vX.Y.Z-<headSha>` artifact を取得し、28 asset、26 checksum entry、署名、archive/sidecar notice、直前公開版との N-1 互換性、および全 build/test/clippy/audit job の warning ゼロを確認する。run URL、head SHA、artifact ID/expiry、inventory/N-1結果を変更不能な Actions run と release 証跡へ記録する。
+4. 候補がすべて成功し、対象 SHA が変わっていないことを再確認してから `vX.Y.Z` tag を同じ `master` commit に作成して push する。
+5. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo clippy --locked --all-targets -- -D warnings`、および `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
+6. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
+7. 各 job が生成した uploadable なアセットを集約・検証し、tag push の場合だけ、その tag の draft release を自動作成する。同一tagのreleaseが既に存在する場合は停止し、既存assetを上書きしない。
+8. draft release には各 OS 向け universal 実行バイナリ、CLI 専用 `fw` standalone、既存配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内と`fw` standaloneの実行手順を続ける。remoteのversion付きsidecar assetは両variantで共有し、自己更新後のローカル文書はuniversalの通常名とCLIの`fw.` prefix付き名へ分離する。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は署名秘密鍵から導出した公開鍵、build時の公開鍵、署名検証鍵が一致する場合だけ生成する。`scripts/validate-release-bundle.sh` で期待28 asset、26 checksum entry、既存archiveのmember完全一致、archive/sidecarの `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を検証する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
+9. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
+10. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
+11. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
+12. 公開後に重大問題を検出した場合は `docs/RELEASE_INCIDENT_RUNBOOK.md` に従い、公開済みtag/assetを上書きせずに取得停止、警告、影響確認、patch releaseを行う。
 
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
@@ -207,6 +210,7 @@
 - signing stepで公開鍵secretが64桁hexであり、署名秘密鍵から導出した公開鍵および配布buildへ埋め込む公開鍵と一致すること。
 - `scripts/validate-release-bundle.sh vX.Y.Z <bundle-dir>` が成功し、期待28 asset、26 checksum entry、既存archive不変、archive/sidecarのlicense/noticeが揃うこと。
 - checker self-testとは別に、直前の公開release versionと生成済みcandidate `SHA256SUMS`を`check-updater-n-minus-one-compatibility.py`へ渡し、candidateがstrictに新しくmanifest互換であること。非増加version、非互換の例外・acknowledgementは禁止し、失敗時はrelease blockerとする。
+- tag 作成前の manual candidate run が default branch の対象 SHA で成功し、validated bundle artifact と N-1 結果を確認済みであること。candidate mode の draft release 作成 job は `skipped` でなければならない。
 - Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
