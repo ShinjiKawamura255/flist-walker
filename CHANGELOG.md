@@ -24,6 +24,37 @@
 ### Known issues
 - なし。
 
+## [0.26.0] - 2026-09-04
+### Added
+- リポジトリ変更を決定的に分類・検証する agent workflow と、Validation Matrix に基づく検証支援ツールを追加した。
+- tag 作成前に default branch の実物配布 bundle を4 platformで生成し、署名、28 asset、26-entry checksum、N-1 updater互換性を検証できる manual release candidate 経路を追加した。
+
+### Changed
+- 復元 tab と非アクティブ tab の index worker、mailbox、結果、選択状態を一体の resource lifecycle として管理し、開始・中断・回収・再開時の所有権と処理量を bounded にした。
+- index 応答の arbitration、finalization、state反映を分離し、増分結果、tab切替、session復元が競合してもUI操作を優先できる構成へ整理した。
+- stateful endurance、walker性能、非同期検証を決定的な境界と状態条件で判定するよう強化し、host速度に依存する待機条件を除いた。
+- AI-first開発フロー、変更前後のreview、`origin/master`起点のbranch作成、docs/SDD/Validation Matrixの運用を文書化した。
+
+### Fixed
+- 許可済みroot配下へのsymlink経由の操作を不正に拒否する問題を修正し、正規化後のtargetがroot境界内にある場合だけ実行できるようにした。
+- 検索結果のcursor移動がpin focusやpanel描画で失われる問題を修正した。
+- cleanup後のindex mailbox再生成、worker喪失、古い応答によるtab engagementの巻き戻りを防止した。
+- 一部結果の更新やinactive resource回収後に、選択項目とbackground selectionが復元されない問題を修正した。
+- agentの新規変更branchが古いlocal masterを起点にできる問題を防ぎ、`origin/master`との一致を必須にした。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 依存関係の追加・更新はなく、release candidate経路はread-only権限で動作し、tag push専用の公開jobと分離した。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+
 ## [0.25.1] - 2026-09-02
 ### Added
 - なし。
@@ -1976,7 +2007,9 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.1...v0.26.0
+[0.25.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.5...v0.25.0
 [0.24.5]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.3...v0.24.4
