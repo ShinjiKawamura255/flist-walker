@@ -25,13 +25,32 @@ def markdown_files(root: Path) -> list[Path]:
     return sorted({path for path in candidates if path.is_file()})
 
 
-def link_target(raw_target: str) -> str:
+def link_parts(raw_target: str) -> tuple[str, str]:
     target = raw_target.strip()
     if target.startswith("<") and ">" in target:
         target = target[1 : target.index(">")]
     else:
         target = target.split(maxsplit=1)[0]
-    return urllib.parse.unquote(target.split("#", 1)[0])
+    decoded = urllib.parse.unquote(target)
+    path, separator, fragment = decoded.partition("#")
+    return path, fragment if separator else ""
+
+
+def markdown_heading_fragments(path: Path) -> set[str]:
+    fragments: set[str] = set()
+    counts: dict[str, int] = {}
+    text = path.read_text(encoding="utf-8-sig")
+    for heading in re.findall(r"^#{1,6}\s+(.+?)\s*$", text, re.MULTILINE):
+        plain = re.sub(r"`([^`]*)`", r"\1", heading)
+        plain = re.sub(r"\[([^]]+)\]\([^)]+\)", r"\1", plain)
+        base = re.sub(r"\s+", "-", plain.lower().strip())
+        base = re.sub(r"[^\w-]", "", base).strip("-")
+        if not base:
+            continue
+        duplicate = counts.get(base, 0)
+        counts[base] = duplicate + 1
+        fragments.add(base if duplicate == 0 else f"{base}-{duplicate}")
+    return fragments
 
 
 def local_link_violations(root: Path, files: list[Path]) -> list[str]:
@@ -41,12 +60,10 @@ def local_link_violations(root: Path, files: list[Path]) -> list[str]:
         text = path.read_text(encoding="utf-8-sig")
         for line_number, line in enumerate(text.splitlines(), 1):
             for raw in MARKDOWN_LINK_RE.findall(line):
-                if raw.startswith(("#", "http://", "https://", "mailto:")):
+                if raw.startswith(("http://", "https://", "mailto:")):
                     continue
-                target = link_target(raw)
-                if not target:
-                    continue
-                resolved = (path.parent / target).resolve()
+                target, fragment = link_parts(raw)
+                resolved = (path.parent / target).resolve() if target else path.resolve()
                 try:
                     resolved.relative_to(resolved_root)
                 except ValueError:
@@ -60,6 +77,13 @@ def local_link_violations(root: Path, files: list[Path]) -> list[str]:
                     violations.append(
                         f"{relative}:{line_number}: missing local link target: {raw}"
                     )
+                    continue
+                if fragment and resolved.suffix.lower() == ".md":
+                    if fragment not in markdown_heading_fragments(resolved):
+                        relative = path.relative_to(root).as_posix()
+                        violations.append(
+                            f"{relative}:{line_number}: missing local link fragment: {raw}"
+                        )
     return violations
 
 

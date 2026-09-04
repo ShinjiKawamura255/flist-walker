@@ -45,6 +45,14 @@ class ValidateChangeTests(unittest.TestCase):
             "rust/src/app/shell_support.rs": {"VM-002", "VM-008"},
             "rust/src/app/session.rs": {"VM-002", "VM-008"},
             "rust/src/updater.rs": {"VM-005", "VM-008"},
+            "scripts/manual-self-update-test.ps1": {"VM-005", "VM-009"},
+            "scripts/sign-notarize-macos.sh": {"VM-005", "VM-009"},
+            "scripts/test-prepare-release-archive.ps1": {"VM-005", "VM-009"},
+            "scripts/test-build-rust-win.ps1": {"VM-005", "VM-009"},
+            "scripts/test-windows-build-artifact.ps1": {"VM-005", "VM-009"},
+            "scripts/dev-check-windows.ps1": {"VM-005", "VM-009"},
+            "docs/testplan/validation-matrix.md": {"VM-001", "VM-009"},
+            "docs/testplan/validation/vm-005.md": {"VM-001", "VM-009"},
         }
         for path, expected in cases.items():
             with self.subTest(path=path):
@@ -57,6 +65,13 @@ class ValidateChangeTests(unittest.TestCase):
             for item in VALIDATE.classify_paths(["tools/new-unknown-file.xyz"], self.rules)
         }
         self.assertEqual({"VM-002"}, selected)
+
+    def test_unknown_script_fails_closed_to_agent_workflow_validation(self) -> None:
+        selected = {
+            item["id"]
+            for item in VALIDATE.classify_paths(["scripts/future-check.py"], self.rules)
+        }
+        self.assertIn("VM-009", selected)
 
     def test_rename_diff_includes_old_and_new_paths(self) -> None:
         rows = "R100\tdocs/old.md\tdocs/new.md\nM\trust/src/query.rs\n"

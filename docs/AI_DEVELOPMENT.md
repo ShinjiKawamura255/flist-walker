@@ -21,7 +21,7 @@ Run `python3 scripts/agent_worktree_preflight.py <mode> ...` before edits or bra
 | Mode | Use | Required identity | Mutation boundary |
 | --- | --- | --- | --- |
 | `review` | Read-only diagnosis or review | Clean checkout; detached HEAD allowed | No branch, commit, push, merge, or cleanup operation |
-| `new-change` | New independent work | `HEAD == origin/master`; unused target branch | Create and use the target branch only in the current worktree |
+| `new-change` | New independent work | Clean current `master`; `HEAD == origin/master`; unused target branch | Create and use the target branch only in the current worktree |
 | `continue-pr` | Continue an existing PR | `HEAD == verified PR head`; local head branch owned by this worktree | Never commit detached or update a branch owned by another worktree |
 | `stacked-change` | Work that intentionally depends on an open parent PR | `HEAD == verified parent head`; unused child branch; recorded old-parent SHA | After parent merge, replay only `old-parent..<task-head>` and revalidate |
 
@@ -52,9 +52,9 @@ python3 scripts/validate_change.py --base origin/master --full
 - `--quick` runs repository-contract checks and agent-tooling unit tests when applicable.
 - `--full` adds locally runnable format, Rust regression, and clippy checks for non-doc validation classes.
 - Platform, GUI, release, security, and external evidence remain governed by the selected checklist and VM detail. A local command never upgrades `NOT RUN` evidence from another axis.
-- Unknown non-document paths fail closed to the general application validation class.
+- Unknown non-document paths fail closed to the general application validation class; every `scripts/` change also selects the agent/CI workflow class, while release/build/update/signing-like names additionally select release validation.
 
-`scripts/validation-rules.json` owns mechanical path-to-VM routing and the checklist/detail pointers emitted for each VM. The [Validation Matrix](testplan/validation-matrix.md#change-type-checklist) owns intent-dependent supplemental checks; `docs/testplan/validation/` owns the VM baseline, conditional/manual requirements, and evidence interpretation.
+`scripts/validation-rules.json` owns mechanical path-to-VM routing and the checklist/detail pointers emitted for each VM. The [Validation Matrix](testplan/validation-matrix.md#change-type-checklist) owns intent-dependent supplemental checks; `docs/testplan/validation/` owns the VM baseline, conditional/manual requirements, and evidence interpretation. Changes to those validation-policy documents select VM-009 so routing and link-anchor contract tests cannot be skipped.
 
 ## Durable Evidence And Current State
 

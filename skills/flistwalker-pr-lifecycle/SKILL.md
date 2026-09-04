@@ -19,7 +19,7 @@ Before editing or changing a branch, fetch the required refs and select exactly 
 - Continue PR: `python3 scripts/agent_worktree_preflight.py continue-pr --head-ref origin/<head-branch>`
 - Stacked change: `python3 scripts/agent_worktree_preflight.py stacked-change --parent-ref origin/<parent-branch> --target-branch codex/<topic>`
 
-`review` permits a clean detached HEAD and never authorizes mutation. `new-change` requires exact base identity. `continue-pr` rejects a head branch owned by another worktree. `stacked-change` permits the parent branch to be owned elsewhere, but requires a new unused child branch and a recorded immutable old-parent boundary.
+`review` permits a clean detached HEAD and never authorizes mutation. `new-change` requires a clean current `master` with exact `origin/master` identity. `continue-pr` rejects a head branch owned by another worktree. `stacked-change` permits the parent branch to be owned elsewhere, but requires a new unused child branch and a recorded immutable old-parent boundary.
 
 ## Start Or Continue Work
 1. Record `git worktree list --porcelain`, current path, branch or detached state, HEAD, selected base/parent ref, and clean status.

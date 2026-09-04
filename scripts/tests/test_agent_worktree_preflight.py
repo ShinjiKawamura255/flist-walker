@@ -66,7 +66,11 @@ class AgentWorktreePreflightTests(unittest.TestCase):
 
     def test_new_change_requires_base_identity_and_unused_target(self) -> None:
         ok = PREFLIGHT.evaluate(
-            self.state(),
+            self.state(
+                branch="master",
+                worktrees={"/repo": "master", "/primary": "codex/parent"},
+                local_branches={"master": "a" * 40, "codex/parent": "a" * 40},
+            ),
             mode="new-change",
             base_ref="origin/master",
             target_branch="codex/new",
@@ -80,6 +84,27 @@ class AgentWorktreePreflightTests(unittest.TestCase):
             target_branch="codex/new",
         )
         self.assertIn("head_does_not_match_base", divergent.reasons)
+
+    def test_new_change_rejects_detached_or_different_current_branch(self) -> None:
+        detached = PREFLIGHT.evaluate(
+            self.state(),
+            mode="new-change",
+            base_ref="origin/master",
+            target_branch="codex/new",
+        )
+        other_branch = PREFLIGHT.evaluate(
+            self.state(
+                branch="codex/other",
+                worktrees={"/repo": "codex/other"},
+                local_branches={"codex/other": "a" * 40},
+            ),
+            mode="new-change",
+            base_ref="origin/master",
+            target_branch="codex/new",
+        )
+
+        self.assertIn("current_branch_does_not_match_base", detached.reasons)
+        self.assertIn("current_branch_does_not_match_base", other_branch.reasons)
 
     def test_continue_pr_rejects_head_branch_owned_by_other_worktree(self) -> None:
         result = PREFLIGHT.evaluate(
@@ -173,6 +198,71 @@ class AgentWorktreePreflightTests(unittest.TestCase):
             )
             self.assertEqual(1, rejected.returncode)
             self.assertIn("current_branch_does_not_match_pr", rejected.stdout)
+
+    def test_cli_new_change_requires_current_master_in_disposable_repo(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            remote, _ = self.initialized_remote(temp)
+            repo = temp / "repo"
+            self.git(temp, "clone", str(remote), str(repo))
+
+            accepted = subprocess.run(
+                [
+                    "python3",
+                    str(MODULE_PATH),
+                    "--root",
+                    str(repo),
+                    "new-change",
+                    "--base-ref",
+                    "origin/master",
+                    "--target-branch",
+                    "codex/new",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, accepted.returncode, accepted.stdout + accepted.stderr)
+
+            self.git(repo, "switch", "--detach")
+            detached = subprocess.run(
+                [
+                    "python3",
+                    str(MODULE_PATH),
+                    "--root",
+                    str(repo),
+                    "new-change",
+                    "--base-ref",
+                    "origin/master",
+                    "--target-branch",
+                    "codex/new",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(1, detached.returncode)
+            self.assertIn("current_branch_does_not_match_base", detached.stdout)
+
+            self.git(repo, "switch", "-c", "codex/other")
+            other_branch = subprocess.run(
+                [
+                    "python3",
+                    str(MODULE_PATH),
+                    "--root",
+                    str(repo),
+                    "new-change",
+                    "--base-ref",
+                    "origin/master",
+                    "--target-branch",
+                    "codex/new",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(1, other_branch.returncode)
+            self.assertIn("current_branch_does_not_match_base", other_branch.stdout)
 
     def test_cli_stacked_change_allows_parent_owned_by_other_worktree(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
