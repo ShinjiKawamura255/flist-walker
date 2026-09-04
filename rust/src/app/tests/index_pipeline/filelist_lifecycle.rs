@@ -1554,6 +1554,8 @@ fn active_index_backlog_stops_receiving_before_queue_growth_exceeds_frame_guard(
     })
     .expect("send queued batch");
 
+    // A zero frame budget forces the fixed fallback drain instead of making
+    // this assertion depend on how many entries the host can ingest in 4 ms.
     app.poll_index_response_with_budget_for_test(Duration::ZERO);
 
     assert_eq!(app.shell.indexing.build.index.entries.len(), 32);
@@ -1795,7 +1797,7 @@ fn empty_query_unfiltered_indexing_does_not_duplicate_incremental_snapshot() {
     })
     .expect("send batch");
 
-    app.poll_index_response();
+    app.poll_index_response_with_budget_for_test(Duration::ZERO);
 
     assert!(app
         .shell
@@ -1804,9 +1806,18 @@ fn empty_query_unfiltered_indexing_does_not_duplicate_incremental_snapshot() {
         .incremental_filtered_entries
         .is_empty());
     assert!(app.shell.runtime.entries.is_empty());
-    assert!(app.shell.indexing.build.index.entries.len() >= 50);
-    assert!(app.shell.indexing.build.index.entries.len() < 2_000);
-    assert_eq!(app.shell.runtime.results.len(), 50);
+    let drained_entries = app.shell.indexing.build.index.entries.len();
+    assert!(drained_entries > 0);
+    assert!(drained_entries < 2_000);
+    assert_eq!(
+        drained_entries + app.shell.indexing.build.pending_entries.len(),
+        2_000
+    );
+    assert_eq!(app.shell.runtime.total_match_count, drained_entries);
+    assert_eq!(
+        app.shell.runtime.results.len(),
+        drained_entries.min(app.shell.runtime.limit)
+    );
 
     let _ = fs::remove_dir_all(&root);
 }
