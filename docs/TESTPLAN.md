@@ -7,7 +7,9 @@ This file is the entry point for FlistWalker test planning. Detailed test strate
 | --- | --- |
 | [Test Strategy and Levels](testplan/strategy-levels.md) | Scope, priority, unit/integration/manual/perf/sec levels |
 | [Test Cases](testplan/test-cases.md) | TC ID table and related SP mapping |
-| [Validation Matrix and Runner Commands](testplan/validation-matrix.md) | Regression guards, change-type checklist, Validation Matrix, commands |
+| [Validation Matrix and Runner Commands](testplan/validation-matrix.md) | Change-type checklist, VM routing, and commands |
+| [Validation Details](testplan/validation/) | Per-VM required, conditional, platform, and manual checks |
+| [Regression Guards](testplan/regression-guards.md) | Defect-specific behavior, related tests, and future-change rules |
 | [Manual Regression and Traceability](testplan/manual-regression-traceability.md) | Environment, manual self-update, diagnostics trace smoke, structural GUI smoke, later regression guards, traceability excerpt |
 
 ## Change-Type Checklist
@@ -18,16 +20,16 @@ ID-bearing tables and normative sections SHOULD be kept in ascending ID order to
 
 ## Validation Matrix
 - Full matrix: [Validation Matrix and Runner Commands](testplan/validation-matrix.md)
-- VM-001 Docs only: affected doc diff review and `rg` ID/reference checks; Rust implementation untouched means `cargo test` is not required.
-- VM-002 App/UI orchestration: `cd rust && cargo test` plus focused render/GUI checks when relevant.
-- VM-003 Indexing path: `cd rust && cargo test` plus ignored perf tests for FileList / Walker indexing paths.
-- VM-004 Search/query contract: `cd rust && cargo test` and focused query GUI checks when relevant.
-- VM-005 CLI / build / release / updater: `cd rust && cargo test` plus release/update-specific checks.
-- VM-006 CI coverage gate / GUI validation docs: coverage command or script/parser checks as applicable.
-- VM-007 Supportability docs/templates: affected doc/template diff review and support wording checks.
-- VM-008 Runtime config bootstrap: `cd rust && cargo test` plus first-run/config precedence checks when relevant.
-- VM-009 CI reliability / pins / merge policy: CI policy unit tests, guardian fail-closed mode, workflow parse, Rust/audit regression, PR `CI Gate` / `CI Policy Guardian`, and repository-settings/protected-auto-merge evidence.
-- VM-010 Stateful endurance: deterministic fixed corpus/seed replay, invariant self-tests, quiescence, full Rust regression; add VM-002/003/009 when production orchestration/index/CI surfaces change.
+- [VM-001 Docs only](testplan/validation/vm-001.md): affected doc diff review and `rg` ID/reference checks; Rust implementation untouched means `cargo test` is not required.
+- [VM-002 App/UI orchestration](testplan/validation/vm-002.md): `cd rust && cargo test` plus focused render/GUI checks when relevant.
+- [VM-003 Indexing path](testplan/validation/vm-003.md): `cd rust && cargo test` plus ignored perf tests for FileList / Walker indexing paths.
+- [VM-004 Search/query contract](testplan/validation/vm-004.md): `cd rust && cargo test` and focused query GUI checks when relevant.
+- [VM-005 CLI / build / release / updater](testplan/validation/vm-005.md): `cd rust && cargo test` plus release/update-specific checks.
+- [VM-006 CI coverage gate / GUI validation docs](testplan/validation/vm-006.md): coverage command or script/parser checks as applicable.
+- [VM-007 Supportability docs/templates](testplan/validation/vm-007.md): affected doc/template diff review and support wording checks.
+- [VM-008 Runtime config bootstrap](testplan/validation/vm-008.md): `cd rust && cargo test` plus first-run/config precedence checks when relevant.
+- [VM-009 CI reliability / pins / merge policy](testplan/validation/vm-009.md): CI policy unit tests, guardian fail-closed mode, workflow parse, Rust/audit regression, PR `CI Gate` / `CI Policy Guardian`, and repository-settings/protected-auto-merge evidence.
+- [VM-010 Stateful endurance](testplan/validation/vm-010.md): deterministic fixed corpus/seed replay, invariant self-tests, quiescence, full Rust regression; add VM-002/003/009 when production orchestration/index/CI surfaces change.
 
 ## Docs-only Validation
 For documentation-only restructuring, apply VM-001:
