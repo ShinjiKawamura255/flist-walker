@@ -106,6 +106,23 @@ class AgentWorktreePreflightTests(unittest.TestCase):
         self.assertIn("current_branch_does_not_match_base", detached.reasons)
         self.assertIn("current_branch_does_not_match_base", other_branch.reasons)
 
+    def test_new_change_rejects_non_master_base_even_when_identity_matches(self) -> None:
+        result = PREFLIGHT.evaluate(
+            self.state(
+                branch="codex/base",
+                refs={"origin/codex/base": "a" * 40},
+                worktrees={"/repo": "codex/base"},
+                local_branches={"codex/base": "a" * 40},
+                remote_branches={"origin/codex/base": "a" * 40},
+            ),
+            mode="new-change",
+            base_ref="origin/codex/base",
+            target_branch="codex/new",
+        )
+
+        self.assertFalse(result.ok)
+        self.assertIn("new_change_base_must_be_origin_master", result.reasons)
+
     def test_continue_pr_rejects_head_branch_owned_by_other_worktree(self) -> None:
         result = PREFLIGHT.evaluate(
             self.state(), mode="continue-pr", head_ref="origin/codex/parent"

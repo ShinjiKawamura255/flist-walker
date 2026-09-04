@@ -78,6 +78,8 @@ def evaluate(
     if mode == "new-change":
         if not base_ref or not target_branch:
             reasons.append("base_ref_and_target_branch_are_required")
+        elif base_ref != "origin/master":
+            reasons.append("new_change_base_must_be_origin_master")
         elif base_ref not in state.refs:
             reasons.append("base_ref_is_missing")
         else:
