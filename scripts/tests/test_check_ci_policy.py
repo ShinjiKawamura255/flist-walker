@@ -606,6 +606,71 @@ jobs:
                     violations,
                 )
 
+    def test_release_contract_requires_tag_free_candidate_mode_regression(self) -> None:
+        release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
+            encoding="utf-8"
+        )
+        required_tokens = (
+            "  workflow_dispatch:",
+            "      version:",
+            "        required: true",
+            "        type: string",
+            "  release-context:",
+            "requested_tag=",
+            "DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}",
+            'if [[ "$REF_NAME" != "$DEFAULT_BRANCH" ]]; then',
+            "  assemble-release-bundle:",
+            "      - name: Upload validated candidate bundle",
+            "          retention-days: 14",
+            "  create-draft-release:",
+            "    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}",
+        )
+        for token in required_tokens:
+            with self.subTest(token=token):
+                self.assertIn(token, release_text)
+
+        blocks = dict(POLICY._job_blocks(release_text))
+        assembly = blocks["assemble-release-bundle"]
+        publication = blocks["create-draft-release"]
+        self.assertNotIn("contents: write", assembly)
+        self.assertNotIn("gh release create", assembly)
+        self.assertIn("contents: write", publication)
+        self.assertIn("gh release create", publication)
+
+        for token in required_tokens:
+            with self.subTest(missing=token):
+                mutated = release_text.replace(token, "removed-candidate-contract", 1)
+                violations = POLICY.validate_release_contract(mutated)
+                self.assertTrue(
+                    any("candidate" in item or "draft" in item for item in violations),
+                    violations,
+                )
+
+    def test_release_candidate_mode_keeps_publication_in_push_only_write_job(self) -> None:
+        release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
+            encoding="utf-8"
+        )
+        blocks = dict(POLICY._job_blocks(release_text))
+        publication = blocks["create-draft-release"]
+        required_condition = (
+            "    if: ${{ github.event_name == 'push' && "
+            "startsWith(github.ref, 'refs/tags/v') }}"
+        )
+
+        self.assertIn(required_condition, publication)
+        self.assertEqual(1, release_text.count("contents: write"))
+        self.assertEqual(1, release_text.count("gh release create"))
+
+        for replacement in (
+            "    if: ${{ always() }}",
+            "    if: ${{ github.event_name == 'workflow_dispatch' }}",
+            "",
+        ):
+            with self.subTest(replacement=replacement):
+                mutated = release_text.replace(required_condition, replacement, 1)
+                violations = POLICY.validate_release_contract(mutated)
+                self.assertTrue(any("draft" in item for item in violations), violations)
+
     def test_regression_release_contract_forbids_n_minus_one_bridge_bypass(self) -> None:
         release_text = (ROOT / ".github" / "workflows" / "release-tagged.yml").read_text(
             encoding="utf-8"
