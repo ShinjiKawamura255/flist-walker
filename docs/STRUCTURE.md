@@ -37,17 +37,18 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 | `rust/src/updater/` | Update discovery, validation, download, and apply support | `rust/src/updater.rs` and this directory |
 | `rust/src/updater/transaction/` | Transaction marker model, filesystem safety policy, OS process/replacement primitives, and characterization tests | `rust/src/updater/transaction.rs`, then the concern-specific module |
 | `docs/` | Canonical documentation entrypoints and operational references | `docs/INDEX.md` |
+| `docs/AI_DEVELOPMENT.md` | AI worktree, evidence, validation-entrypoint, PR handoff, review, and authority policy | Read before AI-driven edits or Git mutation |
 | `docs/requirements/` | Detailed FR/NFR/CON and acceptance-criteria content | `docs/REQUIREMENTS.md` |
 | `docs/spec/` | Normative SP behavior grouped by topic | `docs/SPEC.md` |
 | `docs/design/` | DES-level implementation design and trace | `docs/DESIGN.md` |
 | `docs/detailed-design/` | Deep implementation mechanics, data, sequences, and resilience | `docs/DETAILED_DESIGN.md` |
-| `docs/testplan/` | Test strategy, TC catalog, validation matrix, and manual regression procedures | `docs/TESTPLAN.md` |
+| `docs/testplan/` | Test strategy, TC catalog, validation routing/detail, regression guards, and manual procedures | `docs/TESTPLAN.md` |
 | `docs/history/` | Completed maintenance and closure history | `docs/history/INDEX.md` |
 | `docs/releases/` | Release records, rejected candidates, and release evidence | `docs/releases/INDEX.md` |
-| `scripts/` | Build, packaging, smoke-test, signing, and release validation helpers | Select through `docs/RELEASE.md` or the Validation Matrix |
+| `scripts/` | Build, packaging, smoke, release, repository-contract, change-routing, and worktree-preflight helpers | Select through `docs/AI_DEVELOPMENT.md`, `docs/RELEASE.md`, or the Validation Matrix |
 | `.github/workflows/` | Cross-platform CI, performance, and tagged release automation | `.github/workflows/ci-cross-platform.yml` |
 | `.github/ISSUE_TEMPLATE/` | User-facing issue forms | `docs/SUPPORT.md` |
-| `skills/` | Project-local high-risk release workflows | `skills/flistwalker-release-preflight/SKILL.md` |
+| `skills/` | Project-local PR/worktree, independent review, and release workflows | Select the trigger from `AGENTS.md` |
 
 ## Key Entrypoints
 
@@ -60,6 +61,7 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 - Current project posture: [CURRENT_STATUS.md](CURRENT_STATUS.md)
 - Runtime ownership map: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Change-specific validation: [testplan/validation-matrix.md](testplan/validation-matrix.md)
+- AI workflow and authority: [AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)
 
 ## Build, Test, And Release Hooks
 
