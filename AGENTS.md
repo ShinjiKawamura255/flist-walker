@@ -1,85 +1,56 @@
 # AGENTS.md for FlistWalker
 
-このファイルはプロジェクト固有のエージェント指示です。ワークスペース共通の方針と矛盾する場合は本ファイルを優先します。
+This file is the concise project policy entrypoint. The current user request has highest priority; this file overrides broader workspace guidance when they conflict.
 
-## 1. 目的と範囲
-- 目的: `fzf --walker` 相当の体験で、ファイル/フォルダを高速にファジー検索し、選択結果を実行またはオープンできる Rust ツールを開発する。
-- スコープ In:
-- Rust での本実装（GUI/CLI）
-- `FileList.txt` / `filelist.txt` 優先読み込み（ルート直下のみ探索）
-- File/Folder walker の分離
-- fzf 互換クエリ（`'` 完全一致、`!` 除外、`^`/`$` の先頭末尾条件）
-- 検索ハイライト、非マッチ非表示、複数選択と一括操作
-- Windows 向けビルド運用（WSL/Linux から `x86_64-pc-windows-gnu` + mingw-w64 で完結）
-- `docs/` の SDD + TDD 文書保守
-- スコープ Out:
-- Python 旧プロトタイプの再導入
-- ネットワークドライブ向け最適化
-- 配布インストーラ作成
+## 1. Purpose And Scope
 
-## 2. 現在の開発方針
-- Rust 本実装を主軸に機能拡張と品質改善を行う。
-- GUI/CLI の検索仕様・操作仕様の一貫性を維持する。
-- Windows 実行を重視し、WSL/Linux から完結する GNU ビルド導線を維持する。
-- 旧 Python プロトタイプは Git 履歴だけを参照元とし、実装・テスト・文書を現行ツリーへ再導入しない。
+- Build a Rust GUI/CLI/TUI that provides fast fuzzy file/folder search and safe open/execute actions comparable to `fzf --walker`.
+- Maintain `FileList.txt` / `filelist.txt` root-only priority loading, separate File/Folder walkers, fzf-compatible query operators, highlighting, filtering, multi-select, and batch actions.
+- Support Windows, macOS, and Linux. Keep the WSL/Linux and PowerShell Windows GNU build paths.
+- Maintain SDD/TDD under `docs/`. Do not restore the retired Python prototype, optimize for network drives, or add an installer without an explicit scope change.
 
-## 3. UI 応答性ポリシー（最優先）
-- 最優先要件: UI を固めない。重い I/O や計算は UI スレッドで実行しない。
-- MUST: index/search/preview/create-filelist はワーカー（スレッド）で処理し、UI はイベント駆動で反映する。
-- MUST: 検索・インデックス・ファイルリスト作成など長時間処理中でも、入力・カーソル移動・スクロール操作を維持する。
-- MUST: 処理中ステータス（例: `Searching...`, `Indexing...`, `Creating FileList...`）を UI で可視化する。
-- SHOULD: 増分反映やメッセージ処理は 1 フレームの予算を設け、再描画詰まりを防ぐ。
-- SHOULD: プレビューは遅延してもよいが、一覧操作の滑らかさを優先する。
+## 2. Critical Runtime Invariants
 
-## 4. 重要な制約・品質特性
-- 対応環境: Windows/macOS/Linux の主要 OS。
-- 性能: 10万件候補で検索応答 100ms 未満を目標。
-- 品質: TDD を基本とし、主要機能は unit test で保証する。
-- セキュリティ: 外部コマンド実行は配列引数で呼び出し、シェル展開依存を避ける。
-- 運用:
-- Windows 向け Rust ビルドは `scripts/build-rust-win.sh` / `scripts/build-rust-win-clean.sh` または `scripts/build-rust-win.ps1` / `scripts/build-rust-win-clean.ps1` を利用し、`x86_64-pc-windows-gnu` + mingw-w64 で WSL/Linux と Windows PowerShell のどちらからでも実行可能にする。
-- GitHub Actions の tag push（`v*`）で各 OS 向け release build を実行し、draft release と asset upload を行う workflow を維持する。
-- tag push 後は GitHub 上に作成された draft release を確認し、公開時は Codex から GitHub Release 本文を整えたうえで draft を本リリースへ切り替える運用とする。
-- 当面の暫定運用として、macOS 配布物の notarization 確認は本リリース publish の前提条件にしない。notarization 環境が整うまでは publish を許容する。
-- release asset の生成は `scripts/prepare-release*.sh|ps1` と `.github/workflows/release-tagged.yml` を基準に保守する。
-- 配布アーカイブと standalone バイナリ向け sidecar asset には `LICENSE` / `THIRD_PARTY_NOTICES` を同梱し、依存ライセンス notice の欠落を防ぐ。
-- release bundle は universal binary/archive/sidecar に CLI 専用 `fw` standalone 4 asset を加えた 28 asset、統合 `SHA256SUMS` は 26 entry を正規 inventory とする。既存 archive に `fw` を混在させない。
-- macOS の `.app` bundle は notarization 用に `dist/` へ生成してよいが、GitHub Release へ添付する asset には含めない。
-- release/tag/publish 作業に入る前に、`skills/flistwalker-release-preflight/` を release readiness gate として使い、version 整合だけでなく docs 追従、Validation Matrix、OSS notice、release asset 名、GUI 証跡、CI/release build warning を確認し、必要な更新を先に完了させる。
+- Never block the UI thread with indexing, search, preview, kind resolution, action execution, updater work, FileList creation, heavy payload destruction, or other unbounded I/O/computation.
+- Long operations use bounded workers and visible status. Input, cursor movement, and scrolling remain responsive while they run.
+- Correlate asynchronous work by request identity. Ignore stale responses and never let them roll UI, tab, or resource state backward.
+- Preserve query contracts for `'`, `!`, `^`, `$`, regex/plain matching, ranking, highlighting, and GUI/CLI/TUI consistency.
+- Invoke external commands with argument arrays rather than shell expansion. Revalidate action targets immediately before OS interaction and fail closed on unresolved paths.
 
-## 5. 実装ガードレール
-- FileList 検出仕様（大文字/小文字、優先順、探索範囲）を変更する場合は `indexer` テストを先に更新する。
-- 非同期処理は request_id で最新応答のみ採用し、古い応答で UI 状態を巻き戻さない。
-- GUI でパス種別判定やプレビュー生成などの同期 I/O を描画ループに持ち込まない。
-- 仕様演算子（`'`, `!`, `^`, `$`）の検索契約は後方互換を維持する。
+## 3. Documentation And Validation
 
-## 6. ドキュメント/プロセス
-- ドキュメント全体の地図は `docs/INDEX.md` を入口とし、用途別の読み順を確認する。
-- `docs/` に `REQUIREMENTS.md` / `SPEC.md` / `DESIGN.md` / `TESTPLAN.md` を配置。
-- ID は `FR-###` / `NFR-###` / `CON-###` / `SP-###` / `DES-###` / `TC-###` を付与。
-- SPEC は MUST/SHOULD で規範化し、TDD を徹底する。
-- 仕様や設計を変更したら、同一変更で docs の該当箇所も更新する。
-- 検証は `docs/TESTPLAN.md` の Validation Matrix に従って選択する。
-- Rust 実装を変更した場合は最低限 `cargo test` を実行してから完了報告する。docs-only 変更は matrix 上の docs 手順で代替してよい。
-- `rust/src/indexer/`、`rust/src/app/index_worker.rs`、`rust/src/app/mod.rs` のインデクシング経路を変更した場合は、Validation Matrix の VM-003 に従い、通常の `cargo test` に加えて以下の ignored perf テストを明示実行する。
-- `cargo test perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture`
-- `cargo test perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture`
-- 上記 perf テストは、FileList / Walker の初期インデクシング速度が基準実装より悪化していないことを確認する目的で使う。
-- `rust/Cargo.toml` / `rust/Cargo.lock` / GitHub Actions / release script など依存関係や配布物に含まれる OSS 構成を変更した場合は、同一変更で `THIRD_PARTY_NOTICES.txt`、必要な `LICENSE` 同梱導線、関連 docs を更新し、`docs/OSS_COMPLIANCE.md` のチェックを実施してから完了報告する。
-- `FLISTWALKER_UPDATE_FEED_URL` / `FLISTWALKER_UPDATE_ALLOW_SAME_VERSION` / `FLISTWALKER_UPDATE_ALLOW_DOWNGRADE` は開発・手動試験専用とし、`README.md`、`docs/RELEASE.md`、`.github/release-template.md`、GitHub Release 本文、CLI/GUI のユーザ向けヘルプなど配布物や公開向け文書へ記載してはならない。
-- release asset 名、対象 OS、GitHub Release 導線を変更した場合は `docs/RELEASE.md`、`.github/release-template.md`、`AGENTS.md` を同一変更で更新する。
-- `vX.Y.Z` の tag 作成、release note 整備、draft release publish を行う依頼では、先に `skills/flistwalker-release-preflight/` を実行し、version 更新漏れ、docs 追従漏れ、公開向け文書への開発・手動試験用 env 名混入、asset / sidecar / OSS notice 不整合があれば tag 作成前に修正する。
-- リリースノート、`CHANGELOG.md`、GitHub Release 本文の更新は project-local skill `skills/flistwalker-release-notes/` を必ず使い、その手順に従って前回 tag から対象 tag までの差分を一次情報にする。本文は手書きの記憶や直近数件の commit だけで作らず、`git log --oneline <前回tag>..<対象tag>` と `git diff --stat <前回tag>..<対象tag>` を確認してから要約する。
-- 上記の暫定運用中は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
+- Start at `docs/INDEX.md`. Use `docs/CURRENT_STATUS.md` for durable posture and `docs/AI_DEVELOPMENT.md` for worktree, evidence, authority, PR handoff, and independent-review policy.
+- REQUIREMENTS owns FR/NFR/CON and acceptance criteria; SPEC owns SP; DESIGN owns DES; TESTPLAN owns TC and validation selection. Preserve `FR/NFR/CON → SP → DES → TC` traceability.
+- Use TDD for behavior changes: focused failing test, implementation, green, refactor, then required regressions. Document why TDD is inapplicable for docs-only or mechanical changes.
+- Before completion, run `python3 scripts/validate_change.py --base <base> --plan` and follow every selected intent checklist and VM detail. Rust implementation changes require at least `cargo test` unless the VM requires a stronger command.
+- Point-in-time evidence belongs in the PR, exact CI run, versioned release evidence, or retained history. Do not treat ignored `rust/target/`, `dist/`, temporary, or `.local.*` files as durable current truth.
 
-## 7. CI / PR 運用
-- `master` へ直接 push しない。変更は machine PR とし、required approving review は 0 件、required check は GitHub Actions の `CI Gate` と `CI Policy Guardian` とする。`master` は linear history を必須とし、merge commit と squash merge は許可しない。
-- ローカル変更は、clean かつ `origin/master` と一致する `master` から、最初の commit 前に feature branch を作成して開始する。PR 作成 agent は `skills/flistwalker-pr-lifecycle/` に従い、`gh pr merge --auto --rebase --delete-branch` 相当を1回だけ明示登録する。auto-merge 実完了後の同期と rebase により SHA が書き換わった local feature branch の限定 cleanup は、同 skill の全確認条件を満たす場合だけ行う。`master` は fast-forward 同期だけを許可し、既存の分岐状態では停止して明示的な回復指示を待つ。remote feature branch は GitHub の auto-delete に委ねる。必要な履歴整理の force-with-lease は非保護 feature branch に限り許可し、`master` の force push、branch deletion、admin bypass で gate を回避しない。Dependabot PR は trusted `workflow_run` から同じ auto-merge を登録する。
-- `CI Policy Guardian` は default branch の immutable trusted policy だけを実行し、PR head は API から取得した policy file blob を data として検査する。PR code、secret、cache、artifact を扱う `pull_request_target` は禁止する。
-- required CI は numbered runner generation、`rust/rust-toolchain.toml` の Rust、full SHA Action、固定 CI tool versionを使う。hosted image内容はmutableなので各jobの`ImageOS`/`ImageVersion`を証跡化する。
-- Cargo audit対象は任意階層の`Cargo.toml`/`Cargo.lock`、`rust/.cargo/audit.toml`、audit workflow、CI policy checker/testとする。対象変更ではauditを`CI Gate`へ集約し、非対象変更のみskipを許可する。
-- scheduled security auditとlatest canaryはrequired checkにしない。失敗issueをauditは24時間、canaryは7日以内にagentがtriageする。
-- pin更新triggerとpromotion条件、失敗分類、rollbackは`docs/CI_OPERATIONS.md`を正本とし、workflow変更はVM-009で検証する。
+## 4. Change Guardrails
 
-## 8. トレース（抜粋）
-- FR-### → SP-### → DES-### → TC-###
+- Update indexer tests first when changing FileList case, priority, or root-only detection.
+- Run both ignored VM-003 indexing performance guards when changing `rust/src/indexer/`, `rust/src/app/index_worker.rs`, or related indexing coordination; read the selected VM-003 detail for additional conditional gates.
+- Dependency, Cargo, workflow, updater, or packaging changes must keep `THIRD_PARTY_NOTICES.txt`, license sidecars, `docs/OSS_COMPLIANCE.md`, and related release docs consistent.
+- Never place development/manual-test update override names in README, public release docs/templates, release text, or user-facing CLI/GUI help. The forbidden-name list is owned by the release preflight.
+- Do not weaken tests, skip validation, hide warnings, broaden refactors, or change specs only to make a failing check pass.
+
+## 5. Release And CI
+
+- `docs/RELEASE.md` owns release assets, checksums, notarization posture, build scripts, and publication procedure. Use `skills/flistwalker-release-preflight/` before any tag/release/publish task and `skills/flistwalker-release-notes/` for CHANGELOG or release text.
+- `docs/CI_OPERATIONS.md` owns CI pins, trusted-policy rollout, branch protection, canary/audit response, rollback, and proof-PR requirements.
+- Required PR checks are `CI Gate` and `CI Policy Guardian`. Do not use `pull_request_target` outside the read-only trusted guardian, execute PR code there, weaken permissions, or bypass required checks.
+- Do not create/push tags or publish/edit/delete a release unless the user explicitly requested that release operation and all release gates are complete.
+
+## 6. Git, Worktrees, And External State
+
+- Never push directly to `master`. Use a machine PR with rebase auto-merge; merge and squash commits are disabled.
+- Before editing or branch mutation, use `skills/flistwalker-pr-lifecycle/` and its read-only worktree preflight. Never switch, reset, clean, commit in, or delete a branch owned by another worktree.
+- A stacked change records its old-parent SHA and, after the parent merges, replays only task-owned commits onto updated `origin/master`; rerun validation and independent review after replay.
+- Do not include pre-existing or unrelated changes in a commit. Do not use `git reset --hard`, manual remote branch deletion, `master` force push, or admin bypass. The prescribed PR command and repository auto-delete setting may perform server-side post-merge cleanup.
+- Repository-setting changes, immutable CI rollout, external application launch, sensitive-data transmission, tag/release publication, and destructive operations require the exact authority defined in `docs/AI_DEVELOPMENT.md`.
+
+## 7. Project-Local Skills
+
+- `skills/flistwalker-pr-lifecycle/`: worktree mode, PR creation, rebase auto-merge, merge confirmation, and safe owner-worktree cleanup.
+- `skills/flistwalker-change-review/`: independent read-only review for high-risk changes and plan-driven checkpoints.
+- `skills/flistwalker-release-preflight/`: release readiness gate.
+- `skills/flistwalker-release-notes/`: release-range evidence and public release text.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "FlistWalker Change Review"
+  short_description: "Review high-risk FlistWalker changes independently"
+  default_prompt: "Use $flistwalker-change-review to independently review this FlistWalker change before merge."
