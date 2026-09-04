@@ -58,6 +58,21 @@ class RepoContractTests(unittest.TestCase):
             escaped = [item for item in violations if "outside repository" in item]
             self.assertEqual(2, len(escaped), escaped)
 
+    def test_missing_local_markdown_heading_fragment_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.minimal_repo(root)
+            self.write(
+                root,
+                "docs/INDEX.md",
+                "# Index\n\n[missing section](guide.md#missing-section)\n",
+            )
+            self.write(root, "docs/guide.md", "# Guide\n\n## Existing section\n")
+
+            violations = CONTRACT.collect_violations(root)
+
+            self.assertTrue(any("missing local link fragment" in item for item in violations))
+
     def test_current_status_rejects_transient_evidence_and_current_head_claim(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

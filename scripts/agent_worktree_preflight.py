@@ -81,6 +81,8 @@ def evaluate(
         elif base_ref not in state.refs:
             reasons.append("base_ref_is_missing")
         else:
+            if state.branch != short_branch(base_ref):
+                reasons.append("current_branch_does_not_match_base")
             if state.head != state.refs[base_ref]:
                 reasons.append("head_does_not_match_base")
             if target_exists(state, target_branch):
