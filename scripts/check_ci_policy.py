@@ -512,6 +512,85 @@ def validate_release_contract(text: str) -> list[str]:
             expected_if=None,
         )
     )
+    required_candidate_contract = {
+        "candidate workflow_dispatch trigger": "  workflow_dispatch:",
+        "candidate version input": "      version:",
+        "candidate required version input": "        required: true",
+        "candidate typed version input": "        type: string",
+        "candidate release context job": "  release-context:",
+        "candidate validated tag resolution": "requested_tag=",
+        "candidate default branch context": (
+            "DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}"
+        ),
+        "candidate default branch guard": (
+            'if [[ "$REF_NAME" != "$DEFAULT_BRANCH" ]]; then'
+        ),
+        "candidate bundle assembly job": "  assemble-release-bundle:",
+        "candidate artifact upload": "      - name: Upload validated candidate bundle",
+        "candidate artifact retention": "          retention-days: 14",
+        "draft publication job": "  create-draft-release:",
+        "draft push-only condition": (
+            "    if: ${{ github.event_name == 'push' && "
+            "startsWith(github.ref, 'refs/tags/v') }}"
+        ),
+    }
+    for label, token in required_candidate_contract.items():
+        if token not in text:
+            violations.append(f"release-tagged.yml: missing {label}")
+    dispatch_input = (
+        "  workflow_dispatch:\n"
+        "    inputs:\n"
+        "      version:\n"
+        '        description: "Candidate version tag (vX.Y.Z)"\n'
+        "        required: true\n"
+        "        type: string"
+    )
+    if dispatch_input not in text:
+        violations.append(
+            "release-tagged.yml: candidate dispatch input contract is incomplete"
+        )
+    if (
+        '            requested_tag="$INPUT_VERSION"' not in text
+        or '            requested_tag="$REF_NAME"' not in text
+    ):
+        violations.append(
+            "release-tagged.yml: candidate/tag release context must resolve both events"
+        )
+
+    blocks = _job_blocks(text)
+    assembly_blocks = [block for name, block in blocks if name == "assemble-release-bundle"]
+    publication_blocks = [block for name, block in blocks if name == "create-draft-release"]
+    if len(assembly_blocks) != 1:
+        violations.append(
+            "release-tagged.yml: candidate bundle assembly job must be unique"
+        )
+    else:
+        assembly = assembly_blocks[0]
+        if "contents: write" in assembly or "gh release create" in assembly:
+            violations.append(
+                "release-tagged.yml: candidate bundle assembly must not publish"
+            )
+    if len(publication_blocks) != 1:
+        violations.append("release-tagged.yml: draft publication job must be unique")
+    else:
+        publication = publication_blocks[0]
+        push_only_condition = (
+            "    if: ${{ github.event_name == 'push' && "
+            "startsWith(github.ref, 'refs/tags/v') }}"
+        )
+        if push_only_condition not in publication:
+            violations.append(
+                "release-tagged.yml: draft publication must be push-tag-only"
+            )
+        if "contents: write" not in publication or "gh release create" not in publication:
+            violations.append(
+                "release-tagged.yml: draft publication must own the only release write"
+            )
+    if text.count("contents: write") != 1 or text.count("gh release create") != 1:
+        violations.append(
+            "release-tagged.yml: draft publication must be the unique write path"
+        )
+
     required_n_minus_one = {
         "latest published release lookup": (
             'previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" '

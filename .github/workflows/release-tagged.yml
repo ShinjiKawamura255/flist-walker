@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Candidate version tag (vX.Y.Z)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,10 +24,60 @@ env:
   CARGO_AUDIT_VERSION: 0.22.2
 
 jobs:
+  release-context:
+    name: Resolve Release Context
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.context.outputs.tag }}
+      version: ${{ steps.context.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve and validate version
+        id: context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          INPUT_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ "$REF_NAME" != "$DEFAULT_BRANCH" ]]; then
+              echo "candidate workflow must run from default branch $DEFAULT_BRANCH" >&2
+              exit 1
+            fi
+            requested_tag="$INPUT_VERSION"
+          else
+            requested_tag="$REF_NAME"
+          fi
+          if [[ ! "$requested_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version must match vX.Y.Z: $requested_tag" >&2
+            exit 1
+          fi
+          cargo_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' rust/Cargo.toml | head -n 1)"
+          if [[ "$cargo_version" != "${requested_tag#v}" ]]; then
+            echo "Cargo version $cargo_version does not match $requested_tag" >&2
+            exit 1
+          fi
+          echo "tag=$requested_tag" >> "$GITHUB_OUTPUT"
+          echo "version=${requested_tag#v}" >> "$GITHUB_OUTPUT"
+
   release-preflight:
     name: Release Preflight (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    needs: release-context
     strategy:
       fail-fast: false
       matrix:
@@ -74,6 +130,7 @@ jobs:
     name: Release Cargo Audit
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: release-context
     defaults:
       run:
         shell: bash
@@ -106,6 +163,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     needs:
+      - release-context
       - release-preflight
       - release-cargo-audit
     env:
@@ -119,50 +177,50 @@ jobs:
             artifact_name: release-windows-x86_64
             target: x86_64-pc-windows-gnu
             upload_paths: |
-              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.exe
-              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.zip
-              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.README.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.LICENSE.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-windows-x86_64.THIRD_PARTY_NOTICES.txt
-              dist/${{ github.ref_name }}/fw-*-windows-x86_64.exe
-              dist/${{ github.ref_name }}/SHA256SUMS
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-windows-x86_64.exe
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-windows-x86_64.zip
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-windows-x86_64.README.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-windows-x86_64.LICENSE.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-windows-x86_64.THIRD_PARTY_NOTICES.txt
+              dist/${{ needs.release-context.outputs.tag }}/fw-*-windows-x86_64.exe
+              dist/${{ needs.release-context.outputs.tag }}/SHA256SUMS
           - os: ubuntu-24.04
             label: linux-x86_64
             artifact_name: release-linux-x86_64
             upload_paths: |
-              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64
-              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.tar.gz
-              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.README.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.LICENSE.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-linux-x86_64.THIRD_PARTY_NOTICES.txt
-              dist/${{ github.ref_name }}/fw-*-linux-x86_64
-              dist/${{ github.ref_name }}/SHA256SUMS
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-linux-x86_64
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-linux-x86_64.tar.gz
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-linux-x86_64.README.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-linux-x86_64.LICENSE.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-linux-x86_64.THIRD_PARTY_NOTICES.txt
+              dist/${{ needs.release-context.outputs.tag }}/fw-*-linux-x86_64
+              dist/${{ needs.release-context.outputs.tag }}/SHA256SUMS
           - os: macos-26-intel
             label: macos-x86_64
             artifact_name: release-macos-x86_64
             target: x86_64-apple-darwin
             upload_paths: |
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64-app.zip
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.tar.gz
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.README.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.LICENSE.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-x86_64.THIRD_PARTY_NOTICES.txt
-              dist/${{ github.ref_name }}/fw-*-macos-x86_64
-              dist/${{ github.ref_name }}/SHA256SUMS
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-x86_64
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-x86_64-app.zip
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-x86_64.tar.gz
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-x86_64.README.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-x86_64.LICENSE.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-x86_64.THIRD_PARTY_NOTICES.txt
+              dist/${{ needs.release-context.outputs.tag }}/fw-*-macos-x86_64
+              dist/${{ needs.release-context.outputs.tag }}/SHA256SUMS
           - os: macos-26
             label: macos-arm64
             artifact_name: release-macos-arm64
             target: aarch64-apple-darwin
             upload_paths: |
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64-app.zip
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.tar.gz
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.README.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.LICENSE.txt
-              dist/${{ github.ref_name }}/FlistWalker-*-macos-arm64.THIRD_PARTY_NOTICES.txt
-              dist/${{ github.ref_name }}/fw-*-macos-arm64
-              dist/${{ github.ref_name }}/SHA256SUMS
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-arm64
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-arm64-app.zip
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-arm64.tar.gz
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-arm64.README.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-arm64.LICENSE.txt
+              dist/${{ needs.release-context.outputs.tag }}/FlistWalker-*-macos-arm64.THIRD_PARTY_NOTICES.txt
+              dist/${{ needs.release-context.outputs.tag }}/fw-*-macos-arm64
+              dist/${{ needs.release-context.outputs.tag }}/SHA256SUMS
 
     steps:
       - name: Checkout
@@ -212,7 +270,7 @@ jobs:
       - name: Package Windows release assets
         if: ${{ matrix.label == 'windows-x86_64' }}
         shell: bash
-        run: ./scripts/prepare-release.sh "${{ github.ref_name }}"
+        run: ./scripts/prepare-release.sh "${{ needs.release-context.outputs.tag }}"
 
       - name: Build Linux release
         if: ${{ matrix.label == 'linux-x86_64' }}
@@ -223,7 +281,7 @@ jobs:
       - name: Package Linux release assets
         if: ${{ matrix.label == 'linux-x86_64' }}
         shell: bash
-        run: ./scripts/prepare-release-linux.sh "${{ github.ref_name }}"
+        run: ./scripts/prepare-release-linux.sh "${{ needs.release-context.outputs.tag }}"
 
       - name: Build macOS release
         if: ${{ matrix.label == 'macos-x86_64' || matrix.label == 'macos-arm64' }}
@@ -233,7 +291,7 @@ jobs:
       - name: Package macOS release assets
         if: ${{ matrix.label == 'macos-x86_64' || matrix.label == 'macos-arm64' }}
         shell: bash
-        run: ./scripts/prepare-release-macos.sh "${{ github.ref_name }}" "${{ matrix.target }}"
+        run: ./scripts/prepare-release-macos.sh "${{ needs.release-context.outputs.tag }}" "${{ matrix.target }}"
 
       - name: Upload packaged assets
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -242,13 +300,13 @@ jobs:
           path: ${{ matrix.upload_paths }}
           if-no-files-found: error
 
-  create-draft-release:
-    name: Create Draft Release
+  assemble-release-bundle:
+    name: Assemble Release Bundle
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    needs: build-release-assets
-    permissions:
-      contents: write
+    needs:
+      - release-context
+      - build-release-assets
 
     steps:
       - name: Checkout
@@ -264,17 +322,6 @@ jobs:
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
         with:
           toolchain: 1.97.1
-
-      - name: Reject an existing release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "release already exists for ${GITHUB_REF_NAME}; refusing to overwrite assets" >&2
-            exit 1
-          fi
 
       - name: Download packaged assets
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -315,7 +362,7 @@ jobs:
 
       - name: Validate release bundle
         shell: bash
-        run: bash ./scripts/validate-release-bundle.sh "${GITHUB_REF_NAME}" release-bundle
+        run: bash ./scripts/validate-release-bundle.sh "${{ needs.release-context.outputs.tag }}" release-bundle
 
       - name: Validate previous public updater compatibility
         env:
@@ -325,7 +372,7 @@ jobs:
           set -euo pipefail
           previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
           previous_version="${previous_tag#v}"
-          candidate_version="${GITHUB_REF_NAME#v}"
+          candidate_version="${{ needs.release-context.outputs.version }}"
           # Regression guard: the updater that is already installed parses the
           # candidate manifest, so candidate-side fixes cannot justify a bypass.
           python3 ./scripts/check-updater-n-minus-one-compatibility.py \
@@ -333,13 +380,58 @@ jobs:
             --candidate-version "$candidate_version" \
             --manifest release-bundle/SHA256SUMS
 
-      - name: Create draft GitHub release
+      - name: Upload validated candidate bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: validated-release-bundle-${{ needs.release-context.outputs.tag }}-${{ github.sha }}
+          path: release-bundle
+          if-no-files-found: error
+          retention-days: 14
+
+  create-draft-release:
+    name: Create Draft Release
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs:
+      - release-context
+      - assemble-release-bundle
+    permissions:
+      contents: write
+
+    steps:
+      - name: Record runner image
+        shell: bash
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Reject an existing release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release already exists for $RELEASE_TAG; refusing to overwrite assets" >&2
+            exit 1
+          fi
+
+      - name: Download validated candidate bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: validated-release-bundle-${{ needs.release-context.outputs.tag }}-${{ github.sha }}
+          path: release-bundle
+
+      - name: Create draft GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
           assets=(release-bundle/*)
           if [ ${#assets[@]} -eq 0 ]; then
             echo "release-bundle is empty" >&2
