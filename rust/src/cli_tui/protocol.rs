@@ -17,6 +17,11 @@ pub(super) const EVENT_POLL: Duration = Duration::from_millis(50);
 pub(super) const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
 
 pub(super) enum WorkerResponse {
+    IndexedSharedBatch {
+        request_id: u64,
+        root: PathBuf,
+        batch: CandidateBatch,
+    },
     IndexedBatch {
         request_id: u64,
         root: PathBuf,
@@ -43,7 +48,7 @@ pub(super) enum WorkerResponse {
         root: PathBuf,
         query: String,
         options: SearchOptions,
-        results: Vec<(PathBuf, f64)>,
+        results: Arc<Vec<(PathBuf, f64)>>,
         error: Option<String>,
     },
     Previewed {
@@ -82,7 +87,7 @@ pub(super) enum FileListWorkerResult {
 pub(super) struct SearchRequest {
     pub(super) request_id: u64,
     pub(super) query: String,
-    pub(super) entries: Arc<Vec<Arc<[PathBuf]>>>,
+    pub(super) entries: Arc<Vec<CandidateBatch>>,
     pub(super) root: PathBuf,
     pub(super) limit: usize,
     pub(super) options: SearchOptions,
@@ -90,9 +95,34 @@ pub(super) struct SearchRequest {
     pub(super) cancel: Arc<AtomicBool>,
 }
 
+pub(super) type IndexBatchOwner = Arc<Mutex<Vec<Arc<[PathBuf]>>>>;
+
+// The owner field drops after entries. The recycler retains the owner while any
+// response, UI snapshot or search request may still hold one of its batches.
+#[derive(Clone, Debug)]
+pub(super) struct CandidateBatch {
+    pub(super) entries: Arc<[PathBuf]>,
+    pub(super) _owner: Option<IndexBatchOwner>,
+}
+#[cfg(test)]
+impl From<Vec<PathBuf>> for CandidateBatch {
+    fn from(entries: Vec<PathBuf>) -> Self {
+        Self {
+            entries: Arc::from(entries),
+            _owner: None,
+        }
+    }
+}
+impl std::ops::Deref for CandidateBatch {
+    type Target = [PathBuf];
+    fn deref(&self) -> &Self::Target {
+        &self.entries
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(super) struct CandidateBatches {
-    pub(super) batches: Arc<Vec<Arc<[PathBuf]>>>,
+    pub(super) batches: Arc<Vec<CandidateBatch>>,
     pub(super) len: usize,
 }
 
@@ -101,8 +131,15 @@ impl CandidateBatches {
         if entries.is_empty() {
             return;
         }
-        self.len = self.len.saturating_add(entries.len());
-        Arc::make_mut(&mut self.batches).push(Arc::from(entries));
+        self.push_shared(CandidateBatch {
+            entries: Arc::from(entries),
+            _owner: None,
+        });
+    }
+
+    pub(super) fn push_shared(&mut self, batch: CandidateBatch) {
+        self.len = self.len.saturating_add(batch.len());
+        Arc::make_mut(&mut self.batches).push(batch);
     }
 
     pub(super) fn clear(&mut self) {
@@ -114,7 +151,7 @@ impl CandidateBatches {
         self.len
     }
 
-    pub(super) fn snapshot(&self) -> Arc<Vec<Arc<[PathBuf]>>> {
+    pub(super) fn snapshot(&self) -> Arc<Vec<CandidateBatch>> {
         Arc::clone(&self.batches)
     }
 }
@@ -228,6 +265,7 @@ impl TuiIndexFreshness {
 }
 
 pub(super) struct PreviewRequest {
+    pub(super) cancel: Arc<AtomicBool>,
     pub(super) request_id: u64,
     pub(super) root: PathBuf,
     pub(super) path: PathBuf,
@@ -296,6 +334,7 @@ impl AuthorizedActionBackend for TuiActionBackend {
 }
 
 pub(super) struct EventLoopContext<'a> {
+    pub(super) preset_worker: &'a super::presets::PresetWorker,
     pub(super) index_tx: &'a mpsc::Sender<IndexRequest>,
     pub(super) index_freshness: Arc<TuiIndexFreshness>,
     pub(super) search_tx: &'a mpsc::Sender<SearchRequest>,
@@ -324,6 +363,8 @@ pub(super) enum TuiExit {
 }
 
 pub(super) enum KeyAction {
+    OpenPresets,
+    PresetOperation(super::presets::PresetOperation),
     Continue,
     Cancel,
     Select,
