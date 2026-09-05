@@ -82,7 +82,7 @@
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: runtime config の `restore_tabs_enabled` が `true` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
 - SHOULD: 保存済み `last_root` / `default_root` / tab root は native window 初期表示前に存在確認しない。存在しない root は初回 index refresh の失敗/空結果として UI 上で扱い、切断済みドライブや遅いパスで window 表示を遅延させない。
-- MUST: GUI起動時のwindow復元はWindows/macOS/Linuxで実monitor矩形を使い、画面間の隙間や切断済み画面の保存位置を有効な画面内へ補正する。保存scaleを使って座標系を変換し、有効な負座標は維持する。旧形式でscale不明、monitor列挙不可、position操作不可の場合は保存位置を適用せずWM配置へ委ね、有限で上限付きのサイズだけを復元する。
+- MUST: GUI起動時のwindow復元はWindows/macOS/Linuxで実monitor矩形を使い、画面間の隙間や切断済み画面の保存位置を有効な画面内へ補正する。保存scaleを使って座標系を変換し、有効な負座標は維持する。保存位置なし、または旧形式でscale不明でも、monitor列挙とposition操作が可能なら現在の実monitor（取得不能なら列挙先頭）内へ明示配置し、console先行起動を含むWM既定位置へ委ねてはならない。monitor列挙不可またはposition操作不可の場合だけ保存位置を適用せずWM配置へ委ね、有限で上限付きのサイズを復元する。
 - SHOULD: タブは任意の accent color を持てる。
 - MUST: 非 active tab に accent color が設定されている場合、タブ下部にその色の装飾を表示する。
 - MUST: active tab に accent color が設定されている場合、タブ全面をその色で装飾する。

@@ -170,3 +170,11 @@ Back to the [Validation Matrix](validation-matrix.md).
 - Non-goals: Markdown の sanitized validation summary、明示依頼された製品画像・設計画像、または事前に保存場所と redaction scope を合意した画像成果物を一律禁止しない。
 - Related Tests: `test_regression_gui_evidence_screenshots_are_rejected`, `test_regression_gui_evidence_nested_uppercase_image_is_rejected`.
 - Notes for Future Changes: screenshot 拡張子、GUI evidence directory、repository contract を変更する場合は、画像を黙って durable evidence へ昇格させず、このガードと対になるテストを同時に更新する。
+
+### Regression Guard: positionless startup stays on a real display
+
+- Scenario: Windows universal binaryがconsole subsystemで起動してGUI modeへ切り替わり、保存window位置がないか旧形式でscale不明のため、GUI位置をWM既定配置へ委ねる。display構成変更後は、その既定位置が画面間の隙間または切断済みdisplay側に残る。
+- Expected Behavior: 実monitor列挙とposition操作が可能なら、保存位置なし／legacy scale不明でも現在のmonitor（取得不能なら列挙先頭）内へ明示配置する。有効な保存scaleと負座標は従来どおり復元する。
+- Non-goals: monitor列挙不能またはposition操作不能なbackendでの配置保証、最大化状態の復元、taskbar/dockを除いたplatform固有work areaの取得。
+- Related Tests: TC-020, TC-138, `regression_gui_geometry_monitor_gap_is_not_a_valid_placement`, `regression_gui_geometry_missing_saved_position_uses_current_monitor_fallback`, `regression_gui_geometry_unavailable_position_preserves_only_bounded_size`.
+- Notes for Future Changes: console detach順序、eframe/winit起動処理、session schema、起動geometry fallbackを変更する場合は、positionless/legacyとposition操作不能の両境界を維持し、WM既定位置を安全性の根拠にしない。
