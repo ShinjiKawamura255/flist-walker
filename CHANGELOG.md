@@ -24,6 +24,38 @@
 ### Known issues
 - なし。
 
+## [0.27.0] - 2026-09-06
+### Added
+- TUI に preset の一覧・絞り込み・追加・編集・削除・適用を追加し、非アクティブ資源の回収を bounded にした。
+- walker に opt-in の symbolic link / junction 追跡を追加し、許可 root 内へ投影した相対結果と循環・重複防止を GUI / CLI / TUI で共有した。
+
+### Changed
+- 検索・index・並び順・highlight の契約を統一し、深さ、FileList、query 履歴、tab 復元をまたぐ結果の一貫性を高めた。
+- config 読み込みと preview 生成を bounded worker へ移し、重い I/O や payload 解放が GUI frame を妨げないようにした。
+- tab の追加・並べ替え・復元・非アクティブ資源管理と、preset picker/editor の表示・入力・エラー処理を整理した。
+- GUI 証跡を一時領域へ限定し、仕様・UX・repository contract・native test fixture の検証を強化した。
+
+### Fixed
+- 結果一覧を上下に移動した際、cursor が viewport 端へ張り付いたり見えなくなったりする問題を修正した。
+- anchored exact query の空 alternative が全候補へ一致する問題を修正した。
+- 小さい画面や session 復元時に control、dialog、window が画面外へ出る問題を修正した。
+- tab 末尾の追加ボタン位置、追加直後の詳細・preview 初期化、復元 tab の表示状態を修正した。
+- Windows の universal GUI binary 起動時に console window が表示される問題を修正した。
+- macOS の application Quit shortcut が tab close と競合する問題を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- macOS menu 制御に既存 lockfile 内の `objc2` 系 package を直接利用し、license notice と OSS review を同期した。release asset と updater の trust 境界は変更していない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+
 ## [0.26.0] - 2026-09-04
 ### Added
 - リポジトリ変更を決定的に分類・検証する agent workflow と、Validation Matrix に基づく検証支援ツールを追加した。
@@ -2007,7 +2039,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.0...v0.25.1
 [0.25.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.24.5...v0.25.0
