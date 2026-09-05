@@ -463,7 +463,7 @@ fn regression_gui_geometry_monitor_gap_is_not_a_valid_placement() {
     };
     let placement = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(0), true);
     // A legacy position cannot be trusted, but delegating it to the window manager can
-    // reuse the console-first launch position. Fall back to the current real monitor.
+    // reuse an off-screen platform/default position. Fall back to the current real monitor.
     assert_eq!(
         placement.physical_position,
         Some(egui::pos2(-1410.0, 190.0))
@@ -492,6 +492,24 @@ fn regression_gui_geometry_missing_saved_position_uses_current_monitor_fallback(
     let placement = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(1), true);
 
     assert_eq!(placement.physical_position, Some(egui::pos2(2500.0, 270.0)));
+    assert_eq!(placement.logical_size, egui::vec2(1400.0, 900.0));
+}
+
+#[test]
+fn regression_gui_geometry_missing_window_state_produces_visible_default() {
+    let monitors = [(
+        egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(1920.0, 1080.0)),
+        1.0,
+    )];
+
+    let placement = FlistWalkerApp::startup_window_placement_from_ui_state(
+        UiState::default(),
+        &monitors,
+        Some(0),
+        true,
+    );
+
+    assert_eq!(placement.physical_position, Some(egui::pos2(-1660.0, 90.0)));
     assert_eq!(placement.logical_size, egui::vec2(1400.0, 900.0));
 }
 
