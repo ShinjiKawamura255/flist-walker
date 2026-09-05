@@ -203,7 +203,7 @@ fn tc_006_interactive_query_editing_marks_search_dirty() {
 #[test]
 fn tc_006_interactive_enter_returns_selected_path() {
     let mut state = TuiState::new("");
-    state.results = vec![(PathBuf::from("selected.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("selected.txt"), 1.0)]);
 
     assert!(matches!(
         handle_key(
@@ -227,10 +227,10 @@ fn tc_006_escape_cancels_without_selecting() {
 #[test]
 fn tc_006_tab_toggles_multiple_pins() {
     let mut state = TuiState::new("");
-    state.results = vec![
+    state.results = Arc::new(vec![
         (PathBuf::from("one.txt"), 1.0),
         (PathBuf::from("two.txt"), 1.0),
-    ];
+    ]);
     assert!(matches!(
         handle_key(&mut state, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE)),
         KeyAction::Continue
@@ -246,9 +246,11 @@ fn tc_006_tab_toggles_multiple_pins() {
 #[test]
 fn tc_162_tui_emacs_navigation_pin_and_select_follow_runtime_toggle() {
     let mut enabled = TuiState::new("");
-    enabled.results = (0..8)
-        .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
-        .collect();
+    enabled.results = Arc::new(
+        (0..8)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect(),
+    );
     enabled.viewport_rows = 3;
 
     handle_key(
@@ -333,9 +335,11 @@ fn tc_162_tui_emacs_navigation_pin_and_select_follow_runtime_toggle() {
 fn tc_162_tui_tab_pin_move_setting_applies_to_tab_backtab_and_ctrl_i() {
     let mut state = TuiState::new("");
     state.tab_pin_moves_to_next_row = true;
-    state.results = (0..3)
-        .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
-        .collect();
+    state.results = Arc::new(
+        (0..3)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect(),
+    );
 
     handle_key(&mut state, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
     assert_eq!(state.pinned, vec![PathBuf::from("0.txt")]);
@@ -408,10 +412,10 @@ fn tc_162_tui_emacs_query_editing_uses_the_same_runtime_toggle() {
 #[test]
 fn tc_162_result_refresh_preserves_the_selected_path() {
     let mut state = TuiState::new("");
-    state.results = vec![
+    state.results = Arc::new(vec![
         (PathBuf::from("one.txt"), 1.0),
         (PathBuf::from("two.txt"), 0.5),
-    ];
+    ]);
     state.selected = 1;
 
     state.set_results(
@@ -429,9 +433,9 @@ fn tc_162_result_refresh_preserves_the_selected_path() {
 #[test]
 fn tc_162_hidden_pins_remain_part_of_the_final_selection() {
     let mut state = TuiState::new("");
-    state.results = vec![(PathBuf::from("pinned.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("pinned.txt"), 1.0)]);
     handle_key(&mut state, KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE));
-    state.results = vec![(PathBuf::from("visible.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("visible.txt"), 1.0)]);
     state.selected = 0;
 
     assert_eq!(selected_paths(&state), vec![PathBuf::from("pinned.txt")]);
@@ -469,7 +473,7 @@ fn tc_162_stale_search_response_is_ignored_by_request_id() {
     let mut state = TuiState::new("new");
     state.root = PathBuf::from("root");
     state.active_search_request_id = Some(2);
-    state.results = vec![(PathBuf::from("current.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("current.txt"), 1.0)]);
     let search_options = state.runtime_options.search_options(state.sort_mode);
 
     apply_search_response(
@@ -804,12 +808,12 @@ fn tc_162_candidate_batches_append_without_cloning_existing_paths() {
     let mut candidates = CandidateBatches::default();
     candidates.push(vec![PathBuf::from("first.txt")]);
     let search_snapshot = candidates.snapshot();
-    let first_batch = Arc::clone(&search_snapshot[0]);
+    let first_batch = Arc::clone(&search_snapshot[0].entries);
 
     candidates.push(vec![PathBuf::from("second.txt")]);
 
     assert_eq!(candidates.len(), 2);
-    assert!(Arc::ptr_eq(&first_batch, &candidates.snapshot()[0]));
+    assert!(Arc::ptr_eq(&first_batch, &candidates.snapshot()[0].entries));
 }
 
 #[test]
@@ -847,9 +851,11 @@ fn tc_162_query_editor_supports_delete_home_end_and_unicode_paste() {
 #[test]
 fn tc_162_page_navigation_uses_dynamic_viewport_rows() {
     let mut state = TuiState::new("");
-    state.results = (0..20)
-        .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
-        .collect();
+    state.results = Arc::new(
+        (0..20)
+            .map(|index| (PathBuf::from(format!("{index}.txt")), 1.0))
+            .collect(),
+    );
     state.viewport_rows = 5;
 
     handle_key(
@@ -889,7 +895,7 @@ fn tc_162_unicode_clipping_uses_terminal_column_width() {
 #[test]
 fn tc_162_preview_toggle_collapse_and_reexpansion_preserve_preference() {
     let mut state = TuiState::new("");
-    state.results = vec![(PathBuf::from("selected.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("selected.txt"), 1.0)]);
 
     assert!(update_preview_visibility(
         &mut state,
@@ -949,10 +955,10 @@ fn tc_162_preview_toggle_collapse_and_reexpansion_preserve_preference() {
 fn tc_162_preview_response_requires_matching_request_root_and_path() {
     let mut state = TuiState::new("");
     state.root = PathBuf::from("root-a");
-    state.results = vec![
+    state.results = Arc::new(vec![
         (PathBuf::from("root-a/one.txt"), 1.0),
         (PathBuf::from("root-a/two.txt"), 1.0),
-    ];
+    ]);
     update_preview_visibility(&mut state, PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT);
     let request = state.next_preview_request().expect("preview request");
 
@@ -1460,7 +1466,7 @@ fn tc_162_help_overlay_matches_emacs_runtime_config() {
 #[test]
 fn tc_162_f2_options_and_f3_sort_overlays_have_precedence_without_side_effects() {
     let mut state = TuiState::new("draft");
-    state.results = vec![(PathBuf::from("selected.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("selected.txt"), 1.0)]);
     state.pinned.push(PathBuf::from("pinned.txt"));
 
     handle_key(&mut state, KeyEvent::new(KeyCode::F(2), KeyModifiers::NONE));
@@ -1628,7 +1634,7 @@ fn tc_162_stale_index_responses_are_discarded_by_identity() {
             root: PathBuf::from("root-b"),
             query: String::new(),
             options,
-            results: vec![(PathBuf::from("fresh.txt"), 1.0)],
+            results: Arc::new(vec![(PathBuf::from("fresh.txt"), 1.0)]),
             error: None,
         },
     )
@@ -1638,7 +1644,7 @@ fn tc_162_stale_index_responses_are_discarded_by_identity() {
 
 #[test]
 fn tc_162_tui_search_applies_ignore_in_worker_snapshot_and_sorts_before_limit() {
-    let entries = Arc::new(vec![Arc::from(vec![
+    let entries = Arc::new(vec![CandidateBatch::from(vec![
         PathBuf::from("root/zeta.txt"),
         PathBuf::from("root/ignored.txt"),
         PathBuf::from("root/alpha.txt"),
@@ -1697,7 +1703,7 @@ fn tui_search_reuses_candidate_projection_and_warms_prefix_cache_for_same_snapsh
             }
         })
         .collect::<Vec<_>>();
-    let entries = Arc::new(vec![Arc::from(paths)]);
+    let entries = Arc::new(vec![CandidateBatch::from(paths)]);
     let make_request = |request_id, query: &str| SearchRequest {
         request_id,
         query: query.to_string(),
@@ -1754,7 +1760,7 @@ fn canceled_tui_candidate_projection_is_stopped_and_not_cached() {
     let request = SearchRequest {
         request_id: 1,
         query: "module".to_string(),
-        entries: Arc::new(vec![Arc::from(
+        entries: Arc::new(vec![CandidateBatch::from(
             (0..10_000)
                 .map(|index| PathBuf::from(format!("root/module-{index:05}.rs")))
                 .collect::<Vec<_>>(),
@@ -1828,7 +1834,7 @@ fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
     let request = SearchRequest {
         request_id: 1,
         query: String::new(),
-        entries: Arc::new(vec![Arc::from(vec![
+        entries: Arc::new(vec![CandidateBatch::from(vec![
             PathBuf::from("root/visible.txt"),
             PathBuf::from("root/ignored.txt"),
         ])]),
@@ -1923,7 +1929,7 @@ fn tc_162_source_transition_clears_source_scoped_state_before_reindex() {
 fn tc_162_every_reindex_clears_current_preview_and_pending_search_without_clearing_pins() {
     let mut state = TuiState::new("");
     state.root = PathBuf::from("root");
-    state.results = vec![(PathBuf::from("root/current.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("root/current.txt"), 1.0)]);
     state.pinned.push(PathBuf::from("root/pinned.txt"));
     state.preview = "stale preview".to_string();
     state.active_preview_request = Some(PreviewRequestIdentity {
@@ -1945,7 +1951,7 @@ fn tc_162_every_reindex_clears_current_preview_and_pending_search_without_cleari
 #[test]
 fn tc_162_root_picker_precedence_empty_state_and_small_viewport_are_safe() {
     let mut state = TuiState::new("query");
-    state.results = vec![(PathBuf::from("current.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("current.txt"), 1.0)]);
     handle_key(&mut state, KeyEvent::new(KeyCode::F(4), KeyModifiers::NONE));
     assert!(state.root_picker.is_some());
     handle_key(
@@ -1987,7 +1993,7 @@ fn tc_162_root_switch_clears_old_scope_before_new_index_and_preserves_query_opti
     state.history_enabled = true;
     state.history_entries = vec!["history".to_string()];
     state.runtime_options.regex = true;
-    state.results = vec![(PathBuf::from("old-root/current.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("old-root/current.txt"), 1.0)]);
     state.pinned.push(PathBuf::from("old-root/pinned.txt"));
     state.preview = "old preview".to_string();
     state.active_search_request_id = Some(5);
@@ -2021,7 +2027,7 @@ fn tc_162_root_picker_selects_the_highlighted_root_and_refresh_keeps_pins() {
         KeyAction::SwitchRoot(ref root) if root == Path::new("second")
     ));
     state.pinned.push(PathBuf::from("old-root/pinned.txt"));
-    state.results = vec![(PathBuf::from("old-root/current.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("old-root/current.txt"), 1.0)]);
     state.next_index_request(state.root.clone());
     assert_eq!(state.pinned, vec![PathBuf::from("old-root/pinned.txt")]);
     assert!(state.results.is_empty());
@@ -2216,7 +2222,7 @@ fn tc_164_tui_actions_snapshot_only_the_current_row_not_pins() {
     let (root, current, pinned) = action_fixture("current-only");
     let mut state = TuiState::new("");
     state.root = root.clone();
-    state.results = vec![(current.clone(), 1.0)];
+    state.results = Arc::new(vec![(current.clone(), 1.0)]);
     state.pinned.push(pinned.clone());
     let freshness = TuiActionFreshness::new();
     let request = state
@@ -2342,7 +2348,7 @@ fn tc_164_tui_action_stale_cancel_and_executor_errors_are_safe() {
 #[test]
 fn tc_162_tui_action_keys_are_current_only_and_disabled_in_overlays() {
     let mut state = TuiState::new("");
-    state.results = vec![(PathBuf::from("current.txt"), 1.0)];
+    state.results = Arc::new(vec![(PathBuf::from("current.txt"), 1.0)]);
     state.pinned.push(PathBuf::from("pinned.txt"));
     assert!(matches!(
         handle_key(
@@ -2890,7 +2896,7 @@ fn tc_166_select_output_intent_never_leaks_past_discovery_regression() {
     for outcome in ["success", "cancel", "failure"] {
         let mut state = TuiState::new("query");
         state.root = PathBuf::from("root");
-        state.results = vec![(PathBuf::from("picked.txt"), 1.0)];
+        state.results = Arc::new(vec![(PathBuf::from("picked.txt"), 1.0)]);
         let discovery = state.open_filelist_if_ready().expect("start discovery");
         assert!(matches!(
             handle_key(
@@ -3102,4 +3108,84 @@ fn tc_166_filelist_missing_or_panicked_worker_never_resumes_success_intents() {
     )
     .is_none());
     assert!(state.status.contains("failed"));
+}
+
+#[test]
+fn alignment_tui_help_remains_discoverable_in_a_narrow_viewport() {
+    assert_eq!(normal_help_line(SearchSortMode::Score, 7), "F1 Help");
+    assert!(normal_help_line(SearchSortMode::Score, 35).starts_with("F1 Help"));
+}
+
+#[test]
+fn alignment_tui_preview_supersession_cancels_old_request() {
+    let mut state = TuiState::new("");
+    state.results = Arc::new(vec![
+        (PathBuf::from("first"), 1.0),
+        (PathBuf::from("second"), 0.0),
+    ]);
+    state.preview_visible = true;
+    let first = state.next_preview_request().unwrap();
+    state.selected = 1;
+    let second = state.next_preview_request().unwrap();
+    assert!(first.cancel.load(Ordering::Acquire));
+    assert!(!second.cancel.load(Ordering::Acquire));
+    state.clear_preview();
+    assert!(second.cancel.load(Ordering::Acquire));
+}
+
+#[test]
+fn alignment_real_tui_workers_guard_index_and_result_payloads_before_publication() {
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let root = std::env::temp_dir().join(format!("flist-tui-guard-{nonce}"));
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("sample.txt"), "sample").unwrap();
+    let workers = TuiWorkerSet::start().unwrap();
+    let mut state = TuiState::new("");
+    state.root = root.clone();
+    state.runtime_options.source = TuiSource::Walker;
+    state
+        .dispatch_current_index(workers.index_tx(), workers.index_freshness().as_ref())
+        .unwrap();
+    loop {
+        let response = workers
+            .response_rx()
+            .recv_timeout(Duration::from_secs(2))
+            .unwrap();
+        let finished = matches!(response, WorkerResponse::IndexedFinished { .. });
+        if let WorkerResponse::IndexedSharedBatch { batch, .. } = &response {
+            let owner = batch._owner.as_ref().expect("unguarded batch");
+            assert!(
+                Arc::strong_count(owner) >= 2,
+                "recycler owner must exist before UI publication"
+            );
+            assert!(Arc::strong_count(&batch.entries) >= 2);
+        }
+        apply_worker_response(&mut state, response).unwrap();
+        if finished {
+            break;
+        }
+    }
+    assert!(!state.entries.batches.is_empty());
+    workers
+        .search_tx()
+        .send(state.next_search_request(root.clone(), 10))
+        .unwrap();
+    let response = workers
+        .response_rx()
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap();
+    let WorkerResponse::Searched { results, .. } = &response else {
+        panic!("expected search response")
+    };
+    assert!(Arc::strong_count(results) >= 2);
+    apply_worker_response(&mut state, response).unwrap();
+    assert_eq!(state.results.len(), 1);
+    state.next_index_request(root.clone());
+    assert!(state.results.is_empty());
+    drop(state);
+    workers.shutdown();
+    std::fs::remove_dir_all(root).unwrap();
 }

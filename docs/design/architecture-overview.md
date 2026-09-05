@@ -31,6 +31,8 @@
 - 実装: `rust/src/app/coordinator.rs`, `rust/src/app/input/actions.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/worker/protocol.rs`, `rust/src/app/worker/tasks.rs`, `rust/src/actions.rs`
 
 - DES-005 CLI Adapter
+- TUI producerは公開前にretirement workerへArc guardを登録する。retirementは保持4件＋queue4件に制限し、満杯時はproducerだけがcancel-aware待機する。indexはrequest単位のbatch owner、search/catalogは共有snapshotを持ち、UIで最後のPathBuf配列ownerを解放しない。
+- TUI presetはF7 modalと容量1の専用catalog workerを持ち、request-owned search snapshotから保存する。表示のcloseとmutation settlementを分離し、pending中の出力はpath/root snapshot、取消は優先intentとして保持する。
 - 役割: `clap` 引数を typed CLI options へ変換し、GUI、batch CLI、interactive CLI を明示 dispatch する。legacy `--cli` 契約を維持し、CLI-only option の依存/競合と mode-specific initialization/exit status を所有する。
 - 役割補足: Windows の単一 release EXE は console subsystem を使って shell の同期実行と標準 handle を確立し、CLI/TUI/update/help/version は console を維持する。GUI dispatch だけが `windows_console` owner を通じて native window 起動前に console から切り離される。
 - 役割補足: TUIが所有するuser-facing path文字列化は `tui_path_label` を唯一の境界とし、options summary、status、picker、errorがWindows extended prefixを直接表示しない。TUI本番sourceの直接 `Path::display` / `to_string_lossy` はTC-177の静的guardで拒否する。

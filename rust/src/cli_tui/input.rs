@@ -478,11 +478,21 @@ pub(super) fn toggle_pin_current(state: &mut TuiState) {
 }
 
 pub(super) fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
+    if state.preset_exit_pending.is_some() {
+        return if key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL {
+            KeyAction::Cancel
+        } else {
+            KeyAction::Continue
+        };
+    }
     if !state.emacs_keybindings_enabled && is_emacs_shortcut(key) {
         return KeyAction::Continue;
     }
     let original_key = key;
     let key = normalize_emacs_shortcut(key);
+    if state.preset_modal.is_some() {
+        return super::presets::handle_preset_key(state, key);
+    }
     if state.help.is_some() {
         match (key.code, key.modifiers) {
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => return KeyAction::Cancel,
@@ -584,6 +594,9 @@ pub(super) fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
         state.dirty = true;
         return KeyAction::Continue;
     }
+    if matches!(key.code, KeyCode::F(7)) {
+        return KeyAction::OpenPresets;
+    }
     if matches!(key.code, KeyCode::F(2)) {
         state.open_options();
         state.dirty = true;
@@ -601,6 +614,11 @@ pub(super) fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
     }
     if matches!(key.code, KeyCode::F(5)) {
         return KeyAction::Refresh;
+    }
+    if matches!(key.code, KeyCode::F(6)) && state.pending_preset.is_some() {
+        state.status = "Wait for the preset operation before creating a FileList".into();
+        state.dirty = true;
+        return KeyAction::Continue;
     }
     if matches!(key.code, KeyCode::F(6)) {
         return KeyAction::OpenFileList;
@@ -687,6 +705,20 @@ pub(super) fn handle_key(state: &mut TuiState, key: KeyEvent) -> KeyAction {
 }
 
 pub(super) fn insert_paste(state: &mut TuiState, pasted: &str) {
+    if state.preset_exit_pending.is_some() {
+        return;
+    }
+    if let Some(modal) = &mut state.preset_modal {
+        if state.pending_preset.is_none()
+            && matches!(modal.phase, super::presets::PresetPhase::Name)
+        {
+            let byte = char_to_byte_index(&modal.name, modal.cursor);
+            modal.name.insert_str(byte, pasted);
+            modal.cursor += pasted.chars().count();
+            state.dirty = true;
+        }
+        return;
+    }
     if pasted.is_empty()
         || state.help.is_some()
         || state.options_overlay.is_some()

@@ -15,6 +15,16 @@ use std::io::{self, Write};
 use std::path::PathBuf;
 use unicode_width::UnicodeWidthChar;
 
+pub(super) fn normal_help_line(sort: crate::search::SearchSortMode, width: usize) -> String {
+    clip_to_width(
+        &format!(
+            "F1 Help | Enter select | F7 Presets | F2 options | F3 {} | Alt+P preview | Esc cancel",
+            sort.label()
+        ),
+        width,
+    )
+}
+
 pub(super) fn draw<W: Write>(
     terminal_output: &mut W,
     state: &mut TuiState,
@@ -93,13 +103,7 @@ pub(super) fn render_frame<W: Write>(
         }
     }
     if height > 3 {
-        let help = clip_to_width(
-            &format!(
-                "Enter select | F2 options | F3 {} | Alt+P preview | Esc cancel",
-                state.sort_mode.label()
-            ),
-            list_width as usize,
-        );
+        let help = normal_help_line(state.sort_mode, list_width as usize);
         if options.color_enabled {
             execute!(
                 terminal_output,
@@ -156,7 +160,16 @@ pub(super) fn render_frame<W: Write>(
     if preview_visible {
         render_preview_pane(terminal_output, state, list_width, width, height)?;
     }
-    if let Some(context) = state.help {
+    if let Some(modal) = &state.preset_modal {
+        super::presets::render_presets(
+            terminal_output,
+            modal,
+            state.pending_preset.is_some(),
+            state.emacs_keybindings_enabled,
+            width,
+            height,
+        )?;
+    } else if let Some(context) = state.help {
         render_help_overlay(
             terminal_output,
             context,
@@ -521,13 +534,13 @@ pub(super) fn render_help_overlay<W: Write>(
             "arrows/Ctrl+P/Ctrl+N move | PageUp/Alt+V and PageDown/Ctrl+V".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
             "Ctrl+G clear query and pins | Ctrl+R search history".to_string(),
-            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
+            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | F7 presets | Alt+P preview | F1 help".to_string(),
         ]),
         HelpContext::Normal => lines.extend([
             "Enter output selection | Tab/Shift+Tab pin | arrows/Page move".to_string(),
             "Emacs shortcuts disabled by runtime config".to_string(),
             "Ctrl+O open current | Shift+Enter reveal current".to_string(),
-            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | Alt+P preview | F1 help".to_string(),
+            "F2 options | F3 sort | F4 roots | F5 refresh | F6 FileList | F7 presets | Alt+P preview | F1 help".to_string(),
         ]),
         HelpContext::History => lines.extend([
             "History search is paused while help is open.".to_string(),

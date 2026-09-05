@@ -17,9 +17,13 @@ use std::thread;
 use std::time::Instant;
 
 pub(super) struct TuiState {
+    pub(super) preset_modal: Option<super::presets::PresetModal>,
+    pub(super) pending_preset: Option<super::presets::PresetPending>,
+    pub(super) next_preset_request_id: u64,
+    pub(super) preset_exit_pending: Option<super::protocol::TuiExit>,
     pub(super) query: String,
     pub(super) query_cursor: usize,
-    pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) results: Arc<Vec<(PathBuf, f64)>>,
     pub(super) selected: usize,
     pub(super) offset: usize,
     pub(super) status: String,
@@ -55,6 +59,7 @@ pub(super) struct TuiState {
     pub(super) preview: String,
     pub(super) next_preview_request_id: u64,
     pub(super) active_preview_request: Option<PreviewRequestIdentity>,
+    pub(super) active_preview_cancel: Option<Arc<AtomicBool>>,
     pub(super) history_enabled: bool,
     pub(super) history_entries: Vec<String>,
     pub(super) history: Option<HistoryOverlay>,
@@ -222,9 +227,13 @@ impl TuiState {
 
     pub(super) fn new(query: &str) -> Self {
         Self {
+            preset_modal: None,
+            pending_preset: None,
+            next_preset_request_id: 0,
+            preset_exit_pending: None,
             query: query.to_string(),
             query_cursor: query.chars().count(),
-            results: Vec::new(),
+            results: Arc::new(Vec::new()),
             selected: 0,
             offset: 0,
             status: "Indexing...".to_string(),
@@ -267,6 +276,7 @@ impl TuiState {
             preview: String::new(),
             next_preview_request_id: 0,
             active_preview_request: None,
+            active_preview_cancel: None,
             history_enabled: false,
             history_entries: Vec::new(),
             history: None,
@@ -289,12 +299,16 @@ impl TuiState {
         }
     }
 
-    pub(super) fn set_results(&mut self, results: Vec<(PathBuf, f64)>, error: Option<String>) {
+    pub(super) fn set_results(
+        &mut self,
+        results: impl Into<Arc<Vec<(PathBuf, f64)>>>,
+        error: Option<String>,
+    ) {
         let selected_path = self
             .results
             .get(self.selected)
             .map(|(path, _)| path.clone());
-        self.results = results;
+        self.results = results.into();
         self.selected = selected_path
             .as_ref()
             .and_then(|selected| self.results.iter().position(|(path, _)| path == selected))
@@ -358,7 +372,7 @@ impl TuiState {
         self.root_filelist_known = false;
         self.root_filelist_exists = false;
         self.entries.clear();
-        self.results.clear();
+        self.results = Arc::new(Vec::new());
         self.selected = 0;
         self.offset = 0;
         self.clear_preview();
@@ -545,6 +559,9 @@ impl TuiState {
     }
 
     pub(super) fn clear_preview(&mut self) {
+        if let Some(cancel) = self.active_preview_cancel.take() {
+            cancel.store(true, Ordering::Release);
+        }
         self.preview.clear();
         self.active_preview_request = None;
     }
@@ -564,12 +581,16 @@ impl TuiState {
             root: self.root.clone(),
             path: path.clone(),
         };
+        self.clear_preview();
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.active_preview_cancel = Some(Arc::clone(&cancel));
         self.active_preview_request = Some(identity.clone());
         self.preview = "Loading preview...".to_string();
         Some(PreviewRequest {
             request_id: identity.request_id,
             root: identity.root,
             path,
+            cancel,
         })
     }
 

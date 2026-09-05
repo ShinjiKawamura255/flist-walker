@@ -59,8 +59,10 @@ pub enum CliTuiOutcome {
 
 mod filelist;
 mod input;
+mod presets;
 mod protocol;
 mod render;
+mod retirement;
 mod state;
 #[path = "cli_tui/terminal.rs"]
 mod terminal_io;
@@ -68,6 +70,7 @@ mod workers;
 
 use filelist::*;
 use input::*;
+use presets::*;
 use protocol::*;
 use render::*;
 use state::*;
@@ -124,6 +127,7 @@ pub fn run_cli_tui(root: &Path, options: &CliTuiOptions) -> Result<CliTuiOutcome
         run_event_loop(
             terminal_output,
             EventLoopContext {
+                preset_worker: workers.preset_worker(),
                 index_tx: workers.index_tx(),
                 index_freshness: workers.index_freshness(),
                 search_tx: workers.search_tx(),
@@ -188,6 +192,7 @@ fn run_event_loop<W: Write>(
     context: EventLoopContext<'_>,
 ) -> Result<TuiExit> {
     let EventLoopContext {
+        preset_worker,
         index_tx,
         index_freshness,
         search_tx,
@@ -225,6 +230,29 @@ fn run_event_loop<W: Write>(
     }
     let mut filelist_worker: Option<ActiveFileListWorker> = None;
     loop {
+        match preset_worker.poll() {
+            Ok(response) => apply_preset_response(&mut state, response),
+            Err(mpsc::TryRecvError::Disconnected) => {
+                if let Some(pending) = &state.pending_preset {
+                    let request_id = pending.request_id;
+                    apply_preset_response(
+                        &mut state,
+                        PresetResponse {
+                            request_id,
+                            result: Err("Preset worker unavailable".into()),
+                        },
+                    );
+                }
+            }
+            Err(mpsc::TryRecvError::Empty) => {}
+        }
+        if state.pending_preset.is_none() {
+            if let Some(exit) = state.preset_exit_pending.take() {
+                cancellation.store(true, Ordering::Release);
+                return Ok(exit);
+            }
+        }
+
         if let Ok(Some(candidate)) = update_rx.try_recv() {
             state.update_notice = Some(format_tui_update_notice(&candidate.target_version));
             state.dirty = true;
@@ -375,7 +403,23 @@ fn run_event_loop<W: Write>(
                     let preview_path_before = state.current_path().cloned();
                     let preview_preferred_before = state.preview_preferred;
                     match handle_key(&mut state, key) {
+                        KeyAction::OpenPresets => {
+                            if state.pending_preset.is_none() {
+                                state.open_presets();
+                                dispatch_preset(&mut state, preset_worker, PresetOperation::Load);
+                            }
+                        }
+                        KeyAction::PresetOperation(operation) => {
+                            dispatch_preset(&mut state, preset_worker, operation)
+                        }
                         KeyAction::Cancel => {
+                            if state.pending_preset.is_some() {
+                                state.cancel_preset_request();
+                                state.preset_exit_pending = Some(TuiExit::Cancelled);
+                                state.status = "Waiting for preset operation to settle...".into();
+                                state.dirty = true;
+                                continue;
+                            }
                             if state.active_filelist.is_some() {
                                 if state.active_filelist_is_discovery() {
                                     state.cancel_active_filelist();
@@ -388,6 +432,17 @@ fn run_event_loop<W: Write>(
                             return Ok(TuiExit::Cancelled);
                         }
                         KeyAction::Select => {
+                            if state.pending_preset.is_some() {
+                                state.preset_exit_pending = Some(TuiExit::Selected {
+                                    paths: selected_paths(&state),
+                                    query: state.query.clone(),
+                                    root: state.root.clone(),
+                                });
+                                state.status =
+                                    "Waiting for preset operation before output...".into();
+                                state.dirty = true;
+                                continue;
+                            }
                             if state.active_filelist.is_some() {
                                 state.record_filelist_intent(PendingFileListIntent::SelectOutput);
                                 continue;
@@ -542,8 +597,33 @@ fn prepare_source_transition(
     state.source_changed_on_apply = false;
 }
 
+fn mark_incremental_index_ready(state: &mut TuiState) {
+    state.indexed = true;
+    let now = Instant::now();
+    if state
+        .last_incremental_search
+        .is_none_or(|last| now.duration_since(last) >= INDEX_REFRESH_THROTTLE)
+    {
+        state.last_query_change = Some(now.checked_sub(INPUT_DEBOUNCE).unwrap_or(now));
+        state.last_incremental_search = Some(now);
+    }
+    state.status = format!("Indexing... {} candidates", state.entries.len());
+    state.dirty = true;
+}
+
 fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Result<()> {
     match response {
+        WorkerResponse::IndexedSharedBatch {
+            request_id,
+            root,
+            batch,
+        } => {
+            if state.active_index_request.as_ref() != Some(&(request_id, root)) {
+                return Ok(());
+            }
+            state.entries.push_shared(batch);
+            mark_incremental_index_ready(state);
+        }
         WorkerResponse::IndexedBatch {
             request_id,
             root,
@@ -553,17 +633,7 @@ fn apply_worker_response(state: &mut TuiState, response: WorkerResponse) -> Resu
                 return Ok(());
             }
             state.entries.push(entries);
-            state.indexed = true;
-            let now = Instant::now();
-            if state
-                .last_incremental_search
-                .is_none_or(|last| now.duration_since(last) >= INDEX_REFRESH_THROTTLE)
-            {
-                state.last_query_change = Some(now.checked_sub(INPUT_DEBOUNCE).unwrap_or(now));
-                state.last_incremental_search = Some(now);
-            }
-            state.status = format!("Indexing... {} candidates", state.entries.len());
-            state.dirty = true;
+            mark_incremental_index_ready(state);
         }
         WorkerResponse::IndexedFinished {
             request_id,
@@ -691,7 +761,7 @@ fn apply_search_response(
     root: &Path,
     query: &str,
     options: SearchOptions,
-    results: Vec<(PathBuf, f64)>,
+    results: impl Into<Arc<Vec<(PathBuf, f64)>>>,
     error: Option<String>,
 ) {
     if state.active_search_request_id == Some(request_id)

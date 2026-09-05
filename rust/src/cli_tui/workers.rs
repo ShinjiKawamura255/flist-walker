@@ -1,8 +1,9 @@
 use super::protocol::{
-    FileListDiscoveryOwnership, IndexRequest, PreviewRequest, SearchRequest, TuiActionBackend,
-    TuiActionFreshness, TuiActionRequest, TuiIndexFreshness, TuiSource, WorkerResponse, EVENT_POLL,
-    WORKER_JOIN_TIMEOUT,
+    CandidateBatch, FileListDiscoveryOwnership, IndexRequest, PreviewRequest, SearchRequest,
+    TuiActionBackend, TuiActionFreshness, TuiActionRequest, TuiIndexFreshness, TuiSource,
+    WorkerResponse, EVENT_POLL, WORKER_JOIN_TIMEOUT,
 };
+use super::retirement::RetirementWorker;
 use crate::actions::execute_authorized_action_request;
 use crate::entry::Entry;
 use crate::indexer::{
@@ -14,7 +15,7 @@ use crate::runtime_config::{current_runtime_config, RuntimeConfig};
 use crate::search::{
     rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome, SearchSortScope,
 };
-use crate::ui_model::build_preview_text_with_kind;
+use crate::ui_model::build_preview_text_with_kind_cancellable;
 #[cfg(not(test))]
 use crate::updater::check_for_update;
 use crate::updater::UpdateCandidate;
@@ -25,7 +26,7 @@ use crate::walker_runtime::{
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Arc, Weak};
+use std::sync::{mpsc, Arc, Mutex, Weak};
 use std::thread;
 
 const SEARCH_CANCELLATION_CHECK_INTERVAL: usize = 256;
@@ -73,6 +74,8 @@ struct WorkerHandle {
 
 pub(super) struct TuiWorkerSet {
     cancellation: Arc<AtomicBool>,
+    retirement: RetirementWorker,
+    preset: super::presets::PresetWorker,
     _response_tx: mpsc::Sender<WorkerResponse>,
     response_rx: mpsc::Receiver<WorkerResponse>,
     search_tx: mpsc::Sender<SearchRequest>,
@@ -90,7 +93,12 @@ pub(super) struct TuiWorkerSet {
 impl TuiWorkerSet {
     pub(super) fn start() -> Result<Self> {
         let cancellation = Arc::new(AtomicBool::new(false));
+        let retirement =
+            RetirementWorker::start().context("failed to start CLI retirement worker")?;
+        let preset = super::presets::PresetWorker::start(retirement.sender.clone())
+            .context("failed to start CLI preset worker")?;
         let (response_tx, response_rx) = mpsc::channel();
+        let search_retirement = retirement.sender.clone();
 
         let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
         let (search_done_tx, search_done_rx) = mpsc::channel();
@@ -122,7 +130,10 @@ impl TuiWorkerSet {
                     ) else {
                         continue;
                     };
-                    let results = result_set.results;
+                    let results = Arc::new(result_set.results);
+                    if !search_retirement.retain(&results, cancellation_requested) {
+                        continue;
+                    }
                     match search_publish_decision(&search_cancelled, &request.cancel) {
                         SearchPublishDecision::StopWorker => break,
                         SearchPublishDecision::SkipRequest => continue,
@@ -166,8 +177,19 @@ impl TuiWorkerSet {
                     while let Ok(newer) = preview_rx.try_recv() {
                         request = newer;
                     }
+                    let canceled = || {
+                        preview_cancelled.load(Ordering::Acquire)
+                            || request.cancel.load(Ordering::Acquire)
+                    };
+                    if canceled() {
+                        continue;
+                    }
                     let is_dir = request.path.is_dir();
-                    let preview = build_preview_text_with_kind(&request.path, is_dir);
+                    let Some(preview) =
+                        build_preview_text_with_kind_cancellable(&request.path, is_dir, &canceled)
+                    else {
+                        continue;
+                    };
                     if preview_cancelled.load(Ordering::Relaxed)
                         || preview_response_tx
                             .send(WorkerResponse::Previewed {
@@ -258,6 +280,7 @@ impl TuiWorkerSet {
         let index_response_tx = response_tx.clone();
         let index_freshness = Arc::new(TuiIndexFreshness::new());
         let worker_index_freshness = Arc::clone(&index_freshness);
+        let index_retirement = retirement.sender.clone();
         let index_handle = match thread::Builder::new()
             .name("flistwalker-cli-index-search".to_string())
             .spawn(move || {
@@ -275,7 +298,33 @@ impl TuiWorkerSet {
                         index_cancelled.load(Ordering::Relaxed)
                             || !worker_index_freshness.is_current(request_id)
                     };
+                    let owner = Arc::new(Mutex::new(Vec::<Arc<[PathBuf]>>::new()));
+                    if !index_retirement.retain(&owner, should_cancel) {
+                        continue;
+                    }
                     process_index_request(request, &should_cancel, |response| {
+                        let response = match response {
+                            WorkerResponse::IndexedBatch {
+                                request_id,
+                                root,
+                                entries,
+                            } => {
+                                let entries: Arc<[PathBuf]> = Arc::from(entries);
+                                owner
+                                    .lock()
+                                    .expect("private index owner")
+                                    .push(Arc::clone(&entries));
+                                WorkerResponse::IndexedSharedBatch {
+                                    request_id,
+                                    root,
+                                    batch: CandidateBatch {
+                                        entries,
+                                        _owner: Some(Arc::clone(&owner)),
+                                    },
+                                }
+                            }
+                            other => other,
+                        };
                         let _ = index_response_tx.send(response);
                     });
                 }
@@ -296,6 +345,8 @@ impl TuiWorkerSet {
 
         Ok(Self {
             cancellation,
+            retirement,
+            preset,
             _response_tx: response_tx,
             response_rx,
             search_tx,
@@ -312,6 +363,10 @@ impl TuiWorkerSet {
             index_freshness,
             action_freshness,
         })
+    }
+
+    pub(super) fn preset_worker(&self) -> &super::presets::PresetWorker {
+        &self.preset
     }
 
     pub(super) fn search_tx(&self) -> &mpsc::Sender<SearchRequest> {
@@ -349,6 +404,8 @@ impl TuiWorkerSet {
     pub(super) fn shutdown(self) {
         let Self {
             cancellation,
+            retirement,
+            preset,
             _response_tx,
             response_rx,
             search_tx,
@@ -372,6 +429,8 @@ impl TuiWorkerSet {
         finish_worker(action.handle, action.done);
         finish_worker(index.handle, index.done);
         drop((_response_tx, response_rx, index_freshness, action_freshness));
+        drop(preset);
+        retirement.shutdown();
     }
 }
 
@@ -574,7 +633,7 @@ pub(super) fn search(
 
 #[derive(Default)]
 pub(super) struct TuiSearchSnapshotCache {
-    source: Weak<Vec<Arc<[PathBuf]>>>,
+    source: Weak<Vec<CandidateBatch>>,
     root: PathBuf,
     ignore_case: bool,
     ignore_enabled: bool,
