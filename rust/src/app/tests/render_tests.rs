@@ -287,6 +287,232 @@ fn regression_single_step_selection_does_not_pin_current_row_to_viewport_top() {
     let _ = fs::remove_dir_all(&root);
 }
 
+struct ResultsNavigationHarness {
+    app: FlistWalkerApp,
+    ctx: egui::Context,
+    root: PathBuf,
+    size: egui::Vec2,
+    time: f64,
+}
+
+impl ResultsNavigationHarness {
+    fn new(query_focused: bool) -> Self {
+        let root = test_root("regression-results-cursor");
+        fs::create_dir_all(&root).expect("create dir");
+        let mut app = FlistWalkerApp::new(root.clone(), 20_000, String::new());
+        app.shell.runtime.results = (0..10_000)
+            .map(|index| (root.join(format!("item-{index:05}.txt")), 0.0))
+            .collect();
+        app.shell.runtime.total_match_count = app.shell.runtime.results.len();
+        app.shell.runtime.current_row = Some(0);
+        app.shell.runtime.emacs_keybindings_enabled = true;
+        app.shell.ui.set_show_preview(false);
+        app.clear_focus_query_request();
+        let ctx = egui::Context::default();
+        if query_focused {
+            ctx.memory_mut(|memory| memory.request_focus(app.shell.ui.query_input_id));
+        }
+        Self {
+            app,
+            ctx,
+            root,
+            size: egui::vec2(1000.0, 700.0),
+            time: 0.0,
+        }
+    }
+
+    fn frame(
+        &mut self,
+        key: Option<(egui::Key, egui::Modifiers, bool)>,
+    ) -> render_panels::ResultRenderProbe {
+        self.time += 1.0 / 60.0;
+        let modifiers = key.map_or(egui::Modifiers::NONE, |(_, modifiers, _)| modifiers);
+        let events = key.map_or_else(Vec::new, |(key, modifiers, repeat)| {
+            vec![egui::Event::Key {
+                key,
+                physical_key: None,
+                pressed: true,
+                repeat,
+                modifiers,
+            }]
+        });
+        render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+        let _ = self.ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, self.size)),
+                time: Some(self.time),
+                modifiers,
+                events,
+                ..Default::default()
+            },
+            |ui| self.app.run_ui_frame(ui),
+        );
+        let probe = render_panels::take_result_render_probe();
+        assert!(
+            probe.rendered_rows.len() < 100,
+            "navigation must keep rendering bounded"
+        );
+        assert!(
+            !self.app.shell.ui.scroll_to_current(),
+            "full frame must consume scroll request"
+        );
+        probe
+    }
+
+    fn settle(&mut self) -> render_panels::ResultRenderProbe {
+        self.frame(None);
+        self.frame(None);
+        self.frame(None)
+    }
+
+    fn step(
+        &mut self,
+        before: &render_panels::ResultRenderProbe,
+        down: bool,
+        emacs: bool,
+        repeat: bool,
+    ) -> render_panels::ResultRenderProbe {
+        let row = self.app.shell.runtime.current_row.expect("current row");
+        let next = if down {
+            (row + 1).min(9_999)
+        } else {
+            row.saturating_sub(1)
+        };
+        let current_rect = before
+            .row_rects
+            .iter()
+            .find(|(index, _)| *index == row)
+            .expect("current row rendered")
+            .1;
+        // Measure actual allocated rectangles, independently of the production offset formula.
+        let stride = before.row_rects[1].1.top() - before.row_rects[0].1.top();
+        let target = current_rect.translate(egui::vec2(0.0, (next as f32 - row as f32) * stride));
+        let (id, offset, viewport) = before.scroll.expect("ScrollArea output");
+        let required_delta = if target.top() < viewport.top() {
+            target.top() - viewport.top()
+        } else if target.bottom() > viewport.bottom() {
+            target.bottom() - viewport.bottom()
+        } else {
+            0.0
+        };
+        let key = match (down, emacs) {
+            (true, false) => egui::Key::ArrowDown,
+            (false, false) => egui::Key::ArrowUp,
+            (true, true) => egui::Key::N,
+            (false, true) => egui::Key::P,
+        };
+        let modifiers = if emacs {
+            emacs_shortcut_modifiers(false)
+        } else {
+            egui::Modifiers::NONE
+        };
+        let after = self.frame(Some((key, modifiers, repeat)));
+        assert_eq!(
+            self.app.shell.runtime.current_row,
+            Some(next),
+            "key={key:?}"
+        );
+        let (after_id, after_offset, after_viewport) = after.scroll.expect("ScrollArea output");
+        assert_eq!(
+            id, after_id,
+            "Results ScrollArea identity must persist across frames"
+        );
+        // egui rounds widget coordinates to physical pixels.
+        let pixel = 1.0 / self.ctx.pixels_per_point();
+        assert!((after_offset.y - offset.y - required_delta).abs() <= pixel,
+            "row={row}->{next}, key={key:?}, before={offset:?}, after={after_offset:?}, required_delta={required_delta}");
+        let rect = after
+            .row_rects
+            .iter()
+            .find(|(index, _)| *index == next)
+            .expect("current row materialized")
+            .1;
+        assert!(rect.top() >= after_viewport.top() - pixel && rect.bottom() <= after_viewport.bottom() + pixel,
+            "current row must be fully visible: row={next}, rect={rect:?}, viewport={after_viewport:?}");
+        let idle = self.frame(None);
+        assert_eq!(
+            idle.scroll.expect("idle scroll").1,
+            after_offset,
+            "idle frame must not roll back navigation"
+        );
+        idle
+    }
+}
+
+impl Drop for ResultsNavigationHarness {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
+}
+
+#[test]
+fn regression_results_cursor_round_trip_tracks_both_viewport_edges() {
+    for query_focused in [false, true] {
+        for emacs in [false, true] {
+            let mut harness = ResultsNavigationHarness::new(query_focused);
+            harness.app.shell.ui.set_show_preview(emacs);
+            let mut frame = harness.settle();
+            for step in 0..80 {
+                frame = harness.step(&frame, true, emacs, step > 0);
+            }
+            assert!(frame.scroll.expect("scrolled").1.y > 0.0);
+            for step in 0..80 {
+                frame = harness.step(&frame, false, emacs, step > 0);
+            }
+            assert_eq!(frame.scroll.expect("top").1.y, 0.0);
+            harness.step(&frame, false, emacs, true);
+            assert_eq!(
+                harness
+                    .ctx
+                    .memory(|memory| memory.has_focus(harness.app.shell.ui.query_input_id)),
+                query_focused
+            );
+        }
+    }
+}
+
+#[test]
+fn regression_results_cursor_preserves_partial_scroll_after_resize() {
+    let mut harness = ResultsNavigationHarness::new(true);
+    let mut frame = harness.settle();
+    for _ in 0..80 {
+        frame = harness.step(&frame, true, false, true);
+    }
+    let (id, _, _) = frame.scroll.expect("scroll");
+    let stride = frame.row_rects[1].1.top() - frame.row_rects[0].1.top();
+    let mut state = egui::scroll_area::State::load(&harness.ctx, id)
+        .expect("persisted actual ScrollArea state");
+    state.offset.y += stride / 3.0;
+    state.store(&harness.ctx, id);
+    // A fractional wheel/scrollbar position followed by a taller viewport must survive reversal.
+    harness.size = egui::vec2(1100.0, 800.0);
+    frame = harness.settle();
+    for _ in 0..40 {
+        frame = harness.step(&frame, false, false, true);
+    }
+    harness.size = egui::vec2(900.0, 600.0);
+    frame = harness.settle();
+    for _ in 0..40 {
+        frame = harness.step(&frame, true, false, true);
+    }
+}
+
+#[test]
+fn regression_results_cursor_clamps_at_list_ends_after_offscreen_jump() {
+    let mut harness = ResultsNavigationHarness::new(false);
+    harness.settle();
+    let mut frame = harness.frame(Some((egui::Key::End, egui::Modifiers::NONE, false)));
+    assert_eq!(harness.app.shell.runtime.current_row, Some(9_999));
+    frame = harness.step(&frame, true, false, true);
+    for _ in 0..40 {
+        frame = harness.step(&frame, false, false, true);
+    }
+    frame = harness.frame(Some((egui::Key::Home, egui::Modifiers::NONE, false)));
+    assert_eq!(harness.app.shell.runtime.current_row, Some(0));
+    frame = harness.step(&frame, false, false, true);
+    assert_eq!(frame.scroll.expect("top").1.y, 0.0);
+}
+
 fn test_render_update_candidate() -> UpdateCandidate {
     UpdateCandidate {
         current_version: "0.16.1".to_string(),

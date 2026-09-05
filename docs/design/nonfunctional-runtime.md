@@ -161,6 +161,7 @@
 - macOS は最新 version 検知のみ実施し、自動適用は非対応として release URL への案内に留める。
 
 - DES-008 Testability
+- Results の仮想描画は egui ScrollArea と同一の salt 変換で保存 state の ID を求め、keyboard 移動先が viewport 外のときだけ offset を補正する。描画 probe は thread-local・1呼出し単位で実際の ScrollArea ID/offset/viewport と行矩形を記録し、SP-010 / TC-212 の上下往復契約を production 計算から独立して検証する。
 - indexer/search/actions/ui_model を独立モジュール化。
 - query 解釈は `rust/src/query.rs` の immutable compiled representation へ集約し、search と UI highlight は同じ clause matcher と candidate normalization を再利用する。公開 adapter は互換 projection として維持する。
 - ignore list は `CompiledIgnoreTerms` を CLI operation または GUI terms/case scope/pass で1回生成し、候補 loop へ再利用する。
