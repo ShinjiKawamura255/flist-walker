@@ -371,6 +371,7 @@ fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
     {
         let mut latest = app
@@ -697,6 +698,7 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
 
     assert!(app.pop_next_index_request().is_none());
@@ -739,6 +741,7 @@ fn replacement_request_keeps_real_inflight_accounting_until_terminal_response() 
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
 
     assert!(app
@@ -795,6 +798,7 @@ fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
         });
     }
 
@@ -856,6 +860,7 @@ fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
         })
         .expect("fill worker queue");
     }
@@ -868,6 +873,7 @@ fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     app.shell
         .indexing
@@ -910,6 +916,7 @@ fn tc_152_dispatch_keeps_coordinator_inflight_at_two() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
         });
     }
 
@@ -939,6 +946,7 @@ fn tc_152_full_index_queue_retries_after_capacity_returns_regression() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
         })
         .expect("fill queue");
     }
@@ -954,6 +962,7 @@ fn tc_152_full_index_queue_retries_after_capacity_returns_regression() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
 
     app.dispatch_index_queue();

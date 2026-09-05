@@ -46,6 +46,7 @@ fn main() -> Result<ExitCode> {
         args.query(),
         args.limit(),
         args.max_depth(),
+        args.follow_links(),
         previous_update_failure,
     )?;
     Ok(ExitCode::SUCCESS)

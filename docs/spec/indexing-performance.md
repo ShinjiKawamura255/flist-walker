@@ -83,7 +83,7 @@
 - MUST: FileList 未使用時にルート以下を再帰走査し候補化する。
 - MUST: ファイル/フォルダの包含条件（include_files/include_dirs）を適用する。batch CLI、GUI、TUI は同じ種別判定を使い、特殊ファイルを除外し、単一種別指定ではリンク先の種別で包含を決める。batch CLI の走査を対話画面の件数上限で打ち切ってはならない。
 - MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
-- MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。`file_type` で確認できる LINK identity は先行表示してよいが、リンク先の FILE/DIR 判定は完了後または必要時の後処理へ遅延しなければならない。
+- MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。`file_type` で確認できる LINK identity は先行表示してよいが、リンク先の FILE/DIR 判定は完了後または必要時の後処理へ遅延しなければならない。明示的なリンク追跡時だけ、再帰に必要なリンク先の directory 判定と directory 単位の循環判定を worker 内で先行してよい。
 - MUST: Walker は `file_type` で通常 FILE/DIR でも symlink でもない特殊ファイルを LINK に昇格させてはならず、現行のファイル/フォルダ候補から除外しなければならない。
 - MUST: Walker で遅延させたリンク先種別判定は、インデクシング完了時または上限打ち切り時（`Truncated`）の後に自動で実行を開始しなければならない。解決済み OTHER または解決不能の終端状態を未解決として再キューしてはならない。
 - MUST: Walker backend は adaptive のみを使用し、jwalk backend への runtime config 切替口を持ってはならない。
@@ -96,10 +96,14 @@
 - SHOULD: adaptive walker backend は file-only / folder-only の候補種別を producer 側へ渡し、通常ファイルまたは通常ディレクトリが候補対象外なら entry channel へ送信してはならない。候補対象外のディレクトリも深度境界内では再帰対象に保ち、リンクや Windows shortcut のように target kind の遅延解決が必要な entry は consumer 側の分類へ渡すこと。file / folder の両方を含む場合は per-entry filter 判定を行わない fast path を使用できること。
 - SHOULD: 並列 adaptive walker は幅の広い親 directory の列挙完了を待たず、発見済み child directory を小さな batch で共有 frontier へ公開すること。候補として emit する親 directory は child の処理開始前に entry channel へ送信し、parent-before-child の逐次表示関係を保つこと。
 - SHOULD: 並列 adaptive walker は最大 worker 数 × 64 directory を共有 frontier の soft limit とする。共有 frontier に 32 件 batch の空きがない場合、producer worker は空きを待って全 worker を停止させず、現在の親列挙を明示的な frame stack 上で中断して pending child を局所処理すること。open directory frame は worker ごとに `max(1, floor(64 / max_workers))` へ制限し、この上限でも共有 frontier が飽和している場合は候補完全性を優先して soft limit を bypass し、`frontier_soft_limit_bypasses` に記録すること。通常の shallow-wide traversal では soft limit 内を維持し、bypass を含む場合も候補件数、最大深度、parent-before-child、cancel/terminal settlement を維持しなければならない。
-- MUST: adaptive walker backend は Windows の Explorer で通常非表示となる互換用 junction（Hidden + System + ReparsePoint）を候補化してはならない。また、reparse point directory はリンク自体を候補化できても、リンク先へ再帰してはならない。
+- MUST: adaptive walker backend は Windows の Explorer で通常非表示となる互換用 junction（Hidden + System + ReparsePoint）を候補化してはならない。通常の directory symlink / junction は `follow_links` が false の場合はリンク先へ再帰せず、true の場合は下記の追跡契約を適用する。
 - SHOULD: developer-only metrics が有効な場合、Walker は indexing request の完了・打ち切り・キャンセル・失敗時に bounded summary を 1 回だけ診断ログへ出力し、per-entry / per-directory の継続ログを出してはならない。
 - SHOULD: developer-only metrics の `walker_metrics_log_path` が手動指定された場合、Walker は release GUI build でも console/stderr に依存せず、同じ bounded summary を指定ファイルへ追記できる。
-- SHOULD: 循環リンクを避ける。
+- MUST: `follow_links` は既定 false とし、GUI の `Follow links` と CLI の `--follow-links` で有効化できる。Windows/macOS/Linux の directory symlink と Windows junction を対象とし、`.lnk` や Finder alias の展開機能として扱ってはならない。
+- MUST: 追跡時は物理 Root 外への directory link も再帰し、候補はリンク経由の字句 path を維持する。同じ実体を指す別名を全体の visited set で潰してはならず、現在の祖先 chain と同一の解決済み directory へ戻る再帰だけを打ち切る。broken link、解決失敗、権限不足は再帰しない。
+- MUST: 追跡時も字句 depth、GUI/TUI 件数上限、bounded worker/frontier、request identity、cancel を維持する。既定 false の通常 directory へ循環判定のための filesystem probe を追加してはならない。
+- MUST: GUI の follow-links は tab-local state とし、切替時は非同期再indexを行う。query/refresh/root変更で維持し、新規tabはfalse、session/closed-tab restoreとpresetでは保存・復元する。旧保存データのfield欠落はfalseとする。
+- MUST: FileList使用時は記載された候補だけを読み、follow-linksによる追加走査は行わない。GUI/TUI/CLIのCreate File List用fresh Walkerは現在のfollow-linksを引き継ぎ、Depthは従来どおり無制限にする。
 - SHOULD: 空クエリ時は新規バッチを即時に一覧へ反映し、非空クエリ時は UI 負荷を抑えるため間引き更新する。
 
 ### Preconditions / Postconditions
@@ -150,5 +154,5 @@
 - Postconditions: 収集された全候補の root 相対 depth は明示上限以下であり、上限未指定時は従来どおりである。
 
 ### Edge / Error
-- symlink、junction、reparse point 自体の depth は字句 path で数え、既存の非再帰 policy を変更しない。
+- symlink、junction とその子孫の depth はリンク経由の字句 path で数え、再帰は SP-002 の follow-links policy に従う。
 - 権限不足や消失 path の扱いは SP-001 / SP-002 の既存契約を維持する。

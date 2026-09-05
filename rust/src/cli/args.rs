@@ -157,7 +157,7 @@ pub struct Args {
         value_name = "NAME",
         requires = "cli",
         conflicts_with_all = [
-            "root", "use_default_root", "saved_root", "named_root", "entry_type", "max_depth", "regex",
+            "root", "use_default_root", "saved_root", "named_root", "entry_type", "max_depth", "follow_links", "regex",
             "case_sensitive", "source", "ignore_file", "no_ignore", "sort", "create_filelist",
             "list_saved_roots"
         ]
@@ -171,6 +171,10 @@ pub struct Args {
     /// Maximum candidate depth below the search root (root children are depth 1).
     #[arg(long, value_name = "N", conflicts_with = "create_filelist")]
     pub(super) max_depth: Option<NonZeroUsize>,
+
+    /// Include descendants of directory symbolic links and junctions.
+    #[arg(long, default_value_t = false)]
+    pub(super) follow_links: bool,
 
     /// Print paths without opening the GUI.
     #[arg(long, default_value_t = false)]
@@ -391,6 +395,10 @@ impl Args {
         self.limit
     }
 
+    pub fn follow_links(&self) -> bool {
+        self.follow_links
+    }
+
     pub fn max_depth(&self) -> crate::indexer::MaxDepth {
         self.max_depth.map(Into::into).unwrap_or_default()
     }
@@ -515,7 +523,8 @@ fn validate_catalog_args(args: &Args) -> std::result::Result<(), String> {
 }
 
 pub(super) fn validate_list_saved_roots_args(args: &Args) -> std::result::Result<(), &'static str> {
-    if !args.query.is_empty()
+    if args.follow_links
+        || !args.query.is_empty()
         || args.limit != 1000
         || args.max_depth.is_some()
         || args.absolute
@@ -610,6 +619,26 @@ mod tests {
         assert!(matches!(args.entry_type, CliEntryType::All));
         assert!(matches!(args.source, CliIndexSource::Auto));
         assert!(args.max_depth().is_unlimited());
+        assert!(!args.follow_links());
+    }
+
+    #[test]
+    fn follow_links_accepts_gui_batch_tui_and_filelist_creation() {
+        for flags in [
+            vec!["flistwalker", "--follow-links"],
+            vec!["flistwalker", "--cli", "--follow-links"],
+            vec!["flistwalker", "--cli", "--interactive", "--follow-links"],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--create-filelist",
+                "--follow-links",
+            ],
+        ] {
+            let args = Args::try_parse_from(flags).expect("accept follow links");
+            assert!(args.follow_links());
+            super::validate_create_filelist_args(&args).expect("valid FileList options");
+        }
     }
 
     #[test]

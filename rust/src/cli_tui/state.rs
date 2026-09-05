@@ -39,6 +39,7 @@ pub(super) struct TuiState {
     pub(super) root_picker: Option<RootPicker>,
     pub(super) runtime_options: TuiRuntimeOptions,
     pub(super) max_depth: MaxDepth,
+    pub(super) follow_links: bool,
     pub(super) ignore_terms: Arc<Vec<String>>,
     pub(super) sort_mode: SearchSortMode,
     pub(super) source_changed_on_apply: bool,
@@ -256,6 +257,7 @@ impl TuiState {
                 source: TuiSource::Auto,
             },
             max_depth: MaxDepth::unlimited(),
+            follow_links: false,
             ignore_terms: Arc::new(Vec::new()),
             sort_mode: SearchSortMode::Score,
             source_changed_on_apply: false,
@@ -387,6 +389,7 @@ impl TuiState {
             source: self.runtime_options.source,
             filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
             max_depth: self.max_depth,
+            follow_links: self.follow_links,
         }
     }
 
@@ -514,6 +517,7 @@ impl TuiState {
         self.dirty = true;
         TuiFileListRequest {
             request_id,
+            follow_links: self.follow_links,
 
             root: self.root.clone(),
             propagate_to_ancestors,

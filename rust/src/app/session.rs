@@ -614,6 +614,8 @@ pub(super) struct SavedTabState {
     pub(super) include_dirs: bool,
     #[serde(default)]
     pub(super) max_depth: crate::indexer::MaxDepth,
+    #[serde(default)]
+    pub(super) follow_links: bool,
     pub(super) query: String,
     #[serde(default)]
     pub(super) query_history: Vec<String>,
@@ -774,6 +776,7 @@ impl FlistWalkerApp {
                     include_files: tab.include_files,
                     include_dirs: tab.include_dirs,
                     max_depth: tab.max_depth,
+                    follow_links: tab.follow_links,
                     query: tab.query.clone(),
                     query_history: if history_persist_disabled {
                         Vec::new()

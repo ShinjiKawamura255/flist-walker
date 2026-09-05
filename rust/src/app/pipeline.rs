@@ -143,6 +143,7 @@ impl FlistWalkerApp {
             include_files: self.shell.runtime.include_files,
             include_dirs: self.shell.runtime.include_dirs,
             max_depth: self.shell.runtime.max_depth,
+            follow_links: self.shell.runtime.follow_links,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -181,6 +182,7 @@ impl FlistWalkerApp {
             include_files: self.shell.runtime.include_files,
             include_dirs: self.shell.runtime.include_dirs,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: self.shell.runtime.follow_links,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -270,6 +272,7 @@ impl FlistWalkerApp {
             },
             include_files: tab.include_files,
             include_dirs: tab.include_dirs,
+            follow_links: tab.follow_links,
             max_depth: match mode {
                 super::PendingIndexRefreshMode::Normal => tab.max_depth,
                 super::PendingIndexRefreshMode::CreateFileListWalker => {

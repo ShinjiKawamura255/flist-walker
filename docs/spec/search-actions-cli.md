@@ -174,15 +174,15 @@
 
 ### Requirements
 - MUST: catalog 管理は positional subcommand を予約せず、`--list-named-roots`、`--add-named-root NAME=PATH`、`--remove-named-root NAME`、`--list-presets`、`--save-preset NAME`、`--remove-preset NAME`、`--preset NAME` の明示 long option で提供する。
-- MUST: `--preset` は batch/TUI で利用でき、preset が所有する root/query/type/source/regex/case/ignore/sort の明示指定とは競合する。limit、color、output framing、明示 action は invocation が所有する。
+- MUST: `--preset` は batch/TUI で利用でき、preset が所有する root/query/type/source/regex/case/ignore/sort/max-depth/follow-links の明示指定とは競合する。limit、color、output framing、明示 action は invocation が所有する。
 - MUST: preset は pure search state だけを保持し、exec/open/reveal/update/FileList mutation を保存しない。
 - MUST: presetの作成・削除はCLI/TUIとGUIで提供する。GUIはメイン画面の`Presets...` buttonとOS primary modifierの`Primary+Shift+P`のどちらからも同じpickerを開き、button tooltipにはplatformに対応するshortcutを表示する。preset名のfuzzy filter、`Up` / `Down`選択、`Enter`適用、`Add`追加、`F2` / `Edit`編集、`Delete` buttonからの確認付き削除、`Esc` cancelを提供する。preset一覧・選択・編集UIはmodal内に保ち、メイン画面へ埋め込まない。
 - MUST: TUIは`F7`でpreset管理modalを開き、`N`で現在のpure-search stateをsnapshotした新規保存draft、`Delete`と確認`Enter`で削除を提供する。catalog I/Oは単一workerと容量1mailboxで行い、受理済み要求の連打を抑止する。失敗はdraft/確認とerrorを残し、`Esc`は表示を閉じるがpending要求のsettlement追跡を失わない。古い応答は現在のroot/queryへ適用しない。
 - MUST: TUI preset modalおよびcatalog settlement待機は背後のoutput/action/root/query inputを遮断する。選択出力は要求時のpath/root snapshotを保持してsettlement後に返し、`Ctrl+C`は優先的な取消終了へ切り替える。catalog処理中はFileList transactionを重ねて開始しない。作成・削除は既存lock付きatomic RMWを使い、unknown fieldsと他項目を保持する。
 - MUST: GUI picker は catalog を worker で読み込み、最新 request の response だけを採用する。loading/error/empty/no-match を modal 内で区別し、表示中の入力を背後の検索・選択・copy・実行へ漏らしてはならない。
-- MUST: GUI editor は新規追加時に現在tabのroot/query/type/source/regex/case/ignore/sortを初期値とするdraftを作り、編集時は選択中presetの同fieldをdraftとする。root は absolute path のテキスト入力と folder picker の両方で指定できるようにする。folder picker の選択は draft の root だけを更新し、picker の cancel は手入力値を維持し、picker failure は draft と editor 内の error を残す。`Primary+Enter` / `Save` で専用 worker による lock付き read-modify-write を行う。追加とrenameは他presetとのcase-insensitive name collisionを拒否し、renameは元の位置と保存時点のunknown fieldsを保持する。保存失敗時は draft と error を残し、`Esc` / `Cancel` は未保存 draft を破棄して picker へ戻る。
+- MUST: GUI editor は新規追加時に現在tabのroot/query/type/source/regex/case/ignore/sort/max-depth/follow-linksを初期値とするdraftを作り、編集時は選択中presetの同fieldをdraftとする。root は absolute path のテキスト入力と folder picker の両方で指定できるようにする。folder picker の選択は draft の root だけを更新し、picker の cancel は手入力値を維持し、picker failure は draft と editor 内の error を残す。`Primary+Enter` / `Save` で専用 worker による lock付き read-modify-write を行う。追加とrenameは他presetとのcase-insensitive name collisionを拒否し、renameは元の位置と保存時点のunknown fieldsを保持する。保存失敗時は draft と error を残し、`Esc` / `Cancel` は未保存 draft を破棄して picker へ戻る。
 - MUST: GUI picker と preset editor は同じ Named Root 管理画面への導線を提供する。管理画面は一覧選択、追加、名称・absolute path編集、削除確認をmodal内で行い、path はテキスト入力、folder picker、現在 root の採用を選べるようにする。folder picker の選択は draft の path だけを更新し、picker の cancel は手入力値を維持し、picker failure は draft と editor 内の error を残す。mutationを専用workerのlock付きread-modify-writeへ渡す。renameは元の位置とunknown fieldsを保持して参照presetの`root_name`を新名称へ更新し、case-insensitive collisionを拒否する。削除は参照presetの`root_name`を解除し、保存済みabsolute snapshotを残す。保存失敗時は入力とerrorを保持する。
-- MUST: GUI の preset 適用は root/query/type/source/regex/case/ignore/sort を現在 tab へ反映し、root/source/type が変わる場合だけ既存 index refresh 経路を使う。適用自体は結果の open/execute/reveal や FileList mutation を開始してはならない。preset追加・編集・削除はcatalogだけを更新し、現在tabの検索状態または副作用actionを変更してはならない。削除失敗時は確認状態とerrorを保持する。
+- MUST: GUI の preset 適用は root/query/type/source/regex/case/ignore/sort/max-depth/follow-links を現在 tab へ反映し、root/source/type/max-depth/follow-links が変わる場合だけ既存 index refresh 経路を使う。適用自体は結果の open/execute/reveal や FileList mutation を開始してはならない。preset追加・編集・削除はcatalogだけを更新し、現在tabの検索状態または副作用actionを変更してはならない。削除失敗時は確認状態とerrorを保持する。
 - MUST: GUI の preset 適用は preset 所有stateを検索要求より先に一度だけ確定し、index refreshが不要な場合もentry filterを再構築して最新requestを一度だけ発行する。適用前requestのresponseはrequest identityで破棄し、presetが所有しないtabのsort scopeは維持する。
 - MUST: catalog management success は exit 0、lookup/storage failure は exit 1、argument contract failure は exit 2 とする。
 
@@ -239,3 +239,6 @@
 ### Edge / Error
 - 対象 release に `fw` asset がない場合、`fw` updater は universal binary へフォールバックせず fail closed とする。
 - `fw` と `flistwalker --cli` の同じ invocation は stdout、stderr、exit code を一致させる。ただし help/program name と updater の手動実行案内は実行 variant の command 名を使う。
+
+## Link traversal options
+`--follow-links` は GUI 起動、batch CLI、interactive CLI と `--create-filelist` に利用できる。preset の pure-search state に保存し、明示 `--preset` 適用と競合する。TUI では起動値または preset 値を session 中保持する。詳細は [SP-002](indexing-performance.md#sp-002-walker-走査) を正本とする。

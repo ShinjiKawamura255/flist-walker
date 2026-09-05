@@ -37,8 +37,11 @@
 - FR-034: ツールは root および階層 FileList を UTF-8（先頭の UTF-8 BOM は任意）として決定論的に読み込み、UTF-16、NUL、UTF-8 不正、または上限超過行を置換文字や locale 推測で解釈せず、対象 FileList を特定できるエラーとして拒否しなければならない。
 - FR-035: ツールは TUI で新しい配布版を非同期検知した場合に英語の通知と終了後に実行する手動更新コマンドを表示し、通知だけで更新を開始してはならない。また、GUI を起動せず更新確認または明示的な更新開始を行う CLI 操作を提供しなければならない。
 - FR-036: ツールは GUI で現在利用可能なキーボードショートカットと query のフィールド指定を確認できるヘルプを提供し、OS の primary modifier と runtime config による Emacs 風ショートカットの有効状態を正しく反映しなければならない。
-- FR-037: ツールは path に安定した名前を付ける named root と、root/query/type/source/regex/case/ignore/sort/max-depth だけを保存する検索 preset を管理・適用できなければならない。GUI はショートカットを知らない利用者もメイン画面から preset picker を開ける入口を提供し、modal picker 内で preset の検索・適用、現在 tab の pure-search state からの追加、編集、確認付き削除と、named root の追加・編集・削除を提供しなければならない。preset の一覧・選択・編集 UI はメイン画面へ埋め込まず、preset は action、外部 command、更新、FileList 変更を保存または暗黙実行してはならない。
+- FR-037: ツールは path に安定した名前を付ける named root と、root/query/type/source/regex/case/ignore/sort/max-depth/follow-links だけを保存する検索 preset を管理・適用できなければならない。GUI はショートカットを知らない利用者もメイン画面から preset picker を開ける入口を提供し、modal picker 内で preset の検索・適用、現在 tab の pure-search state からの追加、編集、確認付き削除と、named root の追加・編集・削除を提供しなければならない。preset の一覧・選択・編集 UI はメイン画面へ埋め込まず、preset は action、外部 command、更新、FileList 変更を保存または暗黙実行してはならない。
 - FR-038: ツールは従来の path 全体を対象とする query を変更せず、各 query term を filename、root 相対 path、親 directory、最終 extension のいずれかへ限定できなければならない。
 - FR-039: ツールは検索 root からの候補収集深度に上限を指定でき、Walker、FileList、batch CLI、interactive CLI、GUI のいずれでも同じ候補範囲を使用しなければならない。GUI の上限はタブ単位で保持し、preset から適用しても他タブへ波及してはならない。
 - FR-040: ツールは従来の GUI/CLI 両対応 `flistwalker` を維持しつつ、同じ CLI/TUI 契約を `--cli` なしで利用できる CLI 専用 executable `fw` を提供しなければならない。自己更新は起動した executable variant と同じ release asset だけを選択しなければならない。
 - FR-041: ツールは runtime config の `emacs_keybindings_enabled` が有効な場合、GUI/TUI のメイン一覧、検索履歴、root/preset/Named Root の選択画面、overlay、modal、および application-owned text field を含む全対話面で、通常キーに対応する Emacs 風 application command と text-editing chord を一貫して提供しなければならない。新しい対話面と単一行入力は feature ごとの個別 opt-in ではなく共有 command mapping / text-editing adapter を継承し、同設定が無効な場合は Emacs 風 chord をアプリ操作として処理してはならない。
+
+- FR-042: ツールは利用者が有効にした場合、Root 配下の directory symlink と Windows junction のリンク先を検索対象へ含めなければならない。物理 Root 外のリンク先と同じ実体への複数の別名を扱い、循環で走査が終わらなくなってはならない。
+- FR-043: Root 自体が symlink または Windows junction の場合も、相対表示ではその Root 配下の Results を通常の Root と同様の相対パスで表示しなければならない。

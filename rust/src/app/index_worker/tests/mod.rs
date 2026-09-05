@@ -261,6 +261,7 @@ fn walker_metrics_summary_can_be_written_to_file() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let mut metrics = WalkerMetrics::new(WalkerBackend::Adaptive);
     metrics.entries_emitted = 11;
@@ -499,6 +500,7 @@ fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id + 1)]));
@@ -527,6 +529,7 @@ fn filelist_stream_returns_superseded_when_canceled_before_entry() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id + 1)]));
@@ -564,6 +567,7 @@ fn filelist_stream_uses_larger_batches() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
@@ -626,6 +630,7 @@ fn filelist_stream_applies_nested_override_after_initial_batches() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let shutdown = AtomicBool::new(false);
     let latest_request_ids = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
@@ -698,6 +703,7 @@ fn tc_152_stale_index_request_cancels_before_root_resolution() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     })
     .expect("send stale index request");
     assert!(matches!(
@@ -735,6 +741,7 @@ fn tc_152_native_filelist_request_starts_and_finishes_within_deadline_regression
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     })
     .expect("send FileList index request");
 
@@ -832,6 +839,7 @@ fn tc_152_filelist_restore_index_regression_cancels_before_filelist_start() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     })
     .expect("send stale FileList request");
 
@@ -887,6 +895,7 @@ fn tc_152_index_workers_bound_total_to_four() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     for request_id in 1..=5 {
         establish_prequeued_mailbox_invariant(&mailboxes, request_id);
@@ -951,6 +960,7 @@ fn tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regre
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     for request_id in 1..=3 {
         establish_prequeued_mailbox_invariant(&mailboxes, request_id);
@@ -1020,6 +1030,7 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
         })
         .expect("accept index request before channel close");
     }
@@ -1069,6 +1080,7 @@ fn index_worker_trace_smoke_emits_canonical_fields() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
         })
         .expect("send request");
 

@@ -203,8 +203,9 @@ impl FlistWalkerApp {
         query: String,
         root_explicit: bool,
         max_depth: crate::indexer::MaxDepth,
+        follow_links: bool,
     ) -> Self {
-        Self::build_from_launch(root, limit, query, root_explicit, max_depth)
+        Self::build_from_launch(root, limit, query, root_explicit, max_depth, follow_links)
     }
 }
 

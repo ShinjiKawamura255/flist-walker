@@ -1892,3 +1892,91 @@ fn tc_170_exec_rejects_output_and_builtin_action_options() {
         assert!(output.stdout.is_empty());
     }
 }
+
+#[cfg(any(unix, windows))]
+#[test]
+fn follow_links_cli_search_presets_and_filelist_creation_use_the_same_option() {
+    let fixture = test_root("follow-links-contract");
+    let root = fixture.join("root");
+    let outside = fixture.join("outside");
+    let settings = fixture.join("settings");
+    fs::create_dir_all(&root).expect("root");
+    fs::create_dir_all(&outside).expect("outside");
+    fs::create_dir_all(&settings).expect("settings");
+    fs::write(outside.join("linked.txt"), "content").expect("file");
+    let link = root.join("alias");
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&outside, &link).expect("directory symlink");
+    #[cfg(windows)]
+    {
+        let output = Command::new("cmd.exe")
+            .args(["/C", "mklink", "/J"])
+            .arg(&link)
+            .arg(&outside)
+            .output()
+            .expect("directory junction");
+        assert!(output.status.success(), "{output:?}");
+    }
+    for (flags, expected) in [
+        (vec![], false),
+        (vec!["--follow-links"], true),
+        (vec!["--follow-links", "--max-depth", "1"], false),
+    ] {
+        let output = cli_command_in_settings(&settings)
+            .args(["--cli", "--root"])
+            .arg(&root)
+            .args(["--source", "walker", "--type", "file"])
+            .args(flags)
+            .output()
+            .expect("search");
+        assert!(output.status.success(), "{output:?}");
+        let stdout = String::from_utf8_lossy(&output.stdout).replace('\\', "/");
+        assert_eq!(stdout.contains("alias/linked.txt"), expected, "{stdout}");
+    }
+    let saved = cli_command_in_settings(&settings)
+        .args(["--cli", "--root"])
+        .arg(&root)
+        .args([
+            "--source",
+            "walker",
+            "--follow-links",
+            "--save-preset",
+            "links",
+        ])
+        .output()
+        .expect("save preset");
+    assert!(saved.status.success(), "{saved:?}");
+    let applied = cli_command_in_settings(&settings)
+        .args(["--cli", "--preset", "links"])
+        .output()
+        .expect("apply preset");
+    assert!(applied.status.success(), "{applied:?}");
+    assert!(String::from_utf8_lossy(&applied.stdout).contains("linked.txt"));
+    let conflict = cli_command_in_settings(&settings)
+        .args(["--cli", "--preset", "links", "--follow-links"])
+        .output()
+        .expect("reject preset override");
+    assert_eq!(conflict.status.code(), Some(2));
+    let created = cli_command_in_settings(&settings)
+        .args(["--cli", "--root"])
+        .arg(&root)
+        .args(["--create-filelist", "--follow-links"])
+        .output()
+        .expect("create FileList");
+    assert!(created.status.success(), "{created:?}");
+    let list = fs::read_to_string(root.join("FileList.txt")).expect("FileList");
+    assert!(
+        list.replace('\\', "/").contains("alias/linked.txt"),
+        "{list}"
+    );
+    // Explicit FileList records are candidates regardless of traversal mode.
+    let filelist = cli_command_in_settings(&settings)
+        .args(["--cli", "--root"])
+        .arg(&root)
+        .args(["--source", "filelist"])
+        .output()
+        .expect("search FileList");
+    assert!(filelist.status.success(), "{filelist:?}");
+    assert!(String::from_utf8_lossy(&filelist.stdout).contains("linked.txt"));
+    let _ = fs::remove_dir_all(fixture);
+}

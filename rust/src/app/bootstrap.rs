@@ -128,6 +128,7 @@ impl FlistWalkerApp {
             launch,
             None,
             crate::indexer::MaxDepth::unlimited(),
+            false,
         )
     }
 
@@ -137,13 +138,19 @@ impl FlistWalkerApp {
         query: String,
         root_explicit: bool,
         max_depth: crate::indexer::MaxDepth,
+        follow_links: bool,
     ) -> Self {
         let launch = Self::load_launch_settings();
         let restore_tabs_enabled = Self::restore_tabs_enabled();
         let saved_last_root = launch.last_root.clone().map(normalize_windows_path_buf);
         let saved_default = launch.default_root.clone().map(normalize_windows_path_buf);
-        let restore_session_allowed =
-            Self::restore_session_allowed(restore_tabs_enabled, root_explicit, &query, max_depth);
+        let restore_session_allowed = Self::restore_session_allowed(
+            restore_tabs_enabled,
+            root_explicit,
+            &query,
+            max_depth,
+            follow_links,
+        );
         let restore_session = if restore_session_allowed {
             Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
         } else {
@@ -164,6 +171,7 @@ impl FlistWalkerApp {
             launch,
             restore_session,
             max_depth,
+            follow_links,
         );
         app.request_startup_update_check();
         app
@@ -174,11 +182,13 @@ impl FlistWalkerApp {
         root_explicit: bool,
         query: &str,
         max_depth: crate::indexer::MaxDepth,
+        follow_links: bool,
     ) -> bool {
         restore_tabs_enabled
             && !root_explicit
             && query.trim().is_empty()
             && max_depth.is_unlimited()
+            && !follow_links
     }
 
     pub(super) fn bootstrap_workers() -> AppWorkerBootstrap {
@@ -331,6 +341,7 @@ impl FlistWalkerApp {
         launch: LaunchSettings,
         restore_session: Option<(Vec<SavedTabState>, usize)>,
         max_depth: crate::indexer::MaxDepth,
+        follow_links: bool,
     ) -> Self {
         let (
             search_tx,
@@ -367,6 +378,7 @@ impl FlistWalkerApp {
                     root,
                     limit,
                     max_depth,
+                    follow_links,
                     query_state: QueryState::new(query, query_history),
                     use_filelist: true,
                     use_regex: false,

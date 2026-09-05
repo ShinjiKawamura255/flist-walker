@@ -301,6 +301,13 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     centered_checkbox(ui, &mut app.shell.runtime.include_dirs, "Folders").changed(),
                 )
             };
+            if centered_checkbox(ui, &mut app.shell.runtime.follow_links, "Follow links").changed() {
+                app.shell.tabs.mark_active_tab_meaningfully_engaged();
+                app.sync_active_tab_state();
+                app.mark_ui_state_dirty();
+                app.persist_ui_state_now();
+                app.request_index_refresh();
+            }
             let depth_label = app
                 .shell
                 .runtime

@@ -18,6 +18,7 @@ fn preset(name: &str, root: &Path, query: &str) -> SearchPreset {
         ignore_enabled: true,
         sort: PresetSortMode::Score,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
         extra: BTreeMap::new(),
     }
 }
@@ -1770,4 +1771,40 @@ fn regression_gui_list_preset_and_named_root_selection_scrolls_into_view() {
             "{surface} {moved:?}"
         );
     }
+}
+
+#[test]
+fn follow_links_preset_is_tab_local_and_new_tab_reindexes_defaults() {
+    let root = test_root("follow-links-preset-tab");
+    fs::create_dir_all(&root).expect("root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let mut selected = preset("Links", &root, "");
+    selected.follow_links = true;
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(selected)
+        .expect("preset");
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.apply_selected_preset();
+    assert!(app.shell.runtime.follow_links);
+    assert!(app.shell.tabs.get(1).expect("preset tab").follow_links);
+    app.switch_to_tab_index(0);
+    assert!(!app.shell.runtime.follow_links);
+    app.switch_to_tab_index(1);
+    assert!(app.shell.runtime.follow_links);
+    // A new tab starts from default traversal and cannot reuse followed candidates.
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(4);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    app.create_new_tab();
+    assert!(!app.shell.runtime.follow_links);
+    let request = rx
+        .try_recv()
+        .expect("reindex default traversal for new tab");
+    assert!(!request.follow_links);
+    let _ = fs::remove_dir_all(root);
 }

@@ -10,7 +10,7 @@ use crate::indexer::{
 };
 use crate::runtime_config::current_runtime_config;
 use crate::walker_runtime::{
-    classify_walker_entry, walk_adaptive_with_max_depth, walker_runtime_settings,
+    classify_walker_entry, walk_adaptive_with_options, walker_runtime_settings,
     AdaptiveWalkerEntry, AdaptiveWalkerMetrics, WalkerBackend,
 };
 use std::collections::HashMap;
@@ -28,6 +28,8 @@ use tracing::{info, warn};
 const FILELIST_BATCH_SIZE: usize = 1024;
 const WALKER_BATCH_SIZE: usize = 256;
 const INDEX_BATCH_FLUSH_INTERVAL: Duration = Duration::from_millis(100);
+
+mod root_projection;
 
 trait IndexResponseSink {
     fn send(&self, response: IndexResponse) -> Result<(), ()>;
@@ -635,13 +637,16 @@ fn stream_walker_index(
             .and_then(|m| m.get(&req.tab_id).copied())
             != Some(req.request_id)
     };
-    let adaptive_metrics = walk_adaptive_with_max_depth(
+    let adaptive_metrics = walk_adaptive_with_options(
         root,
         settings.adaptive_max_limit,
         settings.adaptive_initial_limit,
         req.include_files,
         req.include_dirs,
-        req.max_depth,
+        crate::indexer::WalkOptions {
+            max_depth: req.max_depth,
+            follow_links: req.follow_links,
+        },
         |entry: AdaptiveWalkerEntry| handle_entry(entry.path, entry.file_type),
         should_cancel_for_walk,
     );
@@ -867,6 +872,8 @@ fn spawn_index_worker_with(
                 }
 
                 let root = resolve_root_worker(&req.root);
+                let tx_res_worker =
+                    root_projection::RootProjectionSink::new(&tx_res_worker, &root, &req.root);
                 let request_is_current = || {
                     !shutdown_worker.load(Ordering::Relaxed)
                         && latest_request_ids_worker

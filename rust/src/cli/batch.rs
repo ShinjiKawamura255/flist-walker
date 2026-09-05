@@ -21,10 +21,10 @@ use crate::ignore_list::{
     load_ignore_terms_from_path_result,
 };
 use crate::indexer::{
-    build_index_cancellable, build_index_with_metadata_from_discovery_cancellable_and_max_depth,
-    execute_filelist_write_plan, find_filelist_in_first_level_cancellable,
-    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
-    FileListWriteReport,
+    build_index_with_metadata_cancellable_and_options,
+    build_index_with_metadata_from_discovery_cancellable_and_options, execute_filelist_write_plan,
+    find_filelist_in_first_level_cancellable, is_index_build_cancelled,
+    plan_filelist_write_cancellable, FileListWriteOptions, FileListWriteReport,
 };
 use crate::path_utils::{normalize_path_for_display, output_path_bytes};
 use crate::persistence::load_persisted_roots_and_history;
@@ -182,6 +182,7 @@ fn run_catalog_management_inner(args: &Args) -> Result<()> {
             ignore_enabled: !args.no_ignore,
             sort: preset_sort(args.sort),
             max_depth: args.max_depth(),
+            follow_links: args.follow_links,
             extra: BTreeMap::new(),
         };
         update_search_catalog(&path, |catalog| catalog.save_preset(preset))?;
@@ -208,6 +209,7 @@ fn apply_search_preset(args: &mut Args, name: &str) -> Result<()> {
     args.no_ignore = !preset.ignore_enabled;
     args.sort = cli_sort(preset.sort);
     args.max_depth = preset.max_depth.value().and_then(NonZeroUsize::new);
+    args.follow_links = preset.follow_links;
     args.preset = None;
     Ok(())
 }
@@ -347,6 +349,7 @@ fn cli_tui_options(args: &Args, ignore_terms: Vec<String>) -> CliTuiOptions {
         initial_query: args.query.clone(),
         limit: args.limit,
         max_depth: args.max_depth(),
+        follow_links: args.follow_links,
         absolute: args.absolute,
         print0: args.print0,
         include_files,
@@ -405,13 +408,16 @@ fn run_cli_with_backend(
     if args.progress {
         eprintln!("Indexing {}...", root.display());
     }
-    let indexed_entries = match build_index_with_metadata_from_discovery_cancellable_and_max_depth(
+    let indexed_entries = match build_index_with_metadata_from_discovery_cancellable_and_options(
         root,
         use_filelist,
         discovered_filelist,
         include_files,
         include_dirs,
-        args.max_depth(),
+        crate::indexer::WalkOptions {
+            max_depth: args.max_depth(),
+            follow_links: args.follow_links,
+        },
         || cancelled.load(Ordering::Relaxed),
     ) {
         Ok(result) => result.entries,
@@ -781,10 +787,22 @@ fn run_cli_filelist(root: &Path, args: &Args, cancelled: &AtomicBool) -> CliFile
     if args.progress {
         eprintln!("Indexing {} for FileList creation...", root.display());
     }
-    let entries = match build_index_cancellable(root, false, true, true, || {
-        cancelled.load(Ordering::Relaxed)
-    }) {
-        Ok(entries) => entries,
+    let entries = match build_index_with_metadata_cancellable_and_options(
+        root,
+        false,
+        true,
+        true,
+        crate::indexer::WalkOptions {
+            max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: args.follow_links,
+        },
+        || cancelled.load(Ordering::Relaxed),
+    ) {
+        Ok(index) => index
+            .entries
+            .into_iter()
+            .map(|entry| entry.path)
+            .collect::<Vec<_>>(),
         Err(error) if is_index_build_cancelled(&error) => {
             return CliFileListOutcome::CanceledBeforePlan
         }

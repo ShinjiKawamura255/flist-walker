@@ -200,7 +200,7 @@ flistwalker --cli --remove-preset rust-src
 flistwalker --cli --remove-named-root work
 ```
 
-Quote the complete query argument even when it contains only one term. `--preset` cannot be combined with an explicit query or with root, entry-type, source, regex, case, ignore, sort, or `--max-depth` selectors because those values come from the preset. Invocation-specific options such as `--limit`, output framing, and explicit actions remain available when applying it.
+Quote the complete query argument even when it contains only one term. `--preset` cannot be combined with an explicit query or with root, entry-type, source, regex, case, ignore, sort, `--max-depth`, or `--follow-links` selectors because those values come from the preset. Invocation-specific options such as `--limit`, output framing, and explicit actions remain available when applying it.
 
 Examples:
 
@@ -263,6 +263,10 @@ This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--sa
 - `Use FileList`: prefer `FileList.txt` / `filelist.txt`
 - `Files`: toggle file visibility
 - `Folders`: toggle folder visibility
+- `Follow links`: Search through directory symlinks and Windows junctions below Root. Off by default; stored per tab, session, and preset. Targets outside the physical Root retain paths through their links, and ancestor cycles are stopped. FileList reading adds no traversal; fresh Create File List scans use this option. Use `fw --root PATH --source walker --follow-links` in CLI (`flistwalker --cli` for the universal binary), adding `--interactive` for TUI.
+
+Results in relative mode remain relative when Root itself is a symlink or junction. Windows compatibility junctions marked Hidden and System, `.lnk` shortcuts, and Finder alias expansion are excluded from link traversal.
+
 - `Regex`: enable regular-expression search
 - `Preview`: show or hide the preview pane
 - `Use Ignore List`: enable or disable executable-relative ignore rules. It is on by default.

@@ -87,6 +87,8 @@ pub struct SearchPreset {
     pub sort: PresetSortMode,
     #[serde(default, skip_serializing_if = "max_depth_is_unlimited")]
     pub max_depth: MaxDepth,
+    #[serde(default)]
+    pub follow_links: bool,
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }
@@ -406,6 +408,7 @@ mod tests {
             ignore_enabled: true,
             sort: PresetSortMode::Score,
             max_depth: MaxDepth::unlimited(),
+            follow_links: false,
             extra: BTreeMap::new(),
         }
     }
@@ -443,6 +446,19 @@ mod tests {
         assert_eq!(loaded.extra["future"]["kept"], Value::Bool(true));
         assert_eq!(fs::read_to_string(&legacy_path).unwrap(), "legacy-root\n");
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn follow_links_preset_defaults_false_and_round_trips() {
+        let legacy: SearchPreset =
+            serde_json::from_str(r#"{"name":"legacy","root_path":"root","query":""}"#)
+                .expect("legacy preset");
+        assert!(!legacy.follow_links);
+        let mut enabled = legacy;
+        enabled.follow_links = true;
+        let json = serde_json::to_string(&enabled).expect("serialize");
+        let restored: SearchPreset = serde_json::from_str(&json).expect("restore");
+        assert!(restored.follow_links);
     }
 
     #[test]

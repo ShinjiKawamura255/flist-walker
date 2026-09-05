@@ -68,6 +68,7 @@ fn queued_request_for_tab_exists_is_true_for_matching_tab() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
 
     assert!(app.queued_request_for_tab_exists(tab_id));
@@ -88,6 +89,7 @@ fn superseded_queued_index_request_releases_its_route() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     app.shell.indexing.request_tabs.insert(7, tab_id);
     app.shell.indexing.request_tabs.insert(8, tab_id);

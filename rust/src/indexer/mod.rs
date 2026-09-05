@@ -27,9 +27,9 @@ pub use filelist_writer::{
 };
 pub use walker::{
     walk_dirs, walk_entries, walk_entries_cancellable, walk_entries_cancellable_with_max_depth,
-    walk_entries_stream, walk_entries_stream_cancellable,
+    walk_entries_cancellable_with_options, walk_entries_stream, walk_entries_stream_cancellable,
     walk_entries_stream_cancellable_with_max_depth, walk_entries_stream_with_max_depth,
-    walk_entries_with_max_depth, walk_files, WalkCancelled,
+    walk_entries_with_max_depth, walk_entries_with_options, walk_files, WalkCancelled,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,6 +52,22 @@ pub enum IndexSource {
     FileList(PathBuf),
     Walker,
     None,
+}
+
+/// Per-request traversal policy. FileList reads apply only the depth boundary.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct WalkOptions {
+    pub max_depth: MaxDepth,
+    pub follow_links: bool,
+}
+
+impl From<MaxDepth> for WalkOptions {
+    fn from(max_depth: MaxDepth) -> Self {
+        Self {
+            max_depth,
+            follow_links: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +139,27 @@ pub fn build_index_with_metadata_cancellable_and_max_depth<C>(
 where
     C: Fn() -> bool,
 {
+    build_index_with_metadata_cancellable_and_options(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        max_depth.into(),
+        should_cancel,
+    )
+}
+
+pub fn build_index_with_metadata_cancellable_and_options<C>(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
+    should_cancel: C,
+) -> Result<IndexBuildResult>
+where
+    C: Fn() -> bool,
+{
     // Regression guard: an empty kind scope has no observable source and must
     // avoid even the cancellable FileList discovery wrapper.
     if !include_files && !include_dirs {
@@ -137,13 +174,13 @@ where
     } else {
         None
     };
-    build_index_with_metadata_from_discovery_cancellable_and_max_depth(
+    build_index_with_metadata_from_discovery_cancellable_and_options(
         root,
         use_filelist,
         discovered_filelist,
         include_files,
         include_dirs,
-        max_depth,
+        options,
         should_cancel,
     )
 }
@@ -160,6 +197,29 @@ pub fn build_index_with_metadata_from_discovery_cancellable_and_max_depth<C>(
     include_files: bool,
     include_dirs: bool,
     max_depth: MaxDepth,
+    should_cancel: C,
+) -> Result<IndexBuildResult>
+where
+    C: Fn() -> bool,
+{
+    build_index_with_metadata_from_discovery_cancellable_and_options(
+        root,
+        use_filelist,
+        discovered_filelist,
+        include_files,
+        include_dirs,
+        max_depth.into(),
+        should_cancel,
+    )
+}
+
+pub fn build_index_with_metadata_from_discovery_cancellable_and_options<C>(
+    root: &Path,
+    use_filelist: bool,
+    discovered_filelist: Option<PathBuf>,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
     should_cancel: C,
 ) -> Result<IndexBuildResult>
 where
@@ -202,7 +262,7 @@ where
                 &root,
                 include_files,
                 include_dirs,
-                max_depth,
+                options.max_depth,
                 &should_cancel,
             )
             .map_err(|error| {
@@ -218,11 +278,11 @@ where
             }
         } else {
             IndexBuildResult {
-                entries: walk_entries_cancellable_with_max_depth(
+                entries: walk_entries_cancellable_with_options(
                     &root,
                     include_files,
                     include_dirs,
-                    max_depth,
+                    options,
                     &should_cancel,
                 )
                 .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
@@ -234,11 +294,11 @@ where
         }
     } else {
         IndexBuildResult {
-            entries: walk_entries_cancellable_with_max_depth(
+            entries: walk_entries_cancellable_with_options(
                 &root,
                 include_files,
                 include_dirs,
-                max_depth,
+                options,
                 &should_cancel,
             )
             .map_err(|_| anyhow::Error::new(IndexBuildCancelled))?
@@ -256,7 +316,7 @@ where
         use_filelist,
         include_files,
         include_dirs,
-        max_depth = ?max_depth.value(),
+        max_depth = ?options.max_depth.value(),
         entry_count = result.entries.len(),
         source = ?result.source,
         elapsed_ms = started_at.elapsed().as_millis(),
@@ -338,3 +398,20 @@ where
 
 #[cfg(test)]
 mod tests;
+
+pub fn build_index_with_metadata_and_options(
+    root: &Path,
+    use_filelist: bool,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
+) -> Result<IndexBuildResult> {
+    build_index_with_metadata_cancellable_and_options(
+        root,
+        use_filelist,
+        include_files,
+        include_dirs,
+        options,
+        || false,
+    )
+}

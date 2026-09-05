@@ -3,6 +3,7 @@
 ## SP-010 GUI 操作仕様
 ### Requirements
 - MUST: GUI は `Ctrl+Q` / `Cmd+Q` によって終了してはならない。検索欄の focus、modal 表示、Emacs 設定、key repeat に関係なくこの契約を適用する。ウィンドウの閉じる操作、Windows の `Alt+F4`、macOS のメニューから明示的に選ぶ終了操作は維持しなければならない。
+- MUST: Root自体がsymlink/junctionでも、相対表示のResultsは要求されたRootを基準とする。workerの実体Root解決で表示を絶対pathへ変えてはならない。Walker/FileListのBatch/ReplaceAllとも同じ投影を使い、query/highlight/ignoreと候補pathを揃える。Root外の独立した絶対FileList行はそのまま保持し、表示中にcanonicalize等のfilesystem I/Oを行ってはならない。
 - MUST: 検索入力、結果リスト、プレビューペイン、実行/オープンを提供する。
 - MUST: Source（FileList/Walker）と Root を画面表示する。
 - MUST: フッター右端に現在 version を常時表示する。

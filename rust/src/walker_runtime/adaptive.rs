@@ -7,7 +7,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::indexer::MaxDepth;
+use crate::indexer::{MaxDepth, WalkOptions};
 
 use super::is_windows_shortcut;
 
@@ -69,6 +69,67 @@ struct SharedState {
 struct QueuedDirectory {
     path: PathBuf,
     depth: usize,
+    ancestors: Ancestors,
+}
+
+// Branch-local ancestry keeps alternate lexical aliases searchable. Default
+// traversal allocates no ancestry and performs no canonicalization per directory.
+type Ancestors = Option<Arc<DirectoryAncestor>>;
+#[derive(Debug)]
+struct DirectoryAncestor {
+    resolved: PathBuf,
+    parent: Ancestors,
+}
+impl Drop for DirectoryAncestor {
+    fn drop(&mut self) {
+        // Deep directory trees must not recursively drop an unshared Arc chain.
+        while let Some(parent) = self.parent.take() {
+            match Arc::try_unwrap(parent) {
+                Ok(mut node) => self.parent = node.parent.take(),
+                Err(_) => break,
+            }
+        }
+    }
+}
+fn directory_ancestors(
+    dir: &QueuedDirectory,
+    follow_links: bool,
+) -> std::io::Result<Option<Ancestors>> {
+    if !follow_links {
+        return Ok(Some(None));
+    }
+    let resolved = dir.path.canonicalize()?;
+    let mut ancestor = dir.ancestors.as_deref();
+    while let Some(node) = ancestor {
+        if node.resolved == resolved {
+            return Ok(None);
+        }
+        ancestor = node.parent.as_deref();
+    }
+    Ok(Some(Some(Arc::new(DirectoryAncestor {
+        resolved,
+        parent: dir.ancestors.clone(),
+    }))))
+}
+fn recurse_into(
+    entry: &fs::DirEntry,
+    file_type: &fs::FileType,
+    policy: &AdaptiveEntryPolicy,
+    follow_links: bool,
+) -> bool {
+    if file_type.is_dir() {
+        return policy.recurse;
+    }
+    if !follow_links || !file_type.is_symlink() || policy.skip {
+        return false;
+    }
+    // read_link on Windows recognizes symlinks and mount-point/junction tags;
+    // do not opt arbitrary name-surrogate providers into link traversal.
+    #[cfg(windows)]
+    if fs::read_link(entry.path()).is_err() {
+        return false;
+    }
+    fs::metadata(entry.path()).is_ok_and(|metadata| metadata.is_dir())
 }
 
 struct Shared {
@@ -81,6 +142,7 @@ struct Shared {
     control: Mutex<LimitControlState>,
     metrics: AdaptiveAtomicMetrics,
     max_depth: MaxDepth,
+    follow_links: bool,
     include_files: bool,
     include_dirs: bool,
     publish_child_dirs_incrementally: bool,
@@ -361,6 +423,7 @@ pub(crate) fn next_limit_from_throughput(
 
 struct DirectoryFrame {
     read_dir: fs::ReadDir,
+    ancestors: Ancestors,
     depth: usize,
     pending_child_dirs: Vec<QueuedDirectory>,
     read_elapsed: Duration,
@@ -499,9 +562,8 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
                     continue;
                 }
                 let depth = frame.depth.saturating_add(1);
-                let should_recurse = file_type.is_dir()
-                    && policy.recurse
-                    && shared.max_depth.should_descend_from(depth);
+                let should_recurse = shared.max_depth.should_descend_from(depth)
+                    && recurse_into(&child, &file_type, &policy, shared.follow_links);
                 let should_emit = if FILTER_ENTRIES {
                     should_emit_entry(
                         &child,
@@ -520,6 +582,7 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
                     frame.pending_child_dirs.push(QueuedDirectory {
                         path: path.clone(),
                         depth,
+                        ancestors: frame.ancestors.clone(),
                     });
                 }
                 if should_emit && tx.send(AdaptiveWalkerEntry { path, file_type }).is_err() {
@@ -585,6 +648,20 @@ fn process_directory_task<const FILTER_ENTRIES: bool>(
 }
 
 fn open_directory_frame(shared: &Shared, dir: QueuedDirectory) -> Option<DirectoryFrame> {
+    let ancestors = match directory_ancestors(&dir, shared.follow_links) {
+        Ok(Some(ancestors)) => ancestors,
+        Ok(None) => return None,
+        Err(_) => {
+            shared
+                .metrics
+                .read_dir_errors
+                .fetch_add(1, Ordering::Relaxed);
+            return None;
+        }
+    };
+    if shared.stop.load(Ordering::Relaxed) {
+        return None;
+    }
     let started = Instant::now();
     match fs::read_dir(&dir.path) {
         Ok(read_dir) => {
@@ -596,6 +673,7 @@ fn open_directory_frame(shared: &Shared, dir: QueuedDirectory) -> Option<Directo
             fetch_max(&shared.metrics.max_open_directory_frames, open_frames);
             Some(DirectoryFrame {
                 read_dir,
+                ancestors,
                 depth: dir.depth,
                 pending_child_dirs: Vec::with_capacity(CHILD_DIR_PUBLISH_BATCH_SIZE),
                 read_elapsed: started.elapsed(),
@@ -929,6 +1007,7 @@ pub(crate) fn walk_adaptive_filtered_with_frontier_limits_and_max_depth(
     )
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn walk_adaptive_with_max_depth(
     root: &Path,
@@ -956,6 +1035,33 @@ pub(crate) fn walk_adaptive_with_max_depth(
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn walk_adaptive_with_options(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_options_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        options,
+        true,
+        Some(adaptive_shared_frontier_soft_limit(max_workers)),
+        adaptive_local_frame_limit(max_workers),
+        on_entry,
+        should_stop,
+    )
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 fn walk_adaptive_with_max_depth_mode(
     root: &Path,
     max_workers: usize,
@@ -966,15 +1072,47 @@ fn walk_adaptive_with_max_depth_mode(
     publish_child_dirs_incrementally: bool,
     frontier_soft_limit: Option<usize>,
     local_frame_limit: usize,
+    on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
+    should_stop: impl Fn() -> bool,
+) -> AdaptiveWalkerMetrics {
+    walk_adaptive_with_options_mode(
+        root,
+        max_workers,
+        initial_limit,
+        include_files,
+        include_dirs,
+        max_depth.into(),
+        publish_child_dirs_incrementally,
+        frontier_soft_limit,
+        local_frame_limit,
+        on_entry,
+        should_stop,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn walk_adaptive_with_options_mode(
+    root: &Path,
+    max_workers: usize,
+    initial_limit: usize,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
+    publish_child_dirs_incrementally: bool,
+    frontier_soft_limit: Option<usize>,
+    local_frame_limit: usize,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
     should_stop: impl Fn() -> bool,
 ) -> AdaptiveWalkerMetrics {
+    if should_stop() {
+        return AdaptiveWalkerMetrics::default();
+    }
     let max_workers = max_workers.max(1);
     if max_workers == 1 {
         return if include_files && include_dirs {
             walk_adaptive_serial::<false>(
                 root,
-                max_depth,
+                options,
                 include_files,
                 include_dirs,
                 on_entry,
@@ -983,7 +1121,7 @@ fn walk_adaptive_with_max_depth_mode(
         } else {
             walk_adaptive_serial::<true>(
                 root,
-                max_depth,
+                options,
                 include_files,
                 include_dirs,
                 on_entry,
@@ -1003,6 +1141,7 @@ fn walk_adaptive_with_max_depth_mode(
             queue: VecDeque::from([QueuedDirectory {
                 path: root.to_path_buf(),
                 depth: 0,
+                ancestors: None,
             }]),
             active: 0,
         }),
@@ -1024,7 +1163,8 @@ fn walk_adaptive_with_max_depth_mode(
             frontier_soft_limit,
             open_directory_frame_budget,
         ),
-        max_depth,
+        max_depth: options.max_depth,
+        follow_links: options.follow_links,
         include_files,
         include_dirs,
         publish_child_dirs_incrementally,
@@ -1084,7 +1224,7 @@ fn walk_adaptive_with_max_depth_mode(
 
 fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
     root: &Path,
-    max_depth: MaxDepth,
+    options: WalkOptions,
     include_files: bool,
     include_dirs: bool,
     mut on_entry: impl FnMut(AdaptiveWalkerEntry) -> bool,
@@ -1102,9 +1242,21 @@ fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
     let mut queue = VecDeque::from([QueuedDirectory {
         path: root.to_path_buf(),
         depth: 0,
+        ancestors: None,
     }]);
 
     while let Some(dir) = queue.pop_front() {
+        if should_stop() {
+            break;
+        }
+        let ancestors = match directory_ancestors(&dir, options.follow_links) {
+            Ok(Some(ancestors)) => ancestors,
+            Ok(None) => continue,
+            Err(_) => {
+                metrics.read_dir_errors += 1;
+                continue;
+            }
+        };
         if should_stop() {
             break;
         }
@@ -1131,9 +1283,8 @@ fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
                         continue;
                     }
                     let depth = dir.depth.saturating_add(1);
-                    let should_recurse = file_type.is_dir()
-                        && policy.recurse
-                        && max_depth.should_descend_from(depth);
+                    let should_recurse = options.max_depth.should_descend_from(depth)
+                        && recurse_into(&child, &file_type, &policy, options.follow_links);
                     let should_emit = if FILTER_ENTRIES {
                         should_emit_entry(&child, &file_type, include_files, include_dirs)
                     } else {
@@ -1147,6 +1298,7 @@ fn walk_adaptive_serial<const FILTER_ENTRIES: bool>(
                         queue.push_back(QueuedDirectory {
                             path: path.clone(),
                             depth,
+                            ancestors: ancestors.clone(),
                         });
                         metrics.max_queued_dirs = metrics.max_queued_dirs.max(queue.len());
                     }
@@ -1250,3 +1402,6 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
     }
 }
+
+#[cfg(test)]
+mod link_tests;
