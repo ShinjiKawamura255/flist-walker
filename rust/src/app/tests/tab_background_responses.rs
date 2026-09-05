@@ -2322,14 +2322,14 @@ fn tc_207_terminal_waits_in_mailbox_and_activation_commits_complete_snapshot() {
         Some(waiting_tab_id)
     );
     assert!(waiting_mailbox.has_terminal_response());
-    assert!(!app
+    assert!(app
         .shell
         .tabs
         .get(waiting_tab_index)
         .expect("waiting tab")
         .index_state
         .pending_index_finish
-        .is_some());
+        .is_none());
 
     let admitted_request_id = *app
         .shell

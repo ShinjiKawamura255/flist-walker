@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::MaxDepth;
@@ -14,46 +13,12 @@ impl std::fmt::Display for WalkCancelled {
 
 impl std::error::Error for WalkCancelled {}
 
-fn walk(root: &Path, max_depth: MaxDepth) -> (Vec<PathBuf>, Vec<PathBuf>) {
-    let mut files = Vec::new();
-    let mut dirs = Vec::new();
-    walk_into(root, 0, max_depth, &mut files, &mut dirs);
-    (files, dirs)
-}
-
-fn walk_into(
-    root: &Path,
-    current_depth: usize,
-    max_depth: MaxDepth,
-    files: &mut Vec<PathBuf>,
-    dirs: &mut Vec<PathBuf>,
-) {
-    let Ok(read_dir) = fs::read_dir(root) else {
-        return;
-    };
-    for child in read_dir.flatten() {
-        let Ok(file_type) = child.file_type() else {
-            continue;
-        };
-        let path = child.path();
-        let depth = current_depth.saturating_add(1);
-        if file_type.is_dir() {
-            dirs.push(path.clone());
-            if !file_type.is_symlink() && max_depth.should_descend_from(depth) {
-                walk_into(&path, depth, max_depth, files, dirs);
-            }
-        } else {
-            files.push(path);
-        }
-    }
-}
-
 pub fn walk_files(root: &Path) -> Vec<PathBuf> {
-    walk(root, MaxDepth::unlimited()).0
+    walk_entries(root, true, false)
 }
 
 pub fn walk_dirs(root: &Path) -> Vec<PathBuf> {
-    walk(root, MaxDepth::unlimited()).1
+    walk_entries(root, false, true)
 }
 
 pub fn walk_entries(root: &Path, include_files: bool, include_dirs: bool) -> Vec<PathBuf> {
@@ -66,15 +31,8 @@ pub fn walk_entries_with_max_depth(
     include_dirs: bool,
     max_depth: MaxDepth,
 ) -> Vec<PathBuf> {
-    let (files, dirs) = walk(root, max_depth);
-    let mut out = Vec::new();
-    if include_files {
-        out.extend(files);
-    }
-    if include_dirs {
-        out.extend(dirs);
-    }
-    out
+    walk_entries_cancellable_with_max_depth(root, include_files, include_dirs, max_depth, || false)
+        .expect("non-cancellable walker")
 }
 
 pub fn walk_entries_cancellable<C>(
@@ -105,58 +63,81 @@ pub fn walk_entries_cancellable_with_max_depth<C>(
 where
     C: Fn() -> bool,
 {
-    fn visit<C>(
-        root: &Path,
-        current_depth: usize,
-        max_depth: MaxDepth,
-        files: &mut Vec<PathBuf>,
-        dirs: &mut Vec<PathBuf>,
-        should_cancel: &C,
-    ) -> Result<(), WalkCancelled>
-    where
-        C: Fn() -> bool,
-    {
-        if should_cancel() {
-            return Err(WalkCancelled);
-        }
-        let Ok(read_dir) = fs::read_dir(root) else {
-            return Ok(());
-        };
-        for child in read_dir.flatten() {
-            if should_cancel() {
-                return Err(WalkCancelled);
-            }
-            let Ok(file_type) = child.file_type() else {
-                continue;
-            };
-            let path = child.path();
-            let depth = current_depth.saturating_add(1);
-            if file_type.is_dir() {
-                dirs.push(path.clone());
-                if !file_type.is_symlink() && max_depth.should_descend_from(depth) {
-                    visit(&path, depth, max_depth, files, dirs, should_cancel)?;
-                }
+    let mut files = Vec::new();
+    let mut dirs = Vec::new();
+    visit(
+        root,
+        max_depth,
+        include_files,
+        include_dirs,
+        &should_cancel,
+        &mut |path, is_dir| {
+            if is_dir {
+                dirs.push(path);
             } else {
                 files.push(path);
             }
+        },
+    )?;
+    files.extend(dirs);
+    Ok(files)
+}
+
+// Use the adaptive serial fast path for complete batch traversal. It shares
+// Windows junction and special-file policy without adding thread startup cost
+// or the interactive candidate cap to CLI output/FileList creation.
+fn visit<F, C>(
+    root: &Path,
+    max_depth: MaxDepth,
+    include_files: bool,
+    include_dirs: bool,
+    should_cancel: &C,
+    on_entry: &mut F,
+) -> Result<(), WalkCancelled>
+where
+    F: FnMut(PathBuf, bool),
+    C: Fn() -> bool,
+{
+    let canceled = std::cell::Cell::new(false);
+    let stop = || {
+        if canceled.get() || should_cancel() {
+            canceled.set(true);
+            true
+        } else {
+            false
         }
-        if should_cancel() {
-            return Err(WalkCancelled);
-        }
+    };
+    crate::walker_runtime::walk_adaptive_with_max_depth(
+        root,
+        1,
+        1,
+        include_files,
+        include_dirs,
+        max_depth,
+        |entry| {
+            if stop() {
+                return false;
+            }
+            if let Some((kind, _)) = crate::walker_runtime::classify_walker_entry(
+                &entry.path,
+                entry.file_type,
+                include_files,
+                include_dirs,
+            ) {
+                if stop() {
+                    return false;
+                }
+                on_entry(entry.path, kind.is_dir == Some(true));
+            }
+            true
+        },
+        stop,
+    );
+    if stop() {
+        Err(WalkCancelled)
+    } else {
         Ok(())
     }
-
-    let mut files = Vec::new();
-    let mut dirs = Vec::new();
-    visit(root, 0, max_depth, &mut files, &mut dirs, &should_cancel)?;
-    let mut out = Vec::new();
-    if include_files {
-        out.extend(files);
-    }
-    if include_dirs {
-        out.extend(dirs);
-    }
-    Ok(out)
 }
 
 pub fn walk_entries_stream<F>(root: &Path, include_files: bool, include_dirs: bool, mut on_entry: F)
@@ -221,72 +202,12 @@ where
     F: FnMut(PathBuf),
     C: Fn() -> bool,
 {
-    fn visit<F, C>(
-        root: &Path,
-        current_depth: usize,
-        max_depth: MaxDepth,
-        include_files: bool,
-        include_dirs: bool,
-        should_cancel: &C,
-        on_entry: &mut F,
-    ) -> Result<(), WalkCancelled>
-    where
-        F: FnMut(PathBuf),
-        C: Fn() -> bool,
-    {
-        if should_cancel() {
-            return Err(WalkCancelled);
-        }
-        let Ok(read_dir) = fs::read_dir(root) else {
-            return Ok(());
-        };
-        for child in read_dir.flatten() {
-            if should_cancel() {
-                return Err(WalkCancelled);
-            }
-            let Ok(file_type) = child.file_type() else {
-                continue;
-            };
-            let path = child.path();
-            let depth = current_depth.saturating_add(1);
-            if file_type.is_dir() {
-                if include_dirs {
-                    if should_cancel() {
-                        return Err(WalkCancelled);
-                    }
-                    on_entry(path.clone());
-                }
-                if !file_type.is_symlink() && max_depth.should_descend_from(depth) {
-                    visit(
-                        &path,
-                        depth,
-                        max_depth,
-                        include_files,
-                        include_dirs,
-                        should_cancel,
-                        on_entry,
-                    )?;
-                }
-            } else if include_files {
-                if should_cancel() {
-                    return Err(WalkCancelled);
-                }
-                on_entry(path);
-            }
-        }
-        if should_cancel() {
-            return Err(WalkCancelled);
-        }
-        Ok(())
-    }
-
     visit(
         root,
-        0,
         max_depth,
         include_files,
         include_dirs,
         &should_cancel,
-        &mut on_entry,
+        &mut |path, _| on_entry(path),
     )
 }

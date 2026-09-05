@@ -57,6 +57,7 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn cancel_history_search(&mut self) {
+        let previous_query = self.shell.runtime.query_state.query.clone();
         if !self
             .shell
             .runtime
@@ -65,6 +66,9 @@ impl FlistWalkerApp {
         {
             return;
         }
+        if self.shell.runtime.query_state.query != previous_query {
+            self.invalidate_result_sort(true);
+        }
         self.update_results();
         self.ensure_results_cursor_visible();
         self.finish_programmatic_query_replacement();
@@ -72,6 +76,7 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn accept_history_search(&mut self) {
+        let previous_query = self.shell.runtime.query_state.query.clone();
         if self
             .shell
             .runtime
@@ -81,6 +86,9 @@ impl FlistWalkerApp {
         {
             return;
         };
+        if self.shell.runtime.query_state.query != previous_query {
+            self.invalidate_result_sort(true);
+        }
         self.update_results();
         self.ensure_results_cursor_visible();
         self.finish_programmatic_query_replacement();

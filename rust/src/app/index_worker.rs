@@ -285,7 +285,7 @@ fn is_nested_filelist_candidate(path: &Path, root_filelist: &Path, root: &Path) 
     }
     path.file_name()
         .and_then(|s| s.to_str())
-        .is_some_and(|name| name.eq_ignore_ascii_case("filelist.txt"))
+        .is_some_and(|name| matches!(name, "FileList.txt" | "filelist.txt"))
 }
 
 fn index_source_kind(source: &IndexSource) -> &'static str {

@@ -9,10 +9,12 @@
 - 実装: `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/filelist_hierarchy.rs`, `rust/src/indexer/walker.rs`, `rust/src/indexer/filelist_writer.rs`
 
 - DES-002 Walker Indexer
+  - Batch collection and streaming share the adaptive serial fast path and common kind classifier; they remain uncapped. Interactive callers retain their bounded/adaptive concurrency policy. Directory links are never traversed.
 - 役割: FileList 未使用時の再帰走査。
 - 実装: `rust/src/indexer/mod.rs`, `rust/src/indexer/filelist_reader.rs`, `rust/src/indexer/filelist_hierarchy.rs`, `rust/src/indexer/walker.rs`
 
 - DES-003 Fuzzy Search Engine
+- regex matcher の構築前に top-level OR を正規化し、空枝を除去する。exact枝はASCII case条件と厳密anchorを保持したescaped literalとして組み込み、regex group/class/escapeは維持する。
 - 役割: query domain の `CompiledQuery` / `PreparedCandidate` / `QueryEvaluation` がクエリ解釈（`'` `!` `^` `$` `|`）、候補文字列正規化、match/visibility、既存 score/bonus、任意の文字 index highlight span を一元的に担う。非 regex の `^`/`$` は隣接文字制約付きファジーとして評価し、regex モードでも plain include token は regex へ昇格させず、regex 構文を含む token だけを regex matcher として扱う。
 - 役割補足: 空白で分割した通常語 token は AND 条件で絞り込みつつ、score では token ごとのリテラル一致を subsequence 一致より優先して順位付けする。
 - 役割補足: 同じ unanchored 完全一致 token が複数回指定された場合は query compile 時に必要出現回数として保持し、search と visible highlight 判定の両方で同じ回数条件を適用する。
@@ -122,7 +124,8 @@
 - 役割補足: Guardian は default branch のworkflow一式、Dependabot設定、toolchain定義、audit exception設定、checker/testをtrusted policy setとし、PR headからAPI取得したallowlist policy blobだけを一時領域で検査する。通常変更はrunner/action/tool version pinに限定し、PR codeは実行しない。
 
 - DES-013 Result Sort Controller
-- 役割: 結果スナップショット限定のソート、日付属性の遅延取得、上限付き属性キャッシュを管理。
+- 役割: Shownの結果snapshot内sortと、All matchesの全候補worker sort、日付属性の遅延取得、上限付き属性cacheを管理。
+- committed payloadは元のScore順位かどうかを保持し、All matches由来のsnapshotからScoreへ戻す場合は全候補から再検索する。mode/scope変更は旧requestを失効させ、保留queryを新requestで再要求する。履歴適用やEscを含むquery変更はScoreへ戻し、presetの明示sortは維持する。
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker/tasks.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`
 
 - DES-014 Self Update Coordinator

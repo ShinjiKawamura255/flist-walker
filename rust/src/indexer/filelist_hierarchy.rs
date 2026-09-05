@@ -37,7 +37,8 @@ where
         &mut discovered,
         &mut pending,
         &mut pending_seq,
-    );
+        should_cancel,
+    )?;
 
     while let Some((_depth, _seq, child_filelist)) = pending.pop() {
         if should_cancel() {
@@ -67,7 +68,8 @@ where
             &mut discovered,
             &mut pending,
             &mut pending_seq,
-        );
+            should_cancel,
+        )?;
         if replace_entries_in_subtree(entries, &child_root, child_entries) {
             changed = true;
         }
@@ -83,8 +85,12 @@ fn enqueue_nested_filelists_from_entries(
     discovered: &mut HashSet<PathBuf>,
     pending: &mut std::collections::BinaryHeap<(Reverse<usize>, u64, PathBuf)>,
     pending_seq: &mut u64,
-) {
+    should_cancel: &impl Fn() -> bool,
+) -> Result<()> {
     for path in entries {
+        if should_cancel() {
+            anyhow::bail!("superseded");
+        }
         if path == root_filelist {
             continue;
         }
@@ -94,7 +100,7 @@ fn enqueue_nested_filelists_from_entries(
         let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
             continue;
         };
-        if !name.eq_ignore_ascii_case("filelist.txt") {
+        if !matches!(name, "FileList.txt" | "filelist.txt") {
             continue;
         }
         if !path.is_file() {
@@ -106,6 +112,7 @@ fn enqueue_nested_filelists_from_entries(
             *pending_seq = pending_seq.saturating_add(1);
         }
     }
+    Ok(())
 }
 
 fn path_depth_from_root(path: &Path, root: &Path) -> Option<usize> {
@@ -159,5 +166,30 @@ fn is_filelist_newer(candidate: Option<SystemTime>, baseline: Option<SystemTime>
         (Some(lhs), Some(rhs)) => lhs > rhs,
         (Some(_), None) => true,
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod alignment_tests {
+    use super::*;
+    #[test]
+    fn alignment_nested_discovery_cancels_without_a_child_filelist() {
+        let root = Path::new("root");
+        let mut entries = (0..100).map(|i| root.join(format!("file-{i}"))).collect();
+        let calls = std::cell::Cell::new(0);
+        let result = apply_nested_filelist_overrides(
+            &root.join("FileList.txt"),
+            root,
+            None,
+            &mut entries,
+            (true, true),
+            MaxDepth::unlimited(),
+            &|| {
+                calls.set(calls.get() + 1);
+                calls.get() >= 3
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(calls.get(), 3);
     }
 }

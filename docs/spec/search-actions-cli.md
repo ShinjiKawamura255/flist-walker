@@ -10,6 +10,7 @@
 - MUST: `^` / `$` は非 regex モードでは「先頭/末尾の隣接文字制約 + ファジー評価」として評価する。
 - MUST: regex モードでも include token が regex 構文（例: `[](){}.*+?\\`）を含まない plain token の場合は、非 regex モードと同じファジー条件として評価する。
 - MUST: regex モードで include token が regex 構文を含む場合のみ、その token を regex として評価する。
+- MUST: regex token では括弧・文字クラス・escape の外側にある `|` に query-level OR を適用する。exact alternative は regex と混在してもリテラル条件を保ち、空 alternative によって全候補へ一致してはならない。
 - MUST: token 内の `|` は OR alternative として評価し、空 alternative は別の有効 alternative がある場合に無視する。各 alternative の先頭にある `'` はその alternative だけを完全一致にする。
 - MUST: 検索結果のハイライトは search と同じ query interpretation を用い、exact / include / exclude / anchor / OR の解釈差を生じさせてはならない。
 - MUST: query は検索要求ごと、または GUI highlight cache scope ごとに1回だけ compile し、候補ごと・表示行ごとの再 parse / regex compile を行ってはならない。
@@ -202,8 +203,8 @@
 ### Requirements
 - MUST: field指定のないtermは既存どおりfilename優先かつvisible path全体を対象にする。
 - MUST: positive/exact/exclusion termは、先頭の任意の `!` の後に `name:`、`path:`、`dir:`、`ext:` を1つ指定できる。field markerの後へ既存の `'`、`^`、`$`、token内 `|` を適用し、OR alternativeは同じfieldを継承する。
-- MUST: `name:` はbasename、`path:` はroot相対visible path、`dir:` はその親pathまたは空、`ext:` はdotなしの最終suffixを対象とする。既知directoryとdotfileはextensionなし、`foo.tar.gz` は `gz` とする。
-- MUST: field pathのseparatorは照合時だけ `/` へ正規化し、表示pathと既存の非field query契約は変更しない。
+- MUST: `name:` はbasename、`path:` は表示が絶対pathでもroot相対path、`dir:` はその親pathまたは空、`ext:` はdotなしの最終suffixを対象とする。既知directoryとdotfileはextensionなし、`foo.tar.gz` は `gz` とする。
+- MUST: `path:` / `dir:` の候補とliteral query valueのseparatorは照合時だけ `/` へ正規化し、regex escapeは維持し、表示pathと既存の非field query契約は変更しない。
 - MUST: `name:` など既知fieldの空値はcompile errorとし、未知の `prefix:` はfield指定ではない通常termとして扱う。
 - MUST: regex判定はfield markerを除いたvalueへ適用し、scoreにfield markerを含めない。highlightはfield内の一致位置をvisible path上の文字位置へ写像する。
 - SHOULD: shellでoperatorや空白が解釈されることを避けるため、CLI利用例はQUERY全体を引用符で囲む。

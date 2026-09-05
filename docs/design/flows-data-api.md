@@ -55,11 +55,13 @@
 
 ## DES-021 Field-scoped compiled query
 - parserは各termを `QueryField + value` に正規化し、fieldなしと未知prefixを `Any` として既存matcherへ渡す。
-- `PreparedCandidate` はbasename、visible path、parent directory、最終extensionの正規化viewとvisible文字offsetを検索request内で一度だけ構築する。known Entry kindがdirectoryならextension viewを空にする。
+- `PreparedCandidate` はbasename、root相対field path、parent directory、最終extensionの正規化viewとvisible文字offsetを検索request内で一度だけ構築する。known Entry kindがdirectoryならextension viewを空にする。
+- 絶対表示時はroot相対fieldのbyte/character開始offsetを保持し、matchingにroot prefixを含めずhighlightを表示位置へ写像する。path/dirのliteral値は候補側と同じseparator正規化を行う。
 - compiled exact/include/exclude/regex/bonus matcherは同じfield selectorを共有し、highlightだけがfield-local positionをvisible path positionへ変換する。
 - field queryはscopeが変わるprefix拡張を避けるためprefix cache対象外とする。非field queryのcache、matching、rankingは既存経路を維持する。
 
 ## DES-022 Shared max-depth indexing scope
+- Windows depth comparison removes drive/UNC verbatim namespaces lexically and losslessly before root-prefix comparison; it never probes each candidate on the filesystem.
 - `MaxDepth` は index domain が所有し、既存 public index/FileList/Walker API は無制限 wrapper を維持しつつ、depth-aware API を batch、GUI、TUI adapter へ提供する。
 - recursive walker と adaptive walker は directory queue/再帰 frame に depth を保持し、depth上限のdirectoryをemitした後は子directoryをqueueへ入れない。FileList parser と nested hierarchy は resolved lexical candidate を callbackまたはoverride discoveryへ渡す前に同じ `MaxDepth` で除外する。
 - GUI `AppRuntimeState`、`AppTabState`、`SavedTabState`、GUI/TUI `IndexRequest`、`SearchPreset` は同じ値を伝播する。active tab preset transition は max depth を他の preset-owned state と同時に確定し、値が変われば1回だけ reindexする。

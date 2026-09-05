@@ -49,6 +49,17 @@ impl From<NonZeroUsize> for MaxDepth {
 }
 
 fn lexical_depth_from_root(root: &Path, path: &Path) -> Option<usize> {
+    // FileList absolute entries may use ordinary drive/UNC paths while the
+    // indexed root is canonical (verbatim). Normalize lexically, without I/O
+    // or lossy UTF-16 conversion, before comparing the same path namespace.
+    #[cfg(windows)]
+    let normalized_root = crate::path_utils::windows_non_verbatim_path(root);
+    #[cfg(windows)]
+    let root = normalized_root.as_deref().unwrap_or(root);
+    #[cfg(windows)]
+    let normalized_path = crate::path_utils::windows_non_verbatim_path(path);
+    #[cfg(windows)]
+    let path = normalized_path.as_deref().unwrap_or(path);
     let relative = path.strip_prefix(root).ok()?;
     let mut depth = 0usize;
     for component in relative.components() {
@@ -76,5 +87,25 @@ mod tests {
         assert!(!depth.includes_path(root, Path::new("root/child/grand/file")));
         assert!(!depth.includes_path(root, Path::new("root/../outside")));
         assert!(!depth.includes_path(root, Path::new("outside")));
+    }
+}
+
+#[cfg(all(test, windows))]
+mod windows_alignment_tests {
+    use super::*;
+    #[test]
+    fn alignment_depth_accepts_equivalent_windows_path_namespaces() {
+        let depth = MaxDepth::limited(1).unwrap();
+        for (root, path) in [
+            (r"\\?\C:\Root", r"C:\Root\file.txt"),
+            (r"C:\Root", r"\\?\C:\Root\file.txt"),
+            (
+                r"\\?\UNC\server\share\Root",
+                r"\\server\share\Root\file.txt",
+            ),
+        ] {
+            assert!(depth.includes_path(Path::new(root), Path::new(path)));
+        }
+        assert!(!depth.includes_path(Path::new(r"\\?\C:\Root"), Path::new(r"C:\Root\..\file.txt")));
     }
 }

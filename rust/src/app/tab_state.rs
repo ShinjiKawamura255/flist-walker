@@ -188,6 +188,8 @@ pub(super) struct TabCommittedPayload {
     pub(super) all_entries: Arc<Vec<Entry>>,
     pub(super) entries: Arc<Vec<Entry>>,
     pub(super) base_results: Vec<(PathBuf, f64)>,
+    // Travels with the snapshot: AllMatches can replace both ranking and membership.
+    pub(super) base_results_are_score_ranked: bool,
     pub(super) results: Vec<(PathBuf, f64)>,
     pub(super) preview: String,
     pub(super) total_match_count: usize,
@@ -200,6 +202,7 @@ impl Default for TabCommittedPayload {
             all_entries: Arc::new(Vec::new()),
             entries: Arc::new(Vec::new()),
             base_results: Vec::new(),
+            base_results_are_score_ranked: true,
             results: Vec::new(),
             preview: String::new(),
             total_match_count: 0,

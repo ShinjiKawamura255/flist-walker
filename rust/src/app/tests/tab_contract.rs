@@ -113,6 +113,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
             all_entries: Arc::new(vec![file_entry(root.join("all.txt"))]),
             entries: Arc::new(vec![file_entry(root.join("visible.txt"))]),
             base_results: vec![(root.join("base.txt"), 0.5)],
+            base_results_are_score_ranked: false,
             results: vec![(root.join("visible.txt"), 1.0)],
             total_match_count: 12,
             current_row: Some(0),
@@ -286,6 +287,16 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     assert_eq!(
         restored.result_state.committed.current_row,
         snapshot.result_state.committed.current_row
+    );
+    assert_eq!(
+        restored
+            .result_state
+            .committed
+            .base_results_are_score_ranked,
+        snapshot
+            .result_state
+            .committed
+            .base_results_are_score_ranked,
     );
     assert_eq!(
         restored.result_state.committed.preview,
