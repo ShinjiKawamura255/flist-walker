@@ -44,6 +44,7 @@
 
 - DES-009 GUI Adapter (egui/eframe)
 - 履歴/preset/Named Root一覧はegui scope内の選択identity変化だけで最小scrollを要求する。tab barは固定controlsと横ScrollAreaを分離し、active identityの変更だけで追従する。
+- 終了キー: `gui_launch.rs` は app creator で egui の `quit_shortcuts` を空にする。macOS は winit の標準メニュー生成後に `gui_launch/macos_menu.rs` が `terminate:` action の key equivalent だけを解除し、メニュー項目と他のキー割り当てを保持する。native close と updater の Close request は既存経路へ渡す。
 - 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。
 - 役割補足: Preview worker は File/Directory の header に取得可能な size、`Created` / `Updated`、条件付き属性、シンボリックリンクの `Target` を付加する。symlink では size/日時を `Target ...` としてリンク先、属性をリンク自身へ分ける。日時は依存追加なしの UTC 表示とし、metadata の取得失敗は該当行を省略して本文表示を継続する。
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。

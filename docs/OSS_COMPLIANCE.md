@@ -56,6 +56,12 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## macOS menu dependency review (2026-09-05)
+
+- macOS directly uses `objc2 0.6.4` (MIT), `objc2-app-kit 0.3.2` (Zlib OR Apache-2.0 OR MIT), and `objc2-foundation 0.3.2` (MIT) to remove the native Quit menu key equivalent while retaining its action and the other menu entries. All three already occur in the packaged macOS dependency graph.
+- The lockfile adds only direct references to these existing packages; no package version, license family, or additional notice obligation is introduced. `THIRD_PARTY_NOTICES.txt` includes them in the direct dependency summary.
+- Release asset names and archive, standalone sidecar, macOS bundle, and self-update license/notice paths remain unchanged.
+
 ## anyhow 1.0.104 / ico 0.5.0 dependency review (2026-09-02)
 
 - Direct dependency `anyhow` moves from `1.0.103` to `1.0.104` and retains its `MIT OR Apache-2.0` license. Build dependency `ico` moves from `0.3.0` to `0.5.0` and retains its `MIT` license.
