@@ -172,8 +172,8 @@
 
 - DES-011 Window Stability / Windows IME
 - マルチディスプレイ跨ぎ時の一時的な巨大ウィンドウサイズを永続化しないよう、保存前に monitor 幅/高さでジオメトリをクランプする。
-- 起動時はWMの安全な位置でhidden windowを作り、eframe CreationContextの既存winit windowからmonitorごとのphysical rectangleとnative scaleを取得する。保存geometryのoptional pixels_per_pointでphysical positionへ変換し、最も近い実画面へsize/positionをclampして初回表示前に適用する。画面間の隙間を含むunion rectangleは使わない。
-- scaleのないlegacy record、無効値、monitor/position取得不可は有限なbounded sizeを維持し、保存位置を破棄する。保存schemaはoptional field追加に留め、旧recordも読める。
+- 起動時はhidden windowを作り、eframe CreationContextの既存winit windowからmonitorごとのphysical rectangleとnative scaleを取得する。保存geometryのoptional pixels_per_pointでphysical positionへ変換し、最も近い実画面へsize/positionをclampして初回表示前に適用する。画面間の隙間を含むunion rectangleは使わない。
+- 保存位置なし、scaleのないlegacy record、または無効位置でもmonitor列挙とposition操作が可能なら、現在の実monitor（取得不能なら列挙先頭）中央へ明示配置する。console先行起動後のWM既定位置を安全なfallbackとみなさない。monitor列挙またはposition操作ができない場合だけ有限なbounded sizeを維持して保存位置を破棄する。保存schemaはoptional field追加に留め、旧recordも読める。
 - Windows は起動時に System DPI Aware を有効化し、モニタ跨ぎ時の OS 側自動リサイズ揺れを低減する。
 - IME 確定文字が TextEdit 側で落ちるフレーム向けに `CompositionEnd` 文字列のフォールバック反映を行う。
 - `Space` / `Shift+Space` は IME/バックエンド差異があっても、TextEdit 側で空白未反映なら最低限の半角スペースをフォールバック挿入する。

@@ -1132,7 +1132,13 @@ impl FlistWalkerApp {
         current_monitor: Option<usize>,
         can_position: bool,
     ) -> Option<StartupWindowPlacement> {
-        let saved = Self::load_ui_state().window?;
+        let saved = Self::load_ui_state()
+            .window
+            .unwrap_or_else(|| SavedWindowGeometry {
+                width: 1400.0,
+                height: 900.0,
+                ..Default::default()
+            });
         Some(Self::normalize_startup_placement(
             saved,
             monitors,
@@ -1203,12 +1209,20 @@ impl FlistWalkerApp {
         };
         logical_size = logical_size.min(monitor.size() / *scale_factor);
         // Clamp against one real screen, never the bounding box across screen gaps.
-        let physical_position = physical_position.map(|position| {
+        let clamp_to_monitor = |position: egui::Pos2| {
             let max = (monitor.max - logical_size * *scale_factor).max(monitor.min);
             egui::pos2(
                 position.x.clamp(monitor.min.x, max.x),
                 position.y.clamp(monitor.min.y, max.y),
             )
+        };
+        let physical_position = physical_position.map(clamp_to_monitor).or_else(|| {
+            can_position.then(|| {
+                // Regression guard: never delegate a positionless startup to the window
+                // manager when a real monitor is known. A console-first Windows launch can
+                // otherwise reuse an off-screen or display-gap default position.
+                clamp_to_monitor(monitor.center() - logical_size * *scale_factor * 0.5)
+            })
         });
         StartupWindowPlacement {
             physical_position,
