@@ -170,10 +170,10 @@
 - app regression tests は monolithic な `FlistWalkerApp` fixture へ集約し続けず、owner/command seam ごとに module を分ける。update lifecycle は `rust/src/app/tests/update_commands.rs`、session restore/startup root は `rust/src/app/tests/session_restore.rs`、tab interaction/background routing は `rust/src/app/tests/tab_lifecycle.rs` / `rust/src/app/tests/tab_drag.rs` / `rust/src/app/tests/tab_background_responses.rs`、tab snapshot contract は `rust/src/app/tests/tab_contract.rs`、index/filelist lifecycle は `rust/src/app/tests/index_pipeline/*` を基準に保守する。
   - `tab_contract.rs` には `tab_state_contract_round_trip_pins_field_layout` を置き、tab snapshot field の増減を compile-time で検出する。
 
-- DES-011 Window/IME Stability (Windows)
+- DES-011 Window Stability / Windows IME
 - マルチディスプレイ跨ぎ時の一時的な巨大ウィンドウサイズを永続化しないよう、保存前に monitor 幅/高さでジオメトリをクランプする。
-- 起動復元は保存済み座標/サイズを適用するが、monitor 情報がある場合は復元時にも同様の上限を適用して再発を防ぐ。
-- Windows の GUI 起動時は native window 作成前に現在の仮想ディスプレイ矩形を取得し、保存済み window 位置がその矩形外へ出る場合は初期位置を矩形内へクランプする。仮想ディスプレイ内の負座標はマルチディスプレイ配置として維持する。
+- 起動時はWMの安全な位置でhidden windowを作り、eframe CreationContextの既存winit windowからmonitorごとのphysical rectangleとnative scaleを取得する。保存geometryのoptional pixels_per_pointでphysical positionへ変換し、最も近い実画面へsize/positionをclampして初回表示前に適用する。画面間の隙間を含むunion rectangleは使わない。
+- scaleのないlegacy record、無効値、monitor/position取得不可は有限なbounded sizeを維持し、保存位置を破棄する。保存schemaはoptional field追加に留め、旧recordも読める。
 - Windows は起動時に System DPI Aware を有効化し、モニタ跨ぎ時の OS 側自動リサイズ揺れを低減する。
 - IME 確定文字が TextEdit 側で落ちるフレーム向けに `CompositionEnd` 文字列のフォールバック反映を行う。
 - `Space` / `Shift+Space` は IME/バックエンド差異があっても、TextEdit 側で空白未反映なら最低限の半角スペースをフォールバック挿入する。

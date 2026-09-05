@@ -16,7 +16,7 @@
 | TC-007 | perf | 10万件検索の遅延計測 | SP-007 |
 | TC-008 | unit | 例外時に非ゼロ終了コードを返す | SP-008 |
 | TC-009 | unit | モジュール分離により単体テスト可能 | SP-009 |
-| TC-010 | manual+unit | GUI で検索/選択/実行/再読込が行える（`docs/GUI-TESTPLAN.md` の `GSM-001` から `GSM-006`） | SP-010 |
+| TC-010 | manual+unit | 多数履歴/preset/Named Rootのkeyboard選択追従と手動scroll維持、多数タブの横scroll・active追従・固定controls・root tooltipを検証する。GUI で検索/選択/実行/再読込が行える（`docs/GUI-TESTPLAN.md` の `GSM-001` から `GSM-006`） | SP-010 |
 | TC-011 | manual | GUI 回帰手順に基づく再検証が可能（`scripts/gui-smoke-fixture.sh` と `docs/GUI-TESTREPORT.template.md` を使用） | SP-011 |
 | TC-012 | unit | プレビューキャッシュが上限件数を超えない | SP-007 |
 | TC-012A | unit | `.vbs` など非 `.txt` でも UTF-8 / UTF-16 / 主要レガシー文字コードなら本文プレビューでき、バイナリは unreadable を維持する | SP-010 |
@@ -28,7 +28,7 @@
 | TC-017 | unit | Root 変更時に旧 Root 向け FileList 上書き確認が破棄される | SP-010 |
 | TC-018 | unit | `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は、backend が `Key::C` または `Event::Copy` のどちらで通知しても検索窓フォーカス時に結果パスを優先コピーする | SP-010 |
 | TC-019 | unit | 大規模 FileList 解析はストリーミングで中断可能（新 request で supersede） | SP-001, SP-007 |
-| TC-020 | manual+unit | Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
+| TC-020 | manual+unit | 起動geometryはmonitor gap/切断、負座標、混在scale、legacy JSONとscale保存、monitor/position取得不可のfallbackをpure reducerとnative起動経路で検証する。Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
 | TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` / `Esc` で query clear + filter reset が実行される | SP-010 |
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除を実行し、既定では current row を維持する。`tab_pin_moves_to_next_row=true` では PIN 固定/解除後に次行へ移動する | SP-010, SP-016 |

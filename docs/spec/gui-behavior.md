@@ -32,6 +32,7 @@
 - MUST: runtime config の `history_persist_disabled` が有効なとき、query 履歴は読み込み・保存の両方を行わない。
 - MUST: `Ctrl+R` で履歴検索モードを開始し、同じ検索欄で query history をファジー検索できる。
 - MUST: 履歴検索モード中は履歴検索中であることがわかる表記を行い、結果一覧は履歴候補一覧へ切り替える。
+- MUST: 履歴、preset picker、Named Root一覧はkeyboardで選択が変わるたびに選択行をviewportへ最小scrollで可視化する。同じ選択のままの手動scrollを打ち消してはならない。
 - MUST: 履歴検索モード中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中の履歴を検索欄へ展開し、`Esc` / `Ctrl+G` でキャンセルして開始前 query へ戻す。
 - MUST: preset適用、履歴検索の確定・キャンセルなどがquery文字列をprogrammaticに置換した場合、検索欄へfocusを戻し、TextEditのcursorを置換後query末尾へ移動する。
 - MUST: Windows/Linux の `Ctrl+L` と macOS の `Cmd+L` は、通常画面で検索欄の focus を toggle する。同じ shortcut を繰り返すと unfocused → focused → unfocused と遷移しなければならない。
@@ -79,7 +80,7 @@
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
 - SHOULD: runtime config の `restore_tabs_enabled` が `true` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
 - SHOULD: 保存済み `last_root` / `default_root` / tab root は native window 初期表示前に存在確認しない。存在しない root は初回 index refresh の失敗/空結果として UI 上で扱い、切断済みドライブや遅いパスで window 表示を遅延させない。
-- MUST: 保存済み window 位置が現在の表示範囲外にある場合、GUI 起動時の初期位置は現在の表示範囲内へ補正しなければならない。現在の仮想ディスプレイ内に収まる負座標は有効な配置として維持しなければならない。
+- MUST: GUI起動時のwindow復元はWindows/macOS/Linuxで実monitor矩形を使い、画面間の隙間や切断済み画面の保存位置を有効な画面内へ補正する。保存scaleを使って座標系を変換し、有効な負座標は維持する。旧形式でscale不明、monitor列挙不可、position操作不可の場合は保存位置を適用せずWM配置へ委ね、有限で上限付きのサイズだけを復元する。
 - SHOULD: タブは任意の accent color を持てる。
 - MUST: 非 active tab に accent color が設定されている場合、タブ下部にその色の装飾を表示する。
 - MUST: active tab に accent color が設定されている場合、タブ全面をその色で装飾する。
@@ -110,6 +111,7 @@
 - MUST: 閉じたタブ復元は前回セッションの閉じたタブ履歴を読み書きしてはならず、復元対象がない場合はタブ構成を変更してはならない。
 - MUST: 閉じたタブを復元する際は新しい tab id を割り当て、閉じる前の pending search/index/preview/action/sort request_id を復元してはならない。
 - MUST: タブの close ボタンにマウスが重なった場合、close ボタンの押下領域をタブ本体の押下領域と視覚的に区別できなければならない。
+- MUST: タブが表示幅を超えた場合はタブ領域を横スクロール可能にし、追加・設定ボタンを固定する。active tab変更時に対象を可視化し、同一active tabでの手動scrollは維持する。tab tooltipは省略しないrootを表示する。
 - MUST: タブバーはドラッグアンドドロップで並び替え可能でなければならず、ドロップ先は既存タブ領域内に限定する。
 - MUST: タブ並び替え時は active tab を index ではなく同一タブ実体として維持し、root/query/filter/進行中状態を他タブへ取り違えてはならない。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。

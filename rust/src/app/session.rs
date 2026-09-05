@@ -460,6 +460,14 @@ pub(super) enum TabAccentColor {
     Magenta,
 }
 
+/// Startup placement resolved against physical monitor rectangles.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StartupWindowPlacement {
+    pub physical_position: Option<egui::Pos2>,
+    pub logical_size: egui::Vec2,
+    pub scale_factor: f32,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub(super) struct SavedWindowGeometry {
     pub(super) x: f32,
@@ -468,6 +476,8 @@ pub(super) struct SavedWindowGeometry {
     pub(super) height: f32,
     pub(super) monitor_width: Option<f32>,
     pub(super) monitor_height: Option<f32>,
+    #[serde(default)]
+    pub(super) pixels_per_point: Option<f32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -791,26 +801,6 @@ impl FlistWalkerApp {
         Some((sanitized, active))
     }
 
-    pub fn startup_window_geometry() -> Option<(egui::Pos2, egui::Vec2)> {
-        Self::startup_window_geometry_with_display_bounds(None)
-    }
-
-    pub fn startup_window_geometry_with_display_bounds(
-        display_bounds: Option<egui::Rect>,
-    ) -> Option<(egui::Pos2, egui::Vec2)> {
-        let state = Self::load_ui_state();
-        let saved = state.window?;
-        let normalized = Self::normalize_restore_geometry_for_display_bounds(saved, display_bounds);
-        Self::append_window_trace(
-            "startup_window_geometry",
-            &format!("normalized={:?}", normalized),
-        );
-        Some((
-            egui::pos2(normalized.x, normalized.y),
-            egui::vec2(normalized.width, normalized.height),
-        ))
-    }
-
     fn saved_roots_file_path() -> Option<PathBuf> {
         #[cfg(test)]
         if let Some(path) = SAVED_ROOTS_FILE_PATH_OVERRIDE
@@ -1113,6 +1103,7 @@ impl FlistWalkerApp {
             height,
             monitor_width: geom.monitor_width.map(round),
             monitor_height: geom.monitor_height.map(round),
+            pixels_per_point: geom.pixels_per_point,
         }
     }
 
@@ -1129,45 +1120,97 @@ impl FlistWalkerApp {
             height: size_rect.height(),
             monitor_width: monitor_size.map(|s| s.x),
             monitor_height: monitor_size.map(|s| s.y),
+            pixels_per_point: None,
         }
     }
 
-    pub(super) fn normalize_restore_geometry_for_display_bounds(
+    pub fn startup_window_placement(
+        monitors: &[(egui::Rect, f32)],
+        current_monitor: Option<usize>,
+        can_position: bool,
+    ) -> Option<StartupWindowPlacement> {
+        let saved = Self::load_ui_state().window?;
+        Some(Self::normalize_startup_placement(
+            saved,
+            monitors,
+            current_monitor,
+            can_position,
+        ))
+    }
+
+    pub(super) fn normalize_startup_placement(
         saved: SavedWindowGeometry,
-        display_bounds: Option<egui::Rect>,
-    ) -> SavedWindowGeometry {
-        let mut width = saved.width.max(640.0);
-        let mut height = saved.height.max(400.0);
-        if let Some(mw) = saved.monitor_width {
-            width = width.min(mw.max(640.0));
-        }
-        if let Some(mh) = saved.monitor_height {
-            height = height.min(mh.max(400.0));
-        }
-        if let Some(bounds) =
-            display_bounds.filter(|bounds| bounds.width() > 0.0 && bounds.height() > 0.0)
-        {
-            width = width.min(bounds.width().max(640.0));
-            height = height.min(bounds.height().max(400.0));
-        }
-        let (x, y) = display_bounds
-            .filter(|bounds| bounds.width() > 0.0 && bounds.height() > 0.0)
-            .map(|bounds| {
-                let max_x = (bounds.max.x - width).max(bounds.min.x);
-                let max_y = (bounds.max.y - height).max(bounds.min.y);
-                (
-                    saved.x.clamp(bounds.min.x, max_x),
-                    saved.y.clamp(bounds.min.y, max_y),
-                )
+        monitors: &[(egui::Rect, f32)],
+        current_monitor: Option<usize>,
+        can_position: bool,
+    ) -> StartupWindowPlacement {
+        let positive = |value: f32| value.is_finite() && value > 0.0;
+        let scale = saved.pixels_per_point.filter(|value| positive(*value));
+        let physical_position = scale
+            .filter(|_| can_position && saved.x.is_finite() && saved.y.is_finite())
+            .map(|scale| egui::pos2(saved.x * scale, saved.y * scale))
+            .filter(|position| position.is_finite());
+        let valid = monitors
+            .iter()
+            .enumerate()
+            .filter(|(_, (rect, scale))| {
+                rect.is_finite()
+                    && positive(rect.width())
+                    && positive(rect.height())
+                    && positive(*scale)
             })
-            .unwrap_or((saved.x, saved.y));
-        SavedWindowGeometry {
-            x,
-            y,
-            width,
-            height,
-            monitor_width: saved.monitor_width,
-            monitor_height: saved.monitor_height,
+            .collect::<Vec<_>>();
+        let target = physical_position
+            .and_then(|position| {
+                valid
+                    .iter()
+                    .min_by(|(_, (left, _)), (_, (right, _))| {
+                        left.clamp(position)
+                            .distance_sq(position)
+                            .total_cmp(&right.clamp(position).distance_sq(position))
+                    })
+                    .copied()
+            })
+            .or_else(|| {
+                valid
+                    .iter()
+                    .find(|(index, _)| Some(*index) == current_monitor)
+                    .copied()
+            })
+            .or_else(|| valid.first().copied());
+        let bounded = |value: f32, fallback: f32, minimum: f32, previous_monitor: Option<f32>| {
+            let value = if positive(value) { value } else { fallback };
+            value.clamp(minimum, 16000.0).min(
+                previous_monitor
+                    .filter(|value| positive(*value))
+                    .unwrap_or(16000.0)
+                    .max(minimum),
+            )
+        };
+        let mut logical_size = egui::vec2(
+            bounded(saved.width, 1400.0, 640.0, saved.monitor_width),
+            bounded(saved.height, 900.0, 400.0, saved.monitor_height),
+        );
+        let Some((_, (monitor, scale_factor))) = target else {
+            return StartupWindowPlacement {
+                physical_position: None,
+                logical_size,
+                scale_factor: 1.0,
+            };
+        };
+        logical_size = logical_size.min(monitor.size() / *scale_factor);
+        // Clamp against one real screen, never the bounding box across screen gaps.
+        let physical_position = physical_position.map(|position| {
+            let max = (monitor.max - logical_size * *scale_factor).max(monitor.min);
+            egui::pos2(
+                position.x.clamp(monitor.min.x, max.x),
+                position.y.clamp(monitor.min.y, max.y),
+            )
+        });
+        StartupWindowPlacement {
+            physical_position,
+            logical_size,
+            scale_factor: *scale_factor,
         }
     }
 
@@ -1196,11 +1239,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn capture_window_geometry(&mut self, ctx: &egui::Context) {
+        let pixels_per_point = ctx.pixels_per_point();
         let next = ctx.input(|i| {
             let outer = i.viewport().outer_rect?;
             let inner = i.viewport().inner_rect;
             let monitor_size = i.viewport().monitor_size;
-            Some(Self::window_geometry_from_rects(outer, inner, monitor_size))
+            let mut saved = Self::window_geometry_from_rects(outer, inner, monitor_size);
+            saved.pixels_per_point = Some(pixels_per_point);
+            Some(saved)
         });
         let Some(next) = next.map(Self::to_stable_window_geometry) else {
             return;

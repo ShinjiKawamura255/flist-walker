@@ -29,16 +29,15 @@ fn normalize_restore_geometry_preserves_virtual_desktop_position() {
         height: 700.0,
         monitor_width: Some(1920.0),
         monitor_height: Some(1080.0),
+        pixels_per_point: Some(1.0),
     };
-
-    let restored = FlistWalkerApp::normalize_restore_geometry_for_display_bounds(saved, None);
-
-    assert_eq!(restored.x, -1600.0);
-    assert_eq!(restored.y, 120.0);
-    assert_eq!(restored.width, 900.0);
-    assert_eq!(restored.height, 700.0);
-    assert_eq!(restored.monitor_width, Some(1920.0));
-    assert_eq!(restored.monitor_height, Some(1080.0));
+    let monitors = [(
+        egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(1920.0, 1080.0)),
+        1.0,
+    )];
+    let restored = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(0), true);
+    assert_eq!(restored.physical_position, Some(egui::pos2(-1600.0, 120.0)));
+    assert_eq!(restored.logical_size, egui::vec2(900.0, 700.0));
 }
 
 #[test]
@@ -50,17 +49,15 @@ fn normalize_restore_geometry_clamps_position_into_current_display_bounds() {
         height: 700.0,
         monitor_width: Some(2560.0),
         monitor_height: Some(1440.0),
+        pixels_per_point: Some(1.0),
     };
-    let display_bounds =
-        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(1920.0, 1080.0));
-
-    let restored =
-        FlistWalkerApp::normalize_restore_geometry_for_display_bounds(saved, Some(display_bounds));
-
-    assert_eq!(restored.x, 1020.0);
-    assert_eq!(restored.y, 380.0);
-    assert_eq!(restored.width, 900.0);
-    assert_eq!(restored.height, 700.0);
+    let monitors = [(
+        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0)),
+        1.0,
+    )];
+    let restored = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(0), true);
+    assert_eq!(restored.physical_position, Some(egui::pos2(1020.0, 380.0)));
+    assert_eq!(restored.logical_size, egui::vec2(900.0, 700.0));
 }
 
 #[test]
@@ -72,17 +69,21 @@ fn normalize_restore_geometry_keeps_negative_position_inside_current_display_bou
         height: 700.0,
         monitor_width: Some(1920.0),
         monitor_height: Some(1080.0),
+        pixels_per_point: Some(1.0),
     };
-    let display_bounds =
-        egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(3840.0, 1080.0));
-
-    let restored =
-        FlistWalkerApp::normalize_restore_geometry_for_display_bounds(saved, Some(display_bounds));
-
-    assert_eq!(restored.x, -1600.0);
-    assert_eq!(restored.y, 120.0);
-    assert_eq!(restored.width, 900.0);
-    assert_eq!(restored.height, 700.0);
+    let monitors = [
+        (
+            egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+        (
+            egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+    ];
+    let restored = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(1), true);
+    assert_eq!(restored.physical_position, Some(egui::pos2(-1600.0, 120.0)));
+    assert_eq!(restored.logical_size, egui::vec2(900.0, 700.0));
 }
 
 #[test]
@@ -99,6 +100,7 @@ fn apply_stable_window_geometry_force_commits_pending() {
         height: 700.0,
         monitor_width: Some(2560.0),
         monitor_height: Some(1440.0),
+        pixels_per_point: None,
     });
 
     app.apply_stable_window_geometry(true);
@@ -418,6 +420,7 @@ fn oversized_geometry_is_rejected_when_monitor_size_is_known() {
         height: 2100.0,
         monitor_width: Some(2560.0),
         monitor_height: Some(1440.0),
+        pixels_per_point: None,
     };
 
     let width_limit = (next.monitor_width.unwrap_or_default() * 1.05).max(640.0);
@@ -437,4 +440,145 @@ fn oversized_geometry_is_rejected_when_monitor_size_is_known() {
     }
     assert!(app.shell.ui.pending_window_geometry.is_none());
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn regression_gui_geometry_monitor_gap_is_not_a_valid_placement() {
+    let monitors = [
+        (
+            egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+        (
+            egui::Rect::from_min_size(egui::pos2(800.0, 0.0), egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+    ];
+    let saved = SavedWindowGeometry {
+        x: 100.0,
+        y: 50.0,
+        width: 900.0,
+        height: 700.0,
+        ..Default::default()
+    };
+    let placement = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(0), true);
+    // Legacy scale is ambiguous. Keep size and let the window manager place it.
+    assert_eq!(placement.physical_position, None);
+    assert_eq!(placement.logical_size, egui::vec2(900.0, 700.0));
+}
+
+#[test]
+fn regression_gui_geometry_unavailable_position_preserves_only_bounded_size() {
+    let saved = SavedWindowGeometry {
+        x: 9999.0,
+        y: -9999.0,
+        width: f32::INFINITY,
+        height: f32::NAN,
+        ..Default::default()
+    };
+    let placement = FlistWalkerApp::normalize_startup_placement(saved, &[], None, false);
+    assert_eq!(placement.physical_position, None);
+    assert!(placement.logical_size.is_finite());
+    assert!(placement.logical_size.x <= 16000.0 && placement.logical_size.y <= 16000.0);
+}
+
+#[test]
+fn regression_gui_geometry_negative_mixed_scale_uses_physical_monitor_rectangles() {
+    let monitors = [
+        (
+            egui::Rect::from_min_size(egui::pos2(-3840.0, 0.0), egui::vec2(3840.0, 2160.0)),
+            2.0,
+        ),
+        (
+            egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+    ];
+    let saved = SavedWindowGeometry {
+        x: -1600.0,
+        y: 120.0,
+        width: 900.0,
+        height: 700.0,
+        pixels_per_point: Some(2.0),
+        ..Default::default()
+    };
+    let placement = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(1), true);
+    assert_eq!(
+        placement.physical_position,
+        Some(egui::pos2(-3200.0, 240.0))
+    );
+    assert_eq!(placement.scale_factor, 2.0);
+    assert_eq!(placement.logical_size, egui::vec2(900.0, 700.0));
+}
+
+#[test]
+fn regression_gui_geometry_gap_and_disconnected_monitor_move_to_real_monitor() {
+    let monitors = [
+        (
+            egui::Rect::from_min_size(egui::pos2(-1920.0, 0.0), egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+        (
+            egui::Rect::from_min_size(egui::pos2(800.0, 0.0), egui::vec2(1920.0, 1080.0)),
+            1.0,
+        ),
+    ];
+    for x in [100.0, 9000.0] {
+        let saved = SavedWindowGeometry {
+            x,
+            y: 50.0,
+            width: 900.0,
+            height: 700.0,
+            pixels_per_point: Some(1.0),
+            ..Default::default()
+        };
+        let placement =
+            FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(0), true);
+        let rect =
+            egui::Rect::from_min_size(placement.physical_position.unwrap(), placement.logical_size);
+        assert!(
+            monitors
+                .iter()
+                .any(|(monitor, _)| monitor.contains_rect(rect)),
+            "{rect:?}"
+        );
+    }
+}
+
+#[test]
+fn regression_gui_geometry_legacy_json_and_positionless_current_monitor_are_safe() {
+    let legacy: SavedWindowGeometry =
+        serde_json::from_str(r#"{"x":-1000,"y":100,"width":900,"height":700}"#).unwrap();
+    assert_eq!(legacy.pixels_per_point, None);
+    let mut saved = legacy;
+    saved.pixels_per_point = Some(2.0);
+    let monitors = [(
+        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 800.0)),
+        2.0,
+    )];
+    let restored = FlistWalkerApp::normalize_startup_placement(saved, &monitors, Some(0), false);
+    assert_eq!(restored.physical_position, None);
+    assert_eq!(restored.logical_size, egui::vec2(640.0, 400.0));
+    assert_eq!(restored.scale_factor, 2.0);
+}
+
+#[test]
+fn regression_gui_geometry_capture_persists_coordinate_scale() {
+    let mut app = FlistWalkerApp::new(test_root("geometry-scale-capture"), 50, String::new());
+    let ctx = egui::Context::default();
+    let mut input = egui::RawInput::default();
+    let viewport = input.viewports.get_mut(&egui::ViewportId::ROOT).unwrap();
+    viewport.native_pixels_per_point = Some(2.0);
+    viewport.outer_rect = Some(egui::Rect::from_min_size(
+        egui::pos2(-1600.0, 50.0),
+        egui::vec2(900.0, 700.0),
+    ));
+    viewport.inner_rect = viewport.outer_rect;
+    viewport.monitor_size = Some(egui::vec2(1920.0, 1080.0));
+    let _ = ctx.run_ui(input, |ui| app.capture_window_geometry(ui.ctx()));
+    let saved = app.shell.ui.pending_window_geometry.as_ref().unwrap();
+    assert_eq!(saved.pixels_per_point, Some(2.0));
+    let decoded: SavedWindowGeometry =
+        serde_json::from_str(&serde_json::to_string(saved).unwrap()).unwrap();
+    assert_eq!(decoded.pixels_per_point, Some(2.0));
 }
