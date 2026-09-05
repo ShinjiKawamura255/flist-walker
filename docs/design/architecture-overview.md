@@ -164,6 +164,7 @@
 - 役割補足: CLI/TUI の filter/sort/root transition は GUI と同じ ignore setting を shared query input として渡し、adapter 固有の別解釈を作らない。
 
 - DES-017 Runtime Config Bootstrap
+- GUI config openは`worker/config_open.rs`の単一workerと容量1のrequest/response mailboxを使い、response消費まで1件だけ受理する。完了は要求元tabだけへ通知し、shutdownは既存WorkerRuntimeのjoin budgetを共有する。設定openは既存fileを保持し、起動済みconfigを新しいfileのseedとして使う。
 - 役割: Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を runtime settings の保存先として扱い、起動初回のみ current env を seed に自動生成する。
 - 実装: `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/updater.rs`
 - 役割補足: runtime config file が存在する場合は読み込み結果を process env に反映して既存の env 駆動経路へ伝播し、存在しない場合だけ current env を取り込んでファイルを生成する。main dispatch は引数検証後、`--list-saved-roots` / `--create-filelist` の早期 return より前に bootstrap を完了する。UI state、saved roots、window trace も同じ base directory 解決規則へ揃える。

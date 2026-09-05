@@ -2,11 +2,11 @@ use super::{
     egui, lexical_action_path_precheck, ActionPathPrecheck, Entry, EntryKind, FlistWalkerApp,
     IndexSource, PathBuf,
 };
+#[cfg(not(test))]
 use crate::actions::open_text_file_with_default_or_editor;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::{
     legacy_settings_base_dirs, migrate_file_if_needed, runtime_config_file_path, settings_base_dir,
-    RuntimeConfig,
 };
 use anyhow::{Context, Result};
 use std::fs;
@@ -301,12 +301,51 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn open_runtime_config_file(&mut self) {
-        match Self::open_runtime_config_file_with(open_text_file_with_default_or_editor) {
-            Ok(path) => self.set_notice(format!(
+        let tab_id = self.current_tab_id().unwrap_or_default();
+        match self.shell.worker_bus.config_open.start(tab_id) {
+            Ok(()) => self.set_notice("Opening config file..."),
+            Err(error) => self.set_notice(error),
+        }
+    }
+
+    pub(super) fn poll_config_open_response(&mut self) {
+        let Some((tab_id, result)) = self.shell.worker_bus.config_open.poll() else {
+            return;
+        };
+        self.apply_config_open_completion(tab_id, result);
+    }
+
+    fn apply_config_open_completion(
+        &mut self,
+        tab_id: u64,
+        result: std::result::Result<PathBuf, String>,
+    ) {
+        let notice = match result {
+            Ok(path) => format!(
                 "Config file opened: {}",
                 normalize_windows_path_buf(path).to_string_lossy()
-            )),
-            Err(err) => self.set_notice(format!("Config file open failed: {err}")),
+            ),
+            Err(error) => format!("Config file open failed: {error}"),
+        };
+        if Some(tab_id) == self.current_tab_id() {
+            self.set_notice(notice);
+        } else if let Some(index) = self.find_tab_index_by_id(tab_id) {
+            if let Some(tab) = self.shell.tabs.get_mut(index) {
+                tab.notice = notice;
+            }
+        }
+    }
+
+    pub(super) fn prepare_and_open_runtime_config() -> Result<PathBuf> {
+        #[cfg(not(test))]
+        {
+            Self::open_runtime_config_file_with(open_text_file_with_default_or_editor)
+        }
+        #[cfg(test)]
+        {
+            Err(anyhow::anyhow!(
+                "config opener uses a recording backend in tests"
+            ))
         }
     }
 
@@ -317,7 +356,8 @@ impl FlistWalkerApp {
     }
 
     fn ensure_runtime_config_file() -> Result<PathBuf> {
-        let config = RuntimeConfig::load_or_seed();
+        // Opening settings never reloads process-wide environment on a live GUI.
+        let config = crate::runtime_config::current_runtime_config();
         let path = runtime_config_file_path().context("runtime config path is unavailable")?;
         if !path.exists() {
             config.save_to_path(&path)?;
@@ -532,5 +572,25 @@ mod tests {
         );
 
         let _ = fs::remove_dir_all(&settings_root);
+    }
+    #[test]
+    fn config_completion_updates_inactive_owner_notice_without_changing_active_tab() {
+        let root = temp_dir("config-owner");
+        fs::create_dir_all(&root).unwrap();
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        let owner = app.current_tab_id().unwrap();
+        app.set_notice("Opening config file...");
+        app.create_new_tab();
+        app.set_notice("current tab notice");
+        app.apply_config_open_completion(owner, Err("editor unavailable".into()));
+        assert_eq!(app.shell.runtime.notice, "current tab notice");
+        assert!(app
+            .shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .notice
+            .contains("editor unavailable"));
+        let _ = fs::remove_dir_all(root);
     }
 }

@@ -8,4 +8,6 @@ pub use highlight::{
     has_visible_match, match_positions_for_path, match_positions_for_path_with_compiled,
 };
 pub use on_demand::should_skip_preview;
-pub use preview::{build_preview_text, build_preview_text_with_kind};
+pub use preview::{
+    build_preview_text, build_preview_text_with_kind, build_preview_text_with_kind_cancellable,
+};

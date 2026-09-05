@@ -184,6 +184,12 @@ impl FlistWalkerApp {
     pub(super) fn bootstrap_workers() -> AppWorkerBootstrap {
         let worker_shutdown = Arc::new(AtomicBool::new(false));
         let mut worker_runtime = WorkerRuntime::new(Arc::clone(&worker_shutdown));
+        let (config_open, config_open_handle) =
+            crate::app::worker::config_open::ConfigOpenService::spawn_with(
+                Arc::clone(&worker_shutdown),
+                Self::prepare_and_open_runtime_config,
+            );
+        worker_runtime.push("config-open", config_open_handle);
         let (search_tx, search_rx, search_handle) =
             spawn_search_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("search", search_handle);
@@ -232,6 +238,7 @@ impl FlistWalkerApp {
             search_tx,
             search_rx,
             worker_bus: WorkerBus {
+                config_open,
                 preview: PreviewWorkerBus {
                     tx: preview_tx,
                     rx: preview_rx,

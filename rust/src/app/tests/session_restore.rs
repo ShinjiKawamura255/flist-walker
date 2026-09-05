@@ -686,6 +686,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
         .expect("send background search response");
     preview_tx_res
         .send(PreviewResponse {
+            canceled: false,
             request_id: preview_request_id,
             path: indexed_file.clone(),
             preview: "preview-body".to_string(),
@@ -772,6 +773,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
     assert_eq!(reload_request.path, indexed_file);
     preview_tx_res
         .send(PreviewResponse {
+            canceled: false,
             request_id: reload_request.request_id,
             path: indexed_file.clone(),
             preview: "preview-body".to_string(),

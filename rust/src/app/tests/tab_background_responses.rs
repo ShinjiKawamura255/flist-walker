@@ -253,6 +253,7 @@ fn background_tab_search_and_preview_responses_are_retained() {
         .expect("send search response");
     preview_tx_res
         .send(PreviewResponse {
+            canceled: false,
             request_id: preview_request_id,
             path: selected.clone(),
             preview: "preview-body".to_string(),
@@ -322,6 +323,7 @@ fn background_search_selection_change_invalidates_old_preview_and_reloads_on_act
     assert!(background.preview_reload_pending);
     assert_eq!(app.preview_request_tab(old_request.request_id), None);
     app.apply_background_preview_response(PreviewResponse {
+        canceled: false,
         request_id: old_request.request_id,
         path: old_path,
         preview: "late old preview".to_string(),
@@ -486,6 +488,7 @@ fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression
     assert!(background.pending_preview_request_id.is_none());
     assert_eq!(app.preview_request_tab(711), None);
     app.apply_background_preview_response(PreviewResponse {
+        canceled: false,
         request_id: 711,
         path: selected.clone(),
         preview: "late preview".to_string(),
@@ -3229,4 +3232,50 @@ fn tc_207_background_search_restores_evicted_selected_path() {
     assert_eq!(tab.result_state.committed.results[1].0, selected);
     assert!(tab.result_state.evicted_selected_path.is_none());
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn canceled_background_preview_settles_and_reloads_on_activation() {
+    let root = test_root("preview-cancel-owner");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(&path, "sample").unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.runtime.entries = Arc::new(vec![file_entry(path.clone())]);
+    app.shell.runtime.results = vec![(path.clone(), 1.0)];
+    app.shell.runtime.base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.current_row = Some(0);
+    app.set_entry_kind(&path, EntryKind::file());
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.preview.tx = tx;
+    app.request_preview_for_current();
+    let obsolete = rx.try_recv().unwrap();
+    app.request_preview_for_current();
+    let request = rx.try_recv().unwrap();
+    app.create_new_tab();
+    while rx.try_recv().is_ok() {}
+    app.apply_background_preview_response(PreviewResponse {
+        request_id: obsolete.request_id,
+        path: path.clone(),
+        preview: String::new(),
+        canceled: true,
+    });
+    assert_eq!(
+        app.shell.tabs.get(0).unwrap().pending_preview_request_id,
+        Some(request.request_id)
+    );
+    app.apply_background_preview_response(PreviewResponse {
+        request_id: request.request_id,
+        path: path.clone(),
+        preview: String::new(),
+        canceled: true,
+    });
+    let tab = app.shell.tabs.get(0).unwrap();
+    assert!(!tab.preview_in_progress);
+    assert!(tab.pending_preview_request_id.is_none());
+    assert!(tab.preview_reload_pending);
+    assert_eq!(app.preview_request_tab(request.request_id), None);
+    app.switch_to_tab_index(0);
+    assert!(rx.try_iter().any(|request| request.path == path));
+    let _ = fs::remove_dir_all(root);
 }

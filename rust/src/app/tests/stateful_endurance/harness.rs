@@ -597,6 +597,7 @@ impl StatefulHarness {
         };
         self.preview_responses
             .send(PreviewResponse {
+                canceled: false,
                 request_id: request.request_id,
                 path: request.path,
                 preview: preview.to_string(),

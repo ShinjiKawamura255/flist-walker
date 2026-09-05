@@ -440,6 +440,22 @@ pub(super) fn apply_background_preview_response(
     if tab_index == app.shell.tabs.active_tab_index() {
         return;
     }
+    if app
+        .shell
+        .tabs
+        .get(tab_index)
+        .is_none_or(|tab| tab.pending_preview_request_id != Some(response.request_id))
+    {
+        return;
+    }
+    if response.canceled {
+        if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
+            tab.clear_preview_request_state();
+            tab.result_state.committed.preview.clear();
+            tab.mark_preview_reload_pending();
+        }
+        return;
+    }
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
         tab.clear_preview_request_state();
@@ -475,6 +491,11 @@ pub(super) fn apply_active_preview_response(
     }
     app.take_preview_request_tab(response.request_id);
     app.shell.worker_bus.preview.clear_request();
+    if response.canceled {
+        app.shell.runtime.preview.clear();
+        app.request_preview_for_current();
+        return true;
+    }
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(row) = app.shell.runtime.current_row {
         if let Some((current_path, _)) = app.shell.runtime.results.get(row) {
