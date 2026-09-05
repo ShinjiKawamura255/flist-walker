@@ -16,6 +16,7 @@ FRONTMATTER_NAME_RE = re.compile(r"(?m)^name:\s*([^\s]+)\s*$")
 ENTRYPOINT_MAX_LINE = 500
 SKILL_MAX_LINES = 500
 RAW_COMMIT_SHA_RE = re.compile(r"(?<![0-9A-Fa-f])[0-9A-Fa-f]{7,40}(?![0-9A-Fa-f])")
+GUI_SCREENSHOT_SUFFIXES = {".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 
 
 def markdown_files(root: Path) -> list[Path]:
@@ -108,6 +109,22 @@ def current_status_violations(root: Path) -> list[str]:
     return violations
 
 
+def gui_evidence_screenshot_violations(root: Path) -> list[str]:
+    evidence_root = root / "docs" / "gui-test-results"
+    if not evidence_root.is_dir():
+        return []
+    violations: list[str] = []
+    for path in sorted(item for item in evidence_root.rglob("*") if item.is_file()):
+        # Regression guard: GUI captures are local task evidence, not durable documentation.
+        # Do not remove this check without updating the paired regression tests.
+        if path.suffix.lower() in GUI_SCREENSHOT_SUFFIXES:
+            relative = path.relative_to(root).as_posix()
+            violations.append(
+                f"{relative}: GUI test screenshot must remain transient under rust/target/gui-smoke/evidence"
+            )
+    return violations
+
+
 def skill_violations(root: Path) -> list[str]:
     skill_root = root / "skills"
     if not skill_root.is_dir():
@@ -156,6 +173,7 @@ def collect_violations(root: Path) -> list[str]:
     files = markdown_files(root)
     violations = local_link_violations(root, files)
     violations.extend(current_status_violations(root))
+    violations.extend(gui_evidence_screenshot_violations(root))
     violations.extend(skill_violations(root))
     violations.extend(entrypoint_line_violations(root))
     return sorted(set(violations))

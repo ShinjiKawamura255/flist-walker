@@ -103,6 +103,34 @@ class RepoContractTests(unittest.TestCase):
 
             self.assertTrue(any("raw commit SHA" in item for item in violations))
 
+    def test_regression_gui_evidence_screenshots_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.minimal_repo(root)
+            evidence = root / "docs/gui-test-results/native-pass.jpg"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_bytes(b"not-a-real-image")
+
+            violations = CONTRACT.collect_violations(root)
+
+            self.assertTrue(
+                any("GUI test screenshot must remain transient" in item for item in violations)
+            )
+
+    def test_regression_gui_evidence_nested_uppercase_image_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.minimal_repo(root)
+            evidence = root / "docs/gui-test-results/archive/native-pass.PNG"
+            evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_bytes(b"not-a-real-image")
+
+            violations = CONTRACT.collect_violations(root)
+
+            self.assertTrue(
+                any("GUI test screenshot must remain transient" in item for item in violations)
+            )
+
     def test_skill_name_and_references_are_validated(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

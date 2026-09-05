@@ -11,8 +11,8 @@
   - before publishing a release candidate
   - after changes covered by VM-002 that affect render, dialog, focus, tab, search result, preview, or FileList GUI flows
   - after structural refactoring that touches GUI-adjacent app orchestration
-- Evidence location: `rust/target/gui-smoke/evidence/`.
-- Evidence rule: release-candidate and VM-002 GUI-adjacent checks must record a dated report with environment and separate Deterministic, Native interaction, and Liveness statuses for every required `GSM-*` case. Use `docs/GUI-TESTREPORT.template.md`; a PASS on one axis never implies PASS on another. Chat-only confirmation is acceptable only for exploratory development smoke and must not be used as release-candidate evidence.
+- Evidence location: `rust/target/gui-smoke/evidence/` (transient and Git-ignored).
+- Evidence rule: release-candidate and VM-002 GUI-adjacent checks must record a dated local report with environment and separate Deterministic, Native interaction, and Liveness statuses for every required `GSM-*` case. Use `docs/GUI-TESTREPORT.template.md`; a PASS on one axis never implies PASS on another. Do not commit GUI test screenshots or copy them into `docs/`; ordinary durable evidence is the sanitized PR summary or an exact Actions run URL. A screenshot may be committed only when the user explicitly requests an image artifact and its durable location and redaction scope are agreed before capture. Chat-only confirmation is acceptable only for exploratory development smoke and must not be used as release-candidate evidence.
 - Evidence history is append-only. A later residual run adds a dated addendum or a new result record; it does not rewrite the status or reason observed by an earlier run.
 - Fixture command: `scripts/gui-smoke-fixture.sh`.
 - Deterministic scenario commands:
@@ -34,7 +34,7 @@
 1. Run `scripts/gui-smoke-fixture.sh`. It copies the checked-in UTF-8 fixture, validates its hash manifest and expected FileList entries, and preserves an existing local report.
 2. Use the printed fixture root as the GUI root.
 3. Use a headful smoke script for native launch. It stages a disposable executable plus ignore/sample files under `rust/target/gui-smoke/runs/`, isolates settings, rejects adjacent updater artifacts, and launches only that staged copy.
-4. Store local notes, screenshots, and logs under `rust/target/gui-smoke/evidence/`. Do not store user configuration content or unmasked UNC names.
+4. Store local notes, screenshots, and logs only under `rust/target/gui-smoke/evidence/`; do not stage or commit them. Do not store user configuration content or unmasked UNC names.
 
 ## Pass / Fail Policy
 - Each `GSM-*` row has three independent axes: Deterministic, Native interaction, and Liveness. Each axis records `PASS`, `FAIL`, `SKIPPED`, or `NOT RUN`, plus reason, evidence, and reproduction procedure.
