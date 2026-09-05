@@ -23,6 +23,8 @@ pub(super) enum TestResultRowInteraction {
 pub(super) struct ResultRenderProbe {
     pub(super) rendered_rows: Vec<usize>,
     pub(super) action_rows: Vec<usize>,
+    pub(super) row_rects: Vec<(usize, egui::Rect)>,
+    pub(super) scroll: Option<(egui::Id, egui::Vec2, egui::Rect)>,
 }
 
 #[cfg(test)]
@@ -58,13 +60,14 @@ pub(super) fn take_result_render_probe() -> ResultRenderProbe {
 }
 
 #[cfg(test)]
-fn record_rendered_result_row(index: usize) -> TestResultRowInteraction {
+fn record_rendered_result_row(index: usize, rect: egui::Rect) -> TestResultRowInteraction {
     RESULT_RENDER_PROBE.with(|probe| {
         let mut probe = probe.borrow_mut();
         let Some(active) = probe.as_mut() else {
             return TestResultRowInteraction::None;
         };
         active.result.rendered_rows.push(index);
+        active.result.row_rects.push((index, rect));
         active.interaction
     })
 }
@@ -330,7 +333,10 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     app.ensure_highlight_cache_scope(prefer_relative);
     let row_height = result_row_height(ui);
     let total_rows = app.shell.runtime.results.len();
-    let scroll_area_id = ui.make_persistent_id("results-scroll-area");
+    // ScrollArea converts its salt to IdSalt before making the persistent ID. Match
+    // that conversion: a different ID silently reads offset 0 and scrolls on every
+    // upward step. Keep regression_results_cursor_round_trip_* paired with this.
+    let scroll_area_id = ui.make_persistent_id(egui::IdSalt::new("results-scroll-area"));
     let mut scroll_area = egui::ScrollArea::both()
         .id_salt("results-scroll-area")
         .scroll_source(scroll_source)
@@ -363,7 +369,7 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             scroll_area = scroll_area.vertical_scroll_offset(next_offset.max(0.0));
         }
     }
-    scroll_area.show_rows(ui, row_height, total_rows, |ui, visible_rows| {
+    let scroll_output = scroll_area.show_rows(ui, row_height, total_rows, |ui, visible_rows| {
         let row_width = ui.available_width().max(0.0);
         // Regression guard: only visible rows may clone paths or allocate widgets;
         // iterating the full result set here makes every frame O(total results).
@@ -377,7 +383,7 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
             render_result_row(app, ui, rect, &path, is_current, prefer_relative);
             #[cfg(test)]
-            let test_interaction = record_rendered_result_row(i);
+            let test_interaction = record_rendered_result_row(i, rect);
             #[cfg(test)]
             let test_clicked =
                 matches!(test_interaction, TestResultRowInteraction::Click(row) if row == i);
@@ -398,6 +404,18 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             }
         }
     });
+    #[cfg(test)]
+    RESULT_RENDER_PROBE.with(|probe| {
+        if let Some(active) = probe.borrow_mut().as_mut() {
+            active.result.scroll = Some((
+                scroll_output.id,
+                scroll_output.state.offset,
+                scroll_output.inner_rect.intersect(ui.clip_rect()),
+            ));
+        }
+    });
+    #[cfg(not(test))]
+    let _ = scroll_output;
     if let Some(i) = clicked_row {
         if app.shell.runtime.current_row != Some(i) {
             app.shell.tabs.mark_active_tab_meaningfully_engaged();

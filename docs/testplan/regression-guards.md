@@ -74,11 +74,11 @@ Back to the [Validation Matrix](validation-matrix.md).
 
 ### Regression Guard: query focus toggle and result cursor viewport tracking
 
-- Scenario: Primary+L の pending focus flag が TextEdit 描画へ反映されず toggle できない。または仮想化した Results が keyboard 移動のたびに current row の絶対位置を scroll offset として設定し、選択行を viewport 先頭へ固定する。
-- Expected Behavior: Windows/Linux の `Ctrl+L` と macOS の `Cmd+L` は full frame を跨いで検索欄 focus を双方向に toggle する。`ArrowUp` / `ArrowDown` と有効な `Ctrl+P` / `Ctrl+N` は current row を移動し、移動先が既存 viewport 内なら表示開始行を維持し、viewport 外なら見える最小量だけ scroll する。
-- Non-goals: picker/modal が所有する focus、mouse wheel/scroll bar による手動 scroll、PageUp/PageDown のページ移動量、IME composition 中の text editing。
-- Related Tests: TC-212, `regression_primary_l_toggles_query_focus_through_full_frames`, `regression_single_step_selection_does_not_pin_current_row_to_viewport_top`, `results_renderer_processes_only_visible_rows_regression`, `ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused`, `regression_arrow_keys_move_selection_even_when_query_focused`.
-- Notes for Future Changes: shortcut dispatch は TextEdit 描画前に focus request を確定し、Results の仮想化は persisted scroll offset と viewport 境界から visibility clamp を計算する。current row の絶対 row offset を毎 key event に無条件適用しない。
+- Scenario: Primary+L の pending focus flag が TextEdit 描画へ反映されず toggle できない。または仮想化した Results の保存位置を異なる ScrollArea ID で読み、既定 offset 0 として計算するため、十分下へ移動した後の上移動でも毎行 scroll する。current row の絶対位置を無条件に設定する場合も viewport 内の移動を壊す。
+- Expected Behavior: Windows/Linux の `Ctrl+L` と macOS の `Cmd+L` は full frame を跨いで検索欄 focus を双方向に toggle する。`ArrowUp` / `ArrowDown` と有効な `Ctrl+P` / `Ctrl+N` は、query focus の有無と repeat に関係なく、行全体が既存 viewport 内なら offset を維持する。上端・下端を越えた場合だけ必要最小量を scroll し、上下反転・端の部分表示・resize 後も同じ契約を保つ。
+- Non-goals: picker/modal が所有する focus、mouse wheel/scroll bar 自体の入力処理、PageUp/PageDown のページ移動量、IME composition 中の text editing。手動 scroll 後の位置からの keyboard 移動は対象に含む。
+- Related Tests: TC-212, `regression_primary_l_toggles_query_focus_through_full_frames`, `regression_single_step_selection_does_not_pin_current_row_to_viewport_top`, `regression_results_cursor_round_trip_tracks_both_viewport_edges`, `regression_results_cursor_preserves_partial_scroll_after_resize`, `regression_results_cursor_clamps_at_list_ends_after_offscreen_jump`, `results_renderer_processes_only_visible_rows_regression`, `ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused`, `regression_arrow_keys_move_selection_even_when_query_focused`.
+- Notes for Future Changes: shortcut dispatch は TextEdit 描画前に focus request を確定する。Results は ScrollArea 自身が保存する ID と同じ ID で state を読み、persisted offset と viewport 境界から visibility clamp を計算する。テストは full frame の入力→描画→無入力 frame を通し、ScrollArea 出力の offset/viewport と実際の行矩形を観測する。`show_rows` の範囲には部分表示・先読み行も含まれるため、描画対象への包含だけで可視性を判定しない。座標丸めの許容差は1物理pixel以内とする。意図的な「読み出し offset を常に0」「毎回先頭合わせ」が上下往復テストで失敗することを確認する。
 
 ### Regression Guard: update installation failure modal input ownership
 

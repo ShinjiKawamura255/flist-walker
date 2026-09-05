@@ -38,7 +38,7 @@
 - SHOULD: query 履歴は打鍵ごとではなく、一定時間の無入力または結果移動開始を契機に確定する。
 - SHOULD: IME 合成中の未確定文字列は query 履歴へ保存せず、変換確定後の query のみ履歴対象とする。
 - MUST: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で `Results` の current row を移動できる。
-- MUST: `ArrowUp` / `ArrowDown` および有効な `Ctrl+P` / `Ctrl+N` による current row 移動では、移動先が現在の viewport 内にある限り Results の scroll offset を維持する。移動先が viewport 外へ出る場合だけ、current row が見える最小量を scroll し、current row を毎回 viewport 先頭へ固定してはならない。
+- MUST: `ArrowUp` / `ArrowDown` および有効な `Ctrl+P` / `Ctrl+N` による current row 移動では、移動先が現在の viewport 内にある限り Results の scroll offset を維持する。移動先の行全体が viewport の上端または下端を越える場合だけ、その行全体が見える最小量を scroll する。下移動から上移動への反転時も上端までは offset を維持し、current row を毎回 viewport の先頭または末尾へ固定してはならない。この契約は key repeat と、手動 scroll や resize 後の keyboard 移動にも適用する。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+J` / `Ctrl+M` は検索窓フォーカス有無に関わらず `Enter` と同等に実行/オープンを起動する。
 - MUST: `Tab` / `Shift+Tab` はフォーカス位置に依存せず現在行の PIN 固定/解除を実行する。runtime config の `tab_pin_moves_to_next_row` が `false` または未指定のときは選択行移動を行わず、`true` のときは PIN 固定/解除後に選択行を次行へ進める。
 - MUST: runtime config の `emacs_keybindings_enabled` が `true` のとき、`Ctrl+I` は検索窓フォーカス有無に関わらず `Tab` と同等に現在行の PIN 固定/解除を実行する。
