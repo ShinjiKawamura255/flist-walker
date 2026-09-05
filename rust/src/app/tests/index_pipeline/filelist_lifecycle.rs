@@ -481,6 +481,7 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     app.apply_root_change_direct(root_c.clone());
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.max_depth = crate::indexer::MaxDepth::limited(3).expect("valid max depth");
+    app.shell.runtime.follow_links = true;
     app.shell.indexing.refresh_after_pending_finish =
         Some(super::PendingIndexRefreshMode::CreateFileListWalker);
 
@@ -503,6 +504,7 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     assert_eq!(path_key(&replay.root), path_key(&root_c));
     assert!(!replay.use_filelist);
     assert!(replay.max_depth.is_unlimited());
+    assert!(replay.follow_links);
     assert!(request_rx.try_recv().is_err());
     for root in [&root_a, &root_b, &root_c] {
         let _ = fs::remove_dir_all(root);
@@ -560,6 +562,7 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     app.apply_root_change_direct(root_b.clone());
     app.shell.runtime.use_filelist = true;
     app.shell.runtime.max_depth = crate::indexer::MaxDepth::limited(4).expect("valid max depth");
+    app.shell.runtime.follow_links = true;
     app.shell.indexing.refresh_after_pending_finish =
         Some(super::PendingIndexRefreshMode::CreateFileListWalker);
     {
@@ -586,6 +589,7 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     assert_eq!(path_key(&replay.root), path_key(&root_b));
     assert!(!replay.use_filelist);
     assert!(replay.max_depth.is_unlimited());
+    assert!(replay.follow_links);
     assert!(request_rx.try_recv().is_err());
     for root in [&root_a, &root_b] {
         let _ = fs::remove_dir_all(root);

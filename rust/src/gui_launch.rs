@@ -89,6 +89,7 @@ pub(crate) fn run(
     query: String,
     limit: usize,
     max_depth: flist_walker::indexer::MaxDepth,
+    follow_links: bool,
     previous_update_failure: Option<String>,
 ) -> Result<()> {
     let startup_start = Instant::now();
@@ -175,7 +176,14 @@ pub(crate) fn run(
             macos_menu::disable_native_quit_shortcut()?;
             configure_egui_fonts(&cc.egui_ctx);
             trace_startup_phase(startup_start, "fonts_configured");
-            let mut app = FlistWalkerApp::from_launch(root, limit, query, root_explicit, max_depth);
+            let mut app = FlistWalkerApp::from_launch(
+                root,
+                limit,
+                query,
+                root_explicit,
+                max_depth,
+                follow_links,
+            );
             if let Some(message) = previous_update_failure {
                 app.set_previous_update_failure(message);
             }

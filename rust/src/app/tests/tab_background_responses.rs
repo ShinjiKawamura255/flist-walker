@@ -1223,6 +1223,7 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     app.shell
         .indexing

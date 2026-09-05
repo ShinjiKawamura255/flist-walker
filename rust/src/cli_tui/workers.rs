@@ -7,7 +7,7 @@ use super::retirement::RetirementWorker;
 use crate::actions::execute_authorized_action_request;
 use crate::entry::Entry;
 use crate::indexer::{
-    build_index_with_metadata_from_discovery_cancellable_and_max_depth,
+    build_index_with_metadata_from_discovery_cancellable_and_options,
     find_filelist_in_first_level_cancellable, is_index_build_cancelled,
 };
 use crate::query::{CompiledIgnoreTerms, QueryScope};
@@ -20,8 +20,7 @@ use crate::ui_model::build_preview_text_with_kind_cancellable;
 use crate::updater::check_for_update;
 use crate::updater::UpdateCandidate;
 use crate::walker_runtime::{
-    classify_walker_entry, walk_adaptive_with_max_depth, walker_runtime_settings,
-    AdaptiveWalkerEntry,
+    classify_walker_entry, walk_adaptive_with_options, walker_runtime_settings, AdaptiveWalkerEntry,
 };
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -507,13 +506,16 @@ pub(super) fn process_index_request_with_config<C, S>(
     }
 
     if use_filelist {
-        match build_index_with_metadata_from_discovery_cancellable_and_max_depth(
+        match build_index_with_metadata_from_discovery_cancellable_and_options(
             &request.root,
             true,
             discovered_filelist,
             request.include_files,
             request.include_dirs,
-            request.max_depth,
+            crate::indexer::WalkOptions {
+                max_depth: request.max_depth,
+                follow_links: request.follow_links,
+            },
             should_cancel,
         ) {
             Ok(result) => {
@@ -549,13 +551,16 @@ pub(super) fn process_index_request_with_config<C, S>(
         let mut batch = Vec::with_capacity(256);
         let mut emitted_entries = 0usize;
         let mut truncated = false;
-        walk_adaptive_with_max_depth(
+        walk_adaptive_with_options(
             &request.root,
             settings.adaptive_max_limit,
             settings.adaptive_initial_limit,
             request.include_files,
             request.include_dirs,
-            request.max_depth,
+            crate::indexer::WalkOptions {
+                max_depth: request.max_depth,
+                follow_links: request.follow_links,
+            },
             |entry: AdaptiveWalkerEntry| {
                 if should_cancel() {
                     return false;

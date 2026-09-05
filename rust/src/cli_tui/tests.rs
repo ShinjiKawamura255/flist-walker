@@ -548,6 +548,7 @@ fn tc_162_walker_failure_emits_index_failed_without_finished() {
         source: TuiSource::Walker,
         filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let mut responses = Vec::new();
 
@@ -573,6 +574,7 @@ fn tc_162_stale_filelist_discovery_emits_no_response_and_latest_request_proceeds
         source: TuiSource::Auto,
         filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let checks = AtomicUsize::new(0);
     let mut stale_responses = Vec::new();
@@ -609,6 +611,7 @@ fn tc_162_initial_filelist_discovery_is_consumed_without_rescan_regression() {
         source: TuiSource::FileList,
         filelist_discovery: FileListDiscoveryOwnership::Completed(Some(discovered)),
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let mut responses = Vec::new();
 
@@ -676,6 +679,7 @@ fn tc_162_explicit_walker_performs_zero_filelist_discovery_regression() {
         source: TuiSource::Walker,
         filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let mut responses = Vec::new();
 
@@ -720,6 +724,7 @@ fn tc_162_tui_walker_uses_runtime_adaptive_limits_and_reports_cap_before_finish(
         source: TuiSource::Walker,
         filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     };
     let config = RuntimeConfig {
         walker_max_entries: 1,
@@ -786,6 +791,7 @@ fn tc_180_tui_index_request_applies_max_depth() {
         source: TuiSource::Walker,
         filelist_discovery: FileListDiscoveryOwnership::WorkerOwned,
         max_depth: crate::indexer::MaxDepth::limited(2).expect("valid depth"),
+        follow_links: false,
     };
     let mut responses = Vec::new();
 
@@ -1516,6 +1522,7 @@ fn tc_162_tui_options_reindex_only_for_scope_or_source_changes() {
         initial_query: String::new(),
         limit: 10,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
         absolute: false,
         print0: false,
         include_files: true,
@@ -1814,6 +1821,7 @@ fn tc_163_disabled_startup_ignore_can_be_reenabled_without_reloading_terms() {
         initial_query: String::new(),
         limit: 10,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
         absolute: false,
         print0: false,
         include_files: true,
@@ -2040,6 +2048,7 @@ fn tc_162_options_overlay_keeps_headings_and_renders_items_below_them() {
             initial_query: String::new(),
             limit: 1,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             absolute: false,
             print0: false,
             include_files: true,
@@ -2150,6 +2159,7 @@ fn tc_162_small_overlays_keep_source_and_size_selection_visible() {
             initial_query: String::new(),
             limit: 1,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             absolute: false,
             print0: false,
             include_files: true,
@@ -2621,7 +2631,8 @@ fn tc_166_filelist_uses_fresh_walker_snapshot_not_partial_tui_entries() {
     state.entries.push(vec![temp.path.join("visible.txt")]);
     let request = state.next_filelist_request(false, true);
 
-    let entries = build_filelist_snapshot(&request.root, &|| false).expect("fresh walker snapshot");
+    let entries = build_filelist_snapshot(&request.root, request.follow_links, &|| false)
+        .expect("fresh walker snapshot");
     assert!(entries.iter().any(|entry| entry.ends_with("visible.txt")));
     assert!(entries.iter().any(|entry| entry.ends_with("nested")));
     assert!(entries.iter().any(|entry| entry.ends_with("inside.txt")));
@@ -2655,7 +2666,7 @@ fn tc_166_filelist_fresh_walk_cancellation_is_a_clean_report() {
     fs::write(temp.path.join("candidate.txt"), "candidate").expect("write candidate");
     let cancelled = AtomicBool::new(true);
 
-    let report = build_filelist_snapshot(&temp.path, &|| cancelled.load(Ordering::Acquire))
+    let report = build_filelist_snapshot(&temp.path, false, &|| cancelled.load(Ordering::Acquire))
         .expect_err("cancelled walk must not reach planning");
 
     assert_eq!(report.status, FileListWriteStatus::Canceled);
@@ -3188,4 +3199,42 @@ fn alignment_real_tui_workers_guard_index_and_result_payloads_before_publication
     drop(state);
     workers.shutdown();
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn follow_links_tui_search_and_fresh_filelist_keep_link_options() {
+    let temp = TestTempDir::new("follow-links-tui");
+    let root = temp.path.join("root");
+    let outside = temp.path.join("outside");
+    fs::create_dir_all(&root).expect("root");
+    fs::create_dir_all(&outside).expect("outside");
+    fs::write(outside.join("linked.txt"), "content").expect("file");
+    std::os::unix::fs::symlink(&outside, root.join("alias")).expect("symlink");
+    let mut state = TuiState::new("");
+    state.root = root.clone();
+    state.runtime_options.source = TuiSource::Walker;
+    state.follow_links = true;
+    let request = state.next_index_request(root.clone());
+    assert!(request.follow_links);
+    let mut responses = Vec::new();
+    process_index_request(request, &|| false, |response| responses.push(response));
+    assert!(responses.iter().any(|response| match response {
+        WorkerResponse::IndexedBatch { entries, .. } => entries
+            .iter()
+            .any(|path| path.ends_with("alias/linked.txt")),
+        _ => false,
+    }));
+    let filelist_request = state.next_filelist_request(false, false);
+    assert!(filelist_request.follow_links);
+    let entries =
+        build_filelist_snapshot(&root, filelist_request.follow_links, &|| false).expect("snapshot");
+    assert!(entries
+        .iter()
+        .any(|path| path.ends_with("alias/linked.txt")));
+    let default_entries =
+        build_filelist_snapshot(&root, false, &|| false).expect("default snapshot");
+    assert!(!default_entries
+        .iter()
+        .any(|path| path.ends_with("linked.txt")));
 }

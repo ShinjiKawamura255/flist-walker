@@ -18,6 +18,7 @@ fn sanitize_saved_tabs_keeps_missing_roots_lazy_and_clamps_active_tab() {
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::limited(2).expect("valid depth"),
+            follow_links: true,
             query: "ok".to_string(),
             query_history: Vec::new(),
             tab_accent: Some(TabAccentColor::Teal),
@@ -30,6 +31,7 @@ fn sanitize_saved_tabs_keeps_missing_roots_lazy_and_clamps_active_tab() {
             include_files: true,
             include_dirs: false,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             query: "skip".to_string(),
             query_history: Vec::new(),
             tab_accent: Some(TabAccentColor::Amber),
@@ -43,6 +45,7 @@ fn sanitize_saved_tabs_keeps_missing_roots_lazy_and_clamps_active_tab() {
     assert_eq!(sanitized[0].query, "ok");
     assert_eq!(sanitized[0].tab_accent, Some(TabAccentColor::Teal));
     assert_eq!(sanitized[0].max_depth.value(), Some(2));
+    assert!(sanitized[0].follow_links);
     assert_eq!(PathBuf::from(&sanitized[1].root), missing_root);
     let _ = fs::remove_dir_all(&root);
 }
@@ -141,19 +144,19 @@ fn explicit_query_or_depth_suppresses_session_and_restores_default_root_preceden
     let limited = crate::indexer::MaxDepth::limited(2).expect("limited depth");
 
     assert!(FlistWalkerApp::restore_session_allowed(
-        true, false, "", unlimited
+        true, false, "", unlimited, false
     ));
     assert!(!FlistWalkerApp::restore_session_allowed(
-        true, false, "needle", unlimited
+        true, false, "needle", unlimited, false
     ));
     assert!(!FlistWalkerApp::restore_session_allowed(
-        true, false, "", limited
+        true, false, "", limited, false
     ));
     assert!(!FlistWalkerApp::restore_session_allowed(
-        true, true, "", unlimited
+        true, true, "", unlimited, false
     ));
     assert!(!FlistWalkerApp::restore_session_allowed(
-        false, false, "", unlimited
+        false, false, "", unlimited, false
     ));
 
     let chosen = FlistWalkerApp::choose_startup_root(
@@ -232,6 +235,7 @@ fn choose_startup_root_prefers_restored_tab_over_last_root() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
         query: String::new(),
         query_history: Vec::new(),
         tab_accent: Some(TabAccentColor::Emerald),
@@ -270,6 +274,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "alpha".to_string(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Azure),
@@ -282,6 +287,7 @@ fn initialize_tabs_from_saved_restores_active_tab_and_defers_background_refresh(
                 include_files: true,
                 include_dirs: false,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "beta".to_string(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Crimson),
@@ -338,6 +344,7 @@ fn initialize_tabs_from_saved_keeps_current_row_empty_until_results_exist_regres
             include_files: true,
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             query: String::new(),
             query_history: Vec::new(),
             tab_accent: None,
@@ -370,6 +377,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "alpha".to_string(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Olive),
@@ -382,6 +390,7 @@ fn switching_to_restored_background_tab_triggers_lazy_refresh() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "beta".to_string(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Indigo),
@@ -431,6 +440,7 @@ fn restored_tab_lazy_refresh_starts_for_query_and_source_matrix() {
                     include_files: true,
                     include_dirs: true,
                     max_depth: crate::indexer::MaxDepth::unlimited(),
+                    follow_links: false,
                     query: query.to_string(),
                     query_history: Vec::new(),
                     tab_accent: None,
@@ -443,6 +453,7 @@ fn restored_tab_lazy_refresh_starts_for_query_and_source_matrix() {
                     include_files: true,
                     include_dirs: true,
                     max_depth: crate::indexer::MaxDepth::unlimited(),
+                    follow_links: false,
                     query: String::new(),
                     query_history: Vec::new(),
                     tab_accent: None,
@@ -489,6 +500,7 @@ fn restored_tab_activation_prioritizes_active_batch_over_background_backlog_regr
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "needle".to_string(),
                 query_history: Vec::new(),
                 tab_accent: None,
@@ -501,6 +513,7 @@ fn restored_tab_activation_prioritizes_active_batch_over_background_backlog_regr
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: String::new(),
                 query_history: Vec::new(),
                 tab_accent: None,
@@ -613,6 +626,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: String::new(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Olive),
@@ -625,6 +639,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: String::new(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Indigo),
@@ -810,6 +825,7 @@ fn close_tab_triggers_dormant_survivor_refresh() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: String::new(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Olive),
@@ -822,6 +838,7 @@ fn close_tab_triggers_dormant_survivor_refresh() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: String::new(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Indigo),
@@ -870,6 +887,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "alpha".to_string(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Olive),
@@ -882,6 +900,7 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
                 include_files: true,
                 include_dirs: true,
                 max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
                 query: "beta".to_string(),
                 query_history: Vec::new(),
                 tab_accent: Some(TabAccentColor::Indigo),
@@ -911,4 +930,27 @@ fn restoring_closed_startup_restored_background_tab_triggers_lazy_refresh() {
 
     let _ = fs::remove_dir_all(&root_a);
     let _ = fs::remove_dir_all(&root_b);
+}
+
+#[test]
+fn follow_links_saved_tabs_default_false_and_round_trip() {
+    let legacy: SavedTabState = serde_json::from_str(
+        r#"{"root":"root","use_filelist":true,"use_regex":false,"include_files":true,"include_dirs":true,"query":""}"#,
+    ).expect("legacy tab");
+    assert!(!legacy.follow_links);
+    let enabled = SavedTabState {
+        follow_links: true,
+        ..legacy
+    };
+    let restored: SavedTabState =
+        serde_json::from_str(&serde_json::to_string(&enabled).expect("serialize tab"))
+            .expect("restore tab");
+    assert!(restored.follow_links);
+    assert!(!FlistWalkerApp::restore_session_allowed(
+        true,
+        false,
+        "",
+        crate::indexer::MaxDepth::unlimited(),
+        true,
+    ));
 }

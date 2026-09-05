@@ -242,6 +242,7 @@ pub(super) struct IndexRequest {
     pub(super) source: TuiSource,
     pub(super) filelist_discovery: FileListDiscoveryOwnership,
     pub(super) max_depth: MaxDepth,
+    pub(super) follow_links: bool,
 }
 
 pub(super) struct TuiIndexFreshness {
@@ -278,6 +279,7 @@ pub(super) struct TuiActionRequest {
 
 pub(super) struct TuiFileListRequest {
     pub(super) request_id: u64,
+    pub(super) follow_links: bool,
     pub(super) root: PathBuf,
     pub(super) propagate_to_ancestors: bool,
     pub(super) allow_root_overwrite: bool,

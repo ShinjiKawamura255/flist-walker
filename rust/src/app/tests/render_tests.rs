@@ -1219,6 +1219,7 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
             "include_files": true,
             "include_dirs": true,
             "max_depth": "Depth: All",
+            "follow_links": false,
             "result_sort_mode": "Score",
             "result_sort_scope": "Shown results",
             "result_count": 0,
@@ -1303,6 +1304,7 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
             ignore_enabled: true,
             sort: PresetSortMode::Score,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             extra: BTreeMap::new(),
         })
         .expect("save preset");
@@ -1358,6 +1360,7 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
             ignore_enabled: true,
             sort: PresetSortMode::Score,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             extra: BTreeMap::new(),
         })
         .expect("save preset");
@@ -1408,6 +1411,7 @@ fn gui_surface_snapshot_exposes_preset_add_and_delete_confirmation_states() {
             ignore_enabled: true,
             sort: PresetSortMode::Score,
             max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
             extra: BTreeMap::new(),
         })
         .expect("save preset");
@@ -1614,6 +1618,7 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
             "include_files": true,
             "include_dirs": true,
             "max_depth": "Depth: All",
+            "follow_links": false,
             "result_sort_mode": "Score",
             "result_sort_scope": "Shown results",
             "result_count": 0,
@@ -1971,4 +1976,15 @@ fn regression_gui_list_history_selection_scrolls_and_manual_offset_is_preserved(
         manual.offset.y, 0.0,
         "unchanged selection must not undo manual scroll"
     );
+}
+
+#[test]
+fn follow_links_gui_surface_snapshot_exposes_active_tab_setting() {
+    let root = test_root("follow-links-render-snapshot");
+    fs::create_dir_all(&root).expect("root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    assert!(!app.gui_surface_snapshot().follow_links);
+    app.shell.runtime.follow_links = true;
+    assert!(app.gui_surface_snapshot().follow_links);
+    let _ = fs::remove_dir_all(root);
 }

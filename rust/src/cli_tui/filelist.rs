@@ -5,9 +5,9 @@ use super::protocol::{
 };
 use super::state::{ActiveFileListWorker, PendingFileListIntent, TuiState};
 use crate::indexer::{
-    build_index_cancellable, execute_filelist_write_plan, is_index_build_cancelled,
-    plan_filelist_write_cancellable, FileListWriteOptions, FileListWriteReport,
-    FileListWriteStatus,
+    build_index_with_metadata_cancellable_and_options, execute_filelist_write_plan,
+    is_index_build_cancelled, plan_filelist_write_cancellable, FileListWriteOptions,
+    FileListWriteReport, FileListWriteStatus,
 };
 use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
@@ -73,7 +73,11 @@ pub(super) fn spawn_filelist_worker(request: TuiFileListRequest) -> Result<Activ
             let root = request.root.clone();
             let response = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 let should_cancel = || request.cancel.load(Ordering::Acquire);
-                let entries = match build_filelist_snapshot(&request.root, &should_cancel) {
+                let entries = match build_filelist_snapshot(
+                    &request.root,
+                    request.follow_links,
+                    &should_cancel,
+                ) {
                     Ok(entries) => entries,
                     Err(report) => {
                         return FileListWorkerResult::Finished {
@@ -123,13 +127,28 @@ pub(super) fn spawn_filelist_worker(request: TuiFileListRequest) -> Result<Activ
 /// fresh, walker-only all-kinds snapshot used by the batch path instead.
 pub(super) fn build_filelist_snapshot<C>(
     root: &Path,
+    follow_links: bool,
     should_cancel: &C,
 ) -> std::result::Result<Vec<PathBuf>, Box<FileListWriteReport>>
 where
     C: Fn() -> bool,
 {
-    let entries = match build_index_cancellable(root, false, true, true, should_cancel) {
-        Ok(entries) => entries,
+    let entries = match build_index_with_metadata_cancellable_and_options(
+        root,
+        false,
+        true,
+        true,
+        crate::indexer::WalkOptions {
+            max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links,
+        },
+        should_cancel,
+    ) {
+        Ok(index) => index
+            .entries
+            .into_iter()
+            .map(|entry| entry.path)
+            .collect::<Vec<_>>(),
         Err(error) if is_index_build_cancelled(&error) => {
             return Err(Box::new(canceled_filelist_report(root)));
         }

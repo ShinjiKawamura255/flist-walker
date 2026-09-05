@@ -440,6 +440,7 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
 
     ui.add_space(6.0);
     ui.horizontal_wrapped(|ui| {
+        ui.checkbox(&mut editor.follow_links, "Follow links");
         ui.checkbox(&mut editor.regex, "Regex");
         ui.checkbox(&mut editor.ignore_case, "Ignore case");
         ui.checkbox(&mut editor.ignore_enabled, "Use ignore list");

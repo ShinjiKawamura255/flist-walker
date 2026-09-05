@@ -21,6 +21,7 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     pub(super) max_depth: String,
+    pub(super) follow_links: bool,
     pub(super) result_sort_mode: String,
     pub(super) result_sort_scope: String,
     pub(super) result_count: usize,
@@ -328,6 +329,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         ignore_list_enabled: app.shell.ui.ignore_list_enabled(),
         include_files: app.shell.runtime.include_files,
         include_dirs: app.shell.runtime.include_dirs,
+        follow_links: app.shell.runtime.follow_links,
         max_depth: app.shell.runtime.max_depth.value().map_or_else(
             || "Depth: All".to_string(),
             |depth| format!("Depth: ≤ {depth}"),

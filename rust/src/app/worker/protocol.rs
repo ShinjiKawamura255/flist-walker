@@ -57,6 +57,7 @@ pub(in crate::app) struct IndexRequest {
     pub(in crate::app) include_files: bool,
     pub(in crate::app) include_dirs: bool,
     pub(in crate::app) max_depth: MaxDepth,
+    pub(in crate::app) follow_links: bool,
 }
 
 pub(in crate::app) enum IndexResponse {

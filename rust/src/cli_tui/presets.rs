@@ -222,6 +222,7 @@ impl TuiState {
                 SearchSortMode::SizeDesc => PresetSortMode::SizeDesc,
             },
             max_depth: self.max_depth,
+            follow_links: self.follow_links,
             extra: BTreeMap::new(),
         }
     }

@@ -80,6 +80,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
     app.shell.indexing.pending_queue.push_back(IndexRequest {
         request_id: 12,
@@ -89,6 +90,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         include_files: true,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
     });
     if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
         latest.insert(removed_tab_id, 11);

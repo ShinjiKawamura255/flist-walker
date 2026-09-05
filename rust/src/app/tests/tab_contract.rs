@@ -137,6 +137,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         include_files: false,
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::limited(3).expect("valid depth"),
+        follow_links: true,
         index_state,
         query_state,
         result_state,
@@ -160,6 +161,8 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     assert_eq!(app.shell.runtime.include_files, snapshot.include_files);
     assert_eq!(app.shell.runtime.include_dirs, snapshot.include_dirs);
     assert_eq!(app.shell.runtime.max_depth, snapshot.max_depth);
+    assert_eq!(app.shell.runtime.follow_links, snapshot.follow_links);
+    assert_eq!(restored.follow_links, snapshot.follow_links);
     assert_eq!(app.shell.runtime.notice, snapshot.notice);
     assert_eq!(
         app.shell.search.pending_request_id(),

@@ -10,11 +10,10 @@ pub(crate) use adaptive::{
     adaptive_shared_frontier_soft_limit, next_limit_from_throughput, walk_adaptive,
     walk_adaptive_filtered, walk_adaptive_filtered_deferred, walk_adaptive_filtered_unbounded,
     walk_adaptive_filtered_with_frontier_limits,
-    walk_adaptive_filtered_with_frontier_limits_and_max_depth, LimitDirection,
+    walk_adaptive_filtered_with_frontier_limits_and_max_depth, walk_adaptive_with_max_depth,
+    LimitDirection,
 };
-pub(crate) use adaptive::{
-    walk_adaptive_with_max_depth, AdaptiveWalkerEntry, AdaptiveWalkerMetrics,
-};
+pub(crate) use adaptive::{walk_adaptive_with_options, AdaptiveWalkerEntry, AdaptiveWalkerMetrics};
 
 const ADAPTIVE_WALKER_MAX_LIMIT_CAP: usize = 64;
 const ADAPTIVE_WALKER_MAX_LIMIT_DEFAULT_CAP: usize = 8;

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use super::MaxDepth;
+use super::{MaxDepth, WalkOptions};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WalkCancelled;
@@ -63,11 +63,30 @@ pub fn walk_entries_cancellable_with_max_depth<C>(
 where
     C: Fn() -> bool,
 {
+    walk_entries_cancellable_with_options(
+        root,
+        include_files,
+        include_dirs,
+        max_depth.into(),
+        should_cancel,
+    )
+}
+
+pub fn walk_entries_cancellable_with_options<C>(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
+    should_cancel: C,
+) -> Result<Vec<PathBuf>, WalkCancelled>
+where
+    C: Fn() -> bool,
+{
     let mut files = Vec::new();
     let mut dirs = Vec::new();
     visit(
         root,
-        max_depth,
+        options,
         include_files,
         include_dirs,
         &should_cancel,
@@ -88,7 +107,7 @@ where
 // or the interactive candidate cap to CLI output/FileList creation.
 fn visit<F, C>(
     root: &Path,
-    max_depth: MaxDepth,
+    options: WalkOptions,
     include_files: bool,
     include_dirs: bool,
     should_cancel: &C,
@@ -107,13 +126,13 @@ where
             false
         }
     };
-    crate::walker_runtime::walk_adaptive_with_max_depth(
+    crate::walker_runtime::walk_adaptive_with_options(
         root,
         1,
         1,
         include_files,
         include_dirs,
-        max_depth,
+        options,
         |entry| {
             if stop() {
                 return false;
@@ -204,10 +223,20 @@ where
 {
     visit(
         root,
-        max_depth,
+        max_depth.into(),
         include_files,
         include_dirs,
         &should_cancel,
         &mut |path, _| on_entry(path),
     )
+}
+
+pub fn walk_entries_with_options(
+    root: &Path,
+    include_files: bool,
+    include_dirs: bool,
+    options: WalkOptions,
+) -> Vec<PathBuf> {
+    walk_entries_cancellable_with_options(root, include_files, include_dirs, options, || false)
+        .expect("non-cancellable walker")
 }

@@ -1254,7 +1254,8 @@ impl FlistWalkerApp {
             return;
         }
         self.commit_query_history_if_needed(true);
-        let requires_unlimited_reindex = !self.shell.runtime.max_depth.is_unlimited();
+        let requires_default_walk_reindex =
+            !self.shell.runtime.max_depth.is_unlimited() || self.shell.runtime.follow_links;
         let id = self.shell.tabs.take_next_tab_id();
         let tab = AppTabState::new_tab_from_shell(self, id);
         let previous_active = self.shell.tabs.active_tab_index();
@@ -1287,7 +1288,7 @@ impl FlistWalkerApp {
             true,
             false,
         );
-        if requires_unlimited_reindex {
+        if requires_default_walk_reindex {
             self.request_index_refresh();
         }
         self.enforce_tab_resource_budget();
