@@ -162,3 +162,11 @@ Back to the [Validation Matrix](validation-matrix.md).
 - 期待動作: `+`は末尾タブ直後にあり、overflowではタブと共にscrollする。設定は右端固定、active変更時の追従と手動scrollを維持する。新規タブは無入力でも表示結果のkindと選択行previewを非同期で準備する。
 - 境界: 空結果・preview無効ではpreview要求なし。kindは表示件数まで。再index後のepochとタブIDを保ち、background応答でactive previewを上書きしない。
 - 関連テストID: TC-010, TC-023A, TC-122。`regression_gui_add_button_follows_last_tab_with_spare_space`、`regression_gui_tabs_overflow_keeps_settings_and_active_tab_visible`、`regression_new_tab_initializes_preview_and_all_shown_kinds_without_input`、`regression_new_tab_empty_or_preview_disabled_does_not_request_preview`。
+
+### Regression Guard: transient GUI screenshot evidence
+
+- Scenario: GUI maintenance run の画面キャプチャを通常変更の durable evidence と解釈し、`docs/gui-test-results/` へ画像を追加してリポジトリ履歴を恒久的に増やす。
+- Expected Behavior: GUI test screenshot は Git-ignored な `rust/target/gui-smoke/evidence/` にだけ保持し、stage、commit、`docs/` へのコピーを行わない。通常変更の durable evidence は sanitized PR summary または exact Actions run URL とする。
+- Non-goals: Markdown の sanitized validation summary、明示依頼された製品画像・設計画像、または事前に保存場所と redaction scope を合意した画像成果物を一律禁止しない。
+- Related Tests: `test_regression_gui_evidence_screenshots_are_rejected`, `test_regression_gui_evidence_nested_uppercase_image_is_rejected`.
+- Notes for Future Changes: screenshot 拡張子、GUI evidence directory、repository contract を変更する場合は、画像を黙って durable evidence へ昇格させず、このガードと対になるテストを同時に更新する。

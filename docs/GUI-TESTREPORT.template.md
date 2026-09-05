@@ -55,4 +55,4 @@ Each axis cell uses `STATUS — reason — evidence — reproduction`.
 ## Follow-ups
 - Record SKIPPED only with a concrete environment reason.
 - Keep Deterministic, Native interaction, and Liveness independent; never promote liveness into native PASS.
-- Store screenshots/logs under `rust/target/gui-smoke/evidence/` when a release-candidate run is performed.
+- Store screenshots/logs only under the Git-ignored `rust/target/gui-smoke/evidence/`; do not stage, commit, or copy them into `docs/`. Durable ordinary-change evidence is the sanitized PR summary or an exact Actions run URL.

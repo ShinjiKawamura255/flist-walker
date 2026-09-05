@@ -40,8 +40,6 @@ The interpreter repair uses `sys.executable` at all six subprocess call sites in
 
 Explicit `--root` suppresses saved-tab restoration by design. Geometry was checked with explicit-root relaunch; session restoration was checked separately with a normal launch.
 
-![Restored session](2026-09-06-windows-session-restored.jpg)
-
 ## Open finding: new tab initial preview
 
 Severity: P2. Status: reproduced, not repaired in the interpreter-portability change.
@@ -54,8 +52,6 @@ Severity: P2. Status: reproduced, not repaired in the interpreter-portability ch
 [`AppTabState::new_tab_from_shell`](../../rust/src/app/tab_state.rs) initializes a current row and empty preview state with `preview_reload_pending: false`. [`activate_tab_after_transition`](../../rust/src/app/tabs.rs) requests the preview only when that flag is set. The same new-tab path also displayed unresolved kind labels until subsequent interaction; that symptom needs its own regression assessment. This evidence does not establish that either symptom is Windows-exclusive.
 
 The repair should add a focused current-row/preview-request regression and preserve asynchronous, tab-owned request handling. It is separate from the Python interpreter repair.
-
-![New tab with empty initial preview](2026-09-06-windows-new-tab-preview.jpg)
 
 ## Remaining native evidence
 
@@ -94,7 +90,7 @@ The original observations above remain the pre-repair record. The GUI changes in
 
 Selected routing: VM-001, VM-002, VM-006, VM-009; VM-003 was additionally applied for the kind-resolution activation intent. CI workflow/coverage policies, dependencies, index scheduling and ownership-transfer implementation were not changed. Remote PR/protection/proof-PR operations were not performed in this local repair.
 
-Local diagnostic logs are `rust/target/windows-tabs-*.local.log`. Wrapper reports are `GUI-DETERMINISTIC-20260905T183051Z-1242.local.md` under `rust/target/gui-smoke/evidence` and `GUI-DETERMINISTIC-20260905T183235Z-30492.local.md` under `rust/target/windows-tabs-canonical/evidence`. These are transient diagnostic locators; the dated results and screenshots here are the retained evidence.
+Local diagnostic logs are `rust/target/windows-tabs-*.local.log`. Wrapper reports are `GUI-DETERMINISTIC-20260905T183051Z-1242.local.md` under `rust/target/gui-smoke/evidence` and `GUI-DETERMINISTIC-20260905T183235Z-30492.local.md` under `rust/target/windows-tabs-canonical/evidence`. These and the GUI screenshots were transient task evidence and are not retained in `docs/`; this sanitized text is the retained maintenance record.
 
 ### Scoped native results
 
@@ -108,12 +104,6 @@ Local diagnostic logs are `rust/target/windows-tabs-*.local.log`. Wrapper report
 | GSM-010 scoped responsiveness | PASS, TC-154 and bounded-worker tests | PASS for these small-fixture tab/query/scroll interactions; large-root native endurance NOT RUN | PASS during observed interactions |
 
 This is a scoped maintenance pass, not a full GSM or release sign-off. Native drag/reorder remains unconfirmed: one Computer Use drag gesture did not produce a visible reorder, so it is not recorded as PASS; deterministic drag/reorder tests passed. Actual IME composition, multi-display/alternate DPI, external Open/Reveal/clipboard, real UNC, MSVC and WSL retain the NOT RUN status above. Coverage retains the separate environment blocker. The staged process was closed after the restart check.
-
-![Fixed initial new-tab details and trailing add button](2026-09-06-windows-tabs-fixed.jpg)
-
-![Manual horizontal scroll retained with fifth tab active](2026-09-06-windows-tabs-manual-scroll.jpg)
-
-![Five-tab session and Japanese preview restored](2026-09-06-windows-tabs-restored.jpg)
 
 ### Independent review and disposition
 
