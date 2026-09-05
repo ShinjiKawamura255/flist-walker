@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -184,7 +185,7 @@ class AgentWorktreePreflightTests(unittest.TestCase):
 
             accepted = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(MODULE_PATH),
                     "--root",
                     str(repo),
@@ -201,7 +202,7 @@ class AgentWorktreePreflightTests(unittest.TestCase):
             self.git(repo, "switch", "-c", "codex/unrelated")
             rejected = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(MODULE_PATH),
                     "--root",
                     str(repo),
@@ -225,7 +226,7 @@ class AgentWorktreePreflightTests(unittest.TestCase):
 
             accepted = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(MODULE_PATH),
                     "--root",
                     str(repo),
@@ -244,7 +245,7 @@ class AgentWorktreePreflightTests(unittest.TestCase):
             self.git(repo, "switch", "--detach")
             detached = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(MODULE_PATH),
                     "--root",
                     str(repo),
@@ -264,7 +265,7 @@ class AgentWorktreePreflightTests(unittest.TestCase):
             self.git(repo, "switch", "-c", "codex/other")
             other_branch = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(MODULE_PATH),
                     "--root",
                     str(repo),
@@ -294,7 +295,7 @@ class AgentWorktreePreflightTests(unittest.TestCase):
 
             result = subprocess.run(
                 [
-                    "python3",
+                    sys.executable,
                     str(MODULE_PATH),
                     "--root",
                     str(secondary),
