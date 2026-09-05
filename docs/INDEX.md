@@ -30,6 +30,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | What evidence exists for a previous release? | [releases/INDEX.md](releases/INDEX.md) |
 | What native GUI residual evidence exists outside a release record? | [gui-test-results/2026-08-20-native-residuals.md](gui-test-results/2026-08-20-native-residuals.md) |
+| What did the Windows build and GUI maintenance checks establish? | [gui-test-results/2026-09-06-windows-validation.md](gui-test-results/2026-09-06-windows-validation.md) |
 | Where is active or completed task context? | [TASKS.md](TASKS.md) |
 
 ## Choose By Change Type

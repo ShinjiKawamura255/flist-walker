@@ -1818,6 +1818,104 @@ fn create_new_tab_resets_total_match_count_to_current_entries() {
 }
 
 #[test]
+fn regression_new_tab_initializes_preview_and_all_shown_kinds_without_input() {
+    let root = test_root("new-tab-initial-details");
+    let first = root.join("first.txt");
+    let second = root.join("second.txt");
+    let mut app = FlistWalkerApp::new(root, 2, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.entries = Arc::new(vec![
+        unknown_entry(first.clone()),
+        unknown_entry(second.clone()),
+        unknown_entry(PathBuf::from("not-shown")),
+    ]);
+    app.shell.ui.show_preview = true;
+    let (kind_tx, kind_rx) = bounded_request_channel(128);
+    app.shell.worker_bus.kind.tx = kind_tx;
+    let (kind_response_tx, kind_response_rx) = mpsc::channel();
+    app.shell.worker_bus.kind.rx = kind_response_rx;
+    let (preview_tx, preview_rx) = mpsc::channel();
+    app.shell.worker_bus.preview.tx = preview_tx;
+    let (preview_response_tx, preview_response_rx) = mpsc::channel();
+    app.shell.worker_bus.preview.rx = preview_response_rx;
+    app.create_new_tab();
+    assert_eq!(app.shell.runtime.current_row, Some(0));
+    assert!(
+        !app.shell.runtime.preview.is_empty(),
+        "new tab must start resolving/loading the selected preview"
+    );
+    app.pump_kind_resolution_requests();
+    let requests = std::iter::from_fn(|| kind_rx.try_recv().ok()).collect::<Vec<_>>();
+    assert_eq!(
+        requests.len(),
+        2,
+        "resolve every shown result, but not the whole index"
+    );
+    for req in requests {
+        assert_eq!(req.tab_id, app.current_tab_id().unwrap());
+        kind_response_tx
+            .send(KindResolveResponse {
+                tab_id: req.tab_id,
+                epoch: req.epoch,
+                path: req.path,
+                kind: Some(EntryKind::file()),
+            })
+            .unwrap();
+    }
+    app.poll_kind_response();
+    let preview = preview_rx
+        .try_recv()
+        .expect("preview begins after selected kind resolves");
+    assert_eq!(preview.path, first);
+    assert_eq!(app.find_entry_kind(&second), Some(EntryKind::file()));
+    let owner_id = app.current_tab_id().unwrap();
+    app.create_new_tab();
+    preview_response_tx
+        .send(PreviewResponse {
+            canceled: false,
+            request_id: preview.request_id,
+            path: first,
+            preview: "initial preview body".to_string(),
+        })
+        .unwrap();
+    app.poll_preview_response();
+    assert_ne!(app.shell.runtime.preview, "initial preview body");
+    let owner = app
+        .shell
+        .tabs
+        .iter()
+        .find(|tab| tab.id == owner_id)
+        .unwrap();
+    assert_eq!(owner.result_state.committed.preview, "initial preview body");
+}
+
+#[test]
+fn regression_new_tab_empty_or_preview_disabled_does_not_request_preview() {
+    for populated in [false, true] {
+        let mut app = FlistWalkerApp::new(test_root("new-tab-preview-idle"), 50, String::new());
+        reset_index_request_state_for_test(&mut app);
+        if populated {
+            app.shell.runtime.entries = Arc::new(vec![file_entry(PathBuf::from("file.txt"))]);
+        }
+        app.shell.ui.show_preview = !populated;
+        let (tx, rx) = mpsc::channel();
+        app.shell.worker_bus.preview.tx = tx;
+        app.create_new_tab();
+        assert!(rx.try_recv().is_err());
+        assert!(app.shell.runtime.preview.is_empty());
+        assert!(app.shell.worker_bus.preview.pending_request_id.is_none());
+        if populated {
+            assert!(
+                app.shell.indexing.build.pending_kind_paths.len()
+                    + app.shell.indexing.build.in_flight_kind_paths.len()
+                    > 0,
+                "kind labels still need initialization with Preview disabled"
+            );
+        }
+    }
+}
+
+#[test]
 fn ctrl_w_closes_current_tab_and_keeps_last_tab() {
     let root = test_root("shortcut-ctrl-w-close-tab");
     fs::create_dir_all(&root).expect("create dir");

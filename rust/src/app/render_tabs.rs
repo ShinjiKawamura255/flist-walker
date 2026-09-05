@@ -16,7 +16,9 @@ pub(super) struct TabCloseButtonVisuals {
 #[cfg(test)]
 #[derive(Clone, Copy, Debug)]
 pub(in crate::app) struct TabBarRenderProbe {
-    pub controls: egui::Rect,
+    pub add: egui::Rect,
+    pub settings: egui::Rect,
+    pub last_tab: Option<egui::Rect>,
     pub active: Option<egui::Rect>,
     pub viewport: egui::Rect,
 }
@@ -25,14 +27,17 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         #[cfg(test)]
         let mut active_rect = None;
+        let mut last_tab_rect = None;
+        #[cfg(test)]
+        let mut add_rect = egui::Rect::NOTHING;
+        let mut create_tab = false;
         let mut switch_to: Option<usize> = None;
         let mut close_tab: Option<usize> = None;
         let mut reorder_tab: Option<(usize, usize)> = None;
         let mut drag_state = app.shell.ui.tab_drag_state;
         let control_size = ui.spacing().interact_size.y;
         let tab_width =
-            (ui.available_width() - 2.0 * control_size - 2.0 * ui.spacing().item_spacing.x)
-                .max(0.0);
+            (ui.available_width() - control_size - ui.spacing().item_spacing.x).max(0.0);
         let follow_active = super::render_panels::selection_scroll_requested(
             ui,
             "tab-bar",
@@ -184,13 +189,14 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
 
                                         title_response.union(close_response)
                                     });
-                                if is_active && follow_active {
+                                if is_active && follow_active && i + 1 < app.shell.tabs.len() {
                                     tab_response.response.scroll_to_me(None);
                                 }
                                 #[cfg(test)]
                                 if is_active {
                                     active_rect = Some(tab_response.response.rect);
                                 }
+                                last_tab_rect = Some(tab_response.response.rect);
                                 let tab_interaction = tab_response.inner;
                                 paint_tab_accent_decoration(
                                     ui,
@@ -205,6 +211,28 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                 });
                                 tab_rects
                                     .push(tab_response.response.rect.intersect(ui.clip_rect()));
+                            }
+                            // Keep add attached to the last tab, including when the strip scrolls.
+                            let new_tab_response = ui
+                                .add_sized([control_size, control_size], egui::Button::new("+"))
+                                .on_hover_text(format!(
+                                    "New tab ({}+T)",
+                                    FlistWalkerApp::primary_shortcut_label()
+                                ));
+                            create_tab = new_tab_response.clicked();
+                            #[cfg(test)]
+                            {
+                                add_rect = new_tab_response.rect;
+                            }
+                            if follow_active
+                                && app.shell.tabs.active_tab_index() + 1 == app.shell.tabs.len()
+                            {
+                                ui.scroll_to_rect(
+                                    last_tab_rect
+                                        .unwrap_or(new_tab_response.rect)
+                                        .union(new_tab_response.rect),
+                                    None,
+                                );
                             }
                             if let Some(mut state) = drag_state {
                                 let pointer_pos = ui
@@ -256,13 +284,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         );
         #[cfg(not(test))]
         let _ = tabs;
-        let new_tab_response = ui
-            .add_sized([control_size, control_size], egui::Button::new("+"))
-            .on_hover_text(format!(
-                "New tab ({}+T)",
-                FlistWalkerApp::primary_shortcut_label()
-            ));
-        if new_tab_response.clicked() {
+        if create_tab {
             app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab));
             return;
         }
@@ -284,7 +306,9 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 data.insert_temp(
                     egui::Id::new("tab-bar-probe"),
                     TabBarRenderProbe {
-                        controls: new_tab_response.rect.union(settings_response.rect),
+                        add: add_rect,
+                        settings: settings_response.rect,
+                        last_tab: last_tab_rect,
                         active: active_rect,
                         viewport: tabs.inner.inner_rect,
                     },

@@ -1291,6 +1291,11 @@ impl FlistWalkerApp {
         if requires_default_walk_reindex {
             self.request_index_refresh();
         }
+        // Inherited results produce no index/search completion event. Start their
+        // display work explicitly, after any reindex has established its epoch.
+        self.queue_unknown_kind_paths_for_visible_results();
+        self.pump_kind_resolution_requests();
+        self.request_preview_for_current();
         self.enforce_tab_resource_budget();
     }
 
