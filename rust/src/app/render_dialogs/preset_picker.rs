@@ -135,7 +135,16 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             .matched_catalog_indices
             .clone();
         let selected = app.shell.features.presets.picker.selected_match;
-        egui::ScrollArea::vertical()
+        let follow_selection = render_panels::selection_scroll_requested(
+            ui,
+            "preset-picker-results",
+            egui::Id::new((selected, &app.shell.features.presets.picker.query)),
+        );
+        #[cfg(test)]
+        let mut selected_rect = None;
+        let scroll = egui::ScrollArea::vertical()
+            .id_salt("preset-picker-results")
+            .animated(false)
             .max_height(320.0)
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -168,6 +177,13 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         ui.weak(summary);
                         response
                     });
+                    if selected == Some(match_index) && follow_selection {
+                        row.response.scroll_to_me(None);
+                    }
+                    #[cfg(test)]
+                    if selected == Some(match_index) {
+                        selected_rect = Some(row.response.rect);
+                    }
                     if row.inner.double_clicked() {
                         app.select_preset_picker_match(match_index);
                         app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
@@ -179,6 +195,17 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     ui.add_space(3.0);
                 }
             });
+        #[cfg(test)]
+        render_panels::record_list_scroll(
+            ui.ctx(),
+            "preset-picker-results",
+            scroll.id,
+            scroll.state.offset,
+            scroll.inner_rect,
+            selected_rect,
+        );
+        #[cfg(not(test))]
+        let _ = scroll;
     }
 
     ui.add_space(6.0);
@@ -716,7 +743,16 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         .map(|root| (root.name.clone(), normalize_path_for_display(&root.path)))
         .collect::<Vec<_>>();
     let selected = app.shell.features.presets.picker.named_roots.selected_index;
-    egui::ScrollArea::vertical()
+    let follow_selection = render_panels::selection_scroll_requested(
+        ui,
+        "named-root-results",
+        egui::Id::new(selected),
+    );
+    #[cfg(test)]
+    let mut selected_rect = None;
+    let scroll = egui::ScrollArea::vertical()
+        .id_salt("named-root-results")
+        .animated(false)
         .max_height(320.0)
         .auto_shrink([false, false])
         .show(ui, |ui| {
@@ -730,6 +766,13 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     ui.weak(path);
                     response
                 });
+                if selected == Some(index) && follow_selection {
+                    row.response.scroll_to_me(None);
+                }
+                #[cfg(test)]
+                if selected == Some(index) {
+                    selected_rect = Some(row.response.rect);
+                }
                 if row.inner.double_clicked() {
                     app.shell.features.presets.picker.named_roots.selected_index = Some(index);
                     app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
@@ -744,6 +787,17 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ui.add_space(3.0);
             }
         });
+    #[cfg(test)]
+    render_panels::record_list_scroll(
+        ui.ctx(),
+        "named-root-results",
+        scroll.id,
+        scroll.state.offset,
+        scroll.inner_rect,
+        selected_rect,
+    );
+    #[cfg(not(test))]
+    let _ = scroll;
 
     let manager = &app.shell.features.presets.picker.named_roots;
     if !manager.error.is_empty() {

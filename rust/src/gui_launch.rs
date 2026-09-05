@@ -89,33 +89,77 @@ pub(crate) fn run(
     let root = resolve_root(root.unwrap_or(Path::new(".")))?;
     trace_startup_phase(startup_start, "root_resolved");
     let mut native_options = eframe::NativeOptions::default();
-    let startup_geometry =
-        FlistWalkerApp::startup_window_geometry_with_display_bounds(current_display_bounds());
+    // Begin at the window manager's safe position. The hidden native window gives
+    // access to real monitors before app creation and before the first visible frame.
+    let startup_size = FlistWalkerApp::startup_window_placement(&[], None, false)
+        .map(|placement| placement.logical_size);
     trace_startup_phase(startup_start, "startup_geometry_loaded");
     FlistWalkerApp::trace_window_event(
         "run_gui_start",
         &format!("root={} limit={}", root.display(), limit),
     );
-    if let Some((pos, size)) = startup_geometry {
-        FlistWalkerApp::trace_window_event(
-            "run_gui_apply_startup_geometry",
-            &format!(
-                "x={:.1} y={:.1} width={:.1} height={:.1}",
-                pos.x, pos.y, size.x, size.y
-            ),
-        );
-    } else {
-        FlistWalkerApp::trace_window_event("run_gui_no_startup_size", "using_default_size");
-    }
     let icon = load_app_icon();
     trace_startup_phase(startup_start, "icon_prepared");
-    native_options.viewport = build_root_viewport(startup_geometry, icon);
+    native_options.viewport = build_root_viewport(startup_size, icon);
 
     trace_startup_phase(startup_start, "run_native_before");
     eframe::run_native(
         APP_TITLE,
         native_options,
         Box::new(move |cc| {
+            if let Some(window) = cc.winit_window() {
+                let monitors = window.available_monitors().collect::<Vec<_>>();
+                let current = window
+                    .current_monitor()
+                    .and_then(|current| monitors.iter().position(|monitor| *monitor == current));
+                let monitor_geometry = monitors
+                    .iter()
+                    .map(|monitor| {
+                        let position = monitor.position();
+                        let size = monitor.size();
+                        (
+                            eframe::egui::Rect::from_min_size(
+                                eframe::egui::pos2(position.x as f32, position.y as f32),
+                                eframe::egui::vec2(size.width as f32, size.height as f32),
+                            ),
+                            monitor.scale_factor() as f32,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                let outer_position = window.outer_position().ok();
+                if let Some(placement) = FlistWalkerApp::startup_window_placement(
+                    &monitor_geometry,
+                    current,
+                    outer_position.is_some(),
+                ) {
+                    if let (Some(mut position), Some(restored)) =
+                        (outer_position, placement.physical_position)
+                    {
+                        position.x = restored.x.round() as i32;
+                        position.y = restored.y.round() as i32;
+                        window.set_outer_position(position);
+                    }
+                    let native_scale = if placement.physical_position.is_some() {
+                        placement.scale_factor
+                    } else {
+                        window.scale_factor() as f32
+                    };
+                    let mut size = window.inner_size();
+                    size.width = (placement.logical_size.x * native_scale).round().max(1.0) as u32;
+                    size.height = (placement.logical_size.y * native_scale).round().max(1.0) as u32;
+                    let mut minimum = size;
+                    minimum.width = minimum.width.min((MIN_WINDOW_SIZE.x * native_scale) as u32);
+                    minimum.height = minimum
+                        .height
+                        .min((MIN_WINDOW_SIZE.y * native_scale) as u32);
+                    window.set_min_inner_size(Some(minimum));
+                    let _ = window.request_inner_size(size);
+                    FlistWalkerApp::trace_window_event(
+                        "startup_native_placement",
+                        &format!("{placement:?}"),
+                    );
+                }
+            }
             configure_egui_fonts(&cc.egui_ctx);
             trace_startup_phase(startup_start, "fonts_configured");
             let mut app = FlistWalkerApp::from_launch(root, limit, query, root_explicit, max_depth);
@@ -130,56 +174,8 @@ pub(crate) fn run(
     Ok(())
 }
 
-#[cfg(target_os = "windows")]
-fn current_display_bounds() -> Option<eframe::egui::Rect> {
-    const SM_XVIRTUALSCREEN: i32 = 76;
-    const SM_YVIRTUALSCREEN: i32 = 77;
-    const SM_CXVIRTUALSCREEN: i32 = 78;
-    const SM_CYVIRTUALSCREEN: i32 = 79;
-    #[link(name = "user32")]
-    extern "system" {
-        fn GetSystemMetrics(nIndex: i32) -> i32;
-    }
-    // SAFETY: GetSystemMetrics is read-only and does not require initialized window state.
-    let (x, y, width, height) = unsafe {
-        (
-            GetSystemMetrics(SM_XVIRTUALSCREEN),
-            GetSystemMetrics(SM_YVIRTUALSCREEN),
-            GetSystemMetrics(SM_CXVIRTUALSCREEN),
-            GetSystemMetrics(SM_CYVIRTUALSCREEN),
-        )
-    };
-    if width <= 0 || height <= 0 {
-        FlistWalkerApp::trace_window_event(
-            "current_display_bounds_unavailable",
-            &format!("x={x} y={y} width={width} height={height}"),
-        );
-        return None;
-    }
-    let bounds = eframe::egui::Rect::from_min_size(
-        eframe::egui::pos2(x as f32, y as f32),
-        eframe::egui::vec2(width as f32, height as f32),
-    );
-    FlistWalkerApp::trace_window_event(
-        "current_display_bounds",
-        &format!(
-            "x={:.1} y={:.1} width={:.1} height={:.1}",
-            bounds.min.x,
-            bounds.min.y,
-            bounds.width(),
-            bounds.height()
-        ),
-    );
-    Some(bounds)
-}
-
-#[cfg(not(target_os = "windows"))]
-fn current_display_bounds() -> Option<eframe::egui::Rect> {
-    None
-}
-
 fn build_root_viewport(
-    startup_geometry: Option<(eframe::egui::Pos2, eframe::egui::Vec2)>,
+    startup_size: Option<eframe::egui::Vec2>,
     icon: Option<eframe::egui::IconData>,
 ) -> eframe::egui::ViewportBuilder {
     let mut viewport = eframe::egui::ViewportBuilder::default()
@@ -187,8 +183,10 @@ fn build_root_viewport(
         .with_app_id(APP_ID)
         .with_inner_size(DEFAULT_WINDOW_SIZE)
         .with_min_inner_size(MIN_WINDOW_SIZE);
-    if let Some((pos, size)) = startup_geometry {
-        viewport = viewport.with_position(pos).with_inner_size(size);
+    if let Some(size) = startup_size {
+        viewport = viewport
+            .with_inner_size(size)
+            .with_min_inner_size(MIN_WINDOW_SIZE.min(size));
     }
     if let Some(icon) = icon {
         viewport = viewport.with_icon(icon);
@@ -286,12 +284,11 @@ mod tests {
             width: 1,
             height: 1,
         };
-        let pos = eframe::egui::pos2(-1600.0, 120.0);
         let size = eframe::egui::vec2(900.0, 700.0);
 
-        let viewport = build_root_viewport(Some((pos, size)), Some(icon));
+        let viewport = build_root_viewport(Some(size), Some(icon));
 
-        assert_eq!(viewport.position, Some(pos));
+        assert_eq!(viewport.position, None);
         assert_eq!(viewport.inner_size, Some(size));
         assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
         assert!(viewport.icon.is_some());

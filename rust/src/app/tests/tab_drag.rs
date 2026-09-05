@@ -315,3 +315,46 @@ fn tab_drag_above_threshold_reorders_on_release() {
     assert_eq!(app.shell.ui.tab_drag_state, None);
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn regression_gui_tabs_overflow_keeps_controls_and_active_tab_visible() {
+    let mut app = FlistWalkerApp::new(test_root("tab-overflow"), 50, String::new());
+    for i in 0..14 {
+        app.create_new_tab();
+        app.shell.runtime.root = PathBuf::from(format!("/root/long-directory-label-{i}"));
+        app.sync_active_tab_state();
+    }
+    let ctx = egui::Context::default();
+    ctx.all_styles_mut(|style| style.scroll_animation = egui::style::ScrollAnimation::none());
+    let frame = |app: &mut FlistWalkerApp| {
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(640.0, 400.0),
+                )),
+                ..Default::default()
+            },
+            |ui| render_tabs::render_tab_bar(app, ui),
+        );
+        ctx.data(|data| {
+            data.get_temp::<render_tabs::TabBarRenderProbe>(egui::Id::new("tab-bar-probe"))
+        })
+        .unwrap()
+    };
+    frame(&mut app);
+    frame(&mut app);
+    let last = frame(&mut app);
+    assert!(
+        last.controls.right() <= 640.0 && last.controls.left() >= 0.0,
+        "{last:?}"
+    );
+    assert!(last.viewport.intersects(last.active.unwrap()), "{last:?}");
+    app.switch_to_tab_index(0);
+    frame(&mut app);
+    let first = frame(&mut app);
+    assert!(
+        first.viewport.intersects(first.active.unwrap()),
+        "{first:?}"
+    );
+}

@@ -71,6 +71,7 @@ use search_coordinator::SearchCoordinator;
 pub use session::{
     history_persistence_enabled, load_persisted_roots_and_history,
     load_persisted_roots_and_history_from_paths, AsyncHistoryPersistence, PersistedRootsAndHistory,
+    StartupWindowPlacement,
 };
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{

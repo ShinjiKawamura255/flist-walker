@@ -1707,3 +1707,67 @@ fn escape_unwinds_named_root_editor_then_manager_without_closing_the_picker() {
     assert!(!app.shell.features.presets.picker.named_roots.open);
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn regression_gui_list_preset_and_named_root_selection_scrolls_into_view() {
+    for named in [false, true] {
+        let root = test_root("picker-list-scroll");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.shell.features.presets.picker.open = true;
+        app.shell.features.presets.picker.named_roots.open = named;
+        for i in 0..60 {
+            if named {
+                app.shell.features.presets.catalog.named_roots.push(
+                    crate::search_catalog::NamedRoot {
+                        name: format!("Root {i:02}"),
+                        path: root.join(i.to_string()),
+                        extra: BTreeMap::new(),
+                    },
+                );
+            } else {
+                app.shell.features.presets.catalog.presets.push(preset(
+                    &format!("Preset {i:02}"),
+                    &root,
+                    "",
+                ));
+            }
+        }
+        app.refresh_preset_picker_matches();
+        app.shell.features.presets.picker.named_roots.selected_index = Some(0);
+        let ctx = egui::Context::default();
+        ctx.all_styles_mut(|style| style.scroll_animation = egui::style::ScrollAnimation::none());
+        let surface = if named {
+            "named-root-results"
+        } else {
+            "preset-picker-results"
+        };
+        let frame = |app: &mut FlistWalkerApp| {
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1000.0, 800.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| crate::app::render_dialogs::render_preset_picker_dialog(app, ui.ctx()),
+            );
+            ctx.data(|data| data.get_temp::<render_panels::ListScrollProbe>(egui::Id::new(surface)))
+                .unwrap()
+        };
+        frame(&mut app);
+        frame(&mut app);
+        if named {
+            app.move_named_root_selection(50);
+        } else {
+            app.move_preset_picker_selection(50);
+        }
+        frame(&mut app);
+        let moved = frame(&mut app);
+        assert!(moved.offset.y > 0.0, "{surface}");
+        assert!(
+            moved.viewport.intersects(moved.selected.unwrap()),
+            "{surface} {moved:?}"
+        );
+    }
+}

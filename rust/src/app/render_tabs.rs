@@ -13,184 +13,283 @@ pub(super) struct TabCloseButtonVisuals {
     pub(super) text: egui::Color32,
 }
 
+#[cfg(test)]
+#[derive(Clone, Copy, Debug)]
+pub(in crate::app) struct TabBarRenderProbe {
+    pub controls: egui::Rect,
+    pub active: Option<egui::Rect>,
+    pub viewport: egui::Rect,
+}
+
 pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
+        #[cfg(test)]
+        let mut active_rect = None;
         let mut switch_to: Option<usize> = None;
         let mut close_tab: Option<usize> = None;
         let mut reorder_tab: Option<(usize, usize)> = None;
         let mut drag_state = app.shell.ui.tab_drag_state;
-        let mut tab_rects: Vec<egui::Rect> = Vec::with_capacity(app.shell.tabs.len());
-        for i in 0..app.shell.tabs.len() {
-            let is_drag_source = drag_state.is_some_and(|state| state.source_index == i);
-            let is_drop_target = drag_state.is_some_and(|state| state.hover_index == i);
-            let is_active = app.shell.tabs.active_tab_index() == i;
-            let tab_accent: Option<TabAccentColor> =
-                app.shell.tabs.get(i).and_then(|tab| tab.tab_accent);
-            let accent_palette = tab_accent.map(|accent| accent.palette(ui.visuals().dark_mode));
-            let active_fill = render_theme::selected_fill(ui.visuals().dark_mode);
-            let drag_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.35);
-            let drop_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.18);
-            let frame_fill = if is_drag_source {
-                drag_fill
-            } else if is_drop_target {
-                drop_fill
-            } else if is_active {
-                accent_palette
-                    .map(|palette| palette.background)
-                    .unwrap_or(active_fill)
-            } else {
-                egui::Color32::TRANSPARENT
-            };
-            let frame_stroke = if is_drag_source || is_drop_target {
-                ui.visuals().selection.stroke
-            } else if let Some(palette) = accent_palette {
-                egui::Stroke::new(
-                    if is_active {
-                        FlistWalkerApp::TAB_ACTIVE_BORDER_WIDTH
-                    } else {
-                        FlistWalkerApp::TAB_INACTIVE_BORDER_WIDTH
-                    },
-                    palette
-                        .border
-                        .gamma_multiply(if is_active { 1.0 } else { 0.72 }),
-                )
-            } else {
-                let palette = TabAccentPalette::clear_outline(ui.visuals().dark_mode);
-                egui::Stroke::new(
-                    if is_active {
-                        FlistWalkerApp::TAB_ACTIVE_BORDER_WIDTH
-                    } else {
-                        FlistWalkerApp::TAB_INACTIVE_BORDER_WIDTH
-                    },
-                    palette
-                        .border
-                        .gamma_multiply(if is_active { 1.0 } else { 0.82 }),
-                )
-            };
-            let tab_response = egui::Frame::NONE
-                .fill(frame_fill)
-                .stroke(frame_stroke)
-                .corner_radius(egui::CornerRadius::same(FlistWalkerApp::TAB_ROUNDING as u8))
-                .inner_margin(egui::Margin::symmetric(6, 2))
-                .show(ui, |ui| {
-                    let title = app
-                        .shell
-                        .tabs
-                        .get(i)
-                        .map(|tab| app.tab_title(tab, i))
-                        .unwrap_or_else(|| format!("Tab {}", i + 1));
-                    let title_response = ui.add(
-                        egui::Button::new(egui::RichText::new(title).strong().color(
-                            if let Some(palette) = accent_palette {
-                                if is_active {
-                                    palette.foreground
+        let control_size = ui.spacing().interact_size.y;
+        let tab_width =
+            (ui.available_width() - 2.0 * control_size - 2.0 * ui.spacing().item_spacing.x)
+                .max(0.0);
+        let follow_active = super::render_panels::selection_scroll_requested(
+            ui,
+            "tab-bar",
+            egui::Id::new(app.current_tab_id()),
+        );
+        let tabs = ui.allocate_ui_with_layout(
+            egui::vec2(tab_width, control_size + 12.0),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                ui.set_max_width(tab_width);
+                egui::ScrollArea::horizontal()
+                    .id_salt("tab-bar-scroll")
+                    .animated(false)
+                    .max_width(tab_width)
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            let mut tab_rects: Vec<egui::Rect> =
+                                Vec::with_capacity(app.shell.tabs.len());
+                            for i in 0..app.shell.tabs.len() {
+                                let is_drag_source =
+                                    drag_state.is_some_and(|state| state.source_index == i);
+                                let is_drop_target =
+                                    drag_state.is_some_and(|state| state.hover_index == i);
+                                let is_active = app.shell.tabs.active_tab_index() == i;
+                                let tab_accent: Option<TabAccentColor> =
+                                    app.shell.tabs.get(i).and_then(|tab| tab.tab_accent);
+                                let accent_palette =
+                                    tab_accent.map(|accent| accent.palette(ui.visuals().dark_mode));
+                                let active_fill =
+                                    render_theme::selected_fill(ui.visuals().dark_mode);
+                                let drag_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.35);
+                                let drop_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.18);
+                                let frame_fill = if is_drag_source {
+                                    drag_fill
+                                } else if is_drop_target {
+                                    drop_fill
+                                } else if is_active {
+                                    accent_palette
+                                        .map(|palette| palette.background)
+                                        .unwrap_or(active_fill)
                                 } else {
-                                    palette.foreground.gamma_multiply(0.92)
+                                    egui::Color32::TRANSPARENT
+                                };
+                                let frame_stroke = if is_drag_source || is_drop_target {
+                                    ui.visuals().selection.stroke
+                                } else if let Some(palette) = accent_palette {
+                                    egui::Stroke::new(
+                                        if is_active {
+                                            FlistWalkerApp::TAB_ACTIVE_BORDER_WIDTH
+                                        } else {
+                                            FlistWalkerApp::TAB_INACTIVE_BORDER_WIDTH
+                                        },
+                                        palette.border.gamma_multiply(if is_active {
+                                            1.0
+                                        } else {
+                                            0.72
+                                        }),
+                                    )
+                                } else {
+                                    let palette =
+                                        TabAccentPalette::clear_outline(ui.visuals().dark_mode);
+                                    egui::Stroke::new(
+                                        if is_active {
+                                            FlistWalkerApp::TAB_ACTIVE_BORDER_WIDTH
+                                        } else {
+                                            FlistWalkerApp::TAB_INACTIVE_BORDER_WIDTH
+                                        },
+                                        palette.border.gamma_multiply(if is_active {
+                                            1.0
+                                        } else {
+                                            0.82
+                                        }),
+                                    )
+                                };
+                                let tab_response = egui::Frame::NONE
+                                    .fill(frame_fill)
+                                    .stroke(frame_stroke)
+                                    .corner_radius(egui::CornerRadius::same(
+                                        FlistWalkerApp::TAB_ROUNDING as u8,
+                                    ))
+                                    .inner_margin(egui::Margin::symmetric(6, 2))
+                                    .show(ui, |ui| {
+                                        let title = app
+                                            .shell
+                                            .tabs
+                                            .get(i)
+                                            .map(|tab| app.tab_title(tab, i))
+                                            .unwrap_or_else(|| format!("Tab {}", i + 1));
+                                        let title_response = ui.add(
+                                            egui::Button::new(
+                                                egui::RichText::new(title).strong().color(
+                                                    if let Some(palette) = accent_palette {
+                                                        if is_active {
+                                                            palette.foreground
+                                                        } else {
+                                                            palette.foreground.gamma_multiply(0.92)
+                                                        }
+                                                    } else if is_active {
+                                                        ui.visuals().strong_text_color()
+                                                    } else {
+                                                        ui.visuals()
+                                                            .text_color()
+                                                            .gamma_multiply(0.78)
+                                                    },
+                                                ),
+                                            )
+                                            .frame(false)
+                                            .sense(egui::Sense::click_and_drag()),
+                                        );
+                                        let title_response = title_response.on_hover_text(
+                                            app.shell
+                                                .tabs
+                                                .get(i)
+                                                .map(|tab| {
+                                                    crate::ui_model::normalize_path_for_display(
+                                                        &tab.root,
+                                                    )
+                                                })
+                                                .unwrap_or_default(),
+                                        );
+                                        let close_response = render_tab_close_button(
+                                            ui,
+                                            app.shell.tabs.len() > 1,
+                                            is_active,
+                                            accent_palette,
+                                        )
+                                        .on_hover_text("Close tab");
+
+                                        if title_response.drag_started() {
+                                            drag_state = Some(TabDragState {
+                                                source_index: i,
+                                                hover_index: i,
+                                                press_pos: ui
+                                                    .ctx()
+                                                    .pointer_interact_pos()
+                                                    .unwrap_or(title_response.rect.center()),
+                                                dragging: false,
+                                            });
+                                        }
+                                        if title_response.clicked_by(egui::PointerButton::Middle) {
+                                            close_tab = Some(i);
+                                        } else if title_response.clicked() {
+                                            switch_to = Some(i);
+                                        }
+                                        if close_response.clicked() {
+                                            close_tab = Some(i);
+                                        }
+
+                                        title_response.union(close_response)
+                                    });
+                                if is_active && follow_active {
+                                    tab_response.response.scroll_to_me(None);
                                 }
-                            } else if is_active {
-                                ui.visuals().strong_text_color()
-                            } else {
-                                ui.visuals().text_color().gamma_multiply(0.78)
-                            },
-                        ))
-                        .frame(false)
-                        .sense(egui::Sense::click_and_drag()),
-                    );
-                    let close_response = render_tab_close_button(
-                        ui,
-                        app.shell.tabs.len() > 1,
-                        is_active,
-                        accent_palette,
-                    )
-                    .on_hover_text("Close tab");
+                                #[cfg(test)]
+                                if is_active {
+                                    active_rect = Some(tab_response.response.rect);
+                                }
+                                let tab_interaction = tab_response.inner;
+                                paint_tab_accent_decoration(
+                                    ui,
+                                    tab_response.response.rect,
+                                    accent_palette,
+                                    is_active,
+                                    is_drag_source,
+                                    is_drop_target,
+                                );
+                                tab_interaction.context_menu(|ui| {
+                                    render_tab_accent_menu(app, ui, i, tab_accent);
+                                });
+                                tab_rects
+                                    .push(tab_response.response.rect.intersect(ui.clip_rect()));
+                            }
+                            if let Some(mut state) = drag_state {
+                                let pointer_pos = ui
+                                    .ctx()
+                                    .pointer_interact_pos()
+                                    .or_else(|| ui.input(|i| i.pointer.latest_pos()));
+                                let primary_down = ui.ctx().input(|i| i.pointer.primary_down());
 
-                    if title_response.drag_started() {
-                        drag_state = Some(TabDragState {
-                            source_index: i,
-                            hover_index: i,
-                            press_pos: ui
-                                .ctx()
-                                .pointer_interact_pos()
-                                .unwrap_or(title_response.rect.center()),
-                            dragging: false,
+                                if let Some((from_index, to_index)) = update_tab_drag_state(
+                                    app,
+                                    &mut state,
+                                    &tab_rects,
+                                    pointer_pos,
+                                    primary_down,
+                                ) {
+                                    reorder_tab = Some((from_index, to_index));
+                                }
+
+                                if state.dragging {
+                                    if let Some(target_rect) = tab_rects.get(state.hover_index) {
+                                        let indicator_x = target_rect.left();
+                                        let indicator_top = target_rect.top() - 3.0;
+                                        let indicator_bottom = target_rect.bottom() + 3.0;
+                                        let stroke = egui::Stroke::new(
+                                            3.0_f32,
+                                            ui.visuals().selection.stroke.color,
+                                        );
+                                        ui.painter().line_segment(
+                                            [
+                                                egui::pos2(indicator_x, indicator_top),
+                                                egui::pos2(indicator_x, indicator_bottom),
+                                            ],
+                                            stroke,
+                                        );
+                                        ui.painter().circle_filled(
+                                            egui::pos2(indicator_x, indicator_top),
+                                            4.0,
+                                            ui.visuals().selection.stroke.color,
+                                        );
+                                        ui.output_mut(|o| {
+                                            o.cursor_icon = egui::CursorIcon::Grabbing
+                                        });
+                                    }
+                                }
+                            }
                         });
-                    }
-                    if title_response.clicked_by(egui::PointerButton::Middle) {
-                        close_tab = Some(i);
-                    } else if title_response.clicked() {
-                        switch_to = Some(i);
-                    }
-                    if close_response.clicked() {
-                        close_tab = Some(i);
-                    }
-
-                    title_response.union(close_response)
-                });
-            let tab_interaction = tab_response.inner;
-            paint_tab_accent_decoration(
-                ui,
-                tab_response.response.rect,
-                accent_palette,
-                is_active,
-                is_drag_source,
-                is_drop_target,
-            );
-            tab_interaction.context_menu(|ui| {
-                render_tab_accent_menu(app, ui, i, tab_accent);
-            });
-            tab_rects.push(tab_response.response.rect);
-        }
-        if let Some(mut state) = drag_state {
-            let pointer_pos = ui
-                .ctx()
-                .pointer_interact_pos()
-                .or_else(|| ui.input(|i| i.pointer.latest_pos()));
-            let primary_down = ui.ctx().input(|i| i.pointer.primary_down());
-
-            if let Some((from_index, to_index)) =
-                update_tab_drag_state(app, &mut state, &tab_rects, pointer_pos, primary_down)
-            {
-                reorder_tab = Some((from_index, to_index));
-            }
-
-            if state.dragging {
-                if let Some(target_rect) = tab_rects.get(state.hover_index) {
-                    let indicator_x = target_rect.left();
-                    let indicator_top = target_rect.top() - 3.0;
-                    let indicator_bottom = target_rect.bottom() + 3.0;
-                    let stroke = egui::Stroke::new(3.0_f32, ui.visuals().selection.stroke.color);
-                    ui.painter().line_segment(
-                        [
-                            egui::pos2(indicator_x, indicator_top),
-                            egui::pos2(indicator_x, indicator_bottom),
-                        ],
-                        stroke,
-                    );
-                    ui.painter().circle_filled(
-                        egui::pos2(indicator_x, indicator_top),
-                        4.0,
-                        ui.visuals().selection.stroke.color,
-                    );
-                    ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::Grabbing);
-                }
-            }
-        }
-        if ui
-            .button("+")
+                    })
+            },
+        );
+        #[cfg(not(test))]
+        let _ = tabs;
+        let new_tab_response = ui
+            .add_sized([control_size, control_size], egui::Button::new("+"))
             .on_hover_text(format!(
                 "New tab ({}+T)",
                 FlistWalkerApp::primary_shortcut_label()
-            ))
-            .clicked()
-        {
+            ));
+        if new_tab_response.clicked() {
             app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::CreateNewTab));
             return;
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let row_height = ui.spacing().interact_size.y;
+            let opening = app.shell.worker_bus.config_open.in_progress();
             let settings_response = ui
-                .add_sized([row_height, row_height], egui::Button::new("⚙"))
-                .on_hover_text("Open runtime config file");
+                .add_enabled_ui(!opening, |ui| {
+                    ui.add_sized(
+                        [row_height, row_height],
+                        egui::Button::new(if opening { "…" } else { "⚙" }),
+                    )
+                })
+                .inner
+                .on_hover_text("Open runtime config file")
+                .on_disabled_hover_text("Opening config file...");
+            #[cfg(test)]
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(
+                    egui::Id::new("tab-bar-probe"),
+                    TabBarRenderProbe {
+                        controls: new_tab_response.rect.union(settings_response.rect),
+                        active: active_rect,
+                        viewport: tabs.inner.inner_rect,
+                    },
+                )
+            });
             if settings_response.clicked() {
                 app.queue_render_command(RenderCommand::OpenRuntimeConfig);
             }

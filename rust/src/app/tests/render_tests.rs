@@ -1928,3 +1928,47 @@ fn tab_close_button_hover_visuals_make_close_hit_area_visible() {
     assert_eq!(disabled.stroke, egui::Stroke::NONE);
     assert!(disabled.text.r() < palette.foreground.r());
 }
+
+#[test]
+fn regression_gui_list_history_selection_scrolls_and_manual_offset_is_preserved() {
+    let mut app = FlistWalkerApp::new(test_root("history-scroll"), 100, String::new());
+    app.shell.runtime.query_state.history_search_active = true;
+    app.shell.runtime.query_state.history_search_results =
+        (0..100).map(|i| format!("history {i}")).collect();
+    app.shell.runtime.query_state.history_search_current = Some(0);
+    let ctx = egui::Context::default();
+    ctx.all_styles_mut(|style| style.scroll_animation = egui::style::ScrollAnimation::none());
+    let frame = |app: &mut FlistWalkerApp| {
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(800.0, 300.0),
+                )),
+                ..Default::default()
+            },
+            |ui| render_panels::render_history_search_results(app, ui),
+        );
+        ctx.data(|data| {
+            data.get_temp::<render_panels::ListScrollProbe>(egui::Id::new("history-search-results"))
+        })
+        .unwrap()
+    };
+    frame(&mut app);
+    app.move_history_search_selection(90);
+    frame(&mut app);
+    let moved = frame(&mut app);
+    assert!(moved.offset.y > 0.0);
+    assert!(
+        moved.viewport.intersects(moved.selected.unwrap()),
+        "{moved:?}"
+    );
+    let mut state = egui::scroll_area::State::load(&ctx, moved.id).unwrap();
+    state.offset.y = 0.0;
+    state.store(&ctx, moved.id);
+    let manual = frame(&mut app);
+    assert_eq!(
+        manual.offset.y, 0.0,
+        "unchanged selection must not undo manual scroll"
+    );
+}

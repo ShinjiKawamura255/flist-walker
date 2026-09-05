@@ -437,6 +437,51 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     }
 }
 
+pub(in crate::app) fn selection_scroll_requested(
+    ui: &egui::Ui,
+    surface: &'static str,
+    selection: egui::Id,
+) -> bool {
+    let frame = ui.ctx().cumulative_frame_nr();
+    ui.ctx().data_mut(|data| {
+        let key = egui::Id::new(("selection-scroll", surface));
+        let previous = data.get_temp::<(egui::Id, u64)>(key);
+        data.insert_temp(key, (selection, frame));
+        previous.is_none_or(|(old, last_frame)| old != selection || last_frame + 1 < frame)
+    })
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy, Debug)]
+pub(in crate::app) struct ListScrollProbe {
+    pub id: egui::Id,
+    pub offset: egui::Vec2,
+    pub viewport: egui::Rect,
+    pub selected: Option<egui::Rect>,
+}
+
+#[cfg(test)]
+pub(in crate::app) fn record_list_scroll(
+    ctx: &egui::Context,
+    surface: &'static str,
+    id: egui::Id,
+    offset: egui::Vec2,
+    viewport: egui::Rect,
+    selected: Option<egui::Rect>,
+) {
+    ctx.data_mut(|data| {
+        data.insert_temp(
+            egui::Id::new(surface),
+            ListScrollProbe {
+                id,
+                offset,
+                viewport,
+                selected,
+            },
+        )
+    });
+}
+
 pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.heading("History Results");
     ui.label(format!(
@@ -444,7 +489,20 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
         app.shell.runtime.query_state.query_history.len(),
         app.shell.runtime.query_state.history_search_results.len()
     ));
-    egui::ScrollArea::vertical()
+    let follow_selection = selection_scroll_requested(
+        ui,
+        "history-search-results",
+        egui::Id::new((
+            app.current_tab_id(),
+            &app.shell.runtime.query_state.history_search_query,
+            app.shell.runtime.query_state.history_search_current,
+        )),
+    );
+    #[cfg(test)]
+    let mut selected_rect = None;
+    let scroll = egui::ScrollArea::vertical()
+        .id_salt("history-search-results")
+        .animated(false)
         .scroll_source(
             egui::scroll_area::ScrollSource::SCROLL_BAR
                 | egui::scroll_area::ScrollSource::MOUSE_WHEEL,
@@ -484,6 +542,13 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
                         )
                     });
                 let response = row.inner;
+                if is_current && follow_selection {
+                    response.scroll_to_me(None);
+                }
+                #[cfg(test)]
+                if is_current {
+                    selected_rect = Some(response.rect);
+                }
                 if response.clicked() {
                     clicked_row = Some(index);
                 }
@@ -500,6 +565,17 @@ pub(super) fn render_history_search_results(app: &mut FlistWalkerApp, ui: &mut e
                 app.accept_history_search();
             }
         });
+    #[cfg(test)]
+    record_list_scroll(
+        ui.ctx(),
+        "history-search-results",
+        scroll.id,
+        scroll.state.offset,
+        scroll.inner_rect,
+        selected_rect,
+    );
+    #[cfg(not(test))]
+    let _ = scroll;
 }
 
 fn render_result_row(
