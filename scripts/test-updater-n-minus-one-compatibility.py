@@ -137,6 +137,16 @@ def test_regression_v0251_accepts_exact_v0260_inventory(
     assert result.returncode == 0, result.stderr
 
 
+def test_regression_v0260_accepts_exact_v0270_inventory(
+    script: Path, manifest: Path, digest: str
+) -> None:
+    write_manifest(manifest, release_inventory("0.27.0"), digest)
+
+    result = run(script, manifest, "0.26.0", "0.27.0")
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_regression_candidate_must_be_newer_than_previous_release(
     script: Path, manifest: Path, digest: str
 ) -> None:
@@ -170,6 +180,7 @@ def main() -> int:
         test_regression_v0245_accepts_exact_v0250_inventory(script, manifest, digest)
         test_regression_v0250_accepts_exact_v0251_inventory(script, manifest, digest)
         test_regression_v0251_accepts_exact_v0260_inventory(script, manifest, digest)
+        test_regression_v0260_accepts_exact_v0270_inventory(script, manifest, digest)
         test_regression_candidate_must_be_newer_than_previous_release(
             script, manifest, digest
         )
