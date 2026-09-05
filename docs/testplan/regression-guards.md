@@ -155,3 +155,10 @@ Back to the [Validation Matrix](validation-matrix.md).
 - 期待動作: kind 解決は visible results に限定し、検索/index が停止済みの idle 状態では全件 metadata 解決を継続しない。
 - 非対象範囲: Files / Folders の単一フィルタ時に必要な kind 解決、preview 要求に伴う単発の kind 解決。
 - 関連テストID: TC-122.
+
+### Regression Guard: trailing tab addition and initial details
+
+- 発生条件: タブ追加ボタンを設定とまとめて右端固定へ移す、または新規タブが結果だけを引き継いでindex/search完了後の表示準備を通らない。
+- 期待動作: `+`は末尾タブ直後にあり、overflowではタブと共にscrollする。設定は右端固定、active変更時の追従と手動scrollを維持する。新規タブは無入力でも表示結果のkindと選択行previewを非同期で準備する。
+- 境界: 空結果・preview無効ではpreview要求なし。kindは表示件数まで。再index後のepochとタブIDを保ち、background応答でactive previewを上書きしない。
+- 関連テストID: TC-010, TC-023A, TC-122。`regression_gui_add_button_follows_last_tab_with_spare_space`、`regression_gui_tabs_overflow_keeps_settings_and_active_tab_visible`、`regression_new_tab_initializes_preview_and_all_shown_kinds_without_input`、`regression_new_tab_empty_or_preview_disabled_does_not_request_preview`。

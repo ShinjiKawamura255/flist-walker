@@ -16,7 +16,7 @@
 | TC-007 | perf | 10万件検索の遅延計測 | SP-007 |
 | TC-008 | unit | 例外時に非ゼロ終了コードを返す | SP-008 |
 | TC-009 | unit | モジュール分離により単体テスト可能 | SP-009 |
-| TC-010 | manual+unit | 多数履歴/preset/Named Rootのkeyboard選択追従と手動scroll維持、多数タブの横scroll・active追従・固定controls・root tooltipを検証する。GUI で検索/選択/実行/再読込が行える（`docs/GUI-TESTPLAN.md` の `GSM-001` から `GSM-006`）。`quit_shortcuts_do_not_close_the_root_viewport` は Ctrl/Cmd+Q の初回・repeat 入力で root Close が発生せず、明示的な Close command が通ることを frame 終了まで検証する。`cargo test --locked --test macos_quit_menu` は main thread の AppKit menu で終了キーだけが消え、終了 action・表示名・他のキーが維持されることを検証する。実機では両キーによる非終了とウィンドウ close／macOS 終了メニューによる終了を確認する | SP-010 |
+| TC-010 | manual+unit | 多数履歴/preset/Named Rootのkeyboard選択追従と手動scroll維持、多数タブの横scroll・active追従・末尾タブ直後の追加ボタン・右端固定設定・root tooltipを検証する。GUI で検索/選択/実行/再読込が行える（`docs/GUI-TESTPLAN.md` の `GSM-001` から `GSM-006`）。`quit_shortcuts_do_not_close_the_root_viewport` は Ctrl/Cmd+Q の初回・repeat 入力で root Close が発生せず、明示的な Close command が通ることを frame 終了まで検証する。`cargo test --locked --test macos_quit_menu` は main thread の AppKit menu で終了キーだけが消え、終了 action・表示名・他のキーが維持されることを検証する。実機では両キーによる非終了とウィンドウ close／macOS 終了メニューによる終了を確認する | SP-010 |
 | TC-011 | manual | GUI 回帰手順に基づく再検証が可能（`scripts/gui-smoke-fixture.sh` と `docs/GUI-TESTREPORT.template.md` を使用） | SP-011 |
 | TC-012 | unit | プレビューキャッシュが上限件数を超えない | SP-007 |
 | TC-012A | unit | `.vbs` など非 `.txt` でも UTF-8 / UTF-16 / 主要レガシー文字コードなら本文プレビューでき、バイナリは unreadable を維持する | SP-010 |
@@ -32,7 +32,7 @@
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
 | TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` / `Esc` で query clear + filter reset が実行される | SP-010 |
 | TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除を実行し、既定では current row を維持する。`tab_pin_moves_to_next_row=true` では PIN 固定/解除後に次行へ移動する | SP-010, SP-016 |
-| TC-023A | unit | tab切替、closed-tab/session restore、`Esc`系reset後も、空Resultsは`None`、非空Resultsは範囲内のvisible current rowとなる。inactive compacted tabだけはbase resultsに対するselection保持を許す | SP-010 |
+| TC-023A | unit | tab切替、closed-tab/session restore、`Esc`系reset後も、空Resultsは`None`、非空Resultsは範囲内のvisible current rowとなる。新規タブは継承結果のkindと選択行previewを追加入力なしに非同期で準備し、空結果・preview無効でpreview要求を出さない。inactive compacted tabだけはbase resultsに対するselection保持を許す | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 | TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、LINK identity とリンク先種別を分離して、解決後に FILE/DIR/LINK 表示とフィルタ状態を反映する。OTHER/解決不能の終端状態は再解決しない | SP-001, SP-010, SP-007 |
 | TC-026 | unit | 回帰: 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` で current row が移動する | SP-010 |

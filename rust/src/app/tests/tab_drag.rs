@@ -317,7 +317,7 @@ fn tab_drag_above_threshold_reorders_on_release() {
 }
 
 #[test]
-fn regression_gui_tabs_overflow_keeps_controls_and_active_tab_visible() {
+fn regression_gui_tabs_overflow_keeps_settings_and_active_tab_visible() {
     let mut app = FlistWalkerApp::new(test_root("tab-overflow"), 50, String::new());
     for i in 0..14 {
         app.create_new_tab();
@@ -346,10 +346,19 @@ fn regression_gui_tabs_overflow_keeps_controls_and_active_tab_visible() {
     frame(&mut app);
     let last = frame(&mut app);
     assert!(
-        last.controls.right() <= 640.0 && last.controls.left() >= 0.0,
+        last.settings.right() <= 640.0 && last.settings.left() >= 0.0,
         "{last:?}"
     );
     assert!(last.viewport.intersects(last.active.unwrap()), "{last:?}");
+    assert!(last.viewport.contains_rect(last.add), "{last:?}");
+    assert!(
+        last.add.left() >= last.last_tab.unwrap().right(),
+        "{last:?}"
+    );
+    assert!(
+        last.add.left() - last.last_tab.unwrap().right() < 12.0,
+        "{last:?}"
+    );
     app.switch_to_tab_index(0);
     frame(&mut app);
     let first = frame(&mut app);
@@ -357,4 +366,36 @@ fn regression_gui_tabs_overflow_keeps_controls_and_active_tab_visible() {
         first.viewport.intersects(first.active.unwrap()),
         "{first:?}"
     );
+}
+
+#[test]
+fn regression_gui_add_button_follows_last_tab_with_spare_space() {
+    let mut app = FlistWalkerApp::new(test_root("tab-add-position"), 50, String::new());
+    let ctx = egui::Context::default();
+    for count in 1..=2 {
+        for _ in 0..3 {
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1200.0, 400.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| render_tabs::render_tab_bar(&mut app, ui),
+            );
+        }
+        let probe = ctx
+            .data(|data| {
+                data.get_temp::<render_tabs::TabBarRenderProbe>(egui::Id::new("tab-bar-probe"))
+            })
+            .unwrap();
+        let gap = probe.add.left() - probe.last_tab.unwrap().right();
+        assert!((0.0..12.0).contains(&gap), "{count} tabs: {probe:?}");
+        assert!(probe.settings.left() > 1100.0, "{probe:?}");
+        assert!(probe.viewport.contains_rect(probe.add), "{probe:?}");
+        if count == 1 {
+            app.create_new_tab();
+        }
+    }
 }
