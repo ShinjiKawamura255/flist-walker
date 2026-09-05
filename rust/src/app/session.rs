@@ -1132,19 +1132,26 @@ impl FlistWalkerApp {
         current_monitor: Option<usize>,
         can_position: bool,
     ) -> Option<StartupWindowPlacement> {
-        let saved = Self::load_ui_state()
-            .window
-            .unwrap_or_else(|| SavedWindowGeometry {
-                width: 1400.0,
-                height: 900.0,
-                ..Default::default()
-            });
-        Some(Self::normalize_startup_placement(
-            saved,
+        Some(Self::startup_window_placement_from_ui_state(
+            Self::load_ui_state(),
             monitors,
             current_monitor,
             can_position,
         ))
+    }
+
+    pub(super) fn startup_window_placement_from_ui_state(
+        ui_state: UiState,
+        monitors: &[(egui::Rect, f32)],
+        current_monitor: Option<usize>,
+        can_position: bool,
+    ) -> StartupWindowPlacement {
+        let saved = ui_state.window.unwrap_or_else(|| SavedWindowGeometry {
+            width: 1400.0,
+            height: 900.0,
+            ..Default::default()
+        });
+        Self::normalize_startup_placement(saved, monitors, current_monitor, can_position)
     }
 
     pub(super) fn normalize_startup_placement(
