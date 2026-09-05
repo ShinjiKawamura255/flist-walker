@@ -42,8 +42,13 @@ foreach ($artifact in @($exe, $fwExe)) {
 
     $pe = & $objdump -p $artifact
     $peText = $pe -join "`n"
-    if ($LASTEXITCODE -ne 0 -or $peText -notmatch 'Subsystem\s+00000003\s+\(Windows CUI\)') {
-        throw "TC-147/TC-193 Windows console subsystem is missing: $artifact"
+    $expectedSubsystem = if ($artifact -eq $fwExe) {
+        'Subsystem\s+00000003\s+\(Windows CUI\)'
+    } else {
+        'Subsystem\s+00000002\s+\(Windows GUI\)'
+    }
+    if ($LASTEXITCODE -ne 0 -or $peText -notmatch $expectedSubsystem) {
+        throw "TC-147/TC-193/TC-215 Windows executable subsystem is incorrect: $artifact"
     }
     $dlls = $pe | Select-String 'DLL Name:' | ForEach-Object { $_.Line.Trim() }
     if ($dlls -match 'msys-|mingw|libgcc|libstdc\+\+|libwinpthread') {

@@ -29,9 +29,9 @@ const WINDOWS_GUI_STARTUP_GRACE: Duration = Duration::from_millis(500);
 
 #[cfg(target_os = "windows")]
 pub(in crate::updater) fn windows_hidden_child_command(target: &Path) -> Command {
-    // Regression guard: the GUI path detaches from its console before updater work starts, so
-    // inherited standard handles may be stale. Keep all hidden updater children on explicit NUL
-    // handles; do not restore implicit stdio inheritance without the TC-187 native probe.
+    // Regression guard: GUI-subsystem parents normally have no usable console handles, and
+    // launchers/tests can still expose absent or stale standard handles. Keep every hidden updater
+    // child on explicit NUL handles; do not restore implicit inheritance without the TC-187 probe.
     let mut command = Command::new(target);
     command
         .stdin(Stdio::null())
@@ -277,9 +277,9 @@ fn launch_windows_restart_once(target: &Path, mode: UpdateRestartMode) -> std::i
     // Regression guard: the restarted GUI must identify itself as the transaction handoff owner;
     // a normal startup can misclassify a still-exiting helper and show a false update failure.
     command.arg(mode.internal_restart_flag());
-    // The updater must not surface a console even if a Windows build temporarily uses the
-    // console subsystem. Headless restart is allowed to exit immediately after recovery, while
-    // GUI restart must remain alive long enough to reject an immediate startup failure.
+    // The updater must not surface a console for either executable role. Headless restart is
+    // allowed to exit immediately after recovery, while GUI restart must remain alive long enough
+    // to reject an immediate startup failure.
     let mut child = command.spawn()?;
     if mode == UpdateRestartMode::Gui {
         std::thread::sleep(WINDOWS_GUI_STARTUP_GRACE);

@@ -354,18 +354,18 @@ mod tests {
 
     #[cfg(target_os = "windows")]
     #[test]
-    fn tc187_regression_detached_gui_helper_does_not_inherit_stale_stdio() {
-        const PROBE_ENV: &str = "FLISTWALKER_TEST_DETACHED_HELPER_STDIO";
+    fn tc187_regression_hidden_updater_child_does_not_inherit_stale_stdio() {
+        const PROBE_ENV: &str = "FLISTWALKER_TEST_INVALID_HELPER_STDIO";
         if std::env::var_os(PROBE_ENV).is_none() {
             let status = Command::new(std::env::current_exe().expect("current test executable"))
                 .args([
                     "--exact",
-                    "updater::apply::tests::tc187_regression_detached_gui_helper_does_not_inherit_stale_stdio",
+                    "updater::apply::tests::tc187_regression_hidden_updater_child_does_not_inherit_stale_stdio",
                 ])
                 .env(PROBE_ENV, "1")
                 .status()
                 .expect("spawn detached-stdio probe process");
-            assert!(status.success(), "detached-stdio probe failed: {status}");
+            assert!(status.success(), "invalid-stdio probe failed: {status}");
             return;
         }
 
@@ -406,7 +406,7 @@ mod tests {
         command.env_remove(PROBE_ENV);
         let status = command
             .spawn()
-            .expect("helper spawn must not depend on detached GUI standard handles")
+            .expect("helper spawn must not depend on inherited standard handles")
             .wait()
             .expect("wait for helper stdio probe");
         assert!(status.success(), "helper stdio probe failed: {status}");

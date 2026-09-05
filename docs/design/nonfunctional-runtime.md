@@ -173,7 +173,7 @@
 - DES-011 Window Stability / Windows IME
 - マルチディスプレイ跨ぎ時の一時的な巨大ウィンドウサイズを永続化しないよう、保存前に monitor 幅/高さでジオメトリをクランプする。
 - 起動時はhidden windowを作り、eframe CreationContextの既存winit windowからmonitorごとのphysical rectangleとnative scaleを取得する。保存geometryのoptional pixels_per_pointでphysical positionへ変換し、最も近い実画面へsize/positionをclampして初回表示前に適用する。画面間の隙間を含むunion rectangleは使わない。
-- 保存位置なし、scaleのないlegacy record、または無効位置でもmonitor列挙とposition操作が可能なら、現在の実monitor（取得不能なら列挙先頭）中央へ明示配置する。console先行起動後のWM既定位置を安全なfallbackとみなさない。monitor列挙またはposition操作ができない場合だけ有限なbounded sizeを維持して保存位置を破棄する。保存schemaはoptional field追加に留め、旧recordも読める。
+- 保存位置なし、scaleのないlegacy record、または無効位置でもmonitor列挙とposition操作が可能なら、現在の実monitor（取得不能なら列挙先頭）中央へ明示配置する。OS/WMの既定位置を安全なfallbackとみなさない。monitor列挙またはposition操作ができない場合だけ有限なbounded sizeを維持して保存位置を破棄する。保存schemaはoptional field追加に留め、旧recordも読める。
 - Windows は起動時に System DPI Aware を有効化し、モニタ跨ぎ時の OS 側自動リサイズ揺れを低減する。
 - IME 確定文字が TextEdit 側で落ちるフレーム向けに `CompositionEnd` 文字列のフォールバック反映を行う。
 - `Space` / `Shift+Space` は IME/バックエンド差異があっても、TextEdit 側で空白未反映なら最低限の半角スペースをフォールバック挿入する。
@@ -196,7 +196,7 @@
 - 起動時の update check 失敗は worker からエラー文字列つきで返し、GUI 側は通常操作を継続したまま軽量ダイアログで理由を表示する。利用者が「今後この種の起動時エラーを表示しない」を選んだ場合は UI state へ永続化し、次回以降の startup check failure dialog を抑止する。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
 - restart 時は現在 executable path を置換対象とする。helperが起動する更新後processにはmode別の内部restart flagを渡し、公開CLI引数解析より先にterminal handoff recoveryを完了する。GUI modeはhelper終了とmarker/hash再検証後に内部flagを除いた既定引数で通常GUIを続行し、セッション復元を既存UI stateへ委譲する。Headless modeはdisplay serverへ接続せず回復後に終了する。更新後バイナリの起動失敗でrollbackした場合は、旧バイナリが新しい内部flagを解釈できない可能性があるため引数なしで再起動する。
-- copied helper の起動では installation directory を `current_dir` に設定せず、Windows の `CreateProcessW` が child current directory に課す legacy path length 制約から helper executable path を分離する。Windows GUI は console detach 後に stale standard handle を保持しうるため、helper と更新後/rollback後 process の hidden command は stdin/stdout/stderr を `NUL` へ固定する。helper 起動は最大3ラウンド・100ms間隔とし、canonical path が verbatim drive/UNC 形式なら各ラウンドで UTF-16 path identity を保った非 verbatim 表現も試す。全試行の OS error は診断へ残し、保存済みfailure、update state、status noticeを含む利用者向け文字列は共有display normalizationで文中すべてのverbatim prefixを除去する。
+- copied helper の起動では installation directory を `current_dir` に設定せず、Windows の `CreateProcessW` が child current directory に課す legacy path length 制約から helper executable path を分離する。Windows GUI-subsystem process は利用可能な console handle を通常持たず、launcher/test 由来の無効または stale standard handle も想定するため、helper と更新後/rollback後 process の hidden command は entrypoint subsystem に依存せず stdin/stdout/stderr を `NUL` へ固定する。helper 起動は最大3ラウンド・100ms間隔とし、canonical path が verbatim drive/UNC 形式なら各ラウンドで UTF-16 path identity を保った非 verbatim 表現も試す。全試行の OS error は診断へ残し、保存済みfailure、update state、status noticeを含む利用者向け文字列は共有display normalizationで文中すべてのverbatim prefixを除去する。
 - production activation logic に test bypass を置かず、filesystem/restart/clock/failure injection seam へ inert dummy bundle を渡して成功・rollback・中断 recovery を検証する。Windows/Linux の実 filesystem 証跡は同一 filesystem の一時 directory に限定し、FlistWalker 本体または外部 application は起動しない。
 - update dialog は `skip until next version` のチェック状態を持ち、Later 選択時に current target version を UI state へ永続化する。
 - 起動時の update 応答は保存済み `skipped_update_target_version` と semver 比較し、target version がそれ以下なら dialog を出さず、より新しい version のみ再通知する。

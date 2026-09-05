@@ -133,7 +133,7 @@
 
 ## Regression Guard
 - 発生条件: Windows ビルドを `msvc` から `x86_64-pc-windows-gnu` へ切り替えた際、`windres` 生成物が最終 EXE に入らず Explorer 上のアイコンが既定表示へ退行する。
-- 期待動作: WSL/Linux または PowerShell からの GNU ビルド後も `flistwalker.exe` / 配布用 `FlistWalker.exe` / `fw.exe` で resource と console subsystem が維持される。
+- 期待動作: WSL/Linux または PowerShell からの GNU ビルド後も `flistwalker.exe` / 配布用 `FlistWalker.exe` / `fw.exe` で resource が維持され、universal aliases は Windows GUI subsystem、`fw.exe` は Windows console subsystem になる。
 - 非対象範囲: 実行中ウィンドウのランタイムアイコン変更、ショートカット `.lnk` 側の個別アイコン設定。
 - 関連テストID: TC-090, TC-147, TC-148.
 
@@ -194,7 +194,7 @@
 5. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo clippy --locked --all-targets -- -D warnings`、および `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
 6. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
 7. 各 job が生成した uploadable なアセットを集約・検証し、tag push の場合だけ、その tag の draft release を自動作成する。同一tagのreleaseが既に存在する場合は停止し、既存assetを上書きしない。
-8. draft release には各 OS 向け universal 実行バイナリ、CLI 専用 `fw` standalone、既存配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内と`fw` standaloneの実行手順を続ける。remoteのversion付きsidecar assetは両variantで共有し、自己更新後のローカル文書はuniversalの通常名とCLIの`fw.` prefix付き名へ分離する。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は署名秘密鍵から導出した公開鍵、build時の公開鍵、署名検証鍵が一致する場合だけ生成する。`scripts/validate-release-bundle.sh` で期待28 asset、26 checksum entry、既存archiveのmember完全一致、archive/sidecarの `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を検証する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
+8. draft release には各 OS 向け universal 実行バイナリ、CLI 専用 `fw` standalone、既存配布 archive、sidecar 文書 (`*.README.txt`, `*.LICENSE.txt`, `*.THIRD_PARTY_NOTICES.txt`)、統合 `SHA256SUMS` と `SHA256SUMS.sig` が添付される。Windows の既存 universal archive は GUI 専用導線のため `fw.exe` を追加せず、CLI/TUI 利用者は同じ release の version 付き `fw-*-windows-x86_64.exe` standalone を別途取得する。`README.txt` は英語の案内を先頭に置き、その後に日本語の案内と`fw` standaloneの実行手順を続ける。remoteのversion付きsidecar assetは両variantで共有し、自己更新後のローカル文書はuniversalの通常名とCLIの`fw.` prefix付き名へ分離する。`SHA256SUMS` は artifact 集約後に再生成し、`SHA256SUMS.sig` は署名秘密鍵から導出した公開鍵、build時の公開鍵、署名検証鍵が一致する場合だけ生成する。`scripts/validate-release-bundle.sh` で期待28 asset、26 checksum entry、既存archiveのmember完全一致、archive/sidecarの `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` を検証する。macOS の `.app` bundle 自体およびその内部ファイル（`Info.plist` / `FlistWalker.icns` / `Contents/MacOS/FlistWalker` など）は添付対象外とする。
 9. draft release の作成を確認したら、Codex で GitHub Release 本文を最終化する。
 10. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
 11. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
@@ -211,7 +211,7 @@
 - `scripts/validate-release-bundle.sh vX.Y.Z <bundle-dir>` が成功し、期待28 asset、26 checksum entry、既存archive不変、archive/sidecarのlicense/noticeが揃うこと。
 - checker self-testとは別に、直前の公開release versionと生成済みcandidate `SHA256SUMS`を`check-updater-n-minus-one-compatibility.py`へ渡し、candidateがstrictに新しくmanifest互換であること。非増加version、非互換の例外・acknowledgementは禁止し、失敗時はrelease blockerとする。
 - tag 作成前の manual candidate run が default branch の対象 SHA で成功し、validated bundle artifact と N-1 結果を確認済みであること。candidate mode の draft release 作成 job は `skipped` でなければならない。
-- Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
+- Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal direct-process median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
 - tag workflowのLinux/macOS/Windows native preflightでlocked clippyがすべて実行され、OS条件付きunused/dead code warningがasset build前に失敗すること。

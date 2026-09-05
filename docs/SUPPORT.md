@@ -13,7 +13,7 @@ FlistWalker does not automatically upload crash reports, logs, file paths, or us
 
 Use the GitHub bug report template and include:
 
-- FlistWalker version, for example the release tag or `flistwalker --version`.
+- FlistWalker version, for example the release tag or `fw --version` (on Windows, use the separately distributed CLI executable).
 - Operating system and launch mode.
 - Whether the root uses `FileList.txt` / `filelist.txt` or walker indexing.
 - Approximate root size when performance or indexing is involved.

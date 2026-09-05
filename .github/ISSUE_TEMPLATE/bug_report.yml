@@ -46,7 +46,7 @@ body:
     id: version
     attributes:
       label: FlistWalker version
-      description: Use the release tag or the output of `flistwalker --version` / `FlistWalker.exe --version`.
+      description: Use the release tag or the output of `fw --version` (`flistwalker --version` also works on Linux/macOS).
       placeholder: v0.16.1
     validations:
       required: true

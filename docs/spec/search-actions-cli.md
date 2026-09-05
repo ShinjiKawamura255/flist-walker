@@ -86,8 +86,8 @@
 ### Requirements
 - MUST: TUIの通常footerは狭幅でも`F1 Help`を先頭に表示し、操作一覧へ到達する手段を隠さない。
 - MUST: TUIの旧候補・検索結果・catalog snapshotの最終heavy payload解放はinput loop外で行う。bounded retirementの空きを待つのはproducerだけとし、UIに公開する前にworker側の保持guardを確立する。
-- MUST: `--check-update` と `--update` は `--cli` を必要としない独立した CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。ただし `flistwalker --cli` を含む shell alias との互換性のため、この2操作と同時指定された `--cli` だけは意味を持たない互換フラグとして受理する。
-- MUST: `--check-update` は更新を適用せず、最新版、更新候補、更新確認無効、または失敗を英語で報告する。更新候補がある場合は `flistwalker --update` を手動実行する案内を表示する。
+- MUST: `--check-update` と `--update` は `--cli` を必要としない独立した CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。Windows の公開入口は `fw --check-update` / `fw --update`、Linux/macOS は `fw` または universal とする。ただし共有 parser は `flistwalker --cli` を含む alias との互換性のため、この2操作と同時指定された `--cli` だけは意味を持たない互換フラグとして受理する。
+- MUST: `--check-update` は更新を適用せず、最新版、更新候補、更新確認無効、または失敗を英語で報告する。更新候補がある場合は実行 variant の command 名（Windows は `fw --update`）で手動実行を案内する。
 - MUST: `--update` は利用者による明示的な更新承認として扱う。Windows/Linux の自動更新対応 bundle だけを既存の検証・transaction 経路へ渡し、manual-only platform では release URL を英語で表示して非ゼロ終了する。CLI から開始した更新の適用確認は X11 / Wayland を要求しない内部ヘッドレス再起動で完了し、GUI を起動してはならない。
 - MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。
 - MUST: `--root` と `--limit` を受理し、既存の `--cli [QUERY] --root ... --limit ...` invocation を維持する。本仕様では subcommand を追加しない。
@@ -116,10 +116,10 @@
 - MUST: interactive CLI は `--root`、`--use-default-root`、`--saved-root` を起動 root として受理し、`--sort` を初期 sort、`--no-ignore` を初期 Ignore 無効状態として反映する。`--no-ignore` でも読み込んだ ignore terms は保持し、TUI で Ignore を再度有効化したときに再読込なしで適用する。batch 専用の `--progress` と `--fail-no-match` は interactive との組合せを引数エラーにする。
 - MUST: interactive CLI は標準入力と標準エラー出力の双方が TTY でない場合、raw mode や ANSI 描画を開始せず非ゼロ終了する。標準出力は TTY を要求せず pipe/redirect を許可する。
 - MUST: interactive CLI が root path を options summary、切替・refresh status、root picker、error に表示するときは共有 display normalization を通し、Windows の `\\?\` / `\\?\UNC\` extended prefix を利用者向け文字列へ露出してはならない。
-- MUST: Windows release は単一の console-subsystem EXE とし、PowerShell / cmd から起動した batch CLI と interactive CLI が呼出元 console、同期完了、終了 code、標準 handle を維持しなければならない。GUI mode だけは native window 起動前に console から切り離し、CLI/TUI と GUI のために別 EXE を要求してはならない。
+- MUST: Windows release は GUI-subsystem の universal `FlistWalker.exe` と console-subsystem の `fw.exe` へ役割を分ける。universal は runtime の console attach/detach を行わず native GUI と internal updater restart を処理する。PowerShell / cmd からの batch CLI、interactive CLI、update、help、version は `fw.exe` が呼出元 console、同期完了、終了 code、標準 handle を維持する。Windows universal の旧 CLI dispatch は direct process caller 向け best-effort とし、shell-synchronous 公開契約に含めない。
 - MUST: CLI は `--color[=auto|always|never]` を受理する。未指定は `never` として ANSI 色エスケープを出力せず、値を省略した `--color` は `auto` とする。`auto` は batch CLI の stdout が TTY かつ空でない `NO_COLOR` 環境変数がない場合だけ色を有効化し、pipe/redirect 時は path-only stdout framing を維持する。`always` はこの自動判定を上書き、`never` は ANSI 色エスケープを出力しない。interactive CLI では画面描画に同じ色モードを適用する。
 - MUST: interactive CLI の alternate screen、cursor、status/help、検索結果描画は標準エラー出力だけを使用し、terminal 復旧後に選択結果を標準出力へ出力するか、exec mode の外部 command へ渡す。外部 command は terminal guard 解放前に起動してはならない。
-- MUST: interactive CLI は更新確認を入力ループ外で非同期実行し、新しい version を検知した場合に `Update available: v<version> — Run flistwalker --update after exiting` を英語で表示する。この通知は更新を開始せず、更新確認失敗も検索、入力、終了を妨げてはならない。
+- MUST: interactive CLI は更新確認を入力ループ外で非同期実行し、新しい version を検知した場合に `Update available: v<version> — Run <running-command> --update after exiting` を英語で表示する。Windows の公開 TUI では `<running-command>` は `fw` とする。この通知は更新を開始せず、更新確認失敗も検索、入力、終了を妨げてはならない。
 - MUST: インタラクティブ CLI は query 入力、上下移動、`Enter` による選択結果の標準出力、`Esc` / `Ctrl-C` による終了を提供する。
 - MUST: `Esc` / `Ctrl-C` は worker cancellation を要求し、terminal 復旧後に選択結果を出力せず exit 130 とする。batch CLI の Ctrl-C も FileList/walker の cancellable index path を停止して exit 130 とする。
 - MUST: `Tab` は現在行の pin を切り替え、pin がある場合の `Enter` は現在の filter 結果に含まれない pin も pin 順で出力する。選択可能な結果も pin もない `Enter` は終了してはならない。
@@ -228,7 +228,7 @@
 ## SP-023 CLI 専用 executable と高速一回検索
 
 ### Requirements
-- MUST: Cargo package は universal executable `flistwalker` と CLI 専用 executable `fw` を生成する。`flistwalker` の GUI/CLI/TUI 契約は変更しない。
+- MUST: Cargo package は universal executable `flistwalker` と CLI 専用 executable `fw` を生成する。Linux/macOS の `flistwalker` GUI/CLI/TUI 契約は維持する。Windows の `flistwalker` は GUI subsystem、`fw` は console subsystem とし、後者を公開 CLI/TUI/update/help/version 入口とする。
 - MUST: `fw` は引数解析前に hidden updater restart を処理し、その後 `--cli` を内部注入して既存 CLI/TUI parser・validation・実行経路を共有する。help の program name は `fw` とする。
 - MUST: batch CLI は metadata 付き index entry を path へ戻して再分類せず、一回限りの検索で prefix cache の lookup/store と cache 用 full-result clone/sort を行わない。検索結果、score、order、filter、limit は従来経路と一致させる。
 - MUST: updater は process entrypoint で universal/CLI variant を明示し、同じ variant の standalone binary asset のみを選択する。variant 間の version skew は許容する。release 上の version 付き README/LICENSE/THIRD_PARTY_NOTICES asset は共有するが、自己更新後のローカル配置は universal の `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.README.txt` / `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` に分離する。
@@ -238,7 +238,7 @@
 
 ### Edge / Error
 - 対象 release に `fw` asset がない場合、`fw` updater は universal binary へフォールバックせず fail closed とする。
-- `fw` と `flistwalker --cli` の同じ invocation は stdout、stderr、exit code を一致させる。ただし help/program name と updater の手動実行案内は実行 variant の command 名を使う。
+- `fw` と `flistwalker --cli` の direct child-process 比較は共有 CLI engine の stdout、stderr、exit code を一致させる。ただし help/program name と updater の手動実行案内は実行 variant の command 名を使う。Windows ではこれを universal の shell-synchronous 契約として扱わない。
 
 ## Link traversal options
 `--follow-links` は GUI 起動、batch CLI、interactive CLI と `--create-filelist` に利用できる。preset の pure-search state に保存し、明示 `--preset` 適用と競合する。TUI では起動値または preset 値を session 中保持する。詳細は [SP-002](indexing-performance.md#sp-002-walker-走査) を正本とする。
