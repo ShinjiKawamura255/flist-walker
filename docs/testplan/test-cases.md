@@ -16,7 +16,7 @@
 | TC-007 | perf | 10万件検索の遅延計測 | SP-007 |
 | TC-008 | unit | 例外時に非ゼロ終了コードを返す | SP-008 |
 | TC-009 | unit | モジュール分離により単体テスト可能 | SP-009 |
-| TC-010 | manual+unit | 多数履歴/preset/Named Rootのkeyboard選択追従と手動scroll維持、多数タブの横scroll・active追従・固定controls・root tooltipを検証する。GUI で検索/選択/実行/再読込が行える（`docs/GUI-TESTPLAN.md` の `GSM-001` から `GSM-006`） | SP-010 |
+| TC-010 | manual+unit | 多数履歴/preset/Named Rootのkeyboard選択追従と手動scroll維持、多数タブの横scroll・active追従・固定controls・root tooltipを検証する。GUI で検索/選択/実行/再読込が行える（`docs/GUI-TESTPLAN.md` の `GSM-001` から `GSM-006`）。`quit_shortcuts_do_not_close_the_root_viewport` は Ctrl/Cmd+Q の初回・repeat 入力で root Close が発生せず、明示的な Close command が通ることを frame 終了まで検証する。`cargo test --locked --test macos_quit_menu` は main thread の AppKit menu で終了キーだけが消え、終了 action・表示名・他のキーが維持されることを検証する。実機では両キーによる非終了とウィンドウ close／macOS 終了メニューによる終了を確認する | SP-010 |
 | TC-011 | manual | GUI 回帰手順に基づく再検証が可能（`scripts/gui-smoke-fixture.sh` と `docs/GUI-TESTREPORT.template.md` を使用） | SP-011 |
 | TC-012 | unit | プレビューキャッシュが上限件数を超えない | SP-007 |
 | TC-012A | unit | `.vbs` など非 `.txt` でも UTF-8 / UTF-16 / 主要レガシー文字コードなら本文プレビューでき、バイナリは unreadable を維持する | SP-010 |

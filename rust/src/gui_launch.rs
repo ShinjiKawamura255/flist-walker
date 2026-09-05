@@ -16,6 +16,15 @@ const APP_ID: &str = "flistwalker";
 const DEFAULT_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(1400.0, 900.0);
 const MIN_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(640.0, 400.0);
 
+#[cfg(target_os = "macos")]
+mod macos_menu;
+
+fn configure_quit_shortcuts(ctx: &eframe::egui::Context) {
+    // egui handles its default primary+Q at end_pass, after app input handling.
+    // Disable that source without suppressing native or updater close requests.
+    ctx.options_mut(|options| options.quit_shortcuts.clear());
+}
+
 #[cfg(target_os = "windows")]
 fn configure_windows_dpi_mode() {
     #[link(name = "user32")]
@@ -160,6 +169,10 @@ pub(crate) fn run(
                     );
                 }
             }
+            configure_quit_shortcuts(&cc.egui_ctx);
+            // winit creates the macOS menu before invoking the app creator.
+            #[cfg(target_os = "macos")]
+            macos_menu::disable_native_quit_shortcut()?;
             configure_egui_fonts(&cc.egui_ctx);
             trace_startup_phase(startup_start, "fonts_configured");
             let mut app = FlistWalkerApp::from_launch(root, limit, query, root_explicit, max_depth);
@@ -253,6 +266,56 @@ mod tests {
         build_root_viewport, merge_update_diagnostic, APP_ID, APP_TITLE, DEFAULT_WINDOW_SIZE,
         MIN_WINDOW_SIZE,
     };
+
+    #[test]
+    fn quit_shortcuts_do_not_close_the_root_viewport() {
+        use eframe::egui::{Context, Event, Key, Modifiers, RawInput, ViewportCommand, ViewportId};
+
+        for modifiers in [
+            Modifiers {
+                ctrl: true,
+                command: true,
+                ..Modifiers::NONE
+            },
+            Modifiers {
+                mac_cmd: true,
+                command: true,
+                ..Modifiers::NONE
+            },
+        ] {
+            let ctx = Context::default();
+            super::configure_quit_shortcuts(&ctx);
+            for repeat in [false, true] {
+                let output = ctx.run_ui(
+                    RawInput {
+                        modifiers,
+                        events: vec![Event::Key {
+                            key: Key::Q,
+                            physical_key: Some(Key::Q),
+                            pressed: true,
+                            repeat,
+                            modifiers,
+                        }],
+                        ..RawInput::default()
+                    },
+                    |_| {},
+                );
+                assert!(
+                    !output.viewport_output[&ViewportId::ROOT]
+                        .commands
+                        .contains(&ViewportCommand::Close),
+                    "quit chord must not close the app: {modifiers:?}, repeat={repeat}"
+                );
+            }
+
+            let output = ctx.run_ui(RawInput::default(), |ui| {
+                ui.ctx().send_viewport_cmd(ViewportCommand::Close);
+            });
+            assert!(output.viewport_output[&ViewportId::ROOT]
+                .commands
+                .contains(&ViewportCommand::Close));
+        }
+    }
 
     #[test]
     fn startup_update_diagnostics_preserve_recovery_and_helper_failures() {
