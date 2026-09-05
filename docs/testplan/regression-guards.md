@@ -173,8 +173,16 @@ Back to the [Validation Matrix](validation-matrix.md).
 
 ### Regression Guard: positionless startup stays on a real display
 
-- Scenario: Windows universal binaryがconsole subsystemで起動してGUI modeへ切り替わり、保存window位置がないか旧形式でscale不明のため、GUI位置をWM既定配置へ委ねる。display構成変更後は、その既定位置が画面間の隙間または切断済みdisplay側に残る。
+- Scenario: Windows GUI の保存window位置がないか旧形式でscale不明のため、GUI位置をOS/WM既定配置へ委ねる。display構成変更後は、その既定位置が画面間の隙間または切断済みdisplay側に残る。
 - Expected Behavior: 実monitor列挙とposition操作が可能なら、保存位置なし／legacy scale不明でも現在のmonitor（取得不能なら列挙先頭）内へ明示配置する。有効な保存scaleと負座標は従来どおり復元する。
 - Non-goals: monitor列挙不能またはposition操作不能なbackendでの配置保証、最大化状態の復元、taskbar/dockを除いたplatform固有work areaの取得。
 - Related Tests: TC-020, TC-138, `regression_gui_geometry_monitor_gap_is_not_a_valid_placement`, `regression_gui_geometry_missing_saved_position_uses_current_monitor_fallback`, `regression_gui_geometry_unavailable_position_preserves_only_bounded_size`.
-- Notes for Future Changes: console detach順序、eframe/winit起動処理、session schema、起動geometry fallbackを変更する場合は、positionless/legacyとposition操作不能の両境界を維持し、WM既定位置を安全性の根拠にしない。
+- Notes for Future Changes: Windows executable subsystem、eframe/winit起動処理、session schema、起動geometry fallbackを変更する場合は、positionless/legacyとposition操作不能の両境界を維持し、WM既定位置を安全性の根拠にしない。
+
+### Regression Guard: Windows GUI and console executable roles
+
+- Scenario: terminal の一瞬表示を避けるため subsystem を変更した際、universal が CUI のままになる、`fw` まで GUI subsystem になる、または `FreeConsole()` 削除と同時に updater child の explicit NUL stdio を弱めて自己更新を回帰させる。
+- Expected Behavior: fresh Windows artifact の universal aliases は GUI subsystem 2、`fw.exe` は console subsystem 3 とする。universal は runtime console detach を持たず、updater helper/restart は subsystem に依存せず stdio=NUL、hidden flag、bounded retry、mode-specific internal restart を維持する。
+- Non-goals: Windows universal の shell-synchronous CLI 保証、初回window前の fatal error 用 native dialog、release publish。
+- Related Tests: TC-147, TC-187, TC-191, TC-193, TC-215; `scripts/test-windows-build-artifact.ps1`, `tc187_regression_hidden_updater_child_does_not_inherit_stale_stdio`.
+- Notes for Future Changes: executable subsystem、entrypoint、updater child/restart command、Windows build scriptを変更するときは fresh PE 検査と fixed-key/hash-distinct Universal/Fw copied-sandbox updater E2E を再実行する。

@@ -1219,8 +1219,8 @@ impl FlistWalkerApp {
         let physical_position = physical_position.map(clamp_to_monitor).or_else(|| {
             can_position.then(|| {
                 // Regression guard: never delegate a positionless startup to the window
-                // manager when a real monitor is known. A console-first Windows launch can
-                // otherwise reuse an off-screen or display-gap default position.
+                // manager when a real monitor is known. Platform/default placement can otherwise
+                // reuse an off-screen or display-gap position after the monitor layout changes.
                 clamp_to_monitor(monitor.center() - logical_size * *scale_factor * 0.5)
             })
         });

@@ -4,8 +4,8 @@ FlistWalker is a Rust GUI/CLI tool that provides an `fzf --walker`-style experie
 
 - Display name: `FlistWalker`
 - GitHub repository: `flist-walker`
-- Universal binary: `flistwalker` (`FlistWalker.exe` on Windows release assets), providing GUI, batch CLI, and TUI
-- Fast CLI-only binary: `fw` (`fw.exe` on Windows), using the same CLI/TUI contract without `--cli`
+- Universal binary: `flistwalker` (`FlistWalker.exe` on Windows release assets), providing the GUI on Windows and GUI/batch CLI/TUI on Linux and macOS
+- Fast CLI-only binary: `fw` (`fw.exe` on Windows), the supported Windows CLI/TUI/update entrypoint and the short CLI path on every platform
 
 Language docs:
 
@@ -148,12 +148,9 @@ CLI mode:
 ```bash
 # Recommended short command from a release asset:
 fw "main" --root .. --limit 1000
-
-# The universal binary remains compatible:
-flistwalker --cli "main" --root .. --limit 1000
 ```
 
-`fw` excludes the GUI entry path and is optimized for short one-shot invocations. All CLI examples below may replace `flistwalker --cli` with `fw`.
+`fw` excludes the GUI entry path and is optimized for short one-shot invocations. On Windows, download the standalone `fw-<version>-windows-x86_64.exe` release asset separately and optionally rename it to `fw.exe`; it is not included in the existing universal ZIP. `FlistWalker.exe` is a GUI-subsystem application so it starts without a console flash. Its legacy CLI flags remain best-effort for direct process callers, but PowerShell/cmd synchronization and terminal I/O are supported through `fw.exe`. On Linux and macOS, `flistwalker --cli ...` remains supported as an alternative to the examples below.
 
 In CLI mode:
 
@@ -182,22 +179,22 @@ Named roots assign a stable name to a search root. Presets save a named root or 
 
 ```bash
 # Register a named root. Quote the complete NAME=PATH value when the path may contain spaces.
-flistwalker --cli --add-named-root "work=./my-project"
+fw --add-named-root "work=./my-project"
 
 # Save the current pure-search options and exit without running the search.
-flistwalker --cli "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
+fw "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
 
 # Inspect the saved names.
-flistwalker --cli --list-named-roots
-flistwalker --cli --list-presets
+fw --list-named-roots
+fw --list-presets
 
 # Apply the preset in batch mode or start the TUI with it.
-flistwalker --cli --preset rust-src
-flistwalker --cli --interactive --preset rust-src
+fw --preset rust-src
+fw --interactive --preset rust-src
 
 # Remove catalog entries when they are no longer needed.
-flistwalker --cli --remove-preset rust-src
-flistwalker --cli --remove-named-root work
+fw --remove-preset rust-src
+fw --remove-named-root work
 ```
 
 Quote the complete query argument even when it contains only one term. `--preset` cannot be combined with an explicit query or with root, entry-type, source, regex, case, ignore, sort, `--max-depth`, or `--follow-links` selectors because those values come from the preset. Invocation-specific options such as `--limit`, output framing, and explicit actions remain available when applying it.
@@ -206,20 +203,20 @@ Examples:
 
 ```bash
 # Create a new root FileList; refuse an existing one unless overwrite is explicit.
-flistwalker --cli --root . --create-filelist
-flistwalker --cli --root . --create-filelist --overwrite-filelist
+fw --root . --create-filelist
+fw --root . --create-filelist --overwrite-filelist
 
 # Explicitly open every post-limit match (stdout remains empty).
-flistwalker --cli "report" --root . --limit 10 --action open --action-all
+fw "report" --root . --limit 10 --action open --action-all
 
 # Match Rust files under a src directory while excluding generated directories.
-flistwalker --cli "dir:src ext:rs !dir:generated" --root .
+fw "dir:src ext:rs !dir:generated" --root .
 
 # Pass every post-limit match to an external command in platform-sized batches.
-flistwalker --cli "report" --root . --exec-max-args 100 -x archive-tool -- {}
+fw "report" --root . --exec-max-args 100 -x archive-tool -- {}
 
 # Inspect the number of paths and batches without starting the command.
-flistwalker --cli "report" --root . --dry-run -x archive-tool -- {}
+fw "report" --root . --dry-run -x archive-tool -- {}
 ```
 
 In PowerShell, quote the placeholder as `'{}'` so it is passed as an argument instead of parsed as a script block.
@@ -227,7 +224,7 @@ In PowerShell, quote the placeholder as `'{}'` so it is passed as an argument in
 For shell-safe path handling:
 
 ```bash
-flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
+fw --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 ```
 
 Interactive CLI mode:
@@ -236,7 +233,7 @@ Interactive CLI mode:
 fw --interactive --root ..
 ```
 
-The Windows release keeps `FlistWalker.exe` for GUI, batch CLI, and interactive TUI compatibility and adds `fw.exe` as a CLI-only standalone asset. PowerShell and cmd wait for CLI/TUI completion and receive its exit code normally; only the universal GUI mode detaches from the console before the native window starts.
+The Windows release uses `FlistWalker.exe` for the GUI and the separately distributed `fw.exe` for batch CLI, interactive TUI, update, help, and version commands. PowerShell and cmd wait for `fw.exe` and receive its exit code normally; the GUI executable has no console to detach at runtime.
 
 The TUI reads the same runtime shortcut settings as the GUI. With `emacs_keybindings_enabled=true`, it accepts `Ctrl+N` / `Ctrl+P`, `Ctrl+V` / `Alt+V`, `Ctrl+I`, `Ctrl+J` / `Ctrl+M`, `Ctrl+G` / `Ctrl+R`, and Emacs-style editing in both the normal query and history filter. The contextual help reflects whether these shortcuts are enabled. `tab_pin_moves_to_next_row` controls whether `Tab`, `Shift+Tab`, and enabled `Ctrl+I` advance after toggling a pin.
 
@@ -248,7 +245,7 @@ This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--sa
 
 `F7` opens preset management. Press `N` to name and save the current search, or select a preset and press `Delete`, then `Enter` to confirm deletion. Saving and deleting update the catalog without changing the current search or opening results. Failures keep the draft or confirmation available for retry; `Esc` closes it. An in-flight catalog write settles before selected paths are output or the TUI exits. Apply a saved preset at startup with `--preset NAME`.
 
-`Ctrl+O` opens or executes only the current row, while `Shift+Enter` reveals only its containing folder; pinned rows are never included in either action. With Emacs keybindings enabled, `Ctrl+G` clears the query and pins and `Ctrl+R` opens persisted query-history search. `Alt+P` toggles the width-aware preview, and `F1` opens contextual help; the `F1 Help` hint remains at the start of the footer on narrow terminals. In history, help, options, sort, root, or FileList overlays, `Enter`, `Esc`, and enabled `Ctrl+G` apply or close only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `flistwalker --cli --interactive > selection.txt` is supported. All screen/status output stays on stderr; after terminal restoration, selected paths are either written to stdout or passed to the explicit `-x` command.
+`Ctrl+O` opens or executes only the current row, while `Shift+Enter` reveals only its containing folder; pinned rows are never included in either action. With Emacs keybindings enabled, `Ctrl+G` clears the query and pins and `Ctrl+R` opens persisted query-history search. `Alt+P` toggles the width-aware preview, and `F1` opens contextual help; the `F1 Help` hint remains at the start of the footer on narrow terminals. In history, help, options, sort, root, or FileList overlays, `Enter`, `Esc`, and enabled `Ctrl+G` apply or close only that overlay; `Ctrl-C` always cancels the whole TUI. `Esc` / `Ctrl-C` in normal mode restores the terminal, prints nothing, and exits 130. The TUI requires terminal stdin and stderr, while stdout may be redirected, so `fw --interactive > selection.txt` is supported. All screen/status output stays on stderr; after terminal restoration, selected paths are either written to stdout or passed to the explicit `-x` command.
 
 ## Behavior
 
@@ -263,7 +260,7 @@ This starts a lightweight terminal UI. `--root`, `--use-default-root`, and `--sa
 - `Use FileList`: prefer `FileList.txt` / `filelist.txt`
 - `Files`: toggle file visibility
 - `Folders`: toggle folder visibility
-- `Follow links`: Search through directory symlinks and Windows junctions below Root. Off by default; stored per tab, session, and preset. Targets outside the physical Root retain paths through their links, and ancestor cycles are stopped. FileList reading adds no traversal; fresh Create File List scans use this option. Use `fw --root PATH --source walker --follow-links` in CLI (`flistwalker --cli` for the universal binary), adding `--interactive` for TUI.
+- `Follow links`: Search through directory symlinks and Windows junctions below Root. Off by default; stored per tab, session, and preset. Targets outside the physical Root retain paths through their links, and ancestor cycles are stopped. FileList reading adds no traversal; fresh Create File List scans use this option. Use `fw --root PATH --source walker --follow-links` in CLI, adding `--interactive` for TUI. Linux/macOS may also use the universal `flistwalker --cli` form.
 
 Results in relative mode remain relative when Root itself is a symlink or junction. Windows compatibility junctions marked Hidden and System, `.lnk` shortcuts, and Finder alias expansion are excluded from link traversal.
 

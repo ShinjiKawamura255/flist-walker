@@ -59,7 +59,7 @@
 - MUST: 1 個の create-new active lock と versioned durable marker で transaction を排他し、marker は transaction/parent/helper identity、global phase、各 target の存在・旧新 hash・`prepared|intent|applied|rolled_back` 状態を write-ahead で記録しなければならない。
 - MUST: helper は parent が durable `helper_registered` phase と helper identity を記録したことを確認し、create-new acknowledgement を同期するまで filesystem mutation を行ってはならない。parent は acknowledgement を検証するまで適用開始を通知せず、本体終了を許可してはならない。
 - MUST: GUI の native close または signal shutdown が update check/staging 中に要求された場合、同じ per-request cancellation token を設定して root viewport close を保留しなければならない。install state は `CancelableStaging`、`CommitHandoff`、`Terminal` を区別し、`prepare_transaction` 直前に `CommitHandoff` へ入った後は cancellation を無視して helper acknowledgement まで完遂し、`ApplyStarted`、pre-handoff `Canceled`、または `Failed` の terminal 応答後だけ close を再送しなければならない。強制終了・電源断は durable recovery の対象とする。
-- MUST: helper 起動は installation directory を child current directory に固定してはならない。Windows の hidden updater child は stdin/stdout/stderr を `NUL` へ固定し、GUI が console detach 後に保持しうる標準 handle を継承してはならない。helper 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical helper path が `\\?\` / `\\?\UNC\` 形式なら各ラウンドで同一 path の非 verbatim 表現も試さなければならない。全試行失敗の通知は各 OS error を保持しつつ利用者向け path から `\\?\` を除去しなければならない。
+- MUST: helper 起動は installation directory を child current directory に固定してはならない。Windows の hidden updater child は entrypoint subsystem や利用可能な console handle の有無に依存せず stdin/stdout/stderr を `NUL` へ固定し、launcher/test 由来の無効または stale 標準 handle を継承してはならない。helper 起動は最大3ラウンド、ラウンド間100msの bounded retry とし、canonical helper path が `\\?\` / `\\?\UNC\` 形式なら各ラウンドで同一 path の非 verbatim 表現も試さなければならない。全試行失敗の通知は各 OS error を保持しつつ利用者向け path から `\\?\` を除去しなければならない。
 - MUST: helper は acknowledgement 後に旧 process の終了を最大 30 秒待ち、timeout を binary commit 前失敗として扱わなければならない。
 - MUST: sidecar を先に適用し、binary 置換を唯一の commit point として最後に行わなければならない。Windows の既存 target は同一 volume の native `ReplaceFileW(target, new, backup, 0, null, null)` を updater process 内で使い、Linux の既存 target は create-new backup の同期後に同一 directory rename を使い、不在 target は同一 directory の no-overwrite hard-link promotion と source unlink を使わなければならない。
 - MUST: binary commit 前の失敗と新 process の生成失敗では、元から存在した target を検証済み backup から復元し、元から無かった target を削除して旧 bundle の hash を確認しなければならない。
@@ -107,12 +107,12 @@
 - Related Tests: TC-179, TC-187; `tc179_regression_helper_launch_does_not_force_install_directory_as_current_dir`, `tc179_regression_windows_helper_launch_retries_without_verbatim_prefix`, `tc179_regression_windows_helper_spawn_error_hides_verbatim_prefix`, `tc179_regression_failed_helper_launch_cleanup_allows_a_fresh_prepare`, `tc187_regression_windows_helper_retry_rounds_include_verbatim_fallback`.
 - Notes for Future Changes: helper の working directory、Windows path spelling、retry、または spawn error の組み立てを変更するときは TC-179、TC-187、VM-005 の sandbox self-update を同一変更で確認する。
 
-### Regression Guard: windows-updater-detached-gui-spawn
-- Scenario: console subsystem の Windows GUI が `FreeConsole()` した後、既定の stdio 継承で copied helper を起動すると、起動元によって残った stale standard handle の複製に失敗し、GUI の自己更新だけが一過性または継続的に失敗する。
+### Regression Guard: windows-updater-hidden-child-stdio
+- Scenario: Windows GUI-subsystem process、console なし launcher、または無効/stale standard handle を持つ test process が、既定の stdio 継承で copied helper を起動すると、standard handle の複製に失敗し、GUI の自己更新だけが一過性または継続的に失敗する。
 - Expected Behavior: helper と更新後/rollback後 process の hidden `Command` は stdin/stdout/stderr を明示的に `NUL` へ接続する。通常 helper path の一過性起動失敗は最大3ラウンド・100ms間隔で再試行し、GUI/CLI の restart mode と transaction acknowledgement 順序は維持する。
 - Non-goals: antivirus/WDAC の永続的な executable block の迂回、外部 application の標準入出力変更、production binary を置換する自動試験。
-- Related Tests: TC-187; `tc187_regression_detached_gui_helper_does_not_inherit_stale_stdio`, `tc187_regression_windows_helper_retries_transient_normal_path_failure`, `tc187_regression_windows_helper_retry_rounds_include_verbatim_fallback`.
-- Notes for Future Changes: Windows GUI の console subsystem、`FreeConsole()`、hidden updater child の stdio、または helper retry を変更するときは TC-187 の native subprocess probe と VM-005 を同一変更で確認する。
+- Related Tests: TC-187; `tc187_regression_hidden_updater_child_does_not_inherit_stale_stdio`, `tc187_regression_windows_helper_retries_transient_normal_path_failure`, `tc187_regression_windows_helper_retry_rounds_include_verbatim_fallback`.
+- Notes for Future Changes: Windows executable subsystem、hidden updater child の stdio/window flag、または helper retry を変更するときは TC-187 の native subprocess probe、TC-191 の Universal/Fw copied-sandbox E2E、VM-005 を同一変更で確認する。
 
 ### Regression Guard: windows-updater-restart-handoff
 - Scenario: Windows の更新で新版 process の生成が一過性に失敗し、旧 bundle への rollback 後に行う旧GUIの単発再起動も失敗すると、installation は安全に旧版へ戻っていても画面が再表示されず、利用者が手動起動するまで停止する。
@@ -223,7 +223,7 @@
 
 ### Preconditions / Postconditions
 - Preconditions: Windows PowerShell 5.1 または PowerShell 7 で repository checkout を利用し、既存依存を使うか、利用者が不足依存の導入を承認する。
-- Postconditions: build 成功時は Windows icon/resource、`asInvoker` manifest、console subsystem を持ち、意図しない MSYS2 runtime DLL に依存しない byte-identical release EXE が 2 名で存在する。単一 EXE の GUI mode は runtime に console から切り離される。
+- Postconditions: build 成功時は Windows icon/resource、`asInvoker` manifest、GUI subsystem を持つ byte-identical の `flistwalker.exe` / `FlistWalker.exe` と2名が存在し、`fw.exe` は同じ resource/manifest と console subsystem を持つ。いずれも意図しない MSYS2 runtime DLL に依存しない。
 
 ### Edge / Error
 - `winget` 不在、承認拒否、install 失敗、install 後の再検出失敗、build/strip 失敗では後続 build を実行せず、原因と再実行または手動導入コマンドを表示する。

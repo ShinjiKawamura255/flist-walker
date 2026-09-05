@@ -99,8 +99,8 @@ pub(crate) fn run(
     let root = resolve_root(root.unwrap_or(Path::new(".")))?;
     trace_startup_phase(startup_start, "root_resolved");
     let mut native_options = eframe::NativeOptions::default();
-    // Begin at the window manager's safe position. The hidden native window gives
-    // access to real monitors before app creation and before the first visible frame.
+    // Start hidden without forcing a position. The native window then gives access to real
+    // monitors so session placement can choose and clamp one before the first visible frame.
     let startup_size = FlistWalkerApp::startup_window_placement(&[], None, false)
         .map(|placement| placement.logical_size);
     trace_startup_phase(startup_start, "startup_geometry_loaded");

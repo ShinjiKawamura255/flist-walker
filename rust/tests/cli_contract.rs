@@ -128,7 +128,7 @@ fn cli_prints_version_with_long_flag() {
 }
 
 #[test]
-fn tc_193_fw_uses_short_command_name_and_implicit_cli_mode() {
+fn tc_193_fw_uses_short_command_name_and_shares_the_cli_engine() {
     let version = fw_command_with_settings("fw-version")
         .arg("--version")
         .output()
@@ -168,7 +168,7 @@ fn tc_193_fw_uses_short_command_name_and_implicit_cli_mode() {
             "file",
         ])
         .output()
-        .expect("run universal CLI parity");
+        .expect("run universal CLI engine parity through a direct child process");
 
     assert!(
         fw.status.success(),

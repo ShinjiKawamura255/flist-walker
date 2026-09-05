@@ -6,7 +6,8 @@
 
 - 表示名: `FlistWalker`
 - GitHub リポジトリ名: `flist-walker`
-- 実行コマンド: `flistwalker`（Windows 成果物は `FlistWalker.exe`）
+- GUI 実行コマンド: `flistwalker`（Windows 成果物は `FlistWalker.exe`）
+- CLI/TUI 実行コマンド: `fw`（Windows 成果物は別配布の `fw.exe`）
 - ドキュメント索引: [docs/INDEX.md](docs/INDEX.md)
 - 保守者向けの現状入口: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
@@ -171,12 +172,9 @@ CLI モード:
 ```bash
 # release の短い CLI 専用コマンド（推奨）
 fw "main" --root .. --limit 1000
-
-# GUI/CLI 共用バイナリも従来互換
-flistwalker --cli "main" --root .. --limit 1000
 ```
 
-`fw` は GUI 起動経路を含めない CLI 専用 executable で、短い一回検索向けに起動を軽量化しています。以下の CLI 例はすべて `flistwalker --cli` を `fw` に置き換えられます。
+`fw` は GUI 起動経路を含めない CLI 専用 executable で、短い一回検索向けに起動を軽量化しています。Windows では release の `fw-<version>-windows-x86_64.exe` を別途ダウンロードし、必要に応じて `fw.exe` へ rename します。従来の universal ZIP には含まれません。`FlistWalker.exe` は GUI subsystem で起動するため terminal が一瞬表示されず、PowerShell/cmd での同期実行・標準入出力・更新・help/version は `fw.exe` を正式入口とします。Windows universal の旧 CLI 引数は direct process caller 向けの best-effort です。Linux/macOS では `flistwalker --cli ...` も引き続き利用できます。
 
 CLI では:
 
@@ -205,22 +203,22 @@ CLI では:
 
 ```bash
 # 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。
-flistwalker --cli --add-named-root "work=./my-project"
+fw --add-named-root "work=./my-project"
 
 # 現在の純粋な検索条件を保存し、検索は実行せず終了する。
-flistwalker --cli "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
+fw "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
 
 # 保存済みの名前を確認する。
-flistwalker --cli --list-named-roots
-flistwalker --cli --list-presets
+fw --list-named-roots
+fw --list-presets
 
 # batch モードで適用するか、適用した状態で TUI を起動する。
-flistwalker --cli --preset rust-src
-flistwalker --cli --interactive --preset rust-src
+fw --preset rust-src
+fw --interactive --preset rust-src
 
 # 不要になった catalog entry を削除する。
-flistwalker --cli --remove-preset rust-src
-flistwalker --cli --remove-named-root work
+fw --remove-preset rust-src
+fw --remove-named-root work
 ```
 
 query が1 termだけの場合も、query 引数全体を引用してください。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort、`--max-depth`、`--follow-links` の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
@@ -229,20 +227,20 @@ query が1 termだけの場合も、query 引数全体を引用してくださ�
 
 ```bash
 # 新規 root FileList を作成する。既存ファイルの置換には明示指定が必要。
-flistwalker --cli --root . --create-filelist
-flistwalker --cli --root . --create-filelist --overwrite-filelist
+fw --root . --create-filelist
+fw --root . --create-filelist --overwrite-filelist
 
 # post-limit の全一致を明示して開く（標準出力は空）。
-flistwalker --cli "report" --root . --limit 10 --action open --action-all
+fw "report" --root . --limit 10 --action open --action-all
 
 # src配下のRustファイルを検索し、generated directoryを除外する。
-flistwalker --cli "dir:src ext:rs !dir:generated" --root .
+fw "dir:src ext:rs !dir:generated" --root .
 
 # post-limit の全一致を実行環境の上限までまとめて外部 command へ渡す。
-flistwalker --cli "report" --root . --exec-max-args 100 -x archive-tool -- {}
+fw "report" --root . --exec-max-args 100 -x archive-tool -- {}
 
 # command を起動せず、対象数と batch 数だけを確認する。
-flistwalker --cli "report" --root . --dry-run -x archive-tool -- {}
+fw "report" --root . --dry-run -x archive-tool -- {}
 ```
 
 PowerShell では placeholder が script block と解釈されないよう、`'{}'` と引用してください。
@@ -250,7 +248,7 @@ PowerShell では placeholder が script block と解釈されないよう、`'{
 パスを安全にシェル連携する例:
 
 ```bash
-flistwalker --cli --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
+fw --root . --type file --print0 | xargs -0 -n1 printf '%s\n'
 ```
 
 インタラクティブ CLI モード:
@@ -261,7 +259,7 @@ fw --interactive --root ..
 
 `--max-depth` は起動時または preset の深さとして TUI session 中固定され、F2 options overlay からは変更しません。
 
-軽量な TUI が起動します。`--root`、`--use-default-root`、`--saved-root` で起動 root を選択でき、`--sort` は初期並び順、`--no-ignore` は Ignore が無効と表示される初期状態へ反映されます。`--color auto|always|never` で CLI の色を制御できます。batch の既定 `auto` は stdout が TTY のときだけ色を出し、空でない `NO_COLOR` 環境変数を尊重するため、pipe/redirect のパス出力はそのままです。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を確定します。`F2` は Files、Folders、Regex、Ignore Case、起動時に読み込んだ Ignore terms、Source（`Auto` / `FileList` / `Walker`）を確定/取消できる options overlay を開きます。Source と Files/Folders の変更は再インデックスし、検索だけに関わる変更は現在の snapshot を再利用します。`F3` は Score、名前、更新日時、作成日時、サイズの並び順（該当する昇順/降順）を選択し、Score 以外は limit 適用前に全 match を並べ替えます。`F4` は保存済みrootを開いて強調行へ切り替え、`F5` は現在rootを更新します。`F6` は root のみ／ancestor までの作成範囲を選んで FileList を作成し、root に既存 FileList がある場合は別途上書き確認を要求します。作成はバックグラウンドで行われ、選択・終了・root 切替の要求は commit/cancel/rollback の完了後にだけ反映されます。root切替では旧選択とpinを消去しますが、query・履歴・optionsは維持し、更新時はpinを維持します。`Ctrl+O` は現在行だけを開く/実行し、`Shift+Enter` は現在行の格納フォルダだけを開きます。pin された行がこれらの副作用操作に含まれることはありません。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴、help、options、sort、root、FileList の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`flistwalker --cli --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけを使い、端末復旧後に選択パスを標準出力へ書くか、明示した `-x` command へ渡します。
+軽量な TUI が起動します。`--root`、`--use-default-root`、`--saved-root` で起動 root を選択でき、`--sort` は初期並び順、`--no-ignore` は Ignore が無効と表示される初期状態へ反映されます。`--color auto|always|never` で CLI の色を制御できます。batch の既定 `auto` は stdout が TTY のときだけ色を出し、空でない `NO_COLOR` 環境変数を尊重するため、pipe/redirect のパス出力はそのままです。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を確定します。`F2` は Files、Folders、Regex、Ignore Case、起動時に読み込んだ Ignore terms、Source（`Auto` / `FileList` / `Walker`）を確定/取消できる options overlay を開きます。Source と Files/Folders の変更は再インデックスし、検索だけに関わる変更は現在の snapshot を再利用します。`F3` は Score、名前、更新日時、作成日時、サイズの並び順（該当する昇順/降順）を選択し、Score 以外は limit 適用前に全 match を並べ替えます。`F4` は保存済みrootを開いて強調行へ切り替え、`F5` は現在rootを更新します。`F6` は root のみ／ancestor までの作成範囲を選んで FileList を作成し、root に既存 FileList がある場合は別途上書き確認を要求します。作成はバックグラウンドで行われ、選択・終了・root 切替の要求は commit/cancel/rollback の完了後にだけ反映されます。root切替では旧選択とpinを消去しますが、query・履歴・optionsは維持し、更新時はpinを維持します。`Ctrl+O` は現在行だけを開く/実行し、`Shift+Enter` は現在行の格納フォルダだけを開きます。pin された行がこれらの副作用操作に含まれることはありません。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴、help、options、sort、root、FileList の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`fw --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけを使い、端末復旧後に選択パスを標準出力へ書くか、明示した `-x` command へ渡します。
 
 ## 挙動
 
@@ -276,7 +274,7 @@ fw --interactive --root ..
 - `Use FileList`: ONで `FileList.txt` / `filelist.txt` を優先利用
 - `Files`: ファイル表示のON/OFF
 - `Folders`: フォルダ表示のON/OFF
-- `Follow links`: Root配下のdirectory symlink／Windows junctionの先も検索します。既定はOFFで、tab・session・presetごとに保持します。Root外のリンク先もリンク経由の相対パスで表示し、循環は打ち切ります。FileList読込時は追加走査せず、Create File Listの新規走査には適用します。CLIでは `fw --root PATH --source walker --follow-links`（共通版は `flistwalker --cli`）、TUIではさらに `--interactive` を指定します。
+- `Follow links`: Root配下のdirectory symlink／Windows junctionの先も検索します。既定はOFFで、tab・session・presetごとに保持します。Root外のリンク先もリンク経由の相対パスで表示し、循環は打ち切ります。FileList読込時は追加走査せず、Create File Listの新規走査には適用します。CLIでは `fw --root PATH --source walker --follow-links`、TUIではさらに `--interactive` を指定します。Linux/macOS では universal の `flistwalker --cli` 形式も利用できます。
 
 Root自体がsymlink／junctionの場合も、相対表示のResultsはRootからの相対パスになります。WindowsのHidden＋System属性を持つ互換用junction、`.lnk`、Finder aliasの展開は対象外です。
 
