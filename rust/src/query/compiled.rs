@@ -505,12 +505,15 @@ fn normalize_regex_alternatives(term: &str, field: QueryField, ignore_case: bool
     regex_alternatives(term)
         .into_iter()
         .filter_map(parse_include_alternative)
-        .map(|(exact, value)| {
+        .filter_map(|(exact, value)| {
             if !exact {
-                return value;
+                return Some(value);
             }
             let value = literal_field_value(field, &value);
             let (start, end, core) = split_anchor(&value);
+            if core.is_empty() {
+                return None;
+            }
             // Literal query clauses have ASCII-only case folding and strict anchors.
             // Keep adjacent regex flags from changing that contract.
             let literal = core
@@ -523,12 +526,12 @@ fn normalize_regex_alternatives(term: &str, field: QueryField, ignore_case: bool
                     }
                 })
                 .collect::<String>();
-            format!(
+            Some(format!(
                 "(?-ix:{}{}{})",
                 if start { r"\A" } else { "" },
                 literal,
                 if end { r"\z" } else { "" }
-            )
+            ))
         })
         .collect::<Vec<_>>()
         .join("|")

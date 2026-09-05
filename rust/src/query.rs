@@ -640,7 +640,14 @@ mod tests {
                 "{query}"
             );
         }
-        for query in ["foo.*|", "|foo.*", "||foo.*||"] {
+        for query in [
+            "foo.*|",
+            "|foo.*",
+            "||foo.*||",
+            "foo.*|'$",
+            "foo.*|'^",
+            "foo.*|'^$",
+        ] {
             assert!(
                 alignment_evaluate(query, true, true, "unrelated.txt").is_none(),
                 "{query}"
