@@ -1016,6 +1016,7 @@ fn tc_154_stale_background_routes_never_mutate_active_scratch() {
 
     app.bind_preview_request_to_tab(2202, active_id);
     app.apply_background_preview_response(PreviewResponse {
+        canceled: false,
         request_id: 2202,
         path: stale_path.clone(),
         preview: "stale preview".to_string(),

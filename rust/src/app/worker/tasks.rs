@@ -23,7 +23,7 @@ use crate::indexer::{
 use crate::path_utils::{normalize_windows_path_buf, path_key};
 use crate::search::{rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome};
 use crate::search_catalog::{load_search_catalog, search_catalog_file_path, update_search_catalog};
-use crate::ui_model::{build_preview_text_with_kind, normalize_path_for_display};
+use crate::ui_model::{build_preview_text_with_kind_cancellable, normalize_path_for_display};
 use crate::walker_runtime::resolve_entry_kind;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -226,29 +226,85 @@ pub(in crate::app) fn spawn_preview_worker(
     Receiver<PreviewResponse>,
     thread::JoinHandle<()>,
 ) {
+    spawn_preview_worker_with(shutdown, |path, is_dir, canceled| {
+        build_preview_text_with_kind_cancellable(path, is_dir, canceled)
+    })
+}
+
+fn canceled_preview_response(request: PreviewRequest) -> PreviewResponse {
+    PreviewResponse {
+        request_id: request.request_id,
+        path: request.path,
+        preview: String::new(),
+        canceled: true,
+    }
+}
+
+fn spawn_preview_worker_with(
+    shutdown: Arc<AtomicBool>,
+    build: impl Fn(&Path, bool, &dyn Fn() -> bool) -> Option<String> + Send + 'static,
+) -> (
+    Sender<PreviewRequest>,
+    Receiver<PreviewResponse>,
+    thread::JoinHandle<()>,
+) {
     let (tx_req, rx_req) = mpsc::channel::<PreviewRequest>();
     let (tx_res, rx_res) = mpsc::channel::<PreviewResponse>();
-
     let handle = thread::spawn(move || {
-        while let Ok(mut req) = rx_req.recv() {
-            if shutdown.load(Ordering::Relaxed) {
+        let mut next = None;
+        while let Some(mut req) = next.take().or_else(|| rx_req.recv().ok()) {
+            if shutdown.load(Ordering::Acquire) {
                 break;
             }
-            while let Ok(newer) = rx_req.try_recv() {
-                req = newer;
+            // Bound each drain pass; the builder also notices new requests between I/O calls.
+            for _ in 0..64 {
+                match rx_req.try_recv() {
+                    Ok(newer) => {
+                        let old = std::mem::replace(&mut req, newer);
+                        if tx_res.send(canceled_preview_response(old)).is_err() {
+                            return;
+                        }
+                    }
+                    Err(_) => break,
+                }
             }
+            let newer = std::cell::RefCell::new(None);
+            let canceled = || {
+                if shutdown.load(Ordering::Acquire) {
+                    return true;
+                }
+                if newer.borrow().is_some() {
+                    return true;
+                }
+                if let Ok(request) = rx_req.try_recv() {
+                    *newer.borrow_mut() = Some(request);
+                    return true;
+                }
+                false
+            };
             trace_worker_started("preview", req.request_id);
-            let preview = build_preview_text_with_kind(&req.path, req.is_dir);
-            info!(
-                flow = "preview",
-                event = "finished",
-                request_id = req.request_id,
-                path = %req.path.display(),
-                preview_chars = preview.chars().count(),
-                "worker request finished"
-            );
+            let preview = build(&req.path, req.is_dir, &canceled);
+            let was_canceled = canceled();
+            next = newer.into_inner();
+            if was_canceled || preview.is_none() {
+                info!(
+                    flow = "preview",
+                    event = "canceled",
+                    request_id = req.request_id,
+                    "worker request canceled"
+                );
+                if tx_res.send(canceled_preview_response(req)).is_err() {
+                    break;
+                }
+                continue;
+            }
+            let preview = preview.expect("checked preview");
+            info!(flow = "preview", event = "finished", request_id = req.request_id,
+                path = %req.path.display(), preview_chars = preview.chars().count(),
+                "worker request finished");
             if tx_res
                 .send(PreviewResponse {
+                    canceled: false,
                     request_id: req.request_id,
                     path: req.path,
                     preview,
@@ -260,7 +316,6 @@ pub(in crate::app) fn spawn_preview_worker(
             }
         }
     });
-
     (tx_req, rx_res, handle)
 }
 
@@ -1071,4 +1126,63 @@ pub(in crate::app) fn spawn_update_worker(
     });
 
     (tx_req, rx_res, handle)
+}
+
+#[cfg(test)]
+mod preview_cancellation_tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn preview_worker_replaces_inflight_directory_without_publishing_stale_text() {
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (tx, rx, handle) =
+            spawn_preview_worker_with(Arc::clone(&shutdown), move |path, _, canceled| {
+                if path == Path::new("slow") {
+                    entered_tx.send(()).unwrap();
+                    release_rx.recv().unwrap();
+                    while !canceled() {
+                        thread::yield_now();
+                    }
+                    return None;
+                }
+                Some("latest preview".into())
+            });
+        tx.send(PreviewRequest {
+            request_id: 1,
+            path: "slow".into(),
+            is_dir: true,
+        })
+        .unwrap();
+        entered_rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        tx.send(PreviewRequest {
+            request_id: 2,
+            path: "latest".into(),
+            is_dir: true,
+        })
+        .unwrap();
+        tx.send(PreviewRequest {
+            request_id: 3,
+            path: "latest".into(),
+            is_dir: true,
+        })
+        .unwrap();
+        release_tx.send(()).unwrap();
+        let canceled = rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(canceled.request_id, 1);
+        assert!(canceled.canceled);
+        let drained = rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(drained.request_id, 2);
+        assert!(drained.canceled);
+        let response = rx.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert_eq!(response.request_id, 3);
+        assert!(!response.canceled);
+        assert_eq!(response.preview, "latest preview");
+        assert!(rx.try_recv().is_err());
+        shutdown.store(true, Ordering::Release);
+        drop(tx);
+        handle.join().unwrap();
+    }
 }

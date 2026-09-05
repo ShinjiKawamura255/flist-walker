@@ -11,25 +11,47 @@ pub fn build_preview_text(path: &Path) -> String {
 }
 
 pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
+    build_preview_text_with_kind_cancellable(path, is_dir, &|| false)
+        .expect("non-cancellable preview")
+}
+
+/// Cancellation is cooperative between filesystem calls; one OS call cannot be interrupted.
+pub fn build_preview_text_with_kind_cancellable(
+    path: &Path,
+    is_dir: bool,
+    canceled: &(impl Fn() -> bool + ?Sized),
+) -> Option<String> {
     const PREVIEW_MAX_LINES: usize = 20;
     const PREVIEW_MAX_BYTES: usize = 64 * 1024;
-
+    if canceled() {
+        return None;
+    }
     let normalized_path = normalize_path_for_display(path);
     if !is_dir && should_skip_preview(path, is_dir) {
-        return format!("File: {normalized_path}\n\n<on-demand file: preview skipped>");
+        return Some(format!(
+            "File: {normalized_path}\n\n<on-demand file: preview skipped>"
+        ));
     }
-
+    if canceled() {
+        return None;
+    }
     let metadata = std::fs::metadata(path).ok();
+    if canceled() {
+        return None;
+    }
     let symlink_metadata = std::fs::symlink_metadata(path).ok();
+    if canceled() {
+        return None;
+    }
     if is_dir {
         return build_directory_preview_text(
             path,
             &normalized_path,
             metadata.as_ref(),
             symlink_metadata.as_ref(),
+            canceled,
         );
     }
-
     let head = build_entry_header(
         path,
         "File",
@@ -37,16 +59,15 @@ pub fn build_preview_text_with_kind(path: &Path, is_dir: bool) -> String {
         metadata.as_ref(),
         symlink_metadata.as_ref(),
     );
-    match read_preview_lines(path, PREVIEW_MAX_LINES, PREVIEW_MAX_BYTES) {
-        Ok(preview) => {
-            if preview.is_empty() {
-                format!("{}\n<empty file>", head)
-            } else {
-                format!("{}\n{}", head, preview.join("\n"))
-            }
-        }
-        Err(_) => format!("{}\n<binary or unreadable file>", head),
+    if canceled() {
+        return None;
     }
+    let text = match read_preview_lines(path, PREVIEW_MAX_LINES, PREVIEW_MAX_BYTES) {
+        Ok(preview) if preview.is_empty() => format!("{head}\n<empty file>"),
+        Ok(preview) => format!("{head}\n{}", preview.join("\n")),
+        Err(_) => format!("{head}\n<binary or unreadable file>"),
+    };
+    (!canceled()).then_some(text)
 }
 
 fn format_file_size(bytes: u64) -> String {
@@ -176,38 +197,65 @@ fn contains_too_many_control_chars(text: &str) -> bool {
     total > 0 && suspicious.saturating_mul(20) > total
 }
 
+const DIRECTORY_SAMPLE_LIMIT: usize = 4096;
+
+struct DirectorySample<T> {
+    entries: Vec<T>,
+    observed: usize,
+    truncated: bool,
+    partial_error: bool,
+}
+
+fn collect_directory_sample<T>(
+    mut iter: impl Iterator<Item = std::io::Result<T>>,
+    canceled: &(impl Fn() -> bool + ?Sized),
+) -> Option<DirectorySample<T>> {
+    let mut sample = DirectorySample {
+        entries: Vec::new(),
+        observed: 0,
+        truncated: false,
+        partial_error: false,
+    };
+    // One lookahead distinguishes an exact cap from a truncated directory.
+    // Errors count toward the work budget too, including an all-error stream.
+    for index in 0..=DIRECTORY_SAMPLE_LIMIT {
+        if canceled() {
+            return None;
+        }
+        let Some(entry) = iter.next() else {
+            break;
+        };
+        if canceled() {
+            return None;
+        }
+        if index == DIRECTORY_SAMPLE_LIMIT {
+            sample.truncated = true;
+        }
+        match entry {
+            Ok(entry) => {
+                sample.observed += 1;
+                if !sample.truncated {
+                    sample.entries.push(entry);
+                }
+            }
+            Err(_) => sample.partial_error = true,
+        }
+    }
+    Some(sample)
+}
+
 fn build_directory_preview_text(
     path: &Path,
     normalized_path: &str,
     metadata: Option<&Metadata>,
     symlink_metadata: Option<&Metadata>,
-) -> String {
+    canceled: &(impl Fn() -> bool + ?Sized),
+) -> Option<String> {
     const MAX_LINES: usize = 24;
     const MAX_NAME_CHARS: usize = 80;
-
-    let read = std::fs::read_dir(path);
-    let Ok(iter) = read else {
-        return format!(
-            "{}\nChildren: <unavailable>",
-            build_entry_header(
-                path,
-                "Directory",
-                normalized_path,
-                metadata,
-                symlink_metadata
-            )
-        );
-    };
-
-    let mut entries: Vec<_> = iter.flatten().collect();
-    entries.sort_by_key(|e| {
-        e.file_name()
-            .to_string_lossy()
-            .to_string()
-            .to_ascii_lowercase()
-    });
-
-    let total = entries.len();
+    if canceled() {
+        return None;
+    }
     let header = build_entry_header(
         path,
         "Directory",
@@ -215,26 +263,57 @@ fn build_directory_preview_text(
         metadata,
         symlink_metadata,
     );
-    if total == 0 {
-        return format!("{header}\nChildren: 0\n<empty>");
+    if canceled() {
+        return None;
     }
-
+    let Ok(iter) = std::fs::read_dir(path) else {
+        return (!canceled()).then(|| format!("{header}\nChildren: <unavailable>"));
+    };
+    let mut sample = collect_directory_sample(iter, canceled)?;
+    sample
+        .entries
+        .sort_by_cached_key(|e| e.file_name().to_string_lossy().to_ascii_lowercase());
+    if canceled() {
+        return None;
+    }
+    let limited = sample.truncated || sample.partial_error;
+    if sample.observed == 0 && !limited {
+        return Some(format!("{header}\nChildren: 0\n<empty>"));
+    }
     let mut lines = Vec::new();
-    for entry in entries.iter().take(MAX_LINES) {
+    for entry in sample.entries.iter().take(MAX_LINES) {
+        if canceled() {
+            return None;
+        }
         let name = entry.file_name().to_string_lossy().to_string();
         let short = truncate_chars(&name, MAX_NAME_CHARS);
-        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
-        let marker = if is_dir { "[D]" } else { "[F]" };
-        lines.push(format!("{} {}", marker, short));
+        let marker = match entry.file_type() {
+            Ok(kind) if kind.is_dir() => "[D]",
+            Ok(_) => "[F]",
+            Err(_) => "[?]",
+        };
+        lines.push(format!("{marker} {short}"));
     }
-    if total > MAX_LINES {
-        lines.push(format!("... ({} more)", total - MAX_LINES));
+    if canceled() {
+        return None;
     }
-
-    format!(
-        "{header}\nChildren: {total}\nScope: direct children only\n\n{}",
+    if sample.truncated {
+        lines.push("... (listing truncated; alphabetized sample only)".into());
+    } else if sample.observed > MAX_LINES {
+        lines.push(format!("... ({} more)", sample.observed - MAX_LINES));
+    }
+    if sample.partial_error {
+        lines.push("<partial listing: some children could not be read>".into());
+    }
+    let count = if limited {
+        format!("at least {}", sample.observed)
+    } else {
+        sample.observed.to_string()
+    };
+    Some(format!(
+        "{header}\nChildren: {count}\nScope: direct children only\n\n{}",
         lines.join("\n")
-    )
+    ))
 }
 
 fn build_entry_header(
@@ -640,5 +719,54 @@ mod tests {
         let preview = build_preview_text(&file);
         assert!(preview.contains("<binary or unreadable file>"));
         let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[cfg(test)]
+mod bounded_directory_tests {
+    use super::*;
+    use std::cell::Cell;
+
+    #[test]
+    fn directory_preview_bounds_enumeration_and_reports_lower_bound() {
+        for count in [4095, 4096, 4097, 1_000_000] {
+            let calls = Cell::new(0);
+            let iter = (0..count).map(|n| {
+                calls.set(calls.get() + 1);
+                Ok(n)
+            });
+            let sample = collect_directory_sample(iter, &|| false).unwrap();
+            assert_eq!(sample.entries.len(), count.min(4096));
+            assert_eq!(sample.observed, count.min(4097));
+            assert_eq!(sample.truncated, count > 4096);
+            assert_eq!(calls.get(), count.min(4097));
+        }
+    }
+
+    #[test]
+    fn directory_preview_cancels_between_entries_and_preserves_partial_errors() {
+        let calls = Cell::new(0);
+        let iter = (0..1_000_000).map(|n| {
+            calls.set(calls.get() + 1);
+            Ok(n)
+        });
+        assert!(collect_directory_sample(iter, &|| calls.get() >= 3).is_none());
+        assert_eq!(calls.get(), 3);
+        let sample = collect_directory_sample(
+            [Ok(1), Err(std::io::Error::other("unreadable")), Ok(2)].into_iter(),
+            &|| false,
+        )
+        .unwrap();
+        assert_eq!(sample.entries, vec![1, 2]);
+        assert_eq!(sample.observed, 2);
+        assert!(sample.partial_error);
+    }
+
+    #[test]
+    fn canceled_preview_does_not_probe_missing_path() {
+        assert!(
+            build_preview_text_with_kind_cancellable(Path::new("missing"), true, &|| true)
+                .is_none()
+        );
     }
 }

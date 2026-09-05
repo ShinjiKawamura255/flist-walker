@@ -144,6 +144,7 @@ impl FlistWalkerApp {
 
     /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
     fn disconnect_worker_channels(&mut self) {
+        self.shell.worker_bus.config_open.disconnect();
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();
         let (dummy_preview_tx, _) = mpsc::channel::<PreviewRequest>();
         let (dummy_action_tx, _) = super::channel::bounded_request_channel::<ActionRequest>(1);
@@ -309,6 +310,7 @@ impl FlistWalkerApp {
         self.poll_filelist_response();
         self.poll_update_response();
         self.poll_catalog_response();
+        self.poll_config_open_response();
         self.poll_root_validation_response();
     }
 }

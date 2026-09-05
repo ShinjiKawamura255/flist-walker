@@ -178,6 +178,7 @@
 - MUST: bounded lock wait、latest-read merge、atomic write は persistence worker が行い、frame dispatch を block してはならない。graceful shutdown は frame rendering 外で bounded flush を要求する。crash-before-flush history loss は residual risk とする。
 - MUST: runtime config file には search parallelism、walker limits、window trace settings、query history persistence、tab restore、Emacs 風 keybindings、Tab pin movement、update policy を含めなければならない。GUI/TUI の通常 Walker index は同じ `walker_max_entries` と adaptive initial/max limit を参照しなければならない。
 - MUST: GUI は runtime config file を開く設定ボタンを提供し、押下時に config file が存在しない場合は生成してから OS 既定アプリケーションで開かなければならない。既定アプリケーションで開けない場合は、標準的なテキストエディタ相当のフォールバックを試行しなければならない。
+- MUST: GUI設定openは単一workerでpath解決・不足file生成・OS openを実行し、UI dispatchを待機させない。受理から完了まで重複要求を抑止して処理中を表示し、失敗後は再試行できる。file生成には起動時の実効configを使い、設定を開く操作でprocess envへ再適用してはならない。
 - SHOULD: runtime config file は手動追記された `developer` セクションを読み取れる。ただし `developer` セクションは自動生成 config seed に含めてはならず、公開 README や通常ヘルプで案内してはならない。
 - MUST: runtime config file の読み込みや自動生成に失敗しても、ツールは通常起動を継続しなければならない。
 - SHOULD: runtime config file の読み込み失敗や自動生成失敗は、利用者または診断ログへ警告として出力する。

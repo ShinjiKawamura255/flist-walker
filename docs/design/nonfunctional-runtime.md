@@ -2,6 +2,7 @@
 
 ## Non-functional design
 - DES-006 Performance
+- directory previewは共有cancelable builderで4096件sample＋1 lookaheadまで列挙し、bounded sampleだけをsortする。新requestを受けたGUI/TUI workerはfilesystem呼出し間で旧要求を中断し、本文を返す前にもcancelを確認する。
 - Indexer と search を分離し、GUI ではワーカースレッドで非同期処理する。
 - action executor は固定 2 worker と待機 queue 8 件で構成し、受理済み要求の総量を running 2 + queued 8 = 10 件に制限する。要求ごとの detached thread は生成しない。
 - kind resolver は固定 1 worker と待機 queue 256 件で構成し、受理済み要求の総量を running 1 + queued 256 = 257 件に制限する。

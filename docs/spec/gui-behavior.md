@@ -13,6 +13,7 @@
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
 - MUST: 本文プレビューは拡張子で制限せず、UTF-8、BOM 付き UTF-16、および主要 OS で一般的なレガシー文字コードを順に解釈して、テキストとして安全に復号できた内容を表示する。
 - MUST: ファイルの本文プレビューには byte size を `Size:` として人間可読単位で表示する。サイズ取得を含む preview I/O は worker で実行し、UI thread をブロックしてはならない。フォルダサイズの再帰計算は行わない。
+- MUST: directory previewは直接の子の先頭4096項目と最大1項目のlookaheadに列挙を制限し、sample内を名前順にして最大24行を表示する。上限超過は件数の下限とlisting truncatedを表示し、読取errorはpartial listingとして空directoryと区別する。GUI/TUIの新しいpreview要求と終了要求はfilesystem呼出し間で古い処理を中断し、古い本文を公開しない。GUIの取消・drain破棄は要求ID付きterminalでownerのbusy/routingを解放し、非active tabは必要なpreviewを復帰時に再要求する。
 - MUST: Preview は取得できる場合に `Updated:`（filesystem の `modified()`）を表示し、`Created:` は filesystem の `created()` が利用できる場合に表示する。日時は `YYYY-MM-DD HH:mm UTC` 形式とする。
 - SHOULD: Preview は `Read-only` / Windows の `Hidden` 属性を `Attributes:` に表示し、シンボリックリンクにはリンク先を `Target:` として表示する。属性またはリンク先を取得できない場合も本文プレビュー全体を失敗させてはならない。
 - MUST: シンボリックリンクでは、本文・`Target Size:`・`Target Created:`・`Target Updated:` はリンク先を対象とし、`Attributes:` はリンク自身を対象とする。リンク先 metadata を取得できない行は省略する。

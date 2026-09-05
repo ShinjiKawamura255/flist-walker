@@ -96,6 +96,7 @@ pub(in crate::app) struct PreviewRequest {
 }
 
 pub(in crate::app) struct PreviewResponse {
+    pub(in crate::app) canceled: bool,
     pub(in crate::app) request_id: u64,
     pub(in crate::app) path: PathBuf,
     pub(in crate::app) preview: String,
