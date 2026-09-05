@@ -209,9 +209,12 @@ mod tests {
     }
 
     fn linked_root_results(use_filelist: bool) {
+        static NEXT_FIXTURE: std::sync::atomic::AtomicUsize =
+            std::sync::atomic::AtomicUsize::new(0);
         let fixture = std::env::temp_dir().join(format!(
-            "flistwalker-linked-root-{}-{}",
+            "flistwalker-linked-root-{}-{}-{}",
             std::process::id(),
+            NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
@@ -235,7 +238,10 @@ mod tests {
                 ),
             )
             .unwrap();
-            std::fs::File::open(physical.join("FileList.txt"))
+            // Windows requires write access to change the fixture timestamp.
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open(physical.join("FileList.txt"))
                 .unwrap()
                 .set_modified(std::time::SystemTime::now() - Duration::from_secs(2))
                 .unwrap();
@@ -314,9 +320,7 @@ mod tests {
         );
         assert_eq!(
             display_path_with_mode(&expected, &linked, true),
-            std::path::Path::new("資料")
-                .join("entry.txt")
-                .to_string_lossy()
+            "資料/entry.txt"
         );
         if use_filelist {
             assert!(

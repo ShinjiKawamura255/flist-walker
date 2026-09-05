@@ -8,9 +8,11 @@ impl Drop for Fixture {
     }
 }
 fn fixture() -> Fixture {
+    static NEXT_FIXTURE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let path = std::env::temp_dir().join(format!(
-        "flistwalker-follow-{}-{}",
+        "flistwalker-follow-{}-{}-{}",
         std::process::id(),
+        NEXT_FIXTURE.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -79,8 +81,9 @@ fn follow_links_preserves_aliases_prunes_ancestor_cycles_and_respects_depth() {
     directory_link(&root.join("real"), &root.join("alias-a"));
     directory_link(&root.join("real"), &root.join("alias-b"));
     directory_link(&fixture.0.join("outside"), &root.join("external"));
-    directory_link(&root, &root.join("real/back"));
-    directory_link(&root.join("real"), &root.join("real/self"));
+    // Native separators keep cmd's mklink from parsing a path suffix as a switch.
+    directory_link(&root, &root.join("real").join("back"));
+    directory_link(&root.join("real"), &root.join("real").join("self"));
     let linked_root = fixture.0.join("linked-root");
     directory_link(&root, &linked_root);
     for workers in [1, 4] {
