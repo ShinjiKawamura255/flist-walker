@@ -12,7 +12,7 @@
 - MUST: optional BOM と CR/LF を除く 1 論理行の encoded payload は 1 MiB 以下とする。上限超過は候補化せず、FileList path と上限を含むエラーで失敗しなければならない。
 - MUST: encoding preflight と line parse は 64 KiB 以下の chunk ごとに supersede/cancel を確認しなければならない。安定した不正 root FileList は callback/候補を 0 件に保ち、不正な階層 FileList はその local replacement 完成前に親由来 subtree を変更してはならない。
 - MUST: 階層 FileList 展開は、読み込み済み候補内でファイル名が `FileList.txt` / `filelist.txt` に完全一致するエントリのみを対象とする。
-- MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。
+- MUST: 階層 FileList 展開中も supersede（新しい request_id）で中断できること。子 FileList の解析だけでなく候補探索でも各候補の確認前に取消を確認する。
 - MUST: FileList 作成時は、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ作成済み子 FileList の参照を重複なく追記できる。
 - MUST: 祖先ディレクトリ直下の既存 FileList へ追記が発生しうる場合、Create File List 実行前に利用者確認を要求する。
 - MUST: Create File List の保留状態（overwrite 確認、祖先追記確認、Walker 利用確認、index 完了待ち）では、GUI から明示的にキャンセルできる。
@@ -81,7 +81,7 @@
 ## SP-002 Walker 走査
 ### Requirements
 - MUST: FileList 未使用時にルート以下を再帰走査し候補化する。
-- MUST: ファイル/フォルダの包含条件（include_files/include_dirs）を適用する。
+- MUST: ファイル/フォルダの包含条件（include_files/include_dirs）を適用する。batch CLI、GUI、TUI は同じ種別判定を使い、特殊ファイルを除外し、単一種別指定ではリンク先の種別で包含を決める。batch CLI の走査を対話画面の件数上限で打ち切ってはならない。
 - MUST: インデックス構築中でも GUI は逐次的に候補表示を更新できる。
 - MUST: Walker の初期ストリームでは、通常ファイル/ディレクトリの種別判定のために per-entry `metadata` / `symlink_metadata` を追加してはならない。`file_type` で確認できる LINK identity は先行表示してよいが、リンク先の FILE/DIR 判定は完了後または必要時の後処理へ遅延しなければならない。
 - MUST: Walker は `file_type` で通常 FILE/DIR でも symlink でもない特殊ファイルを LINK に昇格させてはならず、現行のファイル/フォルダ候補から除外しなければならない。
@@ -133,6 +133,7 @@
 ## SP-021 候補収集の最大深度
 
 ### Requirements
+- MUST: Windowsの通常pathとverbatim drive/UNC pathは、filesystem probeを追加せず同一namespaceとしてdepth判定する。
 - MUST: `max_depth` は検索 root 自体を depth 0、root 直下のファイルまたはフォルダを depth 1 とする root 相対 path component 数の上限として解釈する。root 自体は通常の候補に含めない。
 - MUST: 上限未指定は無制限とし、既存の候補集合を変更しない。明示値は 1 以上の整数とし、0、負数、整数以外は CLI では indexing 前の引数エラーにする。
 - MUST: depth N のフォルダ自体は候補条件を満たす場合に含められるが、Walker はその配下へ再帰してはならない。結果生成後の除外だけで済ませず、不要な `read_dir` を開始しない。

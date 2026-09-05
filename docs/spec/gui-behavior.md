@@ -155,7 +155,7 @@
 - MUST: batch CLI と TUI も同じ sort mode vocabulary を使用し、non-score sort は full match set への sort を limit より先に適用しなければならない。score sort は既存 ranking/tie behavior を維持する。
 - MUST: GUI の候補収集深度 control、tab-local ownership、preset 表示と適用後の持続性は SP-021 に従う。
 - MUST: `All matches` scope であっても、GUI は全マッチを一覧へ全件描画せず、表示対象は `limit` 件以内に抑えなければならない。
-- MUST: `Score` は検索エンジンが返した元の順位へ戻せる。
+- MUST: `Score` は検索エンジンが返した元の順位へ戻せる。All matchesの非Score結果から戻す場合も、全候補中のScore上位集合を復元する。mode/scope切替中の旧応答は破棄し、保留queryは最新設定で完了させる。
 - MUST: `Name` ソートはファイル/ディレクトリ名を主キー、正規化済みフルパスを副キーとして即時に並び替える。
 - MUST: `Modified` / `Created` / `Size` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
 - MUST: `All matches` scope の非 `Score` ソートは UI thread ではなく worker で実行し、検索応答の request_id / tab routing により古い応答を破棄できなければならない。

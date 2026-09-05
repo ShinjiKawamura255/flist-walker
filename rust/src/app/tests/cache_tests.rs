@@ -525,3 +525,335 @@ fn entry_kind_cache_survives_tab_state_roundtrip() {
     assert_eq!(app.find_entry_kind(&path), Some(EntryKind::link(false)));
     let _ = fs::remove_dir_all(&root);
 }
+
+fn sort_transition_response(request: &SearchRequest) -> SearchResponse {
+    let (result, error) = crate::search::rank_search_results(
+        &request.entries,
+        &request.query,
+        &request.root,
+        request.limit,
+        request.use_regex,
+        request.ignore_case,
+        request.prefer_relative,
+        &mut SearchPrefixCache::default(),
+        request.sort_mode,
+        request.sort_scope,
+    );
+    SearchResponse {
+        request_id: request.request_id,
+        results: result.results,
+        total_match_count: result.total_match_count,
+        sort_mode: request.sort_mode,
+        sort_scope: request.sort_scope,
+        error,
+    }
+}
+
+#[test]
+fn regression_gui_sort_all_matches_score_restores_full_candidate_ranking() {
+    for via_shown in [false, true] {
+        let root = test_root("sort-full-score-restore");
+        let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
+        app.shell.ui.show_preview = false;
+        app.shell.runtime.entries = Arc::new(vec![
+            file_entry(root.join("z.txt")),
+            file_entry(root.join("zzz.txt")),
+            file_entry(root.join("a-long-z.txt")),
+        ]);
+        let (tx, rx) = mpsc::channel();
+        app.shell.search.tx = tx;
+        app.enqueue_search_request();
+        let score = sort_transition_response(&rx.try_recv().unwrap());
+        let expected = score.results.clone();
+        assert!(crate::app::result_reducer::apply_active_search_response(
+            &mut app, score
+        ));
+        app.set_result_sort_scope(ResultSortScope::AllMatches);
+        app.set_result_sort_mode(ResultSortMode::NameAsc);
+        let named = sort_transition_response(&rx.try_recv().unwrap());
+        assert_ne!(
+            named.results, expected,
+            "fixture must distinguish ranking and membership"
+        );
+        assert!(crate::app::result_reducer::apply_active_search_response(
+            &mut app, named
+        ));
+        if via_shown {
+            app.set_result_sort_scope(ResultSortScope::ShownResults);
+        }
+        app.set_result_sort_mode(ResultSortMode::Score);
+        let request = rx
+            .try_recv()
+            .expect("Score must rebuild the full candidate ranking");
+        assert_eq!(request.sort_mode, ResultSortMode::Score);
+        let restored = sort_transition_response(&request);
+        assert!(crate::app::result_reducer::apply_active_search_response(
+            &mut app, restored
+        ));
+        assert_eq!(app.shell.runtime.results, expected);
+        assert_eq!(app.shell.runtime.total_match_count, 3);
+    }
+}
+
+#[test]
+fn regression_gui_sort_transition_rejects_pending_all_matches_response() {
+    for change_scope in [false, true] {
+        let root = test_root("sort-pending-transition");
+        let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
+        app.shell.ui.show_preview = false;
+        app.shell.runtime.entries = Arc::new(vec![file_entry(root.join("z.txt"))]);
+        app.replace_results_snapshot(vec![(root.join("z.txt"), 1.0)], false);
+        let (tx, rx) = mpsc::channel();
+        app.shell.search.tx = tx;
+        app.set_result_sort_scope(ResultSortScope::AllMatches);
+        app.set_result_sort_mode(ResultSortMode::NameAsc);
+        let pending = rx.try_recv().unwrap();
+        if change_scope {
+            app.set_result_sort_scope(ResultSortScope::ShownResults);
+        } else {
+            app.set_result_sort_mode(ResultSortMode::Score);
+        }
+        assert!(pending.cancel.load(Ordering::Acquire));
+        let mode = app.shell.runtime.result_sort_mode;
+        let scope = app.shell.runtime.result_sort_scope;
+        assert!(!crate::app::result_reducer::apply_active_search_response(
+            &mut app,
+            sort_transition_response(&pending)
+        ));
+        assert_eq!(app.shell.runtime.result_sort_mode, mode);
+        assert_eq!(app.shell.runtime.result_sort_scope, scope);
+    }
+}
+
+#[test]
+fn regression_gui_sort_shown_score_restore_is_immediate_without_research() {
+    let root = test_root("sort-shown-immediate");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
+    app.shell.ui.show_preview = false;
+    let base = vec![(root.join("z.txt"), 9.0), (root.join("az.txt"), 1.0)];
+    app.replace_results_snapshot(base.clone(), false);
+    let (tx, rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    app.set_result_sort_mode(ResultSortMode::NameAsc);
+    app.set_result_sort_mode(ResultSortMode::Score);
+    assert_eq!(app.shell.runtime.results, base);
+    assert!(!app.shell.search.in_progress());
+    assert!(rx.try_recv().is_err());
+}
+
+#[test]
+fn regression_gui_sort_pending_query_reissued_with_latest_shown_sort() {
+    let root = test_root("sort-pending-query");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, "new".into());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.entries = Arc::new(vec![
+        file_entry(root.join("new.txt")),
+        file_entry(root.join("a-new.txt")),
+        file_entry(root.join("old.txt")),
+    ]);
+    app.replace_results_snapshot(vec![(root.join("old.txt"), 1.0)], false);
+    let (tx, rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    app.enqueue_search_request();
+    let old = rx.try_recv().unwrap();
+    app.set_result_sort_mode(ResultSortMode::NameAsc);
+    let fresh = rx
+        .try_recv()
+        .expect("pending query must continue with latest sort");
+    assert_ne!(fresh.request_id, old.request_id);
+    assert_eq!(fresh.query, "new");
+    assert_eq!(fresh.sort_mode, ResultSortMode::NameAsc);
+    assert!(old.cancel.load(Ordering::Acquire));
+    assert!(!crate::app::result_reducer::apply_active_search_response(
+        &mut app,
+        sort_transition_response(&old)
+    ));
+    assert!(crate::app::result_reducer::apply_active_search_response(
+        &mut app,
+        sort_transition_response(&fresh)
+    ));
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![root.join("a-new.txt"), root.join("new.txt")]
+    );
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+}
+
+#[test]
+fn regression_gui_sort_background_metadata_completion_and_stale_response_are_tab_owned() {
+    let root = test_root("sort-background-response");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, "new".into());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.entries = Arc::new(vec![
+        file_entry(root.join("new.txt")),
+        file_entry(root.join("a-new.txt")),
+    ]);
+    let owner_id = app.current_tab_id().unwrap();
+    let (tx, rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    let (sort_tx, sort_rx) = mpsc::channel();
+    app.shell.worker_bus.sort.tx = sort_tx;
+    app.enqueue_search_request();
+    let _old_query = rx.try_recv().unwrap();
+    app.set_result_sort_mode(ResultSortMode::SizeDesc);
+    let fresh = rx.try_recv().unwrap();
+    app.create_new_tab();
+    let active_id = app.current_tab_id().unwrap();
+    let active_mode = app.shell.runtime.result_sort_mode;
+    app.apply_background_search_response(owner_id, sort_transition_response(&fresh));
+    let metadata = sort_rx
+        .try_recv()
+        .expect("background shown sort needs metadata");
+    assert_eq!(app.sort_request_tab(metadata.request_id), Some(owner_id));
+    assert!(app.shell.worker_bus.sort.pending_request_id.is_none());
+    let background = app.shell.tabs.get(0).unwrap();
+    assert!(background.result_state.sort_in_progress);
+    for (name, size) in [("new.txt", 100), ("a-new.txt", 1)] {
+        app.cache_sort_metadata(
+            root.join(name),
+            SortMetadata {
+                modified: None,
+                created: None,
+                size_bytes: Some(size),
+            },
+        );
+    }
+    app.apply_background_sort_response(SortMetadataResponse {
+        request_id: metadata.request_id,
+        mode: metadata.mode,
+        entries: Vec::new(),
+    });
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .result_state
+            .committed
+            .results[0]
+            .0,
+        root.join("new.txt")
+    );
+    assert!(!app.shell.tabs.get(0).unwrap().result_state.sort_in_progress);
+    assert_eq!(app.current_tab_id(), Some(active_id));
+    assert_eq!(app.shell.runtime.result_sort_mode, active_mode);
+    // Replaying the consumed metadata request cannot modify the result snapshot.
+    app.cache_sort_metadata(
+        root.join("a-new.txt"),
+        SortMetadata {
+            modified: None,
+            created: None,
+            size_bytes: Some(1000),
+        },
+    );
+    app.apply_background_sort_response(SortMetadataResponse {
+        request_id: metadata.request_id,
+        mode: metadata.mode,
+        entries: Vec::new(),
+    });
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .result_state
+            .committed
+            .results[0]
+            .0,
+        root.join("new.txt")
+    );
+}
+
+#[test]
+fn regression_gui_sort_snapshot_provenance_survives_inactive_and_closed_restore() {
+    let root = test_root("sort-provenance-transitions");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
+    app.shell.ui.show_preview = false;
+    app.shell.indexing.in_progress = false;
+    app.shell.indexing.pending_request_id = None;
+    app.shell
+        .indexing
+        .set_resource_state_for_test(crate::app::tab_state::TabResourceState::new(
+            TabResourceLifecycle::Ready,
+            true,
+        ));
+    app.shell.runtime.entries = Arc::new(vec![file_entry(root.join("z.txt"))]);
+    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.replace_results_snapshot(vec![(root.join("z.txt"), 1.0)], false);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+    app.shell.runtime.base_results_are_score_ranked = false;
+    app.create_new_tab();
+    assert!(
+        !app.shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .result_state
+            .committed
+            .base_results_are_score_ranked
+    );
+    app.switch_to_tab_index(0);
+    assert!(!app.shell.runtime.base_results_are_score_ranked);
+    app.close_active_tab();
+    app.restore_recently_closed_tab();
+    assert!(!app.shell.runtime.base_results_are_score_ranked);
+    let (tx, rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    app.set_result_sort_mode(ResultSortMode::Score);
+    assert_eq!(
+        rx.try_recv()
+            .expect("restored AllMatches provenance must request Score")
+            .sort_mode,
+        ResultSortMode::Score
+    );
+}
+
+#[test]
+fn regression_gui_sort_mode_change_rejects_superseded_metadata() {
+    let root = test_root("sort-stale-metadata");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
+    app.shell.ui.show_preview = false;
+    let base = vec![(root.join("z.txt"), 9.0), (root.join("az.txt"), 1.0)];
+    app.replace_results_snapshot(base.clone(), false);
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.sort.tx = tx;
+    app.set_result_sort_mode(ResultSortMode::SizeDesc);
+    let old = rx.try_recv().expect("metadata request");
+    app.set_result_sort_mode(ResultSortMode::Score);
+    assert!(!app.apply_active_sort_response(&SortMetadataResponse {
+        request_id: old.request_id,
+        mode: old.mode,
+        entries: Vec::new(),
+    }));
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::Score);
+    assert_eq!(app.shell.runtime.results, base);
+    assert!(!app.shell.worker_bus.sort.in_progress);
+}
+
+#[test]
+fn regression_gui_sort_pending_empty_all_matches_to_shown_keeps_selected_sort() {
+    let root = test_root("sort-pending-empty-shown");
+    let mut app = FlistWalkerApp::new(root.clone(), 2, String::new());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.entries = Arc::new(vec![
+        file_entry(root.join("z.txt")),
+        file_entry(root.join("a.txt")),
+    ]);
+    app.update_results();
+    let (tx, rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    app.set_result_sort_scope(ResultSortScope::AllMatches);
+    app.set_result_sort_mode(ResultSortMode::NameAsc);
+    let old = rx.try_recv().expect("all-match request");
+    app.set_result_sort_scope(ResultSortScope::ShownResults);
+    assert!(old.cancel.load(Ordering::Acquire));
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(app.shell.runtime.results[0].0, root.join("a.txt"));
+    assert!(!app.shell.search.in_progress());
+}

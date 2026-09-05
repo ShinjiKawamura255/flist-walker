@@ -80,6 +80,7 @@ impl FlistWalkerApp {
 
     /// query と選択状態を初期化し一覧表示へ戻す。
     pub(in crate::app) fn clear_query_and_selection(&mut self) {
+        let query_changed = !self.shell.runtime.query_state.query.is_empty();
         if !self.shell.runtime.query_state.query.is_empty()
             || !self.shell.runtime.pinned_paths.is_empty()
             || (!self.shell.runtime.results.is_empty() && self.shell.runtime.current_row != Some(0))
@@ -94,7 +95,12 @@ impl FlistWalkerApp {
         // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
         self.set_current_row(Some(0));
         self.shell.runtime.preview.clear();
-        self.update_results();
+        if query_changed {
+            self.invalidate_result_sort(true);
+            self.update_results();
+        } else {
+            self.apply_result_sort(false);
+        }
         self.ensure_results_cursor_visible();
         self.request_focus_query();
         self.set_notice("Cleared selection and query");

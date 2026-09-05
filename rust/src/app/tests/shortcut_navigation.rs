@@ -481,3 +481,24 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
     assert_eq!(app.shell.runtime.current_row, Some(0));
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn regression_gui_sort_escape_resets_only_changed_query() {
+    for query in ["old", ""] {
+        let root = test_root("escape-sort-reset");
+        let mut app = FlistWalkerApp::new(root.clone(), 10, query.into());
+        app.shell.ui.show_preview = false;
+        app.shell.runtime.result_sort_mode = ResultSortMode::NameDesc;
+        app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+        app.clear_query_and_selection();
+        assert_eq!(
+            app.shell.runtime.result_sort_mode,
+            if query.is_empty() {
+                ResultSortMode::NameDesc
+            } else {
+                ResultSortMode::Score
+            }
+        );
+        assert!(app.shell.runtime.query_state.query.is_empty());
+    }
+}

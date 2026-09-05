@@ -194,4 +194,39 @@ mod tests {
         let path = PathBuf::from("/tmp/src/bar.txt");
         assert!(has_visible_match(&path, &root, "abc|foo|bar", true, true));
     }
+
+    #[test]
+    fn alignment_absolute_field_highlight_uses_root_relative_match_offsets() {
+        let root = PathBuf::from("/tmp/親-root");
+        let path = root.join("資料/main.rs");
+        for (query, regex) in [
+            ("path:^資料/ zzzz", false),
+            (r"path:^資料/[a-z]+|other.*", true),
+        ] {
+            let positions = match_positions_for_path(&path, &root, query, false, regex, true);
+            let display = display_path_with_mode(&path, &root, false);
+            let highlighted: String = display
+                .chars()
+                .enumerate()
+                .filter_map(|(index, ch)| positions.contains(&index).then_some(ch))
+                .collect();
+            assert!(highlighted.starts_with("資料"), "{query}: {highlighted}");
+            assert!(!highlighted.contains("親-root"), "{query}: {highlighted}");
+        }
+    }
+
+    #[test]
+    fn alignment_regex_exact_alternative_highlights_literal_metacharacters() {
+        let root = PathBuf::from("/tmp/root");
+        let path = root.join("日本語.a.txt");
+        let positions =
+            match_positions_for_path(&path, &root, "'日本語.a|other.*|", true, true, true);
+        let display = display_path_with_mode(&path, &root, true);
+        let highlighted: String = display
+            .chars()
+            .enumerate()
+            .filter_map(|(index, ch)| positions.contains(&index).then_some(ch))
+            .collect();
+        assert_eq!(highlighted, "日本語.a");
+    }
 }

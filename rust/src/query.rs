@@ -602,4 +602,166 @@ mod tests {
         assert!(highlighted.contains("main"), "{highlighted}");
         assert!(highlighted.contains("rs"), "{highlighted}");
     }
+
+    fn alignment_evaluate(query: &str, regex: bool, relative: bool, child: &str) -> Option<String> {
+        let root = PathBuf::from("/tmp/親-root");
+        let compiled = CompiledQuery::compile(
+            query,
+            QueryOptions {
+                use_regex: regex,
+                ignore_case: true,
+            },
+        )
+        .unwrap_or_else(|error| panic!("{query}: {error}"));
+        let candidate = compiled.prepare_candidate_with_kind(
+            &root.join(child),
+            Some(&root),
+            relative,
+            Some(false),
+        );
+        compiled
+            .evaluate(&candidate, EvidenceLevel::WithSpans)
+            .map(|result| {
+                let chars: Vec<_> = candidate.visible_text().chars().collect();
+                result.spans.iter().map(|&index| chars[index]).collect()
+            })
+    }
+
+    #[test]
+    fn alignment_regex_or_retains_exact_alternatives_and_discards_empty_ones() {
+        for query in ["'foo|b.r", "b.r|'foo", "|'foo||b.r|"] {
+            assert_eq!(
+                alignment_evaluate(query, true, true, "foo.txt"),
+                Some("foo".into()),
+                "{query}"
+            );
+            assert!(
+                alignment_evaluate(query, true, true, "f-o-o.txt").is_none(),
+                "{query}"
+            );
+        }
+        for query in ["foo.*|", "|foo.*", "||foo.*||"] {
+            assert!(
+                alignment_evaluate(query, true, true, "unrelated.txt").is_none(),
+                "{query}"
+            );
+            assert!(
+                alignment_evaluate(query, true, true, "foobar.txt").is_some(),
+                "{query}"
+            );
+        }
+        assert_eq!(
+            alignment_evaluate("'a.b|c.*", true, true, "a.b.txt"),
+            Some("a.b".into())
+        );
+        assert!(alignment_evaluate("'a.b|c.*", true, true, "axb.txt").is_none());
+        assert_eq!(
+            alignment_evaluate("^'日本語$|z.*", true, true, "日本語"),
+            Some("日本語".into())
+        );
+    }
+
+    #[test]
+    fn alignment_regex_or_preserves_nested_classes_escaped_pipes_and_flags() {
+        for (query, child) in [
+            (r"(foo|bar)[.]txt|'baz", "bar.txt"),
+            (r"[a|b][.]txt|'baz", "a.txt"),
+            (r"[a-z&&[^q|r]][.]txt|'baz", "b.txt"),
+            (r"[]|][.]txt|'baz", "].txt"),
+            (r"[^^][.]txt|'baz", "b.txt"),
+            (r"(?-i)foo|'BAR", "bar"),
+            (r"foo\|bar|'baz", "foo|bar"),
+            (r"(?i)foo|BAR|'baz", "bar"),
+            (r"'(left|right.*", "(left.txt"),
+            (r"'[left|right.*", "[left.txt"),
+        ] {
+            assert!(
+                alignment_evaluate(query, true, true, child).is_some(),
+                "{query}: {child}"
+            );
+        }
+        for query in ["(foo|bar", "foo.*|[", "foo.*|bar\\"] {
+            assert!(
+                CompiledQuery::compile(
+                    query,
+                    QueryOptions {
+                        use_regex: true,
+                        ignore_case: true
+                    }
+                )
+                .is_err(),
+                "{query}"
+            );
+        }
+        assert!(alignment_evaluate("'ä|z.*", true, true, "Ä.txt").is_none());
+        // Exclusions remain literal even in regex mode.
+        assert!(alignment_evaluate("foo !b.r", true, true, "foo-bar.txt").is_some());
+        assert!(alignment_evaluate("foo !b.r", true, true, "foo-b.r.txt").is_none());
+    }
+
+    #[test]
+    fn alignment_field_paths_ignore_display_mode_and_map_multibyte_spans() {
+        for relative in [true, false] {
+            for query in [
+                "path:^資料/",
+                "dir:^資料$",
+                "path:'資料/",
+                "path:^資料/[a-z]+[.]rs$",
+            ] {
+                let regex = query.contains('[');
+                let highlighted =
+                    alignment_evaluate(query, regex, relative, "資料/main.rs").expect(query);
+                assert!(highlighted.starts_with("資料"), "{query}: {highlighted}");
+                assert!(!highlighted.contains("親-root"), "{query}: {highlighted}");
+            }
+            assert!(alignment_evaluate("!dir:親-root", false, relative, "資料/main.rs").is_some());
+            assert!(alignment_evaluate("!dir:'資料", false, relative, "資料/main.rs").is_none());
+            assert!(alignment_evaluate("dir:親-root", false, relative, "main.rs").is_none());
+        }
+    }
+
+    #[test]
+    fn alignment_literal_field_paths_normalize_both_separator_styles() {
+        for relative in [true, false] {
+            for query in [
+                r"path:資料\main",
+                r"path:'資料\main",
+                r"path:nope|'資料\main",
+                r"dir:資料\sub",
+            ] {
+                let child = if query.starts_with("dir:") {
+                    "資料/sub/main.rs"
+                } else {
+                    "資料/main.rs"
+                };
+                assert!(
+                    alignment_evaluate(query, false, relative, child).is_some(),
+                    "{query}"
+                );
+            }
+            for query in [r"!path:資料\main", r"!path:'資料\main", r"!dir:資料\sub"] {
+                let child = if query.starts_with("!dir:") {
+                    "資料/sub/main.rs"
+                } else {
+                    "資料/main.rs"
+                };
+                assert!(
+                    alignment_evaluate(query, false, relative, child).is_none(),
+                    "{query}"
+                );
+            }
+            assert!(
+                alignment_evaluate("!path:資料/main", false, relative, "資料/sub/main.rs")
+                    .is_some()
+            );
+            assert!(
+                alignment_evaluate(r"path:^資料/\w+\.rs$", true, relative, "資料/main.rs")
+                    .is_some()
+            );
+            assert!(
+                alignment_evaluate(r"path:'資料\main|no.*", true, relative, "資料/main.rs")
+                    .is_some()
+            );
+        }
+    }
 }

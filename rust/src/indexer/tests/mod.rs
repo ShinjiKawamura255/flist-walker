@@ -1800,3 +1800,71 @@ fn apply_overrides_can_cancel_during_nested_filelist_parse() {
     assert!(err.to_string().contains("superseded"));
     let _ = fs::remove_dir_all(&root);
 }
+
+#[cfg(unix)]
+#[test]
+fn alignment_batch_walker_classifies_links_and_excludes_special_files() {
+    use std::os::unix::{fs::symlink, net::UnixListener};
+    let temp = TempDir::new("w");
+    let root = temp.path();
+    fs::create_dir(root.join("dir")).unwrap();
+    fs::write(root.join("file.txt"), "x").unwrap();
+    symlink(root.join("dir"), root.join("link-dir")).unwrap();
+    symlink(root.join("file.txt"), root.join("link-file")).unwrap();
+    let _socket = UnixListener::bind(root.join("socket")).unwrap();
+    for (files, dirs, names) in [
+        (true, false, vec!["file.txt", "link-file"]),
+        (false, true, vec!["dir", "link-dir"]),
+        (true, true, vec!["dir", "file.txt", "link-dir", "link-file"]),
+    ] {
+        let expected = names
+            .into_iter()
+            .map(|name| root.join(name))
+            .collect::<HashSet<_>>();
+        assert_eq!(
+            walk_entries(root, files, dirs)
+                .into_iter()
+                .collect::<HashSet<_>>(),
+            expected
+        );
+        assert_eq!(
+            walk_entries_cancellable(root, files, dirs, || false)
+                .unwrap()
+                .into_iter()
+                .collect::<HashSet<_>>(),
+            expected
+        );
+        let mut streamed = HashSet::new();
+        walk_entries_stream(root, files, dirs, |path| {
+            streamed.insert(path);
+        });
+        assert_eq!(streamed, expected);
+    }
+}
+
+#[test]
+fn alignment_nested_filelist_variants_do_not_replace_subtree() {
+    for name in ["FILELIST.TXT", "Filelist.Txt"] {
+        let temp = TempDir::new("nested-case-contract");
+        let root = temp.path();
+        fs::create_dir(root.join("child")).unwrap();
+        let old = root.join("child/old.txt");
+        fs::write(&old, "x").unwrap();
+        fs::write(root.join("child/new.txt"), "x").unwrap();
+        let parent = root.join("FileList.txt");
+        fs::write(&parent, format!("child/old.txt\nchild/{name}\n")).unwrap();
+        fs::File::options()
+            .write(true)
+            .open(&parent)
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(UNIX_EPOCH + Duration::from_secs(1)))
+            .unwrap();
+        fs::write(root.join("child").join(name), "new.txt\n").unwrap();
+        let out = build_index_with_metadata(root, true, true, true).unwrap();
+        assert!(
+            contains_path(&out.entries, &old),
+            "noncanonical {name} replaced subtree"
+        );
+        assert!(!contains_path(&out.entries, &root.join("child/new.txt")));
+    }
+}

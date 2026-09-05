@@ -350,3 +350,28 @@ fn history_programmatic_accept_and_cancel_move_text_cursor_to_query_end_regressi
         let _ = fs::remove_dir_all(&root);
     }
 }
+
+#[test]
+fn regression_gui_sort_history_replacement_resets_only_changed_query() {
+    for selected in ["old", "new"] {
+        let root = test_root("history-sort-reset");
+        let mut app = FlistWalkerApp::new(root.clone(), 10, "old".into());
+        app.shell.ui.show_preview = false;
+        app.shell.runtime.result_sort_mode = ResultSortMode::NameDesc;
+        app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+        app.shell.runtime.query_state.query_history = VecDeque::from([selected.to_string()]);
+        let (tx, rx) = mpsc::channel();
+        app.shell.search.tx = tx;
+        app.start_history_search();
+        app.accept_history_search();
+        let request = rx.try_recv().expect("history search request");
+        let expected = if selected == "old" {
+            ResultSortMode::NameDesc
+        } else {
+            ResultSortMode::Score
+        };
+        assert_eq!(app.shell.runtime.result_sort_mode, expected);
+        assert_eq!(request.sort_mode, expected);
+        assert_eq!(request.query, selected);
+    }
+}

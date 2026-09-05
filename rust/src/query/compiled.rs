@@ -61,6 +61,8 @@ pub struct PreparedCandidate {
     name: String,
     full: String,
     path: String,
+    field_path_byte_start: usize,
+    field_path_start: usize,
     dir: String,
     extension: String,
     extension_visible: String,
@@ -89,9 +91,19 @@ impl PreparedCandidate {
             .chars()
             .count()
             .saturating_sub(filename.chars().count());
-        let directory_visible = visible
+        // Field matching is rooted independently of display mode; offsets alone depend
+        // on the visible representation. Keep `path` below for legacy ignore scope.
+        let field_path_byte_start = if scope.prefer_relative || scope.root.is_none() {
+            0
+        } else {
+            let relative = display_path_with_mode(&normalized_path, visible_root, true);
+            visible.len().saturating_sub(relative.len())
+        };
+        let field_path_start = visible[..field_path_byte_start].chars().count();
+        let field_path_visible = &visible[field_path_byte_start..];
+        let directory_visible = field_path_visible
             .rfind(['/', '\\'])
-            .map_or_else(String::new, |index| visible[..index].to_string());
+            .map_or_else(String::new, |index| field_path_visible[..index].to_string());
         let extension = if is_dir == Some(true) {
             String::new()
         } else {
@@ -109,6 +121,8 @@ impl PreparedCandidate {
             name: normalize_text(&filename, scope.ignore_case),
             full: normalize_text(&visible, scope.ignore_case),
             path: normalize_field_path(&visible, scope.ignore_case),
+            field_path_byte_start,
+            field_path_start,
             dir: normalize_field_path(&directory_visible, scope.ignore_case),
             extension: normalize_text(&extension, scope.ignore_case),
             extension_visible: extension,
@@ -228,7 +242,10 @@ impl CompiledQuery {
             .iter()
             .map(|term| ScopedAlternativeSet {
                 field: term.field,
-                set: compile_alternative_set(&term.value, options.ignore_case),
+                set: compile_alternative_set(
+                    &literal_field_value(term.field, &term.value),
+                    options.ignore_case,
+                ),
             })
             .collect::<Vec<_>>();
         let mut include_terms = Vec::with_capacity(spec.include_terms.len());
@@ -239,13 +256,16 @@ impl CompiledQuery {
                 field: term.field,
                 matcher: compile_include_matcher(
                     &term.value,
+                    term.field,
                     options.use_regex,
                     options.ignore_case,
                 )?,
             });
             if !options.use_regex {
-                let literal_bonus_set =
-                    compile_non_exact_alternative_set(&term.value, options.ignore_case);
+                let literal_bonus_set = compile_non_exact_alternative_set(
+                    &literal_field_value(term.field, &term.value),
+                    options.ignore_case,
+                );
                 if !literal_bonus_set.alternatives.is_empty() {
                     include_literal_bonus_terms.push(ScopedAlternativeSet {
                         field: term.field,
@@ -260,7 +280,10 @@ impl CompiledQuery {
                         continue;
                     }
                     let (_, _, core) = split_anchor(&parsed);
-                    if let Some(pattern) = compile_literal_pattern(core, options.ignore_case) {
+                    if let Some(pattern) = compile_literal_pattern(
+                        &literal_field_value(term.field, core),
+                        options.ignore_case,
+                    ) {
                         include_exact_bonus_terms.push((term.field, pattern));
                     }
                 }
@@ -411,6 +434,106 @@ fn normalize_field_path(text: &str, ignore_case: bool) -> String {
     normalize_text(&text.replace('\\', "/"), ignore_case)
 }
 
+fn literal_field_value(field: QueryField, value: &str) -> String {
+    if matches!(field, QueryField::Path | QueryField::Dir) {
+        value.replace('\\', "/")
+    } else {
+        value.to_string()
+    }
+}
+
+// Only query-level pipes separate alternatives. Regex groups, nested character
+// classes and escaped pipes retain their regex meaning. An exact alternative's
+// contents are literal, so its brackets and parentheses cannot hide separators.
+fn regex_alternatives(term: &str) -> Vec<&str> {
+    let mut alternatives = Vec::new();
+    let mut start = 0;
+    let mut groups = 0usize;
+    // Class position: 0 = opening, 1 = after negation, 2 = after an item.
+    let mut classes = Vec::<u8>::new();
+    let mut escaped = false;
+    for (index, ch) in term.char_indices() {
+        let exact = term[start..].starts_with('\'') || term[start..].starts_with("^'");
+        if exact {
+            if ch == '|' {
+                alternatives.push(&term[start..index]);
+                start = index + 1;
+            }
+            continue;
+        }
+        if escaped {
+            escaped = false;
+            if let Some(first) = classes.last_mut() {
+                *first = 2;
+            }
+            continue;
+        }
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+        if let Some(first) = classes.last_mut() {
+            match ch {
+                ']' if *first == 2 => {
+                    classes.pop();
+                }
+                '[' => {
+                    *first = 2;
+                    classes.push(0);
+                }
+                '^' if *first == 0 => *first = 1,
+                _ => *first = 2,
+            }
+            continue;
+        }
+        match ch {
+            '[' => classes.push(0),
+            '(' => groups += 1,
+            ')' => groups = groups.saturating_sub(1),
+            '|' if groups == 0 => {
+                alternatives.push(&term[start..index]);
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    alternatives.push(&term[start..]);
+    alternatives
+}
+
+fn normalize_regex_alternatives(term: &str, field: QueryField, ignore_case: bool) -> String {
+    regex_alternatives(term)
+        .into_iter()
+        .filter_map(parse_include_alternative)
+        .map(|(exact, value)| {
+            if !exact {
+                return value;
+            }
+            let value = literal_field_value(field, &value);
+            let (start, end, core) = split_anchor(&value);
+            // Literal query clauses have ASCII-only case folding and strict anchors.
+            // Keep adjacent regex flags from changing that contract.
+            let literal = core
+                .chars()
+                .map(|ch| {
+                    if ignore_case && ch.is_ascii_alphabetic() {
+                        format!("[{}{}]", ch.to_ascii_lowercase(), ch.to_ascii_uppercase())
+                    } else {
+                        regex::escape(&ch.to_string())
+                    }
+                })
+                .collect::<String>();
+            format!(
+                "(?-ix:{}{}{})",
+                if start { r"\A" } else { "" },
+                literal,
+                if end { r"\z" } else { "" }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("|")
+}
+
 fn compile_literal_pattern(term: &str, ignore_case: bool) -> Option<LiteralPattern> {
     let normalized = normalize_text(term, ignore_case);
     let (anchored_start, anchored_end, core) = split_anchor(&normalized);
@@ -458,7 +581,8 @@ fn compile_exact_term_matchers(terms: &[QueryTerm], ignore_case: bool) -> Vec<Ex
     counts
         .into_iter()
         .map(|(term, count)| {
-            let set = compile_alternative_set(&term.value, ignore_case);
+            let set =
+                compile_alternative_set(&literal_field_value(term.field, &term.value), ignore_case);
             let unanchored = set
                 .alternatives
                 .first()
@@ -489,11 +613,13 @@ fn compile_non_exact_alternative_set(term: &str, ignore_case: bool) -> Alternati
 
 fn compile_include_matcher(
     term: &str,
+    field: QueryField,
     use_regex: bool,
     ignore_case: bool,
 ) -> Result<IncludeMatcher, String> {
     if use_regex && token_uses_regex_syntax(term) {
-        return RegexBuilder::new(term)
+        let pattern = normalize_regex_alternatives(term, field, ignore_case);
+        return RegexBuilder::new(&pattern)
             .case_insensitive(ignore_case)
             .build()
             .map(IncludeMatcher::Regex)
@@ -504,7 +630,7 @@ fn compile_include_matcher(
             .into_iter()
             .filter_map(parse_include_alternative)
             .filter_map(|(exact, candidate)| {
-                compile_literal_pattern(&candidate, ignore_case)
+                compile_literal_pattern(&literal_field_value(field, &candidate), ignore_case)
                     .map(|literal| IncludeAlternative { exact, literal })
             })
             .collect(),
@@ -566,7 +692,10 @@ fn candidate_field_texts(candidate: &PreparedCandidate, field: QueryField) -> (&
     match field {
         QueryField::Any => (&candidate.name, &candidate.full),
         QueryField::Name => (&candidate.name, &candidate.name),
-        QueryField::Path => (&candidate.path, &candidate.path),
+        QueryField::Path => {
+            let path = &candidate.path[candidate.field_path_byte_start..];
+            (path, path)
+        }
         QueryField::Dir => (&candidate.dir, &candidate.dir),
         QueryField::Ext => (&candidate.extension, &candidate.extension),
     }
@@ -817,8 +946,14 @@ fn add_pattern_positions(
         let (text, offset) = match field {
             QueryField::Any => unreachable!(),
             QueryField::Name => (candidate.filename.clone(), candidate.filename_start),
-            QueryField::Path => (candidate.visible.replace('\\', "/"), 0),
-            QueryField::Dir => (candidate.directory_visible.replace('\\', "/"), 0),
+            QueryField::Path => (
+                candidate.visible[candidate.field_path_byte_start..].replace('\\', "/"),
+                candidate.field_path_start,
+            ),
+            QueryField::Dir => (
+                candidate.directory_visible.replace('\\', "/"),
+                candidate.field_path_start,
+            ),
             QueryField::Ext => (
                 candidate.extension_visible.clone(),
                 candidate.extension_start,
@@ -889,8 +1024,14 @@ fn collect_spans(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> Vec
                     let (text, offset) = match matcher.field {
                         QueryField::Any => unreachable!(),
                         QueryField::Name => (candidate.filename.clone(), candidate.filename_start),
-                        QueryField::Path => (candidate.visible.replace('\\', "/"), 0),
-                        QueryField::Dir => (candidate.directory_visible.replace('\\', "/"), 0),
+                        QueryField::Path => (
+                            candidate.visible[candidate.field_path_byte_start..].replace('\\', "/"),
+                            candidate.field_path_start,
+                        ),
+                        QueryField::Dir => (
+                            candidate.directory_visible.replace('\\', "/"),
+                            candidate.field_path_start,
+                        ),
                         QueryField::Ext => (
                             candidate.extension_visible.clone(),
                             candidate.extension_start,

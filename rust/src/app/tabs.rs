@@ -397,11 +397,11 @@ impl FlistWalkerApp {
             follow_up: None,
             reclaim_build_request_id: None,
         };
-        if !self
+        if self
             .shell
             .tabs
             .get(tab_index)
-            .is_some_and(|tab| tab.index_state.pending_index_request_id == Some(request_id))
+            .is_none_or(|tab| tab.index_state.pending_index_request_id != Some(request_id))
         {
             effect.cleanup_request_id = Some(request_id);
             return effect;
@@ -743,6 +743,7 @@ impl FlistWalkerApp {
             tab.result_state.result_sort_mode = ResultSortMode::Score;
             tab.result_state.result_sort_scope = ResultSortScope::ShownResults;
             tab.result_state.committed.base_results = results.clone();
+            tab.result_state.committed.base_results_are_score_ranked = true;
             tab.result_state.committed.results = results;
             tab.result_state.results_compacted = false;
             tab.result_state.committed.total_match_count = tab.result_state.committed.entries.len();
@@ -1455,12 +1456,10 @@ impl FlistWalkerApp {
         self.clear_tab_drag_state();
         if !closing_active {
             self.sync_active_tab_state();
-        } else {
-            if !self.shell.tabs.discard_recent_inactive_transition() {
-                let _ = self.load_tab_payload(index);
-                self.set_notice("Waiting for background tab resource reclamation");
-                return;
-            }
+        } else if !self.shell.tabs.discard_recent_inactive_transition() {
+            let _ = self.load_tab_payload(index);
+            self.set_notice("Waiting for background tab resource reclamation");
+            return;
         }
         let mut removed = self.shell.tabs.remove(index);
         let activation_refresh_pending = interrupted_index_before_close

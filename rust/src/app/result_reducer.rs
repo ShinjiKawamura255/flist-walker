@@ -134,6 +134,9 @@ pub(super) fn apply_background_search_response(
         .error
         .map(|error| format!("Search failed: {error}"))
         .unwrap_or_default();
+    tab.result_state.committed.base_results_are_score_ranked = !response
+        .sort_scope
+        .sorts_all_matches_before_limit(response.sort_mode);
     tab.result_state.committed.base_results = response.results.clone();
     tab.result_state.committed.results = response.results;
     tab.result_state.committed.total_match_count = response.total_match_count;
@@ -141,6 +144,26 @@ pub(super) fn apply_background_search_response(
     tab.result_state.result_sort_mode = response.sort_mode;
     tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
+    let local_sort = response.sort_scope == super::ResultSortScope::ShownResults
+        && response.sort_mode != ResultSortMode::Score;
+    let missing_paths = if local_sort && response.sort_mode.uses_metadata() {
+        tab.result_state
+            .committed
+            .base_results
+            .iter()
+            .filter(|(path, _)| !app.shell.cache.sort_metadata.contains(path))
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    if local_sort && missing_paths.is_empty() {
+        tab.result_state.committed.results = FlistWalkerApp::build_sorted_results_from(
+            &tab.result_state.committed.base_results,
+            response.sort_mode,
+            app.shell.cache.sort_metadata.get_map(),
+        );
+    }
     if let Some(selected) = tab.result_state.evicted_selected_path.clone() {
         let selected_row = tab
             .result_state
@@ -167,6 +190,9 @@ pub(super) fn apply_background_search_response(
             .tabs
             .clear_preview_response_routing_for_tab(tab_id);
     }
+    if !missing_paths.is_empty() {
+        request_background_sort_metadata(app, tab_id, response.sort_mode, missing_paths);
+    }
 }
 
 pub(super) fn apply_active_search_response(
@@ -187,6 +213,14 @@ pub(super) fn apply_active_search_response(
     app.shell.runtime.result_sort_mode = response.sort_mode;
     app.shell.runtime.result_sort_scope = response.sort_scope;
     app.replace_results_snapshot(response.results, false);
+    app.shell.runtime.base_results_are_score_ranked = !response
+        .sort_scope
+        .sorts_all_matches_before_limit(response.sort_mode);
+    if response.sort_scope == super::ResultSortScope::ShownResults
+        && response.sort_mode != ResultSortMode::Score
+    {
+        apply_result_sort(app, false);
+    }
     if !app.shell.indexing.in_progress && !response_failed {
         clear_unrestored_evicted_selection(app);
     }
@@ -224,6 +258,7 @@ pub(super) fn replace_results_snapshot(
 ) {
     app.shell.worker_bus.sort.clear_request();
     app.shell.runtime.base_results = results.clone();
+    app.shell.runtime.base_results_are_score_ranked = true;
     // Regression guard: search refreshes must keep the cursor on the same row number.
     // Following the previous path here makes the highlight jump when the query changes.
     apply_results_with_selection_policy(app, results, keep_scroll_position, false);
@@ -274,7 +309,51 @@ fn request_sort_metadata(
     }
 }
 
+fn request_background_sort_metadata(
+    app: &mut FlistWalkerApp,
+    tab_id: u64,
+    mode: ResultSortMode,
+    paths: Vec<PathBuf>,
+) {
+    let request_id = app.shell.worker_bus.sort.next_request_id;
+    app.shell.worker_bus.sort.next_request_id = request_id.saturating_add(1);
+    let Some(index) = app.find_tab_index_by_id(tab_id) else {
+        return;
+    };
+    if app
+        .shell
+        .worker_bus
+        .sort
+        .tx
+        .send(SortMetadataRequest {
+            request_id,
+            paths,
+            mode,
+        })
+        .is_err()
+    {
+        if let Some(tab) = app.shell.tabs.get_mut(index) {
+            tab.notice = "Sort worker is unavailable".into();
+        }
+        return;
+    }
+    // Background completion must not borrow the active tab's pending sort slot.
+    let tab = app.shell.tabs.get_mut(index).expect("live background tab");
+    tab.result_state.pending_sort_request_id = Some(request_id);
+    tab.result_state.sort_in_progress = true;
+    app.bind_sort_request_to_tab(request_id, tab_id);
+}
+
 pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
+    if app.shell.runtime.result_sort_mode == ResultSortMode::Score
+        && !app.shell.runtime.base_results_are_score_ranked
+    {
+        // AllMatches may have removed Score's best candidates before applying limit.
+        // Sorting that subset cannot restore them; rebuild from current entries.
+        app.shell.worker_bus.sort.clear_request();
+        app.update_results();
+        return;
+    }
     if app.shell.runtime.result_sort_scope == super::ResultSortScope::AllMatches
         && app.shell.runtime.result_sort_mode != ResultSortMode::Score
     {
@@ -312,12 +391,28 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
     request_sort_metadata(app, app.shell.runtime.result_sort_mode, missing_paths);
 }
 
-pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMode) {
-    if app.shell.runtime.result_sort_mode != mode {
-        app.shell.tabs.mark_active_tab_meaningfully_engaged();
+fn apply_changed_sort(app: &mut FlistWalkerApp, pending_search: bool) {
+    if pending_search {
+        // Preserve a pending query change while replacing its sort request identity.
+        app.update_results();
+        if app.shell.search.in_progress() {
+            return;
+        }
+        // Empty-query Shown results are rebuilt without a worker response.
     }
-    app.shell.runtime.result_sort_mode = mode;
     apply_result_sort(app, false);
+}
+
+pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMode) {
+    if app.shell.runtime.result_sort_mode == mode {
+        return;
+    }
+    app.shell.tabs.mark_active_tab_meaningfully_engaged();
+    let pending_search = app.shell.search.in_progress();
+    app.shell.search.clear_active_request_state();
+    app.shell.worker_bus.sort.clear_request();
+    app.shell.runtime.result_sort_mode = mode;
+    apply_changed_sort(app, pending_search);
 }
 
 pub(super) fn set_result_sort_scope(app: &mut FlistWalkerApp, scope: super::ResultSortScope) {
@@ -325,8 +420,11 @@ pub(super) fn set_result_sort_scope(app: &mut FlistWalkerApp, scope: super::Resu
         return;
     }
     app.shell.tabs.mark_active_tab_meaningfully_engaged();
+    let pending_search = app.shell.search.in_progress();
+    app.shell.search.clear_active_request_state();
+    app.shell.worker_bus.sort.clear_request();
     app.shell.runtime.result_sort_scope = scope;
-    apply_result_sort(app, false);
+    apply_changed_sort(app, pending_search);
 }
 
 pub(super) fn apply_background_preview_response(
