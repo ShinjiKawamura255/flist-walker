@@ -281,7 +281,10 @@ fn rank_search_results_cancellable_with_cache(
     }
     let total_match_count = scored_matches.scored.len();
     if let Some(prefix_cache) = prefix_cache {
-        if SearchPrefixCache::is_cacheable_query(&query_trimmed)
+        // Regression guard: regex matches are not a safe candidate superset for a
+        // later plain prefix extension. Keep both cache lookup and storage plain-only.
+        if !use_regex
+            && SearchPrefixCache::is_cacheable_query(&query_trimmed)
             && scored_matches.scored.len() <= SearchPrefixCache::MAX_MATCHED_INDICES
         {
             let mut ranked = scored_matches.scored.clone();
