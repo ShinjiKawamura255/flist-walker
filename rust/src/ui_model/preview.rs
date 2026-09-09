@@ -90,16 +90,24 @@ fn read_preview_lines(
     max_lines: usize,
     max_bytes: usize,
 ) -> std::io::Result<Vec<String>> {
+    const UTF8_BOUNDARY_LOOKAHEAD_BYTES: usize = 3;
     let mut file = File::open(path)?;
     let mut bytes = Vec::with_capacity(max_bytes.min(8192));
-    let mut handle = (&mut file).take(max_bytes as u64);
+    let mut handle =
+        (&mut file).take(max_bytes.saturating_add(UTF8_BOUNDARY_LOOKAHEAD_BYTES) as u64);
     handle.read_to_end(&mut bytes)?;
-    decode_preview_lines(&bytes, max_lines).ok_or_else(|| {
+    let boundary = bytes.len().min(max_bytes);
+    let (bytes, boundary_lookahead) = bytes.split_at(boundary);
+    decode_preview_lines(bytes, max_lines, boundary_lookahead).ok_or_else(|| {
         std::io::Error::new(std::io::ErrorKind::InvalidData, "preview decode failed")
     })
 }
 
-fn decode_preview_lines(bytes: &[u8], max_lines: usize) -> Option<Vec<String>> {
+fn decode_preview_lines(
+    bytes: &[u8],
+    max_lines: usize,
+    boundary_lookahead: &[u8],
+) -> Option<Vec<String>> {
     if bytes.is_empty() {
         return Some(Vec::new());
     }
@@ -107,8 +115,8 @@ fn decode_preview_lines(bytes: &[u8], max_lines: usize) -> Option<Vec<String>> {
         return None;
     }
 
-    let mut candidates = preview_decoding_candidates(bytes);
-    candidates.push(decode_utf8_preview(bytes));
+    let mut candidates = preview_decoding_candidates(bytes, boundary_lookahead);
+    candidates.push(decode_utf8_preview(bytes, boundary_lookahead));
     candidates.extend(preview_fallback_decoders(bytes));
 
     candidates
@@ -118,9 +126,9 @@ fn decode_preview_lines(bytes: &[u8], max_lines: usize) -> Option<Vec<String>> {
         .next()
 }
 
-fn preview_decoding_candidates(bytes: &[u8]) -> Vec<Option<String>> {
+fn preview_decoding_candidates(bytes: &[u8], boundary_lookahead: &[u8]) -> Vec<Option<String>> {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
-        return vec![decode_utf8_preview(&bytes[3..])];
+        return vec![decode_utf8_preview(&bytes[3..], boundary_lookahead)];
     }
     if bytes.starts_with(&[0xFF, 0xFE]) {
         return vec![decode_with_encoding(&bytes[2..], UTF_16LE)];
@@ -150,8 +158,48 @@ fn preview_fallback_decoders(bytes: &[u8]) -> Vec<Option<String>> {
     }
 }
 
-fn decode_utf8_preview(bytes: &[u8]) -> Option<String> {
-    std::str::from_utf8(bytes).ok().map(|text| text.to_string())
+fn decode_utf8_preview(bytes: &[u8], boundary_lookahead: &[u8]) -> Option<String> {
+    match std::str::from_utf8(bytes) {
+        Ok(text) => Some(text.to_string()),
+        // Regression guard: discard an incomplete boundary scalar only after the
+        // lookahead proves that the following bytes complete valid UTF-8.
+        Err(error)
+            if valid_utf8_boundary_prefix_len(bytes, boundary_lookahead, &error).is_some() =>
+        {
+            std::str::from_utf8(&bytes[..error.valid_up_to()])
+                .ok()
+                .map(str::to_string)
+        }
+        Err(_) => None,
+    }
+}
+
+fn valid_utf8_boundary_prefix_len(
+    bytes: &[u8],
+    boundary_lookahead: &[u8],
+    error: &std::str::Utf8Error,
+) -> Option<usize> {
+    if error.error_len().is_some() {
+        return None;
+    }
+    let valid_up_to = error.valid_up_to();
+    let partial = bytes.get(valid_up_to..)?;
+    let width: usize = match *partial.first()? {
+        0xC2..=0xDF => 2,
+        0xE0..=0xEF => 3,
+        0xF0..=0xF4 => 4,
+        _ => return None,
+    };
+    let missing = width.checked_sub(partial.len())?;
+    if missing == 0 {
+        return None;
+    }
+    let completion = boundary_lookahead.get(..missing)?;
+    let mut scalar = [0u8; 4];
+    scalar[..partial.len()].copy_from_slice(partial);
+    scalar[partial.len()..width].copy_from_slice(completion);
+    std::str::from_utf8(&scalar[..width]).ok()?;
+    Some(valid_up_to)
 }
 
 fn decode_with_encoding(bytes: &[u8], encoding: &'static encoding_rs::Encoding) -> Option<String> {
@@ -675,6 +723,75 @@ mod tests {
         assert!(preview.contains("line1"));
         assert!(preview.contains("line20"));
         assert!(!preview.contains("line21"));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_truncated_utf8_preview_keeps_the_valid_prefix_encoding() {
+        const PREVIEW_MAX_BYTES: usize = 64 * 1024;
+        let root = test_root("preview-truncated-utf8");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("japanese.txt");
+        let mut body = "日本語 ".as_bytes().to_vec();
+        body.resize(PREVIEW_MAX_BYTES - 1, b'a');
+        body.extend_from_slice("日\n".as_bytes());
+        assert!(std::str::from_utf8(&body).is_ok());
+        fs::write(&file, body).expect("write utf8 file");
+
+        let preview = build_preview_text(&file);
+
+        assert!(preview.contains("日本語"), "{preview}");
+        assert!(!preview.contains("æ—¥"), "{preview}");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_utf8_boundary_requires_a_valid_continuation() {
+        const PREVIEW_MAX_BYTES: usize = 64 * 1024;
+        let root = test_root("preview-invalid-utf8-boundary");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("legacy.txt");
+        let mut body = vec![b'a'; PREVIEW_MAX_BYTES - 1];
+        body.extend_from_slice(&[0xC2, b'A']);
+        fs::write(&file, body).expect("write legacy file");
+
+        let preview = read_preview_lines(&file, 1, PREVIEW_MAX_BYTES).expect("decode preview");
+
+        assert_eq!(preview.len(), 1);
+        assert_ne!(
+            preview[0].chars().last(),
+            Some('a'),
+            "an invalid UTF-8 continuation must use a legacy fallback instead of dropping the lead byte"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn regression_utf8_boundary_accepts_one_to_three_missing_bytes() {
+        for scalar in ["¢", "日", "😀"] {
+            let encoded = scalar.as_bytes();
+            let capped = [b'a', encoded[0]];
+            let decoded = decode_preview_lines(&capped, 1, &encoded[1..])
+                .expect("valid split UTF-8 boundary");
+            assert_eq!(decoded, vec!["a"]);
+        }
+    }
+
+    #[test]
+    fn regression_exact_limit_utf8_preview_keeps_complete_final_codepoint() {
+        const PREVIEW_MAX_BYTES: usize = 64 * 1024;
+        let root = test_root("preview-exact-limit-utf8");
+        fs::create_dir_all(&root).expect("create dir");
+        let file = root.join("exact.txt");
+        let mut body = "日本語 ".as_bytes().to_vec();
+        body.resize(PREVIEW_MAX_BYTES - "日".len(), b'a');
+        body.extend_from_slice("日".as_bytes());
+        assert_eq!(body.len(), PREVIEW_MAX_BYTES);
+        fs::write(&file, body).expect("write utf8 file");
+
+        let preview = build_preview_text(&file);
+
+        assert!(preview.contains("日本語"), "{preview}");
         let _ = fs::remove_dir_all(&root);
     }
 

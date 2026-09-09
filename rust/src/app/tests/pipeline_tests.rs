@@ -501,6 +501,25 @@ fn should_refresh_incremental_search_is_true_for_large_delta_after_interval() {
 }
 
 #[test]
+fn regression_incremental_snapshot_sync_has_no_redundant_full_vec_clone() {
+    let source = include_str!("../pipeline_owner.rs");
+    let body = source
+        .split("fn sync_entries_from_incremental")
+        .nth(1)
+        .expect("snapshot sync owner")
+        .split("pub(super) fn enqueue_search_request_for_tab_index")
+        .next()
+        .expect("snapshot sync body");
+
+    assert!(body.contains("overwrite_entries_arc"));
+    assert!(
+        !body.contains("incremental_filtered_entries\r\n            .clone()")
+            && !body.contains("incremental_filtered_entries\n            .clone()"),
+        "the GUI snapshot path must not clone the full incremental Vec before its owned copy"
+    );
+}
+
+#[test]
 fn regression_ignore_list_is_applied_when_files_and_folders_are_both_enabled() {
     let root = test_root("ignore-list-fast-path-regression");
     fs::create_dir_all(&root).expect("create dir");

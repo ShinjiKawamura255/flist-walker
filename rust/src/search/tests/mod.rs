@@ -232,6 +232,101 @@ fn tc_193_uncached_one_shot_ranking_matches_cached_results_without_cache_populat
 }
 
 #[test]
+fn regression_regex_seed_never_narrows_a_plain_prefix_search() {
+    let root = PathBuf::from("/tmp");
+    let entries = Arc::new(vec![
+        Entry::file(root.join("a.bc")),
+        Entry::file(root.join("aZZ.ZZbc")),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (regex_seed, seed_error) = rank_search_results(
+        &entries,
+        "a.b",
+        &root,
+        10,
+        true,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::ShownResults,
+    );
+    assert!(seed_error.is_none());
+    assert_eq!(regex_seed.total_match_count, 1);
+
+    let (warm_plain, warm_error) = rank_search_results(
+        &entries,
+        "a.bc",
+        &root,
+        10,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::ShownResults,
+    );
+    let (cold_plain, cold_error) = rank_search_results_uncached(
+        &entries,
+        "a.bc",
+        &root,
+        10,
+        false,
+        true,
+        true,
+        SearchSortMode::Score,
+        SearchSortScope::ShownResults,
+    );
+
+    assert!(warm_error.is_none());
+    assert!(cold_error.is_none());
+    assert_eq!(warm_plain, cold_plain);
+    assert_eq!(warm_plain.total_match_count, 2);
+}
+
+#[test]
+fn regression_plain_prefix_cache_still_reduces_plain_candidate_evaluation() {
+    let root = PathBuf::from("/tmp");
+    let entries = Arc::new(
+        (0..100)
+            .map(|index| Entry::file(root.join(format!("module_{index:03}.rs"))))
+            .collect(),
+    );
+    let mut cache = SearchPrefixCache::default();
+    let (_, seed_error) = rank_search_results(
+        &entries,
+        "module_09",
+        &root,
+        100,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::ShownResults,
+    );
+    assert!(seed_error.is_none());
+
+    let (warm, error) = rank_search_results(
+        &entries,
+        "module_099",
+        &root,
+        100,
+        false,
+        true,
+        true,
+        &mut cache,
+        SearchSortMode::Score,
+        SearchSortScope::ShownResults,
+    );
+
+    assert!(error.is_none());
+    assert_eq!(warm.total_match_count, 1);
+    assert!(warm.evaluated_candidate_count < entries.len());
+}
+
+#[test]
 fn tc_155_regression_authoritative_search_still_applies_exclusion() {
     let entries = vec![
         PathBuf::from("/tmp/src/main.rs"),

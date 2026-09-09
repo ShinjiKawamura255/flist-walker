@@ -186,3 +186,35 @@ Back to the [Validation Matrix](validation-matrix.md).
 - Non-goals: Windows universal の shell-synchronous CLI 保証、初回window前の fatal error 用 native dialog、release publish。
 - Related Tests: TC-147, TC-187, TC-191, TC-193, TC-215; `scripts/test-windows-build-artifact.ps1`, `tc187_regression_hidden_updater_child_does_not_inherit_stale_stdio`.
 - Notes for Future Changes: executable subsystem、entrypoint、updater child/restart command、Windows build scriptを変更するときは fresh PE 検査と fixed-key/hash-distinct Universal/Fw copied-sandbox updater E2E を再実行する。
+
+### Regression Guard: search prefix cache remains plain-query scoped
+
+- Scenario: a regex query such as `a.b` seeds the prefix cache, then a plain extension such as `a.bc` reuses that narrower regex result set and omits valid fuzzy matches.
+- Expected Behavior: regex requests neither read nor populate the plain-query prefix cache; plain prefix extensions retain their existing candidate-reduction optimization.
+- Non-goals: regex syntax, fuzzy ranking, cache size, or cache eviction policy changes.
+- Related Tests: `regression_regex_seed_never_narrows_a_plain_prefix_search`, `regression_plain_prefix_cache_still_reduces_plain_candidate_evaluation`.
+- Notes for Future Changes: every cache key or storage path must include all matching-mode dimensions, or modes that cannot share a safe candidate superset must remain excluded.
+
+### Regression Guard: UTF-8 preview truncation preserves encoding
+
+- Scenario: the 64 KiB preview cap splits the last UTF-8 code point, causing the entire valid prefix to be decoded as a legacy encoding and displayed as mojibake.
+- Expected Behavior: a genuinely truncated UTF-8 tail is removed at the final valid boundary while the preceding UTF-8 text remains intact; a complete code point at the exact limit is preserved.
+- Non-goals: preview byte/line limit changes, encoding detection redesign, or streaming preview beyond the cap.
+- Related Tests: `regression_truncated_utf8_preview_keeps_the_valid_prefix_encoding`, `regression_utf8_boundary_accepts_one_to_three_missing_bytes`, `regression_utf8_boundary_requires_a_valid_continuation`, `regression_exact_limit_utf8_preview_keeps_complete_final_codepoint`.
+- Notes for Future Changes: retain up to three lookahead bytes and accept an incomplete UTF-8 tail only when those bytes actually complete the split Unicode scalar; file length alone is insufficient.
+
+### Regression Guard: incremental search snapshot performs one owned copy
+
+- Scenario: each incremental search refresh clones the full entry vector into a temporary and then clones it again into the `Arc`, blocking the GUI thread for hundreds of milliseconds on a million-entry catalog.
+- Expected Behavior: snapshot synchronization passes the incremental slice directly to the existing `Arc` overwrite owner, which performs at most the one required owned copy and can reuse unique allocation.
+- Non-goals: changing incremental refresh cadence, search worker request ownership, or adopting a chunked catalog representation.
+- Related Tests: `regression_incremental_snapshot_sync_has_no_redundant_full_vec_clone`.
+- Notes for Future Changes: do not create a full temporary `Vec<Entry>` before `overwrite_entries_arc`; large snapshot destruction remains subject to the existing reclaimer contracts.
+
+### Regression Guard: nested FileList subtree replacement avoids catalog rescans
+
+- Scenario: each accepted child FileList scans and clones the complete candidate list, making many sibling overrides approach O(candidate count × override count).
+- Expected Behavior: an ordered component-prefix index is built only after a newer child FileList parses, removes only members of the affected subtree, observes cancellation throughout index work, and preserves the established survivor order, append order, and global deduplication.
+- Non-goals: FileList discovery, mtime precedence, path case rules, or child override ordering changes.
+- Related Tests: `regression_sibling_subtree_replacements_do_not_rescan_the_whole_catalog`, `regression_nested_sibling_overrides_bound_end_to_end_index_visits`, `regression_older_child_filelist_does_not_build_the_catalog_index`, `regression_cancel_during_index_build_restores_caller_entries`, `regression_cancel_during_subtree_mutation_restores_caller_entries`, `regression_ordered_subtree_replacement_preserves_append_order_and_deduplication`, `regression_component_prefix_does_not_remove_similarly_named_sibling`.
+- Notes for Future Changes: subtree lookup must use path components rather than raw string prefixes so sibling names such as `a` and `a-file` cannot overlap. Cancellation during index construction or replacement must restore the caller-visible entry order.

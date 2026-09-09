@@ -337,14 +337,10 @@ impl<'a> PipelineOwner<'a> {
     }
 
     fn sync_entries_from_incremental(&mut self) {
-        let incremental_entries = self
-            .app
-            .shell
-            .indexing
-            .build
-            .incremental_filtered_entries
-            .clone();
-        Self::overwrite_entries_arc(&mut self.app.shell.runtime.entries, &incremental_entries);
+        let incremental_entries = &self.app.shell.indexing.build.incremental_filtered_entries;
+        // Regression guard: overwrite_entries_arc already owns the one required
+        // snapshot copy. Do not clone the full incremental Vec before this call.
+        Self::overwrite_entries_arc(&mut self.app.shell.runtime.entries, incremental_entries);
     }
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {
