@@ -57,7 +57,7 @@
 - 役割補足: GUI の単一行入力は `app/input/text_editing.rs` の共有 adapter から Unicode character index の reducer と共通 kill buffer を利用する。通常検索・履歴だけに閉じず、preset filter/editor、Named Root editor、保存 root 管理も同じ境界を通し、新しい `TextEdit::singleline` を素のまま追加しない。query/history 固有の検索再評価は adapter の text-changed 結果を各 owner が受けて実行する。
 - 役割補足: 非空 query 時の結果一覧は、不可視行の `LayoutJob` / highlight 組み立てを行わず、可視行だけに描画コストを寄せてカーソル移動や再描画時の UI 応答性を維持する。
 - 役割補足: `app/mod.rs` は横断 orchestration と feature 間の結線だけを保持し、feature ごとの state transition は `app/filelist/mod.rs`、`app/update.rs`、`app/preset_picker.rs`、`app/render.rs`、`app/input/mod.rs`、`app/session.rs`、`app/state.rs`、`app/tabs.rs`、`app/pipeline.rs`、`app/pipeline_owner.rs`、`app/cache.rs`、`app/result_reducer.rs`、`app/result_flow.rs`、`app/preview_flow.rs`、`app/response_flow.rs`、`app/root_browser.rs` へ分離する。status line / notice / update-cycle / root/path compare の純粋 helper は `app/coordinator.rs` へ寄せる。
-- 役割補足: saved roots の `Manage list` は `RootListManagerState` に保存済み list とは分離した draft roots/default root、通常時の単一選択、編集中の index/path、削除モードと複数選択を保持する。`app/render_dialogs/root_list.rs` は通常・編集・削除モードを描画し、検証、正規化、重複排除、default root 追従、Apply/Cancel 境界は `app/root_browser.rs` が担当する。
+- 役割補足: saved roots の `Manage list` は `RootListManagerState` に保存済み list とは分離した draft roots/default root、通常時の単一選択、編集中の index/path、削除モードと複数選択を保持する。`app/render_dialogs/root_list.rs` は通常・編集・削除モードを描画し、検証、正規化、重複排除、default root 追従、Apply/Cancel 境界は `app/root_browser.rs` が担当する。Apply/OK は request-scoped settings commit の成功後だけ live state を置換し、失敗時は draft と管理画面を保持する。
 - 役割補足: `app/mod.rs` の fixed point は `startup/bootstrap`、`frame update cycle`、`shutdown/persist`、`tab routing`、`filelist/update dialog dispatch`、`trace helper` の 6 区分を top-level で束ねることに限定し、各区分の state transition と policy 判定は owner module 側へ寄せる。process shutdown、window trace、egui font setup、root visibility/cache helper などの shell-local helper policy は `app/shell_support.rs` へ移した。
 - 役割補足: `FlistWalkerApp` の field inventory は、`app-global shared state`、`active-tab-local state`、`persisted/background tab state`、`feature dialog/update state` の 4 束で追跡し、以後の state decomposition はこの分類を崩さない。
   - 役割補足: `FlistWalkerApp` は `AppShellState` を最上位の ownership boundary とし、その内側に `AppRuntimeState`、`TabSessionState`、`FeatureStateBundle`、`RuntimeUiState`、`CacheStateBundle`、worker/state coordinators をまとめる。shell は runtime bundle を透明に露出せず、coordinator は `shell` バンドル経由で state に明示的にアクセスする。
@@ -158,7 +158,7 @@
 - 実装: `rust/src/app/worker/tasks.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/mod.rs`, `rust/src/app/session.rs`, `rust/src/app/input/mod.rs`, `rust/src/main.rs`
 - 役割補足: worker-side async flow は `flow` / `event` / `request_id` を中心に記録し、request-scoped でない flow は `epoch` や `source_kind` など最小の補助 field だけを追加する。
 - 役割補足: search / preview / filelist / action / sort metadata / update は started/finished/failed/receiver_closed 系の event family に寄せ、index は `flow=index` と `source_kind` で filelist/walker/none を切り分ける。
-- 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。
+- 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。`append_window_trace` は bounded queue へ non-blocking enqueue し、ファイル path 解決・作成・追記は専用 writer thread が行う。queue Full または writer 切断時は event を best-effort で破棄する。
 - 役割補足: diagnostics 強化で request routing や response acceptance を変えない。hot UI path へ重い同期 I/O や新しい汎用 logging framework を導入しない。
 
 - DES-016 Ignore List Filter
@@ -177,7 +177,7 @@
 - 役割補足: Windows の旧 exe-side / home-directory 配置ファイルと Linux/macOS の旧 home-root 配置ファイルは、新しい保存先が未作成のときだけ初回起動で移行し、既存の新配置ファイルを上書きしない。transition migration は v0.20.0 までの一時対応として扱う。
 - 役割補足: GUI の設定ボタンは render command 経由で `shell_support` の config open 処理を呼び、`runtime_config_file_path` を生成済みにしたうえで `actions` の既定アプリ open を試す。既定アプリが失敗した場合は、Windows では `notepad.exe`、macOS では `open -t`、Linux では `VISUAL` / `EDITOR` または一般的な GUI editor へフォールバックする。
 - 役割補足: build-time 公開鍵や release signing secret は runtime config file に含めず、既存の build / release / dev-test secret 経路に残す。
-- 役割補足: session persistence は read-only roots API と async history/UI-state writer を分ける。worker は sidecar lock 下で latest-read delta merge と atomic write を行い、unknown JSON fields を保持する。GUI/TUI frame は enqueue のみを行い、lock timeout/write failure の generation は retry queue に残す。
+- 役割補足: session persistence は read-only roots API と async history/UI-state/settings writer を分ける。worker は sidecar lock 下で latest-read delta merge と atomic write を行い、unknown JSON fields を保持する。saved-root/default-root の observed commit は path canonicalize と関連ファイル write を同 worker で実行し、request identity 付き結果を UI へ返す。GUI/TUI frame は enqueue と bounded response poll のみを行い、lock timeout/write failure の history generation は retry queue に残す。observed commit の失敗は live state を更新せず、途中まで変更した saved-roots file を可能な限り rollback して結果へ含める。
 
 - DES-018 Release Sample Ignore List
 - 役割: release asset と self-update helper が ignore list サンプルを同梱・配置し、初回利用時の導線を提供する。
