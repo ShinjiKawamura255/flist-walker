@@ -192,7 +192,8 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     !manage.draft_roots.is_empty(),
                     manage.selected_index.is_some(),
                     !manage.selected_indices.is_empty(),
-                    app.shell.worker_bus.root_validation.in_progress,
+                    app.shell.worker_bus.root_validation.in_progress
+                        || app.settings_commit_in_progress(),
                 )
             };
             ui.horizontal(|ui| {

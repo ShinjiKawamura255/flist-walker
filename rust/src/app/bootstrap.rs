@@ -410,6 +410,8 @@ impl FlistWalkerApp {
                         saved_roots,
                         default_root,
                         manage_list: Default::default(),
+                        next_settings_request_id: 1,
+                        pending_settings_commit: None,
                     },
                     presets: PresetManagerState::default(),
                     filelist: FileListManager::default(),

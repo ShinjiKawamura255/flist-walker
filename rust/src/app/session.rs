@@ -1,6 +1,6 @@
 use super::FlistWalkerApp;
 use crate::fs_atomic::acquire_sidecar_lock;
-use crate::fs_atomic::write_text_atomic;
+use crate::fs_atomic::{write_bytes_atomic, write_text_atomic};
 use crate::path_utils::{normalize_windows_path_buf, path_key};
 use crate::runtime_config::{legacy_settings_base_dirs, migrate_file_if_needed, settings_base_dir};
 use eframe::egui;
@@ -65,8 +65,27 @@ enum UiStatePersistenceCommand {
         patch: UiStatePatch,
         history_delta: Vec<String>,
     },
+    CommitSettings {
+        request: SettingsCommitRequest,
+        response: Sender<SettingsCommitResponse>,
+    },
     Flush(Sender<Result<(), String>>),
     Shutdown(Sender<Result<(), String>>),
+}
+
+pub(super) struct SettingsCommitRequest {
+    pub(super) request_id: u64,
+    pub(super) patch: UiStatePatch,
+    pub(super) saved_roots: Option<(PathBuf, String)>,
+}
+
+pub(super) struct SettingsCommitReceipt {
+    pub(super) canonical_default_root: Option<PathBuf>,
+}
+
+pub(super) struct SettingsCommitResponse {
+    pub(super) request_id: u64,
+    pub(super) result: Result<SettingsCommitReceipt, String>,
 }
 
 pub struct AsyncHistoryPersistence {
@@ -217,6 +236,38 @@ fn enqueue_ui_state_patch(
     });
 }
 
+fn persistence_sender_for_path(
+    path: PathBuf,
+    history_persist_disabled: bool,
+) -> Result<Sender<UiStatePersistenceCommand>, String> {
+    let mut registry = ui_state_persistence_registry()
+        .lock()
+        .map_err(|_| "UI-state persistence registry is unavailable".to_string())?;
+    Ok(registry
+        .senders
+        .entry(path.clone())
+        .or_insert_with(|| {
+            spawn_detached_ui_state_persistence_worker(path, history_persist_disabled)
+        })
+        .clone())
+}
+
+pub(super) fn enqueue_settings_commit(
+    ui_state_path: PathBuf,
+    history_persist_disabled: bool,
+    request: SettingsCommitRequest,
+) -> Result<mpsc::Receiver<SettingsCommitResponse>, String> {
+    let sender = persistence_sender_for_path(ui_state_path, history_persist_disabled)?;
+    let (response_tx, response_rx) = mpsc::channel();
+    sender
+        .send(UiStatePersistenceCommand::CommitSettings {
+            request,
+            response: response_tx,
+        })
+        .map_err(|_| "UI-state persistence worker is unavailable".to_string())?;
+    Ok(response_rx)
+}
+
 fn flush_ui_state_persistence(path: &Path, timeout: Duration) {
     let sender = ui_state_persistence_registry()
         .lock()
@@ -243,6 +294,7 @@ fn run_ui_state_persistence_worker(
         let command = rx.recv_timeout(UI_STATE_PERSISTENCE_RETRY_DELAY);
         let mut flush_reply = None;
         let mut shutdown_reply = None;
+        let mut settings_commit = None;
         let mut disconnected = false;
         match command {
             Ok(UiStatePersistenceCommand::Enqueue {
@@ -256,12 +308,19 @@ fn run_ui_state_persistence_worker(
                     history_delta,
                 );
             }
+            Ok(UiStatePersistenceCommand::CommitSettings { request, response }) => {
+                settings_commit = Some((request, response));
+            }
             Ok(UiStatePersistenceCommand::Flush(reply)) => flush_reply = Some(reply),
             Ok(UiStatePersistenceCommand::Shutdown(reply)) => shutdown_reply = Some(reply),
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => disconnected = true,
         }
-        if flush_reply.is_none() && shutdown_reply.is_none() && !disconnected {
+        if flush_reply.is_none()
+            && shutdown_reply.is_none()
+            && settings_commit.is_none()
+            && !disconnected
+        {
             while let Ok(command) = rx.try_recv() {
                 match command {
                     UiStatePersistenceCommand::Enqueue {
@@ -273,6 +332,10 @@ fn run_ui_state_persistence_worker(
                         patch,
                         history_delta,
                     ),
+                    UiStatePersistenceCommand::CommitSettings { request, response } => {
+                        settings_commit = Some((request, response));
+                        break;
+                    }
                     UiStatePersistenceCommand::Flush(reply) => {
                         flush_reply = Some(reply);
                         break;
@@ -284,7 +347,22 @@ fn run_ui_state_persistence_worker(
                 }
             }
         }
-        let result = if pending.is_empty() {
+        let result = if let Some((request, response)) = settings_commit {
+            let request_id = request.request_id;
+            let result = commit_settings(
+                &path,
+                &pending,
+                history_persist_disabled,
+                lock_timeout,
+                request,
+            )
+            .map_err(|error| error.to_string());
+            if result.is_ok() {
+                pending.clear();
+            }
+            let _ = response.send(SettingsCommitResponse { request_id, result });
+            Ok(())
+        } else if pending.is_empty() {
             Ok(())
         } else {
             write_pending_ui_state(&path, &pending, history_persist_disabled, lock_timeout)
@@ -302,6 +380,110 @@ fn run_ui_state_persistence_worker(
             break;
         }
     }
+}
+
+fn build_ui_state_document(
+    path: &Path,
+    pending: &[PendingUiStateWrite],
+    extra_patch: Option<&UiStatePatch>,
+    history_persist_disabled: bool,
+) -> std::io::Result<Value> {
+    let mut document = fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| Value::Object(Default::default()));
+    for write in pending {
+        merge_json_leaves(&mut document, &write.patch.0);
+    }
+    if let Some(patch) = extra_patch {
+        merge_json_leaves(&mut document, &patch.0);
+    }
+    if !history_persist_disabled {
+        let history = document
+            .get("query_history")
+            .and_then(Value::as_array)
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(ToOwned::to_owned)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let mut history = normalize_history_recency(history);
+        for delta in pending.iter().flat_map(|write| write.history_delta.iter()) {
+            append_history_delta(&mut history, delta.clone());
+        }
+        if let Value::Object(map) = &mut document {
+            map.insert(
+                "query_history".to_string(),
+                Value::Array(history.into_iter().map(Value::String).collect()),
+            );
+        }
+    }
+    canonicalize_last_root_for_persistence(&mut document);
+    canonicalize_default_root_for_persistence(&mut document);
+    Ok(document)
+}
+
+fn commit_settings(
+    ui_state_path: &Path,
+    pending: &[PendingUiStateWrite],
+    history_persist_disabled: bool,
+    lock_timeout: Duration,
+    request: SettingsCommitRequest,
+) -> std::io::Result<SettingsCommitReceipt> {
+    let _lock = acquire_sidecar_lock(ui_state_path, lock_timeout)?;
+    let document = build_ui_state_document(
+        ui_state_path,
+        pending,
+        Some(&request.patch),
+        history_persist_disabled,
+    )?;
+    let serialized = serde_json::to_string_pretty(&document).map_err(std::io::Error::other)?;
+    let canonical_default_root = document
+        .get("default_root")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .map(normalize_windows_path_buf);
+
+    let mut roots_rollback = None;
+    if let Some((roots_path, roots_text)) = request.saved_roots.as_ref() {
+        let previous = match fs::read(roots_path) {
+            Ok(bytes) => Some(bytes),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error),
+        };
+        write_text_atomic(roots_path, roots_text)?;
+        roots_rollback = Some((roots_path, previous));
+    }
+
+    if let Err(error) = write_text_atomic(ui_state_path, &serialized) {
+        if let Some((roots_path, previous)) = roots_rollback {
+            let rollback = match previous {
+                Some(bytes) => write_bytes_atomic(roots_path, &bytes),
+                None => fs::remove_file(roots_path).or_else(|remove_error| {
+                    if remove_error.kind() == std::io::ErrorKind::NotFound {
+                        Ok(())
+                    } else {
+                        Err(remove_error)
+                    }
+                }),
+            };
+            if let Err(rollback_error) = rollback {
+                return Err(std::io::Error::other(format!(
+                    "{error}; saved-roots rollback failed: {rollback_error}"
+                )));
+            }
+        }
+        return Err(error);
+    }
+
+    Ok(SettingsCommitReceipt {
+        canonical_default_root,
+    })
 }
 
 fn push_pending_ui_state_write(
@@ -328,38 +510,7 @@ fn write_pending_ui_state(
         .windows(2)
         .all(|writes| writes[0].generation < writes[1].generation));
     let _lock = acquire_sidecar_lock(path, lock_timeout)?;
-    let mut document = fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .filter(Value::is_object)
-        .unwrap_or_else(|| Value::Object(Default::default()));
-    for write in pending {
-        merge_json_leaves(&mut document, &write.patch.0);
-    }
-    if !history_persist_disabled {
-        let history = document
-            .get("query_history")
-            .and_then(Value::as_array)
-            .map(|values| {
-                values
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .map(ToOwned::to_owned)
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        let mut history = normalize_history_recency(history);
-        for delta in pending.iter().flat_map(|write| write.history_delta.iter()) {
-            append_history_delta(&mut history, delta.clone());
-        }
-        if let Value::Object(map) = &mut document {
-            map.insert(
-                "query_history".to_string(),
-                Value::Array(history.into_iter().map(Value::String).collect()),
-            );
-        }
-    }
-    canonicalize_last_root_for_persistence(&mut document);
+    let document = build_ui_state_document(path, pending, None, history_persist_disabled)?;
     let text = serde_json::to_string_pretty(&document).map_err(std::io::Error::other)?;
     write_text_atomic(path, &text)
 }
@@ -378,6 +529,25 @@ fn canonicalize_last_root_for_persistence(document: &mut Value) {
     if let Value::Object(map) = document {
         map.insert(
             "last_root".to_string(),
+            Value::String(canonical.to_string_lossy().to_string()),
+        );
+    }
+}
+
+fn canonicalize_default_root_for_persistence(document: &mut Value) {
+    let Some(default_root) = document
+        .get("default_root")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    else {
+        return;
+    };
+    let canonical = PathBuf::from(default_root)
+        .canonicalize()
+        .unwrap_or_else(|_| PathBuf::from(default_root));
+    if let Value::Object(map) = document {
+        map.insert(
+            "default_root".to_string(),
             Value::String(canonical.to_string_lossy().to_string()),
         );
     }
@@ -640,6 +810,12 @@ impl FlistWalkerApp {
     pub(super) fn persist_state_and_shutdown(&mut self, phase: &str) {
         self.apply_stable_window_geometry(true);
         self.shell.ui.ui_state_dirty = true;
+        if self.settings_commit_in_progress() {
+            if let Some(path) = Self::ui_state_file_path() {
+                flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
+            }
+            self.poll_settings_commit_response();
+        }
         self.maybe_save_ui_state(true);
         if let Some(path) = Self::ui_state_file_path() {
             flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
@@ -804,7 +980,7 @@ impl FlistWalkerApp {
         Some((sanitized, active))
     }
 
-    fn saved_roots_file_path() -> Option<PathBuf> {
+    pub(super) fn saved_roots_file_path() -> Option<PathBuf> {
         #[cfg(test)]
         if let Some(path) = SAVED_ROOTS_FILE_PATH_OVERRIDE
             .get_or_init(|| Mutex::new(None))
@@ -836,30 +1012,6 @@ impl FlistWalkerApp {
         };
         let file = Self::migrate_or_legacy_saved_roots_path(&file);
         read_saved_roots_from_path(&file)
-    }
-
-    pub(super) fn save_saved_roots(&self) {
-        let Some(file) = Self::saved_roots_file_path() else {
-            return;
-        };
-        if let Some(parent) = file.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        let text = self
-            .shell
-            .features
-            .root_browser
-            .saved_roots
-            .iter()
-            .map(|p| p.to_string_lossy().to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
-        let text_to_write = if text.is_empty() {
-            String::new()
-        } else {
-            format!("{text}\n")
-        };
-        let _ = write_text_atomic(&file, &text_to_write);
     }
 }
 
@@ -934,21 +1086,12 @@ impl FlistWalkerApp {
             self.set_notice(Self::SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE);
             return;
         }
-        let root = self
-            .shell
-            .runtime
-            .root
-            .canonicalize()
-            .unwrap_or_else(|_| self.shell.runtime.root.clone());
-        let root = normalize_windows_path_buf(root);
-        self.shell.features.root_browser.default_root = Some(root.clone());
-        self.mark_ui_state_dirty();
-        self.persist_ui_state_now();
-        self.set_notice(format!("Set default root: {}", root.display()));
+        self.start_default_root_settings_commit(self.shell.runtime.root.clone());
     }
 
     pub(super) fn can_set_current_root_as_default(&self) -> bool {
         Self::can_set_current_root_as_default_with(Self::restore_tabs_enabled())
+            && !self.settings_commit_in_progress()
     }
 
     pub(super) fn can_set_current_root_as_default_with(restore_tabs_enabled: bool) -> bool {
@@ -1067,6 +1210,9 @@ impl FlistWalkerApp {
         if !self.shell.ui.ui_state_dirty {
             return;
         }
+        if self.settings_commit_in_progress() {
+            return;
+        }
         if force || self.shell.ui.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
             self.save_ui_state();
             self.shell.ui.ui_state_dirty = false;
@@ -1075,6 +1221,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn persist_ui_state_now(&mut self) {
+        if self.settings_commit_in_progress() {
+            self.shell.ui.ui_state_dirty = true;
+            return;
+        }
         self.save_ui_state();
         self.shell.ui.ui_state_dirty = false;
         self.shell.ui.last_ui_state_save = Instant::now();

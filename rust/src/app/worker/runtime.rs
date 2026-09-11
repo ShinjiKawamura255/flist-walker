@@ -312,5 +312,6 @@ impl FlistWalkerApp {
         self.poll_catalog_response();
         self.poll_config_open_response();
         self.poll_root_validation_response();
+        self.poll_settings_commit_response();
     }
 }

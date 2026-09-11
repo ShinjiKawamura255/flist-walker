@@ -364,6 +364,100 @@ fn tc_168_detached_ui_state_writer_flushes_outside_frame_waiting_for_lock_releas
 }
 
 #[test]
+fn tc_167_observed_settings_commit_reports_saved_root_failure_without_changing_ui_state() {
+    let base = temp_dir("observed-settings-failure");
+    let ui_state_path = base.join("ui-state.json");
+    let invalid_roots_target = base.join("roots-as-directory");
+    fs::create_dir_all(&invalid_roots_target).expect("create invalid target directory");
+    fs::write(
+        &ui_state_path,
+        json!({"default_root": "old-root", "unknown": true}).to_string(),
+    )
+    .expect("seed state");
+    let before = fs::read(&ui_state_path).expect("read state before commit");
+
+    let response = enqueue_settings_commit(
+        ui_state_path.clone(),
+        false,
+        SettingsCommitRequest {
+            request_id: 41,
+            patch: UiStatePatch::from_json(json!({"default_root": "new-root"})),
+            saved_roots: Some((invalid_roots_target, "new-root\n".to_string())),
+        },
+    )
+    .expect("enqueue observed commit")
+    .recv_timeout(Duration::from_secs(1))
+    .expect("observed response");
+
+    assert_eq!(response.request_id, 41);
+    assert!(response.result.is_err());
+    assert_eq!(
+        fs::read(&ui_state_path).expect("read state after failure"),
+        before
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn tc_167_observed_settings_commit_rolls_back_saved_roots_when_ui_state_write_fails() {
+    let base = temp_dir("observed-settings-rollback");
+    let ui_state_path = base.join("ui-state-as-directory");
+    let roots_path = base.join("roots.txt");
+    fs::create_dir_all(&ui_state_path).expect("create invalid UI-state target directory");
+    fs::write(&roots_path, "old-root\n").expect("seed roots");
+
+    let response = enqueue_settings_commit(
+        ui_state_path,
+        false,
+        SettingsCommitRequest {
+            request_id: 42,
+            patch: UiStatePatch::from_json(json!({"default_root": "new-root"})),
+            saved_roots: Some((roots_path.clone(), "new-root\n".to_string())),
+        },
+    )
+    .expect("enqueue settings commit")
+    .recv_timeout(Duration::from_secs(1))
+    .expect("settings response");
+
+    assert_eq!(response.request_id, 42);
+    assert!(response.result.is_err());
+    assert_eq!(
+        fs::read_to_string(&roots_path).expect("read rolled-back roots"),
+        "old-root\n"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn tc_168_observed_settings_commit_enqueue_does_not_wait_for_ui_state_lock() {
+    let base = temp_dir("observed-settings-frame-latency");
+    let ui_state_path = base.join("ui-state.json");
+    fs::create_dir_all(&base).expect("create base");
+    let lock = acquire_sidecar_lock(&ui_state_path, Duration::from_millis(10)).expect("hold lock");
+
+    let started = Instant::now();
+    let response = enqueue_settings_commit(
+        ui_state_path.clone(),
+        false,
+        SettingsCommitRequest {
+            request_id: 42,
+            patch: UiStatePatch::from_json(json!({"default_root": base})),
+            saved_roots: None,
+        },
+    )
+    .expect("enqueue observed commit");
+    assert!(started.elapsed() < Duration::from_millis(200));
+
+    drop(lock);
+    let response = response
+        .recv_timeout(Duration::from_secs(2))
+        .expect("observed response");
+    assert_eq!(response.request_id, 42);
+    response.result.expect("commit after lock release");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
 fn public_persisted_roots_and_history_api_honors_history_disabled() {
     let base = temp_dir("public-read-api");
     let ui_state_path = base.join("ui-state.json");

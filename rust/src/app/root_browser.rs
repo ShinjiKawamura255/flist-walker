@@ -1,6 +1,7 @@
 #![allow(deprecated)]
 
-use super::FlistWalkerApp;
+use super::session::{enqueue_settings_commit, SettingsCommitRequest, UiStatePatch};
+use super::{FlistWalkerApp, PendingSettingsCommit, PendingSettingsOperation};
 use crate::path_utils::normalize_windows_path_buf;
 use crate::path_utils::path_key;
 use eframe::egui;
@@ -307,6 +308,17 @@ impl FlistWalkerApp {
                 "Wait for folder validation to finish".to_string();
             return;
         }
+        if self
+            .shell
+            .features
+            .root_browser
+            .pending_settings_commit
+            .is_some()
+        {
+            self.shell.features.root_browser.manage_list.notice =
+                "Wait for settings save to finish".to_string();
+            return;
+        }
         let (draft_roots, draft_default_root) = {
             let manage = &self.shell.features.root_browser.manage_list;
             (
@@ -314,27 +326,7 @@ impl FlistWalkerApp {
                 manage.draft_default_root.clone(),
             )
         };
-        let previous_default_key = self
-            .shell
-            .features
-            .root_browser
-            .default_root
-            .as_ref()
-            .map(|root| Self::manage_root_list_path_key(root));
-        let draft_default_key = draft_default_root
-            .as_ref()
-            .map(|root| Self::manage_root_list_path_key(root));
-        self.shell.features.root_browser.saved_roots = draft_roots;
-        self.shell.features.root_browser.default_root = draft_default_root;
-        self.shell.ui.set_root_dropdown_highlight(None);
-        if previous_default_key != draft_default_key {
-            self.mark_ui_state_dirty();
-            self.persist_ui_state_now();
-        }
-        self.save_saved_roots();
-        self.shell.features.root_browser.manage_list.notice =
-            "Applied saved roots list".to_string();
-        self.set_notice("Applied saved roots list");
+        self.start_root_list_settings_commit(draft_roots, draft_default_root, false);
     }
 
     pub(super) fn confirm_manage_root_list_changes(&mut self) {
@@ -343,13 +335,245 @@ impl FlistWalkerApp {
                 "Wait for folder validation to finish".to_string();
             return;
         }
-        self.apply_manage_root_list_changes();
-        self.close_manage_root_list();
+        if self
+            .shell
+            .features
+            .root_browser
+            .pending_settings_commit
+            .is_some()
+        {
+            self.shell.features.root_browser.manage_list.notice =
+                "Wait for settings save to finish".to_string();
+            return;
+        }
+        let (draft_roots, draft_default_root) = {
+            let manage = &self.shell.features.root_browser.manage_list;
+            (
+                manage.draft_roots.clone(),
+                manage.draft_default_root.clone(),
+            )
+        };
+        self.start_root_list_settings_commit(draft_roots, draft_default_root, true);
     }
 
     pub(super) fn cancel_manage_root_list(&mut self) {
+        if matches!(
+            self.shell
+                .features
+                .root_browser
+                .pending_settings_commit
+                .as_ref()
+                .map(|pending| &pending.operation),
+            Some(PendingSettingsOperation::RootList { .. })
+        ) {
+            self.shell.features.root_browser.manage_list.notice =
+                "Wait for settings save to finish".to_string();
+            return;
+        }
         self.close_manage_root_list();
         self.set_notice("Canceled saved roots list changes");
+    }
+
+    fn allocate_settings_request_id(&mut self) -> u64 {
+        let request_id = self.shell.features.root_browser.next_settings_request_id;
+        self.shell.features.root_browser.next_settings_request_id = request_id.saturating_add(1);
+        request_id
+    }
+
+    fn settings_patch_for_default_root(&self, default_root: Option<&Path>) -> UiStatePatch {
+        let default_text = default_root.map(|path| path.to_string_lossy().to_string());
+        let last_root = if Self::restore_tabs_enabled() {
+            &self.shell.runtime.root
+        } else {
+            default_root.unwrap_or(&self.shell.runtime.root)
+        };
+        UiStatePatch::from_json(serde_json::json!({
+            "default_root": default_text,
+            "last_root": last_root.to_string_lossy().to_string(),
+        }))
+    }
+
+    fn saved_roots_text(roots: &[PathBuf]) -> String {
+        let text = roots
+            .iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        if text.is_empty() {
+            String::new()
+        } else {
+            format!("{text}\n")
+        }
+    }
+
+    fn start_root_list_settings_commit(
+        &mut self,
+        roots: Vec<PathBuf>,
+        default_root: Option<PathBuf>,
+        close_on_success: bool,
+    ) {
+        let Some(ui_state_path) = Self::ui_state_file_path() else {
+            self.apply_settings_commit_start_error("Settings path is unavailable");
+            return;
+        };
+        let Some(saved_roots_path) = Self::saved_roots_file_path() else {
+            self.apply_settings_commit_start_error("Saved-roots path is unavailable");
+            return;
+        };
+        let request_id = self.allocate_settings_request_id();
+        let request = SettingsCommitRequest {
+            request_id,
+            patch: self.settings_patch_for_default_root(default_root.as_deref()),
+            saved_roots: Some((saved_roots_path, Self::saved_roots_text(&roots))),
+        };
+        match enqueue_settings_commit(ui_state_path, Self::history_persist_disabled(), request) {
+            Ok(response) => {
+                self.shell.features.root_browser.pending_settings_commit =
+                    Some(PendingSettingsCommit {
+                        request_id,
+                        response,
+                        operation: PendingSettingsOperation::RootList {
+                            roots,
+                            default_root,
+                            close_on_success,
+                        },
+                    });
+                self.shell.features.root_browser.manage_list.notice =
+                    "Saving saved roots...".to_string();
+                self.set_notice("Saving saved roots...");
+            }
+            Err(error) => self.apply_settings_commit_start_error(&error),
+        }
+    }
+
+    fn apply_settings_commit_start_error(&mut self, error: &str) {
+        let notice = format!("Couldn't save settings. {error}");
+        if self.shell.features.root_browser.manage_list.open {
+            self.shell.features.root_browser.manage_list.notice = notice.clone();
+        }
+        self.set_notice(notice);
+    }
+
+    pub(super) fn start_default_root_settings_commit(&mut self, root: PathBuf) {
+        if self
+            .shell
+            .features
+            .root_browser
+            .pending_settings_commit
+            .is_some()
+        {
+            self.set_notice("Wait for settings save to finish");
+            return;
+        }
+        let Some(ui_state_path) = Self::ui_state_file_path() else {
+            self.apply_settings_commit_start_error("Settings path is unavailable");
+            return;
+        };
+        let request_id = self.allocate_settings_request_id();
+        let request = SettingsCommitRequest {
+            request_id,
+            patch: self.settings_patch_for_default_root(Some(&root)),
+            saved_roots: None,
+        };
+        match enqueue_settings_commit(ui_state_path, Self::history_persist_disabled(), request) {
+            Ok(response) => {
+                self.shell.features.root_browser.pending_settings_commit =
+                    Some(PendingSettingsCommit {
+                        request_id,
+                        response,
+                        operation: PendingSettingsOperation::DefaultRoot,
+                    });
+                self.set_notice("Saving default root...");
+            }
+            Err(error) => self.apply_settings_commit_start_error(&error),
+        }
+    }
+
+    pub(super) fn settings_commit_in_progress(&self) -> bool {
+        self.shell
+            .features
+            .root_browser
+            .pending_settings_commit
+            .is_some()
+    }
+
+    pub(super) fn poll_settings_commit_response(&mut self) {
+        let result = {
+            let Some(pending) = self
+                .shell
+                .features
+                .root_browser
+                .pending_settings_commit
+                .as_ref()
+            else {
+                return;
+            };
+            match pending.response.try_recv() {
+                Ok(response) => Some(Ok(response)),
+                Err(TryRecvError::Empty) => None,
+                Err(TryRecvError::Disconnected) => Some(Err(
+                    "Settings persistence worker disconnected unexpectedly".to_string(),
+                )),
+            }
+        };
+        let Some(result) = result else {
+            return;
+        };
+        let pending = self
+            .shell
+            .features
+            .root_browser
+            .pending_settings_commit
+            .take()
+            .expect("pending settings commit");
+        let response_result = match result {
+            Ok(response) if response.request_id == pending.request_id => response.result,
+            Ok(response) => Err(format!(
+                "Settings persistence response mismatch: expected request {}, received {}",
+                pending.request_id, response.request_id
+            )),
+            Err(error) => Err(error),
+        };
+        match (pending.operation, response_result) {
+            (
+                PendingSettingsOperation::RootList {
+                    roots,
+                    default_root,
+                    close_on_success,
+                },
+                Ok(receipt),
+            ) => {
+                self.shell.features.root_browser.saved_roots = roots;
+                self.shell.features.root_browser.default_root = if default_root.is_some() {
+                    receipt.canonical_default_root.or(default_root)
+                } else {
+                    None
+                };
+                self.shell.ui.set_root_dropdown_highlight(None);
+                self.shell.features.root_browser.manage_list.notice =
+                    "Applied saved roots list".to_string();
+                self.set_notice("Applied saved roots list");
+                if close_on_success {
+                    self.close_manage_root_list();
+                }
+            }
+            (PendingSettingsOperation::DefaultRoot, Ok(receipt)) => {
+                if let Some(root) = receipt.canonical_default_root {
+                    self.shell.features.root_browser.default_root = Some(root.clone());
+                    self.set_notice(format!("Set default root: {}", root.display()));
+                } else {
+                    self.set_notice("Couldn't save settings. Default root was not persisted");
+                }
+            }
+            (PendingSettingsOperation::RootList { .. }, Err(error)) => {
+                let notice = format!("Couldn't save saved roots. {error}");
+                self.shell.features.root_browser.manage_list.notice = notice.clone();
+                self.set_notice(notice);
+            }
+            (PendingSettingsOperation::DefaultRoot, Err(error)) => {
+                self.set_notice(format!("Couldn't save default root. {error}"));
+            }
+        }
     }
 
     fn close_manage_root_list(&mut self) {

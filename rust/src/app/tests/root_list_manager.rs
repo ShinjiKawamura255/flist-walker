@@ -1,5 +1,6 @@
 use super::*;
 use crate::app::worker::protocol::{RootValidationIntent, RootValidationResponse, ValidatedRoot};
+use crate::app::{PendingSettingsCommit, PendingSettingsOperation};
 use std::sync::{mpsc, Mutex, OnceLock};
 
 static SAVED_ROOTS_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -42,6 +43,88 @@ fn settle_root_validation(app: &mut FlistWalkerApp) {
         );
         std::thread::yield_now();
     }
+}
+
+fn settle_settings_commit(app: &mut FlistWalkerApp) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while app.settings_commit_in_progress() {
+        app.poll_settings_commit_response();
+        assert!(
+            std::time::Instant::now() < deadline,
+            "settings persistence worker did not settle"
+        );
+        std::thread::yield_now();
+    }
+}
+
+#[test]
+fn tc_167_saved_root_failure_keeps_live_and_draft_state_for_retry() {
+    let root = test_root("saved-root-failure-state");
+    let live = root.join("live");
+    let draft = root.join("draft");
+    fs::create_dir_all(&live).expect("create live root");
+    fs::create_dir_all(&draft).expect("create draft root");
+    let mut app = FlistWalkerApp::new(live.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![live.clone()];
+    app.open_manage_root_list();
+    app.shell.features.root_browser.manage_list.draft_roots = vec![draft.clone()];
+
+    let (response_tx, response_rx) = mpsc::channel();
+    app.shell.features.root_browser.pending_settings_commit = Some(PendingSettingsCommit {
+        request_id: 41,
+        response: response_rx,
+        operation: PendingSettingsOperation::RootList {
+            roots: vec![draft.clone()],
+            default_root: None,
+            close_on_success: true,
+        },
+    });
+    response_tx
+        .send(crate::app::session::SettingsCommitResponse {
+            request_id: 41,
+            result: Err("permission denied".to_string()),
+        })
+        .expect("send failure response");
+
+    app.poll_settings_commit_response();
+
+    assert_eq!(app.shell.features.root_browser.saved_roots, vec![live]);
+    assert_eq!(
+        app.shell.features.root_browser.manage_list.draft_roots,
+        vec![draft]
+    );
+    assert!(app.shell.features.root_browser.manage_list.open);
+    assert!(app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .notice
+        .contains("permission denied"));
+    assert!(!app.settings_commit_in_progress());
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_168_ui_state_autosave_waits_for_observed_settings_commit() {
+    let root = test_root("settings-autosave-order");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (_response_tx, response_rx) = mpsc::channel();
+    app.shell.features.root_browser.pending_settings_commit = Some(PendingSettingsCommit {
+        request_id: 42,
+        response: response_rx,
+        operation: PendingSettingsOperation::DefaultRoot,
+    });
+    app.shell.ui.ui_state_dirty = true;
+
+    app.maybe_save_ui_state(true);
+    assert!(app.shell.ui.ui_state_dirty);
+
+    app.shell.ui.ui_state_dirty = false;
+    app.persist_ui_state_now();
+    assert!(app.shell.ui.ui_state_dirty);
+    let _ = fs::remove_dir_all(root);
 }
 
 #[test]
@@ -316,6 +399,7 @@ fn manage_root_list_apply_commits_added_and_removed_roots() {
     app.add_manage_root_list_input();
     settle_root_validation(&mut app);
     app.apply_manage_root_list_changes();
+    settle_settings_commit(&mut app);
 
     let saved_roots = &app.shell.features.root_browser.saved_roots;
     assert_eq!(saved_roots.len(), 2);
@@ -350,6 +434,7 @@ fn manage_root_list_ok_applies_and_closes() {
     app.add_manage_root_list_input();
     settle_root_validation(&mut app);
     app.confirm_manage_root_list_changes();
+    settle_settings_commit(&mut app);
 
     assert!(app
         .shell
@@ -383,6 +468,7 @@ fn manage_root_list_removing_default_root_clears_default_on_apply() {
         .insert(0);
     app.remove_selected_manage_root_list_items();
     app.apply_manage_root_list_changes();
+    settle_settings_commit(&mut app);
 
     assert!(app.shell.features.root_browser.default_root.is_none());
     let _ = fs::remove_dir_all(&root);
@@ -671,6 +757,7 @@ fn manage_root_list_editing_default_root_follows_replacement_on_apply() {
     app.save_manage_root_list_edit();
     settle_root_validation(&mut app);
     app.apply_manage_root_list_changes();
+    settle_settings_commit(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.default_root,

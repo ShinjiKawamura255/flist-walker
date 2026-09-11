@@ -14,13 +14,73 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
-use std::sync::OnceLock;
+use std::sync::mpsc::{self, SyncSender, TrySendError};
+use std::sync::{Mutex, OnceLock};
 #[cfg(test)]
 use std::time::Duration;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
+static WINDOW_TRACE_SINK: OnceLock<WindowTraceSink> = OnceLock::new();
+
+enum WindowTraceCommand {
+    Append {
+        event: String,
+        details: String,
+    },
+    #[cfg(test)]
+    Flush(mpsc::Sender<()>),
+}
+
+struct WindowTraceSink {
+    tx: SyncSender<WindowTraceCommand>,
+}
+
+impl WindowTraceSink {
+    fn spawn_with_capacity(capacity: usize, writer: impl Fn(&str, &str) + Send + 'static) -> Self {
+        let (tx, rx) = mpsc::sync_channel(capacity.max(1));
+        std::thread::Builder::new()
+            .name("flistwalker-window-trace".to_string())
+            .spawn(move || {
+                while let Ok(command) = rx.recv() {
+                    match command {
+                        WindowTraceCommand::Append { event, details } => writer(&event, &details),
+                        #[cfg(test)]
+                        WindowTraceCommand::Flush(reply) => {
+                            let _ = reply.send(());
+                        }
+                    }
+                }
+            })
+            .expect("spawn window trace worker");
+        Self { tx }
+    }
+
+    fn try_append(&self, event: &str, details: &str) {
+        match self.tx.try_send(WindowTraceCommand::Append {
+            event: event.to_string(),
+            details: details.to_string(),
+        }) {
+            Ok(()) | Err(TrySendError::Full(_)) | Err(TrySendError::Disconnected(_)) => {}
+        }
+    }
+
+    #[cfg(test)]
+    fn flush(&self, timeout: Duration) -> Result<(), String> {
+        let (tx, rx) = mpsc::channel();
+        self.tx
+            .send(WindowTraceCommand::Flush(tx))
+            .map_err(|_| "window trace worker is unavailable".to_string())?;
+        rx.recv_timeout(timeout)
+            .map_err(|_| "window trace flush timed out".to_string())
+    }
+}
+
+fn window_trace_sink() -> &'static WindowTraceSink {
+    WINDOW_TRACE_SINK.get_or_init(|| {
+        WindowTraceSink::spawn_with_capacity(256, FlistWalkerApp::write_window_trace_event)
+    })
+}
 
 pub fn request_process_shutdown() {
     PROCESS_SHUTDOWN_REQUESTED.store(true, Ordering::SeqCst);
@@ -273,6 +333,10 @@ impl FlistWalkerApp {
         if !Self::window_trace_enabled() {
             return;
         }
+        window_trace_sink().try_append(event, details);
+    }
+
+    fn write_window_trace_event(event: &str, details: &str) {
         let Some(path) = Self::window_trace_path() else {
             return;
         };
@@ -500,6 +564,47 @@ mod tests {
         assert_eq!(summary, "chars=8 has_half_space=true has_full_space=false");
         assert!(!summary.contains("alpha"));
         assert!(!summary.contains('日'));
+    }
+
+    #[test]
+    fn tc_120_trace_sink_enqueue_does_not_wait_for_blocked_writer() {
+        let (entered_tx, entered_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let writes = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let writer_writes = std::sync::Arc::clone(&writes);
+        let observed = std::sync::Arc::new(Mutex::new(Vec::new()));
+        let writer_observed = std::sync::Arc::clone(&observed);
+        let sink = WindowTraceSink::spawn_with_capacity(1, move |event, details| {
+            if writer_writes.fetch_add(1, Ordering::SeqCst) == 0 {
+                let _ = entered_tx.send(());
+                let _ = release_rx.recv();
+            }
+            writer_observed
+                .lock()
+                .expect("observed trace lock")
+                .push((event.to_string(), details.to_string()));
+        });
+
+        sink.try_append("first", "one");
+        entered_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("writer entered");
+        sink.try_append("second", "two");
+        let started = Instant::now();
+        sink.try_append("dropped", "three");
+        assert!(started.elapsed() < Duration::from_millis(50));
+
+        release_tx.send(()).expect("release writer");
+        sink.flush(Duration::from_secs(1))
+            .expect("flush trace sink");
+        assert_eq!(writes.load(Ordering::SeqCst), 2);
+        assert_eq!(
+            *observed.lock().expect("observed trace lock"),
+            vec![
+                ("first".to_string(), "one".to_string()),
+                ("second".to_string(), "two".to_string())
+            ]
+        );
     }
 
     #[test]
